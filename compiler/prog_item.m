@@ -43,6 +43,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module set.
 :- import_module term.
 
@@ -851,11 +852,202 @@
             )
     ;       tcrepn_fits_in_n_bits(int, fill_kind)
     ;       tcrepn_is_word_aligned_ptr(wap_kind)
-    ;       tcrepn_has_direct_arg_functors(list(sym_name_and_arity)).
+    ;       tcrepn_has_direct_arg_functors(list(sym_name_and_arity))
+    ;       tcrepn_du(du_repn)
+    ;       tcrepn_maybe_foreign(
+                % If the foreign language of the current backend
+                % is the key of an entry in the list, then
+                % the representation of this type_ctor is given
+                % by the associated foreign_type_repn.
+                %
+                % The list may mention a language at most once.
+                % If it mentions *every* foreign language once,
+                % then the maybe may be "no", since in that case
+                % any Mercury definition of the type would never be used.
+                %
+                % If the foreign language of the current backend
+                % is not the key of any entry in the assoc_list, then
+                % the maybe must be a "yes" whose argument gives the
+                % representation of the Mercury version of the type.
+                one_or_more(pair(foreign_language, foreign_type_repn)),
+                maybe(du_repn)
+            ).
 
 :- type wap_kind
     --->    wap_foreign_type_assertion
     ;       wap_mercury_type(sym_name_and_arity).
+
+:- type foreign_type_repn
+    --->    foreign_type_repn(
+                % The name of the foreign type that represents values
+                % of this Mercury type.
+                frd_foreign_type        :: string
+
+                % ZZZ assertions?
+            ).
+
+    % There should be exactly one applicable du_repn for any given type_ctor.
+    % That means that a non-foreign-enum
+    % du_repn for a type_ctor may coexist with one or
+    % more foreign enum du_repn for that same type_ctor,
+    % *provided* that the foreign enum du_repn are
+    % all for different types.
+:- type du_repn
+    --->    dur_notag(notag_repn)
+    ;       dur_direct_dummy(direct_dummy_repn)
+    ;       dur_enum(enum_repn)
+    ;       dur_gen(gen_du_repn).
+
+:- type notag_repn
+    --->    notag_repn(
+                % The name of the one functor in the type, which must be
+                % arity 1. Its representation will be no_tag.
+                % The representation of the argument be *recorded*
+                % as a full word at offset 0, but this should never be
+                % looked up, since the argument will actually be stored
+                % wherever the whole term is stored.
+                notag_functor_name      :: string
+            ).
+
+:- type direct_dummy_repn
+    --->    direct_dummy_repn(
+                % The name of the one functor in the type, which must be
+                % arity 0. Its representation will be dummy_tag.
+                dummy_functor_name      :: string
+            ).
+
+:- type enum_repn
+    --->    enum_repn(
+                % The list of the functor names (all arity 0).
+                enum_functors           :: one_or_more(string),
+
+                % The representation of functor #N in Mercury will be
+                % int_tag(int_tag_int(N)), with counting starting at 0.
+                % However, if the enum_foreign field has an element
+                % whose key is the current backend's language, the
+                % representation of functor #N will be the Nth string
+                % in the associated value.
+                %
+                % We do not care about the 32 vs 64 bit distinction here,
+                % because the definition of an enum type with more than 2^32
+                % function symbols will cause a compiler to run out of memory
+                % for a *very* long time to come.
+                %
+                % The set of foreign languages mentioned here must be
+                % disjoint from the set of foreign languages mentioned
+                % in any tcrepn_conditional wrapped around this du_repn.
+                enum_foreign            :: assoc_list(foreign_language,
+                                                one_or_more(string))
+            ).
+
+:- type gen_du_repn
+    --->    gen_du_repn_only_functor(
+                % The name of the data constructor. The arity is implicit
+                % in the length of the argument list, which must be the same
+                % in the 64 and 32 bit versions.
+                gduofd_functor          :: string,
+                gduofd_args_64          :: gen_du_only_functor_args,
+                gduofd_args_32          :: gen_du_only_functor_args
+            )
+    ;       gen_du_repn_more_functors(
+                gdumfd_functors         :: one_or_more(gen_du_functor)
+            ).
+
+:- type gen_du_only_functor_args
+    --->    gen_du_only_functor_local_args(
+                % The cons_tag is local_args_tag(local_args_only_functor).
+                % The ptag is 0. The local sectag is 0 bits.
+                % For all args, ArgOnlyOffset and CellOffset are both -2.
+                gduofl_args             :: one_or_more(local_pos_size)
+            )
+    ;       gen_du_only_functor_remote_args(
+                % The cons_tag is remote_args_tag(remote_args_only_functor).
+                % The ptag is 0. The remote sectag size is 0 bits.
+                gduofr_args             :: one_or_more(arg_pos_size)
+            ).
+
+:- type gen_du_functor
+    --->    gen_du_constant_functor(
+                % The name of the data constructor. The arity is 0.
+                % The ptag is 0. The local sectag is 0. The *size*
+                % of the local sectag may depend on the word size.
+                gducf_functor           :: string,
+                gducf_sectag_size_64    :: sectag_size,
+                gducf_sectag_size_32    :: sectag_size
+            )
+    ;       gen_du_nonconstant_functor(
+                % The name of the data constructor. The arity is implicit
+                % in the length of the argument list, which must be the same
+                % in the 64 and 32 bit versions.
+                gduncf_functor          :: string,
+                gduncf_tags_64          :: ptag_sectag,
+                gduncf_tags_32          :: ptag_sectag,
+                gduncf_args_64          :: one_or_more(maybe_direct_arg),
+                gduncf_args_32          :: one_or_more(maybe_direct_arg)
+            ).
+
+:- type ptag_sectag
+    --->    ptag_sectag(
+                gdu_ptag                :: uint,
+                gdu_maybe_sectag        :: maybe_sectag
+            ).
+
+:- type maybe_sectag
+    --->    no_sectag
+    ;       local_sectag(uint, sectag_size)
+    ;       remote_sectag(uint, sectag_size).
+
+:- type sectag_size
+    --->    sectag_rest_of_word
+    ;       sectag_bits(uint).
+
+:- type maybe_direct_arg
+    --->    nondirect_arg(arg_pos_size)
+    ;       direct_arg(uint).   % The ptag.
+
+:- type local_pos_size
+    --->    local_pos_size(
+                lps_shift               :: uint,
+                lps_fill                :: fill_kind_size
+            ).
+
+:- type arg_pos_size
+    --->    pos_full(
+                pf_arg_only_offset      :: arg_only_offset,
+                pf_cell_offset          :: cell_offset
+            )
+    ;       pos_double(
+                pd_arg_only_offset      :: arg_only_offset,
+                pd_cell_offset          :: cell_offset,
+                pd_kind                 :: double_word_kind
+            )
+    ;       pos_partial_first(
+                ppf_arg_only_offset     :: arg_only_offset,
+                ppf_cell_offset         :: cell_offset,
+                ppf_shift               :: uint,
+                ppf_fill                :: fill_kind_size
+            )
+    ;       pos_partial_shifted(
+                pps_arg_only_offset     :: arg_only_offset,
+                pps_cell_offset         :: cell_offset,
+                pps_shift               :: uint,
+                pps_fill                :: fill_kind_size
+            )
+    ;       pos_none_shifted(
+                pns_arg_only_offset     :: arg_only_offset,
+                pns_cell_offset         :: cell_offset
+            )
+    ;       pos_none_nowhere.
+
+:- type fill_kind_size
+    --->    fk_enum(uint)
+    ;       fk_int8
+    ;       fk_int16
+    ;       fk_int32
+    ;       fk_uint8
+    ;       fk_uint16
+    ;       fk_uint32
+    ;       fk_char21.
 
 %-----------------------------------------------------------------------------%
 %

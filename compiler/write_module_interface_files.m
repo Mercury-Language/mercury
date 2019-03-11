@@ -301,7 +301,7 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
     ),
     ParseTreeInt = ParseTreeInt1 ^ pti_maybe_version_numbers
         := MaybeVersionNumbers,
-    convert_to_mercury_int(NoLineNumGlobals, TmpOutputFileName,
+    output_parse_tree_int(NoLineNumGlobals, TmpOutputFileName,
         ParseTreeInt, !IO),
     % Start using the original globals again.
     update_interface(Globals, OutputFileName, !IO).

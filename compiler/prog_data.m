@@ -555,10 +555,11 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % if it included cell_offsets instead of arg_only_offsets, since
             % for most purposes, the runtime actually needs the cell_offset,
             % and having it directly available would avoid the need to compute
-            % *at runtime* the cell_offset from the arg_only_offset, the
-            % absence/presence of a remote secondary tag and the number of
-            % type_infos and/or typeclass_infos. However, changing this
-            % would require nontrivial bootstrapping.
+            % *at runtime* the cell_offset from
+            % - the arg_only_offset,
+            % - the absence/presence of a remote secondary tag, and
+            % - the number of type_infos and/or typeclass_infos.
+            % However, changing this would require nontrivial bootstrapping.
 
 :- type cell_offset
     --->    cell_offset(int).

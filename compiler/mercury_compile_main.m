@@ -1030,7 +1030,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         else
             module_name_to_file_name(Globals, do_create_dirs, ".ugly",
                 ModuleName, OutputFileName, !IO),
-            convert_to_mercury_src(Globals, OutputFileName, ParseTreeSrc, !IO)
+            output_parse_tree_src(Globals, OutputFileName, ParseTreeSrc, !IO)
         ),
         ModulesToLink = [],
         ExtraObjFiles = []

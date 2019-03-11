@@ -547,8 +547,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
                     TypeCtorTypeDefn, !NoTagTypeMap, !Specs)
             else
                 add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor,
-                    TypeDefn0, MaybeForeign,
-                    !ComponentTypeMap),
+                    TypeDefn0, MaybeForeign, !ComponentTypeMap),
 
                 % Figure out the representation of these types
                 % in the second pass.
@@ -672,11 +671,6 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
         DuTypeKind = du_type_kind_direct_dummy,
         SingleCtor = ctor(Ordinal, _MaybeExistConstraints,
             SingleCtorSymName, _Args, _SingleCtorArity, SingleCtorContext),
-        % XXX TYPE_REPN Should we have a special dummy_tag?
-        % If not, we can use the same code as the enum case.
-        % If yes, we can delete all the checks in the code generators
-        % for "is the variable's type a dummy type?" when the variable
-        % is unified with a cons_id whose tag is dummy_tag.
         SingleCtorTag = dummy_tag,
         SingleCtorRepn = ctor_repn(Ordinal, no_exist_constraints,
             SingleCtorSymName, SingleCtorTag, [], 0, SingleCtorContext),
@@ -911,7 +905,7 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        Body0 = hlds_du_type(Ctors, MaybeCanonical, MaybeRepn0, _MaybeForeign),
+        Body0 = hlds_du_type(Ctors, _MaybeCanonical, MaybeRepn0, _MaybeForeign),
         (
             MaybeRepn0 = yes(_),
             % We have already decided this type's representation
@@ -920,7 +914,7 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
         ;
             MaybeRepn0 = no,
             decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
-                TypeCtor, TypeDefn0, Ctors, MaybeCanonical, Repn, !Specs),
+                TypeCtor, TypeDefn0, Ctors, Repn, !Specs),
             Body = Body0 ^ du_type_repn := yes(Repn),
             set_type_defn_body(Body, TypeDefn0, TypeDefn),
             TypeCtorTypeDefn = TypeCtor - TypeDefn
@@ -937,18 +931,18 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
 
 :- pred decide_complex_du_type(module_info::in, decide_du_params::in,
     component_type_map::in, type_ctor::in, hlds_type_defn::in,
-    list(constructor)::in, maybe_canonical::in, du_type_repn::out,
+    list(constructor)::in, du_type_repn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
-        TypeDefn0, Ctors, MaybeCanonical, Repn, !Specs) :-
+        TypeDefn0, Ctors, Repn, !Specs) :-
     get_type_defn_status(TypeDefn0, TypeStatus),
     ( if Ctors = [SingleCtor] then
         decide_complex_du_type_single_ctor(ModuleInfo, Params,
             ComponentTypeMap, TypeStatus, SingleCtor, Repn, !Specs)
     else
         decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
-            TypeCtor, TypeStatus, Ctors, MaybeCanonical, Repn, !Specs)
+            TypeCtor, TypeStatus, Ctors, Repn, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -962,18 +956,14 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
         TypeStatus, SingleCtor, Repn, !Specs) :-
     SingleCtor = ctor(Ordinal, MaybeExistConstraints, SingleCtorSymName,
         SingleCtorArgs, SingleCtorArity, SingleCtorContext),
-    % XXX ARG_PACK Check whether we could pack SingleCtorArgs into
-    % a single word with the (zero) primary tag.
+    % Check whether we could pack SingleCtorArgs into a single word
+    % with the (zero) primary tag.
+    %
     % We want to keep the primary tag so that we can apply the direct arg
     % optimization to *another* type that has a functor whose only argument
     % is of this type.
-    % We would need a new cons_id distinct from shared_local_tag_with_args.
-    % We would want to treat the new cons_id the same way as we currently
-    % treat shared_local_tag_with_args in *most* places, but we want to
-    % treat it differently when implementing deconstructions; a deconstruction
-    % unification with a shared_local_tag_with_args cons_id may fail,
-    % whereas a similar unification with the new tag cannot fail.
     ( if
+        MaybeExistConstraints = no_exist_constraints,
         Params ^ ddp_maybe_primary_tags = max_primary_tag(_, NumPtagBits),
         Params ^ ddp_allow_packing_local_sectags = yes,
         Limit = Params ^ ddp_arg_pack_bits - NumPtagBits,
@@ -1010,11 +1000,11 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
 
 :- pred decide_complex_du_type_general(module_info::in, decide_du_params::in,
     component_type_map::in, type_ctor::in, type_status::in,
-    list(constructor)::in, maybe_canonical::in, du_type_repn::out,
+    list(constructor)::in, du_type_repn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
-        TypeCtor, TypeStatus, Ctors, _MaybeCanonical, Repn, !Specs) :-
+        TypeCtor, TypeStatus, Ctors, Repn, !Specs) :-
     Target = Params ^ ddp_target,
     UsesConstructors = target_uses_constructors(Target),
     MaybePrimaryTags = Params ^ ddp_maybe_primary_tags,
@@ -1210,9 +1200,16 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
     ConsId = cons(CtorSymName, CtorArity, TypeCtor),
     map.lookup(CtorTagMap, ConsId, CtorTag),
     (
-        ( CtorTag = remote_args_tag(_)
-        ; CtorTag = no_tag
-        ; CtorTag = direct_arg_tag(_)
+        (
+            CtorTag = remote_args_tag(_)
+        ;
+            CtorTag = no_tag,
+            expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
+                "no_exist_constraints but exist_constraints")
+        ;
+            CtorTag = direct_arg_tag(_),
+            expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
+                "direct_arg_tag but exist_constraints")
         ),
         decide_complex_du_ctor_remote_args(ModuleInfo, Params,
             ComponentTypeMap, TypeStatus, NumRemoteSectagBits, CtorTag,
@@ -1568,7 +1565,6 @@ decide_tagword_args(Params, ComponentTypeMap,
     % *starts* with a nondummy argument, but we assign the apw_none_nowhere
     % representation to any dummy in any such initial subsequence.
     %
-    % We
 :- pred decide_packed_arg_word_loop(maybe_treat_as_first_arg::in,
     arg_only_offset::in, cell_offset::in, int::in, int::out,
     assoc_list(constructor_arg, packable_kind)::in,

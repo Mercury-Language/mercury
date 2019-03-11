@@ -76,6 +76,9 @@
     % A string representation of the foreign language suitable
     % for use in machine-readable name mangling.
     %
+:- pred simple_foreign_language_string(foreign_language, string).
+:- mode simple_foreign_language_string(in, out) is det.
+:- mode simple_foreign_language_string(out, in) is semidet.
 :- func simple_foreign_language_string(foreign_language) = string.
 
     % The GC method specifies how we do garbage collection.
@@ -658,10 +661,13 @@ foreign_language_string(lang_csharp) = "C#".
 foreign_language_string(lang_java) = "Java".
 foreign_language_string(lang_erlang) = "Erlang".
 
-simple_foreign_language_string(lang_c) = "c".
-simple_foreign_language_string(lang_csharp) = "csharp".
-simple_foreign_language_string(lang_java) = "java".
-simple_foreign_language_string(lang_erlang) = "erlang".
+simple_foreign_language_string(lang_c, "c").
+simple_foreign_language_string(lang_csharp, "csharp").
+simple_foreign_language_string(lang_java, "java").
+simple_foreign_language_string(lang_erlang, "erlang").
+
+simple_foreign_language_string(Lang) = Str :-
+    simple_foreign_language_string(Lang, Str).
 
 gc_is_conservative(gc_boehm) = yes.
 gc_is_conservative(gc_boehm_debug) = yes.

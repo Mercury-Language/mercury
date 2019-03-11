@@ -27,13 +27,15 @@
 
 %---------------------------------------------------------------------------%
 
-    % convert_to_mercury_*(Globals, OutputFileName, ParseTree, !IO).
+    % output_parse_tree_*(Globals, OutputFileName, ParseTree, !IO).
+    % XXX output_parse_tree_opt is unused. intermod.m should be updated
+    % to use it.
     %
-:- pred convert_to_mercury_src(globals::in, string::in, parse_tree_src::in,
+:- pred output_parse_tree_src(globals::in, string::in, parse_tree_src::in,
     io::di, io::uo) is det.
-:- pred convert_to_mercury_int(globals::in, string::in, parse_tree_int::in,
+:- pred output_parse_tree_int(globals::in, string::in, parse_tree_int::in,
     io::di, io::uo) is det.
-:- pred convert_to_mercury_opt(globals::in, string::in, parse_tree_opt::in,
+:- pred output_parse_tree_opt(globals::in, string::in, parse_tree_opt::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -133,45 +135,49 @@
 :- import_module recompilation.
 :- import_module recompilation.version.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
+:- import_module term_io.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
 
-convert_to_mercury_src(Globals, OutputFileName, ParseTreeSrc, !IO) :-
-    convert_to_mercury(Globals, OutputFileName, mercury_output_parse_tree_src,
-        ParseTreeSrc, !IO).
+output_parse_tree_src(Globals, OutputFileName, ParseTreeSrc, !IO) :-
+    output_some_parse_tree(Globals, OutputFileName,
+        mercury_output_parse_tree_src, ParseTreeSrc, !IO).
 
-convert_to_mercury_int(Globals, OutputFileName, ParseTreeInt, !IO) :-
-    convert_to_mercury(Globals, OutputFileName, mercury_output_parse_tree_int,
-        ParseTreeInt, !IO).
+output_parse_tree_int(Globals, OutputFileName, ParseTreeInt, !IO) :-
+    output_some_parse_tree(Globals, OutputFileName,
+        mercury_output_parse_tree_int, ParseTreeInt, !IO).
 
-convert_to_mercury_opt(Globals, OutputFileName, ParseTreeOpt, !IO) :-
-    convert_to_mercury(Globals, OutputFileName, mercury_output_parse_tree_opt,
-        ParseTreeOpt, !IO).
+output_parse_tree_opt(Globals, OutputFileName, ParseTreeOpt, !IO) :-
+    output_some_parse_tree(Globals, OutputFileName,
+        mercury_output_parse_tree_opt, ParseTreeOpt, !IO).
 
 :- type output_parse_tree(PT) == pred(merc_out_info, PT, io, io).
 :- inst output_parse_tree == (pred(in, in, di, uo) is det).
 
-:- pred convert_to_mercury(globals::in, string::in,
-    output_parse_tree(PT)::in(output_parse_tree), PT::in,
-    io::di, io::uo) is det.
+:- pred output_some_parse_tree(globals::in, string::in,
+    output_parse_tree(PT)::in(output_parse_tree),
+    PT::in, io::di, io::uo) is det.
 
-convert_to_mercury(Globals, OutputFileName, OutputParseTree, ParseTree, !IO) :-
+output_some_parse_tree(Globals, OutputFileName, OutputParseTree,
+        ParseTree, !IO) :-
     io.open_output(OutputFileName, Res, !IO),
     (
         Res = ok(FileStream),
         globals.lookup_bool_option(Globals, verbose, Verbose),
         (
             Verbose = yes,
-            io.write_string("% Writing output to ", !IO),
-            io.write_string(OutputFileName, !IO),
-            io.write_string("...", !IO),
+            io.format("%% Writing output to %s...", [s(OutputFileName)], !IO),
             io.flush_output(!IO)
         ;
             Verbose = no
@@ -180,6 +186,7 @@ convert_to_mercury(Globals, OutputFileName, OutputParseTree, ParseTree, !IO) :-
 
         % Module qualifiers on items are redundant after the
         % declaration above.
+        % XXX What declaration?
         Info = init_merc_out_info(Globals, unqualified_item_names,
             output_mercury),
         OutputParseTree(Info, ParseTree, !IO),
@@ -193,9 +200,8 @@ convert_to_mercury(Globals, OutputFileName, OutputParseTree, ParseTree, !IO) :-
         )
     ;
         Res = error(_),
-        io.write_string("Error: couldn't open file `", !IO),
-        io.write_string(OutputFileName, !IO),
-        io.write_string("' for output.\n", !IO)
+        io.format("Error: couldn't open file `%s' for output.\n",
+            [s(OutputFileName)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1533,8 +1539,383 @@ mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
         io.write_string("has_direct_arg_functors([", !IO),
         io.write_list(SymNameAndArities, ", ", write_sym_name_and_arity, !IO),
         io.write_string("])", !IO)
+    ;
+        RepnInfo = tcrepn_du(DuRepn),
+        io.write_string("du_repn(", !IO),
+        mercury_output_du_type_repn(DuRepn, !IO),
+        io.write_string(")", !IO)
+    ;
+        RepnInfo = tcrepn_maybe_foreign(LangsTypeRepns, MaybeDuRepn),
+        io.write_string("maybe_foreign_type_repn([", !IO),
+        LangsTypeRepns = one_or_more(HeadLangTypeRepn, TailLangsTypeRepns),
+        mercury_output_foreign_langs_types(HeadLangTypeRepn,
+            TailLangsTypeRepns, !IO),
+        io.write_string("], ", !IO),
+        (
+            MaybeDuRepn = no,
+            io.write_string("no_du_repn", !IO)
+        ;
+            MaybeDuRepn = yes(DuRepn),
+            io.write_string("du_repn(", !IO),
+            mercury_output_du_type_repn(DuRepn, !IO),
+            io.write_string(")", !IO)
+        )
     ),
     io.write_string(").\n", !IO).
+
+%---------------------%
+
+:- pred mercury_output_du_type_repn(du_repn::in, io::di, io::uo) is det.
+
+mercury_output_du_type_repn(DuRepn, !IO) :-
+    % XXX We output the names of types and function symbols as plain atoms.
+    % This works when those names follow the usual pattern, and contain
+    % only alphanumeric characters and start with a lower case letter,
+    % but may pose problems when they violate that pattern. This needs
+    % further testing, and may require changes, both here and in
+    % parse_type_repn.m.
+    %
+    % XXX At the moment, we write out *everything* on one line. This format
+    % makes automatic comparisons between type_repn items in different
+    % interface files easy, but it also makes these items very hard to read
+    % for humans. We should provide an option to switch to an format
+    % with structured indentation and limited length lines.
+    (
+        DuRepn = dur_notag(NotagRepn),
+        NotagRepn = notag_repn(FunctorName),
+        io.write_string("notag(", !IO),
+        term_io.quote_string(FunctorName, !IO),
+        io.write_string(")", !IO)
+    ;
+        DuRepn = dur_direct_dummy(DummyRepn),
+        DummyRepn = direct_dummy_repn(FunctorName),
+        io.write_string("direct_dummy(", !IO),
+        term_io.quote_string(FunctorName, !IO),
+        io.write_string(")", !IO)
+    ;
+        DuRepn = dur_enum(EnumRepn),
+        EnumRepn = enum_repn(FunctorNames, ForeignEnums),
+        io.write_string("enum(", !IO),
+        io.write_string("[", !IO),
+        FunctorNames = one_or_more(HeadFunctorName, TailFunctorNames),
+        mercury_output_enum_functor_names(HeadFunctorName, TailFunctorNames,
+            !IO),
+        io.write_string("]", !IO),
+        (
+            ForeignEnums = []
+        ;
+            ForeignEnums = [HeadForeignEnums | TailForeignEnums],
+            io.write_string(", [", !IO),
+            mercury_output_foreign_langs_enums(HeadForeignEnums,
+                TailForeignEnums, !IO),
+            io.write_string("]", !IO)
+        ),
+        io.write_string(")", !IO)
+    ;
+        DuRepn = dur_gen(GenDuRepn),
+        (
+            GenDuRepn = gen_du_repn_more_functors(Functors),
+            Functors = one_or_more(HeadFunctor, TailFunctors),
+            io.write_string("gen_du([\n", !IO),
+            mercury_output_gen_du_functors(HeadFunctor, TailFunctors, !IO),
+            io.write_string("])", !IO)
+        ;
+            GenDuRepn = gen_du_repn_only_functor(FunctorName,
+                OnlyFunctorArgs64, OnlyFunctorArgs32),
+            io.write_string("gen_du_only_functor(", !IO),
+            term_io.quote_string(FunctorName, !IO),
+            io.write_string(",\n", !IO),
+            mercury_output_only_functor_args(OnlyFunctorArgs64, !IO),
+            io.write_string(",\n", !IO),
+            mercury_output_only_functor_args(OnlyFunctorArgs32, !IO),
+            io.write_string(")", !IO)
+        )
+    ).
+
+:- pred mercury_output_enum_functor_names(string::in, list(string)::in,
+    io::di, io::uo) is det.
+
+mercury_output_enum_functor_names(FunctorName, FunctorNames, !IO) :-
+    term_io.quote_string(FunctorName, !IO),
+    (
+        FunctorNames = []
+    ;
+        FunctorNames = [HeadFunctorName | TailFunctorNames],
+        io.write_string(", ", !IO),
+        mercury_output_enum_functor_names(HeadFunctorName, TailFunctorNames,
+            !IO)
+    ).
+
+:- pred mercury_output_foreign_langs_enums(
+    pair(foreign_language, one_or_more(string))::in,
+    assoc_list(foreign_language, one_or_more(string))::in,
+    io::di, io::uo) is det.
+
+mercury_output_foreign_langs_enums(LangEnums, LangsEnums, !IO) :-
+    LangEnums = Lang - Enums,
+    Enums = one_or_more(HeadEnum, TailEnums),
+    simple_foreign_language_string(Lang, LangStr),
+    io.format("%s([", [s(LangStr)], !IO),
+    mercury_output_enum_functor_names(HeadEnum, TailEnums, !IO),
+    io.write_string("])", !IO),
+    (
+        LangsEnums = []
+    ;
+        LangsEnums = [HeadLangEnums | TailLangsEnums],
+        io.write_string(", ", !IO),
+        mercury_output_foreign_langs_enums(HeadLangEnums, TailLangsEnums,
+            !IO)
+    ).
+
+:- pred mercury_output_foreign_langs_types(
+    pair(foreign_language, foreign_type_repn)::in,
+    list(pair(foreign_language, foreign_type_repn))::in, io::di, io::uo) is det.
+
+mercury_output_foreign_langs_types(LangTypeRepn, LangsTypeRepns, !IO) :-
+    LangTypeRepn = Lang - TypeRepn,
+    TypeRepn = foreign_type_repn(ForeignTypeName),
+    % XXX Document the requirements on foreign type names
+    % that make the absence of quoting ok here and elsewhere.
+    % XXX Do we actually accept foreign type names for Erlang?
+    simple_foreign_language_string(Lang, LangStr),
+    io.format("%s(%s)", [s(LangStr), s(ForeignTypeName)], !IO),
+    (
+        LangsTypeRepns = []
+    ;
+        LangsTypeRepns = [HeadLangTypeRepn | TailLangsTypeRepns],
+        io.write_string(", ", !IO),
+        mercury_output_foreign_langs_types(HeadLangTypeRepn,
+            TailLangsTypeRepns, !IO)
+    ).
+
+%---------------------%
+
+:- pred mercury_output_gen_du_functors(gen_du_functor::in,
+    list(gen_du_functor)::in, io::di, io::uo) is det.
+
+mercury_output_gen_du_functors(Functor, Functors, !IO) :-
+    (
+        Functors = [],
+        mercury_output_gen_du_functor(Functor, "", !IO)
+    ;
+        Functors = [HeadFunctor | TailFunctors],
+        mercury_output_gen_du_functor(Functor, ",\n", !IO),
+        mercury_output_gen_du_functors(HeadFunctor, TailFunctors, !IO)
+    ).
+
+:- pred mercury_output_gen_du_functor(gen_du_functor::in, string::in,
+    io::di, io::uo) is det.
+
+mercury_output_gen_du_functor(Functor, Suffix, !IO) :-
+    (
+        Functor = gen_du_constant_functor(FunctorName,
+            SectagSize64, SectagSize32),
+        io.write_string("constant_functor(", !IO),
+        term_io.quote_string(FunctorName, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_sectag_size(SectagSize64, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_sectag_size(SectagSize32, !IO),
+        io.format(")%s", [s(Suffix)], !IO)
+    ;
+        Functor = gen_du_nonconstant_functor(FunctorName,
+            Tags64, Tags32, Args64, Args32),
+        Args64 = one_or_more(HeadArg64, TailArgs64),
+        Args32 = one_or_more(HeadArg32, TailArgs32),
+        io.write_string("nonconstant_functor(", !IO),
+        term_io.quote_string(FunctorName, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_ptag_sectag(Tags64, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_ptag_sectag(Tags32, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_maybe_direct_args(HeadArg64, TailArgs64, !IO),
+        io.write_string(", ", !IO),
+        mercury_output_maybe_direct_args(HeadArg32, TailArgs32, !IO),
+        io.format(")%s", [s(Suffix)], !IO)
+    ).
+
+:- pred mercury_output_maybe_direct_args(maybe_direct_arg::in,
+    list(maybe_direct_arg)::in, io::di, io::uo) is det.
+
+mercury_output_maybe_direct_args(Arg, Args, !IO) :-
+    (
+        Arg = direct_arg(Ptag),
+        io.format("direct_arg(%d)", [i(uint.cast_to_int(Ptag))], !IO)
+    ;
+        Arg = nondirect_arg(ArgPosSize),
+        io.write_string("nondirect_arg(", !IO),
+        mercury_output_arg_pos_size(ArgPosSize, !IO),
+        io.write_string(")", !IO)
+    ),
+    (
+        Args = []
+    ;
+        Args = [HeadArg | TailArgs],
+        io.write_string(", ", !IO),
+        mercury_output_maybe_direct_args(HeadArg, TailArgs, !IO)
+    ).
+
+%---------------------%
+
+:- pred mercury_output_only_functor_args(gen_du_only_functor_args::in,
+    io::di, io::uo) is det.
+
+mercury_output_only_functor_args(OnlyFunctorArgs, !IO) :-
+    (
+        OnlyFunctorArgs = gen_du_only_functor_local_args(LocalArgs),
+        LocalArgs = one_or_more(HeadLocalArg, TailLocalArgs),
+        io.write_string("local_args([", !IO),
+        mercury_output_only_functor_local_args(HeadLocalArg, TailLocalArgs,
+            !IO),
+        io.write_string("])", !IO)
+    ;
+        OnlyFunctorArgs = gen_du_only_functor_remote_args(RemoteArgs),
+        RemoteArgs = one_or_more(HeadRemoteArg, TailRemoteArgs),
+        io.write_string("remote_args([", !IO),
+        mercury_output_only_functor_remote_args(HeadRemoteArg, TailRemoteArgs,
+            !IO),
+        io.write_string("])", !IO)
+    ).
+
+:- pred mercury_output_only_functor_local_args(local_pos_size::in,
+    list(local_pos_size)::in, io::di, io::uo) is det.
+
+mercury_output_only_functor_local_args(LocalArg, LocalArgs, !IO) :-
+    mercury_output_local_pos_size(LocalArg, !IO),
+    (
+        LocalArgs = []
+    ;
+        LocalArgs = [HeadLocalArg | TailLocalArgs],
+        io.write_string(", ", !IO),
+        mercury_output_only_functor_local_args(HeadLocalArg,
+            TailLocalArgs, !IO)
+    ).
+
+:- pred mercury_output_only_functor_remote_args(arg_pos_size::in,
+    list(arg_pos_size)::in, io::di, io::uo) is det.
+
+mercury_output_only_functor_remote_args(RemoteArg, RemoteArgs, !IO) :-
+    mercury_output_arg_pos_size(RemoteArg, !IO),
+    (
+        RemoteArgs = []
+    ;
+        RemoteArgs = [HeadRemoteArg | TailRemoteArgs],
+        io.write_string(", ", !IO),
+        mercury_output_only_functor_remote_args(HeadRemoteArg,
+            TailRemoteArgs, !IO)
+    ).
+
+%---------------------%
+
+:- pred mercury_output_ptag_sectag(ptag_sectag::in, io::di, io::uo) is det.
+
+mercury_output_ptag_sectag(PtagSectag, !IO) :-
+    PtagSectag = ptag_sectag(PtagUint, MaybeSectag),
+    Ptag = uint.cast_to_int(PtagUint),
+    (
+        MaybeSectag = no_sectag,
+        io.format("ptag_only(%d)", [i(Ptag)], !IO)
+    ;
+        (
+            MaybeSectag = local_sectag(SectagUint, SectagSize),
+            Locn = "local"
+        ;
+            MaybeSectag = remote_sectag(SectagUint, SectagSize),
+            Locn = "remote"
+        ),
+        Sectag = uint.cast_to_int(SectagUint),
+        (
+            SectagSize = sectag_rest_of_word,
+            io.format("ptag_%s_sectag(%d, %d)",
+                [s(Locn), i(Ptag), i(Sectag)], !IO)
+        ;
+            SectagSize = sectag_bits(NumBitsUint),
+            NumBits = uint.cast_to_int(NumBitsUint),
+            io.format("ptag_%s_sectag_bits(%d, %d, %d)",
+                [s(Locn), i(Ptag), i(Sectag), i(NumBits)], !IO)
+        )
+    ).
+
+:- pred mercury_output_sectag_size(sectag_size::in, io::di, io::uo) is det.
+
+mercury_output_sectag_size(SectagSize, !IO) :-
+    (
+        SectagSize = sectag_rest_of_word,
+        io.write_string("sectag_rest_of_word", !IO)
+    ;
+        SectagSize = sectag_bits(NumBits),
+        io.format("sectag_bits(%d)", [i(uint.cast_to_int(NumBits))], !IO)
+    ).
+
+:- pred mercury_output_local_pos_size(local_pos_size::in,
+    io::di, io::uo) is det.
+
+mercury_output_local_pos_size(ShiftWidthFill, !IO) :-
+    ShiftWidthFill = local_pos_size(Shift, FillKindSize),
+    io.format("local(%d, %s)",
+        [i(uint.cast_to_int(Shift)),
+        s(fill_kind_size_to_string(FillKindSize))], !IO).
+
+:- pred mercury_output_arg_pos_size(arg_pos_size::in, io::di, io::uo) is det.
+
+mercury_output_arg_pos_size(ArgPosSize, !IO) :-
+    (
+        ArgPosSize = pos_full(ArgOnlyOffset, CellOffset),
+        ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
+        CellOffset = cell_offset(CellOffsetInt),
+        io.format("full(%d, %d)",
+            [i(ArgOnlyOffsetInt), i(CellOffsetInt)], !IO)
+    ;
+        ArgPosSize = pos_double(ArgOnlyOffset, CellOffset, DoubleKind),
+        ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
+        CellOffset = cell_offset(CellOffsetInt),
+        double_word_kind_string(DoubleKind, DoubleKindStr),
+        io.format("double(%d, %d, %s)",
+            [i(ArgOnlyOffsetInt), i(CellOffsetInt), s(DoubleKindStr)], !IO)
+    ;
+        (
+            ArgPosSize = pos_partial_first(ArgOnlyOffset, CellOffset,
+                Shift, FillKindSize),
+            FirstOrShifted = "first"
+        ;
+            ArgPosSize = pos_partial_shifted(ArgOnlyOffset, CellOffset,
+                Shift, FillKindSize),
+            FirstOrShifted = "shifted"
+        ),
+        ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
+        CellOffset = cell_offset(CellOffsetInt),
+        io.format("partial_%s(%d, %d, %d, %s)",
+            [s(FirstOrShifted), i(ArgOnlyOffsetInt), i(CellOffsetInt),
+            i(uint.cast_to_int(Shift)),
+            s(fill_kind_size_to_string(FillKindSize))], !IO)
+    ;
+        ArgPosSize = pos_none_shifted(ArgOnlyOffset, CellOffset),
+        ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
+        CellOffset = cell_offset(CellOffsetInt),
+        io.format("none_shifted(%d, %d)",
+            [i(ArgOnlyOffsetInt), i(CellOffsetInt)], !IO)
+    ;
+        ArgPosSize = pos_none_nowhere,
+        io.write_string("none_nowhere", !IO)
+    ).
+
+:- func fill_kind_size_to_string(fill_kind_size) = string.
+
+fill_kind_size_to_string(FillKindSize) = Str :-
+    (
+        FillKindSize = fk_enum(NumBits),
+        string.format("enum(%d)", [i(uint.cast_to_int(NumBits))], Str)
+    ;
+        ( FillKindSize = fk_int8,   Str = "int8"
+        ; FillKindSize = fk_int16,  Str = "int16"
+        ; FillKindSize = fk_int32,  Str = "int32"
+        ; FillKindSize = fk_uint8,  Str = "uint8"
+        ; FillKindSize = fk_uint16, Str = "uint16"
+        ; FillKindSize = fk_uint32, Str = "uint32"
+        ; FillKindSize = fk_char21, Str = "char21"
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_out.
