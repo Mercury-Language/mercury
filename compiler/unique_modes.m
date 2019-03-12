@@ -591,7 +591,7 @@ unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes,
         MaybeRegTypes, Detism, GoalExpr, !ModeInfo) :-
     mode_checkpoint(enter, "generic_call", !ModeInfo),
     hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-    CallId = generic_call_id(GenericCallId),
+    CallId = mode_call_generic(GenericCallId),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
     ( if determinism_components(Detism, _, at_most_zero) then
         NeverSucceeds = yes
@@ -631,8 +631,7 @@ unique_modes_check_goal_plain_call(PredId, ProcId0, ArgVars, Builtin,
     PredNameString = sym_name_to_string(PredName),
     string.append("call ", PredNameString, CallString),
     mode_checkpoint(enter, CallString, !ModeInfo),
-    mode_info_get_call_id(!.ModeInfo, PredId, CallId),
-    mode_info_set_call_context(call_context_call(plain_call_id(CallId)),
+    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
     unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId,
         !ModeInfo),
@@ -690,8 +689,7 @@ unique_modes_check_goal_call_foreign_proc(Attributes, PredId, ProcId0,
     % To modecheck a pragma_c_code, we just modecheck the proc for
     % which it is the goal.
     mode_checkpoint(enter, "foreign_proc", !ModeInfo),
-    mode_info_get_call_id(!.ModeInfo, PredId, CallId),
-    mode_info_set_call_context(call_context_call(plain_call_id(CallId)),
+    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
     ArgVars = list.map(foreign_arg_var, Args),
     unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId,

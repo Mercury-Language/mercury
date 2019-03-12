@@ -1,7 +1,7 @@
 state_vars_test1.m:018: In clause for `p(in, out)':
 state_vars_test1.m:018:   in call to function `int.+'/2:
-state_vars_test1.m:018:   mode error: arguments
-state_vars_test1.m:018:   `STATE_VARIABLE_X_0, V_7, STATE_VARIABLE_X' have the
+state_vars_test1.m:018:   mode error: arguments `STATE_VARIABLE_X_0, V_7' and
+state_vars_test1.m:018:   the return value `STATE_VARIABLE_X' have the
 state_vars_test1.m:018:   following insts:
 state_vars_test1.m:018:     ground,
 state_vars_test1.m:018:     free,

@@ -1,24 +1,21 @@
-try_detism.m:008: In `p'(out, di, uo):
-try_detism.m:008:   error: determinism declaration not satisfied.
-try_detism.m:008:   Declared `cc_multi', inferred `cc_nondet'.
-try_detism.m:015:   In argument 1 of call to predicate `try_detism.q'/3:
-try_detism.m:015:   unification with `X' can fail.
-try_detism.m:019: Error: call to predicate `exception.magic_exception_result'/1
-try_detism.m:019:   with determinism `cc_multi' occurs in a context which
-try_detism.m:019:   requires all solutions.
-try_detism.m:015:   Unification of X and V_20 can fail.
-try_detism.m:019: In clause for `p(out, di, uo)':
-try_detism.m:019:   in call to predicate `exception.try_io'/4:
-try_detism.m:019:   mode error: arguments
-try_detism.m:019:   `TypeInfo_26, TryLambda, TryResult, STATE_VARIABLE_IO_10, TryIOOutput'
-try_detism.m:019:   have the following insts:
-try_detism.m:019:     unique(private_builtin.type_info(unique(<type_ctor_info
-try_detism.m:019:     for .tuple/0>), unique(0))),
-try_detism.m:019:     /* unique */(pred((free >> ground), (unique >>
-try_detism.m:019:     clobbered), (free >> unique)) is semidet),
-try_detism.m:019:     free,
-try_detism.m:019:     unique,
-try_detism.m:019:     free
-try_detism.m:019:   which does not match any of the modes for predicate
-try_detism.m:019:   `exception.try_io'/4.
+try_detism.m:010: In `p'(out, di, uo):
+try_detism.m:010:   error: determinism declaration not satisfied.
+try_detism.m:010:   Declared `cc_multi', inferred `cc_nondet'.
+try_detism.m:017:   In argument 1 of call to predicate `try_detism.q'/3:
+try_detism.m:017:   unification with `X' can fail.
+try_detism.m:016: Error: call to predicate `exception.magic_exception_result'/1
+try_detism.m:016:   with determinism `cc_multi' occurs in a context which
+try_detism.m:016:   requires all solutions.
+try_detism.m:017:   Unification of X and V_18 can fail.
+try_detism.m:016: In clause for `p(out, di, uo)':
+try_detism.m:016:   in call to predicate `exception.try_io'/4:
+try_detism.m:016:   mode error: arguments
+try_detism.m:016:   `TryLambda, TryResult, STATE_VARIABLE_IO_10, TryIOOutput'
+try_detism.m:016:   have the following insts:
+try_detism.m:016:     /* unique */ (pred(out, di, uo) is semidet),
+try_detism.m:016:     free,
+try_detism.m:016:     unique,
+try_detism.m:016:     free
+try_detism.m:016:   which does not match any of the modes for predicate
+try_detism.m:016:   `exception.try_io'/4.
 For more information, recompile with `-E'.

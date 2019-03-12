@@ -2748,7 +2748,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         PredInfo0, ProcInfo0),
 
     Name0 = pred_info_name(PredInfo0),
-    Arity = pred_info_orig_arity(PredInfo0),
+    PredArity = pred_info_orig_arity(PredInfo0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     PredModule = pred_info_module(PredInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
@@ -2798,7 +2798,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 
     list.length(Types, ActualArity),
     maybe_write_request(VeryVerbose, ModuleInfo0, "Specializing",
-        qualified(PredModule, Name0), Arity, ActualArity,
+        qualified(PredModule, Name0), PredArity, ActualArity,
         yes(PredName), HOArgs, Context, !IO),
 
     pred_info_get_origin(PredInfo0, OrigOrigin),
@@ -2824,7 +2824,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         EmptyRttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors),
     Origin = origin_transformed(Transform, OrigOrigin, CallerPredId),
     CurUserDecl = maybe.no,
-    pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
+    pred_info_init(PredModule, SymName, PredArity, PredOrFunc, Context, Origin,
         PredStatus, CurUserDecl, GoalType, MarkerList, Types,
         ArgTVarSet, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
         ClausesInfo, VarNameRemap, NewPredInfo0),
@@ -2866,10 +2866,10 @@ higher_order_add_new_pred(CalledPredProcId, NewPred, !Info) :-
     list(higher_order_arg)::in, prog_context::in, io::di, io::uo) is det.
 
 maybe_write_request(no, _, _, _, _, _, _, _, _, !IO).
-maybe_write_request(yes, ModuleInfo, Msg, SymName, Arity, ActualArity,
+maybe_write_request(yes, ModuleInfo, Msg, SymName, PredArity, ActualArity,
         MaybeNewName, HOArgs, Context, !IO) :-
     OldName = sym_name_to_string(SymName),
-    string.int_to_string(Arity, ArStr),
+    string.int_to_string(PredArity, ArStr),
     io.write_string("% ", !IO),
     prog_out.write_context(Context, !IO),
     io.write_strings([Msg, " `", OldName, "'/", ArStr], !IO),
@@ -2881,7 +2881,7 @@ maybe_write_request(yes, ModuleInfo, Msg, SymName, Arity, ActualArity,
         MaybeNewName = no
     ),
     io.write_string(" with higher-order arguments:\n", !IO),
-    NumToDrop = ActualArity - Arity,
+    NumToDrop = ActualArity - PredArity,
     output_higher_order_args(ModuleInfo, NumToDrop, 0, HOArgs, !IO).
 
 :- pred output_higher_order_args(module_info::in, int::in, int::in,
@@ -2905,7 +2905,7 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        Arity = pred_info_orig_arity(PredInfo),
+        PredArity = pred_info_orig_arity(PredInfo),
         % Adjust message for type_infos.
         DeclaredArgNo = ArgNo - NumToDrop,
         io.write_string("HeadVar__", !IO),
@@ -2913,7 +2913,7 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
         io.write_string(" = `", !IO),
         io.write_string(Name, !IO),
         io.write_string("'/", !IO),
-        io.write_int(Arity, !IO)
+        io.write_int(PredArity, !IO)
     else if ConsId = type_ctor_info_const(TypeModule, TypeName, TypeArity) then
         io.write_string("type_ctor_info for `", !IO),
         prog_out.write_sym_name(qualified(TypeModule, TypeName), !IO),

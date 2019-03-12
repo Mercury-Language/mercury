@@ -1242,8 +1242,7 @@ modecheck_goal_plain_call(PredId, ProcId0, Args0, MaybeCallUnifyContext,
     CallString = "call " ++ PredNameString,
     mode_checkpoint(enter, CallString, !ModeInfo),
 
-    mode_info_get_call_id(!.ModeInfo, PredId, CallId),
-    mode_info_set_call_context(call_context_call(plain_call_id(CallId)),
+    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -1277,7 +1276,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
     hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-    CallId = generic_call_id(GenericCallId),
+    CallId = mode_call_generic(GenericCallId),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
     (
         GenericCall = higher_order(PredVar, _, PredOrFunc, _),
@@ -1387,10 +1386,9 @@ modecheck_goal_call_foreign_proc(Attributes, PredId, ProcId0, Args0, ExtraArgs,
     % which it is the goal.
 
     mode_checkpoint(enter, "pragma_foreign_code", !ModeInfo),
-    mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     DeterminismKnown = no,
-    mode_info_set_call_context(call_context_call(plain_call_id(CallId)),
+    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
     ArgVars0 = list.map(foreign_arg_var, Args0),
     modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,

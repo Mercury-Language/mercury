@@ -13,11 +13,8 @@ ho_type_mode_bug.m:029:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:029:   in, in, out, di, uo)':
 ho_type_mode_bug.m:029:   in call to predicate `ho_type_mode_bug.my_foldl2'/6:
 ho_type_mode_bug.m:029:   mode error: arguments
-ho_type_mode_bug.m:029:   `TypeInfo_for_X, TypeInfo_for_Y, TypeInfo_for_Z, P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc'
-ho_type_mode_bug.m:029:   have the following insts:
-ho_type_mode_bug.m:029:     ground,
-ho_type_mode_bug.m:029:     ground,
-ho_type_mode_bug.m:029:     ground,
+ho_type_mode_bug.m:029:   `P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc' have the
+ho_type_mode_bug.m:029:   following insts:
 ho_type_mode_bug.m:029:     (pred(in, in, out) is det),
 ho_type_mode_bug.m:029:     ground,
 ho_type_mode_bug.m:029:     free,
@@ -55,11 +52,8 @@ ho_type_mode_bug.m:029:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:029:   in, in, out, in, out)':
 ho_type_mode_bug.m:029:   in call to predicate `ho_type_mode_bug.my_foldl2'/6:
 ho_type_mode_bug.m:029:   mode error: arguments
-ho_type_mode_bug.m:029:   `TypeInfo_for_X, TypeInfo_for_Y, TypeInfo_for_Z, P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc'
-ho_type_mode_bug.m:029:   have the following insts:
-ho_type_mode_bug.m:029:     ground,
-ho_type_mode_bug.m:029:     ground,
-ho_type_mode_bug.m:029:     ground,
+ho_type_mode_bug.m:029:   `P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc' have the
+ho_type_mode_bug.m:029:   following insts:
 ho_type_mode_bug.m:029:     (pred(in, in, out) is det),
 ho_type_mode_bug.m:029:     ground,
 ho_type_mode_bug.m:029:     free,

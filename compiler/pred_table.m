@@ -197,7 +197,7 @@
     % category, sym_name, and arity. When searching for functions, the arity
     % used is the arity of the predicate that the function gets converted to,
     % i.e. the arity of the function plus one.
-    % NB. This is opposite to what happens with the search predicates
+    % XXX This is opposite to what happens with the search predicates
     % declared above!!
     %
 :- pred predicate_table_lookup_pf_sym_arity(predicate_table::in,
@@ -1052,8 +1052,8 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
                 OtherPredId, _OtherPredName)
         then
             module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
-            pred_info_get_call_id(PredInfo, PredCallId),
-            pred_info_get_call_id(OtherPredInfo, OtherPredCallId),
+            pred_info_get_simple_call_id(PredInfo, PredCallId),
+            pred_info_get_simple_call_id(OtherPredInfo, OtherPredCallId),
             % XXX This is not very nice.
             trace [io(!IO)] (
                 module_info_get_globals(ModuleInfo, Globals),

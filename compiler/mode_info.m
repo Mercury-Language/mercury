@@ -47,7 +47,7 @@
     % XXX `side' is not used
 :- type mode_context
     --->    mode_context_call(
-                call_id,
+                mode_call_id,
                 int             % Argument number (offset so that the real
                                 % arguments start at number 1 whereas the
                                 % type_info arguments have numbers <= 0).
@@ -64,7 +64,11 @@
 
 :- type call_context
     --->    call_context_unify(unify_context)
-    ;       call_context_call(call_id).
+    ;       call_context_call(mode_call_id).
+
+:- type mode_call_id
+    --->    mode_call_plain(pred_id)
+    ;       mode_call_generic(generic_call_id).
 
 :- type var_lock_reason
     --->    var_lock_negation
@@ -298,7 +302,7 @@
     % Find the simple_call_id to use in error messages
     % for the given pred_id.
     %
-:- pred mode_info_get_call_id(mode_info::in, pred_id::in,
+:- pred mode_info_get_simple_call_id(mode_info::in, pred_id::in,
     simple_call_id::out) is det.
 
     % Check whether a variable or a list of variables are live or not.
@@ -863,11 +867,10 @@ mode_info_set_call_arg_context(ArgNum, !ModeInfo) :-
         mode_info_set_mode_context(mode_context_call(CallId, ArgNum),
             !ModeInfo)
     ;
-        ModeContext0 = mode_context_unify(_UnifyContext, _Side),
+        ModeContext0 = mode_context_unify(_UnifyContext, _Side)
         % This only happens when checking that the typeinfo variables
         % for polymorphic complicated unifications are ground.
         % For that case, we don't care about the ArgNum.
-        true
     ;
         ModeContext0 = mode_context_uninitialized,
         unexpected($pred, "uninitialized")
@@ -1010,10 +1013,10 @@ mode_info_set_checking_extra_goals(Checking, !MI) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_call_id(ModeInfo, PredId, CallId) :-
+mode_info_get_simple_call_id(ModeInfo, PredId, CallId) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_call_id(PredInfo, CallId).
+    pred_info_get_simple_call_id(PredInfo, CallId).
 
 %-----------------------------------------------------------------------------%
 

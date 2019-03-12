@@ -1,23 +1,7 @@
 ho_default_func_4.m:036: In clause for `baz(in, out)':
 ho_default_func_4.m:036:   in call to function `univ.univ'/1:
-ho_default_func_4.m:036:   mode error: arguments `TypeInfo_9, V_7, V_6' have
-ho_default_func_4.m:036:   the following insts:
-ho_default_func_4.m:036:     bound(
-ho_default_func_4.m:036:       type_info(
-ho_default_func_4.m:036:         bound(
-ho_default_func_4.m:036:           <type_ctor_info for .func/0>
-ho_default_func_4.m:036:         ),
-ho_default_func_4.m:036:         bound(
-ho_default_func_4.m:036:           2
-ho_default_func_4.m:036:         ),
-ho_default_func_4.m:036:         bound(
-ho_default_func_4.m:036:           <type_ctor_info for .int/0>
-ho_default_func_4.m:036:         ),
-ho_default_func_4.m:036:         bound(
-ho_default_func_4.m:036:           <type_ctor_info for .int/0>
-ho_default_func_4.m:036:         )
-ho_default_func_4.m:036:       )
-ho_default_func_4.m:036:     ),
+ho_default_func_4.m:036:   mode error: argument `V_7' and the return value
+ho_default_func_4.m:036:   `V_6' have the following insts:
 ho_default_func_4.m:036:     /* unique */ (func(
 ho_default_func_4.m:036:       named inst one,
 ho_default_func_4.m:036:       which expands to

@@ -894,11 +894,19 @@ compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_context_to_unify_context(_ModeInfo, ModeContext, UnifyContext) :-
+mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext) :-
     (
         ModeContext = mode_context_unify(UnifyContext, _)
     ;
-        ModeContext = mode_context_call(CallId, Arg),
+        ModeContext = mode_context_call(ModeCallId, Arg),
+        (
+            ModeCallId = mode_call_plain(PredId),
+            mode_info_get_simple_call_id(ModeInfo, PredId, SimpleCallId),
+            CallId = plain_call_id(SimpleCallId)
+        ;
+            ModeCallId = mode_call_generic(GenericCallId),
+            CallId = generic_call_id(GenericCallId)
+        ),
         UnifyContext = unify_context(umc_call(CallId, Arg), [])
     ;
         ModeContext = mode_context_uninitialized,

@@ -858,7 +858,7 @@
 
 :- pred purity_to_markers(purity::in, list(pred_marker)::out) is det.
 
-:- pred pred_info_get_call_id(pred_info::in, simple_call_id::out) is det.
+:- pred pred_info_get_simple_call_id(pred_info::in, simple_call_id::out) is det.
 
 :- pred pred_info_get_sym_name(pred_info::in, sym_name::out) is det.
 
@@ -1776,7 +1776,7 @@ pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 
 %-----------------------------------------------------------------------------%
 
-pred_info_get_call_id(PredInfo, SimpleCallId) :-
+pred_info_get_simple_call_id(PredInfo, SimpleCallId) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_sym_name(PredInfo, SymName),
     Arity = pred_info_orig_arity(PredInfo),

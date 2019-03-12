@@ -1035,39 +1035,146 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
     list(mer_inst)) = error_spec.
 
 mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
-    Preamble = mode_info_context_preamble(ModeInfo),
-    mode_info_get_context(ModeInfo, Context),
-    mode_info_get_varset(ModeInfo, VarSet),
+    list.length(Vars, NumVars),
+    list.length(Insts, NumInsts),
+    expect(unify(NumVars, NumInsts), $pred, "NumVars != NumInsts"),
+
+    PrefixPieces = mode_info_context_preamble(ModeInfo) ++
+        [words("mode error:")],
     mode_info_get_mode_context(ModeInfo, ModeContext),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
     (
-        ModeContext = mode_context_call(CallId, _),
-        CallIdStr = call_id_to_string(CallId)
+        ModeContext = mode_context_call(ModeCallId, _),
+        (
+            ModeCallId = mode_call_generic(GenericCallId),
+            CallId = generic_call_id(GenericCallId),
+            (
+                GenericCallId = gcid_higher_order(_, PredOrFunc, _)
+            ;
+                GenericCallId = gcid_class_method(_, SimpleCallId),
+                SimpleCallId = simple_call_id(PredOrFunc, _, _)
+            ;
+                ( GenericCallId = gcid_event_call(_)
+                ; GenericCallId = gcid_cast(_)
+                ),
+                PredOrFunc = pf_predicate
+            ),
+            % XXX Setting NumExtra to 0 means that we do not separate out
+            % any arguments added by polymorphism.m. Since most higher order
+            % values are monomorphic, this should not be too much of a loss.
+            % If and when it becomes one, this should be fixed.
+            NumExtra = 0
+        ;
+            ModeCallId = mode_call_plain(PredId),
+            mode_info_get_simple_call_id(ModeInfo, PredId, SimpleCallId),
+            CallId = plain_call_id(SimpleCallId),
+
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            pred_info_get_orig_arity(PredInfo, OrigArity),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            NumExtra = NumVars - OrigArity
+        )
     ;
         ( ModeContext = mode_context_unify(_, _)
         ; ModeContext = mode_context_uninitialized
         ),
         unexpected($pred, "invalid context")
     ),
+    ( if NumExtra > 0 then
+        % The callee's argument list contains extra typeinfo and/or
+        % typeclass_info arguments added by polymorphism.m. Usually,
+        % these extra arguments are all already ground, which means that
+        % they cannot be insufficiently instantiated. And since users cannot
+        % require them to have any inst more specific than ground, they
+        % cannot be the cause of any mode errors. This is why we do not
+        % report their instantations.
+        %
+        % In the unusual case that some extra variable is *not* ground,
+        % they *could* possibly be the cause of a mode error, so we *do* list
+        % their instantiation states, but we do so separately, in an effort
+        % to avoid confusing users.
+        list.det_split_list(NumExtra, Vars, ExtraVars, UserVars),
+        list.det_split_list(NumExtra, Insts, ExtraInsts, UserInsts),
+        UserArgPieces = [words("argument")],
+        UserVarInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
+            PredOrFunc, UserVars, UserInsts),
+        ( if list.all_true(inst_is_ground(ModuleInfo), ExtraInsts) then
+            VarInstPieces = UserVarInstPieces
+        else
+            ExtraArgPieces = [words("the compiler-generated argument")],
+            ExtraVarInstPieces = arg_inst_mismatch_pieces(ModeInfo,
+                ExtraArgPieces, pf_predicate, ExtraVars, ExtraInsts),
+            VarInstPieces =  ExtraVarInstPieces ++ UserVarInstPieces
+        )
+    else
+        UserArgPieces = [words("argument")],
+        VarInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
+            PredOrFunc, Vars, Insts)
+    ),
+    NoMatchPieces =
+        [words("which does not match any of the modes for"),
+        words(call_id_to_string(CallId)), suffix("."), nl],
+    Pieces = PrefixPieces ++ VarInstPieces ++ NoMatchPieces,
+    mode_info_get_context(ModeInfo, Context),
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        [simple_msg(Context, [always(Pieces)])]).
+
+:- func arg_inst_mismatch_pieces(mode_info, list(format_component),
+    pred_or_func, list(prog_var), list(mer_inst)) = list(format_component).
+
+arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, Vars, Insts)
+        = Pieces :-
+    mode_info_get_varset(ModeInfo, VarSet),
     (
         Vars = [],
-        unexpected($pred, "Vars = []")
+        Pieces = []
     ;
-        Vars = [Var],
-        MainPieces = [words("mode error: argument"),
-            quote(mercury_var_to_name_only(VarSet, Var)),
-            words("has the following inst:"), nl_indent_delta(1)]
-    ;
-        Vars = [_, _ | _],
-        MainPieces = [words("mode error: arguments"),
-            quote(mercury_vars_to_name_only(VarSet, Vars)),
-            words("have the following insts:"), nl_indent_delta(1)]
-    ),
-    NoMatchPieces = inst_list_to_sep_lines(ModeInfo, Insts) ++
-        [words("which does not match any of the modes for"),
-        words(CallIdStr), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context,
-            [always(Preamble ++ MainPieces ++ NoMatchPieces)])]).
+        Vars = [HeadVar | TailVars],
+        (
+            PredOrFunc = pf_predicate,
+            (
+                TailVars = [],
+                Pieces = ArgPieces ++
+                    [quote(mercury_var_to_name_only(VarSet, HeadVar)),
+                    words("has the following inst:"), nl_indent_delta(1)] ++
+                    inst_list_to_sep_lines(ModeInfo, Insts)
+                % inst_list_to_sep_lines does nl_indent_delta(-1).
+            ;
+                TailVars = [_ | _],
+                Pieces = ArgPieces ++ [suffix("s"),
+                    quote(mercury_vars_to_name_only(VarSet, Vars)),
+                    words("have the following insts:"), nl_indent_delta(1)] ++
+                    inst_list_to_sep_lines(ModeInfo, Insts)
+                % inst_list_to_sep_lines does nl_indent_delta(-1).
+            )
+        ;
+            PredOrFunc = pf_function,
+            list.det_split_last(Vars, ArgVars, ReturnVar),
+            (
+                ArgVars = [],
+                Pieces = [words("the return value"),
+                    quote(mercury_var_to_name_only(VarSet, ReturnVar)),
+                    words("has the following inst:"), nl_indent_delta(1)] ++
+                    inst_list_to_sep_lines(ModeInfo, Insts)
+                % inst_list_to_sep_lines does nl_indent_delta(-1).
+            ;
+                (
+                    ArgVars = [_],
+                    SuffixPieces = []
+                ;
+                    ArgVars = [_, _ | _],
+                    SuffixPieces = [suffix("s")]
+                ),
+                Pieces = ArgPieces ++ SuffixPieces ++
+                    [quote(mercury_vars_to_name_only(VarSet, ArgVars)),
+                    words("and the return value"),
+                    quote(mercury_var_to_name_only(VarSet, ReturnVar)),
+                    words("have the following insts:"), nl_indent_delta(1)] ++
+                    inst_list_to_sep_lines(ModeInfo, Insts)
+                % inst_list_to_sep_lines does nl_indent_delta(-1).
+            )
+        )
+    ).
 
 :- func mode_error_higher_order_pred_var_to_spec(mode_info, pred_or_func,
     prog_var, mer_inst, arity) = error_spec.
@@ -1462,7 +1569,8 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
     ModeSubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
         InstVarSet, Name, Modes, MaybeDet),
     mode_info_get_mode_context(ModeInfo, ModeContext),
-    ModeContextPieces = mode_context_to_pieces(ModeContext, PredMarkers),
+    ModeContextPieces =
+        mode_context_to_pieces(ModeInfo, ModeContext, PredMarkers),
     Pieces = [words("In clause for")] ++
         ExtraMethodPieces ++
         [words_quote(ModeSubDeclStr), suffix(":"), nl] ++
@@ -1472,17 +1580,31 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
 
     % XXX some parts of the mode context never get set up
 
-:- func mode_context_to_pieces(mode_context, pred_markers)
+:- func mode_context_to_pieces(mode_info, mode_context, pred_markers)
     = list(format_component).
 
-mode_context_to_pieces(mode_context_uninitialized, _Markers) = [].
-mode_context_to_pieces(mode_context_call(CallId, ArgNum), Markers) =
-    [words("in"),
-        words(call_arg_id_to_string(CallId, ArgNum, Markers)),
-        suffix(":"), nl].
-mode_context_to_pieces(mode_context_unify(UnifyContext, _Side), _Markers)
-        = Pieces :-
-    unify_context_first_to_pieces(is_not_first, _, UnifyContext, [], Pieces).
+mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
+    (
+        ModeContext = mode_context_uninitialized,
+        Pieces = []
+    ;
+        ModeContext = mode_context_call(ModeCallId, ArgNum),
+        (
+            ModeCallId = mode_call_plain(PredId),
+            mode_info_get_simple_call_id(ModeInfo, PredId, SimpleCallId),
+            CallId = plain_call_id(SimpleCallId)
+        ;
+            ModeCallId = mode_call_generic(GenericCallId),
+            CallId = generic_call_id(GenericCallId)
+        ),
+        Pieces = [words("in"),
+            words(call_arg_id_to_string(CallId, ArgNum, Markers)),
+            suffix(":"), nl]
+    ;
+        ModeContext = mode_context_unify(UnifyContext, _Side),
+        unify_context_first_to_pieces(is_not_first, _, UnifyContext,
+            [], Pieces)
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -4087,10 +4087,10 @@ expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
 
         InstanceConstraint = constraint(ClassName, InstanceArgs),
         list.length(InstanceArgs, InstanceArity),
-        pred_info_get_call_id(PredInfo0, CallId),
+        pred_info_get_simple_call_id(PredInfo0, SimpleCallId),
         BodyGoalExpr = generic_call(
             class_method(TypeClassInfoVar, !.ProcNum,
-                class_id(ClassName, InstanceArity), CallId),
+                class_id(ClassName, InstanceArity), SimpleCallId),
             HeadVars, Modes, arg_reg_types_unset, Detism),
 
         % Make the goal info for the call.
