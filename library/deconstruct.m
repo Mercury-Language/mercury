@@ -92,6 +92,9 @@
     %   - for arrays, the string <<array>>.
     %   - for c_pointers, the string ptr(0xXXXX) where XXXX is the
     %     hexadecimal representation of the pointer.
+    %   - for foreign types, a string of the form <<foreign(Name, Rep)>> where
+    %     Name is the type's Mercury name and Rep is a target language specific
+    %     representation of the term's value.
     %   - for bitmaps, the bitmap converted to a length and a
     %     hexadecimal string inside angle brackets and quotes of the
     %     form """<[0-9]:[0-9A-F]*>""".
@@ -113,6 +116,7 @@
     %   - for tuples, the number of elements in the tuple.
     %   - for arrays, the number of elements in the array.
     %   - for c_pointers, zero.
+    %   - for foreign types, zero.
     %   - for bitmaps, zero.
     %
     % Note that in the current University of Melbourne implementation,

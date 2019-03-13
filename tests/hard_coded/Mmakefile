@@ -562,8 +562,18 @@ ifeq "$(filter java%,$(GRADE))" ""
 	JAVA_PROGS =
 else
 	JAVA_PROGS = \
+		java_print_foreign  \
 		java_test \
 		test_java_foreign_primitive
+endif
+
+# Tests of the C# foreign language interface only work in the C# grades.
+
+ifeq "$(filter csharp%,$(GRADE))" ""
+	CSHARP_PROGS =
+else
+	CSHARP_PROGS = \
+		csharp_print_foreign
 endif
 
 # Fact tables currently work only in the C grades.
@@ -837,6 +847,7 @@ PROGS = \
 	$(STATIC_LINK_PROGS) \
 	$(C_ONLY_PROGS) \
 	$(JAVA_PROGS) \
+	$(CSHARP_PROGS) \
 	$(SOLVER_PROGS) \
 	$(FOREIGN_ENUM_PROGS) \
 	$(TRAILED_PROGS) \

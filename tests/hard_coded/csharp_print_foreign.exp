@@ -1,0 +1,8 @@
+'<<foreign(foreign_bool, True)>>'
+'<<foreign(foreign_char, A)>>'
+'<<foreign(foreign_int, 561)>>'
+'<<foreign(foreign_long, 561)>>'
+'<<foreign(foreign_float, 3.402823E+38)>>'
+'<<foreign(foreign_double, 1.79769313486232E+308)>>'
+'<<foreign(uuid, 00000000-0000-0000-0000-000000000000)>>'
+'<<foreign(object, null)>>'

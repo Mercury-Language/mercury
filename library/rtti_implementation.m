@@ -3142,7 +3142,10 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         (
             TypeCtorRep = tcr_foreign,
-            Functor = "<<foreignxx>>"
+            TypeCtorName = TypeCtorInfo ^ type_ctor_name,
+            TargetLangRep = get_target_lang_rep(Term),
+            string.format("<<foreign(%s, %s)>>",
+                [s(TypeCtorName), s(TargetLangRep)], Functor)
         ;
             TypeCtorRep = tcr_stable_foreign,
             Functor = "<<stable_foreign>>"
@@ -3955,6 +3958,43 @@ same_pointer_value_untyped(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
     private_builtin.sorry("same_pointer_value_untyped").
+
+:- func get_target_lang_rep(T) = string.
+
+:- pragma foreign_proc("C",
+    get_target_lang_rep(Term::in) = (S::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // This should be kept in sync with the MR_TYEPCTOR_REP_FOREIGN
+    // case in runtime/mercury_ml_expand_body.h.
+    char buf[256];
+    MR_snprintf(buf, 256, ""%p"", (void *) Term);
+    MR_make_aligned_string_copy(S, buf);
+").
+
+:- pragma foreign_proc("C#",
+    get_target_lang_rep(Term::in) = (S::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Term == null) {
+        S = ""null"";
+    } else {
+        S = Term.ToString();
+    }
+").
+
+:- pragma foreign_proc("Java",
+    get_target_lang_rep(Term::in) = (S::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Term == null) {
+        S = ""null"";
+    } else {
+        S = Term.toString();
+    }
+").
+
+get_target_lang_rep(_) = "some_foreign_value".
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
