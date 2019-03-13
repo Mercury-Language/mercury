@@ -502,7 +502,7 @@
     "   sethi %%hi(_GLOBAL_OFFSET_TABLE_-(0b-.)),%%l7\n"                 \
     "   or %%l7,%%lo(_GLOBAL_OFFSET_TABLE_-(0b-.)),%%l7\n"               \
     "   add %%l7,%%o7,%%l7\n"                                            \
-        // tell gcc we clobber l7, o7, and memory
+        /* tell gcc we clobber l7, o7, and memory */                     \
         : : : "%l7", "%o7", "memory"
 
     // It is safe to fall through into MR_INLINE_ASM_FIXUP_REGS,
