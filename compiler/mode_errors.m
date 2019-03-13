@@ -1087,7 +1087,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
         % they cannot be insufficiently instantiated. And since users cannot
         % require them to have any inst more specific than ground, they
         % cannot be the cause of any mode errors. This is why we do not
-        % report their instantations.
+        % report their instantiations.
         %
         % In the unusual case that some extra variable is *not* ground,
         % they *could* possibly be the cause of a mode error, so we *do* list
