@@ -580,6 +580,16 @@ case "$FULLARCH" in sparc-sun-solaris2*)
     esac ;;
 esac
 
+# On sparc64 OpenBSD, no grades will fit into the 13-bit GOT and so we must
+# use the large pic option.
+
+case "$FULLARCH" in sparc64*-openbsd*)
+    case "$*" in *-fpic*)
+        OVERRIDE_OPTS="$OVERRIDE_OPTS -fPIC"
+        ;;
+    esac ;;
+esac
+
 # The -floop-optimize option is incompatible with the global register code
 # we generated on Darwin PowerPC. See the hard_coded/ppc_bug test case
 # for an example program which fails with this optimization.
