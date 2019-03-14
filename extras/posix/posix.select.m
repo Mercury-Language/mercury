@@ -46,7 +46,6 @@
     #include ""posix_workarounds.h""
 ").
 
-:- type fdset_ptr.
 :- pragma foreign_type("C", fdset_ptr, "fd_set *", [can_pass_as_mercury_type]).
 
 %-----------------------------------------------------------------------------%
