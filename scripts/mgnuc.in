@@ -566,28 +566,19 @@ case $COMPILER in gcc)
     esac ;;
 esac
 
-# On sparc-sun-solaris2, we need to use -fPIC rather than -fpic if we're
-# using grade `none', because otherwise the Mercury standard library
-# overflows the fixed limit on the number of "small pic" references.
+# On sparc-sun-solaris2, we need to use -fPIC rather than -fpic
+# because otherwise the Mercury standard library overflows the fixed limit
+# on the number of "small pic" references.
+# Similarly, on sparc64 OpenBSD, no grades fit into the 13-bit GOT.
 
-case "$FULLARCH" in sparc-sun-solaris2*)
-    case "$grade" in none)
+case "$FULLARCH" in
+    sparc-sun-solaris2*|sparc64*-openbsd*)
         case "$*" in *-fpic*)
             echo "mgnuc: using -fPIC rather than -fpic"
             OVERRIDE_OPTS="$OVERRIDE_OPTS -fPIC"
             ;;
-        esac ;;
-    esac ;;
-esac
-
-# On sparc64 OpenBSD, no grades will fit into the 13-bit GOT and so we must
-# use the large pic option.
-
-case "$FULLARCH" in sparc64*-openbsd*)
-    case "$*" in *-fpic*)
-        OVERRIDE_OPTS="$OVERRIDE_OPTS -fPIC"
+        esac
         ;;
-    esac ;;
 esac
 
 # The -floop-optimize option is incompatible with the global register code
