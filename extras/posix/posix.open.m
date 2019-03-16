@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999, 2001, 2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -70,8 +70,10 @@ open(PathName, FlagList, Result, !IO) :-
 :- pragma foreign_proc("C",
     open0(PathName::in, Flags::in, FileDes::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
- "
-    FileDes = open(PathName, Flags);
+"
+    // We pass 0 as the mode here because if _FORTIFY_SOURCE is defined
+    // to be > 1 we will get an error for the two argument version of open.
+    FileDes = open(PathName, Flags, 0);
     IO = IO0;
 ").
 
