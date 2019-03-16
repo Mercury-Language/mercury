@@ -222,8 +222,8 @@ cgi.parse_word_chars(RevChars0, RevChars) -->
 hex_pair_to_char(Hex1, Hex2, Char) :-
         char.is_hex_digit(Hex1),
         char.is_hex_digit(Hex2),
-        char.digit_to_int(Hex1, Int1),
-        char.digit_to_int(Hex2, Int2),
+        char.hex_digit_to_int(Hex1, Int1),
+        char.hex_digit_to_int(Hex2, Int2),
         Val = Int1 * 16 + Int2,
         char.to_int(Char, Val).
 
