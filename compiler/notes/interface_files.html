@@ -1,0 +1,183 @@
+<html>
+<head>
+<title>
+Interface files
+</title>
+</head>
+
+<body
+	bgcolor="#ffffff"
+	text="#000000"
+>
+
+<h1>Interface files</h1>
+
+<h2>A warning</h2>
+
+<p>
+Our system of interface files is quite complex,
+Some of the complexity is justified, or at least was justified at the time.
+Other aspects are almost certainly accidents.
+The compiler's old representation of parse trees as raw lists of items,
+with any structure and constraints being implicit rather than explicit,
+was quite error prone;
+since the structure and constraints were not expressed in types,
+violations did not result in type errors,
+and thus could accumulate undetected.
+
+<p>
+I (zs) don't believe any design document for this system
+ever existed outside of Fergus's head.
+This document is my (zs's) attempt to reconstruct that design document.
+In the rest of this file, I will try to be careful to explicitly distinguish
+between what I <em>know</em> to be true,
+and what I only <em>believe</em> to be true,
+either because I remember it, or because I deduce it from the code.
+Note also that I may be mistaken.
+
+<h2>Automatic generation of interface files</h2>
+
+<p>
+The principle of information hiding dictates that
+only <em>some</em> of the contents of a module
+should be visible outside the module.
+The part that is visible outside the module
+is usually called <em>the interface</em>,
+while the part that is not visible outside the module
+is usually called <em>the implementation</em>.
+
+<p>
+When compiling a module A that imports functionality from module B,
+the compiler usually wants to read a file
+containing <em>only</em> the interface of module B.
+In some languages such as Ada, C and C++,
+programmers themselves write this file.
+Having to maintain two files for one module can be a bit of a hassle,
+so in other languages, such as Haskell,
+programmers only ever edit one file for each module (its source file).
+Within that file, they indicate which parts are public and which are not,
+and the compiler uses this information to generate
+each module's interface file automatically.
+
+<h2>Introduction to interface files</h2>
+
+<p>
+In Mercury, the source code of each module is in a single file,
+whose suffix is .m,
+and the generation of interface files is solely the job of the compiler.
+However, unlike most other similar programming languages,
+the compiler generates three or four different interface files for each source file,
+and it generates these in two or three steps.
+<p>
+The steps are as follows.
+
+<p>
+<ul>
+<li>
+The compiler option --make-short-interface
+calls for the creation of the .int3 files
+of the modules named as arguments.
+<li>
+The compiler option --make-private-interface
+calls for the creation of the .int0 files
+of the modules named as arguments.
+<li>
+The compiler option --make-interface
+calls for the creation of the .int and .int2 files
+of the modules named as arguments.
+</ul>
+
+<p>
+The different kinds of interface files are as follows.
+
+<p>
+<ul>
+<li>
+The .int3 files are generated first,
+using only the module's .m file as input.
+
+<p>
+They were originally intended to record just the names
+of the types, insts and modes are defined in the module,
+to allow references to these names
+to be disambiguated (i.e. to be fully module qualified)
+when creating the other kinds of interface files for other modules.
+
+<p>
+However, we were forced to include information of the form
+"type A is defined to be equivalent to type B" in .int3 files,
+because on 32 bit architectures, if type B is "float",
+then modules that work with values of type A
+need to know to reserve two words for them, not one.
+
+<li>
+The .int0 files are generated next,
+but only for modules that include submodules.
+The submodules of a module A have access to parts of A
+that other, third-part modules do not.
+
+<p>
+I believe the intention was that A.int0 play the same role
+for these exported-only-to-submodules parts of A
+as some other module's .int3 file plays
+for its exported-to-everyone parts.
+I believe the A.int0 file should be read only when processing A's submodules:
+either creating their .int/.int2 files, or generating target code for them.
+
+<li>
+The .int and .int2 files are the interface files that are generated last,
+using as input not only the module's .m file,
+but also the .int3 files of the other modules
+(certainly those imported by this module, but possibly others as well),
+and the .int0 files of any ancestor modules.
+
+<p>
+The .int file plays the traditional role of the interface file;
+it is an automatically generated analogue
+of a C header file or Ada package specification.
+As such, it contains everything in the module's interface section(s),
+plus some other information from the implementation section
+that the compiler has found it needed over the years.
+
+<p>
+The compiler generates .int2 files from .int files
+by simply filtering out some items.
+I cannot find the place in the logs where .int2 files were introduced
+(it seems to have been lost in the CVS to git transition),
+but I think the point of .int2 files was that
+a module's .int2 file would change less often than its .int file.
+Therefore if another module depended
+on its .int2 file instead of on its .int file,
+it would have to be recompiled less often.
+However, that is only a guess.
+
+<p>
+Something to keep in mind:
+while the --make-short-interface compiler option
+calls for the creation of .int3 files,
+several predicate and variable names inside the compiler
+use the term "short interface files" to refer to .int2 files.
+While sort-of justifiable, in that .int2 files
+are in fact shorter versions of .int files,
+it can nevertheless be extremely confusing.
+</ul>
+
+<h2>The contents of .int3 files</h2>
+
+<p>
+TODO
+
+<h2>The contents of .int0 files</h2>
+
+<p>
+TODO
+
+<h2>The contents of .int files</h2>
+
+<p>
+TODO
+
+<h2>The contents of .int2 files</h2>
+
+<p>
+TODO

@@ -45,6 +45,7 @@ DOCS_HTML = \
 	glossary.html \
 	grade_library.html \
 	index.html \
+	interface_files.html \
 	mlds_tail_recursion.html \
 	overall_design.html \
 	promise_ex.html \

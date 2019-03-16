@@ -51,10 +51,14 @@ instead, we include the code of the callee next to the code of the caller,
 and use local (within a function) branches to transfer control.
 </ul>
 This means that TRO is a less general form of last call optimization,
-because it is applicable only
-when the call is a first order, so the callee is statically known,
-and the caller and callee are in the same compilation unit,
+because it is applicable only when
+<ul>
+<li>
+the call is a first order, so the callee is statically known, and
+<li>
+the caller and callee are in the same compilation unit,
 so they can be compiled together into a single target language function.
+</ul>
 
 <p>
 Tail recursion optimization is applicable
@@ -455,7 +459,7 @@ because (except in the case of self-tail-calls)
 the actual parameters in the caller and the formal parameters of the callee
 will come from two different procedures, and thus from two different varsets.
 Since every procedure's varset contains variables
-whose numbers are allocated consecutively from zero,
+whose numbers are allocated consecutively from one,
 the sets of variable numbers in two different procedures
 will of course greatly overlap,
 and it is possible for a variable with a given number
