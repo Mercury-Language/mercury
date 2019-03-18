@@ -165,7 +165,163 @@ it can nevertheless be extremely confusing.
 <h2>The contents of .int3 files</h2>
 
 <p>
-TODO
+The contents of the .int3 file of a module are derived solely from
+the contents of the interface sections of that module.
+Each item in these sections
+<ul>
+<li>
+may be included in the .int3 file unchanged;
+<li>
+may be included in the .int3 file after some changes; or
+<li>
+it may be left out of the .int3 file.
+</ul>
+
+<p>
+The rules for choosing between these three outcomes
+of course depend on the item's type.
+
+<p>
+<ul>
+
+<li>
+Type definitions are always included in the .int3 file in some form,
+but the form depends on what kind of type is being defined.
+<p>
+<ul>
+<li>
+Abstract type definitions (i.e. type declarations) are left unchanged.
+<li>
+Definitions of discriminated union (du) types
+are included in an abstract form,
+but this abstract form records whether the type being defined
+is a dummy type, a notag type, a subword-sized type that fits in N bits,
+or general abstract type
+(which means a type that fits none of those categories).
+<li>
+Solver type definitions are made abstract as well.
+<li>
+Definitions that define a type to be equivalent to another type
+are also replaced by (general) abstract type definitions.
+<em>XXX</em> This may be the wrong thing to do for types
+that are equivalent to types that are dummies, notags, or subword-sized.
+<li>
+Definitions of foreign types are included with only one minor change:
+if the type has user-specified unification and/or comparison predicates,
+the part of the type definition naming those predicates is deleted.
+Since all unifications and comparisons of values of the type
+will call the unify and compare predicates of the type,
+which will be generated inside this module,
+only this module needs to know the noncanonical nature of this type.
+</ul>
+<p>
+The overall effect of these rules is that for each type definition,
+we convey two pieces of information to the reader of the .int3 file.
+
+<p>
+The first piece of information is just the name of the type,
+which the readers need for disambiguation.
+Every name in a .int file must be fully module qualified,
+so if the interface section of a module refers to type t1,
+the code that creates the module's .int file needs to know
+which of the imported modules defines a type named t1.
+It gets this information from the .int3 files
+of the modules listed in import_module (and use_module) declarations.
+
+<p>
+The second piece of information is
+whether the representation of the given type differs from the standard,
+and if so, how.
+<em>XXX</em> I intend to put this info into
+type representation items that are separate from the type definition items.
+
+<p>
+<li>
+Inst and mode definitions are always included in the .int3 file unchanged.
+<em>XXX</em> I know that the names of defined insts and modes must be put
+into the .int3 file for the same reason as the names of defined types,
+but I don't understand the reason for putting the entire definition
+into the .int3 file.
+
+<p>
+<li>
+Class definitions are always included in the .int3 file in abstract form.
+Again, the reason is to allow references to class names
+to be fully module qualified.
+
+<p>
+<li>
+Instance definitions are always included in the .int3 file in abstract form.
+Since instance definitions do not define any new names,
+this cannot be for purposes of module qualification.
+I think it is probably to help detect overlapping instances,
+but I am not sure.
+
+<p>
+<li>
+The type and mode declarations of predicates and functions
+are never included in .int3 files.
+
+<p>
+<li>
+Clauses should never occur in interface sections,
+Not only are they never included in .int3 files,
+we generate a warning for them.
+<em>XXX</em> This warning can be annoying,
+since it is sent to the terminal, not to the module's .err file.
+I think it would be better to ignore such errors when generating .int3 files,
+and report them later, when generating code.
+
+<p>
+<li>
+Pragmas are never included in .int3 files.
+For the ones that may not occur in interface sections,
+we generate a warning, as we do for clauses.
+<em>XXX</em> These warnings have the same problems as warnings for clauses.
+
+<p>
+<li>
+Foreign_import_module items are never includes in .int3 files.
+
+<p>
+<li>
+Promises are never included in .int3 files.
+Neither are definitions of mutables, or initialize and finalize declarations.
+
+<p>
+<li>
+Declarations of submodules are always included in the .int3 file unchanged.
+
+<p>
+<li>
+If the interface contains no inst definitions, mode definitions,
+typeclass definitions or instance definitions,
+then none of the interface's module import and use declarations
+will be included in the .int3 file.
+If it does, then all of the interface's module import and use declarations
+will be included in the .int3 file.
+
+<p>
+When generating .int3 files, the compiler has no way to know whether
+the names of the type constructors
+in the heads of the (abstract forms of) typeclass and instance definitions
+are fully qualified or not.
+Copying all the import_module declarations from the interface to the .int3 file
+allows readers of the .int3 file to fully module qualify them.
+
+<p>
+I (zs) don't think we should include
+the right hand sides of inst and mode definitions in .int3 files,
+but as long as we do, we need to copy
+all the import_module declarations from the interface to the .int3 file
+to help readers module qualify them.
+
+<p>
+<em>XXX</em> In neither case does this justify copying use_module declarations,
+since the source code must fully module qualify
+any reference to any type in such a module,
+leaving nothing to be done by the readers of the .int3 file.
+</ul>
 
 <h2>The contents of .int0 files</h2>
 
