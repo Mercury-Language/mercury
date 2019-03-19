@@ -65,6 +65,7 @@
 :- interface.
 
 :- import_module ll_backend.llds.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
@@ -82,6 +83,7 @@
 
 :- implementation.
 
+:- import_module hlds.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.basic_block.
 :- import_module ll_backend.code_util.
@@ -89,6 +91,7 @@
 :- import_module ll_backend.livemap.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.opt_util.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module int.

@@ -16,11 +16,13 @@
 :- module ll_backend.dense_switch.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -50,8 +52,10 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.switch_util.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.

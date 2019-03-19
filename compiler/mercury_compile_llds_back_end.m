@@ -87,6 +87,7 @@
 :- import_module ll_backend.unify_gen_construct.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.

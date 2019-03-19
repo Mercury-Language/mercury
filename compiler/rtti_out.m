@@ -107,6 +107,7 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.type_ctor_info.
+:- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.

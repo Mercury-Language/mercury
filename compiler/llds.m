@@ -24,6 +24,7 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.

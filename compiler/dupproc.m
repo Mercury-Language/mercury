@@ -20,6 +20,7 @@
 :- interface.
 
 :- import_module ll_backend.llds.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module assoc_list.

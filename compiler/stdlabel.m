@@ -41,6 +41,7 @@
 :- implementation.
 
 :- import_module ll_backend.opt_util.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.

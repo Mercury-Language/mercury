@@ -23,6 +23,7 @@
 :- module ll_backend.layout_out.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.

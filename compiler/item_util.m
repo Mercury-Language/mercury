@@ -15,6 +15,7 @@
 :- module parse_tree.item_util.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.prog_item.
 

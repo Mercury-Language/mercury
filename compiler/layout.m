@@ -34,6 +34,7 @@
 :- module ll_backend.layout.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.

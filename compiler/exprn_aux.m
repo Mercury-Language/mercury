@@ -14,6 +14,7 @@
 :- interface.
 
 :- import_module ll_backend.llds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

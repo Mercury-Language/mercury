@@ -16,11 +16,13 @@
 :- module ll_backend.commit_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
+:- import_module parse_tree.
 :- import_module parse_tree.set_of_var.
 
 %---------------------------------------------------------------------------%

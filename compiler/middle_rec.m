@@ -16,6 +16,7 @@
 :- module ll_backend.middle_rec.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.code_loc_dep.
@@ -30,6 +31,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
@@ -39,6 +41,7 @@
 :- import_module ll_backend.opt_util.
 :- import_module ll_backend.proc_gen.
 :- import_module ll_backend.unify_gen_test.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

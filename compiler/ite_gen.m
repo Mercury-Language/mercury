@@ -55,6 +55,7 @@
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.trace_gen.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.

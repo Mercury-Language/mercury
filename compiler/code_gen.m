@@ -25,6 +25,7 @@
 :- module ll_backend.code_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
@@ -47,6 +48,7 @@
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.call_gen.
 :- import_module ll_backend.commit_gen.
@@ -58,6 +60,7 @@
 :- import_module ll_backend.switch_gen.
 :- import_module ll_backend.unify_gen.
 :- import_module ll_backend.unify_gen_construct.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.

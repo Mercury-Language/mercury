@@ -25,6 +25,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- type code_model
@@ -56,6 +57,7 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 
 determinism_to_code_model(detism_det,       model_det).

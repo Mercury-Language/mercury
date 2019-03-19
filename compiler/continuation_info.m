@@ -52,6 +52,7 @@
 :- module ll_backend.continuation_info.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -65,6 +66,7 @@
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.trace_gen.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
