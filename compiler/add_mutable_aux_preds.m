@@ -239,14 +239,10 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
                 ( if map.search(UserInstTable, UserInstId, InstDefn) then
                     InstDefn = hlds_inst_defn(DefnInstVarSet, _Params,
                         InstBody, _MMTC, _Context, _Status),
-                    (
-                        InstBody = eqv_inst(EqvInst),
-                        DefnParentInsts = [UserInstId | ParentInsts],
-                        check_mutable_inst(ModuleInfo, Context, DefnInstVarSet,
-                            DefnParentInsts, EqvInst, !Specs)
-                    ;
-                        InstBody = abstract_inst
-                    )
+                    InstBody = eqv_inst(EqvInst),
+                    DefnParentInsts = [UserInstId | ParentInsts],
+                    check_mutable_inst(ModuleInfo, Context, DefnInstVarSet,
+                        DefnParentInsts, EqvInst, !Specs)
                 else
                     UndefinedPieces = [words("is not defined.")],
                     invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,

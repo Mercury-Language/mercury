@@ -427,11 +427,15 @@
                 id_inst_name                    :: sym_name,
                 id_inst_args                    :: list(inst_var),
                 id_maybe_for_type               :: maybe(type_ctor),
-                id_inst_defn                    :: inst_defn,
+                id_inst_defn                    :: maybe_abstract_inst_defn,
                 id_varset                       :: inst_varset,
                 id_context                      :: prog_context,
                 id_seq_num                      :: int
             ).
+
+:- type maybe_abstract_inst_defn
+    --->    abstract_inst_defn
+    ;       nonabstract_inst_defn(inst_defn).
 
 :- type item_mode_defn_info
     --->    item_mode_defn_info(
@@ -439,11 +443,15 @@
                 % a definition of a mode.
                 md_mode_name                    :: sym_name,
                 md_mode_args                    :: list(inst_var),
-                md_mode_defn                    :: mode_defn,
+                md_mode_defn                    :: maybe_abstract_mode_defn,
                 md_varset                       :: inst_varset,
                 md_context                      :: prog_context,
                 md_seq_num                      :: int
             ).
+
+:- type maybe_abstract_mode_defn
+    --->    abstract_mode_defn
+    ;       nonabstract_mode_defn(mode_defn).
 
 :- type item_pred_decl_info
     --->    item_pred_decl_info(

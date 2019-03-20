@@ -254,8 +254,9 @@ build_eqv_maps_in_item(Item, !TypeEqvMap, !InstEqvMap) :-
             !TypeEqvMap)
     else if
         Item = item_inst_defn(ItemInstDefn),
+        InstDefn = nonabstract_inst_defn(eqv_inst(EqvInst)),
         ItemInstDefn = item_inst_defn_info(Name, InstParams, _IFTC,
-            eqv_inst(EqvInst), VarSet, _Context, _SeqNum)
+            InstDefn, VarSet, _Context, _SeqNum)
     then
         list.length(InstParams, Arity),
         InstId = inst_id(Name, Arity),

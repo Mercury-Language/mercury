@@ -152,11 +152,19 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
     ;
         Item0 = item_inst_defn(ItemInstDefn0),
         ItemInstDefn0 = item_inst_defn_info(SymName, Params, MaybeForTypeCtor0,
-            InstDefn0, InstVarSet, Context, SeqNum),
+            MaybeAbstractInstDefn0, InstVarSet, Context, SeqNum),
         list.length(Params, Arity),
         ErrorContext = mqec_inst(Context, mq_id(SymName, Arity)),
-        qualify_inst_defn(InInt, ErrorContext, InstDefn0, InstDefn,
-            !Info, !Specs),
+        (
+            MaybeAbstractInstDefn0 = abstract_inst_defn,
+            MaybeAbstractInstDefn = abstract_inst_defn
+        ;
+            MaybeAbstractInstDefn0 = nonabstract_inst_defn(InstDefn0),
+            InstDefn0 = eqv_inst(Inst0),
+            qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
+            InstDefn = eqv_inst(Inst),
+            MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn)
+        ),
         (
             MaybeForTypeCtor0 = yes(ForTypeCtor0),
             qualify_type_ctor(InInt, ErrorContext, ForTypeCtor0, ForTypeCtor,
@@ -167,18 +175,26 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
             MaybeForTypeCtor = no
         ),
         ItemInstDefn = item_inst_defn_info(SymName, Params, MaybeForTypeCtor,
-            InstDefn, InstVarSet, Context, SeqNum),
+            MaybeAbstractInstDefn, InstVarSet, Context, SeqNum),
         Item = item_inst_defn(ItemInstDefn)
     ;
         Item0 = item_mode_defn(ItemModeDefn0),
-        ItemModeDefn0 = item_mode_defn_info(SymName, Params, ModeDefn0,
-            InstVarSet, Context, SeqNum),
-        list.length(Params, Arity),
-        ErrorContext = mqec_mode(Context, mq_id(SymName, Arity)),
-        qualify_mode_defn(InInt, ErrorContext, ModeDefn0, ModeDefn,
-            !Info, !Specs),
-        ItemModeDefn = item_mode_defn_info(SymName, Params, ModeDefn,
-            InstVarSet, Context, SeqNum),
+        ItemModeDefn0 = item_mode_defn_info(SymName, Params,
+            MaybeAbstractModeDefn0, InstVarSet, Context, SeqNum),
+        (
+            MaybeAbstractModeDefn0 = abstract_mode_defn,
+            MaybeAbstractModeDefn = abstract_mode_defn
+        ;
+            MaybeAbstractModeDefn0 = nonabstract_mode_defn(ModeDefn0),
+            list.length(Params, Arity),
+            ErrorContext = mqec_mode(Context, mq_id(SymName, Arity)),
+            ModeDefn0 = eqv_mode(Mode0),
+            qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
+            ModeDefn = eqv_mode(Mode),
+            MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn)
+        ),
+        ItemModeDefn = item_mode_defn_info(SymName, Params,
+            MaybeAbstractModeDefn, InstVarSet, Context, SeqNum),
         Item = item_mode_defn(ItemModeDefn)
     ;
         Item0 = item_pred_decl(ItemPredDecl0),
@@ -626,25 +642,8 @@ is_builtin_atomic_type(TypeCtor) :-
 
 %---------------------------------------------------------------------------%
 %
-% Module qualify inst definitions and insts.
+% Module qualify insts.
 %
-
-    % Qualify the inst parameters of an inst definition.
-    %
-:- pred qualify_inst_defn(mq_in_interface::in, mq_error_context::in,
-    inst_defn::in, inst_defn::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_inst_defn(InInt, ErrorContext, InstDefn0, InstDefn,
-        !Info, !Specs) :-
-    (
-        InstDefn0 = eqv_inst(Inst0),
-        qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
-        InstDefn = eqv_inst(Inst)
-    ;
-        InstDefn0 = abstract_inst,
-        InstDefn = abstract_inst
-    ).
 
     % Qualify a single inst.
     %
@@ -833,18 +832,8 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
 
 %---------------------------------------------------------------------------%
 %
-% Module qualify mode definitions and modes.
+% Module qualify modes.
 %
-
-    % Qualify the mode parameter of an equivalence mode definition.
-    %
-:- pred qualify_mode_defn(mq_in_interface::in, mq_error_context::in,
-    mode_defn::in, mode_defn::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_mode_defn(InInt, ErrorContext, eqv_mode(Mode0), eqv_mode(Mode),
-        !Info, !Specs) :-
-    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs).
 
 qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
     (

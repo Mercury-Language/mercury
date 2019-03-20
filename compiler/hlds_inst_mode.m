@@ -78,7 +78,7 @@
                 inst_params             :: list(inst_var),
 
                 % The definition of this inst.
-                inst_body               :: hlds_inst_body,
+                inst_body               :: inst_defn,
 
                 % If this inst is equivalent to a bound inst, is it
                 % specified to be applicable only to a specific
@@ -94,15 +94,6 @@
                 % So intermod.m can tell whether to output this inst.
                 inst_status             :: inst_status
             ).
-
-:- type hlds_inst_body
-    --->    eqv_inst(mer_inst)
-            % This inst is equivalent to some other inst.
-
-    ;       abstract_inst.
-            % This inst is just a forward declaration; the real definition
-            % will be filled in later.
-            % (XXX Abstract insts are not really supported.)
 
 :- type user_inst_table ==          map(inst_id, hlds_inst_defn).
 

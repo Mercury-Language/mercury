@@ -489,13 +489,8 @@ user_inst_used_modules(_InstId, InstDefn, !UsedModules) :-
     (
         DefinedInThisModule = yes,
         Visibility = inst_visibility(InstStatus),
-        InstBody = InstDefn ^ inst_body,
-        (
-            InstBody = eqv_inst(Inst),
-            mer_inst_used_modules(Visibility, Inst, !UsedModules)
-        ;
-            InstBody = abstract_inst
-        )
+        InstDefn ^ inst_body = eqv_inst(Inst),
+        mer_inst_used_modules(Visibility, Inst, !UsedModules)
     ;
         DefinedInThisModule = no
     ).

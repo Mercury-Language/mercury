@@ -1105,12 +1105,8 @@ find_items_used_by_mode_defn(Defn, !Info) :-
 
 find_items_used_by_inst_defn(Defn, !Info) :-
     Defn = hlds_inst_defn(_, _, InstBody, IFTC, _, _),
-    (
-        InstBody = eqv_inst(Inst),
-        find_items_used_by_inst(Inst, !Info)
-    ;
-        InstBody = abstract_inst
-    ),
+    InstBody = eqv_inst(Inst),
+    find_items_used_by_inst(Inst, !Info),
     (
         IFTC = iftc_applicable_declared(ForTypeCtor),
         find_items_used_by_type_ctor(ForTypeCtor, !Info)

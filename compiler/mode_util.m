@@ -710,7 +710,8 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         ( if map.search(UserInstTable, inst_id(Name, Arity), InstDefn) then
             InstDefn = hlds_inst_defn(_VarSet, Params, InstBody, _MMTC,
                 _Context, _Status),
-            inst_lookup_subst_args(InstBody, Params, Name, Args, Inst)
+            InstBody = eqv_inst(Inst0),
+            inst_substitute_arg_list(Params, Args, Inst0, Inst)
         else
             Inst = abstract_inst(Name, Args)
         )
@@ -1271,20 +1272,6 @@ apply_type_subst(Type0, Subst, Type) :-
         Type = Type0
     else
         apply_subst_to_type(Subst, Type0, Type)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred inst_lookup_subst_args(hlds_inst_body::in, list(inst_var)::in,
-    sym_name::in, list(mer_inst)::in, mer_inst::out) is det.
-
-inst_lookup_subst_args(InstBody, Params, Name, Args, Inst) :-
-    (
-        InstBody = eqv_inst(Inst0),
-        inst_substitute_arg_list(Params, Args, Inst0, Inst)
-    ;
-        InstBody = abstract_inst,
-        Inst = abstract_inst(Name, Args)
     ).
 
 %---------------------------------------------------------------------------%

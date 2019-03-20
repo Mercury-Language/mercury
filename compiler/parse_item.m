@@ -200,9 +200,17 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             MaybeIOM)
     ;
+        Functor = "abstract_inst",
+        parse_abstract_inst_defn_item(ModuleName, VarSet, ArgTerms, Context,
+            SeqNum, MaybeIOM)
+    ;
         Functor = "mode",
         parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms,
             IsInClass, Context, SeqNum, allow_mode_decl_and_defn, [], MaybeIOM)
+    ;
+        Functor = "abstract_mode",
+        parse_abstract_mode_defn_item(ModuleName, VarSet, ArgTerms, Context,
+            SeqNum, MaybeIOM)
     ;
         ( Functor = "pred", PredOrFunc = pf_predicate
         ; Functor = "func", PredOrFunc = pf_function

@@ -992,16 +992,11 @@ write_user_inst(Indent, InstId - InstDefn, !IO) :-
         write_inst_params(HeadInstParam, TailInstParams, InstVarSet, !IO),
         io.write_string(")", !IO)
     ),
-    (
-        InstBody = abstract_inst,
-        io.write_string(": is abstract\n", !IO)
-    ;
-        InstBody = eqv_inst(EqvInst),
-        io.write_string(":\n", !IO),
-        write_indent(Indent, !IO),
-        mercury_output_inst(output_debug, InstVarSet, EqvInst, !IO),
-        io.write_string("\n", !IO)
-    ),
+    InstBody = eqv_inst(EqvInst),
+    io.write_string(":\n", !IO),
+    write_indent(Indent, !IO),
+    mercury_output_inst(output_debug, InstVarSet, EqvInst, !IO),
+    io.write_string("\n", !IO),
     write_indent(Indent, !IO),
     StatusStr = inst_import_status_to_string(Status),
     io.format("%% status %s\n", [s(StatusStr)], !IO).

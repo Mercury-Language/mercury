@@ -1020,7 +1020,7 @@ mercury_output_foreign_type_assertion(Assertion, !IO) :-
 
 mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
     ItemInstDefn = item_inst_defn_info(SymName0, InstParams, MaybeForTypeCtor,
-        InstDefn, InstVarSet, Context, _SeqNum),
+        MaybeAbstractInstDefn, InstVarSet, Context, _SeqNum),
     % If the unqualified name is a builtin inst, then output the qualified
     % name. This prevents the compiler giving an error about redefining
     % builtin insts when an interface file is read back in.
@@ -1032,20 +1032,17 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
     ),
     maybe_output_line_number(Info, Context, !IO),
     Lang = get_output_lang(Info),
+    ArgTerms = list.map(func(V) = variable(V, Context), InstParams),
+    construct_qualified_term_with_context(SymName, ArgTerms, Context,
+        InstTerm),
     (
-        InstDefn = abstract_inst,
-        io.write_string(":- inst (", !IO),
-        ArgTerms = list.map(func(V) = variable(V, Context), InstParams),
-        construct_qualified_term_with_context(SymName, ArgTerms, Context,
-            InstTerm),
+        MaybeAbstractInstDefn = abstract_inst_defn,
+        io.write_string(":- abstract_inst((", !IO),
         mercury_output_term(InstVarSet, print_name_only, InstTerm, !IO),
-        io.write_string(").\n", !IO)
+        io.write_string(")).\n", !IO)
     ;
-        InstDefn = eqv_inst(Body),
+        MaybeAbstractInstDefn = nonabstract_inst_defn(eqv_inst(Inst)),
         io.write_string(":- inst (", !IO),
-        ArgTerms = list.map(func(V) = variable(V, Context), InstParams),
-        construct_qualified_term_with_context(SymName, ArgTerms, Context,
-            InstTerm),
         mercury_output_term(InstVarSet, print_name_only, InstTerm, !IO),
         io.write_string(") ", !IO),
         (
@@ -1060,7 +1057,7 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
             io.write_string(" ", !IO)
         ),
         io.write_string("== ", !IO),
-        mercury_output_inst(Lang, InstVarSet, Body, !IO),
+        mercury_output_inst(Lang, InstVarSet, Inst, !IO),
         io.write_string(".\n", !IO)
     ).
 
@@ -1085,31 +1082,44 @@ is_builtin_inst_name(InstVarSet, unqualified(Name), Args0) :-
     item_mode_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_mode_defn(Info, ItemModeDefn, !IO) :-
-    ItemModeDefn = item_mode_defn_info(SymName, InstParams, ModeDefn, VarSet,
-        Context, _SeqNum),
+    ItemModeDefn = item_mode_defn_info(SymName, InstParams,
+        MaybeAbstractModeDefn, VarSet, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, SymName, UnQualSymName),
     maybe_output_line_number(Info, Context, !IO),
     Lang = get_output_lang(Info),
-    mercury_format_mode_defn(Lang, VarSet, UnQualSymName, InstParams,
-        ModeDefn, Context, !IO).
+    mercury_format_mode_defn(Lang, VarSet, Context, UnQualSymName, InstParams,
+        MaybeAbstractModeDefn, !IO).
 
     % This is defined to work on !U instead of !IO so that we can call
-    % mercury_format_mode with simple_inst_info. The mercury_output_mode
-    % predicate is NOT polymorphic in its second argument.
+    % mercury_format_mode with simple_inst_info.
     %
 :- pred mercury_format_mode_defn(output_lang::in, inst_varset::in,
-    sym_name::in, list(inst_var)::in, mode_defn::in, prog_context::in,
-    U::di, U::uo) is det <= output(U).
+    prog_context::in, sym_name::in, list(inst_var)::in,
+    maybe_abstract_mode_defn::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_mode_defn(Lang, InstVarSet, Name, Args, eqv_mode(Mode), Context,
-        !U) :-
-    add_string(":- mode (", !U),
+mercury_format_mode_defn(Lang, InstVarSet, Context, Name, Args,
+        MaybeAbstractModeDefn, !U) :-
+    (
+        MaybeAbstractModeDefn = abstract_mode_defn,
+        add_string(":- abstract_mode((", !U),
+        mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, !U),
+        add_string(")).\n", !U)
+    ;
+        MaybeAbstractModeDefn = nonabstract_mode_defn(eqv_mode(Mode)), 
+        add_string(":- mode (", !U),
+        mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, !U),
+        add_string(") == ", !U),
+        mercury_format_mode(Lang, InstVarSet, Mode, !U),
+        add_string(".\n", !U)
+    ).
+
+:- pred mercury_format_mode_defn_head(inst_varset::in, prog_context::in,
+    sym_name::in, list(inst_var)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, !U) :-
     ArgTerms = list.map(func(V) = variable(V, Context), Args),
     construct_qualified_term_with_context(Name, ArgTerms, Context, ModeTerm),
-    mercury_format_term(InstVarSet, print_name_only, ModeTerm, !U),
-    add_string(") == ", !U),
-    mercury_format_mode(Lang, InstVarSet, Mode, !U),
-    add_string(".\n", !U).
+    mercury_format_term(InstVarSet, print_name_only, ModeTerm, !U).
 
 %---------------------------------------------------------------------------%
 

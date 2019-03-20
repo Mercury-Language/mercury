@@ -45,37 +45,41 @@
 
 :- import_module map.
 :- import_module maybe.
-:- import_module require.
 
 %----------------------------------------------------------------------------%
 
 module_add_inst_defn(ItemInstDefnInfo, InstStatus, InvalidInst, !ModuleInfo,
         !Specs) :-
     ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, MaybeForType,
-        InstDefn, VarSet, Context, _SeqNum),
-    % Add the definition of this inst to the HLDS inst table.
-    module_info_get_inst_table(!.ModuleInfo, InstTable0),
-    inst_table_get_user_insts(InstTable0, UserInstTable0),
-    insts_add(VarSet, InstName, InstParams, MaybeForType, InstDefn, Context,
-        InstStatus, UserInstTable0, UserInstTable, !Specs),
-    inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
-    module_info_set_inst_table(InstTable, !ModuleInfo),
+        MaybeAbstractInstDefn, VarSet, Context, _SeqNum),
+    (
+        MaybeAbstractInstDefn = abstract_inst_defn,
+        % We use abstract inst definitions only for module qualification;
+        % we never add them to the HLDS.
+        InvalidInst = no
+    ;
+        MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn),
+        % Add the definition of this inst to the HLDS inst table.
+        module_info_get_inst_table(!.ModuleInfo, InstTable0),
+        inst_table_get_user_insts(InstTable0, UserInstTable0),
+        insts_add(VarSet, InstName, InstParams, MaybeForType, InstDefn, Context,
+            InstStatus, UserInstTable0, UserInstTable, !Specs),
+        inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
+        module_info_set_inst_table(InstTable, !ModuleInfo),
 
-    % Check if the inst is infinitely recursive (at the top level).
-    InstArity = list.length(InstParams),
-    InstId = inst_id(InstName, InstArity),
-    TestArgs = list.duplicate(InstArity, not_reached),
-    check_for_cyclic_inst(UserInstTable, InstId, InstId, TestArgs, [], Context,
-        InvalidInst, !Specs).
+        % Check if the inst is infinitely recursive (at the top level).
+        InstArity = list.length(InstParams),
+        InstId = inst_id(InstName, InstArity),
+        TestArgs = list.duplicate(InstArity, not_reached),
+        check_for_cyclic_inst(UserInstTable, InstId, InstId, TestArgs, [],
+            Context, InvalidInst, !Specs)
+    ).
 
 :- pred insts_add(inst_varset::in, sym_name::in, list(inst_var)::in,
     maybe(type_ctor)::in, inst_defn::in, prog_context::in,
     inst_status::in, user_inst_table::in, user_inst_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-insts_add(_, _, _, _, abstract_inst, _, _, !UserInstTable, !Specs) :-
-    % XXX handle abstract insts
-    sorry($pred, "abstract insts not implemented").
 insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         Context, InstStatus, !UserInstTable, !Specs) :-
     list.length(InstParams, InstArity),
@@ -214,12 +218,20 @@ should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
 
 module_add_mode_defn(ItemModeDefnInfo, ModeStatus, InvalidMode, !ModuleInfo,
         !Specs) :-
-    ItemModeDefnInfo = item_mode_defn_info(Name, Params, ModeDefn, VarSet,
-        Context, _SeqNum),
-    module_info_get_mode_table(!.ModuleInfo, ModeTable0),
-    modes_add(VarSet, Name, Params, ModeDefn, Context, ModeStatus, InvalidMode,
-        ModeTable0, ModeTable, !Specs),
-    module_info_set_mode_table(ModeTable, !ModuleInfo).
+    ItemModeDefnInfo = item_mode_defn_info(Name, Params, MaybeAbstractModeDefn,
+        VarSet, Context, _SeqNum),
+    (
+        MaybeAbstractModeDefn = abstract_mode_defn,
+        % We use abstract mode definitions only for module qualification;
+        % we never add them to the HLDS.
+        InvalidMode = no
+    ;
+        MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
+        module_info_get_mode_table(!.ModuleInfo, ModeTable0),
+        modes_add(VarSet, Name, Params, ModeDefn, Context, ModeStatus,
+            InvalidMode, ModeTable0, ModeTable, !Specs),
+        module_info_set_mode_table(ModeTable, !ModuleInfo)
+    ).
 
 :- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
     mode_defn::in, prog_context::in, mode_status::in, bool::out,

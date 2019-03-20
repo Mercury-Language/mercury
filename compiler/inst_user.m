@@ -50,18 +50,10 @@ pretest_user_inst_table(!ModuleInfo) :-
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_user_insts(InstTable0, UserInstTable0),
     map.to_sorted_assoc_list(UserInstTable0, UserInstDefns0),
-%   trace [io(!IO)] (
-%       io.write_string("BEFORE PRETEST\n", !IO),
-%       list.foldl(output_user_inst_pair, UserInstDefns0, !IO)
-%   ),
     pretest_user_inst_defns(!.ModuleInfo, UserInstDefns0, [], UserInstTable0,
         map.init, MaybeInstDefnsMap),
     map.to_sorted_assoc_list(MaybeInstDefnsMap, MaybeInstDefns),
     record_user_inst_results(MaybeInstDefns, UserInstDefns),
-%   trace [io(!IO)] (
-%       io.write_string("AFTER PRETEST\n", !IO),
-%       list.foldl(output_user_inst_pair, UserInstDefns, !IO)
-%   ),
     map.from_sorted_assoc_list(UserInstDefns, UserInstTable),
     inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
     module_info_set_inst_table(InstTable, !ModuleInfo).
@@ -109,42 +101,36 @@ pretest_user_inst_defn(ModuleInfo, InstId, InstDefn0, UserInstTable0,
         !MaybeInstDefnsMap) :-
     InstDefn0 = hlds_inst_defn(InstVarSet, InstParams, InstBody0,
         IFTC, Context, Status),
+    InstBody0 = eqv_inst(Inst0),
     (
-        InstBody0 = abstract_inst,
+        InstParams = [_ | _],
         map.det_insert(InstId, processed_user_inst(InstDefn0),
             !MaybeInstDefnsMap)
     ;
-        InstBody0 = eqv_inst(Inst0),
-        (
-            InstParams = [_ | _],
-            map.det_insert(InstId, processed_user_inst(InstDefn0),
-                !MaybeInstDefnsMap)
-        ;
-            InstParams = [],
-            map.det_insert(InstId, user_inst_being_processed,
-                !MaybeInstDefnsMap),
-            pretest_inst(Inst0, Inst1, UserInstTable0, _, _, _, _, _,
-                !MaybeInstDefnsMap),
-            ( if
-                Inst1 = bound(_, _, _),
-                ( IFTC = iftc_applicable_declared(InstTypeCtor)
-                ; IFTC = iftc_applicable_known([InstTypeCtor])
-                ),
-                InstTypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-                TypeCtorArity = 0
-            then
-                Type = defined_type(TypeCtorSymName, [], kind_star),
-                propagate_ctor_info_into_bound_inst(ModuleInfo, Type,
-                    Inst1, Inst)
-            else
-                Inst = Inst1
+        InstParams = [],
+        map.det_insert(InstId, user_inst_being_processed,
+            !MaybeInstDefnsMap),
+        pretest_inst(Inst0, Inst1, UserInstTable0, _, _, _, _, _,
+            !MaybeInstDefnsMap),
+        ( if
+            Inst1 = bound(_, _, _),
+            ( IFTC = iftc_applicable_declared(InstTypeCtor)
+            ; IFTC = iftc_applicable_known([InstTypeCtor])
             ),
-            InstBody = eqv_inst(Inst),
-            InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
-                IFTC, Context, Status),
-            map.det_update(InstId, processed_user_inst(InstDefn),
-                !MaybeInstDefnsMap)
-        )
+            InstTypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+            TypeCtorArity = 0
+        then
+            Type = defined_type(TypeCtorSymName, [], kind_star),
+            propagate_ctor_info_into_bound_inst(ModuleInfo, Type,
+                Inst1, Inst)
+        else
+            Inst = Inst1
+        ),
+        InstBody = eqv_inst(Inst),
+        InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
+            IFTC, Context, Status),
+        map.det_update(InstId, processed_user_inst(InstDefn),
+            !MaybeInstDefnsMap)
     ).
 
 :- pred pretest_inst(mer_inst::in, mer_inst::out,

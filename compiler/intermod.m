@@ -1704,19 +1704,12 @@ intermod_write_insts(OutInfo, ModuleInfo, !IO) :-
 
 intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !First, !IO) :-
     InstId = inst_id(SymName, _Arity),
-    InstDefn = hlds_inst_defn(Varset, Args, Body, IFTC, Context, InstStatus),
+    InstDefn = hlds_inst_defn(Varset, Args, Inst, IFTC, Context, InstStatus),
     ( if
         SymName = qualified(ModuleName, _),
         inst_status_to_write(InstStatus) = yes
     then
         maybe_write_nl(!First, !IO),
-        (
-            Body = eqv_inst(Inst2),
-            InstBody = eqv_inst(Inst2)
-        ;
-            Body = abstract_inst,
-            InstBody = abstract_inst
-        ),
         (
             IFTC = iftc_applicable_declared(ForTypeCtor),
             MaybeForTypeCtor = yes(ForTypeCtor)
@@ -1729,7 +1722,7 @@ intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !First, !IO) :-
             MaybeForTypeCtor = no
         ),
         ItemInstDefn = item_inst_defn_info(SymName, Args, MaybeForTypeCtor,
-            InstBody, Varset, Context, -1),
+            nonabstract_inst_defn(Inst), Varset, Context, -1),
         Item = item_inst_defn(ItemInstDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
         mercury_output_item(MercInfo, Item, !IO)
@@ -1762,8 +1755,9 @@ intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !First, !IO) :-
         mode_status_to_write(ModeStatus) = yes
     then
         maybe_write_nl(!First, !IO),
-        ItemModeDefn = item_mode_defn_info(SymName, Args, eqv_mode(Mode),
-            Varset, Context, -1),
+        MaybeAbstractModeDefn = nonabstract_mode_defn(eqv_mode(Mode)),
+        ItemModeDefn = item_mode_defn_info(SymName, Args,
+            MaybeAbstractModeDefn, Varset, Context, -1),
         Item = item_mode_defn(ItemModeDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
         mercury_output_item(MercInfo, Item, !IO)

@@ -1258,11 +1258,8 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- type head_inst_vars == map(inst_var, mer_inst).
 :- type inst_var_sub   == map(inst_var, mer_inst).
 
-% inst_defn/5 is defined in prog_item.m.
-
 :- type inst_defn
-    --->    eqv_inst(mer_inst)
-    ;       abstract_inst.
+    --->    eqv_inst(mer_inst).
 
     % An `inst_name' is used as a key for the inst_table.
     % It is either a user-defined inst `user_inst(Name, Args)',

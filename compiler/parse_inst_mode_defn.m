@@ -30,10 +30,22 @@
 :- pred parse_inst_defn_item(module_name::in, varset::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
+    % Parse an `:- abstract_inst <AbstractInstDefn>.' declaration.
+    %
+:- pred parse_abstract_inst_defn_item(module_name::in, varset::in,
+    list(term)::in, prog_context::in, int::in,
+    maybe1(item_or_marker)::out) is det.
+
     % Parse a `:- mode <ModeDefn>.' declaration.
     %
 :- pred parse_mode_defn(module_name::in, varset::in, term::in, term::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+
+    % Parse an `:- abstract_mode <AbstractModeDefn>.' declaration.
+    %
+:- pred parse_abstract_mode_defn_item(module_name::in, varset::in,
+    list(term)::in, prog_context::in, int::in,
+    maybe1(item_or_marker)::out) is det.
 
 %-----------------------------------------------------------------------------e
 
@@ -68,14 +80,6 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             BoundBodyTerm =
                 term.functor(term.atom("bound"), [BodyTerm], Context),
             parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BoundBodyTerm,
-                Context, SeqNum, MaybeIOM)
-        else if
-            % XXX This is for `abstract inst' declarations,
-            % which are not really supported.
-            InstDefnTerm = term.functor(term.atom("is"), Args, _),
-            Args = [HeadTerm, term.functor(term.atom("private"), [], _)]
-        then
-            parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm,
                 Context, SeqNum, MaybeIOM)
         else
             Pieces = [words("Error: expected either"),
@@ -153,9 +157,10 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             MaybeInst = ok1(Inst)
         then
             varset.coerce(VarSet, InstVarSet),
-            InstDefn = eqv_inst(Inst),
+            MaybeAbstractInstDefn = nonabstract_inst_defn(eqv_inst(Inst)),
             ItemInstDefn = item_inst_defn_info(SymName, InstArgVars,
-                MaybeForType, InstDefn, InstVarSet, Context, SeqNum),
+                MaybeForType, MaybeAbstractInstDefn, InstVarSet,
+                Context, SeqNum),
             Item = item_inst_defn(ItemInstDefn),
             MaybeIOM = ok1(iom_item(Item))
         else
@@ -167,40 +172,48 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         )
     ).
 
-:- pred parse_abstract_inst_defn(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
-
-parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
+parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
         MaybeIOM) :-
-    ContextPieces = cord.singleton(words("In inst definition:")),
-    parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-        VarSet, ContextPieces, MaybeNameAndArgs),
     (
-        MaybeNameAndArgs = error2(Specs),
-        MaybeIOM = error1(Specs)
-    ;
-        MaybeNameAndArgs = ok2(SymName, ArgTerms),
-
-        HeadTermContext = get_term_context(HeadTerm),
-        check_user_inst_name(SymName, HeadTermContext, NameSpecs),
-        check_inst_mode_defn_args("inst definition", VarSet, HeadTermContext,
-            ArgTerms, no, MaybeInstArgVars),
-
-        ( if
-            NameSpecs = [],
-            MaybeInstArgVars = ok1(InstArgVars)
-        then
-            varset.coerce(VarSet, InstVarSet),
-            MaybeForType = no,
-            InstDefn = abstract_inst,
-            ItemInstDefn = item_inst_defn_info(SymName, InstArgVars,
-                MaybeForType, InstDefn, InstVarSet, Context, SeqNum),
-            Item = item_inst_defn(ItemInstDefn),
-            MaybeIOM = ok1(iom_item(Item))
-        else
-            Specs = NameSpecs ++ get_any_errors1(MaybeInstArgVars),
+        HeadTerms = [HeadTerm],
+        ContextPieces = cord.singleton(words("In inst definition:")),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
+            VarSet, ContextPieces, MaybeNameAndArgs),
+        (
+            MaybeNameAndArgs = error2(Specs),
             MaybeIOM = error1(Specs)
+        ;
+            MaybeNameAndArgs = ok2(SymName, ArgTerms),
+            HeadTermContext = get_term_context(HeadTerm),
+            check_user_inst_name(SymName, HeadTermContext, NameSpecs),
+            check_inst_mode_defn_args("abstract_inst definition", VarSet,
+                HeadTermContext, ArgTerms, no, MaybeInstArgVars),
+            ( if
+                NameSpecs = [],
+                MaybeInstArgVars = ok1(InstArgVars)
+            then
+                varset.coerce(VarSet, InstVarSet),
+                MaybeForType = no,
+                MaybeAbstractInstDefn = abstract_inst_defn,
+                ItemInstDefn = item_inst_defn_info(SymName, InstArgVars,
+                    MaybeForType, MaybeAbstractInstDefn, InstVarSet,
+                    Context, SeqNum),
+                Item = item_inst_defn(ItemInstDefn),
+                MaybeIOM = ok1(iom_item(Item))
+            else
+                Specs = NameSpecs ++ get_any_errors1(MaybeInstArgVars),
+                MaybeIOM = error1(Specs)
+            )
         )
+    ;
+        ( HeadTerms = []
+        ; HeadTerms = [_, _ | _]
+        ),
+        Pieces = [words("Error:"), decl("abstract_inst"),
+            words("should have exactly one argument."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%
@@ -222,7 +235,6 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM = error1(Specs)
     ;
         MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
-
         HeadTermContext = get_term_context(HeadTerm),
         check_user_mode_name(SymName, HeadTermContext, NameSpecs),
         check_inst_mode_defn_args("mode definition", VarSet, HeadTermContext,
@@ -238,9 +250,9 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             MaybeMode = ok1(Mode)
         then
             varset.coerce(VarSet, InstVarSet),
-            ModeDefn = eqv_mode(Mode),
+            MaybeAbstractModeDefn = nonabstract_mode_defn(eqv_mode(Mode)),
             ItemModeDefn = item_mode_defn_info(SymName, InstArgVars,
-                ModeDefn, InstVarSet, Context, SeqNum),
+                MaybeAbstractModeDefn, InstVarSet, Context, SeqNum),
             Item = item_mode_defn(ItemModeDefn),
             MaybeIOM = ok1(iom_item(Item))
         else
@@ -249,6 +261,48 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 get_any_errors1(MaybeMode),
             MaybeIOM = error1(Specs)
         )
+    ).
+
+parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
+        MaybeIOM) :-
+    (
+        HeadTerms = [HeadTerm],
+        ContextPieces = cord.singleton(words("In abstract_mode definition:")),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
+            VarSet, ContextPieces, MaybeSymNameAndArgs),
+        (
+            MaybeSymNameAndArgs = error2(Specs),
+            MaybeIOM = error1(Specs)
+        ;
+            MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
+            HeadTermContext = get_term_context(HeadTerm),
+            check_user_mode_name(SymName, HeadTermContext, NameSpecs),
+            check_inst_mode_defn_args("abstract_mode definition", VarSet,
+                HeadTermContext, ArgTerms, no, MaybeInstArgVars),
+            ( if
+                NameSpecs = [],
+                MaybeInstArgVars = ok1(InstArgVars)
+            then
+                varset.coerce(VarSet, InstVarSet),
+                MaybeAbstractModeDefn = abstract_mode_defn,
+                ItemModeDefn = item_mode_defn_info(SymName, InstArgVars,
+                    MaybeAbstractModeDefn, InstVarSet, Context, SeqNum),
+                Item = item_mode_defn(ItemModeDefn),
+                MaybeIOM = ok1(iom_item(Item))
+            else
+                Specs = NameSpecs ++ get_any_errors1(MaybeInstArgVars),
+                MaybeIOM = error1(Specs)
+            )
+        )
+    ;
+        ( HeadTerms = []
+        ; HeadTerms = [_, _ | _]
+        ),
+        Pieces = [words("Error:"), decl("abstract_inst"),
+            words("should have exactly one argument."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------e
