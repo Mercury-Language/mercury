@@ -37,7 +37,7 @@ case "$C_COMPILER_TYPE" in
     gcc*)
         ANSI_OPTS="@CFLAGS_FOR_ANSI@"
         CHECK_OPTS="
-            -Wall -Wwrite-strings
+            -Wall -Wwrite-strings -Wno-uninitialized
             -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 
 # Note: we do not enable the following gcc warnings:
@@ -521,17 +521,6 @@ SANITIZER_OPTS="$CFLAGS_FOR_SANITIZERS"
 
 ARCH_OPTS=""
 case "$FULLARCH" in
-    i*86-*|x86_64*)
-        # The use of stack_pointer in the ASM_JUMP macro defined in
-        # runtime/mercury_goto.h causes lots of warnings about using possibly
-        # uninitialized variables; there's no easy way to suppress them except
-        # by disabling the warning.
-        case "$COMPILER" in
-            gcc)
-                CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
-                ;;
-        esac
-        ;;
     *-solaris*|*-sunos*)
         # The solaris headers for pthreads are not ANSI :-(
         case $thread_safe in true)
