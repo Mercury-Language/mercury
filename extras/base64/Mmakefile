@@ -8,7 +8,7 @@
 
 # This is file exists so that do an `mmake' from the top-level of the extras
 # distribution works.  The actual work of building this library is done
-# using the Makefile and mmc --make.  This file just fowards all the work
+# using the Makefile and mmc --make.  This file just forwards all the work
 # to there.
 
 MAIN_TARGET=build
