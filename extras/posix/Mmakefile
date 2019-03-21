@@ -6,42 +6,27 @@
 # This file is distributed under the terms specified in COPYING.LIB.
 #-----------------------------------------------------------------------------#
 
-INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+# This is file exists so that do an `mmake' from the top-level of the extras
+# distribution works.  The actual work of building this library is done
+# using the Makefile and mmc --make.  This file just forwards all the work
+# to there.
 
--include ../Mmake.params
+MAIN_TARGET=build
 
-# The following is needed (on some systems) to enable declarations of
-# Posix functions in standard C header files.
-MGNUCFLAGS = --no-ansi
+.PHONY: build
+build:
+	$(MAKE) build
 
-# This library has some parts that are implemented in C
-# rather than in Mercury.  The following lines ensure that
-# the .h and .o files for those parts get included in the library.
-ADDITIONAL_HDRS = posix_workarounds.h
-MLOBJS = posix_workarounds.$O
-MLPICOBJS = posix_workarounds.$(EXT_FOR_PIC_OBJECTS)
-
-.PHONY: default_target
-default_target: all
-
+# The depend target does nothing, mmc --make will handle dependencies
+# automatically.
+#
 .PHONY: depend
-depend: posix.depend hello.depend
-
-.PHONY: all
-all: libposix hello
-
-.PHONY: check
-check: hello
-	./hello
+depend:
 
 .PHONY: install
-install: libposix.install
-	cp $(ADDITIONAL_HDRS) $(INSTALL_PREFIX)/lib/mercury/inc
-
-.PHONY: clean
-clean:
-	-/bin/rm -f posix_workarounds.$(O)
-	-/bin/rm -f posix_workarounds.$(EXT_FOR_PIC_OBJECTS)
+install:
+	$(MAKE) install INSTALL_PREFIX=$(INSTALL_PREFIX)/extras
 
 .PHONY: realclean
-realclean: clean
+realclean:
+	$(MAKE) realclean
