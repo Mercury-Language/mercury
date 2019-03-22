@@ -43,7 +43,7 @@
     #include <sys/types.h>
     #include <unistd.h>
 
-    #include ""posix_workarounds.h""
+    #include ""mercury_reg_workarounds.h""
 ").
 
 :- pragma foreign_type("C", fdset_ptr, "fd_set *", [can_pass_as_mercury_type]).
@@ -87,7 +87,7 @@ select(Fd, R, W, E, Timeout, Result, !IO) :-
 
     MR_incr_hp(Fds0, 1+sizeof(fd_set)/sizeof(MR_Word));
     Fds = (fd_set *) Fds0;
-    ME_fd_zero(Fds);
+    MR_fd_zero(Fds);
     IO = IO0;
 ").
 
@@ -97,7 +97,7 @@ select(Fd, R, W, E, Timeout, Result, !IO) :-
     fd_clr(Fd::in, Fds::in, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    ME_fd_clr(Fd, Fds);
+    FD_CLR(Fd, Fds);
     IO = IO0;
 ").
 
@@ -107,7 +107,7 @@ select(Fd, R, W, E, Timeout, Result, !IO) :-
     fd_zero(Fds::in, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    ME_fd_zero(Fds);
+    MR_fd_zero(Fds);
     IO = IO0;
 ").
 
@@ -117,7 +117,7 @@ select(Fd, R, W, E, Timeout, Result, !IO) :-
     fd_isset(Fd::in, Fds::in, Res::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    Res = (ME_fd_isset(Fd, Fds) ? MR_YES : MR_NO );
+    Res = (FD_ISSET(Fd, Fds) ? MR_YES : MR_NO );
     IO = IO0;
 ").
 
@@ -127,7 +127,7 @@ select(Fd, R, W, E, Timeout, Result, !IO) :-
     fd_set(Fd::in, Fds::in, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    ME_fd_set(Fd, Fds);
+    FD_SET(Fd, Fds);
     IO = IO0;
 ").
 

@@ -1,6 +1,4 @@
 MCFLAGS = \
 	--libgrades-exclude java \
 	--libgrades-exclude csharp \
-	--libgrades-exclude erlang \
-	--link-object posix_workarounds.o \
-	--extra-library-header posix_workarounds.h
+	--libgrades-exclude erlang

@@ -13,13 +13,9 @@
 
 MAIN_TARGET=build
 
-# XXX invoking the Makefile from here won't build posix_workarounds.o
-# so we need to specify it here too.
 .PHONY: build
-build: posix_workarounds.o
+build:
 	$(MAKE) build
-
-posix_workarounds.o: posix_workarounds.c
 
 # The depend target does nothing, mmc --make will handle dependencies
 # automatically.

@@ -12,14 +12,12 @@ TARGET = posix
 MMC = mmc
 
 .PHONY: build
-build: posix_workarounds.o
+build:
 	$(MMC) --make lib$(TARGET)
 
 .PHONY: install
 install: posix_workarounds.o
 	$(MMC) --make lib$(TARGET).install
-
-posix_workarounds.o: posix_workarounds.c
 
 .PHONY: realclean
 realclean:
