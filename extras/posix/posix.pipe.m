@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -43,14 +43,13 @@ pipe(Result, !IO) :-
 
 :- pred pipe0(fd::out, fd::out, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    pipe0(R::out, W::out, Res::out, IO0::di, IO::uo),
+    pipe0(R::out, W::out, Res::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     int filedes[2];
     Res = pipe(filedes);
     R = filedes[0];
     W = filedes[1];
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

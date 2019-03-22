@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -33,19 +33,17 @@
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    getpid(Pid::out, IO0::di, IO::uo),
+    getpid(Pid::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     Pid = getpid();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    getppid(Pid::out, IO0::di, IO::uo),
+    getppid(Pid::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     Pid = getppid();
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

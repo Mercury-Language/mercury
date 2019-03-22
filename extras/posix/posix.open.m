@@ -59,85 +59,81 @@
 
 open(PathName, FlagList, Result, !IO) :-
     open0(PathName, oflags(FlagList), FdNo, !IO),
-    ( FdNo < 0 ->
+    ( if FdNo < 0 then
         errno(Error, !IO),
         Result = error(Error)
-    ;
+    else
         Result = ok(fd(FdNo))
     ).
 
 :- pred open0(string::in, int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    open0(PathName::in, Flags::in, FileDes::out, IO0::di, IO::uo),
+    open0(PathName::in, Flags::in, FileDes::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     // We pass 0 as the mode here because if _FORTIFY_SOURCE is defined
     // to be > 1 we will get an error for the two argument version of open.
     FileDes = open(PathName, Flags, 0);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 open(PathName, FlagList, Mode, Result, !IO) :-
     open0(PathName, oflags(FlagList), Mode, FdNo, !IO),
-    ( FdNo < 0 ->
+    ( if FdNo < 0 then
         errno(Error, !IO),
         Result = error(Error)
-    ;
+    else
         Result = ok(fd(FdNo))
     ).
 
 :- pred open0(string::in, int::in, mode_t::in, int::out, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    open0(PathName::in, Flags::in, Mode::in, FileDes::out, IO0::di, IO::uo),
+    open0(PathName::in, Flags::in, Mode::in, FileDes::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     FileDes = open(PathName, Flags, Mode);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 creat(PathName, Mode, Result, !IO) :-
     creat0(PathName, Mode, FdNo, !IO),
-    ( FdNo < 0 ->
+    ( if FdNo < 0 then
         errno(Error, !IO),
         Result = error(Error)
-    ;
+    else
         Result = ok(fd(FdNo))
     ).
 
 :- pred creat0(string::in, mode_t::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    creat0(PathName::in, Mode::in, FileDes::out, IO0::di, IO::uo),
+    creat0(PathName::in, Mode::in, FileDes::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     FileDes = creat(PathName, Mode);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
 close(fd(FdNo), Result, !IO) :-
     close0(FdNo, Res0, !IO),
-    ( Res0 < 0 ->
+    ( if Res0 < 0 then
         errno(Error, !IO),
         Result = error(Error)
-    ;
+    else
         Result = ok
     ).
 
 :- pred close0(int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    close0(Fd::in, Res::out, IO0::di, IO::uo),
+    close0(Fd::in, Res::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     do {
         Res = close(Fd);
     } while (Res == -1 && MR_is_eintr(errno));
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

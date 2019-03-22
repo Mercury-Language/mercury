@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2006-2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -64,17 +64,16 @@ variable(Name - Value) = Name ++ "=" ++ Value.
     array(string)::array_ui, array(string)::array_ui,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    exec0(Command::in, Args::array_ui, Env::array_ui, IO0::di, IO::uo),
+    exec0(Command::in, Args::array_ui, Env::array_ui, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     int ret;
 
     do {
         ret = execve(Command,
-            ((MR_ArrayType *)Args)->elements, 
+            ((MR_ArrayType *)Args)->elements,
             ((MR_ArrayType *)Env)->elements);
     } while (ret == -1 && MR_is_eintr(errno));
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

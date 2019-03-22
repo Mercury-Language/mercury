@@ -24,7 +24,7 @@
 % binding is to provide flexible glue to the C functionality, rather than
 % to provide abstractions of the functionality.
 %
-% Flags are represented by enumerations. Since Mercury doesn't [yet] allow 
+% Flags are represented by enumerations. Since Mercury doesn't [yet] allow
 % for user assignable values for enumerations, these are mapped onto ints,
 % and the ints are used to index static C arrays of the flag constants.
 %
@@ -195,11 +195,10 @@ errno(Error, !IO) :-
 
 :- pred errno0(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    errno0(E::out, IO0::di, IO::uo),
+    errno0(E::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     E = errno;
-    IO = IO0;
 ").
 
 :- func error(int) = posix.error.
@@ -308,4 +307,3 @@ error(Num) = Res :-
             En = -1;
     }
 ").
-

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2006-2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -42,13 +42,12 @@ dup(Fd, Result, !IO) :-
 
 :- pred dup0(fd::in, fd::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    dup0(OldFd::in, NewFd::out, IO0::di, IO::uo),
+    dup0(OldFd::in, NewFd::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     do {
         NewFd = dup(OldFd);
     } while (NewFd == -1 && MR_is_eintr(errno));
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -65,13 +64,12 @@ dup2(OldFd, NewFd, Result, !IO) :-
 :- pred dup2_2(fd::in, fd::in, fd::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dup2_2(OldFd::in, NewFd::in, Ret::out, IO0::di, IO::uo),
+    dup2_2(OldFd::in, NewFd::in, Ret::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     do {
         Ret = dup2(OldFd, NewFd);
     } while (Ret == -1 && MR_is_eintr(errno));
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

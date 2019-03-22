@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2004, 2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -77,18 +77,17 @@ stat(Path, Result, !IO) :-
     else
         errno(Err, !IO),
         Result = error(Err)
-    ).                  
+    ).
 
 :- pred stat0(string::in, int::out, stat::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    stat0(Path::in, Res::out, Stat::out, IO0::di, IO::uo),
+    stat0(Path::in, Res::out, Stat::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     Stat = MR_GC_NEW(struct stat);
     do {
         Res = stat(Path, Stat);
     } while (Res == -1 && MR_is_eintr(errno));
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

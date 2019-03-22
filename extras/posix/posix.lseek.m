@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
 % Copyright (C) 1999, 2005, 2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %------------------------------------------------------------------------------%
 %
@@ -38,21 +38,20 @@
 
 lseek(Fd, Offset, Whence, Result, !IO) :-
     lseek0(Fd, Offset, Whence, Res, !IO),
-    ( Res < 0 ->
+    ( if Res < 0 then
         errno(Err, !IO),
         Result = error(Err)
-    ;
+    else
         Result = ok(Res)
     ).
 
 :- pred lseek0(fd::in, int::in, lseek.whence::in, int::out, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    lseek0(Fd::in, Offset::in, Whence::in, Res::out, IO0::di, IO::uo),
+    lseek0(Fd::in, Offset::in, Whence::in, Res::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     Res = lseek(Fd, Offset, Whence);
-    IO = IO0;
 ").
 
 :- pragma foreign_enum("C", lseek.whence/0, [

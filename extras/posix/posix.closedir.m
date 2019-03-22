@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -29,11 +29,10 @@
 ").
 
 :- pragma foreign_proc("C",
-    closedir(Dir::in, IO0::di, IO::uo),
+    closedir(Dir::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     closedir(Dir);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

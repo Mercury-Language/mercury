@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -36,16 +36,15 @@ opendir(Path, Result, !IO) :-
     else
         errno(Err, !IO),
         Result = error(Err)
-    ).                  
+    ).
 
 :- pred opendir0(string::in, dir::out, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    opendir0(Path::in, Dir::out, Res::out, IO0::di, IO::uo),
+    opendir0(Path::in, Dir::out, Res::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     Dir = opendir(Path);
     Res = (Dir == NULL);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

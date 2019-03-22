@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -41,11 +41,10 @@ kill(Pid, Sig, Result, !IO) :-
 
 :- pred kill0(pid_t::in, int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    kill0(Pid::in, Sig::in, Res::out, IO0::di, IO::uo),
+    kill0(Pid::in, Sig::in, Res::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Res = kill(Pid, Sig);
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

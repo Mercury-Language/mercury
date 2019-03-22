@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -36,17 +36,16 @@ rmdir(Path, Result, !IO) :-
     else
         errno(Err, !IO),
         Result = error(Err)
-    ).                  
+    ).
 
 :- pred rmdir0(string::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    rmdir0(Path::in, Res::out, IO0::di, IO::uo),
+    rmdir0(Path::in, Res::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
-" 
+"
     Res = rmdir(Path);
-    IO = IO0;
 ").
-        
+
 %-----------------------------------------------------------------------------%
 :- end_module posix.rmdir.
 %-----------------------------------------------------------------------------%

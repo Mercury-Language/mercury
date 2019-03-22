@@ -35,22 +35,21 @@
 
 write(Fd, ToWrite, Text, Result, !IO) :-
     write0(Fd, ToWrite, Text, Res, !IO),
-    ( Res < 0 ->
+    ( if Res < 0 then
         errno(Err, !IO),
         Result = error(Err)
-    ;
+    else
         Result = ok(Res)
     ).
 
 :- pred write0(fd::in, int::in, bitmap::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    write0(Fd::in, ToWrite::in, Bitmap::in, Res::out, IO0::di, IO::uo),
+    write0(Fd::in, ToWrite::in, Bitmap::in, Res::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     do {
         Res = write(Fd, Bitmap->elements, ToWrite);
     } while (Res == -1 && MR_is_eintr(errno));
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%

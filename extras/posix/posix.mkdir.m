@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2007 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -15,7 +15,7 @@
 :- interface.
 
 :- pred mkdir(string::in, mode_t::in, posix.result::out, io::di, io::uo)
-    is det.   
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -36,17 +36,16 @@ mkdir(Path, Mode, Result, !IO) :-
     else
         errno(Err, !IO),
         Result = error(Err)
-    ).                  
+    ).
 
 :- pred mkdir0(string::in, mode_t::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    mkdir0(Path::in, Mode::in, Res::out, IO0::di, IO::uo),
+    mkdir0(Path::in, Mode::in, Res::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     Res = mkdir(Path, Mode);
-    IO = IO0;
 ").
-        
+
 %-----------------------------------------------------------------------------%
 :- end_module posix.mkdir.
 %-----------------------------------------------------------------------------%

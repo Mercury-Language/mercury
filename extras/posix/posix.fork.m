@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -47,11 +47,10 @@ fork(Result, !IO) :-
 
 :- pred fork0(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    fork0(Pid::out, IO0::di, IO::uo),
+    fork0(Pid::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Pid = fork();
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%

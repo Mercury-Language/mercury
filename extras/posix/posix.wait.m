@@ -60,7 +60,7 @@ wait(Result, !IO) :-
 
 :- pred wait0(int::out, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    wait0(Pid::out, Status::out, IO0::di, IO::uo),
+    wait0(Pid::out, Status::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     int status;
@@ -68,7 +68,6 @@ wait(Result, !IO) :-
         Pid = wait(&status);
     } while (Pid == -1 && MR_is_eintr(errno));
     Status = status;
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -100,7 +99,7 @@ waitpid(WaitFor, Result, !IO) :-
 
 :- pred waitpid0(pid_t::in, int::out, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    waitpid0(Pid0::in, Pid::out, Status::out, IO0::di, IO::uo),
+    waitpid0(Pid0::in, Pid::out, Status::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
     int status;
@@ -108,7 +107,6 @@ waitpid(WaitFor, Result, !IO) :-
         Pid = waitpid(Pid0, &status, 0);
     } while (Pid == -1 && MR_is_eintr(errno));
     Status = status;
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
