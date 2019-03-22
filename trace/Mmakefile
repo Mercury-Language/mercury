@@ -216,8 +216,8 @@ mercury_event_spec.$(EXT_FOR_PIC_OBJECTS): $(GEN_EVENTSPEC_HDRS)
 
 .PHONY: all
 .PHONY: trace
-ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
-# there is no tracing in the .NET, Java, Erlang backends
+ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+# there is no tracing in the C#, Java, Erlang backends
 
 all:
 
