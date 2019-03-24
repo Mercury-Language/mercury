@@ -207,8 +207,6 @@ accept(Fd, Result, !IO) :-
         errno(Errno, !IO),
         Result = error(Errno)
     else
-        % cons_sockaddr(Ptr, SockAddr),
-        % Result = ok(SockAddr - fd(NewFd))
         Result = ok(fd(NewFd))
     ).
 
@@ -219,36 +217,13 @@ accept(Fd, Result, !IO) :-
     accept0(Fd::in, Ptr::out, NewFd::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    MR_Word Ptr0;
-    struct sockaddr_in *ptr;
-    int len = sizeof(struct sockaddr_in);
+    socklen_t addrlen;
 
-    MR_incr_hp(Ptr0, (1 + sizeof(struct sockaddr_in)/sizeof(MR_Word)));
-    Ptr = (struct sockaddr *) Ptr0;
-    ptr = (struct sockaddr_in *) Ptr;
+    Ptr = (struct sockaddr *) MR_GC_NEW_ATTRIB(struct sockaddr_in, MR_ALLOC_ID);
     do {
-        NewFd = accept(Fd, ptr, &len);
+        addrlen = sizeof(struct sockaddr_in);
+        NewFd = accept(Fd, Ptr, &addrlen);
     } while (NewFd == -1 && MR_is_eintr(errno));
-").
-
-:- pred cons_sockaddr(sockaddr_ptr::in, sockaddr::out) is det.
-:- pragma foreign_proc("C",
-    cons_sockaddr(Ptr::in, Sok::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    struct sockaddr_in *ptr;
-
-    ptr = (struct sockaddr_in *) Ptr;
-
-    if (ptr->sin_family == AF_INET) {
-        MR_incr_hp(Ptr, 2);
-        MR_field(MR_mktag(0), Ptr, 0) = ntohs(ptr->sin_port);
-        MR_field(MR_mktag(0), Ptr, 1) = ptr->sin_addr.s_addr;
-    } else {
-        MR_fatal_error(""cons_sockaddr: unknown type"");
-    }
-
-    Sok = ptr;
 ").
 
 %-----------------------------------------------------------------------------%
