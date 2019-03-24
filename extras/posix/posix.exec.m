@@ -32,19 +32,52 @@
 
 :- implementation.
 
-:- import_module array.
 :- import_module pair.
 
 :- pragma foreign_decl("C", "#include <unistd.h>").
 
 %-----------------------------------------------------------------------------%
 
+:- type string_array.
+
+:- pragma foreign_type("C", string_array, "char **").
+
+:- pred make_string_array(list(string)::in, string_array::out) is det.
+
+:- pragma foreign_proc("C",
+    make_string_array(List::in, Array::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MR_Word ptr;
+    size_t  len;
+    size_t  i;
+
+    len = 0;
+    ptr = List;
+    while (! MR_list_is_empty(ptr)) {
+        len++;
+        ptr = MR_list_tail(ptr);
+    }
+
+    Array = MR_GC_NEW_ARRAY_ATTRIB(char *, len + 1, MR_ALLOC_ID);
+
+    i = 0;
+    ptr = List;
+    while (! MR_list_is_empty(ptr)) {
+        Array[i] = (char *) MR_list_head(ptr);
+        ptr = MR_list_tail(ptr);
+        i++;
+    }
+
+    Array[i] = NULL;
+").
+
+%-----------------------------------------------------------------------------%
+
 exec(Command, Args, Env, Result, !IO) :-
-    exec0(Command,
-        array(Args ++ [null]),
-        array(list.map(variable, map.to_assoc_list(Env)) ++ [null]),
-        !IO
-    ),
+    make_string_array(Args, ArgsArray),
+    make_string_array(map(variable, map.to_assoc_list(Env)), EnvArray),
+    exec0(Command, ArgsArray, EnvArray, !IO),
     errno(Err, !IO),
     Result = error(Err).
 
@@ -52,27 +85,16 @@ exec(Command, Args, Env, Result, !IO) :-
 
 variable(Name - Value) = Name ++ "=" ++ Value.
 
-:- func null = string.
+:- pred exec0(string::in, string_array::in, string_array::in, io::di, io::uo)
+    is det.
 :- pragma foreign_proc("C",
-    null = (Null::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    Null = NULL;
-").
-
-:- pred exec0(string::in,
-    array(string)::array_ui, array(string)::array_ui,
-    io::di, io::uo) is det.
-:- pragma foreign_proc("C",
-    exec0(Command::in, Args::array_ui, Env::array_ui, _IO0::di, _IO::uo),
+    exec0(Command::in, ArgsArray::in, EnvArray::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     int ret;
 
     do {
-        ret = execve(Command,
-            ((MR_ArrayType *)Args)->elements,
-            ((MR_ArrayType *)Env)->elements);
+        ret = execve(Command, ArgsArray, EnvArray);
     } while (ret == -1 && MR_is_eintr(errno));
 ").
 
