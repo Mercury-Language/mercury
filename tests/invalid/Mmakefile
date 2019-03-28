@@ -62,6 +62,7 @@ SINGLEMODULE= \
 	bad_foreign_import_module \
 	bad_foreign_proc \
 	bad_foreign_type \
+	bad_include \
 	bad_initialise_decl \
 	bad_inst_defn \
 	bad_inst_for_type \
@@ -199,11 +200,11 @@ SINGLEMODULE= \
 	invalid_octal_literal \
 	invalid_pragma \
 	invalid_typeclass \
-	invalid_uint_inst \
 	invalid_uint16_inst \
 	invalid_uint32_inst \
 	invalid_uint64_inst \
 	invalid_uint8_inst \
+	invalid_uint_inst \
 	io_in_ite_cond \
 	kind \
 	lambda_syntax_error \

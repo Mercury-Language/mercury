@@ -658,6 +658,14 @@
                 % is a list of one or more item_includes, each of which
                 % declares the named module to be a submodule of the
                 % current module,
+                %
+                % If this item_include occurs in module x.y, then
+                % the module_name here is guaranteed to have the form x.y.z.
+                % In other words, the included module is guaranteed to be
+                % an immediate descendant of the including module.
+                % Any attempt to include a non-descendant module or a
+                % non-immediate descendant module will be caught and
+                % diagnosed by the parser.
 
                 incl_module                     :: module_name,
 
