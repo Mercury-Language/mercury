@@ -16,12 +16,11 @@ build:
 	$(MMC) --make lib$(TARGET)
 
 .PHONY: install
-install: posix_workarounds.o
+install:
 	$(MMC) --make lib$(TARGET).install
 
 .PHONY: realclean
 realclean:
 	cd samples && $(MAKE) realclean
 	$(MMC) --make $(TARGET).realclean
-	/bin/rm -f posix_workarounds.o
 	/bin/rm -rf Mercury
