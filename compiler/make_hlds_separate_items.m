@@ -14,6 +14,7 @@
 :- module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.
 :- interface.
 
+:- import_module parse_tree.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.

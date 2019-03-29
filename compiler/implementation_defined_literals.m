@@ -19,6 +19,7 @@
 :- module check_hlds.implementation_defined_literals.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- pred subst_impl_defined_literals(module_info::in, module_info::out) is det.
@@ -28,7 +29,6 @@
 
 :- implementation.
 
-:- import_module hlds.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.

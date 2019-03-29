@@ -142,6 +142,7 @@
 
 :- import_module mdb.browser_info.
 :- import_module mdb.declarative_execution.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.rtti_access.

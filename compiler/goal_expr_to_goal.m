@@ -13,6 +13,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.state_var.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -54,7 +55,9 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.

@@ -16,7 +16,9 @@
 :- module recompilation.version.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.timestamp.
+:- import_module parse_tree.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_item.
 

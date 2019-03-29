@@ -25,6 +25,7 @@
 :- import_module check_hlds.mode_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
     % Modecheck a unification.
@@ -70,7 +71,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_mode.

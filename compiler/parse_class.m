@@ -17,6 +17,7 @@
 :- module parse_tree.parse_class.
 :- interface.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.

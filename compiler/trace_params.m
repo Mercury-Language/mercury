@@ -38,6 +38,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
@@ -129,7 +130,6 @@
 :- implementation.
 
 :- import_module hlds.status.
-:- import_module mdbcomp.
 
 :- import_module char.
 :- import_module int.

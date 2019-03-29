@@ -109,6 +109,7 @@
 :- module check_hlds.delay_partial_inst.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -125,7 +126,6 @@
 :- implementation.
 
 :- import_module check_hlds.inst_test.
-:- import_module hlds.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.

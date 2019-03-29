@@ -16,7 +16,9 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.make_hlds.goal_expr_to_goal.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -297,6 +299,7 @@
 
 :- import_module hlds.goal_util.
 :- import_module hlds.make_goal.
+:- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_util.

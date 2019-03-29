@@ -17,6 +17,7 @@
 :- module make.dependencies.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module make.util.
@@ -186,6 +187,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data_foreign.
 

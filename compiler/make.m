@@ -22,6 +22,7 @@
 :- include_module make.options_file.
 :- include_module make.util.
 
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module make.options_file.
@@ -60,7 +61,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
-:- import_module libs.
 :- import_module libs.handle_options.
 :- import_module libs.md4.
 :- import_module libs.options.

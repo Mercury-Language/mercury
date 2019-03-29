@@ -20,6 +20,7 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -53,6 +54,7 @@
 :- import_module hlds.hlds_cons.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds_error.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
 :- import_module mdbcomp.

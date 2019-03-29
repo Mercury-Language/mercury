@@ -23,6 +23,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 
 :- import_module io.
@@ -111,7 +112,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module mdbcomp.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.

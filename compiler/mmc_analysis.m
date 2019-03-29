@@ -21,6 +21,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
 %-----------------------------------------------------------------------------%

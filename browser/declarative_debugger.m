@@ -67,6 +67,7 @@
 :- import_module mdb.help.
 :- import_module mdb.io_action.
 :- import_module mdb.term_rep.
+:- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 
 :- import_module io.

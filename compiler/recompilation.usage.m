@@ -20,8 +20,10 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.module_imports.
 
@@ -91,6 +93,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.pred_table.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.

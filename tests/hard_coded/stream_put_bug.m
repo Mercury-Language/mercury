@@ -21,6 +21,7 @@
 
 :- import_module list.
 :- import_module string.
+:- use_module stream.
 :- use_module stream.string_writer.
 :- use_module string.builder.
 

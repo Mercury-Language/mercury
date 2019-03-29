@@ -60,6 +60,7 @@
 
 :- implementation.
 
+:- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.

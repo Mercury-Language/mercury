@@ -18,6 +18,7 @@
 
 :- interface.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
@@ -36,6 +37,7 @@
 
 :- implementation.
 
+:- import_module libs.
 :- import_module libs.globals.                  % for foreign_language
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_sym_name.

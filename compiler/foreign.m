@@ -24,6 +24,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -152,7 +153,6 @@
 
 :- implementation.
 
-:- import_module libs.
 :- import_module parse_tree.prog_type.
 
 :- import_module require.

@@ -112,6 +112,7 @@
 :- import_module mdb.parse.
 :- import_module mdb.term_rep.
 :- import_module mdb.util.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.rtti_access.

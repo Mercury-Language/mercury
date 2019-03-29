@@ -18,6 +18,7 @@
 :- module parse_tree.prog_out.
 :- interface.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.

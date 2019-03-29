@@ -17,10 +17,13 @@
 :- module make.module_target.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module make.dependencies.
+:- import_module parse_tree.
 :- import_module parse_tree.module_imports.
 
 :- import_module bool.

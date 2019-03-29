@@ -16,9 +16,12 @@
 :- module recompilation.check.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.read_modules.
 
 :- import_module io.
