@@ -7,8 +7,8 @@
 :- import_module io.
 
 :- type foo
-    ---> bar
-    ;   baz(int).
+    --->    bar
+    ;       baz(int).
 
 :- pred hello(io__state::di, io__state::uo) is det.
 
