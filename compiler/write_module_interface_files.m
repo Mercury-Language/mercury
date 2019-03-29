@@ -200,8 +200,8 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
         IntRawCompUnit),
 
     % Get the .int3 files for imported modules.
-    grab_unqual_imported_modules(Globals, SourceFileName,
-        SourceFileModuleName, IntRawCompUnit, ModuleAndImports, !IO),
+    grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
+        IntRawCompUnit, ModuleAndImports, !IO),
 
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
