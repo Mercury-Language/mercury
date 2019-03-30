@@ -745,12 +745,12 @@ check_imported_module(Globals, Term, !Info, !IO) :-
             ),
             ( if
                 MaybeUsedItemsTerm = yes(UsedItemsTerm),
-                ParseTreeInt = parse_tree_int(_, _, ModuleContext,
-                    MaybeVersionNumbers, IntIncls, ImpIncls,
+                ParseTreeInt = parse_tree_int(ParseTreeModuleName, _,
+                    ModuleContext, MaybeVersionNumbers, IntIncls, ImpIncls,
                     IntAvails, ImpAvails, IntItems, ImplItems),
                 MaybeVersionNumbers = yes(VersionNumbers)
             then
-                int_imp_items_to_item_blocks(ModuleContext,
+                int_imp_items_to_item_blocks(ParseTreeModuleName, ModuleContext,
                     ms_interface, ms_implementation,
                     IntIncls, ImpIncls, IntAvails, ImpAvails,
                     IntItems, ImplItems, RawItemBlocks),
@@ -919,7 +919,7 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
 
 check_raw_item_block_for_ambiguities(NeedQualifier, OldTimestamp,
         VersionNumbers, RawItemBlock, !Info) :-
-    RawItemBlock = item_block(_, _, _Incls, _Avails, Items),
+    RawItemBlock = item_block(_, _, _, _Incls, _Avails, Items),
     list.foldl(
         check_item_for_ambiguities(NeedQualifier, OldTimestamp,
             VersionNumbers),

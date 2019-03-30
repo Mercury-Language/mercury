@@ -273,7 +273,7 @@ create_split_compilation_units_depth_first(ModuleName,
 check_interface_blocks_for_abstract_instances([], !Specs).
 check_interface_blocks_for_abstract_instances([RawItemBlock | RawItemBlocks],
         !Specs) :-
-    RawItemBlock = item_block(Section, _Context, _Incls, _Avails, Items),
+    RawItemBlock = item_block(_, Section, _Context, _Incls, _Avails, Items),
     (
         Section = ms_interface,
         check_interface_items_for_abstract_instances(Items, !Specs)
@@ -675,7 +675,7 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
 get_raw_item_block_section_kinds([], !SeenInt, !SeenImp).
 get_raw_item_block_section_kinds([ItemBlock | ItemBlocks],
         !SeenInt, !SeenImp) :-
-    ItemBlock = item_block(SectionKind, _, _, _, _),
+    ItemBlock = item_block(_, SectionKind, _, _, _, _),
     (
         SectionKind = ms_interface,
         !:SeenInt = yes
@@ -714,8 +714,8 @@ split_components_discover_submodules([Component | Components],
 split_component_discover_submodules(Component, SectionAncestors,
         !SplitModuleMap, !SubModulesMap, !RawItemBlockCord, !Specs) :-
     (
-        Component = mc_section(SectionKind, SectionContext,
-            IncludesCord, AvailsCord, ItemsCord),
+        Component = mc_section(ComponentModuleName, SectionKind,
+            SectionContext, IncludesCord, AvailsCord, ItemsCord),
         Includes = cord.list(IncludesCord),
         Avails = cord.list(AvailsCord),
         Items = cord.list(ItemsCord),
@@ -723,8 +723,8 @@ split_component_discover_submodules(Component, SectionAncestors,
             cord.init, OKIncludesCord,
             !SplitModuleMap, !SubModulesMap, !Specs),
         OKIncludes = cord.list(OKIncludesCord),
-        RawItemBlock = item_block(SectionKind, SectionContext,
-            OKIncludes, Avails, Items),
+        RawItemBlock = item_block(ComponentModuleName, SectionKind,
+            SectionContext, OKIncludes, Avails, Items),
         !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, RawItemBlock),
         (
             SectionKind = ms_interface
@@ -762,15 +762,15 @@ split_component_discover_submodules(Component, SectionAncestors,
             )
         )
     ;
-        Component = mc_nested_submodule(SectionKind, SectionContext,
-            NestedModuleParseTree),
+        Component = mc_nested_submodule(ComponentModuleName, SectionKind,
+            SectionContext, NestedModuleParseTree),
         % Replace the nested submodule with an `include_module' declaration.
         NestedModuleParseTree = parse_tree_src(NestedModuleName,
             NestedModuleContext, _NestedModuleComponents),
         NestedIncludeItem =
             item_include(NestedModuleName, NestedModuleContext, -1),
-        RawItemBlock = item_block(SectionKind, SectionContext,
-            [NestedIncludeItem], [], []),
+        RawItemBlock = item_block(ComponentModuleName, SectionKind,
+            SectionContext, [NestedIncludeItem], [], []),
         !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, RawItemBlock),
 
         % Discover any submodules nested inside NestedModuleParseTree.

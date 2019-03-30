@@ -619,7 +619,7 @@ separate_int_imp_items([ItemBlock | ItemBlocks], IntIncls, ImpIncls,
         IntAvails, ImpAvails, IntItems, ImpItems) :-
     separate_int_imp_items(ItemBlocks, IntIncls0, ImpIncls0,
         IntAvails0, ImpAvails0, IntItems0, ImpItems0),
-    ItemBlock = item_block(Section, _Context, Incls, Avails, Items),
+    ItemBlock = item_block(_, Section, _, Incls, Avails, Items),
     (
         Section = ms_interface,
         IntIncls = Incls ++ IntIncls0,
@@ -741,8 +741,8 @@ read_parse_tree_int_section(Stream, Globals, CurModuleName,
                 no_lookahead, FinalLookAhead, !VNInfo, cord.init, InclsCord,
                 cord.init, AvailsCord, cord.init, ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
-            RawItemBlock = item_block(SectionKind, SectionContext,
-                cord.list(InclsCord), cord.list(AvailsCord),
+            RawItemBlock = item_block(CurModuleName, SectionKind,
+                SectionContext, cord.list(InclsCord), cord.list(AvailsCord),
                 cord.list(ItemsCord)),
             MaybeRawItemBlock = yes(RawItemBlock)
         ;
@@ -839,7 +839,7 @@ read_item_sequence_in_hdr_file_without_section_marker(Stream, Globals,
         ItemSeqInitLookAhead, FinalLookAhead, !VNInfo,
         cord.init, InclsCord, cord.init, AvailsCord, cord.init, ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
-    RawItemBlock = item_block(SectionKind, SectionContext,
+    RawItemBlock = item_block(CurModuleName, SectionKind, SectionContext,
         cord.list(InclsCord), cord.list(AvailsCord), cord.list(ItemsCord)),
     MaybeRawItemBlock = yes(RawItemBlock).
 
@@ -985,7 +985,7 @@ read_parse_tree_src_components(Stream, Globals,
             dont_allow_version_numbers, _, cord.init, InclsCord,
             cord.init, AvailsCord, cord.init, ItemsCord,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
-        add_section_component(SectionKind, SectionContext,
+        add_section_component(CurModuleName, SectionKind, SectionContext,
             InclsCord, AvailsCord, ItemsCord, !ModuleComponents),
         % We have read in one component; recurse to read in other components.
         read_parse_tree_src_components(Stream, Globals, CurModuleName,
@@ -1046,7 +1046,7 @@ read_parse_tree_src_components(Stream, Globals,
                 )
             ),
             read_parse_tree_src_submodule(Stream, Globals, ContainingModules,
-                MaybePrevSection, StartModuleName, StartContext,
+                MaybePrevSection, CurModuleName, StartModuleName, StartContext,
                 no_lookahead, SubModuleFinalLookAhead, !ModuleComponents,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
             % We have read in one component; recurse to read in others.
@@ -1096,7 +1096,7 @@ read_parse_tree_src_components(Stream, Globals,
                 dont_allow_version_numbers, _, cord.init, InclsCord,
                 cord.init, AvailsCord, cord.init, ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
-            add_section_component(SectionKind, SectionContext,
+            add_section_component(CurModuleName, SectionKind, SectionContext,
                 InclsCord, AvailsCord, ItemsCord, !ModuleComponents),
             % We have read in one component; recurse to read in other
             % components.
@@ -1114,11 +1114,12 @@ read_parse_tree_src_components(Stream, Globals,
         )
     ).
 
-:- pred add_section_component(module_section::in, prog_context::in,
+:- pred add_section_component(module_name::in, module_section::in,
+    prog_context::in,
     cord(item_include)::in, cord(item_avail)::in, cord(item)::in,
     cord(module_component)::in, cord(module_component)::out) is det.
 
-add_section_component(SectionKind, SectionContext,
+add_section_component(ModuleName, SectionKind, SectionContext,
         InclsCord, AvailsCord, ItemsCord, !ModuleComponents) :-
     ( if
         cord.is_empty(InclsCord),
@@ -1127,7 +1128,7 @@ add_section_component(SectionKind, SectionContext,
     then
         true
     else
-        Component = mc_section(SectionKind, SectionContext,
+        Component = mc_section(ModuleName, SectionKind, SectionContext,
             InclsCord, AvailsCord, ItemsCord),
         !:ModuleComponents = cord.snoc(!.ModuleComponents, Component)
     ).
@@ -1167,7 +1168,7 @@ generate_missing_start_section_warning_src(CurModuleName,
 
 :- pred read_parse_tree_src_submodule(io.text_input_stream::in, globals::in,
     list(module_name)::in, maybe(pair(module_section, prog_context))::in,
-    module_name::in, prog_context::in,
+    module_name::in, module_name::in, prog_context::in,
     maybe_lookahead::in, maybe_lookahead::out,
     cord(module_component)::in, cord(module_component)::out,
     file_name::in, file_name::out,
@@ -1175,7 +1176,7 @@ generate_missing_start_section_warning_src(CurModuleName,
     read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
 read_parse_tree_src_submodule(Stream, Globals, ContainingModules,
-        MaybePrevSection, StartModuleName, StartContext,
+        MaybePrevSection, ContainingModuleName, StartModuleName, StartContext,
         InitLookAhead, FinalLookAhead, !ModuleComponents,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO) :-
     (
@@ -1207,8 +1208,8 @@ read_parse_tree_src_submodule(Stream, Globals, ContainingModules,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
     SubModuleParseTreeSrc = parse_tree_src(StartModuleName, StartContext,
         NestedModuleComponents),
-    Component = mc_nested_submodule(SectionKind, SectionContext,
-        SubModuleParseTreeSrc),
+    Component = mc_nested_submodule(ContainingModuleName, SectionKind,
+        SectionContext, SubModuleParseTreeSrc),
     !:ModuleComponents = cord.snoc(!.ModuleComponents, Component).
 
 :- pred handle_module_end_marker(module_name::in, list(module_name)::in,

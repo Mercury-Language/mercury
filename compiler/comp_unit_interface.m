@@ -146,12 +146,17 @@
 
     % This predicate is exported for use by modules.m.
     %
+    % The first module name is the name of the module the item blocks
+    % are from; the second is the name of the module for which
+    % we are adding foreign_import_module items.
+    %
     % XXX ITEM_LIST They shouldn't be needed; the representation of the
     % compilation unit should have all this information separate from
     % the items.
     %
-:- pred add_needed_foreign_import_module_items_to_item_blocks(module_name::in,
-    MS::in, list(item_block(MS))::in, list(item_block(MS))::out) is det.
+:- pred add_needed_foreign_import_module_items_to_item_blocks(
+    module_name::in, module_name::in, MS::in,
+    list(item_block(MS))::in, list(item_block(MS))::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -225,7 +230,7 @@ get_short_interface_int3_from_item_blocks([],
         !IntIncls, !IntAvails, !IntItems, !NeedAvails, !Specs).
 get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
         !IntIncls, !IntAvails, !IntItems, !NeedAvails, !Specs) :-
-    RawItemBlock = item_block(Section, _SectionContext, Incls, Avails, Items),
+    RawItemBlock = item_block(_, Section, _, Incls, Avails, Items),
     (
         Section = ms_interface,
         !:IntIncls = !.IntIncls ++ cord.from_list(Incls),
@@ -443,7 +448,7 @@ get_private_interface_int0_from_item_blocks(ModuleName,
         [ItemBlock | ItemBlocks],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord) :-
-    ItemBlock = item_block(SrcSection, _, Incls, Avails, Items),
+    ItemBlock = item_block(_, SrcSection, _, Incls, Avails, Items),
     (
         SrcSection = sms_interface,
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
@@ -617,7 +622,7 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit,
         list.foldl(accumulate_foreign_import(ModuleName), Langs,
             IntItems0, IntItems)
     ),
-    int_imp_items_to_item_blocks(ModuleNameContext,
+    int_imp_items_to_item_blocks(ModuleName, ModuleNameContext,
         ms_interface, ms_implementation,
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
         InterfaceItemBlocks),
@@ -639,7 +644,7 @@ generate_pre_grab_pre_qual_item_blocks([],
 generate_pre_grab_pre_qual_item_blocks([RawItemBlock | RawItemBlocks],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord) :-
-    RawItemBlock = item_block(Section, _SectionContext, Incls, Avails, Items),
+    RawItemBlock = item_block(_, Section, _, Incls, Avails, Items),
     (
         Section = ms_interface,
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
@@ -833,7 +838,7 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
         ImpItems = ImpItems2
     ),
 
-    ToCheckIntItemBlock = item_block(ms_interface,
+    ToCheckIntItemBlock = item_block(ModuleName, ms_interface,
         ModuleNameContext, IntIncls, IntAvails, IntItems),
     check_interface_item_blocks_for_no_exports(Globals,
         ModuleName, ModuleNameContext, [ToCheckIntItemBlock], !Specs),
@@ -983,7 +988,7 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
         !IntFIMsCord, !ImpFIMsCord,
         !IntTypesMap, !ImpTypesMap, !NeededModules, !Specs) :-
-    SrcItemBlock = item_block(SrcSection, _Context, Incls, Avails, Items),
+    SrcItemBlock = item_block(_, SrcSection, _, Incls, Avails, Items),
     (
         SrcSection = sms_interface,
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
@@ -2005,7 +2010,7 @@ get_interface(RawCompUnit, InterfaceRawCompUnit) :-
     % XXX ITEM_LIST (It seems to be a wrong guess; the compiler bootstraps
     % even if we pass ms_implementation here.)
     add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ms_interface, IFileItemBlocks0, IFileItemBlocks),
+        ModuleName, ms_interface, IFileItemBlocks0, IFileItemBlocks),
     InterfaceRawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, IFileItemBlocks).
 
@@ -2019,7 +2024,7 @@ get_int_and_imp(RawCompUnit, IFileItemBlocks, NoIFileItemBlocks) :-
     NoIFileItemBlocks = cord.list(NoIFileItemBlocksCord),
     % XXX ITEM_LIST The ms_interface is a guess.
     add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ms_interface, IFileItemBlocks0, IFileItemBlocks).
+        ModuleName, ms_interface, IFileItemBlocks0, IFileItemBlocks).
 
 %---------------------------------------------------------------------------%
 
@@ -2044,7 +2049,8 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(_,
 get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
         [RawItemBlock | RawItemBlocks],
         !IFileItemBlocksCord, !NoIFileItemBlocksCord) :-
-    RawItemBlock = item_block(Section, SectionContext, Incls, Avails, Items),
+    RawItemBlock = item_block(ModuleName, Section, SectionContext,
+        Incls, Avails, Items),
     (
         Section = ms_interface,
         IFileIncls = Incls,
@@ -2076,7 +2082,7 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
     then
         true
     else
-        IFileItemBlock = item_block(Section, SectionContext,
+        IFileItemBlock = item_block(ModuleName, Section, SectionContext,
             IFileIncls, IFileAvails, IFileItems),
         !:IFileItemBlocksCord =
             cord.snoc(!.IFileItemBlocksCord, IFileItemBlock)
@@ -2088,7 +2094,7 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
     then
         true
     else
-        NoIFileItemBlock = item_block(Section, SectionContext,
+        NoIFileItemBlock = item_block(ModuleName, Section, SectionContext,
             NoIFileIncls, NoIFileAvails, NoIFileItems),
         !:NoIFileItemBlocksCord =
             cord.snoc(!.NoIFileItemBlocksCord, NoIFileItemBlock)
@@ -2142,8 +2148,8 @@ get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
-        ItemBlocks0, ItemBlocks) :-
+add_needed_foreign_import_module_items_to_item_blocks(CurModuleName,
+        ModuleName, Section, ItemBlocks0, ItemBlocks) :-
     list.foldl(accumulate_foreign_import_langs_in_item_block, ItemBlocks0,
         set.init, LangSet),
     set.to_sorted_list(LangSet, Langs),
@@ -2153,8 +2159,8 @@ add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
     ;
         Langs = [_ | _],
         ImportItems = list.map(make_foreign_import(ModuleName), Langs),
-        ImportItemBlock = item_block(Section, term.context_init,
-            [], [], ImportItems),
+        ImportItemBlock = item_block(CurModuleName, Section,
+            term.context_init, [], [], ImportItems),
         ItemBlocks = [ImportItemBlock | ItemBlocks0]
     ).
 
@@ -2182,7 +2188,7 @@ get_foreign_self_imports_from_item_blocks(ItemBlocks, Langs) :-
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
 accumulate_foreign_import_langs_in_item_block(ItemBlock, !LangSet) :-
-    ItemBlock = item_block(_, _, _, _, Items),
+    ItemBlock = item_block(_, _, _, _, _, Items),
     list.foldl(accumulate_foreign_import_langs_in_item, Items, !LangSet).
 
 :- pred accumulate_foreign_import_langs_in_item(item::in,

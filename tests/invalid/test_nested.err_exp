@@ -1,24 +1,13 @@
-test_nested.m:013: In module `test_nested':
-test_nested.m:013:   error in `use_module' declaration:
-test_nested.m:013:   module `parent.private_child' is inaccessible.
-test_nested.m:013:   Either there was no prior `import_module' or `use_module'
-test_nested.m:013:   declaration to import module `parent', or the interface
-test_nested.m:013:   for module `parent' does not contain an `include_module'
-test_nested.m:013:   declaration for module `private_child'.
-test_nested.m:014: In module `test_nested':
-test_nested.m:014:   error in `use_module' declaration:
-test_nested.m:014:   module `parent.undeclared_child' is inaccessible.
-test_nested.m:014:   Either there was no prior `import_module' or `use_module'
-test_nested.m:014:   declaration to import module `parent', or the interface
-test_nested.m:014:   for module `parent' does not contain an `include_module'
-test_nested.m:014:   declaration for module `undeclared_child'.
-test_nested.m:017: In module `test_nested':
-test_nested.m:017:   error in `use_module' declaration:
-test_nested.m:017:   module `parent2.child' is inaccessible.
-test_nested.m:017:   Either there was no prior `import_module' or `use_module'
-test_nested.m:017:   declaration to import module `parent2', or the interface
-test_nested.m:017:   for module `parent2' does not contain an `include_module'
-test_nested.m:017:   declaration for module `child'.
+test_nested.m:013: Error: module `parent' has a submodule named
+test_nested.m:013:   `private_child', but it is visible only to its other
+test_nested.m:013:   submodules.
+test_nested.m:014: Error: module `parent' does not have a submodule named
+test_nested.m:014:   `undeclared_child'.
+test_nested.m:017: In module `test_nested': error:
+test_nested.m:017:   the absence of an `:- import_module' or `:- use_module'
+test_nested.m:017:   declaration for `parent2' prevents access to the
+test_nested.m:017:   `:- use_module' declaration for its child module
+test_nested.m:017:   `parent2.child'.
 test_nested.m:024: In the fourth argument of function symbol `foo' of the type
 test_nested.m:024:   `test_nested.foo'/0:
 test_nested.m:024:   error: undefined type `parent.nonexistent_child.foo'/0.

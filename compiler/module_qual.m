@@ -332,10 +332,10 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntItems0, ImpItems0),
-    IntSrcItemBlocks0 = [item_block(sms_interface, term.context_init,
-        IntIncls, IntAvails, IntItems0)],
-    ImpSrcItemBlocks0 = [item_block(sms_implementation, term.context_init,
-        ImpIncls, ImpAvails, ImpItems0)],
+    IntSrcItemBlocks0 = [item_block(ModuleName, sms_interface,
+        term.context_init, IntIncls, IntAvails, IntItems0)],
+    ImpSrcItemBlocks0 = [item_block(ModuleName, sms_implementation,
+        term.context_init, ImpIncls, ImpAvails, ImpItems0)],
     % XXX ITEM_LIST The completely separate treatment of the interface
     % and implementation part of an interface file preserves old behavior;
     % write_short_interface_file in write_module_interface_files.m used

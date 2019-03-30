@@ -456,7 +456,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 look_for_main_pred_in_item_blocks([], !HasMain).
 look_for_main_pred_in_item_blocks([ItemBlock | ItemBlocks], !HasMain) :-
     % XXX ITEM_LIST Warn if Section isn't ms_interface or ams_interface.
-    ItemBlock = item_block(_Section, _Context, _Incls, _Imports, Items),
+    ItemBlock = item_block(_, _, _Context, _Incls, _Imports, Items),
     look_for_main_pred_in_items(Items, !HasMain),
     look_for_main_pred_in_item_blocks(ItemBlocks, !HasMain).
 

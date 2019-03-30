@@ -1,7 +1,5 @@
-sub_c.m:015: In module `sub_c':
-sub_c.m:015:   error in `import_module' declaration:
-sub_c.m:015:   module `sub_a.sub1' is inaccessible.
-sub_c.m:015:   Either there was no prior `import_module' or `use_module'
-sub_c.m:015:   declaration to import module `sub_a', or the interface for
-sub_c.m:015:   module `sub_a' does not contain an `include_module' declaration
-sub_c.m:015:   for module `sub1'.
+sub_c.m:015: In module `sub_c': error:
+sub_c.m:015:   the absence of an `:- import_module' or `:- use_module'
+sub_c.m:015:   declaration for `sub_a' prevents access to the
+sub_c.m:015:   `:- import_module' declaration for its child module
+sub_c.m:015:   `sub_a.sub1'.

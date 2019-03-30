@@ -35,6 +35,13 @@ Changes that may break compatibility:
   all declarations and definitions of a type must agree on whether the type
   is a solver type or not.
 
+* We have enabled stricter checking of module accessibility rules.
+  If a module m has an import_module or use_module declaration for
+  module x.y.z, it must also have import_module or use_module declarations
+  for its ancestors x and x.y. And if the import or use of x.y.z
+  is in module m's interface, then the import or use of x.y.z's
+  ancestor modules must also be in the interface.
+
 * References to everything imported via `:- use_module' declarations
   must now be fully module qualified.
 

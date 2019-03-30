@@ -310,7 +310,7 @@ separate_items_in_blocks([ItemBlock | ItemBlocks], MakeSectionInfo,
         !RevItemFIMs, !RevItemTypeRepns,
         !RevItemForeignEnums, !RevItemForeignExportEnums,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses) :-
-    ItemBlock = item_block(Section, _, _Incls, Avails, Items),
+    ItemBlock = item_block(_, Section, _, _Incls, Avails, Items),
     MakeSectionInfo(Section, SectionInfo),
     SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
     AvailSectionItem = ims_item(ItemMercuryStatus, Avails),

@@ -209,7 +209,7 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
     item_block(int_module_section)::in) is semidet.
 
 non_abstract_imported_int_item_block(ItemBlock) :-
-    ItemBlock = item_block(Section, _, _, _, _),
+    ItemBlock = item_block(_, Section, _, _, _, _),
     require_complete_switch [Section]
     (
         Section = ims_imported_or_used(_, _, _, _)
@@ -225,7 +225,7 @@ non_abstract_imported_int_item_block(ItemBlock) :-
 build_eqv_maps_in_item_blocks([], !TypeEqvMap, !InstEqvMap).
 build_eqv_maps_in_item_blocks([ItemBlock | ItemBlocks],
         !TypeEqvMap, !InstEqvMap) :-
-    ItemBlock = item_block(_Section, _, _, _, Items),
+    ItemBlock = item_block(_, _, _, _, _, Items),
     build_eqv_maps_in_items(Items, !TypeEqvMap, !InstEqvMap),
     build_eqv_maps_in_item_blocks(ItemBlocks, !TypeEqvMap, !InstEqvMap).
 
@@ -316,13 +316,14 @@ replace_in_item_blocks(_, _, _, _, [],
 replace_in_item_blocks(ModuleName, TypeEqvMap, InstEqvMap, SectionVisibility,
         [ItemBlock0 | ItemBlocks0],
         !RevReplItemBlocks, !RecompInfo, !UsedModules, !Specs) :-
-    ItemBlock0 = item_block(Section, SectionContext, Incls, Avails, Items0),
+    ItemBlock0 = item_block(BlockModuleName, Section, SectionContext,
+        Incls, Avails, Items0),
     MaybeRecord = SectionVisibility(Section),
     replace_in_items(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         Items0, [], RevReplItems, !RecompInfo, !UsedModules, !Specs),
     list.reverse(RevReplItems, ReplItems),
-    ReplItemBlock = item_block(Section, SectionContext, Incls, Avails,
-        ReplItems),
+    ReplItemBlock = item_block(BlockModuleName, Section, SectionContext,
+        Incls, Avails, ReplItems),
     !:RevReplItemBlocks = [ReplItemBlock | !.RevReplItemBlocks],
     replace_in_item_blocks(ModuleName, TypeEqvMap, InstEqvMap,
         SectionVisibility, ItemBlocks0,

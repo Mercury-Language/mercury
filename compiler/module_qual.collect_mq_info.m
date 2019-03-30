@@ -109,7 +109,7 @@ int_section_mq_info(IntSection, MQSection, Permissions) :-
 
 collect_mq_info_in_item_blocks(_, [], !Info).
 collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks], !Info) :-
-    ItemBlock = item_block(Section, Context, Incls, Avails, Items),
+    ItemBlock = item_block(_, Section, Context, Incls, Avails, Items),
     SectionInfo(Section, MQSection, Permissions),
 
     trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (

@@ -306,7 +306,7 @@ write_module_dep_file(Globals, ModuleAndImports0, !IO) :-
 convert_back_to_raw_item_blocks([], []).
 convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
         [RawItemBlock | RawItemBlocks]) :-
-    SrcItemBlock = item_block(SrcSection, SectionContext,
+    SrcItemBlock = item_block(ModuleName, SrcSection, SectionContext,
         Incls, Avails, Items),
     (
         SrcSection = sms_interface,
@@ -317,7 +317,7 @@ convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
         ),
         RawSection = ms_implementation
     ),
-    RawItemBlock = item_block(RawSection, SectionContext,
+    RawItemBlock = item_block(ModuleName, RawSection, SectionContext,
         Incls, Avails, Items),
     convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks).
 
