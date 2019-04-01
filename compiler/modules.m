@@ -1815,8 +1815,8 @@ report_missing_ancestor(ModuleName, MissingWhere,
         % XXX _TailIoUCs
         IoUCs = one_or_more(HeadIoUC, _TailIoUCs),
         HeadIoUC = import_or_use_context(ImportOrUse, ImpContext),
-        ( ImportOrUse = import_decl, ImportOrUseDecl = "import_decl"
-        ; ImportOrUse = use_decl, ImportOrUseDecl = "use_decl"
+        ( ImportOrUse = import_decl, ImportOrUseDecl = "import_module"
+        ; ImportOrUse = use_decl, ImportOrUseDecl = "use_module"
         ),
         ImpPieces = [words("Adding such a declaration would obsolete"),
             words("this"), decl(ImportOrUseDecl), words("declaration"),
