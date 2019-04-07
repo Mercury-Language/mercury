@@ -129,10 +129,21 @@
     string::in, list(prog_constraint)::in, U::di, U::uo) is det
     <= output(U).
 
+:- type maybe_exist_constraints
+    --->    no_exist_constraints
+    ;       have_exist_constraints_print_paren(list(prog_constraint)).
+
+    % mercury_output_class_context(TVarSet, VarNamePrint,
+    %   UnivConstraints, MaybeExistConstraints, !IO)
+    % mercury_format_class_context(TVarSet, VarNamePrint,
+    %   UnivConstraints, MaybeExistConstraints, !U)
+    %
 :- pred mercury_output_class_context(tvarset::in, var_name_print::in,
-    prog_constraints::in, existq_tvars::in, io::di, io::uo) is det.
+    list(prog_constraint)::in, maybe_exist_constraints::in,
+    io::di, io::uo) is det.
 :- pred mercury_format_class_context(tvarset::in, var_name_print::in,
-    prog_constraints::in, existq_tvars::in, U::di, U::uo) is det <= output(U).
+    list(prog_constraint)::in, maybe_exist_constraints::in,
+    U::di, U::uo) is det <= output(U).
 
 %---------------------------------------------------------------------------%
 
@@ -464,28 +475,25 @@ mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, Operator,
 %---------------------------------------------------------------------------%
 
 mercury_output_class_context(TypeVarSet, VarNamePrint,
-        ClassContext, ExistQVars, !IO) :-
+        UnivConstraints, MaybeExistConstraints, !IO) :-
     mercury_format_class_context(TypeVarSet, VarNamePrint,
-        ClassContext, ExistQVars, !IO).
+        UnivConstraints, MaybeExistConstraints, !IO).
 
 mercury_format_class_context(TypeVarSet, VarNamePrint,
-        ClassContext, ExistQVars, !U) :-
-    ClassContext = constraints(UnivCs, ExistCs),
-    mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, "=>",
-        ExistCs, !U),
-    ( if
-        ExistQVars = [],
-        ExistCs = []
-    then
-        true
-    else
-        % XXX What prints the matching open parenthesis?
-        % And does it print the open in *exactly* the same set of situations
-        % in which we print the close?
+        UnivConstraints, MaybeExistConstraints, !U) :-
+    (
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints =
+            have_exist_constraints_print_paren(ExistConstraints),
+        mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, "=>",
+            ExistConstraints, !U),
+        % The code that passed us have_exist_constraints_print_paren
+        % should have printed the open paren that this closes.
         add_string(")", !U)
     ),
     mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, "<=",
-        UnivCs, !U).
+        UnivConstraints, !U).
 
 %---------------------------------------------------------------------------%
 

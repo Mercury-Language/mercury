@@ -237,15 +237,18 @@ mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
 
 mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
         ExistQVars, PredName, Types, MaybeWithType, MaybeDet, Purity,
-        ClassContext, StartString, Separator, !U) :-
+        Constraints, StartString, Separator, !U) :-
     add_string(StartString, !U),
     mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, !U),
+    Constraints = constraints(UnivConstraints, ExistConstraints),
     ( if
         ExistQVars = [],
-        ClassContext = constraints(_, [])
+        ExistConstraints = []
     then
-        true
+        MaybeExistConstraints = no_exist_constraints
     else
+        MaybeExistConstraints =
+            have_exist_constraints_print_paren(ExistConstraints),
         add_string("(", !U)
     ),
     add_purity_prefix(Purity, !U),
@@ -292,7 +295,7 @@ mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
         mercury_format_det_annotation(MaybeDet, !U)
     ),
     mercury_format_class_context(TypeVarSet, VarNamePrint,
-        ClassContext, ExistQVars, !U),
+        UnivConstraints, MaybeExistConstraints, !U),
     add_string(Separator, !U).
 
 %---------------------%
@@ -303,15 +306,18 @@ mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
     string::in, string::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
-        RetType, MaybeDet, Purity, ClassContext, StartString, Separator, !U) :-
+        RetType, MaybeDet, Purity, Constraints, StartString, Separator, !U) :-
     add_string(StartString, !U),
     mercury_format_quantifier(VarSet, VarNamePrint, ExistQVars, !U),
+    Constraints = constraints(UnivConstraints, ExistConstraints),
     ( if
         ExistQVars = [],
-        ClassContext = constraints(_, [])
+        ExistConstraints = []
     then
-        true
+        MaybeExistConstraints = no_exist_constraints
     else
+        MaybeExistConstraints =
+            have_exist_constraints_print_paren(ExistConstraints),
         add_string("(", !U)
     ),
     add_purity_prefix(Purity, !U),
@@ -330,7 +336,7 @@ mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
     mercury_format_type(VarSet, VarNamePrint, RetType, !U),
     mercury_format_det_annotation(MaybeDet, !U),
     mercury_format_class_context(VarSet, VarNamePrint,
-        ClassContext, ExistQVars, !U),
+        UnivConstraints, MaybeExistConstraints, !U),
     add_string(Separator, !U).
 
 %---------------------------------------------------------------------------%
