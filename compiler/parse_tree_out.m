@@ -1250,10 +1250,10 @@ mercury_output_item_typeclass(Info, ItemTypeClass, !IO) :-
         Interface = class_interface_abstract,
         io.write_string(".\n", !IO)
     ;
-        Interface = class_interface_concrete(Methods),
+        Interface = class_interface_concrete(ClassDecls),
         io.write_string(" where [\n", !IO),
         Lang = get_output_lang(Info),
-        output_class_methods(Lang, Methods, !IO),
+        output_class_decls(Lang, ClassDecls, !IO),
         io.write_string("\n].\n", !IO)
     ).
 
@@ -1299,21 +1299,23 @@ mercury_format_fundep(TypeVarSet, VarNamePrint, fundep(Domain, Range), !U) :-
     add_list(Range, ", ", mercury_format_var(TypeVarSet, VarNamePrint), !U),
     add_string(")", !U).
 
-:- pred output_class_methods(output_lang::in, list(class_method)::in,
+:- pred output_class_decls(output_lang::in, list(class_decl)::in,
     io::di, io::uo) is det.
 
-output_class_methods(Lang, Methods, !IO) :-
-    io.write_list(Methods, ",\n", output_class_method(Lang), !IO).
+output_class_decls(Lang, ClassDecls, !IO) :-
+    io.write_list(ClassDecls, ",\n", output_class_decl(Lang), !IO).
 
-:- pred output_class_method(output_lang::in, class_method::in,
+:- pred output_class_decl(output_lang::in, class_decl::in,
     io::di, io::uo) is det.
 
-output_class_method(Lang, Method, !IO) :-
+output_class_decl(Lang, Decl, !IO) :-
     io.write_string("\t", !IO),
     (
-        Method = method_pred_or_func(SymName, PredOrFunc, TypesAndModes,
-            WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
-            ExistQVars, Purity, ClassContext, _Context),
+        Decl = class_decl_pred_or_func(PredOrFuncInfo),
+        PredOrFuncInfo = class_pred_or_func_info(SymName, PredOrFunc,
+            TypesAndModes, WithType, WithInst, MaybeDetism,
+            TypeVarSet, InstVarSet, ExistQVars, Purity,
+            Constraints, _Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.
@@ -1328,15 +1330,16 @@ output_class_method(Lang, Method, !IO) :-
                 FuncTypesAndModes, RetTypeAndMode),
             mercury_format_func_decl(Lang, TypeVarSet, InstVarSet, ExistQVars,
                 unqualified(Name), FuncTypesAndModes, RetTypeAndMode,
-                MaybeDetism, Purity, ClassContext, "", ",\n\t", "", !IO)
+                MaybeDetism, Purity, Constraints, "", ",\n\t", "", !IO)
         else
             mercury_format_pred_or_func_decl(Lang, TypeVarSet, InstVarSet,
                 PredOrFunc, ExistQVars, unqualified(Name), TypesAndModes,
                 WithType, WithInst, MaybeDetism, Purity,
-                ClassContext, "", ",\n\t", "", !IO)
+                Constraints, "", ",\n\t", "", !IO)
         )
     ;
-        Method = method_pred_or_func_mode(SymName, PredOrFunc, Modes,
+        Decl = class_decl_mode(ModeInfo),
+        ModeInfo = class_mode_info(SymName, PredOrFunc, Modes,
             WithInst, MaybeDetism, InstVarSet, _Context),
 
         % The module name is implied by the qualifier of the

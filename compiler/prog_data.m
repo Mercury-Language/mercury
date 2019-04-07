@@ -984,7 +984,7 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 
 :- type class_interface
     --->    class_interface_abstract
-    ;       class_interface_concrete(list(class_method)).
+    ;       class_interface_concrete(list(class_decl)).
 
 :- type instance_method
     --->    instance_method(

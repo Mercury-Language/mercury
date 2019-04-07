@@ -1011,6 +1011,12 @@ calls_are_fully_qualified(Markers) =
 
                 % The class constraints on the type variables in the
                 % predicate's type declaration.
+                %
+                % For predicates that represent a method of a typeclass,
+                % the first universal constraint will be the constraint
+                % for that typeclass. This is ensured by code in
+                % module_add_class_method, which is executed when
+                % the class method's pred declaration is added to the HLDS.
 /* 12 */        pi_class_context        :: prog_constraints,
 
 /* 13 */        pi_clauses_info         :: clauses_info,

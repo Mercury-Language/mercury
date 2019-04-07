@@ -964,8 +964,8 @@ find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
     (
         ClassInterface = class_interface_abstract
     ;
-        ClassInterface = class_interface_concrete(Methods),
-        list.foldl(find_items_used_by_class_method, Methods, !Info)
+        ClassInterface = class_interface_concrete(ClassDecls),
+        list.foldl(find_items_used_by_class_decl, ClassDecls, !Info)
     ),
     module_info_get_instance_table(ModuleInfo, Instances),
     ( if map.search(Instances, ClassId, InstanceDefns) then
@@ -1032,17 +1032,21 @@ find_items_used_by_instance(ClassId, Defn, !Info) :-
         !Info ^ module_instances := ModuleInstances
     ).
 
-:- pred find_items_used_by_class_method(class_method::in,
+:- pred find_items_used_by_class_decl(class_decl::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_class_method(Method, !Info) :-
-    Method = method_pred_or_func(_, _, ArgTypesAndModes, _, _, _, _, _, _, _,
-        Constraints, _),
-    find_items_used_by_class_context(Constraints, !Info),
-    list.foldl(find_items_used_by_type_and_mode, ArgTypesAndModes, !Info).
-find_items_used_by_class_method(Method, !Info) :-
-    Method = method_pred_or_func_mode(_, _, Modes, _, _, _, _),
-    find_items_used_by_modes(Modes, !Info).
+find_items_used_by_class_decl(Decl, !Info) :-
+    (
+        Decl = class_decl_pred_or_func(PredOrFuncInfo),
+        PredOrFuncInfo = class_pred_or_func_info(_, _, ArgTypesAndModes,
+            _, _, _, _, _, _, _, Constraints, _),
+        find_items_used_by_class_context(Constraints, !Info),
+        list.foldl(find_items_used_by_type_and_mode, ArgTypesAndModes, !Info)
+    ;
+        Decl = class_decl_mode(ModeInfo),
+        ModeInfo = class_mode_info(_, _, Modes, _, _, _, _),
+        find_items_used_by_modes(Modes, !Info)
+    ).
 
 :- pred find_items_used_by_type_and_mode(type_and_mode::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.

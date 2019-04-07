@@ -34,6 +34,15 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Add a pred or predmode declaration for a predicate.
+    %
+    % We return MaybePredProcId = yes(...) if and only if the declarations
+    % is a predmode declaration, and we could add both parts (the pred part
+    % and the mode part) to the HLDS.
+    %
+    % If there is no mode part, we could return the pred_id, but we would
+    % not be able to return a proc_id.
+    %
 :- pred module_add_pred_or_func(pred_origin::in, prog_context::in, int::in,
     maybe(item_mercury_status)::in, pred_status::in, need_qualifier::in,
     pred_or_func::in, sym_name::in, tvarset::in, inst_varset::in,
@@ -144,28 +153,39 @@ module_add_pred_or_func(Origin, Context, ItemNumber,
     add_new_pred(Origin, Context, ItemNumber,
         MaybeItemMercuryStatus, PredStatus, NeedQual, PredOrFunc, PredName,
         TypeVarSet, ExistQVars, Types, Constraints, MaybeModes, Purity,
-        Markers, !ModuleInfo, !Specs),
+        Markers, Succeeded, !ModuleInfo, !Specs),
     (
         MaybeModes = yes(Modes),
-        ( if check_marker(Markers, marker_class_method) then
-            IsClassMethod = is_a_class_method
-        else
-            IsClassMethod = is_not_a_class_method
-        ),
-        % By setting MaybeModeItemMercuryStatus to no, we are telling
-        % module_add_mode that there *was* no separate mode declaration.
-        % Since we have already recorded (in the cur_user_decl_info slot
-        % of the predicate's pred_info) that this predicate has a predmode
-        % declaration, the addition of a *separate* mode declaration
-        % would lead to the generation of an error message.
-        MaybeModeItemMercuryStatus = maybe.no,
-        module_add_mode(Context, ItemNumber,
-            MaybeModeItemMercuryStatus, PredStatus,
-            PredOrFunc, PredName, InstVarSet, Modes, MaybeDet,
-            IsClassMethod, PredProcId, !ModuleInfo, !Specs),
-        MaybePredProcId = yes(PredProcId)
+        (
+            Succeeded = no,
+            % Do not try to add the mode declaration part of the predmode
+            % declaration to the HLDS if adding the pred declaration part
+            % has failed.
+            MaybePredProcId = no
+        ;
+            Succeeded = yes,
+            ( if check_marker(Markers, marker_class_method) then
+                IsClassMethod = is_a_class_method
+            else
+                IsClassMethod = is_not_a_class_method
+            ),
+            % By setting MaybeModeItemMercuryStatus to no, we are telling
+            % module_add_mode that there *was* no separate mode declaration.
+            % Since we have already recorded (in the cur_user_decl_info slot
+            % of the predicate's pred_info) that this predicate has a predmode
+            % declaration, the addition of a *separate* mode declaration
+            % would lead to the generation of an error message.
+            MaybeModeItemMercuryStatus = maybe.no,
+            module_add_mode(Context, ItemNumber,
+                MaybeModeItemMercuryStatus, PredStatus,
+                PredOrFunc, PredName, InstVarSet, Modes, MaybeDet,
+                IsClassMethod, PredProcId, !ModuleInfo, !Specs),
+            MaybePredProcId = yes(PredProcId)
+        )
     ;
         MaybeModes = no,
+        % There is no valid mode declaration part we can add to the HLDS.
+        % Check for an invalid mode declaration part anyway.
         MaybePredProcId = no,
         ( if
             MaybeDet = yes(_),
@@ -203,13 +223,14 @@ module_add_pred_or_func(Origin, Context, ItemNumber,
     maybe(item_mercury_status)::in, pred_status::in,
     need_qualifier::in, pred_or_func::in, sym_name::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in, prog_constraints::in,
-    maybe_modes::in, purity::in, pred_markers::in,
+    maybe_modes::in, purity::in, pred_markers::in, bool::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_new_pred(Origin, Context, ItemNumber, MaybeItemMercuryStatus, PredStatus0,
         NeedQual, PredOrFunc, PredName, TVarSet, ExistQVars, Types,
-        Constraints, MaybeModes, Purity, Markers0, !ModuleInfo, !Specs) :-
+        Constraints, MaybeModes, Purity, Markers0, Succeeded,
+        !ModuleInfo, !Specs) :-
     % NB. Predicates are also added in lambda.m, which converts
     % lambda expressions into separate predicates, so any changes may need
     % to be reflected there too.
@@ -228,6 +249,7 @@ add_new_pred(Origin, Context, ItemNumber, MaybeItemMercuryStatus, PredStatus0,
         PredName = unqualified(_PName),
         % All predicate names passed into this predicate should have been
         % qualified by the parser when they were first read.
+        Succeeded = no,
         module_info_incr_errors(!ModuleInfo),
         unqualified_pred_error(PredName, PredArity, Context, !Specs)
     ;
@@ -265,6 +287,7 @@ add_new_pred(Origin, Context, ItemNumber, MaybeItemMercuryStatus, PredStatus0,
             PredOrFunc, MNameOfPred, PName, PredArity, PredIds),
         (
             PredIds = [OrigPred | _],
+            Succeeded = no,
             module_info_pred_info(!.ModuleInfo, OrigPred, OrigPredInfo),
             pred_info_get_context(OrigPredInfo, OrigContext),
             DeclString = pred_or_func_to_str(PredOrFunc),
@@ -277,6 +300,7 @@ add_new_pred(Origin, Context, ItemNumber, MaybeItemMercuryStatus, PredStatus0,
             )
         ;
             PredIds = [],
+            Succeeded = yes,
             module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
             predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
                 PredTable0, PredTable1),

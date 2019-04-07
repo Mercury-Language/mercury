@@ -940,7 +940,8 @@ replace_in_prog_constraint_location(MaybeRecord, TypeEqvMap,
 %---------------------------------------------------------------------------%
 
 :- pred replace_in_class_interface(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in, class_methods::in, class_methods::out,
+    type_eqv_map::in, inst_eqv_map::in,
+    list(class_decl)::in, list(class_decl)::out,
     eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -949,32 +950,37 @@ replace_in_class_interface(MaybeRecord, TypeEqvMap, InstEqvMap,
         ClassInterface0, ClassInterface, !EquivTypeInfo, !UsedModules,
         !Specs) :-
     list.map_foldl3(
-        replace_in_class_method(MaybeRecord, TypeEqvMap, InstEqvMap),
+        replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap),
         ClassInterface0, ClassInterface, !EquivTypeInfo, !UsedModules, !Specs).
 
-:- pred replace_in_class_method(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in, class_method::in, class_method::out,
+:- pred replace_in_class_decl(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, class_decl::in, class_decl::out,
     eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_class_method(MaybeRecord, TypeEqvMap, InstEqvMap, Method0, Method,
+replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap, Decl0, Decl,
         !EquivTypeInfo, !UsedModules, !Specs) :-
     (
-        Method0 = method_pred_or_func(PredName, PredOrFunc, TypesAndModes0,
-            WithType0, WithInst0, MaybeDetism0, TypeVarSet0, InstVarSet,
-            ExistQVars, Purity, ClassContext0, Context),
+        Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
+        PredOrFuncInfo0 = class_pred_or_func_info(PredName, PredOrFunc,
+            TypesAndModes0, WithType0, WithInst0, MaybeDetism0,
+            TypeVarSet0, InstVarSet, ExistQVars, Purity,
+            ClassContext0, Context),
         replace_in_pred_type(MaybeRecord, PredName, PredOrFunc, Context,
             TypeEqvMap, InstEqvMap, ClassContext0, ClassContext,
             TypesAndModes0, TypesAndModes, TypeVarSet0, TypeVarSet,
             WithType0, WithType, WithInst0, WithInst,
             MaybeDetism0, MaybeDetism, !EquivTypeInfo, !UsedModules, NewSpecs),
         !:Specs = NewSpecs ++ !.Specs,
-        Method = method_pred_or_func(PredName, PredOrFunc, TypesAndModes,
-            WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
-            ExistQVars, Purity, ClassContext, Context)
+        PredOrFuncInfo = class_pred_or_func_info(PredName, PredOrFunc,
+            TypesAndModes, WithType, WithInst, MaybeDetism,
+            TypeVarSet, InstVarSet, ExistQVars, Purity,
+            ClassContext, Context),
+        Decl = class_decl_pred_or_func(PredOrFuncInfo)
     ;
-        Method0 = method_pred_or_func_mode(PredName, MaybePredOrFunc0, Modes0,
+        Decl0 = class_decl_mode(ModeInfo0),
+        ModeInfo0 = class_mode_info(PredName, MaybePredOrFunc0, Modes0,
             WithInst0, MaybeDetism0, InstVarSet, Context),
         replace_in_pred_mode(MaybeRecord, InstEqvMap,
             PredName, list.length(Modes0), Context, mode_decl, ExtraModes,
@@ -988,8 +994,9 @@ replace_in_class_method(MaybeRecord, TypeEqvMap, InstEqvMap, Method0, Method,
             Modes = Modes0 ++ ExtraModes
         ),
         !:Specs = NewSpecs ++ !.Specs,
-        Method = method_pred_or_func_mode(PredName, MaybePredOrFunc, Modes,
-            WithInst, MaybeDetism, InstVarSet, Context)
+        ModeInfo = class_mode_info(PredName, MaybePredOrFunc, Modes,
+            WithInst, MaybeDetism, InstVarSet, Context),
+        Decl = class_decl_mode(ModeInfo)
     ).
 
 %---------------------------------------------------------------------------%

@@ -42,18 +42,18 @@
 :- pred parse_item_or_marker(module_name::in, varset::in, term::in, int::in,
     maybe1(item_or_marker)::out) is det.
 
-    % parse_class_method_decl(ModuleName, VarSet, Term, MaybeClassMethod):
+    % parse_class_decl(ModuleName, VarSet, Term, MaybeClassDecl):
     %
-    % Parse Term as a declaration. If successful, bind MaybeItem to the
-    % parsed item, otherwise it is bound to an appropriate error message.
-    % Qualify appropriate parts of the item, with ModuleName as the module
-    % name. Use SeqNum as the item's sequence number.
+    % Parse Term as a declaration that may appear in the body of a
+    % typeclass declaration. If successful, bind MaybeClassDecl to the
+    % parsed item, otherwise bind it to an appropriate error message.
+    % Qualify appropriate parts of the declaration with ModuleName
+    % as the module name.
     %
-    % Exported for use by parse_class.m, for parsing type class method
-    % declarations.
+    % Exported for use by parse_class.m.
     %
-:- pred parse_class_method_decl(module_name::in, varset::in, term::in,
-    maybe1(class_method)::out) is det.
+:- pred parse_class_decl(module_name::in, varset::in, term::in,
+    maybe1(class_decl)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -295,7 +295,7 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     % A variant of the commented-out code below should help implement
     % quantification for these kinds of promise declarations, but enabling it
     % would break the above coincidence, requiring extra checks in
-    % parse_class_method_decl.
+    % parse_class_decl.
 
     require_switch_arms_det [Functor]
     (
@@ -391,7 +391,7 @@ parse_clause_term_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
             ClauseContext, SeqNum, MaybeIOM)
     ).
 
-parse_class_method_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
+parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     TermContext = get_term_context(Term),
     parse_attributed_decl(ModuleName, VarSet, Term, decl_is_in_class,
         TermContext, -1, cord.init, cord.init, MaybeIOM),
@@ -405,16 +405,18 @@ parse_class_method_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
                 WithType, WithInst, MaybeDetism, _Origin,
                 TypeVarSet, InstVarSet, ExistQVars, Purity,
                 Constraints, Context, _SeqNum),
-            ClassMethod = method_pred_or_func(Name, PorF, ArgDecls,
+            PredOrFuncInfo = class_pred_or_func_info(Name, PorF, ArgDecls,
                 WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
                 ExistQVars, Purity, Constraints, Context),
-            MaybeClassMethod = ok1(ClassMethod)
+            ClassDecl = class_decl_pred_or_func(PredOrFuncInfo),
+            MaybeClassMethod = ok1(ClassDecl)
         else if IOM = iom_item(item_mode_decl(ItemModeDecl)) then
             ItemModeDecl = item_mode_decl_info(Name, MaybePorF, ArgModes,
                 WithInst, MaybeDetism, InstVarSet, Context, _SeqNum),
-            ClassMethod = method_pred_or_func_mode(Name, MaybePorF, ArgModes,
+            ModeInfo = class_mode_info(Name, MaybePorF, ArgModes,
                 WithInst, MaybeDetism, InstVarSet, Context),
-            MaybeClassMethod = ok1(ClassMethod)
+            ClassDecl = class_decl_mode(ModeInfo),
+            MaybeClassMethod = ok1(ClassDecl)
         else
             Pieces = [words("Error: only pred, func and mode declarations"),
                 words("are allowed in class interfaces."), nl],

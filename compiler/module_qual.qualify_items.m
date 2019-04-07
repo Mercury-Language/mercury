@@ -273,7 +273,7 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         ;
             Interface0 = class_interface_concrete(Methods0),
             ErrorContext = mqec_class(Context, mq_id(Name, Arity)),
-            qualify_class_methods(InInt, ErrorContext, Methods0, Methods,
+            qualify_class_decls(InInt, ErrorContext, Methods0, Methods,
                 !Info, !Specs),
             Interface = class_interface_concrete(Methods)
         ),
@@ -963,30 +963,31 @@ qualify_class_name(InInt, ErrorContext, Class0, Name, !Info, !Specs) :-
 
 %---------------------%
 
-:- pred qualify_class_methods(mq_in_interface::in, mq_error_context::in,
-    list(class_method)::in, list(class_method)::out,
+:- pred qualify_class_decls(mq_in_interface::in, mq_error_context::in,
+    list(class_decl)::in, list(class_decl)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_class_methods(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_class_methods(InInt, ErrorContext,
-        [Method0 | Methods0], [Method | Methods], !Info, !Specs) :-
+qualify_class_decls(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_class_decls(InInt, ErrorContext,
+        [Decl0 | Decls0], [Decl | Decls], !Info, !Specs) :-
     % XXX We could pass a more specific error context.
-    qualify_class_method(InInt, ErrorContext, Method0, Method,
+    qualify_class_decl(InInt, ErrorContext, Decl0, Decl,
         !Info, !Specs),
-    qualify_class_methods(InInt, ErrorContext, Methods0, Methods,
+    qualify_class_decls(InInt, ErrorContext, Decls0, Decls,
         !Info, !Specs).
 
-:- pred qualify_class_method(mq_in_interface::in, mq_error_context::in,
-    class_method::in, class_method::out, mq_info::in, mq_info::out,
+:- pred qualify_class_decl(mq_in_interface::in, mq_error_context::in,
+    class_decl::in, class_decl::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_class_method(InInt, ErrorContext, Method0, Method, !Info, !Specs) :-
+qualify_class_decl(InInt, ErrorContext, Decl0, Decl, !Info, !Specs) :-
     % There is no need to qualify the method name, since that is done
     % when the item is parsed.
     (
-        Method0 = method_pred_or_func(Name, PredOrFunc, TypesAndModes0,
-            MaybeWithType0, MaybeWithInst0, MaybeDetism,
+        Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
+        PredOrFuncInfo0 = class_pred_or_func_info(Name, PredOrFunc,
+            TypesAndModes0, MaybeWithType0, MaybeWithInst0, MaybeDetism,
             TypeVarset, InstVarset, ExistQVars,
             Purity, Constraints0, Context),
         % XXX We could pass a more specific error context.
@@ -1016,12 +1017,14 @@ qualify_class_method(InInt, ErrorContext, Method0, Method, !Info, !Specs) :-
             MaybeWithInst0 = no,
             MaybeWithInst = no
         ),
-        Method = method_pred_or_func(Name, PredOrFunc, TypesAndModes,
-            MaybeWithType, MaybeWithInst, MaybeDetism,
+        PredOrFuncInfo = class_pred_or_func_info(Name, PredOrFunc,
+            TypesAndModes, MaybeWithType, MaybeWithInst, MaybeDetism,
             TypeVarset, InstVarset, ExistQVars,
-            Purity, Constraints, Context)
+            Purity, Constraints, Context),
+        Decl = class_decl_pred_or_func(PredOrFuncInfo)
     ;
-        Method0 = method_pred_or_func_mode(PredOrFunc, Name, Modes0,
+        Decl0 = class_decl_mode(ModeInfo0),
+        ModeInfo0 = class_mode_info(PredOrFunc, Name, Modes0,
             MaybeWithInst0, MaybeDetism, Varset, Context),
         qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
         (
@@ -1034,8 +1037,9 @@ qualify_class_method(InInt, ErrorContext, Method0, Method, !Info, !Specs) :-
             MaybeWithInst0 = no,
             MaybeWithInst = no
         ),
-        Method = method_pred_or_func_mode(PredOrFunc, Name, Modes,
-            MaybeWithInst, MaybeDetism, Varset, Context)
+        ModeInfo = class_mode_info(PredOrFunc, Name, Modes,
+            MaybeWithInst, MaybeDetism, Varset, Context),
+        Decl = class_decl_mode(ModeInfo)
     ).
 
 %---------------------------------------------------------------------------%

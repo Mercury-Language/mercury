@@ -117,19 +117,19 @@ parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
         Context, SeqNum, MaybeItemTypeClassInfo) :-
     parse_class_head(ModuleName, VarSet, NameTerm, Context, SeqNum,
         MaybeItemTypeClassInfo0),
-    parse_class_methods(ModuleName, VarSet, MethodsTerm, MaybeClassMethods),
+    parse_class_decls(ModuleName, VarSet, MethodsTerm, MaybeClassDecls),
     ( if
         MaybeItemTypeClassInfo0 = ok1(ItemTypeClassInfo0),
-        MaybeClassMethods = ok1(ClassMethods)
+        MaybeClassDecls = ok1(ClassDecls)
     then
         varset.coerce(VarSet, TVarSet),
         ItemTypeClassInfo = ((ItemTypeClassInfo0
-            ^ tc_class_methods := class_interface_concrete(ClassMethods))
+            ^ tc_class_methods := class_interface_concrete(ClassDecls))
             ^ tc_varset := TVarSet),
         MaybeItemTypeClassInfo = ok1(ItemTypeClassInfo)
     else
         Specs = get_any_errors1(MaybeItemTypeClassInfo0) ++
-            get_any_errors1(MaybeClassMethods),
+            get_any_errors1(MaybeClassDecls),
         MaybeItemTypeClassInfo = error1(Specs)
     ).
 
@@ -372,49 +372,45 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
         MaybeTypeClassInfo = error1(Specs)
     ).
 
-:- pred parse_class_methods(module_name::in, varset::in, term::in,
-    maybe1(class_methods)::out) is det.
+:- pred parse_class_decls(module_name::in, varset::in, term::in,
+    maybe1(list(class_decl))::out) is det.
 
-parse_class_methods(ModuleName, VarSet, MethodsTerm, MaybeClassMethods) :-
-    ( if
-        % Convert the list of terms into a list of maybe1(class_method)s.
-        list_term_to_term_list(MethodsTerm, MethodTerms)
-    then
-        list.map(parse_class_method_decl(ModuleName, VarSet),
-            MethodTerms, MaybeMethods),
-        find_errors(MaybeMethods, MaybeClassMethods)
+parse_class_decls(ModuleName, VarSet, DeclsTerm, MaybeClassDecls) :-
+    ( if list_term_to_term_list(DeclsTerm, DeclTerms) then
+        list.map(parse_class_decl(ModuleName, VarSet), DeclTerms, MaybeDecls),
+        find_errors(MaybeDecls, MaybeClassDecls)
     else
         Pieces = [words("Error: expected a list of class methods."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(MethodsTerm), [always(Pieces)])]),
-        MaybeClassMethods = error1([Spec])
+            [simple_msg(get_term_context(DeclsTerm), [always(Pieces)])]),
+        MaybeClassDecls = error1([Spec])
     ).
 
-    % From a list of maybe1s, search through until you find an error.
-    % If some errors are found, error1(their union).
+    % From a list of maybe1s, search them for errors.
+    % If some errors are found, return error1(their union).
     % If no error is found, return ok1(the original elements).
     %
 :- pred find_errors(list(maybe1(T))::in, maybe1(list(T))::out) is det.
 
 find_errors(Xs, Result) :-
-    find_errors_2(Xs, [], Methods, [], Specs),
+    find_errors_loop(Xs, [], Results, [], Specs),
     (
         Specs = [],
-        Result = ok1(Methods)
+        Result = ok1(Results)
     ;
         Specs = [_ | _],
         Result = error1(Specs)
     ).
 
-:- pred find_errors_2(list(maybe1(T))::in, list(T)::in, list(T)::out,
+:- pred find_errors_loop(list(maybe1(T))::in, list(T)::in, list(T)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-find_errors_2([], !Methods, !Specs).
-find_errors_2([X | Xs], !Methods, !Specs) :-
-    find_errors_2(Xs, !Methods, !Specs),
+find_errors_loop([], !Results, !Specs).
+find_errors_loop([X | Xs], !Results, !Specs) :-
+    find_errors_loop(Xs, !Results, !Specs),
     (
-        X = ok1(CurMethod),
-        !:Methods = [CurMethod | !.Methods]
+        X = ok1(CurResult),
+        !:Results = [CurResult | !.Results]
     ;
         X = error1(CurSpecs),
         !:Specs = CurSpecs ++ !.Specs
@@ -855,9 +851,8 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
 
 parse_instance_methods(ModuleName, VarSet, MethodsTerm, Result) :-
     ( if list_term_to_term_list(MethodsTerm, MethodList) then
-        % Convert the list of terms into a list of maybe1(class_method)s.
-        list.map(term_to_instance_method(ModuleName, VarSet), MethodList,
-            Interface),
+        list.map(term_to_instance_method(ModuleName, VarSet),
+            MethodList, Interface),
         find_errors(Interface, Result)
     else
         Pieces = [words("Error: expected list of instance methods."), nl],

@@ -974,12 +974,12 @@ check_item_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
             NeedsCheck, !Info),
         ( if
             NeedsCheck = yes,
-            Interface = class_interface_concrete(Methods)
+            Interface = class_interface_concrete(ClassDecls)
         then
             list.foldl(
-                check_class_method_for_ambiguities(NeedQualifier,
+                check_class_decl_for_ambiguities(NeedQualifier,
                     OldTimestamp, VersionNumbers),
-                Methods, !Info)
+                ClassDecls, !Info)
         else
             true
         )
@@ -1003,20 +1003,21 @@ check_item_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         )
     ).
 
-:- pred check_class_method_for_ambiguities(need_qualifier::in, timestamp::in,
-    item_version_numbers::in, class_method::in,
+:- pred check_class_decl_for_ambiguities(need_qualifier::in, timestamp::in,
+    item_version_numbers::in, class_decl::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_class_method_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        ClassMethod, !Info) :-
+check_class_decl_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
+        Decl, !Info) :-
     (
-        ClassMethod = method_pred_or_func(MethodName, PredOrFunc, MethodArgs,
-            MethodWithType, _, _, _, _, _, _, _, _),
+        Decl = class_decl_pred_or_func(PredOrFuncInfo),
+        PredOrFuncInfo = class_pred_or_func_info(MethodName, PredOrFunc,
+            MethodArgs, MethodWithType, _, _, _, _, _, _, _, _),
         check_for_pred_or_func_item_ambiguity(yes, NeedQualifier, OldTimestamp,
             VersionNumbers, PredOrFunc, MethodName, MethodArgs, MethodWithType,
             !Info)
     ;
-        ClassMethod = method_pred_or_func_mode(_, _, _, _, _, _, _)
+        Decl = class_decl_mode(_)
     ).
 
 :- pred item_is_new_or_changed(timestamp::in, item_version_numbers::in,

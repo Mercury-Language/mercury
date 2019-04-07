@@ -93,6 +93,7 @@ SINGLEMODULE= \
 	bug410 \
 	bug415 \
 	bug436 \
+	bug476 \
 	bug83 \
 	builtin_int \
 	builtin_proc \

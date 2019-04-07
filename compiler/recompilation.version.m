@@ -483,12 +483,12 @@ add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
         AddedItems = [Section - PredItem, Section - ModeItem]
     else if
         Item = item_typeclass(ItemTypeClass),
-        ItemTypeClass ^ tc_class_methods = class_interface_concrete(Methods0)
+        ItemTypeClass ^ tc_class_methods = class_interface_concrete(Decls0)
     then
-        MethodsList = list.map(split_class_method_types_and_modes, Methods0),
-        list.condense(MethodsList, Methods),
+        DeclsList = list.map(split_class_method_types_and_modes, Decls0),
+        list.condense(DeclsList, Decls),
         NewItemTypeClass = ItemTypeClass ^ tc_class_methods
-            := class_interface_concrete(Methods),
+            := class_interface_concrete(Decls),
         NewItem = item_typeclass(NewItemTypeClass),
         AddedItems = [Section - NewItem]
     else
@@ -502,21 +502,16 @@ add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
     ),
     update_ids(ItemType, IdMap, !GatheredItems).
 
-:- func split_class_method_types_and_modes(class_method) = class_methods.
+:- func split_class_method_types_and_modes(class_decl) = list(class_decl).
 
-split_class_method_types_and_modes(Method0) = Methods :-
+split_class_method_types_and_modes(Decl0) = Decls :-
     % Always strip the context from the item -- this is needed
     % so the items can be easily tested for equality.
     (
-        Method0 = method_pred_or_func_mode(SymName, MaybePredOrFunc,
-            Modes, WithInst, MaybeDetism, InstVarSet, _Context),
-        Method = method_pred_or_func_mode(SymName, MaybePredOrFunc,
-            Modes, WithInst, MaybeDetism, InstVarSet, term.context_init),
-        Methods = [Method]
-    ;
-        Method0 = method_pred_or_func(SymName, PredOrFunc, TypesAndModes,
-            WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
-            ExistQVars, Purity, Constraints, _Context),
+        Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
+        PredOrFuncInfo0 = class_pred_or_func_info(SymName, PredOrFunc,
+            TypesAndModes, WithType, WithInst, MaybeDetism,
+            TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints, _Context),
         ( if
             split_types_and_modes(TypesAndModes, Types, MaybeModes),
             MaybeModes = yes(Modes),
@@ -536,19 +531,29 @@ split_class_method_types_and_modes(Method0) = Methods :-
                 WithInst = no,
                 MaybePredOrFunc = yes(PredOrFunc)
             ),
-            PredOrFuncModeItem = method_pred_or_func_mode(SymName,
-                MaybePredOrFunc, Modes, WithInst, MaybeDetism,
+            ModeInfo = class_mode_info(SymName, MaybePredOrFunc,
+                Modes, WithInst, MaybeDetism,
                 InstVarSet, term.context_init),
-            PredOrFuncModeItems = [PredOrFuncModeItem]
+            ModeDecl = class_decl_mode(ModeInfo),
+            ModeDecls = [ModeDecl]
         else
             TypesWithoutModes = TypesAndModes,
-            PredOrFuncModeItems = []
+            ModeDecls = []
         ),
         varset.init(EmptyInstVarSet),
-        PredOrFuncItem = method_pred_or_func(SymName, PredOrFunc,
+        PredOrFuncInfo = class_pred_or_func_info(SymName, PredOrFunc,
             TypesWithoutModes, WithType, no, no, TypeVarSet, EmptyInstVarSet,
             ExistQVars, Purity, Constraints, term.context_init),
-        Methods = [PredOrFuncItem | PredOrFuncModeItems]
+        PredOrFuncDecl = class_decl_pred_or_func(PredOrFuncInfo),
+        Decls = [PredOrFuncDecl | ModeDecls]
+    ;
+        Decl0 = class_decl_mode(ModeInfo0),
+        ModeInfo0 = class_mode_info(SymName, MaybePredOrFunc,
+            Modes, WithInst, MaybeDetism, InstVarSet, _Context),
+        ModeInfo = class_mode_info(SymName, MaybePredOrFunc,
+            Modes, WithInst, MaybeDetism, InstVarSet, term.context_init),
+        Decl = class_decl_mode(ModeInfo),
+        Decls = [Decl]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -598,11 +603,12 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         % Does this pragma match any of the methods of this class.
         list.member(_ - ClassItem, !.ClassItems),
         ClassItem = item_typeclass(ClassItemTypeClass),
-        Interface = ClassItemTypeClass ^ tc_class_methods,
-        Interface = class_interface_concrete(Methods),
-        list.member(Method, Methods),
-        Method = method_pred_or_func(SymName, MethodPredOrFunc, TypesAndModes,
-            WithType, _, _, _, _, _, _, _, _),
+        ClassItemTypeClass ^ tc_class_methods =
+            class_interface_concrete(Decls),
+        list.member(Decl, Decls),
+        Decl = class_decl_pred_or_func(PredOrFuncInfo),
+        PredOrFuncInfo = class_pred_or_func_info(SymName, MethodPredOrFunc,
+            TypesAndModes, WithType, _, _, _, _, _, _, _, _),
         ( MaybePredOrFunc = yes(MethodPredOrFunc)
         ; MaybePredOrFunc = no
         ),
@@ -1250,31 +1256,35 @@ class_interface_is_unchanged(Interface0, Interface) :-
         Interface = class_interface_concrete(Methods2)
     ).
 
-:- pred class_methods_are_unchanged(class_methods::in, class_methods::in)
+:- pred class_methods_are_unchanged(list(class_decl)::in, list(class_decl)::in)
     is semidet.
 
 class_methods_are_unchanged([], []).
-class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-
+class_methods_are_unchanged([Decl1 | Decls1], [Decl2 | Decls2]) :-
     (
-        Method1 = method_pred_or_func(Name, PredOrFunc, TypesAndModes1,
-            WithType1, _, Detism, TVarSet1, _, ExistQVars1,
+        Decl1 = class_decl_pred_or_func(PredOrFuncInfo1),
+        Decl2 = class_decl_pred_or_func(PredOrFuncInfo2),
+        PredOrFuncInfo1 = class_pred_or_func_info(Name, PredOrFunc,
+            TypesAndModes1, WithType1, _, Detism, TVarSet1, _, ExistQVars1,
             Purity, Constraints1, _),
-        Method2 = method_pred_or_func(Name, PredOrFunc, TypesAndModes2,
-            WithType2, _, Detism, TVarSet2, _, ExistQVars2,
+        PredOrFuncInfo2 = class_pred_or_func_info(Name, PredOrFunc,
+            TypesAndModes2, WithType2, _, Detism, TVarSet2, _, ExistQVars2,
             Purity, Constraints2, _),
         pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
             TypesAndModes1, WithType1, Constraints1,
-            TVarSet2, ExistQVars2, TypesAndModes2, WithType2,
-            Constraints2)
+            TVarSet2, ExistQVars2,
+            TypesAndModes2, WithType2, Constraints2)
     ;
-        Method1 = method_pred_or_func_mode(Name, PredOrFunc, Modes1,
+        Decl1 = class_decl_mode(ModeInfo1),
+        Decl2 = class_decl_mode(ModeInfo2),
+        ModeInfo1 = class_mode_info(Name, PredOrFunc, Modes1,
             WithInst1, Det, InstVarSet1, _),
-        Method2 = method_pred_or_func_mode(Name, PredOrFunc, Modes2,
+        ModeInfo2 = class_mode_info(Name, PredOrFunc, Modes2,
             WithInst2, Det, InstVarSet2, _),
         pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
             InstVarSet2, Modes2, WithInst2)
     ),
-    class_methods_are_unchanged(Methods1, Methods2).
+    class_methods_are_unchanged(Decls1, Decls2).
 
 %-----------------------------------------------------------------------------%
 

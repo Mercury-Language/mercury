@@ -238,8 +238,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % A predicate declaration defines the type of the arguments of a predicate,
     % and may give the modes of those arguments. Since we have already seen
     % all type, inst and mode definitions, we could check whether the newly
-    % defined refers to an undefined type, inst, or mode, but we do not (yet)
-    % do so.
+    % defined predicate refers to an undefined type, inst, or mode, but
+    % we do not (yet) do so.
     list.foldl2(add_pred_decl, ItemPredDecls,
         !ModuleInfo, !Specs),
 
@@ -270,6 +270,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         !ModuleInfo, !Specs),
 
     % Record the definitions of typeclasses.
+    % This will add the pred and mode declarations of the methods inside them
+    % to the HLDS.
     list.foldl2(add_typeclass_defn, ItemTypeclasses,
         !ModuleInfo, !Specs),
 

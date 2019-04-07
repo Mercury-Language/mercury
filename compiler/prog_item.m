@@ -736,54 +736,82 @@
 % Type classes.
 %
 
-    % The name class_method is a slight misnomer; this type actually represents
-    % any declaration that occurs in the body of a type class definition.
-    % Such declarations may either declare class methods, or they may declare
-    % modes of class methods.
+    % The class_decl type represents any declaration that occurs
+    % in the body of a type class definition.
     %
-:- type class_method
-    --->    method_pred_or_func(
-                % pred_or_func(...) here represents a `pred ...' or `func ...'
-                % declaration in a type class body, which declares
-                % a predicate or function method. Such declarations
-                % specify the type of the predicate or function,
-                % and may optionally also specify the mode and determinism.
+    % Such declarations may either declare class methods, or they may declare
+    % the modes of class methods.
+    %
+:- type class_decl
+    --->    class_decl_pred_or_func(class_pred_or_func_info)
+    ;       class_decl_mode(class_mode_info).
 
-                sym_name,           % name of the pred or func
+:- type class_pred_or_func_info
+    --->    class_pred_or_func_info(
+                % This is a `pred ...' or `func ...' declaration in a
+                % type class body, which declares a predicate or function
+                % method. Such declarations specify the types of the
+                % arguments, and may optionally also specify argument modes
+                % and the determinism.
+
+                % The name of the predicate or function.
+                sym_name,
                 pred_or_func,
-                list(type_and_mode),% the arguments' types and modes
-                maybe(mer_type),    % any `with_type` annotation
-                maybe(mer_inst),    % any `with_inst` annotation
-                maybe(determinism), % any determinism declaration
-                tvarset,            % type variables
-                inst_varset,        % inst variables
-                existq_tvars,       % existentially quantified
-                                    % type variables
-                purity,             % any purity annotation
-                prog_constraints,   % the typeclass constraints on
-                                    % the declaration
-                prog_context        % the declaration's context
-            )
 
-    ;       method_pred_or_func_mode(
-                % pred_or_func_mode(...) here represents a `mode ...'
-                % declaration in a type class body. Such a declaration
-                % declares a mode for one of the type class methods.
+                % The arguments' types, and maybe modes.
+                list(type_and_mode),
 
-                sym_name,           % the method name
-                maybe(pred_or_func),% whether the method is a pred
-                                    % or a func; for declarations
-                                    % using `with_inst`, we don't
-                                    % know which until we've
-                                    % expanded the inst.
-                list(mer_mode),     % the arguments' modes
-                maybe(mer_inst),    % any `with_inst` annotation
-                maybe(determinism), % any determinism declaration
-                inst_varset,        % inst variables
-                prog_context        % the declaration's context
+                % Any `with_type` and/or `with_inst` annotation.
+                maybe(mer_type),
+                maybe(mer_inst),
+
+                % The determinism declaration, if any.
+                maybe(determinism),
+
+                % The varsets of the type and inst variables.
+                tvarset,
+                inst_varset,
+
+                % The existentially quantified type variables, if any.
+                existq_tvars,
+
+                % Any purity annotation.
+                purity,
+
+                % The typeclass constraints on the declaration.
+                prog_constraints,
+
+                prog_context
             ).
 
-:- type class_methods == list(class_method).
+:- type class_mode_info
+    --->    class_mode_info(
+                % This is a `mode ...' declaration in a type class body.
+                % Such a declaration declares a mode for one of the methods
+                % of the type class.
+
+                % The name of the predicate or function.
+                sym_name,
+
+                % Whether the method is a predicate or a function.
+                % For declarations using `with_inst`, we don't know
+                % which it is until we have expanded the inst.
+                maybe(pred_or_func),
+
+                % The arguments' modes.
+                list(mer_mode),
+
+                % Any `with_inst` annotation.
+                maybe(mer_inst),
+
+                % Any determinism declaration.
+                maybe(determinism),
+
+                % The varset of the inst variables.
+                inst_varset,
+
+                prog_context
+            ).
 
 %-----------------------------------------------------------------------------%
 %
