@@ -36,7 +36,7 @@
 
     % Add a pred or predmode declaration for a predicate.
     %
-    % We return MaybePredProcId = yes(...) if and only if the declarations
+    % We return MaybePredProcId = yes(...) if and only if the declaration
     % is a predmode declaration, and we could add both parts (the pred part
     % and the mode part) to the HLDS.
     %
