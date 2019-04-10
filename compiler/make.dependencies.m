@@ -408,93 +408,104 @@ deps_set_foldl3_maybe_stop_at_error(KeepGoing, P, Globals, Ts,
 
 %-----------------------------------------------------------------------------%
 
-target_dependencies(_, module_target_source) = no_deps.
-target_dependencies(Globals, module_target_errors) =
-        compiled_code_dependencies(Globals).
-target_dependencies(_, module_target_private_interface) =
-        interface_file_dependencies.
-target_dependencies(_, module_target_long_interface) =
-        interface_file_dependencies.
-target_dependencies(_, module_target_short_interface) =
-        interface_file_dependencies.
-target_dependencies(_, module_target_unqualified_short_interface) =
-        module_target_source `of` self.
-target_dependencies(_, module_target_track_flags) = no_deps.
-target_dependencies(Globals, module_target_c_header(_)) =
-        target_dependencies(Globals, module_target_c_code).
-target_dependencies(Globals, module_target_c_code) =
-        compiled_code_dependencies(Globals).
-target_dependencies(Globals, module_target_csharp_code) =
-        compiled_code_dependencies(Globals).
-target_dependencies(Globals, module_target_java_code) =
-        compiled_code_dependencies(Globals).
-target_dependencies(_, module_target_java_class_code) =
-        module_target_java_code `of` self.
-target_dependencies(Globals, module_target_erlang_header) =
-        target_dependencies(Globals, module_target_erlang_code).
-target_dependencies(Globals, module_target_erlang_code) =
-        compiled_code_dependencies(Globals).
-target_dependencies(_, module_target_erlang_beam_code) =
-    combine_deps_list([
-        module_target_erlang_code `of` self,
-        % The `.erl' file will -include the header files of imported modules.
-        module_target_erlang_header `of` direct_imports,
-        module_target_erlang_header `of` indirect_imports,
-        module_target_erlang_header `of` intermod_imports
-    ]).
-target_dependencies(Globals, module_target_object_code(PIC)) = Deps :-
-    globals.get_target(Globals, CompilationTarget),
-    TargetCode = target_to_module_target_code(CompilationTarget, PIC),
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-
-    % For --highlevel-code, the `.c' file will #include the header
-    % file for all imported modules.
-    ( if
-        CompilationTarget = target_c,
-        HighLevelCode = yes
-    then
-        HeaderDeps = combine_deps_list([
-            module_target_c_header(header_mih) `of` direct_imports,
-            module_target_c_header(header_mih) `of` indirect_imports,
-            module_target_c_header(header_mih) `of` parents,
-            module_target_c_header(header_mih) `of` intermod_imports
+target_dependencies(Globals, Target) = FindDeps :-
+    (
+        ( Target = module_target_source
+        ; Target = module_target_track_flags
+        ),
+        FindDeps = no_deps
+    ;
+        Target = module_target_errors,
+        FindDeps = compiled_code_dependencies(Globals)
+    ;
+        ( Target = module_target_int0
+        ; Target = module_target_int1
+        ; Target = module_target_int2
+        ),
+        FindDeps = interface_file_dependencies
+    ;
+        Target = module_target_int3,
+        FindDeps = module_target_source `of` self
+    ;
+        ( Target = module_target_c_code
+        ; Target = module_target_csharp_code
+        ; Target = module_target_java_code
+        ; Target = module_target_erlang_code
+        ),
+        FindDeps = compiled_code_dependencies(Globals)
+    ;
+        Target = module_target_c_header(_),
+        FindDeps = target_dependencies(Globals, module_target_c_code)
+    ;
+        Target = module_target_java_class_code,
+        FindDeps = module_target_java_code `of` self
+    ;
+        Target = module_target_erlang_header,
+        FindDeps = target_dependencies(Globals, module_target_erlang_code)
+    ;
+        Target = module_target_erlang_beam_code,
+        FindDeps =
+        combine_deps_list([
+            module_target_erlang_code `of` self,
+            % The `.erl' file will -include the header files
+            % of imported modules.
+            module_target_erlang_header `of` direct_imports,
+            module_target_erlang_header `of` indirect_imports,
+            module_target_erlang_header `of` intermod_imports
         ])
-    else
-        HeaderDeps = no_deps
-    ),
-    Deps = combine_deps_list([
-        TargetCode `of` self,
-        module_target_c_header(header_mh) `of` foreign_imports,
-        HeaderDeps
-    ]).
-target_dependencies(_, module_target_intermodule_interface) =
-    combine_deps_list([
-        module_target_source `of` self,
-        module_target_private_interface `of` parents,
-        module_target_long_interface `of` non_intermod_direct_imports,
-        module_target_short_interface `of` non_intermod_indirect_imports
-    ]).
-target_dependencies(_, module_target_analysis_registry) =
-    combine_deps_list([
-        module_target_source `of` self,
-        module_target_private_interface `of` parents,
-        module_target_long_interface `of` non_intermod_direct_imports,
-        module_target_short_interface `of` non_intermod_indirect_imports,
-        module_target_intermodule_interface `of` direct_imports,
-        module_target_intermodule_interface `of` indirect_imports,
-        module_target_intermodule_interface `of` intermod_imports
-    ]).
-target_dependencies(Globals, module_target_foreign_object(PIC, _)) =
-    get_foreign_deps(Globals, PIC).
-target_dependencies(Globals, module_target_fact_table_object(PIC, _)) =
-    get_foreign_deps(Globals, PIC).
-target_dependencies(_, module_target_xml_doc) =
-    combine_deps_list([
-        module_target_source `of` self,
-        module_target_private_interface `of` parents,
-        module_target_long_interface `of` non_intermod_direct_imports,
-        module_target_short_interface `of` non_intermod_indirect_imports
-    ]).
+    ;
+        ( Target = module_target_foreign_object(PIC, _)
+        ; Target = module_target_fact_table_object(PIC, _)
+        ),
+        FindDeps = get_foreign_deps(Globals, PIC)
+    ;
+        Target = module_target_object_code(PIC),
+        globals.get_target(Globals, CompilationTarget),
+        TargetCode = target_to_module_target_code(CompilationTarget, PIC),
+        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+
+        % For --highlevel-code, the `.c' file will #include the header
+        % file for all imported modules.
+        ( if
+            CompilationTarget = target_c,
+            HighLevelCode = yes
+        then
+            HeaderDeps = combine_deps_list([
+                module_target_c_header(header_mih) `of` direct_imports,
+                module_target_c_header(header_mih) `of` indirect_imports,
+                module_target_c_header(header_mih) `of` parents,
+                module_target_c_header(header_mih) `of` intermod_imports
+            ])
+        else
+            HeaderDeps = no_deps
+        ),
+        FindDeps = combine_deps_list([
+            TargetCode `of` self,
+            module_target_c_header(header_mh) `of` foreign_imports,
+            HeaderDeps
+        ])
+    ;
+        ( Target = module_target_opt
+        ; Target = module_target_xml_doc
+        ),
+        FindDeps = combine_deps_list([
+            module_target_source `of` self,
+            module_target_int0 `of` parents,
+            module_target_int1 `of` non_intermod_direct_imports,
+            module_target_int2 `of` non_intermod_indirect_imports
+        ])
+    ;
+        Target = module_target_analysis_registry,
+        FindDeps = combine_deps_list([
+            module_target_source `of` self,
+            module_target_int0 `of` parents,
+            module_target_int1 `of` non_intermod_direct_imports,
+            module_target_int2 `of` non_intermod_indirect_imports,
+            module_target_opt `of` direct_imports,
+            module_target_opt `of` indirect_imports,
+            module_target_opt `of` intermod_imports
+        ])
+    ).
 
 :- func get_foreign_deps(globals::in, pic::in) =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
@@ -520,9 +531,9 @@ target_to_module_target_code(_CompilationTarget, _PIC) = TargetCode :-
 interface_file_dependencies =
     combine_deps_list([
         module_target_source `of` self,
-        module_target_private_interface `of` parents,
-        module_target_unqualified_short_interface `of` direct_imports,
-        module_target_unqualified_short_interface `of` indirect_imports
+        module_target_int0 `of` parents,
+        module_target_int3 `of` direct_imports,
+        module_target_int3 `of` indirect_imports
     ]).
 
 :- func compiled_code_dependencies(globals::in) =
@@ -537,8 +548,8 @@ compiled_code_dependencies(Globals) = Deps :-
     (
         AnyIntermod = yes,
         Deps0 = combine_deps_list([
-            module_target_intermodule_interface `of` self,
-            module_target_intermodule_interface `of` intermod_imports,
+            module_target_opt `of` self,
+            module_target_opt `of` intermod_imports,
             map_find_module_deps(imports,
                 map_find_module_deps(parents, intermod_imports)),
             base_compiled_code_dependencies(TrackFlags)
@@ -582,9 +593,9 @@ base_compiled_code_dependencies(TrackFlags) = Deps :-
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
 
 imports = combine_deps_list([
-        module_target_private_interface `of` parents,
-        module_target_long_interface `of` direct_imports,
-        module_target_short_interface `of` indirect_imports
+        module_target_int0 `of` parents,
+        module_target_int1 `of` direct_imports,
+        module_target_int2 `of` indirect_imports
     ]).
 
 :- func of(module_target_type, find_module_deps(module_index)) =

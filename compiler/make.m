@@ -199,10 +199,10 @@
 
 :- type module_compilation_task_type
     --->    task_errorcheck
-    ;       task_make_short_interface
-    ;       task_make_interface
-    ;       task_make_private_interface
-    ;       task_make_optimization_interface
+    ;       task_make_int0
+    ;       task_make_int12 % makes both .int and .int2
+    ;       task_make_int3
+    ;       task_make_opt
     ;       task_make_analysis_registry
     ;       task_compile_to_target_code
     ;       task_make_xml_doc.
@@ -210,11 +210,11 @@
 :- type module_target_type
     --->    module_target_source
     ;       module_target_errors
-    ;       module_target_private_interface
-    ;       module_target_long_interface
-    ;       module_target_short_interface
-    ;       module_target_unqualified_short_interface
-    ;       module_target_intermodule_interface
+    ;       module_target_int0
+    ;       module_target_int1
+    ;       module_target_int2
+    ;       module_target_int3
+    ;       module_target_opt
     ;       module_target_analysis_registry
     ;       module_target_track_flags
     ;       module_target_c_header(c_header_type)
