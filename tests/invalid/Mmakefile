@@ -273,6 +273,7 @@ SINGLEMODULE= \
 	require_tailrec_3 \
 	require_tailrec_invalid \
 	reserved \
+	reserved_type_name \
 	some \
 	specified \
 	spurious_mode_error \

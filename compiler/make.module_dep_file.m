@@ -895,17 +895,16 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             % does not depend on anything else.
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             ( if set.is_empty(Errors) then
-                Target = target_file(ModuleName,
-                    module_target_unqualified_short_interface),
+                Target = target_file(ModuleName, module_target_int3),
                 maybe_make_target_message_to_stream(Globals, OldOutputStream,
                     Target, !IO),
                 build_with_check_for_interrupt(VeryVerbose,
                     build_with_module_options(Globals, ModuleName,
                         ["--make-short-interface"],
-                        make_short_interfaces(ErrorStream,
-                            SourceFileName, RawCompUnits)
+                        make_int3_files(ErrorStream, SourceFileName,
+                            RawCompUnits)
                     ),
-                    cleanup_short_interfaces(Globals, SubModuleNames),
+                    cleanup_int3_files(Globals, SubModuleNames),
                     Succeeded, !Info, !IO)
             else
                 Succeeded = no
@@ -917,25 +916,23 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                     list.foldl(do_write_module_dep_file(Globals),
                         ModuleAndImportList, IO0, IO)
                 ),
-                cleanup_module_dep_files(Globals, SubModuleNames), _,
-                !Info, !IO),
+                cleanup_module_dep_files(Globals, SubModuleNames),
+                _Succeeded, !Info, !IO),
 
-            MadeTarget = target_file(ModuleName,
-                module_target_unqualified_short_interface),
+            MadeTarget = target_file(ModuleName, module_target_int3),
             record_made_target(Globals, MadeTarget,
-                process_module(task_make_short_interface), Succeeded,
-                !Info, !IO),
+                process_module(task_make_int3), Succeeded, !Info, !IO),
             unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO)
         )
     ;
         MaybeErrorStream = no
     ).
 
-:- pred make_short_interfaces(io.output_stream::in, file_name::in,
+:- pred make_int3_files(io.output_stream::in, file_name::in,
     list(raw_compilation_unit)::in, globals::in, list(string)::in,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_short_interfaces(ErrorStream, SourceFileName, RawCompUnits, Globals,
+make_int3_files(ErrorStream, SourceFileName, RawCompUnits, Globals,
         _, Succeeded, !Info, !IO) :-
     io.set_output_stream(ErrorStream, OutputStream, !IO),
     list.foldl(write_short_interface_file_int3(Globals, SourceFileName),
@@ -944,28 +941,31 @@ make_short_interfaces(ErrorStream, SourceFileName, RawCompUnits, Globals,
     io.get_exit_status(ExitStatus, !IO),
     Succeeded = ( if ExitStatus = 0 then yes else no ).
 
-:- pred cleanup_short_interfaces(globals::in, list(module_name)::in,
+:- pred cleanup_int3_files(globals::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_short_interfaces(Globals, SubModuleNames, !Info, !IO) :-
-    list.foldl2(
-        ( pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
-                is det :-
-            make_remove_target_file_by_name(Globals, very_verbose,
-                SubModuleName, module_target_unqualified_short_interface,
-                !Info, !IO)
-        ), SubModuleNames, !Info, !IO).
+cleanup_int3_files(Globals, ModuleNames, !Info, !IO) :-
+    list.foldl2(cleanup_int3_file(Globals), ModuleNames, !Info, !IO).
+
+:- pred cleanup_int3_file(globals::in, module_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+cleanup_int3_file(Globals, ModuleName, !Info, !IO) :-
+    make_remove_target_file_by_name(Globals, very_verbose,
+        ModuleName, module_target_int3, !Info, !IO).
 
 :- pred cleanup_module_dep_files(globals::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_module_dep_files(Globals, SubModuleNames, !Info, !IO) :-
-    list.foldl2(
-        ( pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
-                is det :-
-            make_remove_module_file(Globals, verbose_make, SubModuleName,
-                make_module_dep_file_extension, !Info, !IO)
-        ), SubModuleNames, !Info, !IO).
+cleanup_module_dep_files(Globals, ModuleNames, !Info, !IO) :-
+    list.foldl2(cleanup_module_dep_file(Globals), ModuleNames, !Info, !IO).
+
+:- pred cleanup_module_dep_file(globals::in, module_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
+    make_remove_module_file(Globals, verbose_make, ModuleName,
+        make_module_dep_file_extension, !Info, !IO).
 
 :- pred maybe_write_importing_module(module_name::in, maybe(module_name)::in,
     io::di, io::uo) is det.

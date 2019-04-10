@@ -1,0 +1,68 @@
+reserved_type_name.m:001: Error: module must start with a `:- module'
+reserved_type_name.m:001:   declaration.
+reserved_type_name.m:014: Error: the type name `int' is reserved for the
+reserved_type_name.m:014:   Mercury implementation.
+reserved_type_name.m:018: Error: the type name `uint' is reserved for the
+reserved_type_name.m:018:   Mercury implementation.
+reserved_type_name.m:022: Error: the type name `int8' is reserved for the
+reserved_type_name.m:022:   Mercury implementation.
+reserved_type_name.m:026: Error: the type name `uint8' is reserved for the
+reserved_type_name.m:026:   Mercury implementation.
+reserved_type_name.m:030: Error: the type name `int16' is reserved for the
+reserved_type_name.m:030:   Mercury implementation.
+reserved_type_name.m:034: Error: the type name `uint16' is reserved for the
+reserved_type_name.m:034:   Mercury implementation.
+reserved_type_name.m:038: Error: the type name `int32' is reserved for the
+reserved_type_name.m:038:   Mercury implementation.
+reserved_type_name.m:042: Error: the type name `uint32' is reserved for the
+reserved_type_name.m:042:   Mercury implementation.
+reserved_type_name.m:046: Error: the type name `int64' is reserved for the
+reserved_type_name.m:046:   Mercury implementation.
+reserved_type_name.m:050: Error: the type name `uint64' is reserved for the
+reserved_type_name.m:050:   Mercury implementation.
+reserved_type_name.m:054: Error: the type name `float' is reserved for the
+reserved_type_name.m:054:   Mercury implementation.
+reserved_type_name.m:059: In clause for predicate `main'/2:
+reserved_type_name.m:059:   in argument 1 of call to predicate
+reserved_type_name.m:059:   `io.write_line'/3:
+reserved_type_name.m:059:   error: undefined symbol `int_a'/0.
+reserved_type_name.m:060: In clause for predicate `main'/2:
+reserved_type_name.m:060:   in argument 1 of call to predicate
+reserved_type_name.m:060:   `io.write_line'/3:
+reserved_type_name.m:060:   error: undefined symbol `uint_a'/0.
+reserved_type_name.m:061: In clause for predicate `main'/2:
+reserved_type_name.m:061:   in argument 1 of call to predicate
+reserved_type_name.m:061:   `io.write_line'/3:
+reserved_type_name.m:061:   error: undefined symbol `int8_a'/0.
+reserved_type_name.m:062: In clause for predicate `main'/2:
+reserved_type_name.m:062:   in argument 1 of call to predicate
+reserved_type_name.m:062:   `io.write_line'/3:
+reserved_type_name.m:062:   error: undefined symbol `uint8_a'/0.
+reserved_type_name.m:063: In clause for predicate `main'/2:
+reserved_type_name.m:063:   in argument 1 of call to predicate
+reserved_type_name.m:063:   `io.write_line'/3:
+reserved_type_name.m:063:   error: undefined symbol `int16_a'/0.
+reserved_type_name.m:064: In clause for predicate `main'/2:
+reserved_type_name.m:064:   in argument 1 of call to predicate
+reserved_type_name.m:064:   `io.write_line'/3:
+reserved_type_name.m:064:   error: undefined symbol `uint16_a'/0.
+reserved_type_name.m:065: In clause for predicate `main'/2:
+reserved_type_name.m:065:   in argument 1 of call to predicate
+reserved_type_name.m:065:   `io.write_line'/3:
+reserved_type_name.m:065:   error: undefined symbol `int32_a'/0.
+reserved_type_name.m:066: In clause for predicate `main'/2:
+reserved_type_name.m:066:   in argument 1 of call to predicate
+reserved_type_name.m:066:   `io.write_line'/3:
+reserved_type_name.m:066:   error: undefined symbol `uint32_a'/0.
+reserved_type_name.m:067: In clause for predicate `main'/2:
+reserved_type_name.m:067:   in argument 1 of call to predicate
+reserved_type_name.m:067:   `io.write_line'/3:
+reserved_type_name.m:067:   error: undefined symbol `int64_a'/0.
+reserved_type_name.m:068: In clause for predicate `main'/2:
+reserved_type_name.m:068:   in argument 1 of call to predicate
+reserved_type_name.m:068:   `io.write_line'/3:
+reserved_type_name.m:068:   error: undefined symbol `uint64_a'/0.
+reserved_type_name.m:069: In clause for predicate `main'/2:
+reserved_type_name.m:069:   in argument 1 of call to predicate
+reserved_type_name.m:069:   `io.write_line'/3:
+reserved_type_name.m:069:   error: undefined symbol `float_a'/0.
