@@ -986,8 +986,8 @@ fact_table_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
     (
         MaybeImports = yes(Imports),
         Success = yes,
-        FilesList = map((func(File) = dep_file(File, no)),
-            Imports ^ mai_fact_table_deps),
+        FactDeps = Imports ^ mai_fact_table_deps,
+        FilesList = list.map((func(File) = dep_file(File, no)), FactDeps),
         Files = set.list_to_set(FilesList)
     ;
         MaybeImports = no,

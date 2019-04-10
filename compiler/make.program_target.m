@@ -361,6 +361,9 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
         !Info, !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
+    %
+    % Any changed here may require corresponding changes in
+    % external_foreign_code_files.
 
     globals.get_target(Globals, CompilationTarget),
     get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
@@ -368,29 +371,27 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
         MaybeImports = yes(Imports)
     ;
         MaybeImports = no,
-        unexpected($module, $pred, "unknown imports")
+        unexpected($pred, "unknown imports")
     ),
 
-    % XXX only used by the IL backend.
-    ForeignObjectTargets = [],
-
-    % Find out if any externally compiled foreign code files for fact tables
-    % exist.
+    % None of the current backends require externally compiled foreign
+    % code, except the C backend for fact tables.
     (
         CompilationTarget = target_c,
-        FactObjectTargets = list.map(
-            (func(FactFile) =
+        FactFileToTarget =
+            ( func(FactFile) =
                 dep_target(target_file(ModuleName,
                     module_target_fact_table_object(PIC, FactFile)))
             ),
-            Imports ^ mai_fact_table_deps),
-        ObjectTargets = FactObjectTargets ++ ForeignObjectTargets
+        FactDeps = Imports ^ mai_fact_table_deps,
+        FactObjectTargets = list.map(FactFileToTarget, FactDeps),
+        ObjectTargets = FactObjectTargets
     ;
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
         ; CompilationTarget = target_erlang
         ),
-        ObjectTargets = ForeignObjectTargets
+        ObjectTargets = []
     ).
 
 :- pred build_linked_target(module_name::in, linked_target_type::in,
@@ -564,7 +565,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 ;
                     MaybeImports = no,
                     % This error should have been detected earlier.
-                    unexpected($module, $pred, "error in dependencies")
+                    unexpected($pred, "error in dependencies")
                 )
             ), AllModulesList, ExtraForeignFiles, !Info, !IO),
         ForeignObjects = list.map(
@@ -1144,7 +1145,7 @@ lookup_module_and_imports_in_maybe_map(ModuleDeps, ModuleName)
         MaybeModuleImports = yes(ModuleImports)
     ;
         MaybeModuleImports = no,
-        unexpected($module, $pred, "MaybeModuleImports = no")
+        unexpected($pred, "MaybeModuleImports = no")
     ).
 
 :- pred modules_needing_reanalysis(bool::in, globals::in,
@@ -1438,7 +1439,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     ;
         MaybeMCFlags = no,
         % Errors should have been caught before.
-        unexpected($module, $pred, "bad DEFAULT_MCFLAGS")
+        unexpected($pred, "bad DEFAULT_MCFLAGS")
     ),
 
     (

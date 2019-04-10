@@ -1037,28 +1037,28 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
 external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
+    %
+    % Any changed here may require corresponding changes in 
+    % get_foreign_object_targets.
 
     maybe_pic_object_file_extension(Globals, PIC, ObjExt),
     globals.get_target(Globals, CompilationTarget),
     ModuleName = Imports ^ mai_module_name,
 
-    % None of the current backends require estnerally compiled foreign
-    % code.
-    ForeignFiles0 = [],
-
-    % Find externally compiled foreign code files for fact tables.
+    % None of the current backends require externally compiled foreign
+    % code, except the C backend for fact tables.
     (
         CompilationTarget = target_c,
         list.map_foldl(
             get_fact_table_foreign_code_file(Globals, ObjExt, ModuleName),
             Imports ^ mai_fact_table_deps, FactTableForeignFiles, !IO),
-        ForeignFiles = ForeignFiles0 ++ FactTableForeignFiles
+        ForeignFiles = FactTableForeignFiles
     ;
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
         ; CompilationTarget = target_erlang
         ),
-        ForeignFiles = ForeignFiles0
+        ForeignFiles = []
     ).
 
 :- pred get_fact_table_foreign_code_file(globals::in, string::in,
