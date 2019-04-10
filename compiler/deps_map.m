@@ -277,7 +277,7 @@ read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
         FileName = FileName0,
         split_into_compilation_units_perform_checks(ParseTreeSrc,
             RawCompUnits, SrcSpecs, Specs),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
+        write_error_specs_ignore(Specs, Globals, !IO)
     ),
     RawCompUnitModuleNames =
         list.map(raw_compilation_unit_project_name, RawCompUnits),

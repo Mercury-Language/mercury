@@ -124,8 +124,7 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     split_into_compilation_units_perform_checks(ParseTreeSrc, RawCompUnits,
         Specs0, Specs),
     ParseTreeSrc = parse_tree_src(ModuleName, _, _),
-    % XXX _NumErrors
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+    write_error_specs_ignore(Specs, Globals, !IO),
     NestedModuleNames = set.list_to_set(
         list.map(raw_compilation_unit_project_name, RawCompUnits)),
     SourceFileName = FileName ++ ".m",

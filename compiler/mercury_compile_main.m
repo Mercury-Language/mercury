@@ -1023,8 +1023,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, _,
             dont_return_timestamp, _, ParseTreeSrc, Specs, Errors,
             HaveReadModuleMaps0, _HaveReadModuleMaps, !IO),
-        % XXX _NumErrors
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+        write_error_specs_ignore(Specs, Globals, !IO),
         ( if halt_at_module_error(Globals, Errors) then
             true
         else
@@ -1063,9 +1062,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         else
             split_into_compilation_units_perform_checks(ParseTreeSrc,
                 RawCompUnits, Specs0, Specs),
-            % XXX _NumErrors
-            write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
-                !IO),
+            write_error_specs_ignore(Specs, Globals, !IO),
             (
                 InterfaceFile = omif_int0,
                 list.foldl(
@@ -1232,9 +1229,7 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
         HaveReadModuleMap0, HaveReadModuleMaps, !IO),
 
     ( if halt_at_module_error(Globals, Errors) then
-        % XXX _NumErrors
-        write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
-            !IO),
+        write_error_specs_ignore(Specs0, Globals, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     else
@@ -1498,8 +1493,7 @@ augment_and_process_all_submodules(Globals, OpModeAugment,
             FileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
             HaveReadModuleMaps, FindTimestampFiles),
         RawCompUnits, ExtraObjFileLists, !Specs, !IO),
-    % XXX _NumErrors
-    write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+    write_error_specs_ignore(!.Specs, Globals, !IO),
     list.map(module_to_link, RawCompUnits, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
@@ -1994,9 +1988,7 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
                 Msg = error_msg(no, do_not_treat_as_first, 0,
                     [always(Pieces)]),
                 Spec = error_spec(severity_warning, phase_read_files, [Msg]),
-                % XXX _NumErrors
-                write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors,
-                    !IO)
+                write_error_spec_ignore(Spec, Globals, !IO)
             ;
                 WarnNoTransOptDeps = no
             )

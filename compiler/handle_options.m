@@ -2454,7 +2454,7 @@ usage_errors(Globals, Specs, !IO) :-
     % If _NumErrors > 0, this will set the exit status to 1.
     % It will also set the exit status to 1 if  _NumWarnings > 0
     % and --halt-at-warn was specified.
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
+    write_error_specs_ignore(Specs, Globals, !IO).
 
 display_compiler_version(!IO) :-
     library.version(Version, Fullarch),

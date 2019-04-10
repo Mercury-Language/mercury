@@ -141,7 +141,7 @@ write_short_interface_file_int3(Globals, SourceFileName, RawCompUnit, !IO) :-
     generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt3, Specs0),
     module_qualify_parse_tree_int(Globals, ParseTreeInt3, QualParseTreeInt3,
         Specs0, Specs),
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+    write_error_specs_ignore(Specs, Globals, !IO),
     % XXX Why do we do this even if there are some errors?
     actually_write_interface_file(Globals, SourceFileName, QualParseTreeInt3,
         no, !IO),
@@ -228,9 +228,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
             % Construct and write out the `.int' and `.int2' files.
             generate_interfaces_int1_int2(Globals, AugCompUnit,
                 ParseTreeInt1, ParseTreeInt2, InterfaceSpecs),
-            % XXX _NumErrors2
-            write_error_specs(InterfaceSpecs, Globals,
-                0, _NumWarnings2, 0, _NumErrors2, !IO),
+            write_error_specs_ignore(InterfaceSpecs, Globals, !IO),
             actually_write_interface_file(Globals, SourceFileName,
                 ParseTreeInt1, MaybeTimestamp, !IO),
             actually_write_interface_file(Globals, SourceFileName,
@@ -314,8 +312,7 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
 
 report_file_not_written(Globals, Specs, MaybePrefixMsg,
         ModuleName, SuffixA, MaybeSuffixB, !IO) :-
-    % XXX _NumErrors
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+    write_error_specs_ignore(Specs, Globals, !IO),
     (
         MaybePrefixMsg = no
     ;
@@ -341,7 +338,7 @@ report_file_not_written(Globals, Specs, MaybePrefixMsg,
         [always(NotWrittenPieces)]),
     NotWrittenSpec = error_spec(severity_informational, phase_read_files,
         [NotWrittenMsg]),
-    write_error_spec(NotWrittenSpec, Globals, 0, _, 0, _, !IO).
+    write_error_spec_ignore(NotWrittenSpec, Globals, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.

@@ -841,8 +841,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         ( if set.is_non_empty(FatalErrors) then
             io.set_output_stream(ErrorStream, _, !IO),
-            write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
-                !IO),
+            write_error_specs_ignore(Specs0, Globals, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
             io.write_string("** Error reading file `", !IO),
             io.write_string(SourceFileName, !IO),
@@ -870,8 +869,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 RawCompUnits, Specs0, Specs),
             % XXX Why do want ignore all previously reported errors?
             io.set_exit_status(0, !IO),
-            write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
-                !IO),
+            write_error_specs_ignore(Specs, Globals, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
             SubModuleNames =

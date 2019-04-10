@@ -208,7 +208,7 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
             construct_type_inference_messages(!.ModuleInfo, NewValidPredIdSet,
                 OrigValidPredIds, [], ProgressSpecs),
             trace [io(!IO)] (
-                write_error_specs(ProgressSpecs, Globals, 0, _, 0, _, !IO)
+                write_error_specs_ignore(ProgressSpecs, Globals, !IO)
             )
         ;
             DebugTypes = no
