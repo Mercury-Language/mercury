@@ -141,15 +141,18 @@ that the compiler has found it needed over the years.
 
 <p>
 The compiler generates .int2 files from .int files
-by simply filtering out some items.
-I cannot find the place in the logs where .int2 files were introduced
-(it seems to have been lost in the CVS to git transition),
-but I think the point of .int2 files was that
-a module's .int2 file would change less often than its .int file.
-Therefore if another module depended
-on its .int2 file instead of on its .int file,
-it would have to be recompiled less often.
-However, that is only a guess.
+by filtering out some items.
+The filtering algorithm is the same as we apply to the original module
+to generate .int3 files.
+I believe the intention was to make each .int2 file
+a fully module qualified version of the corresponding .int3 file.
+However, since the differences between the two starting points
+(the unqualified whole module for .int3 files
+and its fully module qualified .int file)
+are not restricted to differences in qualification,
+I (at least as yet) see no argument that would persuade me to believe
+that the differences between a module's .int2 and .int3 files
+are guaranteed to be restricted to qualification.
 
 <p>
 Something to keep in mind:
