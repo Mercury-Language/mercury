@@ -1539,9 +1539,9 @@ augment_and_process_module(Globals, OpModeAugment,
     else
         set.init(NestedSubModules)
     ),
-    grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, NestedSubModules, RawCompUnit, HaveReadModuleMaps,
-        ModuleAndImports, !IO),
+    grab_imported_modules_augment(Globals, SourceFileName,
+        SourceFileModuleName, MaybeTimestamp, NestedSubModules, RawCompUnit,
+        HaveReadModuleMaps, ModuleAndImports, !IO),
     module_and_imports_get_aug_comp_unit(ModuleAndImports, _AugCompUnit,
         ImportedSpecs, Errors),
     !:Specs = ImportedSpecs ++ !.Specs,

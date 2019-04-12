@@ -21,8 +21,11 @@
 %
 % The roles of the interface files (.int0, .int3, .int2 and .int) that
 % this module reads in are documented (to the extent that they are documented
-% anywhere) in the module that creates them, which is
-% write_module_interface_files.m.
+% anywhere) in the modules that creates them, which are comp_unit_interface.m
+% and write_module_interface_files.m.
+%
+% XXX The file notes/interface_files.html contains (a start on) some
+% more comprehensive documentation.
 %
 %---------------------------------------------------------------------------%
 
@@ -48,9 +51,9 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
-    %   ModuleTimestamp, NestedSubModules, RawCompUnit, HaveReadModuleMaps,
-    %   ModuleAndImports, !IO):
+    % grab_imported_modules_augment(Globals, SourceFileName,
+    %   SourceFileModuleName, ModuleTimestamp, NestedSubModules, RawCompUnit,
+    %   HaveReadModuleMaps, ModuleAndImports, !IO):
     %
     % Given the raw CompUnit, one of the modules stored in SourceFileName,
     % read in the private interface files (.int0) for all the parent modules,
@@ -59,20 +62,25 @@
     % Return the `module_and_imports' structure containing all the information
     % gathered this way, from which we will compute the augmented version
     % of RawCompUnit.
-    % XXX ITEM_LIST Move the actual compuation of the AugCompUnit together
+    % XXX ITEM_LIST Move the actual computation of the AugCompUnit together
     % with this code, preferably in a new module, perhaps named something like
     % "augment_comp_unit.m".
     %
     % SourceFileModuleName is the top-level module name in SourceFileName.
     % ModuleTimestamp is the timestamp of the SourceFileName. NestedSubModules
     % is the list of the names of the nested submodules in SourceFileName
-    % if RawCompUnit is the toplevel module in SourceFileName (i.e. if it
+    % if RawCompUnit is the toplevel module in SourceFileName (i.e. if it is
     % the compilation unit of SourceFileModuleName). XXX ITEM_LIST document
     % exactly what NestedSubModules is if RawCompUnit is NOT the toplevel
     % module in SourceFileName. HaveReadModuleMaps contains the interface
     % files read during recompilation checking.
     %
-:- pred grab_imported_modules(globals::in, file_name::in,
+    % Used when augmenting a module, which we do when asked to do
+    % the tasks described by op_mode_augment. Most of the time, this is
+    % generating target language code, but sometimes it may be e.g.
+    % generating .opt and .trans_opt files.
+    %
+:- pred grab_imported_modules_augment(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, set(module_name)::in,
     raw_compilation_unit::in, have_read_module_maps::in,
     module_and_imports::out, io::di, io::uo) is det.
@@ -87,7 +95,9 @@
     % (.int and int2s). Does not set the `PublicChildren', `FactDeps'
     % `ForeignIncludeFiles' fields of the module_and_imports structure.
     %
-:- pred grab_unqual_imported_modules(globals::in,
+    % Used when generating .int0 files, and when generating .int/.int2 files.
+    %
+:- pred grab_unqual_imported_modules_make_int(globals::in,
     file_name::in, module_name::in,
     raw_compilation_unit::in, module_and_imports::out, io::di, io::uo) is det.
 
@@ -133,7 +143,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
+grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, NestedChildren, RawCompUnit, HaveReadModuleMaps,
         !:ModuleAndImports, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
@@ -300,8 +310,8 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         module_and_imports_add_specs(!.Specs, !ModuleAndImports)
     ).
 
-grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
-        RawCompUnit, !:ModuleAndImports, !IO) :-
+grab_unqual_imported_modules_make_int(Globals, SourceFileName,
+        SourceFileModuleName, RawCompUnit, !:ModuleAndImports, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
     % two predicates in sync.
@@ -382,7 +392,7 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             make_ims_imported(import_locn_import_by_ancestor),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            ParentUsed, 
+            ParentUsed,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_int_used", pik_direct(int123_3, must_be_qualified),
@@ -932,7 +942,8 @@ process_module_indirect_interfaces_transitively(Globals, HaveReadModuleMapInt,
         Modules, !ImpIndirectImports, !ModuleAndImports, !IO) :-
     process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
         NewIntSection, NewImpSection, SectionAppend, Modules,
-        set.init, IndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO),
+        set.init, IndirectImports, !ImpIndirectImports,
+        !ModuleAndImports, !IO),
     ( if set.is_empty(IndirectImports) then
         true
     else
@@ -1574,7 +1585,7 @@ record_avails_acc([Avail | Avails], !ImportUseMap) :-
     % We don't generate an error message right here, so that if several
     % imported modules are missing the same ancestor, we can generate
     % just one message for that missing ancestor.
-    % 
+    %
     % The other inputs allow us to record information that will make
     % the eventual error message more informative.
     %
