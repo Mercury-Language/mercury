@@ -510,8 +510,7 @@ get_src_item_blocks_public_children(RawCompUnit,
         raw_item_blocks_to_src(IFileItemBlocks, IFileSrcItemBlocks),
         raw_item_blocks_to_split_src(NoIFileItemBlocks, NoIFileSrcItemBlocks),
         SrcItemBlocks = IFileSrcItemBlocks ++ NoIFileSrcItemBlocks,
-        get_included_modules_in_item_blocks(IFileItemBlocks,
-            PublicChildren)
+        get_included_modules_in_item_blocks(IFileItemBlocks, PublicChildren)
     ).
 
 :- pred raw_item_blocks_to_src(list(item_block(module_section))::in,
@@ -540,14 +539,10 @@ raw_item_blocks_to_split_src([], []).
 raw_item_blocks_to_split_src([RawItemBlock | RawItemBlocks],
         !:SrcItemBlocks) :-
     raw_item_blocks_to_split_src(RawItemBlocks, !:SrcItemBlocks),
-    RawItemBlock = item_block(ModuleName, _Section, SectionContext,
+    RawItemBlock = item_block(ModuleName, Section, SectionContext,
         Incls, Avails, Items),
-    % _Section can sometimes (rarely) be ms_interface. This can happen
-    % when an instance declaration occurs in the interface section of a module.
-    % The abstract version of the declaration gets put into the interface,
-    % but the full version gets put into the noifile item blocks, with
-    % the original (i.e. ms_interface) section marker.
-    % XXX ITEM_LIST Fix that section marker.
+    expect(unify(Section, ms_implementation), $pred,
+        "Section != ms_implementation"),
     split_items_into_clauses_and_decls(Items,
         [], RevClauses, [], RevImpDecls),
     ( if

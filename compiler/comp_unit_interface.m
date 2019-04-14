@@ -2086,8 +2086,8 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
     then
         true
     else
-        NoIFileItemBlock = item_block(ModuleName, Section, SectionContext,
-            NoIFileIncls, NoIFileAvails, NoIFileItems),
+        NoIFileItemBlock = item_block(ModuleName, ms_implementation,
+            SectionContext, NoIFileIncls, NoIFileAvails, NoIFileItems),
         !:NoIFileItemBlocksCord =
             cord.snoc(!.NoIFileItemBlocksCord, NoIFileItemBlock)
     ),
