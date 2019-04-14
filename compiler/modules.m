@@ -52,7 +52,7 @@
 %---------------------------------------------------------------------------%
 
     % grab_imported_modules_augment(Globals, SourceFileName,
-    %   SourceFileModuleName, ModuleTimestamp, NestedSubModules, RawCompUnit,
+    %   SourceFileModuleName, MaybeTimestamp, NestedSubModules, RawCompUnit,
     %   HaveReadModuleMaps, ModuleAndImports, !IO):
     %
     % Given the raw CompUnit, one of the modules stored in SourceFileName,
@@ -89,11 +89,12 @@
     %   SourceFileName, SourceFileModuleName, RawCompUnit, ModuleAndImports,
     %   !IO):
     %
-    % Similar to grab_imported_modules, but only reads in the unqualified
-    % short interfaces (.int3s), and the .int0 files for parent modules,
-    % instead of reading the long interfaces and qualified short interfaces
-    % (.int and int2s). Does not set the `PublicChildren', `FactDeps'
-    % `ForeignIncludeFiles' fields of the module_and_imports structure.
+    % Similar to grab_imported_modules_augment, but only reads in the
+    % unqualified short interfaces (.int3s), and the .int0 files for
+    % parent modules, instead of reading the long interfaces and
+    % qualified short interfaces (.int and int2s). Does not set
+    % the `PublicChildren', `FactDeps' and `ForeignIncludeFiles' fields
+    % of the module_and_imports structure.
     %
     % Used when generating .int0 files, and when generating .int/.int2 files.
     %
