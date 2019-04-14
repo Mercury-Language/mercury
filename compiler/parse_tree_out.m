@@ -604,8 +604,6 @@ mercury_output_item(Info, Item, !IO) :-
     ;
         Item = item_type_repn(ItemTypeRepn),
         mercury_output_item_type_repn(Info, ItemTypeRepn, !IO)
-    ;
-        Item = item_nothing(_ItemNothing)
     ).
 
 %---------------------------------------------------------------------------%

@@ -1906,8 +1906,7 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
                 ConflictSpecs = [],
                 (
                     FeatureList = [],
-                    ItemNothing = item_nothing_info(no, Context, SeqNum),
-                    Item = item_nothing(ItemNothing)
+                    MaybeIOM = ok1(iom_handled([]))
                 ;
                     FeatureList = [_ | _],
                     FeatureSet = set.from_list(FeatureList),
@@ -1915,9 +1914,9 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
                     Pragma = pragma_require_feature_set(RFSInfo),
                     ItemPragma = item_pragma_info(Pragma, item_origin_user,
                         Context, SeqNum),
-                    Item = item_pragma(ItemPragma)
-                ),
-                MaybeIOM = ok1(iom_item(Item))
+                    Item = item_pragma(ItemPragma),
+                    MaybeIOM = ok1(iom_item(Item))
+                )
             )
         ;
             MaybeFeatureList = error1(Specs),

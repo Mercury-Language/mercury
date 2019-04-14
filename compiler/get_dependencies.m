@@ -547,7 +547,6 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_foreign_import_module(_)
-        ; Item = item_nothing(_)
         )
     ;
         Item = item_type_repn(_),

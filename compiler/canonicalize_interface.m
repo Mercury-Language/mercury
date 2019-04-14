@@ -477,9 +477,6 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         Item = item_type_repn(_),
         % We do not generate such items yet.
         unexpected($pred, "item_type_repn")
-    ;
-        Item = item_nothing(_)
-        % Ignore these items.
     ),
     classify_items(Items, !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         !PredRelatedMap, !SortableItems, !NonReorderableItemsCord).

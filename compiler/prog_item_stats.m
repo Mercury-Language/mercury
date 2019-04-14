@@ -82,8 +82,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
                 item_num_initialise                 :: int,
                 item_num_finalise                   :: int,
                 item_num_mutable                    :: int,
-                item_num_type_repn                  :: int,
-                item_num_nothing                    :: int
+                item_num_type_repn                  :: int
             ).
 
 :- type goal_stats
@@ -131,8 +130,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
 :- func init_item_stats = item_stats.
 
 init_item_stats =
-    item_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0).
+    item_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).
 
     % Initialize a goal_stats structure.
     %
@@ -281,9 +279,6 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
     ;
         Item = item_type_repn(_),
         !ItemStats ^ item_num_type_repn := !.ItemStats ^ item_num_type_repn + 1
-    ;
-        Item = item_nothing(_),
-        !ItemStats ^ item_num_nothing := !.ItemStats ^ item_num_nothing + 1
     ).
 
 :- pred gather_stats_in_item_pragma(item_pragma_info::in,
@@ -542,7 +537,7 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
         PredDecl, ModeDecl, FIM, PragmaTerm, PragmaTerm2,
         PragmaExcp, PragmaTrail, PragmaMM, PragmaPass2, PragmaPass3,
         Promise, Typeclasse, Instance, Initialise, Finalise, Mutable,
-        TypeRepn, Nothing),
+        TypeRepn),
     write_one_stat(Stream, SectionName, "item_clause", Clause, !IO),
     write_one_stat(Stream, SectionName, "item_type_defn", TypeDefn, !IO),
     write_one_stat(Stream, SectionName, "item_inst_defn", InstDefn, !IO),
@@ -564,8 +559,7 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     write_one_stat(Stream, SectionName, "item_initialise", Initialise, !IO),
     write_one_stat(Stream, SectionName, "item_finalise", Finalise, !IO),
     write_one_stat(Stream, SectionName, "item_mutable", Mutable, !IO),
-    write_one_stat(Stream, SectionName, "item_type_repn", TypeRepn, !IO),
-    write_one_stat(Stream, SectionName, "item_nothing", Nothing, !IO).
+    write_one_stat(Stream, SectionName, "item_type_repn", TypeRepn, !IO).
 
 :- pred write_goal_stats(io.output_stream::in, string::in, goal_stats::in,
     io::di, io::uo) is det.

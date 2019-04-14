@@ -137,7 +137,6 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         ; Item0 = item_finalise(_)
         ; Item0 = item_promise(_)
         ; Item0 = item_foreign_import_module(_)
-        ; Item0 = item_nothing(_)
         ),
         Item = Item0
     ;

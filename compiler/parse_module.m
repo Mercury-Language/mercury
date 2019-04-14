@@ -753,9 +753,10 @@ read_parse_tree_int_section(Stream, Globals, CurModuleName,
                 !VNInfo, MaybeRawItemBlock,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO)
         ;
-            ( IOM = iom_item(_)
-            ; IOM = iom_marker_include(_)
+            ( IOM = iom_marker_include(_)
             ; IOM = iom_marker_avail(_)
+            ; IOM = iom_item(_)
+            ; IOM = iom_handled(_)
             ),
             Context = get_term_context(IOMTerm),
             % Generate an error for the missing section marker.
@@ -1061,6 +1062,7 @@ read_parse_tree_src_components(Stream, Globals,
             ; IOM = iom_marker_include(_)
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_item(_)
+            ; IOM = iom_handled(_)
             ),
             (
                 IOM = iom_marker_section(SectionKind,
@@ -1070,6 +1072,7 @@ read_parse_tree_src_components(Stream, Globals,
                 ( IOM = iom_marker_include(_)
                 ; IOM = iom_marker_avail(_)
                 ; IOM = iom_item(_)
+                ; IOM = iom_handled(_)
                 ),
                 (
                     MaybePrevSection = yes(SectionKind - SectionContext)
@@ -1358,6 +1361,7 @@ read_first_module_decl(Stream, RequireModuleDecl,
             ; FirstIOM = iom_marker_include(_)
             ; FirstIOM = iom_marker_avail(_)
             ; FirstIOM = iom_item(_)
+            ; FirstIOM = iom_handled(_)
             ),
             FirstContext = get_term_context(FirstTerm),
             report_missing_module_start(FirstContext, !Specs, !Errors),
@@ -1491,14 +1495,11 @@ read_item_sequence_inner(Stream, Globals, ModuleName, !NumItemsLeft,
                     !:AvailsCord = !.AvailsCord ++
                         cord.from_list([HeadAvail | TailAvails])
                 ;
-                    IOM = iom_item(Item0),
-                    ( if Item0 = item_nothing(ItemNothingInfo) then
-                        process_item_nothing_warning(Globals,
-                            ItemNothingInfo, Item, !Specs, !Errors)
-                    else
-                        Item = Item0
-                    ),
+                    IOM = iom_item(Item),
                     !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+                ;
+                    IOM = iom_handled(HandledSpecs),
+                    !:Specs = HandledSpecs ++ !.Specs
                 ),
                 read_item_sequence_inner(Stream, Globals, ModuleName,
                     !NumItemsLeft, no_lookahead, FinalLookAhead, !VNInfo,
@@ -1536,59 +1537,6 @@ record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs) :-
             [always(Pieces)]),
         Spec = error_spec(severity_error, phase_read_files, [Msg]),
         !:Specs = [Spec | !.Specs]
-    ).
-
-    % process_item_nothing_warning(Globals, ItemNothingInfo, !ItemsCord,
-    %     !Specs, !Errors):
-    %
-    % If the given item_nothing_info has a (possibly conditional) warning
-    % embedded inside it, and if the condition (if present) is true,
-    % then put that warning into !Specs and (if asked for) into !Errors.
-    %
-    % In any case, return the item_nothing, stripped of any warnings,
-    % in NoWarnItem.
-    %
-:- pred process_item_nothing_warning(globals::in,
-    item_nothing_info::in, item::out,
-    list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, read_module_errors::out) is det.
-
-process_item_nothing_warning(Globals, ItemNothingInfo, NoWarnItem,
-        !Specs, !Errors) :-
-    ItemNothingInfo = item_nothing_info(MaybeWarning, Context, NothingSeqNum),
-    (
-        MaybeWarning = no,
-        % There is no warning to strip away.
-        NoWarnItem = item_nothing(ItemNothingInfo)
-    ;
-        MaybeWarning = yes(Warning),
-        Warning = item_warning(MaybeOption, Msg, Term),
-        (
-            MaybeOption = yes(Option),
-            globals.lookup_bool_option(Globals, Option, Warn)
-        ;
-            MaybeOption = no,
-            Warn = yes
-        ),
-        (
-            Warn = yes,
-            Pieces = [words("Warning: "), words(Msg), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            !:Specs = [Spec | !.Specs],
-
-            globals.lookup_bool_option(Globals, halt_at_warn, Halt),
-            (
-                Halt = yes,
-                set.insert(rme_warn_item_nothing, !Errors)
-            ;
-                Halt = no
-            )
-        ;
-            Warn = no
-        ),
-        NoWarnItemNothingInfo = item_nothing_info(no, Context, NothingSeqNum),
-        NoWarnItem = item_nothing(NoWarnItemNothingInfo)
     ).
 
 %---------------------------------------------------------------------------%

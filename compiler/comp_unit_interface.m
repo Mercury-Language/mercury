@@ -303,7 +303,6 @@ get_short_interface_int3_from_items([Item | Items], !IntItems, !NeedAvails,
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_type_repn(_)
-        ; Item = item_nothing(_)
         )
     ),
     get_short_interface_int3_from_items(Items, !IntItems, !NeedAvails,
@@ -530,7 +529,6 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
         ; Item = item_promise(_)
         ; Item = item_typeclass(_)
         ; Item = item_foreign_import_module(_)
-        ; Item = item_nothing(_)
         ),
         !:SectionItemsCord = cord.snoc(!.SectionItemsCord, Item)
     ;
@@ -729,7 +727,6 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
-        ; Item = item_nothing(_)
         ),
         MaybeIFileItem = no
     ;
@@ -1096,9 +1093,6 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         % We shouldn't yet have invoked any code that creates
         % type_repn items.
         unexpected($pred, "item_type_repn")
-    ;
-        Item = item_nothing(_)
-        % Ignore the item, which deletes it.
     ),
     get_interface_int1_items_loop_int(Items, !ItemsCord, !FIMsCord,
         !TypesMap, !NeededModules, !Specs).
@@ -1156,7 +1150,6 @@ get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
         ; Item = item_type_repn(_)
-        ; Item = item_nothing(_)
         ),
         unexpected($pred, "imp item that should be deleted by get_interface")
     ),
@@ -1973,7 +1966,6 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
     ;
         ( Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
-        ; Item = item_nothing(_)
         ),
         % We should have filtered out foreign_import_module and nothing
         % items before we get here, and we are not yet generating type_repn

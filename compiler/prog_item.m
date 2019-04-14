@@ -25,7 +25,6 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -45,7 +44,6 @@
 :- import_module multi_map.
 :- import_module pair.
 :- import_module set.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 %
@@ -398,8 +396,7 @@
     ;       item_finalise(item_finalise_info)
     ;       item_mutable(item_mutable_info)
     ;       item_foreign_import_module(item_foreign_import_module_info)
-    ;       item_type_repn(item_type_repn_info)
-    ;       item_nothing(item_nothing_info).
+    ;       item_type_repn(item_type_repn_info).
 
 :- type item_clause_info
     --->    item_clause_info(
@@ -631,26 +628,7 @@
                 tr_seq_num                      :: int
             ).
 
-:- type item_nothing_info
-    --->    item_nothing_info(
-                % Used for items that should be ignored (for purposes of
-                % backwards compatibility etc).
-                % XXX Instead of maybe(item_warning), this should be
-                % maybe(error_spec).
-                nothing_maybe_warning           :: maybe(item_warning),
-                nothing_context                 :: prog_context,
-                nothing_seq_num                 :: int
-            ).
-
 :- func get_item_context(item) = prog_context.
-
-:- type item_warning
-    --->    item_warning(
-                maybe(option),  % Option controlling whether the
-                                % warning should be reported.
-                string,         % The warning.
-                term            % The term to which it relates.
-            ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1747,9 +1725,6 @@ get_item_context(Item) = Context :-
     ;
         Item = item_type_repn(ItemTypeRepn),
         Context = ItemTypeRepn ^ tr_context
-    ;
-        Item = item_nothing(ItemNothing),
-        Context = ItemNothing ^ nothing_context
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2169,7 +2144,6 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ; Item = item_type_repn(_)
-        ; Item = item_nothing(_)
         )
     ).
 

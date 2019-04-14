@@ -598,8 +598,6 @@ split_items_into_clauses_and_decls([Item | Items],
             !:RevImpDecls = [Item | !.RevImpDecls]
         )
     ;
-        % XXX ITEM_LIST I (zs) think that item_nothings should not be put
-        % anywhere.
         ( Item = item_type_defn(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -611,7 +609,6 @@ split_items_into_clauses_and_decls([Item | Items],
         ; Item = item_mutable(_)
         ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
-        ; Item = item_nothing(_)
         ),
         !:RevImpDecls = [Item | !.RevImpDecls]
     ),

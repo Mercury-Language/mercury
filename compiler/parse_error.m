@@ -55,18 +55,12 @@
             % module in the file. For the main module itself, we would generate
             % the rme_unexpected_module_name error.
 
-    ;       rme_bad_module_end
+    ;       rme_bad_module_end.
             % We encountered a declaration for the ending of a module,
             % but the name of the ended module is not the name of the
             % until-then-current module.
             % NOTE: This error can happen both for the main module of the
             % file and for its submodules.
-
-    ;       rme_warn_item_nothing.
-            % We encountered an item (such as a version number record for
-            % smart recompilation) that the parser turned into an item_nothing
-            % with a warning, and we have to turn that warning into an error
-            % because the option halt_at_warn is set.
 
     % This type represents the set of errors that were encountered
     % during an attempt to read in a Mercury module (source file or

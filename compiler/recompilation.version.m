@@ -430,10 +430,9 @@ gather_in_item(Section, Item, !Info) :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
-        ; Item = item_nothing(_)
         ),
         % Such items should not appear in interfaces.
-        unexpected($module, $pred, "unexpected item in interface")
+        unexpected($pred, "unexpected item in interface")
     ).
 
 :- pred add_gathered_item(item::in, item_id::in, module_section::in,
@@ -1065,17 +1064,6 @@ is_item_changed(Item1, Item2, Changed) :-
         % information derived from *other items*. They cannot change
         % unless those other items change.
         Changed = unchanged
-    ;
-        Item1 = item_nothing(ItemNothing1),
-        ItemNothing1 = item_nothing_info(A, _, _),
-        ( if
-            Item2 = item_nothing(ItemNothing2),
-            ItemNothing2 = item_nothing_info(A, _, _)
-        then
-            Changed = unchanged
-        else
-            Changed = changed
-        )
     ).
 
     % Apply a substitution to the existq_tvars, types_and_modes, and
@@ -1106,7 +1094,7 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
                 % This should have been split out into a separate
                 % mode declaration by gather_items.
                 TypeAndMode0 = type_and_mode(_, _),
-                unexpected($module, $pred, "type_and_mode")
+                unexpected($pred, "type_and_mode")
             )
         ),
     Types1 = list.map(GetArgTypes, TypesAndModes1),
@@ -1142,7 +1130,7 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
     then
         ExistQVars1 = SubstExistQVars2
     else
-        unexpected($module, $pred, "non-var")
+        unexpected($pred, "non-var")
     ),
 
     % Check that the class constraints are identical.

@@ -441,7 +441,6 @@ replace_in_item(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         ; Item0 = item_initialise(_)
         ; Item0 = item_finalise(_)
         ; Item0 = item_foreign_import_module(_)
-        ; Item0 = item_nothing(_)
         ),
         Item = Item0,
         Specs = []

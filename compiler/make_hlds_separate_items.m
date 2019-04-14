@@ -540,8 +540,6 @@ separate_items([Item | Items], SectionInfo,
             Pragma3StatusItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
             !:RevItemPragmas3 = [Pragma3StatusItem | !.RevItemPragmas3]
         )
-    ;
-        Item = item_nothing(_ItemNothingInfo)
     ),
     separate_items(Items, SectionInfo,
         !RevItemTypeDefnsAbstract, !RevItemTypeDefnsMercury,

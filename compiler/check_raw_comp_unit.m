@@ -80,26 +80,13 @@ do_ms_interface_item_blocks_export_anything([RawItemBlock | RawItemBlocks],
         % XXX ITEM_LIST Should we return "yes" for an item_block
         % that contains only ONE include_module declaration?
         ( Incls = [_ | _]
-        ; do_ms_interface_items_export_anything(Items, yes)
+        ; Items = [_ | _]
         )
     then
         ExportAnything = yes
     else
         do_ms_interface_item_blocks_export_anything(RawItemBlocks,
             ExportAnything)
-    ).
-
-:- pred do_ms_interface_items_export_anything(list(item)::in,
-    bool::out) is det.
-
-do_ms_interface_items_export_anything([], no).
-do_ms_interface_items_export_anything([Item | Items], ExportAnything) :-
-    ( if Item = item_nothing(_) then
-        % Item is not useful when exported; keep searching.
-        do_ms_interface_items_export_anything(Items, ExportAnything)
-    else
-        % We found something useful being exported.
-        ExportAnything = yes
     ).
 
 :- pred generate_no_exports_warning(module_name::in,

@@ -83,6 +83,7 @@
 :- import_module recompilation.
 :- import_module recompilation.version.
 
+:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module list.
@@ -727,53 +728,50 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
     maybe1(item_or_marker)::out) is det.
 
 parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
-        Context, SeqNum, MaybeIOM) :-
+        Context, _SeqNum, MaybeIOM) :-
     ( if
         ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm]
     then
-        ( if
-            decimal_term_to_int(VersionNumberTerm, VersionNumber),
-            VersionNumber = version_numbers_version_number
-        then
-            ( if try_parse_symbol_name(ModuleNameTerm, ModuleName) then
-                recompilation.version.parse_version_numbers(
-                    VersionNumbersTerm, MaybeVersionNumbers),
-                (
-                    MaybeVersionNumbers = ok1(VersionNumbers),
-                    IOM = iom_marker_version_numbers(VersionNumbers),
-                    MaybeIOM = ok1(IOM)
-                ;
-                    MaybeVersionNumbers = error1(Specs),
-                    MaybeIOM = error1(Specs)
+        ( if decimal_term_to_int(VersionNumberTerm, VersionNumber) then
+            ( if VersionNumber = version_numbers_version_number then
+                ( if try_parse_symbol_name(ModuleNameTerm, ModuleName) then
+                    recompilation.version.parse_version_numbers(
+                        VersionNumbersTerm, MaybeVersionNumbers),
+                    (
+                        MaybeVersionNumbers = ok1(VersionNumbers),
+                        IOM = iom_marker_version_numbers(VersionNumbers),
+                        MaybeIOM = ok1(IOM)
+                    ;
+                        MaybeVersionNumbers = error1(Specs),
+                        MaybeIOM = error1(Specs)
+                    )
+                else
+                    Pieces = [words("Error: invalid module name in"),
+                        decl("version_numbers"), suffix("."), nl],
+                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                        [simple_msg(get_term_context(ModuleNameTerm),
+                            [always(Pieces)])]),
+                    MaybeIOM = error1([Spec])
                 )
             else
-                Pieces = [words("Error: invalid module name in"),
-                    decl("version_numbers"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(ModuleNameTerm),
-                        [always(Pieces)])]),
-                MaybeIOM = error1([Spec])
+                Pieces = [words("Error: the interface file"),
+                    words("was created by an obsolete compiler,"),
+                    words("so it must be rebuilt."), nl],
+                Severity = severity_conditional(warn_smart_recompilation,
+                    yes, severity_error, no),
+                Spec = error_spec(Severity, phase_term_to_parse_tree,
+                    [simple_msg(Context,
+                        [option_is_set(warn_smart_recompilation, yes,
+                            [always(Pieces)])])]),
+                MaybeIOM = ok1(iom_handled([Spec]))
             )
         else
-            (
-                VersionNumberTerm = term.functor(_, _, _VersionNumberContext),
-                Msg = "interface file needs to be recreated, " ++
-                    "the version numbers are out of date",
-                dummy_term_with_context(Context, DummyTerm),
-                Warning = item_warning(yes(warn_smart_recompilation),
-                    Msg, DummyTerm),
-                ItemNothing = item_nothing_info(yes(Warning), Context, SeqNum),
-                Item = item_nothing(ItemNothing),
-                IOM = iom_item(Item),
-                MaybeIOM = ok1(IOM)
-            ;
-                VersionNumberTerm = term.variable(_, VersionNumberContext),
-                Pieces = [words("Error: invalid version number in"),
-                    decl("version_numbers"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(VersionNumberContext, [always(Pieces)])]),
-                MaybeIOM = error1([Spec])
-            )
+            Pieces = [words("Error: invalid version number in"),
+                decl("version_numbers"), suffix("."), nl],
+            VersionNumberContext = get_term_context(VersionNumbersTerm),
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(VersionNumberContext, [always(Pieces)])]),
+            MaybeIOM = error1([Spec])
         )
     else
         Pieces = [words("Error: a"), decl(Functor), words("declaration"),
