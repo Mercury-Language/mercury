@@ -795,8 +795,10 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
         % is a submodule, then it may depend on things imported only by its
         % ancestors.
         %
-        multi_map.keys(ModuleAndImports ^ mai_int_deps, IntDeps),
-        multi_map.keys(ModuleAndImports ^ mai_imp_deps, ImpDeps),
+        module_and_imports_get_int_deps(ModuleAndImports, IntDepsMap),
+        module_and_imports_get_imp_deps(ModuleAndImports, ImpDepsMap),
+        multi_map.keys(IntDepsMap, IntDeps),
+        multi_map.keys(ImpDepsMap, ImpDeps),
         module_names_to_index_set(IntDeps, DepsInt, !Info),
         module_names_to_index_set(ImpDeps, DepsImp, !Info),
         Modules0 = union(DepsInt, DepsImp),
@@ -968,10 +970,12 @@ find_module_foreign_imports_2(Languages, Globals, ModuleIndex, Success,
 find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
         Success, ForeignModules, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO),
     (
-        MaybeImports = yes(Imports),
-        ForeignModuleInfos = Imports ^ mai_foreign_import_modules,
+        MaybeModuleAndImports = yes(ModuleAndImports),
+        module_and_imports_get_foreign_import_modules(ModuleAndImports,
+            ForeignModuleInfos),
         LangForeignModuleNameSets =
             set.map(get_lang_foreign_import_modules(ForeignModuleInfos),
                 Languages),
@@ -980,7 +984,7 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
             ForeignModules, !Info),
         Success = yes
     ;
-        MaybeImports = no,
+        MaybeModuleAndImports = no,
         ForeignModules = init,
         Success = no
     ).
@@ -993,15 +997,16 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
 
 fact_table_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO),
     (
-        MaybeImports = yes(Imports),
+        MaybeModuleAndImports = yes(ModuleAndImports),
         Success = yes,
-        FactDeps = Imports ^ mai_fact_table_deps,
+        module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
         FilesList = list.map((func(File) = dep_file(File, no)), FactDeps),
         Files = set.list_to_set(FilesList)
     ;
-        MaybeImports = no,
+        MaybeModuleAndImports = no,
         Success = no,
         Files = init
     ).
@@ -1015,17 +1020,20 @@ fact_table_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
 foreign_include_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
     globals.get_backend_foreign_languages(Globals, Languages),
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO),
     (
-        MaybeImports = yes(Imports),
+        MaybeModuleAndImports = yes(ModuleAndImports),
         Success = yes,
-        SourceFileName = Imports ^ mai_source_file_name,
-        ForeignIncludeFilesCord = Imports ^ mai_foreign_include_files,
+        module_and_imports_get_source_file_name(ModuleAndImports,
+            SourceFileName),
+        module_and_imports_get_foreign_include_files(ModuleAndImports,
+            ForeignIncludeFilesCord),
         FilesList = get_foreign_include_files(set.from_list(Languages),
             SourceFileName, cord.list(ForeignIncludeFilesCord)),
         Files = set.from_list(FilesList)
     ;
-        MaybeImports = no,
+        MaybeModuleAndImports = no,
         Success = no,
         Files = set.init
     ).
@@ -1131,50 +1139,50 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
         Modules = union(Modules0, Modules1)
     else
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
-        get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+        get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+            !Info, !IO),
         (
-            MaybeImports = yes(Imports),
+            MaybeModuleAndImports = yes(ModuleAndImports),
+            module_and_imports_get_source_file_dir(ModuleAndImports,
+                ModuleDir),
             ( if
                 (
                     ModuleLocn = any_module
                 ;
                     ModuleLocn = local_module,
-                    Imports ^ mai_module_dir = dir.this_directory
+                    ModuleDir = dir.this_directory
                 )
             then
+                module_and_imports_get_foreign_import_modules(
+                    ModuleAndImports, ForeignImportModules),
+                module_and_imports_get_ancestors(ModuleAndImports,
+                    Ancestors),
+                module_and_imports_get_children(ModuleAndImports,
+                    ChildrenMap),
+                module_and_imports_get_int_deps(ModuleAndImports,
+                    IntDepsMap),
+                module_and_imports_get_imp_deps(ModuleAndImports,
+                    ImpDepsMap),
+                set.sorted_list_to_set(multi_map.keys(ChildrenMap), Children),
+                set.sorted_list_to_set(multi_map.keys(IntDepsMap), IntDeps),
+                set.sorted_list_to_set(multi_map.keys(ImpDepsMap), ImpDeps),
                 (
-                    % Parents don't need to be considered here.
+                    % Ancestors don't need to be considered here.
                     % Anywhere the interface of the child module is needed,
-                    % the parent must also have been imported.
+                    % the ancestors must also have been imported.
                     DependenciesType = interface_imports,
-                    set.sorted_list_to_set(multi_map.keys(
-                        Imports ^ mai_int_deps), IntDeps),
                     ImportsToCheck = IntDeps
                 ;
                     DependenciesType = all_dependencies,
-                    set.sorted_list_to_set(multi_map.keys(
-                        Imports ^ mai_int_deps), IntDeps),
-                    set.sorted_list_to_set(multi_map.keys(
-                        Imports ^ mai_imp_deps), ImpDeps),
-                    set.sorted_list_to_set(multi_map.keys(
-                        Imports ^ mai_children), Children),
                     ImportsToCheck = set.union_list([
-                        IntDeps, ImpDeps, Children,
-                        Imports ^ mai_parent_deps,
-                        get_all_foreign_import_modules(
-                            Imports ^ mai_foreign_import_modules)
+                        Ancestors, Children, IntDeps, ImpDeps,
+                        get_all_foreign_import_modules(ForeignImportModules)
                     ])
                 ;
                     DependenciesType = all_imports,
-                    set.sorted_list_to_set(multi_map.keys(
-                        Imports ^ mai_int_deps), IntDeps),
-                    set.sorted_list_to_set(multi_map.keys(
-                        Imports ^ mai_imp_deps), ImpDeps),
                     ImportsToCheck = set.union_list([
-                        IntDeps, ImpDeps,
-                        Imports ^ mai_parent_deps,
-                        get_all_foreign_import_modules(
-                            Imports ^ mai_foreign_import_modules)
+                        Ancestors, IntDeps, ImpDeps,
+                        get_all_foreign_import_modules(ForeignImportModules)
                     ])
                 ),
                 module_names_to_index_set(set.to_sorted_list(ImportsToCheck),
@@ -1193,7 +1201,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                 Modules = Modules0
             )
         ;
-            MaybeImports = no,
+            MaybeModuleAndImports = no,
             Success = no,
             Modules = Modules0
         )
@@ -1211,12 +1219,15 @@ remove_nested_modules(Globals, Modules0, Modules, !Info, !IO) :-
     io::di, io::uo) is det.
 
 collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO),
     (
-        MaybeImports = yes(Imports),
-        set.union(Imports ^ mai_nested_children, !NestedModules)
+        MaybeModuleAndImports = yes(ModuleAndImports),
+        module_and_imports_get_nested_children(ModuleAndImports,
+            NestedChildren),
+        set.union(NestedChildren, !NestedModules)
     ;
-        MaybeImports = no
+        MaybeModuleAndImports = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1479,14 +1490,16 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
         then
             Status = StatusPrime
         else
-            get_module_dependencies(Globals, ModuleName, MaybeImports,
+            get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
                 !Info, !IO),
             (
-                MaybeImports = no,
+                MaybeModuleAndImports = no,
                 Status = deps_status_error
             ;
-                MaybeImports = yes(Imports),
-                ( if Imports ^ mai_module_dir = dir.this_directory then
+                MaybeModuleAndImports = yes(ModuleAndImports),
+                module_and_imports_get_source_file_dir(ModuleAndImports,
+                    ModuleDir),
+                ( if ModuleDir = dir.this_directory then
                     Status = deps_status_not_considered
                 else
                     % Targets from libraries are always considered to be

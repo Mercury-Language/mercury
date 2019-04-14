@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: module_imports.m.
 % Main author: fjh.
@@ -13,7 +13,7 @@
 % a raw compilation unit. It records all the things that are imported,
 % directly or indirectly, by the original raw compilation unit.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.module_imports.
 :- interface.
@@ -39,7 +39,7 @@
 :- import_module multi_map.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % When doing smart recompilation, we record, for each module,
     % which of its versions (source .m file, generated .int0/.int3/.int2/.int
@@ -88,11 +88,11 @@
                 mts_need_qualifier  :: need_qualifier
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type module_names_contexts == multi_map(module_name, prog_context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The `module_and_imports' structure holds information about
     % a module and the modules that it imports. We build this structure up
@@ -100,7 +100,7 @@
     %
 :- type module_and_imports.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The predicates that create module_and_imports structures.
 %
@@ -141,7 +141,7 @@
     % a partially filled in state. If that perception is correct,
     % then that code should be fixed to follow the standard method
     % of construcing module_and_imports structures.
-    % 
+    %
 :- pred make_module_and_imports(file_name::in,
     module_name::in, module_name::in, prog_context::in,
     list(src_item_block)::in, list(error_spec)::in,
@@ -149,49 +149,106 @@
     list(string)::in, foreign_include_file_infos::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
 
-%-----------------------------------------------------------------------------%
+    % Construct a module_and_imports structure for inclusion in
+    % a module dependencies structure, for make.module_dep_file.m.
+    % This structure is only partially filled in. I (zs) don't know
+    % what rationale governs what fields need to be filled in, and when.
+    %
+:- pred make_module_dep_module_and_imports(string::in, string::in,
+    module_name::in, module_name::in,
+    list(module_name)::in, list(module_name)::in,
+    list(module_name)::in, list(module_name)::in,
+    list(module_name)::in, list(string)::in,
+    list(foreign_import_module_info)::in, list(foreign_include_file_info)::in,
+    contains_foreign_code::in, contains_foreign_export::in,
+    has_main::in, module_and_imports::out) is det.
+
+%---------------------------------------------------------------------------%
 %
-% The predicates that feed information into and retrieve information from
-% module_and_imports structures.
+% Getter and setter predicates for the module_and_imports structure.
 %
 
 :- pred module_and_imports_get_source_file_name(module_and_imports::in,
     file_name::out) is det.
+:- pred module_and_imports_get_source_file_dir(module_and_imports::in,
+    dir_name::out) is det.
+:- pred module_and_imports_get_source_file_module_name(module_and_imports::in,
+    module_name::out) is det.
 :- pred module_and_imports_get_module_name(module_and_imports::in,
     module_name::out) is det.
 :- pred module_and_imports_get_module_name_context(module_and_imports::in,
     prog_context::out) is det.
+:- pred module_and_imports_get_ancestors(module_and_imports::in,
+    set(module_name)::out) is det.
+:- pred module_and_imports_get_children(module_and_imports::in,
+    module_names_contexts::out) is det.
+:- pred module_and_imports_get_public_children(module_and_imports::in,
+    module_names_contexts::out) is det.
+:- pred module_and_imports_get_nested_children(module_and_imports::in,
+    set(module_name)::out) is det.
+:- pred module_and_imports_get_int_deps(module_and_imports::in,
+    module_names_contexts::out) is det.
 :- pred module_and_imports_get_imp_deps(module_and_imports::in,
     module_names_contexts::out) is det.
+:- pred module_and_imports_get_indirect_deps(module_and_imports::in,
+    set(module_name)::out) is det.
+:- pred module_and_imports_get_fact_table_deps(module_and_imports::in,
+    list(string)::out) is det.
+:- pred module_and_imports_get_foreign_import_modules(module_and_imports::in,
+    foreign_import_modules::out) is det.
+:- pred module_and_imports_get_foreign_include_files(module_and_imports::in,
+    foreign_include_file_infos::out) is det.
+:- pred module_and_imports_get_contains_foreign_code(module_and_imports::in,
+    contains_foreign_code::out) is det.
+:- pred module_and_imports_get_contains_foreign_export(module_and_imports::in,
+    contains_foreign_export::out) is det.
+:- pred module_and_imports_get_has_main(module_and_imports::in,
+    has_main::out) is det.
+:- pred module_and_imports_get_src_blocks(module_and_imports::in,
+    list(src_item_block)::out) is det.
+:- pred module_and_imports_get_direct_int_blocks_cord(module_and_imports::in,
+    cord(int_item_block)::out) is det.
+:- pred module_and_imports_get_indirect_int_blocks_cord(module_and_imports::in,
+    cord(int_item_block)::out) is det.
+:- pred module_and_imports_get_opt_blocks_cord(module_and_imports::in,
+    cord(opt_item_block)::out) is det.
+:- pred module_and_imports_get_int_for_opt_blocks_cord(module_and_imports::in,
+    cord(int_for_opt_item_block)::out) is det.
+:- pred module_and_imports_get_maybe_timestamp_map(module_and_imports::in,
+    maybe(module_timestamp_map)::out) is det.
 :- pred module_and_imports_get_errors(module_and_imports::in,
     read_module_errors::out) is det.
 
-    % Set the interface dependencies.
-    %
+    % XXX It should NOT be necessary to set the ancestors
+    % after the module_and_imports structure is initially created.
+:- pred module_and_imports_set_ancestors(set(module_name)::in,
+    module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_int_deps(module_names_contexts::in,
     module_and_imports::in, module_and_imports::out) is det.
-
-    % Set the implementation dependencies.
-    %
 :- pred module_and_imports_set_imp_deps(module_names_contexts::in,
     module_and_imports::in, module_and_imports::out) is det.
-
-    % Set the indirect dependencies.
-    %
 :- pred module_and_imports_set_indirect_deps(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
-
+:- pred module_and_imports_set_foreign_import_modules(
+    foreign_import_modules::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_set_maybe_timestamp_map(
+    maybe(module_timestamp_map)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+    % XXX It should NOT be necessary to set the read_module_errors field;
+    % the predicates below that only *add* to the set of errors
+    % should be sufficient.
 :- pred module_and_imports_set_errors(read_module_errors::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-:- pred module_and_imports_add_specs(list(error_spec)::in,
+%---------------------------------------------------------------------------%
+%
+% Predicates for adding information to module_and_imports structures.
+%
+
+:- pred module_and_imports_add_ancestor(module_name::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-:- pred module_and_imports_add_interface_error(read_module_errors::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
-    % Add items to the end of the list.
-    %
 :- pred module_and_imports_add_direct_int_item_blocks(
     list(int_item_block)::in,
     module_and_imports::in, module_and_imports::out) is det.
@@ -209,14 +266,33 @@
     module_name::in, maybe(version_numbers)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
+:- pred module_and_imports_add_specs(list(error_spec)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+:- pred module_and_imports_add_interface_error(read_module_errors::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
 :- pred module_and_imports_add_specs_errors(
     list(error_spec)::in, read_module_errors::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
-% The predicate that gets info from completed module_and_imports structures.
+% The predicates that return the contents of module_and_imports structures.
 %
+
+    % Return the parts of the given module_and_imports structure
+    % that we need to put into an automatically generated .d file.
+    %
+:- pred module_and_imports_d_file(module_and_imports::in,
+    file_name::out, module_name::out, module_name::out,
+    set(module_name)::out, module_names_contexts::out, set(module_name)::out,
+    module_names_contexts::out, module_names_contexts::out,
+    set(module_name)::out, list(string)::out,
+    foreign_import_modules::out, foreign_include_file_infos::out,
+    contains_foreign_code::out, list(src_item_block)::out,
+    cord(int_item_block)::out, cord(int_item_block)::out,
+    cord(opt_item_block)::out, cord(int_for_opt_item_block)::out) is det.
 
     % Return the results recorded in the module_and_imports structure.
     %
@@ -227,8 +303,8 @@
     aug_compilation_unit::out, list(error_spec)::out, read_module_errors::out)
     is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -237,13 +313,10 @@
 :- import_module parse_tree.get_dependencies.
 
 :- import_module dir.
+:- import_module pair.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
-
-    % We shouldn't export the definition of the module_and_imports type,
-    % but for now, we do.
-:- interface.
+%---------------------------------------------------------------------------%
 
     % When generating the dependencies (for `--generate-dependencies'), the
     % two fields that hold the direct imports do not include the imports via
@@ -286,21 +359,34 @@
     %
 :- type module_and_imports
     --->    module_and_imports(
-                % The source file.
+                % The name of the source file and directory
+                % containing the module source.
                 mai_source_file_name            :: file_name,
+                mai_module_dir                  :: dir_name,
 
-                % The name of the top-level module in the source file
-                % containing the module that we are compiling.
+                % The name of the top-level module in the above source file.
                 mai_source_file_module_name     :: module_name,
 
-                % The module (or sub-module) that we are compiling.
+                % The module that we are compiling. This may be
+                % mai_source_file_module_name, or it may be one of its
+                % descendant modules (child modules, grandchild modules, etc).
                 mai_module_name                 :: module_name,
 
                 % The context of the module declaration of mai_module_name.
                 mai_module_name_context         :: prog_context,
 
-                % The set of ancestor modules it inherits.
-                mai_parent_deps                 :: set(module_name),
+                % The set of mai_module_name's ancestor modules.
+                mai_ancestors                   :: set(module_name),
+
+                mai_children                    :: module_names_contexts,
+
+                % The set of its public children, i.e. child modules that
+                % it includes in the interface section.
+                mai_public_children             :: module_names_contexts,
+
+                % The modules included in the same source file. This field
+                % is only set for the top-level module in each file.
+                mai_nested_children             :: set(module_name),
 
                 % The set of modules it directly imports in the interface
                 % (imports via ancestors count as direct).
@@ -312,16 +398,6 @@
 
                 % The set of modules it indirectly imports.
                 mai_indirect_deps               :: set(module_name),
-
-                mai_children                    :: module_names_contexts,
-
-                % The set of its public children, i.e. child modules that
-                % it includes in the interface section.
-                mai_public_children             :: module_names_contexts,
-
-                % The modules included in the same source file. This field
-                % is only set for the top-level module in each file.
-                mai_nested_children             :: set(module_name),
 
                 % The list of filenames for fact tables in this module.
                 mai_fact_table_deps             :: list(string),
@@ -336,11 +412,14 @@
 
                 % Whether or not the module contains foreign code, and if yes,
                 % which languages they use.
-                mai_has_foreign_code            :: contains_foreign_code,
+                mai_contains_foreign_code       :: contains_foreign_code,
 
                 % Does the module contain any `:- pragma foreign_export'
                 % declarations?
                 mai_contains_foreign_export     :: contains_foreign_export,
+
+                % Does this module contain main/2?
+                mai_has_main                    :: has_main,
 
                 % The contents of the module and its imports.
                 mai_src_blocks                  :: list(src_item_block),
@@ -349,62 +428,51 @@
                 mai_opt_blocks_cord             :: cord(opt_item_block),
                 mai_int_for_opt_blocks_cord     :: cord(
                                                     int_for_opt_item_block),
-                mai_module_version_numbers      :: module_version_numbers_map,
 
-                % Whether an error has been encountered when reading in
-                % this module.
-                mai_specs                       :: list(error_spec),
-                mai_errors                      :: read_module_errors,
+                mai_version_numbers_map         :: module_version_numbers_map,
 
                 % If we are doing smart recompilation, we need to keep
                 % the timestamps of the modules read in.
                 mai_maybe_timestamp_map         :: maybe(module_timestamp_map),
 
-                % Does this module contain main/2?
-                mai_has_main                    :: has_main,
-
-                % The directory containing the module source.
-                mai_module_dir                  :: dir_name
+                % Whether an error has been encountered when reading in
+                % this module.
+                mai_specs                       :: list(error_spec),
+                mai_errors                      :: read_module_errors
             ).
 
-:- implementation.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
         NestedModuleNames, Specs, Errors, RawCompUnit0, ModuleImports) :-
     RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
-    ParentDeps = get_ancestors(ModuleName),
+    Ancestors = get_ancestors(ModuleName),
 
     get_dependencies_in_item_blocks(RawItemBlocks,
-        ImplImportDeps0, ImplUseDeps0),
+        ImpImportDeps0, ImpUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
-        ImplicitImplImportDeps, ImplicitImplUseDeps),
-    multi_map.merge(ImplicitImplImportDeps, ImplImportDeps0, ImplImportDeps),
-    multi_map.merge(ImplicitImplUseDeps, ImplUseDeps0, ImplUseDeps),
-    multi_map.merge(ImplImportDeps, ImplUseDeps, ImplementationDeps),
+        ImplicitImpImportDeps, ImplicitImpUseDeps),
+    multi_map.merge(ImplicitImpImportDeps, ImpImportDeps0, ImpImportDeps),
+    multi_map.merge(ImplicitImpUseDeps, ImpUseDeps0, ImpUseDeps),
+    multi_map.merge(ImpImportDeps, ImpUseDeps, ImpDeps),
 
     get_interface(RawCompUnit0, RawCompUnit),
     RawCompUnit = raw_compilation_unit(_, _, InterfaceItemBlocks),
     get_dependencies_in_item_blocks(InterfaceItemBlocks,
-        InterfaceImportDeps0, InterfaceUseDeps0),
+        IntImportDeps0, IntUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, InterfaceItemBlocks,
-        ImplicitInterfaceImportDeps, ImplicitInterfaceUseDeps),
-    multi_map.merge(ImplicitInterfaceImportDeps, InterfaceImportDeps0,
-        InterfaceImportDeps),
-    multi_map.merge(ImplicitInterfaceUseDeps, InterfaceUseDeps0,
-        InterfaceUseDeps),
-    multi_map.merge(InterfaceImportDeps, InterfaceUseDeps,
-        InterfaceDeps),
+        ImplicitIntImportDeps, ImplicitIntUseDeps),
+    multi_map.merge(ImplicitIntImportDeps, IntImportDeps0, IntImportDeps),
+    multi_map.merge(ImplicitIntUseDeps, IntUseDeps0, IntUseDeps),
+    multi_map.merge(IntImportDeps, IntUseDeps, IntDeps),
 
     % We don't fill in the indirect dependencies yet.
     set.init(IndirectDeps),
 
-    get_included_modules_in_item_blocks(RawItemBlocks, IncludeDeps),
-    get_included_modules_in_item_blocks(InterfaceItemBlocks,
-        InterfaceIncludeDeps),
+    get_included_modules_in_item_blocks(RawItemBlocks, Children),
+    get_included_modules_in_item_blocks(InterfaceItemBlocks, PublicChildren),
 
     % XXX ITEM_LIST Document why we do this.
     ( if ModuleName = SourceFileModuleName then
@@ -435,20 +503,19 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
     % Work out whether the items contain main/2.
     look_for_main_pred_in_item_blocks(RawItemBlocks, no_main, HasMain),
-    % XXX ITEM_LIST SrcItemBlocks is NOT stored here, per the documentation
-    % above. Maybe it should be.
-    % The definition of the module_and_imports type is exported, so other
-    % modules can construct values of this type *without* calling this
-    % predicate. The code that does so in make_module_and_imports in modules.m
-    % *does* fill in the SrcItemBlocks field with meaningful data.
-    ModuleImports = module_and_imports(FileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, set.list_to_set(ParentDeps),
-        InterfaceDeps, ImplementationDeps, IndirectDeps,
-        IncludeDeps, InterfaceIncludeDeps, NestedDeps, FactTableDeps,
+
+    map.init(VersionNumbers),
+    MaybeTimestampMap = no,
+    % XXX ITEM_LIST SrcItemBlocks and the item block fields are NOT
+    % stored here, per the documentation above. Maybe they should be.
+    ModuleImports = module_and_imports(FileName, dir.this_directory,
+        SourceFileModuleName, ModuleName, ModuleNameContext,
+        set.list_to_set(Ancestors), Children, PublicChildren, NestedDeps,
+        IntDeps, ImpDeps, IndirectDeps, FactTableDeps,
         ForeignImports, ForeignIncludeFiles,
-        ContainsForeignCode, ContainsForeignExport,
-        [], cord.init, cord.init, cord.init, cord.init, map.init,
-        Specs, Errors, no, HasMain, dir.this_directory).
+        ContainsForeignCode, ContainsForeignExport, HasMain,
+        [], cord.init, cord.init, cord.init, cord.init,
+        VersionNumbers, MaybeTimestampMap, Specs, Errors).
 
 :- pred look_for_main_pred_in_item_blocks(list(item_block(MS))::in,
     has_main::in, has_main::out) is det.
@@ -489,7 +556,7 @@ look_for_main_pred_in_items([Item | Items], !HasMain) :-
     ),
     look_for_main_pred_in_items(Items, !HasMain).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ModuleNameContext, SrcItemBlocks, Specs,
@@ -499,73 +566,213 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
     map.init(IntDeps),
     map.init(ImpDeps),
     set.init(IndirectDeps),
-    map.init(IncludeDeps),
+    % XXX Since PublicChildren should be a subset of Children,
+    % this looks like bug.
+    map.init(Children),
     ForeignImports = init_foreign_import_modules,
+    map.init(VersionNumbers),
     set.init(Errors),
-    ModuleAndImports = module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext,
-        Ancestors, IntDeps, ImpDeps, IndirectDeps, IncludeDeps,
-        PublicChildren, NestedChildren, FactDeps,
+    ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
+        SourceFileModuleName, ModuleName, ModuleNameContext,
+        Ancestors, Children, PublicChildren, NestedChildren,
+        IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
-        contains_foreign_code_unknown, contains_no_foreign_export,
-        SrcItemBlocks, cord.init, cord.init, cord.init, cord.init, map.init,
-        Specs, Errors, MaybeTimestampMap, no_main, dir.this_directory).
+        contains_foreign_code_unknown, contains_no_foreign_export, no_main,
+        SrcItemBlocks, cord.init, cord.init, cord.init, cord.init,
+        VersionNumbers, MaybeTimestampMap, Specs, Errors).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+make_module_dep_module_and_imports(SourceFileName, ModuleDir,
+        SourceFileModuleName, ModuleName,
+        Ancestors, Children, NestedChildren, IntDeps, ImpDeps, FactDeps,
+        ForeignImports, ForeignIncludes,
+        ContainsForeignCode, ContainsForeignExport, HasMain,
+        ModuleAndImports) :-
+    ModuleNameContext = term.context_init,
+    AddDummyContext = ( func(MN) = MN - [term.context_init] ),
+    multi_map.from_assoc_list(list.map(AddDummyContext, IntDeps),
+        IntDepsContexts),
+    multi_map.from_assoc_list(list.map(AddDummyContext, ImpDeps),
+        ImpDepsContexts),
+    set.init(IndirectDeps),
+    multi_map.from_assoc_list(list.map(AddDummyContext, Children),
+        ChildrenContexts),
+    % XXX We do not know which child modules are public, so saying
+    % none of them are is likely to be a bug.
+    multi_map.init(PublicChildrenContexts),
+    list.foldl(add_foreign_import_module_info, ForeignImports,
+        init_foreign_import_modules, ForeignImportModules),
+    SrcItemBlocks = [],
+    DirectIntItemBlocksCord = cord.empty,
+    IndirectIntItemBlocksCord = cord.empty,
+    OptItemBlocksCord = cord.empty,
+    IntForOptItemBlocksCord = cord.empty,
+    map.init(ModuleVersionNumbers),
+    Specs = [],
+    set.init(Errors),
+    MaybeTimestamps = no,
+    ModuleAndImports = module_and_imports(SourceFileName, ModuleDir,
+        SourceFileModuleName, ModuleName, ModuleNameContext,
+        set.list_to_set(Ancestors), ChildrenContexts, PublicChildrenContexts,
+        set.list_to_set(NestedChildren),
+        IntDepsContexts, ImpDepsContexts, IndirectDeps,
+        FactDeps,
+        ForeignImportModules, cord.from_list(ForeignIncludes),
+        ContainsForeignCode, ContainsForeignExport, HasMain,
+        SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
+        OptItemBlocksCord, IntForOptItemBlocksCord,
+        ModuleVersionNumbers, MaybeTimestamps, Specs, Errors).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred module_and_imports_get_version_numbers_map(module_and_imports::in,
+    module_version_numbers_map::out) is det.
+:- pred module_and_imports_get_specs(module_and_imports::in,
+    list(error_spec)::out) is det.
 
 module_and_imports_get_source_file_name(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_source_file_name.
+module_and_imports_get_source_file_dir(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_module_dir.
+module_and_imports_get_source_file_module_name(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_source_file_module_name.
 module_and_imports_get_module_name(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_module_name.
 module_and_imports_get_module_name_context(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_module_name_context.
+module_and_imports_get_ancestors(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_ancestors.
+module_and_imports_get_children(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_children.
+module_and_imports_get_public_children(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_public_children.
+module_and_imports_get_nested_children(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_nested_children.
+module_and_imports_get_int_deps(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_int_deps.
 module_and_imports_get_imp_deps(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_imp_deps.
+module_and_imports_get_indirect_deps(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_indirect_deps.
+module_and_imports_get_fact_table_deps(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_fact_table_deps.
+module_and_imports_get_foreign_import_modules(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_foreign_import_modules.
+module_and_imports_get_foreign_include_files(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_foreign_include_files.
+module_and_imports_get_contains_foreign_code(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_contains_foreign_code.
+module_and_imports_get_contains_foreign_export(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_contains_foreign_export.
+module_and_imports_get_has_main(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_has_main.
+module_and_imports_get_src_blocks(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_src_blocks.
+module_and_imports_get_direct_int_blocks_cord(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_direct_int_blocks_cord.
+module_and_imports_get_indirect_int_blocks_cord(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_indirect_int_blocks_cord.
+module_and_imports_get_opt_blocks_cord(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_opt_blocks_cord.
+module_and_imports_get_int_for_opt_blocks_cord(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_int_for_opt_blocks_cord.
+module_and_imports_get_version_numbers_map(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_version_numbers_map.
+module_and_imports_get_maybe_timestamp_map(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_maybe_timestamp_map.
+module_and_imports_get_specs(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_specs.
 module_and_imports_get_errors(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_errors.
 
+:- pred module_and_imports_set_direct_int_blocks_cord(
+    cord(int_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_set_indirect_int_blocks_cord(
+    cord(int_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_set_opt_blocks_cord(
+    cord(opt_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_set_int_for_opt_blocks_cord(
+    cord(int_for_opt_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_set_version_numbers_map(
+    module_version_numbers_map::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_set_specs(list(error_spec)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+module_and_imports_set_ancestors(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_ancestors := X.
 module_and_imports_set_int_deps(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_int_deps := X.
 module_and_imports_set_imp_deps(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_imp_deps := X.
 module_and_imports_set_indirect_deps(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_indirect_deps := X.
+module_and_imports_set_direct_int_blocks_cord(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_direct_int_blocks_cord := X.
+module_and_imports_set_indirect_int_blocks_cord(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_indirect_int_blocks_cord := X.
+module_and_imports_set_opt_blocks_cord(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_opt_blocks_cord := X.
+module_and_imports_set_int_for_opt_blocks_cord(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_int_for_opt_blocks_cord := X.
+module_and_imports_set_foreign_import_modules(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_foreign_import_modules := X.
+module_and_imports_set_version_numbers_map(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_version_numbers_map := X.
+module_and_imports_set_maybe_timestamp_map(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_maybe_timestamp_map := X.
+module_and_imports_set_specs(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_specs := X.
 module_and_imports_set_errors(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_errors := X.
 
-module_and_imports_add_specs(NewSpecs, !ModuleAndImports) :-
-    Specs0 = !.ModuleAndImports ^ mai_specs,
-    Specs = NewSpecs ++ Specs0,
-    !ModuleAndImports ^ mai_specs := Specs.
+%---------------------------------------------------------------------------%
 
-module_and_imports_add_interface_error(InterfaceErrors, !ModuleAndImports) :-
-    Errors0 = !.ModuleAndImports ^ mai_errors,
-    set.union(Errors0, InterfaceErrors, Errors),
-    !ModuleAndImports ^ mai_errors := Errors.
+module_and_imports_add_ancestor(Module, !ModuleAndImports) :-
+    module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors0),
+    set.insert(Module, Ancestors0, Ancestors),
+    module_and_imports_set_ancestors(Ancestors, !ModuleAndImports).
+
+%---------------------%
 
 module_and_imports_add_direct_int_item_blocks(NewIntItemBlocks,
         !ModuleAndImports) :-
-    IntItemBlocks0 = !.ModuleAndImports ^ mai_direct_int_blocks_cord,
+    module_and_imports_get_direct_int_blocks_cord(!.ModuleAndImports,
+        IntItemBlocks0),
     IntItemBlocks = IntItemBlocks0 ++ cord.from_list(NewIntItemBlocks),
-    !ModuleAndImports ^ mai_direct_int_blocks_cord := IntItemBlocks.
+    module_and_imports_set_direct_int_blocks_cord(IntItemBlocks,
+        !ModuleAndImports).
 
 module_and_imports_add_indirect_int_item_blocks(NewIntItemBlocks,
         !ModuleAndImports) :-
-    IntItemBlocks0 = !.ModuleAndImports ^ mai_indirect_int_blocks_cord,
+    module_and_imports_get_indirect_int_blocks_cord(!.ModuleAndImports,
+        IntItemBlocks0),
     IntItemBlocks = IntItemBlocks0 ++ cord.from_list(NewIntItemBlocks),
-    !ModuleAndImports ^ mai_indirect_int_blocks_cord := IntItemBlocks.
+    module_and_imports_set_indirect_int_blocks_cord(IntItemBlocks,
+        !ModuleAndImports).
 
 module_and_imports_add_opt_item_blocks(NewOptItemBlocks, !ModuleAndImports) :-
-    OptItemBlocks0 = !.ModuleAndImports ^ mai_opt_blocks_cord,
+    module_and_imports_get_opt_blocks_cord(!.ModuleAndImports,
+        OptItemBlocks0),
     OptItemBlocks = OptItemBlocks0 ++ cord.from_list(NewOptItemBlocks),
-    !ModuleAndImports ^ mai_opt_blocks_cord := OptItemBlocks.
+    module_and_imports_set_opt_blocks_cord(OptItemBlocks,
+        !ModuleAndImports).
 
 module_and_imports_add_int_for_opt_item_blocks(NewIntItemBlocks,
         !ModuleAndImports) :-
-    IntItemBlocks0 = !.ModuleAndImports ^ mai_int_for_opt_blocks_cord,
+    module_and_imports_get_int_for_opt_blocks_cord(!.ModuleAndImports,
+        IntItemBlocks0),
     IntItemBlocks = IntItemBlocks0 ++ cord.from_list(NewIntItemBlocks),
-    !ModuleAndImports ^ mai_int_for_opt_blocks_cord := IntItemBlocks.
+    module_and_imports_set_int_for_opt_blocks_cord(IntItemBlocks,
+        !ModuleAndImports).
+
+%---------------------%
 
 module_and_imports_maybe_add_module_version_numbers(ModuleName,
         MaybeVersionNumbers, !ModuleAndImports) :-
@@ -573,45 +780,97 @@ module_and_imports_maybe_add_module_version_numbers(ModuleName,
         MaybeVersionNumbers = no
     ;
         MaybeVersionNumbers = yes(VersionNumbers),
-        ModuleVersionNumbersMap0 =
-            !.ModuleAndImports ^ mai_module_version_numbers,
+        module_and_imports_get_version_numbers_map(!.ModuleAndImports,
+            ModuleVersionNumbersMap0),
         map.det_insert(ModuleName, VersionNumbers,
             ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
-        !ModuleAndImports ^ mai_module_version_numbers
-            := ModuleVersionNumbersMap
+        module_and_imports_set_version_numbers_map(ModuleVersionNumbersMap,
+            !ModuleAndImports)
     ).
 
+%---------------------%
+
+module_and_imports_add_specs(NewSpecs, !ModuleAndImports) :-
+    module_and_imports_get_specs(!.ModuleAndImports, Specs0),
+    Specs = NewSpecs ++ Specs0,
+    module_and_imports_set_specs(Specs, !ModuleAndImports).
+
+module_and_imports_add_interface_error(InterfaceErrors, !ModuleAndImports) :-
+    module_and_imports_get_errors(!.ModuleAndImports, Errors0),
+    set.union(Errors0, InterfaceErrors, Errors),
+    module_and_imports_set_errors(Errors, !ModuleAndImports).
+
 module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
-    Specs0 = !.ModuleAndImports ^ mai_specs,
-    Errors0 = !.ModuleAndImports ^ mai_errors,
+    module_and_imports_get_specs(!.ModuleAndImports, Specs0),
+    module_and_imports_get_errors(!.ModuleAndImports, Errors0),
     Specs = NewSpecs ++ Specs0,
     set.union(Errors0, NewErrors, Errors),
-    !ModuleAndImports ^ mai_specs := Specs,
-    !ModuleAndImports ^ mai_errors := Errors.
+    module_and_imports_set_specs(Specs, !ModuleAndImports),
+    module_and_imports_set_errors(Errors, !ModuleAndImports).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+module_and_imports_d_file(ModuleAndImports,
+        SourceFileName, SourceFileModuleName, ModuleName,
+        Ancestors, PublicChildrenMap, NestedChildren,
+        IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps,
+        ForeignImportModules, ForeignIncludeFilesCord, ContainsForeignCode,
+        SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
+        OptItemBlocksCord, IntForOptItemBlocksCord) :-
+    module_and_imports_get_source_file_name(ModuleAndImports,
+        SourceFileName),
+    module_and_imports_get_source_file_module_name(ModuleAndImports,
+        SourceFileModuleName),
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    module_and_imports_get_ancestors(ModuleAndImports, Ancestors),
+    module_and_imports_get_public_children(ModuleAndImports, PublicChildrenMap),
+    module_and_imports_get_nested_children(ModuleAndImports, NestedChildren),
+    module_and_imports_get_int_deps(ModuleAndImports, IntDepsMap),
+    module_and_imports_get_imp_deps(ModuleAndImports, ImpDepsMap),
+    module_and_imports_get_indirect_deps(ModuleAndImports, IndirectDeps),
+    module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
+    module_and_imports_get_foreign_import_modules(ModuleAndImports,
+        ForeignImportModules),
+    module_and_imports_get_foreign_include_files(ModuleAndImports,
+        ForeignIncludeFilesCord),
+    module_and_imports_get_contains_foreign_code(ModuleAndImports,
+        ContainsForeignCode),
+    module_and_imports_get_src_blocks(ModuleAndImports, SrcItemBlocks),
+    module_and_imports_get_direct_int_blocks_cord(ModuleAndImports,
+        DirectIntItemBlocksCord),
+    module_and_imports_get_indirect_int_blocks_cord(ModuleAndImports,
+        IndirectIntItemBlocksCord),
+    module_and_imports_get_opt_blocks_cord(ModuleAndImports,
+        OptItemBlocksCord),
+    module_and_imports_get_int_for_opt_blocks_cord(ModuleAndImports,
+        IntForOptItemBlocksCord).
 
 module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit,
         Specs, Errors) :-
-    ModuleName = ModuleAndImports ^ mai_module_name,
-    ModuleNameContext = ModuleAndImports ^ mai_module_name_context,
-    SrcItemBlocks = ModuleAndImports ^ mai_src_blocks,
-    DirectIntItemBlocks =
-        cord.list(ModuleAndImports ^ mai_direct_int_blocks_cord),
-    IndirectIntItemBlocks =
-        cord.list(ModuleAndImports ^ mai_indirect_int_blocks_cord),
-    OptItemBlocks = cord.list(ModuleAndImports ^ mai_opt_blocks_cord),
-    IntForOptItemBlocks =
-        cord.list(ModuleAndImports ^ mai_int_for_opt_blocks_cord),
-    ModuleVersionNumbers = ModuleAndImports ^ mai_module_version_numbers,
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    module_and_imports_get_module_name_context(ModuleAndImports,
+        ModuleNameContext),
+    module_and_imports_get_version_numbers_map(ModuleAndImports,
+        ModuleVersionNumbers),
+    module_and_imports_get_src_blocks(ModuleAndImports, SrcItemBlocks),
+    module_and_imports_get_direct_int_blocks_cord(ModuleAndImports,
+        DirectIntItemBlocksCord),
+    module_and_imports_get_indirect_int_blocks_cord(ModuleAndImports,
+        IndirectIntItemBlocksCord),
+    module_and_imports_get_opt_blocks_cord(ModuleAndImports,
+        OptItemBlocksCord),
+    module_and_imports_get_int_for_opt_blocks_cord(ModuleAndImports,
+        IntForOptItemBlocksCord),
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         ModuleVersionNumbers, SrcItemBlocks,
-        DirectIntItemBlocks, IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks),
-    Specs = ModuleAndImports ^ mai_specs,
-    Errors = ModuleAndImports ^ mai_errors.
+        cord.list(DirectIntItemBlocksCord),
+        cord.list(IndirectIntItemBlocksCord),
+        cord.list(OptItemBlocksCord),
+        cord.list(IntForOptItemBlocksCord)),
+    module_and_imports_get_specs(ModuleAndImports, Specs),
+    module_and_imports_get_errors(ModuleAndImports, Errors).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.module_imports.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

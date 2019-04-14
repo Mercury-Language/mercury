@@ -138,24 +138,27 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
     (
         Status = deps_status_not_considered,
         TargetFile = target_file(ModuleName, TargetType),
-        get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+        get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+            !Info, !IO),
         (
-            MaybeImports = no,
+            MaybeModuleAndImports = no,
             Succeeded = no,
             !Info ^ dependency_status ^ elem(Dep) := deps_status_error
         ;
-            MaybeImports = yes(Imports),
+            MaybeModuleAndImports = yes(ModuleAndImports),
             CompilationTask = compilation_task(TargetType),
+            module_and_imports_get_source_file_module_name(ModuleAndImports,
+                SourceFileModuleName),
             ( if
                 % For a target built by processing a Mercury source file,
                 % the target for a nested sub-module is produced as a side
                 % effect of making the target for the top-level module in
                 % the file.
                 CompilationTask = process_module(_) - _,
-                Imports ^ mai_source_file_module_name \= ModuleName
+                SourceFileModuleName \= ModuleName
             then
-                NestedTargetFile = target_file(
-                    Imports ^ mai_source_file_module_name, TargetType),
+                NestedTargetFile =
+                    target_file(SourceFileModuleName, TargetType),
                 make_module_target_extra_options(ExtraOptions, Globals,
                     dep_target(NestedTargetFile),
                     Succeeded, !Info, !IO)
@@ -170,8 +173,10 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                     !IO),
 
                 ( if CompilationTask = process_module(_) - _ then
-                    ModulesToCheck = [ModuleName |
-                        set.to_sorted_list(Imports ^ mai_nested_children)]
+                    module_and_imports_get_nested_children(ModuleAndImports,
+                        NestedChildren),
+                    ModulesToCheck =
+                        [ModuleName | set.to_sorted_list(NestedChildren)]
                 else
                     ModulesToCheck = [ModuleName]
                 ),
@@ -237,9 +242,9 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                     !Info ^ command_line_targets :=
                         set.delete(!.Info ^ command_line_targets,
                             ModuleName - module_target(TargetType)),
-                    build_target(Globals, CompilationTask, TargetFile, Imports,
-                        TouchedTargetFiles, TouchedFiles, ExtraOptions,
-                        Succeeded, !Info, !IO)
+                    build_target(Globals, CompilationTask, TargetFile,
+                        ModuleAndImports, TouchedTargetFiles, TouchedFiles,
+                        ExtraOptions, Succeeded, !Info, !IO)
                 ;
                     DepsResult = deps_up_to_date,
                     maybe_warn_up_to_date_target(Globals,
@@ -929,19 +934,21 @@ touched_files(Globals, TargetFile, Task, TouchedTargetFiles, TouchedFileNames,
 touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         TouchedFileNames, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO),
     (
-        MaybeImports = yes(Imports0),
-        Imports = Imports0
+        MaybeModuleAndImports = yes(ModuleAndImports)
     ;
-        MaybeImports = no,
+        MaybeModuleAndImports = no,
         % This error should have been caught earlier. We shouldn't be
         % attempting to build a target if we couldn't find the dependencies
         % for the module.
         unexpected($pred, "no module dependencies")
     ),
 
-    NestedChildren = set.to_sorted_list(Imports ^ mai_nested_children),
+    module_and_imports_get_nested_children(ModuleAndImports,
+        NestedChildrenSet),
+    set.to_sorted_list(NestedChildrenSet, NestedChildren),
     SourceFileModuleNames = [ModuleName | NestedChildren],
 
     list.map_foldl2(get_module_dependencies(Globals), NestedChildren,
@@ -952,7 +959,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
                 is semidet),
             MaybeNestedImportsList, NestedImportsList)
     then
-        ModuleImportsList = [Imports | NestedImportsList]
+        ModuleImportsList = [ModuleAndImports | NestedImportsList]
     else
         % This error should have been caught earlier. We shouldn't be
         % attempting to build a target if we couldn't find the dependencies
@@ -1054,7 +1061,7 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
         true
     ).
 
-external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
+external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles, !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
     %
@@ -1063,15 +1070,16 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
 
     maybe_pic_object_file_extension(Globals, PIC, ObjExt),
     globals.get_target(Globals, CompilationTarget),
-    ModuleName = Imports ^ mai_module_name,
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
 
-    % None of the current backends require externally compiled foreign
-    % code, except the C backend for fact tables.
+    % None of the current backends require externally compiled foreign code,
+    % except the C backend for fact tables.
     (
         CompilationTarget = target_c,
+        module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
         list.map_foldl(
             get_fact_table_foreign_code_file(Globals, ObjExt, ModuleName),
-            Imports ^ mai_fact_table_deps, FactTableForeignFiles, !IO),
+            FactDeps, FactTableForeignFiles, !IO),
         ForeignFiles = FactTableForeignFiles
     ;
         ( CompilationTarget = target_java

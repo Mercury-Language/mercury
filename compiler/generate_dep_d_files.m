@@ -151,7 +151,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
     ModuleDep = deps(_, ModuleAndImports),
-    Errors = ModuleAndImports ^ mai_errors,
+    module_and_imports_get_errors(ModuleAndImports, Errors),
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_non_empty(FatalErrors) then
         ModuleString = sym_name_to_string(ModuleName),
@@ -269,7 +269,7 @@ deps_list_to_deps_graph([], _, !IntDepsGraph, !ImplDepsGraph).
 deps_list_to_deps_graph([Deps | DepsList], DepsMap,
         !IntDepsGraph, !ImplDepsGraph) :-
     Deps = deps(_, ModuleAndImports),
-    ModuleErrors = ModuleAndImports ^ mai_errors,
+    module_and_imports_get_errors(ModuleAndImports, ModuleErrors),
     set.intersect(ModuleErrors, fatal_read_module_errors, FatalModuleErrors),
     ( if set.is_empty(FatalModuleErrors) then
         add_module_and_imports_to_deps_graph(ModuleAndImports,

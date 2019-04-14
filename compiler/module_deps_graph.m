@@ -68,11 +68,11 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
     % source code changes, it can lead to the unnecessary recompilation
     % of not just a few, but many modules.
 
-    ModuleName = ModuleImports ^ mai_module_name,
-    ParentDeps = ModuleImports ^ mai_parent_deps,
+    module_and_imports_get_module_name(ModuleImports, ModuleName),
+    module_and_imports_get_ancestors(ModuleImports, Ancestors),
     digraph.add_vertex(ModuleName, IntModuleKey, !IntDepsGraph),
     add_int_deps(IntModuleKey, ModuleImports, !IntDepsGraph),
-    add_parent_imp_deps_set(LookupModuleImports, IntModuleKey, ParentDeps,
+    add_parent_imp_deps_set(LookupModuleImports, IntModuleKey, Ancestors,
         !IntDepsGraph),
 
     % Add implementation dependencies to the implementation deps graph.
@@ -85,7 +85,7 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
 
     digraph.add_vertex(ModuleName, ImpModuleKey, !ImpDepsGraph),
     add_imp_deps(ImpModuleKey, ModuleImports, !ImpDepsGraph),
-    add_parent_imp_deps_set(LookupModuleImports, ImpModuleKey, ParentDeps,
+    add_parent_imp_deps_set(LookupModuleImports, ImpModuleKey, Ancestors,
         !ImpDepsGraph).
 
     % Add interface dependencies to the interface deps graph.
@@ -95,9 +95,10 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
 
 add_int_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     AddDep = add_dep(ModuleKey),
-    set.fold(AddDep, ModuleImports ^ mai_parent_deps, !DepsGraph),
-    list.foldl(AddDep, multi_map.keys(ModuleImports ^ mai_int_deps),
-        !DepsGraph).
+    module_and_imports_get_ancestors(ModuleImports, Ancestors),
+    module_and_imports_get_int_deps(ModuleImports, IntDepsMap),
+    set.fold(AddDep, Ancestors, !DepsGraph),
+    list.foldl(AddDep, multi_map.keys(IntDepsMap), !DepsGraph).
 
     % Add direct implementation dependencies for a module to the
     % implementation deps graph.
@@ -107,9 +108,9 @@ add_int_deps(ModuleKey, ModuleImports, !DepsGraph) :-
 
 add_imp_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     % The implementation dependencies are a superset of the
-    % interface dependencies, so first we add the interface deps.
+    % interface dependencies, so first we add the interface deps, ...
     add_int_deps(ModuleKey, ModuleImports, !DepsGraph),
-    % then we add the impl deps
+    % ... and then we add the impl deps.
     module_and_imports_get_imp_deps(ModuleImports, ImpDeps),
     list.foldl(add_dep(ModuleKey), multi_map.keys(ImpDeps), !DepsGraph).
 

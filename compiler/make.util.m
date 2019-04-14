@@ -1301,10 +1301,13 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
         % `--intermodule-optimization'.
         % Similarly for `.analysis' files.
 
-        get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+        get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+            !Info, !IO),
         ( if
-            MaybeImports = yes(Imports),
-            Imports ^ mai_module_dir \= dir.this_directory
+            MaybeModuleAndImports = yes(ModuleAndImports),
+            module_and_imports_get_source_file_dir(ModuleAndImports,
+                ModuleDir),
+            ModuleDir \= dir.this_directory
         then
             MaybeTimestamp = ok(oldest_timestamp),
             !:Info = !.Info ^ file_timestamps ^ elem(FileName)
@@ -1322,12 +1325,13 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
         % In some cases the module name won't match the file name
         % (module mdb.parse might be in parse.m or mdb.m), so we need to
         % look up the file name here.
-        get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+        get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+            !Info, !IO),
         (
-            MaybeImports = yes(Imports),
-            FileName = Imports ^ mai_source_file_name
+            MaybeModuleAndImports = yes(ModuleAndImports),
+            module_and_imports_get_source_file_name(ModuleAndImports, FileName)
         ;
-            MaybeImports = no,
+            MaybeModuleAndImports = no,
 
             % Something has gone wrong generating the dependencies,
             % so just take a punt (which probably won't work).

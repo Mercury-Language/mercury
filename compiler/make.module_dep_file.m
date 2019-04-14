@@ -216,9 +216,12 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             !:MaybeModuleAndImports),
         ( if
             !.MaybeModuleAndImports = yes(ModuleAndImports0),
-            ModuleAndImports0 ^ mai_module_dir = dir.this_directory
+            module_and_imports_get_source_file_dir(ModuleAndImports0,
+                ModuleDir),
+            ModuleDir = dir.this_directory
         then
-            SourceFileName1 = ModuleAndImports0 ^ mai_source_file_name,
+            module_and_imports_get_source_file_name(ModuleAndImports0,
+                SourceFileName1),
             get_file_timestamp([dir.this_directory], SourceFileName1,
                 MaybeSourceFileTimestamp1, !Info, !IO),
             (
@@ -292,12 +295,16 @@ write_module_dep_file(Globals, ModuleAndImports0, !IO) :-
     convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks),
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
-    % XXX ITEM_LIST WHy build a NEW ModuleAndImports? Wouldn't modifying
+    % XXX ITEM_LIST Why build a NEW ModuleAndImports? Wouldn't modifying
     % ModuleAndImports0 be easier and cleaner?
-    init_module_and_imports(Globals, ModuleAndImports0 ^ mai_source_file_name,
-        ModuleAndImports0 ^ mai_source_file_module_name,
-        ModuleAndImports0 ^ mai_nested_children,
-        Specs, set.init, RawCompUnit, ModuleAndImports),
+    module_and_imports_get_source_file_name(ModuleAndImports0,
+        SourceFileName),
+    module_and_imports_get_source_file_module_name(ModuleAndImports0,
+        SourceFileModuleName),
+    module_and_imports_get_nested_children(ModuleAndImports0,
+        NestedChildren),
+    init_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
+        NestedChildren, Specs, set.init, RawCompUnit, ModuleAndImports),
     do_write_module_dep_file(Globals, ModuleAndImports, !IO).
 
 :- pred convert_back_to_raw_item_blocks(list(src_item_block)::in,
@@ -325,7 +332,7 @@ convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
     io::di, io::uo) is det.
 
 do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
-    ModuleName = ModuleAndImports ^ mai_module_name,
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     module_name_to_file_name(Globals, do_create_dirs,
         make_module_dep_file_extension, ModuleName, ProgDepFile, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
@@ -348,7 +355,8 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     module_dep_file_version::out) is det.
 
 choose_module_dep_file_version(ModuleAndImports, Version) :-
-    ForeignIncludeFilesCord = ModuleAndImports ^ mai_foreign_include_files,
+    module_and_imports_get_foreign_include_files(ModuleAndImports,
+        ForeignIncludeFilesCord),
     ( if cord.is_empty(ForeignIncludeFilesCord) then
         Version = module_dep_file_v1
     else
@@ -359,63 +367,74 @@ choose_module_dep_file_version(ModuleAndImports, Version) :-
     module_dep_file_version::in, io::di, io::uo) is det.
 
 do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
+    module_and_imports_get_source_file_name(ModuleAndImports, SourceFileName),
+    module_and_imports_get_source_file_module_name(ModuleAndImports,
+        SourceFileModuleName),
+    module_and_imports_get_ancestors(ModuleAndImports, Ancestors),
+    module_and_imports_get_children(ModuleAndImports, Children),
+    module_and_imports_get_int_deps(ModuleAndImports, IntDeps),
+    module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps),
+    module_and_imports_get_nested_children(ModuleAndImports, NestedChildren),
+    module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
+    module_and_imports_get_contains_foreign_code(ModuleAndImports,
+        ContainsForeignCode),
+    module_and_imports_get_contains_foreign_export(ModuleAndImports,
+        ContainsForeignExport),
+    module_and_imports_get_foreign_import_modules(ModuleAndImports,
+        ForeignImportModules),
+    module_and_imports_get_foreign_include_files(ModuleAndImports,
+        ForeignIncludeFiles),
+    module_and_imports_get_has_main(ModuleAndImports, HasMain),
     io.write_string("module(", !IO),
     version_number(Version, VersionNumber),
     io.write_int(VersionNumber, !IO),
     io.write_string(", """, !IO),
-    io.write_string(ModuleAndImports ^ mai_source_file_name, !IO),
+    io.write_string(SourceFileName, !IO),
     io.write_string(""",\n\t", !IO),
-    mercury_output_bracketed_sym_name(
-        ModuleAndImports ^ mai_source_file_module_name, !IO),
+    mercury_output_bracketed_sym_name(SourceFileModuleName, !IO),
     io.write_string(",\n\t{", !IO),
-    io.write_list(set.to_sorted_list(ModuleAndImports ^ mai_parent_deps),
+    io.write_list(set.to_sorted_list(Ancestors),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(multi_map.keys(ModuleAndImports ^ mai_int_deps),
+    io.write_list(multi_map.keys(IntDeps),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(multi_map.keys(ModuleAndImports ^ mai_imp_deps),
+    io.write_list(multi_map.keys(ImpDeps),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(multi_map.keys(ModuleAndImports ^ mai_children),
+    io.write_list(multi_map.keys(Children),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(set.to_sorted_list(ModuleAndImports ^ mai_nested_children),
+    io.write_list(set.to_sorted_list(NestedChildren),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(ModuleAndImports ^ mai_fact_table_deps,
-        ", ", io.write, !IO),
+    io.write_list(FactDeps, ", ", io.write, !IO),
     io.write_string("},\n\t{", !IO),
-    ( if
-        ModuleAndImports ^ mai_has_foreign_code =
-            contains_foreign_code(LangList)
-    then
-        ForeignLanguages = set.to_sorted_list(LangList)
+    ( if ContainsForeignCode = contains_foreign_code(Langs) then
+        ForeignLanguages = set.to_sorted_list(Langs)
     else
         ForeignLanguages = []
     ),
     io.write_list(ForeignLanguages,
         ", ", mercury_output_foreign_language_string, !IO),
     io.write_string("},\n\t{", !IO),
-    ForeignImportModules = ModuleAndImports ^ mai_foreign_import_modules,
     ForeignImportModuleInfos =
         get_all_foreign_import_module_infos(ForeignImportModules),
     io.write_list(set.to_sorted_list(ForeignImportModuleInfos),
         ", ", write_foreign_import_module_info, !IO),
     io.write_string("},\n\t", !IO),
-    contains_foreign_export_to_string(
-        ModuleAndImports ^ mai_contains_foreign_export,
+    contains_foreign_export_to_string(ContainsForeignExport,
         ContainsForeignExportStr),
     io.write_string(ContainsForeignExportStr, !IO),
     io.write_string(",\n\t", !IO),
-    has_main_to_string(ModuleAndImports ^ mai_has_main, HasMainStr),
+    has_main_to_string(HasMain, HasMainStr),
     io.write_string(HasMainStr, !IO),
     (
         Version = module_dep_file_v1
     ;
         Version = module_dep_file_v2,
         io.write_string(",\n\t{", !IO),
-        io.write_list(cord.list(ModuleAndImports ^ mai_foreign_include_files),
+        io.write_list(cord.list(ForeignIncludeFiles),
             ", ", write_foreign_include_file_info, !IO),
         io.write_string("}", !IO)
     ),
@@ -590,46 +609,14 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
                 ForeignIncludes)
         )
     then
-        ModuleNameContext = term.context_init,
-        ContainsForeignCode = contains_foreign_code(ForeignLanguages),
-        AddDummyContext = ( func(MN) = MN - [term.context_init] ),
-        multi_map.from_assoc_list(list.map(AddDummyContext, IntDeps),
-            IntDepsContexts),
-        multi_map.from_assoc_list(list.map(AddDummyContext, ImpDeps),
-            ImpDepsContexts),
-        set.init(IndirectDeps),
-        multi_map.from_assoc_list(list.map(AddDummyContext, Children),
-            ChildrenContexts),
-        multi_map.init(PublicChildrenContexts),
-        list.foldl(add_foreign_import_module_info,
-            ForeignImports, init_foreign_import_modules, ForeignImportModules),
-        SrcItemBlocks = [],
-        DirectIntItemBlocksCord = cord.empty,
-        IndirectIntItemBlocksCord = cord.empty,
-        OptItemBlocksCord = cord.empty,
-        IntForOptItemBlocksCord = cord.empty,
-        map.init(ModuleVersionNumbers),
-        Specs = [],
-        set.init(Errors),
-        MaybeTimestamps = no,
-        % XXX MODULE_AND_IMPORTS This code should not know the definition
-        % of the module_and_imports type.
-        ModuleAndImports = module_and_imports(SourceFileName,
-            SourceFileModuleName, ModuleName, ModuleNameContext,
-            set.list_to_set(Parents),
-            IntDepsContexts,
-            ImpDepsContexts,
-            IndirectDeps,
-            ChildrenContexts,
-            PublicChildrenContexts,
-            set.list_to_set(NestedChildren),
-            FactDeps,
-            ForeignImportModules, cord.from_list(ForeignIncludes),
-            ContainsForeignCode, ContainsForeignExport,
-            SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
-            OptItemBlocksCord, IntForOptItemBlocksCord,
-            ModuleVersionNumbers,
-            Specs, Errors, MaybeTimestamps, HasMain, ModuleDir),
+        ContainsForeignCode =
+            construct_contains_foreign_code(ForeignLanguages),
+        make_module_dep_module_and_imports(SourceFileName, ModuleDir,
+            SourceFileModuleName, ModuleName,
+            Parents, Children, NestedChildren, IntDeps, ImpDeps, FactDeps,
+            ForeignImports, ForeignIncludes,
+            ContainsForeignCode, ContainsForeignExport, HasMain,
+            ModuleAndImports),
 
         % Discard the module dependencies if the module is a local module
         % but the source file no longer exists.
@@ -738,10 +725,11 @@ contains_foreign_export_term(Term, ContainsForeignExport) :-
     atom_term(Term, Atom, []),
     contains_foreign_export_to_string(ContainsForeignExport, Atom).
 
-:- func contains_foreign_code(list(foreign_language)) = contains_foreign_code.
+:- func construct_contains_foreign_code(list(foreign_language))
+    = contains_foreign_code.
 
-contains_foreign_code([]) = contains_no_foreign_code.
-contains_foreign_code(Langs) = contains_foreign_code(LangSet) :-
+construct_contains_foreign_code([]) = contains_no_foreign_code.
+construct_contains_foreign_code(Langs) = contains_foreign_code(LangSet) :-
     Langs = [_ | _],
     LangSet = set.from_list(Langs).
 
@@ -880,7 +868,8 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 RawCompUnits, ModuleAndImportList),
             list.foldl(
                 ( pred(ModuleAndImports::in, Info0::in, Info::out) is det :-
-                    SubModuleName = ModuleAndImports ^ mai_module_name,
+                    module_and_imports_get_module_name(ModuleAndImports,
+                        SubModuleName),
                     ModuleDeps0 = Info0 ^ module_dependencies,
                     % XXX Could this be map.det_insert?
                     map.set(SubModuleName, yes(ModuleAndImports),

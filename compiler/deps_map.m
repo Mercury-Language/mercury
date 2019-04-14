@@ -108,8 +108,8 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
     ( if list.last(Ancestors, Parent) then
         map.lookup(DepsMap, ModuleName, deps(_, ModuleImports)),
         map.lookup(DepsMap, Parent, deps(_, ParentImports)),
-        ModuleFileName = ModuleImports ^ mai_source_file_name,
-        ParentFileName = ParentImports ^ mai_source_file_name,
+        module_and_imports_get_source_file_name(ModuleImports, ModuleFileName),
+        module_and_imports_get_source_file_name(ParentImports, ParentFileName),
         ( if ModuleFileName = ParentFileName then
             Kind = nested_submodule
         else
@@ -161,25 +161,27 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
         Done0 = not_yet_processed,
         Deps = deps(already_processed, ModuleImports),
         map.det_update(Module, Deps, !DepsMap),
-        ForeignImportedModules = ModuleImports ^ mai_foreign_import_modules,
+        module_and_imports_get_foreign_import_modules(ModuleImports,
+            ForeignImportedModules),
         % We could keep a list of the modules we have already processed
         % and subtract it from the sets of modules we add here, but doing that
         % actually leads to a small slowdown.
-        ModuleNameContext = ModuleImports ^ mai_module_name_context,
-        ParentModuleNames = ModuleImports ^ mai_parent_deps,
+        module_and_imports_get_module_name_context(ModuleImports,
+            ModuleNameContext),
+        module_and_imports_get_ancestors(ModuleImports, AncestorModuleNames),
         ForeignImportedModuleNames =
             get_all_foreign_import_modules(ForeignImportedModules),
         set.foldl(add_module_name_and_context(ModuleNameContext),
-            ParentModuleNames, !Modules),
+            AncestorModuleNames, !Modules),
         set.foldl(add_module_name_and_context(ModuleNameContext),
             ForeignImportedModuleNames, !Modules),
 
-        multi_map.to_assoc_list(ModuleImports ^ mai_int_deps,
-            IntDepsModuleNamesContexts),
-        multi_map.to_assoc_list(ModuleImports ^ mai_imp_deps,
-            ImpDepsModuleNamesContexts),
-        multi_map.to_assoc_list(ModuleImports ^ mai_public_children,
-            ChildrenModuleNamesContexts),
+        module_and_imports_get_int_deps(ModuleImports, IntDepsMap),
+        module_and_imports_get_imp_deps(ModuleImports, ImpDepsMap),
+        module_and_imports_get_public_children(ModuleImports, PublicChildren),
+        multi_map.to_assoc_list(IntDepsMap, IntDepsModuleNamesContexts),
+        multi_map.to_assoc_list(ImpDepsMap, ImpDepsModuleNamesContexts),
+        multi_map.to_assoc_list(PublicChildren, ChildrenModuleNamesContexts),
         list.foldl(add_module_name_with_contexts,
             IntDepsModuleNamesContexts, !Modules),
         list.foldl(add_module_name_with_contexts,

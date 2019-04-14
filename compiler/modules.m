@@ -853,10 +853,10 @@ process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt, Why,
         NewIntSection, NewImpSection, SectionAppend, Ancestors,
         !DirectImports, !DirectUses, !ModuleAndImports, !IO) :-
     ( if set.remove_least(FirstAncestor, Ancestors, LaterAncestors) then
-        ModuleName = !.ModuleAndImports ^ mai_module_name,
+        module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
         expect_not(unify(FirstAncestor, ModuleName), $pred,
             "module is its own ancestor?"),
-        ModAncestors0 = !.ModuleAndImports ^ mai_parent_deps,
+        module_and_imports_get_ancestors(!.ModuleAndImports, ModAncestors0),
         ( if set.member(FirstAncestor, ModAncestors0) then
             % We have already read it.
             maybe_log_augment_decision(Why, pik_int0, FirstAncestor,
@@ -983,13 +983,27 @@ process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
     ( if set.remove_least(FirstModule, Modules, LaterModules) then
         ( if
             % Have we already processed FirstModule.IntFileKind?
-            ( FirstModule = !.ModuleAndImports ^ mai_module_name
-            ; set.member(FirstModule, !.ModuleAndImports ^ mai_parent_deps)
-            ; map.search(!.ModuleAndImports ^ mai_int_deps, FirstModule, _)
-            ; map.search(!.ModuleAndImports ^ mai_imp_deps, FirstModule, _)
+            (
+                module_and_imports_get_module_name(!.ModuleAndImports,
+                    ModuleName),
+                FirstModule = ModuleName
+            ;
+                module_and_imports_get_ancestors(!.ModuleAndImports,
+                    Ancestors),
+                set.member(FirstModule, Ancestors)
+            ;
+                module_and_imports_get_int_deps(!.ModuleAndImports,
+                    IntDeps),
+                map.search(IntDeps, FirstModule, _)
+            ;
+                module_and_imports_get_imp_deps(!.ModuleAndImports,
+                    ImpDeps),
+                map.search(ImpDeps, FirstModule, _)
             ;
                 PIKind = pik_indirect(_),
-                set.member(FirstModule, !.ModuleAndImports ^ mai_indirect_deps)
+                module_and_imports_get_indirect_deps(!.ModuleAndImports,
+                    IndirectDeps),
+                set.member(FirstModule, IndirectDeps)
             )
         then
             maybe_log_augment_decision(Why, PIKind, FirstModule, no, !IO)
@@ -1090,8 +1104,9 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
     IFKStr = int_file_kind_to_extension(IntFileKind),
     MsgPrefix = "Reading " ++ IFKStr ++ " interface for module",
 
-    maybe_return_timestamp(!.ModuleAndImports ^ mai_maybe_timestamp_map,
-        ReturnTimestamp),
+    module_and_imports_get_maybe_timestamp_map(!.ModuleAndImports,
+        MaybeTimestampMap),
+    maybe_return_timestamp(MaybeTimestampMap, ReturnTimestamp),
     maybe_read_module_int(Globals, HaveReadModuleMapInt, MsgPrefix, do_search,
         Module, IntFileKind, _FileName, ReturnTimestamp, MaybeTimestamp,
         ParseTree, Specs, Errors, !IO),
@@ -1121,9 +1136,11 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
             MaybeTimestamp, !ModuleAndImports),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         ( if set.is_empty(FatalErrors) then
-            ModAncestors0 = !.ModuleAndImports ^ mai_parent_deps,
+            module_and_imports_get_ancestors(!.ModuleAndImports,
+                ModAncestors0),
             set.insert(Module, ModAncestors0, ModAncestors),
-            !ModuleAndImports ^ mai_parent_deps := ModAncestors
+            module_and_imports_set_ancestors(ModAncestors,
+                !ModuleAndImports)
         else
             true
         )
@@ -1133,20 +1150,22 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
         % and (b) for the update of !ModuleAndImports?
         maybe_record_timestamp(Module, IntFileKind, must_be_qualified,
             MaybeTimestamp, !ModuleAndImports),
-        ModIndirectImports0 = !.ModuleAndImports ^ mai_indirect_deps,
+        module_and_imports_get_indirect_deps(!.ModuleAndImports,
+            ModIndirectImports0),
         set.insert(Module, ModIndirectImports0, ModIndirectImports),
-        !ModuleAndImports ^ mai_indirect_deps := ModIndirectImports
+        module_and_imports_set_indirect_deps(ModIndirectImports,
+            !ModuleAndImports)
     ;
         PIKind = pik_direct(_, NeedQual),
         set.intersect(Errors, fatal_read_module_errors, FatalIntErrors),
         ( if set.is_empty(FatalIntErrors) then
             maybe_record_timestamp(Module, IntFileKind, NeedQual,
                 MaybeTimestamp, !ModuleAndImports),
-            ModImpImports0 = !.ModuleAndImports ^ mai_imp_deps,
+            module_and_imports_get_imp_deps(!.ModuleAndImports, ModImpImports0),
             % Our caller cannot give us a useful nondummy context.
             multi_map.add(Module, term.context_init,
                 ModImpImports0, ModImpImports),
-            !ModuleAndImports ^ mai_imp_deps := ModImpImports
+            module_and_imports_set_imp_deps(ModImpImports, !ModuleAndImports)
         else
             true
         )
@@ -1211,19 +1230,22 @@ maybe_return_timestamp(no, dont_return_timestamp).
 
 maybe_record_timestamp(ModuleName, IntFileKind, NeedQual, MaybeTimestamp,
         !ModuleAndImports) :-
+    module_and_imports_get_maybe_timestamp_map(!.ModuleAndImports,
+        MaybeTimestampMap),
     (
-        !.ModuleAndImports ^ mai_maybe_timestamp_map = yes(TimestampMap0),
+        MaybeTimestampMap = yes(TimestampMap0),
         (
             MaybeTimestamp = yes(Timestamp),
             FileKind = fk_int(IntFileKind),
             TimestampInfo = module_timestamp(FileKind, Timestamp, NeedQual),
             map.set(ModuleName, TimestampInfo, TimestampMap0, TimestampMap),
-            !ModuleAndImports ^ mai_maybe_timestamp_map := yes(TimestampMap)
+            module_and_imports_set_maybe_timestamp_map(yes(TimestampMap),
+                !ModuleAndImports)
         ;
             MaybeTimestamp = no
         )
     ;
-        !.ModuleAndImports ^ mai_maybe_timestamp_map = no
+        MaybeTimestampMap = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -1885,10 +1907,10 @@ project_out_import_or_use(import_or_use_context(_, Context)) = Context.
 
 grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
-    ModuleName = !.ModuleAndImports ^ mai_module_name,
-    Ancestors0 = !.ModuleAndImports ^ mai_parent_deps,
-    IntDepsMap0 = !.ModuleAndImports ^ mai_int_deps,
-    ImpDepsMap0 = !.ModuleAndImports ^ mai_imp_deps,
+    module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
+    module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors0),
+    module_and_imports_get_int_deps(!.ModuleAndImports, IntDepsMap0),
+    module_and_imports_get_imp_deps(!.ModuleAndImports, ImpDepsMap0),
     set.sorted_list_to_set(map.keys(IntDepsMap0), IntDeps0),
     set.sorted_list_to_set(map.keys(ImpDepsMap0), ImpDeps0),
     OptFiles = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),

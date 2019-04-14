@@ -1711,7 +1711,8 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
     module_and_imports_get_aug_comp_unit(ModuleAndImports1, AugCompUnit1,
         ItemSpecs, _Error),
     !:Specs = ItemSpecs ++ !.Specs,
-    MaybeTimestampMap = ModuleAndImports1 ^ mai_maybe_timestamp_map,
+    module_and_imports_get_maybe_timestamp_map(ModuleAndImports1,
+        MaybeTimestampMap),
 
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
@@ -1943,7 +1944,7 @@ read_dependency_file_get_modules(TransOptDeps, !IO) :-
     io::di, io::uo) is det.
 
 maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
-        Imports0, Imports, Error, !IO) :-
+        ModuleAndImports0, ModuleAndImports, Error, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
     globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
@@ -1958,10 +1959,10 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
     then
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        grab_opt_files(Globals, Imports0, Imports1, Error1, !IO),
+        grab_opt_files(Globals, ModuleAndImports0, ModuleAndImports1, Error1, !IO),
         maybe_write_string(Verbose, "% Done.\n", !IO)
     else
-        Imports1 = Imports0,
+        ModuleAndImports1 = ModuleAndImports0,
         Error1 = no
     ),
     (
@@ -1970,13 +1971,13 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
             MaybeTransOptDeps = yes(TransOptDeps),
             % When creating the trans_opt file, only import the
             % trans_opt files which are lower in the ordering.
-            grab_trans_opt_files(Globals, TransOptDeps, Imports1, Imports,
+            grab_trans_opt_files(Globals, TransOptDeps, ModuleAndImports1, ModuleAndImports,
                 Error2, !IO)
         ;
             MaybeTransOptDeps = no,
-            Imports = Imports1,
+            ModuleAndImports = ModuleAndImports1,
             Error2 = no,
-            module_and_imports_get_module_name(Imports, ModuleName),
+            module_and_imports_get_module_name(ModuleAndImports, ModuleName),
             globals.lookup_bool_option(Globals, warn_missing_trans_opt_deps,
                 WarnNoTransOptDeps),
             (
@@ -1998,7 +1999,7 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
         % If we are making the `.opt' file, then we cannot read any
         % `.trans_opt' files, since `.opt' files aren't allowed to depend on
         % `.trans_opt' files.
-        Imports = Imports1,
+        ModuleAndImports = ModuleAndImports1,
         Error2 = no
     ;
         ( OpModeAugment = opmau_make_analysis_registry
@@ -2013,19 +2014,19 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
             % the .opt or .trans opt file, then import the trans_opt files
             % for all the modules that are imported (or used), and for all
             % ancestor modules.
-            TransOptFiles = set.union_list([
-                Imports0 ^ mai_parent_deps,
-                set.sorted_list_to_set(
-                    multi_map.keys(Imports0 ^ mai_int_deps)),
-                set.sorted_list_to_set(
-                    multi_map.keys(Imports0 ^ mai_imp_deps))
+            module_and_imports_get_ancestors(ModuleAndImports0, Ancestors),
+            module_and_imports_get_int_deps(ModuleAndImports0, IntDepsMap),
+            module_and_imports_get_imp_deps(ModuleAndImports0, ImpDepsMap),
+            TransOptFiles = set.union_list([Ancestors,
+                set.sorted_list_to_set(multi_map.keys(IntDepsMap)),
+                set.sorted_list_to_set(multi_map.keys(ImpDepsMap))
             ]),
             set.to_sorted_list(TransOptFiles, TransOptFilesList),
-            grab_trans_opt_files(Globals, TransOptFilesList, Imports1, Imports,
-                Error2, !IO)
+            grab_trans_opt_files(Globals, TransOptFilesList,
+                ModuleAndImports1, ModuleAndImports, Error2, !IO)
         ;
             TransOpt = no,
-            Imports = Imports1,
+            ModuleAndImports = ModuleAndImports1,
             Error2 = no
         )
     ),

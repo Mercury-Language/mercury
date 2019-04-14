@@ -135,7 +135,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
     % To avoid problems with concurrent updates of `.d' files during
     % parallel makes, we first create the file with a temporary name,
     % and then rename it to the desired name when we have finished.
-    ModuleName = ModuleAndImports ^ mai_module_name,
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     module_name_to_file_name(Globals, do_create_dirs, ".d",
         ModuleName, DependencyFileName, !IO),
     io.make_temp_file(dir.dirname(DependencyFileName), "tmp_d",
@@ -275,19 +275,16 @@ generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
 
 generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !MmakeFile, !IO) :-
-    % XXX MODULE_AND_IMPORTS This code should not know the definition
-    % of the module_and_imports type.
-    ModuleAndImports = module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, _ModuleNameContext, ParentDeps, IntDepsMap, ImpDepsMap,
-        IndirectDeps, _Children, InclDepsMap, NestedDeps, FactDeps0,
-        ForeignImportModules0, ForeignIncludeFilesCord,
-        ContainsForeignCode, _ContainsForeignExport,
+    module_and_imports_d_file(ModuleAndImports,
+        SourceFileName, SourceFileModuleName, ModuleName,
+        Ancestors, PublicChildrenMap, NestedDeps,
+        IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps0,
+        ForeignImportModules0, ForeignIncludeFilesCord, ContainsForeignCode,
         SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
-        OptItemBlocksCord, IntForOptItemBlocksCord, _ModuleVersionNumbersCord,
-        _Specs, _Error, _Timestamps, _HasMain, _Dir),
+        OptItemBlocksCord, IntForOptItemBlocksCord),
     set.sorted_list_to_set(multi_map.keys(IntDepsMap), IntDeps),
     set.sorted_list_to_set(multi_map.keys(ImpDepsMap), ImpDeps),
-    set.sorted_list_to_set(multi_map.keys(InclDepsMap), InclDeps),
+    set.sorted_list_to_set(multi_map.keys(PublicChildrenMap), PublicChildren),
 
     ModuleNameString = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
@@ -376,22 +373,22 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !:SourceGroups = [make_singleton_file_name_group(SourceFileName)],
         % If the module contains nested submodules then the `.int0' file
         % must first be built.
-        ( if set.is_empty(InclDeps) then
+        ( if set.is_empty(PublicChildren) then
             true
         else
             !:SourceGroups = !.SourceGroups ++
                 [make_singleton_file_name_group(Int0FileName)]
         ),
         make_module_file_name_group_with_suffix(Globals,
-            "parent deps", ".int0",
-            ParentDeps, ParentDepsSourceGroups, !IO),
+            "ancestors", ".int0",
+            Ancestors, AncestorSourceGroups, !IO),
         make_module_file_name_group_with_suffix(Globals,
             "long deps", ".int",
             LongDeps, LongDepsSourceGroups, !IO),
         make_module_file_name_group_with_suffix(Globals,
             "short deps", ".int2",
             ShortDeps, ShortDepsSourceGroups, !IO),
-        !:SourceGroups = !.SourceGroups ++ ParentDepsSourceGroups ++
+        !:SourceGroups = !.SourceGroups ++ AncestorSourceGroups ++
             LongDepsSourceGroups ++ ShortDepsSourceGroups,
 
         ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
@@ -644,9 +641,9 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     module_name_to_file_name(Globals, do_not_create_dirs, ".date0",
         ModuleName, Date0FileName, !IO),
     make_module_file_names_with_suffix(Globals, ".date",
-        set.to_sorted_list(ParentDeps), ParentDepDateFileNames, !IO),
+        set.to_sorted_list(Ancestors), AncestorDateFileNames, !IO),
     make_module_file_names_with_suffix(Globals, ".int0",
-        set.to_sorted_list(ParentDeps), ParentDepInt0FileNames, !IO),
+        set.to_sorted_list(Ancestors), AncestorInt0FileNames, !IO),
     make_module_file_names_with_suffix(Globals, ".int3",
         set.to_sorted_list(LongDeps), LongDepInt3FileNames, !IO),
     make_module_file_names_with_suffix(Globals, ".int3",
@@ -656,22 +653,22 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         one_or_more(
             mmake_file_name_group("",
                 one_or_more(DateFileName,
-                    [Date0FileName | ParentDepDateFileNames])),
+                    [Date0FileName | AncestorDateFileNames])),
             []),
         [make_singleton_file_name_group(SourceFileName)] ++
-            make_file_name_group("parent dep int0", ParentDepInt0FileNames) ++
+            make_file_name_group("ancestor int0", AncestorInt0FileNames) ++
             make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
             make_file_name_group("short dep int3s", ShortDepInt3FileNames),
         []),
     add_mmake_entry(MmakeRuleParentDates, !MmakeFile),
 
     make_module_file_names_with_suffix(Globals, ".date0",
-        set.to_sorted_list(ParentDeps), ParentDepDate0FileNames, !IO),
+        set.to_sorted_list(Ancestors), AncestorDate0FileNames, !IO),
     MmakeRuleParentDate0s = mmake_general_rule("self_and_parent_date0_deps",
         mmake_rule_is_not_phony,
         one_or_more(
             mmake_file_name_group("",
-                one_or_more(Date0FileName, ParentDepDate0FileNames)),
+                one_or_more(Date0FileName, AncestorDate0FileNames)),
             []),
         [make_singleton_file_name_group(SourceFileName)] ++
             make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
@@ -1066,11 +1063,11 @@ generate_dependencies_write_d_file(Globals, Dep,
             ForeignImportModules =
                 ForeignImportModules0 ^ fim_erlang := IndirectOptDeps
         ),
-        !ModuleAndImports ^ mai_foreign_import_modules := ForeignImportModules,
-
         module_and_imports_set_int_deps(IntDepsMap, !ModuleAndImports),
         module_and_imports_set_imp_deps(ImpDepsMap, !ModuleAndImports),
         module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports),
+        module_and_imports_set_foreign_import_modules(ForeignImportModules,
+            !ModuleAndImports),
 
         % Compute the trans-opt dependencies for this module. To avoid
         % the possibility of cycles, each module is only allowed to depend
@@ -1091,7 +1088,7 @@ generate_dependencies_write_d_file(Globals, Dep,
         % Note that even if a fatal error occured for one of the files
         % that the current Module depends on, a .d file is still produced,
         % even though it probably contains incorrect information.
-        Errors = !.ModuleAndImports ^ mai_errors,
+        module_and_imports_get_errors(!.ModuleAndImports, Errors),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         ( if set.is_empty(FatalErrors) then
             write_dependency_file(Globals, !.ModuleAndImports, IndirectOptDeps,
@@ -1152,8 +1149,9 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % The modules for which we need to generate .int0 files.
     ModulesWithSubModules = list.filter(
         ( pred(Module::in) is semidet :-
-            map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-            not multi_map.is_empty(ModuleImports ^ mai_children)
+            map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
+            module_and_imports_get_children(ModuleAndImports, ChildrenMap),
+            not multi_map.is_empty(ChildrenMap)
         ), Modules),
 
     make_module_file_names_with_suffix(Globals, "", ModulesWithSubModules,
@@ -1474,8 +1472,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
 select_ok_modules([], _, []).
 select_ok_modules([Module | Modules0], DepsMap, Modules) :-
     select_ok_modules(Modules0, DepsMap, ModulesTail),
-    map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    module_and_imports_get_errors(ModuleImports, Errors),
+    map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
+    module_and_imports_get_errors(ModuleAndImports, Errors),
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
         Modules = [Module | ModulesTail]
@@ -1506,10 +1504,10 @@ get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) :-
 get_extra_link_objects_2([], _DepsMap, _Target, !ExtraLinkObjs).
 get_extra_link_objects_2([Module | Modules], DepsMap, Target,
         !ExtraLinkObjs) :-
-    map.lookup(DepsMap, Module, deps(_, ModuleImports)),
+    map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
 
     % Handle object files for fact tables.
-    FactDeps = ModuleImports ^ mai_fact_table_deps,
+    module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
     list.length(FactDeps, NumFactDeps),
     list.duplicate(NumFactDeps, Module, ModuleList),
     assoc_list.from_corresponding_lists(FactDeps, ModuleList, FactTableObjs),
@@ -1861,7 +1859,8 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         Intermod = yes,
         some [ModuleAndImports] (
             map.member(DepsMap, _, deps(_, ModuleAndImports)),
-            not multi_map.is_empty(ModuleAndImports ^ mai_children)
+            module_and_imports_get_children(ModuleAndImports, ChildrenMap),
+            not multi_map.is_empty(ChildrenMap)
         )
     then
         % The `.int0' files only need to be installed with

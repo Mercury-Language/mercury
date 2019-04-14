@@ -1027,21 +1027,22 @@ compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
         string.append_list(list.condense(list.map(
             (func(DLLDir) = ["-lib:", DLLDir, " "]), DLLDirs))),
 
-    ModuleName = ModuleAndImports ^ mai_module_name,
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     ( if mercury_std_library_module_name(ModuleName) then
         Prefix = "-addmodule:"
     else
         Prefix = "-r:"
     ),
-    ForeignImportModules = ModuleAndImports ^ mai_foreign_import_modules,
+    module_and_imports_get_foreign_import_modules(ModuleAndImports,
+        ForeignImportModules),
     ForeignDeps = list.map(
         (func(FI) = foreign_import_module_name_from_module(FI, ModuleName)),
         set.to_sorted_list(
             get_all_foreign_import_module_infos(ForeignImportModules))),
-    IntDeps = set.sorted_list_to_set(
-        multi_map.keys(ModuleAndImports ^ mai_int_deps)),
-    ImpDeps = set.sorted_list_to_set(
-        multi_map.keys(ModuleAndImports ^ mai_imp_deps)),
+    module_and_imports_get_int_deps(ModuleAndImports, IntDepsMap),
+    module_and_imports_get_imp_deps(ModuleAndImports, ImpDepsMap),
+    IntDeps = set.sorted_list_to_set(multi_map.keys(IntDepsMap)),
+    ImpDeps = set.sorted_list_to_set(multi_map.keys(ImpDepsMap)),
     set.union(IntDeps, ImpDeps, IntImpDeps),
     set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
     ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
