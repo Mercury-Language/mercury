@@ -95,56 +95,51 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
             MaybeModuleAndImports, !Info, !IO)
     ;
         ModuleName = qualified(_, _),
-        ( if
-            map.search(!.Info ^ module_dependencies, ModuleName,
-                MaybeModuleAndImportsPrime)
-        then
-            MaybeModuleAndImports = MaybeModuleAndImportsPrime
-        else
-            % For sub-modules, we need to generate the dependencies
-            % for the parent modules first (make_module_dependencies
-            % expects to be given the top-level module in a source file).
-            % If the module is a nested module, its dependencies will be
-            % generated as a side effect of generating the parent's
-            % dependencies.
+        % For sub-modules, we need to generate the dependencies
+        % for the parent modules first (make_module_dependencies
+        % expects to be given the top-level module in a source file).
+        % If the module is a nested module, its dependencies will be
+        % generated as a side effect of generating the parent's
+        % dependencies.
+        AncestorsAndSelf = get_ancestors(ModuleName) ++ [ModuleName],
+        Error0 = no,
+        maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
+            AncestorsAndSelf, Error0, !Info, !IO),
 
-            Ancestors = get_ancestors(ModuleName),
-            list.foldl3(
-                generate_ancestor_dependencies(Globals, RebuildModuleDeps),
-                Ancestors, no, Error, !Info, !IO),
-            (
-                Error = yes,
-                MaybeModuleAndImports = no,
-                ModuleDepMap0 = !.Info ^ module_dependencies,
-                % XXX Could this be map.det_update or map.det_insert?
-                map.set(ModuleName, MaybeModuleAndImports,
-                    ModuleDepMap0, ModuleDepMap),
-                !Info ^ module_dependencies := ModuleDepMap
-            ;
-                Error = no,
-                maybe_get_module_dependencies(Globals, RebuildModuleDeps,
-                    ModuleName, MaybeModuleAndImports, !Info, !IO)
-            )
-        )
+        ModuleDepMap = !.Info ^ module_dependencies,
+        map.lookup(ModuleDepMap, ModuleName, MaybeModuleAndImports)
     ).
 
-:- pred generate_ancestor_dependencies(globals::in, rebuild_module_deps::in,
-    module_name::in, bool::in, bool::out, make_info::in, make_info::out,
+:- pred maybe_get_modules_dependencies(globals::in, rebuild_module_deps::in,
+    list(module_name)::in, bool::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-generate_ancestor_dependencies(_, _, ModuleName, yes, yes, !Info, !IO) :-
-    !Info ^ module_dependencies ^ elem(ModuleName) := no.
-generate_ancestor_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        no, Error, !Info, !IO) :-
-    maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        MaybeModuleAndImports, !Info, !IO),
+maybe_get_modules_dependencies(_Globals, _RebuildModuleDeps, [], _, !Info, !IO).
+maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
+        [ModuleName | ModuleNames], !.Error, !Info, !IO) :-
     (
-        MaybeModuleAndImports = yes(_),
-        Error = no
+        !.Error = no,
+        maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
+            MaybeModuleAndImports, !Info, !IO),
+        (
+            MaybeModuleAndImports = yes(_)
+        ;
+            MaybeModuleAndImports = no,
+            !:Error = yes
+        )
     ;
+        !.Error = yes,
+        % If we found a problem when processing an ancestor, don't even
+        % try to process the later modules.
+        ModuleDepMap0 = !.Info ^ module_dependencies,
         MaybeModuleAndImports = no,
-        Error = yes
-    ).
+        % XXX Could this be map.det_update or map.det_insert?
+        map.set(ModuleName, MaybeModuleAndImports,
+            ModuleDepMap0, ModuleDepMap),
+        !Info ^ module_dependencies := ModuleDepMap
+    ),
+    maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
+        ModuleNames, !.Error, !Info, !IO).
 
 :- pred maybe_get_module_dependencies(globals::in, rebuild_module_deps::in,
     module_name::in, maybe(module_and_imports)::out,
@@ -152,11 +147,9 @@ generate_ancestor_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
 maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         MaybeModuleAndImports, !Info, !IO) :-
-    ( if
-        map.search(!.Info ^ module_dependencies, ModuleName,
-            MaybeModuleAndImportsPrime)
-    then
-        MaybeModuleAndImports = MaybeModuleAndImportsPrime
+    ModuleDepMap0 = !.Info ^ module_dependencies,
+    ( if map.search(ModuleDepMap0, ModuleName, MaybeModuleAndImports0) then
+        MaybeModuleAndImports = MaybeModuleAndImports0
     else
         do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             MaybeModuleAndImports, !Info, !IO)
@@ -274,8 +267,8 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         )
     ),
     ModuleDepMap2 = !.Info ^ module_dependencies,
-    ( if map.search(ModuleDepMap2, ModuleName, MaybeModuleAndImportsPrime) then
-        !:MaybeModuleAndImports = MaybeModuleAndImportsPrime
+    ( if map.search(ModuleDepMap2, ModuleName, MaybeModuleAndImports0) then
+        !:MaybeModuleAndImports = MaybeModuleAndImports0
     else
         !:MaybeModuleAndImports = no,
         map.det_insert(ModuleName, no, ModuleDepMap2, ModuleDepMap),

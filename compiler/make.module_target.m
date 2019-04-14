@@ -239,9 +239,10 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                         TouchedTargetFiles, !Info)
                 ;
                     DepsResult = deps_out_of_date,
-                    !Info ^ command_line_targets :=
-                        set.delete(!.Info ^ command_line_targets,
-                            ModuleName - module_target(TargetType)),
+                    Targets0 = !.Info ^ command_line_targets,
+                    set.delete(ModuleName - module_target(TargetType),
+                        Targets0, Targets),
+                    !Info ^ command_line_targets := Targets,
                     build_target(Globals, CompilationTask, TargetFile,
                         ModuleAndImports, TouchedTargetFiles, TouchedFiles,
                         ExtraOptions, Succeeded, !Info, !IO)
