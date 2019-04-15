@@ -218,7 +218,7 @@ mercury_output_parse_tree_src(Info, ParseTree, !IO) :-
     io.write_string(".\n", !IO).
 
 mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
-    ParseTree = parse_tree_int(ModuleName, _IntFileKind, ModuleContext,
+    ParseTree = parse_tree_int(ModuleName, _IntFileKind, _ModuleContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntItems, ImpItems),
     io.write_string(":- module ", !IO),
@@ -237,7 +237,7 @@ mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
     then
         true
     else
-        IntItemBlock = item_block(ModuleName, ms_interface, ModuleContext,
+        IntItemBlock = item_block(ModuleName, ms_interface,
             IntIncls, IntAvails, IntItems),
         mercury_output_raw_item_block(Info, IntItemBlock, !IO)
     ),
@@ -248,7 +248,7 @@ mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
     then
         true
     else
-        ImpItemBlock = item_block(ModuleName, ms_implementation, ModuleContext,
+        ImpItemBlock = item_block(ModuleName, ms_implementation,
             ImpIncls, ImpAvails, ImpItems),
         mercury_output_raw_item_block(Info, ImpItemBlock, !IO)
     ).
@@ -313,7 +313,7 @@ mercury_output_module_components(_, _, [], !IO).
 mercury_output_module_components(Info, MaybePrevSectionKind,
         [Component | Components], !IO) :-
     (
-        Component = mc_section(_, SectionKind, _,
+        Component = mc_section(_, SectionKind, _SectionContext,
             InclsCord, AvailsCord, ItemsCord),
         mercury_output_section_marker(SectionKind, !IO),
         list.foldl(mercury_output_item_include(Info),
@@ -360,7 +360,7 @@ mercury_output_raw_item_blocks(Info, [RawItemBlock | RawItemBlocks], !IO) :-
     mercury_output_raw_item_blocks(Info, RawItemBlocks, !IO).
 
 mercury_output_raw_item_block(Info, RawItemBlock, !IO) :-
-    RawItemBlock = item_block(_, SectionKind, _, Incls, Avails, Items),
+    RawItemBlock = item_block(_, SectionKind, Incls, Avails, Items),
     mercury_output_section_marker(SectionKind, !IO),
     list.foldl(mercury_output_item_include(Info), Incls, !IO),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
@@ -374,7 +374,7 @@ mercury_output_src_item_blocks(Info, [SrcItemBlock | SrcItemBlocks], !IO) :-
     mercury_output_src_item_blocks(Info, SrcItemBlocks, !IO).
 
 mercury_output_src_item_block(Info, SrcItemBlock, !IO) :-
-    SrcItemBlock = item_block(_, SrcSectionKind, _, Incls, Avails, Items),
+    SrcItemBlock = item_block(_, SrcSectionKind, Incls, Avails, Items),
     mercury_output_src_section_marker(SrcSectionKind, !IO),
     list.foldl(mercury_output_item_include(Info), Incls, !IO),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
@@ -386,7 +386,7 @@ mercury_output_int_item_blocks(Info, [IntItemBlock | IntItemBlocks], !IO) :-
     mercury_output_int_item_blocks(Info, IntItemBlocks, !IO).
 
 mercury_output_int_item_block(Info, IntItemBlock, !IO) :-
-    IntItemBlock = item_block(_, IntSectionKind, _, Incls, Avails, Items),
+    IntItemBlock = item_block(_, IntSectionKind, Incls, Avails, Items),
     list.foldl(mercury_output_item_include(Info), Incls, !IO),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
     mercury_output_int_section_marker(IntSectionKind, !IO),
@@ -398,7 +398,7 @@ mercury_output_opt_item_blocks(Info, [OptItemBlock | OptItemBlocks], !IO) :-
     mercury_output_opt_item_blocks(Info, OptItemBlocks, !IO).
 
 mercury_output_opt_item_block(Info, OptItemBlock, !IO) :-
-    OptItemBlock = item_block(_, OptSectionKind, _, Incls, Avails, Items),
+    OptItemBlock = item_block(_, OptSectionKind, Incls, Avails, Items),
     expect(unify(Incls, []), $pred, "Incls != []"),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
     mercury_output_opt_section_marker(OptSectionKind, !IO),
@@ -411,7 +411,7 @@ mercury_output_int_for_opt_item_blocks(Info,
     mercury_output_int_for_opt_item_blocks(Info, IntForOptItemBlocks, !IO).
 
 mercury_output_int_for_opt_item_block(Info, IntForOptItemBlock, !IO) :-
-    IntForOptItemBlock = item_block(_, IntForOptSectionKind, _,
+    IntForOptItemBlock = item_block(_, IntForOptSectionKind,
         Incls, Avails, Items),
     list.foldl(mercury_output_item_include(Info), Incls, !IO),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),

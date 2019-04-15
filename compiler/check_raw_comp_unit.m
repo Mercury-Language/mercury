@@ -74,7 +74,7 @@ check_interface_item_blocks_for_no_exports(Globals, ModuleName, Context,
 do_ms_interface_item_blocks_export_anything([], no).
 do_ms_interface_item_blocks_export_anything([RawItemBlock | RawItemBlocks],
         ExportAnything) :-
-    RawItemBlock = item_block(_, Section, _, Incls, _Avails, Items),
+    RawItemBlock = item_block(_, Section, Incls, _Avails, Items),
     ( if
         Section = ms_interface,
         % XXX ITEM_LIST Should we return "yes" for an item_block

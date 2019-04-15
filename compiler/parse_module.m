@@ -619,7 +619,7 @@ separate_int_imp_items([ItemBlock | ItemBlocks], IntIncls, ImpIncls,
         IntAvails, ImpAvails, IntItems, ImpItems) :-
     separate_int_imp_items(ItemBlocks, IntIncls0, ImpIncls0,
         IntAvails0, ImpAvails0, IntItems0, ImpItems0),
-    ItemBlock = item_block(_, Section, _, Incls, Avails, Items),
+    ItemBlock = item_block(_, Section, Incls, Avails, Items),
     (
         Section = ms_interface,
         IntIncls = Incls ++ IntIncls0,
@@ -735,14 +735,14 @@ read_parse_tree_int_section(Stream, Globals, CurModuleName,
                 !VNInfo, MaybeRawItemBlock,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO)
         ;
-            IOM = iom_marker_section(SectionKind, SectionContext,
+            IOM = iom_marker_section(SectionKind, _SectionContext,
                 _SectionSeqNum),
             read_item_sequence(Stream, Globals, CurModuleName,
                 no_lookahead, FinalLookAhead, !VNInfo, cord.init, InclsCord,
                 cord.init, AvailsCord, cord.init, ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
             RawItemBlock = item_block(CurModuleName, SectionKind,
-                SectionContext, cord.list(InclsCord), cord.list(AvailsCord),
+                cord.list(InclsCord), cord.list(AvailsCord),
                 cord.list(ItemsCord)),
             MaybeRawItemBlock = yes(RawItemBlock)
         ;
@@ -810,7 +810,6 @@ generate_missing_start_section_warning_int(CurModuleName,
             words("The following assumes that"),
             words("the missing declaration is an"),
             decl("interface"), words("declaration."), nl],
-
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         !:Specs = [Spec | !.Specs],
@@ -834,13 +833,12 @@ read_item_sequence_in_hdr_file_without_section_marker(Stream, Globals,
         !VNInfo, MaybeRawItemBlock, !SourceFileName, !SeqNumCounter,
         !Specs, !Errors, !IO) :-
     SectionKind = ms_interface,
-    SectionContext = term.context_init,
     ItemSeqInitLookAhead = lookahead(IOMVarSet, IOMTerm),
     read_item_sequence(Stream, Globals, CurModuleName,
         ItemSeqInitLookAhead, FinalLookAhead, !VNInfo,
         cord.init, InclsCord, cord.init, AvailsCord, cord.init, ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
-    RawItemBlock = item_block(CurModuleName, SectionKind, SectionContext,
+    RawItemBlock = item_block(CurModuleName, SectionKind,
         cord.list(InclsCord), cord.list(AvailsCord), cord.list(ItemsCord)),
     MaybeRawItemBlock = yes(RawItemBlock).
 
@@ -1065,8 +1063,8 @@ read_parse_tree_src_components(Stream, Globals,
             ; IOM = iom_handled(_)
             ),
             (
-                IOM = iom_marker_section(SectionKind,
-                    SectionContext, _SectionSeqNum),
+                IOM = iom_marker_section(SectionKind, SectionContext,
+                    _SectionSeqNum),
                 ItemSeqInitLookAhead = no_lookahead
             ;
                 ( IOM = iom_marker_include(_)
@@ -1159,8 +1157,7 @@ generate_missing_start_section_warning_src(CurModuleName,
             decl("implementation"), words("declaration."), nl],
         MissingSectionSpec =
             error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context,
-                    [always(MissingSectionPieces)])]),
+                [simple_msg(Context, [always(MissingSectionPieces)])]),
         !:Specs = [MissingSectionSpec | !.Specs],
         set.insert(rme_no_section_decl_at_start, !Errors)
     ;

@@ -273,7 +273,7 @@ create_split_compilation_units_depth_first(ModuleName,
 check_interface_blocks_for_abstract_instances([], !Specs).
 check_interface_blocks_for_abstract_instances([RawItemBlock | RawItemBlocks],
         !Specs) :-
-    RawItemBlock = item_block(_, Section, _Context, _Incls, _Avails, Items),
+    RawItemBlock = item_block(_, Section, _Incls, _Avails, Items),
     (
         Section = ms_interface,
         check_interface_items_for_abstract_instances(Items, !Specs)
@@ -675,7 +675,7 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
 get_raw_item_block_section_kinds([], !SeenInt, !SeenImp).
 get_raw_item_block_section_kinds([ItemBlock | ItemBlocks],
         !SeenInt, !SeenImp) :-
-    ItemBlock = item_block(_, SectionKind, _, _, _, _),
+    ItemBlock = item_block(_, SectionKind, _, _, _),
     (
         SectionKind = ms_interface,
         !:SeenInt = yes
@@ -724,7 +724,7 @@ split_component_discover_submodules(Component, SectionAncestors,
             !SplitModuleMap, !SubModulesMap, !Specs),
         OKIncludes = cord.list(OKIncludesCord),
         RawItemBlock = item_block(ComponentModuleName, SectionKind,
-            SectionContext, OKIncludes, Avails, Items),
+            OKIncludes, Avails, Items),
         !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, RawItemBlock),
         (
             SectionKind = ms_interface
@@ -770,7 +770,7 @@ split_component_discover_submodules(Component, SectionAncestors,
         NestedIncludeItem =
             item_include(NestedModuleName, NestedModuleContext, -1),
         RawItemBlock = item_block(ComponentModuleName, SectionKind,
-            SectionContext, [NestedIncludeItem], [], []),
+            [NestedIncludeItem], [], []),
         !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, RawItemBlock),
 
         % Discover any submodules nested inside NestedModuleParseTree.

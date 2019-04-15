@@ -138,7 +138,7 @@ get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps) :-
 get_dependencies_in_item_blocks_acc([], !ImportDeps, !UseDeps).
 get_dependencies_in_item_blocks_acc([ItemBlock | ItemBlocks],
         !ImportDeps, !UseDeps) :-
-    ItemBlock = item_block(_, _, _, _, Imports, _),
+    ItemBlock = item_block(_, _, _, Imports, _),
     get_dependencies_in_avails_acc(Imports, !ImportDeps, !UseDeps),
     get_dependencies_in_item_blocks_acc(ItemBlocks,
         !ImportDeps, !UseDeps).
@@ -167,7 +167,7 @@ get_dependencies_in_int_imp_in_raw_item_blocks_acc([],
 get_dependencies_in_int_imp_in_raw_item_blocks_acc(
         [RawItemBlock | RawItemBlocks],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    RawItemBlock = item_block(_, Section, _, _Incls, Imports, _Items),
+    RawItemBlock = item_block(_, Section, _Incls, Imports, _Items),
     (
         Section = ms_interface,
         get_dependencies_in_avails_acc(Imports, !IntImportDeps, !IntUseDeps)
@@ -428,7 +428,7 @@ init_implicit_import_needs = ImplicitImportNeeds :-
 gather_implicit_import_needs_in_item_blocks([], !ImplicitImportNeeds).
 gather_implicit_import_needs_in_item_blocks([ItemBlock | ItemBlocks],
         !ImplicitImportNeeds) :-
-    ItemBlock = item_block(_, _, _, _Incls, _Imports, Items),
+    ItemBlock = item_block(_, _, _Incls, _Imports, Items),
     gather_implicit_import_needs_in_items(Items,
         !ImplicitImportNeeds),
     gather_implicit_import_needs_in_item_blocks(ItemBlocks,
@@ -834,7 +834,7 @@ get_fact_table_dependencies_in_item_blocks(ItemBlocks, FactTableFileNames) :-
 gather_fact_table_dependencies_in_blocks([], !RevFactTableFileNames).
 gather_fact_table_dependencies_in_blocks([ItemBlock | ItemBlocks],
         !RevFactTableFileNames) :-
-    ItemBlock = item_block(_, _, _, _, _, Items),
+    ItemBlock = item_block(_, _, _, _, Items),
     gather_fact_table_dependencies_in_items(Items, !RevFactTableFileNames),
     gather_fact_table_dependencies_in_blocks(ItemBlocks,
         !RevFactTableFileNames).
@@ -868,7 +868,7 @@ get_foreign_include_files_in_item_blocks(ItemBlocks, IncludeFiles) :-
     is det.
 
 gather_foreign_include_files_in_item_blocks_acc(ItemBlock, !IncludeFiles) :-
-    ItemBlock = item_block(_, _, _, _, _, Items),
+    ItemBlock = item_block(_, _, _, _, Items),
     gather_foreign_include_files_in_items_acc(Items, !IncludeFiles).
 
 :- pred gather_foreign_include_files_in_items_acc(list(item)::in,

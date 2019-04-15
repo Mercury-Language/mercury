@@ -270,7 +270,7 @@ read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
         ParseTreeInt = parse_tree_int(_, _, ModuleContext,
             _MaybeVersionNumbers, IntIncl, ImpIncls, IntAvails, ImpAvails,
             IntItems, ImpItems),
-        int_imp_items_to_item_blocks(ModuleName, ModuleContext,
+        int_imp_items_to_item_blocks(ModuleName,
             ms_interface, ms_implementation, IntIncl, ImpIncls,
             IntAvails, ImpAvails, IntItems, ImpItems, RawItemBlocks),
         RawCompUnits =

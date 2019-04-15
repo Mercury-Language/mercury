@@ -56,9 +56,9 @@
 % We use cords of items instead of lists of items where we may need to add
 % items to an already-existing partial parse tree.
 %
-% The contexts of module and section declarations below may be
-% term.context_init if the actual context isn't known, but if the recorded
-% context is not term.context_init, then it is valid.
+% The contexts of module declarations below may be term.context_init
+% if the actual context isn't known, but if the recorded context is
+% not term.context_init, then it is valid.
 
 :- type parse_tree_src
     --->    parse_tree_src(
@@ -222,7 +222,6 @@
     --->    item_block(
                 module_name,
                 MS,
-                prog_context,   % The context of the section marker.
                 list(item_include),
                 list(item_avail),
                 list(item)
@@ -323,8 +322,8 @@
 :- func raw_compilation_unit_project_name(raw_compilation_unit) = module_name.
 :- func aug_compilation_unit_project_name(aug_compilation_unit) = module_name.
 
-:- pred int_imp_items_to_item_blocks(module_name::in, prog_context::in,
-    MS::in, MS::in, list(item_include)::in, list(item_include)::in,
+:- pred int_imp_items_to_item_blocks(module_name::in, MS::in, MS::in,
+    list(item_include)::in, list(item_include)::in,
     list(item_avail)::in, list(item_avail)::in, list(item)::in, list(item)::in,
     list(item_block(MS))::out) is det.
 
@@ -1651,7 +1650,7 @@ raw_compilation_unit_project_name(RawCompUnit) =
 aug_compilation_unit_project_name(AugCompUnit) =
     AugCompUnit ^ aci_module_name.
 
-int_imp_items_to_item_blocks(ModuleName, Context, IntSection, ImpSection,
+int_imp_items_to_item_blocks(ModuleName, IntSection, ImpSection,
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
         ItemBlocks) :-
     ( if
@@ -1661,7 +1660,7 @@ int_imp_items_to_item_blocks(ModuleName, Context, IntSection, ImpSection,
     then
         ItemBlocks0 = []
     else
-        ImpBlock = item_block(ModuleName, ImpSection, Context,
+        ImpBlock = item_block(ModuleName, ImpSection,
             ImpIncls, ImpAvails, ImpItems),
         ItemBlocks0 = [ImpBlock]
     ),
@@ -1672,7 +1671,7 @@ int_imp_items_to_item_blocks(ModuleName, Context, IntSection, ImpSection,
     then
         ItemBlocks = ItemBlocks0
     else
-        IntBlock = item_block(ModuleName, IntSection, Context,
+        IntBlock = item_block(ModuleName, IntSection,
             IntIncls, IntAvails, IntItems),
         ItemBlocks = [IntBlock | ItemBlocks0]
     ).
@@ -1740,7 +1739,7 @@ get_included_modules_in_item_blocks(ItemBlocks, IncludedModuleNames) :-
 get_included_modules_in_item_blocks_acc([], !IncludedModuleNames).
 get_included_modules_in_item_blocks_acc([ItemBlock | ItemBlocks],
         !IncludedModuleNames) :-
-    ItemBlock = item_block(_, _, _, Incls, _Avails, _Items),
+    ItemBlock = item_block(_, _, Incls, _Avails, _Items),
     list.foldl(get_included_modules_in_item_include_acc, Incls,
         !IncludedModuleNames),
     get_included_modules_in_item_blocks_acc(ItemBlocks, !IncludedModuleNames).
@@ -2088,7 +2087,7 @@ get_foreign_code_indicators_from_item_blocks(Globals, ItemBlocks,
     module_foreign_info::in, module_foreign_info::out) is det.
 
 get_foreign_code_indicators_from_item_block(Globals, ItemBlock, !Info) :-
-    ItemBlock = item_block(_, _, _, _, _, Items),
+    ItemBlock = item_block(_, _, _, _, Items),
     list.foldl(get_foreign_code_indicators_from_item(Globals), Items, !Info).
 
 :- pred get_foreign_code_indicators_from_item(globals::in, item::in,

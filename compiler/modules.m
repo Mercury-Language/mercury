@@ -492,8 +492,7 @@ get_src_item_blocks_public_children(RawCompUnit,
 raw_item_blocks_to_src([], []).
 raw_item_blocks_to_src([RawItemBlock | RawItemBlocks],
         [SrcItemBlock | SrcItemBlocks]) :-
-    RawItemBlock = item_block(ModuleName, Section, SectionContext,
-        Incls, Avails, Items),
+    RawItemBlock = item_block(ModuleName, Section, Incls, Avails, Items),
     (
         Section = ms_interface,
         SrcSection = sms_interface
@@ -501,8 +500,7 @@ raw_item_blocks_to_src([RawItemBlock | RawItemBlocks],
         Section = ms_implementation,
         SrcSection = sms_implementation
     ),
-    SrcItemBlock = item_block(ModuleName, SrcSection, SectionContext,
-        Incls, Avails, Items),
+    SrcItemBlock = item_block(ModuleName, SrcSection, Incls, Avails, Items),
     raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks).
 
 :- pred raw_item_blocks_to_split_src(list(raw_item_block)::in,
@@ -512,8 +510,7 @@ raw_item_blocks_to_split_src([], []).
 raw_item_blocks_to_split_src([RawItemBlock | RawItemBlocks],
         !:SrcItemBlocks) :-
     raw_item_blocks_to_split_src(RawItemBlocks, !:SrcItemBlocks),
-    RawItemBlock = item_block(ModuleName, Section, SectionContext,
-        Incls, Avails, Items),
+    RawItemBlock = item_block(ModuleName, Section, Incls, Avails, Items),
     expect(unify(Section, ms_implementation), $pred,
         "Section != ms_implementation"),
     split_items_into_clauses_and_decls(Items,
@@ -525,7 +522,7 @@ raw_item_blocks_to_split_src([RawItemBlock | RawItemBlocks],
     else
         list.reverse(RevClauses, Clauses),
         ClauseItemBlock = item_block(ModuleName, sms_implementation,
-            SectionContext, [], [], Clauses),
+            [], [], Clauses),
         !:SrcItemBlocks = [ClauseItemBlock | !.SrcItemBlocks]
     ),
     ( if
@@ -535,9 +532,9 @@ raw_item_blocks_to_split_src([RawItemBlock | RawItemBlocks],
     then
         true
     else
+        ExportSection = sms_impl_but_exported_to_submodules,
         list.reverse(RevImpDecls, ImpDecls),
-        ImpDeclItemBlock = item_block(ModuleName,
-            sms_impl_but_exported_to_submodules, SectionContext,
+        ImpDeclItemBlock = item_block(ModuleName, ExportSection,
             Incls, Avails, ImpDecls),
         !:SrcItemBlocks = [ImpDeclItemBlock | !.SrcItemBlocks]
     ).
@@ -638,7 +635,7 @@ find_and_warn_import_for_ancestor(ModuleName, RawItemBlocks,
 find_avail_contexts_for_module_in_item_blocks([], _, !AvailContexts).
 find_avail_contexts_for_module_in_item_blocks([ItemBlock | ItemBlocks],
         ModuleName, !AvailContexts) :-
-    ItemBlock = item_block(_, _, _, _Includes, Avails, _Items),
+    ItemBlock = item_block(_, _, _Includes, Avails, _Items),
     find_avail_contexts_for_module_in_avails(Avails,
         ModuleName, !AvailContexts),
     find_avail_contexts_for_module_in_item_blocks(ItemBlocks,
@@ -1077,11 +1074,11 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
         ParseTree, Specs, Errors, !IO),
 
     ParseTree = parse_tree_int(ModuleName, IntKind,
-        Context, MaybeVersionNumbers,
+        _Context, MaybeVersionNumbers,
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems),
     module_and_imports_maybe_add_module_version_numbers(
         ModuleName, MaybeVersionNumbers, !ModuleAndImports),
-    int_imp_items_to_item_blocks(Module, Context,
+    int_imp_items_to_item_blocks(Module,
         NewIntSection(Module, IntKind), NewImpSection(Module, IntKind),
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
         ItemBlocks),
@@ -1470,7 +1467,7 @@ record_includes_imports_uses_in_item_blocks_acc(_,
 record_includes_imports_uses_in_item_blocks_acc(Ancestors,
         [ItemBlock | ItemBlocks], SectionVisibility, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    ItemBlock = item_block(ModuleName, Section, _, Incls, Avails, _Items),
+    ItemBlock = item_block(ModuleName, Section, Incls, Avails, _Items),
     set.insert(ModuleName, !ReadModules),
     WhichMap = SectionVisibility(Section),
     (
@@ -1983,15 +1980,13 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
 keep_only_unused_and_reuse_pragmas_in_blocks(_, _, [], []).
 keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
         [ItemBlock0 | ItemBlocks0], [ItemBlock | ItemBlocks]) :-
-    ItemBlock0 = item_block(ModuleName, Section, Context,
-        _Incls0, _Imports0, Items0),
+    ItemBlock0 = item_block(ModuleName, Section, _Incls0, _Imports0, Items0),
     Incls = [],
     Imports = [],
     keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
         Items0, cord.init, ItemCord),
     Items = cord.list(ItemCord),
-    ItemBlock = item_block(ModuleName, Section, Context,
-        Incls, Imports, Items),
+    ItemBlock = item_block(ModuleName, Section, Incls, Imports, Items),
     keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
         ItemBlocks0, ItemBlocks).
 
@@ -2045,10 +2040,10 @@ read_optimization_interfaces(Globals, Transitive,
     actually_read_module_opt(ofk_opt, Globals, FileName, ModuleToRead, [],
         ParseTreeOpt, OptSpecs, OptError, !IO),
     ParseTreeOpt = parse_tree_opt(OptModuleName, OptFileKind,
-        OptModuleContext, OptUses, OptItems),
+        _OptModuleContext, OptUses, OptItems),
     OptSection = oms_opt_imported(OptModuleName, OptFileKind),
     OptAvails = list.map(wrap_avail_use, OptUses),
-    OptItemBlock = item_block(OptModuleName, OptSection, OptModuleContext,
+    OptItemBlock = item_block(OptModuleName, OptSection,
         [], OptAvails, OptItems),
     !:OptItemBlocksCord = cord.snoc(!.OptItemBlocksCord, OptItemBlock),
     update_opt_error_status(Globals, opt_file, FileName, OptSpecs, OptError,
@@ -2126,11 +2121,11 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
         OptSpecs, OptError, !Specs, !Error),
     maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
 
-    ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, OptContext,
+    ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, _OptContext,
         OptUses, OptItems),
     OptSection = oms_opt_imported(OptModuleName, ofk_trans_opt),
     OptAvails = list.map(wrap_avail_use, OptUses),
-    OptItemBlock = item_block(OptModuleName, OptSection, OptContext,
+    OptItemBlock = item_block(OptModuleName, OptSection,
         [], OptAvails, OptItems),
     !:OptItemBlocks = cord.snoc(!.OptItemBlocks, OptItemBlock),
     read_trans_opt_files(Globals, Imports, !OptItemBlocks,
