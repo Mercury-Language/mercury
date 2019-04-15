@@ -296,7 +296,7 @@ make_arg_infos(ArgTypes, ArgModes, ArgRegTypes, CodeModel, ModuleInfo,
     ->
         ArgInfo = ArgInfoPrime
     ;
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 :- pred make_arg_infos(list(mer_mode)::in, list(mer_type)::in,
@@ -356,7 +356,7 @@ generic_call_arg_reg_types(ModuleInfo, _VarTypes, GenericCall, ArgVars,
             UseFloatRegs = yes,
             MaybeArgRegs = arg_reg_types_unset,
             % This should have been set by the float register wrapper pass.
-            unexpected($module, $pred, "missing ho_arg_regs")
+            unexpected($pred, "missing ho_arg_regs")
         )
     ;
         % We don't yet use float registers for class method calls.
@@ -381,7 +381,7 @@ compute_in_and_out_vars(ModuleInfo, Vars, Modes, Types, !:InVars, !:OutVars) :-
     then
         true
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 :- pred compute_in_and_out_vars_2(module_info::in,
@@ -417,7 +417,7 @@ compute_in_and_out_vars_sep_regs(ModuleInfo, Vars, Modes, Types, ArgRegTypes,
     then
         true
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 :- pred compute_in_and_out_vars_sep_regs_2(module_info::in,
@@ -513,7 +513,7 @@ do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
     then
         true
     else
-        unexpected($module, $pred, "list length mismatch")
+        unexpected($pred, "list length mismatch")
     ).
 
 :- pred partition_proc_args_2(list(prog_var)::in, list(mer_type)::in,

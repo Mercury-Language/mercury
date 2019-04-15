@@ -363,7 +363,7 @@ erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
             Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
         )
     else
-        unexpected($module, $pred, "wrong number of args for cast")
+        unexpected($pred, "wrong number of args for cast")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -400,11 +400,10 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
             )
         ;
             SimpleCode = ref_assign(_AddrLval, _ValueLval),
-            unexpected($module, $pred,
-                "ref_assign not supported in Erlang backend")
+            unexpected($pred, "ref_assign not supported in Erlang backend")
         ;
             SimpleCode = test(_),
-            unexpected($module, $pred, "malformed model_det builtin predicate")
+            unexpected($pred, "malformed model_det builtin predicate")
         ;
             SimpleCode = noop(_),
             Statement = expr_or_void(MaybeSuccessExpr)
@@ -424,12 +423,11 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
             ; SimpleCode = assign(_, _)
             ; SimpleCode = noop(_)
             ),
-            unexpected($module, $pred,
-                "malformed model_semi builtin predicate")
+            unexpected($pred, "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        unexpected($module, $pred, "model_non builtin predicate")
+        unexpected($pred, "model_non builtin predicate")
     ).
 
 :- func erl_gen_simple_expr(module_info, vartypes, simple_expr(prog_var)) =
@@ -481,8 +479,7 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
             SimpleExpr1 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr0),
             Expr = elds_unop(Op, SimpleExpr1)
         else
-            sorry($module, $pred,
-                "unary builtin not supported on erlang target")
+            sorry($pred, "unary builtin not supported on erlang target")
         )
     ;
         SimpleExpr = binary(StdOp, Expr1, Expr2),
@@ -494,8 +491,7 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
             % This is as conservative as possible.
             Expr = elds_term(elds_false)
         else
-            sorry($module, $pred,
-                "binary builtin not supported on erlang target")
+            sorry($pred, "binary builtin not supported on erlang target")
         )
     ).
 
@@ -703,7 +699,7 @@ erl_gen_ordinary_pragma_foreign_proc(ForeignArgs, ForeignCode,
         OnFalse = elds_case(elds_false, elds_term(elds_fail))
     ;
         CodeModel = model_non,
-        sorry($module, $pred, "model_non foreign_procs in Erlang backend")
+        sorry($pred, "model_non foreign_procs in Erlang backend")
     ),
     InnerFun = elds_fun(elds_clause(terms_from_fixed_vars(InputVarsNames),
         InnerFunStatement)),

@@ -763,7 +763,7 @@ output_type_ctor_details_defn(Info, RttiTypeCtor, TypeCtorDetails,
     ;
         TypeCtorDetails = tcd_foreign_enum(Lang, _, ForeignEnumFunctors,
             ForeignEnumByOrdinal, ForeignEnumByName, FunctorNumberMap),
-        expect(unify(Lang, lang_c), $module, $pred,
+        expect(unify(Lang, lang_c), $pred,
             "language other than C for foreign enumeration"),
         list.foldl2(output_foreign_enum_functor_defn(Info, RttiTypeCtor),
             ForeignEnumFunctors, !DeclSet, !IO),
@@ -959,7 +959,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         Rep = du_ll_rep(Ptag, SectagAndLocn)
     ;
         Rep = du_hl_rep(_),
-        unexpected($module, $pred, "du_hl_rep")
+        unexpected($pred, "du_hl_rep")
     ),
     Ptag = ptag(PtagUint8),
     (
@@ -1166,7 +1166,7 @@ output_du_arg_types(Info, RttiTypeCtor, Ordinal, ArgTypes, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_field_types(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n", !IO),
-    expect(list.is_not_empty(ArgTypes), $module, $pred, "empty list"),
+    expect(list.is_not_empty(ArgTypes), $pred, "empty list"),
     output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", ArgTypeDatas, !IO),
     io.write_string("};\n", !IO).
 
@@ -1179,7 +1179,7 @@ output_du_arg_names(Info, RttiTypeCtor, Ordinal, MaybeNames, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_field_names(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n", !IO),
-    expect(list.is_not_empty(MaybeNames), $module, $pred, "empty list"),
+    expect(list.is_not_empty(MaybeNames), $pred, "empty list"),
     output_maybe_quoted_strings(MaybeNames, !IO),
     io.write_string("};\n", !IO).
 
@@ -1401,7 +1401,7 @@ output_du_ptag_ordered_table(Info, RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
     ( if PtagList = [ptag(0u8) - _ | _] then
         FirstPtag = ptag(0u8)
     else
-        unexpected($module, $pred, "bad ptag list")
+        unexpected($pred, "bad ptag list")
     ),
     output_du_ptag_ordered_table_body(RttiTypeCtor, PtagList, FirstPtag, !IO),
     io.write_string("\n};\n", !IO).
@@ -1412,7 +1412,7 @@ output_du_ptag_ordered_table(Info, RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
 output_du_ptag_ordered_table_body(_RttiTypeCtor, [], _CurPtag, !IO).
 output_du_ptag_ordered_table_body(RttiTypeCtor,
         [Ptag - SectagTable | PtagTail], CurPtag, !IO) :-
-    expect(unify(Ptag, CurPtag), $module, $pred, "ptag mismatch"),
+    expect(unify(Ptag, CurPtag), $pred, "ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSectagBits, NumSharers,
         _SectagMap),
     io.write_string("\t{ ", !IO),
@@ -1528,7 +1528,7 @@ output_rtti_data_decl_chunk(Info, Group, RttiIds, !DeclSet, !IO) :-
         RttiIds = [RttiId | _]
     ;
         RttiIds = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ),
     Group = data_group(CType, IsArray, Linkage),
 
@@ -1549,7 +1549,7 @@ output_rtti_data_decl_chunk(Info, Group, RttiIds, !DeclSet, !IO) :-
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
         !DeclSet, !IO) :-
     decl_set_insert(decl_rtti_id(RttiId), !DeclSet),

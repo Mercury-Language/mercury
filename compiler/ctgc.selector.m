@@ -140,7 +140,7 @@ selector_init(ConsId, Index) = [TermSel] :-
         ; ConsId = table_io_entry_desc(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ),
-        unexpected($module, $pred, "cannot handle cons_id")
+        unexpected($pred, "cannot handle cons_id")
     ).
 
 selector_init_from_list(Types)
@@ -409,8 +409,7 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
             list.member(TVar, ExistQVars)
         )
     else
-        unexpected($module, $pred,
-            "type is both existential and non-existential")
+        unexpected($pred, "type is both existential and non-existential")
     ).
 
 :- pragma memo(normalize_selector_with_type_information/4,
@@ -443,11 +442,11 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
             ;
                 CatUser = cat_user_direct_dummy,
                 % We should not be producing selectors for dummy types.
-                unexpected($module, $pred, "cat_user_direct_dummy")
+                unexpected($pred, "cat_user_direct_dummy")
             ;
                 CatUser = cat_user_abstract_dummy,
                 % We should not be producing selectors for dummy types.
-                unexpected($module, $pred, "cat_user_abstract_dummy")
+                unexpected($pred, "cat_user_abstract_dummy")
             ),
 
             % If it is either a term-selector of a non-existentially typed
@@ -462,8 +461,7 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
                     ( if list.index1(ArgTypes, Index, SubType) then
                         CType = SubType
                     else
-                        unexpected($module, $pred,
-                            "accessing nonexistent index")
+                        unexpected($pred, "accessing nonexistent index")
                     )
                 ;
                     UnitSelector = typesel(CType)

@@ -757,9 +757,9 @@ pack_how_to_construct(ArgVarsWidths, !HowToConstruct) :-
 
 needs_update_args_to_words([], [], []).
 needs_update_args_to_words([], [_ | _], _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 needs_update_args_to_words([_ | _], [], []) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 needs_update_args_to_words([VarWidth | VarsWidths], [ArgNU | ArgNUs],
         WordNUs) :-
     VarWidth = arg_and_width(_Var, ArgPosWidth),
@@ -794,9 +794,9 @@ needs_update_args_to_words([VarWidth | VarsWidths], [ArgNU | ArgNUs],
 
 does_any_arg_in_word_need_update([], [], !NU, [], []).
 does_any_arg_in_word_need_update([], [_ | _], !NU, _, _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 does_any_arg_in_word_need_update([_ | _], [], !NU, _, _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 does_any_arg_in_word_need_update([VarWidth | VarsWidths], [ArgNU | ArgNUs],
         !NU, LaterWordVarsWidths, LaterWordArgNUs) :-
     VarWidth = arg_and_width(_Var, ArgPosWidth),

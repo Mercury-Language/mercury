@@ -578,7 +578,7 @@ find_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
     ( if find_output_args_2(ModuleInfo, Types, Modes, Vars, OutputsPrime) then
         Outputs = OutputsPrime
     else
-        unexpected($module, $pred, "list length mismatch")
+        unexpected($pred, "list length mismatch")
     ).
 
 :- pred find_output_args_2(module_info::in,
@@ -986,7 +986,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred is_output_arg_rename(prog_var::in, prog_var::in,

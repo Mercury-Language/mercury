@@ -242,7 +242,7 @@ check_procs_for_exceptions(SCC, Result, !ModuleInfo) :-
     exception_status::out, maybe(analysis_status)::out) is det.
 
 excp_combine_individual_proc_results([], _, _) :-
-    unexpected($module, $pred, "Empty SCC during exception analysis.").
+    unexpected($pred, "Empty SCC during exception analysis.").
 excp_combine_individual_proc_results(ProcResults @ [_ | _], SCC_Result,
         MaybeAnalysisStatus) :-
     ( if
@@ -363,8 +363,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
         GoalExpr = unify(_, _, _, Kind, _),
         (
             Kind = complicated_unify(_, _, _),
-            unexpected($module, $pred,
-                "complicated unify during exception analysis.")
+            unexpected($pred, "complicated unify during exception analysis.")
         ;
             ( Kind = construct(_, _, _, _, _, _, _)
             ; Kind = deconstruct(_, _, _, _, _, _)
@@ -434,7 +433,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred,
+        unexpected($pred,
             "shorthand goal encountered during exception analysis.")
     ).
 
@@ -1212,7 +1211,7 @@ lookup_proc_exception_info(ModuleName, PPId, Status, ResultStatus) :-
             MaybeResultStatus = yes(ResultStatus)
         ;
             MaybeResultStatus = no,
-            unexpected($module, $pred, "no result status")
+            unexpected($pred, "no result status")
         )
     ;
         MaybeExceptionInfo = no,
@@ -1272,8 +1271,7 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
                 BestResult = analysis_result(_Call, Answer, AnalysisStatus),
                 (
                     AnalysisStatus = invalid,
-                    unexpected($module, $pred,
-                        "invalid exception_analysis answer")
+                    unexpected($pred, "invalid exception_analysis answer")
                 ;
                     ( AnalysisStatus = optimal
                     ; AnalysisStatus = suboptimal

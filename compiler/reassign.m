@@ -143,7 +143,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
         Uinstr0 = block(_, _, _),
-        unexpected($module, $pred, "block")
+        unexpected($pred, "block")
     ;
         Uinstr0 = assign(Target, Source),
         ( if

@@ -13,8 +13,8 @@
 % The functionality here is limited to that which is used in the
 % lp_rational module.
 %
-% NOTE: if you actually want a general purpose rational number type then use
-% the rational module in the standard library.  The stuff in this module
+% NOTE: if you actually want a general purpose rational number type,
+% then use the rational module in the standard library. This module
 % is pretty heavily geared towards a few specific tasks that are part of
 % the termination analysis.
 %
@@ -85,8 +85,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The normal form of a rat number has the following
-    % properties:
+    % The normal form of a rat number has the following properties:
+    %
     %   - numerator and denominator have no common factors.
     %   - denominator is positive.
     %   - denominator is not zero.
@@ -98,8 +98,7 @@
     % predicate =/2. If the invariants were not maintained,
     % we would have pathologies like r(-1,2) \= r(1,-2).
     %
-    % The rat_norm/2 function generates rationals in this
-    % normal form.
+    % The rat_norm/2 function generates rationals in this normal form.
     %
 :- type rat
     --->    r(int, int).
@@ -145,7 +144,7 @@ X / Y = X * rat.reciprocal(Y).
 
 reciprocal(r(Num, Den)) =
     ( if Num = 0 then
-        unexpected($module, $pred, "division by zero")
+        unexpected($pred, "division by zero")
     else
         r(signum(Num) * Den, int.abs(Num))
     ).
@@ -160,7 +159,7 @@ rat.abs(r(Num, Den)) = r(int.abs(Num), Den).
 
 rat_norm(Num, Den) = Rat :-
     ( if Den = 0 then
-        unexpected($module, $pred, "division by zero")
+        unexpected($pred, "division by zero")
     else if Num = 0 then
         Rat = r(0, 1)
     else

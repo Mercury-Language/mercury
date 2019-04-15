@@ -136,7 +136,7 @@ expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
 
 expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    unexpected($module, $pred, "empty list of field names").
+    unexpected($pred, "empty list of field names").
 expand_set_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar,
         TermInputVar, TermOutputVar, Functor, FieldSubContext, Goals,
@@ -224,7 +224,7 @@ expand_get_field_function_call(Context, MainContext, SubContext0, FieldNames,
 
 expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    unexpected($module, $pred, "empty list of field names").
+    unexpected($pred, "empty list of field names").
 expand_get_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar, TermInputVar,
         Purity, Functor, FieldSubContext, Goals,

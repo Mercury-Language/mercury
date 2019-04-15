@@ -284,7 +284,7 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%

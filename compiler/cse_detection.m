@@ -208,7 +208,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         ContainsErrors = contains_errors(Globals, ModeSpecs),
         (
             ContainsErrors = yes,
-            unexpected($module, $pred, "mode check fails when repeated")
+            unexpected($pred, "mode check fails when repeated")
         ;
             ContainsErrors = no
             % There is no point in returning any warnings and/or informational
@@ -475,7 +475,7 @@ detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap) :-
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
             % XXX not sure about this as SubGoal0 is not in its final form.
@@ -782,7 +782,7 @@ construct_common_unify(Var, Goal0, !CseInfo, OldNewVars, HoistedGoal,
             ( RHS = rhs_var(_)
             ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
             ),
-            unexpected($module, $pred, "non-functor unify")
+            unexpected($pred, "non-functor unify")
         ),
         goal_info_add_feature(feature_lifted_by_cse, GoalInfo0, GoalInfo1),
         Context = goal_info_get_context(GoalInfo1),
@@ -792,7 +792,7 @@ construct_common_unify(Var, Goal0, !CseInfo, OldNewVars, HoistedGoal,
         rename_some_vars_in_goal(Subn, hlds_goal(GoalExpr1, GoalInfo1),
             HoistedGoal)
     else
-        unexpected($module, $pred, "non-unify goal")
+        unexpected($pred, "non-unify goal")
     ).
 
 :- pred create_new_arg_vars(list(prog_var)::in, prog_context::in,
@@ -893,7 +893,7 @@ find_similar_deconstruct(HoistedUnifyGoal, OldUnifyGoal, Context,
             OldHoistedVars),
         pair_subterms(OldHoistedVars, Context, OC, Replacements)
     else
-        unexpected($module, $pred, "non-deconstruct unify")
+        unexpected($pred, "non-deconstruct unify")
     ).
 
 :- pred pair_subterms(assoc_list(prog_var)::in, prog_context::in,

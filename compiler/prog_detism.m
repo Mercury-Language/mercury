@@ -166,7 +166,7 @@ det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
 det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
     % If the first conjunct could be cc pruned, the second conj ought to have
     % been cc pruned too.
-    unexpected($module, $pred, "many_cc, many").
+    unexpected($pred, "many_cc, many").
 
 det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).

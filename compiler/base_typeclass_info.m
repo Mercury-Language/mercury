@@ -123,7 +123,7 @@ gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo) :-
     MaybeInstancePredProcIds = InstanceDefn ^ instdefn_hlds_interface,
     (
         MaybeInstancePredProcIds = no,
-        unexpected($module, $pred,
+        unexpected($pred,
             "pred_proc_ids not filled in by check_typeclass.m")
     ;
         MaybeInstancePredProcIds = yes(InstancePredProcIds)

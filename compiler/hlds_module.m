@@ -1454,7 +1454,7 @@ module_info_pred_info(MI, PredId, PredInfo) :-
     else
         pred_id_to_int(PredId, PredInt),
         string.int_to_string(PredInt, PredStr),
-        unexpected($module, $pred, "cannot find predicate number " ++ PredStr)
+        unexpected($pred, "cannot find predicate number " ++ PredStr)
     ).
 
 module_info_proc_info(MI, PPId, ProcInfo) :-
@@ -1565,8 +1565,7 @@ module_info_dependency_info(MI, DepInfo) :-
         DepInfo = DepInfoPrime
     ;
         MaybeDepInfo = no,
-        unexpected($module, $pred,
-            "Attempted to access invalid dependency_info")
+        unexpected($pred, "attempted to access invalid dependency_info")
     ).
 
 module_info_set_dependency_info(DependencyInfo, !MI) :-
@@ -1766,7 +1765,7 @@ get_unique_pred_proc_id_for_symname_and_arity(MI,
         pred_table.get_proc_id(MI, PredId, ProcId),
         PredProcId = proc(PredId, ProcId)
     else
-        unexpected($module, $pred, "lookup failed")
+        unexpected($pred, "lookup failed")
     ).
 
 %---------------------------------------------------------------------------%

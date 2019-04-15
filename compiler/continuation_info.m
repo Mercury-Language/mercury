@@ -505,7 +505,7 @@ collect_continuation(WantReturnInfo, CallInfo, !Internals) :-
         ReturnLabel = internal_label(ReturnLabelNum, _)
     ;
         ReturnLabel = entry_label(_, _),
-        unexpected($module, $pred, "bad return")
+        unexpected($pred, "bad return")
     ),
     ( if map.search(!.Internals, ReturnLabelNum, Internal0) then
         Internal0 = internal_layout_info(Port0, Resume0, Return0)
@@ -636,7 +636,7 @@ find_return_var_lvals([Var | Vars], StackSlots, OkToDeleteAny, OutputArgLocs,
             VarLvals = TailVarLvals
         ;
             OkToDeleteAny = no,
-            unexpected($module, $pred, "no slot")
+            unexpected($pred, "no slot")
         )
     ).
 
@@ -721,15 +721,14 @@ generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
     ( if LvalList = [LvalPrime] then
         Lval = LvalPrime
     else
-        unexpected($module, $pred,
-            "var has more than one lval in stack resume map")
+        unexpected($pred, "var has more than one lval in stack resume map")
     ),
     ( if Lval = stackvar(N) then
-        expect(N > 0, $module, $pred, "bad stackvar")
+        expect(N > 0, $pred, "bad stackvar")
     else if Lval = stackvar(N) then
-        expect(N > 0, $module, $pred, "bad framevar")
+        expect(N > 0, $pred, "bad framevar")
     else if Lval = double_stackvar(_, N) then
-        expect(N > 0, $module, $pred, "bad stackvar")
+        expect(N > 0, $pred, "bad stackvar")
     else
         true
     ),
@@ -811,8 +810,7 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
             TypeInfoDataMap),
         ClosureLayout = closure_layout_info(ArgLayouts, TypeInfoDataMap)
     else
-        unexpected($module, $pred,
-            "proc headvars and pred argtypes disagree on arity")
+        unexpected($pred, "proc headvars and pred argtypes disagree on arity")
     ).
 
 :- pred build_closure_info(list(prog_var)::in,
@@ -871,8 +869,7 @@ gather_type_info_layout_locns_for_tvar(VarSet, RttiVarMaps, VarLocs, TypeVar,
         map.det_insert(TypeVar, Locns, !TypeInfoDataMap)
     else
         varset.lookup_name(VarSet, TypeInfoVar, VarName),
-        unexpected($module, $pred,
-            "can't find rval for type_info var " ++ VarName)
+        unexpected($pred, "can't find rval for type_info var " ++ VarName)
     ).
 
 :- pred gather_type_info_layout_locn(type_info_locn::in, lval::in,
@@ -945,8 +942,7 @@ find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
         else
             type_info_locn_var(TypeInfoLocn, TypeInfoVar),
             varset.lookup_name(VarSet, TypeInfoVar, VarName),
-            unexpected($module, $pred,
-                "can't find slot for type_info var " ++ VarName)
+            unexpected($pred, "can't find slot for type_info var " ++ VarName)
         )
     ),
     list.map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),

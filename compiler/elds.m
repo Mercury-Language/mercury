@@ -436,7 +436,7 @@ expr_to_term(Expr) = Term :-
     ( if Expr = elds_term(Term0) then
         Term = Term0
     else
-        unexpected($module, $pred, "unable to convert elds_expr to elds_term")
+        unexpected($pred, "unable to convert elds_expr to elds_term")
     ).
 
 join_exprs(ExprA, ExprB) = Expr :-
@@ -468,7 +468,7 @@ expr_or_void(no) = elds_term(elds_atom_raw("void")).
 
 det_expr(yes(Expr)) = Expr.
 det_expr(no) = _ :-
-    unexpected($module, $pred, "no expression").
+    unexpected($pred, "no expression").
 
 elds_body_arity(body_defined_here(Clause)) = elds_clause_arity(Clause).
 elds_body_arity(body_external(Arity)) = Arity.

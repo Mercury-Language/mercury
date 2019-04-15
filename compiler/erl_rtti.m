@@ -133,8 +133,7 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
             ( if Functors = [F] then
                 Details = erlang_dummy(F ^ enum_name)
             else
-                unexpected($module, $pred,
-                    "dummy type with more than one functor")
+                unexpected($pred, "dummy type with more than one functor")
             )
         ;
             IsDummy = enum_is_not_dummy,
@@ -144,7 +143,7 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
         )
     ;
         CtorDetails = tcd_foreign_enum(_, _, _, _, _, _),
-        sorry($module, $pred, "NYI foreign enumerations for Erlang.")
+        sorry($pred, "NYI foreign enumerations for Erlang.")
     ;
         CtorDetails = tcd_du(_, Functors, _, _, FunctorNums),
         list.map_corresponding(convert_du_functor, Functors, FunctorNums,
@@ -220,17 +219,17 @@ erlang_impl_ctor(impl_ctor_base_typeclass_info) =
     % The following implementation artificats are never used
     % on the erlang backend.
 erlang_impl_ctor(impl_ctor_succip) = _ :-
-    unexpected($module, $pred, "impl_ctor_succip").
+    unexpected($pred, "impl_ctor_succip").
 erlang_impl_ctor(impl_ctor_maxfr) = _ :-
-    unexpected($module, $pred, "impl_ctor_maxfr").
+    unexpected($pred, "impl_ctor_maxfr").
 erlang_impl_ctor(impl_ctor_curfr) = _ :-
-    unexpected($module, $pred, "impl_ctor_curfr").
+    unexpected($pred, "impl_ctor_curfr").
 erlang_impl_ctor(impl_ctor_redofr) = _ :-
-    unexpected($module, $pred, "impl_ctor_redofr").
+    unexpected($pred, "impl_ctor_redofr").
 erlang_impl_ctor(impl_ctor_redoip) = _ :-
-    unexpected($module, $pred, "impl_ctor_redoip").
+    unexpected($pred, "impl_ctor_redoip").
 erlang_impl_ctor(impl_ctor_trail_ptr) = _ :-
-    unexpected($module, $pred, "impl_ctor_trail_ptr").
+    unexpected($pred, "impl_ctor_trail_ptr").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -681,7 +680,7 @@ gen_init_special_pred(ModuleInfo, MaybeRttiProcLabel, Expr, !VarSet) :-
         erl_gen_special_pred_wrapper(ModuleInfo, RttiProcLabel, Expr, !VarSet)
     ;
         MaybeRttiProcLabel = no,
-        unexpected($module, $pred, "no special pred")
+        unexpected($pred, "no special pred")
     ).
 
 :- pred erl_gen_special_pred_wrapper(module_info::in, rtti_proc_label::in,
@@ -722,7 +721,7 @@ erl_gen_special_pred_wrapper(ModuleInfo, RttiProcLabel, WrapperFun, !VarSet) :-
         SuccessExpr0 = elds_term(elds_tuple(WrapperOutputVarsExprs))
     ;
         CodeModel = model_non,
-        unexpected($module, $pred, "model_non code_model")
+        unexpected($pred, "model_non code_model")
     ),
 
     % Any variables which are outputs of the wrapper function but not of the
@@ -862,7 +861,7 @@ convert_arg_to_elds_expr(MI, Term, Index, ELDS, !Defns) :-
     ( if arg(Term, do_not_allow, Index, Arg) then
         rtti_to_elds_expr(MI, Arg, ELDS, !Defns)
     else
-        unexpected($module, $pred, "arg failed")
+        unexpected($pred, "arg failed")
     ).
 
 :- pred convert_maybe_pseudo_type_info_or_self_to_elds(module_info::in,
@@ -894,7 +893,7 @@ maybe_pseudo_type_info_or_self_to_elds(MI, plain(TI), RttiId, Defns) :-
 maybe_pseudo_type_info_or_self_to_elds(MI, pseudo(PTI), RttiId, Defns) :-
     maybe_pseudo_type_info_to_elds(MI, pseudo(PTI), RttiId, Defns).
 maybe_pseudo_type_info_or_self_to_elds(_MI, self, _RttiId, _Defns) :-
-    unexpected($module, $pred, "self not handled yet").
+    unexpected($pred, "self not handled yet").
 
 :- pred maybe_pseudo_type_info_to_elds(module_info::in,
     rtti_maybe_pseudo_type_info::in,

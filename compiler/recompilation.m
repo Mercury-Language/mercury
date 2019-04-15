@@ -530,7 +530,7 @@ record_expanded_item_2(ItemId, ExpandedItemSet0, ExpandedItemSet) :-
 finish_recording_expanded_items(_, no, no, no).
 finish_recording_expanded_items(_, no, yes(Info), yes(Info)).
 finish_recording_expanded_items(_, yes(_), no, _) :-
-    unexpected($module, $pred, "items but no info").
+    unexpected($pred, "items but no info").
 finish_recording_expanded_items(Item,
         yes(eqv_expanded_item_set(_, ExpandedItems)), yes(Info0), yes(Info)) :-
     record_expanded_items(Item, ExpandedItems, Info0, Info).

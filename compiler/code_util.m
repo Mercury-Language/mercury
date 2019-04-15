@@ -202,7 +202,7 @@ extract_proc_label_from_code_addr(CodeAddr) = ProcLabel :-
     else if CodeAddr = code_imported_proc(ProcLabelPrime) then
         ProcLabel = ProcLabelPrime
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -310,7 +310,7 @@ goal_expr_may_alloc_temp_frame(GoalExpr, May) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred goal_list_may_alloc_temp_frame(list(hlds_goal)::in, bool::out) is det.
@@ -378,7 +378,7 @@ neg_op(float_gt, float_le).
 neg_op(float_ge, float_lt).
 
 negate_the_test([], _) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 negate_the_test([Instr0 | Instrs0], Instrs) :-
     ( if Instr0 = llds_instr(if_val(Test, Target), Comment) then
         neg_rval(Test, NewTest),

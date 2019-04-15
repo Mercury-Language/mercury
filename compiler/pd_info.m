@@ -165,7 +165,7 @@ pd_info_get_unfold_info(PDInfo, UnfoldInfo) :-
         MaybeUnfoldInfo = yes(UnfoldInfo)
     ;
         MaybeUnfoldInfo = no,
-        unexpected($module, $pred, "unfold_info not set")
+        unexpected($pred, "unfold_info not set")
     ).
 pd_info_get_goal_version_index(PDInfo, PDInfo ^ pdi_goal_version_index).
 pd_info_get_versions(PDInfo, PDInfo ^ pdi_versions).

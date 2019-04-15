@@ -645,7 +645,7 @@ tabling_pred_name(Prefix, SimpleCallId, ProcId, SingleProc) = NewSymName :-
 table_info_c_global_var_name(ModuleInfo, SimpleCallId, ProcId) = VarName :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    expect(unify(Target, target_c), $module, $pred,
+    expect(unify(Target, target_c), $pred,
         "memo table statistics and reset are supported only for C"),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     module_info_get_name(ModuleInfo, ModuleName),

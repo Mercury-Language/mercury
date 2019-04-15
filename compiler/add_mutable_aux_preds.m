@@ -261,7 +261,7 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
             ; InstName = typed_inst(_, _)
             ; InstName = typed_ground(_, _)
             ),
-            unexpected($module, $pred, "non-user inst")
+            unexpected($pred, "non-user inst")
         )
     ;
         ( Inst = free
@@ -293,7 +293,7 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         % either directly or indirectly.
     ;
         Inst = not_reached,
-        unexpected($module, $pred, "not_reached")
+        unexpected($pred, "not_reached")
     ).
 
 :- pred check_mutable_bound_insts(module_info::in, prog_context::in,
@@ -460,13 +460,13 @@ add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
         (
             IsConstant = mutable_constant,
             expect(unify(PreInit, dont_need_pre_init_pred),
-                $module, $pred, "PreInit = need_pre_init_pred"),
+                $pred, "PreInit = need_pre_init_pred"),
             expect(unify(LockUnlock, dont_need_lock_unlock_preds),
-                $module, $pred, "LockUnlock = need_lock_unlock_preds"),
+                $pred, "LockUnlock = need_lock_unlock_preds"),
             expect(unify(UnsafeAccess, dont_need_unsafe_get_set_preds),
-                $module, $pred, "UnsafeAccess = need_unsafe_get_set_preds"),
+                $pred, "UnsafeAccess = need_unsafe_get_set_preds"),
             expect(unify(AttachToIO, mutable_dont_attach_to_io_state),
-                $module, $pred, "AttachToIO = mutable_attach_to_io_state"),
+                $pred, "AttachToIO = mutable_attach_to_io_state"),
 
             % We create the "get" access predicate, which is pure since
             % it always returns the same value, but we must also create
@@ -643,18 +643,18 @@ add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, MutableName,
     ItemPredDecl = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes,
         WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
         ExistQVars, Purity, Constraints, Context, _SeqNum),
-    expect(unify(TypeVarSet, varset.init), $module, $pred,
+    expect(unify(TypeVarSet, varset.init), $pred,
         "TypeVarSet != varset.init"),
-    expect(unify(InstVarSet, varset.init), $module, $pred,
+    expect(unify(InstVarSet, varset.init), $pred,
         "InstVarSet != varset.init"),
-    expect(unify(ExistQVars, []), $module, $pred, "ExistQVars != []"),
-    expect(unify(PredOrFunc, pf_predicate), $module, $pred,
+    expect(unify(ExistQVars, []), $pred, "ExistQVars != []"),
+    expect(unify(PredOrFunc, pf_predicate), $pred,
         "PredOrFunc != pf_predicate"),
-    expect(unify(WithType, no), $module, $pred, "WithType != no"),
-    expect(unify(WithInst, no), $module, $pred, "WithInst != no"),
-    expect(unify(MaybeDetism, yes(detism_det)), $module, $pred,
+    expect(unify(WithType, no), $pred, "WithType != no"),
+    expect(unify(WithInst, no), $pred, "WithInst != no"),
+    expect(unify(MaybeDetism, yes(detism_det)), $pred,
         "MaybeDet != yes(detism_det)"),
-    expect(unify(Constraints, constraints([], [])), $module, $pred,
+    expect(unify(Constraints, constraints([], [])), $pred,
         "Constraints != constraints([], [])"),
     marker_list_to_markers([marker_mutable_access_pred], Markers),
     module_add_pred_or_func(PredOrigin, Context, ItemNumber,
@@ -978,7 +978,7 @@ define_pre_init_pred(ItemMutable, TargetParams, TargetMutableName, Attrs,
     TargetParams = mutable_target_params(ImplLang, _Lang, _BoxPolicy,
         _PreInit, _LockUnlock, _UnsafeAccess),
 
-    expect(unify(IsConstant, mutable_not_constant), $module, $pred,
+    expect(unify(IsConstant, mutable_not_constant), $pred,
         "need_pre_init_pred, but IsConstant = mutable_constant"),
     PreInitPredName = mutable_pre_init_pred_sym_name(ModuleName, MutableName),
 
@@ -1004,10 +1004,10 @@ define_pre_init_pred(ItemMutable, TargetParams, TargetMutableName, Attrs,
             " = runtime.ThreadLocalMutables.new_index();\n"
     ;
         ImplLang = mutable_lang_java,
-        unexpected($module, $pred, "preinit for java")
+        unexpected($pred, "preinit for java")
     ;
         ImplLang = mutable_lang_erlang,
-        unexpected($module, $pred, "preinit for erlang")
+        unexpected($pred, "preinit for erlang")
     ),
     PreInitFCInfo = pragma_info_foreign_proc(Attrs,
         PreInitPredName,
@@ -1040,7 +1040,7 @@ define_lock_unlock_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     TargetParams = mutable_target_params(ImplLang, _Lang, _BoxPolicy,
         _PreInit, _LockUnlock, _UnsafeAccess),
-    expect(unify(IsConstant, mutable_not_constant), $module, $pred,
+    expect(unify(IsConstant, mutable_not_constant), $pred,
         "need_lock_unlock_preds, but IsConstant = mutable_constant"),
 
     (
@@ -1100,13 +1100,13 @@ define_lock_unlock_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
         LockUnlockExprs = {CallLockExpr0, CallUnlockExpr0}
     ;
         ImplLang = mutable_lang_csharp,
-        unexpected($module, $pred, "lock_unlock for csharp")
+        unexpected($pred, "lock_unlock for csharp")
     ;
         ImplLang = mutable_lang_java,
-        unexpected($module, $pred, "lock_unlock for java")
+        unexpected($pred, "lock_unlock for java")
     ;
         ImplLang = mutable_lang_erlang,
-        unexpected($module, $pred, "lock_unlock for erlang")
+        unexpected($pred, "lock_unlock for erlang")
     ).
 
     % Define the unsafe get and set predicates, if needed.
@@ -1128,7 +1128,7 @@ define_unsafe_get_set_preds(ItemMutable, TargetParams, TargetMutableName,
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     TargetParams = mutable_target_params(ImplLang, Lang, BoxPolicy,
         _PreInit, _LockUnlock, _UnsafeAccess),
-    expect(unify(IsConstant, mutable_not_constant), $module, $pred,
+    expect(unify(IsConstant, mutable_not_constant), $pred,
         "need_unsafe_get_set_preds, but IsConstant = mutable_constant"),
     varset.new_named_var("X", X, varset.init, VarSetOnlyX),
 
@@ -1200,7 +1200,7 @@ define_unsafe_get_set_preds(ItemMutable, TargetParams, TargetMutableName,
         )
     ;
         ImplLang = mutable_lang_erlang,
-        unexpected($module, $pred, "unsafe_get_set for erlang")
+        unexpected($pred, "unsafe_get_set for erlang")
     ),
 
     UnsafeGetPredName =
@@ -1328,7 +1328,7 @@ define_main_get_set_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
             !ModuleInfo, !Specs),
 
         expect(unify(AttachToIO, mutable_dont_attach_to_io_state),
-            $module, $pred, "AttachToIO = mutable_attach_to_io_state")
+            $pred, "AttachToIO = mutable_attach_to_io_state")
     ;
         IsConstant = mutable_not_constant,
         StdGetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
@@ -1344,7 +1344,7 @@ define_main_get_set_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
                     yes({CallUnsafeGetExpr, CallUnsafeSetExpr})
             ;
                 MaybeUnsafeGetSetExprs = no,
-                unexpected($module, $pred,
+                unexpected($pred,
                     "mutable_not_constant but MaybeUnsafeGetSetExprs = no")
             ),
             (

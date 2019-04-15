@@ -209,7 +209,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         GoalId = goal_id(GoalNum),
         UnknownMsg = string.format(
             "Coverage information is unknown for goal_id %d\n", [i(GoalNum)]),
-        unexpected($module, $pred, UnknownMsg)
+        unexpected($pred, UnknownMsg)
     else
         true
     ),
@@ -315,7 +315,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             AddedImpurityInner)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
 
     % Step 2.
@@ -999,7 +999,7 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
             PortCountsCoverageAfterElse, PortCountsCoverageAfterDirect)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
 
     (
@@ -1027,7 +1027,7 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
         DPInfo = dp_goal_info(IsProfilingInstrumentation, yes(Info))
     ;
         MaybeDPInfo0 = no,
-        unexpected($module, $pred, "goal_dp_info not present")
+        unexpected($pred, "goal_dp_info not present")
     ),
     goal_info_set_maybe_dp_info(yes(DPInfo), GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
@@ -1370,7 +1370,7 @@ goal_info_get_dp_info(GoalInfo) = DPInfo :-
         MaybeDPInfo = yes(DPInfo)
     ;
         MaybeDPInfo = no,
-        unexpected($module, $pred, "MaybeDPInfo = no")
+        unexpected($pred, "MaybeDPInfo = no")
     ).
 
 %-----------------------------------------------------------------------------%

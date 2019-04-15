@@ -385,7 +385,7 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
         StdRval = Rval
     ;
         Rval = var(_),
-        unexpected($module, $pred, "var")
+        unexpected($pred, "var")
     ;
         Rval = const(Const),
         standardize_rval_const(Const, StdConst, DupProcMap),

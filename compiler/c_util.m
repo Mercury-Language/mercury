@@ -646,7 +646,7 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
                 list.condense(EscapeCharss, EscapeChars),
                 reverse_prepend(EscapeChars, RevChars0, RevChars)
             else
-                unexpected($module, $pred, "invalid Unicode code point")
+                unexpected($pred, "invalid Unicode code point")
             )
         ;
             Lang = literal_java,
@@ -699,7 +699,7 @@ quote_one_char_c(Char, RevChars0, RevChars) :-
             list.condense(EscapeCharss, EscapeChars),
             reverse_prepend(EscapeChars, RevChars0, RevChars)
         else
-            unexpected($module, $pred, "invalid Unicode code point")
+            unexpected($pred, "invalid Unicode code point")
         )
     else
         octal_escape_any_char(Char, EscapeChars),

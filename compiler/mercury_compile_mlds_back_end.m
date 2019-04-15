@@ -87,7 +87,7 @@ mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
 
     maybe_simplify(no, simplify_pass_ml_backend, Verbose, Stats, !HLDS, [],
         SimplifySpecs, !IO),
-    expect(unify(contains_errors(Globals, SimplifySpecs), no), $module, $pred,
+    expect(unify(contains_errors(Globals, SimplifySpecs), no), $pred,
         "simplify has errors"),
     maybe_dump_hlds(!.HLDS, 405, "ml_backend_simplify", !DumpInfo, !IO),
 

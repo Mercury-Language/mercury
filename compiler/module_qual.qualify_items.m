@@ -666,7 +666,7 @@ qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
         Inst = Inst0
     ;
         Inst0 = free(_),
-        unexpected($module, $pred, "compiler generated inst not expected")
+        unexpected($pred, "compiler generated inst not expected")
     ;
         Inst0 = bound(Uniq, InstResults0, BoundInsts0),
         (
@@ -675,7 +675,7 @@ qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
             )
         ;
             InstResults0 = inst_test_results(_, _, _, _, _, _),
-            unexpected($module, $pred, "compiler generated inst not expected")
+            unexpected($pred, "compiler generated inst not expected")
         ),
         % XXX We could pass a more specific error context.
         qualify_bound_insts(InInt, ErrorContext, BoundInsts0, BoundInsts,
@@ -769,7 +769,7 @@ qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
         ; InstName0 = typed_ground(_, _)
         ; InstName0 = typed_inst(_, _)
         ),
-        unexpected($module, $pred, "unexpected compiler generated inst_name")
+        unexpected($pred, "unexpected compiler generated inst_name")
     ).
 
 :- pred qualify_bound_insts(mq_in_interface::in, mq_error_context::in,

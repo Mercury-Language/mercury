@@ -216,7 +216,7 @@ describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify, PredId,
     ( if list.drop(NumArgModes - Arity, ArgModes0, ArgModes) then
         strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes)
     else
-        unexpected($module, $pred, "bad argument list")
+        unexpected($pred, "bad argument list")
     ),
     (
         PredOrFunc = pf_predicate,

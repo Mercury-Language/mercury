@@ -425,7 +425,7 @@ atomic_prodvars_map(Constraint, MCI) = ProdVarsMap :-
             ), sparse_bitset.to_sorted_list(VarsEntailed),
             map.init, ProdVarsMap)
     ;
-        unexpected($module, $pred, "zero constraint")
+        unexpected($pred, "zero constraint")
     ).
 
 %-----------------------------------------------------------------------------%

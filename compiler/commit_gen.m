@@ -54,7 +54,7 @@ generate_scope(Reason, OuterCodeModel, OuterGoalInfo,
     then
         % These goals should have been transformed into other forms of goals
         % by simplify.m at the end of semantic analysis.
-        unexpected($module, $pred, "trace_goal")
+        unexpected($pred, "trace_goal")
     else
         generate_commit(OuterCodeModel, OuterGoalInfo,
             ForwardLiveVarsBeforeGoal, Goal, Code, !CI, !CLD)
@@ -78,7 +78,7 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
             code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI, !CLD)
         ;
             InnerCodeModel = model_semi,
-            unexpected($module, $pred, "semidet model in det context")
+            unexpected($pred, "semidet model in det context")
         ;
             InnerCodeModel = model_non,
             prepare_for_det_commit(AddTrailOps, AddRegionOps,

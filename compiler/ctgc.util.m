@@ -145,7 +145,7 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
         ->
             TypeSubst1 = TypeSubst0
         ;
-            unexpected($module, $pred, "type unification failed")
+            unexpected($pred, "type unification failed")
         )
     ),
 

@@ -463,7 +463,7 @@ unify_insts_from_sorted_pairs(AssocList0, UnifyInstTable) :-
         AssocList2, AssocList3, [], RevDeadRealAssocList),
     unify_inst_subtable_from_sorted_pairs(is_dead, fake_unify,
         AssocList3, AssocList4, [], RevDeadFakeAssocList),
-    expect(unify(AssocList4, []), $module, $pred, "AssocList4 != []"),
+    expect(unify(AssocList4, []), $pred, "AssocList4 != []"),
     map.from_rev_sorted_assoc_list(RevLiveRealAssocList, LiveRealTable),
     map.from_rev_sorted_assoc_list(RevLiveFakeAssocList, LiveFakeTable),
     map.from_rev_sorted_assoc_list(RevDeadRealAssocList, DeadRealTable),

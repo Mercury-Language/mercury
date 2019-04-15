@@ -250,7 +250,7 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
     ;
         ItemsNeedTabling = dont_need_tabling,
         expect(unify(ItemsNeedTablingStatistics, dont_need_tabling_statistics),
-            $module, $pred, "tabling statistics without tabling"),
+            $pred, "tabling statistics without tabling"),
         ( if
             % These forms of tabling cannot ask for statistics.
             (

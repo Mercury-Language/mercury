@@ -459,7 +459,7 @@ type_is_higher_order_details_det(Type, !:Purity, !:PredOrFunc, !:EvalMethod,
     then
         true
     else
-        unexpected($module, $pred, "type is not higher-order")
+        unexpected($pred, "type is not higher-order")
     ).
 
 type_is_tuple(Type, ArgTypes) :-
@@ -554,7 +554,7 @@ type_to_ctor_and_args(Type, TypeCtor, Args) :-
         TypeCtor = type_ctor(SymName, Arity)
     ;
         Type = apply_n_type(_, _, _),
-        sorry($module, $pred, "apply/N types")
+        sorry($pred, "apply/N types")
     ;
         Type = kinded_type(SubType, _),
         type_to_ctor_and_args(SubType, TypeCtor, Args)
@@ -565,8 +565,7 @@ type_to_ctor_and_args_det(Type, TypeCtor, Args) :-
         TypeCtor = TypeCtorPrime,
         Args = ArgsPrime
     else
-        unexpected($module, $pred,
-            "type_to_ctor_and_args failed: " ++ string(Type))
+        unexpected($pred, "type_to_ctor_and_args failed: " ++ string(Type))
     ).
 
 type_to_ctor(Type, TypeCtor) :-
@@ -1356,7 +1355,7 @@ type_subsumes_det(TypeA, TypeB, TypeSubst) :-
     ( if type_subsumes(TypeA, TypeB, TypeSubstPrime) then
         TypeSubst = TypeSubstPrime
     else
-        unexpected($module, $pred, "type_subsumes failed")
+        unexpected($pred, "type_subsumes failed")
     ).
 
 type_list_subsumes(TypesA, TypesB, TypeSubst) :-
@@ -1370,7 +1369,7 @@ type_list_subsumes_det(TypesA, TypesB, TypeSubst) :-
     ( if type_list_subsumes(TypesA, TypesB, TypeSubstPrime) then
         TypeSubst = TypeSubstPrime
     else
-        unexpected($module, $pred, "type_list_subsumes failed")
+        unexpected($pred, "type_list_subsumes failed")
     ).
 
 arg_type_list_subsumes(TVarSet, ExistQVars, ActualArgTypes, HeadTypeParams,

@@ -119,7 +119,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
                     s("for a promise with an identical"),
                     s("name to an existing predicate"),
                     s(NameString)], UnexpectedMsg),
-                unexpected($module, $pred, UnexpectedMsg)
+                unexpected($pred, UnexpectedMsg)
             else
                 true
             )
@@ -671,7 +671,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
                     ApplProcIds = C ^ clause_applicable_procs,
                     (
                         ApplProcIds = all_modes,
-                        unexpected($module, $pred, "all_modes foreign_proc")
+                        unexpected($pred, "all_modes foreign_proc")
                     ;
                         ApplProcIds = selected_modes(ProcIds)
                     ;

@@ -192,7 +192,7 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 %---------------------------------------------------------------------------%
 
 choose_best_match(_, [], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "no best match").
+    unexpected($pred, "no best match").
 choose_best_match(ModeInfo, [ProcMode | ProcModes], PredId,
         Procs, ArgVars, TheProcId, TheInstVarSub, TheArgModes) :-
     ProcMode = proc_mode(ProcId, InstVarSub, ArgModes),
@@ -293,7 +293,7 @@ compare_inst_list(ModuleInfo, InstsA, InstsB, ArgInsts, Types, Result) :-
     then
         Result = Result0
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 :- pred compare_inst_list_2(module_info::in,
@@ -318,9 +318,9 @@ compare_inst_list_2(ModuleInfo, [InstA | InstsA], [InstB | InstsB],
 
 compare_liveness_list([], [], same).
 compare_liveness_list([_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 compare_liveness_list([], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 compare_liveness_list([LiveA | LiveAs], [LiveB | LiveBs], Result) :-
     compare_liveness(LiveA, LiveB, Result0),
     compare_liveness_list(LiveAs, LiveBs, Result1),

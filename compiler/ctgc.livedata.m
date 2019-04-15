@@ -119,8 +119,8 @@ livedata_is_top(livedata_top).
 
 livedata_get_datastructs(livedata_bottom) = [].
 livedata_get_datastructs(livedata_live(Data)) = Data.
-livedata_get_datastructs(livedata_top) = unexpected($module, $pred,
-    "livedata_get_datastructs: livedata is top.").
+livedata_get_datastructs(livedata_top) =
+    unexpected($pred, "livedata_get_datastructs: livedata is top.").
 
 livedata_least_upper_bound(ModuleInfo, ProcInfo, LiveData1,
         LiveData2) = LiveData :-
@@ -248,7 +248,7 @@ livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, SharingAs) = LiveData :-
             ( SharingDomain = structure_sharing_bottom
             ; SharingDomain = structure_sharing_top(_)
             ),
-            unexpected($module, $pred, "unexpected SharingDomain")
+            unexpected($pred, "unexpected SharingDomain")
         )
     ).
 

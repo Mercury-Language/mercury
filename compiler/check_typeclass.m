@@ -703,7 +703,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         UnivCs = OtherUnivCs,
         ClassContext = constraints(UnivCs, ExistCs)
     else
-        unexpected($module, $pred, "no constraint on class method")
+        unexpected($pred, "no constraint on class method")
     ),
     MethodName0 = pred_info_name(PredInfo),
     PredModule = pred_info_module(PredInfo),
@@ -1390,7 +1390,7 @@ find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
 report_cyclic_classes(ClassTable, ClassPath) = Spec :-
     (
         ClassPath = [],
-        unexpected($module, $pred, "empty cycle found.")
+        unexpected($pred, "empty cycle found.")
     ;
         ClassPath = [ClassId | Tail],
         Context = map.lookup(ClassTable, ClassId) ^ classdefn_context,
@@ -2108,7 +2108,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
         MatchingInstanceMethods = [FirstInstance | LaterInstances]
     ;
         MatchingInstanceMethods = [],
-        unexpected($module, $pred, "no matching instances")
+        unexpected($pred, "no matching instances")
     ),
     FirstInstanceContext = FirstInstance ^ instance_method_decl_context,
     FirstPieces = [words("First definition appears here."), nl],

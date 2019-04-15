@@ -2170,7 +2170,7 @@ get_source_file(DepsMap, ModuleName, FileName) :-
     ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
         FileName = SourceFileBase
     else
-        unexpected($module, $pred, "source file name doesn't end in `.m'")
+        unexpected($pred, "source file name doesn't end in `.m'")
     ).
 
 %---------------------------------------------------------------------------%

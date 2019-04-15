@@ -171,7 +171,7 @@ delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%

@@ -779,8 +779,7 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
                         type_ctor_to_item_name(TypeCtor),
                         item_name(ConsName, ConsArity))
                 else
-                    unexpected($module, $pred,
-                        "weird cons_id in hlds_field_defn")
+                    unexpected($pred, "weird cons_id in hlds_field_defn")
                 )
             ), FieldDefns)
     else
@@ -979,7 +978,7 @@ find_items_used_by_item(predicate_item, ItemId, !Info) :-
 find_items_used_by_item(function_item, ItemId, !Info) :-
     record_used_pred_or_func(pf_function, ItemId, !Info).
 find_items_used_by_item(functor_item, _, !Info) :-
-    unexpected($module, $pred, "functor").
+    unexpected($pred, "functor").
 find_items_used_by_item(mutable_item, _MutableItemId, !Info).
     % XXX What should be done here???
 find_items_used_by_item(foreign_proc_item, _, !Info).
@@ -1185,8 +1184,7 @@ find_items_used_by_pred(PredOrFunc, Name - Arity, PredId - PredModule,
             ClassArity = list.length(ClassArgTypes)
         ;
             MethodUnivConstraints = [],
-            unexpected($module, $pred,
-                "class method with no class constraints")
+            unexpected($pred, "class method with no class constraints")
         ),
         maybe_record_item_to_process(typeclass_item,
             item_name(ClassName, ClassArity), !Info)
@@ -1507,7 +1505,7 @@ record_imported_item(ItemType, ItemName, !Info) :-
         Name = Name0
     ;
         SymName = unqualified(_),
-        unexpected($module, $pred, "unqualified item")
+        unexpected($pred, "unqualified item")
     ),
 
     ImportedItems0 = !.Info ^ imported_items,

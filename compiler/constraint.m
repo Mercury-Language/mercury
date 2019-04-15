@@ -203,7 +203,7 @@ propagate_conj_sub_goal_2(Constraints, Goal0, FinalGoals, !Info) :-
             ; Reason = from_ground_term(_, from_ground_term_initial)
             ),
             % These scopes should have been deleted or converted by now.
-            unexpected($module, $pred, "unexpected scope")
+            unexpected($pred, "unexpected scope")
         ;
             Reason = from_ground_term(_, from_ground_term_construct),
             % There is no point in either propagating constraints into these
@@ -230,7 +230,7 @@ propagate_conj_sub_goal_2(Constraints, Goal0, FinalGoals, !Info) :-
         FinalGoals = [hlds_goal(GoalExpr, GoalInfo) | ConstraintGoals]
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%

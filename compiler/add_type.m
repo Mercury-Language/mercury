@@ -901,7 +901,7 @@ add_du_ctors_check_foreign_type_for_cur_backend(TypeCtor, TypeDefn,
         TypeCtor = type_ctor(TypeCtorSymName, _),
         (
             TypeCtorSymName = unqualified(_),
-            unexpected($module, $pred, "unqualified TypeCtorSymName")
+            unexpected($pred, "unqualified TypeCtorSymName")
         ;
             TypeCtorSymName = qualified(TypeCtorModuleName, _)
         ),
@@ -1072,7 +1072,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         FieldModule = FieldModule0
     ;
         FieldName = unqualified(_),
-        unexpected($module, $pred, "unqualified field name")
+        unexpected($pred, "unqualified field name")
     ),
     % Field names must be unique within a module, not just within a type,
     % because the function names for user-defined override functions
@@ -1082,7 +1082,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         ( if ConflictingDefns = [ConflictingDefn] then
             ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _)
         else
-            unexpected($module, $pred, "multiple conflicting fields")
+            unexpected($pred, "multiple conflicting fields")
         ),
 
         FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),

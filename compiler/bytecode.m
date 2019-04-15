@@ -272,7 +272,7 @@ output_args(byte_enter_switch_arm(MainConsId, OtherConsIds, NextLabelId),
     output_cons_id(MainConsId, !IO),
     % The interpreter doesn't yet implement switch arms with more than one
     % function symbol.
-    expect(unify(OtherConsIds, []), $module, $pred, "OtherConsIds"),
+    expect(unify(OtherConsIds, []), $pred, "OtherConsIds"),
     output_label_id(NextLabelId, !IO).
 output_args(byte_endof_switch_arm(LabelId), !IO) :-
     output_label_id(LabelId, !IO).
@@ -561,7 +561,7 @@ output_is_func(IsFunc, !IO) :-
     ( ( IsFunc = 1 ; IsFunc = 0 ) ->
         output_byte(IsFunc, !IO)
     ;
-        unexpected($module, $pred,
+        unexpected($pred,
             "invalid predicate or function specified in bytecode")
     ).
 
@@ -573,7 +573,7 @@ debug_is_func(IsFunc, !IO) :-
     ; IsFunc = 0 ->
         debug_string("pred", !IO)
     ;
-        unexpected($module, $pred,
+        unexpected($pred,
             "invalid predicate or function specifier in bytecode.")
     ).
 
@@ -843,14 +843,14 @@ output_cons_id(byte_char_const(Char), !IO) :-
     output_byte(Byte, !IO).
     % XXX
 output_cons_id(byte_base_typeclass_info_const(_, _, _), !IO) :-
-    sorry($module, $pred, "bytecode for typeclass not yet implemented."),
+    sorry($pred, "bytecode for typeclass not yet implemented."),
     output_byte(8, !IO).
 output_cons_id(byte_type_info_cell_constructor, !IO) :-
-    sorry($module, $pred, "bytecode for type_info_cell_constructor " ++
+    sorry($pred, "bytecode for type_info_cell_constructor " ++
         "not yet implemented."),
     output_byte(9, !IO).
 output_cons_id(byte_typeclass_info_cell_constructor, !IO) :-
-    sorry($module, $pred, "bytecode for typeclass_info_cell_constructor " ++
+    sorry($pred, "bytecode for typeclass_info_cell_constructor " ++
         "not yet implemented."),
     output_byte(10, !IO).
 

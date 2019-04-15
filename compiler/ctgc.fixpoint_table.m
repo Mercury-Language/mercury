@@ -204,7 +204,7 @@ get_from_fixpoint_table_final(Index, T) = Elem :-
     ( get_from_fixpoint_table_final_semidet(Index, T, TabledElem) ->
         Elem = TabledElem
     ;
-        unexpected($module, $pred, "key not in map.")
+        unexpected($pred, "key not in map.")
     ).
 
 get_from_fixpoint_table_final_semidet(Index, T, Elem) :-

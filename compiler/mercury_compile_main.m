@@ -235,7 +235,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
             ExtraArgs = []
         ;
             ExtraArgs = [_ | _],
-            unexpected($module, $pred,
+            unexpected($pred,
                 "extra arguments with --arg-file: " ++ string(ExtraArgs))
         ),
 

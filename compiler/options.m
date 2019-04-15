@@ -3473,7 +3473,7 @@ enable_opt_levels(Cur, Max, !OptionTable) :-
         override_options(OptionSettingsList, !OptionTable),
         enable_opt_levels(Cur + 1, Max, !OptionTable)
     else
-        unexpected($module, $pred, "unknown optimization level")
+        unexpected($pred, "unknown optimization level")
     ).
 
 :- pred override_options(list(pair(option, option_data))::in,

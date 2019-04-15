@@ -89,13 +89,13 @@ output_byte(Val, !IO) :-
     ( Val < 256 ->
         io.write_byte(Val, !IO)
     ;
-        unexpected($module, $pred, "byte does not fit in eight bits")
+        unexpected($pred, "byte does not fit in eight bits")
     ).
 
 output_int(IntVal, !IO) :-
     int.bits_per_int(IntBits),
     ( IntBits > bytecode_int_bits ->
-        unexpected($module, $pred,
+        unexpected($pred,
             "size of int is larger than size of bytecode integer.")
     ;
         output_int(bytecode_int_bits, IntVal, !IO)
@@ -104,7 +104,7 @@ output_int(IntVal, !IO) :-
 int_to_byte_list(IntVal, Bytes) :-
     int.bits_per_int(IntBits),
     ( IntBits > bytecode_int_bits ->
-        unexpected($module, $pred,
+        unexpected($pred,
             "size of int is larger than size of bytecode integer.")
     ;
         int_to_byte_list(bytecode_int_bits, IntVal, Bytes)
@@ -147,7 +147,7 @@ output_int(Writer, Bits, IntVal, !IO) :-
         )
     ->
         string.format("%d does not fit in %d bits", [i(IntVal), i(Bits)], Msg),
-        unexpected($module, $pred, Msg)
+        unexpected($pred, Msg)
     ;
         true
     ),
@@ -259,7 +259,7 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 ").
 
 float_to_float64_bytes(_FloatVal, _B0, _B1, _B2, _B3, _B4, _B5, _B6, _B7) :-
-    sorry($module, $pred, "float_to_float64_bytes for non-C target").
+    sorry($pred, "float_to_float64_bytes for non-C target").
 
 %---------------------------------------------------------------------------%
 :- end_module backend_libs.bytecode_data.

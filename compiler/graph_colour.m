@@ -62,7 +62,7 @@ group_elements(!.Constraints, Colours) :-
                 set.member(Var, AllColours)
             )
         then
-            unexpected($module, $pred, "sanity check failed")
+            unexpected($pred, "sanity check failed")
         else
             true
         )
@@ -187,7 +187,7 @@ choose_var(Vars0, Var, Vars) :-
         Var = VarPrime,
         Vars = VarsPrime
     else
-        unexpected($module, $pred, "no vars!")
+        unexpected($pred, "no vars!")
     ).
 
 %-----------------------------------------------------------------------------%

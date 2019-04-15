@@ -300,7 +300,7 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
         Key = record_key(ModuleName, Ext, Search, MkDir),
         ( if map.search(Translations0, Key, Value0) then
             Value0 = record_value(ValueFileName, Count0),
-            expect(unify(FileName, ValueFileName), $module,
+            expect(unify(FileName, ValueFileName), $pred,
                 "FileName != ValueFileName"),
             Value = record_value(ValueFileName, Count0 + 1),
             map.det_update(Key, Value, Translations0, Translations)
@@ -510,7 +510,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
         then
             SubDirName = "bin"
         else
-            unexpected($module, $pred, "unknown extension `" ++ Ext ++ "'")
+            unexpected($pred, "unknown extension `" ++ Ext ++ "'")
         ),
 
         make_file_name(Globals, [SubDirName | BaseParentDirs], Search, MkDir,

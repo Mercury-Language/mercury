@@ -2383,7 +2383,7 @@ module_visibilities_allow_direct_arg(TypeStatus, ArgCond) = AllowDirectArg :-
         ; OldImportStatus = status_pseudo_exported
         ; OldImportStatus = status_pseudo_imported
         ),
-        unexpected($module, $pred, "inappropriate status for type")
+        unexpected($pred, "inappropriate status for type")
     ).
 
 :- pred is_foreign_type_body_for_target(foreign_type_body::in,

@@ -562,7 +562,7 @@ lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
     then
         Constraints = ConstraintsPrime
     else
-        unexpected($module, $pred, "not found")
+        unexpected($pred, "not found")
     ).
 
 search_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,

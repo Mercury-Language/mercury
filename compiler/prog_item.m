@@ -1957,10 +1957,10 @@ pragma_context_pieces(Pragma) = ContextPieces :-
                 words("declaration")]
         ;
             EvalMethod = eval_table_io(_, _),
-            unexpected($module, $pred, "eval_table_io")
+            unexpected($pred, "eval_table_io")
         ;
             EvalMethod = eval_normal,
-            unexpected($module, $pred, "eval_normal")
+            unexpected($pred, "eval_normal")
         )
     ;
         Pragma = pragma_promise_pure(_),

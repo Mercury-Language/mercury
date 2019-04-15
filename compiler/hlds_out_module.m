@@ -496,7 +496,7 @@ accumulate_ctor_repns(one_or_more(HeadCR, TailCRs), !AccCRs) :-
 write_constructors(TVarSet, Indent, Ctors, !IO) :-
     (
         Ctors = [],
-        unexpected($module, $pred, "empty constructor list")
+        unexpected($pred, "empty constructor list")
     ;
         Ctors = [HeadCtor | TailCtors],
         ArrowOrSemi0 = "--->    ",
@@ -510,7 +510,7 @@ write_constructors(TVarSet, Indent, Ctors, !IO) :-
 write_constructor_repns(TVarSet, Indent, CtorRepns, !IO) :-
     (
         CtorRepns = [],
-        unexpected($module, $pred, "empty constructor list")
+        unexpected($pred, "empty constructor list")
     ;
         CtorRepns = [HeadCtorRepn | TailCtorRepns],
         ArrowOrSemi0 = "--->    ",

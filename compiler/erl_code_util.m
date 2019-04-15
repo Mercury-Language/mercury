@@ -379,7 +379,7 @@ erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
             )
         )
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%

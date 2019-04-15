@@ -1567,13 +1567,13 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
                 ( VarInfo = typeclass_info_var(_)
                 ; VarInfo = non_rtti_var
                 ),
-                unexpected($module, $pred, "info not found")
+                unexpected($pred, "info not found")
             ),
             polymorphism_make_type_info_var(TypeInfoType,
                 term.context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
             poly_info_extract(PolyInfo, PolySpecs, PredInfo1, PredInfo,
                 ProcInfo0, ProcInfo, ModuleInfo),
-            expect(unify(PolySpecs, []), $module, $pred,
+            expect(unify(PolySpecs, []), $pred,
                 "got errors while making type_info_var"),
             pred_info_get_typevarset(PredInfo, TVarSet),
             !Info ^ ethri_module_info := ModuleInfo,
@@ -1658,7 +1658,7 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             )
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 

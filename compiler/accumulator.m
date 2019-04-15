@@ -660,7 +660,7 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
         list.map((pred(X-Y::in, Y-X::out) is det), HeadArg, ArgHead),
         map.from_assoc_list(ArgHead, CallToHeadSubst)
     else
-        unexpected($module, $pred, "test failed")
+        unexpected($pred, "test failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1423,7 +1423,7 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
         ), Ids),
     (
         Ids = [],
-        unexpected($module, $pred, "no Id")
+        unexpected($pred, "no Id")
     ;
         Ids = [Id],
         goal_store_all_ancestors(GoalStore, Id, VarTypes, ModuleInfo, no,
@@ -1433,7 +1433,7 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
         Related = set.list_to_set(RelatedList)
     ;
         Ids = [_, _ | _],
-        unexpected($module, $pred, "more than one Id")
+        unexpected($pred, "more than one Id")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1454,7 +1454,7 @@ lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
     then
         Call = hlds_goal(GoalExpr, GoalInfo)
     else
-        unexpected($module, $pred, "not a call")
+        unexpected($pred, "not a call")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1777,7 +1777,7 @@ accu_top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
             NewCases = [case(IdA, [], NewBaseGoal), case(IdB, [], NewRecGoal)],
             NewGoal = hlds_goal(switch(Var, CanFail, NewCases), GoalInfo)
         else
-            unexpected($module, $pred, "not the correct top level")
+            unexpected($pred, "not the correct top level")
         )
     ;
         TopLevel = switch_rec_base,
@@ -1792,7 +1792,7 @@ accu_top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
             NewCases = [case(IdA, [], NewRecGoal), case(IdB, [], NewBaseGoal)],
             NewGoal = hlds_goal(switch(Var, CanFail, NewCases), GoalInfo)
         else
-            unexpected($module, $pred, "not the correct top level")
+            unexpected($pred, "not the correct top level")
         )
     ;
         TopLevel = disj_base_rec,
@@ -1806,7 +1806,7 @@ accu_top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
             NewGoals = [NewBaseGoal, NewRecGoal],
             NewGoal = hlds_goal(disj(NewGoals), GoalInfo)
         else
-            unexpected($module, $pred, "not the correct top level")
+            unexpected($pred, "not the correct top level")
         )
     ;
         TopLevel = disj_rec_base,
@@ -1820,7 +1820,7 @@ accu_top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
             NewGoals = [NewRecGoal, NewBaseGoal],
             NewGoal = hlds_goal(disj(NewGoals), GoalInfo)
         else
-            unexpected($module, $pred, "not the correct top level")
+            unexpected($pred, "not the correct top level")
         )
     ;
         TopLevel = ite_base_rec,
@@ -1830,7 +1830,7 @@ accu_top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
             NewGoal = hlds_goal(if_then_else(Vars, Cond,
                 NewBaseGoal, NewRecGoal), GoalInfo)
         else
-            unexpected($module, $pred, "not the correct top level")
+            unexpected($pred, "not the correct top level")
         )
     ;
         TopLevel = ite_rec_base,
@@ -1840,7 +1840,7 @@ accu_top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
             NewGoal = hlds_goal(if_then_else(Vars, Cond,
                 NewRecGoal, NewBaseGoal), GoalInfo)
         else
-            unexpected($module, $pred, "not the correct top level")
+            unexpected($pred, "not the correct top level")
         )
     ).
 
@@ -1918,7 +1918,7 @@ calculate_goal_info(GoalExpr, hlds_goal(GoalExpr, GoalInfo)) :-
 
         goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure, GoalInfo)
     else
-        unexpected($module, $pred, "not a conj")
+        unexpected($pred, "not a conj")
     ).
 
 %---------------------------------------------------------------------------%

@@ -161,7 +161,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
             ; Target = target_erlang
             ),
             % This should have caught by mercury_compile.m.
-            unexpected($module, $pred, "unsupported target language")
+            unexpected($pred, "unsupported target language")
         )
     ;
         GoalExpr0 = conj(plain_conj, Goals0),
@@ -215,7 +215,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 

@@ -291,7 +291,7 @@ allocate_next_stack_slot(MainStack, StackSlotWidth, MaybeReservedVarInfo, Vars,
         MaybeReservedVarInfo = yes(ResVar - ResSlotNum),
         set_of_var.member(Vars, ResVar)
     then
-        expect(unify(StackSlotWidth, single_width), $module, $pred,
+        expect(unify(StackSlotWidth, single_width), $pred,
             "reserved multiple stack slots"),
         SlotNum = ResSlotNum
     else

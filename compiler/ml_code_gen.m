@@ -581,8 +581,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
     ;
         GoalExpr = generic_call(GenericCall, Vars, Modes, _, Detism),
         determinism_to_code_model(Detism, CallCodeModel),
-        expect(unify(CodeModel, CallCodeModel), $module, $pred,
-            "code model mismatch"),
+        expect(unify(CodeModel, CallCodeModel), $pred, "code model mismatch"),
         ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
             LocalVarDefns, FuncDefns, Stmts, !Info)
     ;
@@ -669,17 +668,17 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
         ;
             Reason = loop_control(_, _, _),
             % This hasn't been implemented for the MLDS backend yet.
-            unexpected($module, "loop_control NYI")
+            unexpected($pred, "loop_control NYI")
         ;
             Reason = from_ground_term(_, from_ground_term_initial),
             % These should have been replaced by one of the other
             % from_ground_term_* scopes.
-            unexpected($module, "unexpected from_ground_term_initial")
+            unexpected($pred, "unexpected from_ground_term_initial")
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, "unexpected shorthand")
+        unexpected($pred, "unexpected shorthand")
     ).
 
 %---------------------------------------------------------------------------%
@@ -767,7 +766,7 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
             SubGoalNonLocals = set_of_var.list_to_set([LHSVar, RHSVar])
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated_unify")
+            unexpected($pred, "complicated_unify")
         )
     ;
         GoalExpr = plain_call(_PredId, _ProcId, ArgVars, _Builtin,
@@ -825,7 +824,7 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
         cases_find_subgoal_nonlocals(Cases, set_of_var.init, SubGoalNonLocals)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred goals_find_subgoal_nonlocals(list(hlds_goal)::in,
@@ -1067,10 +1066,10 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         Stmts = CondStmts ++ [InvertSuccess]
     ;
         CodeModel = model_semi, CondCodeModel = model_non,
-        unexpected($module, $pred, "nondet cond")
+        unexpected($pred, "nondet cond")
     ;
         CodeModel = model_non,
-        unexpected($module, $pred, "nondet negation")
+        unexpected($pred, "nondet negation")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1136,15 +1135,15 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
         (
             OuterCodeModel = model_det,
             InnerCodeModel = model_semi,
-            unexpected($module, $pred, "semi in det")
+            unexpected($pred, "semi in det")
         ;
             OuterCodeModel = model_det,
             InnerCodeModel = model_non,
-            unexpected($module, $pred, "nondet in det")
+            unexpected($pred, "nondet in det")
         ;
             OuterCodeModel = model_semi,
             InnerCodeModel = model_non,
-            unexpected($module, $pred, "nondet in semi")
+            unexpected($pred, "nondet in semi")
         )
     ;
         % If the inner code model is more precise than the outer code model,

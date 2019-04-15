@@ -616,7 +616,7 @@ output_block_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
 output_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
     (
         Expr = elds_block([]),
-        unexpected($module, $pred, "empty elds_block")
+        unexpected($pred, "empty elds_block")
     ;
         Expr = elds_block(Exprs @ [_ | _]),
         io.write_string("(begin", !IO),
@@ -1185,8 +1185,7 @@ erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPredId, TypeCtor,
         ProcNameStr = ProcNameStr1 ++ TypeName ++ "_" ++
             string.from_int(TypeArity) ++ "_" ++ string.from_int(ModeNum)
     else
-        unexpected($module, $pred,
-            "cannot make label for special pred " ++ PredName)
+        unexpected($pred, "cannot make label for special pred " ++ PredName)
     ).
 
 :- func erlang_module_name_to_str(module_name) = string.

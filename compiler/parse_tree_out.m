@@ -399,7 +399,7 @@ mercury_output_opt_item_blocks(Info, [OptItemBlock | OptItemBlocks], !IO) :-
 
 mercury_output_opt_item_block(Info, OptItemBlock, !IO) :-
     OptItemBlock = item_block(_, OptSectionKind, _, Incls, Avails, Items),
-    expect(unify(Incls, []), $module, $pred, "Incls != []"),
+    expect(unify(Incls, []), $pred, "Incls != []"),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
     mercury_output_opt_section_marker(OptSectionKind, !IO),
     mercury_output_items(Info, Items, !IO).

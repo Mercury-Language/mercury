@@ -527,7 +527,7 @@ assert_id_goal(ModuleInfo, AssertId, Goal) :-
         ( Clauses = []
         ; Clauses = [_, _ | _]
         ),
-        unexpected($module, $pred, "goal is not an assertion")
+        unexpected($pred, "goal is not an assertion")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -766,7 +766,7 @@ record_preds_used_in(Goal, AssertId, !ModuleInfo) :-
     pred_ids_called_from_goal(Goal, CalleePredIds),
     % Sanity check.
     ( if list.member(invalid_pred_id, CalleePredIds) then
-        unexpected($module, $pred, "invalid pred_id")
+        unexpected($pred, "invalid pred_id")
     else
         true
     ),

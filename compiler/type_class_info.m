@@ -164,8 +164,7 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
     TVarNums = list.map(term.var_to_int, TVars),
     TVarLength = list.length(TVarNums),
     ( if list.last(TVarNums, LastTVarNum) then
-        expect(unify(TVarLength, LastTVarNum), $module, $pred,
-            "tvar num mismatch"),
+        expect(unify(TVarLength, LastTVarNum), $pred, "tvar num mismatch"),
         NumTypeVars = TVarLength
     else
         NumTypeVars = 0
@@ -179,7 +178,7 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
             Interface)
     ;
         MaybeInterface = no,
-        unexpected($module, $pred, "no interface")
+        unexpected($pred, "no interface")
     ),
     TCInstance = tc_instance(TCName, InstanceTCTypes, NumTypeVars,
         TCConstraints, MethodProcLabels),
@@ -198,7 +197,7 @@ generate_class_name(class_id(SymName, Arity)) = TCName :-
         SymName = qualified(ModuleName, ClassName)
     ;
         SymName = unqualified(_),
-        unexpected($module, $pred, "unqualified sym_name")
+        unexpected($pred, "unqualified sym_name")
     ),
     TCName = tc_name(ModuleName, ClassName, Arity).
 

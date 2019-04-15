@@ -124,8 +124,7 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
         )
     ;
         Unification = simple_test(Var1, Var2),
-        expect(unify(CodeModel, model_semi), $module, $pred,
-            "simple_test not semidet"),
+        expect(unify(CodeModel, model_semi), $pred, "simple_test not semidet"),
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
         erl_variable_type(!.Info, Var1, VarType),
         IsDummy = is_type_a_dummy(ModuleInfo, VarType),
@@ -149,13 +148,12 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
     ;
         Unification = construct(Var, ConsId, Args, ArgModes, _HowToConstruct,
             _CellIsUnique, SubInfo),
-        expect(unify(CodeModel, model_det), $module, $pred,
-            "construct not det"),
+        expect(unify(CodeModel, model_det), $pred, "construct not det"),
         (
             SubInfo = no_construct_sub_info
         ;
             SubInfo = construct_sub_info(_MaybeTakeAddr, MaybeSizeProfInfo),
-            expect(unify(MaybeSizeProfInfo, no), $module, $pred,
+            expect(unify(MaybeSizeProfInfo, no), $pred,
                 "term size profiling not yet supported")
         ),
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -188,7 +186,7 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
     ;
         Unification = complicated_unify(_, _, _),
         % Simplify.m should have converted these into procedure calls.
-        unexpected($module, $pred, "complicated unify")
+        unexpected($pred, "complicated unify")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -249,7 +247,7 @@ erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
     ( if cons_id_to_term(ConsId, Args, elds_anon_var, Pattern0, !Info) then
         Pattern = Pattern0
     else
-        unexpected($module, $pred, "undeconstructable object")
+        unexpected($pred, "undeconstructable object")
     ),
     %
     % case Var of
@@ -347,7 +345,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         Expr = elds_term(Term)
     ;
         ConsId = impl_defined_const(_),
-        unexpected($module, $pred, "impl_defined_const")
+        unexpected($pred, "impl_defined_const")
     ;
         ConsId = closure_cons(ShroudedPredProcId, lambda_normal),
         pred_const_to_closure(ShroudedPredProcId, Args, Expr, !Info)
@@ -363,7 +361,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         ( if sym_name_get_module_name(ClassName, ClassModuleName0) then
             ClassModuleName = ClassModuleName0
         else
-            unexpected($module, $pred, "class has no module name")
+            unexpected($pred, "class has no module name")
         ),
         ClassNameStr = unqualify_name(ClassName),
         TCName = tc_name(ClassModuleName, ClassNameStr, Arity),
@@ -379,19 +377,19 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         Expr = elds_term(elds_tuple(exprs_from_vars(Args)))
     ;
         ConsId = type_info_const(_),
-        unexpected($module, $pred, "type_info_const")
+        unexpected($pred, "type_info_const")
     ;
         ConsId = typeclass_info_const(_),
-        unexpected($module, $pred, "typeclass_info_const")
+        unexpected($pred, "typeclass_info_const")
     ;
         ConsId = ground_term_const(_, _),
-        unexpected($module, $pred, "ground_term_const")
+        unexpected($pred, "ground_term_const")
     ;
         ( ConsId = tabling_info_const(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_entry_desc(_)
         ),
-        sorry($module, $pred,
+        sorry($pred,
             "tabling and deep profiling not supported on Erlang backend")
     ).
 

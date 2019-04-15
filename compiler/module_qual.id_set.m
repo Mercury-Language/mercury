@@ -151,7 +151,7 @@ id_set_insert(Permissions, MQId, !IdSet) :-
     MQId = mq_id(SymName, Arity),
     (
         SymName = unqualified(_),
-        unexpected($module, $pred, "unqualified id")
+        unexpected($pred, "unqualified id")
     ;
         SymName = qualified(ModuleName, BaseName),
         % Most of the time, BaseName does not occur in !.IdSet.

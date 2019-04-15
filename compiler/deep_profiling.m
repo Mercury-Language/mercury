@@ -220,7 +220,7 @@ find_list_of_output_args(Vars, Modes, Types, ModuleInfo, !:Outputs) :-
     then
         true
     else
-        unexpected($module, $pred, "list length mismatch")
+        unexpected($pred, "list length mismatch")
     ).
 
 :- pred find_list_of_output_args_2(list(prog_var)::in, list(mer_mode)::in,
@@ -293,7 +293,7 @@ goal_contains_builtin_unify_or_compare(Goal) = Contains :-
         Contains = goal_contains_builtin_unify_or_compare(SubGoal)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- func goals_contain_builtin_unify_or_compare(list(hlds_goal)) = bool.
@@ -433,7 +433,7 @@ apply_deep_prof_tail_rec_to_goal(Goal0, Goal, TailRecInfo, !FoundTailCall,
         Continue = no
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred apply_deep_prof_tail_rec_to_assign(list(prog_var)::in,
@@ -564,7 +564,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred figure_out_rec_call_numbers_in_goal_list(list(hlds_goal)::in,
@@ -1181,7 +1181,7 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
         )
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred deep_prof_mark_goal_as_not_mdprof_inst(hlds_goal::in, hlds_goal::out)
@@ -1343,10 +1343,10 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
             CallSite = method_call(FileName, LineNumber, GoalPath)
         ;
             Generic = event_call(_),
-            unexpected($module, $pred, "event_call")
+            unexpected($pred, "event_call")
         ;
             Generic = cast(_),
-            unexpected($module, $pred, "cast")
+            unexpected($pred, "cast")
         ),
         GoalCodeModel = goal_info_get_code_model(GoalInfo0),
         module_info_get_globals(ModuleInfo, Globals),
@@ -1384,8 +1384,7 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
                 CallGoals, ExitGoals, FailGoals, SaveRestoreVars, !DeepInfo)
         ;
             VisSCC = [_, _ | _],
-            unexpected($module, $pred,
-                "multi-procedure SCCs not yet implemented")
+            unexpected($pred, "multi-procedure SCCs not yet implemented")
         ),
 
         CodeModel = goal_info_get_code_model(GoalInfo0),
@@ -1655,7 +1654,7 @@ classify_call(ModuleInfo, Expr) = Class :-
         ; Expr = scope(_, _)
         ; Expr = shorthand(_)
         ),
-        unexpected($module, $pred, "unexpected goal type")
+        unexpected($pred, "unexpected goal type")
     ).
 
 :- func compute_type_subst(hlds_goal_expr, deep_info) = string.
@@ -1746,8 +1745,7 @@ generate_csn_vector(Length, CSNs, CSNVars, UnifyGoals, CellVar, !DeepInfo) :-
         UnifyGoals = [UnifyGoal],
         CellVar = CSNVar
     else
-        expect(Length =< max_save_restore_vector_size, $module, $pred,
-            "too long"),
+        expect(Length =< max_save_restore_vector_size, $pred, "too long"),
         list.map_foldl(generate_single_csn_unify, CSNs, CSNVarsGoals,
             !DeepInfo),
         InnerVars = assoc_list.keys(CSNVarsGoals),
@@ -1907,7 +1905,7 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
         is_fully_qualified, ModuleName, Name, Arity, PredIds),
     (
         PredIds = [],
-        unexpected($module, $pred, "no pred_id")
+        unexpected($pred, "no pred_id")
     ;
         PredIds = [PredId],
         predicate_table_get_preds(PredTable, Preds),
@@ -1915,16 +1913,16 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
         ProcIds = pred_info_procids(PredInfo),
         (
             ProcIds = [],
-            unexpected($module, $pred, "no proc_id")
+            unexpected($pred, "no proc_id")
         ;
             ProcIds = [ProcId]
         ;
             ProcIds = [_, _ | _],
-            unexpected($module, $pred, "proc_id not unique")
+            unexpected($pred, "proc_id not unique")
         )
     ;
         PredIds = [_, _ | _],
-        unexpected($module, $pred, "pred_id not unique")
+        unexpected($pred, "pred_id not unique")
     ).
 
 %-----------------------------------------------------------------------------%

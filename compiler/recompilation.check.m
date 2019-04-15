@@ -141,7 +141,7 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
             Reasons = !.Info ^ rci_recompilation_reasons
         ;
             Result = failed,
-            unexpected($module, $pred, "try failed")
+            unexpected($pred, "try failed")
         ;
             Result = exception(Exception),
             ( if univ_to_type(Exception, RecompileException0) then
@@ -700,10 +700,10 @@ check_imported_module(Globals, Term, !Info, !IO) :-
         FileKind = fk_int(IntFileKind)
     ;
         FileKind = fk_src,
-        unexpected($module, $pred, "fk_src")
+        unexpected($pred, "fk_src")
     ;
         FileKind = fk_opt(_),
-        unexpected($module, $pred, "fk_opt")
+        unexpected($pred, "fk_opt")
     ),
     HaveReadModuleMaps = !.Info ^ rci_have_read_module_maps,
     HaveReadModuleMapInt = HaveReadModuleMaps ^ hrmm_int,
@@ -787,7 +787,7 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
         UsedItemsResult = error1(Specs),
         (
             Specs = [],
-            unexpected($module, $pred, "error1([])")
+            unexpected($pred, "error1([])")
         ;
             Specs = [_ | _],
             Reason = recompile_for_unreadable_used_items(Specs),
@@ -933,7 +933,7 @@ check_item_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         !Info) :-
     (
         Item = item_clause(_),
-        unexpected($module, $pred, "clause")
+        unexpected($pred, "clause")
     ;
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(TypeSymName, TypeParams, TypeBody,
@@ -1142,7 +1142,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
                 AritiesToMatch, ResolvedFunctor, !Info)
         ;
             SymName = unqualified(_),
-            unexpected($module, $pred, "unqualified predicate name")
+            unexpected($pred, "unqualified predicate name")
         )
     else
         true

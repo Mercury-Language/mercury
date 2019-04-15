@@ -609,7 +609,7 @@ gather_grade_defines(Globals, GradeDefines) :-
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = yes,
         % This should have been caught in handle_options.
-        unexpected($module, $pred, "inconsistent record term size options")
+        unexpected($pred, "inconsistent record term size options")
     ;
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = no,
@@ -669,7 +669,7 @@ gather_grade_defines(Globals, GradeDefines) :-
     ;
         Extend = yes,
         StackSegments = yes,
-        ExtendOpt = unexpected($module, $pred,
+        ExtendOpt = unexpected($pred,
             "--extend-stacks-when-needed and --stack-segments")
     ),
     globals.lookup_bool_option(Globals, low_level_debug, LL_Debug),
@@ -710,7 +710,7 @@ gather_grade_defines(Globals, GradeDefines) :-
         MinimalModelStackCopy = yes,
         MinimalModelOwnStacks = yes,
         % this should have been caught in handle_options
-        unexpected($module, $pred, "inconsistent minimal model options")
+        unexpected($pred, "inconsistent minimal model options")
     ;
         MinimalModelStackCopy = yes,
         MinimalModelOwnStacks = no,
@@ -874,7 +874,7 @@ compile_java_files(Globals, ErrorStream, JavaFiles, Succeeded, !IO) :-
         )
     ;
         JavaFiles = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ),
 
     globals.lookup_string_option(Globals, java_compiler, JavaCompiler),
@@ -1609,7 +1609,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
             OutputFileName = Module
         ;
             Modules = [],
-            unexpected($module, $pred, "no modules")
+            unexpected($pred, "no modules")
         )
     else
         OutputFileName = OutputFileName0
@@ -1888,7 +1888,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         else if Linkage = "static" then
             HwlocFlagsOpt = hwloc_static_libs
         else
-            unexpected($module, $pred, "Invalid linkage")
+            unexpected($pred, "Invalid linkage")
         ),
         globals.lookup_string_option(Globals, HwlocFlagsOpt, HwlocOpts)
     ;
@@ -2116,7 +2116,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             ; TargetType = erlang_launcher
             ; TargetType = erlang_archive
             ),
-            unexpected($module, $pred, string(TargetType))
+            unexpected($pred, string(TargetType))
         ),
         grade_directory_component(Globals, GradeDir),
 
@@ -2248,7 +2248,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 StdLib
             ])
         else
-            unexpected($module, $pred, "unknown linkage " ++ MercuryLinkage)
+            unexpected($pred, "unknown linkage " ++ MercuryLinkage)
         )
     ;
         MaybeStdlibDir = no,
@@ -2277,7 +2277,7 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt, Name,
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
         ),
-        unexpected($module, $pred, string(TargetType))
+        unexpected($pred, string(TargetType))
     ),
     StaticLibName = LibPrefix ++ Name ++ LibExt,
     StaticArg = quote_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
@@ -2339,7 +2339,7 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
         ),
-        unexpected($module, $pred, string(TargetType))
+        unexpected($pred, string(TargetType))
     ).
 
 :- pred get_runtime_library_path_opts(globals::in, linked_target_type::in,
@@ -2427,7 +2427,7 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
         ),
-        unexpected($module, $pred, string(TargetType))
+        unexpected($pred, string(TargetType))
     ),
 
     SystemLibs = string.join_list(" ",
@@ -2728,10 +2728,10 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         LibSuffix = ".dll"
     ;
         Target = target_java,
-        unexpected($module, $pred, "target_java")
+        unexpected($pred, "target_java")
     ;
         Target = target_erlang,
-        unexpected($module, $pred, "target_erlang")
+        unexpected($pred, "target_erlang")
     ),
 
     globals.lookup_accumulating_option(Globals, mercury_libraries,
@@ -2908,7 +2908,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         ; LinkTargetType = erlang_launcher
         ; LinkTargetType = erlang_archive
         ),
-        unexpected($module, $pred, "wrong target type")
+        unexpected($pred, "wrong target type")
     ),
 
     globals.lookup_accumulating_option(Globals, link_library_directories,
@@ -3042,7 +3042,7 @@ create_java_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         !IO),
     (
         ListClassFiles = [],
-        unexpected($module, $pred, "empty list of .class files")
+        unexpected($pred, "empty list of .class files")
     ;
         ListClassFiles = [_ | _]
     ),

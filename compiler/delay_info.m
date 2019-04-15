@@ -189,7 +189,7 @@ delay_info_check_invariant(DelayInfo) :-
         then
             true
         else
-            unexpected($module, $pred, "invariant violated")
+            unexpected($pred, "invariant violated")
         )
     ).
 

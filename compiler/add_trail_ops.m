@@ -353,7 +353,7 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred conj_add_trail_ops(hlds_goals::in, hlds_goals::out,

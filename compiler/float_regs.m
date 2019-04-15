@@ -466,7 +466,7 @@ add_arg_regs_in_bound_inst(ModuleInfo, Seen, Type, BoundInst0, BoundInst) :-
     else
         % XXX handle existentially typed cons_ids
         trace [compile_time(flag("debug_float_regs"))] (
-            sorry($module, $pred, "existentially typed cons_id")
+            sorry($pred, "existentially typed cons_id")
         ),
         ArgInsts = ArgInsts0
     ),
@@ -731,7 +731,7 @@ insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred finish_call_goal(list(hlds_goal)::in, hlds_goal_expr::in,
@@ -788,10 +788,10 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
             RHS0 = rhs_functor(_, IsExistConstruct, _)
         ;
             RHS0 = rhs_var(_),
-            unexpected($module, $pred, "construct rhs_var")
+            unexpected($pred, "construct rhs_var")
         ;
             RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
-            unexpected($module, $pred, "construct rhs_lambda_goal")
+            unexpected($pred, "construct rhs_lambda_goal")
         ),
         (
             Args0 = [],
@@ -865,7 +865,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         update_instmap(Goal, !InstMap)
     ;
         Unification0 = complicated_unify(_, _, _),
-        unexpected($module, $pred, "complicated_unify")
+        unexpected($pred, "complicated_unify")
     ).
 
 :- pred insert_reg_wrappers_construct(prog_var::in, cons_id::in,
@@ -999,10 +999,10 @@ rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
         Inst = Inst0
     ;
         Inst0 = abstract_inst(_, _),
-        unexpected($module, $pred, "abstract_inst")
+        unexpected($pred, "abstract_inst")
     ;
         Inst0 = inst_var(_),
-        unexpected($module, $pred, "inst_var")
+        unexpected($pred, "inst_var")
     ).
 
 :- pred rebuild_cell_bound_inst(instmap::in, cons_id::in, list(prog_var)::in,
@@ -1341,7 +1341,7 @@ match_args(InstMap0, Context, ArgTypes, Insts, OrigVars, Vars, !WrapGoals,
             !Specs),
         Vars = [V | Vs]
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 :- pred match_arg(instmap::in, prog_context::in, mer_type::in, mer_inst::in,
@@ -1402,7 +1402,7 @@ lookup_pred_inst_info(ModuleInfo, Inst, PredOrFunc, Arity, PredInstInfo) :-
     then
         PredInstInfo = PredInstInfo0
     else
-        unexpected($module, $pred, "no higher order inst")
+        unexpected($pred, "no higher order inst")
     ).
 
 :- pred search_pred_inst_info(module_info::in, mer_inst::in, pred_or_func::in,
@@ -1732,7 +1732,7 @@ split_list_from_end(EndLen, List, Start, End) :-
     else if StartLen > 0 then
         list.det_split_list(StartLen, List, Start, End)
     else
-        unexpected($module, $pred, "list too short")
+        unexpected($pred, "list too short")
     ).
 
 %---------------------------------------------------------------------------%

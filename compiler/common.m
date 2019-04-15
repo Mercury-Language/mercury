@@ -699,9 +699,9 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
 
 partition_call_args(_, _, [], [], [], [], []).
 partition_call_args(_, _, [], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "length mismatch (1)").
+    unexpected($pred, "length mismatch (1)").
 partition_call_args(_, _, [_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "length mismatch (2)").
+    unexpected($pred, "length mismatch (2)").
 partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
         [Arg | Args], InputArgs, OutputArgs, OutputModes) :-
     partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
@@ -822,7 +822,7 @@ create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, FromToInsts,
     then
         AssignGoals = []
     else
-        unexpected($module, $pred, "mode mismatch")
+        unexpected($pred, "mode mismatch")
     ).
 
 %---------------------------------------------------------------------------%
@@ -887,7 +887,7 @@ types_match_exactly(tuple_type(As, _), tuple_type(Bs, _)) :-
 types_match_exactly(apply_n_type(TVar, As, _), apply_n_type(TVar, Bs, _)) :-
     types_match_exactly_list(As, Bs).
 types_match_exactly(kinded_type(_, _), _) :-
-    unexpected($module, $pred, "kind annotation").
+    unexpected($pred, "kind annotation").
 
 :- pred types_match_exactly_list(list(mer_type)::in, list(mer_type)::in)
     is semidet.
@@ -955,7 +955,7 @@ apply_induced_substitutions(ToVar, FromVar, !Info) :-
                 % Calculate_induced_tsubst failed for a different reason,
                 % either because unification failed or because one variable
                 % was a type_info and the other was a typeclass_info.
-                unexpected($module, $pred, "inconsistent info")
+                unexpected($pred, "inconsistent info")
             )
         )
     ).

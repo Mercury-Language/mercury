@@ -478,7 +478,7 @@ replace_in_type_defn_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
             Spec = error_spec(severity_error, phase_expand_types, [Msg]),
             Specs = [Spec]
         else
-            unexpected($module, $pred, "invalid item")
+            unexpected($pred, "invalid item")
         )
     ;
         ContainsCirc = no,
@@ -1455,7 +1455,7 @@ replace_in_pred_type(MaybeRecord, PredName, PredOrFunc, Context,
                 LeftOverExtraTypes = [_ | _],
                 LeftOverExtraModes = [_ | _],
                 % pair_extra_types_and_modes should have paired these up.
-                unexpected($module, $pred, "both types and modes left over")
+                unexpected($pred, "both types and modes left over")
             )
         )
     ),

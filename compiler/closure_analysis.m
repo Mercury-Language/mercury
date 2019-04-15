@@ -317,7 +317,7 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                 ( if var_has_ho_type(VarTypes, RHS) then
                     true
                 else
-                    unexpected($module, $pred, "not a higher-order var")
+                    unexpected($pred, "not a higher-order var")
                 ),
                 Values = map.lookup(!.ClosureInfo, RHS),
                 map.det_insert(LHS, Values, !ClosureInfo)
@@ -395,7 +395,7 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %----------------------------------------------------------------------------%
@@ -407,9 +407,9 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
 
 partition_arguments(_, _, [],    [], !Inputs, !Outputs).
 partition_arguments(_, _, [_|_], [], _, _, _, _) :-
-    unexpected($module, $pred, "unequal length lists.").
+    unexpected($pred, "unequal length lists.").
 partition_arguments(_, _, [],    [_|_], _, _, _, _) :-
-    unexpected($module, $pred, "unequal length lists.").
+    unexpected($pred, "unequal length lists.").
 partition_arguments(ModuleInfo, VarTypes, [ Var | Vars ], [ Mode | Modes ],
         !Inputs, !Outputs) :-
     ( if var_has_ho_type(VarTypes, Var) then
@@ -480,7 +480,7 @@ dump_closure_info_expr(_, call_foreign_proc(_, _, _, _, _, _, _), _, !IO).
 dump_closure_info_expr(Varset, disj(Goals), _, !IO) :-
     list.foldl(dump_closure_info(Varset), Goals, !IO).
 dump_closure_info_expr(_, shorthand(_), _, _, _) :-
-    unexpected($module, $pred, "shorthand").
+    unexpected($pred, "shorthand").
 
 :- pred dump_ho_values(hlds_goal_info::in, prog_varset::in,
     io::di, io::uo) is det.

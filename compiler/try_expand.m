@@ -399,7 +399,7 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
             Reason = from_ground_term(_, from_ground_term_initial),
-            unexpected($module, $pred, "from_ground_term_initial")
+            unexpected($pred, "from_ground_term_initial")
         )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
@@ -430,7 +430,7 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             Goal = hlds_goal(shorthand(GoalExpr), GoalInfo0)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -672,7 +672,7 @@ extract_intermediate_goal_parts(ModuleInfo, ResultVar, IntermediateGoal,
         MaybeElse = MaybeElsePrime,
         ExcpHandling = ExcpHandlingPrime
     else
-        unexpected($module, $pred, "unexpected goal form")
+        unexpected($pred, "unexpected goal form")
     ).
 
 :- pred extract_intermediate_goal_parts_2(module_info::in, prog_var::in,
@@ -778,7 +778,7 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
                 ; GoalMaxSoln = at_most_many_cc
                 ; GoalMaxSoln = at_most_many
                 ),
-                unexpected($module, $pred, "goal not erroneous")
+                unexpected($pred, "goal not erroneous")
             )
         )
     ).
@@ -786,7 +786,7 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
 :- pred lookup_case_goal(list(case)::in, cons_id::in, hlds_goal::out) is det.
 
 lookup_case_goal([], ConsId, _) :-
-    unexpected($module, $pred, "couldn't find " ++ string(ConsId)).
+    unexpected($pred, "couldn't find " ++ string(ConsId)).
 lookup_case_goal([Case | Cases], ConsId, Goal) :-
     ( if Case = case(ConsId, [], GoalPrime) then
         Goal = GoalPrime
@@ -888,7 +888,7 @@ make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
     polymorphism_make_type_info_var(OutputTupleType, Context,
         TypeInfoVar, MakeTypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PolySpecs, !PredInfo, !ProcInfo, !:ModuleInfo),
-    expect(unify(PolySpecs, []), $module, $pred,
+    expect(unify(PolySpecs, []), $pred,
         "got errors while making type_info_var"),
 
     % The mode will be fixed up by a later analysis.

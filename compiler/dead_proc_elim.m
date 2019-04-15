@@ -850,12 +850,12 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
         ;
             Unification = complicated_unify(_, _, _),
             % These should have been replaced with calls by now.
-            unexpected($module, $pred, "complicated_unify")
+            unexpected($pred, "complicated_unify")
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1537,7 +1537,7 @@ pre_modecheck_examine_goal_expr(GoalExpr, !DeadInfo) :-
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "unexpected bi_implication")
+            unexpected($pred, "unexpected bi_implication")
         )
     ).
 

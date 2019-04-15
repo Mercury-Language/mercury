@@ -452,7 +452,7 @@ gen_type_info_defn(ModuleInfo, Target, RttiTypeInfo, Name, RttiId,
         !GlobalData) :-
     (
         RttiTypeInfo = plain_arity_zero_type_info(_),
-        unexpected($module, $pred, "plain_arity_zero_type_info")
+        unexpected($pred, "plain_arity_zero_type_info")
     ;
         RttiTypeInfo = plain_type_info(RttiTypeCtor, ArgTypes),
         ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
@@ -545,7 +545,7 @@ gen_pseudo_type_info_defn(ModuleInfo, Target, RttiPseudoTypeInfo, Name, RttiId,
         !GlobalData) :-
     (
         RttiPseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
-        unexpected($module, $pred, "plain_arity_zero_pseudo_type_info")
+        unexpected($pred, "plain_arity_zero_pseudo_type_info")
     ;
         RttiPseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, ArgTypes),
         ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
@@ -624,7 +624,7 @@ gen_pseudo_type_info_defn(ModuleInfo, Target, RttiPseudoTypeInfo, Name, RttiId,
         )
     ;
         RttiPseudoTypeInfo = type_var(_),
-        unexpected($module, $pred, "type_var")
+        unexpected($pred, "type_var")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1220,7 +1220,7 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
         ( if FirstPtag = ptag(0u8) then
             true
         else
-            unexpected($module, $pred, "bad ptag list")
+            unexpected($pred, "bad ptag list")
         )
     ),
     gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, FirstPtag,
@@ -1237,7 +1237,7 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
 gen_du_ptag_ordered_table_body(_, _, _, [], []).
 gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, CurPtag,
         [Ptag - SectagTable | PtagTail], [Initializer | Initializers]) :-
-    expect(unify(Ptag, CurPtag), $module, $pred, "ptag mismatch"),
+    expect(unify(Ptag, CurPtag), $pred, "ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSectagBits, NumSharers,
         _SectagMap),
     RttiName = type_ctor_du_ptag_layout(Ptag),
@@ -1742,7 +1742,7 @@ add_rtti_defn_arcs(GlobalVarDefn, !Graph) :-
     ( if Type = mlds_rtti_type(_) then
         add_rtti_defn_arcs_initializer(GlobalVarName, Initializer, !Graph)
     else
-        unexpected($module, $pred, "expected rtti entity_data")
+        unexpected($pred, "expected rtti entity_data")
     ).
 
 :- pred add_rtti_defn_arcs_initializer(mlds_global_var_name::in,

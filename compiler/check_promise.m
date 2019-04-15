@@ -164,7 +164,7 @@ get_promise_ex_goal(PredInfo, Goal) :-
         Goal0 = Clause ^ clause_body,
         assertion.normalise_goal(Goal0, Goal)
     else
-        unexpected($module, $pred, "not a single clause")
+        unexpected($pred, "not a single clause")
     ).
 
 %---------------------%
@@ -226,7 +226,7 @@ check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
         check_in_interface_promise_goals(ModuleInfo, PredInfo, Goals, !Specs)
     ;
         GoalExpr = switch(_, _, _),
-        unexpected($module, $pred, "assertion contains switch")
+        unexpected($pred, "assertion contains switch")
     ;
         GoalExpr = disj(Goals),
         check_in_interface_promise_goals(ModuleInfo, PredInfo, Goals, !Specs)

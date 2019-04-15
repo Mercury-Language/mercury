@@ -148,9 +148,9 @@ rename_var(Must, Renaming, Var0, Var) :-
         ;
             Must = must_rename,
             term.var_to_int(Var0, Var0Int),
-            string.format("rename_var: no substitute for var %i", [i(Var0Int)],
-                Msg),
-            unexpected($module, $pred, Msg)
+            string.format("rename_var: no substitute for var %i",
+                [i(Var0Int)], Msg),
+            unexpected($pred, Msg)
         )
     ).
 

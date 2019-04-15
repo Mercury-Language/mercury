@@ -192,8 +192,8 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
             % Use the original variable names for the headvars of foreign_proc
             % clauses, not the introduced `HeadVar__n' names.
             list.foldl(set_arg_names, Args, VarSet0, VarSet),
-            expect(unify(ExtraArgs, []), $module, $pred, "extra_args"),
-            expect(unify(MaybeTraceRuntimeCond, no), $module, $pred,
+            expect(unify(ExtraArgs, []), $pred, "extra_args"),
+            expect(unify(MaybeTraceRuntimeCond, no), $pred,
                 "trace runtime cond")
         ;
             ( SingleExpr = plain_call(_, _, _, _, _, _)

@@ -114,7 +114,7 @@ deforestation(!ModuleInfo) :-
     then
         ProcArgInfo = ProcArgInfo1
     else
-        unexpected($module, $pred, "passes_aux stuffed up")
+        unexpected($pred, "passes_aux stuffed up")
     ),
 
     % We process the module bottom-up to make estimation of the
@@ -148,7 +148,7 @@ deforestation(!ModuleInfo) :-
         module_info_set_globals(Globals, !ModuleInfo),
 
         FoundErrors = contains_errors(Globals, Specs),
-        expect(unify(FoundErrors, no), $module, $pred,
+        expect(unify(FoundErrors, no), $pred,
             "determinism errors after deforestation")
     else
         true
@@ -379,7 +379,7 @@ deforest_goal_expr(GoalExpr0, GoalExpr, !GoalInfo, !PDInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -481,7 +481,7 @@ deforest_get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1371,9 +1371,9 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
 
 create_deforest_call_args([], [], _, _, [], !VarSet, !VarTypes).
 create_deforest_call_args([], [_|_], _, _, _, !VarSet, !VarTypes) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 create_deforest_call_args([_|_], [], _, _, _, !VarSet, !VarTypes) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 create_deforest_call_args([OldArg | OldArgs], [ArgType | ArgTypes],
         Renaming, TypeSubn, [Arg | Args], !VarSet, !VarTypes) :-
     ( if map.search(Renaming, OldArg, ArgPrime) then
@@ -1801,7 +1801,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
         ; EarlierGoalExpr = scope(_, _)
         ; EarlierGoalExpr = shorthand(_)
         ),
-        unexpected($module, $pred, "unexpected goal type")
+        unexpected($pred, "unexpected goal type")
     ),
     pd_info_set_instmap(InstMap0, !PDInfo),
     goal_list_instmap_delta([EarlierGoal | BetweenGoals], Delta0),
