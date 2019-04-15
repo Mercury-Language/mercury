@@ -154,9 +154,9 @@
     % compilation unit should have all this information separate from
     % the items.
     %
-:- pred add_needed_foreign_import_module_items_to_item_blocks(
-    module_name::in, module_name::in, MS::in,
-    list(item_block(MS))::in, list(item_block(MS))::out) is det.
+:- pred add_needed_foreign_import_module_items_to_src_item_blocks(
+    module_name::in,
+    list(src_item_block)::in, list(src_item_block)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -615,8 +615,10 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit,
         Langs = [_ | _],
         % XXX ITEM_LIST Adding the foreign_import_module items to the
         % interface section is a guess.
-        % XXX ITEM_LIST (It seems to be a wrong guess; the compiler bootstraps
-        % even if we add them to implementation section.)
+        % XXX FIM_SECTION (It seems to be a wrong guess; the compiler
+        % bootstraps even if we add them to implementation section.)
+        % XXX FIM_SECTION We may be adding these items to the
+        % same lists of items more than once.
         list.foldl(accumulate_foreign_import(ModuleName), Langs,
             IntItems0, IntItems)
     ),
@@ -1998,11 +2000,8 @@ get_interface(RawCompUnit, InterfaceRawCompUnit) :-
         RawItemBlocks,
         cord.init, IFileItemBlocksCord, cord.init, _NoIFileItemBlocksCord),
     IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
-    % XXX ITEM_LIST The ms_interface is a guess.
-    % XXX ITEM_LIST (It seems to be a wrong guess; the compiler bootstraps
-    % even if we pass ms_implementation here.)
-    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ModuleName, ms_interface, IFileItemBlocks0, IFileItemBlocks),
+    add_needed_foreign_import_module_items_to_raw_item_blocks(ModuleName,
+        IFileItemBlocks0, IFileItemBlocks),
     InterfaceRawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, IFileItemBlocks).
 
@@ -2014,9 +2013,8 @@ get_int_and_imp(RawCompUnit, IFileItemBlocks, NoIFileItemBlocks) :-
         cord.init, IFileItemBlocksCord, cord.init, NoIFileItemBlocksCord),
     IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
     NoIFileItemBlocks = cord.list(NoIFileItemBlocksCord),
-    % XXX ITEM_LIST The ms_interface is a guess.
-    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ModuleName, ms_interface, IFileItemBlocks0, IFileItemBlocks).
+    add_needed_foreign_import_module_items_to_raw_item_blocks(ModuleName,
+        IFileItemBlocks0, IFileItemBlocks).
 
 %---------------------------------------------------------------------------%
 
@@ -2140,8 +2138,42 @@ get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-add_needed_foreign_import_module_items_to_item_blocks(CurModuleName,
-        ModuleName, Section, ItemBlocks0, ItemBlocks) :-
+add_needed_foreign_import_module_items_to_src_item_blocks(ModuleName,
+        !ItemBlocks) :-
+    % XXX ITEM_LIST ms_interface is a guess. The original code (whose
+    % behavior the current code is trying to emulate) simply added
+    % the generated items to a raw item list, seemingly without caring
+    % about what section those items would end up (it certainly did not
+    % look for any section markers).
+    % XXX FIM_SECTION (It seems to be a wrong guess; the compiler bootstraps
+    % even if we pass sms_implementation here.)
+    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
+        sms_interface, !ItemBlocks).
+
+:- pred add_needed_foreign_import_module_items_to_raw_item_blocks(
+    module_name::in,
+    list(raw_item_block)::in, list(raw_item_block)::out) is det.
+
+add_needed_foreign_import_module_items_to_raw_item_blocks(ModuleName,
+        !ItemBlocks) :-
+    % XXX ITEM_LIST sms_interface is a guess. The original code (whose
+    % behavior the current code is trying to emulate) simply added
+    % the generated items to a raw item list, seemingly without caring
+    % about what section those items would end up (it certainly did not
+    % look for any section markers).
+    % XXX FIM_SECTION (It seems to be a wrong guess; the compiler bootstraps
+    % even if we pass ms_implementation here.)
+    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
+        ms_interface, !ItemBlocks).
+
+%---------------------%
+
+:- pred add_needed_foreign_import_module_items_to_item_blocks(
+    module_name::in, MS::in,
+    list(item_block(MS))::in, list(item_block(MS))::out) is det.
+
+add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
+        ItemBlocks0, ItemBlocks) :-
     list.foldl(accumulate_foreign_import_langs_in_item_block, ItemBlocks0,
         set.init, LangSet),
     set.to_sorted_list(LangSet, Langs),
@@ -2151,7 +2183,7 @@ add_needed_foreign_import_module_items_to_item_blocks(CurModuleName,
     ;
         Langs = [_ | _],
         ImportItems = list.map(make_foreign_import(ModuleName), Langs),
-        ImportItemBlock = item_block(CurModuleName, Section,
+        ImportItemBlock = item_block(ModuleName, Section,
             term.context_init, [], [], ImportItems),
         ItemBlocks = [ImportItemBlock | ItemBlocks0]
     ).

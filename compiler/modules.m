@@ -156,13 +156,33 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         !IntIndirectImported, !ImpIndirectImported,
         !IntImpIndirectImported, !ImpImpIndirectImported]
     (
-        WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
-        make_initial_module_and_imports(SourceFileName, SourceFileModuleName,
-            WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports),
-
-        % Find the modules named in import_module and use_module decls.
+        % Construct the initial module import structure.
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
+
+        get_src_item_blocks_public_children(RawCompUnit,
+            SrcItemBlocks, PublicChildren),
+        get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactDeps),
+        get_foreign_include_files_in_item_blocks(RawItemBlocks,
+            ForeignIncludeFiles),
+        % XXX Why do we use SrcItemBlocks, instead of SrcItemBlocksWithFIMs,
+        % in the code below the call to make_module_and_imports?
+        add_needed_foreign_import_module_items_to_src_item_blocks(ModuleName,
+            SrcItemBlocks, SrcItemBlocksWithFIMs),
+        (
+            MaybeTimestamp = yes(Timestamp),
+            MaybeTimestampMap = yes(map.singleton(ModuleName,
+                module_timestamp(fk_src, Timestamp, may_be_unqualified)))
+        ;
+            MaybeTimestamp = no,
+            MaybeTimestampMap = no
+        ),
+        make_module_and_imports(SourceFileName, SourceFileModuleName,
+            ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs,
+            PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+            MaybeTimestampMap, !:ModuleAndImports),
+
+        % Find the modules named in import_module and use_module decls.
         get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
             IntImportedMap, IntUsedMap, ImpImportedMap, ImpUsedMap),
         set.sorted_list_to_set(map.keys(IntImportedMap), IntImported0),
@@ -321,14 +341,29 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 
     some [!IntIndirectImported, !ImpIndirectImported]
     (
-        WhichGrab = grab_unqual_imported,
-        % XXX _SrcItemBlocks
-        make_initial_module_and_imports(SourceFileName, SourceFileModuleName,
-            WhichGrab, RawCompUnit, _SrcItemBlocks, !:ModuleAndImports),
+        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+            RawItemBlocks),
+        % Construct the initial module import structure.
+        % XXX Why do we give dummy values for PublicChildren, NestedChildren,
+        % and other fields of !:ModuleAndImports? And why do we give
+        % a simplified value for SrcItemBlocks?
+        raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
+        add_needed_foreign_import_module_items_to_src_item_blocks(ModuleName,
+            SrcItemBlocks, SrcItemBlocksWithFIMs),
+        map.init(PublicChildren),
+        set.init(NestedChildren),
+        % Nothing that we will do with !:ModuleAndImports when constructing
+        % interface files will involve the files containing fact tables,
+        % so it is OK to pass a dummy value for FactDeps.
+        FactDeps = [],
+        ForeignIncludeFiles = cord.init,
+        MaybeTimestampMap = no,
+        make_module_and_imports(SourceFileName, SourceFileModuleName,
+            ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs,
+            PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+            MaybeTimestampMap, !:ModuleAndImports),
 
         % Find the modules named in import_module and use_module decls.
-        RawCompUnit = raw_compilation_unit(ModuleName, _ModuleNameContext,
-            RawItemBlocks),
         get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
             IntImportedMap, IntUsedMap, ImpImportedMap, ImpUsedMap),
         set.sorted_list_to_set(map.keys(IntImportedMap), IntImported0),
@@ -424,69 +459,6 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             module_and_imports_add_indirect_int_item_blocks,
             !.ImpIndirectImported, set.init, _, !ModuleAndImports, !IO)
     ).
-
-%---------------------------------------------------------------------------%
-
-:- type which_grab
-    --->    grab_imported(maybe(timestamp), set(module_name))
-    ;       grab_unqual_imported.
-
-:- pred make_initial_module_and_imports(file_name::in, module_name::in,
-    which_grab::in, raw_compilation_unit::in,
-    list(src_item_block)::out, module_and_imports::out) is det.
-
-make_initial_module_and_imports(SourceFileName, SourceFileModuleName,
-        WhichGrab, RawCompUnit, SrcItemBlocks, ModuleAndImports) :-
-    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-        RawItemBlocks),
-    % XXX Why do we compute NestedChildren, FactDeps, ForeignIncludeFiles,
-    % SrcItemBlocks and PublicChildren differently in these two cases?
-    % XXX And why do we return SrcItemBlocks, instead of SrcItemBlocksWithFIMs?
-    (
-        WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
-        (
-            MaybeTimestamp = yes(Timestamp),
-            MaybeTimestampMap = yes(map.singleton(ModuleName,
-                module_timestamp(fk_src, Timestamp, may_be_unqualified)))
-        ;
-            MaybeTimestamp = no,
-            MaybeTimestampMap = no
-        ),
-
-        get_src_item_blocks_public_children(RawCompUnit,
-            SrcItemBlocks, PublicChildren),
-
-        % XXX ITEM_LIST Store the FactDeps and ForeignIncludeFiles
-        % in the raw_comp_unit.
-        get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactDeps),
-        get_foreign_include_files_in_item_blocks(RawItemBlocks,
-            ForeignIncludeFiles)
-    ;
-        WhichGrab = grab_unqual_imported,
-        set.init(NestedChildren),
-        MaybeTimestampMap = no,
-
-        raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
-        map.init(PublicChildren),
-
-        FactDeps = [],
-        ForeignIncludeFiles = cord.init
-    ),
-
-    % Construct the initial module import structure.
-    % XXX ITEM_LIST sms_interface is a guess. The original code (whose
-    % behavior the current code is trying to emulate) simply added
-    % the generated items to a raw item list, seemingly without caring
-    % about what section those items would end up (it certainly did not
-    % look for any section markers).
-    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ModuleName, sms_interface, SrcItemBlocks, SrcItemBlocksWithFIMs),
-
-    InitSpecs = [],
-    make_module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs, InitSpecs,
-        PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
-        MaybeTimestampMap, ModuleAndImports).
 
 %---------------------------------------------------------------------------%
 

@@ -124,7 +124,7 @@
     raw_compilation_unit::in, module_and_imports::out) is det.
 
     % make_module_and_imports(SourceFileName, SourceFileModuleName,
-    %  ModuleName, ModuleNameContext, SrcItemBlocks0, Specs,
+    %  ModuleName, ModuleNameContext, SrcItemBlocks0,
     %  PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
     %  MaybeTimestampMap, ModuleAndImports):
     %
@@ -144,9 +144,8 @@
     %
 :- pred make_module_and_imports(file_name::in,
     module_name::in, module_name::in, prog_context::in,
-    list(src_item_block)::in, list(error_spec)::in,
-    multi_map(module_name, prog_context)::in, set(module_name)::in,
-    list(string)::in, foreign_include_file_infos::in,
+    list(src_item_block)::in, multi_map(module_name, prog_context)::in,
+    set(module_name)::in, list(string)::in, foreign_include_file_infos::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
 
     % Construct a module_and_imports structure for inclusion in
@@ -559,7 +558,7 @@ look_for_main_pred_in_items([Item | Items], !HasMain) :-
 %---------------------------------------------------------------------------%
 
 make_module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, SrcItemBlocks, Specs,
+        ModuleName, ModuleNameContext, SrcItemBlocks,
         PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
         MaybeTimestampMap, ModuleAndImports) :-
     set.init(Ancestors),
@@ -571,6 +570,7 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
     map.init(Children),
     ForeignImports = init_foreign_import_modules,
     map.init(VersionNumbers),
+    Specs = [],
     set.init(Errors),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
         SourceFileModuleName, ModuleName, ModuleNameContext,
