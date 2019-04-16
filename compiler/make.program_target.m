@@ -56,7 +56,6 @@
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
-:- import_module multi_map.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
@@ -896,10 +895,11 @@ collect_modules_with_children(Globals, ModuleName, !ParentModules,
         !Info, !IO),
     (
         MaybeModuleAndImports = yes(ModuleAndImports),
-        module_and_imports_get_children(ModuleAndImports, ChildrenMap),
-        ( if multi_map.is_empty(ChildrenMap) then
-            true
-        else
+        module_and_imports_get_children(ModuleAndImports, Children),
+        (
+            Children = []
+        ;
+            Children = [_ | _],
             !:ParentModules = [ModuleName | !.ParentModules]
         )
     ;
@@ -1333,10 +1333,12 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
         (
             AnyIntermod = yes,
             % `.int0' files are imported by `.opt' files.
-            module_and_imports_get_children(ModuleAndImports, ChildrenMap),
-            ( if multi_map.is_empty(ChildrenMap) then
+            module_and_imports_get_children(ModuleAndImports, Children),
+            (
+                Children = [],
                 Exts = ["opt"]
-            else
+            ;
+                Children = [_ | _],
                 Exts = ["int0", "opt"]
             )
         ;

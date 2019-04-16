@@ -179,15 +179,15 @@
     prog_context::out) is det.
 :- pred module_and_imports_get_ancestors(module_and_imports::in,
     set(module_name)::out) is det.
-:- pred module_and_imports_get_children(module_and_imports::in,
+:- pred module_and_imports_get_children_map(module_and_imports::in,
     module_names_contexts::out) is det.
-:- pred module_and_imports_get_public_children(module_and_imports::in,
+:- pred module_and_imports_get_public_children_map(module_and_imports::in,
     module_names_contexts::out) is det.
 :- pred module_and_imports_get_nested_children(module_and_imports::in,
     set(module_name)::out) is det.
-:- pred module_and_imports_get_int_deps(module_and_imports::in,
+:- pred module_and_imports_get_int_deps_map(module_and_imports::in,
     module_names_contexts::out) is det.
-:- pred module_and_imports_get_imp_deps(module_and_imports::in,
+:- pred module_and_imports_get_imp_deps_map(module_and_imports::in,
     module_names_contexts::out) is det.
 :- pred module_and_imports_get_indirect_deps(module_and_imports::in,
     set(module_name)::out) is det.
@@ -222,9 +222,9 @@
     % after the module_and_imports structure is initially created.
 :- pred module_and_imports_set_ancestors(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_int_deps(module_names_contexts::in,
+:- pred module_and_imports_set_int_deps_map(module_names_contexts::in,
     module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_imp_deps(module_names_contexts::in,
+:- pred module_and_imports_set_imp_deps_map(module_names_contexts::in,
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_indirect_deps(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
@@ -242,10 +242,32 @@
 
 %---------------------------------------------------------------------------%
 %
+% Predicates for getting information from module_and_imports structures.
+%
+
+:- pred module_and_imports_get_children(module_and_imports::in,
+    list(module_name)::out) is det.
+:- pred module_and_imports_get_children_set(module_and_imports::in,
+    set(module_name)::out) is det.
+:- pred module_and_imports_get_int_deps(module_and_imports::in,
+    list(module_name)::out) is det.
+:- pred module_and_imports_get_int_deps_set(module_and_imports::in,
+    set(module_name)::out) is det.
+:- pred module_and_imports_get_imp_deps(module_and_imports::in,
+    list(module_name)::out) is det.
+:- pred module_and_imports_get_imp_deps_set(module_and_imports::in,
+    set(module_name)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
 % Predicates for adding information to module_and_imports structures.
 %
 
 :- pred module_and_imports_add_ancestor(module_name::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_add_imp_dep(module_name::in, prog_context::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_add_indirect_dep(module_name::in,
     module_and_imports::in, module_and_imports::out) is det.
 
 :- pred module_and_imports_add_direct_int_item_blocks(
@@ -389,11 +411,11 @@
 
                 % The set of modules it directly imports in the interface
                 % (imports via ancestors count as direct).
-                mai_int_deps                    :: module_names_contexts,
+                mai_int_deps_map                :: module_names_contexts,
 
                 % The set of modules it directly imports in the
                 % implementation.
-                mai_imp_deps                    :: module_names_contexts,
+                mai_imp_deps_map                :: module_names_contexts,
 
                 % The set of modules it indirectly imports.
                 mai_indirect_deps               :: set(module_name),
@@ -644,16 +666,16 @@ module_and_imports_get_module_name_context(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_module_name_context.
 module_and_imports_get_ancestors(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_ancestors.
-module_and_imports_get_children(ModuleAndImports, X) :-
+module_and_imports_get_children_map(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_children.
-module_and_imports_get_public_children(ModuleAndImports, X) :-
+module_and_imports_get_public_children_map(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_public_children.
 module_and_imports_get_nested_children(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_nested_children.
-module_and_imports_get_int_deps(ModuleAndImports, X) :-
-    X = ModuleAndImports ^ mai_int_deps.
-module_and_imports_get_imp_deps(ModuleAndImports, X) :-
-    X = ModuleAndImports ^ mai_imp_deps.
+module_and_imports_get_int_deps_map(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_int_deps_map.
+module_and_imports_get_imp_deps_map(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_imp_deps_map.
 module_and_imports_get_indirect_deps(ModuleAndImports, X) :-
     X = ModuleAndImports ^ mai_indirect_deps.
 module_and_imports_get_fact_table_deps(ModuleAndImports, X) :-
@@ -707,10 +729,10 @@ module_and_imports_get_errors(ModuleAndImports, X) :-
 
 module_and_imports_set_ancestors(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_ancestors := X.
-module_and_imports_set_int_deps(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_int_deps := X.
-module_and_imports_set_imp_deps(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_imp_deps := X.
+module_and_imports_set_int_deps_map(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_int_deps_map := X.
+module_and_imports_set_imp_deps_map(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_imp_deps_map := X.
 module_and_imports_set_indirect_deps(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_indirect_deps := X.
 module_and_imports_set_direct_int_blocks_cord(X, !ModuleAndImports) :-
@@ -734,10 +756,46 @@ module_and_imports_set_errors(X, !ModuleAndImports) :-
 
 %---------------------------------------------------------------------------%
 
-module_and_imports_add_ancestor(Module, !ModuleAndImports) :-
+module_and_imports_get_children(ModuleAndImports, Children) :-
+    module_and_imports_get_imp_deps_map(ModuleAndImports, ChildrenMap),
+    Children = multi_map.keys(ChildrenMap).
+
+module_and_imports_get_children_set(ModuleAndImports, Children) :-
+    module_and_imports_get_imp_deps_map(ModuleAndImports, ChildrenMap),
+    Children = set.sorted_list_to_set(multi_map.keys(ChildrenMap)).
+
+module_and_imports_get_int_deps(ModuleAndImports, IntDeps) :-
+    module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
+    IntDeps = multi_map.keys(IntDepsMap).
+
+module_and_imports_get_int_deps_set(ModuleAndImports, IntDeps) :-
+    module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
+    IntDeps = set.sorted_list_to_set(multi_map.keys(IntDepsMap)).
+
+module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps) :-
+    module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
+    ImpDeps = multi_map.keys(ImpDepsMap).
+
+module_and_imports_get_imp_deps_set(ModuleAndImports, ImpDeps) :-
+    module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
+    ImpDeps = set.sorted_list_to_set(multi_map.keys(ImpDepsMap)).
+
+%---------------------------------------------------------------------------%
+
+module_and_imports_add_ancestor(ModuleName, !ModuleAndImports) :-
     module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors0),
-    set.insert(Module, Ancestors0, Ancestors),
+    set.insert(ModuleName, Ancestors0, Ancestors),
     module_and_imports_set_ancestors(Ancestors, !ModuleAndImports).
+
+module_and_imports_add_imp_dep(ModuleName, Context, !ModuleAndImports) :-
+    module_and_imports_get_imp_deps_map(!.ModuleAndImports, ImpDepsMap0),
+    multi_map.add(ModuleName, Context, ImpDepsMap0, ImpDepsMap),
+    module_and_imports_set_imp_deps_map(ImpDepsMap, !ModuleAndImports).
+
+module_and_imports_add_indirect_dep(ModuleName, !ModuleAndImports) :-
+    module_and_imports_get_indirect_deps(!.ModuleAndImports, IndirectDeps0),
+    set.insert(ModuleName, IndirectDeps0, IndirectDeps),
+    module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports).
 
 %---------------------%
 
@@ -824,10 +882,11 @@ module_and_imports_d_file(ModuleAndImports,
         SourceFileModuleName),
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     module_and_imports_get_ancestors(ModuleAndImports, Ancestors),
-    module_and_imports_get_public_children(ModuleAndImports, PublicChildrenMap),
+    module_and_imports_get_public_children_map(ModuleAndImports,
+        PublicChildrenMap),
     module_and_imports_get_nested_children(ModuleAndImports, NestedChildren),
-    module_and_imports_get_int_deps(ModuleAndImports, IntDepsMap),
-    module_and_imports_get_imp_deps(ModuleAndImports, ImpDepsMap),
+    module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
+    module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
     module_and_imports_get_indirect_deps(ModuleAndImports, IndirectDeps),
     module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
     module_and_imports_get_foreign_import_modules(ModuleAndImports,

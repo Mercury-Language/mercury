@@ -954,11 +954,11 @@ process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
                     Ancestors),
                 set.member(FirstModule, Ancestors)
             ;
-                module_and_imports_get_int_deps(!.ModuleAndImports,
+                module_and_imports_get_int_deps_map(!.ModuleAndImports,
                     IntDeps),
                 map.search(IntDeps, FirstModule, _)
             ;
-                module_and_imports_get_imp_deps(!.ModuleAndImports,
+                module_and_imports_get_imp_deps_map(!.ModuleAndImports,
                     ImpDeps),
                 map.search(ImpDeps, FirstModule, _)
             ;
@@ -1049,7 +1049,7 @@ process_module_int123_file(Globals, HaveReadModuleMapInt, PIKind,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
-        NewIntSection, NewImpSection, SectionAppend, Module,
+        NewIntSection, NewImpSection, SectionAppend, ModuleName,
         IntAvails, ImpAvails, ItemBlocks, !ModuleAndImports, !IO) :-
     (
         PIKind = pik_int0,
@@ -1070,16 +1070,18 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
         MaybeTimestampMap),
     maybe_return_timestamp(MaybeTimestampMap, ReturnTimestamp),
     maybe_read_module_int(Globals, HaveReadModuleMapInt, MsgPrefix, do_search,
-        Module, IntFileKind, _FileName, ReturnTimestamp, MaybeTimestamp,
+        ModuleName, IntFileKind, _FileName, ReturnTimestamp, MaybeTimestamp,
         ParseTree, Specs, Errors, !IO),
 
-    ParseTree = parse_tree_int(ModuleName, IntKind,
+    ParseTree = parse_tree_int(ParseTreeModuleName, IntKind,
         _Context, MaybeVersionNumbers,
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems),
+    expect(unify(ModuleName, ParseTreeModuleName), $pred,
+        "ModuleName != ParseTreeModuleName"),
     module_and_imports_maybe_add_module_version_numbers(
         ModuleName, MaybeVersionNumbers, !ModuleAndImports),
-    int_imp_items_to_item_blocks(Module,
-        NewIntSection(Module, IntKind), NewImpSection(Module, IntKind),
+    int_imp_items_to_item_blocks(ModuleName,
+        NewIntSection(ModuleName, IntKind), NewImpSection(ModuleName, IntKind),
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
         ItemBlocks),
 
@@ -1094,15 +1096,11 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
     (
         PIKind = pik_int0,
         % XXX Why do we ignore Errors here for the timestamp (only)?
-        maybe_record_timestamp(Module, ifk_int0, may_be_unqualified,
+        maybe_record_timestamp(ModuleName, ifk_int0, may_be_unqualified,
             MaybeTimestamp, !ModuleAndImports),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         ( if set.is_empty(FatalErrors) then
-            module_and_imports_get_ancestors(!.ModuleAndImports,
-                ModAncestors0),
-            set.insert(Module, ModAncestors0, ModAncestors),
-            module_and_imports_set_ancestors(ModAncestors,
-                !ModuleAndImports)
+            module_and_imports_add_ancestor(ModuleName, !ModuleAndImports)
         else
             true
         )
@@ -1110,24 +1108,19 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
         PIKind = pik_indirect(_),
         % XXX Why do we ignore Errors here for (a) the timestamp,
         % and (b) for the update of !ModuleAndImports?
-        maybe_record_timestamp(Module, IntFileKind, must_be_qualified,
+        maybe_record_timestamp(ModuleName, IntFileKind, must_be_qualified,
             MaybeTimestamp, !ModuleAndImports),
-        module_and_imports_get_indirect_deps(!.ModuleAndImports,
-            ModIndirectImports0),
-        set.insert(Module, ModIndirectImports0, ModIndirectImports),
-        module_and_imports_set_indirect_deps(ModIndirectImports,
-            !ModuleAndImports)
+        module_and_imports_add_indirect_dep(ModuleName, !ModuleAndImports)
     ;
         PIKind = pik_direct(_, NeedQual),
         set.intersect(Errors, fatal_read_module_errors, FatalIntErrors),
         ( if set.is_empty(FatalIntErrors) then
-            maybe_record_timestamp(Module, IntFileKind, NeedQual,
+            maybe_record_timestamp(ModuleName, IntFileKind, NeedQual,
                 MaybeTimestamp, !ModuleAndImports),
-            module_and_imports_get_imp_deps(!.ModuleAndImports, ModImpImports0),
             % Our caller cannot give us a useful nondummy context.
-            multi_map.add(Module, term.context_init,
-                ModImpImports0, ModImpImports),
-            module_and_imports_set_imp_deps(ModImpImports, !ModuleAndImports)
+            Context = term.context_init,
+            module_and_imports_add_imp_dep(ModuleName, Context,
+                !ModuleAndImports)
         else
             true
         )
@@ -1871,10 +1864,8 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
     module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
     module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors0),
-    module_and_imports_get_int_deps(!.ModuleAndImports, IntDepsMap0),
-    module_and_imports_get_imp_deps(!.ModuleAndImports, ImpDepsMap0),
-    set.sorted_list_to_set(map.keys(IntDepsMap0), IntDeps0),
-    set.sorted_list_to_set(map.keys(ImpDepsMap0), ImpDeps0),
+    module_and_imports_get_int_deps_set(!.ModuleAndImports, IntDeps0),
+    module_and_imports_get_imp_deps_set(!.ModuleAndImports, ImpDeps0),
     OptFiles = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
     globals.lookup_bool_option(Globals, read_opt_files_transitively,
         Transitive),

@@ -63,7 +63,6 @@
 :- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.
-:- import_module multi_map.
 :- import_module parser.
 :- import_module term.
 :- import_module term_io.
@@ -387,14 +386,11 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     io.write_list(set.to_sorted_list(Ancestors),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(multi_map.keys(IntDeps),
-        ", ", mercury_output_bracketed_sym_name, !IO),
+    io.write_list(IntDeps, ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(multi_map.keys(ImpDeps),
-        ", ", mercury_output_bracketed_sym_name, !IO),
+    io.write_list(ImpDeps, ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(multi_map.keys(Children),
-        ", ", mercury_output_bracketed_sym_name, !IO),
+    io.write_list(Children, ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
     io.write_list(set.to_sorted_list(NestedChildren),
         ", ", mercury_output_bracketed_sym_name, !IO),

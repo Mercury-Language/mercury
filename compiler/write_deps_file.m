@@ -1063,8 +1063,8 @@ generate_dependencies_write_d_file(Globals, Dep,
             ForeignImportModules =
                 ForeignImportModules0 ^ fim_erlang := IndirectOptDeps
         ),
-        module_and_imports_set_int_deps(IntDepsMap, !ModuleAndImports),
-        module_and_imports_set_imp_deps(ImpDepsMap, !ModuleAndImports),
+        module_and_imports_set_int_deps_map(IntDepsMap, !ModuleAndImports),
+        module_and_imports_set_imp_deps_map(ImpDepsMap, !ModuleAndImports),
         module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports),
         module_and_imports_set_foreign_import_modules(ForeignImportModules,
             !ModuleAndImports),
@@ -1150,7 +1150,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     ModulesWithSubModules = list.filter(
         ( pred(Module::in) is semidet :-
             map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
-            module_and_imports_get_children(ModuleAndImports, ChildrenMap),
+            module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
             not multi_map.is_empty(ChildrenMap)
         ), Modules),
 
@@ -1859,7 +1859,7 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         Intermod = yes,
         some [ModuleAndImports] (
             map.member(DepsMap, _, deps(_, ModuleAndImports)),
-            module_and_imports_get_children(ModuleAndImports, ChildrenMap),
+            module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
             not multi_map.is_empty(ChildrenMap)
         )
     then

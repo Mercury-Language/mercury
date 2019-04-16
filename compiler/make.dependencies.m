@@ -195,7 +195,6 @@
 :- import_module cord.
 :- import_module dir.
 :- import_module int.
-:- import_module multi_map.
 
 %-----------------------------------------------------------------------------%
 %
@@ -795,10 +794,8 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
         % is a submodule, then it may depend on things imported only by its
         % ancestors.
         %
-        module_and_imports_get_int_deps(ModuleAndImports, IntDepsMap),
-        module_and_imports_get_imp_deps(ModuleAndImports, ImpDepsMap),
-        multi_map.keys(IntDepsMap, IntDeps),
-        multi_map.keys(ImpDepsMap, ImpDeps),
+        module_and_imports_get_int_deps(ModuleAndImports, IntDeps),
+        module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps),
         module_names_to_index_set(IntDeps, DepsInt, !Info),
         module_names_to_index_set(ImpDeps, DepsImp, !Info),
         Modules0 = union(DepsInt, DepsImp),
@@ -1157,15 +1154,12 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     ModuleAndImports, ForeignImportModules),
                 module_and_imports_get_ancestors(ModuleAndImports,
                     Ancestors),
-                module_and_imports_get_children(ModuleAndImports,
-                    ChildrenMap),
-                module_and_imports_get_int_deps(ModuleAndImports,
-                    IntDepsMap),
-                module_and_imports_get_imp_deps(ModuleAndImports,
-                    ImpDepsMap),
-                set.sorted_list_to_set(multi_map.keys(ChildrenMap), Children),
-                set.sorted_list_to_set(multi_map.keys(IntDepsMap), IntDeps),
-                set.sorted_list_to_set(multi_map.keys(ImpDepsMap), ImpDeps),
+                module_and_imports_get_children_set(ModuleAndImports,
+                    Children),
+                module_and_imports_get_int_deps_set(ModuleAndImports,
+                    IntDeps),
+                module_and_imports_get_imp_deps_set(ModuleAndImports,
+                    ImpDeps),
                 (
                     % Ancestors don't need to be considered here.
                     % Anywhere the interface of the child module is needed,
