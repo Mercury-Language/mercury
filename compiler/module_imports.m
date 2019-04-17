@@ -757,11 +757,11 @@ module_and_imports_set_errors(X, !ModuleAndImports) :-
 %---------------------------------------------------------------------------%
 
 module_and_imports_get_children(ModuleAndImports, Children) :-
-    module_and_imports_get_imp_deps_map(ModuleAndImports, ChildrenMap),
+    module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
     Children = multi_map.keys(ChildrenMap).
 
 module_and_imports_get_children_set(ModuleAndImports, Children) :-
-    module_and_imports_get_imp_deps_map(ModuleAndImports, ChildrenMap),
+    module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
     Children = set.sorted_list_to_set(multi_map.keys(ChildrenMap)).
 
 module_and_imports_get_int_deps(ModuleAndImports, IntDeps) :-
