@@ -15,6 +15,15 @@
 % - files containing fact tables, or
 % - foreign language source or header files.
 %
+% XXX ITEM_LIST Most of the work done in this module is now done
+% more directly and simply in modules.m. When we switch over to using
+% the new code in modules.m exclusively, most or even all of this module
+% shouldn't be needed anymore.
+%
+% XXX If some parts of this module survive this transition period,
+% we should either factor out (if possible) or at least document
+% the commonalities between the code here and in modules.m.
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.get_dependencies.
@@ -30,6 +39,7 @@
 
 :- import_module list.
 :- import_module multi_map.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -75,6 +85,58 @@
     multi_map(module_name, prog_context)::out,
     multi_map(module_name, prog_context)::out) is det.
 
+:- type maybe_need_tabling
+    --->    dont_need_tabling
+    ;       do_need_tabling.
+
+:- type maybe_need_tabling_statistics
+    --->    dont_need_tabling_statistics
+    ;       do_need_tabling_statistics.
+
+:- type maybe_need_stm
+    --->    dont_need_stm
+    ;       do_need_stm.
+
+:- type maybe_need_exception
+    --->    dont_need_exception
+    ;       do_need_exception.
+
+:- type maybe_need_string_format
+    --->    dont_need_string_format
+    ;       do_need_string_format.
+
+:- type maybe_need_stream_format
+    --->    dont_need_stream_format
+    ;       do_need_stream_format.
+
+:- type maybe_need_io
+    --->    dont_need_io
+    ;       do_need_io.
+
+    % XXX We currently discover the need to import the modules needed
+    % to compile away format strings by traversing all parts of all clauses,
+    % and checking every predicate name and functor name to see whether
+    % it could refer to any of the predicates recognized by the is_format_call
+    % predicate. This is inefficient. It is also a bit unpredictable, since
+    % it will lead us to implicitly import those modules even if a call
+    % to unqualified("format") eventually turns out to call some other
+    % predicate of that name.
+    %
+    % We should therefore consider ALWAYS implicitly importing the predicates
+    % needed by format_call.m.
+:- type implicit_import_needs
+    --->    implicit_import_needs(
+                iin_tabling             :: maybe_need_tabling,
+                iin_tabling_statistics  :: maybe_need_tabling_statistics,
+                iin_stm                 :: maybe_need_stm,
+                iin_exception           :: maybe_need_exception,
+                iin_string_format       :: maybe_need_string_format,
+                iin_stream_format       :: maybe_need_stream_format,
+                iin_io                  :: maybe_need_io
+            ).
+
+:- func init_implicit_import_needs = implicit_import_needs.
+
     % get_implicit_dependencies_in_*(Globals, Items/ItemBlocks,
     %   ImportDeps, UseDeps):
     %
@@ -87,12 +149,22 @@
     %
 :- pred get_implicit_dependencies_in_item_blocks(globals::in,
     list(item_block(MS))::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out) is det.
+    set(module_name)::out, set(module_name)::out) is det.
 :- pred get_implicit_dependencies_in_items(globals::in,
     list(item)::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out) is det.
+    set(module_name)::out, set(module_name)::out) is det.
+
+:- pred compute_implicit_import_needs(globals::in, implicit_import_needs::in,
+    set(module_name)::out, set(module_name)::out) is det.
+
+:- pred gather_implicit_import_needs_in_instance_method(instance_method::in,
+    implicit_import_needs::in, implicit_import_needs::out) is det.
+:- pred gather_implicit_import_needs_in_mutable(item_mutable_info::in,
+    implicit_import_needs::in, implicit_import_needs::out) is det.
+:- pred gather_implicit_import_needs_in_clause(item_clause_info::in,
+    implicit_import_needs::in, implicit_import_needs::out) is det.
+:- pred gather_implicit_import_needs_in_goal(goal::in,
+    implicit_import_needs::in, implicit_import_needs::out) is det.
 
     % Get the fact table dependencies for the given list of items.
     %
@@ -218,16 +290,10 @@ get_implicit_dependencies_in_item_blocks(Globals, ItemBlocks,
     compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         ImportDeps, UseDeps).
 
-:- pred compute_implicit_import_needs(globals::in, implicit_import_needs::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out) is det.
-
 compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         !:ImportDeps, !:UseDeps) :-
-    multi_map.add(mercury_public_builtin_module, term.context_init,
-        multi_map.init, !:ImportDeps),
-    multi_map.add(mercury_private_builtin_module, term.context_init,
-        multi_map.init, !:UseDeps),
+    !:ImportDeps = set.make_singleton_set(mercury_public_builtin_module),
+    !:UseDeps = set.make_singleton_set(mercury_private_builtin_module),
     ImplicitImportNeeds = implicit_import_needs(
         ItemsNeedTabling, ItemsNeedTablingStatistics,
         ItemsNeedSTM, ItemsNeedException,
@@ -238,12 +304,10 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
     % to import mercury_table_statistics_module.
     (
         ItemsNeedTabling = do_need_tabling,
-        multi_map.add(mercury_table_builtin_module, term.context_init,
-            !UseDeps),
+        set.insert(mercury_table_builtin_module, !UseDeps),
         (
             ItemsNeedTablingStatistics = do_need_tabling_statistics,
-            multi_map.add(mercury_table_statistics_module, term.context_init,
-                !UseDeps)
+            set.insert(mercury_table_statistics_module, !UseDeps)
         ;
             ItemsNeedTablingStatistics = dont_need_tabling_statistics
         )
@@ -263,52 +327,48 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
                 globals.lookup_bool_option(Globals, trace_table_io, yes)
             )
         then
-            multi_map.add(mercury_table_builtin_module, term.context_init,
-                !UseDeps)
+            set.insert(mercury_table_builtin_module, !UseDeps)
         else
             true
         )
     ),
     (
         ItemsNeedSTM = do_need_stm,
-        multi_map.add(mercury_stm_builtin_module, term.context_init, !UseDeps),
-        multi_map.add(mercury_exception_module, term.context_init, !UseDeps),
-        multi_map.add(mercury_univ_module, term.context_init, !UseDeps)
+        set.insert(mercury_stm_builtin_module, !UseDeps),
+        set.insert(mercury_exception_module, !UseDeps),
+        set.insert(mercury_univ_module, !UseDeps)
     ;
         ItemsNeedSTM = dont_need_stm
     ),
     (
         ItemsNeedException = do_need_exception,
-        multi_map.add(mercury_exception_module, term.context_init, !UseDeps)
+        set.insert(mercury_exception_module, !UseDeps)
     ;
         ItemsNeedException = dont_need_exception
     ),
     (
         ItemsNeedStringFormat = do_need_string_format,
-        multi_map.add(mercury_string_format_module, term.context_init,
-            !UseDeps),
-        multi_map.add(mercury_string_parse_util_module, term.context_init,
-            !UseDeps)
+        set.insert(mercury_string_format_module, !UseDeps),
+        set.insert(mercury_string_parse_util_module, !UseDeps)
     ;
         ItemsNeedStringFormat = dont_need_string_format
     ),
     (
         ItemsNeedStreamFormat = do_need_stream_format,
-        multi_map.add(mercury_stream_module, term.context_init, !UseDeps)
+        set.insert(mercury_stream_module, !UseDeps)
     ;
         ItemsNeedStreamFormat = dont_need_stream_format
     ),
     (
         ItemsNeedIO = do_need_io,
-        multi_map.add(mercury_io_module, term.context_init, !UseDeps)
+        set.insert(mercury_io_module, !UseDeps)
     ;
         ItemsNeedIO = dont_need_io
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (
         Deep = yes,
-        multi_map.add(mercury_profiling_builtin_module, term.context_init,
-            !UseDeps)
+        set.insert(mercury_profiling_builtin_module, !UseDeps)
     ;
         Deep = no
     ),
@@ -321,8 +381,7 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
                 record_term_sizes_as_cells, yes)
         )
     then
-        multi_map.add(mercury_term_size_prof_builtin_module, term.context_init,
-            !UseDeps)
+        set.insert(mercury_term_size_prof_builtin_module, !UseDeps)
     else
         true
     ),
@@ -334,15 +393,14 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         HighLevelCode = no,
         Parallel = yes
     then
-        multi_map.add(mercury_par_builtin_module, term.context_init, !UseDeps)
+        set.insert(mercury_par_builtin_module, !UseDeps)
     else
         true
     ),
     globals.lookup_bool_option(Globals, use_regions, UseRegions),
     (
         UseRegions = yes,
-        multi_map.add(mercury_region_builtin_module, term.context_init,
-            !UseDeps)
+        set.insert(mercury_region_builtin_module, !UseDeps)
     ;
         UseRegions = no
     ),
@@ -359,62 +417,9 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
             DisableSSDB = yes
         ;
             DisableSSDB = no,
-            multi_map.add(mercury_ssdb_builtin_module, term.context_init,
-                !UseDeps)
+            set.insert(mercury_ssdb_builtin_module, !UseDeps)
         )
     ).
-
-:- type maybe_need_tabling
-    --->    dont_need_tabling
-    ;       do_need_tabling.
-
-:- type maybe_need_tabling_statistics
-    --->    dont_need_tabling_statistics
-    ;       do_need_tabling_statistics.
-
-:- type maybe_need_stm
-    --->    dont_need_stm
-    ;       do_need_stm.
-
-:- type maybe_need_exception
-    --->    dont_need_exception
-    ;       do_need_exception.
-
-:- type maybe_need_string_format
-    --->    dont_need_string_format
-    ;       do_need_string_format.
-
-:- type maybe_need_stream_format
-    --->    dont_need_stream_format
-    ;       do_need_stream_format.
-
-:- type maybe_need_io
-    --->    dont_need_io
-    ;       do_need_io.
-
-    % XXX We currently discover the need to import the modules needed
-    % to compile away format strings by traversing all parts of all clauses,
-    % and checking every predicate name and functor name to see whether
-    % it could refer to any of the predicates recognized by the is_format_call
-    % predicate. This is inefficient. It is also a bit unpredictable, since
-    % it will lead us to implicitly import those modules even if a call
-    % to unqualified("format") eventually turns out to call some other
-    % predicate of that name.
-    %
-    % We should therefore consider ALWAYS implicitly importing the predicates
-    % needed by format_call.m.
-:- type implicit_import_needs
-    --->    implicit_import_needs(
-                iin_tabling             :: maybe_need_tabling,
-                iin_tabling_statistics  :: maybe_need_tabling_statistics,
-                iin_stm                 :: maybe_need_stm,
-                iin_exception           :: maybe_need_exception,
-                iin_string_format       :: maybe_need_string_format,
-                iin_stream_format       :: maybe_need_stream_format,
-                iin_io                  :: maybe_need_io
-            ).
-
-:- func init_implicit_import_needs = implicit_import_needs.
 
 init_implicit_import_needs = ImplicitImportNeeds :-
     ImplicitImportNeeds = implicit_import_needs(
@@ -555,9 +560,6 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
     ),
     gather_implicit_import_needs_in_items(Items, !ImplicitImportNeeds).
 
-:- pred gather_implicit_import_needs_in_instance_method(instance_method::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
 gather_implicit_import_needs_in_instance_method(InstanceMethod,
         !ImplicitImportNeeds) :-
     InstanceMethod = instance_method(_PredOrFunc, _MethodName, ProcDef,
@@ -570,18 +572,12 @@ gather_implicit_import_needs_in_instance_method(InstanceMethod,
             !ImplicitImportNeeds)
     ).
 
-:- pred gather_implicit_import_needs_in_mutable(item_mutable_info::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
 gather_implicit_import_needs_in_mutable(ItemMutableInfo,
         !ImplicitImportNeeds) :-
     ItemMutableInfo = item_mutable_info(_Name,
         _OrigType, _Type, _OrigInst, _Inst, InitValue,
         _Attrs, _VarSet, _Context, _SeqNum),
     gather_implicit_import_needs_in_term(InitValue, !ImplicitImportNeeds).
-
-:- pred gather_implicit_import_needs_in_clause(item_clause_info::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
 
 gather_implicit_import_needs_in_clause(ItemClause, !ImplicitImportNeeds) :-
     ItemClause = item_clause_info(_PredName,_PredOrFunc, HeadTerms,
@@ -593,9 +589,6 @@ gather_implicit_import_needs_in_clause(ItemClause, !ImplicitImportNeeds) :-
     ;
         MaybeGoal = error1(_)
     ).
-
-:- pred gather_implicit_import_needs_in_goal(goal::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
 
 gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds) :-
     (

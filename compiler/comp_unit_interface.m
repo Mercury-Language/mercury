@@ -158,6 +158,14 @@
     module_name::in,
     list(src_item_block)::in, list(src_item_block)::out) is det.
 
+    % This predicate is exported for use by modules.m.
+    %
+    % XXX ITEM_LIST When the predicate above is deleted, this function
+    % should not be needed in this module anymore either, and so it should be
+    % moved elsewhere.
+    %
+:- func make_foreign_import(module_name, foreign_language) = item.
+
 %---------------------------------------------------------------------------%
 
     % This predicate is exported for use by module_imports.m.
@@ -2191,8 +2199,6 @@ add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
 
 accumulate_foreign_import(ModuleName, Lang, !Items) :-
     !:Items = [make_foreign_import(ModuleName, Lang) | !.Items].
-
-:- func make_foreign_import(module_name, foreign_language) = item.
 
 make_foreign_import(ModuleName, Lang) = Item :-
     ItemFIM = item_foreign_import_module_info(Lang, ModuleName,

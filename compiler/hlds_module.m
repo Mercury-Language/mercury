@@ -945,42 +945,23 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     get_implicit_dependencies_in_item_blocks(Globals, IntForOptItemBlocks,
         IntForOptImportDeps, IntForOptUseDeps),
 
-    set.sorted_list_to_set(multi_map.keys(SrcImportDeps), SrcImportDepsSet),
-    set.sorted_list_to_set(multi_map.keys(SrcUseDeps), SrcUseDepsSet),
-    set.sorted_list_to_set(multi_map.keys(DirectIntImportDeps),
-        DirectIntImportDepsSet),
-    set.sorted_list_to_set(multi_map.keys(DirectIntUseDeps),
-        DirectIntUseDepsSet),
-    set.sorted_list_to_set(multi_map.keys(IndirectIntImportDeps),
-        IndirectIntImportDepsSet),
-    set.sorted_list_to_set(multi_map.keys(IndirectIntUseDeps),
-        IndirectIntUseDepsSet),
-    set.sorted_list_to_set(multi_map.keys(OptImportDeps),
-        OptImportDepsSet),
-    set.sorted_list_to_set(multi_map.keys(OptUseDeps),
-        OptUseDepsSet),
-    set.sorted_list_to_set(multi_map.keys(IntForOptImportDeps),
-        IntForOptImportDepsSet),
-    set.sorted_list_to_set(multi_map.keys(IntForOptUseDeps),
-        IntForOptUseDepsSet),
-
     % XXX ITEM_LIST We should record ImportDeps and UseDeps separately.
     % XXX ITEM_LIST Should we record implicitly and explicitly imported
     % separately, or at least record for each import (and use) whether
     % it was explicit or implicit, and one (or more) context where either
     % the explicit imported was requested, or the implicit import was required.
     ImportedAvailModules = set.union_list([
-        SrcImportDepsSet,
-        DirectIntImportDepsSet,
-        IndirectIntImportDepsSet,
-        OptImportDepsSet,
-        IntForOptImportDepsSet]),
+        SrcImportDeps,
+        DirectIntImportDeps,
+        IndirectIntImportDeps,
+        OptImportDeps,
+        IntForOptImportDeps]),
     UsedAvailModules = set.union_list([
-        SrcImportDepsSet, SrcUseDepsSet,
-        DirectIntImportDepsSet, DirectIntUseDepsSet,
-        IndirectIntImportDepsSet, IndirectIntUseDepsSet,
-        OptImportDepsSet, OptUseDepsSet,
-        IntForOptImportDepsSet, IntForOptUseDepsSet]),
+        SrcImportDeps, SrcUseDeps,
+        DirectIntImportDeps, DirectIntUseDeps,
+        IndirectIntImportDeps, IndirectIntUseDeps,
+        OptImportDeps, OptUseDeps,
+        IntForOptImportDeps, IntForOptUseDeps]),
     OnlyUsedAvailModules =
         set.difference(UsedAvailModules, ImportedAvailModules),
 

@@ -466,32 +466,43 @@
 %---------------------------------------------------------------------------%
 
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
-        NestedModuleNames, Specs, Errors, RawCompUnit0, ModuleImports) :-
-    RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
+        NestedModuleNames, Specs, Errors, RawCompUnit, ModuleImports) :-
+    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
     Ancestors = get_ancestors(ModuleName),
 
+    % XXX ITEM_LIST Computing the dependencies should have already been done
+    % by our caller.
     get_dependencies_in_item_blocks(RawItemBlocks,
         ImpImportDeps0, ImpUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
         ImplicitImpImportDeps, ImplicitImpUseDeps),
-    multi_map.merge(ImplicitImpImportDeps, ImpImportDeps0, ImpImportDeps),
-    multi_map.merge(ImplicitImpUseDeps, ImpUseDeps0, ImpUseDeps),
+    set.fold(multi_map.reverse_set(term.context_init),
+        ImplicitImpImportDeps, ImpImportDeps0, ImpImportDeps),
+    set.fold(multi_map.reverse_set(term.context_init),
+        ImplicitImpUseDeps, ImpUseDeps0, ImpUseDeps),
     multi_map.merge(ImpImportDeps, ImpUseDeps, ImpDeps),
 
-    get_interface(RawCompUnit0, RawCompUnit),
-    RawCompUnit = raw_compilation_unit(_, _, InterfaceItemBlocks),
+    get_interface(RawCompUnit, InterfaceRawCompUnit),
+    InterfaceRawCompUnit = raw_compilation_unit(_, _, InterfaceItemBlocks),
+    % XXX ITEM_LIST Computing the dependencies should have already been done
+    % by our caller, AND by the code above. A single pass could have computed
+    % the dependencies of the interface as well as the dependencies of the
+    % raw compilation unit as a whole.
     get_dependencies_in_item_blocks(InterfaceItemBlocks,
         IntImportDeps0, IntUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, InterfaceItemBlocks,
         ImplicitIntImportDeps, ImplicitIntUseDeps),
-    multi_map.merge(ImplicitIntImportDeps, IntImportDeps0, IntImportDeps),
-    multi_map.merge(ImplicitIntUseDeps, IntUseDeps0, IntUseDeps),
+    set.fold(multi_map.reverse_set(term.context_init),
+        ImplicitIntImportDeps, IntImportDeps0, IntImportDeps),
+    set.fold(multi_map.reverse_set(term.context_init),
+        ImplicitIntUseDeps, IntUseDeps0, IntUseDeps),
     multi_map.merge(IntImportDeps, IntUseDeps, IntDeps),
 
     % We don't fill in the indirect dependencies yet.
     set.init(IndirectDeps),
 
+    % XXX ITEM_LIST Again, our caller has probably already done this.
     get_included_modules_in_item_blocks(RawItemBlocks, Children),
     get_included_modules_in_item_blocks(InterfaceItemBlocks, PublicChildren),
 

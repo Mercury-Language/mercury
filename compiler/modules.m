@@ -133,6 +133,8 @@
 :- import_module parse_tree.parse_module.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_foreign.
 
 :- import_module cord.
 :- import_module map.
@@ -160,6 +162,9 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
 
+        % XXX START OF THE OLD CODE for computing the parameters
+        % we use to construct the initial ModuleAndImports structure.
+
         get_src_item_blocks_public_children(RawCompUnit,
             SrcItemBlocks, PublicChildren),
         get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactDeps),
@@ -177,10 +182,6 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             MaybeTimestamp = no,
             MaybeTimestampMap = no
         ),
-        make_module_and_imports(SourceFileName, SourceFileModuleName,
-            ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs,
-            PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
-            MaybeTimestampMap, !:ModuleAndImports),
 
         % Find the modules named in import_module and use_module decls.
         get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
@@ -189,8 +190,6 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         set.sorted_list_to_set(map.keys(IntUsedMap), IntUsed0),
         set.sorted_list_to_set(map.keys(ImpImportedMap), ImpImported0),
         set.sorted_list_to_set(map.keys(ImpUsedMap), ImpUsed0),
-
-        HaveReadModuleMapInt = HaveReadModuleMaps ^ hrmm_int,
 
         Ancestors = set.list_to_set(get_ancestors(ModuleName)),
 
@@ -203,6 +202,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             Ancestors, ImpImported0, !Specs),
         warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
             Ancestors, ImpUsed0, !Specs),
+        list.sort(!.Specs, SortedOldSpecs),
 
         warn_if_duplicate_use_import_decls(ModuleName, ModuleNameContext,
             IntImported0, IntImported1, IntUsed0, IntUsed1,
@@ -211,16 +211,199 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
 
         % Add `builtin' and `private_builtin', and any other builtin modules
         % needed by any of the items, to the imported modules.
-        % XXX Why are these added to the interface, and not the implementation
+        % XXX IMPLICIT_SECTION
+        % Why are these added to the interface, and not the implementation
         % dependencies?
         get_implicit_dependencies_in_item_blocks(Globals, SrcItemBlocks,
-            ImplicitIntImportedMap, ImplicitIntUsedMap),
-        set.sorted_list_to_set(map.keys(ImplicitIntImportedMap),
-            ImplicitIntImported),
-        set.sorted_list_to_set(map.keys(ImplicitIntUsedMap),
-            ImplicitIntUsed),
+            ImplicitIntImported, ImplicitIntUsed),
         set.union(ImplicitIntImported, IntImported1, IntImported2),
         set.union(ImplicitIntUsed, IntUsed1, IntUsed2),
+
+        % XXX START OF THE NEW CODE for computing the parameters
+        % we use to construct the initial ModuleAndImports structure.
+
+        get_raw_components(RawItemBlocks,
+            NewIntInclsCord, NewImpInclsCord,
+            NewIntAvailsCord, NewImpAvailsCord,
+            NewIntItemsCord, NewImpItemsCord),
+        NewIntIncls = cord.list(NewIntInclsCord),
+        NewImpIncls = cord.list(NewImpInclsCord),
+        NewIntAvails = cord.list(NewIntAvailsCord),
+        NewImpAvails = cord.list(NewImpAvailsCord),
+        NewIntItems = cord.list(NewIntItemsCord),
+        NewImpItems = cord.list(NewImpItemsCord),
+        get_deps_maps(NewIntAvails, NewImpAvails,
+            NewIntImportsMap0, NewIntUsesMap0,
+            NewImpImportsMap0, NewImpUsesMap0),
+        get_implicits_foreigns_fact_tables(NewIntItems, NewImpItems,
+            NewImplicitImportNeeds, NewForeignInclFiles, NewLangSet,
+            NewFactTables),
+        some [!NewSpecs] (
+            !:NewSpecs = [],
+            new_warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+                NewIntImportsMap0, !NewSpecs),
+            new_warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+                NewImpUsesMap0, !NewSpecs),
+            new_warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+                NewImpImportsMap0, !NewSpecs),
+            new_warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+                NewImpUsesMap0, !NewSpecs),
+            new_warn_if_duplicate_use_import_decls(ModuleName,
+                ModuleNameContext,
+                NewIntImportsMap0, NewIntImportsMap1,
+                NewIntUsesMap0, NewIntUsesMap1,
+                NewImpImportsMap0, NewImpImportsMap,
+                NewImpUsesMap0, NewImpUsesMap,
+                NewIntUsedImpImported, !Specs),
+            list.sort(!.NewSpecs, SortedNewSpecs)
+        ),
+        set.sorted_list_to_set(map.keys(NewIntImportsMap1), NewIntImports1),
+        set.sorted_list_to_set(map.keys(NewIntUsesMap1), NewIntUses1),
+        set.sorted_list_to_set(map.keys(NewImpImportsMap), NewImpImports),
+        set.sorted_list_to_set(map.keys(NewImpUsesMap), NewImpUses),
+        compute_implicit_import_needs(Globals, NewImplicitImportNeeds,
+            NewImplicitIntImports, NewImplicitIntUses),
+        % XXX IMPLICIT_SECTION
+        % Why are these added to the interface, and not the implementation
+        % dependencies?
+        set.union(NewImplicitIntImports, NewIntImports1, NewIntImports),
+        set.union(NewImplicitIntUses, NewIntUses1, NewIntUses),
+        set.to_sorted_list(NewLangSet, NewLangs),
+        FIMItems = list.map(make_foreign_import(ModuleName), NewLangs),
+        SrcNewIntIncls = NewIntIncls,
+        SrcNewIntAvails = NewIntAvails,
+        ( if
+            NewIntIncls = [],
+            NewImpIncls = []
+        then
+            SrcNewImpIncls = NewImpIncls,
+            SrcNewSubIncls = [],
+            SrcNewImpAvails = NewImpAvails,
+            SrcNewSubAvails = [],
+            % We are NOT moving instance items from the interface sections
+            % to the implementation section, leaving an abstract version
+            % in the interface section, like we do in the else case.
+            % XXX Why not?
+            % XXX FIM_SECTION
+            SrcNewIntItems = FIMItems ++ NewIntItems,
+            SrcNewImpItems = NewImpItems,
+            SrcNewSubItems = []
+        else
+            SrcNewImpIncls = [],
+            SrcNewSubIncls = NewImpIncls,
+            SrcNewImpAvails = [],
+            SrcNewSubAvails = NewImpAvails,
+            % We are moving instance items from the interface sections
+            % to the implementation section, leaving an abstract version
+            % in the interface section. However, we then also move
+            % every declaration from the implementation section to the
+            % exported-to-submodules section, leaving only the clauses
+            % and clause-like pragmas in the implementation section proper.
+            separate_instance_non_instance(NewIntItems,
+                NewIntAbstractInstanceItems, NewIntInstanceItems,
+                NewIntNonInstanceItems),
+            split_items_into_clauses_and_decls(NewImpItems,
+                [], RevNewImpClauseItems, [], RevNewImpDeclItems),
+            list.reverse(RevNewImpClauseItems, NewImpClauseItems),
+            list.reverse(RevNewImpDeclItems, NewImpDeclItems),
+            % XXX FIM_SECTION
+            SrcNewIntItems = FIMItems ++ NewIntAbstractInstanceItems ++
+                NewIntNonInstanceItems,
+            SrcNewImpItems = NewImpClauseItems,
+            SrcNewSubItems = NewIntInstanceItems ++ NewImpDeclItems
+        ),
+
+        % XXX CODE TO COMPARE the outputs of the OLD and NEW codes.
+        % We require them to be effectively the same (modulo irrelevant
+        % details such as their packaging into item blocks) as a sanity check.
+        % After a thorough test, this sanity check should be removed
+        % together with the old code.
+
+        expect(set.equal(IntImported2, NewIntImports),
+            $pred, "bad IntImport"),
+        expect(set.equal(IntUsed2, NewIntUses),
+            $pred, "bad IntUses"),
+        expect(set.equal(ImpImported, NewImpImports),
+            $pred, "bad ImpImport"),
+        expect(set.equal(ImpUsed, NewImpUses),
+            $pred, "bad ImpUses"),
+        expect(set.equal(IntUsedImpImported, NewIntUsedImpImported),
+            $pred, "bad IntUsedImpImported"),
+
+        list.sort(SrcNewIntIncls, SortedNewIntIncls),
+        list.sort(SrcNewImpIncls, SortedNewImpIncls),
+        list.sort(SrcNewSubIncls, SortedNewSubIncls),
+        list.sort(SrcNewIntAvails, SortedNewIntAvails),
+        list.sort(SrcNewImpAvails, SortedNewImpAvails),
+        list.sort(SrcNewSubAvails, SortedNewSubAvails),
+        list.sort(SrcNewIntItems, SortedNewIntItems),
+        list.sort(SrcNewImpItems, SortedNewImpItems),
+        list.sort(SrcNewSubItems, SortedNewSubItems),
+
+        set.to_sorted_list(NewFactTables, SortedNewFactTables),
+        list.sort(cord.list(NewForeignInclFiles), SortedNewForeignInclFiles),
+
+        get_src_components(SrcItemBlocksWithFIMs,
+            OldIntInclsCord, OldImpInclsCord, OldSubInclsCord,
+            OldIntAvailsCord, OldImpAvailsCord, OldSubAvailsCord,
+            OldIntItemsCord, OldImpItemsCord, OldSubItemsCord),
+        OldIntIncls = cord.list(OldIntInclsCord),
+        OldImpIncls = cord.list(OldImpInclsCord),
+        OldSubIncls = cord.list(OldSubInclsCord),
+        OldIntAvails = cord.list(OldIntAvailsCord),
+        OldImpAvails = cord.list(OldImpAvailsCord),
+        OldSubAvails = cord.list(OldSubAvailsCord),
+        OldIntItems = cord.list(OldIntItemsCord),
+        OldImpItems = cord.list(OldImpItemsCord),
+        OldSubItems = cord.list(OldSubItemsCord),
+        list.sort(OldIntIncls, SortedOldIntIncls),
+        list.sort(OldImpIncls, SortedOldImpIncls),
+        list.sort(OldSubIncls, SortedOldSubIncls),
+        list.sort(OldIntAvails, SortedOldIntAvails),
+        list.sort(OldImpAvails, SortedOldImpAvails),
+        list.sort(OldSubAvails, SortedOldSubAvails),
+        list.sort(OldIntItems, SortedOldIntItems),
+        list.sort(OldImpItems, SortedOldImpItems),
+        list.sort(OldSubItems, SortedOldSubItems),
+
+        list.sort(FactDeps, SortedOldFactTables),
+        list.sort(cord.list(ForeignIncludeFiles), SortedOldForeignInclFiles),
+
+        expect(unify(SortedOldIntIncls, SortedNewIntIncls),
+            $pred, "bad IntIncls"),
+        expect(unify(SortedOldImpIncls, SortedNewImpIncls),
+            $pred, "bad ImpIncls"),
+        expect(unify(SortedOldSubIncls, SortedNewSubIncls),
+            $pred, "bad SubIncls"),
+        expect(unify(SortedOldIntAvails, SortedNewIntAvails),
+            $pred, "bad IntAvails"),
+        expect(unify(SortedOldImpAvails, SortedNewImpAvails),
+            $pred, "bad ImpAvails"),
+        expect(unify(SortedOldSubAvails, SortedNewSubAvails),
+            $pred, "bad SubAvails"),
+        expect(unify(SortedOldIntItems, SortedNewIntItems),
+            $pred, "bad IntItems"),
+        expect(unify(SortedOldImpItems, SortedNewImpItems),
+            $pred, "bad ImpItems"),
+        expect(unify(SortedOldSubItems, SortedNewSubItems),
+            $pred, "bad SubItems"),
+
+        expect(unify(SortedOldFactTables, SortedNewFactTables),
+            $pred, "bad FactTables"),
+        expect(unify(SortedOldForeignInclFiles, SortedNewForeignInclFiles),
+            $pred, "bad ForeignInclFiles"),
+
+        expect(unify(SortedOldSpecs, SortedNewSpecs),
+            $pred, "bad Specs"),
+
+        % XXX END OF THE SANITY CHECK
+
+        make_module_and_imports(SourceFileName, SourceFileModuleName,
+            ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs,
+            PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+            MaybeTimestampMap, !:ModuleAndImports),
+
+        HaveReadModuleMapInt = HaveReadModuleMaps ^ hrmm_int,
 
         % Get the .int0 files of the ancestor modules.
         %
@@ -343,6 +526,10 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
     (
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
+
+        % XXX START OF THE OLD CODE for computing the parameters
+        % we use to construct the initial ModuleAndImports structure.
+
         % Construct the initial module import structure.
         % XXX Why do we give dummy values for PublicChildren, NestedChildren,
         % and other fields of !:ModuleAndImports? And why do we give
@@ -350,18 +537,6 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
         add_needed_foreign_import_module_items_to_src_item_blocks(ModuleName,
             SrcItemBlocks, SrcItemBlocksWithFIMs),
-        map.init(PublicChildren),
-        set.init(NestedChildren),
-        % Nothing that we will do with !:ModuleAndImports when constructing
-        % interface files will involve the files containing fact tables,
-        % so it is OK to pass a dummy value for FactDeps.
-        FactDeps = [],
-        ForeignIncludeFiles = cord.init,
-        MaybeTimestampMap = no,
-        make_module_and_imports(SourceFileName, SourceFileModuleName,
-            ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs,
-            PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
-            MaybeTimestampMap, !:ModuleAndImports),
 
         % Find the modules named in import_module and use_module decls.
         get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
@@ -378,13 +553,123 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         % XXX Why are these added to the interface, and not the implementation
         % dependencies?
         get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
-            ImplicitIntImportedMap, ImplicitIntUsedMap),
-        set.sorted_list_to_set(map.keys(ImplicitIntImportedMap),
-            ImplicitIntImported),
-        set.sorted_list_to_set(map.keys(ImplicitIntUsedMap),
-            ImplicitIntUsed),
+            ImplicitIntImported, ImplicitIntUsed),
         set.union(ImplicitIntImported, IntImported0, IntImported),
         set.union(ImplicitIntUsed, IntUsed0, IntUsed),
+
+        map.init(PublicChildren),
+        set.init(NestedChildren),
+        % Nothing that we will do with !:ModuleAndImports when constructing
+        % interface files will involve the files containing fact tables,
+        % so it is OK to pass a dummy value for FactDeps.
+        FactDeps = [],
+        ForeignIncludeFiles = cord.init,
+        MaybeTimestampMap = no,
+
+        % XXX START OF THE NEW CODE for computing the parameters
+        % we use to construct the initial ModuleAndImports structure.
+
+        get_raw_components(RawItemBlocks,
+            NewIntInclsCord, NewImpInclsCord,
+            NewIntAvailsCord, NewImpAvailsCord,
+            NewIntItemsCord, NewImpItemsCord),
+        NewIntIncls = cord.list(NewIntInclsCord),
+        NewImpIncls = cord.list(NewImpInclsCord),
+        NewIntAvails = cord.list(NewIntAvailsCord),
+        NewImpAvails = cord.list(NewImpAvailsCord),
+        NewIntItems = cord.list(NewIntItemsCord),
+        NewImpItems = cord.list(NewImpItemsCord),
+        get_deps_maps(NewIntAvails, NewImpAvails,
+            NewIntImportsMap0, NewIntUsesMap0,
+            NewImpImportsMap0, NewImpUsesMap0),
+        get_implicits_foreigns_fact_tables(NewIntItems, NewImpItems,
+            NewImplicitImportNeeds, _NewForeignInclFiles, NewLangSet,
+            _NewFactTables),
+        set.sorted_list_to_set(map.keys(NewIntImportsMap0), NewIntImports0),
+        set.sorted_list_to_set(map.keys(NewIntUsesMap0), NewIntUses0),
+        set.sorted_list_to_set(map.keys(NewImpImportsMap0), NewImpImports),
+        set.sorted_list_to_set(map.keys(NewImpUsesMap0), NewImpUses),
+        compute_implicit_import_needs(Globals, NewImplicitImportNeeds,
+            NewImplicitIntImports, NewImplicitIntUses),
+        set.union(NewImplicitIntImports, NewIntImports0, NewIntImports),
+        set.union(NewImplicitIntUses, NewIntUses0, NewIntUses),
+        set.to_sorted_list(NewLangSet, NewLangs),
+        (
+            NewLangs = [],
+            NewIntItemsWithFIMs = NewIntItems
+        ;
+            NewLangs = [_ | _],
+            FIMItems = list.map(make_foreign_import(ModuleName), NewLangs),
+            NewIntItemsWithFIMs = FIMItems ++ NewIntItems
+        ),
+
+        % XXX CODE TO COMPARE the outputs of the OLD and NEW codes.
+        % We require them to be effectively the same (modulo irrelevant
+        % details such as their packaging into item blocks) as a sanity check.
+        % After a thorough test, this sanity check should be removed
+        % together with the old code.
+
+        expect(set.equal(IntImported, NewIntImports),
+            $pred, "bad IntImport"),
+        expect(set.equal(IntUsed, NewIntUses),
+            $pred, "bad IntUses"),
+        expect(set.equal(ImpImported, NewImpImports),
+            $pred, "bad ImpImport"),
+        expect(set.equal(ImpUsed, NewImpUses),
+            $pred, "bad ImpUses"),
+
+        list.sort(NewIntIncls, SortedNewIntIncls),
+        list.sort(NewImpIncls, SortedNewImpIncls),
+        list.sort(NewIntAvails, SortedNewIntAvails),
+        list.sort(NewImpAvails, SortedNewImpAvails),
+        list.sort(NewIntItemsWithFIMs, SortedNewIntItems),
+        list.sort(NewImpItems, SortedNewImpItems),
+
+        get_src_components(SrcItemBlocksWithFIMs,
+            OldIntInclsCord, OldImpInclsCord, OldSubInclsCord,
+            OldIntAvailsCord, OldImpAvailsCord, OldSubAvailsCord,
+            OldIntItemsCord, OldImpItemsCord, OldSubItemsCord),
+        OldIntIncls = cord.list(OldIntInclsCord),
+        OldImpIncls = cord.list(OldImpInclsCord),
+        OldSubIncls = cord.list(OldSubInclsCord),
+        OldIntAvails = cord.list(OldIntAvailsCord),
+        OldImpAvails = cord.list(OldImpAvailsCord),
+        OldSubAvails = cord.list(OldSubAvailsCord),
+        OldIntItems = cord.list(OldIntItemsCord),
+        OldImpItems = cord.list(OldImpItemsCord),
+        OldSubItems = cord.list(OldSubItemsCord),
+        list.sort(OldIntIncls, SortedOldIntIncls),
+        list.sort(OldImpIncls, SortedOldImpIncls),
+        list.sort(OldSubIncls, SortedOldSubIncls),
+        list.sort(OldIntAvails, SortedOldIntAvails),
+        list.sort(OldImpAvails, SortedOldImpAvails),
+        list.sort(OldSubAvails, SortedOldSubAvails),
+        list.sort(OldIntItems, SortedOldIntItems),
+        list.sort(OldImpItems, SortedOldImpItems),
+        list.sort(OldSubItems, SortedOldSubItems),
+
+        expect(unify(SortedOldIntIncls, SortedNewIntIncls),
+            $pred, "bad IntIncls"),
+        expect(unify(SortedOldImpIncls, SortedNewImpIncls),
+            $pred, "bad ImpIncls"),
+        expect(unify(SortedOldSubIncls, []), $pred, "bad SubIncls"),
+        expect(unify(SortedOldIntAvails, SortedNewIntAvails),
+            $pred, "bad IntAvails"),
+        expect(unify(SortedOldImpAvails, SortedNewImpAvails),
+            $pred, "bad ImpAvails"),
+        expect(unify(SortedOldSubAvails, []), $pred, "bad SubAvails"),
+        expect(unify(SortedOldIntItems, SortedNewIntItems),
+            $pred, "bad IntItems"),
+        expect(unify(SortedOldImpItems, SortedNewImpItems),
+            $pred, "bad ImpItems"),
+        expect(unify(SortedOldSubItems, []), $pred, "bad SubItems"),
+
+        % XXX END OF THE SANITY CHECK
+
+        make_module_and_imports(SourceFileName, SourceFileModuleName,
+            ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs,
+            PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+            MaybeTimestampMap, !:ModuleAndImports),
 
         Ancestors = set.list_to_set(get_ancestors(ModuleName)),
 
@@ -460,6 +745,376 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             !.ImpIndirectImported, set.init, _, !ModuleAndImports, !IO)
     ).
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % get_deps_maps(IntAvails, ImpAvails,
+    %   IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap):
+    %
+    % Given the interface and implementation avails of a raw compilation unit,
+    % return the set of modules imported and used in those sections,
+    % mapped to the list of locations of those imports and uses.
+    %
+:- pred get_deps_maps(list(item_avail)::in, list(item_avail)::in,
+    module_names_contexts::out, module_names_contexts::out,
+    module_names_contexts::out, module_names_contexts::out) is det.
+
+get_deps_maps(IntAvails, ImpAvails,
+        IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap) :-
+    accumulate_dependencies_in_avails(IntAvails,
+        multi_map.init, IntImportsMap, multi_map.init, IntUsesMap),
+    accumulate_dependencies_in_avails(ImpAvails,
+        multi_map.init, ImpImportsMap, multi_map.init, ImpUsesMap).
+
+:- pred accumulate_dependencies_in_avails(list(item_avail)::in,
+    module_names_contexts::in, module_names_contexts::out,
+    module_names_contexts::in, module_names_contexts::out) is det.
+
+accumulate_dependencies_in_avails([], !ImportsMap, !UsesMap).
+accumulate_dependencies_in_avails([Avail | Avails], !ImportsMap, !UsesMap) :-
+    (
+        Avail = avail_import(avail_import_info(ModuleName, Context, _)),
+        multi_map.add(ModuleName, Context, !ImportsMap)
+    ;
+        Avail = avail_use(avail_use_info(ModuleName, Context, _)),
+        multi_map.add(ModuleName, Context, !UsesMap)
+    ),
+    accumulate_dependencies_in_avails(Avails, !ImportsMap, !UsesMap).
+
+%---------------------------------------------------------------------------%
+
+    % get_implicits_foreigns_fact_tables(IntItems, ImpItems,
+    %   ImplicitImportNeeds, ForeignInclFiles, Langs, FactTables):
+    %
+    % Given the interface and implementation items of a raw compilation unit,
+    % compute and return
+    %
+    % - a representation of the implicit import needs of those items,
+    %   i.e. of the set of modules that we need to implicitly import;
+    % - the foreign files they include;
+    % - the foreign languages they use; and
+    % - the names of the files that contain their fact tables.
+    %
+:- pred get_implicits_foreigns_fact_tables(list(item)::in, list(item)::in,
+    implicit_import_needs::out, cord(foreign_include_file_info)::out,
+    set(foreign_language)::out, set(string)::out) is det.
+
+get_implicits_foreigns_fact_tables(IntItems, ImpItems,
+        !:ImplicitImportNeeds, !:ForeignInclFiles, !:Langs, !:FactTables) :-
+    !:ImplicitImportNeeds = init_implicit_import_needs,
+    !:ForeignInclFiles = cord.init,
+    set.init(!:Langs),
+    set.init(!:FactTables),
+    get_implicits_foreigns_fact_tables_acc(IntItems,
+        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables),
+    get_implicits_foreigns_fact_tables_acc(ImpItems,
+        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
+
+:- pred get_implicits_foreigns_fact_tables_acc(list(item)::in,
+    implicit_import_needs::in, implicit_import_needs::out,
+    cord(foreign_include_file_info)::in, cord(foreign_include_file_info)::out,
+    set(foreign_language)::in, set(foreign_language)::out,
+    set(string)::in, set(string)::out) is det.
+
+get_implicits_foreigns_fact_tables_acc([],
+        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
+get_implicits_foreigns_fact_tables_acc([Item | Items],
+        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables) :-
+    (
+        Item = item_type_defn(ItemTypeDefn),
+        ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
+            TypeDefn, _TVarSet, _Context, _SeqNum),
+        (
+            TypeDefn = parse_tree_solver_type(DetailsSolver),
+            DetailsSolver = type_details_solver(SolverTypeDetails,
+                _MaybeUnifyComparePredNames),
+            SolverTypeDetails = solver_type_details(_RepresentationType,
+                _GroundInst, _AnyInst, MutableItems),
+            list.foldl(gather_implicit_import_needs_in_mutable, MutableItems,
+                !ImplicitImportNeeds)
+        ;
+            TypeDefn = parse_tree_foreign_type(DetailsForeign),
+            DetailsForeign = type_details_foreign(ForeignType, _, _),
+            set.insert(foreign_type_language(ForeignType), !Langs)
+        ;
+            ( TypeDefn = parse_tree_du_type(_)
+            ; TypeDefn = parse_tree_eqv_type(_)
+            ; TypeDefn = parse_tree_abstract_type(_)
+            )
+        )
+    ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        (
+            (
+                Pragma = pragma_foreign_decl(FDInfo),
+                FDInfo = pragma_info_foreign_decl(Lang, _, LiteralOrInclude)
+            ;
+                Pragma = pragma_foreign_code(FCInfo),
+                FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
+            ),
+            (
+                LiteralOrInclude = floi_literal(_)
+            ;
+                LiteralOrInclude = floi_include_file(FileName),
+                InclFile = foreign_include_file_info(Lang, FileName),
+                !:ForeignInclFiles = cord.snoc(!.ForeignInclFiles, InclFile)
+            ),
+            set.insert(Lang, !Langs)
+        ;
+            (
+                Pragma = pragma_foreign_enum(FEInfo),
+                FEInfo = pragma_info_foreign_enum(Lang, _, _)
+            ;
+                Pragma = pragma_foreign_proc_export(FPEInfo),
+                FPEInfo = pragma_info_foreign_proc_export(Lang, _, _)
+            ),
+            set.insert(Lang, !Langs)
+        ;
+            Pragma = pragma_foreign_proc(FPInfo),
+            FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
+            set.insert(get_foreign_language(Attrs), !Langs)
+        ;
+            Pragma = pragma_fact_table(FactTableInfo),
+            FactTableInfo = pragma_info_fact_table(_PredNameArity, FileName),
+            set.insert(FileName, !FactTables)
+        ;
+            Pragma = pragma_tabled(TableInfo),
+            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
+            !ImplicitImportNeeds ^ iin_tabling := do_need_tabling,
+            (
+                MaybeAttributes = no
+            ;
+                MaybeAttributes = yes(Attributes),
+                StatsAttr = Attributes ^ table_attr_statistics,
+                (
+                    StatsAttr = table_gather_statistics,
+                    !ImplicitImportNeeds ^ iin_tabling_statistics
+                        := do_need_tabling_statistics
+                ;
+                    StatsAttr = table_dont_gather_statistics
+                )
+            )
+        ;
+            ( Pragma = pragma_foreign_export_enum(_)
+            ; Pragma = pragma_external_proc(_)
+            ; Pragma = pragma_type_spec(_)
+            ; Pragma = pragma_inline(_)
+            ; Pragma = pragma_no_inline(_)
+            ; Pragma = pragma_consider_used(_)
+            ; Pragma = pragma_unused_args(_)
+            ; Pragma = pragma_exceptions(_)
+            ; Pragma = pragma_trailing_info(_)
+            ; Pragma = pragma_mm_tabling_info(_)
+            ; Pragma = pragma_obsolete(_)
+            ; Pragma = pragma_no_detism_warning(_)
+            ; Pragma = pragma_require_tail_recursion(_)
+            ; Pragma = pragma_oisu(_)
+            ; Pragma = pragma_promise_eqv_clauses(_)
+            ; Pragma = pragma_promise_pure(_)
+            ; Pragma = pragma_promise_semipure(_)
+            ; Pragma = pragma_termination_info(_)
+            ; Pragma = pragma_termination2_info(_)
+            ; Pragma = pragma_terminates(_)
+            ; Pragma = pragma_does_not_terminate(_)
+            ; Pragma = pragma_check_termination(_)
+            ; Pragma = pragma_mode_check_clauses(_)
+            ; Pragma = pragma_structure_sharing(_)
+            ; Pragma = pragma_structure_reuse(_)
+            ; Pragma = pragma_require_feature_set(_)
+            )
+        )
+    ;
+        Item = item_instance(ItemInstance),
+        ItemInstance = item_instance_info(_DerivingClass, _ClassName,
+            _Types, _OriginalTypes, InstanceBody, _VarSet,
+            _ModuleContainingInstance, _Context, _SeqNum),
+        (
+            InstanceBody = instance_body_abstract
+        ;
+            InstanceBody = instance_body_concrete(InstanceMethods),
+            list.foldl(gather_implicit_import_needs_in_instance_method,
+                InstanceMethods, !ImplicitImportNeeds)
+        )
+    ;
+        Item = item_clause(ItemClause),
+        gather_implicit_import_needs_in_clause(ItemClause,
+            !ImplicitImportNeeds)
+    ;
+        Item = item_promise(ItemPromise),
+        ItemPromise = item_promise_info(_PromiseType, Goal, _VarSet,
+            _UnivQuantVars, _Context, _SeqNum),
+        gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds)
+    ;
+        Item = item_mutable(ItemMutable),
+        % We can use all foreign languages.
+        set.insert_list(all_foreign_languages, !Langs),
+        gather_implicit_import_needs_in_mutable(ItemMutable,
+            !ImplicitImportNeeds)
+    ;
+        ( Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_foreign_import_module(_)
+        )
+    ;
+        Item = item_type_repn(_),
+        % These should not be generated yet.
+        unexpected($pred, "item_type_repn")
+    ),
+    get_implicits_foreigns_fact_tables_acc(Items,
+        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
+
+%---------------------------------------------------------------------------%
+
+    % separate_instance_non_instance(Items,
+    %   AbstractInstanceItems, InstanceItems, NonInstanceItems):
+    %
+    % Partition Items into
+    % - the items that are instances (return these as InstanceItems), and
+    % - the items that are not instances (return these as NonInstanceItems).
+    %
+    % Return also abstract version of InstanceItems as AbstractInstanceItems.
+    % (See the XXX below.)
+    %
+:- pred separate_instance_non_instance(list(item)::in,
+    list(item)::out, list(item)::out, list(item)::out) is det.
+
+separate_instance_non_instance(Items,
+        AbstractInstanceItems, InstanceItems, NonInstanceItems) :-
+    separate_instance_non_instance_loop(Items,
+        cord.init, AbstractInstanceCord, cord.init, InstanceCord,
+        cord.init, NonInstanceCord),
+    AbstractInstanceItems = cord.list(AbstractInstanceCord),
+    InstanceItems = cord.list(InstanceCord),
+    NonInstanceItems = cord.list(NonInstanceCord).
+
+:- pred separate_instance_non_instance_loop(list(item)::in,
+    cord(item)::in, cord(item)::out,
+    cord(item)::in, cord(item)::out,
+    cord(item)::in, cord(item)::out) is det.
+
+separate_instance_non_instance_loop([], 
+        !AbstractInstanceCord, !InstanceCord, !NonInstanceCord).
+separate_instance_non_instance_loop([Item | Items], 
+        !AbstractInstanceCord, !InstanceCord, !NonInstanceCord) :-
+    ( if Item = item_instance(ItemInstance) then
+        % XXX To me (zs) this does not look like the right thing to do
+        % if ItemInstance is *already* abstract.
+        AbstractItemInstance =
+            ItemInstance ^ ci_method_instances := instance_body_abstract,
+        AbstractItem = item_instance(AbstractItemInstance),
+        !:AbstractInstanceCord =
+            cord.snoc(!.AbstractInstanceCord, AbstractItem),
+        !:InstanceCord = cord.snoc(!.InstanceCord, Item)
+    else
+        !:NonInstanceCord = cord.snoc(!.NonInstanceCord, Item)
+    ),
+    separate_instance_non_instance_loop(Items,
+        !AbstractInstanceCord, !InstanceCord, !NonInstanceCord).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
+    %     IntAvails, ImpAvails, IntItems, ImpItems):
+    %
+    % Return the includes, avails (i.e. imports and uses), and items
+    % from both the interface and implementation blocks in RawItemBlocks.
+    %
+:- pred get_raw_components(list(raw_item_block)::in,
+    cord(item_include)::out, cord(item_include)::out,
+    cord(item_avail)::out, cord(item_avail)::out,
+    cord(item)::out, cord(item)::out) is det.
+
+get_raw_components(RawItemBlocks, !:IntIncls, !:ImpIncls,
+        !:IntAvails, !:ImpAvails, !:IntItems, !:ImpItems) :-
+    % While lists of items can be very long, this just about never happens
+    % with lists of item BLOCKS, so we don't need tail recursion.
+    (
+        RawItemBlocks = [],
+        !:IntIncls = cord.init,
+        !:ImpIncls = cord.init,
+        !:IntAvails = cord.init,
+        !:ImpAvails = cord.init,
+        !:IntItems = cord.init,
+        !:ImpItems = cord.init
+    ;
+        RawItemBlocks = [HeadRawItemBlock | TailRawItemBlocks],
+        get_raw_components(TailRawItemBlocks, !:IntIncls, !:ImpIncls,
+            !:IntAvails, !:ImpAvails, !:IntItems, !:ImpItems),
+        HeadRawItemBlock = item_block(_, Section, Incls, Avails, Items),
+        (
+            Section = ms_interface,
+            !:IntIncls = cord.from_list(Incls) ++ !.IntIncls,
+            !:IntAvails = cord.from_list(Avails) ++ !.IntAvails,
+            !:IntItems = cord.from_list(Items) ++ !.IntItems
+        ;
+            Section = ms_implementation,
+            !:ImpIncls = cord.from_list(Incls) ++ !.ImpIncls,
+            !:ImpAvails = cord.from_list(Avails) ++ !.ImpAvails,
+            !:ImpItems = cord.from_list(Items) ++ !.ImpItems
+        )
+    ).
+
+    % get_src_components(SrcItemBlocks, IntIncls, ImpIncls, SubIncls,
+    %   IntAvails, ImpAvails, SubAvails, IntItems, ImpItems, SubItems):
+    %
+    % Return the includes, avails (i.e. imports and uses), and items
+    % from the interface, implementation and impl_but_exported_to_submodules
+    % blocks in SrcItemBlocks.
+    %
+:- pred get_src_components(list(src_item_block)::in,
+    cord(item_include)::out, cord(item_include)::out, cord(item_include)::out,
+    cord(item_avail)::out, cord(item_avail)::out, cord(item_avail)::out,
+    cord(item)::out, cord(item)::out, cord(item)::out) is det.
+
+get_src_components(SrcItemBlocks, !:IntIncls, !:ImpIncls, !:SubIncls,
+        !:IntAvails, !:ImpAvails, !:SubAvails,
+        !:IntItems, !:ImpItems, !:SubItems) :-
+    % While lists of items can be very long, this just about never happens
+    % with lists of item BLOCKS, so we don't need tail recursion.
+    (
+        SrcItemBlocks = [],
+        !:IntIncls = cord.init,
+        !:ImpIncls = cord.init,
+        !:SubIncls = cord.init,
+        !:IntAvails = cord.init,
+        !:ImpAvails = cord.init,
+        !:SubAvails = cord.init,
+        !:IntItems = cord.init,
+        !:ImpItems = cord.init,
+        !:SubItems = cord.init
+    ;
+        SrcItemBlocks = [HeadSrcItemBlock | TailSrcItemBlocks],
+        get_src_components(TailSrcItemBlocks,
+            !:IntIncls, !:ImpIncls, !:SubIncls,
+            !:IntAvails, !:ImpAvails, !:SubAvails,
+            !:IntItems, !:ImpItems, !:SubItems),
+        HeadSrcItemBlock = item_block(_, Section, Incls, Avails, Items),
+        (
+            Section = sms_interface,
+            !:IntIncls = cord.from_list(Incls) ++ !.IntIncls,
+            !:IntAvails = cord.from_list(Avails) ++ !.IntAvails,
+            !:IntItems = cord.from_list(Items) ++ !.IntItems
+        ;
+            Section = sms_implementation,
+            !:ImpIncls = cord.from_list(Incls) ++ !.ImpIncls,
+            !:ImpAvails = cord.from_list(Avails) ++ !.ImpAvails,
+            !:ImpItems = cord.from_list(Items) ++ !.ImpItems
+        ;
+            Section = sms_impl_but_exported_to_submodules,
+            !:SubIncls = cord.from_list(Incls) ++ !.SubIncls,
+            !:SubAvails = cord.from_list(Avails) ++ !.SubAvails,
+            !:SubItems = cord.from_list(Items) ++ !.SubItems
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred get_src_item_blocks_public_children(raw_compilation_unit::in,
@@ -598,6 +1253,24 @@ warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
         true
     ).
 
+    % Warn if a module imports itself, or an ancestor.
+    %
+:- pred new_warn_if_import_for_self_or_ancestor(module_name::in,
+    set(module_name)::in, module_names_contexts::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+new_warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+        ImportedOrUsedMap, !Specs) :-
+    set.sorted_list_to_set(multi_map.keys(ImportedOrUsedMap), ImportedOrUsed),
+    set.intersect(Ancestors, ImportedOrUsed, ImportedOrUsedAncestors),
+    set.fold(new_warn_import_for_ancestor(ModuleName, ImportedOrUsedMap),
+        ImportedOrUsedAncestors, !Specs),
+    ( if set.member(ModuleName, ImportedOrUsed) then
+        new_warn_import_for_self(ModuleName, ImportedOrUsedMap, !Specs)
+    else
+        true
+    ).
+
 %---------------------%
 
 :- pred find_and_warn_import_for_self(module_name::in,
@@ -619,6 +1292,23 @@ find_and_warn_import_for_ancestor(ModuleName, RawItemBlocks,
         AncestorModuleName, [], AvailContexts),
     list.foldl(warn_import_for_ancestor(ModuleName, AncestorModuleName),
         AvailContexts, !Specs).
+
+:- pred new_warn_import_for_self(module_name::in, module_names_contexts::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+new_warn_import_for_self(ModuleName, ImportOrUseMap, !Specs) :-
+    multi_map.lookup(ImportOrUseMap, ModuleName, Contexts),
+    list.foldl(warn_import_for_self(ModuleName), Contexts, !Specs).
+
+:- pred new_warn_import_for_ancestor(module_name::in,
+    module_names_contexts::in, module_name::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+new_warn_import_for_ancestor(ModuleName, ImportOrUseMap,
+        AncestorModuleName, !Specs) :-
+    multi_map.lookup(ImportOrUseMap, AncestorModuleName, Contexts),
+    list.foldl(warn_import_for_ancestor(ModuleName, AncestorModuleName),
+        Contexts, !Specs).
 
 %---------------------%
 
@@ -683,10 +1373,10 @@ warn_import_for_self(ModuleName, Context, !Specs) :-
 warn_import_for_ancestor(ModuleName, AncestorName, Context, !Specs) :-
     MainPieces = [words("Module"), qual_sym_name(ModuleName),
         words("imports its own ancestor, module"),
-        qual_sym_name(AncestorName), words(".")],
+        qual_sym_name(AncestorName), words("."), nl],
     VerbosePieces = [words("Every submodule"),
         words("implicitly imports its ancestors."),
-        words("There is no need to explicitly import them.")],
+        words("There is no need to explicitly import them."), nl],
     Msg = simple_msg(Context,
         [option_is_set(warn_simple_code, yes,
             [always(MainPieces),
@@ -765,6 +1455,80 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
         % Treat the modules with both types of import as if they
         % were imported using `:- import_module.'
         set.difference(!.Used, ImportedAndUsed, !:Used)
+    ).
+
+    % This predicate ensures that every import_module declaration is checked
+    % against every use_module declaration, except for the case where
+    % the interface has `:- use_module foo.' and the implementation
+    % `:- import_module foo.'. Return the set of modules that have a
+    % `:- use_module foo' in the interface and an `:- import_module foo'
+    % in the implementation.
+    %
+:- pred new_warn_if_duplicate_use_import_decls(module_name::in,
+    prog_context::in,
+    module_names_contexts::in, module_names_contexts::out,
+    module_names_contexts::in, module_names_contexts::out,
+    module_names_contexts::in, module_names_contexts::out,
+    module_names_contexts::in, module_names_contexts::out,
+    set(module_name)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+new_warn_if_duplicate_use_import_decls(ModuleName, Context,
+        !IntImportedMap, !IntUsedMap, !ImpImportedMap, !ImpUsedMap,
+        IntUsedImpImported, !Specs) :-
+    new_do_warn_if_duplicate_use_import_decls(ModuleName, Context,
+        !.IntImportedMap, !IntUsedMap, !Specs),
+    new_do_warn_if_duplicate_use_import_decls(ModuleName, Context,
+        !.IntImportedMap, !ImpUsedMap, !Specs),
+    new_do_warn_if_duplicate_use_import_decls(ModuleName, Context,
+        !.ImpImportedMap, !ImpUsedMap, !Specs),
+    IntUsedImpImported = set.intersect(
+        set.sorted_list_to_set(map.keys(!.ImpImportedMap)), 
+        set.sorted_list_to_set(map.keys(!.IntUsedMap))),
+    ( if set.is_empty(IntUsedImpImported) then
+        % This is the usual case; optimize it.
+        true
+    else
+        IntUsedImpImportedList = set.to_sorted_list(IntUsedImpImported),
+        map.delete_list(IntUsedImpImportedList, !IntUsedMap),
+        map.delete_list(IntUsedImpImportedList, !ImpImportedMap)
+    ).
+
+    % Report warnings for modules imported using both `:- use_module'
+    % and `:- import_module'. Remove the unnecessary `:- use_module'
+    % declarations.
+    %
+:- pred new_do_warn_if_duplicate_use_import_decls(module_name::in,
+    prog_context::in, module_names_contexts::in,
+    module_names_contexts::in, module_names_contexts::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+new_do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
+        ImportedMap, !UsedMap, !Specs) :-
+    Imported = set.sorted_list_to_set(map.keys(ImportedMap)),
+    Used0 = set.sorted_list_to_set(map.keys(!.UsedMap)),
+    set.intersect(Imported, Used0, ImportedAndUsed),
+    ( if set.is_empty(ImportedAndUsed) then
+        true
+    else
+        set.to_sorted_list(ImportedAndUsed, ImportedAndUsedList),
+        Pieces = [words("Warning:"),
+            words(choose_number(ImportedAndUsedList, "module", "modules"))] ++
+            component_list_to_pieces("and",
+                list.map(wrap_symname, ImportedAndUsedList)) ++
+            [words(choose_number(ImportedAndUsedList, "is", "are")),
+            words("imported using both"), decl("import_module"),
+            words("and"), decl("use_module"), words("declarations."), nl],
+        Msg = simple_msg(Context,
+            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs],
+
+        % Treat the modules with both types of import as if they
+        % were imported using `:- import_module.'
+        map.delete_sorted_list(set.to_sorted_list(ImportedAndUsed), !UsedMap)
     ).
 
 :- func wrap_symname(module_name) = format_component.
@@ -1924,13 +2688,9 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     get_dependencies_in_item_blocks(OptItemBlocks,
         NewImportDepsMap0, NewUseDepsMap0),
     get_implicit_dependencies_in_item_blocks(Globals, OptItemBlocks,
-        NewImplicitImportDepsMap0, NewImplicitUseDepsMap0),
+        NewImplicitImportDeps0, NewImplicitUseDeps0),
     set.sorted_list_to_set(map.keys(NewUseDepsMap0), NewUseDeps0),
     set.sorted_list_to_set(map.keys(NewImportDepsMap0), NewImportDeps0),
-    set.sorted_list_to_set(map.keys(NewImplicitImportDepsMap0),
-        NewImplicitImportDeps0),
-    set.sorted_list_to_set(map.keys(NewImplicitUseDepsMap0),
-        NewImplicitUseDeps0),
     NewDeps = set.union_list(
         [NewImportDeps0, NewUseDeps0,
         NewImplicitImportDeps0, NewImplicitUseDeps0,
@@ -2047,11 +2807,7 @@ read_optimization_interfaces(Globals, Transitive,
         NewUseDeps0 = set.list_to_set(
             list.map(avail_use_info_module_name, OptUses)),
         get_implicit_dependencies_in_items(Globals, OptItems,
-            NewImplicitImportDepsMap0, NewImplicitUseDepsMap0),
-        set.sorted_list_to_set(map.keys(NewImplicitImportDepsMap0),
-            NewImplicitImportDeps0),
-        set.sorted_list_to_set(map.keys(NewImplicitUseDepsMap0),
-            NewImplicitUseDeps0),
+            NewImplicitImportDeps0, NewImplicitUseDeps0),
         NewDepsSet0 = set.union_list([NewUseDeps0,
             NewImplicitImportDeps0, NewImplicitUseDeps0]),
         set.difference(NewDepsSet0, ModulesProcessed0, NewDepsSet),
