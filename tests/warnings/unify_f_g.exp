@@ -1,4 +1,4 @@
-unify_f_g.m:028: In clause for `p(in, in, out, in, out)':
-unify_f_g.m:028:   warning: unification of `STATE_VARIABLE_In_0' and maybe.yes
-unify_f_g.m:028:   cannot succeed.
-unify_f_g.m:028:   `STATE_VARIABLE_In_0' has instantiatedness `bound(no)'.
+unify_f_g.m:030: In clause for `p(in, in, out, in, out)':
+unify_f_g.m:030:   warning: unification of `STATE_VARIABLE_In_0' and maybe.yes
+unify_f_g.m:030:   cannot succeed.
+unify_f_g.m:030:   `STATE_VARIABLE_In_0' has instantiatedness `bound(no)'.

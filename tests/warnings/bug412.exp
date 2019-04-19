@@ -1,51 +1,51 @@
-bug412.m:012: In module `bug412':
-bug412.m:012:   warning: module `bitmap' has a `:- import_module' declaration,
-bug412.m:012:   but is not used anywhere in the module.
-bug412.m:013: In module `bug412':
-bug412.m:013:   warning: module `bit_buffer' has a `:- import_module'
-bug412.m:013:   declaration, but is not used anywhere in the module.
 bug412.m:014: In module `bug412':
-bug412.m:014:   warning: module `bool' has a `:- import_module' declaration,
+bug412.m:014:   warning: module `bitmap' has a `:- import_module' declaration,
 bug412.m:014:   but is not used anywhere in the module.
+bug412.m:015: In module `bug412':
+bug412.m:015:   warning: module `bit_buffer' has a `:- import_module'
+bug412.m:015:   declaration, but is not used anywhere in the module.
 bug412.m:016: In module `bug412':
-bug412.m:016:   warning: module `char' has a `:- import_module' declaration,
+bug412.m:016:   warning: module `bool' has a `:- import_module' declaration,
 bug412.m:016:   but is not used anywhere in the module.
-bug412.m:017: In module `bug412':
-bug412.m:017:   warning: module `diet' has a `:- import_module' declaration,
-bug412.m:017:   but is not used anywhere in the module.
 bug412.m:018: In module `bug412':
-bug412.m:018:   warning: module `digraph' has a `:- import_module' declaration,
+bug412.m:018:   warning: module `char' has a `:- import_module' declaration,
 bug412.m:018:   but is not used anywhere in the module.
 bug412.m:019: In module `bug412':
-bug412.m:019:   warning: module `enum' has a `:- import_module' declaration,
+bug412.m:019:   warning: module `diet' has a `:- import_module' declaration,
 bug412.m:019:   but is not used anywhere in the module.
 bug412.m:020: In module `bug412':
-bug412.m:020:   warning: module `io' has a `:- import_module' declaration, but
-bug412.m:020:   is not used anywhere in the module.
+bug412.m:020:   warning: module `digraph' has a `:- import_module' declaration,
+bug412.m:020:   but is not used anywhere in the module.
 bug412.m:021: In module `bug412':
-bug412.m:021:   warning: module `ops' has a `:- import_module' declaration, but
-bug412.m:021:   is not used anywhere in the module.
+bug412.m:021:   warning: module `enum' has a `:- import_module' declaration,
+bug412.m:021:   but is not used anywhere in the module.
 bug412.m:022: In module `bug412':
-bug412.m:022:   warning: module `pprint' has a `:- import_module' declaration,
-bug412.m:022:   but is not used anywhere in the module.
+bug412.m:022:   warning: module `io' has a `:- import_module' declaration, but
+bug412.m:022:   is not used anywhere in the module.
 bug412.m:023: In module `bug412':
-bug412.m:023:   warning: module `rtree' has a `:- import_module' declaration,
-bug412.m:023:   but is not used anywhere in the module.
+bug412.m:023:   warning: module `ops' has a `:- import_module' declaration, but
+bug412.m:023:   is not used anywhere in the module.
 bug412.m:024: In module `bug412':
-bug412.m:024:   warning: module `store' has a `:- import_module' declaration,
+bug412.m:024:   warning: module `pprint' has a `:- import_module' declaration,
 bug412.m:024:   but is not used anywhere in the module.
 bug412.m:025: In module `bug412':
-bug412.m:025:   warning: module `stream' has a `:- import_module' declaration,
+bug412.m:025:   warning: module `rtree' has a `:- import_module' declaration,
 bug412.m:025:   but is not used anywhere in the module.
 bug412.m:026: In module `bug412':
-bug412.m:026:   warning: module `string' has a `:- import_module' declaration,
+bug412.m:026:   warning: module `store' has a `:- import_module' declaration,
 bug412.m:026:   but is not used anywhere in the module.
 bug412.m:027: In module `bug412':
-bug412.m:027:   warning: module `string.builder' has a `:- import_module'
-bug412.m:027:   declaration, but is not used anywhere in the module.
+bug412.m:027:   warning: module `stream' has a `:- import_module' declaration,
+bug412.m:027:   but is not used anywhere in the module.
+bug412.m:028: In module `bug412':
+bug412.m:028:   warning: module `string' has a `:- import_module' declaration,
+bug412.m:028:   but is not used anywhere in the module.
 bug412.m:029: In module `bug412':
-bug412.m:029:   warning: module `term' has a `:- import_module' declaration,
-bug412.m:029:   but is not used anywhere in the module.
-bug412.m:030: In module `bug412':
-bug412.m:030:   warning: module `univ' has a `:- import_module' declaration,
-bug412.m:030:   but is not used anywhere in the module.
+bug412.m:029:   warning: module `string.builder' has a `:- import_module'
+bug412.m:029:   declaration, but is not used anywhere in the module.
+bug412.m:031: In module `bug412':
+bug412.m:031:   warning: module `term' has a `:- import_module' declaration,
+bug412.m:031:   but is not used anywhere in the module.
+bug412.m:032: In module `bug412':
+bug412.m:032:   warning: module `univ' has a `:- import_module' declaration,
+bug412.m:032:   but is not used anywhere in the module.

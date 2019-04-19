@@ -1,27 +1,27 @@
-bug311.m:163: Warning: this disjunction further instantiates the already
-bug311.m:163:   partially instantiated variable G.
-bug311.m:163:   Since the memory cell of this variable is allocated *before*
-bug311.m:163:   the disjunction, the different disjuncts will return their
-bug311.m:163:   potentially different solutions for this variable in the same
-bug311.m:163:   memory cell, which will cause any all-solutions predicate to
-bug311.m:163:   think that the different solutions (since they are at the same
-bug311.m:163:   address) are in fact all the same when invoked on the
-bug311.m:163:   procedure.
-bug311.m:181: Warning: this disjunction further instantiates the already
-bug311.m:181:   partially instantiated variables G1, G2 and G3.
-bug311.m:181:   Since the memory cells of these variables are allocated
-bug311.m:181:   *before* the disjunction, the different disjuncts will return
-bug311.m:181:   their potentially different solutions for each of these
-bug311.m:181:   variables in the same memory cell, which will cause any
-bug311.m:181:   all-solutions predicate to think that the different solutions
-bug311.m:181:   (since they are at the same address) are in fact all the same
-bug311.m:181:   when invoked on the procedure.
-bug311.m:196: Warning: this disjunction further instantiates the already
-bug311.m:196:   partially instantiated variable GG.
-bug311.m:196:   Since the memory cell of this variable is allocated *before*
-bug311.m:196:   the disjunction, the different disjuncts will return their
-bug311.m:196:   potentially different solutions for this variable in the same
-bug311.m:196:   memory cell, which will cause any all-solutions predicate to
-bug311.m:196:   think that the different solutions (since they are at the same
-bug311.m:196:   address) are in fact all the same when invoked on the lambda
-bug311.m:196:   expression in bug311.m at line 191.
+bug311.m:167: Warning: this disjunction further instantiates the already
+bug311.m:167:   partially instantiated variable G.
+bug311.m:167:   Since the memory cell of this variable is allocated *before*
+bug311.m:167:   the disjunction, the different disjuncts will return their
+bug311.m:167:   potentially different solutions for this variable in the same
+bug311.m:167:   memory cell, which will cause any all-solutions predicate to
+bug311.m:167:   think that the different solutions (since they are at the same
+bug311.m:167:   address) are in fact all the same when invoked on the
+bug311.m:167:   procedure.
+bug311.m:185: Warning: this disjunction further instantiates the already
+bug311.m:185:   partially instantiated variables G1, G2 and G3.
+bug311.m:185:   Since the memory cells of these variables are allocated
+bug311.m:185:   *before* the disjunction, the different disjuncts will return
+bug311.m:185:   their potentially different solutions for each of these
+bug311.m:185:   variables in the same memory cell, which will cause any
+bug311.m:185:   all-solutions predicate to think that the different solutions
+bug311.m:185:   (since they are at the same address) are in fact all the same
+bug311.m:185:   when invoked on the procedure.
+bug311.m:200: Warning: this disjunction further instantiates the already
+bug311.m:200:   partially instantiated variable GG.
+bug311.m:200:   Since the memory cell of this variable is allocated *before*
+bug311.m:200:   the disjunction, the different disjuncts will return their
+bug311.m:200:   potentially different solutions for this variable in the same
+bug311.m:200:   memory cell, which will cause any all-solutions predicate to
+bug311.m:200:   think that the different solutions (since they are at the same
+bug311.m:200:   address) are in fact all the same when invoked on the lambda
+bug311.m:200:   expression in bug311.m at line 195.

@@ -4,6 +4,8 @@
 %
 % This is a copy of tests/benchmarks/queens.m, with some inconsistencies
 % in the order of the predicate declarations vs definitions.
+%
+%---------------------------------------------------------------------------%
 
 :- module inconsistent_pred_order.
 

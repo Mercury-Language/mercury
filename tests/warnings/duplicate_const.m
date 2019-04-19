@@ -4,6 +4,9 @@
 %
 % Test the warning for duplicate calls where some of the arguments are
 % duplicated constants.
+%
+%---------------------------------------------------------------------------%
+
 :- module duplicate_const.
 
 :- interface.

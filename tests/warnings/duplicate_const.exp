@@ -1,4 +1,4 @@
-duplicate_const.m:020: Warning: redundant call to predicate
-duplicate_const.m:020:   `duplicate_const.called'/4.
-duplicate_const.m:019: Here is the previous call to predicate
-duplicate_const.m:019:   `duplicate_const.called'/4.
+duplicate_const.m:023: Warning: redundant call to predicate
+duplicate_const.m:023:   `duplicate_const.called'/4.
+duplicate_const.m:022: Here is the previous call to predicate
+duplicate_const.m:022:   `duplicate_const.called'/4.

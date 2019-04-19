@@ -7,6 +7,8 @@
 % correctly.
 % Should give a warning that determinism of test2 is inferred det, and
 % not give a warning at all for test.
+%
+%---------------------------------------------------------------------------%
 
 :- module det_infer_warning.
 
@@ -22,18 +24,14 @@
 :- implementation.
 
 test :-
-    (
-        cond(true)
-    ->
+    ( if cond(true) then
         RA = true
-    ;
+    else
         RA = false
     ),
-    (
-        cond(false)
-    ->
+    ( if cond(false) then
         RB = true
-    ;
+    else
         RB = false
     ),
     RA = RB.

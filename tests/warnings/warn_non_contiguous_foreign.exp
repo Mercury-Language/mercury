@@ -1,16 +1,16 @@
-warn_non_contiguous_foreign.m:051: Warning: non-contiguous clauses for
-warn_non_contiguous_foreign.m:051:   predicate `p'/2.
-warn_non_contiguous_foreign.m:055:   Gap in clauses of predicate `p'/2 starts
-warn_non_contiguous_foreign.m:055:   after this clause.
-warn_non_contiguous_foreign.m:071:   Gap in clauses of predicate `p'/2 ends
+warn_non_contiguous_foreign.m:055: Warning: non-contiguous clauses for
+warn_non_contiguous_foreign.m:055:   predicate `p'/2.
+warn_non_contiguous_foreign.m:059:   Gap in clauses of predicate `p'/2 starts
+warn_non_contiguous_foreign.m:059:   after this clause.
+warn_non_contiguous_foreign.m:075:   Gap in clauses of predicate `p'/2 ends
+warn_non_contiguous_foreign.m:075:   with this clause.
+warn_non_contiguous_foreign.m:073: Warning: non-contiguous clauses for
+warn_non_contiguous_foreign.m:073:   predicate `q'/2.
+warn_non_contiguous_foreign.m:057:   Gap 1 in clauses of predicate `q'/2 starts
+warn_non_contiguous_foreign.m:057:   after this clause.
+warn_non_contiguous_foreign.m:071:   Gap 1 in clauses of predicate `q'/2 ends
 warn_non_contiguous_foreign.m:071:   with this clause.
-warn_non_contiguous_foreign.m:069: Warning: non-contiguous clauses for
-warn_non_contiguous_foreign.m:069:   predicate `q'/2.
-warn_non_contiguous_foreign.m:053:   Gap 1 in clauses of predicate `q'/2 starts
-warn_non_contiguous_foreign.m:053:   after this clause.
-warn_non_contiguous_foreign.m:067:   Gap 1 in clauses of predicate `q'/2 ends
-warn_non_contiguous_foreign.m:067:   with this clause.
-warn_non_contiguous_foreign.m:067:   Gap 2 in clauses of predicate `q'/2 starts
-warn_non_contiguous_foreign.m:067:   after this clause.
-warn_non_contiguous_foreign.m:073:   Gap 2 in clauses of predicate `q'/2 ends
-warn_non_contiguous_foreign.m:073:   with this clause.
+warn_non_contiguous_foreign.m:071:   Gap 2 in clauses of predicate `q'/2 starts
+warn_non_contiguous_foreign.m:071:   after this clause.
+warn_non_contiguous_foreign.m:077:   Gap 2 in clauses of predicate `q'/2 ends
+warn_non_contiguous_foreign.m:077:   with this clause.

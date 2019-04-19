@@ -5,6 +5,7 @@
 % Test that the warning about a module importing itself prints the context
 % of the import.
 %
+%---------------------------------------------------------------------------%
 
 :- module warn_self_import.
 :- interface.

@@ -1,1 +1,1 @@
-warn_self_import.m:016: Warning: module `warn_self_import' imports itself!
+warn_self_import.m:017: Warning: module `warn_self_import' imports itself!

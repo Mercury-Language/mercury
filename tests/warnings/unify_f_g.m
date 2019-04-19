@@ -6,6 +6,8 @@
 % variable with different function symbols. It is a cut-down version of the
 % predicate proc_info_has_io_state_pair_2 from hlds_pred.m, in which the bug
 % marked below took me a long time to find.
+%
+%---------------------------------------------------------------------------%
 
 :- module unify_f_g.
 :- interface.
@@ -22,7 +24,7 @@
 
 p([], !In, !Out).
 p([H | T], !In, !Out) :-
-    ( H < 10 ->
+    ( if H < 10 then
         (
             !.In = no,
             !.In = yes(H)   % hard to see bug: !.In should be !:In
@@ -30,7 +32,7 @@ p([H | T], !In, !Out) :-
             !.In = yes(_),
             fail
         )
-    ; H > 20 ->
+    else if H > 20 then
         (
             !.Out = no,
             !:Out = yes(H)
@@ -38,7 +40,7 @@ p([H | T], !In, !Out) :-
             !.Out = yes(_),
             fail
         )
-    ;
+    else
         fail
     ),
     p(T, !In, !Out).

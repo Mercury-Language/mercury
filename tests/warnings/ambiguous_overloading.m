@@ -3,6 +3,9 @@
 %---------------------------------------------------------------------------%
 %
 % Test the warning for ambiguous overloading.
+%
+%---------------------------------------------------------------------------%
+
 :- module ambiguous_overloading.
 
 :- interface.
@@ -50,7 +53,7 @@ ambig_overload2(L) :-
     L = [A, B, C, D, E, F, G].
 
 test_lt(X) :-
-    (
+    ( if
         X1 < Y1,
         X2 < Y2,
         X3 < Y3,
@@ -65,9 +68,9 @@ test_lt(X) :-
         X5 = 5.0, Y5 = 15.0,
         X6 = 6.0, Y6 = 16.0,
         X7 = 7.0, Y7 = 17.0
-    ->
+    then
         X = 0
-    ;
+    else
         X = 1
     ).
 

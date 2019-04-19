@@ -1,7 +1,11 @@
-% vim: ts=4 sw=4 ft=mercury
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This tests the warnings you should get for unifications of the form
 % X = f(..., X, ...).
+%
+%---------------------------------------------------------------------------%
 
 :- module unify_x_f_x.
 :- interface.
@@ -15,8 +19,9 @@
 :- implementation.
 
 get_percent(!Chars, HavePercent) :-
-    ( !.Chars = ['%' | !.Chars] ->
+    % typo; the second !.Chars should be !:Chars.
+    ( if !.Chars = ['%' | !.Chars] then
         HavePercent = yes
-    ;
+    else
         HavePercent = no
     ).

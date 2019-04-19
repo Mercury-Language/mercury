@@ -2,6 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
+
     % These should issue warnings about termination pragmas conflicting
     % with foreign proc attributes.
 :- module foreign_term_invalid.

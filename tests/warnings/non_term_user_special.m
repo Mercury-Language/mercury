@@ -21,7 +21,8 @@
 
 :- implementation.
 
-my_set_equals(_, _) :- loop.
+my_set_equals(_, _) :-
+    loop.
 
 :- pred loop is semidet.
 
@@ -30,12 +31,14 @@ loop :- a.
 :- pred a is semidet.
 :- pred b is semidet.
 
-a :- b.
-b :- a.
+a :-
+    b.
+b :-
+    a.
 
 my_set_compare(Res, _, _) :-
-    ( loop ->
+    ( if loop then
         Res = (=)
-    ;
+    else
         Res = (=)
     ).

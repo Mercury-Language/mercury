@@ -1,64 +1,64 @@
-ambiguous_overloading.m:045: In clause for predicate `ambig_overload1'/1:
-ambiguous_overloading.m:045:   warning: highly ambiguous overloading.
-ambiguous_overloading.m:045:   The following symbol was overloaded in the
-ambiguous_overloading.m:045:   following context.
-ambiguous_overloading.m:045:   The function symbol `f'/0.
-ambiguous_overloading.m:045:   The possible matches are:
-ambiguous_overloading.m:045:     the type constructor
-ambiguous_overloading.m:045:     `ambiguous_overloading.bar'/0,
-ambiguous_overloading.m:045:     the type constructor
-ambiguous_overloading.m:045:     `ambiguous_overloading.foo'/0,
-ambiguous_overloading.m:045:     the builtin type constructor `character'.
-ambiguous_overloading.m:049: In clause for predicate `ambig_overload2'/1:
-ambiguous_overloading.m:049:   warning: highly ambiguous overloading.
-ambiguous_overloading.m:049:   The following symbols were overloaded in the
-ambiguous_overloading.m:049:   following contexts.
-ambiguous_overloading.m:049:   The function symbol `a1'/0.
-ambiguous_overloading.m:049:   The possible matches are:
-ambiguous_overloading.m:049:     the type constructor
-ambiguous_overloading.m:049:     `ambiguous_overloading.baz'/0,
-ambiguous_overloading.m:049:     the type constructor
-ambiguous_overloading.m:049:     `ambiguous_overloading.qux'/0.
-ambiguous_overloading.m:049:   The function symbol `a2'/0.
-ambiguous_overloading.m:049:   The possible matches are:
-ambiguous_overloading.m:049:     the type constructor
-ambiguous_overloading.m:049:     `ambiguous_overloading.baz'/0,
-ambiguous_overloading.m:049:     the type constructor
-ambiguous_overloading.m:049:     `ambiguous_overloading.qux'/0.
-ambiguous_overloading.m:060: In clause for predicate `test_lt'/1:
-ambiguous_overloading.m:060:   warning: highly ambiguous overloading.
-ambiguous_overloading.m:060:   The following symbol was overloaded in the
-ambiguous_overloading.m:060:   following contexts.
-ambiguous_overloading.m:054:   The predicate symbol predicate `<'/2.
-ambiguous_overloading.m:054:   The possible matches are:
-ambiguous_overloading.m:054:     predicate `int.<'/2,
-ambiguous_overloading.m:054:     predicate `float.<'/2.
-ambiguous_overloading.m:055:   The predicate symbol predicate `<'/2 is also
-ambiguous_overloading.m:055:   overloaded here.
-ambiguous_overloading.m:056:   The predicate symbol predicate `<'/2 is also
-ambiguous_overloading.m:056:   overloaded here.
-ambiguous_overloading.m:057:   The predicate symbol predicate `<'/2 is also
-ambiguous_overloading.m:057:   overloaded here.
+ambiguous_overloading.m:048: In clause for predicate `ambig_overload1'/1:
+ambiguous_overloading.m:048:   warning: highly ambiguous overloading.
+ambiguous_overloading.m:048:   The following symbol was overloaded in the
+ambiguous_overloading.m:048:   following context.
+ambiguous_overloading.m:048:   The function symbol `f'/0.
+ambiguous_overloading.m:048:   The possible matches are:
+ambiguous_overloading.m:048:     the type constructor
+ambiguous_overloading.m:048:     `ambiguous_overloading.bar'/0,
+ambiguous_overloading.m:048:     the type constructor
+ambiguous_overloading.m:048:     `ambiguous_overloading.foo'/0,
+ambiguous_overloading.m:048:     the builtin type constructor `character'.
+ambiguous_overloading.m:052: In clause for predicate `ambig_overload2'/1:
+ambiguous_overloading.m:052:   warning: highly ambiguous overloading.
+ambiguous_overloading.m:052:   The following symbols were overloaded in the
+ambiguous_overloading.m:052:   following contexts.
+ambiguous_overloading.m:052:   The function symbol `a1'/0.
+ambiguous_overloading.m:052:   The possible matches are:
+ambiguous_overloading.m:052:     the type constructor
+ambiguous_overloading.m:052:     `ambiguous_overloading.baz'/0,
+ambiguous_overloading.m:052:     the type constructor
+ambiguous_overloading.m:052:     `ambiguous_overloading.qux'/0.
+ambiguous_overloading.m:052:   The function symbol `a2'/0.
+ambiguous_overloading.m:052:   The possible matches are:
+ambiguous_overloading.m:052:     the type constructor
+ambiguous_overloading.m:052:     `ambiguous_overloading.baz'/0,
+ambiguous_overloading.m:052:     the type constructor
+ambiguous_overloading.m:052:     `ambiguous_overloading.qux'/0.
+ambiguous_overloading.m:063: In clause for predicate `test_lt'/1:
+ambiguous_overloading.m:063:   warning: highly ambiguous overloading.
+ambiguous_overloading.m:063:   The following symbol was overloaded in the
+ambiguous_overloading.m:063:   following contexts.
+ambiguous_overloading.m:057:   The predicate symbol predicate `<'/2.
+ambiguous_overloading.m:057:   The possible matches are:
+ambiguous_overloading.m:057:     predicate `int.<'/2,
+ambiguous_overloading.m:057:     predicate `float.<'/2.
 ambiguous_overloading.m:058:   The predicate symbol predicate `<'/2 is also
 ambiguous_overloading.m:058:   overloaded here.
 ambiguous_overloading.m:059:   The predicate symbol predicate `<'/2 is also
 ambiguous_overloading.m:059:   overloaded here.
-ambiguous_overloading.m:081: In clause for predicate
-ambiguous_overloading.m:081:   `set_browser_param_from_option_table'/3:
-ambiguous_overloading.m:081:   warning: highly ambiguous overloading.
-ambiguous_overloading.m:081:   The following symbol was overloaded in the
-ambiguous_overloading.m:081:   following contexts.
-ambiguous_overloading.m:076:   The function symbol `lookup_bool_option'/2.
-ambiguous_overloading.m:076:   The possible matches are:
-ambiguous_overloading.m:076:     predicate `getopt.lookup_bool_option'/3,
-ambiguous_overloading.m:076:     function `getopt.lookup_bool_option'/2.
-ambiguous_overloading.m:077:   The function symbol `lookup_bool_option'/2 is
-ambiguous_overloading.m:077:   also overloaded here.
-ambiguous_overloading.m:078:   The function symbol `lookup_bool_option'/2 is
-ambiguous_overloading.m:078:   also overloaded here.
-ambiguous_overloading.m:079:   The function symbol `lookup_bool_option'/2 is
-ambiguous_overloading.m:079:   also overloaded here.
+ambiguous_overloading.m:060:   The predicate symbol predicate `<'/2 is also
+ambiguous_overloading.m:060:   overloaded here.
+ambiguous_overloading.m:061:   The predicate symbol predicate `<'/2 is also
+ambiguous_overloading.m:061:   overloaded here.
+ambiguous_overloading.m:062:   The predicate symbol predicate `<'/2 is also
+ambiguous_overloading.m:062:   overloaded here.
+ambiguous_overloading.m:084: In clause for predicate
+ambiguous_overloading.m:084:   `set_browser_param_from_option_table'/3:
+ambiguous_overloading.m:084:   warning: highly ambiguous overloading.
+ambiguous_overloading.m:084:   The following symbol was overloaded in the
+ambiguous_overloading.m:084:   following contexts.
+ambiguous_overloading.m:079:   The function symbol `lookup_bool_option'/2.
+ambiguous_overloading.m:079:   The possible matches are:
+ambiguous_overloading.m:079:     predicate `getopt.lookup_bool_option'/3,
+ambiguous_overloading.m:079:     function `getopt.lookup_bool_option'/2.
 ambiguous_overloading.m:080:   The function symbol `lookup_bool_option'/2 is
 ambiguous_overloading.m:080:   also overloaded here.
 ambiguous_overloading.m:081:   The function symbol `lookup_bool_option'/2 is
 ambiguous_overloading.m:081:   also overloaded here.
+ambiguous_overloading.m:082:   The function symbol `lookup_bool_option'/2 is
+ambiguous_overloading.m:082:   also overloaded here.
+ambiguous_overloading.m:083:   The function symbol `lookup_bool_option'/2 is
+ambiguous_overloading.m:083:   also overloaded here.
+ambiguous_overloading.m:084:   The function symbol `lookup_bool_option'/2 is
+ambiguous_overloading.m:084:   also overloaded here.

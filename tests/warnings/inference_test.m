@@ -5,19 +5,22 @@
 % This test case isn't really testing warnings,
 % it is actually testing that the compiler
 % prints out the right type/mode inference message.
+%
+%---------------------------------------------------------------------------%
 
 :- module inference_test.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
 :- import_module list.
 
-main -->
-    print(len_func([42])), nl.
+main(!IO) :-
+    io.print(len_func([42]), !IO),
+    io.nl(!IO).
 
 len_func(List) = Len :-
     len(List, Len).

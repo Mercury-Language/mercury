@@ -5,6 +5,8 @@
 % Tests that the termination analyser gives a reason for reporting
 % non-termination when `--check-termination' is enabled rather than
 % just reporting that it couldn't prove termination for unknown reasons.
+%
+%---------------------------------------------------------------------------%
 
 :- module term_indirect_warning.
 

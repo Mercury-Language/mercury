@@ -3,6 +3,8 @@
 %---------------------------------------------------------------------------%
 %
 %  Predicates to check that unused_args.m is producing the correct warning.
+%
+%---------------------------------------------------------------------------%
 
 :- module unused_args_test.
 :- interface.

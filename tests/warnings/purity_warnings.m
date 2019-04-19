@@ -3,43 +3,48 @@
 %---------------------------------------------------------------------------%
 %
 % Various checks that impurity declarations are treated properly.
-% XXX We miss a couple of things that we should warn about: see the XXXs below.
+% XXX We miss some things that we should warn about: see the XXXs below.
+%
+%---------------------------------------------------------------------------%
 
 :- module purity_warnings.
 :- interface.
+
 :- import_module io.
-:- impure pred main(io__state::di, io__state::uo) is det.
+:- impure pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module string.
 
-main -->
-    impure impure_pred1,
-    impure impure_pred2,
-    semipure semipure_pred,
-    impure impure_method1a,
-    impure impure_method2a,
-    semipure semipure_method_a,
-    impure impure_method1b,
-    impure impure_method2b,
-    semipure semipure_method_b,
-    semipure io__write_string("main 1\n"),  % warn
-    impure io__print("main 2\n").       % warn
+main(!IO) :-
+    impure impure_pred1(!IO),
+    impure impure_pred2(!IO),
+    semipure semipure_pred(!IO),
+    impure impure_method1a(!IO),
+    impure impure_method2a(!IO),
+    semipure semipure_method_a(!IO),
+    impure impure_method1b(!IO),
+    impure impure_method2b(!IO),
+    semipure semipure_method_b(!IO),
+    semipure io.write_string("main 1\n", !IO),              % warn
+    impure io.print("main 2\n", !IO).                       % warn
 
-:- impure pred impure_pred1(io__state::di, io__state::uo) is det. % warn
-impure_pred1 -->
-    io__write_string("impure_pred1\n").
+:- impure pred impure_pred1(io::di, io::uo) is det.         % warn
+impure_pred1(!IO) :-
+    io.write_string("impure_pred1\n", !IO).
 
-:- impure pred impure_pred2(io__state::di, io__state::uo) is det. % warn
-impure_pred2 -->
-    io__write_string("impure_pred2\n"),
-    { semipure get_x(X) },
-    print("X = "), print(X), nl.
+:- impure pred impure_pred2(io::di, io::uo) is det.         % warn
+impure_pred2(!IO) :-
+    io.write_string("impure_pred2\n", !IO),
+    semipure get_x(X),
+    io.print("X = ", !IO),
+    io.print(X, !IO),
+    io.nl(!IO).
 
-:- semipure pred semipure_pred(io__state::di, io__state::uo) is det.
-semipure_pred -->
-    semipure io__write_string("semipure_pred1\n").      % warn
+:- semipure pred semipure_pred(io::di, io::uo) is det.
+semipure_pred(!IO) :-
+    semipure io.write_string("semipure_pred1\n", !IO).      % warn
 
 :- typeclass foo(IO) where [
     (impure pred impure_method1a(IO::di, IO::uo) is det),
@@ -49,32 +54,41 @@ semipure_pred -->
     (semipure pred semipure_method_a(IO::di, IO::uo) is det),
     (semipure pred semipure_method_b(IO::di, IO::uo) is det)
 ].
+
 :- instance foo(io) where [
     pred(impure_method1a/2) is impure_method1a_impl,
     pred(impure_method2a/2 )is impure_method2a_impl,
     pred(semipure_method_a/2 )is semipure_method_a_impl,
-    (impure_method1b -->
-        impure print("impure_method1b\n")), % XXX should warn
-    (impure_method2b -->
-        io__write_string("impure_method2b\n"),
-        { semipure get_x(X) },
-        print("X = "), print(X), nl),
-    (semipure_method_b -->
-        semipure print("semipure_method_b\n"))  % XXX should warn
+    ( impure_method1b(!IO) :-
+        impure io.print("impure_method1b\n", !IO)           % XXX should warn
+    ),
+    ( impure_method2b(!IO) :-
+        io.write_string("impure_method2b\n", !IO),
+        semipure get_x(X),
+        io.print("X = ", !IO),
+        io.print(X, !IO),
+        io.nl(!IO)
+    ),
+    ( semipure_method_b(!IO) :-
+        semipure io.print("semipure_method_b\n", !IO)       % XXX should warn
+    )
 ].
 
 :- impure pred impure_method1a_impl(io::di, io::uo) is det.
-:- semipure pred impure_method2a_impl(io::di, io::uo) is det.
-:- semipure pred semipure_method_a_impl(io::di, io::uo) is det.
+impure_method1a_impl(!IO) :-
+    impure io.print("impure_method1a_impl\n", !IO).         % warn
 
-impure_method1a_impl -->
-    impure print("impure_method1a_impl\n").     % warn
-impure_method2a_impl -->
-    io__write_string("impure_method2a_impl\n"),
-    { semipure get_x(X) },
-    print("X = "), print(X), nl.
-semipure_method_a_impl -->
-    semipure print("semipure_method_a_impl\n"). % warn
+:- semipure pred impure_method2a_impl(io::di, io::uo) is det.
+impure_method2a_impl(!IO) :-
+    io.write_string("impure_method2a_impl\n", !IO),
+    semipure get_x(X),
+    io.print("X = ", !IO),
+    io.print(X, !IO),
+    io.nl(!IO).
+
+:- semipure pred semipure_method_a_impl(io::di, io::uo) is det.
+semipure_method_a_impl(!IO) :-
+    semipure print("semipure_method_a_impl\n", !IO).        % warn
 
 :- pragma foreign_decl("C", "extern int x;").
 :- pragma foreign_code("C", "int x = 0;").

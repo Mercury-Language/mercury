@@ -1,4 +1,4 @@
-non_contiguous_decls.m:036: Warning: the predicate declaration for predicate
-non_contiguous_decls.m:036:   `queen'/2 is not followed immediately by its
-non_contiguous_decls.m:036:   first mode declaration.
-non_contiguous_decls.m:042:   The first mode declaration is here.
+non_contiguous_decls.m:035: Warning: the predicate declaration for predicate
+non_contiguous_decls.m:035:   `queen'/2 is not followed immediately by its
+non_contiguous_decls.m:035:   first mode declaration.
+non_contiguous_decls.m:041:   The first mode declaration is here.

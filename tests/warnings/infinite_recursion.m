@@ -3,36 +3,52 @@
 %---------------------------------------------------------------------------%
 %
 % Test the warning for infinite recursion.
+%
+%---------------------------------------------------------------------------%
+
 :- module infinite_recursion.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
+:- import_module int.
 :- import_module list.
 
-main -->
-    ( { funny_append([1, 2, 3], [4, 5, 6], [5, 6, 7]) } ->
-        main
-    ;
-        { loop }
+main(!IO) :-
+    ( if
+        funny_append([1, 2, 3], [4, 5, 6], Ns),
+        sum(Ns, 0, Sum),
+        Sum < 42
+    then
+        main(!IO)
+    else
+        loop
     ).
 
 :- pred loop is det.
 
 loop :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         loop
-    ;
+    else
         true
     ).
 
-:- pred funny_append(list(T), list(T), list(T)).
-:- mode funny_append(in, in, out) is det.
+:- pred funny_append(list(T)::in, list(T)::in, list(T)::out) is det.
 
 funny_append(L1, L2, L3) :-
-    L1 = [], L2 = L3
+    (
+        L1 = [], L2 = L3
     ;
-    L1 = [X | _Xs], L3 = [X | Zs],
-    funny_append(L1, L2, Zs).   % L1 should be _Xs.
+        L1 = [X | _Xs], L3 = [X | Zs],
+        funny_append(L1, L2, Zs)        % L1 should be _Xs.
+    ).
+
+:- pred sum(list(int)::in, int::in, int::out) is det.
+
+sum([], !Sum).
+sum([N | Ns], !Sum) :-
+    !:Sum = !.Sum + N,
+    sum([N | Ns], !Sum).        % [N | Ns] should be N.

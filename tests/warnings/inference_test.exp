@@ -1,6 +1,6 @@
-inference_test.m:022: Inferred :- func len_func(list.list(T)) = int.
-inference_test.m:025: Inferred :- pred len(list.list(T), int).
-inference_test.m:025: Inferred :- mode len(in, out) is det.
-inference_test.m:037: Inferred :- func int_zero = int.
-inference_test.m:039: Inferred :- pred unused_pred(list.list(T), list.list(T))
-inference_test.m:039:   <= (inference_test.null(T)).
+inference_test.m:025: Inferred :- func len_func(list.list(T)) = int.
+inference_test.m:028: Inferred :- pred len(list.list(T), int).
+inference_test.m:028: Inferred :- mode len(in, out) is det.
+inference_test.m:040: Inferred :- func int_zero = int.
+inference_test.m:042: Inferred :- pred unused_pred(list.list(T), list.list(T))
+inference_test.m:042:   <= (inference_test.null(T)).

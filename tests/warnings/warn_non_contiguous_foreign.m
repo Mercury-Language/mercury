@@ -1,5 +1,7 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-
+%---------------------------------------------------------------------------%
+%
 % This is a test of the compiler's ability to properly diagnose non-contiguous
 % clauses for a predicate, when some of those clauses are actually
 % foreign_procs.
@@ -13,6 +15,8 @@
 %
 % The match against the exact text of the output of the compiler
 % guards against the reappearance of this bug.
+%
+%---------------------------------------------------------------------------%
 
 :- module warn_non_contiguous_foreign.
 :- interface.
@@ -37,14 +41,14 @@ main(!IO) :-
 :- pred test(int::in, io::di, io::uo) is det.
 
 test(N, !IO) :-
-    ( p(N, PM) ->
+    ( if p(N, PM) then
         io.format("p(%d) = %d\n", [i(N), i(PM)], !IO)
-    ;
+    else
         io.format("p(%d) failed\n", [i(N)], !IO)
     ),
-    ( q(N, QM) ->
+    ( if q(N, QM) then
         io.format("q(%d) = %d\n", [i(N), i(QM)], !IO)
-    ;
+    else
         io.format("q(%d) failed\n", [i(N)], !IO)
     ).
 

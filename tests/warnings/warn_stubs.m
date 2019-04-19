@@ -14,5 +14,5 @@
 :- pred main1(io::di, io::uo) is det.
 :- pred main2(io::di, io::uo) is det.
 
-main1 -->
-    main2.
+main1(!IO) :-
+    main2(!IO).

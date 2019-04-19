@@ -1,8 +1,12 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-
+%---------------------------------------------------------------------------%
+%
 % This is a test of the compiler's ability to handle predicates
 % in which the Mercury clauses are together, but the foreign_procs
 % are separate from them.
+%
+%---------------------------------------------------------------------------%
 
 :- module warn_non_contiguous_foreign_group.
 :- interface.
@@ -27,14 +31,14 @@ main(!IO) :-
 :- pred test(int::in, io::di, io::uo) is det.
 
 test(N, !IO) :-
-    ( p(N, PM) ->
+    ( if p(N, PM) then
         io.format("p(%d) = %d\n", [i(N), i(PM)], !IO)
-    ;
+    else
         io.format("p(%d) failed\n", [i(N)], !IO)
     ),
-    ( q(N, QM) ->
+    ( if q(N, QM) then
         io.format("q(%d) = %d\n", [i(N), i(QM)], !IO)
-    ;
+    else
         io.format("q(%d) failed\n", [i(N)], !IO)
     ).
 

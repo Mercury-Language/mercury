@@ -4,6 +4,8 @@
 %
 % This is a copy of tests/benchmarks/queens.m, with the mode declarations
 % of some predicates intentionally misplaced.
+%
+%---------------------------------------------------------------------------%
 
 :- module non_contiguous_decls.
 
@@ -26,9 +28,6 @@ main(!IO) :-
         io.write_string("No solution\n", !IO)
     ).
 
-% With this data, this program solves the 8-queens problem. To solve the
-% N-queens problem for some other N, make this predicate return the first
-% N integers.
 :- pred data(list(int)::out) is det.
 
 data([1, 2, 3, 4, 5, 6, 7, 8]).

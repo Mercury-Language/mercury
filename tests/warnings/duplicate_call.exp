@@ -1,4 +1,4 @@
-duplicate_call.m:019: Warning: redundant call to predicate
-duplicate_call.m:019:   `duplicate_call.called'/3.
-duplicate_call.m:018: Here is the previous call to predicate
-duplicate_call.m:018:   `duplicate_call.called'/3.
+duplicate_call.m:022: Warning: redundant call to predicate
+duplicate_call.m:022:   `duplicate_call.called'/3.
+duplicate_call.m:021: Here is the previous call to predicate
+duplicate_call.m:021:   `duplicate_call.called'/3.

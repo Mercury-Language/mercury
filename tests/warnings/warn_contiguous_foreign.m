@@ -1,9 +1,13 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-
+%---------------------------------------------------------------------------%
+%
 % This is a test of the compiler's ability to properly AVOID reporting
 % non-contiguous clauses for a predicate when the totality of all clauses
 % and foreign_procs of a predicate are contiguous, but the applicable ones
 % are not contiguous.
+%
+%---------------------------------------------------------------------------%
 
 :- module warn_contiguous_foreign.
 :- interface.

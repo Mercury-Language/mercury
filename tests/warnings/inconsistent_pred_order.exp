@@ -1,17 +1,17 @@
-inconsistent_pred_order.m:008: Warning: the order of the declarations and
-inconsistent_pred_order.m:008:   definitions of the nonexported predicates is
-inconsistent_pred_order.m:008:   inconsistent, as shown by this diff:
-inconsistent_pred_order.m:008:   
-inconsistent_pred_order.m:008:   --- declaration order
-inconsistent_pred_order.m:008:   +++ definition order
-inconsistent_pred_order.m:008:   @@ -1,8 +1,8 @@
-inconsistent_pred_order.m:008:    predicate `data'/1
-inconsistent_pred_order.m:008:    predicate `queen'/2
-inconsistent_pred_order.m:008:    predicate `qperm'/2
-inconsistent_pred_order.m:008:   -predicate `safe'/1
-inconsistent_pred_order.m:008:    predicate `qdelete'/3
-inconsistent_pred_order.m:008:   -predicate `print_list'/3
-inconsistent_pred_order.m:008:   +predicate `safe'/1
-inconsistent_pred_order.m:008:    predicate `nodiag'/3
-inconsistent_pred_order.m:008:   +predicate `print_list'/3
-inconsistent_pred_order.m:008:    predicate `print_list_elements'/4
+inconsistent_pred_order.m:010: Warning: the order of the declarations and
+inconsistent_pred_order.m:010:   definitions of the nonexported predicates is
+inconsistent_pred_order.m:010:   inconsistent, as shown by this diff:
+inconsistent_pred_order.m:010:   
+inconsistent_pred_order.m:010:   --- declaration order
+inconsistent_pred_order.m:010:   +++ definition order
+inconsistent_pred_order.m:010:   @@ -1,8 +1,8 @@
+inconsistent_pred_order.m:010:    predicate `data'/1
+inconsistent_pred_order.m:010:    predicate `queen'/2
+inconsistent_pred_order.m:010:    predicate `qperm'/2
+inconsistent_pred_order.m:010:   -predicate `safe'/1
+inconsistent_pred_order.m:010:    predicate `qdelete'/3
+inconsistent_pred_order.m:010:   -predicate `print_list'/3
+inconsistent_pred_order.m:010:   +predicate `safe'/1
+inconsistent_pred_order.m:010:    predicate `nodiag'/3
+inconsistent_pred_order.m:010:   +predicate `print_list'/3
+inconsistent_pred_order.m:010:    predicate `print_list_elements'/4

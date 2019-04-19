@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Author: original version written by Pedro Mariano; reformatted for our
 % standard style, cut down to minimal size and the problem diagnosed by zs.
@@ -105,6 +107,8 @@
 %
 % Therefore for the original submitter, I propose replacing lattice_bad
 % (which exhibits the bug) with lattice_bad_fixed (which does not).
+%
+%---------------------------------------------------------------------------%
 
 :- module bug311.
 

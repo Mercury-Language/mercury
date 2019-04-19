@@ -8,6 +8,8 @@
 % bad_singleton_warning.m:031:   `bad_singleton_warning.is_it_there_str'/3:
 % bad_singleton_warning.m:031:   warning: variable `Value' occurs only once in
 % bad_singleton_warning.m:031:   this scope.
+%
+%---------------------------------------------------------------------------%
 
 :- module missing_singleton_warning.
 :- interface.
@@ -29,8 +31,8 @@ is_it_there_test(Map, Key) :-
 is_it_there_str(Map, Key, Str) :-
     % Test whether we get a warning on a special quantification
     % on the condition of an if-then-else. (This is treated separately
-    % by the compiler because it quantifies over the "conjunction" formed
-    % by the condition and the then-part.)
+    % by the compiler because it quantifies over not a single goal, but
+    % over the "conjunction" formed by the condition and the then-part.)
     ( if
         some [Value] (
             map.search(Map, Key, _Result)
