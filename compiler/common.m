@@ -152,8 +152,8 @@
     % Succeeds if the two variables are equivalent according to the
     % information in the specified common_info.
     %
-:- pred common_vars_are_equivalent(prog_var::in, prog_var::in,
-    common_info::in) is semidet.
+:- pred common_vars_are_equivalent(common_info::in,
+    prog_var::in, prog_var::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -742,7 +742,7 @@ partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
 find_previous_call([SeenCall | SeenCalls], InputArgs, Eqv, OutputArgs,
         PrevContext) :-
     SeenCall = call_args(PrevContext, InputArgs1, OutputArgs1),
-    ( if common_var_lists_are_equiv(InputArgs, InputArgs1, Eqv) then
+    ( if common_var_lists_are_equiv(Eqv, InputArgs, InputArgs1) then
         OutputArgs = OutputArgs1
     else
         find_previous_call(SeenCalls, InputArgs, Eqv, OutputArgs, PrevContext)
@@ -753,25 +753,25 @@ find_previous_call([SeenCall | SeenCalls], InputArgs, Eqv, OutputArgs,
     % Succeeds if the two lists of variables are equivalent
     % according to the specified equivalence class.
     %
-:- pred common_var_lists_are_equiv(list(prog_var)::in, list(prog_var)::in,
-    eqvclass(prog_var)::in) is semidet.
+:- pred common_var_lists_are_equiv(eqvclass(prog_var)::in,
+    list(prog_var)::in, list(prog_var)::in) is semidet.
 
-common_var_lists_are_equiv([], [], _VarEqv).
-common_var_lists_are_equiv([X | Xs], [Y | Ys], VarEqv) :-
-    common_vars_are_equiv(X, Y, VarEqv),
-    common_var_lists_are_equiv(Xs, Ys, VarEqv).
+common_var_lists_are_equiv(_VarEqv, [], []).
+common_var_lists_are_equiv(VarEqv, [X | Xs], [Y | Ys]) :-
+    common_vars_are_equiv(VarEqv, X, Y),
+    common_var_lists_are_equiv(VarEqv, Xs, Ys).
 
-common_vars_are_equivalent(X, Y, CommonInfo) :-
+common_vars_are_equivalent(CommonInfo, X, Y) :-
     EqvVars = CommonInfo ^ var_eqv,
-    common_vars_are_equiv(X, Y, EqvVars).
+    common_vars_are_equiv(EqvVars, X, Y).
 
     % Succeeds if the two variables are equivalent according to the
     % specified equivalence class.
     %
-:- pred common_vars_are_equiv(prog_var::in, prog_var::in,
-    eqvclass(prog_var)::in) is semidet.
+:- pred common_vars_are_equiv(eqvclass(prog_var)::in,
+    prog_var::in, prog_var::in) is semidet.
 
-common_vars_are_equiv(X, Y, VarEqv) :-
+common_vars_are_equiv(VarEqv, X, Y) :-
     (
         X = Y
     ;

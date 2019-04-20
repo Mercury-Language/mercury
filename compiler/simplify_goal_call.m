@@ -514,8 +514,9 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
     simplify_nested_context::in,  common_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
-        PredInfo, ProcInfo, GoalInfo, NestedContext, Common, !Info) :-
+maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
+        IsBuiltin, PredInfo, ProcInfo, GoalInfo, NestedContext, Common,
+        !Info) :-
     ( if
         simplify_do_warn_simple_code(!.Info),
 
@@ -540,7 +541,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
         simplify_info_get_module_info(!.Info, ModuleInfo),
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, ArgModes),
-        input_args_are_equiv(Args, HeadVars, ArgModes, Common, ModuleInfo),
+        input_args_are_equiv(ModuleInfo, Common, ArgVars, HeadVars, ArgModes),
 
         % Don't warn if the input arguments' modes initial insts contain
         % `any' insts, since the arguments might have become more constrained
@@ -594,25 +595,25 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
         true
     ).
 
-    % input_args_are_equiv(Args, HeadVars, Modes, CommonInfo, ModuleInfo):
+    % input_args_are_equiv(ModuleInfo, CommonInfo, ArgVars, HeadVars, Modes):
     %
     % Succeeds if all the input arguments (determined by looking at `Modes')
-    % in `Args' are equivalent (according to the equivalence class specified
+    % in `ArgVars' are equivalent (according to the equivalence class specified
     % by `CommonInfo') to the corresponding variables in HeadVars.
-    % HeadVars, Modes, and Args should all be lists of the same length.
+    % HeadVars, Modes, and ArgVars should all be lists of the same length.
     %
-:- pred input_args_are_equiv(list(prog_var)::in, list(prog_var)::in,
-    list(mer_mode)::in, common_info::in, module_info::in) is semidet.
+:- pred input_args_are_equiv(module_info::in, common_info::in,
+    list(prog_var)::in, list(prog_var)::in, list(mer_mode)::in) is semidet.
 
-input_args_are_equiv([], [], _, _, _).
-input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
-        CommonInfo, ModuleInfo) :-
+input_args_are_equiv(_, _, [], [], _).
+input_args_are_equiv(ModuleInfo, CommonInfo,
+        [ArgVar | ArgVars], [HeadVar | HeadVars], [Mode | Modes]) :-
     ( if mode_is_input(ModuleInfo, Mode) then
-        common_vars_are_equivalent(Arg, HeadVar, CommonInfo)
+        common_vars_are_equivalent(CommonInfo, ArgVar, HeadVar)
     else
         true
     ),
-    input_args_are_equiv(Args, HeadVars, Modes, CommonInfo, ModuleInfo).
+    input_args_are_equiv(ModuleInfo, CommonInfo, ArgVars, HeadVars, Modes).
 
 %---------------------%
 
