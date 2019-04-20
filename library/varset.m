@@ -75,8 +75,8 @@
 :- pred new_named_var(string::in, var(T)::out,
     varset(T)::in, varset(T)::out) is det.
 
-    % Create a new named variable with a unique (w.r.t. the
-    % varset) number appended to the name.
+    % Create a new named variable with a unique (w.r.t. the varset) number
+    % appended to the name.
     %
 :- pred new_uniquely_named_var(string::in, var(T)::out,
     varset(T)::in, varset(T)::out) is det.
