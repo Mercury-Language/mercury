@@ -76,16 +76,21 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ( LambdaCodeModel = model_det
             ; LambdaCodeModel = model_semi
             ),
-            ProcIsModelNon = no
+            LambdaProcIsModelNon = no
         ;
             LambdaCodeModel = model_non,
             Context = goal_info_get_context(GoalInfo0),
-            ProcIsModelNon = yes(imp_lambda(Context))
+            LambdaProcIsModelNon = yes(imp_lambda(Context))
         ),
         NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
-            NumEnclosingLambdas0, _ProcModelNon),
+            _ProcModelNon, NumEnclosingBarriers),
+        ( if goal_info_has_feature(GoalInfo0, feature_lambda_from_try) then
+            LambdaNumEnclosingBarriers = NumEnclosingBarriers
+        else
+            LambdaNumEnclosingBarriers = NumEnclosingBarriers + 1
+        ),
         LambdaNestedContext = simplify_nested_context(InsideDuplForSwitch,
-            NumEnclosingLambdas0 + 1, ProcIsModelNon),
+            LambdaProcIsModelNon, LambdaNumEnclosingBarriers),
 
         simplify_info_get_module_info(!.Info, ModuleInfo),
         instmap.pre_lambda_update(ModuleInfo, Vars, Modes,

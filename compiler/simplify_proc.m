@@ -175,10 +175,10 @@ simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
     % is used for deciding what warnings and errors to generate, and
     % we are not interested in those.
     InsideDuplForSwitch = no,
-    NumEnclosingLambdas = 0,
+    NumEnclosingBarriers = 0,
     ProcIsModelNon = no,
     NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
-        NumEnclosingLambdas, ProcIsModelNon),
+        ProcIsModelNon, NumEnclosingBarriers),
     simplify_top_level_goal(!Goal, NestedContext0, InstMap0,
         SimplifyInfo0, SimplifyInfo),
 
@@ -251,7 +251,7 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         SimplifyTasks, Info0),
 
     InsideDuplForSwitch = no,
-    NumEnclosingLambdas = 0,
+    NumEnclosingBarriers = 0,
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
     (
         ( CodeModel = model_det
@@ -263,7 +263,7 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         ProcIsModelNon = yes(imp_whole_proc)
     ),
     NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
-        NumEnclosingLambdas, ProcIsModelNon),
+        ProcIsModelNon, NumEnclosingBarriers),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),

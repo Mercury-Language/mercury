@@ -1489,7 +1489,7 @@
             %   has already had generated for it all the warnings of this type
             %   that it deserved.
 
-    ;       feature_lifted_by_cse.
+    ;       feature_lifted_by_cse
             % This goal is a deconstruction unification that has been lifted
             % out of each arm of a switch by cse_detection.m. Used to avoid
             % spurious warnings about the goal inside a scope such as
@@ -1498,6 +1498,13 @@
             % but where cse_detection.m turns it into a conjunction,
             % inserting one or more of these lifted-out deconstructions
             % before the original switch.
+
+    ;       feature_lambda_from_try.
+            % This lambda goal wraps the main part of a try goal,
+            % the part that does the main job but may throw an exception.
+            % This feaure is used to inform the code that warns about
+            % infinite recursion that the lambda goal *will* be executed
+            % in context in which it is constructed.
 
 %-----------------------------------------------------------------------------%
 %

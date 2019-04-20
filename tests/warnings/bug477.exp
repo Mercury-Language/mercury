@@ -1,0 +1,2 @@
+bug477.m:036: Warning: recursive call to predicate `reconstruct_route'/3 will
+bug477.m:036:   lead to infinite recursion.

@@ -530,9 +530,11 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
         % it is not infinite recursion.)
         IsBuiltin \= inline_builtin,
 
-        % Don't warn if we are inside a lambda goal, because the recursive call
-        % may not be executed.
-        NestedContext ^ snc_num_enclosing_lambdas = 0,
+        % Don't warn if we are inside a lambda goal that was not created for
+        % a try goal, because the recursive call may not be executed, and
+        % even if it is, it may not be from inside the call tree of the
+        % current predicate.
+        NestedContext ^ snc_num_enclosing_barriers = 0,
 
         % Are the input arguments the same (or equivalent)?
         simplify_info_get_module_info(!.Info, ModuleInfo),

@@ -810,7 +810,7 @@ bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
     proc_info::in, proc_info::out) is det.
 
 make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
-        LambdaVar, AssignLambdaVar, !ProcInfo) :-
+        LambdaVar, AssignLambdaVarGoal, !ProcInfo) :-
     Body0 = hlds_goal(_, BodyInfo0),
     NonLocals0 = goal_info_get_nonlocals(BodyInfo0),
     set_of_var.difference(NonLocals0, OutputVarsSet, NonLocals1),
@@ -860,7 +860,10 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         lambda_normal, set_of_var.to_sorted_list(NonLocals),
         LambdaParams, LambdaParamModes, LambdaDetism, LambdaBody),
     create_pure_atomic_complicated_unification(LambdaVar, RHS,
-        term.context_init, umc_implicit("try_expand"), [], AssignLambdaVar).
+        term.context_init, umc_implicit("try_expand"), [],
+        AssignLambdaVarGoal0),
+    goal_add_feature(feature_lambda_from_try,
+        AssignLambdaVarGoal0, AssignLambdaVarGoal).
 
     % try* don't cover all possible determinisms so we have generate lambdas
     % with less restrictive determinisms.

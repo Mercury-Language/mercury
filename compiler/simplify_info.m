@@ -52,17 +52,17 @@
                 % for a switch?
                 snc_inside_dupl_for_switch  :: bool,
 
-                % Count of the number of lambdas which enclose
-                % the current goal.
-                snc_num_enclosing_lambdas   :: int,
-
                 % Can the procedure we are inside be invoked from an
                 % all-solutions predicate?
                 % If we are inside one or more lambda expressions,
                 % the relevant procedure is the innermost lambda,
                 % which will later be transformed into a separate procedure.
                 % If yes, identify the procedure.
-                snc_proc_is_model_non       :: maybe(innermost_proc)
+                snc_proc_is_model_non       :: maybe(innermost_proc),
+
+                % Count of the number of lambdas which enclose
+                % the current goal.
+                snc_num_enclosing_barriers  :: int
             ).
 
 :- type maybe_allow_messages

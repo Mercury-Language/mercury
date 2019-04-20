@@ -22,6 +22,7 @@ ERRORCHECK_PROGS = \
 	ambiguous_overloading \
 	bug311 \
 	bug412 \
+	bug477 \
 	det_infer_warning \
 	double_underscore \
 	duplicate_call \
