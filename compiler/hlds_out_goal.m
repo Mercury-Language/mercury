@@ -120,7 +120,6 @@
 
 :- implementation.
 
-:- import_module hlds.goal_mode.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
@@ -421,12 +420,14 @@ do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
                     InstMapDelta, !IO),
                 io.write_string("\n", !IO)
             )
-        ),
+        )
 
-        GoalMode = goal_info_get_goal_mode(GoalInfo),
-        PrefixStr = indent_string(Indent) ++ "% ",
-        GoalModeStrs = dump_goal_mode(PrefixStr, VarSet, GoalMode),
-        list.foldl(io.write_string, GoalModeStrs, !IO)
+        % XXX Until work starts on the new constraint based mode system,
+        % printing goal_modes would be just clutter.
+%       GoalMode = goal_info_get_goal_mode(GoalInfo),
+%       PrefixStr = indent_string(Indent) ++ "% ",
+%       GoalModeStrs = dump_goal_mode(PrefixStr, VarSet, GoalMode),
+%       list.foldl(io.write_string, GoalModeStrs, !IO)
     else
         true
     ),
@@ -2019,8 +2020,8 @@ write_goal_scope(!.Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
             MutableVars, QuantVars),
         io.write_string("trace [\n", !IO),
-        some [!AddCommaNewlineIndent] (
-            !:AddCommaNewlineIndent = no,
+        some [!AddCommaNewline] (
+            !:AddCommaNewline = no,
             (
                 MaybeCompileTime = yes(CompileTime),
                 write_indent(Indent + 1, !IO),
@@ -2028,42 +2029,43 @@ write_goal_scope(!.Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
                 mercury_output_trace_expr(mercury_output_trace_compiletime,
                     CompileTime, !IO),
                 io.write_string(")", !IO),
-                !:AddCommaNewlineIndent = yes
+                !:AddCommaNewline = yes
             ;
                 MaybeCompileTime = no
             ),
             (
                 MaybeRunTime = yes(RunTime),
-                maybe_add_comma_newline_indent(!.AddCommaNewlineIndent,
-                    Indent + 1, !IO),
+                maybe_add_comma_newline(!.AddCommaNewline, !IO),
+                write_indent(Indent + 1, !IO),
                 io.write_string("runtime(", !IO),
                 mercury_output_trace_expr(mercury_output_trace_runtime,
                     RunTime, !IO),
                 io.write_string(")", !IO),
-                !:AddCommaNewlineIndent = yes
+                !:AddCommaNewline = yes
             ;
                 MaybeRunTime = no
             ),
             (
                 MaybeIO = yes(IOStateVarName),
-                maybe_add_newline_indent(!.AddCommaNewlineIndent,
-                    Indent + 1, !IO),
+                write_indent(Indent + 1, !IO),
+                maybe_add_comma_newline(!.AddCommaNewline, !IO),
+                write_indent(Indent + 1, !IO),
                 io.write_string("% io(!" ++ IOStateVarName ++ ")", !IO),
-                !:AddCommaNewlineIndent = yes
+                !:AddCommaNewline = yes
             ;
                 MaybeIO = no
             ),
 
             list.foldl2(write_trace_mutable_var_hlds(Indent + 1), MutableVars,
-                !AddCommaNewlineIndent, !IO),
+                !.AddCommaNewline, _, !IO),
 
-            maybe_add_newline_indent(!.AddCommaNewlineIndent,
-                Indent + 1, !IO),
+            io.nl(!IO),
+            write_indent(Indent + 1, !IO),
             io.write_string("% quantified vars [", !IO),
             mercury_output_vars(VarSet, VarNamePrint, QuantVars, !IO),
-            io.write_string("]", !IO),
+            io.write_string("]\n", !IO),
 
-            maybe_add_newline_indent(!.AddCommaNewlineIndent, Indent, !IO),
+            write_indent(Indent, !IO),
             io.write_string("] (\n", !IO)
         )
     ;
@@ -2096,16 +2098,14 @@ write_trace_mutable_var_hlds(Indent, MutableVar, !AddCommaNewlineIndent,
     io.write_string("!" ++ StateVarName ++ ")", !IO),
     !:AddCommaNewlineIndent = yes.
 
-:- pred maybe_add_comma_newline_indent(bool::in, int::in, io::di, io::uo)
-    is det.
+:- pred maybe_add_comma_newline(bool::in, io::di, io::uo) is det.
 
-maybe_add_comma_newline_indent(AddCommaNewlineIndent, Indent, !IO) :-
+maybe_add_comma_newline(AddCommaNewline, !IO) :-
     (
-        AddCommaNewlineIndent = no
+        AddCommaNewline = no
     ;
-        AddCommaNewlineIndent = yes,
-        io.write_string(",\n", !IO),
-        write_indent(Indent, !IO)
+        AddCommaNewline = yes,
+        io.write_string(",\n", !IO)
     ).
 
 :- pred maybe_add_newline_indent(bool::in, int::in, io::di, io::uo) is det.
