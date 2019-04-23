@@ -1059,6 +1059,12 @@ Disable the generation of singleton variable warnings.
 @c @item @code{non_tail_recursive_calls}
 @c Disable the generation of warnings about recursive calls
 @c that are not @emph{tail}-recursive calls.
+@item @code{inf_rec_modulo_svar}
+@itemx @code{infinite_recursion_modulo_svar}
+@itemx @code{infinite_recursion_modulo_state_vars}
+Disable the generation of warnings
+about recursive calls in which all input arguments are
+either the same as in the clause head or use state var notation.
 @end table
 
 The keyword starting this scope may be written

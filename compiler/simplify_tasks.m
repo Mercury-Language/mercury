@@ -74,8 +74,24 @@
             % Do common structure elimination even when it might
             % increase stack usage (used by deforestation).
 
-    ;       simptask_ignore_par_conjs.
+    ;       simptask_ignore_par_conjs
             % Replace parallel conjunctions with plain conjunctions.
+
+    ;       simptask_warn_infinite_recursion_modulo_svar.
+            % With simptask_warn_simple_code, we generate warnings
+            % for recursive calls in which all input arguments are
+            % the same as in the clause head. These calls are guaranteed
+            % to represent an infinite loop.
+            % 
+            % If simptask_warn_inf_call_modulo_svar is also set, we also
+            % generate a weaker version of that warning for recursive calls
+            % in which all *non-state-var* input arguments are the same as
+            % in the clause head. In the usual case where the recursion is
+            % controlled by the non-state-var input arguments, these calls
+            % also represent an infinite loop, but we cannot say that for
+            % certain, because in some cases, the predicate is recursing
+            % on a data structure that the code *does* refer to using
+            % state variable notation.
 
     % Each value of this type represents the full set of tasks
     % that simplification should perform. The submodules of simplify.m
@@ -101,7 +117,8 @@
                 do_constant_prop                :: bool,
                 do_common_struct                :: bool,
                 do_extra_common_struct          :: bool,
-                do_ignore_par_conjunctions      :: bool
+                do_ignore_par_conjunctions      :: bool,
+                do_warn_inf_rec_modulo_svar     :: bool
             ).
 
 :- func simplify_tasks_to_list(simplify_tasks) = list(simplify_task).
@@ -124,7 +141,8 @@ simplify_tasks_to_list(SimplifyTasks) = List :-
         WarnImplicitStreamCalls, DoFormatCalls, WarnObsolete,
         MarkCodeModelChanges, AfterFrontEnd, ExcessAssign, TestAfterSwitch,
         ElimRemovableScopes, OptDuplicateCalls, ConstantProp,
-        CommonStruct, ExtraCommonStruct, RemoveParConjunctions),
+        CommonStruct, ExtraCommonStruct, RemoveParConjunctions,
+        WarnInfRecModuloSvar),
     List =
         ( WarnSimpleCode = yes -> [simptask_warn_simple_code] ; [] ) ++
         ( WarnDupCalls = yes -> [simptask_warn_duplicate_calls] ; [] ) ++
@@ -143,7 +161,9 @@ simplify_tasks_to_list(SimplifyTasks) = List :-
         ( ConstantProp = yes -> [simptask_constant_prop] ; [] ) ++
         ( CommonStruct = yes -> [simptask_common_struct] ; [] ) ++
         ( ExtraCommonStruct = yes -> [simptask_extra_common_struct] ; [] ) ++
-        ( RemoveParConjunctions = yes -> [simptask_ignore_par_conjs] ; [] ).
+        ( RemoveParConjunctions = yes -> [simptask_ignore_par_conjs] ; [] ) ++
+        ( WarnInfRecModuloSvar = yes ->
+            [simptask_warn_infinite_recursion_modulo_svar] ; [] ).
 
 list_to_simplify_tasks(List) =
     simplify_tasks(
@@ -161,7 +181,9 @@ list_to_simplify_tasks(List) =
         ( list.member(simptask_constant_prop, List) -> yes ; no ),
         ( list.member(simptask_common_struct, List) -> yes ; no ),
         ( list.member(simptask_extra_common_struct, List) -> yes ; no ),
-        ( list.member(simptask_ignore_par_conjs, List) -> yes ; no )
+        ( list.member(simptask_ignore_par_conjs, List) -> yes ; no ),
+        ( list.member(simptask_warn_infinite_recursion_modulo_svar, List) ->
+            yes ; no )
     ).
 
 find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
@@ -200,6 +222,8 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
     ExtraCommonStruct = no,
     globals.lookup_bool_option(Globals, ignore_par_conjunctions,
         RemoveParConjunctions),
+    globals.lookup_bool_option(Globals, warn_infinite_recursion_modulo_svar,
+        WarnInfRecModuloSvar),
 
     SimplifyTasks = simplify_tasks(
         ( if WarnSimple = yes, WarnThisPass = yes then yes else no),
@@ -217,7 +241,8 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         ConstantProp,
         CommonStruct,
         ExtraCommonStruct,
-        RemoveParConjunctions
+        RemoveParConjunctions,
+        WarnInfRecModuloSvar
     ).
 
 %---------------------------------------------------------------------------%

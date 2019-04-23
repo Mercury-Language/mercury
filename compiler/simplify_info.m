@@ -194,6 +194,7 @@
 :- pred simplify_do_common_struct(simplify_info::in) is semidet.
 :- pred simplify_do_extra_common_struct(simplify_info::in) is semidet.
 :- pred simplify_do_ignore_par_conjunctions(simplify_info::in) is semidet.
+:- pred simplify_do_warn_inf_rec_modulo_svar(simplify_info::in) is semidet.
 
     % Succeed if either warn_duplicate_calls or opt_duplicate_calls is set,
     % and return whether opt_duplicate_calls is set.
@@ -652,6 +653,9 @@ simplify_do_extra_common_struct(Info) :-
 simplify_do_ignore_par_conjunctions(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_ignore_par_conjunctions = yes.
+simplify_do_warn_inf_rec_modulo_svar(Info) :-
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_warn_inf_rec_modulo_svar = yes.
 
 simplify_do_warn_or_opt_duplicate_calls(Info, OptDuplicateCalls) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),

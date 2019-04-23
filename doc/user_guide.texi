@@ -6692,6 +6692,12 @@ Do not warn about references to undefined variables in
 options files with @samp{--make}.
 
 @sp 1
+@item --warn-infinite-recursion-modulo-svar
+@findex --warn-infinite-recursion-modulo-svar
+tWarn about recursive calls in which all input arguments are
+either the same as in the clause head or use state var notation.
+
+@sp 1
 @item --warn-non-tail-recursion @var{type}
 @findex --warn-non-tail-recursion
 Warn about any recursive calls that are not tail recursive.

@@ -42,6 +42,8 @@
 :- implementation.
 
 :- import_module check_hlds.simplify.simplify_goal.
+:- import_module check_hlds.simplify.simplify_info.
+:- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
@@ -171,8 +173,18 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             Common = Common0
         )
     else
-        simplify_goal(SubGoal0, SubGoal, NestedContext0, InstMap0,
-            Common0, Common1, !Info),
+        ( if Reason0 = disable_warnings(HeadWarning, TailWarnings) then
+            simplify_info_get_simplify_tasks(!.Info, Tasks0),
+            list.foldl(disable_simplify_warning,
+                [HeadWarning | TailWarnings], Tasks0, ScopeTasks),
+            simplify_info_set_simplify_tasks(ScopeTasks, !Info),
+            simplify_goal(SubGoal0, SubGoal, NestedContext0, InstMap0,
+                Common0, Common1, !Info),
+            simplify_info_set_simplify_tasks(Tasks0, !Info)
+        else
+            simplify_goal(SubGoal0, SubGoal, NestedContext0, InstMap0,
+                Common0, Common1, !Info)
+        ),
         try_to_merge_nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
         Goal1 = hlds_goal(GoalExpr1, _GoalInfo1),
         ( if GoalExpr1 = scope(FinalReason, FinalSubGoal) then
@@ -235,6 +247,24 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             Common = Common1
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo)
+    ).
+
+:- pred disable_simplify_warning(goal_warning::in,
+    simplify_tasks::in, simplify_tasks::out) is det.
+
+disable_simplify_warning(Warning, !Tasks) :-
+    (
+        Warning = goal_warning_singleton_vars
+        % Warning about singleton vars is done when clauses are added
+        % to the HLDS, not during simplification.
+    ;
+        Warning = goal_warning_non_tail_recursive_calls
+        % Warning about non-tail-recursive calls is done during
+        % code generation, not during simplification. (What calls
+        % are tail recursive depends on the backend.)
+    ;
+        Warning = goal_warning_infinite_recursion_modulo_svar,
+        !Tasks ^ do_warn_inf_rec_modulo_svar := no
     ).
 
 %-----------------------------------------------------------------------------%

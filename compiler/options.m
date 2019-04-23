@@ -170,6 +170,7 @@
     ;       warn_wrong_module_name
     ;       warn_smart_recompilation
     ;       warn_undefined_options_variables
+    ;       warn_infinite_recursion_modulo_svar
     ;       warn_non_tail_recursion_self
     ;       warn_non_tail_recursion_mutual
     ;       warn_non_tail_recursion
@@ -1186,6 +1187,7 @@ option_defaults_2(warning_option, [
     warn_wrong_module_name              -   bool(yes),
     warn_smart_recompilation            -   bool(yes),
     warn_undefined_options_variables    -   bool(yes),
+    warn_infinite_recursion_modulo_svar -   bool(no),
     warn_non_tail_recursion_self        -   bool(no),
     warn_non_tail_recursion_mutual      -   bool(no),
     warn_non_tail_recursion             -   maybe_string_special,
@@ -2095,16 +2097,21 @@ long_option("warn-missing-module-name", warn_missing_module_name).
 long_option("warn-wrong-module-name",   warn_wrong_module_name).
 long_option("warn-smart-recompilation", warn_smart_recompilation).
 long_option("warn-undefined-options-variables",
-                    warn_undefined_options_variables).
+                                        warn_undefined_options_variables).
 long_option("warn-undefined-options-vars",
-                    warn_undefined_options_variables).
+                                        warn_undefined_options_variables).
+long_option("warn-inf-rec-modulo-svar", warn_infinite_recursion_modulo_svar).
+long_option("warn-infinite-recursion-modulo-svar",
+                                        warn_infinite_recursion_modulo_svar).
+long_option("warn-infinite-recursion-modulo-state-vars",
+                                        warn_infinite_recursion_modulo_svar).
 long_option("warn-non-tail-recursion-self",
-                    warn_non_tail_recursion_self).
+                                        warn_non_tail_recursion_self).
 long_option("warn-non-tail-recursion-mutual",
-                    warn_non_tail_recursion_mutual).
+                                        warn_non_tail_recursion_mutual).
 long_option("warn-non-tail-recursion",  warn_non_tail_recursion).
 long_option("warn-obvious-non-tail-recursion",
-                    warn_obvious_non_tail_recursion).
+                                        warn_obvious_non_tail_recursion).
 long_option("warn-target-code",         warn_target_code).
 long_option("warn-up-to-date",          warn_up_to_date).
 long_option("warn-stubs",               warn_stubs).
@@ -3894,6 +3901,9 @@ options_help_warning -->
         "--no-warn-undefined-options-variables",
         "\tDo not warn about references to undefined variables in",
         "\toptions files with `--make'.",
+%       "--warn-infinite-recursion-modulo-svar",
+%       "\tWarn about recursive calls in which all input arguments are",
+%       "\teither the same as in the clause head or use state var notation.",
 % These are the internal options that implement --warn-non-tail-recursion.
 %       "--warn-non-tail-recursion-self",
 %       "\tWarn about any self recursive calls that are not tail recursive.",

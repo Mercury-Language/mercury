@@ -614,6 +614,9 @@ goal_warning_to_string(Warning) = Str :-
     ;
         Warning = goal_warning_singleton_vars,
         Str = "singleton_vars"
+    ;
+        Warning = goal_warning_infinite_recursion_modulo_svar,
+        Str = "infinite_recursion_modulo_svar"
     ).
 
 %-----------------------------------------------------------------------------%
