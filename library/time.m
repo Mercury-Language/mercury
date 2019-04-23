@@ -254,7 +254,7 @@
     where comparison is compare_time_t_reps.
 :- pragma foreign_type("C#", time_t_rep, "System.DateTime")
     where comparison is compare_time_t_reps.
-:- pragma foreign_type("Java", time_t_rep, "java.util.Date")
+:- pragma foreign_type("Java", time_t_rep, "java.time.Instant")
     where comparison is compare_time_t_reps.
 :- pragma foreign_type("Erlang", time_t_rep, "")
     where comparison is compare_time_t_reps.
@@ -357,7 +357,7 @@ time(Result, !IO) :-
     c_time(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    Ret = new java.util.Date();
+    Ret = java.time.Instant.now();
 ").
 :- pragma foreign_proc("Erlang",
     c_time(Ret::out, _IO0::di, _IO::uo),
@@ -579,7 +579,7 @@ difftime(time_t(T1), time_t(T0)) = Diff :-
     c_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Diff = (double) (T1.getTime() - T0.getTime()) / 1000;
+    Diff = (double) (T1.toEpochMilli() - T0.toEpochMilli()) / 1000;
 ").
 :- pragma foreign_proc("Erlang",
     c_difftime(T1::in, T0::in, Diff::out),
@@ -664,45 +664,20 @@ localtime(time_t(Time)) = TM :-
         Min::out, Sec::out, YD::out, WD::out, N::out),
     [will_not_call_mercury, promise_semipure, may_not_duplicate],
 "
-    java.util.GregorianCalendar gc = new java.util.GregorianCalendar();
+    java.time.ZoneId tz = java.time.ZoneId.systemDefault();
+    java.time.ZonedDateTime zdt =
+        java.time.ZonedDateTime.ofInstant(Time, tz);
 
-    gc.setTime(Time);
-    Yr = gc.get(java.util.Calendar.YEAR) - 1900;
-    Mnt = gc.get(java.util.Calendar.MONTH);
-    MD = gc.get(java.util.Calendar.DAY_OF_MONTH);
-    Hrs = gc.get(java.util.Calendar.HOUR_OF_DAY);
-    Min = gc.get(java.util.Calendar.MINUTE);
-    Sec = gc.get(java.util.Calendar.SECOND);
-    YD = gc.get(java.util.Calendar.DAY_OF_YEAR) - 1;
+    Yr = zdt.getYear() - 1900;
+    Mnt = zdt.getMonthValue() - 1;
+    MD = zdt.getDayOfMonth();
+    Hrs = zdt.getHour();
+    Min = zdt.getMinute();
+    Sec = zdt.getSecond();
+    YD = zdt.getDayOfYear() - 1;
+    WD = zdt.getDayOfWeek().getValue() % 7;
 
-    switch (gc.get(java.util.Calendar.DAY_OF_WEEK)) {
-        case java.util.Calendar.SUNDAY:
-            WD = 0;
-            break;
-        case java.util.Calendar.MONDAY:
-            WD = 1;
-            break;
-        case java.util.Calendar.TUESDAY:
-            WD = 2;
-            break;
-        case java.util.Calendar.WEDNESDAY:
-            WD = 3;
-            break;
-        case java.util.Calendar.THURSDAY:
-            WD = 4;
-            break;
-        case java.util.Calendar.FRIDAY:
-            WD = 5;
-            break;
-        case java.util.Calendar.SATURDAY:
-            WD = 6;
-            break;
-        default:
-            throw new RuntimeException(
-                ""invalid DAY_OF_WEEK in time.c_local_time"");
-    }
-
-    if (gc.getTimeZone().inDaylightTime(Time)) {
+    if (tz.getRules().isDaylightSavings(Time)) {
         N = 1;
     } else {
         N = 0;
@@ -764,46 +739,19 @@ gmtime(time_t(Time)) = TM :-
         Min::out, Sec::out, YD::out, WD::out, N::out),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
-    java.util.GregorianCalendar gc =
-        new java.util.GregorianCalendar(
-        java.util.SimpleTimeZone.getTimeZone(""GMT""));
+    java.time.OffsetDateTime utcTime =
+        java.time.OffsetDateTime.ofInstant(Time,
+        java.time.ZoneOffset.UTC);
 
-    gc.setTime(Time);
-    Yr = gc.get(java.util.Calendar.YEAR) - 1900;
-    Mnt = gc.get(java.util.Calendar.MONTH);
-    MD = gc.get(java.util.Calendar.DAY_OF_MONTH);
-    Hrs = gc.get(java.util.Calendar.HOUR_OF_DAY);
-    Min = gc.get(java.util.Calendar.MINUTE);
-    Sec = gc.get(java.util.Calendar.SECOND);
-    YD = gc.get(java.util.Calendar.DAY_OF_YEAR) - 1;
-
-    switch (gc.get(java.util.Calendar.DAY_OF_WEEK)) {
-        case java.util.Calendar.SUNDAY:
-            WD = 0;
-            break;
-        case java.util.Calendar.MONDAY:
-            WD = 1;
-            break;
-        case java.util.Calendar.TUESDAY:
-            WD = 2;
-            break;
-        case java.util.Calendar.WEDNESDAY:
-            WD = 3;
-            break;
-        case java.util.Calendar.THURSDAY:
-            WD = 4;
-            break;
-        case java.util.Calendar.FRIDAY:
-            WD = 5;
-            break;
-        case java.util.Calendar.SATURDAY:
-            WD = 6;
-            break;
-        default:
-            throw new RuntimeException(
-                ""invalid DAY_OF_WEEK in time.c_gmtime"");
-    }
-
+    Yr = utcTime.getYear() - 1900;
+    Mnt = utcTime.getMonthValue() - 1;
+    MD = utcTime.getDayOfMonth();
+    Hrs = utcTime.getHour();
+    Min = utcTime.getMinute();
+    Sec = utcTime.getSecond();
+    YD = utcTime.getDayOfYear() - 1;
+    // Sunday = 7 = 0.
+    WD = utcTime.getDayOfWeek().getValue() % 7;
     N = 0;
 ").
 :- pragma foreign_proc("Erlang",
@@ -899,34 +847,38 @@ mktime(TM) = time_t(Time) :-
         _YD::in, _WD::in, N::in, Time::out),
     [will_not_call_mercury, promise_semipure, may_not_duplicate],
 "
-    java.util.GregorianCalendar gc = new java.util.GregorianCalendar(
-        Yr + 1900, Mnt, MD, Hrs, Min, Sec);
-
-    Time = gc.getTime();
-    java.util.TimeZone tz = gc.getTimeZone();
+    java.time.ZoneId tz = java.time.ZoneId.systemDefault();
+    java.time.Instant Time0 = java.time.ZonedDateTime.of(
+        java.time.LocalDateTime.of(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec),
+        tz).toInstant();
 
     // Correct for DST:  This is only an issue when it is possible for the same
     // 'time' to occur twice due to daylight savings ending.
     // (In Melbourne, 2:00am-2:59am occur twice when leaving DST)
 
-    // If the time we constructed is not in daylight savings time, but it
-    // should be, we need to subtract the DSTSavings.
-    if (N == 1 && gc.getTimeZone().inDaylightTime(Time) == false) {
-        Time.setTime(Time.getTime() - tz.getDSTSavings());
-        if (tz.inDaylightTime(Time) == false) {
-            throw new RuntimeException(
-                ""time.mktime: failed to correct for DST"");
-        }
-    }
+    java.time.zone.ZoneRules rules = tz.getRules();
+    boolean isDST = rules.isDaylightSavings(Time0);
 
-    // If the time we constructed is in daylight savings time, but should not
-    // be, we need to add the DSTSavings.
-    if (N == 0 && tz.inDaylightTime(Time) == true) {
-        Time.setTime(Time.getTime() + tz.getDSTSavings());
-        if (tz.inDaylightTime(Time) == true) {
+    if (N == 1 & !isDST) {
+        // If the time we constructed is not in daylight savings time, but it
+        // should be, we need to subtract the DSTSavings.
+        java.time.Duration savings = rules.getDaylightSavings(Time0);
+        Time = Time0.minus(savings);
+        if (!rules.isDaylightSavings(Time)) {
             throw new RuntimeException(
                 ""time.mktime: failed to correct for DST"");
         }
+    } else if (N == 0 && isDST) {
+        // If the time we constructed is in daylight savings time, but should
+        // not be, we need to add the DSTSavings.
+        java.time.Duration savings = rules.getDaylightSavings(Time0);
+        Time = Time0.plus(savings);
+        if (rules.isDaylightSavings(Time)) {
+            throw new RuntimeException(
+                ""time.mktime: failed to correct for DST"");
+        }
+    } else {
+        Time = Time0;
     }
 ").
 

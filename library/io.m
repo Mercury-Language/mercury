@@ -4242,7 +4242,8 @@ file_modification_time(File, Result, !IO) :-
                 ""File not found or I/O error"");
             Time = null;
         } else {
-            Time = time.ML_construct_time_t(new java.util.Date(modtime));
+            Time = time.ML_construct_time_t(
+                java.time.Instant.ofEpochMilli(modtime));
             Error = null;
         }
     } catch (java.lang.Exception e) {
