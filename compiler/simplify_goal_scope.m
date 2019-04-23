@@ -42,7 +42,6 @@
 :- implementation.
 
 :- import_module check_hlds.simplify.simplify_goal.
-:- import_module check_hlds.simplify.simplify_info.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
