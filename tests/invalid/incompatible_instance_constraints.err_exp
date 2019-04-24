@@ -1,15 +1,15 @@
 incompatible_instance_constraints.m:030: In instance declaration for class
-incompatible_instance_constraints.m:030:   `incompatible_instance_constraints.tc1'/1
-incompatible_instance_constraints.m:030:   instance constraints are
-incompatible_instance_constraints.m:030:   incompatible with
-incompatible_instance_constraints.m:018:   instance constraints here.
+incompatible_instance_constraints.m:030:   `incompatible_instance_constraints.tc1'/1:
+incompatible_instance_constraints.m:030:   the instance constraints here are
+incompatible_instance_constraints.m:030:   incompatible with ...
+incompatible_instance_constraints.m:018:   ... the instance constraints here.
 incompatible_instance_constraints.m:031: In instance declaration for class
-incompatible_instance_constraints.m:031:   `incompatible_instance_constraints.tc1'/1
-incompatible_instance_constraints.m:031:   instance constraints are
-incompatible_instance_constraints.m:031:   incompatible with
-incompatible_instance_constraints.m:021:   instance constraints here.
+incompatible_instance_constraints.m:031:   `incompatible_instance_constraints.tc1'/1:
+incompatible_instance_constraints.m:031:   the instance constraints here are
+incompatible_instance_constraints.m:031:   incompatible with ...
+incompatible_instance_constraints.m:021:   ... the instance constraints here.
 incompatible_instance_constraints.m:032: In instance declaration for class
-incompatible_instance_constraints.m:032:   `incompatible_instance_constraints.tc1'/1
-incompatible_instance_constraints.m:032:   instance constraints are
-incompatible_instance_constraints.m:032:   incompatible with
-incompatible_instance_constraints.m:022:   instance constraints here.
+incompatible_instance_constraints.m:032:   `incompatible_instance_constraints.tc1'/1:
+incompatible_instance_constraints.m:032:   the instance constraints here are
+incompatible_instance_constraints.m:032:   incompatible with ...
+incompatible_instance_constraints.m:022:   ... the instance constraints here.

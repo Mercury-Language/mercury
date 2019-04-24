@@ -614,12 +614,13 @@ check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
         % Since the first declaration by itself is fine, the first sign
         % of a problem appears at the second declaration. This is why
         % we start the report of the problem with *its* context.
-        SecondDeclPieces = [words("In instance declaration for class "),
-            qual_sym_name_and_arity(ClassSNA), nl,
-            words("instance constraints are incompatible with")],
+        SecondDeclPieces = [words("In instance declaration for class"),
+            qual_sym_name_and_arity(ClassSNA), suffix(":"), nl,
+            words("the instance constraints here"),
+            words("are incompatible with ..."), nl],
         SecondDeclMsg = simple_msg(SecondContext, [always(SecondDeclPieces)]),
 
-        FirstDeclPieces = [words("instance constraints here.")],
+        FirstDeclPieces = [words("... the instance constraints here."), nl],
         FirstDeclMsg = simple_msg(FirstContext, [always(FirstDeclPieces)]),
 
         Spec = error_spec(severity_error,
