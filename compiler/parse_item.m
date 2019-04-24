@@ -1917,18 +1917,6 @@ pred_or_func_decl_pieces(pf_predicate) =
     [decl("pred"), words("declaration")].
 
 %---------------------------------------------------------------------------%
-
-    % Create a dummy term with the specified context.
-    % Used for error messages that are associated with some specific context,
-    % but for which we don't want to print out the term, or for which the term
-    % isn't available to be printed out.
-    %
-:- pred dummy_term_with_context(term.context::in, term::out) is det.
-
-dummy_term_with_context(Context, Term) :-
-    Term = term.functor(term.atom(""), [], Context).
-
-%---------------------------------------------------------------------------%
 %
 % You can uncomment this section for debugging.
 %
