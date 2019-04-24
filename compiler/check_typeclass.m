@@ -519,18 +519,26 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
     map.lookup(ClassTable, ClassId, ClassDefn),
     ClassDefn = hlds_class_defn(TypeClassStatus, SuperClasses, _FunDeps,
         _Ancestors, ClassVars, _Kinds, Interface, ClassInterface,
-        ClassVarSet, TermContext),
+        ClassVarSet, ClassContext, MaybeBadDefn),
     ( if
         typeclass_status_defined_in_this_module(TypeClassStatus) = yes,
         Interface = class_interface_abstract
     then
-        ClassId = class_id(ClassName, ClassArity),
-        Pieces = [words("Error: no definition for typeclass"),
-            unqual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
-            suffix("."), nl],
-        Msg = simple_msg(TermContext, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
-        !:Specs = [Spec | !.Specs],
+        (
+            MaybeBadDefn = has_no_bad_class_defn,
+            ClassId = class_id(ClassName, ClassArity),
+            ClassSNA = sym_name_arity(ClassName, ClassArity),
+            Pieces = [words("Error: no definition for typeclass"),
+                unqual_sym_name_and_arity(ClassSNA), suffix("."), nl],
+            Msg = simple_msg(ClassContext, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_type_check, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            MaybeBadDefn = has_bad_class_defn
+            % If the class had a definition that was not added to the HLDS
+            % because it had an error in it, reporting that the class
+            % has *no* definition would be misleading.
+        ),
         InstanceDefns = InstanceDefns0
     else
         ClassProcPredIds0 = list.map(

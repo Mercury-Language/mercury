@@ -47,6 +47,10 @@
 
 :- type class_table == map(class_id, hlds_class_defn).
 
+:- type maybe_bad_class_defn
+    --->    has_no_bad_class_defn
+    ;       has_bad_class_defn.
+
     % Information about a single `typeclass' declaration.
     %
 :- type hlds_class_defn
@@ -80,7 +84,13 @@
                 classdefn_tvarset           :: tvarset,
 
                 % Location of declaration.
-                classdefn_context           :: prog_context
+                classdefn_context           :: prog_context,
+
+                % Does this class have a bad definition? If yes, record
+                % that fact in this field, so we can avoid generating a
+                % misleading error message about the class having *no*
+                % definition.
+                classdefn_maybe_bad         :: maybe_bad_class_defn
             ).
 
     % In the HLDS, functional dependencies are represented using

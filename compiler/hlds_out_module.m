@@ -715,7 +715,7 @@ write_class_defn(Info, Indent, ClassId - ClassDefn, !IO) :-
     io.write_string(":\n", !IO),
 
     ClassDefn = hlds_class_defn(_, Constraints, FunDeps, _, Vars, _, _,
-        Interface, VarSet, Context),
+        Interface, VarSet, Context, _),
 
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),

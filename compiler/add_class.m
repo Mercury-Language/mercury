@@ -64,7 +64,6 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
-:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -80,7 +79,7 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
 
     ItemTypeClassInfo = item_typeclass_info(ClassName, ClassParamVars,
         Constraints, FunDeps, Interface, VarSet, Context, _SeqNum),
-    module_info_get_class_table(!.ModuleInfo, Classes0),
+    module_info_get_class_table(!.ModuleInfo, ClassTable0),
     list.length(ClassParamVars, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
     (
@@ -91,10 +90,11 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
         TypeClassStatus1 = TypeClassStatus0
     ),
     HLDSFunDeps = list.map(make_hlds_fundep(ClassParamVars), FunDeps),
-    ( if map.search(Classes0, ClassId, OldDefn) then
+    ( if map.search(ClassTable0, ClassId, OldDefn) then
         OldDefn = hlds_class_defn(OldTypeClassStatus, OldConstraints,
             OldFunDeps, _OldAncestors, OldClassParamVars, _OldKinds,
-            OldInterface, OldClassMethodPredProcIds0, OldVarSet, OldContext),
+            OldInterface, OldClassMethodPredProcIds0, OldVarSet, OldContext,
+            _BadClassDefn0),
         % The typeclass is exported if *any* occurrence is exported,
         % even a previous abstract occurrence.
         typeclass_combine_status(TypeClassStatus1, OldTypeClassStatus,
@@ -117,7 +117,7 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
             Extras = [words("The superclass constraints do not match."), nl],
             report_multiple_def_error(ClassName, ClassArity, "typeclass",
                 Context, OldContext, Extras, !Specs),
-            ErrorOrPrevDef = bool.yes
+            HasIncompatibility = yes(OldDefn)
         else if
             % Check that the functional dependencies are identical.
             not class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
@@ -126,7 +126,7 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
             Extras = [words("The functional dependencies do not match."), nl],
             report_multiple_def_error(ClassName, ClassArity, "typeclass",
                 Context, OldContext, Extras, !Specs),
-            ErrorOrPrevDef = bool.yes
+            HasIncompatibility = yes(OldDefn)
         else if
             Interface = class_interface_concrete(_),
             OldInterface = class_interface_concrete(_)
@@ -138,22 +138,37 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
                 report_multiple_def_error(ClassName, ClassArity, "typeclass",
                     Context, OldContext, Extras, !Specs)
             ),
-            ErrorOrPrevDef = bool.yes
+            HasIncompatibility = yes(OldDefn)
         else
-            ErrorOrPrevDef = bool.no
-        ),
-        IsNewDefn = bool.no
+            HasIncompatibility = no
+        )
     else
-        IsNewDefn = bool.yes,
-        ErrorOrPrevDef = bool.no,
+        HasIncompatibility = no,
         OldClassMethodPredProcIds = [],
         ClassInterface = Interface,
-        TypeClassStatus = TypeClassStatus1
+        TypeClassStatus = TypeClassStatus1,
+
+        % When we find the class declaration, make an entry
+        % for the instances.
+        module_info_get_instance_table(!.ModuleInfo, Instances0),
+        map.det_insert(ClassId, [], Instances0, Instances),
+        module_info_set_instance_table(Instances, !ModuleInfo)
     ),
     (
-        ErrorOrPrevDef = yes
+        HasIncompatibility = yes(BaseDefn),
+        (
+            Interface = class_interface_abstract
+        ;
+            Interface = class_interface_concrete(_),
+            % Record the presence of a bad concrete definition,
+            % so check_typeclass.m can avoid generating a misleading
+            % error message about the class having no definition.
+            BadDefn = BaseDefn ^ classdefn_maybe_bad := has_bad_class_defn,
+            map.det_update(ClassId, BadDefn, ClassTable0, ClassTable),
+            module_info_set_class_table(ClassTable, !ModuleInfo)
+        )
     ;
-        ErrorOrPrevDef = no,
+        HasIncompatibility = no,
         (
             Interface = class_interface_concrete(ClassDecls),
             module_add_class_interface(ClassName, ClassParamVars,
@@ -172,20 +187,9 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
         Kinds = map.init,
         ClassDefn = hlds_class_defn(TypeClassStatus, Constraints, HLDSFunDeps,
             Ancestors, ClassParamVars, Kinds, ClassInterface,
-            ClassMethodPredProcIds, VarSet, Context),
-        map.set(ClassId, ClassDefn, Classes0, Classes),
-        module_info_set_class_table(Classes, !ModuleInfo),
-
-        (
-            IsNewDefn = yes,
-            % When we find the class declaration, make an entry
-            % for the instances.
-            module_info_get_instance_table(!.ModuleInfo, Instances0),
-            map.det_insert(ClassId, [], Instances0, Instances),
-            module_info_set_instance_table(Instances, !ModuleInfo)
-        ;
-            IsNewDefn = no
-        )
+            ClassMethodPredProcIds, VarSet, Context, has_no_bad_class_defn),
+        map.set(ClassId, ClassDefn, ClassTable0, ClassTable),
+        module_info_set_class_table(ClassTable, !ModuleInfo)
     ).
 
 :- func make_hlds_fundep(list(tvar), prog_fundep) = hlds_class_fundep.

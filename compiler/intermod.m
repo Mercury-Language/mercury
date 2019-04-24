@@ -1782,7 +1782,7 @@ intermod_write_classes(OutInfo, ModuleInfo, !IO) :-
 intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn, !First, !IO) :-
     ClassDefn = hlds_class_defn(TypeClassStatus, Constraints, HLDSFunDeps,
         _Ancestors, TVars, _Kinds, Interface, _HLDSClassInterface, TVarSet,
-        Context),
+        Context, _HasBadDefn),
     ClassId = class_id(QualifiedClassName, _),
     ( if
         QualifiedClassName = qualified(ModuleName, _),
