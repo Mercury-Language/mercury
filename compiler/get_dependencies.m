@@ -62,29 +62,6 @@
     multi_map(module_name, prog_context)::out,
     multi_map(module_name, prog_context)::out) is det.
 
-    % get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocs,
-    %   IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps):
-    %
-    % Get the list of modules that a list of items (explicitly) depends on.
-    %
-    % IntImportDeps is the set of modules imported using `:- import_module'
-    % in the interface, and ImpImportDeps those modules imported in the
-    % implementation. IntUseDeps is the set of modules imported using
-    % `:- use_module' in the interface, and ImpUseDeps those modules imported
-    % in the implementation.
-    %
-    % N.B. Typically you also need to consider the module's implicit
-    % dependencies (see get_implicit_dependencies/3), its parent modules
-    % (see get_ancestors/1) and possibly also the module's child modules
-    % (see get_children/2). You may also need to consider indirect
-    % dependencies.
-    %
-:- pred get_dependencies_int_imp_in_raw_item_blocks(list(raw_item_block)::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out) is det.
-
 :- type maybe_need_tabling
     --->    dont_need_tabling
     ;       do_need_tabling.
@@ -214,41 +191,6 @@ get_dependencies_in_item_blocks_acc([ItemBlock | ItemBlocks],
     get_dependencies_in_avails_acc(Imports, !ImportDeps, !UseDeps),
     get_dependencies_in_item_blocks_acc(ItemBlocks,
         !ImportDeps, !UseDeps).
-
-%-----------------------------------------------------------------------------%
-
-get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
-        IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps) :-
-    get_dependencies_in_int_imp_in_raw_item_blocks_acc(RawItemBlocks,
-        multi_map.init, IntImportDeps, multi_map.init, IntUseDeps,
-        multi_map.init, ImpImportDeps, multi_map.init, ImpUseDeps).
-
-:- pred get_dependencies_in_int_imp_in_raw_item_blocks_acc(
-    list(raw_item_block)::in,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out) is det.
-
-get_dependencies_in_int_imp_in_raw_item_blocks_acc([],
-        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
-get_dependencies_in_int_imp_in_raw_item_blocks_acc(
-        [RawItemBlock | RawItemBlocks],
-        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    RawItemBlock = item_block(_, Section, _Incls, Imports, _Items),
-    (
-        Section = ms_interface,
-        get_dependencies_in_avails_acc(Imports, !IntImportDeps, !IntUseDeps)
-    ;
-        Section = ms_implementation,
-        get_dependencies_in_avails_acc(Imports, !ImpImportDeps, !ImpUseDeps)
-    ),
-    get_dependencies_in_int_imp_in_raw_item_blocks_acc(RawItemBlocks,
-        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
 
 %-----------------------------------------------------------------------------%
 

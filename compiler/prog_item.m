@@ -240,12 +240,8 @@
             % This is used internally by the compiler, to identify items
             % which originally came from an implementation section of a module
             % that contains submodules; such items need to be exported
-            % to the submodules.
-            %
-            % A raw item block whose section is ms_implementation is marked
-            % as sms_impl_but_exported_to_submodules by the predicate
-            % get_src_item_blocks_public_children, which is called indirectly
-            % by grab_imported_modules.
+            % to the submodules. This is done by grab_imported_modules_augment
+            % in modules.m.
 
 :- type imported_or_used
     --->    iou_imported
@@ -321,6 +317,10 @@
 
 :- func raw_compilation_unit_project_name(raw_compilation_unit) = module_name.
 :- func aug_compilation_unit_project_name(aug_compilation_unit) = module_name.
+
+:- pred make_and_add_item_block(module_name::in, MS::in,
+    list(item_include)::in, list(item_avail)::in, list(item)::in,
+    list(item_block(MS))::in, list(item_block(MS))::out) is det.
 
 :- pred int_imp_items_to_item_blocks(module_name::in, MS::in, MS::in,
     list(item_include)::in, list(item_include)::in,
@@ -662,6 +662,13 @@
     % declarations in ItemBlocks.
     %
 :- pred get_included_modules_in_item_blocks(list(item_block(MS))::in,
+    multi_map(module_name, prog_context)::out) is det.
+
+    % An accumulator version of the above predicate restricted to operate
+    % only on item_includes.
+    %
+:- pred get_included_modules_in_item_include_acc(item_include::in,
+    multi_map(module_name, prog_context)::in,
     multi_map(module_name, prog_context)::out) is det.
 
 :- type import_or_use
@@ -1650,31 +1657,27 @@ raw_compilation_unit_project_name(RawCompUnit) =
 aug_compilation_unit_project_name(AugCompUnit) =
     AugCompUnit ^ aci_module_name.
 
+make_and_add_item_block(ModuleName, Section, Incls, Avails, Items,
+        !ItemBlocks) :-
+    ( if
+        Incls = [],
+        Avails = [],
+        Items = []
+    then
+        true
+    else
+        Block = item_block(ModuleName, Section,
+            Incls, Avails, Items),
+        !:ItemBlocks = [Block | !.ItemBlocks]
+    ).
+
 int_imp_items_to_item_blocks(ModuleName, IntSection, ImpSection,
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
-        ItemBlocks) :-
-    ( if
-        ImpIncls = [],
-        ImpAvails = [],
-        ImpItems = []
-    then
-        ItemBlocks0 = []
-    else
-        ImpBlock = item_block(ModuleName, ImpSection,
-            ImpIncls, ImpAvails, ImpItems),
-        ItemBlocks0 = [ImpBlock]
-    ),
-    ( if
-        IntIncls = [],
-        IntAvails = [],
-        IntItems = []
-    then
-        ItemBlocks = ItemBlocks0
-    else
-        IntBlock = item_block(ModuleName, IntSection,
-            IntIncls, IntAvails, IntItems),
-        ItemBlocks = [IntBlock | ItemBlocks0]
-    ).
+        !:ItemBlocks) :-
+    make_and_add_item_block(ModuleName, ImpSection,
+        ImpIncls, ImpAvails, ImpItems, [], !:ItemBlocks),
+    make_and_add_item_block(ModuleName, IntSection,
+        IntIncls, IntAvails, IntItems, !ItemBlocks).
 
 %-----------------------------------------------------------------------------%
 
@@ -1743,10 +1746,6 @@ get_included_modules_in_item_blocks_acc([ItemBlock | ItemBlocks],
     list.foldl(get_included_modules_in_item_include_acc, Incls,
         !IncludedModuleNames),
     get_included_modules_in_item_blocks_acc(ItemBlocks, !IncludedModuleNames).
-
-:- pred get_included_modules_in_item_include_acc(item_include::in,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out) is det.
 
 get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
     Incl = item_include(ModuleName, Context, _SeqNum),

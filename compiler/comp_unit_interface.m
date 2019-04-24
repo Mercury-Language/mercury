@@ -146,20 +146,6 @@
 
     % This predicate is exported for use by modules.m.
     %
-    % The first module name is the name of the module the item blocks
-    % are from; the second is the name of the module for which
-    % we are adding foreign_import_module items.
-    %
-    % XXX ITEM_LIST They shouldn't be needed; the representation of the
-    % compilation unit should have all this information separate from
-    % the items.
-    %
-:- pred add_needed_foreign_import_module_items_to_src_item_blocks(
-    module_name::in,
-    list(src_item_block)::in, list(src_item_block)::out) is det.
-
-    % This predicate is exported for use by modules.m.
-    %
     % XXX ITEM_LIST When the predicate above is deleted, this function
     % should not be needed in this module anymore either, and so it should be
     % moved elsewhere.
@@ -2143,18 +2129,6 @@ get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-add_needed_foreign_import_module_items_to_src_item_blocks(ModuleName,
-        !ItemBlocks) :-
-    % XXX ITEM_LIST ms_interface is a guess. The original code (whose
-    % behavior the current code is trying to emulate) simply added
-    % the generated items to a raw item list, seemingly without caring
-    % about what section those items would end up (it certainly did not
-    % look for any section markers).
-    % XXX FIM_SECTION (It seems to be a wrong guess; the compiler bootstraps
-    % even if we pass sms_implementation here.)
-    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        sms_interface, !ItemBlocks).
 
 :- pred add_needed_foreign_import_module_items_to_raw_item_blocks(
     module_name::in,
