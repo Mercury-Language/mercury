@@ -131,8 +131,8 @@ detect_non_contiguous_pred_decls(ModuleInfo, MaybeDefnKind, PredId,
         DeclInfo = cur_user_decl_info(DeclSection, _, PredDeclItemNumber),
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.foldl2_values(gather_proc_item_numbers, ProcTable,
-            [], RevProcINCs, proc_contiguity_makes_sense, MakesSense),
-        list.reverse(RevProcINCs, ProcINCs),
+            [], UnsortedProcINCs, proc_contiguity_makes_sense, MakesSense),
+        list.sort(UnsortedProcINCs, ProcINCs),
         ( if
             MakesSense = proc_contiguity_makes_sense,
             ProcINCs = [HeadProcINC | TailProcINCs]
@@ -201,13 +201,13 @@ detect_non_contiguous_pred_decls(ModuleInfo, MaybeDefnKind, PredId,
     list(inc)::in, list(inc)::out,
     proc_contiguity::in, proc_contiguity::out) is det.
 
-gather_proc_item_numbers(ProcInfo, !RevProcINCs, !MakesSense) :-
+gather_proc_item_numbers(ProcInfo, !ProcINCs, !MakesSense) :-
     ( if proc_info_is_valid_mode(ProcInfo) then
         proc_info_get_item_number(ProcInfo, ItemNumber),
         ( if ItemNumber > 1 then
             proc_info_get_context(ProcInfo, Context),
             ProcINC = inc(ItemNumber, Context),
-            !:RevProcINCs = [ProcINC | !.RevProcINCs]
+            !:ProcINCs = [ProcINC | !.ProcINCs]
         else
             % The procedure was declared either as part of a predmode
             % declaration, in which case requiring it to have an item number

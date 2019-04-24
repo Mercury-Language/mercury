@@ -94,24 +94,41 @@
 
 report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         ExtraPieces, !Specs) :-
-    Pieces1 = [words("Error:"), fixed(DefType),
-        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+    % The flattening of source item blocks by modules.m puts
+    % all items in a given section together. Since the original
+    % source code may have had the contents of the different sections
+    % intermingled, this may change the relative order of items.
+    % Put them back in the original order for this error message.
+    compare(CmpRes, OrigContext, Context),
+    (
+        ( CmpRes = (<)
+        ; CmpRes = (=)
+        ),
+        FirstContext = OrigContext,
+        SecondContext = Context
+    ;
+        CmpRes = (>),
+        FirstContext = Context,
+        SecondContext = OrigContext
+    ),
+
+    SNA = qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+    SecondDeclPieces = [words("Error:"), fixed(DefType), SNA,
         words("multiply defined."), nl],
-    Pieces2 = [words("Here is the previous definition of"), fixed(DefType),
-        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-        suffix("."), nl],
-    Msg1 = simple_msg(Context, [always(Pieces1)]),
-    Msg2 = error_msg(yes(OrigContext), treat_as_first, 0,
-        [always(Pieces2)]),
+    FirstDeclPieces = [words("Here is the previous definition of"),
+        fixed(DefType), SNA, suffix("."), nl],
+    SecondDeclMsg = simple_msg(SecondContext, [always(SecondDeclPieces)]),
+    FirstDeclMsg = error_msg(yes(FirstContext), treat_as_first, 0,
+        [always(FirstDeclPieces)]),
     (
         ExtraPieces = [],
         ExtraMsgs = []
     ;
         ExtraPieces = [_ | _],
-        ExtraMsgs = [simple_msg(Context, [always(ExtraPieces)])]
+        ExtraMsgs = [simple_msg(SecondContext, [always(ExtraPieces)])]
     ),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-        [Msg1, Msg2] ++ ExtraMsgs),
+        [SecondDeclMsg, FirstDeclMsg] ++ ExtraMsgs),
     !:Specs = [Spec | !.Specs].
 
 report_undefined_pred_or_func_error(Name, Arity, OtherArities, Context,

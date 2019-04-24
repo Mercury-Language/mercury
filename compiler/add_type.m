@@ -183,23 +183,46 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus,
-        NewContext, !FoundInvalidType, !Specs) :-
+check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
+        !FoundInvalidType, !Specs) :-
     % Even if the source code includes only one declaration of a type,
     % augmenting a raw compilation unit can yield duplicates of that
     % declaration, included e.g. in both x.int2 and then x.int,
     % or in both x.int and x.opt.
     get_type_defn_context(OldDefn, OldContext),
+    get_type_defn_status(OldDefn, OldStatus),
     ( if
         string.suffix(term.context_file(OldContext), ".m"),
         string.suffix(term.context_file(NewContext), ".m")
     then
-        get_type_defn_status(OldDefn, OldStatus),
-        OldIsExported = type_status_is_exported_to_non_submodules(OldStatus),
-        NewIsExported = type_status_is_exported_to_non_submodules(NewStatus),
+        % The flattening of source item blocks by modules.m puts
+        % all items in a given section together. Since the original
+        % source code may have had the contents of the different sections
+        % intermingled, this may change the relative order of items.
+        % Put them back in the original order for this error message.
+        compare(CmpRes, OldContext, NewContext),
+        (
+            ( CmpRes = (<)
+            ; CmpRes = (=)
+            ),
+            FirstContext = OldContext,
+            FirstStatus = OldStatus,
+            SecondContext = NewContext,
+            SecondStatus = NewStatus
+        ;
+            CmpRes = (>),
+            FirstContext = NewContext,
+            FirstStatus = NewStatus,
+            SecondContext = OldContext,
+            SecondStatus = OldStatus
+        ),
+        FirstIsExported =
+            type_status_is_exported_to_non_submodules(FirstStatus),
+        SecondIsExported =
+            type_status_is_exported_to_non_submodules(SecondStatus),
         TypeCtor = type_ctor(SymName, Arity),
         SNA = unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
-        ( if OldIsExported = NewIsExported then
+        ( if FirstIsExported = SecondIsExported then
             Severity = severity_warning,
             DupPieces = [words("Warning: duplicate declaration for type "),
                 SNA, suffix("."), nl]
@@ -207,29 +230,29 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus,
             Severity = severity_error,
             !:FoundInvalidType = found_invalid_type,
             % XXX If there were not one but *two or more* previous
-            % declarations for the type, then OldStatus may not have come
-            % from the previous declaration at OldContext; it could have
+            % declarations for the type, then FirstStatus may not have come
+            % from the previous declaration at FirstContext; it could have
             % come from a *different* previous declaration.
             % We can't avoid this possibility without keeping a *separate*
             % record of the context and type_status of every item_type_defn
             % for every type_ctor.
             (
-                NewIsExported = yes,
+                SecondIsExported = yes,
                 DupPieces = [words("Error: This declaration for type "),
                     SNA, words("says it is exported, while"),
                     words("the previous declaration says it is private."), nl]
             ;
-                NewIsExported = no,
+                SecondIsExported = no,
                 DupPieces = [words("Error: This declaration for type "),
                     SNA, words("says it is private, while"),
                     words("the previous declaration says it is exported."), nl]
             )
         ),
-        DupMsg = simple_msg(NewContext, [always(DupPieces)]),
-        OldPieces = [words("The previous declaration was here."), nl],
-        OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+        DupMsg = simple_msg(SecondContext, [always(DupPieces)]),
+        FirstPieces = [words("The previous declaration was here."), nl],
+        FirstMsg = simple_msg(FirstContext, [always(FirstPieces)]),
         DupSpec = error_spec(Severity, phase_parse_tree_to_hlds,
-            [DupMsg, OldMsg]),
+            [DupMsg, FirstMsg]),
         !:Specs = [DupSpec | !.Specs]
     else
         true
@@ -317,12 +340,14 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
 
         hlds_data.get_type_defn_status(OldDefn, OldTypeStatus),
         hlds_data.get_type_defn_body(OldDefn, OldBody),
+        hlds_data.get_type_defn_context(OldDefn, OldContext),
         ( if OldBody = hlds_abstract_type(_) then
             % This is the first actual definition (not an abstract declaration)
             % for this type.
             check_for_inconsistent_foreign_type_visibility(TypeCtor,
-                old_defn_is_abstract, OldTypeStatus, TypeStatus0, Context,
-                TypeDefn1, TypeDefn, !FoundInvalidType, !Specs),
+                old_defn_is_abstract, OldTypeStatus, OldContext,
+                TypeStatus0, Context, TypeDefn1, TypeDefn,
+                !FoundInvalidType, !Specs),
             replace_type_ctor_defn(TypeCtor, TypeDefn,
                 TypeTable0, TypeTable),
             module_info_set_type_table(TypeTable, !ModuleInfo)
@@ -337,8 +362,9 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
                 % ... either compatible with this definition, ...
                 set_type_defn_body(MergedBody, TypeDefn1, TypeDefn2),
                 check_for_inconsistent_foreign_type_visibility(TypeCtor,
-                    old_defn_is_not_abstract, OldTypeStatus, TypeStatus1,
-                    Context, TypeDefn2, TypeDefn, !FoundInvalidType, !Specs),
+                    old_defn_is_not_abstract, OldTypeStatus, OldContext,
+                    TypeStatus1, Context, TypeDefn2, TypeDefn,
+                    !FoundInvalidType, !Specs),
                 replace_type_ctor_defn(TypeCtor, TypeDefn,
                     TypeTable0, TypeTable),
                 module_info_set_type_table(TypeTable, !ModuleInfo)
@@ -781,13 +807,15 @@ get_body_is_solver_type(Body, IsSolverType) :-
     ;       old_defn_is_not_abstract.
 
 :- pred check_for_inconsistent_foreign_type_visibility(type_ctor::in,
-    old_defn_maybe_abstract::in, type_status::in, type_status::in,
-    prog_context::in, hlds_type_defn::in, hlds_type_defn::out,
+    old_defn_maybe_abstract::in, type_status::in, prog_context::in,
+    type_status::in, prog_context::in,
+    hlds_type_defn::in, hlds_type_defn::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_inconsistent_foreign_type_visibility(TypeCtor, OldIsAbstract,
-        OldStatus, NewStatus, Context, !TypeDefn, !FoundInvalidType, !Specs) :-
+check_for_inconsistent_foreign_type_visibility(TypeCtor,
+        OldIsAbstract, OldStatus, OldContext, NewStatus, NewContext,
+        !TypeDefn, !FoundInvalidType, !Specs) :-
     ( if
         (
             OldIsAbstract = old_defn_is_abstract,
@@ -809,6 +837,22 @@ check_for_inconsistent_foreign_type_visibility(TypeCtor, OldIsAbstract,
             OldIsAbstract = old_defn_is_not_abstract,
             Pieces = [words("Error: all definitions of the foreign type"),
                 SNA, words("must have the same visibility."), nl]
+        ),
+        % The flattening of source item blocks by modules.m puts
+        % all items in a given section together. Since the original
+        % source code may have had the contents of the different sections
+        % intermingled, this may change the relative order of items.
+        % Make sure we generate the error message for the context of
+        % the item that came *second* in the original order.
+        compare(CmpRes, OldContext, NewContext),
+        (
+            ( CmpRes = (<)
+            ; CmpRes = (=)
+            ),
+            Context = NewContext
+        ;
+            CmpRes = (>),
+            Context = OldContext
         ),
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),

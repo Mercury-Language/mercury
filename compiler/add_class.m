@@ -119,6 +119,7 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
                 Context, OldContext, Extras, !Specs),
             ErrorOrPrevDef = bool.yes
         else if
+            % Check that the functional dependencies are identical.
             not class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
         then
             % Always report the error, even in `.opt' files.
@@ -588,19 +589,41 @@ check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
         true
     else
         ClassId = class_id(ClassName, ClassArity),
+        ClassSNA = sym_name_arity(ClassName, ClassArity),
+
         ContextA = InstanceDefnA ^ instdefn_context,
-
-        PiecesA = [words("In instance declaration for class "),
-            qual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)), nl,
-            words("instance constraints are incompatible with")],
-        MsgA = simple_msg(ContextA, [always(PiecesA)]),
-
         ContextB = InstanceDefnB ^ instdefn_context,
-        PiecesB = [words("instance constraints here.")],
-        MsgB = simple_msg(ContextB, [always(PiecesB)]),
+        % The flattening of source item blocks by modules.m puts
+        % all items in a given section together. Since the original
+        % source code may have had the contents of the different sections
+        % intermingled, this may change the relative order of items.
+        % Put them back in the original order for this error message.
+        compare(CmpRes, ContextA, ContextB),
+        (
+            ( CmpRes = (<)
+            ; CmpRes = (=)
+            ),
+            FirstContext = ContextA,
+            SecondContext = ContextB
+        ;
+            CmpRes = (>),
+            FirstContext = ContextB,
+            SecondContext = ContextA
+        ),
+
+        % Since the first declaration by itself is fine, the first sign
+        % of a problem appears at the second declaration. This is why
+        % we start the report of the problem with *its* context.
+        SecondDeclPieces = [words("In instance declaration for class "),
+            qual_sym_name_and_arity(ClassSNA), nl,
+            words("instance constraints are incompatible with")],
+        SecondDeclMsg = simple_msg(SecondContext, [always(SecondDeclPieces)]),
+
+        FirstDeclPieces = [words("instance constraints here.")],
+        FirstDeclMsg = simple_msg(FirstContext, [always(FirstDeclPieces)]),
 
         Spec = error_spec(severity_error,
-            phase_parse_tree_to_hlds, [MsgA, MsgB]),
+            phase_parse_tree_to_hlds, [SecondDeclMsg, FirstDeclMsg]),
         !:Specs = [Spec | !.Specs]
     ).
 

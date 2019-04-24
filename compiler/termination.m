@@ -278,78 +278,71 @@ check_pragmas_are_consistent(SCCs, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
-    list.filter(is_termination_known(!.ModuleInfo), set.to_sorted_list(SCC),
-        SCCTerminationKnown, SCCTerminationUnknown),
+    classify_termination_status(!.ModuleInfo,  set.to_sorted_list(SCC),
+        set.init, KnownPredNamesIdsSet, set.init, KnownContextSet,
+        set.init, KnownTermStatusSet, set.init, UnknownPPIdSet),
+    KnownTermStatuses = set.to_sorted_list(KnownTermStatusSet),
     (
-        SCCTerminationKnown = []
+        KnownTermStatuses = []
+        % We don't know the termination status of any procedure in the SCC.
     ;
-        SCCTerminationKnown = [KnownPPId | _],
-        module_info_pred_proc_info(!.ModuleInfo, KnownPPId,
-            KnownPredInfo, KnownProcInfo),
-        proc_info_get_maybe_termination_info(KnownProcInfo, MaybeKnownTerm),
-        (
-            MaybeKnownTerm = no,
-            unexpected($pred, "no termination info found")
-        ;
-            MaybeKnownTerm  = yes(KnownTermStatus)
-        ),
-        ( if
-            check_procs_known_term(KnownTermStatus, SCCTerminationKnown,
-                !.ModuleInfo)
-        then
-            % Force any procedures in the SCC whose termination status is
-            % unknown to have the same termination status as those that are
-            % known.
-            list.foldl(set_termination_info(KnownTermStatus),
-                SCCTerminationUnknown, !ModuleInfo)
-        else
-            % There is a conflict between the user-supplied termination
-            % information for two or more procedures in this SCC.
-            % Emit a warning, and then assume that they all loop.
-            pred_info_get_context(KnownPredInfo, Context),
-            NewTermStatus =
-                can_loop([term_error(Context, inconsistent_annotations)]),
-            set.foldl(set_termination_info(NewTermStatus), SCC, !ModuleInfo),
+        KnownTermStatuses = [KnownTermStatus],
+        % We know the termination status of at least one procedure in the SCC,
+        % and all the procedures that do have known termination statuses
+        % have the same termination status.
+        set.foldl(set_termination_info(KnownTermStatus),
+            UnknownPPIdSet, !ModuleInfo)
+    ;
+        KnownTermStatuses = [_, _ | _],
+        % We know the termination status of at least two procedures
+        % in the SCC, and those procedures have two *different*
+        % termination statuses.
 
-            PredIds = list.map(
-                (func(proc(PredId, _)) = PredId),
-                SCCTerminationKnown),
-            PredNamePieces = describe_several_pred_names(!.ModuleInfo,
-                should_module_qualify, PredIds),
-            Pieces =
-                [words("Warning:") | PredNamePieces ] ++
-                [words("are mutually recursive but some of their"),
-                words( "termination pragmas are inconsistent.")],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_warning, phase_read_files, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        )
+        % Emit a warning, and then assume that they all loop.
+        LeastContext = list.det_head(set.to_sorted_list(KnownContextSet)),
+        NewTermStatus =
+            can_loop([term_error(LeastContext, inconsistent_annotations)]),
+        set.foldl(set_termination_info(NewTermStatus), SCC, !ModuleInfo),
+
+        PredNamesIds = set.to_sorted_list(KnownPredNamesIdsSet),
+        PredNamePieces = describe_several_pred_names(!.ModuleInfo,
+            should_module_qualify, list.map(pair.snd, PredNamesIds)),
+        Pieces =
+            [words("Warning:") | PredNamePieces ] ++
+            [words("are mutually recursive but some of their"),
+            words( "termination pragmas are inconsistent.")],
+        Msg = simple_msg(LeastContext, [always(Pieces)]),
+        Spec = error_spec(severity_warning, phase_read_files, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
 
-    % Check that all procedures in an SCC whose termination status is known
-    % have the same termination status.
-    %
-:- pred check_procs_known_term(termination_info::in, list(pred_proc_id)::in,
-    module_info::in) is semidet.
+:- pred classify_termination_status(module_info::in, list(pred_proc_id)::in,
+    set(pair(string, pred_id))::in, set(pair(string, pred_id))::out, 
+    set(prog_context)::in, set(prog_context)::out, 
+    set(termination_info)::in, set(termination_info)::out,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-check_procs_known_term(_, [], _).
-check_procs_known_term(Status, [PPId | PPIds], ModuleInfo) :-
-    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_get_maybe_termination_info(ProcInfo, MaybeTerm),
+classify_termination_status(_, [],
+        !KnownPredNamesIds, !KnownContexts, !KnownTermStatuses, !UnknownPPIds).
+classify_termination_status(ModuleInfo, [PPId | PPIds],
+        !KnownPredNamesIds, !KnownContexts, !KnownTermStatuses, !UnknownPPIds) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
+    proc_info_get_maybe_termination_info(ProcInfo, MaybeTermStatus),
     (
-        MaybeTerm = no,
-        unexpected($pred, "no termination info for procedure")
+        MaybeTermStatus = yes(TermStatus),
+        PredName = pred_info_name(PredInfo),
+        PPId = proc(PredId, _ProcId),
+        set.insert(PredName - PredId, !KnownPredNamesIds),
+        % XXX We should be getting the context from the *Proc*Info.
+        pred_info_get_context(PredInfo, Context),
+        set.insert(Context, !KnownContexts),
+        set.insert(TermStatus, !KnownTermStatuses)
     ;
-        MaybeTerm = yes(PPIdStatus)
+        MaybeTermStatus = no,
+        set.insert(PPId, !UnknownPPIds)
     ),
-    (
-        Status = cannot_loop(_),
-        PPIdStatus = cannot_loop(_)
-    ;
-        Status = can_loop(_),
-        PPIdStatus = can_loop(_)
-    ),
-    check_procs_known_term(Status, PPIds, ModuleInfo).
+    classify_termination_status(ModuleInfo, PPIds,
+        !KnownPredNamesIds, !KnownContexts, !KnownTermStatuses, !UnknownPPIds).
 
 %-----------------------------------------------------------------------------%
 %
