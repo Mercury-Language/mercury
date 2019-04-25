@@ -60,9 +60,24 @@
                 % If yes, identify the procedure.
                 snc_proc_is_model_non       :: maybe(innermost_proc),
 
-                % Count of the number of lambdas which enclose
-                % the current goal.
-                snc_num_enclosing_barriers  :: int
+                % Count of the number of lambda goals that
+                %
+                % - we are inside,
+                % - that were not created to implement a try goal.
+                %
+                % The code of lambda expressions that are created
+                % to implement try goals are always executed in the
+                % call tree of the procedure in which they appear,
+                % but this is not true for lambda expressions in general;
+                % they are often returned to ancestors, which then
+                % execute them (or not) outside that call tree.
+                %
+                % If this field is zero, a call that has identical input
+                % arguments to the clause head *will* yield an infinite loop;
+                % if this field is greater than zero; it only *may* yield
+                % an infinite loop.
+                %
+                snc_num_enclosing_barriers  :: uint
             ).
 
 :- type maybe_allow_messages
@@ -194,7 +209,7 @@
 :- pred simplify_do_common_struct(simplify_info::in) is semidet.
 :- pred simplify_do_extra_common_struct(simplify_info::in) is semidet.
 :- pred simplify_do_ignore_par_conjunctions(simplify_info::in) is semidet.
-:- pred simplify_do_warn_inf_rec_modulo_svar(simplify_info::in) is semidet.
+:- pred simplify_do_warn_suspicious_recursion(simplify_info::in) is semidet.
 
     % Succeed if either warn_duplicate_calls or opt_duplicate_calls is set,
     % and return whether opt_duplicate_calls is set.
@@ -653,9 +668,9 @@ simplify_do_extra_common_struct(Info) :-
 simplify_do_ignore_par_conjunctions(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_ignore_par_conjunctions = yes.
-simplify_do_warn_inf_rec_modulo_svar(Info) :-
+simplify_do_warn_suspicious_recursion(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_inf_rec_modulo_svar = yes.
+    SimplifyTasks ^ do_warn_suspicious_recursion = yes.
 
 simplify_do_warn_or_opt_duplicate_calls(Info, OptDuplicateCalls) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),

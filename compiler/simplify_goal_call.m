@@ -535,7 +535,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
         % a try goal, because the recursive call may not be executed, and
         % even if it is, it may not be from inside the call tree of the
         % current predicate.
-        NestedContext ^ snc_num_enclosing_barriers = 0,
+        NestedContext ^ snc_num_enclosing_barriers = 0u,
 
         % Are the input arguments the same (or equivalent)?
         simplify_info_get_module_info(!.Info, ModuleInfo),

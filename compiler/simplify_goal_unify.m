@@ -58,12 +58,12 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module term.
+:- import_module uint.
 
 simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, !Common, !Info) :-
@@ -87,7 +87,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         ( if goal_info_has_feature(GoalInfo0, feature_lambda_from_try) then
             LambdaNumEnclosingBarriers = NumEnclosingBarriers
         else
-            LambdaNumEnclosingBarriers = NumEnclosingBarriers + 1
+            LambdaNumEnclosingBarriers = NumEnclosingBarriers + 1u
         ),
         LambdaNestedContext = simplify_nested_context(InsideDuplForSwitch,
             LambdaProcIsModelNon, LambdaNumEnclosingBarriers),

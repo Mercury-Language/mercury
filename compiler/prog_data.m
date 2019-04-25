@@ -1544,7 +1544,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
 :- type goal_warning
     --->    goal_warning_singleton_vars
     ;       goal_warning_non_tail_recursive_calls
-    ;       goal_warning_infinite_recursion_modulo_svar.
+    ;       goal_warning_suspicious_recursion.
 
 :- implementation.
 

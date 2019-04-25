@@ -170,7 +170,7 @@
     ;       warn_wrong_module_name
     ;       warn_smart_recompilation
     ;       warn_undefined_options_variables
-    ;       warn_infinite_recursion_modulo_svar
+    ;       warn_suspicious_recursion
     ;       warn_non_tail_recursion_self
     ;       warn_non_tail_recursion_mutual
     ;       warn_non_tail_recursion
@@ -1187,7 +1187,7 @@ option_defaults_2(warning_option, [
     warn_wrong_module_name              -   bool(yes),
     warn_smart_recompilation            -   bool(yes),
     warn_undefined_options_variables    -   bool(yes),
-    warn_infinite_recursion_modulo_svar -   bool(no),
+    warn_suspicious_recursion           -   bool(no),
     warn_non_tail_recursion_self        -   bool(no),
     warn_non_tail_recursion_mutual      -   bool(no),
     warn_non_tail_recursion             -   maybe_string_special,
@@ -2100,11 +2100,7 @@ long_option("warn-undefined-options-variables",
                                         warn_undefined_options_variables).
 long_option("warn-undefined-options-vars",
                                         warn_undefined_options_variables).
-long_option("warn-inf-rec-modulo-svar", warn_infinite_recursion_modulo_svar).
-long_option("warn-infinite-recursion-modulo-svar",
-                                        warn_infinite_recursion_modulo_svar).
-long_option("warn-infinite-recursion-modulo-state-vars",
-                                        warn_infinite_recursion_modulo_svar).
+long_option("warn-suspicious-recursion", warn_suspicious_recursion).
 long_option("warn-non-tail-recursion-self",
                                         warn_non_tail_recursion_self).
 long_option("warn-non-tail-recursion-mutual",
@@ -3901,9 +3897,9 @@ options_help_warning -->
         "--no-warn-undefined-options-variables",
         "\tDo not warn about references to undefined variables in",
         "\toptions files with `--make'.",
-%       "--warn-infinite-recursion-modulo-svar",
-%       "\tWarn about recursive calls in which all input arguments are",
-%       "\teither the same as in the clause head or use state var notation.",
+%       "--warn-suspicious-recursion",
+%       "\tWarn about recursive calls which are likely to have problems,",
+%       "\tsuch as leading to infinite recursion.",
 % These are the internal options that implement --warn-non-tail-recursion.
 %       "--warn-non-tail-recursion-self",
 %       "\tWarn about any self recursive calls that are not tail recursive.",

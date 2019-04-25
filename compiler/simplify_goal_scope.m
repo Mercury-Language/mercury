@@ -262,8 +262,8 @@ disable_simplify_warning(Warning, !Tasks) :-
         % code generation, not during simplification. (What calls
         % are tail recursive depends on the backend.)
     ;
-        Warning = goal_warning_infinite_recursion_modulo_svar,
-        !Tasks ^ do_warn_inf_rec_modulo_svar := no
+        Warning = goal_warning_suspicious_recursion,
+        !Tasks ^ do_warn_suspicious_recursion := no
     ).
 
 %-----------------------------------------------------------------------------%
