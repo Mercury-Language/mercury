@@ -233,7 +233,9 @@ global_inference_pass(!ModuleInfo, ProcList, Debug, Specs) :-
         % procedures, which means that it is NOT safe to return them
         % to be printed. Instead, we will compute them again from more
         % up-to-date determinism information.
-        global_inference_pass(!ModuleInfo, ProcList, Debug, Specs)
+        disable_warning [suspicious_recursion] (
+            global_inference_pass(!ModuleInfo, ProcList, Debug, Specs)
+        )
     ;
         Changed = unchanged,
         % We have arrived at a fixpoint. Therefore all the messages we have

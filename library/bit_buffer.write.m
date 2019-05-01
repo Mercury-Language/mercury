@@ -262,7 +262,9 @@ flush(write_buffer(!.Buffer), write_buffer(!:Buffer)) :-
 flush_all_to_stream(!Buffer) :-
     ( if num_buffered_bits(write_buffer(!.Buffer)) >= bits_per_byte then
         flush_chunk_to_stream(!Buffer),
-        flush_all_to_stream(!Buffer)
+        disable_warning [suspicious_recursion] (
+            flush_all_to_stream(!Buffer)
+        )
     else
         true
     ).

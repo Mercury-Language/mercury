@@ -1028,17 +1028,26 @@ extract_obj_var2(Tableau, Var, Val) :-
 
 simplex(Result, !Tableau) :-
     AllColumns = all_cols(!.Tableau),
-    MinAgg = (pred(Col::in, !.Min::in, !:Min::out) is det :-
-        (
-            !.Min = no,
-            MinVal = !.Tableau ^ elem(0, Col),
-            !:Min = ( if MinVal < zero then yes(Col - MinVal) else no )
-        ;
-            !.Min = yes(_ - MinVal0),
-            CellVal = !.Tableau ^ elem(0, Col),
-            ( if CellVal < MinVal0 then !:Min = yes(Col - CellVal) else true )
-        )
-    ),
+    MinAgg =
+        ( pred(Col::in, !.Min::in, !:Min::out) is det :-
+            (
+                !.Min = no,
+                MinVal = !.Tableau ^ elem(0, Col),
+                ( if MinVal < zero then
+                    !:Min = yes(Col - MinVal)
+                else
+                    !:Min = no
+                )
+            ;
+                !.Min = yes(_ - MinVal0),
+                CellVal = !.Tableau ^ elem(0, Col),
+                ( if CellVal < MinVal0 then
+                    !:Min = yes(Col - CellVal)
+                else
+                    true
+                )
+            )
+        ),
     solutions.aggregate(AllColumns, MinAgg, no, MinResult),
     (
         MinResult = no,
@@ -1046,45 +1055,47 @@ simplex(Result, !Tableau) :-
     ;
         MinResult = yes(Q - _Val),
         AllRows = all_rows(!.Tableau),
-        MaxAgg = (pred(Row::in, !.Max::in, !:Max::out) is det :-
-            (
-                !.Max = no,
-                MaxVal = !.Tableau ^ elem(Row, Q),
-                ( if MaxVal > zero then
-                    Col = !.Tableau ^ cols,
-                    MVal = !.Tableau ^ elem(Row, Col),
-                    ( if MaxVal = zero then
-                        unexpected($pred, "zero divisor")
+        MaxAgg =
+            ( pred(Row::in, !.Max::in, !:Max::out) is det :-
+                (
+                    !.Max = no,
+                    MaxVal = !.Tableau ^ elem(Row, Q),
+                    ( if MaxVal > zero then
+                        Col = !.Tableau ^ cols,
+                        MVal = !.Tableau ^ elem(Row, Col),
+                        ( if MaxVal = zero then
+                            unexpected($pred, "zero divisor")
+                        else
+                            true
+                        ),
+                        CVal = MVal / MaxVal,
+                        !:Max = yes(Row - CVal)
                     else
+                        !:Max = no
+                    )
+                ;
+                    !.Max = yes(_ - MaxVal0),
+                    CellVal = !.Tableau ^ elem(Row, Q),
+                    RHSC = rhs_col(!.Tableau),
+                    MVal = !.Tableau ^ elem(Row, RHSC),
+                    ( if CellVal =< zero then
+                        % CellVal = 0 => multiple optimal sol'ns.
                         true
-                    ),
-                    CVal = MVal / MaxVal,
-                    !:Max = yes(Row - CVal)
-                else
-                    !:Max = no
-                )
-            ;
-                !.Max = yes(_ - MaxVal0),
-                CellVal = !.Tableau ^ elem(Row, Q),
-                RHSC = rhs_col(!.Tableau),
-                MVal = !.Tableau ^ elem(Row, RHSC),
-                ( if CellVal =< zero then
-                    true    % CellVal = 0 => multiple optimal sol'ns.
-                else
-                    ( if CellVal = zero then
-                        unexpected($pred, "zero divisor")
                     else
-                        true
-                    ),
-                    MaxVal1 = MVal / CellVal,
-                    ( if MaxVal1 =< MaxVal0 then
-                        !:Max = yes(Row - MaxVal1)
-                    else
-                        true
+                        ( if CellVal = zero then
+                            unexpected($pred, "zero divisor")
+                        else
+                            true
+                        ),
+                        MaxVal1 = MVal / CellVal,
+                        ( if MaxVal1 =< MaxVal0 then
+                            !:Max = yes(Row - MaxVal1)
+                        else
+                            true
+                        )
                     )
                 )
-            )
-        ),
+            ),
         solutions.aggregate(AllRows, MaxAgg, no, MaxResult),
         (
             MaxResult = no,
@@ -1092,7 +1103,9 @@ simplex(Result, !Tableau) :-
         ;
             MaxResult = yes(P - _),
             pivot(P, Q, !Tableau),
-            simplex(Result, !Tableau)
+            disable_warning [suspicious_recursion] (
+                simplex(Result, !Tableau)
+            )
         )
     ).
 

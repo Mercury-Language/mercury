@@ -1293,7 +1293,10 @@ solve_constraint(TVarSet, VarConstraints, !ConstraintMap, !DomainMap) :-
         true
     else
         % Need to iterate again.
-        solve_constraint(TVarSet, VarConstraints, !ConstraintMap, !DomainMap)
+        disable_warning [suspicious_recursion] (
+            solve_constraint(TVarSet, VarConstraints,
+                !ConstraintMap, !DomainMap)
+        )
     ).
 
     % Given the information from a single constraint, updates the domains of

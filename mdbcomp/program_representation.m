@@ -1204,7 +1204,9 @@ read_module_reps(ExpectNewFormat, ByteCode, !ModuleReps, !Pos) :-
         MoreModules = next_module,
         read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos),
         map.det_insert(ModuleRep ^ mr_name, ModuleRep, !ModuleReps),
-        read_module_reps(ExpectNewFormat, ByteCode, !ModuleReps, !Pos)
+        disable_warning [suspicious_recursion] (
+            read_module_reps(ExpectNewFormat, ByteCode, !ModuleReps, !Pos)
+        )
     ).
 
 :- pred read_module_rep(bool::in, bytecode::in, module_rep(unit)::out,
@@ -1439,8 +1441,10 @@ read_proc_reps(ExpectNewFormat, ByteCode, StringTable, TypeTable, !ProcReps,
         read_proc_rep(ExpectNewFormat, ByteCode, StringTable, TypeTable,
             ProcRep, !Pos),
         map.det_insert(ProcRep ^ pr_id, ProcRep, !ProcReps),
-        read_proc_reps(ExpectNewFormat, ByteCode, StringTable, TypeTable,
-            !ProcReps, !Pos)
+        disable_warning [suspicious_recursion] (
+            read_proc_reps(ExpectNewFormat, ByteCode, StringTable, TypeTable,
+                !ProcReps, !Pos)
+        )
     ).
 
 :- pred read_proc_rep(bool::in, bytecode::in, string_table::in,
@@ -1612,13 +1616,18 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             GoalExpr = disj_rep(Goals)
         ;
             GoalType = goal_neg,
-            read_goal(VarNumRep, ByteCode, StringTable, Info, SubGoal, !Pos),
+            disable_warning [suspicious_recursion] (
+                read_goal(VarNumRep, ByteCode, StringTable, Info, SubGoal,
+                    !Pos)
+            ),
             GoalExpr = negation_rep(SubGoal)
         ;
             GoalType = goal_ite,
-            read_goal(VarNumRep, ByteCode, StringTable, Info, Cond, !Pos),
-            read_goal(VarNumRep, ByteCode, StringTable, Info, Then, !Pos),
-            read_goal(VarNumRep, ByteCode, StringTable, Info, Else, !Pos),
+            disable_warning [suspicious_recursion] (
+                read_goal(VarNumRep, ByteCode, StringTable, Info, Cond, !Pos),
+                read_goal(VarNumRep, ByteCode, StringTable, Info, Then, !Pos),
+                read_goal(VarNumRep, ByteCode, StringTable, Info, Else, !Pos)
+            ),
             GoalExpr = ite_rep(Cond, Then, Else)
         ;
             GoalType = goal_switch,
@@ -1680,7 +1689,10 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
             else
                 unexpected($pred, "bad maybe_cut")
             ),
-            read_goal(VarNumRep, ByteCode, StringTable, Info, SubGoal, !Pos),
+            disable_warning [suspicious_recursion] (
+                read_goal(VarNumRep, ByteCode, StringTable, Info, SubGoal,
+                    !Pos)
+            ),
             GoalExpr = scope_rep(SubGoal, MaybeCut)
         ;
             GoalType = goal_ho_call,

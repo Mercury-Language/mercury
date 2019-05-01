@@ -263,8 +263,10 @@ string_get_token_list_max(String, Len, Tokens, !Posn) :-
         ; Token = comma
         ; Token = ht_sep
         ),
-        Tokens = token_cons(Token, Context, Tokens1),
-        string_get_token_list_max(String, Len, Tokens1, !Posn)
+        disable_warning [suspicious_recursion] (
+            string_get_token_list_max(String, Len, Tokens1, !Posn)
+        ),
+        Tokens = token_cons(Token, Context, Tokens1)
     ).
 
 string_get_token_list(String, Tokens, !Posn) :-
@@ -961,7 +963,9 @@ string_skip_to_eol(String, Len, Token, HaveToken, !Posn) :-
         ( if Char = '\n' then
             do_not_have_token(Token, HaveToken)
         else
-            string_skip_to_eol(String, Len, Token, HaveToken, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_skip_to_eol(String, Len, Token, HaveToken, !Posn)
+            )
         )
     else
         string_have_token(!.Posn, HaveToken, !Posn),
@@ -1045,7 +1049,9 @@ string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn) :-
         ( if Char = ('*') then
             string_get_comment_2(String, Len, Posn0, Token, HaveToken, !Posn)
         else
-            string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn)
+            )
         )
     else
         string_have_token(Posn0, HaveToken, !Posn),
@@ -1086,7 +1092,10 @@ string_get_comment_2(String, Len, Posn0, Token, HaveToken, !Posn) :-
             % end of /* ... */ comment, so get next token
             do_not_have_token(Token, HaveToken)
         else if Char = ('*') then
-            string_get_comment_2(String, Len, Posn0, Token, HaveToken, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_comment_2(String, Len, Posn0, Token, HaveToken,
+                    !Posn)
+            )
         else
             string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn)
         )
@@ -1125,8 +1134,10 @@ string_start_quoted_name(String, Len, QuoteChar, !.RevChars, Posn0,
         Token0, Context, !Posn),
     ( if Token0 = error(_) then
         % Skip to the end of the string or name.
-        string_start_quoted_name(String, Len, QuoteChar, !.RevChars,
-            Posn0, _, _, !Posn),
+        disable_warning [suspicious_recursion] (
+            string_start_quoted_name(String, Len, QuoteChar, !.RevChars,
+                Posn0, _, _, !Posn)
+        ),
         Token = Token0
     else if Token0 = eof then
         Token = error("unterminated quote")
@@ -1172,8 +1183,10 @@ string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
                 Posn0, Token, Context, !Posn)
         else
             !:RevChars = [Char | !.RevChars],
-            string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
-                Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
+                    Posn0, Token, Context, !Posn)
+            )
         )
     else
         string_get_context(Posn0, Context, !Posn),
@@ -1286,8 +1299,10 @@ string_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars, Posn0,
                 !.RevChars, Posn0, Token, Context, !Posn)
         else if Char = '\r' then
             % Files created on Windows may have an extra return character.
-            string_get_quoted_name_escape(String, Len, QuoteChar,
-                !.RevChars, Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_quoted_name_escape(String, Len, QuoteChar,
+                    !.RevChars, Posn0, Token, Context, !Posn)
+            )
         else if escape_char(Char, EscapedChar) then
             !:RevChars = [EscapedChar | !.RevChars],
             string_get_quoted_name(String, Len, QuoteChar,
@@ -1397,8 +1412,11 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
         ( if string_read_char(String, Len, Char, !Posn) then
             ( if char.is_hex_digit(Char) then
                 !:RevHexChars = [Char | !.RevHexChars],
-                string_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
-                    !.RevChars, !.RevHexChars, Posn0, Token, Context, !Posn)
+                disable_warning [suspicious_recursion] (
+                    string_get_unicode_escape(NumHexChars, String, Len,
+                        QuoteChar, !.RevChars, !.RevHexChars, Posn0, Token,
+                        Context, !Posn)
+                )
             else
                 string_get_context(Posn0, Context, !Posn),
                 Token = error("invalid hex character in Unicode escape")
@@ -1456,8 +1474,10 @@ string_get_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
             !:RevHexChars = [Char | !.RevHexChars],
-            string_get_hex_escape(String, Len, QuoteChar,
-                !.RevChars, !.RevHexChars, Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_hex_escape(String, Len, QuoteChar,
+                    !.RevChars, !.RevHexChars, Posn0, Token, Context, !Posn)
+            )
         else if Char = ('\\') then
             string_finish_hex_escape(String, Len, QuoteChar, !.RevChars,
                 !.RevHexChars, Posn0, Token, Context, !Posn)
@@ -1560,8 +1580,10 @@ string_get_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
             !:RevOctalChars = [Char | !.RevOctalChars],
-            string_get_octal_escape(String, Len, QuoteChar,
-                !.RevChars, !.RevOctalChars, Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_octal_escape(String, Len, QuoteChar,
+                    !.RevChars, !.RevOctalChars, Posn0, Token, Context, !Posn)
+            )
         else if Char = ('\\') then
             string_finish_octal_escape(String, Len, QuoteChar,
                 !.RevChars, !.RevOctalChars, Posn0, Token, Context, !Posn)
@@ -1672,7 +1694,9 @@ get_name(Stream, !.RevChars, Token, !IO) :-
 string_get_name(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_alnum_or_underscore(Char) then
-            string_get_name(String, Len, Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_name(String, Len, Posn0, Token, Context, !Posn)
+            )
         else
             string_ungetchar(String, !Posn),
             grab_string(String, Posn0, Name, !Posn),
@@ -1803,8 +1827,10 @@ get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO) :-
 string_get_source_line_number(String, Len, Posn1, Token, HaveToken, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
-            string_get_source_line_number(String, Len, Posn1, Token, HaveToken,
-                !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_source_line_number(String, Len, Posn1, Token,
+                    HaveToken, !Posn)
+            )
         else if Char = '\n' then
             grab_string(String, Posn1, LineNumString, !Posn),
             ( if
@@ -1871,7 +1897,9 @@ get_graphic(Stream, !.RevChars, Token, !IO) :-
 string_get_graphic(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if graphic_token_char(Char) then
-            string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
+            )
         else
             string_ungetchar(String, !Posn),
             grab_string(String, Posn0, Name, !Posn),
@@ -1920,7 +1948,9 @@ get_variable(Stream, !.RevChars, Token, !IO) :-
 string_get_variable(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_alnum_or_underscore(Char) then
-            string_get_variable(String, Len, Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_variable(String, Len, Posn0, Token, Context, !Posn)
+            )
         else
             string_ungetchar(String, !Posn),
             grab_string(String, Posn0, VariableName, !Posn),
@@ -2183,12 +2213,16 @@ string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_binary_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
-            string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
-                Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
+                    Context, !Posn)
+            )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
-                Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
+                    Context, !Posn)
+            )
         else if Char = 'u' then
             string_get_integer_size_suffix(String, Len, Posn1,
                 LastDigitPosn, base_2, unsigned, Token, !Posn),
@@ -2257,7 +2291,9 @@ string_get_octal(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_octal_2(String, LastDigit, Len, Posn1, Token, Context,
                 !Posn)
         else if Char = '_' then
-            string_get_octal(String, Len, Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_octal(String, Len, Posn0, Token, Context, !Posn)
+            )
         else
             string_ungetchar(String, !Posn),
             Token = error("unterminated octal literal"),
@@ -2323,12 +2359,16 @@ string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
-            string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_octal_2(String, !.LastDigit, Len, Posn1, Token,
+                    Context, !Posn)
+            )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_octal_2(String, !.LastDigit, Len, Posn1, Token,
+                    Context, !Posn)
+            )
         else if Char = 'u' then
             string_get_integer_size_suffix(String, Len, Posn1,
                 LastDigitPosn, base_8, unsigned, Token, !Posn),
@@ -2394,10 +2434,14 @@ string_get_hex(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            string_get_hex_2(String, LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_hex_2(String, LastDigit, Len, Posn1, Token,
+                    Context, !Posn)
+            )
         else if Char = '_' then
-            string_get_hex(String, Len, Posn0, Token, Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_hex(String, Len, Posn0, Token, Context, !Posn)
+            )
         else
             string_ungetchar(String, !Posn),
             Token = error("unterminated hexadecimal literal"),
@@ -2434,7 +2478,9 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            disable_warning [suspicious_recursion] (
+                get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO)
+            )
         else if Char = 'u' then
             get_integer_size_suffix(Stream, !.RevChars, base_16, unsigned,
                 Token, !IO)
@@ -2463,12 +2509,16 @@ string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
-            string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_hex_2(String, !.LastDigit, Len, Posn1, Token,
+                    Context, !Posn)
+            )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_hex_2(String, !.LastDigit, Len, Posn1, Token,
+                    Context, !Posn)
+            )
         else if Char = 'u' then
             string_get_integer_size_suffix(String, Len, Posn1,
                 LastDigitPosn, base_16, unsigned, Token, !Posn),
@@ -2575,12 +2625,16 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
-            string_get_number(String, !.LastDigit, Len, Posn0, Token, Context,
-                !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_number(String, !.LastDigit, Len, Posn0, Token,
+                    Context, !Posn)
+            )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            string_get_number(String, !.LastDigit, Len, Posn0, Token, Context,
-                !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_number(String, !.LastDigit, Len, Posn0, Token,
+                    Context, !Posn)
+            )
         else if Char = ('.') then
             (
                 !.LastDigit = last_digit_is_not_underscore,
@@ -2885,12 +2939,16 @@ string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token, Context,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
-            string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token,
-                Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_float_decimals(String, !.LastDigit, Len, Posn0,
+                    Token, Context, !Posn)
+            )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token,
-                Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_float_decimals(String, !.LastDigit, Len, Posn0,
+                    Token, Context, !Posn)
+            )
         else if ( Char = 'e' ; Char = 'E' ) then
             string_get_float_exponent(String, Len, Posn0, Token, Context,
                 !Posn)
@@ -3068,12 +3126,16 @@ string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token, Context,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
-            string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token,
-                Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_float_exponent_3(String, !.LastDigit, Len, Posn0,
+                    Token, Context, !Posn)
+            )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
-            string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token,
-                Context, !Posn)
+            disable_warning [suspicious_recursion] (
+                string_get_float_exponent_3(String, !.LastDigit, Len, Posn0,
+                    Token, Context, !Posn)
+            )
         else
             string_ungetchar(String, !Posn),
             (

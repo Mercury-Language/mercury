@@ -217,9 +217,11 @@ indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC,
         true
     else
         sr_fixpoint_table_new_run(!FixpointTable),
-        indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC,
-            ReuseTable, !ModuleInfo, !FixpointTable, !DepProcs, !Requests,
-            !IntermodRequests)
+        disable_warning [suspicious_recursion] (
+            indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC,
+                ReuseTable, !ModuleInfo, !FixpointTable, !DepProcs, !Requests,
+                !IntermodRequests)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

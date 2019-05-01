@@ -317,7 +317,9 @@ gather_flag_chars(!Chars, !Flags) :-
         ; Char = ('+'), !Flags ^ flag_plus  := flag_plus_set
         )
     then
-        gather_flag_chars(!Chars, !Flags)
+        disable_warning [suspicious_recursion] (
+            gather_flag_chars(!Chars, !Flags)
+        )
     else
         true
     ).

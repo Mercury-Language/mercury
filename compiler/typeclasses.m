@@ -237,8 +237,8 @@ reduce_context_by_rule_application(ClassTable, InstanceTable,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 reduce_context_by_rule_application_2(ClassTable, InstanceTable,
-        ExternalTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
-        !Constraints, !Seen) :-
+        ExternalTypeParams, !Bindings, !TVarSet, !ProofMap,
+        !ConstraintMap, !Constraints, !Seen) :-
     apply_rec_subst_to_constraints(!.Bindings, !Constraints),
     apply_improvement_rules(ClassTable, InstanceTable, ExternalTypeParams,
         !.Constraints, !TVarSet, !Bindings, AppliedImprovementRule),
@@ -270,9 +270,11 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable,
         % We have reached fixpoint.
         sort_and_merge_dups(!Constraints)
     else
-        reduce_context_by_rule_application_2(ClassTable, InstanceTable,
-            ExternalTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
-            !Constraints, !Seen)
+        disable_warning [suspicious_recursion] (
+            reduce_context_by_rule_application_2(ClassTable, InstanceTable,
+                ExternalTypeParams, !Bindings, !TVarSet, !ProofMap,
+                !ConstraintMap, !Constraints, !Seen)
+        )
     ).
 
 :- pred sort_and_merge_dups(hlds_constraints::in, hlds_constraints::out)

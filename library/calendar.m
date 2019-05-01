@@ -866,7 +866,9 @@ add_duration_loop(D, S, !E) :-
         Temp = !.E ^ dt_month + Carry,
         !E ^ dt_month := modulo(Temp, 1, 13),
         !E ^ dt_year := !.E ^ dt_year + fquotient(Temp, 1, 13),
-        add_duration_loop(D, S, !E)
+        disable_warning [suspicious_recursion] (
+            add_duration_loop(D, S, !E)
+        )
     else if
         MaxDaysInMonth = max_day_in_month_for(!.E ^ dt_year, !.E ^ dt_month),
         !.E ^ dt_day > MaxDaysInMonth
@@ -876,7 +878,9 @@ add_duration_loop(D, S, !E) :-
         Temp = !.E ^ dt_month + Carry,
         !E ^ dt_month := modulo(Temp, 1, 13),
         !E ^ dt_year := !.E ^ dt_year + fquotient(Temp, 1, 13),
-        add_duration_loop(D, S, !E)
+        disable_warning [suspicious_recursion] (
+            add_duration_loop(D, S, !E)
+        )
     else
         true
     ).
@@ -1056,35 +1060,38 @@ day_duration(DateA, DateB) = Duration :-
     builtin.compare(CompResult, DateB, DateA),
     (
         CompResult = (<),
-        Duration0 = day_duration(DateB, DateA),
+        Duration0 = do_day_duration(DateB, DateA),
         Duration = negate(Duration0)
     ;
         CompResult = (=),
         Duration = zero_duration
     ;
         CompResult = (>),
-        some [!Borrow] (
-            MicroSecond1 = DateB ^ dt_microsecond,
-            MicroSecond2 = DateA ^ dt_microsecond,
-            subtract_ints_with_borrow(microseconds_per_second, MicroSecond1,
-                MicroSecond2, MicroSeconds, !:Borrow),
-            Second1 = DateB ^ dt_second - !.Borrow,
-            Second2 = DateA ^ dt_second,
-            subtract_ints_with_borrow(60, Second1, Second2, Seconds,
-                !:Borrow),
-            Minute1 = DateB ^ dt_minute - !.Borrow,
-            Minute2 = DateA ^ dt_minute,
-            subtract_ints_with_borrow(60, Minute1, Minute2, Minutes,
-                !:Borrow),
-            Hour1 = DateB ^ dt_hour - !.Borrow,
-            Hour2 = DateA ^ dt_hour,
-            subtract_ints_with_borrow(24, Hour1, Hour2, Hours, !:Borrow),
-            JDN1 = julian_day_number(DateB),
-            JDN2 = julian_day_number(DateA),
-            Days = JDN1 - !.Borrow - JDN2,
-            Duration = init_duration(0, 0, Days, Hours, Minutes, Seconds,
-                MicroSeconds)
-        )
+        Duration = do_day_duration(DateA, DateB)
+    ).
+
+:- func do_day_duration(date, date) = duration.
+
+do_day_duration(DateA, DateB) = Duration :-
+    some [!Borrow] (
+        MicroSecond1 = DateB ^ dt_microsecond,
+        MicroSecond2 = DateA ^ dt_microsecond,
+        subtract_ints_with_borrow(microseconds_per_second,
+            MicroSecond1, MicroSecond2, MicroSeconds, !:Borrow),
+        Second1 = DateB ^ dt_second - !.Borrow,
+        Second2 = DateA ^ dt_second,
+        subtract_ints_with_borrow(60, Second1, Second2, Seconds, !:Borrow),
+        Minute1 = DateB ^ dt_minute - !.Borrow,
+        Minute2 = DateA ^ dt_minute,
+        subtract_ints_with_borrow(60, Minute1, Minute2, Minutes, !:Borrow),
+        Hour1 = DateB ^ dt_hour - !.Borrow,
+        Hour2 = DateA ^ dt_hour,
+        subtract_ints_with_borrow(24, Hour1, Hour2, Hours, !:Borrow),
+        JDN1 = julian_day_number(DateB),
+        JDN2 = julian_day_number(DateA),
+        Days = JDN1 - !.Borrow - JDN2,
+        Duration = init_duration(0, 0, Days, Hours, Minutes, Seconds,
+            MicroSeconds)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1097,7 +1104,9 @@ foldl_days(Pred, !.Curr, End, !Acc) :-
         ),
         Pred(!.Curr, !Acc),
         add_duration(init_duration(0, 0, 1, 0, 0, 0, 0), !Curr),
-        foldl_days(Pred, !.Curr, End, !Acc)
+        disable_warning [suspicious_recursion] (
+            foldl_days(Pred, !.Curr, End, !Acc)
+        )
     ;
         Res = (>)
     ).
@@ -1110,7 +1119,9 @@ foldl2_days(Pred, !.Curr, End, !Acc1, !Acc2) :-
         ),
         Pred(!.Curr, !Acc1, !Acc2),
         add_duration(init_duration(0, 0, 1, 0, 0, 0, 0), !Curr),
-        foldl2_days(Pred, !.Curr, End, !Acc1, !Acc2)
+        disable_warning [suspicious_recursion] (
+            foldl2_days(Pred, !.Curr, End, !Acc1, !Acc2)
+        )
     ;
         Res = (>)
     ).
@@ -1123,7 +1134,9 @@ foldl3_days(Pred, !.Curr, End, !Acc1, !Acc2, !Acc3) :-
         ),
         Pred(!.Curr, !Acc1, !Acc2, !Acc3),
         add_duration(init_duration(0, 0, 1, 0, 0, 0, 0), !Curr),
-        foldl3_days(Pred, !.Curr, End, !Acc1, !Acc2, !Acc3)
+        disable_warning [suspicious_recursion] (
+            foldl3_days(Pred, !.Curr, End, !Acc1, !Acc2, !Acc3)
+        )
     ;
         Res = (>)
     ).

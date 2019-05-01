@@ -1053,8 +1053,10 @@ call_call(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal, MaybeGoal,
         !PDInfo),
     (
         ShouldTry = yes,
-        call_call(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
-            MaybeGoal, !PDInfo)
+        disable_warning [suspicious_recursion] (
+            call_call(ConjNonLocals, EarlierGoal, BetweenGoals,
+                MaybeLaterGoal, MaybeGoal, !PDInfo)
+        )
     ;
         ShouldTry = no,
         MaybeGoal = no

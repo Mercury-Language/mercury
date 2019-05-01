@@ -98,10 +98,13 @@
 :- import_module transform_hlds.const_prop.
 
 :- import_module bool.
+:- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module varset.
 
@@ -539,31 +542,15 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
 
         % Are the input arguments the same (or equivalent)?
         simplify_info_get_module_info(!.Info, ModuleInfo),
+        simplify_info_get_varset(!.Info, VarSet),
+        pred_info_get_var_name_remap(PredInfo, VarNameRemap),
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, ArgModes),
-        input_args_are_equiv(ModuleInfo, Common, ArgVars, HeadVars, ArgModes),
-
-        % Don't warn if the input arguments' modes initial insts contain
-        % `any' insts, since the arguments might have become more constrained
-        % before the recursive call, in which case the recursion might
-        % eventually terminate.
-        %
-        % XXX The following check will only warn if the inputs are all fully
-        % ground; i.e. we won't warn in the case of partially instantiated
-        % insts such as list_skel(free). Still, it is better to miss warnings
-        % in that rare and unsupported case rather than to issue spurious
-        % warnings in cases involving `any' insts. We should only warn about
-        % definite nontermination here, not possible nontermination; warnings
-        % about possible nontermination should only be given if the
-        % termination analysis pass is enabled.
-        all [ArgMode] (
-            (
-                list.member(ArgMode, ArgModes),
-                mode_is_input(ModuleInfo, ArgMode)
-            )
-        =>
-            mode_is_fully_input(ModuleInfo, ArgMode)
-        ),
+        input_args_are_suspicious(ModuleInfo, Common, VarSet, VarNameRemap,
+            HeadVars, ArgVars, ArgModes,
+            all_inputs_eqv, AllInputsEqv,
+            all_inputs_eqv_or_svar, AllInputsEqvOrSvar,
+            set.init, HeadBaseNames, set.init, ArgBaseNames),
 
         % Don't count procs using minimal evaluation as they should always
         % terminate if they have a finite number of answers.
@@ -574,46 +561,226 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
         pred_info_get_purity(PredInfo, Purity),
         Purity \= purity_impure
     then
-        PredNamePieces = describe_one_pred_info_name(should_not_module_qualify,
+        NamePieces = describe_one_pred_info_name(should_not_module_qualify,
             PredInfo),
-        MainPieces = [words("Warning: recursive call to") | PredNamePieces] ++
-            [words("will lead to infinite recursion."), nl],
-        VerbosePieces =
-            [words("If this recursive call is executed,"),
-            words("the procedure will call itself"),
-            words("with exactly the same input arguments,"),
-            words("leading to infinite recursion."), nl],
-        Msg = simple_msg(goal_info_get_context(GoalInfo),
-            [option_is_set(warn_simple_code, yes,
-                [always(MainPieces),
-                verbose_only(verbose_once, VerbosePieces)])]),
-        Severity = severity_conditional(warn_simple_code, yes,
-            severity_warning, no),
-        Spec = error_spec(Severity, phase_simplify(report_in_any_mode), [Msg]),
-        simplify_info_add_message(Spec, !Info)
+        (
+            AllInputsEqvOrSvar = all_inputs_eqv_or_svar,
+            (
+                AllInputsEqv = all_inputs_eqv,
+                MainPieces =
+                    [words("Warning: recursive call to") | NamePieces] ++
+                    [words("will lead to infinite recursion."), nl],
+                VerbosePieces =
+                    [words("If this recursive call is executed,"),
+                    words("the procedure will call itself"),
+                    words("with exactly the same input arguments,"),
+                    words("leading to infinite recursion."), nl],
+                Msgs = [simple_msg(goal_info_get_context(GoalInfo),
+                    [always(MainPieces),
+                    verbose_only(verbose_once, VerbosePieces)])],
+                Spec = error_spec(severity_warning,
+                    phase_simplify(report_in_any_mode), Msgs),
+                simplify_info_add_message(Spec, !Info)
+            ;
+                AllInputsEqv = not_all_inputs_eqv,
+                ( if simplify_do_warn_suspicious_recursion(!.Info) then
+                    Pieces =
+                        [words("Warning: recursive call to") | NamePieces] ++
+                        [words("is suspicious, because"),
+                        words("all input argument positions that differ"),
+                        words("between the clause head and the call"),
+                        words("use state variable notation."), nl],
+                    Msgs = [simple_msg(goal_info_get_context(GoalInfo),
+                        [always(Pieces), shut_up_suspicious_recursion_msg])],
+                    Spec = error_spec(severity_warning,
+                        phase_simplify(report_in_any_mode), Msgs),
+                    simplify_info_add_message(Spec, !Info)
+                else
+                    true
+                )
+            )
+        ;
+            AllInputsEqvOrSvar = not_all_inputs_eqv_or_svar,
+            set.intersect(HeadBaseNames, ArgBaseNames, HeadArgBaseNames),
+            SuspiciousArgNames = set.to_sorted_list(HeadArgBaseNames),
+            ( if
+                SuspiciousArgNames = [_, _ | _],
+                simplify_do_warn_suspicious_recursion(!.Info)
+            then
+                Pieces =
+                    [words("Warning: recursive call to") | NamePieces] ++
+                    [words("is suspicious, because variables"),
+                    words("whose names start with")] ++
+                    list_to_pieces(SuspiciousArgNames) ++
+                    [words("occupy different argument positions"),
+                    words("in the call than in the clause head."), nl],
+                Msg = simple_msg(goal_info_get_context(GoalInfo),
+                    [option_is_set(warn_suspicious_recursion, yes,
+                        [always(Pieces), shut_up_suspicious_recursion_msg])]),
+                Spec = error_spec(severity_warning,
+                    phase_simplify(report_in_any_mode), [Msg]),
+                simplify_info_add_message(Spec, !Info)
+            else
+                true
+            )
+        )
     else
         true
     ).
 
-    % input_args_are_equiv(ModuleInfo, CommonInfo, ArgVars, HeadVars, Modes):
-    %
-    % Succeeds if all the input arguments (determined by looking at `Modes')
-    % in `ArgVars' are equivalent (according to the equivalence class specified
-    % by `CommonInfo') to the corresponding variables in HeadVars.
-    % HeadVars, Modes, and ArgVars should all be lists of the same length.
-    %
-:- pred input_args_are_equiv(module_info::in, common_info::in,
-    list(prog_var)::in, list(prog_var)::in, list(mer_mode)::in) is semidet.
+:- func shut_up_suspicious_recursion_msg = error_msg_component.
 
-input_args_are_equiv(_, _, [], [], _).
-input_args_are_equiv(ModuleInfo, CommonInfo,
-        [ArgVar | ArgVars], [HeadVar | HeadVars], [Mode | Modes]) :-
-    ( if mode_is_input(ModuleInfo, Mode) then
-        common_vars_are_equivalent(CommonInfo, ArgVar, HeadVar)
+shut_up_suspicious_recursion_msg = Component :-
+    Pieces =
+        [words("This warning can be disabled by"),
+        words("wrapping the recursive call inside a"),
+        quote("disable_warning [suspicious_recursion] (...)"),
+        words("scope."), nl],
+    Component = verbose_only(verbose_once, Pieces).
+
+:- type maybe_all_inputs_eqv
+    --->    not_all_inputs_eqv
+    ;       all_inputs_eqv.
+
+:- type maybe_all_inputs_eqv_or_svar
+    --->    not_all_inputs_eqv_or_svar
+    ;       all_inputs_eqv_or_svar.
+
+    % input_args_are_equiv(ModuleInfo, CommonInfo, VarSet, VarNameRemap,
+    %   ArgVars, HeadVars, Modes, !SeenEqv, !SeenSV):
+    %
+    % ArgVars and HeadVars should specify the arguments of a recursive call
+    % and of the clause head respectively, while Modes should specify the
+    % arguments' modes. These lists should of course have all the same length.
+    %
+    % Succeed iff every ArgVar that is input arguments is either
+    %
+    % - equivalent to the corresponding HeadVar according to the
+    %   equivalence class specified by CommonInfo, or
+    %
+    % - has a name indicating that it (possibly a different version of the)
+    %   the same state variable as the corresponding HeadVar, according to
+    %   the variables in VarSet, or (for the head variables) VarNameRemap.
+    %
+    % We set !:SeenEqv iff any input arg was matched by the first criterion.
+    % We set !:SeenSV iff any input arg was matched by the second criterion.
+    %
+    % NOTE: the names of head vars usually have compiler-generated names
+    % of the form HeadVar_N, but the headvar_names.m module records their
+    % programmer-given original names. Our caller should give us this record
+    % as VarNameRemap.
+    %
+:- pred input_args_are_suspicious(module_info::in, common_info::in,
+    prog_varset::in, map(prog_var, string)::in,
+    list(prog_var)::in, list(prog_var)::in, list(mer_mode)::in,
+    maybe_all_inputs_eqv::in, maybe_all_inputs_eqv::out,
+    maybe_all_inputs_eqv_or_svar::in, maybe_all_inputs_eqv_or_svar::out,
+    set(string)::in, set(string)::out, set(string)::in, set(string)::out)
+    is semidet.
+
+input_args_are_suspicious(_, _, _, _, [], [], _,
+        !AllInputsEqv, !AllInputsEqvOrSvar, !HeadBaseNames, !ArgBaseNames).
+input_args_are_suspicious(ModuleInfo, CommonInfo, VarSet, VarNameRemap,
+        [HeadVar | HeadVars], [ArgVar | ArgVars], [Mode | Modes],
+        !AllInputsEqv, !AllInputsEqvOrSvar, !HeadBaseNames, !ArgBaseNames) :-
+    InitialInst = mode_get_initial_inst(ModuleInfo, Mode),
+    ( if inst_is_bound(ModuleInfo, InitialInst) then
+        % This is an input argument.
+
+        % Fail (and thus don't generate a warning) if an input argument's
+        % initial inst is not ground, which means it may contain `any' insts.
+        % This is because the argument might have become more constrained
+        % before the recursive call, in which case the recursion might
+        % eventually terminate.
+        %
+        % XXX This check will only allow warnings if the inputs are all fully
+        % ground; i.e. we won't warn in the case of partially instantiated
+        % insts such as list_skel(free). Still, it is better to miss warnings
+        % in that rare and unsupported case rather than to issue spurious
+        % warnings in cases involving `any' insts.
+        inst_is_ground(ModuleInfo, InitialInst),
+
+        ( if
+            common_vars_are_equivalent(CommonInfo, ArgVar, HeadVar)
+        then
+            true
+        else
+            % If the input argument is not the same in the call as in
+            % the clause head (which it won't be if we get here), then
+            % fail (and thus don't generate a warning) if the input argument
+            % is unique. This is because in that case, the recursion may be
+            % terminated by changes in the state *outside* the view
+            % of the compiler.
+            inst_is_not_partly_unique(ModuleInfo, InitialInst),
+
+            !:AllInputsEqv = not_all_inputs_eqv,
+            % If either the argument or the head variable is unnamed, then
+            % we have no reason to believe the recursive call is suspicious,
+            % so we fail.
+            head_var_name(VarSet, VarNameRemap, HeadVar, HeadName),
+            varset.search_name(VarSet, ArgVar, ArgName),
+            delete_any_numeric_suffix(HeadName, HeadBaseName),
+            delete_any_numeric_suffix(ArgName, ArgBaseName),
+            ( if HeadBaseName = ArgBaseName then
+                ( if string.prefix(HeadBaseName, "STATE_VARIABLE") then
+                    true
+                else
+                    !:AllInputsEqvOrSvar = not_all_inputs_eqv_or_svar
+                )
+            else
+                !:AllInputsEqvOrSvar = not_all_inputs_eqv_or_svar,
+                set.insert(HeadBaseName, !HeadBaseNames),
+                set.insert(ArgBaseName, !ArgBaseNames)
+            )
+        )
     else
+        % This is not an input argument.
         true
     ),
-    input_args_are_equiv(ModuleInfo, CommonInfo, ArgVars, HeadVars, Modes).
+    input_args_are_suspicious(ModuleInfo, CommonInfo, VarSet, VarNameRemap,
+        HeadVars, ArgVars, Modes,
+        !AllInputsEqv, !AllInputsEqvOrSvar, !HeadBaseNames, !ArgBaseNames).
+
+:- pred head_var_name(prog_varset::in, map(prog_var, string)::in,
+    prog_var::in, string::out) is semidet.
+
+head_var_name(VarSet, VarNameRemap, Var, Name) :-
+    ( if map.search(VarNameRemap, Var, HeadName) then
+        Name = HeadName
+    else
+        varset.search_name(VarSet, Var, Name)
+    ).
+
+:- pred delete_any_numeric_suffix(string::in, string::out) is det.
+
+delete_any_numeric_suffix(Str, StrNoSuffix) :-
+    ( if has_numeric_suffix(Str, StrNoSuffixPrime) then
+        StrNoSuffix = StrNoSuffixPrime
+    else
+        StrNoSuffix = Str
+    ).
+
+:- pred has_numeric_suffix(string::in, string::out) is semidet.
+
+has_numeric_suffix(Str, StrNoSuffix) :-
+    string.to_rev_char_list(Str, RevChars),
+    RevChars = [HeadRevChar | TailRevChars],
+    char.is_digit(HeadRevChar),
+    delete_initial_digits_maybe_underscore(TailRevChars, RevNoSuffixChars),
+    string.from_rev_char_list(RevNoSuffixChars, StrNoSuffix).
+
+:- pred delete_initial_digits_maybe_underscore(list(char)::in, list(char)::out)
+    is det.
+
+delete_initial_digits_maybe_underscore([], []).
+delete_initial_digits_maybe_underscore([Char0 | Chars0], Chars) :-
+    ( if char.is_digit(Char0) then
+        delete_initial_digits_maybe_underscore(Chars0, Chars)
+    else if Char0 = '_' then
+        Chars = Chars0
+    else
+        Chars = [Char0 | Chars0]
+    ).
 
 %---------------------%
 

@@ -253,7 +253,9 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         ;
             VeryVerbose = no
         ),
-        detect_cse_in_proc(PredId, ProcId, !ModuleInfo)
+        disable_warning [suspicious_recursion] (
+            detect_cse_in_proc(PredId, ProcId, !ModuleInfo)
+        )
     ).
 
 :- type cse_info

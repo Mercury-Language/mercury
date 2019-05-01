@@ -615,8 +615,10 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
             else
                 !:IndexInConj = !.IndexInConj + 1
             ),
-            apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar,
-                CallerPredId, CallerProcId, Distance, !ProcInfo)
+            disable_warning [suspicious_recursion] (
+                apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar,
+                    CallerPredId, CallerProcId, Distance, !ProcInfo)
+            )
         )
     else
         % Not a parallel conjunction.
@@ -766,8 +768,10 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
             else
                 !:IndexInConj = !.IndexInConj + 1
             ),
-            apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar,
-                CallerPredId, CallerProcId, ModuleInfo, !ProcInfo)
+            disable_warning [suspicious_recursion] (
+                apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar,
+                    CallerPredId, CallerProcId, ModuleInfo, !ProcInfo)
+            )
         )
     else
         unexpected($pred, "unexpected goal type")

@@ -1025,8 +1025,10 @@ compare_lex_2(Result, !.LBA, !.UBA, !.LBB, !.UBB, !.NextA, !.NextB) :-
             else
                 !:LBA = !.LBA + 1,
                 !:LBB = !.LBB + 1,
-                compare_lex_2(Result, !.LBA, !.UBA, !.LBB, !.UBB,
-                    !.NextA, !.NextB)
+                disable_warning [suspicious_recursion] (
+                    compare_lex_2(Result, !.LBA, !.UBA, !.LBB, !.UBB,
+                        !.NextA, !.NextB)
+                )
             )
         )
     ).

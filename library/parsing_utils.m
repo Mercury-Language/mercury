@@ -621,7 +621,9 @@ identifier(InitIdChars, IdChars, Src, Identifier, !PS) :-
 
 identifier_2(IdChars, Src, unit, !PS) :-
     ( if char_in_class(IdChars, Src, _, !PS) then
-        identifier_2(IdChars, Src, _, !PS)
+        disable_warning [suspicious_recursion] (
+            identifier_2(IdChars, Src, _, !PS)
+        )
     else
         true
     ).
@@ -633,7 +635,9 @@ whitespace(Src, unit, !PS) :-
         next_char(Src, C, !PS),
         char.is_whitespace(C)
     then
-        whitespace(Src, _, !PS)
+        disable_warning [suspicious_recursion] (
+            whitespace(Src, _, !PS)
+        )
     else
         semidet_true
     ).
@@ -642,7 +646,13 @@ whitespace(Src, unit, !PS) :-
 
 skip_to_eol(Src, unit, !PS) :-
     next_char(Src, C, !PS),
-    ( if C = ('\n') then true else skip_to_eol(Src, _, !PS) ).
+    ( if C = ('\n') then
+        true
+    else
+        disable_warning [suspicious_recursion] (
+            skip_to_eol(Src, _, !PS)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -721,7 +731,9 @@ digits_2(Base, Src, unit, !PS) :-
         next_char(Src, C, !PS),
         char.is_base_digit(Base, C)
     then
-        digits_2(Base, Src, _, !PS)
+        disable_warning [suspicious_recursion] (
+            digits_2(Base, Src, _, !PS)
+        )
     else
         true
     ).
@@ -746,11 +758,14 @@ string_literal_2(Src, QuoteChar, unit, !PS) :-
         true
     else if C = ('\\') then
         next_char(Src, _, !PS),
-        string_literal_2(Src, QuoteChar, _, !PS)
+        disable_warning [suspicious_recursion] (
+            string_literal_2(Src, QuoteChar, _, !PS)
+        )
     else
-        string_literal_2(Src, QuoteChar, _, !PS)
+        disable_warning [suspicious_recursion] (
+            string_literal_2(Src, QuoteChar, _, !PS)
+        )
     ).
-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -788,7 +803,9 @@ zero_or_more(P, Src, Result, !PS) :-
 zero_or_more_rev_acc(P, Src, !RevResult, !PS) :-
     ( if P(Src, X, !PS) then
         list.cons(X, !RevResult),
-        zero_or_more_rev_acc(P, Src, !RevResult, !PS)
+        disable_warning [suspicious_recursion] (
+            zero_or_more_rev_acc(P, Src, !RevResult, !PS)
+        )
     else
         semidet_true
     ).
@@ -804,7 +821,9 @@ zero_or_more(P, Src, Result, !S, !PS) :-
 zero_or_more_rev_acc(P, Src, !RevResult, !S, !PS) :-
     ( if P(Src, X, !S, !PS) then
         list.cons(X, !RevResult),
-        zero_or_more_rev_acc(P, Src, !RevResult, !S, !PS)
+        disable_warning [suspicious_recursion] (
+            zero_or_more_rev_acc(P, Src, !RevResult, !S, !PS)
+        )
     else
         semidet_true
     ).

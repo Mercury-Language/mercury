@@ -703,7 +703,9 @@ rule_3(Node, !Graph) :-
             % call. So this predicate can terminate at some point (due
             % to the fact that the "size" of !.Graph is smaller than that
             % of !:Graph).
-            rule_3(Node, !Graph)
+            disable_warning [suspicious_recursion] (
+                rule_3(Node, !Graph)
+            )
           ;
             % No node in Nodes has been unified with NY, which means that
             % no more nodes need to be unified, so just quit.

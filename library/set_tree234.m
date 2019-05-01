@@ -1049,13 +1049,13 @@ find_num_234_levels(Len, Level, AllThrees) :-
 :- pred find_num_234_levels_loop(int::in,
     int::in, int::out, int::in, int::out) is det.
 
-find_num_234_levels_loop(Len, !Level, !AllThrees) :-
+find_num_234_levels_loop(Len, Level0, Level, !AllThrees) :-
     ( if Len =< !.AllThrees then
-        true
+        Level = Level0
     else
-        !:Level = !.Level + 1,
+        Level1 = Level0 + 1,
         !:AllThrees = !.AllThrees * 3 + 2,
-        find_num_234_levels_loop(Len, !Level, !AllThrees)
+        find_num_234_levels_loop(Len, Level1, Level, !AllThrees)
     ).
 
 %---------------------------------------------------------------------------%

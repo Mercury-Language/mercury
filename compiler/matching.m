@@ -417,7 +417,9 @@ maximal_matching(BenefitNodes, Graph) = Matching :-
 maximize_matching(BenefitNodes, Graph, !Matching) :-
     ( if Path = find_augmenting_path(BenefitNodes, Graph, !.Matching) then
         !:Matching = update_matches(Path, !.Matching),
-        maximize_matching(BenefitNodes, Graph, !Matching)
+        disable_warning [suspicious_recursion] (
+            maximize_matching(BenefitNodes, Graph, !Matching)
+        )
     else
         true
     ).

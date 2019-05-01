@@ -735,7 +735,9 @@ fix_mangled_ascii(!Str) :-
 fix_mangled_ascii_chars(!Str) :-
     remove_int(I, !Str),
     ( if remove_prefix("_", !Str) then
-        fix_mangled_ascii_chars(!Str)
+        disable_warning [suspicious_recursion] (
+            fix_mangled_ascii_chars(!Str)
+        )
     else
         true
     ),
@@ -894,12 +896,14 @@ format_maybe_module(yes(Module), Name, QualifiedName) :-
 
 :- pred remove_trailing_int(int::out, string::in, string::out) is semidet.
 
-remove_trailing_int(Int, !Str) :-
-    remove_trailing_digit(Digit, !Str),
-    ( if remove_trailing_int(Rest, !Str) then
-        Int = Rest * 10 + Digit
+remove_trailing_int(Int, String0, String) :-
+    remove_trailing_digit(Digit, String0, String1),
+    ( if remove_trailing_int(Rest, String1, String2) then
+        Int = Rest * 10 + Digit,
+        String = String2
     else
-        Int = Digit
+        Int = Digit,
+        String = String1
     ).
 
 :- pred remove_trailing_digit(int::out, string::in, string::out) is semidet.

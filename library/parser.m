@@ -985,7 +985,9 @@ parse_args(List, !TokensLeft, !PS) :-
         (
             !.TokensLeft = token_cons(Token, Context, !:TokensLeft),
             ( if Token = comma then
-                parse_args(Tail0, !TokensLeft, !PS),
+                disable_warning [suspicious_recursion] (
+                    parse_args(Tail0, !TokensLeft, !PS)
+                ),
                 (
                     Tail0 = ok(Tail),
                     List = ok([Arg|Tail])

@@ -661,8 +661,10 @@ simple_merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
             true
         ),
         map.det_insert(VarB, Var, !Renaming),
-        simple_merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
-            !Supply, !Names, !Renaming)
+        disable_warning [suspicious_recursion] (
+            simple_merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
+                !Supply, !Names, !Renaming)
+        )
     ).
 
 :- pred fast_merge_renaming_loop(int::in, int::in, int::in, int::out,
@@ -741,8 +743,10 @@ simple_merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
         term.create_var(Var, !Supply),
         term.create_var(VarB, !SupplyB),
         map.det_insert(VarB, Var, !Renaming),
-        simple_merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
-            !Supply, !Renaming)
+        disable_warning [suspicious_recursion] (
+            simple_merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
+                !Supply, !Renaming)
+        )
     ).
 
 :- pred fast_merge_renaming_without_names_loop(int::in, int::in,
@@ -811,8 +815,10 @@ simple_merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
         ),
         Replacement = term.variable(Var, term.context_init),
         map.det_insert(VarB, Replacement, !Subst),
-        simple_merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
-            !Supply, !Names, !Subst)
+        disable_warning [suspicious_recursion] (
+            simple_merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
+                !Supply, !Names, !Subst)
+        )
     ).
 
 :- pred fast_merge_subst_loop(int::in, int::in, int::in, int::out,
@@ -894,8 +900,10 @@ simple_merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
         term.create_var(VarB, !SupplyB),
         Replacement = term.variable(Var, term.context_init),
         map.det_insert(VarB, Replacement, !Subst),
-        simple_merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
-            !Supply, !Subst)
+        disable_warning [suspicious_recursion] (
+            simple_merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
+                !Supply, !Subst)
+        )
     ).
 
 :- pred fast_merge_subst_without_names_loop(int::in, int::in,

@@ -1,0 +1,13 @@
+suspicious_recursion.m:031: Warning: recursive call to predicate
+suspicious_recursion.m:031:   `funny_append'/3 is suspicious, because variables
+suspicious_recursion.m:031:   whose names start with As and Bs occupy different
+suspicious_recursion.m:031:   argument positions in the call than in the clause
+suspicious_recursion.m:031:   head.
+suspicious_recursion.m:031:   This warning can be disabled by wrapping the
+suspicious_recursion.m:031:   recursive call inside a
+suspicious_recursion.m:031:   `disable_warning [suspicious_recursion] (...)'
+suspicious_recursion.m:031:   scope.
+suspicious_recursion.m:042: Warning: recursive call to predicate `sum'/3 is
+suspicious_recursion.m:042:   suspicious, because all input argument positions
+suspicious_recursion.m:042:   that differ between the clause head and the call
+suspicious_recursion.m:042:   use state variable notation.

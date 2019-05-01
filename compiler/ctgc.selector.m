@@ -322,8 +322,10 @@ type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains) :-
 type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
     ( if queue.get(FromType, !Queue) then
         ( if set.contains(!.SeenTypes, FromType) then
-            type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
-                Contains)
+            disable_warning [suspicious_recursion] (
+                type_contains_subtype_2(ModuleInfo, ToType,
+                    !Queue, !SeenTypes, Contains)
+            )
         else
             set.insert(FromType, !SeenTypes),
             type_arg_types(ModuleInfo, FromType, ArgTypes),
@@ -331,8 +333,10 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
                 Contains = yes
             else
                 queue.put_list(ArgTypes, !Queue),
-                type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
-                    Contains)
+                disable_warning [suspicious_recursion] (
+                    type_contains_subtype_2(ModuleInfo, ToType,
+                        !Queue, !SeenTypes, Contains)
+                )
             )
         )
     else

@@ -756,7 +756,9 @@ read_line_2(ByteCode, !RevChars, !Pos) :-
         !:RevChars = [Char | !.RevChars]
     else
         !:RevChars = [Char | !.RevChars],
-        read_line_2(ByteCode, !RevChars, !Pos)
+        disable_warning [suspicious_recursion] (
+            read_line_2(ByteCode, !RevChars, !Pos)
+        )
     ).
 
 read_len_string(ByteCode, String, !Pos) :-

@@ -66,6 +66,7 @@
 :- import_module char.
 :- import_module getopt_io.
 :- import_module io.
+:- import_module list.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -89,6 +90,11 @@
     %
 :- pred special_handler(option::in, special_data::in, option_table::in,
     maybe_option_table::out) is semidet.
+
+    % Return the style and non-style warning options.
+    %
+:- func style_warning_options = list(option).
+:- func non_style_warning_options = list(option).
 
     % Return the set of options which are inconsequential as far as the
     % `--track-flags' option is concerned. That is, adding or removing such
@@ -116,6 +122,11 @@
     % options.
     %
 :- pred option_table_add_search_library_files_directory(string::in,
+    option_table::in, option_table::out) is det.
+
+    % Set all of the given options to the given value.
+    %
+:- pred set_all_options_to(list(option)::in, option_data::in,
     option_table::in, option_table::out) is det.
 
     % Quote an argument to a shell command.
@@ -1113,7 +1124,6 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -3368,8 +3378,6 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
         Result = ok(!.OptionTable)
     ).
 
-:- func style_warning_options = list(option).
-
 style_warning_options = [
     warn_inconsistent_pred_order_clauses,
     warn_inconsistent_pred_order_foreign_procs,
@@ -3394,8 +3402,6 @@ style_warning_options = [
     warn_state_var_shadowing,
     inform_suboptimal_packing
 ].
-
-:- func non_style_warning_options = list(option).
 
 non_style_warning_options = [
     warn_accumulator_swaps,
@@ -3486,9 +3492,6 @@ override_options([], !OptionTable).
 override_options([Option - Value | OptionsValues], !OptionTable) :-
     map.set(Option, Value, !OptionTable),
     override_options(OptionsValues, !OptionTable).
-
-:- pred set_all_options_to(list(option)::in, option_data::in,
-    option_table::in, option_table::out) is det.
 
 set_all_options_to([], _Value, !OptionTable).
 set_all_options_to([Option | Options], Value, !OptionTable) :-

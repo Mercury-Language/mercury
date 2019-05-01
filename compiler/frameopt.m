@@ -1733,9 +1733,11 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
                 BlockType = exit_block(_)
                 % Exit blocks never *need* stack frames.
             ),
-            propagate_frame_requirement_to_successors(!.Queue, BlockMap,
-                !OrdNeedsFrame, !.AlreadyProcessed, !PropagationStepsLeft,
-                !CanTransform)
+            disable_warning [suspicious_recursion] (
+                propagate_frame_requirement_to_successors(!.Queue, BlockMap,
+                    !OrdNeedsFrame, !.AlreadyProcessed,
+                    !PropagationStepsLeft, !CanTransform)
+            )
         else
             true
         )
@@ -1777,8 +1779,11 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
             % XXX map.lookup(BlockMap, Label, BlockInfo),
             % XXX Successors = successors(BlockInfo),
             queue.put_list(NowNeedFrameLabels, !Queue),
-            propagate_frame_requirement_to_predecessors(!.Queue, BlockMap,
-                RevMap, !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform)
+            disable_warning [suspicious_recursion] (
+                propagate_frame_requirement_to_predecessors(!.Queue,
+                    BlockMap, RevMap, !OrdNeedsFrame,
+                    !PropagationStepsLeft, !CanTransform)
+            )
         else
             true
         )

@@ -114,7 +114,8 @@
 %
 
     % Convert the string to a list of characters (code points).
-    % Throws an exception if the list of characters contains a null character.
+    % The reverse mode of the predicate throws an exception if
+    % the list of characters contains a null character.
     %
     % NOTE: In the future we may also throw an exception if the list contains
     % a surrogate code point.
@@ -142,6 +143,18 @@
     % a surrogate code point.
     %
 :- pred semidet_from_char_list(list(char)::in, string::uo) is semidet.
+
+    % Convert the string to a list of characters (code points) in reverse order.
+    % The reverse mode of the predicate throws an exception if
+    % the list of characters contains a null character.
+    %
+    % NOTE: In the future we may also throw an exception if the list contains
+    % a surrogate code point.
+    %
+:- func to_rev_char_list(string) = list(char).
+:- pred to_rev_char_list(string, list(char)).
+:- mode to_rev_char_list(in, out) is det.
+:- mode to_rev_char_list(uo, in) is det.
 
     % Same as from_char_list, except that it reverses the order
     % of the characters.
@@ -416,6 +429,7 @@
 %
 % Tests on strings.
 %
+
     % True if string is the empty string.
     %
 :- pred is_empty(string::in) is semidet.
@@ -1478,14 +1492,14 @@ to_char_list(S) = Cs :-
 :- pragma promise_equivalent_clauses(to_char_list/2).
 
 to_char_list(Str::in, CharList::out) :-
-    to_char_list_forward(Str, CharList).
+    do_to_char_list(Str, CharList).
 to_char_list(Str::uo, CharList::in) :-
     from_char_list(CharList, Str).
 
-:- pred to_char_list_forward(string::in, list(char)::out) is det.
+:- pred do_to_char_list(string::in, list(char)::out) is det.
 
 :- pragma foreign_proc("C",
-    to_char_list_forward(Str::in, CharList::out),
+    do_to_char_list(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
@@ -1503,7 +1517,7 @@ to_char_list(Str::uo, CharList::in) :-
     }
 }").
 :- pragma foreign_proc("C#",
-    to_char_list_forward(Str::in, CharList::out),
+    do_to_char_list(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -1531,7 +1545,7 @@ to_char_list(Str::uo, CharList::in) :-
     CharList = lst;
 ").
 :- pragma foreign_proc("Java",
-    to_char_list_forward(Str::in, CharList::out),
+    do_to_char_list(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -1544,15 +1558,53 @@ to_char_list(Str::uo, CharList::in) :-
     CharList = lst;
 ").
 :- pragma foreign_proc("Erlang",
-    to_char_list_forward(Str::in, CharList::out),
+    do_to_char_list(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     CharList = unicode:characters_to_list(Str)
 ").
 
-to_char_list_forward(Str, CharList) :-
+do_to_char_list(Str, CharList) :-
     foldr(list.cons, Str, [], CharList).
+
+%---------------------%
+
+to_rev_char_list(S) = Cs :-
+    to_rev_char_list(S, Cs).
+
+:- pragma promise_equivalent_clauses(to_rev_char_list/2).
+
+to_rev_char_list(Str::in, CharList::out) :-
+    do_to_rev_char_list(Str, CharList).
+to_rev_char_list(Str::uo, CharList::in) :-
+    from_rev_char_list(CharList, Str).
+
+:- pred do_to_rev_char_list(string::in, list(char)::out) is det.
+
+:- pragma foreign_proc("C",
+    do_to_rev_char_list(Str::in, CharList::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"{
+    MR_Integer pos;
+    int c;
+
+    CharList = MR_list_empty_msg(MR_ALLOC_ID);
+    pos = 0;
+    for (;;) {
+        c = MR_utf8_get_next(Str, &pos);
+        if (c <= 0) {
+            break;
+        }
+        CharList = MR_char_list_cons_msg((MR_UnsignedChar) c, CharList,
+            MR_ALLOC_ID);
+    }
+}").
+
+do_to_rev_char_list(Str, RevCharList) :-
+    do_to_char_list(Str, CharList),
+    list.reverse(CharList, RevCharList).
 
 %---------------------%
 

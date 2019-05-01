@@ -325,9 +325,12 @@ record_actual_region_arguments_call_site(ModuleInfo, CallerPPId, CallSite,
 
         % We try again at this call site after the formal region arguments
         % are recorded.
-        record_actual_region_arguments_call_site(ModuleInfo, CallerPPId,
-            CallSite, CalleePPId, RptaInfoTable, ConstantRTable, DeadRTable,
-            BornRTable, !FormalRegionArgTable, !ActualRegionArgProc)
+        disable_warning [suspicious_recursion] (
+            record_actual_region_arguments_call_site(ModuleInfo, CallerPPId,
+                CallSite, CalleePPId, RptaInfoTable, ConstantRTable,
+                DeadRTable, BornRTable,
+                !FormalRegionArgTable, !ActualRegionArgProc)
+        )
     ).
 
 :- pred find_actual_param(rpt_call_alpha_mapping::in, rptg_node::in,

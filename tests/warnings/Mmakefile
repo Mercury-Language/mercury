@@ -44,6 +44,7 @@ ERRORCHECK_PROGS = \
 	spurious_obsolete \
 	state_vars_test \
 	suspicious_foreign_code \
+	suspicious_recursion \
 	table_with_inline \
 	unify_f_g \
 	unify_x_f_x \

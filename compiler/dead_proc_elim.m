@@ -475,8 +475,10 @@ dead_proc_examine(!.Queue, !.Examined, AnalyzeLinks, ModuleInfo, !Needed) :-
         else
             true
         ),
-        dead_proc_examine(!.Queue, !.Examined, AnalyzeLinks,
-            ModuleInfo, !Needed)
+        disable_warning [suspicious_recursion] (
+            dead_proc_examine(!.Queue, !.Examined, AnalyzeLinks,
+                ModuleInfo, !Needed)
+        )
     else
         true
     ).
@@ -1461,7 +1463,9 @@ dead_pred_elim_analyze(!DeadInfo) :-
                 get_clause_list_maybe_repeated(ClausesRep, Clauses),
                 list.foldl(dead_pred_elim_process_clause, Clauses, !DeadInfo)
             ),
-            dead_pred_elim_analyze(!DeadInfo)
+            disable_warning [suspicious_recursion] (
+                dead_pred_elim_analyze(!DeadInfo)
+            )
         else
             true
         )

@@ -1273,7 +1273,9 @@ intersect(SetA, SetB, inter(SetA, SetB)).
 
 inter(Input, Stream0) = Result :-
     ( if int_gt(height(Stream0), height(Input)) then
-        Result = inter(Stream0, Input)
+        disable_warning [suspicious_recursion] (
+            Result = inter(Stream0, Input)
+        )
     else
         (
             Stream0 = empty,

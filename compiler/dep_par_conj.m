@@ -1598,9 +1598,9 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
     module_info::in, module_info::out, rev_proc_map::in, rev_proc_map::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-add_requested_specialized_par_procs(!.PendingParProcs, !.Pushability,
-        !.DoneParProcs, InitialModuleInfo, !ModuleInfo, !RevProcMap,
-        !TSStringTable) :-
+add_requested_specialized_par_procs(!.PendingParProcs,
+        !.Pushability, !.DoneParProcs, InitialModuleInfo,
+        !ModuleInfo, !RevProcMap, !TSStringTable) :-
     (
         !.PendingParProcs = []
     ;
@@ -1611,9 +1611,11 @@ add_requested_specialized_par_procs(!.PendingParProcs, !.Pushability,
         add_requested_specialized_par_proc(CallPattern, NewProc,
             !PendingParProcs, !Pushability, !.DoneParProcs, InitialModuleInfo,
             !ModuleInfo, !RevProcMap, !TSStringTable),
-        add_requested_specialized_par_procs(!.PendingParProcs, !.Pushability,
-            !.DoneParProcs, InitialModuleInfo, !ModuleInfo, !RevProcMap,
-            !TSStringTable)
+        disable_warning [suspicious_recursion] (
+            add_requested_specialized_par_procs(!.PendingParProcs,
+                !.Pushability, !.DoneParProcs, InitialModuleInfo,
+                !ModuleInfo, !RevProcMap, !TSStringTable)
+        )
     ).
 
 :- pred add_requested_specialized_par_proc(par_proc_call_pattern::in,

@@ -29,7 +29,7 @@ MCFLAGS-unused_import		= --warn-interface-imports
 MCFLAGS-inference_test		= --infer-all
 MCFLAGS-save			= --warn-implicit-stream-calls
 
-# the infinite loop warning in simple_code.m doesn't show up unless
+# The infinite loop warning in simple_code.m doesn't show up unless
 # the common-struct optimization is enabled (because proving that
 # the recursive call is an infinite loop relies on argument equivalence
 # information, which is only computed when the common-struct optimization
@@ -41,10 +41,12 @@ MCFLAGS-simple_code		= --common-struct
 # lower optimization levels.
 MCFLAGS-infinite_recursion	= --excess-assign --common-struct
 
+MCFLAGS-suspicious_recursion	= --warn-suspicious-recursion -E
+
 MCFLAGS-warn_stubs		= --allow-stubs --warn-unused-args
 
-# For tests that involve the termination analysis we need
-# to make sure that it is enabled otherwise the tests will fail.
+# For tests that involve the termination analysis, we need
+# to make sure that it is enabled, otherwise the tests will fail.
 MCFLAGS-pragma_term_conflict	= --enable-termination
 MCFLAGS-term_indirect_warning	= --check-termination
 MCFLAGS-foreign_term_invalid	= --enable-termination

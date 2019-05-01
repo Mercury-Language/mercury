@@ -151,7 +151,9 @@
 inst_expand(ModuleInfo, !Inst) :-
     ( if !.Inst = defined_inst(InstName) then
         inst_lookup(ModuleInfo, InstName, !:Inst),
-        inst_expand(ModuleInfo, !Inst)
+        disable_warning [suspicious_recursion] (
+            inst_expand(ModuleInfo, !Inst)
+        )
     else
         true
     ).

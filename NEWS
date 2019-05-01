@@ -377,6 +377,7 @@ Changes to the Mercury standard library:
    - from_utf16_code_unit_list/2
    - det_remove_prefix/3
    - compare_ignore_case_ascii/3
+   - to_rev_char_list/2
 
 * The following predicates have been added to the map module:
 

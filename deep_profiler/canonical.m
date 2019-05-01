@@ -131,7 +131,9 @@ complete_clique(InitDeep, Redirect, !ProcMap, Clique) :-
     complete_clique_pass(InitDeep, Redirect, Clique0, !ProcMap, no, AddedPD),
     (
         AddedPD = yes,
-        complete_clique(InitDeep, Redirect, !ProcMap, Clique)
+        disable_warning [suspicious_recursion] (
+            complete_clique(InitDeep, Redirect, !ProcMap, Clique)
+        )
     ;
         AddedPD = no,
         Clique = Clique0

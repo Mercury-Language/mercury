@@ -630,7 +630,9 @@ process_imported_item_queue(!Info) :-
     ( if queue.is_empty(Queue) then
         true
     else
-        process_imported_item_queue(!Info)
+        disable_warning [suspicious_recursion] (
+            process_imported_item_queue(!Info)
+        )
     ).
 
 :- pred process_imported_item_queue_2(
@@ -641,7 +643,9 @@ process_imported_item_queue_2(!.Queue, !Info) :-
     ( if queue.get(Item, !Queue) then
         Item = item_id(ItemType, ItemId),
         find_items_used_by_item(ItemType, ItemId, !Info),
-        process_imported_item_queue_2(!.Queue, !Info)
+        disable_warning [suspicious_recursion] (
+            process_imported_item_queue_2(!.Queue, !Info)
+        )
     else
         true
     ).

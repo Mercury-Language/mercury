@@ -521,7 +521,10 @@ choose_reuse_in_goal(Background, !DeadCellTable, !Goal, !ReuseAs) :-
             ),
 
             % Process the goal for further reuse-matches.
-            choose_reuse_in_goal(Background, !DeadCellTable, !Goal, !ReuseAs)
+            disable_warning [suspicious_recursion] (
+                choose_reuse_in_goal(Background, !DeadCellTable,
+                    !Goal, !ReuseAs)
+            )
         )
     ).
 

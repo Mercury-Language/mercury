@@ -67,7 +67,9 @@ foldl(P, !.L, !A) :-
         !.L = []
     ;
         !.L = [_ | _],
-        callgraph.foldl(P, !.L, !A)
+        disable_warning [suspicious_recursion] (
+            callgraph.foldl(P, !.L, !A)
+        )
     ).
 
 :- pred foldl_2(int::in, pred(X, A, A)::in(pred(in, in, out) is det),

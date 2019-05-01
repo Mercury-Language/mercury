@@ -1005,8 +1005,10 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
         else
             true
         ),
-        modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
-            !Changed, !Specs)
+        disable_warning [suspicious_recursion] (
+            modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
+                !Changed, !Specs)
+        )
     else
         true
     ).

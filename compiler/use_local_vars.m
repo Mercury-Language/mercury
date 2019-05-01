@@ -264,8 +264,10 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
                 MaybeMore = yes,
                 !:AvoidLvals = [ToLval | !.AvoidLvals],
                 Instrs1 = [Instr0 | TailInstrs0],
-                opt_assign(Instrs1, Instrs, !TempCounter, NumRealRRegs,
-                    !.AvoidLvals, MaybeLiveMap, MaybeFallThrough)
+                disable_warning [suspicious_recursion] (
+                    opt_assign(Instrs1, Instrs, !TempCounter, NumRealRRegs,
+                        !.AvoidLvals, MaybeLiveMap, MaybeFallThrough)
+                )
             )
         )
     else

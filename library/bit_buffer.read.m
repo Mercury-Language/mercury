@@ -454,8 +454,10 @@ recursively_get_bitmap(!.Index, !.NumBits, !BM, !NumBitsRead,
             (
                 RefillRes = ok,
                 ( if read_buffer(!.Buffer) ^ num_buffered_bits > 0 then
-                    recursively_get_bitmap(!.Index, !.NumBits, !BM,
-                        !NumBitsRead, Result, !Buffer)
+                    disable_warning [suspicious_recursion] (
+                        recursively_get_bitmap(!.Index, !.NumBits, !BM,
+                            !NumBitsRead, Result, !Buffer)
+                    )
                 else
                     Result = ok
                 )

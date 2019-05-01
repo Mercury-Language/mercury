@@ -515,7 +515,9 @@ iterate_solution(PredProcs, ProcCalls, CallsHO, !HOInfo) :-
         Changed = no
     ;
         Changed = yes,
-        iterate_solution(PredProcs, ProcCalls, CallsHO, !HOInfo)
+        disable_warning [suspicious_recursion] (
+            iterate_solution(PredProcs, ProcCalls, CallsHO, !HOInfo)
+        )
     ).
 
     % For each caller, merge any higher order addresses it takes with all of
