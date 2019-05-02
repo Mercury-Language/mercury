@@ -291,7 +291,7 @@
     % the code unit `Index'. `CharIndex' is the offset of the beginning of
     % `Char'. Fails if `Index' is zero.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
-    % (negative, or greater than or equal to the length of `String').
+    % (negative, or greater than the length of `String').
     %
 :- pred unsafe_prev_index(string::in, int::in, int::out, char::uo) is semidet.
 
