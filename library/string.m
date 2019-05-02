@@ -1565,6 +1565,10 @@ to_char_list(Str::uo, CharList::in) :-
     CharList = unicode:characters_to_list(Str)
 ").
 
+    % It would be worth checking if this Mercury implementation (or another
+    % one) is as fast the foreign_proc implementations, the next time any
+    % changes are required.
+    %
 do_to_char_list(Str, CharList) :-
     foldr(list.cons, Str, [], CharList).
 
@@ -1582,29 +1586,19 @@ to_rev_char_list(Str::uo, CharList::in) :-
 
 :- pred do_to_rev_char_list(string::in, list(char)::out) is det.
 
-:- pragma foreign_proc("C",
-    do_to_rev_char_list(Str::in, CharList::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"{
-    MR_Integer pos;
-    int c;
-
-    CharList = MR_list_empty_msg(MR_ALLOC_ID);
-    pos = 0;
-    for (;;) {
-        c = MR_utf8_get_next(Str, &pos);
-        if (c <= 0) {
-            break;
-        }
-        CharList = MR_char_list_cons_msg((MR_UnsignedChar) c, CharList,
-            MR_ALLOC_ID);
-    }
-}").
-
 do_to_rev_char_list(Str, RevCharList) :-
-    do_to_char_list(Str, CharList),
-    list.reverse(CharList, RevCharList).
+    do_to_rev_char_list_loop(Str, 0, [], RevCharList).
+
+:- pred do_to_rev_char_list_loop(string::in, int::in,
+    list(char)::in, list(char)::out) is det.
+
+do_to_rev_char_list_loop(Str, Index0, !RevCharList) :-
+    ( if string.unsafe_index_next(Str, Index0, Index1, C) then
+        !:RevCharList = [C | !.RevCharList],
+        do_to_rev_char_list_loop(Str, Index1, !RevCharList)
+    else
+        true
+    ).
 
 %---------------------%
 
