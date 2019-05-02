@@ -136,12 +136,6 @@
 :- pred get_interface(raw_compilation_unit::in, raw_compilation_unit::out)
     is det.
 
-    % As above, but also return ...
-    % XXX ITEM_LIST document EXACTLY what the second list of item blocks is.
-    %
-:- pred get_int_and_imp(raw_compilation_unit::in,
-    list(raw_item_block)::out, list(raw_item_block)::out) is det.
-
 %---------------------------------------------------------------------------%
 
     % This predicate is exported for use by modules.m.
@@ -1984,148 +1978,64 @@ clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
 get_interface(RawCompUnit, InterfaceRawCompUnit) :-
     RawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
-    % XXX ITEM_LIST Don't compute _NonIFileItemBlocksCord
-    % just to throw it away. If we mode-specialize
-    % get_ifile_and_noifile_in_raw_item_blocks_acc for
-    % dont_gather_noifile_items, will the compiler optimize away
-    % the arguments for NoIFileItemBlocks?
-    get_ifile_and_noifile_in_raw_item_blocks_acc(dont_gather_noifile_items,
-        RawItemBlocks,
-        cord.init, IFileItemBlocksCord, cord.init, _NoIFileItemBlocksCord),
+    get_ifile_in_raw_item_blocks_acc(RawItemBlocks,
+        cord.init, IFileItemBlocksCord),
     IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
     add_needed_foreign_import_module_items_to_raw_item_blocks(ModuleName,
         IFileItemBlocks0, IFileItemBlocks),
     InterfaceRawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, IFileItemBlocks).
 
-get_int_and_imp(RawCompUnit, IFileItemBlocks, NoIFileItemBlocks) :-
-    RawCompUnit =
-        raw_compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
-    get_ifile_and_noifile_in_raw_item_blocks_acc(gather_noifile_items,
-        RawItemBlocks,
-        cord.init, IFileItemBlocksCord, cord.init, NoIFileItemBlocksCord),
-    IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
-    NoIFileItemBlocks = cord.list(NoIFileItemBlocksCord),
-    add_needed_foreign_import_module_items_to_raw_item_blocks(ModuleName,
-        IFileItemBlocks0, IFileItemBlocks).
-
 %---------------------------------------------------------------------------%
 
-:- type maybe_gather_noifile_items
-    --->    dont_gather_noifile_items
-    ;       gather_noifile_items.
-
-:- mode gather_noifile_items == in(bound(gather_noifile_items)).
-:- mode dont_gather_noifile_items == in(bound(dont_gather_noifile_items)).
-
-:- pred get_ifile_and_noifile_in_raw_item_blocks_acc(
-    maybe_gather_noifile_items, list(raw_item_block),
-    cord(raw_item_block), cord(raw_item_block),
+:- pred get_ifile_in_raw_item_blocks_acc(list(raw_item_block),
     cord(raw_item_block), cord(raw_item_block)).
-:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(
-    dont_gather_noifile_items, in, in, out, in, out) is det.
-:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(
-    gather_noifile_items, in, in, out, in, out) is det.
+:- mode get_ifile_in_raw_item_blocks_acc(in, in, out) is det.
 
-get_ifile_and_noifile_in_raw_item_blocks_acc(_,
-        [], !IFileItemBlocksCord, !NoIFileItemBlocksCord).
-get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
-        [RawItemBlock | RawItemBlocks],
-        !IFileItemBlocksCord, !NoIFileItemBlocksCord) :-
+get_ifile_in_raw_item_blocks_acc([], !IFileItemBlocksCord).
+get_ifile_in_raw_item_blocks_acc([RawItemBlock | RawItemBlocks],
+        !IFileItemBlocksCord) :-
     RawItemBlock = item_block(ModuleName, Section, Incls, Avails, Items),
     (
         Section = ms_interface,
         IFileIncls = Incls,
         IFileAvails = Avails,
-        NoIFileIncls = [],
-        NoIFileAvails = []
-    ;
-        Section = ms_implementation,
-        IFileIncls = [],
-        IFileAvails = [],
-        (
-            GatherNoIFileItems = dont_gather_noifile_items,
-            NoIFileIncls = [],
-            NoIFileAvails = []
-        ;
-            GatherNoIFileItems = gather_noifile_items,
-            NoIFileIncls = Incls,
-            NoIFileAvails = Avails
-        )
-    ),
-    get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
-        Items, cord.init, IFileItemsCord, cord.init, NoIFileItemsCord),
-    IFileItems = cord.list(IFileItemsCord),
-    NoIFileItems = cord.list(NoIFileItemsCord),
-    ( if
-        IFileIncls = [],
-        IFileAvails = [],
-        IFileItems = []
-    then
-        true
-    else
-        IFileItemBlock = item_block(ModuleName, Section,
-            IFileIncls, IFileAvails, IFileItems),
-        !:IFileItemBlocksCord =
-            cord.snoc(!.IFileItemBlocksCord, IFileItemBlock)
-    ),
-    ( if
-        NoIFileIncls = [],
-        NoIFileAvails = [],
-        NoIFileItems = []
-    then
-        true
-    else
-        NoIFileItemBlock = item_block(ModuleName, ms_implementation,
-            NoIFileIncls, NoIFileAvails, NoIFileItems),
-        !:NoIFileItemBlocksCord =
-            cord.snoc(!.NoIFileItemBlocksCord, NoIFileItemBlock)
-    ),
-    get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
-        RawItemBlocks, !IFileItemBlocksCord, !NoIFileItemBlocksCord).
-
-:- pred get_ifile_and_noifile_in_items_acc(maybe_gather_noifile_items,
-    module_section, list(item),
-    cord(item), cord(item), cord(item), cord(item)).
-:- mode get_ifile_and_noifile_in_items_acc(
-    dont_gather_noifile_items, in, in, in, out, in, out) is det.
-:- mode get_ifile_and_noifile_in_items_acc(
-    gather_noifile_items, in, in, in, out, in, out) is det.
-
-get_ifile_and_noifile_in_items_acc(_, _,
-        [], !IFileItemsCord, !NoIFileItemsCord).
-get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
-        [Item | Items], !IFileItemsCord, !NoIFileItemsCord) :-
-    (
-        Section = ms_interface,
-        ( if Item = item_instance(ItemInstance) then
-            % Include the abstract version of the instance in the
-            % interface, ...
-            AbstractItemInstance = make_instance_abstract(ItemInstance),
-            AbstractItem = item_instance(AbstractItemInstance),
-            !:IFileItemsCord = cord.snoc(!.IFileItemsCord, AbstractItem),
-
-            % ... and the concrete version in the implementation.
-            (
-                GatherNoIFileItems = dont_gather_noifile_items
-            ;
-                GatherNoIFileItems = gather_noifile_items,
-                !:NoIFileItemsCord = cord.snoc(!.NoIFileItemsCord, Item)
-            )
+        get_ifile_in_items_acc(Items,
+            cord.init, IFileItemsCord),
+        IFileItems = cord.list(IFileItemsCord),
+        ( if
+            IFileIncls = [],
+            IFileAvails = [],
+            IFileItems = []
+        then
+            true
         else
-            !:IFileItemsCord = cord.snoc(!.IFileItemsCord, Item)
+            IFileItemBlock = item_block(ModuleName, Section,
+                IFileIncls, IFileAvails, IFileItems),
+            !:IFileItemBlocksCord =
+                cord.snoc(!.IFileItemBlocksCord, IFileItemBlock)
         )
     ;
-        Section = ms_implementation,
-        (
-            GatherNoIFileItems = dont_gather_noifile_items
-        ;
-            GatherNoIFileItems = gather_noifile_items,
-            !:NoIFileItemsCord = cord.snoc(!.NoIFileItemsCord, Item)
-        )
+        Section = ms_implementation
     ),
-    get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
-        Items, !IFileItemsCord, !NoIFileItemsCord).
+    get_ifile_in_raw_item_blocks_acc(RawItemBlocks, !IFileItemBlocksCord).
+
+:- pred get_ifile_in_items_acc(list(item),
+    cord(item), cord(item)).
+:- mode get_ifile_in_items_acc(in, in, out) is det.
+
+get_ifile_in_items_acc([], !IFileItemsCord).
+get_ifile_in_items_acc([Item | Items], !IFileItemsCord) :-
+    ( if Item = item_instance(ItemInstance) then
+        % Include the abstract version of the instance in the
+        % interface, ...
+        AbstractItemInstance = make_instance_abstract(ItemInstance),
+        AbstractItem = item_instance(AbstractItemInstance),
+        !:IFileItemsCord = cord.snoc(!.IFileItemsCord, AbstractItem)
+    else
+        !:IFileItemsCord = cord.snoc(!.IFileItemsCord, Item)
+    ),
+    get_ifile_in_items_acc(Items, !IFileItemsCord).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
