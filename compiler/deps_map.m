@@ -92,7 +92,6 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
-:- import_module parse_tree.split_parse_tree_src. % undesirable dependency
 
 :- import_module cord.
 :- import_module list.
@@ -254,41 +253,32 @@ read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
     % XXX If _SrcSpecs contains error messages, the parse tree may not be
     % complete, and the rest of this predicate may work on incorrect data.
     read_module_src(Globals, "Getting dependencies for module",
-        ignore_errors, Search, ModuleName, ExpectationContexts, FileName0,
-        always_read_module(dont_return_timestamp), _,
-        ParseTreeSrc, SrcSpecs, Errors, !IO),
+        ignore_errors, Search, ModuleName, ExpectationContexts,
+        SourceFileName, always_read_module(dont_return_timestamp), _,
+        ParseTreeSrc, SrcSpecs, SrcReadModuleErrors, !IO),
     ParseTreeSrc = parse_tree_src(_ModuleNameSrc0, _ModuleNameContext0,
         ModuleComponentCord0),
     ( if
         cord.is_empty(ModuleComponentCord0),
-        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+        set.intersect(SrcReadModuleErrors, fatal_read_module_errors,
+            FatalErrors),
         set.is_non_empty(FatalErrors)
     then
         read_module_int(Globals, "Getting dependencies for module interface",
-            ignore_errors, Search, ModuleName, ifk_int, FileName,
+            ignore_errors, Search, ModuleName, ifk_int, IntFileName,
             always_read_module(dont_return_timestamp), _,
-            ParseTreeInt, _IntSpecs, _Errors, !IO),
-        ParseTreeInt = parse_tree_int(_, _, ModuleContext,
-            _MaybeVersionNumbers, IntIncl, ImpIncls, IntAvails, ImpAvails,
-            IntItems, ImpItems),
-        int_imp_items_to_item_blocks(ModuleName,
-            ms_interface, ms_implementation, IntIncl, ImpIncls,
-            IntAvails, ImpAvails, IntItems, ImpItems, RawItemBlocks),
-        RawCompUnits =
-            [raw_compilation_unit(ModuleName, ModuleContext, RawItemBlocks)]
+            ParseTreeInt, _IntSpecs, _IntReadModuleErrors, !IO),
+        % XXX Shouldn't we pass *Int*ReadModuleErrors?
+        parse_tree_int_to_module_and_imports(Globals, IntFileName,
+            ParseTreeInt, SrcReadModuleErrors, ModuleAndImports),
+        ModuleAndImportsList = [ModuleAndImports]
     else
-        FileName = FileName0,
-        split_into_compilation_units_perform_checks(ParseTreeSrc,
-            RawCompUnits, SrcSpecs, Specs),
+        parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
+            ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs,
+            _RawCompUnits, ModuleAndImportsList),
+        % XXX Why do we print out these error messages?
         write_error_specs_ignore(Specs, Globals, !IO)
-    ),
-    RawCompUnitModuleNames =
-        list.map(raw_compilation_unit_project_name, RawCompUnits),
-    RawCompUnitModuleNamesSet = set.list_to_set(RawCompUnitModuleNames),
-    list.map(
-        init_module_and_imports(Globals, FileName, ModuleName,
-            RawCompUnitModuleNamesSet, [], Errors),
-        RawCompUnits, ModuleAndImportsList).
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.deps_map.

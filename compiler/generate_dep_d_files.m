@@ -77,7 +77,6 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
-:- import_module parse_tree.split_parse_tree_src.
 :- import_module parse_tree.write_deps_file.
 
 :- import_module bool.
@@ -118,20 +117,15 @@ generate_d_file_for_file(Globals, FileName, !IO) :-
 
 build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     % Read in the top-level file (to figure out its module name).
-    read_module_src_from_file(Globals, FileName, "Reading file",
+    FileNameDotM = FileName ++ ".m",
+    read_module_src_from_file(Globals, FileName, FileNameDotM, "Reading file",
         do_not_search, always_read_module(dont_return_timestamp), _,
-        ParseTreeSrc, Specs0, Error, !IO),
-    split_into_compilation_units_perform_checks(ParseTreeSrc, RawCompUnits,
-        Specs0, Specs),
+        ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
     ParseTreeSrc = parse_tree_src(ModuleName, _, _),
+    parse_tree_src_to_module_and_imports_list(Globals, FileNameDotM,
+        ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
+        _RawCompUnits, ModuleAndImportsList),
     write_error_specs_ignore(Specs, Globals, !IO),
-    NestedModuleNames = set.list_to_set(
-        list.map(raw_compilation_unit_project_name, RawCompUnits)),
-    SourceFileName = FileName ++ ".m",
-    list.map(
-        init_module_and_imports(Globals, SourceFileName, ModuleName,
-            NestedModuleNames, [], Error),
-        RawCompUnits, ModuleAndImportsList),
     map.init(DepsMap0),
     list.foldl(insert_into_deps_map, ModuleAndImportsList, DepsMap0, DepsMap).
 

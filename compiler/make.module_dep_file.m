@@ -57,7 +57,6 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.read_modules.
-:- import_module parse_tree.split_parse_tree_src.
 :- import_module parse_tree.write_module_interface_files.
 
 :- import_module cord.
@@ -277,46 +276,9 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 %-----------------------------------------------------------------------------%
 
 write_module_dep_file(Globals, ModuleAndImports0, !IO) :-
-    % Make sure all the required fields are filled in.
-    module_and_imports_get_aug_comp_unit(ModuleAndImports0, AugCompUnit,
-        Specs, _Errors),
-    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        _ModuleVersionNumbers, SrcItemBlocks,
-        _DirectIntItemBlocksCord, _IndirectIntItemBlocksCord,
-        _OptItemBlocksCord, _IntForOptItemBlocksCord),
-    convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks),
-    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-        RawItemBlocks),
-    % XXX ITEM_LIST Why build a NEW ModuleAndImports? Wouldn't modifying
-    % ModuleAndImports0 be easier and cleaner?
-    module_and_imports_get_source_file_name(ModuleAndImports0,
-        SourceFileName),
-    module_and_imports_get_source_file_module_name(ModuleAndImports0,
-        SourceFileModuleName),
-    module_and_imports_get_nested_children(ModuleAndImports0,
-        NestedChildren),
-    init_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-        NestedChildren, Specs, set.init, RawCompUnit, ModuleAndImports),
+    rebuild_module_and_imports_for_dep_file(Globals,
+        ModuleAndImports0, ModuleAndImports),
     do_write_module_dep_file(Globals, ModuleAndImports, !IO).
-
-:- pred convert_back_to_raw_item_blocks(list(src_item_block)::in,
-    list(raw_item_block)::out) is det.
-
-convert_back_to_raw_item_blocks([], []).
-convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
-        [RawItemBlock | RawItemBlocks]) :-
-    SrcItemBlock = item_block(ModuleName, SrcSection, Incls, Avails, Items),
-    (
-        SrcSection = sms_interface,
-        RawSection = ms_interface
-    ;
-        ( SrcSection = sms_implementation
-        ; SrcSection = sms_impl_but_exported_to_submodules
-        ),
-        RawSection = ms_implementation
-    ),
-    RawItemBlock = item_block(ModuleName, RawSection, Incls, Avails, Items),
-    convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks).
 
 :- pred do_write_module_dep_file(globals::in, module_and_imports::in,
     io::di, io::uo) is det.
@@ -812,8 +774,8 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         read_module_src(Globals, "Getting dependencies for module",
             do_not_ignore_errors, do_not_search, ModuleName, [],
             SourceFileName, always_read_module(do_return_timestamp), _,
-            ParseTreeSrc, Specs0, Errors, !IO),
-        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+            ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
+        set.intersect(ReadModuleErrors, fatal_read_module_errors, FatalErrors),
         ( if set.is_non_empty(FatalErrors) then
             io.set_output_stream(ErrorStream, _, !IO),
             write_error_specs_ignore(Specs0, Globals, !IO),
@@ -839,20 +801,18 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             map.set(ModuleName, no, ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap
         else
+            parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
+                ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
+                RawCompUnits, ModuleAndImportsList),
+            SubModuleNames = list.map(raw_compilation_unit_project_name,
+                 RawCompUnits),
+
             io.set_output_stream(ErrorStream, _, !IO),
-            split_into_compilation_units_perform_checks(ParseTreeSrc,
-                RawCompUnits, Specs0, Specs),
             % XXX Why do want ignore all previously reported errors?
             io.set_exit_status(0, !IO),
             write_error_specs_ignore(Specs, Globals, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
-            SubModuleNames =
-                list.map(raw_compilation_unit_project_name, RawCompUnits),
-            list.map(
-                init_module_and_imports(Globals, SourceFileName,
-                    ModuleName, set.list_to_set(SubModuleNames), [], Errors),
-                RawCompUnits, ModuleAndImportList),
             list.foldl(
                 ( pred(ModuleAndImports::in, Info0::in, Info::out) is det :-
                     module_and_imports_get_module_name(ModuleAndImports,
@@ -862,13 +822,13 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                     map.set(SubModuleName, yes(ModuleAndImports),
                         ModuleDeps0, ModuleDeps),
                     Info = Info0 ^ module_dependencies := ModuleDeps
-                ), ModuleAndImportList, !Info),
+                ), ModuleAndImportsList, !Info),
 
             % If there were no errors, write out the `.int3' file
             % while we have the contents of the module. The `int3' file
             % does not depend on anything else.
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            ( if set.is_empty(Errors) then
+            ( if set.is_empty(ReadModuleErrors) then
                 Target = target_file(ModuleName, module_target_int3),
                 maybe_make_target_message_to_stream(Globals, OldOutputStream,
                     Target, !IO),
@@ -888,7 +848,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 ( pred(yes::out, MakeInfo::in, MakeInfo::out,
                         IO0::di, IO::uo) is det :-
                     list.foldl(do_write_module_dep_file(Globals),
-                        ModuleAndImportList, IO0, IO)
+                        ModuleAndImportsList, IO0, IO)
                 ),
                 cleanup_module_dep_files(Globals, SubModuleNames),
                 _Succeeded, !Info, !IO),

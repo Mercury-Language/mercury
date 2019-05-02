@@ -105,23 +105,31 @@
 % The predicates that create module_and_imports structures.
 %
 
-    % init_module_and_imports(Globals, FileName, SourceFileModuleName,
-    %   NestedModuleNames, Specs, Errors, RawCompUnit, ModuleAndImports):
+    % This predicate is used by
     %
-    % Initialize a module_and_imports structure.
+    %   deps_map.m
+    %   generate_dep_d_files.m
+    %   make.module_dep_file.m
     %
-    % We do this just after we have read in a raw compulation unit.
-    % Later code, mostly in modules.m but in some other modules as well,
-    % then calls the module_and_imports_{add,set}_* predicates above
-    % to record more information (mostly from read-in interface files)
-    % to the module_and_imports structure. When all such modifications
-    % are done, the module_and_imports_get_aug_comp_unit predicate
-    % will extract the augmented compilation unit from the updated
-    % module_and_imports structure.
+    % for building dependency maps between modules. The module_and_imports
+    % structures it builds are not fully complete; only the fields
+    % needed for that task are filled in.
     %
-:- pred init_module_and_imports(globals::in, file_name::in, module_name::in,
-    set(module_name)::in, list(error_spec)::in, read_module_errors::in,
-    raw_compilation_unit::in, module_and_imports::out) is det.
+:- pred parse_tree_src_to_module_and_imports_list(globals::in, file_name::in,
+    parse_tree_src::in, read_module_errors::in,
+    list(error_spec)::in, list(error_spec)::out,
+    list(raw_compilation_unit)::out, list(module_and_imports)::out) is det.
+
+    % This predicate is used by deps_map.m for building dependency maps
+    % between modules, in case the reading of a module's source file
+    % encounters a fatal error.
+    %
+:- pred parse_tree_int_to_module_and_imports(globals::in, file_name::in,
+    parse_tree_int::in, read_module_errors::in,
+    module_and_imports::out) is det.
+
+:- pred rebuild_module_and_imports_for_dep_file(globals::in,
+    module_and_imports::in, module_and_imports::out) is det.
 
     % make_module_and_imports(SourceFileName, SourceFileModuleName,
     %  ModuleName, ModuleNameContext, SrcItemBlocks0,
@@ -138,9 +146,7 @@
     %
     % XXX ITEM_LIST This predicate is used by code in modules.m to create
     % a module_and_imports structure in what seems (to me, zs) to be
-    % a partially filled in state. If that perception is correct,
-    % then that code should be fixed to follow the standard method
-    % of construcing module_and_imports structures.
+    % a partially filled in state.
     %
 :- pred make_module_and_imports(file_name::in,
     module_name::in, module_name::in, prog_context::in,
@@ -332,6 +338,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.get_dependencies.
+:- import_module parse_tree.split_parse_tree_src.
 
 :- import_module dir.
 :- import_module pair.
@@ -465,6 +472,101 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
+        ParseTreeSrc, ReadModuleErrors, !Specs,
+        RawCompUnits, ModuleAndImportsList) :-
+    split_into_compilation_units_perform_checks(ParseTreeSrc, RawCompUnits,
+        !Specs),
+    ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
+    CompUnitModuleNames = set.list_to_set(
+        list.map(raw_compilation_unit_project_name, RawCompUnits)),
+    MAISpecs0 = [],
+    list.map(
+        init_module_and_imports(Globals, SourceFileName, TopModuleName,
+            CompUnitModuleNames, MAISpecs0, ReadModuleErrors),
+        RawCompUnits, ModuleAndImportsList).
+
+parse_tree_int_to_module_and_imports(Globals, IntFileName,
+        ParseTreeInt, ReadModuleErrors, ModuleAndImports) :-
+    ParseTreeInt = parse_tree_int(ModuleName, _, ModuleContext,
+        _MaybeVersionNumbers, IntIncl, ImpIncls, IntAvails, ImpAvails,
+        IntItems, ImpItems),
+    int_imp_items_to_item_blocks(ModuleName,
+        ms_interface, ms_implementation, IntIncl, ImpIncls,
+        IntAvails, ImpAvails, IntItems, ImpItems, RawItemBlocks),
+    RawCompUnit =
+        raw_compilation_unit(ModuleName, ModuleContext, RawItemBlocks),
+
+    CompUnitModuleNames = set.make_singleton_set(ModuleName),
+    MAISpecs0 = [],
+    init_module_and_imports(Globals, IntFileName, ModuleName,
+        CompUnitModuleNames, MAISpecs0, ReadModuleErrors,
+        RawCompUnit, ModuleAndImports).
+
+rebuild_module_and_imports_for_dep_file(Globals,
+        ModuleAndImports0, ModuleAndImports) :-
+    % Make sure all the required fields are filled in.
+    % XXX ITEM_LIST Why build a NEW ModuleAndImports? Wouldn't modifying
+    % ModuleAndImports0 be easier and clearer?
+    module_and_imports_get_aug_comp_unit(ModuleAndImports0, AugCompUnit,
+        Specs, _Errors),
+    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
+        _ModuleVersionNumbers, SrcItemBlocks,
+        _DirectIntItemBlocksCord, _IndirectIntItemBlocksCord,
+        _OptItemBlocksCord, _IntForOptItemBlocksCord),
+    convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks),
+    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+        RawItemBlocks),
+    module_and_imports_get_source_file_name(ModuleAndImports0,
+        SourceFileName),
+    module_and_imports_get_source_file_module_name(ModuleAndImports0,
+        SourceFileModuleName),
+    module_and_imports_get_nested_children(ModuleAndImports0,
+        NestedChildren),
+    set.init(ReadModuleErrors0),
+    init_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
+        NestedChildren, Specs, ReadModuleErrors0, RawCompUnit,
+        ModuleAndImports).
+
+:- pred convert_back_to_raw_item_blocks(list(src_item_block)::in,
+    list(raw_item_block)::out) is det.
+
+convert_back_to_raw_item_blocks([], []).
+convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
+        [RawItemBlock | RawItemBlocks]) :-
+    SrcItemBlock = item_block(ModuleName, SrcSection, Incls, Avails, Items),
+    (
+        SrcSection = sms_interface,
+        RawSection = ms_interface
+    ;
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
+        ),
+        RawSection = ms_implementation
+    ),
+    RawItemBlock = item_block(ModuleName, RawSection, Incls, Avails, Items),
+    convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks).
+
+%---------------------------------------------------------------------------%
+
+    % init_module_and_imports(Globals, FileName, SourceFileModuleName,
+    %   NestedModuleNames, Specs, Errors, RawCompUnit, ModuleAndImports):
+    %
+    % Initialize a module_and_imports structure.
+    %
+    % We do this just after we have read in a raw compulation unit.
+    % Later code, mostly in modules.m but in some other modules as well,
+    % then calls the module_and_imports_{add,set}_* predicates above
+    % to record more information (mostly from read-in interface files)
+    % to the module_and_imports structure. When all such modifications
+    % are done, the module_and_imports_get_aug_comp_unit predicate
+    % will extract the augmented compilation unit from the updated
+    % module_and_imports structure.
+    %
+:- pred init_module_and_imports(globals::in, file_name::in, module_name::in,
+    set(module_name)::in, list(error_spec)::in, read_module_errors::in,
+    raw_compilation_unit::in, module_and_imports::out) is det.
+
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
         NestedModuleNames, Specs, Errors, RawCompUnit, ModuleImports) :-
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
@@ -592,22 +694,22 @@ look_for_main_pred_in_items([Item | Items], !HasMain) :-
 
 make_module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ModuleNameContext, SrcItemBlocks,
-        PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+        PublicChildrenMap, NestedChildren, FactDeps, ForeignIncludeFiles,
         MaybeTimestampMap, ModuleAndImports) :-
     set.init(Ancestors),
     map.init(IntDeps),
     map.init(ImpDeps),
     set.init(IndirectDeps),
-    % XXX Since PublicChildren should be a subset of Children,
+    % XXX Since PublicChildrenMap should be a subset of ChildrenMap,
     % this looks like bug.
-    map.init(Children),
+    map.init(ChildrenMap),
     ForeignImports = init_foreign_import_modules,
     map.init(VersionNumbers),
     Specs = [],
     set.init(Errors),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
         SourceFileModuleName, ModuleName, ModuleNameContext,
-        Ancestors, Children, PublicChildren, NestedChildren,
+        Ancestors, ChildrenMap, PublicChildrenMap, NestedChildren,
         IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
         contains_foreign_code_unknown, contains_no_foreign_export, no_main,

@@ -168,12 +168,12 @@
     parse_tree_int::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
-    % read_module_src_from_file(Globals, SourceFileName, Descr, Search,
-    %   ReadModuleAndTimestamps, MaybeTimestamp,
-    %   ParseTreeSrc, Specs, Errors, !IO):
+    % read_module_src_from_file(Globals, FileName, FileNameDotM,
+    %   Descr, Search, ReadModuleAndTimestamps, MaybeTimestamp, ParseTreeSrc,
+    %   Specs, Errors, !IO):
     %
     % Does pretty much the same job as read_module_src, but its job is
-    % to read the module stored in a specified file (SourceFileName),
+    % to read the module stored in a specified file (FileNameDotM),
     % discovering the name of the module stored there by reading the file,
     % as opposed to looking for the file containing a module with a specified
     % name. It does not search for the right filename (that is SourceFileName),
@@ -182,11 +182,10 @@
     %
     % The rest of the argument list has the same meaning as in read_module_src.
     %
-:- pred read_module_src_from_file(globals::in, file_name::in,
-    string::in, maybe_search::in,
-    read_module_and_timestamps::in,maybe(timestamp)::out,
-    parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+:- pred read_module_src_from_file(globals::in, file_name::in, file_name::in,
+    string::in, maybe_search::in, read_module_and_timestamps::in,
+    maybe(timestamp)::out, parse_tree_src::out,
+    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -304,17 +303,16 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
         MaybeTimestampRes, MaybeTimestamp,
         IsEmpty, ModuleSpecs, Specs, Errors, !IO).
 
-read_module_src_from_file(Globals, FileName, Descr, Search,
+read_module_src_from_file(Globals, FileName, FileNameDotM, Descr, Search,
         ReadModuleAndTimestamps, MaybeTimestamp,
         ParseTreeSrc, Specs, Errors, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     maybe_write_string(VeryVerbose, "% ", !IO),
     maybe_write_string(VeryVerbose, Descr, !IO),
     maybe_write_string(VeryVerbose, " `", !IO),
-    maybe_write_string(VeryVerbose, FileName, !IO),
+    maybe_write_string(VeryVerbose, FileNameDotM, !IO),
     maybe_write_string(VeryVerbose, "'... ", !IO),
     maybe_flush_output(VeryVerbose, !IO),
-    FullFileName = FileName ++ ".m",
     ( if dir.basename(FileName, BaseFileNamePrime) then
         BaseFileName = BaseFileNamePrime
     else
@@ -329,12 +327,12 @@ read_module_src_from_file(Globals, FileName, Descr, Search,
         Search = do_not_search,
         SearchDirs = [dir.this_directory]
     ),
-    search_for_file_and_stream(SearchDirs, FullFileName,
+    search_for_file_and_stream(SearchDirs, FileNameDotM,
         MaybeFileNameAndStream, !IO),
     actually_read_module_src(Globals, DefaultModuleName, [],
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
         ParseTreeSrc, Specs0, Errors, !IO),
-    check_timestamp(Globals, FullFileName, MaybeTimestampRes, MaybeTimestamp,
+    check_timestamp(Globals, FileNameDotM, MaybeTimestampRes, MaybeTimestamp,
         !IO),
     handle_any_read_module_errors(Globals, VeryVerbose, Errors,
         Specs0, Specs, !IO).

@@ -1330,7 +1330,7 @@ file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
     io::di, io::uo) is det.
 
 read_module_or_file(Globals0, Globals, FileOrModuleName,
-        ModuleName, SourceFileName, ReturnTimestamp, MaybeTimestamp,
+        ModuleName, FileNameDotM, ReturnTimestamp, MaybeTimestamp,
         ParseTreeSrc, Specs, Errors, !HaveReadModuleMaps, !IO) :-
     (
         FileOrModuleName = fm_module(ModuleName),
@@ -1343,7 +1343,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
             find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
-                ReturnTimestamp, SourceFileNamePrime, MaybeTimestampPrime,
+                ReturnTimestamp, FileNameDotMPrime, MaybeTimestampPrime,
                 ParseTreeSrcPrime, SpecsPrime, ErrorsPrime)
         then
             Globals = Globals0,
@@ -1353,7 +1353,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             map.delete(have_read_module_key(ModuleName, sfk_src),
                 HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
             !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc,
-            SourceFileName = SourceFileNamePrime,
+            FileNameDotM = FileNameDotMPrime,
             MaybeTimestamp = MaybeTimestampPrime,
             ParseTreeSrc = ParseTreeSrcPrime,
             Specs = SpecsPrime,
@@ -1364,7 +1364,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             % being created in the wrong directory.
             read_module_src(Globals0, "Reading module",
                 do_not_ignore_errors, do_not_search,
-                ModuleName, [], SourceFileName,
+                ModuleName, [], FileNameDotM,
                 always_read_module(ReturnTimestamp), MaybeTimestamp,
                 ParseTreeSrc, Specs, Errors, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
@@ -1381,9 +1381,10 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
         maybe_report_stats(Stats, !IO)
     ;
         FileOrModuleName = fm_file(FileName),
+        FileNameDotM = FileName ++ ".m",
         globals.lookup_bool_option(Globals0, verbose, Verbose),
         maybe_write_string(Verbose, "% Parsing file `", !IO),
-        maybe_write_string(Verbose, FileName, !IO),
+        maybe_write_string(Verbose, FileNameDotM, !IO),
         maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
 
         file_name_to_module_name(FileName, DefaultModuleName),
@@ -1410,8 +1411,8 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
-            read_module_src_from_file(Globals0, FileName, "Reading file",
-                do_not_search,
+            read_module_src_from_file(Globals0, FileName, FileNameDotM,
+                "Reading file", do_not_search,
                 always_read_module(ReturnTimestamp), MaybeTimestamp,
                 ParseTreeSrc, Specs, Errors, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
@@ -1444,7 +1445,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
                     Warn = yes,
                     Pieces = [words("Warning:"),
                         words("module name does not match file name: "), nl,
-                        fixed(FileName), words("contains module"),
+                        fixed(FileNameDotM), words("contains module"),
                         qual_sym_name(ModuleName), suffix("."), nl,
                         words("Smart recompilation will not work unless"),
                         words("a module name to file name mapping is created"),
@@ -1460,8 +1461,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             )
         ),
         globals.lookup_bool_option(Globals, detailed_statistics, Stats),
-        maybe_report_stats(Stats, !IO),
-        SourceFileName = FileName ++ ".m"
+        maybe_report_stats(Stats, !IO)
     ).
 
 %---------------------------------------------------------------------------%
