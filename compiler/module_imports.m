@@ -568,7 +568,7 @@ convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
     raw_compilation_unit::in, module_and_imports::out) is det.
 
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
-        NestedModuleNames, Specs, Errors, RawCompUnit, ModuleImports) :-
+        NestedModuleNames, Specs, Errors, RawCompUnit, ModuleAndImports) :-
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
     Ancestors = get_ancestors(ModuleName),
@@ -608,7 +608,23 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     get_included_modules_in_item_blocks(RawItemBlocks, Children),
     get_included_modules_in_item_blocks(InterfaceItemBlocks, PublicChildren),
 
-    % XXX ITEM_LIST Document why we do this.
+    % NOTE This if-then-else looks strange, but it works. It works for
+    % two different reasons in our callers' two different use cases.
+    %
+    % Use case 1: our callers parse_tree_src_to_module_and_imports_list
+    % and parse_tree_int_to_module_and_imports pass to us in the
+    % NestedModuleNames argument the set of the names of all the modules
+    % that are nested within a single source file.
+    % If the module we are currently processing is the top module in that
+    % source file, then all the other modules in NestedModuleNames are
+    % its (direct or indirect) submodules. If it is not the top module,
+    % then this field is *supposed* to be empty.
+    %
+    % Use case 2: our caller rebuild_module_and_imports_for_dep_file
+    % passes to as NestedModuleNames the value of the same field
+    % of the original module_and_imports structure being rebuilt.
+    % This works because the operation of this if-then-else
+    % is idempotent.
     ( if ModuleName = SourceFileModuleName then
         set.delete(ModuleName, NestedModuleNames, NestedDeps)
     else
@@ -638,17 +654,24 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % Work out whether the items contain main/2.
     look_for_main_pred_in_item_blocks(RawItemBlocks, no_main, HasMain),
 
-    map.init(VersionNumbers),
-    MaybeTimestampMap = no,
     % XXX ITEM_LIST SrcItemBlocks and the item block fields are NOT
     % stored here, per the documentation above. Maybe they should be.
-    ModuleImports = module_and_imports(FileName, dir.this_directory,
+    SrcItemBlocks = [],
+    DirectIntBlocksCord = cord.init,
+    IndirectIntBlocksCord = cord.init,
+    OptBlocksCords = cord.init,
+    IntForOptBlocksCords = cord.init,
+
+    map.init(VersionNumbers),
+    MaybeTimestampMap = no,
+    ModuleAndImports = module_and_imports(FileName, dir.this_directory,
         SourceFileModuleName, ModuleName, ModuleNameContext,
         set.list_to_set(Ancestors), Children, PublicChildren, NestedDeps,
         IntDeps, ImpDeps, IndirectDeps, FactTableDeps,
         ForeignImports, ForeignIncludeFiles,
         ContainsForeignCode, ContainsForeignExport, HasMain,
-        [], cord.init, cord.init, cord.init, cord.init,
+        SrcItemBlocks, DirectIntBlocksCord, IndirectIntBlocksCord,
+        OptBlocksCords, IntForOptBlocksCords,
         VersionNumbers, MaybeTimestampMap, Specs, Errors).
 
 :- pred look_for_main_pred_in_item_blocks(list(item_block(MS))::in,
