@@ -763,23 +763,26 @@ delete_any_numeric_suffix(Str, StrNoSuffix) :-
 :- pred has_numeric_suffix(string::in, string::out) is semidet.
 
 has_numeric_suffix(Str, StrNoSuffix) :-
-    string.to_rev_char_list(Str, RevChars),
-    RevChars = [HeadRevChar | TailRevChars],
-    char.is_digit(HeadRevChar),
-    delete_initial_digits_maybe_underscore(TailRevChars, RevNoSuffixChars),
-    string.from_rev_char_list(RevNoSuffixChars, StrNoSuffix).
-
-:- pred delete_initial_digits_maybe_underscore(list(char)::in, list(char)::out)
-    is det.
-
-delete_initial_digits_maybe_underscore([], []).
-delete_initial_digits_maybe_underscore([Char0 | Chars0], Chars) :-
-    ( if char.is_digit(Char0) then
-        delete_initial_digits_maybe_underscore(Chars0, Chars)
-    else if Char0 = '_' then
-        Chars = Chars0
+    End0 = string.count_code_units(Str),
+    skip_trailing_digits(Str, End0, End1),
+    End1 < End0,
+    ( if string.unsafe_prev_index(Str, End1, End2, '_') then
+        End = End2
     else
-        Chars = [Char0 | Chars0]
+        End = End1
+    ),
+    string.unsafe_between(Str, 0, End, StrNoSuffix).
+
+:- pred skip_trailing_digits(string::in, int::in, int::out) is det.
+
+skip_trailing_digits(Str, Index0, Index) :-
+    ( if
+        string.unsafe_prev_index(Str, Index0, Index1, C),
+        char.is_digit(C)
+    then
+        skip_trailing_digits(Str, Index1, Index)
+    else
+        Index = Index0
     ).
 
 %---------------------%
