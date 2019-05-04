@@ -489,7 +489,9 @@ then
                 ( T = f(_)
                 ; T = g(_, _)
                 ),
-                U = "f or g"
+                disable_warning [[suspicious_recursion]] (
+                    U = "f or g"
+                )
             ;
                 ( T = h(_)
                 ; T = i(_)
