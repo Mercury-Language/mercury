@@ -37,13 +37,13 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
+:- import_module cord.
 :- import_module list.
 :- import_module multi_map.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
 
-    % get_dependencies_in_avails(Avails, ImportDeps, UseDeps):
     % get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps):
     %
     % Get the list of modules that a list of things (explicitly) depends on.
@@ -55,9 +55,6 @@
     % (see get_children/2). You may also need to consider indirect
     % dependencies.
     %
-:- pred get_dependencies_in_avails(list(item_avail)::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out) is det.
 :- pred get_dependencies_in_item_blocks(list(item_block(MS))::in,
     multi_map(module_name, prog_context)::out,
     multi_map(module_name, prog_context)::out) is det.
@@ -114,6 +111,24 @@
 
 :- func init_implicit_import_needs = implicit_import_needs.
 
+    % get_implicits_foreigns_fact_tables(IntItems, ImpItems,
+    %   ImplicitImportNeeds, ForeignInclFiles, Langs, FactTables):
+    %
+    % Given the interface and implementation items of a raw compilation unit,
+    % compute and return
+    %
+    % - a representation of the implicit import needs of those items,
+    %   i.e. of the set of modules that we need to implicitly import,
+    %   in the interface and in the implementation;
+    % - the foreign files they include;
+    % - the foreign languages they use; and
+    % - the names of the files that contain their fact tables.
+    %
+:- pred get_implicits_foreigns_fact_tables(list(item)::in, list(item)::in,
+    implicit_import_needs::out, implicit_import_needs::out,
+    cord(foreign_include_file_info)::out, set(foreign_language)::out,
+    set(string)::out) is det.
+
     % get_implicit_dependencies_in_*(Globals, Items/ItemBlocks,
     %   ImportDeps, UseDeps):
     %
@@ -162,10 +177,10 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.maybe_error.
 
 :- import_module bool.
-:- import_module cord.
 :- import_module maybe.
 :- import_module require.
 :- import_module term.
@@ -187,33 +202,9 @@ get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps) :-
 get_dependencies_in_item_blocks_acc([], !ImportDeps, !UseDeps).
 get_dependencies_in_item_blocks_acc([ItemBlock | ItemBlocks],
         !ImportDeps, !UseDeps) :-
-    ItemBlock = item_block(_, _, _, Imports, _),
-    get_dependencies_in_avails_acc(Imports, !ImportDeps, !UseDeps),
-    get_dependencies_in_item_blocks_acc(ItemBlocks,
-        !ImportDeps, !UseDeps).
-
-%-----------------------------------------------------------------------------%
-
-get_dependencies_in_avails(Avails, ImportDeps, UseDeps) :-
-    get_dependencies_in_avails_acc(Avails,
-        multi_map.init, ImportDeps, multi_map.init, UseDeps).
-
-:- pred get_dependencies_in_avails_acc(list(item_avail)::in,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out) is det.
-
-get_dependencies_in_avails_acc([], !ImportDeps, !UseDeps).
-get_dependencies_in_avails_acc([Avail | Avails], !ImportDeps, !UseDeps) :-
-    (
-        Avail = avail_import(avail_import_info(ModuleName, Context, _)),
-        multi_map.add(ModuleName, Context, !ImportDeps)
-    ;
-        Avail = avail_use(avail_use_info(ModuleName, Context, _)),
-        multi_map.add(ModuleName, Context, !UseDeps)
-    ),
-    get_dependencies_in_avails_acc(Avails, !ImportDeps, !UseDeps).
+    ItemBlock = item_block(_, _, _, Avails, _),
+    accumulate_imports_uses_maps(Avails, !ImportDeps, !UseDeps),
+    get_dependencies_in_item_blocks_acc(ItemBlocks, !ImportDeps, !UseDeps).
 
 %-----------------------------------------------------------------------------%
 
@@ -368,6 +359,183 @@ init_implicit_import_needs = ImplicitImportNeeds :-
         dont_need_tabling, dont_need_tabling_statistics,
         dont_need_stm, dont_need_exception,
         dont_need_string_format, dont_need_stream_format, dont_need_io).
+
+%-----------------------------------------------------------------------------%
+
+get_implicits_foreigns_fact_tables(IntItems, ImpItems,
+        IntImplicitImportNeeds, IntImpImplicitImportNeeds,
+        !:ForeignInclFiles, !:Langs, !:FactTables) :-
+    ImplicitImportNeeds0 = init_implicit_import_needs,
+    !:ForeignInclFiles = cord.init,
+    set.init(!:Langs),
+    set.init(!:FactTables),
+    get_implicits_foreigns_fact_tables_acc(IntItems,
+        ImplicitImportNeeds0, IntImplicitImportNeeds,
+        !ForeignInclFiles, !Langs, !FactTables),
+    get_implicits_foreigns_fact_tables_acc(ImpItems,
+        IntImplicitImportNeeds, IntImpImplicitImportNeeds,
+        !ForeignInclFiles, !Langs, !FactTables).
+
+:- pred get_implicits_foreigns_fact_tables_acc(list(item)::in,
+    implicit_import_needs::in, implicit_import_needs::out,
+    cord(foreign_include_file_info)::in, cord(foreign_include_file_info)::out,
+    set(foreign_language)::in, set(foreign_language)::out,
+    set(string)::in, set(string)::out) is det.
+
+get_implicits_foreigns_fact_tables_acc([],
+        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
+get_implicits_foreigns_fact_tables_acc([Item | Items],
+        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables) :-
+    (
+        Item = item_type_defn(ItemTypeDefn),
+        ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
+            TypeDefn, _TVarSet, _Context, _SeqNum),
+        (
+            TypeDefn = parse_tree_solver_type(DetailsSolver),
+            DetailsSolver = type_details_solver(SolverTypeDetails,
+                _MaybeUnifyComparePredNames),
+            SolverTypeDetails = solver_type_details(_RepresentationType,
+                _GroundInst, _AnyInst, MutableItems),
+            list.foldl(gather_implicit_import_needs_in_mutable, MutableItems,
+                !ImplicitImportNeeds)
+        ;
+            TypeDefn = parse_tree_foreign_type(DetailsForeign),
+            DetailsForeign = type_details_foreign(ForeignType, _, _),
+            set.insert(foreign_type_language(ForeignType), !Langs)
+        ;
+            ( TypeDefn = parse_tree_du_type(_)
+            ; TypeDefn = parse_tree_eqv_type(_)
+            ; TypeDefn = parse_tree_abstract_type(_)
+            )
+        )
+    ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        (
+            (
+                Pragma = pragma_foreign_decl(FDInfo),
+                FDInfo = pragma_info_foreign_decl(Lang, _, LiteralOrInclude)
+            ;
+                Pragma = pragma_foreign_code(FCInfo),
+                FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
+            ),
+            (
+                LiteralOrInclude = floi_literal(_)
+            ;
+                LiteralOrInclude = floi_include_file(FileName),
+                InclFile = foreign_include_file_info(Lang, FileName),
+                !:ForeignInclFiles = cord.snoc(!.ForeignInclFiles, InclFile)
+            ),
+            set.insert(Lang, !Langs)
+        ;
+            Pragma = pragma_foreign_proc(FPInfo),
+            FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
+            set.insert(get_foreign_language(Attrs), !Langs)
+        ;
+            (
+                Pragma = pragma_foreign_proc_export(FPEInfo),
+                FPEInfo = pragma_info_foreign_proc_export(Lang, _, _)
+            ;
+                Pragma = pragma_foreign_enum(FEInfo),
+                FEInfo = pragma_info_foreign_enum(Lang, _, _)
+            ),
+            set.insert(Lang, !Langs)
+        ;
+            Pragma = pragma_fact_table(FactTableInfo),
+            FactTableInfo = pragma_info_fact_table(_PredNameArity, FileName),
+            set.insert(FileName, !FactTables)
+        ;
+            Pragma = pragma_tabled(TableInfo),
+            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
+            !ImplicitImportNeeds ^ iin_tabling := do_need_tabling,
+            (
+                MaybeAttributes = no
+            ;
+                MaybeAttributes = yes(Attributes),
+                StatsAttr = Attributes ^ table_attr_statistics,
+                (
+                    StatsAttr = table_gather_statistics,
+                    !ImplicitImportNeeds ^ iin_tabling_statistics
+                        := do_need_tabling_statistics
+                ;
+                    StatsAttr = table_dont_gather_statistics
+                )
+            )
+        ;
+            ( Pragma = pragma_foreign_export_enum(_)
+            ; Pragma = pragma_external_proc(_)
+            ; Pragma = pragma_type_spec(_)
+            ; Pragma = pragma_inline(_)
+            ; Pragma = pragma_no_inline(_)
+            ; Pragma = pragma_consider_used(_)
+            ; Pragma = pragma_unused_args(_)
+            ; Pragma = pragma_exceptions(_)
+            ; Pragma = pragma_trailing_info(_)
+            ; Pragma = pragma_mm_tabling_info(_)
+            ; Pragma = pragma_obsolete(_)
+            ; Pragma = pragma_no_detism_warning(_)
+            ; Pragma = pragma_require_tail_recursion(_)
+            ; Pragma = pragma_oisu(_)
+            ; Pragma = pragma_promise_eqv_clauses(_)
+            ; Pragma = pragma_promise_pure(_)
+            ; Pragma = pragma_promise_semipure(_)
+            ; Pragma = pragma_termination_info(_)
+            ; Pragma = pragma_termination2_info(_)
+            ; Pragma = pragma_terminates(_)
+            ; Pragma = pragma_does_not_terminate(_)
+            ; Pragma = pragma_check_termination(_)
+            ; Pragma = pragma_mode_check_clauses(_)
+            ; Pragma = pragma_structure_sharing(_)
+            ; Pragma = pragma_structure_reuse(_)
+            ; Pragma = pragma_require_feature_set(_)
+            )
+        )
+    ;
+        Item = item_instance(ItemInstance),
+        ItemInstance = item_instance_info(_DerivingClass, _ClassName,
+            _Types, _OriginalTypes, InstanceBody, _VarSet,
+            _ModuleContainingInstance, _Context, _SeqNum),
+        (
+            InstanceBody = instance_body_abstract
+        ;
+            InstanceBody = instance_body_concrete(InstanceMethods),
+            list.foldl(gather_implicit_import_needs_in_instance_method,
+                InstanceMethods, !ImplicitImportNeeds)
+        )
+    ;
+        Item = item_clause(ItemClause),
+        gather_implicit_import_needs_in_clause(ItemClause,
+            !ImplicitImportNeeds)
+    ;
+        Item = item_promise(ItemPromise),
+        ItemPromise = item_promise_info(_PromiseType, Goal, _VarSet,
+            _UnivQuantVars, _Context, _SeqNum),
+        gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds)
+    ;
+        Item = item_mutable(ItemMutable),
+        % We can use all foreign languages.
+        set.insert_list(all_foreign_languages, !Langs),
+        gather_implicit_import_needs_in_mutable(ItemMutable,
+            !ImplicitImportNeeds)
+    ;
+        ( Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_foreign_import_module(_)
+        )
+    ;
+        Item = item_type_repn(_),
+        % These should not be generated yet.
+        unexpected($pred, "item_type_repn")
+    ),
+    get_implicits_foreigns_fact_tables_acc(Items,
+        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
+
+%-----------------------------------------------------------------------------%
 
 :- pred gather_implicit_import_needs_in_item_blocks(list(item_block(MS))::in,
     implicit_import_needs::in, implicit_import_needs::out) is det.

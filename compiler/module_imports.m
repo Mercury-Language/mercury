@@ -90,10 +90,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type module_names_contexts == multi_map(module_name, prog_context).
-
-%---------------------------------------------------------------------------%
-
     % The `module_and_imports' structure holds information about
     % a module and the modules that it imports. We build this structure up
     % as we go along.
@@ -340,8 +336,10 @@
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.split_parse_tree_src.
 
+:- import_module assoc_list.
 :- import_module dir.
 :- import_module pair.
+:- import_module require.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -569,44 +567,12 @@ convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
 
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
         NestedModuleNames, Specs, Errors, RawCompUnit, ModuleAndImports) :-
+    get_interface(RawCompUnit, InterfaceRawCompUnit),
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
-    Ancestors = get_ancestors(ModuleName),
-
-    % XXX ITEM_LIST Computing the dependencies should have already been done
-    % by our caller.
-    get_dependencies_in_item_blocks(RawItemBlocks,
-        ImpImportDeps0, ImpUseDeps0),
-    get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
-        ImplicitImpImportDeps, ImplicitImpUseDeps),
-    set.fold(multi_map.reverse_set(term.context_init),
-        ImplicitImpImportDeps, ImpImportDeps0, ImpImportDeps),
-    set.fold(multi_map.reverse_set(term.context_init),
-        ImplicitImpUseDeps, ImpUseDeps0, ImpUseDeps),
-    multi_map.merge(ImpImportDeps, ImpUseDeps, ImpDeps),
-
-    get_interface(RawCompUnit, InterfaceRawCompUnit),
     InterfaceRawCompUnit = raw_compilation_unit(_, _, InterfaceItemBlocks),
-    % XXX ITEM_LIST Computing the dependencies should have already been done
-    % by our caller, AND by the code above. A single pass could have computed
-    % the dependencies of the interface as well as the dependencies of the
-    % raw compilation unit as a whole.
-    get_dependencies_in_item_blocks(InterfaceItemBlocks,
-        IntImportDeps0, IntUseDeps0),
-    get_implicit_dependencies_in_item_blocks(Globals, InterfaceItemBlocks,
-        ImplicitIntImportDeps, ImplicitIntUseDeps),
-    set.fold(multi_map.reverse_set(term.context_init),
-        ImplicitIntImportDeps, IntImportDeps0, IntImportDeps),
-    set.fold(multi_map.reverse_set(term.context_init),
-        ImplicitIntUseDeps, IntUseDeps0, IntUseDeps),
-    multi_map.merge(IntImportDeps, IntUseDeps, IntDeps),
 
-    % We don't fill in the indirect dependencies yet.
-    set.init(IndirectDeps),
-
-    % XXX ITEM_LIST Again, our caller has probably already done this.
-    get_included_modules_in_item_blocks(RawItemBlocks, Children),
-    get_included_modules_in_item_blocks(InterfaceItemBlocks, PublicChildren),
+    Ancestors = get_ancestors(ModuleName),
 
     % NOTE This if-then-else looks strange, but it works. It works for
     % two different reasons in our callers' two different use cases.
@@ -631,16 +597,93 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         set.init(NestedDeps)
     ),
 
+    % We don't fill in the indirect dependencies yet.
+    set.init(IndirectDeps),
+
+    % NOTE There are two predicates that build an initial module_and_imports
+    % structure. One is this predicate, init_module_and_imports, which is
+    % called by compiler invocations that want to find out the dependencies
+    % between modules.  The other is make_module_and_imports, which is
+    % called by compiler invocations that want to generate target language
+    % code.
+    %
+    % These two predicates fill in the module_and_imports structure
+    % differently. Some fields, such as HasMain, are not needed during
+    % code generation, and thus are not filled in meaningfully
+    % by make_module_and_imports; some, such as SrcItemBlocks, are needed
+    % *only* during code generation, and are thus not filled in
+    % meaningfully by init_module_and_imports. This should be OK,
+    % though there should be a mechanism to catch accesses to
+    % not-meaningfully-filled-in fields.
+    %
+    % XXX However, the two predicates use different algorithms to fill in
+    % some of the remaining fields as well. These differences are
+    % almost certainly bugs, caused by the opacity of this code.
+    % We want to move towards filling in these fields using the *same* code.
+    % Unless there is a specific reason against it, the code we want to base
+    % the common code on is the code used by (the callers of)
+    % make_module_and_imports. This is because the code used by the
+    % make_module_and_imports approach is more likely to be correct.
+    % The reason for that is that errors during code generation are
+    % much more likely to be noticed than errors in the computation
+    % of dependencies (even mmc does not *force* e.g. an interface file to be
+    % up to date, that interface file may *happen* be up-to-date anyway).
+    %
+    % As a first step, we compute the values of most fields of
+    % module_and_imports using both approaches, and require them
+    % to yield the same results. XXX However, we exempt the values of
+    % the LangSet, ForeignImports, and ContainsForeignExport fields
+    % from this. For them, we keep using only the old code in
+    % init_module_and_imports, because the new code, which uses
+    % the infrastructure used by grab_*modules_* in modules.m,
+    % the main callers of make_module_and_imports, fills them
+    % quite differently. These differences, which should be looked at
+    % one by one, include the following, and maybe others:
+    % for items involving foreign languages:
+    %   get_foreign_code_indicators_from_item_blocks gathers
+    %       two sets of languages
+    %   get_implicits_foreigns_fact_tables_acc gathers one set
+    % for some kinds of items involving foreign languages:
+    %   get_foreign_code_indicators_from_item_blocks cares about
+    %       the set of languages supported on the current backend
+    %   get_implicits_foreigns_fact_tables_acc does not care
+    % for foreign_import_module:
+    %   get_foreign_code_indicators_from_item_blocks does something
+    %   get_implicits_foreigns_fact_tables_acc does nothing
+    % for pragma/foreign_export_enum,
+    %   get_foreign_code_indicators_from_item_blocks records presence
+    %   get_implicits_foreigns_fact_tables_acc does not
+
+    % XXX START OF THE OLD CODE
+    get_included_modules_in_item_blocks(RawItemBlocks, ChildrenMap),
+    get_included_modules_in_item_blocks(InterfaceItemBlocks, PublicChildrenMap),
+
+    get_dependencies_in_item_blocks(RawItemBlocks,
+        ImpImportDeps0, ImpUseDeps0),
+    get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
+        ImplicitImpImportDeps, ImplicitImpUseDeps),
+    set.fold(multi_map.reverse_set(term.context_init),
+        ImplicitImpImportDeps, ImpImportDeps0, ImpImportDeps),
+    set.fold(multi_map.reverse_set(term.context_init),
+        ImplicitImpUseDeps, ImpUseDeps0, ImpUseDeps),
+    multi_map.merge(ImpImportDeps, ImpUseDeps, ImpDeps),
+
+    get_dependencies_in_item_blocks(InterfaceItemBlocks,
+        IntImportDeps0, IntUseDeps0),
+    get_implicit_dependencies_in_item_blocks(Globals, InterfaceItemBlocks,
+        ImplicitIntImportDeps, ImplicitIntUseDeps),
+    set.fold(multi_map.reverse_set(term.context_init),
+        ImplicitIntImportDeps, IntImportDeps0, IntImportDeps),
+    set.fold(multi_map.reverse_set(term.context_init),
+        ImplicitIntUseDeps, IntUseDeps0, IntUseDeps),
+    multi_map.merge(IntImportDeps, IntUseDeps, IntDeps),
+
     get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactTableDeps),
 
     % Figure out whether the items contain foreign code.
     get_foreign_code_indicators_from_item_blocks(Globals, RawItemBlocks,
-        LangSet, ForeignImports0, ForeignIncludeFiles, ContainsForeignExport),
-    ( if set.is_empty(LangSet) then
-        ContainsForeignCode = contains_no_foreign_code
-    else
-        ContainsForeignCode = contains_foreign_code(LangSet)
-    ),
+        LangSet, ForeignImports0, ForeignIncludeFilesCord,
+        ContainsForeignExport),
 
     % If this module contains `:- pragma foreign_export' or
     % `:- pragma foreign_type' declarations, importing modules may need
@@ -654,8 +697,88 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % Work out whether the items contain main/2.
     look_for_main_pred_in_item_blocks(RawItemBlocks, no_main, HasMain),
 
+    % XXX START OF THE NEW CODE
+    get_raw_components(RawItemBlocks, NewIntIncls, NewImpIncls,
+        NewIntAvails, NewImpAvails, NewIntItems, NewImpItems),
+    list.foldl(get_included_modules_in_item_include_acc, NewIntIncls,
+        multi_map.init, NewPublicChildrenMap),
+    list.foldl(get_included_modules_in_item_include_acc, NewImpIncls,
+        NewPublicChildrenMap, NewChildrenMap),
+    get_imports_uses_maps(NewIntAvails, NewIntImportsMap0, NewIntUsesMap0),
+    get_imports_uses_maps(NewImpAvails, NewImpImportsMap0, NewImpUsesMap0),
+
+    get_implicits_foreigns_fact_tables(NewIntItems, NewImpItems,
+        NewIntImplicitImportNeeds, NewIntImpImplicitImportNeeds,
+        NewForeignInclFilesCord, _NewLangs, NewFactTables),
+
+    compute_implicit_import_needs(Globals, NewIntImplicitImportNeeds,
+        NewImplicitIntImports, NewImplicitIntUses),
+    compute_implicit_import_needs(Globals, NewIntImpImplicitImportNeeds,
+        NewImplicitIntImpImports, NewImplicitIntImpUses),
+    set.difference(NewImplicitIntImpImports, NewImplicitIntImports,
+        NewImplicitImpImports),
+    set.difference(NewImplicitIntImpUses, NewImplicitIntUses,
+        NewImplicitImpUses),
+
+    set.fold(multi_map.reverse_set(term.context_init),
+        NewImplicitIntImports, NewIntImportsMap0, NewIntImportsMap),
+    set.fold(multi_map.reverse_set(term.context_init),
+        NewImplicitIntUses, NewIntUsesMap0, NewIntUsesMap),
+    set.fold(multi_map.reverse_set(term.context_init),
+        NewImplicitImpImports, NewImpImportsMap0, NewImpImportsMap),
+    set.fold(multi_map.reverse_set(term.context_init),
+        NewImplicitImpUses, NewImpUsesMap0, NewImpUsesMap),
+
+    multi_map.merge(NewIntImportsMap, NewIntUsesMap, NewIntDepsMap),
+    multi_map.merge(NewImpImportsMap, NewImpUsesMap, NewImpDepsMap),
+    multi_map.merge(NewIntDepsMap, NewImpDepsMap, NewIntImpDepsMap),
+
+    % XXX START OF THE COMPARISON CODE
+    map.to_assoc_list(ChildrenMap, OldChildrenAL),
+    map.to_assoc_list(PublicChildrenMap, OldPublicChildrenAL),
+    map.to_assoc_list(NewChildrenMap, NewChildrenAL),
+    map.to_assoc_list(NewPublicChildrenMap, NewPublicChildrenAL),
+    expect(unify(OldChildrenAL, NewChildrenAL), $pred,
+        "bad ChildrenMap"),
+    expect(unify(OldPublicChildrenAL, NewPublicChildrenAL), $pred,
+        "bad PublicChildrenMap"),
+
+    map.to_assoc_list(IntDeps, IntDepsAL),
+    map.to_assoc_list(ImpDeps, ImpDepsAL),
+    map.to_assoc_list(NewIntDepsMap, NewIntDepsAL),
+    map.to_assoc_list(NewIntImpDepsMap, NewIntImpDepsAL),
+    assoc_list.map_values_only(list.sort_and_remove_dups,
+        IntDepsAL, StdIntDepsAL),
+    assoc_list.map_values_only(list.sort_and_remove_dups,
+        ImpDepsAL, StdImpDepsAL),
+    assoc_list.map_values_only(list.sort_and_remove_dups,
+        NewIntDepsAL, StdNewIntDepsAL),
+    assoc_list.map_values_only(list.sort_and_remove_dups,
+        NewIntImpDepsAL, StdNewIntImpDepsAL),
+
+    expect(unify(StdIntDepsAL, StdNewIntDepsAL), $pred,
+        "bad IntDeps"),
+    expect(unify(StdImpDepsAL, StdNewIntImpDepsAL), $pred,
+        "bad ImpDeps"),
+
+    ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
+    NewForeignInclFiles = cord.list(NewForeignInclFilesCord),
+    expect(unify(ForeignIncludeFiles, NewForeignInclFiles), $pred,
+        "bad ForeignIncludeFiles"),
+    list.sort_and_remove_dups(FactTableDeps, OldSortedFactTables),
+    set.to_sorted_list(NewFactTables, NewSortedFactTables),
+    expect(unify(OldSortedFactTables, NewSortedFactTables), $pred,
+        "bad FactTables"),
+    % XXX END OF THE COMPARISON CODE
+
+    ( if set.is_empty(LangSet) then
+        ContainsForeignCode = contains_no_foreign_code
+    else
+        ContainsForeignCode = contains_foreign_code(LangSet)
+    ),
+
     % XXX ITEM_LIST SrcItemBlocks and the item block fields are NOT
-    % stored here, per the documentation above. Maybe they should be.
+    % stored here, per the documentation above.
     SrcItemBlocks = [],
     DirectIntBlocksCord = cord.init,
     IndirectIntBlocksCord = cord.init,
@@ -666,9 +789,9 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     MaybeTimestampMap = no,
     ModuleAndImports = module_and_imports(FileName, dir.this_directory,
         SourceFileModuleName, ModuleName, ModuleNameContext,
-        set.list_to_set(Ancestors), Children, PublicChildren, NestedDeps,
-        IntDeps, ImpDeps, IndirectDeps, FactTableDeps,
-        ForeignImports, ForeignIncludeFiles,
+        set.list_to_set(Ancestors), ChildrenMap, PublicChildrenMap,
+        NestedDeps, IntDeps, ImpDeps, IndirectDeps, FactTableDeps,
+        ForeignImports, ForeignIncludeFilesCord,
         ContainsForeignCode, ContainsForeignExport, HasMain,
         SrcItemBlocks, DirectIntBlocksCord, IndirectIntBlocksCord,
         OptBlocksCords, IntForOptBlocksCords,

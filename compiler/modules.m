@@ -133,8 +133,6 @@
 :- import_module parse_tree.parse_module.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.prog_foreign.
 
 :- import_module cord.
 :- import_module map.
@@ -162,19 +160,13 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
 
-        get_raw_components(RawItemBlocks, IntInclsCord, ImpInclsCord,
-            IntAvailsCord, ImpAvailsCord, IntItemsCord, ImpItemsCord),
-        IntIncls = cord.list(IntInclsCord),
-        ImpIncls = cord.list(ImpInclsCord),
-        IntAvails = cord.list(IntAvailsCord),
-        ImpAvails = cord.list(ImpAvailsCord),
-        IntItems = cord.list(IntItemsCord),
-        ImpItems = cord.list(ImpItemsCord),
-        get_deps_maps(IntAvails, ImpAvails,
-            IntImportsMap0, IntUsesMap0, ImpImportsMap0, ImpUsesMap0),
+        get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
+            IntAvails, ImpAvails, IntItems, ImpItems),
+        get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
+        get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
         get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-            ImplicitImportNeeds, ForeignIncludeFilesCord, LangSet,
-            FactTablesSet),
+            _IntImplicitImportNeeds, IntImpImplicitImportNeeds,
+            ForeignIncludeFilesCord, LangSet, FactTablesSet),
         FactTables = set.to_sorted_list(FactTablesSet),
 
         Ancestors = set.list_to_set(get_ancestors(ModuleName)),
@@ -196,13 +188,12 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         set.sorted_list_to_set(map.keys(IntUsesMap1), IntUses1),
         set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports),
         set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses),
-        compute_implicit_import_needs(Globals, ImplicitImportNeeds,
-            ImplicitIntImports, ImplicitIntUses),
+        compute_implicit_import_needs(Globals, IntImpImplicitImportNeeds,
+            IntImpImplicitImports, IntImpImplicitUses),
         % XXX IMPLICIT_SECTION
-        % Why are these added to the interface, and not the implementation
-        % dependencies?
-        set.union(ImplicitIntImports, IntImports1, IntImports2),
-        set.union(ImplicitIntUses, IntUses1, IntUses2),
+        % Why are these *all* added to the interface?
+        set.union(IntImpImplicitImports, IntImports1, IntImports2),
+        set.union(IntImpImplicitUses, IntUses1, IntUses2),
         set.to_sorted_list(LangSet, Langs),
         FIMItems = list.map(make_foreign_import(ModuleName), Langs),
         SrcIntIncls = IntIncls,
@@ -400,24 +391,19 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
 
-        get_raw_components(RawItemBlocks, IntInclsCord, ImpInclsCord,
-            IntAvailsCord, ImpAvailsCord, IntItemsCord, ImpItemsCord),
-        IntIncls = cord.list(IntInclsCord),
-        ImpIncls = cord.list(ImpInclsCord),
-        IntAvails = cord.list(IntAvailsCord),
-        ImpAvails = cord.list(ImpAvailsCord),
-        IntItems = cord.list(IntItemsCord),
-        ImpItems = cord.list(ImpItemsCord),
-
-        get_deps_maps(IntAvails, ImpAvails,
-            IntImportsMap0, IntUsesMap0, ImpImportsMap0, ImpUsesMap0),
+        get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
+            IntAvails, ImpAvails, IntItems, ImpItems),
+        get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
+        get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
         get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-            ImplicitImportNeeds, _ForeignInclFiles, LangSet, _FactTables),
+            _IntImplicitImportNeeds, IntImpImplicitImportNeeds,
+            _ForeignInclFiles, LangSet, _FactTables),
         set.sorted_list_to_set(map.keys(IntImportsMap0), IntImports0),
         set.sorted_list_to_set(map.keys(IntUsesMap0), IntUses0),
         set.sorted_list_to_set(map.keys(ImpImportsMap0), ImpImports),
         set.sorted_list_to_set(map.keys(ImpUsesMap0), ImpUses),
-        compute_implicit_import_needs(Globals, ImplicitImportNeeds,
+        % XXX SECTION
+        compute_implicit_import_needs(Globals, IntImpImplicitImportNeeds,
             ImplicitIntImports, ImplicitIntUses),
         set.union(ImplicitIntImports, IntImports0, IntImports),
         set.union(ImplicitIntUses, IntUses0, IntUses),
@@ -531,229 +517,6 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % get_deps_maps(IntAvails, ImpAvails,
-    %   IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap):
-    %
-    % Given the interface and implementation avails of a raw compilation unit,
-    % return the set of modules imported and used in those sections,
-    % mapped to the list of locations of those imports and uses.
-    %
-:- pred get_deps_maps(list(item_avail)::in, list(item_avail)::in,
-    module_names_contexts::out, module_names_contexts::out,
-    module_names_contexts::out, module_names_contexts::out) is det.
-
-get_deps_maps(IntAvails, ImpAvails,
-        IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap) :-
-    accumulate_dependencies_in_avails(IntAvails,
-        multi_map.init, IntImportsMap, multi_map.init, IntUsesMap),
-    accumulate_dependencies_in_avails(ImpAvails,
-        multi_map.init, ImpImportsMap, multi_map.init, ImpUsesMap).
-
-:- pred accumulate_dependencies_in_avails(list(item_avail)::in,
-    module_names_contexts::in, module_names_contexts::out,
-    module_names_contexts::in, module_names_contexts::out) is det.
-
-accumulate_dependencies_in_avails([], !ImportsMap, !UsesMap).
-accumulate_dependencies_in_avails([Avail | Avails], !ImportsMap, !UsesMap) :-
-    (
-        Avail = avail_import(avail_import_info(ModuleName, Context, _)),
-        multi_map.add(ModuleName, Context, !ImportsMap)
-    ;
-        Avail = avail_use(avail_use_info(ModuleName, Context, _)),
-        multi_map.add(ModuleName, Context, !UsesMap)
-    ),
-    accumulate_dependencies_in_avails(Avails, !ImportsMap, !UsesMap).
-
-%---------------------------------------------------------------------------%
-
-    % get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-    %   ImplicitImportNeeds, ForeignInclFiles, Langs, FactTables):
-    %
-    % Given the interface and implementation items of a raw compilation unit,
-    % compute and return
-    %
-    % - a representation of the implicit import needs of those items,
-    %   i.e. of the set of modules that we need to implicitly import;
-    % - the foreign files they include;
-    % - the foreign languages they use; and
-    % - the names of the files that contain their fact tables.
-    %
-:- pred get_implicits_foreigns_fact_tables(list(item)::in, list(item)::in,
-    implicit_import_needs::out, cord(foreign_include_file_info)::out,
-    set(foreign_language)::out, set(string)::out) is det.
-
-get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-        !:ImplicitImportNeeds, !:ForeignInclFiles, !:Langs, !:FactTables) :-
-    !:ImplicitImportNeeds = init_implicit_import_needs,
-    !:ForeignInclFiles = cord.init,
-    set.init(!:Langs),
-    set.init(!:FactTables),
-    get_implicits_foreigns_fact_tables_acc(IntItems,
-        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables),
-    get_implicits_foreigns_fact_tables_acc(ImpItems,
-        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
-
-:- pred get_implicits_foreigns_fact_tables_acc(list(item)::in,
-    implicit_import_needs::in, implicit_import_needs::out,
-    cord(foreign_include_file_info)::in, cord(foreign_include_file_info)::out,
-    set(foreign_language)::in, set(foreign_language)::out,
-    set(string)::in, set(string)::out) is det.
-
-get_implicits_foreigns_fact_tables_acc([],
-        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
-get_implicits_foreigns_fact_tables_acc([Item | Items],
-        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables) :-
-    (
-        Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
-            TypeDefn, _TVarSet, _Context, _SeqNum),
-        (
-            TypeDefn = parse_tree_solver_type(DetailsSolver),
-            DetailsSolver = type_details_solver(SolverTypeDetails,
-                _MaybeUnifyComparePredNames),
-            SolverTypeDetails = solver_type_details(_RepresentationType,
-                _GroundInst, _AnyInst, MutableItems),
-            list.foldl(gather_implicit_import_needs_in_mutable, MutableItems,
-                !ImplicitImportNeeds)
-        ;
-            TypeDefn = parse_tree_foreign_type(DetailsForeign),
-            DetailsForeign = type_details_foreign(ForeignType, _, _),
-            set.insert(foreign_type_language(ForeignType), !Langs)
-        ;
-            ( TypeDefn = parse_tree_du_type(_)
-            ; TypeDefn = parse_tree_eqv_type(_)
-            ; TypeDefn = parse_tree_abstract_type(_)
-            )
-        )
-    ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        (
-            (
-                Pragma = pragma_foreign_decl(FDInfo),
-                FDInfo = pragma_info_foreign_decl(Lang, _, LiteralOrInclude)
-            ;
-                Pragma = pragma_foreign_code(FCInfo),
-                FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
-            ),
-            (
-                LiteralOrInclude = floi_literal(_)
-            ;
-                LiteralOrInclude = floi_include_file(FileName),
-                InclFile = foreign_include_file_info(Lang, FileName),
-                !:ForeignInclFiles = cord.snoc(!.ForeignInclFiles, InclFile)
-            ),
-            set.insert(Lang, !Langs)
-        ;
-            (
-                Pragma = pragma_foreign_enum(FEInfo),
-                FEInfo = pragma_info_foreign_enum(Lang, _, _)
-            ;
-                Pragma = pragma_foreign_proc_export(FPEInfo),
-                FPEInfo = pragma_info_foreign_proc_export(Lang, _, _)
-            ),
-            set.insert(Lang, !Langs)
-        ;
-            Pragma = pragma_foreign_proc(FPInfo),
-            FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
-            set.insert(get_foreign_language(Attrs), !Langs)
-        ;
-            Pragma = pragma_fact_table(FactTableInfo),
-            FactTableInfo = pragma_info_fact_table(_PredNameArity, FileName),
-            set.insert(FileName, !FactTables)
-        ;
-            Pragma = pragma_tabled(TableInfo),
-            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
-            !ImplicitImportNeeds ^ iin_tabling := do_need_tabling,
-            (
-                MaybeAttributes = no
-            ;
-                MaybeAttributes = yes(Attributes),
-                StatsAttr = Attributes ^ table_attr_statistics,
-                (
-                    StatsAttr = table_gather_statistics,
-                    !ImplicitImportNeeds ^ iin_tabling_statistics
-                        := do_need_tabling_statistics
-                ;
-                    StatsAttr = table_dont_gather_statistics
-                )
-            )
-        ;
-            ( Pragma = pragma_foreign_export_enum(_)
-            ; Pragma = pragma_external_proc(_)
-            ; Pragma = pragma_type_spec(_)
-            ; Pragma = pragma_inline(_)
-            ; Pragma = pragma_no_inline(_)
-            ; Pragma = pragma_consider_used(_)
-            ; Pragma = pragma_unused_args(_)
-            ; Pragma = pragma_exceptions(_)
-            ; Pragma = pragma_trailing_info(_)
-            ; Pragma = pragma_mm_tabling_info(_)
-            ; Pragma = pragma_obsolete(_)
-            ; Pragma = pragma_no_detism_warning(_)
-            ; Pragma = pragma_require_tail_recursion(_)
-            ; Pragma = pragma_oisu(_)
-            ; Pragma = pragma_promise_eqv_clauses(_)
-            ; Pragma = pragma_promise_pure(_)
-            ; Pragma = pragma_promise_semipure(_)
-            ; Pragma = pragma_termination_info(_)
-            ; Pragma = pragma_termination2_info(_)
-            ; Pragma = pragma_terminates(_)
-            ; Pragma = pragma_does_not_terminate(_)
-            ; Pragma = pragma_check_termination(_)
-            ; Pragma = pragma_mode_check_clauses(_)
-            ; Pragma = pragma_structure_sharing(_)
-            ; Pragma = pragma_structure_reuse(_)
-            ; Pragma = pragma_require_feature_set(_)
-            )
-        )
-    ;
-        Item = item_instance(ItemInstance),
-        ItemInstance = item_instance_info(_DerivingClass, _ClassName,
-            _Types, _OriginalTypes, InstanceBody, _VarSet,
-            _ModuleContainingInstance, _Context, _SeqNum),
-        (
-            InstanceBody = instance_body_abstract
-        ;
-            InstanceBody = instance_body_concrete(InstanceMethods),
-            list.foldl(gather_implicit_import_needs_in_instance_method,
-                InstanceMethods, !ImplicitImportNeeds)
-        )
-    ;
-        Item = item_clause(ItemClause),
-        gather_implicit_import_needs_in_clause(ItemClause,
-            !ImplicitImportNeeds)
-    ;
-        Item = item_promise(ItemPromise),
-        ItemPromise = item_promise_info(_PromiseType, Goal, _VarSet,
-            _UnivQuantVars, _Context, _SeqNum),
-        gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds)
-    ;
-        Item = item_mutable(ItemMutable),
-        % We can use all foreign languages.
-        set.insert_list(all_foreign_languages, !Langs),
-        gather_implicit_import_needs_in_mutable(ItemMutable,
-            !ImplicitImportNeeds)
-    ;
-        ( Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_foreign_import_module(_)
-        )
-    ;
-        Item = item_type_repn(_),
-        % These should not be generated yet.
-        unexpected($pred, "item_type_repn")
-    ),
-    get_implicits_foreigns_fact_tables_acc(Items,
-        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
-
-%---------------------------------------------------------------------------%
-
     % separate_instance_non_instance(Items,
     %   AbstractInstanceItems, InstanceItems, NonInstanceItems):
     %
@@ -799,50 +562,6 @@ separate_instance_non_instance_loop([Item | Items],
     ),
     separate_instance_non_instance_loop(Items,
         !AbstractInstanceCord, !InstanceCord, !NonInstanceCord).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-    %     IntAvails, ImpAvails, IntItems, ImpItems):
-    %
-    % Return the includes, avails (i.e. imports and uses), and items
-    % from both the interface and implementation blocks in RawItemBlocks.
-    %
-:- pred get_raw_components(list(raw_item_block)::in,
-    cord(item_include)::out, cord(item_include)::out,
-    cord(item_avail)::out, cord(item_avail)::out,
-    cord(item)::out, cord(item)::out) is det.
-
-get_raw_components(RawItemBlocks, !:IntIncls, !:ImpIncls,
-        !:IntAvails, !:ImpAvails, !:IntItems, !:ImpItems) :-
-    % While lists of items can be very long, this just about never happens
-    % with lists of item BLOCKS, so we don't need tail recursion.
-    (
-        RawItemBlocks = [],
-        !:IntIncls = cord.init,
-        !:ImpIncls = cord.init,
-        !:IntAvails = cord.init,
-        !:ImpAvails = cord.init,
-        !:IntItems = cord.init,
-        !:ImpItems = cord.init
-    ;
-        RawItemBlocks = [HeadRawItemBlock | TailRawItemBlocks],
-        get_raw_components(TailRawItemBlocks, !:IntIncls, !:ImpIncls,
-            !:IntAvails, !:ImpAvails, !:IntItems, !:ImpItems),
-        HeadRawItemBlock = item_block(_, Section, Incls, Avails, Items),
-        (
-            Section = ms_interface,
-            !:IntIncls = cord.from_list(Incls) ++ !.IntIncls,
-            !:IntAvails = cord.from_list(Avails) ++ !.IntAvails,
-            !:IntItems = cord.from_list(Items) ++ !.IntItems
-        ;
-            Section = ms_implementation,
-            !:ImpIncls = cord.from_list(Incls) ++ !.ImpIncls,
-            !:ImpAvails = cord.from_list(Avails) ++ !.ImpAvails,
-            !:ImpItems = cord.from_list(Items) ++ !.ImpItems
-        )
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1294,8 +1013,8 @@ process_module_int123_file(Globals, HaveReadModuleMapInt, PIKind,
     process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
         NewIntSection, NewImpSection, SectionAppend, Module,
         IntAvails, ImpAvails, _ItemBlocks, !ModuleAndImports, !IO),
-    get_dependencies_in_avails(IntAvails, IntImportsMap, IntUsesMap),
-    get_dependencies_in_avails(ImpAvails, ImpImportsMap, ImpUsesMap),
+    get_imports_uses_maps(IntAvails, IntImportsMap, IntUsesMap),
+    get_imports_uses_maps(ImpAvails, ImpImportsMap, ImpUsesMap),
     set.sorted_list_to_set(map.keys(IntImportsMap), IntImports),
     set.sorted_list_to_set(map.keys(IntUsesMap), IntUses),
     set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports),

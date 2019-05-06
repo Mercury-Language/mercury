@@ -227,6 +227,8 @@
                 list(item)
             ).
 
+:- type module_names_contexts == multi_map(module_name, prog_context).
+
 %-----------------------------------------------------------------------------%
 
 :- type module_section
@@ -326,6 +328,36 @@
     list(item_include)::in, list(item_include)::in,
     list(item_avail)::in, list(item_avail)::in, list(item)::in, list(item)::in,
     list(item_block(MS))::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
+    %     IntAvails, ImpAvails, IntItems, ImpItems):
+    %
+    % Return the includes, avails (i.e. imports and uses), and items
+    % from both the interface and implementation blocks in RawItemBlocks.
+    %
+:- pred get_raw_components(list(raw_item_block)::in,
+    list(item_include)::out, list(item_include)::out,
+    list(item_avail)::out, list(item_avail)::out,
+    list(item)::out, list(item)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % get_imports_uses_maps(Avails, ImportsMap, UsesMap):
+    %
+    % Given the avails of a raw compilation unit, return the set of modules
+    % imported and used in those sections, mapped to the list of locations
+    % of those imports and uses.
+    %
+:- pred get_imports_uses_maps(list(item_avail)::in,
+    module_names_contexts::out, module_names_contexts::out) is det.
+
+    % The accumulator version of get_imports_uses_maps.
+    %
+:- pred accumulate_imports_uses_maps(list(item_avail)::in,
+    module_names_contexts::in, module_names_contexts::out,
+    module_names_contexts::in, module_names_contexts::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -662,14 +694,13 @@
     % declarations in ItemBlocks.
     %
 :- pred get_included_modules_in_item_blocks(list(item_block(MS))::in,
-    multi_map(module_name, prog_context)::out) is det.
+    module_names_contexts::out) is det.
 
     % An accumulator version of the above predicate restricted to operate
     % only on item_includes.
     %
 :- pred get_included_modules_in_item_include_acc(item_include::in,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out) is det.
+    module_names_contexts::in, module_names_contexts::out) is det.
 
 :- type import_or_use
     --->    import_decl
@@ -1681,6 +1712,55 @@ int_imp_items_to_item_blocks(ModuleName, IntSection, ImpSection,
 
 %-----------------------------------------------------------------------------%
 
+get_raw_components(RawItemBlocks, !:IntIncls, !:ImpIncls,
+        !:IntAvails, !:ImpAvails, !:IntItems, !:ImpItems) :-
+    % While lists of items can be very long, this just about never happens
+    % with lists of item BLOCKS, so we don't need tail recursion.
+    (
+        RawItemBlocks = [],
+        !:IntIncls = [],
+        !:ImpIncls = [],
+        !:IntAvails = [],
+        !:ImpAvails = [],
+        !:IntItems = [],
+        !:ImpItems = []
+    ;
+        RawItemBlocks = [HeadRawItemBlock | TailRawItemBlocks],
+        get_raw_components(TailRawItemBlocks, !:IntIncls, !:ImpIncls,
+            !:IntAvails, !:ImpAvails, !:IntItems, !:ImpItems),
+        HeadRawItemBlock = item_block(_, Section, Incls, Avails, Items),
+        (
+            Section = ms_interface,
+            !:IntIncls = Incls ++ !.IntIncls,
+            !:IntAvails = Avails ++ !.IntAvails,
+            !:IntItems = Items ++ !.IntItems
+        ;
+            Section = ms_implementation,
+            !:ImpIncls = Incls ++ !.ImpIncls,
+            !:ImpAvails = Avails ++ !.ImpAvails,
+            !:ImpItems = Items ++ !.ImpItems
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_imports_uses_maps(Avails, ImportsMap, UsesMap) :-
+    accumulate_imports_uses_maps(Avails,
+        multi_map.init, ImportsMap, multi_map.init, UsesMap).
+
+accumulate_imports_uses_maps([], !ImportsMap, !UsesMap).
+accumulate_imports_uses_maps([Avail | Avails], !ImportsMap, !UsesMap) :-
+    (
+        Avail = avail_import(avail_import_info(ModuleName, Context, _)),
+        multi_map.add(ModuleName, Context, !ImportsMap)
+    ;
+        Avail = avail_use(avail_use_info(ModuleName, Context, _)),
+        multi_map.add(ModuleName, Context, !UsesMap)
+    ),
+    accumulate_imports_uses_maps(Avails, !ImportsMap, !UsesMap).
+
+%-----------------------------------------------------------------------------%
+
 get_item_context(Item) = Context :-
     (
         Item = item_clause(ItemClause),
@@ -1736,8 +1816,7 @@ get_included_modules_in_item_blocks(ItemBlocks, IncludedModuleNames) :-
         multi_map.init, IncludedModuleNames).
 
 :- pred get_included_modules_in_item_blocks_acc(list(item_block(MS))::in,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out) is det.
+    module_names_contexts::in, module_names_contexts::out) is det.
 
 get_included_modules_in_item_blocks_acc([], !IncludedModuleNames).
 get_included_modules_in_item_blocks_acc([ItemBlock | ItemBlocks],
@@ -2152,10 +2231,16 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
     globals.get_backend_foreign_languages(Globals, BackendLangs),
     globals.get_target(Globals, Target),
 
-    % The code here should match the way that mlds_to_gcc.m decides whether
-    % or not to call mlds_to_c.m.
-    % XXX FIXME mlds_to_gcc.m no longer exists.
     (
+        % We do NOT count foreign_decls here. We only link in a foreign object
+        % file if mlds_to_gcc called mlds_to_c.m to generate it, which it
+        % will only do if there is some foreign_code, not just foreign_decls.
+        % Counting foreign_decls here causes problems with intermodule
+        % optimization.
+        Pragma = pragma_foreign_decl(FDInfo),
+        FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude),
+        do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
+    ;
         Pragma = pragma_foreign_code(FCInfo),
         FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),
         ( if list.member(Lang, BackendLangs) then
@@ -2221,15 +2306,6 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
             ; Target = target_erlang
             )
         )
-    ;
-        % We do NOT count foreign_decls here. We only link in a foreign object
-        % file if mlds_to_gcc called mlds_to_c.m to generate it, which it
-        % will only do if there is some foreign_code, not just foreign_decls.
-        % Counting foreign_decls here causes problems with intermodule
-        % optimization.
-        Pragma = pragma_foreign_decl(FDInfo),
-        FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude),
-        do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
     ;
         ( Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_foreign_export_enum(_)
