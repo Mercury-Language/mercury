@@ -68,6 +68,29 @@
 %   have a version of this predicate for each type, one with and one
 %   without an I/O state pair.
 %
+% XXX Given the wide variety of uses cases that choose_file_name has
+% to handle for its callers, the only way to ensure that a diff implementing
+% the above ideas handles *all* of those uses cases correctly is probably to
+%
+% - Gather a list of all the extensions choose_file_name is called with.
+%
+% - Set up a test environment with distinctively named directories in
+%   all the relevant directory search options.
+%
+% - Invoke choose_file_name and module_name_to_file_name_general
+%   with all possible combinations of 
+%
+%       subdir option
+%       empty and distinctive nonempty base parent dirs
+%       unqualified and qualified module names
+%       extension
+%       search
+%       mkdir
+%
+%   and record the results as the baseline.
+%
+% - Repeat the exercise with the proposed replacement code, and
+%   compare the results to the baseline.
 
 :- type maybe_create_dirs
     --->    do_create_dirs
@@ -272,9 +295,8 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
         BaseParentDirs = ["jmercury"],
         mangle_sym_name_for_java(ModuleName, module_qual, "__",
             MangledModuleName),
-        BaseName = MangledModuleName ++ Ext,
-        choose_file_name(Globals, ModuleName, BaseParentDirs, BaseName, Ext,
-            Search, MkDir, FileName, !IO)
+        choose_file_name(Globals, ModuleName, BaseParentDirs,
+            MangledModuleName, Ext, Search, MkDir, FileName, !IO)
     else if
         % Erlang uses `.' as a package separator and expects a module
         % `a.b.c' to be in a file `a/b/c.erl'. Rather than that, we use
@@ -285,13 +307,13 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
         )
     then
         ErlangModuleName = qualify_mercury_std_library_module_name(ModuleName),
-        BaseName = sym_name_to_string_sep(ErlangModuleName, "__") ++ Ext,
-        choose_file_name(Globals, ErlangModuleName, [], BaseName, Ext, Search,
-            MkDir, FileName, !IO)
+        BaseNameNoExt = sym_name_to_string_sep(ErlangModuleName, "__"),
+        choose_file_name(Globals, ErlangModuleName, [], BaseNameNoExt, Ext,
+            Search, MkDir, FileName, !IO)
     else
-        BaseName = sym_name_to_string_sep(ModuleName, ".") ++ Ext,
-        choose_file_name(Globals, ModuleName, [], BaseName, Ext, Search, MkDir,
-            FileName, !IO)
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        choose_file_name(Globals, ModuleName, [], BaseNameNoExt, Ext,
+            Search, MkDir, FileName, !IO)
     ),
     trace [compile_time(flag("file_name_translations")),
         runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
@@ -314,20 +336,19 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
 module_name_to_lib_file_name(Globals, Prefix, ModuleName, Ext, MkDir,
         FileName, !IO) :-
     BaseFileName = sym_name_to_string(ModuleName),
-    BaseName = Prefix ++ BaseFileName ++ Ext,
-    choose_file_name(Globals, ModuleName, [], BaseName, Ext, do_not_search,
-        MkDir, FileName, !IO).
+    BaseNameNoExt = Prefix ++ BaseFileName,
+    choose_file_name(Globals, ModuleName, [], BaseNameNoExt, Ext,
+        do_not_search, MkDir, FileName, !IO).
 
 fact_table_file_name(Globals, ModuleName, FactTableFileName, Ext, MkDir,
         FileName, !IO) :-
-    extra_link_obj_file_name(Globals, ModuleName, FactTableFileName, Ext,
-        MkDir, FileName, !IO).
+    choose_file_name(Globals, ModuleName, [], FactTableFileName, Ext,
+        do_not_search, MkDir, FileName, !IO).
 
 extra_link_obj_file_name(Globals, ModuleName, ExtraLinkObjName, Ext, MkDir,
         FileName, !IO) :-
-    BaseName = ExtraLinkObjName ++ Ext,
-    choose_file_name(Globals, ModuleName, [], BaseName, Ext, do_not_search,
-        MkDir, FileName, !IO).
+    choose_file_name(Globals, ModuleName, [], ExtraLinkObjName, Ext,
+        do_not_search, MkDir, FileName, !IO).
 
     % choose_file_name(ModuleName, BaseParentDirs, BaseName, Ext, Search,
     %   MkDir, FileName, !IO)
@@ -339,7 +360,7 @@ extra_link_obj_file_name(Globals, ModuleName, ExtraLinkObjName, Ext, MkDir,
     string::in, string::in, maybe_search::in, maybe_create_dirs::in,
     file_name::out, io::di, io::uo) is det.
 
-choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
+choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseNameNoExt, Ext,
         Search, MkDir, FileName, !IO) :-
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
@@ -361,7 +382,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
         ; Ext = ".hrl.tmp"
         )
     then
-        FileName = BaseName
+        FileName = BaseNameNoExt ++ Ext
     else if
         UseSubdirs = no
     then
@@ -369,8 +390,8 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
         % have non-empty BaseParentDirs (the package) which may need to be
         % created.
         % ZZZ Most of the code of make_file_name handles UseSubdirs = yes.
-        make_file_name(Globals, BaseParentDirs, Search, MkDir, BaseName, Ext,
-            FileName, !IO)
+        make_file_name(Globals, BaseParentDirs, Search, MkDir,
+            BaseNameNoExt, Ext, FileName, !IO)
     else if
         % The source files, the final executables, library files (including
         % .init files) output files intended for use by the user, and phony
@@ -447,7 +468,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
             )
         )
     then
-        FileName = BaseName
+        FileName = BaseNameNoExt ++ Ext
     else
         % We need to handle a few cases specially.
 
@@ -514,7 +535,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
         ),
 
         make_file_name(Globals, [SubDirName | BaseParentDirs], Search, MkDir,
-            BaseName, Ext, FileName, !IO)
+            BaseNameNoExt, Ext, FileName, !IO)
     ).
 
 file_name_to_module_name(FileName, ModuleName) :-
@@ -530,8 +551,8 @@ module_name_to_make_var_name(ModuleName, MakeVarName) :-
     maybe_create_dirs::in, file_name::in, string::in, file_name::out,
     io::di, io::uo) is det.
 
-make_file_name(Globals, SubDirNames, Search, MkDir, BaseName, Ext, FileName,
-        !IO) :-
+make_file_name(Globals, SubDirNames, Search, MkDir, BaseNameNoExt, Ext,
+        FileName, !IO) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     ( if
@@ -570,7 +591,7 @@ make_file_name(Globals, SubDirNames, Search, MkDir, BaseName, Ext, FileName,
     ),
     (
         DirComponents = [],
-        FileName = BaseName
+        FileName = BaseNameNoExt ++ Ext
     ;
         DirComponents = [_ | _],
         (
@@ -580,7 +601,7 @@ make_file_name(Globals, SubDirNames, Search, MkDir, BaseName, Ext, FileName,
         ;
             MkDir = do_not_create_dirs
         ),
-        Components = DirComponents ++ [BaseName],
+        Components = DirComponents ++ [BaseNameNoExt ++ Ext],
         FileName = dir.relative_path_name_from_components(Components)
     ).
 
