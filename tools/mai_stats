@@ -1,0 +1,64 @@
+#!/usr/bin/awk -f
+BEGIN {
+        for (i = 2; i <= 28; i++) {
+            init[i] = "not accessed";
+            make[i] = "not accessed";
+            read[i] = "not accessed";
+        }
+
+        desc[2]  = "SrcFileName";
+        desc[3]  = "ModuleDir";
+        desc[4]  = "SrcFileModuleName";
+        desc[5]  = "ModuleName";
+        desc[6]  = "ModuleNameContext";
+        desc[7]  = "Ancestors";
+        desc[8]  = "Children";
+        desc[9]  = "PublicChildren";
+        desc[10] = "NestedChildren";
+        desc[11] = "IntDepsMap";
+        desc[12] = "ImpDepsMap";
+        desc[13] = "IndirectDeps";
+        desc[14] = "FactTableDeps";
+        desc[15] = "FIMs";
+        desc[16] = "ForeignIncludeFiles";
+        desc[17] = "HasForeignCode";
+        desc[18] = "HasForeignExport";
+        desc[19] = "HasMain";
+        desc[20] = "SrcBlocks";
+        desc[21] = "DirectIntBlocks";
+        desc[22] = "IndirectIntBlocks";
+        desc[23] = "OptBlocks";
+        desc[24] = "IntForOptBlocks";
+        desc[25] = "VersionNumbersMap";
+        desc[26] = "MaybeTimestamMap";
+        desc[27] = "Specs";
+        desc[28] = "Errors";
+
+}
+$1 == "INIT" && NF == 28 {
+        for (i = 2; i <= 28; i++) {
+            if ($i == "a") {
+                init[i] = "accessed";
+            }
+        }
+    }
+$1 == "MAKE" && NF == 28 {
+        for (i = 2; i <= 28; i++) {
+            if ($i == "a") {
+                make[i] = "accessed";
+            }
+        }
+    }
+$1 == "READ" && NF == 28 {
+        for (i = 2; i <= 28; i++) {
+            if ($i == "a") {
+                read[i] = "accessed";
+            }
+        }
+    }
+END {
+        for (i = 2; i <= 28; i++) {
+            printf "%-20s init %12s make %12s read %12s\n",
+                desc[i], init[i], make[i], read[i];
+        }
+    }

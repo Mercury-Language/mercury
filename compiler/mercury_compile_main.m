@@ -137,7 +137,17 @@ real_main(!IO) :-
         io.write_string(io.error_message(E), !IO),
         io.nl(!IO)
     ),
-    write_translations_record_if_any(!IO).
+    write_translations_record_if_any(!IO),
+    trace [compile_time(flag("mai-stats")), io(!TIO)] (
+        io.open_append("/tmp/MODULE_AND_IMPORTS", Result, !TIO),
+        (
+            Result = ok(Stream),
+            write_mai_stats(Stream, !TIO),
+            io.close_output(Stream, !TIO)
+        ;
+            Result = error(_)
+        )
+    ).
 
     % Expand @File arguments.
     % Each argument in the above form is replaced with a list of arguments
