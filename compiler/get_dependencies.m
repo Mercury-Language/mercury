@@ -127,7 +127,7 @@
 :- pred get_implicits_foreigns_fact_tables(list(item)::in, list(item)::in,
     implicit_import_needs::out, implicit_import_needs::out,
     cord(foreign_include_file_info)::out, set(foreign_language)::out,
-    set(string)::out) is det.
+    set(string)::out, has_main::out) is det.
 
     % get_implicit_dependencies_in_*(Globals, Items/ItemBlocks,
     %   ImportDeps, UseDeps):
@@ -176,6 +176,7 @@
 
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.maybe_error.
@@ -364,28 +365,31 @@ init_implicit_import_needs = ImplicitImportNeeds :-
 
 get_implicits_foreigns_fact_tables(IntItems, ImpItems,
         IntImplicitImportNeeds, IntImpImplicitImportNeeds,
-        !:ForeignInclFiles, !:Langs, !:FactTables) :-
+        !:ForeignInclFiles, !:Langs, !:FactTables, HasMain) :-
     ImplicitImportNeeds0 = init_implicit_import_needs,
     !:ForeignInclFiles = cord.init,
     set.init(!:Langs),
     set.init(!:FactTables),
     get_implicits_foreigns_fact_tables_acc(IntItems,
         ImplicitImportNeeds0, IntImplicitImportNeeds,
-        !ForeignInclFiles, !Langs, !FactTables),
+        !ForeignInclFiles, !Langs, !FactTables, no_main, HasMain),
+    % We ignore declarations of predicates named "main" in the
+    % implementation section, because nonexported predicates cannot serve
+    % as program entry points.
     get_implicits_foreigns_fact_tables_acc(ImpItems,
         IntImplicitImportNeeds, IntImpImplicitImportNeeds,
-        !ForeignInclFiles, !Langs, !FactTables).
+        !ForeignInclFiles, !Langs, !FactTables, no_main, _HasMain).
 
 :- pred get_implicits_foreigns_fact_tables_acc(list(item)::in,
     implicit_import_needs::in, implicit_import_needs::out,
     cord(foreign_include_file_info)::in, cord(foreign_include_file_info)::out,
     set(foreign_language)::in, set(foreign_language)::out,
-    set(string)::in, set(string)::out) is det.
+    set(string)::in, set(string)::out, has_main::in, has_main::out) is det.
 
-get_implicits_foreigns_fact_tables_acc([],
-        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
-get_implicits_foreigns_fact_tables_acc([Item | Items],
-        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables) :-
+get_implicits_foreigns_fact_tables_acc([], !ImplicitImportNeeds,
+        !ForeignInclFiles, !Langs, !FactTables, !HasMain).
+get_implicits_foreigns_fact_tables_acc([Item | Items], !ImplicitImportNeeds,
+        !ForeignInclFiles, !Langs, !FactTables, !HasMain) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
@@ -518,9 +522,38 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
         gather_implicit_import_needs_in_mutable(ItemMutable,
             !ImplicitImportNeeds)
     ;
+        Item = item_pred_decl(ItemPredDecl),
+        ItemPredDecl = item_pred_decl_info(SymName, PorF, ArgTypes,
+            _, WithType, _, _, _, _, _, _, _, _, _),
+        ( if
+            % XXX ITEM_LIST Could the predicate name be unqualified?
+            (
+                SymName = unqualified(_),
+                unexpected($pred, "unqualified SymName")
+            ;
+                SymName = qualified(_, "main")
+            ),
+            PorF = pf_predicate,
+            % XXX The comment below is obsolete, and was probably wrong
+            % even before it became obsolete.
+            % XXX We should allow `main/2' to be declared using `with_type`,
+            % but equivalences haven't been expanded at this point.
+            % The `has_main' field is only used for some special case handling
+            % of the module containing main for the IL backend (we generate
+            % a `.exe' file rather than a `.dll' file). This would arguably
+            % be better done by generating a `.dll' file as normal, and a
+            % separate `.exe' file containing initialization code and a call
+            % to `main/2', as we do with the `_init.c' file in the C backend.
+            ArgTypes = [_, _],
+            WithType = no
+        then
+            !:HasMain = has_main
+        else
+            true
+        )
+    ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
         ; Item = item_initialise(_)
@@ -532,8 +565,8 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
         % These should not be generated yet.
         unexpected($pred, "item_type_repn")
     ),
-    get_implicits_foreigns_fact_tables_acc(Items,
-        !ImplicitImportNeeds, !ForeignInclFiles, !Langs, !FactTables).
+    get_implicits_foreigns_fact_tables_acc(Items, !ImplicitImportNeeds,
+        !ForeignInclFiles, !Langs, !FactTables, !HasMain).
 
 %-----------------------------------------------------------------------------%
 

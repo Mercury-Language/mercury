@@ -37,7 +37,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -147,9 +146,10 @@
     %
 :- pred make_module_and_imports(file_name::in,
     module_name::in, module_name::in, prog_context::in,
-    list(src_item_block)::in, multi_map(module_name, prog_context)::in,
+    list(src_item_block)::in, module_names_contexts::in,
     set(module_name)::in, list(string)::in, foreign_include_file_infos::in,
-    maybe(module_timestamp_map)::in, module_and_imports::out) is det.
+    has_main::in, maybe(module_timestamp_map)::in,
+    module_and_imports::out) is det.
 
     % Construct a module_and_imports structure for inclusion in
     % a module dependencies structure, for make.module_dep_file.m.
@@ -336,12 +336,12 @@
 
 :- implementation.
 
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.split_parse_tree_src.
 
 :- import_module dir.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -676,9 +676,6 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         ( pred(Lang::in, FIM0::in, FIM::out) is det :-
             add_foreign_import_module(Lang, ModuleName, FIM0, FIM)
         ), SelfImportLangs, ForeignImports0, ForeignImports),
-
-    % Work out whether the items contain main/2.
-    look_for_main_pred_in_item_blocks(RawItemBlocks, no_main, HasMain),
     % XXX END OF THE REMAINS OF THE OLD CODE
 
     get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
@@ -692,7 +689,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
     get_implicits_foreigns_fact_tables(IntItems, ImpItems,
         IntImplicitImportNeeds, IntImpImplicitImportNeeds,
-        NewForeignInclFilesCord, _NewLangs, FactTables),
+        NewForeignInclFilesCord, _NewLangs, FactTables, HasMain),
     set.to_sorted_list(FactTables, SortedFactTables),
 
     compute_implicit_import_needs(Globals, IntImplicitImportNeeds,
@@ -748,51 +745,12 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         OptBlocksCords, IntForOptBlocksCords,
         VersionNumbers, MaybeTimestampMap, Specs, Errors, mcm_init).
 
-:- pred look_for_main_pred_in_item_blocks(list(item_block(MS))::in,
-    has_main::in, has_main::out) is det.
-
-look_for_main_pred_in_item_blocks([], !HasMain).
-look_for_main_pred_in_item_blocks([ItemBlock | ItemBlocks], !HasMain) :-
-    % XXX ITEM_LIST Warn if Section isn't ms_interface or ams_interface.
-    ItemBlock = item_block(_, _, _Incls, _Imports, Items),
-    look_for_main_pred_in_items(Items, !HasMain),
-    look_for_main_pred_in_item_blocks(ItemBlocks, !HasMain).
-
-:- pred look_for_main_pred_in_items(list(item)::in,
-    has_main::in, has_main::out) is det.
-
-look_for_main_pred_in_items([], !HasMain).
-look_for_main_pred_in_items([Item | Items], !HasMain) :-
-    ( if
-        Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info(Name, pf_predicate, ArgTypes,
-            _, WithType, _, _, _, _, _, _, _, _, _),
-        unqualify_name(Name) = "main",
-        % XXX We should allow `main/2' to be declared using `with_type`,
-        % but equivalences haven't been expanded at this point.
-        % The `has_main' field is only used for some special case handling
-        % of the module containing main for the IL backend (we generate
-        % a `.exe' file rather than a `.dll' file). This would arguably
-        % be better done by generating a `.dll' file as normal, and a
-        % separate `.exe' file containing initialization code and a call
-        % to `main/2', as we do with the `_init.c' file in the C backend.
-        ArgTypes = [_, _],
-        WithType = no
-    then
-        % XXX ITEM_LIST Should we warn if !.HasMain = has_main?
-        % If not, then we should stop recursing right here.
-        !:HasMain = has_main
-    else
-        true
-    ),
-    look_for_main_pred_in_items(Items, !HasMain).
-
 %---------------------------------------------------------------------------%
 
 make_module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ModuleNameContext, SrcItemBlocks,
         PublicChildrenMap, NestedChildren, FactDeps, ForeignIncludeFiles,
-        MaybeTimestampMap, ModuleAndImports) :-
+        HasMain, MaybeTimestampMap, ModuleAndImports) :-
     set.init(Ancestors),
     map.init(IntDeps),
     map.init(ImpDeps),
@@ -809,7 +767,7 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
         Ancestors, ChildrenMap, PublicChildrenMap, NestedChildren,
         IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
-        contains_foreign_code_unknown, contains_no_foreign_export, no_main,
+        contains_foreign_code_unknown, contains_no_foreign_export, HasMain,
         SrcItemBlocks, cord.init, cord.init, cord.init, cord.init,
         VersionNumbers, MaybeTimestampMap, Specs, Errors, mcm_make).
 
