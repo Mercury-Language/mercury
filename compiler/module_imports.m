@@ -127,10 +127,11 @@
 :- pred rebuild_module_and_imports_for_dep_file(globals::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-    % make_module_and_imports(SourceFileName, SourceFileModuleName,
+    % make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     %  ModuleName, ModuleNameContext, SrcItemBlocks0,
     %  PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
-    %  MaybeTimestampMap, ModuleAndImports):
+    %  ForeignExportLangs, HasMain, MaybeTimestampMap,
+    %  ModuleAndImports):
     %
     % Construct a module_and_imports structure another way.
     % While the code that gets invoked when we make dependencies
@@ -144,12 +145,12 @@
     % a module_and_imports structure in what seems (to me, zs) to be
     % a partially filled in state.
     %
-:- pred make_module_and_imports(file_name::in,
+:- pred make_module_and_imports(globals::in, file_name::in,
     module_name::in, module_name::in, prog_context::in,
     list(src_item_block)::in, module_names_contexts::in,
     set(module_name)::in, list(string)::in, foreign_include_file_infos::in,
-    has_main::in, maybe(module_timestamp_map)::in,
-    module_and_imports::out) is det.
+    set(foreign_language)::in, has_main::in,
+    maybe(module_timestamp_map)::in, module_and_imports::out) is det.
 
     % Construct a module_and_imports structure for inclusion in
     % a module dependencies structure, for make.module_dep_file.m.
@@ -688,9 +689,20 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
 
     get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-        IntImplicitImportNeeds, IntImpImplicitImportNeeds,
-        NewForeignInclFilesCord, _NewLangs, FactTables, HasMain),
+        IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
+    Contents = item_contents(NewForeignInclFilesCord, FactTables, _NewLangs,
+        NewForeignExportLangs, HasMain),
     set.to_sorted_list(FactTables, SortedFactTables),
+    globals.get_backend_foreign_languages(Globals, BackendLangs),
+    set.intersect(set.list_to_set(BackendLangs), NewForeignExportLangs,
+        NewBackendFELangs),
+    ( if set.is_empty(NewBackendFELangs) then
+        NewContainsForeignExport = contains_no_foreign_export
+    else
+        NewContainsForeignExport = contains_foreign_export
+    ),
+    expect(unify(ContainsForeignExport, NewContainsForeignExport), $pred,
+        "bad ContainsForeignExport"),
 
     compute_implicit_import_needs(Globals, IntImplicitImportNeeds,
         ImplicitIntImports, ImplicitIntUses),
@@ -747,10 +759,11 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
 %---------------------------------------------------------------------------%
 
-make_module_and_imports(SourceFileName, SourceFileModuleName,
+make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, ModuleNameContext, SrcItemBlocks,
         PublicChildrenMap, NestedChildren, FactDeps, ForeignIncludeFiles,
-        HasMain, MaybeTimestampMap, ModuleAndImports) :-
+        ForeignExportLangs, HasMain,
+        MaybeTimestampMap, ModuleAndImports) :-
     set.init(Ancestors),
     map.init(IntDeps),
     map.init(ImpDeps),
@@ -760,6 +773,14 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
     map.init(ChildrenMap),
     ForeignImports = init_foreign_import_modules,
     map.init(VersionNumbers),
+    globals.get_backend_foreign_languages(Globals, BackendLangs),
+    set.intersect(set.list_to_set(BackendLangs), ForeignExportLangs,
+        BackendFELangs),
+    ( if set.is_empty(BackendFELangs) then
+        ContainsForeignExport = contains_no_foreign_export
+    else
+        ContainsForeignExport = contains_foreign_export
+    ),
     Specs = [],
     set.init(Errors),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
@@ -767,7 +788,7 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
         Ancestors, ChildrenMap, PublicChildrenMap, NestedChildren,
         IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
-        contains_foreign_code_unknown, contains_no_foreign_export, HasMain,
+        contains_foreign_code_unknown, ContainsForeignExport, HasMain,
         SrcItemBlocks, cord.init, cord.init, cord.init, cord.init,
         VersionNumbers, MaybeTimestampMap, Specs, Errors, mcm_make).
 

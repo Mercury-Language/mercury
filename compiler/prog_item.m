@@ -2193,11 +2193,9 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         % Mutables introduce foreign_procs, but mutable declarations
         % won't have been expanded by the time we get here, so we need
         % to handle them separately.
-        % XXX mutables are currently only implemented for the C backends
-        % but we should handle the Java/C# backends here as well.
-        % (See do_get_item_foreign_code for details/5).
         UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
-        set.insert(lang_c, UsedForeignLanguages0, UsedForeignLanguages),
+        set.insert_list(all_foreign_languages,
+            UsedForeignLanguages0, UsedForeignLanguages),
         !Info ^ used_foreign_languages := UsedForeignLanguages
     ;
         ( Item = item_initialise(_)
@@ -2205,9 +2203,9 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         ),
         % Intialise/finalise declarations introduce export pragmas, but
         % again they won't have been expanded by the time we get here.
-        % XXX we don't currently support these on non-C backends.
         UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
-        set.insert(lang_c, UsedForeignLanguages0, UsedForeignLanguages),
+        set.insert_list(all_foreign_languages,
+            UsedForeignLanguages0, UsedForeignLanguages),
         !Info ^ used_foreign_languages := UsedForeignLanguages,
         !Info ^ module_has_foreign_export := contains_foreign_export
     ;

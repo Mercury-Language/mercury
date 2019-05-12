@@ -406,114 +406,109 @@ add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    get_mutable_target_params(!.ModuleInfo, MutAttrs, MaybeTargetParams),
+    get_mutable_target_params(!.ModuleInfo, MutAttrs, TargetParams),
+    TargetParams = mutable_target_params(_ImplLang, _Lang, _BoxPolicy,
+        PreInit, LockUnlock, UnsafeAccess),
+    module_info_get_name(!.ModuleInfo, ModuleName),
+
+    % The logic of this code should match the logic of define_aux_preds.
+    % Parts of this logic are also duplicated (though they shouldn't be)
+    % in the parts of write_module_interface_files.m that handle mutables.
+
+    % Create the pre-initialisation predicate,
+    % if needed by the initialisation predicate.
     (
-        MaybeTargetParams = no
+        PreInit = dont_need_pre_init_pred
     ;
-        MaybeTargetParams = yes(TargetParams),
-        TargetParams = mutable_target_params(_ImplLang, _Lang, _BoxPolicy,
-            PreInit, LockUnlock, UnsafeAccess),
-        module_info_get_name(!.ModuleInfo, ModuleName),
+        PreInit = need_pre_init_pred,
+        add_mutable_pre_init_pred_decl(ModuleName, MutableName,
+            PredStatus, NeedQual, Context, !ModuleInfo, !Specs)
+    ),
 
-        % The logic of this code should match the logic of define_aux_preds.
-        % Parts of this logic are also duplicated (though they shouldn't be)
-        % in the parts of write_module_interface_files.m that handle mutables.
+    % Create the mutable initialisation predicate.
+    add_mutable_init_pred_decl(ModuleName, MutableName,
+        PredStatus, NeedQual, Context, !ModuleInfo, !Specs),
 
-        % Create the pre-initialisation predicate,
-        % if needed by the initialisation predicate.
-        (
-            PreInit = dont_need_pre_init_pred
-        ;
-            PreInit = need_pre_init_pred,
-            add_mutable_pre_init_pred_decl(ModuleName, MutableName,
-                PredStatus, NeedQual, Context, !ModuleInfo, !Specs)
-        ),
-
-        % Create the mutable initialisation predicate.
-        add_mutable_init_pred_decl(ModuleName, MutableName,
+    % Create the primitive access and locking predicates, if needed.
+    (
+        LockUnlock = dont_need_lock_unlock_preds
+    ;
+        LockUnlock = need_lock_unlock_preds,
+        add_mutable_lock_pred_decl(ModuleName, MutableName,
             PredStatus, NeedQual, Context, !ModuleInfo, !Specs),
+        add_mutable_unlock_pred_decl(ModuleName, MutableName,
+            PredStatus, NeedQual, Context, !ModuleInfo, !Specs)
+    ),
+    (
+        UnsafeAccess = dont_need_unsafe_get_set_preds
+    ;
+        UnsafeAccess = need_unsafe_get_set_preds,
+        add_mutable_unsafe_get_pred_decl(ModuleName, MutableName,
+            Type, Inst, PredStatus, NeedQual, Context,
+            !ModuleInfo, !Specs),
+        add_mutable_unsafe_set_pred_decl(ModuleName, MutableName,
+            Type, Inst, PredStatus, NeedQual, Context,
+            !ModuleInfo, !Specs)
+    ),
 
-        % Create the primitive access and locking predicates, if needed.
+    IsConstant = mutable_var_constant(MutAttrs),
+    AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
+    (
+        IsConstant = mutable_constant,
+        expect(unify(PreInit, dont_need_pre_init_pred),
+            $pred, "PreInit = need_pre_init_pred"),
+        expect(unify(LockUnlock, dont_need_lock_unlock_preds),
+            $pred, "LockUnlock = need_lock_unlock_preds"),
+        expect(unify(UnsafeAccess, dont_need_unsafe_get_set_preds),
+            $pred, "UnsafeAccess = need_unsafe_get_set_preds"),
+        expect(unify(AttachToIO, mutable_dont_attach_to_io_state),
+            $pred, "AttachToIO = mutable_attach_to_io_state"),
+
+        % We create the "get" access predicate, which is pure since
+        % it always returns the same value, but we must also create
+        % a secret "set" predicate for use by the initialization code.
+        ConstantGetPredDecl = constant_get_pred_decl(ModuleName,
+            MutableName, Type, Inst, Context),
+        ConstantSetPredDecl = constant_set_pred_decl(ModuleName,
+            MutableName, Type, Inst, Context),
+        add_pred_decl_info_for_mutable_aux_pred(ConstantGetPredDecl,
+            ModuleName, MutableName, mutable_pred_constant_get,
+            PredStatus, NeedQual, !ModuleInfo, !Specs),
+        add_pred_decl_info_for_mutable_aux_pred(ConstantSetPredDecl,
+            ModuleName, MutableName, mutable_pred_constant_secret_set,
+            PredStatus, NeedQual, !ModuleInfo, !Specs)
+    ;
+        IsConstant = mutable_not_constant,
+        % Create the standard, non-pure access predicates. These are
+        % always created for non-constant mutables, even if the
+        % `attach_to_io_state' attribute has been specified.
+        StdGetPredDecl = std_get_pred_decl(ModuleName, MutableName,
+            Type, Inst, Context),
+        StdSetPredDecl = std_set_pred_decl(ModuleName, MutableName,
+            Type, Inst, Context),
+        add_pred_decl_info_for_mutable_aux_pred(StdGetPredDecl,
+            ModuleName, MutableName, mutable_pred_std_get,
+            PredStatus, NeedQual, !ModuleInfo, !Specs),
+        add_pred_decl_info_for_mutable_aux_pred(StdSetPredDecl,
+            ModuleName, MutableName, mutable_pred_std_set,
+            PredStatus, NeedQual, !ModuleInfo, !Specs),
+
+        % If requested, create pure access predicates using
+        % the I/O state as well.
         (
-            LockUnlock = dont_need_lock_unlock_preds
+            AttachToIO = mutable_dont_attach_to_io_state
         ;
-            LockUnlock = need_lock_unlock_preds,
-            add_mutable_lock_pred_decl(ModuleName, MutableName,
-                PredStatus, NeedQual, Context, !ModuleInfo, !Specs),
-            add_mutable_unlock_pred_decl(ModuleName, MutableName,
-                PredStatus, NeedQual, Context, !ModuleInfo, !Specs)
-        ),
-        (
-            UnsafeAccess = dont_need_unsafe_get_set_preds
-        ;
-            UnsafeAccess = need_unsafe_get_set_preds,
-            add_mutable_unsafe_get_pred_decl(ModuleName, MutableName,
-                Type, Inst, PredStatus, NeedQual, Context,
-                !ModuleInfo, !Specs),
-            add_mutable_unsafe_set_pred_decl(ModuleName, MutableName,
-                Type, Inst, PredStatus, NeedQual, Context,
-                !ModuleInfo, !Specs)
-        ),
-
-        IsConstant = mutable_var_constant(MutAttrs),
-        AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
-        (
-            IsConstant = mutable_constant,
-            expect(unify(PreInit, dont_need_pre_init_pred),
-                $pred, "PreInit = need_pre_init_pred"),
-            expect(unify(LockUnlock, dont_need_lock_unlock_preds),
-                $pred, "LockUnlock = need_lock_unlock_preds"),
-            expect(unify(UnsafeAccess, dont_need_unsafe_get_set_preds),
-                $pred, "UnsafeAccess = need_unsafe_get_set_preds"),
-            expect(unify(AttachToIO, mutable_dont_attach_to_io_state),
-                $pred, "AttachToIO = mutable_attach_to_io_state"),
-
-            % We create the "get" access predicate, which is pure since
-            % it always returns the same value, but we must also create
-            % a secret "set" predicate for use by the initialization code.
-            ConstantGetPredDecl = constant_get_pred_decl(ModuleName,
-                MutableName, Type, Inst, Context),
-            ConstantSetPredDecl = constant_set_pred_decl(ModuleName,
-                MutableName, Type, Inst, Context),
-            add_pred_decl_info_for_mutable_aux_pred(ConstantGetPredDecl,
-                ModuleName, MutableName, mutable_pred_constant_get,
+            AttachToIO = mutable_attach_to_io_state,
+            IOGetPredDecl = io_get_pred_decl(ModuleName, MutableName,
+                Type, Inst, Context),
+            IOSetPredDecl = io_set_pred_decl(ModuleName, MutableName,
+                Type, Inst, Context),
+            add_pred_decl_info_for_mutable_aux_pred(IOGetPredDecl,
+                ModuleName, MutableName, mutable_pred_io_get,
                 PredStatus, NeedQual, !ModuleInfo, !Specs),
-            add_pred_decl_info_for_mutable_aux_pred(ConstantSetPredDecl,
-                ModuleName, MutableName, mutable_pred_constant_secret_set,
+            add_pred_decl_info_for_mutable_aux_pred(IOSetPredDecl,
+                ModuleName, MutableName, mutable_pred_io_set,
                 PredStatus, NeedQual, !ModuleInfo, !Specs)
-        ;
-            IsConstant = mutable_not_constant,
-            % Create the standard, non-pure access predicates. These are
-            % always created for non-constant mutables, even if the
-            % `attach_to_io_state' attribute has been specified.
-            StdGetPredDecl = std_get_pred_decl(ModuleName, MutableName,
-                Type, Inst, Context),
-            StdSetPredDecl = std_set_pred_decl(ModuleName, MutableName,
-                Type, Inst, Context),
-            add_pred_decl_info_for_mutable_aux_pred(StdGetPredDecl,
-                ModuleName, MutableName, mutable_pred_std_get,
-                PredStatus, NeedQual, !ModuleInfo, !Specs),
-            add_pred_decl_info_for_mutable_aux_pred(StdSetPredDecl,
-                ModuleName, MutableName, mutable_pred_std_set,
-                PredStatus, NeedQual, !ModuleInfo, !Specs),
-
-            % If requested, create pure access predicates using
-            % the I/O state as well.
-            (
-                AttachToIO = mutable_dont_attach_to_io_state
-            ;
-                AttachToIO = mutable_attach_to_io_state,
-                IOGetPredDecl = io_get_pred_decl(ModuleName, MutableName,
-                    Type, Inst, Context),
-                IOSetPredDecl = io_set_pred_decl(ModuleName, MutableName,
-                    Type, Inst, Context),
-                add_pred_decl_info_for_mutable_aux_pred(IOGetPredDecl,
-                    ModuleName, MutableName, mutable_pred_io_get,
-                    PredStatus, NeedQual, !ModuleInfo, !Specs),
-                add_pred_decl_info_for_mutable_aux_pred(IOSetPredDecl,
-                    ModuleName, MutableName, mutable_pred_io_set,
-                    PredStatus, NeedQual, !ModuleInfo, !Specs)
-            )
         )
     ).
 
@@ -689,47 +684,42 @@ add_aux_pred_defns_for_mutable(ItemMutable, PredStatus,
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, _Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    get_mutable_target_params(!.ModuleInfo, MutAttrs, MaybeTargetParams),
+    get_mutable_target_params(!.ModuleInfo, MutAttrs, TargetParams),
+    TargetParams = mutable_target_params(ImplLang, Lang, _BoxPolicy,
+        _PreInit, _LockUnlock, _UnsafeAccess),
+    IsConstant = mutable_var_constant(MutAttrs),
+    IsThreadLocal = mutable_var_thread_local(MutAttrs),
+
+    % Work out what name to give the global in the target language.
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    decide_mutable_target_var_name(!.ModuleInfo, MutAttrs, ModuleName,
+        MutableName, Lang, Context, TargetMutableName),
+
+    % We define the global storing the mutable now rather than earlier
+    % because the target-language-specific name of the type of the global
+    % depends on whether there are any foreign_type declarations for Type.
     (
-        MaybeTargetParams = no
+        ImplLang = mutable_lang_c,
+        define_global_var_c(TargetMutableName, Type, IsConstant,
+            IsThreadLocal, Context, !ModuleInfo)
     ;
-        MaybeTargetParams = yes(TargetParams),
-        TargetParams = mutable_target_params(ImplLang, Lang, _BoxPolicy,
-            _PreInit, _LockUnlock, _UnsafeAccess),
-        IsConstant = mutable_var_constant(MutAttrs),
-        IsThreadLocal = mutable_var_thread_local(MutAttrs),
-
-        % Work out what name to give the global in the target language.
-        module_info_get_name(!.ModuleInfo, ModuleName),
-        decide_mutable_target_var_name(!.ModuleInfo, MutAttrs, ModuleName,
-            MutableName, Lang, Context, TargetMutableName),
-
-        % We define the global storing the mutable now rather than earlier
-        % because the target-language-specific name of the type of the global
-        % depends on whether there are any foreign_type declarations for Type.
-        (
-            ImplLang = mutable_lang_c,
-            define_global_var_c(TargetMutableName, Type, IsConstant,
-                IsThreadLocal, Context, !ModuleInfo)
-        ;
-            ImplLang = mutable_lang_csharp,
-            define_global_var_csharp(TargetMutableName, Type,
-                IsThreadLocal, Context, !ModuleInfo)
-        ;
-            ImplLang = mutable_lang_java,
-            define_global_var_java( TargetMutableName, Type,
-                IsThreadLocal, Context, !ModuleInfo)
-        ;
-            ImplLang = mutable_lang_erlang
-            % For the Erlang backend, we don't define any global variables;
-            % instead, the values of thread-local mutables are stored
-            % in the thread's process dictionary, and the values of
-            % non-thread-local mutables are stored in the
-            % ML_erlang_global_server process.
-        ),
-        define_aux_preds(ItemMutable, TargetParams, TargetMutableName,
-            PredStatus, !ModuleInfo, !QualInfo, !Specs)
-    ).
+        ImplLang = mutable_lang_csharp,
+        define_global_var_csharp(TargetMutableName, Type,
+            IsThreadLocal, Context, !ModuleInfo)
+    ;
+        ImplLang = mutable_lang_java,
+        define_global_var_java( TargetMutableName, Type,
+            IsThreadLocal, Context, !ModuleInfo)
+    ;
+        ImplLang = mutable_lang_erlang
+        % For the Erlang backend, we don't define any global variables;
+        % instead, the values of thread-local mutables are stored
+        % in the thread's process dictionary, and the values of
+        % non-thread-local mutables are stored in the
+        % ML_erlang_global_server process.
+    ),
+    define_aux_preds(ItemMutable, TargetParams, TargetMutableName,
+        PredStatus, !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %
@@ -1662,12 +1652,13 @@ global_foreign_type_name(BoxPolicy, Lang, ModuleInfo, Type) = String :-
     % the decisions made here, which are recorded in the mutable_target_params.
     %
 :- pred get_mutable_target_params(module_info::in, mutable_var_attributes::in,
-    maybe(mutable_target_params)::out) is det.
+    mutable_target_params::out) is det.
 
-get_mutable_target_params(ModuleInfo, MutAttrs, MaybeTargetParams) :-
-    % The set of predicates we need depends on the compilation target,
-    % since we use different implementations of mutables on different backends,
-    % and on the properties of the mutable itself.
+get_mutable_target_params(ModuleInfo, MutAttrs, TargetParams) :-
+    % The set of predicates we need depends on
+    % - the compilation target, since we use different implementations
+    %   of mutables on different backends, and
+    % - on the properties of the mutable itself.
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, CompilationTarget),
     (
@@ -1731,8 +1722,7 @@ get_mutable_target_params(ModuleInfo, MutAttrs, MaybeTargetParams) :-
             UnsafeAccess = dont_need_unsafe_get_set_preds
         ),
         TargetParams = mutable_target_params(ImplLang, Lang, BoxPolicy,
-            PreInit, LockUnlock, UnsafeAccess),
-        MaybeTargetParams = yes(TargetParams)
+            PreInit, LockUnlock, UnsafeAccess)
     ).
 
 %---------------------------------------------------------------------------%
