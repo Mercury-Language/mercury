@@ -285,35 +285,38 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
     then
         % Look up the module in the module->file mapping.
         source_file_map.lookup_module_source_file(ModuleName, FileName, !IO)
-    else if
-        % Java files need to be placed into a package subdirectory and may need
-        % mangling.
-        ( string.suffix(Ext, ".java")
-        ; string.suffix(Ext, ".class")
-        )
-    then
-        BaseParentDirs = ["jmercury"],
-        mangle_sym_name_for_java(ModuleName, module_qual, "__",
-            MangledModuleName),
-        choose_file_name(Globals, ModuleName, BaseParentDirs,
-            MangledModuleName, Ext, Search, MkDir, FileName, !IO)
-    else if
-        % Erlang uses `.' as a package separator and expects a module
-        % `a.b.c' to be in a file `a/b/c.erl'. Rather than that, we use
-        % a flat namespace with `__' as module separators.
-        ( string.suffix(Ext, ".erl")
-        ; string.suffix(Ext, ".hrl")
-        ; string.suffix(Ext, ".beam")
-        )
-    then
-        ErlangModuleName = qualify_mercury_std_library_module_name(ModuleName),
-        BaseNameNoExt = sym_name_to_string_sep(ErlangModuleName, "__"),
-        choose_file_name(Globals, ErlangModuleName, [], BaseNameNoExt, Ext,
-            Search, MkDir, FileName, !IO)
     else
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        choose_file_name(Globals, ModuleName, [], BaseNameNoExt, Ext,
-            Search, MkDir, FileName, !IO)
+        ( if
+            % Java files need to be placed into a package subdirectory
+            % and may need mangling.
+            ( string.suffix(Ext, ".java")
+            ; string.suffix(Ext, ".class")
+            )
+        then
+            EffectiveModuleName = ModuleName,
+            BaseParentDirs = ["jmercury"],
+            mangle_sym_name_for_java(ModuleName, module_qual, "__",
+                BaseNameNoExt)
+        else if
+            % Erlang uses `.' as a package separator and expects a module
+            % `a.b.c' to be in a file `a/b/c.erl'. Rather than that, we use
+            % a flat namespace with `__' as module separators.
+            ( string.suffix(Ext, ".erl")
+            ; string.suffix(Ext, ".hrl")
+            ; string.suffix(Ext, ".beam")
+            )
+        then
+            EffectiveModuleName =
+                qualify_mercury_std_library_module_name(ModuleName),
+            BaseParentDirs = [],
+            BaseNameNoExt = sym_name_to_string_sep(EffectiveModuleName, "__")
+        else
+            EffectiveModuleName = ModuleName,
+            BaseParentDirs = [],
+            BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
+        ),
+        choose_file_name(Globals, EffectiveModuleName, BaseParentDirs,
+            BaseNameNoExt, Ext, Search, MkDir, FileName, !IO)
     ),
     trace [compile_time(flag("file_name_translations")),
         runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
