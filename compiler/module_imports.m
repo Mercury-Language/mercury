@@ -60,8 +60,8 @@
     %
     % The second reason is that when we read in e.g. mod1.int, we simply
     % overwrite any existing entry in the module_timestamp_map for mod1.
-    % I see no documented argument anywhere any of the following propositions,
-    % which could each make the above the right thing to do.
+    % I see no documented argument anywhere for any of the following
+    % propositions, which could each make the above the right thing to do.
     %
     % - Proposition 1: when we add an entry for a module, the map
     %   cannot contain any previous entry for that module.
