@@ -20,15 +20,16 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
-:- import_module bool.
 :- import_module list.
 
 :- pred module_add_inst_defn(item_inst_defn_info::in, inst_status::in,
-    bool::out, module_info::in, module_info::out,
+    module_info::in, module_info::out,
+    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred module_add_mode_defn(item_mode_defn_info::in, mode_status::in,
-    bool::out, module_info::in, module_info::out,
+    module_info::in, module_info::out,
+    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -45,20 +46,20 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
 
+:- import_module bool.
 :- import_module map.
 :- import_module maybe.
 
 %----------------------------------------------------------------------------%
 
-module_add_inst_defn(ItemInstDefnInfo, InstStatus, InvalidInst, !ModuleInfo,
-        !Specs) :-
+module_add_inst_defn(ItemInstDefnInfo, InstStatus, !ModuleInfo,
+        !FoundInvalidInstOrMode, !Specs) :-
     ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, MaybeForType,
         MaybeAbstractInstDefn, VarSet, Context, _SeqNum),
     (
-        MaybeAbstractInstDefn = abstract_inst_defn,
+        MaybeAbstractInstDefn = abstract_inst_defn
         % We use abstract inst definitions only for module qualification;
         % we never add them to the HLDS.
-        InvalidInst = no
     ;
         MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn),
         % Add the definition of this inst to the HLDS inst table.
@@ -74,7 +75,13 @@ module_add_inst_defn(ItemInstDefnInfo, InstStatus, InvalidInst, !ModuleInfo,
         InstId = inst_id(InstName, InstArity),
         TestArgs = list.duplicate(InstArity, not_reached),
         check_for_cyclic_inst(UserInstTable, InstId, InstId, TestArgs, [],
-            Context, InvalidInst, !Specs)
+            Context, InvalidInst, !Specs),
+        (
+            InvalidInst = no
+        ;
+            InvalidInst = yes,
+            !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
+        )
     ).
 
 :- pred insts_add(inst_varset::in, sym_name::in, list(inst_var)::in,
@@ -218,21 +225,26 @@ should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
 
 %-----------------------------------------------------------------------------%
 
-module_add_mode_defn(ItemModeDefnInfo, ModeStatus, InvalidMode, !ModuleInfo,
-        !Specs) :-
+module_add_mode_defn(ItemModeDefnInfo, ModeStatus, !ModuleInfo,
+        !FoundInvalidInstOrMode, !Specs) :-
     ItemModeDefnInfo = item_mode_defn_info(Name, Params, MaybeAbstractModeDefn,
         VarSet, Context, _SeqNum),
     (
-        MaybeAbstractModeDefn = abstract_mode_defn,
+        MaybeAbstractModeDefn = abstract_mode_defn
         % We use abstract mode definitions only for module qualification;
         % we never add them to the HLDS.
-        InvalidMode = no
     ;
         MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
         module_info_get_mode_table(!.ModuleInfo, ModeTable0),
         modes_add(VarSet, Name, Params, ModeDefn, Context, ModeStatus,
             InvalidMode, ModeTable0, ModeTable, !Specs),
-        module_info_set_mode_table(ModeTable, !ModuleInfo)
+        module_info_set_mode_table(ModeTable, !ModuleInfo),
+        (
+            InvalidMode = no
+        ;
+            InvalidMode = yes,
+            !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
+        )
     ).
 
 :- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,

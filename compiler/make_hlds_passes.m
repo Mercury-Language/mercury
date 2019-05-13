@@ -81,7 +81,6 @@
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
-:- import_module bool.
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
@@ -584,16 +583,8 @@ add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
 add_inst_defn(StatusItem, !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
     StatusItem = ims_item(ItemMercuryStatus, ItemInstDefnInfo),
     item_mercury_status_to_inst_status(ItemMercuryStatus, InstStatus),
-    % XXX PASS STRUCTURE We could get module_add_inst_defn to update
-    % !FoundInvalidInstOrMode directly.
-    module_add_inst_defn(ItemInstDefnInfo, InstStatus, FoundError,
-        !ModuleInfo, !Specs),
-    (
-        FoundError = no
-    ;
-        FoundError = yes,
-        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
-    ).
+    module_add_inst_defn(ItemInstDefnInfo, InstStatus,
+        !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -605,16 +596,8 @@ add_inst_defn(StatusItem, !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
 add_mode_defn(StatusItem, !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
     StatusItem = ims_item(ItemMercuryStatus, ItemModeDefnInfo),
     item_mercury_status_to_mode_status(ItemMercuryStatus, ModeStatus),
-    % XXX PASS STRUCTURE We could get module_add_mode_defn to update
-    % !FoundInvalidInstOrMode directly.
-    module_add_mode_defn(ItemModeDefnInfo, ModeStatus, FoundError,
-        !ModuleInfo, !Specs),
-    (
-        FoundError = no
-    ;
-        FoundError = yes,
-        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
-    ).
+    module_add_mode_defn(ItemModeDefnInfo, ModeStatus,
+        !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
 
 %---------------------------------------------------------------------------%
 
