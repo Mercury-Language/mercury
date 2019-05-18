@@ -1630,7 +1630,7 @@ process_augmented_module(Globals0, OpModeAugment, ModuleAndImports,
                 module_info_set_globals(NoOptUnusedArgsGlobals,
                     HLDS21, HLDS21a),
                 maybe_unused_args(Verbose, Stats, _UnusedArgsInfos,
-                    HLDS21a, _HLDS22, !IO)
+                    HLDS21a, _HLDS22, !Specs, !IO)
             ;
                 UnusedArgs = no
             ),
@@ -1641,13 +1641,13 @@ process_augmented_module(Globals0, OpModeAugment, ModuleAndImports,
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_make_trans_opt_int,
-            output_trans_opt_file(HLDS21, !DumpInfo, !IO),
+            output_trans_opt_file(HLDS21, !Specs, !DumpInfo, !IO),
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_make_analysis_registry,
             prepare_for_intermodule_analysis(Globals, Verbose, Stats,
                 HLDS21, HLDS22, !IO),
-            output_analysis_file(HLDS22, !DumpInfo, !IO),
+            output_analysis_file(HLDS22, !Specs, !DumpInfo, !IO),
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_make_xml_documentation,
@@ -2239,7 +2239,7 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO),
-    middle_pass(!HLDS, !DumpInfo, !IO),
+    middle_pass(!HLDS, !DumpInfo, !Specs, !IO),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.get_target(Globals, Target),
 

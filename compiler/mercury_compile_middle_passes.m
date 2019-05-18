@@ -19,27 +19,32 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
 :- import_module set.
 
 :- pred middle_pass(module_info::in, module_info::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 :- pred middle_pass_for_opt_file(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-:- pred output_trans_opt_file(module_info::in, dump_info::in, dump_info::out,
-    io::di, io::uo) is det.
+:- pred output_trans_opt_file(module_info::in,
+    list(error_spec)::in, list(error_spec)::out,
+    dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 :- pred output_analysis_file(module_info::in,
+    list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 :- pred maybe_unused_args(bool::in, bool::in,
     set(pragma_info_unused_args)::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -59,7 +64,6 @@
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.deep_profiling.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
@@ -108,7 +112,6 @@
 :- import_module transform_hlds.unused_args.
 
 :- import_module int.
-:- import_module list.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -117,14 +120,14 @@
 
 %---------------------------------------------------------------------------%
 
-middle_pass(!HLDS, !DumpInfo, !IO) :-
+middle_pass(!HLDS, !DumpInfo, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_read_experimental_complexity_file(!HLDS, !IO),
 
-    tabling(Verbose, Stats, !HLDS, !IO),
+    tabling(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 105, "tabling", !DumpInfo, !IO),
 
     expand_lambdas(Verbose, Stats, !HLDS, !IO),
@@ -161,10 +164,10 @@ middle_pass(!HLDS, !DumpInfo, !IO) :-
     maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 118, "exception_analysis", !DumpInfo, !IO),
 
-    maybe_termination(Verbose, Stats, !HLDS, !IO),
+    maybe_termination(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
 
-    maybe_termination2(Verbose, Stats, !HLDS, !IO),
+    maybe_termination2(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination2", !DumpInfo, !IO),
 
     maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO),
@@ -175,7 +178,7 @@ middle_pass(!HLDS, !DumpInfo, !IO) :-
     % before optimizations such as higher-order specialization and inlining,
     % which can make the original code for a procedure dead by
     % inlining/specializing all uses of it.
-    maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO),
+    maybe_warn_dead_procs(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 130, "warn_dead_procs", !DumpInfo, !IO),
 
     maybe_bytecodes(!.HLDS, Verbose, Stats, !DumpInfo, !IO),
@@ -192,7 +195,7 @@ middle_pass(!HLDS, !DumpInfo, !IO) :-
     maybe_ssdb(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 137, "ssdb", !DumpInfo, !IO),
 
-    maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO),
+    maybe_introduce_accumulators(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 140, "accum", !DumpInfo, !IO),
 
     maybe_do_inlining(Verbose, Stats, !HLDS, !IO),
@@ -215,7 +218,7 @@ middle_pass(!HLDS, !DumpInfo, !IO) :-
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 163, "structure_reuse", !DumpInfo, !IO),
 
-    maybe_unused_args(Verbose, Stats, _UnusedArgsInfos, !HLDS, !IO),
+    maybe_unused_args(Verbose, Stats, _UnusedArgsInfos, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
 
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
@@ -250,7 +253,7 @@ middle_pass(!HLDS, !DumpInfo, !IO) :-
     maybe_lco(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 210, "lco", !DumpInfo, !IO),
 
-    maybe_float_reg_wrapper(Verbose, Stats, !HLDS, !IO),
+    maybe_float_reg_wrapper(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 213, "float_reg_wrapper", !DumpInfo, !IO),
 
     % If we are compiling in a deep profiling grade then now rerun simplify.
@@ -292,7 +295,7 @@ middle_pass(!HLDS, !DumpInfo, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-middle_pass_for_opt_file(!HLDS, !IO) :-
+middle_pass_for_opt_file(!HLDS, !Specs, !IO) :-
     % NOTE If you add any passes here, you will probably need to change the
     % code in mercury_compile_front_end.m that decides whether to call
     % this predicate.
@@ -319,9 +322,9 @@ middle_pass_for_opt_file(!HLDS, !IO) :-
     ),
     maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO),
-    maybe_termination(Verbose, Stats, !HLDS, !IO),
-    maybe_termination2(Verbose, Stats, !HLDS, !IO),
+    maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !Specs, !IO),
+    maybe_termination(Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_termination2(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
@@ -331,7 +334,7 @@ middle_pass_for_opt_file(!HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
+output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -355,9 +358,9 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 117, "closure_analysis", !DumpInfo, !IO),
     maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 118, "exception_analysis", !DumpInfo, !IO),
-    maybe_termination(Verbose, Stats, !HLDS, !IO),
+    maybe_termination(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
-    maybe_termination2(Verbose, Stats, !HLDS, !IO),
+    maybe_termination2(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
     (
         SharingAnalysis = yes,
@@ -386,7 +389,7 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
+output_analysis_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -410,9 +413,9 @@ output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 117, "closure_analysis", !DumpInfo, !IO),
     maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 118, "exception_analysis", !DumpInfo, !IO),
-    maybe_termination(Verbose, Stats, !HLDS, !IO),
+    maybe_termination(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
-    maybe_termination2(Verbose, Stats, !HLDS, !IO),
+    maybe_termination2(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
     (
         SharingAnalysis = yes,
@@ -433,7 +436,8 @@ output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 162, "structure_sharing", !DumpInfo, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 163, "structure_reuse", !DumpInfo, !IO),
-    maybe_unused_args(Verbose, Stats, _UnusedArgsInfos, !HLDS, !IO),
+    maybe_unused_args(Verbose, Stats, _UnusedArgsInfos, !HLDS,
+        !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
@@ -504,17 +508,14 @@ maybe_read_experimental_complexity_file(!HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred tabling(bool::in, bool::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-tabling(Verbose, Stats, !HLDS, !IO) :-
+tabling(Verbose, Stats, !HLDS, !Specs, !IO) :-
     maybe_write_string(Verbose, "% Transforming tabled predicates...", !IO),
     maybe_flush_output(Verbose, !IO),
-    table_gen_process_module(!HLDS, [], Specs),
+    table_gen_process_module(!HLDS, !Specs),
     maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_report_stats(Stats, !IO),
-    module_info_get_globals(!.HLDS, Globals),
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, !HLDS).
+    maybe_report_stats(Stats, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -591,18 +592,18 @@ maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_termination(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_termination(Verbose, Stats, !HLDS, !IO) :-
+maybe_termination(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, termination, Termination),
     (
         Termination = yes,
         maybe_write_string(Verbose, "% Detecting termination...\n", !IO),
-        analyse_termination_in_module(!HLDS, Specs),
+        analyse_termination_in_module(!HLDS, TermSpecs),
+        !:Specs = TermSpecs ++ !.Specs,
         maybe_write_string(Verbose, "% Termination checking done.\n", !IO),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_report_stats(Stats, !IO)
     ;
         Termination = no
@@ -611,17 +612,17 @@ maybe_termination(Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_termination2(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
+maybe_termination2(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, termination2, Termination2),
     (
         Termination2 = yes,
         maybe_write_string(Verbose, "% Detecting termination 2...\n", !IO),
-        term2_analyse_module(!HLDS, Specs),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !HLDS),
+        term2_analyse_module(!HLDS, TermSpecs),
+        !:Specs = TermSpecs ++ !.Specs,
         maybe_write_string(Verbose, "% Termination 2 checking done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -651,9 +652,10 @@ maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_warn_dead_procs(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
+maybe_warn_dead_procs(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_dead_procs, WarnDeadProcs),
     globals.lookup_bool_option(Globals, warn_dead_preds, WarnDeadPreds),
@@ -672,11 +674,10 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
                 !IO)
         ),
         maybe_flush_output(Verbose, !IO),
-        dead_proc_warn(!.HLDS, Specs),
+        dead_proc_warn(!.HLDS, DeadSpecs),
+        !:Specs = DeadSpecs ++ !.Specs,
         maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !HLDS)
+        maybe_report_stats(Stats, !IO)
     else
         true
     ).
@@ -851,9 +852,10 @@ maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_introduce_accumulators(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
+maybe_introduce_accumulators(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, introduce_accumulators, Optimize),
     (
@@ -866,14 +868,12 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
         process_all_nonimported_procs_update(Task0, Task, !HLDS),
         ( if
             Task = update_module_pred_cookie(_, Cookie),
-            univ_to_type(Cookie, SpecsPrime)
+            univ_to_type(Cookie, AccSpecs)
         then
-            Specs = SpecsPrime
+            !:Specs = AccSpecs ++ !.Specs
         else
             unexpected($pred, "bad task")
         ),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1041,7 +1041,7 @@ maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO) :-
+maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, intermod_unused_args, Intermod),
     globals.lookup_bool_option(Globals, optimize_unused_args, Optimize),
@@ -1054,9 +1054,8 @@ maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO) :-
     then
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        unused_args_process_module(!HLDS, Specs, UnusedArgsInfos),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !HLDS),
+        unused_args_process_module(!HLDS, UnusedSpecs, UnusedArgsInfos),
+        !:Specs = UnusedSpecs ++ !.Specs,
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     else
@@ -1282,9 +1281,10 @@ maybe_par_loop_control(Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_float_reg_wrapper(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_float_reg_wrapper(Verbose, Stats, !HLDS, !IO) :-
+maybe_float_reg_wrapper(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
     (
@@ -1292,9 +1292,8 @@ maybe_float_reg_wrapper(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Inserting float register wrappers...", !IO),
         maybe_flush_output(Verbose, !IO),
-        float_regs.insert_reg_wrappers(!HLDS, Specs),
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !HLDS),
+        float_regs.insert_reg_wrappers(!HLDS, RegSpecs),
+        !:Specs = RegSpecs ++ !.Specs,
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

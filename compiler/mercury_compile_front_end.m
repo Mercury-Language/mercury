@@ -443,7 +443,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
             frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO),
             (
                 FoundError = no,
-                middle_pass_for_opt_file(!HLDS, !IO)
+                middle_pass_for_opt_file(!HLDS, !Specs, !IO)
             ;
                 FoundError = yes,
                 io.set_exit_status(1, !IO)
