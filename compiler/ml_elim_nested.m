@@ -563,7 +563,6 @@ ml_elim_nested_defns_in_func(Action, ModuleName, Globals, Target, FuncDefn0,
         Body0 = body_defined_here(FuncBody0),
         EnvName = ml_env_name(Name, Action),
         EnvClassId = ml_create_env_class_id(EnvName, ModuleName, Globals),
-        EnvPtrTypeName = ml_make_env_ptr_type(EnvClassId),
 
         % Traverse the function body, finding (and removing) any nested
         % functions, and fixing up any references to the arguments or to local
@@ -574,7 +573,7 @@ ml_elim_nested_defns_in_func(Action, ModuleName, Globals, Target, FuncDefn0,
         % Also, for accurate GC, add code to save and restore the stack chain
         % pointer at any `try_commit' statements.
 
-        ElimInfo0 = elim_info_init(EnvClassId, EnvPtrTypeName, Target),
+        ElimInfo0 = elim_info_init(EnvClassId, Target),
         Params0 = mlds_func_params(Arguments0, RetValues),
         ml_maybe_add_args(Action, Arguments0, FuncBody0, ModuleName,
             Context, ElimInfo0, ElimInfo1),
@@ -631,6 +630,7 @@ ml_elim_nested_defns_in_func(Action, ModuleName, Globals, Target, FuncDefn0,
                 % functions, or (for accurate GC) may contain pointers,
                 % then we need to copy them to local variables in the
                 % environment structure.
+                EnvPtrTypeName = elim_info_get_env_ptr_type_name(ElimInfo),
                 ml_maybe_copy_args(Action, ElimInfo, Arguments0, FuncBody0,
                     EnvClassId, EnvPtrTypeName, Context,
                     _ArgsToCopy, CodeToCopyArgs),
@@ -2572,7 +2572,7 @@ gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
     --->    elim_info(
                 % The lists of local variables for each of the containing
                 % functions, innermost first.
-                % XXX this is not used.
+                %
                 % It would be needed if we want to handle arbitrary nesting.
                 % Currently we assume that any variables can safely be hoisted
                 % to the outermost function, so this field is not needed.
@@ -2589,22 +2589,22 @@ gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
                 ei_env_type_name                :: mlds_class_id,
 
                 % Type of the introduced environment struct pointer.
-                % This might not just be just a pointer to the env_type_name
-                % (in the IL backend we don't necessarily use a pointer).
+                % This is stored here as a cache; currently we always
+                % compute it from the value of the ei_env_type_name field.
                 ei_env_ptr_type_name            :: mlds_type,
 
                 % A counter used to number the local variables
-                % used to save the stack chain
+                % used to save the stack chain.
                 ei_saved_stack_chain_counter    :: counter,
 
                 ei_target_lang                  :: mlds_target_lang
             ).
 
-:- func elim_info_init(mlds_class_id, mlds_type,
-    mlds_target_lang) = elim_info.
+:- func elim_info_init(mlds_class_id, mlds_target_lang) = elim_info.
 
-elim_info_init(EnvClassId, EnvPtrTypeName, Target) =
-    elim_info(cord.init, cord.init, EnvClassId, EnvPtrTypeName,
+elim_info_init(EnvClassId, Target) = ElimInfo :-
+    EnvPtrTypeName = ml_make_env_ptr_type(EnvClassId),
+    ElimInfo = elim_info(cord.init, cord.init, EnvClassId, EnvPtrTypeName,
         counter.init(0), Target).
 
 :- func elim_info_get_local_vars(elim_info) = cord(mlds_local_var_defn).
