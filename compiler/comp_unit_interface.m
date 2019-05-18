@@ -22,7 +22,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -100,13 +99,6 @@
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-    % XXX ITEM_LIST This predicate should not need to be exported.
-    %
-:- func clause_in_interface_warning(string, prog_context) = error_spec.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 %
 % The predicates in rest of the interface should not be needed at all.
 %
@@ -166,6 +158,7 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.
 
@@ -1964,6 +1957,8 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
     get_int2_items_from_int1_acc(Items, !ItemsCord).
 
 %---------------------------------------------------------------------------%
+
+:- func clause_in_interface_warning(string, prog_context) = error_spec.
 
 clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
     Pieces = [words("Warning:"), words(ClauseOrPragma),
