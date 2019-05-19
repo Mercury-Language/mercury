@@ -1000,9 +1000,7 @@ maybe_write_out_errors_no_module(Stream, Verbose, Globals, !Specs, !IO) :-
         Verbose = no
     ;
         Verbose = yes,
-        % XXX _NumErrors
-        write_error_specs(Stream, !.Specs, Globals,
-            0, _NumWarnings, 0, _NumErrors, !IO),
+        write_error_specs_ignore(Stream, !.Specs, Globals, !IO),
         !:Specs = []
     ).
 
