@@ -31,6 +31,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
+:- import_module ml_backend.mlds_to_c_util.
 
 :- import_module bool.
 :- import_module io.
@@ -38,7 +39,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % output_c_mlds(MLDS, Globals, Suffix, Succeeded, !IO):
+    % output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO):
     %
     % Output C code to the appropriate C file and C declarations to the
     % appropriate header file. The file names are determined by the module
@@ -46,17 +47,17 @@
     % for debugging dumps. For normal output, the suffix should be the empty
     % string.)
     %
-:- pred output_c_mlds(mlds::in, globals::in, string::in, bool::out,
-    io::di, io::uo) is det.
+:- pred output_c_mlds(mlds::in, globals::in, target_or_dump::in,
+    string::in, bool::out, io::di, io::uo) is det.
 
-    % output_c_dump_preds(MLDS, Globals, Suffix, DumpPreds, !IO):
+    % output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPreds, !IO):
     %
     % Output C code for the predicates and/or functions whose names
     % occurs in DumpPreds. The file name to write to is determined similarly
     % to how output_c_mlds does it, but with ".mlds_dump" replacing ".c".
     %
-:- pred output_c_dump_preds(mlds::in, globals::in, string::in,
-    list(string)::in, io::di, io::uo) is det.
+:- pred output_c_dump_preds(mlds::in, globals::in, target_or_dump::in,
+    string::in, list(string)::in, io::di, io::uo) is det.
 
 :- pred func_defn_has_name_in_list(list(string)::in, mlds_function_defn::in)
     is semidet.
@@ -85,7 +86,6 @@
 :- import_module ml_backend.mlds_to_c_func.
 :- import_module ml_backend.mlds_to_c_global.
 :- import_module ml_backend.mlds_to_c_name.
-:- import_module ml_backend.mlds_to_c_util.
 :- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
@@ -105,7 +105,7 @@
 :- import_module string.
 :- import_module term.
 
-output_c_mlds(MLDS, Globals, Suffix, Succeeded, !IO) :-
+output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO) :-
     % We output the source file before we output the header.
     % The reason why we need this order is that the mmake dependencies
     % we generate say that the header file depends on the source file.
@@ -117,7 +117,7 @@ output_c_mlds(MLDS, Globals, Suffix, Succeeded, !IO) :-
     %
     ModuleName = mlds_get_module_name(MLDS),
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
-    Opts = init_mlds_to_c_opts(Globals, SourceFileName),
+    Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
     output_c_file_opts(MLDS, Opts, Suffix, Succeeded0, !IO),
     (
         Succeeded0 = yes,
@@ -171,10 +171,10 @@ output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-output_c_dump_preds(MLDS, Globals, Suffix, DumpPredNames, !IO) :-
+output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
-    Opts = init_mlds_to_c_opts(Globals, SourceFileName),
+    Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
     module_name_to_file_name(Globals, do_create_dirs, ".mlds_dump" ++ Suffix,
         ModuleName, DumpFileName, !IO),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),

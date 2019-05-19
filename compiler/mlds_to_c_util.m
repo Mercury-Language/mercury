@@ -44,6 +44,10 @@
     % since they will macro-expand to nothing if profiling is not enabled,
     % but for readability of the generated code we prefer not to.)
     %
+    % m2co_target_or_dump says whether we are generating target cod
+    % or an MLDS dump. We permit nested functions in MLDS code only
+    % when printing MLDS dumps, not when generating target code.
+    %
     % m2co_std_func_decl is `yes' if want to use standard argument names
     % in function declarations.
     %
@@ -67,12 +71,18 @@
                 m2co_target                 :: compilation_target,
                 m2co_gc_method              :: gc_method,
 
+                m2co_target_or_dump         :: target_or_dump,
+
                 m2co_std_func_decl          :: bool,
 
                 m2co_break_context          :: break_context
             ).
 
-:- func init_mlds_to_c_opts(globals, string) = mlds_to_c_opts.
+:- type target_or_dump
+    --->    tod_target
+    ;       tod_dump.
+
+:- func init_mlds_to_c_opts(globals, string, target_or_dump) = mlds_to_c_opts.
 
 %---------------------------------------------------------------------------%
 
@@ -103,7 +113,7 @@
 
 %---------------------------------------------------------------------------%
 
-init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
+init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump) = Opts :-
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,
         ForeignLineNumbers),
@@ -130,7 +140,7 @@ init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
     Opts = mlds_to_c_opts(Globals, SourceFileName,
         LineNumbers, ForeignLineNumbers, Comments, HighLevelData,
         SinglePrecFloat, ProfileCalls, ProfileMemory, ProfileTime, NeedToInit,
-        Target, GCMethod, StdFuncDecls, BreakContext).
+        Target, GCMethod, TargetOrDump, StdFuncDecls, BreakContext).
 
 %---------------------------------------------------------------------------%
 %

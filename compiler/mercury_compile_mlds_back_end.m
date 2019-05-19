@@ -67,6 +67,7 @@
 :- import_module ml_backend.ml_elim_nested.         % MLDS -> MLDS
 :- import_module ml_backend.ml_optimize.            % MLDS -> MLDS
 :- import_module ml_backend.mlds_to_c_file.         % MLDS -> C
+:- import_module ml_backend.mlds_to_c_util.
 :- import_module ml_backend.mlds_to_java_file.      % MLDS -> Java
 :- import_module ml_backend.mlds_to_cs_file.        % MLDS -> C#
 :- import_module parse_tree.file_names.
@@ -359,7 +360,7 @@ mlds_to_high_level_c(Globals, MLDS, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to C...\n", !IO),
-    output_c_mlds(MLDS, Globals, "", Succeeded, !IO),
+    output_c_mlds(MLDS, Globals, tod_target, "", Succeeded, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to C.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -407,10 +408,11 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
         DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
         (
             DumpPredNames = [],
-            output_c_mlds(MLDS, Globals, DumpSuffix, _Succeeded, !IO)
+            output_c_mlds(MLDS, Globals, tod_dump, DumpSuffix, _Succeeded, !IO)
         ;
             DumpPredNames = [_ | _],
-            output_c_dump_preds(MLDS, Globals, DumpSuffix, DumpPredNames, !IO)
+            output_c_dump_preds(MLDS, Globals, tod_dump, DumpSuffix,
+                DumpPredNames, !IO)
         ),
         maybe_write_string(Verbose, "% done.\n", !IO)
     else

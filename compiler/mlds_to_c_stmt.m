@@ -55,6 +55,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.mlds_to_c_data.
+:- import_module ml_backend.mlds_to_c_func.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_type.
 :- import_module parse_tree.prog_foreign.
@@ -138,9 +139,22 @@ mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
 
     % Output forward declarations for any nested functions defined in
     % this block, in case they are referenced before they are defined.
+    %
+    % We do not support high level C code grades with nested functions,
+    % but we *do* generate nested functions internally that we later
+    % flatten out. Until we step away from generating nested functions
+    % entirely, we will need to be print out C code with nested functions
+    % for MLDS dumps.
+    FuncInfo = func_info_c(FuncName, _),
+    FuncName = qual_function_name(ModuleName, _),
     (
         FuncDefns = [_ | _],
-        unexpected($pred, "FuncDefns != []")
+        expect(unify(Opts ^ m2co_target_or_dump, tod_dump), $pred,
+            "nested functions in target C code"),
+        list.foldl(
+            mlds_output_function_decl_opts(Opts, BlockIndent, ModuleName),
+            FuncDefns, !IO),
+        io.write_string("\n", !IO)
     ;
         FuncDefns = []
     ),
@@ -150,6 +164,14 @@ mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
         io.write_string("\n", !IO)
     ;
         LocalVarDefns = []
+    ),
+    (
+        FuncDefns = [_ | _],
+        mlds_output_function_defns(Opts, BlockIndent, ModuleName,
+            FuncDefns, !IO),
+        io.write_string("\n", !IO)
+    ;
+        FuncDefns = []
     ),
     mlds_output_statements(Opts, BlockIndent, FuncInfo, SubStmts, !IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
