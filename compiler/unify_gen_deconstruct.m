@@ -204,32 +204,32 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
             Code, CI, !CLD)
     ;
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
-        LHSRval = var(LHSVar),
+        LHSBaseRval = var(LHSVar),
         get_vartypes(CI, VarTypes),
         associate_cons_id_args_with_widths(ModuleInfo, ConsId,
             RHSVars, RHSVarsWidths),
         (
             (
                 RemoteArgsTagInfo = remote_args_only_functor,
-                Ptag = ptag(0u8)
+                LHSPtag = ptag(0u8)
             ;
-                RemoteArgsTagInfo = remote_args_unshared(Ptag)
+                RemoteArgsTagInfo = remote_args_unshared(LHSPtag)
             ),
-            generate_deconstruct_unify_args(VarTypes, LHSRval, Ptag,
+            generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
                 RHSVarsWidths, ArgModes, Code, CI, !CLD)
         ;
-            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            RemoteArgsTagInfo = remote_args_shared(LHSPtag, RemoteSectag),
             RemoteSectag = remote_sectag(_SectagUint, SectagSize),
             (
                 SectagSize = rsectag_word,
-                generate_deconstruct_unify_args(VarTypes, LHSRval, Ptag,
+                generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
                     RHSVarsWidths, ArgModes, Code, CI, !CLD)
             ;
                 SectagSize = rsectag_subword(_),
                 take_tagword_args(RHSVarsWidths, ArgModes,
                     TagwordRHSVarsWidths, TagwordArgModes,
                     NonTagwordRHSVarsWidths, NonTagwordArgModes),
-                LHSSectagWordLval = field(yes(Ptag), LHSRval,
+                LHSSectagWordLval = field(yes(LHSPtag), LHSBaseRval,
                     const(llconst_int(0))),
                 LHSSectagWordRval0 = lval(LHSSectagWordLval),
                 LHSSectagWordRval = LHSSectagWordRval0,
@@ -258,7 +258,7 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
                     TagwordCode = MaterializeTagwordCode ++
                         AssignRightCode ++ ToOrRvalCode ++ AssignLeftCode
                 ),
-                generate_deconstruct_unify_args(VarTypes, LHSRval, Ptag,
+                generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
                     NonTagwordRHSVarsWidths, NonTagwordArgModes,
                     NonTagwordCode, CI, !CLD),
                 Code = TagwordCode ++ NonTagwordCode
@@ -289,18 +289,10 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
 
 %---------------------------------------------------------------------------%
 
-:- type uni_field
-    --->    uni_field(ptag, rval, int, arg_pos_width).
-            % The first three arguments (Ptag, BaseRval and Offset) represent
-            % the lval of the field, which is
-            % field(yes(Ptag), BaseRval, const(llconst_int(Offset))).
-            % The last argument represents the size of the argument in the
-            % field, which may be a word, two words, or only part of a word.
-
     % Generate code to perform a list of deterministic subunifications
     % for the arguments of a construction.
     %
-:- pred generate_deconstruct_unify_args(vartypes::in, rval::in, ptag::in,
+:- pred generate_deconstruct_unify_args(vartypes::in, ptag::in, rval::in,
     list(arg_and_width(prog_var))::in, list(unify_mode)::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
@@ -309,54 +301,38 @@ generate_deconstruct_unify_args(_, _, _, [], [_ | _], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
 generate_deconstruct_unify_args(_, _, _, [_ | _], [], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_deconstruct_unify_args(VarTypes, LHSRval, Ptag,
-        [RHSVarWidth | RHSVarsWidths], [ArgMode | ArgModes], Code, CI, !CLD) :-
-    RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
-    (
-        ( ArgPosWidth = apw_full(_, CellOffset)
-        ; ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _, _)
-        ; ArgPosWidth = apw_double(_, CellOffset, _)
-        ; ArgPosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
-        ; ArgPosWidth = apw_none_shifted(_, CellOffset)
-        ),
-        CellOffset = cell_offset(CellOffsetInt)
-    ;
-        ArgPosWidth = apw_none_nowhere,
-        CellOffsetInt = -1
-    ),
-    % The CellOffsetInt duplicates information that is also in ArgPosWidth,
-    % but this way, we compute it in just one place (here), instead of
-    % all of the (about ten) places where ArgPosWidth is used.
-    % XXX ARG_PACK We shouldn't need uni_field anymore.
-    LHSField = uni_field(Ptag, LHSRval, CellOffsetInt, ArgPosWidth),
+generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
+        [RHSVarLHSWidth | RHSVarsLHSWidths], [ArgMode | ArgModes],
+        Code, CI, !CLD) :-
+    RHSVarLHSWidth = arg_and_width(RHSVar, LHSArgPosWidth),
     lookup_var_type(VarTypes, RHSVar, RHSType),
-    % XXX ARG_PACK Move the above code into this call.
-    generate_deconstruct_unify_arg(LHSField, RHSVar, RHSType, ArgMode,
-        HeadCode, CI, !CLD),
-    generate_deconstruct_unify_args(VarTypes, LHSRval, Ptag,
-        RHSVarsWidths, ArgModes, TailCode, CI, !CLD),
+    generate_deconstruct_unify_arg(LHSPtag, LHSBaseRval, LHSArgPosWidth,
+        RHSVar, RHSType, ArgMode, HeadCode, CI, !CLD),
+    generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
+        RHSVarsLHSWidths, ArgModes, TailCode, CI, !CLD),
     Code = HeadCode ++ TailCode.
 
-:- pred generate_deconstruct_unify_arg(uni_field::in, prog_var::in,
-    mer_type::in, unify_mode::in, llds_code::out,
+:- pred generate_deconstruct_unify_arg(ptag::in, rval::in, arg_pos_width::in,
+    prog_var::in, mer_type::in, unify_mode::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_unify_arg(LHSField, RHSVar, RHSType, ArgMode,
-        Code, CI, !CLD) :-
+generate_deconstruct_unify_arg(LHSPtag, LHSBaseRval, LHSArgPosWidth,
+        RHSVar, RHSType, ArgMode, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     compute_assign_direction(ModuleInfo, ArgMode, RHSType, Dir),
     (
         Dir = assign_right,
         ( if variable_is_forward_live(!.CLD, RHSVar) then
-            generate_deconstruct_assign_right(LHSField, RHSVar,
-                Code, CI, !CLD)
+            generate_deconstruct_assign_right(LHSPtag, LHSBaseRval,
+                LHSArgPosWidth, RHSVar, Code, CI, !CLD)
         else
             Code = empty
         )
     ;
         Dir = assign_left,
         % Fields are always considered forward live.
-        generate_deconstruct_assign_left(LHSField, RHSVar, Code, CI, !CLD)
+        generate_deconstruct_assign_left(LHSPtag, LHSBaseRval, LHSArgPosWidth,
+            RHSVar, Code, CI, !CLD)
     ;
         Dir = assign_unused,
         % XXX This will have to change if we start to support aliasing.
@@ -447,45 +423,45 @@ generate_deconstruct_tagword_unify_arg(LHSRval, RHSVarWidth, ArgMode,
         Code = empty
     ).
 
-:- pred generate_deconstruct_assign_right(uni_field::in, prog_var::in,
+:- pred generate_deconstruct_assign_right(ptag::in, rval::in,
+    arg_pos_width::in, prog_var::in,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_assign_right(RightField, LeftVar, Code, CI, !CLD) :-
-    % XXX ARG_PACK The LeftX variables should be named RightX, and vice versa.
-    % XXX ARG_PACK ... and LHS/RHS, not Left/Right.
-    RightField = uni_field(RightPtag, RightBaseRval, RightOffset, ArgPosWidth),
+generate_deconstruct_assign_right(LHSPtag, LHSBaseRval, LHSArgPosWidth,
+        RHSVar, Code, CI, !CLD) :-
     (
-        ArgPosWidth = apw_full(_, _),
-        RightLval = field(yes(RightPtag), RightBaseRval,
-            const(llconst_int(RightOffset))),
-        assign_lval_to_var(LeftVar, RightLval, Code, CI, !CLD)
+        LHSArgPosWidth = apw_full(_, cell_offset(LHSCellOffset)),
+        LHSLval = field(yes(LHSPtag), LHSBaseRval,
+            const(llconst_int(LHSCellOffset))),
+        assign_lval_to_var(RHSVar, LHSLval, Code, CI, !CLD)
     ;
-        ArgPosWidth = apw_double(_, _, _),
-        RightLvalA = field(yes(RightPtag), RightBaseRval,
-            const(llconst_int(RightOffset))),
-        RightLvalB = field(yes(RightPtag), RightBaseRval,
-            const(llconst_int(RightOffset + 1))),
-        RightRval = binop(float_from_dword,
-            lval(RightLvalA), lval(RightLvalB)),
-        assign_field_lval_expr_to_var(LeftVar, [RightLvalA, RightLvalB],
-            RightRval, Code, !CLD)
+        LHSArgPosWidth = apw_double(_, cell_offset(LHSCellOffset), _),
+        LHSLvalA = field(yes(LHSPtag), LHSBaseRval,
+            const(llconst_int(LHSCellOffset))),
+        LHSLvalB = field(yes(LHSPtag), LHSBaseRval,
+            const(llconst_int(LHSCellOffset + 1))),
+        LHSRval = binop(float_from_dword, lval(LHSLvalA), lval(LHSLvalB)),
+        assign_field_lval_expr_to_var(RHSVar, [LHSLvalA, LHSLvalB],
+            LHSRval, Code, !CLD)
     ;
-        ( ArgPosWidth = apw_partial_first(_, _, Shift, _, Mask, Fill)
-        ; ArgPosWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
+        (
+            LHSArgPosWidth = apw_partial_first(_, cell_offset(LHSCellOffset),
+                Shift, _, arg_mask(Mask), Fill)
+        ;
+            LHSArgPosWidth = apw_partial_shifted(_, cell_offset(LHSCellOffset),
+                Shift, _, arg_mask(Mask), Fill)
         ),
-        % XXX ARG_PACK factor out the following code
-        RightLval = field(yes(RightPtag), RightBaseRval,
-            const(llconst_int(RightOffset))),
-        RightRval0 = right_shift_rval(lval(RightLval), Shift),
-        Mask = arg_mask(MaskInt),
-        MaskedRightRval0 = binop(bitwise_and(int_type_uint), RightRval0,
-            const(llconst_int(MaskInt))),
-        maybe_cast_masked_off_rval(Fill, MaskedRightRval0, MaskedRightRval),
-        assign_field_lval_expr_to_var(LeftVar, [RightLval], MaskedRightRval,
+        LHSLval = field(yes(LHSPtag), LHSBaseRval,
+            const(llconst_int(LHSCellOffset))),
+        LHSRval0 = right_shift_rval(lval(LHSLval), Shift),
+        MaskedLHSRval0 = binop(bitwise_and(int_type_uint), LHSRval0,
+            const(llconst_int(Mask))),
+        maybe_cast_masked_off_rval(Fill, MaskedLHSRval0, MaskedLHSRval),
+        assign_field_lval_expr_to_var(RHSVar, [LHSLval], MaskedLHSRval,
             Code, !CLD)
     ;
-        ( ArgPosWidth = apw_none_nowhere
-        ; ArgPosWidth = apw_none_shifted(_, _)
+        ( LHSArgPosWidth = apw_none_nowhere
+        ; LHSArgPosWidth = apw_none_shifted(_, _)
         ),
         % The value being assigned is of a dummy type, so no assignment
         % is actually necessary.
@@ -527,28 +503,29 @@ generate_deconstruct_tagword_assign_right(LHSRval, RHSVar, ArgPosWidth,
         unexpected($pred, "ArgPosWidth does not belong in tagword")
     ).
 
-:- pred generate_deconstruct_assign_left(uni_field::in, prog_var::in,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred generate_deconstruct_assign_left(ptag::in, rval::in, arg_pos_width::in,
+    prog_var::in, llds_code::out,
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_assign_left(LHSField, RHSVar, Code, CI, !CLD) :-
-    LHSField = uni_field(LHSPtag, LHSBaseRval0, LHSOffset, ArgPosWidth),
-    % Assignment from a variable to an lvalue - cannot cache
-    % so generate immediately.
+generate_deconstruct_assign_left(LHSPtag, LHSBaseRval0, LHSArgPosWidth,
+        RHSVar, Code, CI, !CLD) :-
+    % Assignment from a variable to an field in a memory cell;
+    % we cannot cache this, so generate code for it immediately.
     produce_variable(RHSVar, ProduceRHSVarCode, RHSRval, CI, !CLD),
     materialize_vars_in_rval(LHSBaseRval0, LHSBaseRval,
         MaterializeLHSBaseCode, CI, !CLD),
     (
-        ArgPosWidth = apw_full(_, _),
+        LHSArgPosWidth = apw_full(_, cell_offset(LHSCellOffset)),
         LHSLval = field(yes(LHSPtag), LHSBaseRval,
-            const(llconst_int(LHSOffset))),
+            const(llconst_int(LHSCellOffset))),
         AssignCode = singleton(llds_instr(assign(LHSLval, RHSRval),
             "Copy value"))
     ;
-        ArgPosWidth = apw_double(_, _, _),
+        LHSArgPosWidth = apw_double(_, cell_offset(LHSCellOffset), _),
         LHSLvalA = field(yes(LHSPtag), LHSBaseRval,
-            const(llconst_int(LHSOffset))),
+            const(llconst_int(LHSCellOffset))),
         LHSLvalB = field(yes(LHSPtag), LHSBaseRval,
-            const(llconst_int(LHSOffset + 1))),
+            const(llconst_int(LHSCellOffset + 1))),
         SrcA = unop(dword_float_get_word0, RHSRval),
         SrcB = unop(dword_float_get_word1, RHSRval),
         Comment = "Update double word",
@@ -558,9 +535,11 @@ generate_deconstruct_assign_left(LHSField, RHSVar, Code, CI, !CLD) :-
         ])
     ;
         (
-            ArgPosWidth = apw_partial_first(_, _, Shift, _, Mask, Fill)
+            LHSArgPosWidth = apw_partial_first(_, cell_offset(LHSCellOffset),
+                Shift, _, Mask, Fill)
         ;
-            ArgPosWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
+            LHSArgPosWidth = apw_partial_shifted(_, cell_offset(LHSCellOffset),
+                Shift, _, Mask, Fill)
         ),
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
@@ -573,7 +552,7 @@ generate_deconstruct_assign_left(LHSField, RHSVar, Code, CI, !CLD) :-
         % for each variable (shifted by the appropriate amount),
         % and OR them together.
         LHSLval = field(yes(LHSPtag), LHSBaseRval,
-            const(llconst_int(LHSOffset))),
+            const(llconst_int(LHSCellOffset))),
         ComplementMask = const(llconst_int(\ (MaskInt << ShiftInt))),
         MaskOld = binop(bitwise_and(int_type_uint),
             lval(LHSLval), ComplementMask),
@@ -582,8 +561,8 @@ generate_deconstruct_assign_left(LHSField, RHSVar, Code, CI, !CLD) :-
         AssignCode = singleton(llds_instr(assign(LHSLval, CombinedRval),
             "Update part of word"))
     ;
-        ( ArgPosWidth = apw_none_nowhere
-        ; ArgPosWidth = apw_none_shifted(_, _)
+        ( LHSArgPosWidth = apw_none_nowhere
+        ; LHSArgPosWidth = apw_none_shifted(_, _)
         ),
         % The value being assigned is of a dummy type, so no assignment
         % is actually necessary.
