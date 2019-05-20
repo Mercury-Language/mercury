@@ -331,7 +331,7 @@ gather_in_item(Section, Item, !Info) :-
                 !Info ^ gii_gathered_items := GatheredItems
             ;
                 MaybePredOrFunc = no
-                % We don't have an item_id, so we cannor gather the item.
+                % We don't have an item_id, so we cannot gather the item.
                 % XXX Does this lead to missing some needed recompilations?
             )
         )
