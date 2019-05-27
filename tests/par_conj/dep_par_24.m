@@ -12,8 +12,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -21,7 +20,7 @@ main(!IO) :-
     (
         nop(!IO)
     &
-        io__see("no such file", Res, !IO)
+        io.see("no such file", Res, !IO)
     &
         (
             Res = ok
@@ -38,4 +37,5 @@ main(!IO) :-
 
 :- pred nop(io::di, io::uo) is det.
 :- pragma no_inline(nop/2).
+
 nop(!IO).
