@@ -5691,8 +5691,9 @@ MERCURY_MSG("")
 
 if test "$have_default_grade" = "no"
 then
-    AC_MSG_WARN([the default grade for applications is $DEFAULT_GRADE,
-****    but this grade is not going to be installed.])
+    MERCURY_MSG(["WARNING: the default grade for applications is $DEFAULT_GRADE,"])
+    MERCURY_MSG(["but this grade is not going to be installed."])
+    MERCURY_MSG("")
 fi
 
 min_minutes_per_grade=10
@@ -5709,11 +5710,9 @@ else
     MERCURY_MSG("This will likely take $min_minutes to $max_minutes minutes.")
 fi
 MERCURY_MSG("")
-# Putting commas directly into the message confuses m4, even if escaped.
-COMMA=","
-MERCURY_MSG("You can make the install faster by installing fewer grades${COMMA}")
-MERCURY_MSG("as shown by the fine-tuning section of the INSTALL file${COMMA}")
-MERCURY_MSG("or by compiling the files of each grade in parallel${COMMA}")
-MERCURY_MSG("which you can do via a command such as make PARALLEL=-j2 install.")
+MERCURY_MSG(["You can make the install faster by installing fewer grades,"])
+MERCURY_MSG(["as shown by the fine-tuning section of the INSTALL file,"])
+MERCURY_MSG(["or by compiling the files of each grade in parallel,"])
+MERCURY_MSG(["which you can do via a command such as make PARALLEL=-j2 install."])
 
 #-----------------------------------------------------------------------------#
