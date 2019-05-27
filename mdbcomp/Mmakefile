@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2005-2007, 2009-2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -213,7 +213,7 @@ $(os_subdir)mdb.pic_o \
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f Mercury.modules tags MDBCOMP_FLAGS MDBCOMP_FLAGS.date
+	rm -f Mercury.modules tags MDBCOMP_FLAGS
 
 #-----------------------------------------------------------------------------#
 
