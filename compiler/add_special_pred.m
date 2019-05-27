@@ -516,7 +516,8 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
         du_type_kind_general, DirectArgCtors),
     MaybeCanonical = canon,
     IsForeign = no,
-    TypeBody = hlds_du_type([Ctor], MaybeCanonical, yes(Repn), IsForeign),
+    TypeBody = hlds_du_type(one_or_more(Ctor, []), MaybeCanonical,
+        yes(Repn), IsForeign),
     construct_type(TypeCtor, TupleArgTypes, Type),
 
     term.context_init(Context).

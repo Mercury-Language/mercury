@@ -584,11 +584,8 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
         ; Item = item_foreign_import_module(_)
+        ; Item = item_type_repn(_)
         )
-    ;
-        Item = item_type_repn(_),
-        % These should not be generated yet.
-        unexpected($pred, "item_type_repn")
     ),
     get_implicits_foreigns_fact_tables_acc(Items,
         !ImplicitImportNeeds, !Contents).
@@ -720,11 +717,8 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_foreign_import_module(_)
+        ; Item = item_type_repn(_)
         )
-    ;
-        Item = item_type_repn(_),
-        % XXX TYPE_REPN Implement this.
-        unexpected($pred, "item_type_repn nyi")
     ),
     gather_implicit_import_needs_in_items(Items, !ImplicitImportNeeds).
 

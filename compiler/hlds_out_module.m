@@ -370,7 +370,8 @@ write_type_body(Info, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         MercInfo = Info ^ hoi_mercury_to_mercury,
         (
             MaybeRepn = no,
-            write_constructors(TVarSet, Indent, Ctors, !IO),
+            Ctors = one_or_more(HeadCtor, TailCtors),
+            write_constructors(TVarSet, Indent, HeadCtor, TailCtors, !IO),
             MaybeDirectArgCtors = no,
             mercury_output_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
@@ -491,18 +492,12 @@ accumulate_ctor_repns(one_or_more(HeadCR, TailCRs), !AccCRs) :-
     !:AccCRs = [HeadCR | TailCRs] ++ !.AccCRs.
 
 :- pred write_constructors(tvarset::in, int::in,
-    list(constructor)::in, io::di, io::uo) is det.
+    constructor::in, list(constructor)::in, io::di, io::uo) is det.
 
-write_constructors(TVarSet, Indent, Ctors, !IO) :-
-    (
-        Ctors = [],
-        unexpected($pred, "empty constructor list")
-    ;
-        Ctors = [HeadCtor | TailCtors],
-        ArrowOrSemi0 = "--->    ",
-        write_constructors_loop(TVarSet, Indent, ArrowOrSemi0,
-            HeadCtor, TailCtors, !IO)
-    ).
+write_constructors(TVarSet, Indent, HeadCtor, TailCtors, !IO) :-
+    ArrowOrSemi0 = "--->    ",
+    write_constructors_loop(TVarSet, Indent, ArrowOrSemi0,
+        HeadCtor, TailCtors, !IO).
 
 :- pred write_constructor_repns(tvarset::in, int::in,
     list(constructor_repn)::in, io::di, io::uo) is det.

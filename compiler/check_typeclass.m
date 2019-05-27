@@ -1735,7 +1735,7 @@ check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
     (
         Body = hlds_du_type(Ctors, _, _, _),
         list.foldl(check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn),
-            Ctors, !Specs)
+            one_or_more_to_list(Ctors), !Specs)
     ;
         ( Body = hlds_eqv_type(_)
         ; Body = hlds_foreign_type(_)

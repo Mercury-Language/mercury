@@ -70,7 +70,7 @@
 % should be done by unsafe-casting both to int, and comparing the ints.
 % If we cannot, then we should generate the usual code deconstructing
 % both X and Y, and comparing the arguments (one by one or all together,
-% depending on well we can pack the heap cell's contents).
+% depending on how well we can pack the heap cell's contents).
 %
 % Deciding type representations after semantic analysis would therefore
 % require us to generate the unify and compare (and maybe index) predicates
@@ -513,10 +513,10 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        Body0 = hlds_du_type(Ctors, MaybeCanonical, MaybeRepn0,
+        Body0 = hlds_du_type(OoMCtors, MaybeCanonical, MaybeRepn0,
             MaybeForeign),
+        OoMCtors = one_or_more(HeadCtor, TailCtors),
         expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
-        expect_not(unify(Ctors, []), $pred, "Ctors != []"),
         ( if
             map.search(TypeCtorToForeignEnumMap, TypeCtor, TCFE),
             TCFE = type_ctor_foreign_enums(_LangContextMap,
@@ -524,17 +524,18 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
             MaybeForeignEnumTagMap = yes(ForeignEnumTagMap)
         then
             decide_simple_type_foreign_enum(ModuleInfo, Params,
-                TypeCtor, TypeDefn0, Body0, Ctors, ForeignEnumTagMap,
+                TypeCtor, TypeDefn0, Body0, OoMCtors, ForeignEnumTagMap,
                 TypeCtorTypeDefn, !Specs)
         else if
-            ctors_are_all_constants(Ctors)
+            ctors_are_all_constants([HeadCtor | TailCtors])
         then
             decide_simple_type_dummy_or_mercury_enum(ModuleInfo, Params,
-                TypeCtor, TypeDefn0, Body0, Ctors, TypeCtorTypeDefn,
+                TypeCtor, TypeDefn0, Body0, OoMCtors, TypeCtorTypeDefn,
                 !ComponentTypeMap, !Specs)
         else if
-            Ctors = [SingleCtor]
+            TailCtors = []
         then
+            SingleCtor = HeadCtor,
             ( if
                 SingleCtor = ctor(_Ordinal, no_exist_constraints,
                     SingleCtorSymName, [SingleArg], 1, SingleCtorContext),
@@ -581,12 +582,12 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
 
 :- pred decide_simple_type_foreign_enum(module_info::in, decide_du_params::in,
     type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_du_type),
-    list(constructor)::in, {cons_id_to_tag_map, foreign_language}::in,
+    one_or_more(constructor)::in, {cons_id_to_tag_map, foreign_language}::in,
     pair(type_ctor, hlds_type_defn)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
-        Body0, Ctors, ForeignEnums, TypeCtorTypeDefn, !Specs) :-
+        Body0, OoMCtors, ForeignEnums, TypeCtorTypeDefn, !Specs) :-
     % XXX TYPE_REPN Should MaybeForeign = yes(...) be allowed?
     ForeignEnums = {ForeignEnumTagMap, Lang},
     DuKind = du_type_kind_foreign_enum(Lang),
@@ -603,6 +604,7 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
     else
         true
     ),
+    Ctors = one_or_more_to_list(OoMCtors),
     ( if ctors_are_all_constants(Ctors) then
         true
     else
@@ -654,20 +656,18 @@ add_dummy_repn_to_ctor_arg(ConsArg) = ConsArgRepn :-
 
 :- pred decide_simple_type_dummy_or_mercury_enum(module_info::in,
     decide_du_params::in, type_ctor::in, hlds_type_defn::in,
-    hlds_type_body::in(hlds_du_type), list(constructor)::in,
+    hlds_type_body::in(hlds_du_type), one_or_more(constructor)::in,
     pair(type_ctor, hlds_type_defn)::out,
     component_type_map::in, component_type_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
-        TypeCtor, TypeDefn0, Body0, Ctors, TypeCtorTypeDefn,
+        TypeCtor, TypeDefn0, Body0, OoMCtors, TypeCtorTypeDefn,
         !ComponentTypeMap, !Specs) :-
+    OoMCtors = one_or_more(HeadCtor, TailCtors),
     (
-        Ctors = [],
-        % A type with no constructors is an abstract type, not a du type.
-        unexpected($pred, "no constant constructors")
-    ;
-        Ctors = [SingleCtor],
+        TailCtors = [],
+        SingleCtor = HeadCtor,
         DuTypeKind = du_type_kind_direct_dummy,
         SingleCtor = ctor(Ordinal, _MaybeExistConstraints,
             SingleCtorSymName, _Args, _SingleCtorArity, SingleCtorContext),
@@ -678,10 +678,10 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
         insert_ctor_repn_into_map(SingleCtorRepn, map.init, CtorRepnMap),
         ComponentKind = packable(packable_dummy)
     ;
-        Ctors = [_, _ | _],
+        TailCtors = [_ | _],
         DuTypeKind = du_type_kind_mercury_enum,
-        assign_tags_to_enum_constants(Ctors, CtorRepns, 0, NextTag,
-            map.init, CtorRepnMap),
+        assign_tags_to_enum_constants([HeadCtor | TailCtors], CtorRepns,
+            0, NextTag, map.init, CtorRepnMap),
         int.log2(NextTag, NumBits),
         ComponentKind = packable(packable_n_bits(NumBits, fill_enum))
     ),
@@ -905,7 +905,8 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        Body0 = hlds_du_type(Ctors, _MaybeCanonical, MaybeRepn0, _MaybeForeign),
+        Body0 = hlds_du_type(Ctors, _MaybeCanonical, MaybeRepn0,
+            _MaybeForeign),
         (
             MaybeRepn0 = yes(_),
             % We have already decided this type's representation
@@ -914,7 +915,7 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
         ;
             MaybeRepn0 = no,
             decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
-                TypeCtor, TypeDefn0, Ctors, Repn, !Specs),
+                TypeCtor, TypeDefn0, one_or_more_to_list(Ctors), Repn, !Specs),
             Body = Body0 ^ du_type_repn := yes(Repn),
             set_type_defn_body(Body, TypeDefn0, TypeDefn),
             TypeCtorTypeDefn = TypeCtor - TypeDefn

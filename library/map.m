@@ -183,7 +183,8 @@
     %
     % Search for the key K in the map. If the key is already in the map,
     % with corresponding value OldV, set MaybeOldV to yes(OldV). If it
-    % is not in the map, then insert it into the map with value V.
+    % is not in the map, then insert it into the map with value V,
+    % and set MaybeOldV to no.
     %
 :- pred search_insert(K::in, V::in, maybe(V)::out,
     map(K, V)::in, map(K, V)::out) is det.

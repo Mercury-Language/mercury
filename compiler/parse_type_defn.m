@@ -203,7 +203,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         (
             ErrorSpecs = [],
             varset.coerce(VarSet, TypeVarSet),
-            DetailsDu = type_details_du(Ctors, MaybeCanonical,
+            DetailsDu = type_details_du(OneOrMoreCtors, MaybeCanonical,
                 MaybeDirectArgIs),
             TypeDefn = parse_tree_du_type(DetailsDu),
             ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,

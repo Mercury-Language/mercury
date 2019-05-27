@@ -154,7 +154,7 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
         TypeBody = hlds_du_type(Constructors, _, _, _),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         list.foldl(find_weights_for_cons(TypeCtor, TypeParams),
-            Constructors, !Weights)
+            one_or_more_to_list(Constructors), !Weights)
     ;
         % This type does not introduce any functors.
         TypeBody = hlds_eqv_type(_)

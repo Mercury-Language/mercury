@@ -358,9 +358,11 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, TypeBody) :-
             )
         )
     ;
-        Ctors = TypeBody ^ du_type_ctors,
+        one_or_more(HeadCtor, TailCtors) = TypeBody ^ du_type_ctors,
         some [Ctor] (
-            list.member(Ctor, Ctors),
+            ( Ctor = HeadCtor
+            ; list.member(Ctor, TailCtors)
+            ),
             Ctor = ctor(_, MaybeExistConstraints, _, _, _, _),
             MaybeExistConstraints = exist_constraints(_)
         )

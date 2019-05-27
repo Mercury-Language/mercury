@@ -29,13 +29,19 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
+:- import_module bimap.
+:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
@@ -75,25 +81,37 @@
 
 %---------------------------------------------------------------------------%
 
+    % build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
+    %   Overrides, !OverrideMap, !SeenCtorNames, !.SeenForeignNames,
+    %   !BadQualCtorSymNames, !InvalidCtorSymNames,
+    %   !RepeatedCtorNames, !RepeatedForeignNames):
+    %
+    % Exported to decide_type_repn.m.
+    %
+:- pred build_ctor_name_to_foreign_name_map_loop(module_name::in,
+    set_tree234(string)::in, assoc_list(sym_name, string)::in,
+    bimap(string, string)::in, bimap(string, string)::out,
+    set_tree234(string)::in, set_tree234(string)::out, set_tree234(string)::in,
+    cord(sym_name)::in, cord(sym_name)::out,
+    cord(sym_name)::in, cord(sym_name)::out,
+    cord(string)::in, cord(string)::out,
+    cord(string)::in, cord(string)::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.status.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
-:- import_module assoc_list.
-:- import_module bimap.
 :- import_module bool.
-:- import_module cord.
 :- import_module pair.
 :- import_module require.
-:- import_module set_tree234.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -113,7 +131,8 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
     report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
         Specs0, Specs1),
     item_mercury_status_to_type_status(ItemMercuryStatus, PragmaStatus),
-    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, MercuryForeignTagPairs),
+    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor,
+        OoMMercuryForeignTagPairs),
     TypeCtor = type_ctor(TypeSymName, TypeArity),
     TypeSNA = sym_name_arity(TypeSymName, TypeArity),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
@@ -184,9 +203,11 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                     _IsForeignType),
                 expect(unify(MaybeRepn, no), $pred, "MaybeRepn != no"),
 
+                MercuryForeignTagPairs =
+                    one_or_more_to_list(OoMMercuryForeignTagPairs),
                 build_mercury_foreign_map(TypeModuleName,
                     TypeSymName, TypeArity, for_foreign_enum,
-                    Context, ContextPieces, Ctors,
+                    Context, ContextPieces, one_or_more_to_list(Ctors),
                     MercuryForeignTagPairs, MercuryForeignTagBimap, !Specs),
                 MercuryForeignTagNames =
                     bimap.to_assoc_list(MercuryForeignTagBimap),
@@ -329,8 +350,8 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
 
                 build_mercury_foreign_map(TypeModuleName,
                     TypeSymName, TypeArity, for_foreign_export_enum,
-                    Context, ContextPieces, Ctors, Overrides, OverrideBimap,
-                    !Specs),
+                    Context, ContextPieces, one_or_more_to_list(Ctors),
+                    Overrides, OverrideBimap, !Specs),
                 OverrideMap = bimap.forward_map(OverrideBimap),
 
                 Attributes =
@@ -615,16 +636,6 @@ find_nonenum_ctors_build_valid_ctor_names([Ctor | Ctors],
     set_tree234.insert(CtorName, !ValidNamesSet),
     find_nonenum_ctors_build_valid_ctor_names(Ctors,
         !ValidNamesSet, !NonEnumSNAs).
-
-:- pred build_ctor_name_to_foreign_name_map_loop(module_name::in,
-    set_tree234(string)::in,
-    assoc_list(sym_name, string)::in,
-    bimap(string, string)::in, bimap(string, string)::out,
-    set_tree234(string)::in, set_tree234(string)::out, set_tree234(string)::in,
-    cord(sym_name)::in, cord(sym_name)::out,
-    cord(sym_name)::in, cord(sym_name)::out,
-    cord(string)::in, cord(string)::out,
-    cord(string)::in, cord(string)::out) is det.
 
 build_ctor_name_to_foreign_name_map_loop(_, _, [], !OverrideMap,
         !SeenCtorNames, _SeenForeignNames,

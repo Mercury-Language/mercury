@@ -437,7 +437,9 @@ can_switch_on_type(TypeBody) = CanSwitchOnType :-
         % We don't care about _MaybeForeignType, since the unification with
         % *any* functor of the type means that either there is no foreign type
         % version, or we are using the Mercury version of the type.
-        ( if Ctors = [_, _ | _] then
+        %
+        % We *do* care that the type has at least two constructors.
+        ( if Ctors = one_or_more(_, [_ | _]) then
             CanSwitchOnType = yes
         else
             CanSwitchOnType = no

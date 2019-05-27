@@ -278,7 +278,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     --->    type_details_du(
                 % The list of data constructors (function symbols) defined
                 % by the type constructor.
-                du_ctors            :: list(constructor),
+                du_ctors            :: one_or_more(constructor),
 
                 % Does the type constructor definition specify
                 % a unification and/or comparison predicate for its instances?

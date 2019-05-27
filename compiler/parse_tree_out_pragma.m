@@ -837,7 +837,7 @@ mercury_format_pragma_foreign_export_enum_attributes(Attributes, !U) :-
     U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_enum(FEInfo, !U) :-
-    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, Values),
+    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, OoMValues),
     add_string(":- pragma foreign_enum(", !U),
     mercury_format_foreign_language_string(Lang, !U),
     add_string(", ", !U),
@@ -846,6 +846,7 @@ mercury_format_pragma_foreign_enum(FEInfo, !U) :-
     add_string("/", !U),
     add_int(TypeArity, !U),
     add_string(", ", !U),
+    Values = one_or_more_to_list(OoMValues),
     mercury_format_sym_name_string_assoc_list(Values, !U),
     add_string(").\n", !U).
 

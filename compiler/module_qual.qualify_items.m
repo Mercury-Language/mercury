@@ -326,6 +326,7 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
             ( RepInfo0 = tcrepn_is_direct_dummy
             ; RepInfo0 = tcrepn_is_notag
             ; RepInfo0 = tcrepn_fits_in_n_bits(_, _)
+            ; RepInfo0 = tcrepn_is_word_aligned_ptr
             ; RepInfo0 = tcrepn_has_direct_arg_functors(_)
             ; RepInfo0 = tcrepn_maybe_foreign(_, _)
             ; RepInfo0 = tcrepn_du(_)
@@ -339,25 +340,6 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
             qualify_type(InInt, ErrorContext, EqvType0, EqvType,
                 !Info, !Specs),
             RepInfo = tcrepn_is_eqv_to(EqvType)
-        ;
-            RepInfo0 = tcrepn_is_word_aligned_ptr(WAP0),
-            (
-                WAP0 = wap_foreign_type_assertion,
-                WAP = WAP0
-            ;
-                WAP0 = wap_mercury_type(WAPTypeSNA0),
-                list.length(ArgTVars, TypeCtorArity),
-                TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-                ErrorContext = mqec_type_repn(Context, TypeCtor),
-                WAPTypeSNA0 = sym_name_arity(SymName0, Arity),
-                TypeCtorId0 = mq_id(SymName0, Arity),
-                mq_info_get_types(!.Info, Types),
-                find_unique_match(InInt, ErrorContext, Types, type_id,
-                    TypeCtorId0, SymName, !Info, !Specs),
-                WAPTypeSNA = sym_name_arity(SymName, Arity),
-                WAP = wap_mercury_type(WAPTypeSNA)
-            ),
-            RepInfo = tcrepn_is_word_aligned_ptr(WAP)
         ),
         ItemTypeRepnInfo = item_type_repn_info(TypeCtorSymName, ArgTVars,
             RepInfo, TVarSet, Context, SeqNum),
@@ -386,16 +368,21 @@ qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn,
         !Info, !Specs) :-
     (
         TypeDefn0 = parse_tree_du_type(DetailsDu0),
-        DetailsDu0 = type_details_du(Ctors0, MaybeUserEqComp0,
+        DetailsDu0 = type_details_du(OoMCtors0, MaybeUserEqComp0,
             MaybeDirectArgCtors0),
-        qualify_constructors(InInt, TypeCtor, Ctors0, Ctors, !Info, !Specs),
+        OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
+        qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor,
+            !Info, !Specs),
+        qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors,
+            !Info, !Specs),
+        OoMCtors = one_or_more(HeadCtor, TailCtors),
         % User-defined equality pred names will be converted into predicate
         % calls and then module-qualified after type analysis (during mode
         % analysis). That way, they get full type overloading resolution, etc.
         % Thus we don't module-qualify them here.
         MaybeUserEqComp = MaybeUserEqComp0,
         MaybeDirectArgCtors = MaybeDirectArgCtors0,
-        DetailsDu = type_details_du(Ctors, MaybeUserEqComp,
+        DetailsDu = type_details_du(OoMCtors, MaybeUserEqComp,
             MaybeDirectArgCtors),
         TypeDefn = parse_tree_du_type(DetailsDu)
     ;

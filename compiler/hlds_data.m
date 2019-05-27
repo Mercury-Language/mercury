@@ -745,7 +745,7 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
 :- type hlds_type_body
     --->    hlds_du_type(
                 % The ctors for this type.
-                du_type_ctors               :: list(constructor),
+                du_type_ctors               :: one_or_more(constructor),
 
                 % Does this type have user-defined equality and comparison
                 % predicates?

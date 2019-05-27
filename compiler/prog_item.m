@@ -915,7 +915,7 @@
                 mer_type
             )
     ;       tcrepn_fits_in_n_bits(int, fill_kind)
-    ;       tcrepn_is_word_aligned_ptr(wap_kind)
+    ;       tcrepn_is_word_aligned_ptr
     ;       tcrepn_has_direct_arg_functors(list(sym_name_and_arity))
     ;       tcrepn_du(du_repn)
     ;       tcrepn_maybe_foreign(
@@ -937,17 +937,14 @@
                 maybe(du_repn)
             ).
 
-:- type wap_kind
-    --->    wap_foreign_type_assertion
-    ;       wap_mercury_type(sym_name_and_arity).
-
 :- type foreign_type_repn
     --->    foreign_type_repn(
                 % The name of the foreign type that represents values
                 % of this Mercury type.
-                frd_foreign_type        :: string
+                frd_foreign_type        :: string,
 
-                % ZZZ assertions?
+                % The assertions about this foreign type.
+                frd_assertions          :: foreign_type_assertions
             ).
 
     % There should be exactly one applicable du_repn for any given type_ctor.
@@ -1213,7 +1210,7 @@
     --->    pragma_info_foreign_enum(
                 foreign_enum_language   :: foreign_language,
                 foreign_enum_type_ctor  :: type_ctor,
-                foreign_enum_values     :: assoc_list(sym_name, string)
+                foreign_enum_values     :: one_or_more(pair(sym_name, string))
             ).
 
 :- type pragma_info_external_proc

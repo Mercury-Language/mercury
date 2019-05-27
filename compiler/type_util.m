@@ -1218,7 +1218,8 @@ type_constructors(ModuleInfo, Type, Constructors) :-
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        substitute_type_args(TypeParams, TypeArgs, TypeBody ^ du_type_ctors,
+        substitute_type_args(TypeParams, TypeArgs,
+            one_or_more_to_list(TypeBody ^ du_type_ctors),
             Constructors)
     ).
 
@@ -1293,8 +1294,9 @@ switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(Constructors, _, _, _),
-        list.length(Constructors, NumFunctors)
+        TypeBody = hlds_du_type(OoMConstructors, _, _, _),
+        OoMConstructors = one_or_more(_HeadCtor, TailCtors),
+        NumFunctors = 1 + list.length(TailCtors)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1361,8 +1363,11 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-    TypeDefnBody = hlds_du_type(Ctors, _, _, _),
-    list.member(Ctor, Ctors),
+    TypeDefnBody = hlds_du_type(OoMCtors, _, _, _),
+    OoMCtors = one_or_more(HeadCtor, TailCtors),
+    ( Ctor = HeadCtor
+    ; list.member(Ctor, TailCtors)
+    ),
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity, _Ctxt),
     ConsId = cons(Name, Arity, TypeCtor),
 

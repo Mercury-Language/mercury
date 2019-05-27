@@ -511,10 +511,6 @@ write_mmake_entry(OutStream, _WriteComments, MmakeEntry, !IO) :-
 write_block_comment_line(OutStream, Comment, !IO) :-
     io.format(OutStream, "# %s\n", [s(Comment)], !IO).
 
-:- func one_or_more_to_list(one_or_more(T)) = list(T).
-
-one_or_more_to_list(one_or_more(Head, Tail)) = [Head | Tail].
-
 :- pred maybe_write_group_names(io.text_output_stream::in, string::in,
     list(mmake_file_name_group)::in, io::di, io::uo) is det.
 

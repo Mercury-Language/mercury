@@ -663,10 +663,11 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
         io.write_string(".\n", !IO)
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(Ctors, MaybeCanonical, MaybeDirectArgs),
+        DetailsDu = type_details_du(OoMCtors, MaybeCanonical, MaybeDirectArgs),
         mercury_output_begin_type_decl(non_solver_type, !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm, !IO),
-        mercury_output_ctors(TypeVarSet, yes, Ctors, !IO),
+        OoMCtors = one_or_more(HeadCtor, TailCtors),
+        mercury_output_ctors(TypeVarSet, yes, HeadCtor, TailCtors, !IO),
         mercury_output_where_attributes(Info, TypeVarSet, no, MaybeCanonical,
             MaybeDirectArgs, !IO),
         io.write_string(".\n", !IO)
@@ -879,11 +880,10 @@ mercury_output_where_abstract_enum_type(NumBits, !IO) :-
 % Predicates needed to output discriminated union types.
 %
 
-:- pred mercury_output_ctors(tvarset::in, bool::in, list(constructor)::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_ctors(tvarset::in, bool::in,
+    constructor::in, list(constructor)::in, io::di, io::uo) is det.
 
-mercury_output_ctors(_, _, [], !IO).
-mercury_output_ctors(VarSet, First, [Ctor | Ctors], !IO) :-
+mercury_output_ctors(VarSet, First, HeadCtor, TailCtors, !IO) :-
     (
         First = yes,
         io.write_string("\n    --->    ", !IO)
@@ -891,8 +891,13 @@ mercury_output_ctors(VarSet, First, [Ctor | Ctors], !IO) :-
         First = no,
         io.write_string("\n    ;       ", !IO)
     ),
-    mercury_output_ctor(VarSet, Ctor, !IO),
-    mercury_output_ctors(VarSet, no, Ctors, !IO).
+    mercury_output_ctor(VarSet, HeadCtor, !IO),
+    (
+        TailCtors = []
+    ;
+        TailCtors = [HeadTailCtor | TailTailCtors],
+        mercury_output_ctors(VarSet, no, HeadTailCtor, TailTailCtors, !IO)
+    ).
 
 mercury_output_ctor(TypeVarSet, Ctor, !IO) :-
     Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, Args, Arity, _Ctxt),
@@ -1508,10 +1513,16 @@ mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
         TVarSet, _Context, _SeqNum),
     io.write_string(":- type_representation(", !IO),
     mercury_output_sym_name(TypeCtorSymName, !IO),
-    io.write_string(", [", !IO),
-    io.write_list(ArgTVars, ", ",
-        mercury_output_var(TVarSet, print_num_only), !IO),
-    io.write_string("], ", !IO),
+    (
+        ArgTVars = [],
+        io.write_string(", ", !IO)
+    ;
+        ArgTVars = [_ | _],
+        io.write_string("(", !IO),
+        io.write_list(ArgTVars, ", ",
+            mercury_output_var(TVarSet, print_num_only), !IO),
+        io.write_string("), ", !IO)
+    ),
     (
         RepnInfo = tcrepn_is_direct_dummy,
         io.write_string("is_direct_dummy", !IO)
@@ -1532,18 +1543,8 @@ mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
         mercury_output_type(TVarSet, print_num_only, EqvType, !IO),
         io.write_string(")", !IO)
     ;
-        RepnInfo = tcrepn_is_word_aligned_ptr(WAP),
-        io.write_string("is_word_aligned_ptr(", !IO),
-        (
-            WAP = wap_foreign_type_assertion,
-            io.write_string("foreign_type_assertion", !IO)
-        ;
-            WAP = wap_mercury_type(SymNameAndArity),
-            io.write_string("mercury_type(", !IO),
-            write_sym_name_and_arity(SymNameAndArity, !IO),
-            io.write_string(")", !IO)
-        ),
-        io.write_string(")", !IO)
+        RepnInfo = tcrepn_is_word_aligned_ptr,
+        io.write_string("is_word_aligned_ptr", !IO)
     ;
         RepnInfo = tcrepn_has_direct_arg_functors(SymNameAndArities),
         io.write_string("has_direct_arg_functors([", !IO),
@@ -1569,7 +1570,8 @@ mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
             io.write_string("du_repn(", !IO),
             mercury_output_du_type_repn(DuRepn, !IO),
             io.write_string(")", !IO)
-        )
+        ),
+        io.write_string(")", !IO)
     ),
     io.write_string(").\n", !IO).
 
@@ -1683,12 +1685,26 @@ mercury_output_foreign_langs_enums(LangEnums, LangsEnums, !IO) :-
 
 mercury_output_foreign_langs_types(LangTypeRepn, LangsTypeRepns, !IO) :-
     LangTypeRepn = Lang - TypeRepn,
-    TypeRepn = foreign_type_repn(ForeignTypeName),
-    % XXX Document the requirements on foreign type names
-    % that make the absence of quoting ok here and elsewhere.
-    % XXX Do we actually accept foreign type names for Erlang?
-    simple_foreign_language_string(Lang, LangStr),
-    io.format("%s(%s)", [s(LangStr), s(ForeignTypeName)], !IO),
+    TypeRepn = foreign_type_repn(ForeignTypeName, ForeignTypeAssertions),
+    ForeignTypeAssertions = foreign_type_assertions(Assertions),
+    set.to_sorted_list(Assertions, AssertionsList),
+    (
+        ( Lang = lang_c, LangStr = "c"
+        ; Lang = lang_csharp, LangStr = "csharp"
+        ; Lang = lang_java, LangStr = "java"
+        ),
+        io.format("%s(\"%s\", [", [s(LangStr), s(ForeignTypeName)], !IO),
+        io.write_list(AssertionsList, ", ",
+            mercury_output_foreign_type_assertion, !IO),
+        io.write_string("])", !IO)
+    ;
+        Lang = lang_erlang,
+        LangStr = "erlang",
+        io.format("%s([", [s(LangStr)], !IO),
+        io.write_list(AssertionsList, ", ",
+            mercury_output_foreign_type_assertion, !IO),
+        io.write_string("])", !IO)
+    ),
     (
         LangsTypeRepns = []
     ;

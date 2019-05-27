@@ -2509,7 +2509,7 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
                 MaybeRepn = yes(Repn),
                 Repn ^ dur_kind = du_type_kind_mercury_enum
             then
-                list.length(Ctors, EnumRange)
+                list.length(one_or_more_to_list(Ctors), EnumRange)
             else
                 unexpected($pred, "enum type is not du_type?")
             ),

@@ -1106,7 +1106,7 @@ propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        Constructors = TypeBody ^ du_type_ctors
+        OoMConstructors = TypeBody ^ du_type_ctors
     then
         ( if
             InstResults0 = inst_test_results(_, _, _, _, _, PropagatedResult0),
@@ -1120,6 +1120,7 @@ propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
             ConstructNewInst = no
         else
             map.from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
+            Constructors = one_or_more_to_list(OoMConstructors),
             propagate_ctor_info_into_bound_functors(ModuleInfo, ArgSubst,
                 TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts1),
             list.sort(BoundInsts1, BoundInsts),

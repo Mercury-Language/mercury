@@ -19,8 +19,6 @@
 :- module parse_tree.prog_type.
 :- interface.
 
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -29,7 +27,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -338,22 +335,10 @@
     %
 :- pred type_constructors_are_type_info(list(constructor)::in) is semidet.
 
-    % type_ctor_should_be_notag(Globals, TypeCtor, ReservedTag, TypeDetailsDu,
-    %   SingleFunctorName, SingleArgType, MaybeSingleArgName):
-    %
-    % Succeed if the type constructor with the given name (TypeCtor) and
-    % details (TypeDetailsDu) is a no_tag type. If it is, return the name
-    % of its single function symbol, the type of its one argument,
-    % and its name (if any).
-    %
-:- pred type_ctor_should_be_notag(globals::in, type_ctor::in,
-    list(constructor)::in, maybe_canonical::in,
-    sym_name::out, mer_type::out, maybe(string)::out) is semidet.
-
     % Is the discriminated union type with the given list of constructors
     % a notag type?
     %
-:- pred du_type_is_notag(list(constructor)::in, maybe_canonical::in)
+:- pred du_type_is_notag(one_or_more(constructor)::in, maybe_canonical::in)
     is semidet.
 
     % Is the discriminated union type with the given list of constructors
@@ -425,13 +410,13 @@
 
 :- implementation.
 
-:- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_util.
 
 :- import_module int.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 
@@ -987,7 +972,9 @@ name_is_type_info("base_typeclass_info").
 %-----------------------------------------------------------------------------%
 
 du_type_is_enum(DuDetails, NumBits) :-
-    DuDetails = type_details_du(Ctors, _MaybeCanonical, _MaybeDirectArgCtors),
+    DuDetails = type_details_du(OoMCtors, _MaybeCanonical,
+        _MaybeDirectArgCtors),
+    Ctors = one_or_more_to_list(OoMCtors),
     Ctors = [_, _ | _],
     all_functors_are_enum(Ctors, 0, NumFunctors),
     int.log2(NumFunctors, NumBits).
@@ -1006,47 +993,21 @@ all_functors_are_enum([Ctor | Ctors], !NumFunctors) :-
 
 %-----------------------------------------------------------------------------%
 
-type_ctor_should_be_notag(Globals, _TypeCtor, Ctors, MaybeCanonical,
-        FunctorName, ArgType, MaybeArgName) :-
-    globals.lookup_bool_option(Globals, unboxed_no_tag_types, yes),
-    du_type_is_notag_return_info(Ctors, MaybeCanonical, FunctorName, ArgType,
-        MaybeArgName).
-
-du_type_is_notag(Ctors, MaybeCanonical) :-
-    du_type_is_notag_return_info(Ctors, MaybeCanonical, _, _, _).
-
-:- pred du_type_is_notag_return_info(list(constructor)::in,
-    maybe_canonical::in,
-    sym_name::out, mer_type::out, maybe(string)::out) is semidet.
-:- pragma inline(du_type_is_notag_return_info/5).
-
-du_type_is_notag_return_info(Ctors, MaybeCanonical,
-        FunctorName, ArgType, MaybeArgName) :-
-    Ctors = [Ctor],
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName, [CtorArg], 1,
+du_type_is_notag(OoMCtors, MaybeCanonical) :-
+    OoMCtors = one_or_more(Ctor, []),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [_CtorArg], 1,
         _Context),
-    MaybeCanonical = canon,
     MaybeExistConstraints = no_exist_constraints,
-
-    require_det (
-        CtorArg = ctor_arg(MaybeFieldName, ArgType, _),
-        (
-            MaybeFieldName = no,
-            MaybeArgName = no
-        ;
-            MaybeFieldName = yes(ctor_field_name(SymName, _)),
-            MaybeArgName = yes(unqualify_name(SymName))
-        )
-    ).
+    MaybeCanonical = canon.
 
 du_type_is_dummy(DuDetails) :-
     DuDetails = type_details_du(Ctors, MaybeCanonical, MaybeDirectArgCtors),
-    MaybeCanonical = canon,
-    MaybeDirectArgCtors = no,
-    Ctors = [Ctor],
+    Ctors = one_or_more(Ctor, []),
     Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [], 0,
         _Context),
-    MaybeExistConstraints = no_exist_constraints.
+    MaybeExistConstraints = no_exist_constraints,
+    MaybeCanonical = canon,
+    MaybeDirectArgCtors = no.
 
 %-----------------------------------------------------------------------------%
 %

@@ -767,7 +767,7 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_tparams(TypeDefn, []),
         get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody ^ du_type_ctors = [SingleCtor],
+        TypeBody ^ du_type_ctors = one_or_more(SingleCtor, []),
         SingleCtor ^ cons_maybe_exist = no_exist_constraints,
         SingleCtorName = SingleCtor ^ cons_name,
         SingleCtorArgs = SingleCtor ^ cons_args,

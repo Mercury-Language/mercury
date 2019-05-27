@@ -1634,7 +1634,8 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
                 TypeBody = hlds_du_type(TypeConstructors, _, _, _)
             then
                 SortedTypeConsIds =
-                    constructor_cons_ids(VarTypeCtor, TypeConstructors),
+                    constructor_cons_ids(VarTypeCtor,
+                        one_or_more_to_list(TypeConstructors)),
                 set_tree234.sorted_list_to_set(SortedTypeConsIds,
                     TypeConsIdsSet),
                 set_tree234.intersect(TypeConsIdsSet, BoundConsIdsSet,
@@ -1647,7 +1648,8 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             TypeBody = hlds_du_type(TypeConstructors, _, _, _),
             SortedTypeConsIds =
-                constructor_cons_ids(VarTypeCtor, TypeConstructors),
+                constructor_cons_ids(VarTypeCtor,
+                    one_or_more_to_list(TypeConstructors)),
             set_tree234.sorted_list_to_set(SortedTypeConsIds, TypeConsIdsSet),
             PossibleConsIdsSet = TypeConsIdsSet
         )

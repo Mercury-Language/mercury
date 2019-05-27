@@ -437,7 +437,8 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
         Visibility = type_visibility(TypeStatus),
         (
             TypeBody = hlds_du_type(Ctors, _, _, _),
-            list.foldl(ctor_used_modules(Visibility), Ctors, !UsedModules)
+            list.foldl(ctor_used_modules(Visibility),
+                one_or_more_to_list(Ctors), !UsedModules)
         ;
             TypeBody = hlds_eqv_type(EqvType),
             mer_type_used_modules(Visibility, EqvType, !UsedModules)

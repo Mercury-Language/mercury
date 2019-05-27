@@ -915,8 +915,11 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
             TypeBody = hlds_du_type(Constructors, _, _, _),
-            list.length(Constructors, NumConstructors),
-            Max = NumConstructors - 1
+            Constructors = one_or_more(_HeadCtor, TailCtors),
+            list.length(TailCtors, NumTailConstructors),
+            % NumConstructors = 1 + NumTailConstructors
+            % Max = NumConstructors - 1
+            Max = NumTailConstructors
         ;
             ( TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_foreign_type(_)

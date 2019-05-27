@@ -624,7 +624,7 @@ check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         % to have user-defined equality or comparison.
 
         DetailsDu = type_details_du(Ctors, MaybeCanonical, _MaybeDirectArg),
-        Ctors = [Ctor],
+        Ctors = one_or_more(Ctor, []),
         Ctor ^ cons_args = [],
         MaybeCanonical = noncanon(_),
         % Only report errors for types defined in this module.
@@ -937,7 +937,7 @@ add_du_ctors_check_foreign_type_for_cur_backend(TypeCtor, TypeDefn,
     get_type_defn_status(TypeDefn, Status),
     get_type_defn_ctors_need_qualifier(TypeDefn, NeedQual),
     (
-        Body = hlds_du_type(ConsList, _MaybeUserEqCmp, _MaybeRepn,
+        Body = hlds_du_type(OoMCtors, _MaybeUserEqCmp, _MaybeRepn,
             _MaybeForeign),
         module_info_get_cons_table(!.ModuleInfo, CtorMap0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
@@ -949,9 +949,15 @@ add_du_ctors_check_foreign_type_for_cur_backend(TypeCtor, TypeDefn,
         ;
             TypeCtorSymName = qualified(TypeCtorModuleName, _)
         ),
-        add_type_defn_ctors(ConsList, TypeCtor, TypeCtorModuleName, TVarSet,
-            TypeParams, KindMap, NeedQual, PQInfo, Status,
-            CtorFieldMap0, CtorFieldMap, CtorMap0, CtorMap, [], CtorAddSpecs),
+        OoMCtors = one_or_more(HeadCtor, TailCtors),
+        add_type_defn_ctor(HeadCtor, TypeCtor, TypeCtorModuleName,
+            TVarSet, TypeParams, KindMap, NeedQual, PQInfo, Status,
+            CtorFieldMap0, CtorFieldMap1, CtorMap0, CtorMap1,
+            [], CtorAddSpecs1),
+        add_type_defn_ctors(TailCtors, TypeCtor, TypeCtorModuleName,
+            TVarSet, TypeParams, KindMap, NeedQual, PQInfo, Status,
+            CtorFieldMap1, CtorFieldMap, CtorMap1, CtorMap,
+            CtorAddSpecs1, CtorAddSpecs),
         module_info_set_cons_table(CtorMap, !ModuleInfo),
         module_info_set_ctor_field_table(CtorFieldMap, !ModuleInfo),
 

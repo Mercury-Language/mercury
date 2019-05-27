@@ -20,11 +20,14 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
 
+:- import_module cord.
 :- import_module list.
+:- import_module set.
 :- import_module term.
 :- import_module varset.
 
@@ -35,6 +38,11 @@
     %
 :- pred parse_pragma(module_name::in, varset::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+
+:- pred parse_foreign_type_assertions(cord(format_component)::in,
+    varset::in, term::in,
+    set(foreign_type_assertion)::in, set(foreign_type_assertion)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Parse a term that represents a foreign language.
     %
@@ -48,7 +56,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.rat.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
@@ -65,11 +72,9 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module cord.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
-:- import_module set.
 :- import_module string.
 :- import_module unit.
 
@@ -439,11 +444,6 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_foreign_type_assertions(cord(format_component)::in,
-    varset::in, term::in,
-    set(foreign_type_assertion)::in, set(foreign_type_assertion)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
 parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
         !Specs) :-
     ( if Term = term.functor(term.atom("[]"), [], _) then
@@ -599,14 +599,17 @@ maybe_parse_export_enum_overrides(VarSet, yes(OverridesTerm),
     term::in, maybe1(pair(sym_name, string))::out) is semidet.
 
 parse_sym_name_string_pair(VarSet, ContextPieces, PairTerm, MaybePair) :-
-    PairTerm = functor(Functor, Args, _),
+    PairTerm = functor(Functor, ArgTerms, _),
     Functor = term.atom("-"),
-    Args = [SymNameTerm, StringTerm],
+    ArgTerms = [SymNameTerm, StringTerm],
     StringTerm = functor(term.string(String), _, _),
     parse_sym_name_and_args(VarSet, ContextPieces, SymNameTerm,
         MaybeSymNameResult),
     (
-        MaybeSymNameResult = ok2(SymName, []),
+        MaybeSymNameResult = ok2(SymName, SymNameArgs),
+        SymNameArgs = [],
+        % XXX Instead of quietly failing, we should generate
+        % a specific error message if SymNameArgs is not [].
         MaybePair = ok1(SymName - String)
     ;
         MaybeSymNameResult = error2(Specs),
@@ -723,7 +726,6 @@ parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
 parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm] then
-
         LangContextPieces = cord.from_list([
             words("In first argument of"), pragma_decl("foreign_enum"),
             words("declaration:")
@@ -747,11 +749,11 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         % (e.g. it should reject the empty string).
         convert_maybe_list("mapping elements", yes(VarSet), ValuesTerm,
             parse_sym_name_string_pair(VarSet, PairContextPieces),
-            UnrecognizedPieces, MaybeValues0),
+            UnrecognizedPieces, MaybeValues),
         (
-            MaybeValues0 = ok1(Values0),
+            MaybeValues = ok1(Values),
             (
-                Values0 = [],
+                Values = [],
                 NoValuesPieces = [
                     words("Error: expected a non-empty list"),
                     words("mapping constructors to foreign values in"),
@@ -761,22 +763,23 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                     phase_term_to_parse_tree,
                     [simple_msg(get_term_context(ValuesTerm),
                         [always(NoValuesPieces)])]),
-                MaybeValues = error1([NoValuesSpec])
+                MaybeOoMValues = error1([NoValuesSpec])
             ;
-                Values0 = [_ | _],
-                MaybeValues = MaybeValues0
+                Values = [HeadValue | TailValues],
+                MaybeOoMValues = ok1(one_or_more(HeadValue, TailValues))
             )
         ;
-            MaybeValues0 = error1(_),
-            MaybeValues = MaybeValues0
+            MaybeValues = error1(ValuesSpecs),
+            MaybeOoMValues = error1(ValuesSpecs)
         ),
 
         ( if
             MaybeForeignLang = ok1(ForeignLang),
             MaybeTypeCtor = ok1(TypeCtor),
-            MaybeValues = ok1(Values)
+            MaybeOoMValues = ok1(OoMValues)
         then
-            FEInfo = pragma_info_foreign_enum(ForeignLang, TypeCtor, Values),
+            FEInfo =
+                pragma_info_foreign_enum(ForeignLang, TypeCtor, OoMValues),
             Pragma = pragma_foreign_enum(FEInfo),
             ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
                 SeqNum),
@@ -785,7 +788,7 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         else
             Specs = get_any_errors1(MaybeForeignLang) ++
                 get_any_errors1(MaybeTypeCtor) ++
-                get_any_errors1(MaybeValues),
+                get_any_errors1(MaybeOoMValues),
             MaybeIOM = error1(Specs)
         )
     else

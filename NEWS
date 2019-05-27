@@ -430,6 +430,9 @@ Changes to the Mercury standard library:
    - take_while/2
    - drop_while/3
    - drop_while/2
+   - one_or_more_to_list/1
+   - list_to_one_or_more/2
+   - list_to_one_or_more_det/2
 
 * The takewhile/4 predicate has been deprecated in the list module,
   take_while/4 can be used instead.

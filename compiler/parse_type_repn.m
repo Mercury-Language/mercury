@@ -40,6 +40,7 @@
 :- import_module libs.
 :- import_module libs.globals.                  % for foreign_language
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_pragma.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_defn.
@@ -54,6 +55,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
@@ -79,12 +81,12 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         then
             (
                 AtomStr = "is_direct_dummy",
-                parse_type_repn_direct_dummy(AtomStr, RepnArgs,
-                    RepnContext, MaybeRepn)
+                parse_no_arg_type_repn(AtomStr, RepnArgs, RepnContext,
+                    tcrepn_is_direct_dummy, MaybeRepn)
             ;
                 AtomStr = "is_notag",
-                parse_type_repn_notag(AtomStr, RepnArgs,
-                    RepnContext, MaybeRepn)
+                parse_no_arg_type_repn(AtomStr, RepnArgs, RepnContext,
+                    tcrepn_is_notag, MaybeRepn)
             ;
                 AtomStr = "is_equivalent_to",
                 parse_type_repn_equivalent_to(VarSet, AtomStr, RepnArgs,
@@ -95,8 +97,8 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     RepnContext, MaybeRepn)
             ;
                 AtomStr = "is_word_aligned_ptr",
-                parse_type_repn_is_word_aligned_ptr(AtomStr, RepnArgs,
-                    RepnContext, MaybeRepn)
+                parse_no_arg_type_repn(AtomStr, RepnArgs, RepnContext,
+                    tcrepn_is_word_aligned_ptr, MaybeRepn)
             ;
                 AtomStr = "has_direct_arg_functors",
                 parse_type_repn_has_direct_arg_functors(AtomStr, RepnArgs,
@@ -176,31 +178,15 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
 
 %-----------------------------------------------------------------------------e
 
-:- pred parse_type_repn_direct_dummy(string::in, list(term)::in,
-    term.context::in, maybe1(type_ctor_repn_info)::out) is det.
-
-parse_type_repn_direct_dummy(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
-    (
-        RepnArgs = [],
-        MaybeRepn = ok1(tcrepn_is_direct_dummy)
-    ;
-        RepnArgs = [_ | _],
-        Pieces = [words("Error:"), quote(RepnStr),
-            words("should not have any arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(RepnContext, [always(Pieces)])]),
-        MaybeRepn = error1([Spec])
-    ).
-
-%-----------------------------------------------------------------------------e
-
-:- pred parse_type_repn_notag(string::in, list(term)::in, term.context::in,
+:- pred parse_no_arg_type_repn(string::in, list(term)::in,
+    term.context::in, type_ctor_repn_info::in,
     maybe1(type_ctor_repn_info)::out) is det.
 
-parse_type_repn_notag(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
+parse_no_arg_type_repn(RepnStr, RepnArgs, RepnContext,
+        NoArgRepn, MaybeRepn) :-
     (
         RepnArgs = [],
-        MaybeRepn = ok1(tcrepn_is_notag)
+        MaybeRepn = ok1(NoArgRepn)
     ;
         RepnArgs = [_ | _],
         Pieces = [words("Error:"), quote(RepnStr),
@@ -290,64 +276,6 @@ parse_type_repn_fits_in_n_bits(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have exactly two arguments,"),
             words("an integer and a fill kind."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(RepnContext, [always(Pieces)])]),
-        MaybeRepn = error1([Spec])
-    ).
-
-%-----------------------------------------------------------------------------e
-
-:- pred parse_type_repn_is_word_aligned_ptr(string::in, list(term)::in,
-    term.context::in, maybe1(type_ctor_repn_info)::out) is det.
-
-parse_type_repn_is_word_aligned_ptr(RepnStr, RepnArgs, RepnContext,
-        MaybeRepn) :-
-    (
-        RepnArgs = [RepnArg],
-        ( if
-            RepnArg = term.functor(term.atom(AtomStr), AtomArgs, _),
-            AtomStr = "foreign_type_assertion",
-            AtomArgs = []
-        then
-            Repn = tcrepn_is_word_aligned_ptr(wap_foreign_type_assertion),
-            MaybeRepn = ok1(Repn)
-        else if
-            RepnArg = term.functor(term.atom(AtomStr), AtomArgs, _),
-            AtomStr = "mercury_type",
-            AtomArgs = [AtomArg]
-        then
-            ( if parse_name_and_arity_unqualified(AtomArg, SymName, Arity) then
-                WAP = wap_mercury_type(sym_name_arity(SymName, Arity)),
-                Repn = tcrepn_is_word_aligned_ptr(WAP),
-                MaybeRepn = ok1(Repn)
-            else
-                Pieces = [words("Error: the argument of"),
-                    quote("mercury_type"), words("should have the form"),
-                    quote("type_name/arity"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(AtomArg), [always(Pieces)])]),
-                MaybeRepn = error1([Spec])
-            )
-        else
-            Pieces = [words("Error: the argument of"), quote(RepnStr),
-                words("should be either"),
-                quote("foreign_type_assertion"), suffix(","),
-                words("or have the form"),
-                quote("mercury_type(type_name/type_arity)"), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(RepnContext, [always(Pieces)])]),
-            MaybeRepn = error1([Spec])
-        )
-    ;
-        ( RepnArgs = []
-        ; RepnArgs = [_, _ | _]
-        ),
-        Pieces = [words("Error:"), quote(RepnStr),
-            words("should have exactly one argument,"),
-            words("which should be either"),
-            quote("foreign_type_assertion"), suffix(","),
-            words("or have the form"),
-            quote("mercury_type(type_name / type_arity)"), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(RepnContext, [always(Pieces)])]),
         MaybeRepn = error1([Spec])
@@ -1744,7 +1672,7 @@ parse_type_repn_maybe_foreign_type(VarSet, RepnStr, RepnArgs, RepnContext,
             list_term_to_term_list(RepnArg1, ForeignTerms),
             ForeignTerms = [_ | _]
         then
-            parse_foreign_language_types(RepnStr, 1, ForeignTerms,
+            parse_foreign_language_types(VarSet, RepnStr, 1, ForeignTerms,
                 ForeignPairs, ForeignSpecs)
         else
             ForeignPairs = [],
@@ -1797,29 +1725,73 @@ parse_type_repn_maybe_foreign_type(VarSet, RepnStr, RepnArgs, RepnContext,
         MaybeRepn = error1([Spec])
     ).
 
-:- pred parse_foreign_language_types(string::in, int::in, list(term)::in,
-    list(pair(foreign_language, foreign_type_repn))::out,
+:- pred parse_foreign_language_types(varset::in, string::in, int::in,
+    list(term)::in, assoc_list(foreign_language, foreign_type_repn)::out,
     list(error_spec)::out) is det.
 
-parse_foreign_language_types(_, _, [], [], []).
-parse_foreign_language_types(RepnStr, Nth, [Term | Terms],
+parse_foreign_language_types(_, _, _, [], [], []).
+parse_foreign_language_types(VarSet, RepnStr, Nth, [Term | Terms],
         !:ForeignPairs, !:Specs) :-
-    parse_foreign_language_types(RepnStr, Nth + 1, Terms,
+    parse_foreign_language_types(VarSet, RepnStr, Nth + 1, Terms,
         !:ForeignPairs, !:Specs),
     ( if
-        Term = term.functor(term.atom(TermStr), [ArgTerm], _),
-        simple_foreign_language_string(Lang, TermStr),
-        ArgTerm = term.functor(term.atom(TypeName), [], _)
+        Term = term.functor(term.atom(FunctorStr), ArgTerms, _),
+        (
+            ( FunctorStr = "c", Lang = lang_c
+            ; FunctorStr = "csharp", Lang = lang_csharp
+            ; FunctorStr = "java", Lang = lang_java
+            ),
+            ArgTerms = [TypeNameTerm, AssertionTerm]
+        ;
+            FunctorStr = "erlang",
+            Lang = lang_erlang,
+            ArgTerms = [AssertionTerm],
+            TypeNameTerm = term.functor(term.string(""), [], term.context_init)
+        )
     then
-        !:ForeignPairs = [Lang - foreign_type_repn(TypeName) | !.ForeignPairs]
+        ( if TypeNameTerm = term.functor(term.string(TypeName0), [], _) then
+            MaybeTypeName = ok1(TypeName0)
+        else
+            TypeNameTermStr = describe_error_term(VarSet, TypeNameTerm),
+            TypeNamePieces = [words("Error: the type name in the"),
+                nth_fixed(Nth), words("element of the list"),
+                words("in the first argument of"), quote(RepnStr),
+                words("is"), quote(TypeNameTermStr), suffix(","),
+                words("which is not a valid type name."), nl],
+            TypeNameSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(TypeNameTerm),
+                    [always(TypeNamePieces)])]),
+            MaybeTypeName = error1([TypeNameSpec])
+        ),
+        AssertionContextPieces = cord.from_list([
+            words("In third argument of the"), nth_fixed(Nth),
+            words("element of the list in the first argument of"),
+            quote(RepnStr), suffix(":")]),
+        parse_foreign_type_assertions(AssertionContextPieces, VarSet,
+            AssertionTerm, set.init, AssertionSet,
+            [], AssertionSpecs),
+        ( if
+            MaybeTypeName = ok1(TypeName),
+            AssertionSpecs = []
+        then
+            Assertions = foreign_type_assertions(AssertionSet),
+            Repn = foreign_type_repn(TypeName, Assertions),
+            !:ForeignPairs = [Lang - Repn | !.ForeignPairs]
+        else
+            !:Specs = get_any_errors1(MaybeTypeName) ++ AssertionSpecs
+                ++ !.Specs
+        )
     else
+        TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: the"), nth_fixed(Nth), words("element"),
             words("of the list in the first argument of"), quote(RepnStr),
-            words("is not of the required form, which is one of"),
-            quote("c(c_type_name)"), suffix(","),
-            quote("csharp(csharp_type_name)"), suffix(","),
-            quote("java(java_type_name)"), words("or"),
-            quote("erlang(erlang_type_name)"), suffix("."), nl],
+            words("is"), quote(TermStr), suffix("."),
+            words("This is not in one of the required forms, which are"),
+            quote("c(c_type_name, assertionslist)"), suffix(","),
+            quote("csharp(csharp_type_name, assertionslist)"), suffix(","),
+            quote("java(java_type_name, assertionslist)"), words("and"),
+            quote("erlang(assertionslist)"),
+            suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         !:Specs = [Spec | !.Specs]
@@ -1831,12 +1803,12 @@ parse_foreign_language_types(RepnStr, Nth, [Term | Terms],
 parse_maybe_du_repn(VarSet, RepnStr, Term, MaybeMaybeDuRepn) :-
     ( if
         Term = term.functor(term.atom(TermStr), [], _),
-        TermStr = "no"
+        TermStr = "no_du_repn"
     then
         MaybeMaybeDuRepn = ok1(no)
     else if
         Term = term.functor(term.atom(TermStr), [ArgTerm], TermContext),
-        TermStr = "yes"
+        TermStr = "du_repn"
     then
         parse_type_repn_du(VarSet, indirect_in_maybe_foreign_type, ArgTerm,
             TermContext, MaybeDuRepn),
@@ -1850,8 +1822,8 @@ parse_maybe_du_repn(VarSet, RepnStr, Term, MaybeMaybeDuRepn) :-
     else
         Pieces = [words("Error: the second argument of"),
             quote(RepnStr), words("should be either"),
-            words("a"), quote("no"), words("with no arguments,"),
-            words("or a"), quote("yes"), words("with one argument."), nl],
+            quote("no_du_repn"), words("with no arguments,"),
+            words("or"), quote("du_repn"), words("with one argument."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         MaybeMaybeDuRepn = error1([Spec])

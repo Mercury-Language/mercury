@@ -1660,14 +1660,24 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         list.foldl(gather_foreign_enum_value_pair, CtorRepns,
             [], RevForeignEnumVals),
         list.reverse(RevForeignEnumVals, ForeignEnumVals),
-        FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignEnumVals),
-        ForeignPragma = pragma_foreign_enum(FEInfo),
-        % The pragma's origin isn't printed, so what origin we pass here
-        % doesn't matter.
-        ForeignItemPragma = item_pragma_info(ForeignPragma, item_origin_user,
-            Context, -1),
-        ForeignItem = item_pragma(ForeignItemPragma),
-        mercury_output_item(MercInfo, ForeignItem, !IO)
+        (
+            ForeignEnumVals = []
+            % This can only happen if the type has no function symbols.
+            % which should have been detected and reported by now.
+        ;
+            ForeignEnumVals = [HeadForeignEnumVal | TailForeignEnumVals],
+            OoMForeignEnumVals =
+                one_or_more(HeadForeignEnumVal, TailForeignEnumVals),
+            FEInfo = pragma_info_foreign_enum(Lang, TypeCtor,
+                OoMForeignEnumVals),
+            ForeignPragma = pragma_foreign_enum(FEInfo),
+            % The pragma's origin isn't printed, so what origin we pass here
+            % doesn't matter.
+            ForeignItemPragma = item_pragma_info(ForeignPragma,
+                item_origin_user, Context, -1),
+            ForeignItem = item_pragma(ForeignItemPragma),
+            mercury_output_item(MercInfo, ForeignItem, !IO)
+        )
     else
         true
     ).

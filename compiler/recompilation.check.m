@@ -1227,8 +1227,8 @@ check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor, TypeDefn,
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu = type_details_du(Ctors, _, _),
-        list.foldl(check_functor_ambiguities(NeedQualifier, TypeCtor), Ctors,
-            !Info)
+        list.foldl(check_functor_ambiguities(NeedQualifier, TypeCtor),
+            one_or_more_to_list(Ctors), !Info)
     ).
 
 :- pred check_functor_ambiguities(need_qualifier::in, type_ctor::in,

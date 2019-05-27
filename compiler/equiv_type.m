@@ -83,7 +83,8 @@
     is det.
 
 :- pred replace_in_ctors(type_eqv_map::in,
-    list(constructor)::in, list(constructor)::out, tvarset::in, tvarset::out,
+    one_or_more(constructor)::in, one_or_more(constructor)::out,
+    tvarset::in, tvarset::out,
     eqv_expanded_info::in, eqv_expanded_info::out) is det.
 
 :- type eqv_type_body
@@ -844,11 +845,11 @@ replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
         TypeDefn = parse_tree_eqv_type(DetailsEqv)
     ;
         TypeDefn0 = parse_tree_du_type(DetailsDu0),
-        DetailsDu0 = type_details_du(TypeBody0, EqPred, DirectArgFunctors),
-        replace_in_ctors_location(MaybeRecord, TypeEqvMap, TypeBody0, TypeBody,
+        DetailsDu0 = type_details_du(Ctors0, EqPred, DirectArgFunctors),
+        replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
             !VarSet, !EquivTypeInfo, !UsedModules),
         ContainsCirc = no,
-        DetailsDu = type_details_du(TypeBody, EqPred, DirectArgFunctors),
+        DetailsDu = type_details_du(Ctors, EqPred, DirectArgFunctors),
         TypeDefn = parse_tree_du_type(DetailsDu)
     ;
         TypeDefn0 = parse_tree_solver_type(DetailsSolver0),
@@ -1021,14 +1022,20 @@ replace_in_ctors(TypeEqvMap, !Ctors, !VarSet, !EquivTypeInfo) :-
         !Ctors, !VarSet, !EquivTypeInfo, used_modules_init, _).
 
 :- pred replace_in_ctors_location(maybe_record_sym_name_use::in,
-    type_eqv_map::in, list(constructor)::in, list(constructor)::out,
+    type_eqv_map::in,
+    one_or_more(constructor)::in, one_or_more(constructor)::out,
     tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_ctors_location(MaybeRecord, TypeEqvMap, !Ctors, !VarSet,
+replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors, !VarSet,
         !EquivTypeInfo, !UsedModules) :-
-    list.map_foldl3(replace_in_ctor(MaybeRecord, TypeEqvMap), !Ctors, !VarSet,
-        !EquivTypeInfo, !UsedModules).
+    Ctors0 = one_or_more(HeadCtor0, TailCtors0),
+    replace_in_ctor(MaybeRecord, TypeEqvMap, HeadCtor0, HeadCtor,
+        !VarSet, !EquivTypeInfo, !UsedModules),
+    list.map_foldl3(replace_in_ctor(MaybeRecord, TypeEqvMap),
+        TailCtors0, TailCtors,
+        !VarSet, !EquivTypeInfo, !UsedModules),
+    Ctors = one_or_more(HeadCtor, TailCtors).
 
 :- pred replace_in_ctor(maybe_record_sym_name_use::in, type_eqv_map::in,
     constructor::in, constructor::out, tvarset::in, tvarset::out,

@@ -1920,6 +1920,11 @@
 
 :- func one_or_more_cons(T, one_or_more(T)) = one_or_more(T).
 
+:- func one_or_more_to_list(one_or_more(T)) = list(T).
+
+:- pred list_to_one_or_more(list(T)::in, one_or_more(T)::out) is semidet.
+:- pred list_to_one_or_more_det(list(T)::in, one_or_more(T)::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -3459,6 +3464,14 @@ inst_preserving_reverse_prepend([X | Xs], L0, L) :-
 
 one_or_more_cons(Head, one_or_more(HeadTail, TailTail)) =
     one_or_more(Head, [HeadTail | TailTail]).
+
+one_or_more_to_list(one_or_more(Head, Tail)) = [Head | Tail].
+
+list_to_one_or_more([Head | Tail], one_or_more(Head, Tail)).
+
+list_to_one_or_more_det([], _) :-
+    unexpected($pred, "empty list").
+list_to_one_or_more_det([Head | Tail], one_or_more(Head, Tail)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

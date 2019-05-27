@@ -83,6 +83,9 @@
 :- include_module prog_type_subst.
 :- include_module prog_util.
 
+% Type representation.
+:- include_module decide_type_repn.
+
 % Transformations that act on the parse tree,
 % and stuff relating to the module system.
 :- include_module canonicalize_interface.

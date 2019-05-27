@@ -464,6 +464,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ; Item = item_foreign_import_module(_)
+        ; Item = item_type_repn(_)
         ),
         set.insert(Item, !SortableItems)
     ;
@@ -473,10 +474,6 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         ; Item = item_mutable(_)
         ),
         !:NonReorderableItemsCord = cord.snoc(!.NonReorderableItemsCord, Item)
-    ;
-        Item = item_type_repn(_),
-        % We do not generate such items yet.
-        unexpected($pred, "item_type_repn")
     ),
     classify_items(Items, !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         !PredRelatedMap, !SortableItems, !NonReorderableItemsCord).
