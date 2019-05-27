@@ -5714,5 +5714,14 @@ MERCURY_MSG(["You can make the install faster by installing fewer grades,"])
 MERCURY_MSG(["as shown by the fine-tuning section of the INSTALL file,"])
 MERCURY_MSG(["or by compiling the files of each grade in parallel,"])
 MERCURY_MSG(["which you can do via a command such as make PARALLEL=-j2 install."])
+MERCURY_MSG("")
+
+if test -z "$MAKEINFO" -o -z "$INFO"
+then
+    MERCURY_MSG(["WARNING: missing \`makeinfo' or \`info'."])
+    MERCURY_MSG(["They are necessary to generate documentation in all formats,"])
+    MERCURY_MSG(["as well as the help text in the debugger."])
+    MERCURY_MSG("")
+fi
 
 #-----------------------------------------------------------------------------#
