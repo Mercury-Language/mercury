@@ -226,6 +226,7 @@ mercury_library/index.html: library.texi_pp
 warn_no_mdb_doc:
 	# Warning: Unable to build mdb documentation.
 	# This is probably due to a missing `makeinfo' or `info'.
+	cp mdb_doc_stub.txt mdb_doc
 
 mdb_doc: generate_mdb_doc mercury_user_guide.info mdb_categories
 	./generate_mdb_doc

@@ -1,0 +1,6 @@
+document_category 100 no_mdb_doc
+Sorry, mdb help is not available.
+This is probably due to missing `makeinfo' or `info'
+when the Mercury system was installed.
+
+end
