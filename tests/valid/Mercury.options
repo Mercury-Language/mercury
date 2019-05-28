@@ -99,6 +99,7 @@ MCFLAGS-simplify_bug2		= -O3
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-solver_type_bug		= --halt-at-warn
 MCFLAGS-solv			= --halt-at-warn
+MCFLAGS-some_singleton		= --halt-at-warn
 MCFLAGS-spurious_purity_warning	= --halt-at-warn
 MCFLAGS-stack_opt_simplify	= --optimize-saved-vars
 MCFLAGS-table_no_attr		= --structure-sharing

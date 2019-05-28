@@ -322,6 +322,10 @@ NON_DECLDEBUG_PROGS = \
 #
 #	mode_selection
 #
+# XXX ... or this one:
+#
+#	some_singleton
+#
 # XXX The following tests are not valid under the current Mercury
 # language rules:
 #
