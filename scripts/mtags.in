@@ -6,11 +6,13 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 
-$usage = "\
-Usage: mtags [<options>] <source files>
+$usage =
+"Usage: mtags [<options>] <source files>
 Use \`mtags --help' for help.";
 
-$help = "\
+$help =
+"Name: mtags - generate tag files for Mercury source code
+
 Usage:
     mtags [<options>] <source files>
 
@@ -73,7 +75,7 @@ Options:
         This option is the default, but is retained for
         backwards compatibility.
 
-    --no-keep-duplicates.
+    --no-keep-duplicates
         If a tag has multiple definitions, ignore all but the
         first.  Also ignores typeclass instance tags.
 

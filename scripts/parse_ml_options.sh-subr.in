@@ -113,14 +113,11 @@ Diagnostics options:
 Dynamic/static linking options:
 	--mercury-libs {shared, static, none}
 		Specify which version of the standard Mercury libraries to
-		link with:
-			--mercury-libs shared
-				Link with the shared libraries (*.so),
-				if possible, otherwise with the static ones.
-			--mercury-libs static
-				Link with the static libraries (*.@LIB_SUFFIX@).
-			--mercury-libs none
-				Don't link in the Mercury standard libraries.
+		link with.
+		\`shared' links with the shared libraries (*.so) if possible,
+		otherwise with the static ones.
+		\`static' links with the static libraries (*.a).
+		\`none' disables linking with the Mercury standard libraries.
 	-shared, --shared
 		Similar to \`--mercury-libs shared', but applies to all
 		libraries, not just the standard Mercury libraries.

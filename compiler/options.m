@@ -3793,7 +3793,7 @@ options_help_warning -->
         "--inhibit-style-warnings",
         "\tDisable all warning messages about programming style.",
         "--halt-at-warn",
-        "\tThis option causes the compiler to treat all ",
+        "\tThis option causes the compiler to treat all",
         "\twarnings as if they were errors. This means that",
         "\tif any warning is issued, the compiler will not",
         "\tgenerate code --- instead, it will return a",
@@ -4535,7 +4535,7 @@ options_help_ctgc -->
         "\tlarger than <n>. When n=0, widening is not enabled.",
         "\t(default: 0).",
         "--structure-reuse, --ctgc",
-        "\tPerform structure reuse analysis (Compile Time Garbage ",
+        "\tPerform structure reuse analysis (Compile Time Garbage",
         "\tCollection).",
         "--structure-reuse-constraint {same_cons_id, within_n_cells_difference}",
         "--ctgc-constraint {same_cons_id, within_n_cells_difference}",
@@ -4543,7 +4543,7 @@ options_help_ctgc -->
         "\tspecifies that reuse is only allowed between terms of the same",
         "\ttype and constructor. `within_n_cells_difference' states that",
         "\treuse is allowed as long as the arities between the reused term",
-        "\tand new term does not exceed a certain threshold. The threshold ",
+        "\tand new term does not exceed a certain threshold. The threshold",
         "\tneeds to be set using `--structure-reuse-constraint-arg'.",
         "\t(default: within_n_cells_difference, with threshold 0)",
         "--structure-reuse-constraint-arg, --ctgc-constraint-arg",
@@ -4604,7 +4604,7 @@ options_help_termination -->
 % They are currently disabled because that is still a work-in-progress.
 %
 %       "--enable-term2, --enable-termination2",
-%       "\tAnalyse each predicate to discover if it terminates. ",
+%       "\tAnalyse each predicate to discover if it terminates.",
 %       "\tThis uses an alternative termination analysis based",
 %       "\ton convex constraints.",
 %       "--chk-term2, --check-termination2",
@@ -4649,8 +4649,10 @@ options_help_compilation_model -->
         "code in such a way that the entire program must be",
         "compiled with the same setting of these options,",
         "and it must be linked to a version of the Mercury",
-        "library which has been compiled with the same setting.",
-        "",
+        "library which has been compiled with the same setting."
+    ]),
+    io.write_string("\n"),
+    write_tabbed_lines([
         "-s <grade>, --grade <grade>",
         "\tSelect the compilation model. The <grade> should be one of",
         "\tthe base grades `none', `reg', `asm_fast', `hlc', `java',",
@@ -4718,7 +4720,7 @@ options_help_compilation_model -->
     ]),
 
     io.write_string("\n    Optional feature compilation model options:\n"),
-    io.write_string("      Debugging\n"),
+    io.write_string("\n      Debugging\n"),
     write_tabbed_lines([
         "--debug\t\t\t\t(grade modifier: `.debug')",
         "\tEnable Mercury-level debugging.",
@@ -4739,7 +4741,7 @@ options_help_compilation_model -->
 %       "--ss-debug\t\t\t\t(grade modifier: `.ssdebug')",
 %       "\tEnable the source-to-source debugging transform."
     ]),
-    io.write_string("      Profiling\n"),
+    io.write_string("\n      Profiling\n"),
     write_tabbed_lines([
         "-p, --profiling, --time-profiling",
         "\t\t\t\t(grade modifier: `.prof')",
@@ -4796,10 +4798,10 @@ options_help_compilation_model -->
 %       "\tUse calls to implement coverage points, not inline foreign code.",
 
 %       "--coverage-profiling-static",
-%       "\tDisable dynamic coverage profiling, this uses less memory and may ",
+%       "\tDisable dynamic coverage profiling, this uses less memory and may",
 %       "\tbe faster.",
 
-%       "Switches to effect coverage profiling (part of deep profiling). ",
+%       "Switches to effect coverage profiling (part of deep profiling).",
 %       "they enable different types of coverage points.",
 
 %       "--no-profile-deep-coverage-after-goal",
@@ -4813,7 +4815,7 @@ options_help_compilation_model -->
 %       "\tDisable coverage points at the beginning of disjunction branches.",
 
 %       I believe these options are broken - pbone.
-%       "Switches to tune the coverage profiling pass, useful for ",
+%       "Switches to tune the coverage profiling pass, useful for",
 %       "debugging.",
 %
 %       "--no-profile-deep-coverage-use-portcounts",
@@ -4846,7 +4848,7 @@ options_help_compilation_model -->
         "\tgrades on some processors, See README.ThreadScope for details."
     ]),
 
-    io.write_string("      Miscellaneous optional features\n"),
+    io.write_string("\n      Miscellaneous optional features\n"),
     write_tabbed_lines([
         "--gc {none, boehm, hgc, accurate, automatic}",
         "--garbage-collection {none, boehm, hgc, accurate, automatic}",
@@ -4991,7 +4993,7 @@ options_help_compilation_model -->
     io.write_string("\n      Data representation\n"),
     write_tabbed_lines([
         "--tags {none, low, high}      (This option is not for general use.)",
-        "\tSpecify whether to use the low bits or the high bits of ",
+        "\tSpecify whether to use the low bits or the high bits of",
         "\teach word as tag bits (default: low).",
     %   "\t\t`--tags none' implies `--num-tag-bits 0'.",
         "--num-tag-bits <n>            (This option is not for general use.)",

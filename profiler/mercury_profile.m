@@ -108,12 +108,12 @@ usage(!IO) :-
     io.stderr_stream(StdErr, !IO),
     library.version(Version, Fullarch),
     io.write_strings(StdErr, [
-        "Mercury Profiler, version ", Version, ", on ", Fullarch, ".\n",
+        "mprof - Mercury profiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
         "Copyright (C) 2013-2019 The Mercury team\n",
-            "Usage: ", ProgName, " [<options>] [<files>]\n",
-            "Use `", ProgName, " --help' for more information.\n"
-        ], !IO).
+        "Usage: ", ProgName, " [<options>] [<files>]\n",
+        "Use `", ProgName, " --help' for more information.\n"
+    ], !IO).
 
 :- pred long_usage(io::di, io::uo) is det.
 
@@ -121,10 +121,11 @@ long_usage(!IO) :-
     io.progname_base("mprof", ProgName, !IO),
     library.version(Version, Fullarch),
     io.write_strings([
-        "Mercury Profiler, version ", Version, ", on ", Fullarch, ".\n",
+        "Name: mprof - Mercury profiler, version ", Version, ", on ",
+        Fullarch, "\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
         "Copyright (C) 2013-2019 The Mercury team\n\n",
-            "Usage: ", ProgName, " [<options>] [<files>]\n",
+        "Usage: ", ProgName, " [<options>] [<files>]\n",
         "\n",
         "Description:\n",
         "\t`mprof' produces execution profiles for Mercury programs.\n",

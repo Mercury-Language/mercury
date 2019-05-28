@@ -97,7 +97,8 @@ M_ENV = \
 	MCFLAGS=--no-mercury-stdlib-dir
 
 %.1: ../scripts/% make_manpage
-	$(M_ENV) ./make_manpage $< > $@
+	$(M_ENV) $< --help 2>&1 | \
+		awk -f make_manpage -v date=$(shell date "+%Y-%m-%d") > $@
 
 %.man: %.1
 	nroff -man $< > $@

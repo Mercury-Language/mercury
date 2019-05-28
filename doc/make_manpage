@@ -1,117 +1,251 @@
-#!/bin/sh
+#!/usr/bin/awk -f
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998, 2002, 2006 The University of Melbourne. 
+# Copyright (C) 1997-1998, 2002, 2006 The University of Melbourne.
+# Copyright (C) 2019 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 #
 # make_manpage: create Unix man page from help message.
 #
-# Usage: make_manpage <program>
+# Usage: <program> --help | awk -f make_manpage
 #
 # This file takes the output of `<program> --help'
 # and turns it into a Unix-style man page by
 # massaging it a bit and inserting some extra stuff that is
 # the same for all the Mercury man pages.
 
-# Section headings must match /[\/A-Za-z ]*:/.
-# We insert the `.SH' command for them,
-# convert them to uppercase, delete the ":",
-# and replace "USAGE" with "SYNOPSIS".
+# Strip leading whitespace.
+function lstrip(s) {
+    sub(/^[\t ]+/, "", s)
+    return s
+}
 
-# Section sub-headings start with spaces.
-# We insert the `.SH' command for them.
+# Replace tabs with spaces.
+function replace_tabs(s) {
+    gsub(/\t/, " ", s)
+    return s
+}
 
-# Option headings start with a tab and then a `-'.
-# We put them in bold, and indent them differently.
+# Escape characters (add as required).
+function escape(s) {
+    gsub(/\\/, "\\\\", s)
+    gsub(/-/, "\\-", s)
+    return s
+}
 
-# Each line of the main text must start with a tab.
-# We change the tab to "\&".
+# Escape characters for text that appears at the start of a line.
+function escape_sol(s) {
+    s = escape(s)
+    sub(/^\./, "\\\\\\&.", s)
+    return s
+}
 
-# NOTE: some of the sed expressions below occur on very long lines.
-# This is deliberate, BSD sed has problems handling line continuations in some
-# cases.
+# Return indentation level due to leading whitespace.
+function count_indent(s,    chars, i, n) {
+    sub(/[^\t ].*$/, "", s)
+    split(s, chars, "")
+    n = 0
+    for (i = 1; i <= length(s); i++) {
+        if (chars[i] == " ") {
+            n++
+        } else if (chars[i] == "\t") {
+            n = n + 8 - (n%8)
+        }
+    }
+    return n
+}
 
-program="$1"
-name="`basename $program `"
+BEGIN {
+    name = ""           # program name
+    accum = ""          # accumulate output
+    new_para = 0        # whether a paragraph separator is required
+    indent_para = 0     # whether to indent the next paragraph
+    have_notes = 0      # have output the NOTES section
+    have_verbatim = 0   # have verbatim text
+}
 
-trap 'rm -f /tmp/make_manpage$$' 1 2 3 13 15
-$program --help 2>&1 \
-	| sed	\
-		-e '/^[\/A-Za-z ]*:[ 	]/s//.SH "&"\
-/'			\
-		-e '/^[\/A-Za-z ]*:/s//.SH "&"\
-/'			\
-		-e '/^ .*/s//.SH "&"\
-/'			\
-		-e '/^	[^-	].*:/s/^	.*$/	.Ve\
-.B\
-.Vb 1\
-\\\& &\
-.Ve\
-.Vb 2/' 					\
-		-e '/^	-/s/^	.*$/	.Ve\
-.B\
-.Vb 1\
-\\\& &\
-.Ve\
-.Vb 2/' 					\
-		-e 's/\\& 	/\\\& /' \
-		-e 's/^		/	\\\&	/g' 	\
-		-e 's/^	//' \
-	| sed	\
-		-e '/^.SH "[\/A-Za-z ]*:[ 	]*"/y/abcdefghijklmnopqrstuvwxyz:/ABCDEFGHIJKLMNOPQRSTUVWXYZ /' \
-		-e 's/^.SH "USAGE[ 	]*"/.SH "SYNOPSIS"/' \
-	> /tmp/make_manpage$$ 
-manpage="`cat /tmp/make_manpage$$`"
-rm -f /tmp/make_manpage$$
-uppername="$name"
+# Single-word section heading with trailing text, e.g.
+#   Name: foo
+#   Usage: foo [options]
+/^[A-Z][a-z]*:[\t ]/ {
+    section = $1
+    sub(/:$/, "", section)
+    if (section == "Name" && !name) {
+        name = $2
+    }
+    if (section == "Usage") {
+        section = "Synopsis"
+    }
+    accum = accum ".SH " escape(toupper(section)) "\n"
 
-if echo "$manpage" | grep '^.SH "ARGUMENTS' > /dev/null; then
-	first_half="`echo \"$manpage\" | sed '/^.SH \"ARGUMENTS *\"/,$d'`"
-	last_half="`echo \"$manpage\" | sed -n '/^.SH \"ARGUMENTS *\"/,$p'`"
-else
-	first_half="`echo \"$manpage\" | sed '/^.SH \"OPTIONS *\"/,$d'`"
-	last_half="`echo \"$manpage\" | sed -n '/^.SH \"OPTIONS *\"/,$p'`"
-fi
+    text = $0
+    gsub(/^.*:[\t ]/, "", text)
+    accum = accum escape_sol(lstrip(text)) "\n"
 
-cat <<EOF
-.de Vb
-.nf
-.ne \\\$1
-..
-.de Ve
+    new_para = 0
+    indent_para = 0
+    next
+}
 
-.fi
-..
-.TH $uppername 1 "`date`" "" "Mercury Programmer's Manual"
-.AT 3
-.Vb 2
-$first_half
-.fi
-.SH NOTES
-.I $name
-is one of the development tools
-that are part of the Mercury distribution.
-.PP
-This manual page is limited to a brief summary.
-For further information see the Mercury User's Guide.
-.Vb 2
-$last_half
-.fi
-.SH AUTHORS
-The Mercury team.
-.P
-See <http://www.mercurylang.org/contact/people.html>.
-.SH COPYRIGHT
-This program and its documentation are copyright by the University of Melbourne.
-They may be copied only under the terms of the GNU General Public License \-
-see the file COPYING in the Mercury distribution.
-.SH "SEE ALSO"
-<http://www.mercurylang.org/information/documentation.html>
-.P
-The Mercury User's Guide.
-.P
-The GNU General Public License.
-.ex
-EOF
+# Add a NOTES section before ARGUMENTS or OPTIONS.
+!have_notes && /^(Arguments|Options):$/ {
+    accum = accum \
+        ".SH NOTES\n" \
+        ".I " escape(name) "\n" \
+        "is one of the development tools\n" \
+        "that are part of the Mercury distribution.\n" \
+        ".PP\n" \
+        "This manual page is limited to a brief summary.\n" \
+        "For further information see the Mercury User's Guide.\n"
+    have_notes = 1
+}
+
+# Section heading without trailing text, e.g.
+#   Options:
+#   Environment variables:
+/^[A-Z][\/A-Za-z ]*:$/ {
+    section = $0
+    sub(/:.*$/, "", section)
+
+    # Stop early for mercury_config at "Configure options".
+    if (name == "mercury_config" && section == "Configure options") {
+        exit
+    }
+
+    accum = accum ".SH " escape(toupper(section)) "\n"
+    new_para = 0
+    indent_para = 0
+    next
+}
+
+# Sub-section heading without trailing text, e.g.
+#   High-level (HLDS -> HLDS) optimizations:
+/^[\t ]+[A-Z].*:$/ && name != "mprof_merge_runs" {
+    accum = accum ".SS " escape(lstrip($0)) "\n"
+    new_para = 0
+    indent_para = 0
+    next
+}
+
+# Options, e.g.
+#   -f, --foo
+#   --foo-bar:
+#
+# This currently does not allow arbitrary whitespace before
+# the dash because mtags has text lines that begin with dash.
+/^(    |\t)-/ {
+    line = lstrip($0)
+    sub(/:$/, "", line)
+    # Remove tab alignment in mmc --help
+    line = replace_tabs(line)
+    accum = accum ".TP\n"
+    accum = accum ".B " escape(line) "\n"
+    new_para = 0
+    indent_para = 1
+    next
+}
+
+# Special case for mmake targets, e.g.
+#   <module>.depend:
+#   clean:
+name == "mmake" && section == "Targets" && /^\t.*:$/ {
+    line = lstrip($0)
+    sub(/:$/, "", line)
+    accum = accum ".TP\n"
+    accum = accum ".B " escape(line) "\n"
+    new_para = 0
+    indent_para = 1
+    next
+}
+
+# Special case for mprof_merge_runs usage text.
+# (This could be extended to other "verbatim" text.)
+name == "mprof_merge_runs" && section == "Usage" && /^\t\t./ {
+    accum = accum ".Vb\n"
+    accum = accum escape_sol(lstrip($0)) "\n"
+    accum = accum ".Ve\n"
+    have_verbatim = 1
+    next
+}
+
+# Blank line.
+/^[\t ]*$/ {
+    new_para = 1
+    next
+}
+
+# Main text.
+{
+    indent = count_indent($0)
+    if (indent < prev_indent) {
+        indent_para = 0
+    }
+
+    line = lstrip($0)
+
+    # Ensure Copyright messages start on new line.
+    if (line ~ /^Copyright \(C\)/) {
+        new_para = 1
+    }
+
+    if (new_para) {
+        if (indent_para) {
+            accum = accum ".IP\n"
+        } else {
+            accum = accum ".PP\n"
+        }
+        new_para = 0
+    }
+
+    accum = accum escape_sol(line) "\n"
+
+    prev_indent = indent
+}
+
+END {
+    if (have_verbatim) {
+        # Define Vb macro.
+        print ".de Vb"
+        print ".PP"
+        print ".nf"     # no-fill
+        print ".RS"     # relative margin indent
+        print ".."
+        # Define Ve macro.
+        print ".de Ve"
+        print ".RE"     # end indent
+        print ".fi"     # fill mode
+        print ".."
+    }
+
+    # date is passed in by Mmakefile as not all awk implementations support
+    # strftime().
+    #date = strftime("%Y-%m-%d")
+    manual = "Mercury Programmer's Manual"
+    print ".TH " toupper(name) " 1 \"" date "\" \"" manual "\""
+
+    # Delete unnecessary .PP and .IP
+    gsub(/(\.[PI]P\n)+\.SH /, ".SH ", accum)
+    gsub(/(\.[PI]P\n)+\.SS /, ".SS ", accum)
+    gsub(/(\.[PI]P\n)+\.TP\n/, ".TP\n", accum)
+    gsub(/(\.[PI]P\n)+$/, "", accum)
+
+    # Squeeze verbatim lines into blocks.
+    if (have_verbatim) {
+        gsub(/\.Ve\n.Vb\n/, "", accum)
+    }
+
+    printf "%s", accum
+    print ".SH AUTHORS"
+    print "The Mercury team."
+    print ".SH COPYRIGHT"
+    print "This program and its documentation are copyright by"
+    print "the University of Melbourne and the Mercury team."
+    print "They may be copied only under the terms of the"
+    print "GNU General Public License \\-"
+    print "see the file COPYING in the Mercury distribution."
+    print ".SH SEE ALSO"
+    print "The Mercury User's Guide."
+    print ".PP"
+    print "<http://www.mercurylang.org/information/documentation.html>"
+}
