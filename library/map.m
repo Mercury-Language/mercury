@@ -10,22 +10,26 @@
 % Main author: fjh, conway.
 % Stability: high.
 %
-% This file provides the 'map' ADT.
-% A map (also known as a dictionary or an associative array) is a collection
-% of (Key, Data) pairs which allows you to look up any Data item given the
-% Key.
+% This file provides the 'map' abstract data type.
 %
-% The implementation is using balanced binary trees, as provided by tree234.m.
+% A map (also known as a dictionary or an associative array) is a collection
+% of (Key, Value) pairs that allows you to look up any Value given its Key.
+% Each Key may have only one corresponding Value. (If you want the ability
+% to store more than one Value for a given Key, use multi_map.m.)
+%
+% The implementation uses balanced binary trees, as provided by tree234.m.
 % Virtually all the predicates in this file just forward the work
 % to the corresponding predicate in tree234.m.
 %
 % Note: 2-3-4 trees do not have a canonical representation for any given map.
-% Therefore, two maps with the same set of key-value pairs may have
-% different internal representations. This means that two maps with the
-% same set of key-value pairs that may fail to unify and may compare as
-% unequal, for example if items were inserted into one of the maps in a
-% different order. See equal/2 below which can be used to test if two
-% maps have the same set of key-value pairs.
+% This means that two maps that represent the same set of key-value pairs
+% may have different internal representations, and that therefore they
+% may fail to unify and may compare as unequal. The reason for the difference
+% in the internal representation is usually that the (Key, Value) pairs were
+% inserted into the two maps in different orders, or that the two maps
+% have a different history of deletions. If you want to know whether
+% two maps have the same set of (Key, Data) pairs, use the map.equal/2
+% predicate below.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -220,7 +224,7 @@
 :- func sorted_keys(map(K, _V)) = list(K).
 :- pred sorted_keys(map(K, _V)::in, list(K)::out) is det.
 
-    % Given a map, return a list of all the data values in the map.
+    % Given a map, return a list of all the values in the map.
     %
 :- func values(map(_K, V)) = list(V).
 :- pred values(map(_K, V)::in, list(V)::out) is det.

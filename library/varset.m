@@ -190,7 +190,7 @@
 %---------------------%
 
     % Combine two different varsets, renaming apart:
-    % merge_renaming(VarSet0, NewVarSet, VarSet, Subst) is true
+    % merge_renaming(VarSet0, NewVarSet, VarSet, Renaming) is true
     % iff VarSet is the varset that results from joining a suitably renamed
     % version of NewVarSet to VarSet0. (Any bindings in NewVarSet are ignored.)
     % Renaming will map each variable in NewVarSet to the corresponding
