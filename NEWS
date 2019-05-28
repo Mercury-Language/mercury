@@ -383,6 +383,8 @@ Changes to the Mercury standard library:
 
    - foldl5/12
    - foldr5/12
+   - intersect_list/4
+   - union_list/4
 
 * The following predicate has been added to the set modules:
 
