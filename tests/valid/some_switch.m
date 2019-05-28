@@ -8,8 +8,8 @@
 :- interface.
 
 :- type nat
-    ---> o
-    ;   s(nat).
+    --->    o
+    ;       s(nat).
 
 :- func add(nat, nat) = nat.
 :- mode add(in, in)   = in  is semidet.
