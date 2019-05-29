@@ -661,7 +661,7 @@ parse_fundep_2(TypesTerm0, TypeVars) :-
 :- pred constraint_is_not_simple(prog_constraint::in) is semidet.
 
 constraint_is_not_simple(constraint(_ClassName, ArgTypes)) :-
-    some [Type] (
+    some [ArgType] (
         list.member(ArgType, ArgTypes),
         type_is_nonvar(ArgType),
         type_is_nonground(ArgType)

@@ -482,7 +482,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         ; UseOptFiles = yes
         )
     then
-        some [Targets, Sources] (
+        some [Targets] (
             Targets = one_or_more(TransOptDateFileName,
                 [ErrFileName, CDateFileName, JavaDateFileName]),
 

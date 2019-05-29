@@ -331,7 +331,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 ; ConsId = tuple_cons(_)
                 ),
                 ModuleInfo = !.DelayInfo ^ dpi_module_info,
-                some [ArgMode, RHSFinal] (
+                some [ArgMode] (
                     list.member(ArgMode, ArgModes),
                     ArgMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
                     RHSFromToInsts = from_to_insts(_, RHSFinalInst),

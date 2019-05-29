@@ -1280,15 +1280,16 @@ make_level_construction(SSTraceLevel, Goal, LevelVar, !VarSet, !VarTypes) :-
     make_const_construction_alloc(ConsId, ssdb_tracing_level_type,
         yes("Level"), Goal, LevelVar, !VarSet, !VarTypes).
 
-    % Detect if all argument's mode are fully input or output.
-    % XXX Other mode than fully input or output are not handled for the
-    % moment. So the code of these procedures will not be generated.
+    % Succeed if all the given argument modes are fully input or fully output.
+    % XXX At the moment, we don't handle arguments modes other than
+    % fully input or fully output, so if a procedure has such modes,
+    % we won't generate code for it.
     %
 :- pred all_args_fully_input_or_output(module_info::in, list(mer_mode)::in)
     is semidet.
 
 all_args_fully_input_or_output(ModuleInfo, HeadModes) :-
-    all [Modes] (
+    all [Mode] (
         list.member(Mode, HeadModes)
     =>
         ( mode_is_fully_input(ModuleInfo, Mode)

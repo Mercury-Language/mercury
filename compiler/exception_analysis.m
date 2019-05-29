@@ -808,7 +808,7 @@ excp_check_vars(ModuleInfo, VarTypes, Vars, MaybeAnalysisStatus, !Result) :-
 
 handle_mixed_conditional_scc(Results) =
     ( if
-        all [TypeStatus] (
+        all [Result] (
             list.member(Result, Results)
         =>
             Result ^ epr_rec_calls \= type_may_throw
