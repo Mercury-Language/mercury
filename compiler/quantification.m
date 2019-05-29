@@ -671,8 +671,7 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
     get_quant_vars(!.Info, QuantVars0),
-    % Rename apart all the quantified variables that occur
-    % outside this goal.
+    % Rename apart all the quantified variables that occur outside this goal.
     QVars = list_to_set(Vars0),
     set_of_var.intersect(OutsideVars, QVars, RenameVars1),
     set_of_var.intersect(LambdaOutsideVars, QVars, RenameVars2),
@@ -910,10 +909,11 @@ implicitly_quantify_goal_quant_info_bi_implication(LHS0, RHS0, GoalExpr,
         negation(hlds_goal(conj(plain_conj, [LHS, NotRHS]), GI)),
     ForwardsImplication = hlds_goal(ForwardsImplicationExpr, GI),
 
-    % Rename apart the local variables of the goals we have just duplicated.
     ReverseImplicationExpr0 =
         negation(hlds_goal(conj(plain_conj, [RHS, NotLHS]), GI)),
     ReverseImplication0 = hlds_goal(ReverseImplicationExpr0, GI),
+
+    % Rename apart the local variables of the goals we have just duplicated.
     goal_vars_bitset_maybe_lambda_and_bi_impl(ReverseImplication0, GoalVars),
     set_of_var.difference(GoalVars, NonLocalVars, RenameVars),
     rename_apart(RenameVars, _, ordinary_nonlocals_maybe_lambda,
