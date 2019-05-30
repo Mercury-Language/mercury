@@ -2707,12 +2707,8 @@ ctors_are_all_constants([Ctor | Ctors]) :-
 separate_out_constants([], [], []).
 separate_out_constants([Ctor | Ctors], Constants, Functors) :-
     separate_out_constants(Ctors, ConstantsTail, FunctorsTail),
-    Args = Ctor ^ cons_args,
-    % XXX TYPE_REPN Consider changing the representation of constructors
-    % to encode the invariant (no arguments -> no_exist_constraints)
-    % in the data structure.
     ( if
-        Args = [],
+        Ctor ^ cons_args = [],
         Ctor ^ cons_maybe_exist = no_exist_constraints
     then
         Constants = [Ctor | ConstantsTail],

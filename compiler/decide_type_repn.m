@@ -580,27 +580,6 @@ ctor_is_constant(Ctor, Name) :-
     Arity = 0,
     Name = unqualify_name(SymName).
 
-:- pred separate_out_constants(list(constructor)::in,
-    list(constructor)::out, list(constructor)::out) is det.
-
-separate_out_constants([], [], []).
-separate_out_constants([Ctor | Ctors], Constants, Functors) :-
-    separate_out_constants(Ctors, ConstantsTail, FunctorsTail),
-    Args = Ctor ^ cons_args,
-    % XXX TYPE_REPN Consider changing the representation of constructors
-    % to encode the invariant (no arguments -> no_exist_constraints)
-    % in the data structure.
-    ( if
-        Args = [],
-        Ctor ^ cons_maybe_exist = no_exist_constraints
-    then
-        Constants = [Ctor | ConstantsTail],
-        Functors = FunctorsTail
-    else
-        Constants = ConstantsTail,
-        Functors = [Ctor | FunctorsTail]
-    ).
-
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.decide_type_repn.
 %---------------------------------------------------------------------------%

@@ -386,6 +386,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 cons_ordinal        :: uint32,
 
                 % Existential constraints, if any.
+                % XXX TYPE_REPN Consider changing the representation here to
+                % encode the invariant (no arguments -> no_exist_constraints).
                 cons_maybe_exist    :: maybe_cons_exist_constraints,
 
                 % The cons_id should be cons(SymName, Arity, TypeCtor)
