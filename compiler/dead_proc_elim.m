@@ -29,6 +29,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module map.
@@ -140,7 +141,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.      % undesirable dependency
 
 :- import_module assoc_list.

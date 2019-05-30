@@ -161,7 +161,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
     map.init(DirectArgMap),
     TypeRepnDec = type_repn_decision_data(ItemTypeRepns, DirectArgMap,
-        ItemForeignEnums, ItemForeignExportEnums), 
+        ItemForeignEnums, ItemForeignExportEnums),
     module_info_set_type_repn_dec(TypeRepnDec, !ModuleInfo),
 
     % The old pass 1.
@@ -328,7 +328,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % don't do that. Any such errors are discovered when we type and mode
     % check that automatically created unify and compare predicates, whose
     % bodies call the user-specified predicate names.
-    % XXX PASS STRUCTURE Maybe we *should* that check here, since doing so
+    % XXX PASS STRUCTURE Maybe we *should* check that here, since doing so
     % would allow us to generate better error messages.
     (
         !.FoundInvalidType = did_not_find_invalid_type,
@@ -408,7 +408,6 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % We can do this only after we have processed every predicate declaration,
     % as well as everything that affects either the type table or the
     % constructor table.
-    %
     list.foldl(check_pred_if_field_access_function(!.ModuleInfo),
         ItemPredDecls, !Specs),
 
@@ -634,19 +633,23 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
             Origin = item_origin_compiler(CompilerAttrs),
             CompilerAttrs = item_compiler_attributes(_AllowExport, IsMutable),
             (
-                IsMutable = is_mutable,
+                IsMutable = is_mutable(ModuleName, MutableName,
+                    MutablePredKind),
+                PredOrigin = origin_mutable(ModuleName, MutableName,
+                    MutablePredKind),
                 add_marker(marker_mutable_access_pred, Markers0, Markers)
             ;
                 IsMutable = is_not_mutable,
+                % XXX Fix this lie.
+                PredOrigin = origin_user(PredSymName),
                 Markers = Markers0
             )
         ;
             Origin = item_origin_user,
+            PredOrigin = origin_user(PredSymName),
             Markers = Markers0
         ),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        % XXX ITEM_LIST Fix this lie.
-        PredOrigin = origin_user(PredSymName),
         module_add_pred_or_func(PredOrigin, Context, SeqNum,
             yes(ItemMercuryStatus), PredStatus, NeedQual,
             PredOrFunc, PredSymName, TypeVarSet, InstVarSet, ExistQVars,
@@ -696,8 +699,7 @@ add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
 maybe_add_default_mode(SectionItem, !ModuleInfo) :-
     SectionItem = sec_item(_SectionInfo, ItemPredDecl),
     ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
-        _Origin, _TypeVarSet, _InstVarSet, _ExistQVars, _WithType, _WithInst,
-        _MaybeDet, _Purity, _ClassContext, _Context, _SeqNum),
+        _, _, _, _, _, _, _, _, _, _, _),
 
     % Add default modes for function declarations, if necessary.
     PredName = unqualify_name(PredSymName),

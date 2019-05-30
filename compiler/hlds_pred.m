@@ -524,20 +524,6 @@
     ;       solver_type_from_ground_pred
     ;       solver_type_from_any_pred.
 
-:- type mutable_pred_kind
-    --->    mutable_pred_std_get
-    ;       mutable_pred_std_set
-    ;       mutable_pred_io_get
-    ;       mutable_pred_io_set
-    ;       mutable_pred_unsafe_get
-    ;       mutable_pred_unsafe_set
-    ;       mutable_pred_constant_get
-    ;       mutable_pred_constant_secret_set
-    ;       mutable_pred_lock
-    ;       mutable_pred_unlock
-    ;       mutable_pred_pre_init
-    ;       mutable_pred_init.
-
 :- type need_to_requantify
     --->    need_to_requantify
     ;       do_not_need_to_requantify.

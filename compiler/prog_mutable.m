@@ -672,29 +672,32 @@ io_set_pred_decl(ModuleName, Name, Type, Inst, Context) =
 :- func make_mutable_get_pred_decl(module_name, string, mer_type, mer_inst,
     get_set_pred_kind, prog_context) = item_pred_decl_info.
 
-make_mutable_get_pred_decl(ModuleName, Name, Type, Inst, PredKind, Context)
-        = GetPredDecl :-
-    Attrs = item_compiler_attributes(do_allow_export, is_mutable),
-    Origin = item_origin_compiler(Attrs),
-    % XXX The real origin is ico_mutable_decl(Name, PredKind))
+make_mutable_get_pred_decl(ModuleName, Name, Type, Inst, GetSetPredKind,
+        Context) = GetPredDecl :-
     TypeVarSet = varset.init,
     InstVarSet = varset.init,
     ExistQVars = [],
     SymName = mutable_get_pred_sym_name(ModuleName, Name),
     MainArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
     (
-        PredKind = get_set_pred_std,
+        GetSetPredKind = get_set_pred_std,
+        PredKind = mutable_pred_std_get,
         ArgTypesAndModes = MainArgTypesAndModes,
         Purity = purity_semipure
     ;
-        PredKind = get_set_pred_constant,
+        GetSetPredKind = get_set_pred_constant,
+        PredKind = mutable_pred_constant_get,
         ArgTypesAndModes = MainArgTypesAndModes,
         Purity = purity_pure
     ;
-        PredKind = get_set_pred_io,
+        GetSetPredKind = get_set_pred_io,
+        PredKind = mutable_pred_io_get,
         ArgTypesAndModes = MainArgTypesAndModes ++ io_state_pair,
         Purity = purity_pure
     ),
+    Attrs = item_compiler_attributes(do_allow_export,
+        is_mutable(ModuleName, Name, PredKind)),
+    Origin = item_origin_compiler(Attrs),
     WithType = no,
     WithInst = no,
     Constraints = constraints([], []),
@@ -705,31 +708,34 @@ make_mutable_get_pred_decl(ModuleName, Name, Type, Inst, PredKind, Context)
 :- func make_mutable_set_pred_decl(module_name, string, mer_type, mer_inst,
     get_set_pred_kind, prog_context) = item_pred_decl_info.
 
-make_mutable_set_pred_decl(ModuleName, Name, Type, Inst, PredKind, Context)
-        = SetPredDecl :-
-    Attrs = item_compiler_attributes(do_allow_export, is_mutable),
-    Origin = item_origin_compiler(Attrs),
-    % XXX The real origin is ico_mutable_decl(Name, PredKind))
+make_mutable_set_pred_decl(ModuleName, Name, Type, Inst, GetSetPredKind,
+        Context) = SetPredDecl :-
     TypeVarSet = varset.init,
     InstVarSet = varset.init,
     ExistQVars = [],
     MainArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
     (
-        PredKind = get_set_pred_std,
+        GetSetPredKind = get_set_pred_std,
+        PredKind = mutable_pred_std_set,
         SymName = mutable_set_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = MainArgTypesAndModes,
         Purity = purity_impure
     ;
-        PredKind = get_set_pred_constant,
+        GetSetPredKind = get_set_pred_constant,
+        PredKind = mutable_pred_constant_secret_set,
         SymName = mutable_secret_set_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = MainArgTypesAndModes,
         Purity = purity_impure
     ;
-        PredKind = get_set_pred_io,
+        GetSetPredKind = get_set_pred_io,
+        PredKind = mutable_pred_io_set,
         SymName = mutable_set_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = MainArgTypesAndModes ++ io_state_pair,
         Purity = purity_pure
     ),
+    Attrs = item_compiler_attributes(do_allow_export,
+        is_mutable(ModuleName, Name, PredKind)),
+    Origin = item_origin_compiler(Attrs),
     Constraints = constraints([], []),
     WithType = no,
     WithInst = no,

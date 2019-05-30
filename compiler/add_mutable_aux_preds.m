@@ -576,7 +576,7 @@ add_mutable_init_pred_decl(ModuleName, MutableName, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs) :-
     PredName = mutable_init_pred_sym_name(ModuleName, MutableName),
     ArgTypesAndModes = [],
-    add_mutable_aux_pred_decl(ModuleName, MutableName, mutable_pred_pre_init,
+    add_mutable_aux_pred_decl(ModuleName, MutableName, mutable_pred_init,
         PredName, ArgTypesAndModes, purity_impure, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs).
 
@@ -1495,18 +1495,19 @@ define_init_pred(ItemMutable, MaybeCallPreInitExpr, InitSetPredName,
         !ModuleInfo, !QualInfo, !Specs),
 
     InitPredArity = 0,
-    add_initialise_for_mutable(InitPredName, InitPredArity, Context,
-        Lang, !ModuleInfo, !Specs).
+    add_initialise_for_mutable(ModuleName, MutableName,
+        InitPredName, InitPredArity, Context, Lang, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_initialise_for_mutable(sym_name::in, arity::in,
-    prog_context::in, foreign_language::in, module_info::in, module_info::out,
+:- pred add_initialise_for_mutable(module_name::in, string::in,
+    sym_name::in, arity::in, prog_context::in, foreign_language::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_initialise_for_mutable(SymName, Arity, Context, Lang,
-        !ModuleInfo, !Specs) :-
+add_initialise_for_mutable(ModuleName, MutableName, SymName, Arity,
+        Context, Lang, !ModuleInfo, !Specs) :-
     % The compiler introduces initialise declarations that call impure
     % predicates as part of the source-to-source transformation for mutable
     % variables. These predicates *must* be impure in order to prevent the
@@ -1514,7 +1515,8 @@ add_initialise_for_mutable(SymName, Arity, Context, Lang,
     module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
     PredNameModesPF = pred_name_modes_pf(SymName, [], pf_predicate),
     FPEInfo = pragma_info_foreign_proc_export(Lang, PredNameModesPF, CName),
-    Attrs = item_compiler_attributes(do_allow_export, is_mutable),
+    Attrs = item_compiler_attributes(do_allow_export,
+        is_mutable(ModuleName, MutableName, mutable_pred_init)),
     Origin = item_origin_compiler(Attrs),
     add_pragma_foreign_proc_export(Origin, FPEInfo, Context,
         !ModuleInfo, !Specs).

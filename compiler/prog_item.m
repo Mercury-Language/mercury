@@ -389,8 +389,8 @@
 % items of the same name from each other.
 %
 
-    % Did an item originate in user code or was it added by the compiler as
-    % part of a source-to-source transformation, e.g. the initialise
+    % Did an item originate in user code or was it added by the compiler
+    % as part of a source-to-source transformation, e.g. the initialise
     % declarations? If the latter, specify the information that the
     % make_hlds pass may need to answer questions about the item.
     %
@@ -410,7 +410,11 @@
 
 :- type maybe_is_mutable
     --->    is_not_mutable
-    ;       is_mutable.
+    ;       is_mutable(
+                is_mutable_module_name          :: module_name,
+                is_mutable_name                 :: string,
+                is_mutable_pred_kind            :: mutable_pred_kind
+            ).
 
 :- type item
     --->    item_clause(item_clause_info)
@@ -502,7 +506,6 @@
                 pf_maybe_with_inst              :: maybe(mer_inst),
                 pf_maybe_detism                 :: maybe(determinism),
                 pf_maybe_attrs                  :: item_maybe_attrs,
-                % ZZZ pf_pred_origin            :: pred_origin_subset
                 pf_tvarset                      :: tvarset,
                 pf_instvarset                   :: inst_varset,
                 pf_existqvars                   :: existq_tvars,
