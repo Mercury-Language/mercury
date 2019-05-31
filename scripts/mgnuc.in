@@ -520,14 +520,23 @@ SANITIZER_OPTS="$CFLAGS_FOR_SANITIZERS"
 #
 
 ARCH_OPTS=""
+
+# XXX gcc generates warnings about possibly uninitialized variables in
+# high-level C code. clang would, too, if we did not suppress all warnings.
+case "$highlevel_code" in
+    true)
+        CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
+        ;;
+esac
+
 case "$FULLARCH" in
     i*86-*|x86_64*)
         # The use of stack_pointer in the ASM_JUMP macro defined in
         # runtime/mercury_goto.h causes lots of warnings about using possibly
         # uninitialized variables; there's no easy way to suppress them except
         # by disabling the warning.
-        case "$COMPILER" in
-            gcc)
+        case "$COMPILER,$highlevel_code" in
+            gcc,false)
                 CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
                 ;;
         esac
