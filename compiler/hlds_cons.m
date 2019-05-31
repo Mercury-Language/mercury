@@ -63,6 +63,8 @@
                 cons_type_kinds     :: tvar_kind_map,
 
                 % Any existential type variables and class constraints.
+                % It is an invariant that this will be no_exist_constraints
+                % if the list of arguments is empty.
                 cons_maybe_exist    :: maybe_cons_exist_constraints,
 
                 % The field names and types of the arguments of this functor

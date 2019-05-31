@@ -328,8 +328,7 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
             ExistQVars = [],
             (
                 Constraints = [],
-                MaybeExistConstraints = no_exist_constraints,
-                MCSpecs = []
+                MaybeMaybeExistConstraints = ok1(no_exist_constraints)
             ;
                 Constraints = [_ | _],
                 MCPieces = [words("Error: since there are no"),
@@ -337,10 +336,7 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
                     words("there should be no constraints on them."), nl],
                 MCSpec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(Term), [always(MCPieces)])]),
-                MCSpecs = [MCSpec],
-                % This dummy value of MaybeExistConstraints won't be used
-                % due to the error.
-                MaybeExistConstraints = no_exist_constraints
+                MaybeMaybeExistConstraints = error1([MCSpec])
             )
         ;
             ExistQVars = [_ | _],
@@ -359,8 +355,8 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
                 ConstrainedQVars),
             ExistConstraints = cons_exist_constraints(ExistQVars,
                 Constraints, UnconstrainedQVars, ConstrainedQVars),
-            MaybeExistConstraints = exist_constraints(ExistConstraints),
-            MCSpecs = []
+            MaybeMaybeExistConstraints =
+                ok1(exist_constraints(ExistConstraints))
         ),
         ( if
             % Note that as a special case, one level of curly braces around
@@ -380,26 +376,43 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
             VarSet, ContextPieces, MaybeFunctorAndArgTerms),
         (
             MaybeFunctorAndArgTerms = error2(Specs),
-            MaybeConstructor = error1(MCSpecs ++ Specs)
+            MECSpecs = get_any_errors1(MaybeMaybeExistConstraints),
+            MaybeConstructor = error1(MECSpecs ++ Specs)
         ;
             MaybeFunctorAndArgTerms = ok2(Functor, ArgTerms),
             MaybeConstructorArgs = convert_constructor_arg_list(ModuleName,
                 VarSet, ArgTerms),
             (
                 MaybeConstructorArgs = error1(Specs),
-                MaybeConstructor = error1(MCSpecs ++ Specs)
+                MECSpecs = get_any_errors1(MaybeMaybeExistConstraints),
+                MaybeConstructor = error1(MECSpecs ++ Specs)
             ;
                 MaybeConstructorArgs = ok1(ConstructorArgs),
                 (
-                    MCSpecs = [],
-                    list.length(ConstructorArgs, Arity),
-                    MainTermContext = get_term_context(MainTerm),
-                    Ctor = ctor(Ordinal, MaybeExistConstraints, Functor,
-                        ConstructorArgs, Arity, MainTermContext),
-                    MaybeConstructor = ok1(Ctor)
+                    MaybeMaybeExistConstraints = error1(Specs),
+                    MaybeConstructor = error1(Specs)
                 ;
-                    MCSpecs = [_ | _],
-                    MaybeConstructor = error1(MCSpecs)
+                    MaybeMaybeExistConstraints = ok1(MaybeExistConstraints),
+                    MainTermContext = get_term_context(MainTerm),
+                    ( if
+                        ConstructorArgs = [],
+                        MaybeExistConstraints = exist_constraints(_)
+                    then
+                        ECPieces = [words("Error: since there are no"),
+                            words("arguments, (existentially quantified"),
+                            words("or otherwise), there should be"),
+                            words("no constraints on them."), nl],
+                        ECSpec = error_spec(severity_error,
+                            phase_term_to_parse_tree,
+                            [simple_msg(MainTermContext,
+                                [always(ECPieces)])]),
+                        MaybeConstructor = error1([ECSpec])
+                    else
+                        list.length(ConstructorArgs, Arity),
+                        Ctor = ctor(Ordinal, MaybeExistConstraints,
+                            Functor, ConstructorArgs, Arity, MainTermContext),
+                        MaybeConstructor = ok1(Ctor)
+                    )
                 )
             )
         )
@@ -526,8 +539,9 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         !:Specs = [Spec | !.Specs]
     else if
         % Check that all type variables in existential quantifiers do not
-        % occur in the head (maybe this should just be a warning, not an error?
-        % If we were to allow it, we would need to rename them apart.)
+        % occur in the head (maybe this should just be a warning,
+        % not an error? If we were to allow it, we would need
+        % to rename them apart.)
 
         set.list_to_set(ExistQVars, ExistQVarsSet),
         set.list_to_set(Params, ParamsSet),
@@ -660,7 +674,7 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
     constructor::out) is semidet.
 
 find_constructor([Ctor | Ctors], SymName, Arity, NamedCtor) :-
-    ( if Ctor = ctor(_, _, SymName, _Args, Arity, _) then
+    ( if Ctor = ctor(_, _, SymName, _, Arity, _) then
         NamedCtor = Ctor
     else
         find_constructor(Ctors, SymName, Arity, NamedCtor)

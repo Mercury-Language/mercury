@@ -960,6 +960,8 @@ set_type_defn_prev_errors(X, !Defn) :-
                 cr_ordinal          :: uint32,
 
                 % Existential constraints, if any.
+                % It is an invariant that this will be no_exist_constraints
+                % if the list of arguments is empty.
                 cr_maybe_exist      :: maybe_cons_exist_constraints,
 
                 % The cons_id should be cons(SymName, Arity, TypeCtor)
