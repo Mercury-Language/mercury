@@ -5436,7 +5436,7 @@ mercury_check_c_files () {
             ;;
         *)
             sed -n -e "/END_OF_C_GRADE_INFO/q" $maybe_delete_level -e "/=/p" \
-                < $c_file | tr -s '* \r\n' ';' > confscratch
+                < $c_file | tr -s '* \r\n' ';;;;' > confscratch
             if cmp -s confscratch confscratch.ref
             then
                 some_kept=true
