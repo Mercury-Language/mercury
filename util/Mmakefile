@@ -30,8 +30,10 @@ PROGS=mkinit mkinit_erl mdemangle mfiltercc info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
 SRC=$(PROGS:%=%.c)
 
-# Only if getopt.h doesn't exist do we link in a version of getopt.
-ifeq ("$(GETOPT_H_AVAILABLE)","no")
+# Link in local copy of getopt() only if required.
+# XXX The files in runtime/GETOPT may not compile cleanly with modern
+# compilers. We should replace it with another implementation.
+ifeq ("$(HAVE_GETOPT)","no")
 	GETOPT_SRC=$(RUNTIME_DIR)/GETOPT/getopt.c $(RUNTIME_DIR)/GETOPT/getopt1.c
 else
 	GETOPT_SRC=

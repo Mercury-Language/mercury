@@ -11,6 +11,7 @@
 ** because different systems have different ideas about
 ** where the `const's should go on the declaration of getopt().
 ** Also, some systems might have getopt() but not <getopt.h>.
+** According to POSIX, getopt() is declared in <unistd.h>.
 */
 
 #ifndef	MERCURY_UTIL_GETOPT_H

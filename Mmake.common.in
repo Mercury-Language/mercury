@@ -252,8 +252,8 @@ OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
 # Are we compiling using the MS C compiler?
 USING_MICROSOFT_CL_COMPILER=@USING_MICROSOFT_CL_COMPILER@
 
-# Is the getopt.h header file available?
-GETOPT_H_AVAILABLE=@GETOPT_H_AVAILABLE@
+# Is getopt() available?
+HAVE_GETOPT=@HAVE_GETOPT@
 
 #-----------------------------------------------------------------------------#
 

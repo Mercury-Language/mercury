@@ -1422,13 +1422,6 @@ MERCURY_CHECK_FOR_HEADERS( \
         semaphore.h pthread.h time.h spawn.h fenv.h sys/mman.h sys/sem.h \
         sched.h utmpx.h dispatch/dispatch.h stdint.h sys/select.h )
 
-if test "$MR_HAVE_GETOPT_H" = 1; then
-    GETOPT_H_AVAILABLE=yes
-else
-    GETOPT_H_AVAILABLE=no
-fi
-AC_SUBST(GETOPT_H_AVAILABLE)
-
 if test "$MR_HAVE_UCONTEXT_H" != 1; then
     MERCURY_CHECK_FOR_HEADERS(sys/ucontext.h)
 fi
@@ -1483,6 +1476,16 @@ AC_MSG_RESULT($mercury_cv_have_builtin_bswap64)
 if test "$mercury_cv_have_builtin_bswap64" = yes; then
     AC_DEFINE(MR_HAVE_BUILTIN_BSWAP64)
 fi
+
+#-----------------------------------------------------------------------------#
+#
+# Check whether getopt() is available
+#
+
+AC_CHECK_FUNC(getopt,
+    [HAVE_GETOPT=yes],
+    [HAVE_GETOPT=no])
+AC_SUBST(HAVE_GETOPT)
 
 #-----------------------------------------------------------------------------#
 #
