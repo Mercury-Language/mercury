@@ -47,10 +47,6 @@ long function names, which the Mercury compiler generates an abundance of.
 
 gcc 4.8.2 does work, but requires some workarounds:
 
-  * The configure test "checking whether we can use gcc labels..." enters
-    an infinite loop.  Hit ^C to fail the test and continue.
-    `reg.gc' is available but not `asm_fast.gc'.
-
   * Low-level C grades will overflow the TOC.  Add this to Mmake.params:
 
 	EXTRA_CFLAGS=-mminimal-toc

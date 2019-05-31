@@ -2616,8 +2616,7 @@ case "$ac_cv_prog_gcc" in yes)
         # the `gp' register. Ideally we ought to write a big enough example
         # program to trigger the problem, but that would be too much work.
         alpha*-dec-*)
-            MERCURY_MSG(
-"asm labels work on the Alpha but plain gcc labels do not")
+            MERCURY_MSG("asm labels work on the Alpha but plain gcc labels do not")
             mercury_cv_asm_labels=yes
             mercury_cv_gcc_labels=no
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
@@ -2633,6 +2632,9 @@ case "$ac_cv_prog_gcc" in yes)
             ;;
         # On hppa64, ia64 and powerpc64 the test programs appear to work, but
         # larger programs die with an Illegal Instruction fault.
+        # On powerpc (POWER) the test program enters an infinite loop;
+        # this is likely true for the other architectures which have not been
+        # tested recently.
         hppa64-*)
             MERCURY_MSG("gcc labels do not work on HPPA64")
             mercury_cv_asm_labels=no
@@ -2643,8 +2645,8 @@ case "$ac_cv_prog_gcc" in yes)
             mercury_cv_asm_labels=no
             mercury_cv_gcc_labels=no
             ;;
-        powerpc64-*)
-            MERCURY_MSG("gcc labels do not work on PPC64")
+        powerpc*-*)
+            MERCURY_MSG("gcc labels do not work on PPC/PPC64")
             mercury_cv_asm_labels=no
             mercury_cv_gcc_labels=no
             ;;
