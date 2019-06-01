@@ -120,12 +120,16 @@
 % Part 1: the implementation of foreign_enums.
 %
 
-add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
+add_pragma_foreign_enum(ModuleInfo, ItemForeignEnum,
         !TypeCtorForeignEnumMap, Specs0, Specs) :-
-    ItemForeignExportEnum = item_foreign_enum_info(FEInfo, ItemMercuryStatus,
+    ItemForeignEnum = item_foreign_enum_info(FEInfo, ItemMercuryStatus,
         Context, SeqNum),
-    % XXX we shouldn't have to construct ItemPragmaInfo to do the
-    % wrongly-in-interface test.
+    % Here we construct ItemPragmaInfo just to test whether this pragma
+    % was in the interface. Unfortunately, while we *could* avoid this
+    % (e.g. by making making report_if_pragma_is_wrongly_in_interface work
+    % not on full pragmas but on pragma kinds, a flattened-to-an-enum
+    % form of pragmas), the cost in increased code complexity is
+    % not worth it.
     ItemPragmaInfo = item_pragma_info(pragma_foreign_enum(FEInfo),
         item_origin_user, Context, SeqNum),
     report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
