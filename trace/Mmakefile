@@ -235,16 +235,20 @@ trace:	$(LIB_DLL_H) $(LIB_GLOBALS_H)
 
 endif
 
-mercury_event_parser.c mercury_event_parser.h: mercury_event_parser.y
-	$(BISON) $(BISON_OPTS) -p mercury_event_ -d -o mercury_event_parser.c \
-		mercury_event_parser.y
+# This uses a pattern rule to express to make that the rule's recipe is
+# responsible for making all of the targets, not individual targets.
+mercury_event_%.c mercury_event_%.h: mercury_event_%.y
+	$(BISON) $(BISON_OPTS) -p mercury_event_ -d \
+		-o mercury_event_$*.c mercury_event_$*.y
 
-mercury_event_scanner.c mercury_event_scanner.h: \
-		mercury_event_scanner.l mercury_event_parser.h
+mercury_event_scanner.c: mercury_event_scanner.l mercury_event_parser.h
 	$(FLEX) $(FLEX_OPTS) -s -Pmercury_event_ \
 		-omercury_event_scanner.c \
 		mercury_event_scanner.l
-	echo "extern int mercury_event_lex(void);" >  mercury_event_scanner.h
+
+# XXX does mercury_event_scanner.h need to be generated at all?
+mercury_event_scanner.h: mercury_event_scanner.c
+	echo "extern int mercury_event_lex(void);" > mercury_event_scanner.h
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
