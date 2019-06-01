@@ -18,13 +18,7 @@ include $(MERCURY_DIR)/Mmake.common
 #-----------------------------------------------------------------------------#
 
 # We need -I$(RUNTIME_DIR) for "mercury_std.h", etc.
-# The -O0 is to get around a stupid compiler bug in gcc 2.7.2.3.
-# Visual C does not have a -O0 option (it uses -Od instead).
-ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
-    CFLAGS = -I$(RUNTIME_DIR)
-else
-    CFLAGS = -I$(RUNTIME_DIR) -O0
-endif
+CFLAGS = -I$(RUNTIME_DIR)
 
 PROGS=mkinit mkinit_erl mdemangle mfiltercc info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
