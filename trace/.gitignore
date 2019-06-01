@@ -14,5 +14,4 @@ mercury_event_parser.c
 mercury_event_parser.h
 mercury_event_parser.output
 mercury_event_scanner.c
-mercury_event_scanner.h
 tags

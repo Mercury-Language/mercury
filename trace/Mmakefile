@@ -78,6 +78,7 @@ HAND_TRACE_SRCS	=	\
 # The list of human-written C header files of the eventspec library.
 # Keep this list in alphabetical order, please.
 HAND_EVENTSPEC_HDRS	=	\
+			mercury_event_scanner.h	\
 			mercury_event_spec.h
 
 # The list of human-written C source files of the eventspec library.
@@ -88,8 +89,7 @@ HAND_EVENTSPEC_SRCS	=	\
 # The list of automatically created C header files.
 # Keep this list in alphabetical order, please.
 GEN_EVENTSPEC_HDRS	=	\
-			mercury_event_parser.h \
-			mercury_event_scanner.h
+			mercury_event_parser.h
 
 # The list of automatically created C source files.
 # Keep this list in alphabetical order, please.
@@ -245,10 +245,6 @@ mercury_event_scanner.c: mercury_event_scanner.l mercury_event_parser.h
 	$(FLEX) $(FLEX_OPTS) -s -Pmercury_event_ \
 		-omercury_event_scanner.c \
 		mercury_event_scanner.l
-
-# XXX does mercury_event_scanner.h need to be generated at all?
-mercury_event_scanner.h: mercury_event_scanner.c
-	echo "extern int mercury_event_lex(void);" > mercury_event_scanner.h
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
