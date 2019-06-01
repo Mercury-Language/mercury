@@ -339,6 +339,7 @@ parse_options(int argc, char *argv[])
         case 's':
             /* Used by mkinit. */
             usage();
+            break;
 
         default:
             usage();

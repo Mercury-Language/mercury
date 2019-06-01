@@ -947,6 +947,7 @@ parse_options(int argc, char *argv[])
         case 'm':
             /* Used by mkinit_erl. */
             usage();
+            break;
 
         default:
             usage();
