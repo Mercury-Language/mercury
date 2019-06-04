@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1999,2001-2004, 2006-2012 The University of Melbourne.
-# Copyright (C) 2013-2018 The Mercury team.
+# Copyright (C) 2013-2019 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -201,7 +201,7 @@ AC_DEFUN([MERCURY_TRY_STATIC_ASSERT], [
 AC_DEFUN([MERCURY_CHECK_READLINE],
 [
 AC_ARG_WITH(readline,
-[  --without-readline      Do not use the GPL'd GNU readline library],
+[  --without-readline      Do not use the GPL GNU readline library],
 mercury_cv_with_readline="$withval", mercury_cv_with_readline=yes)
 
 if test "$mercury_cv_with_readline" = yes; then
@@ -209,23 +209,23 @@ if test "$mercury_cv_with_readline" = yes; then
 	# Check for the readline header files.
 	MERCURY_CHECK_FOR_HEADERS(readline/readline.h readline/history.h)
 
-	# Check for the libraries that readline depends on.
-	MERCURY_MSG('looking for termcap or curses (needed by readline)...')
-	AC_CHECK_LIB(termcap, tgetent, mercury_cv_termcap_lib=-ltermcap,
-	 [AC_CHECK_LIB(curses,  tgetent, mercury_cv_termcap_lib=-lcurses,
-	  [AC_CHECK_LIB(ncurses, tgetent, mercury_cv_termcap_lib=-lncurses,
-	   mercury_cv_termcap_lib='')])])
+	if test "$MR_HAVE_READLINE_READLINE_H,$MR_HAVE_READLINE_HISTORY_H" = "1,1"; then
+		# Check for the libraries that readline depends on.
+		MERCURY_MSG('looking for termcap or curses (needed by readline)...')
+		AC_CHECK_LIB(termcap, tgetent, mercury_cv_termcap_lib=-ltermcap,
+		 [AC_CHECK_LIB(curses,  tgetent, mercury_cv_termcap_lib=-lcurses,
+		  [AC_CHECK_LIB(ncurses, tgetent, mercury_cv_termcap_lib=-lncurses,
+		   mercury_cv_termcap_lib='')])])
 
-	# Check for the readline library.
-	AC_CHECK_LIB(readline, readline, mercury_cv_have_readline=yes,
-		mercury_cv_have_readline=no, $mercury_cv_termcap_lib)
+		# Check for the readline library.
+		AC_CHECK_LIB(readline, readline, mercury_cv_have_readline=yes,
+		    mercury_cv_have_readline=no, $mercury_cv_termcap_lib)
+	else
+		mercury_cv_have_readline=no
+	fi
 else
 	mercury_cv_have_readline=no
 fi
-
-# Now figure out whether we can use readline, and define variables according.
-# Note that on most systems, we don't actually need the header files in
-# order to use readline. (Ain't C grand? ;-).
 
 if test $mercury_cv_have_readline = no; then
 	TERMCAP_LIBRARY=""
@@ -255,9 +255,13 @@ elif test $mercury_cv_have_readline = no; then
 	# Check for the editline header files.
 	MERCURY_CHECK_FOR_HEADERS(editline/readline.h)
 
-	# Check for the editline library.
-	AC_CHECK_LIB(edit, readline, mercury_cv_have_editline=yes,
-		mercury_cv_have_editline=no)
+	if test "$MR_HAVE_EDITLINE_READLINE_H" = 1; then
+		# Check for the editline library.
+		AC_CHECK_LIB(edit, readline, mercury_cv_have_editline=yes,
+			mercury_cv_have_editline=no)
+	else
+		mercury_cv_have_editline=no
+	fi
 else
 	mercury_cv_have_editline=no
 fi
