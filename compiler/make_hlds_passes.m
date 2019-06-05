@@ -640,7 +640,9 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
                 add_marker(marker_mutable_access_pred, Markers0, Markers)
             ;
                 IsMutable = is_not_mutable,
-                % XXX Fix this lie.
+                % For now, the only kind of predicate declaration item
+                % that the compiler creates by itself are the auxiliary
+                % predicates implementing mutables.
                 PredOrigin = origin_user(PredSymName),
                 Markers = Markers0
             )
@@ -957,92 +959,31 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ;
-        PredIds = [HeadPredId | TailPredIds],
-        (
-            TailPredIds = [],
-            PredId = HeadPredId,
-            module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-            pred_info_get_arg_types(PredInfo, ArgTypes),
-            pred_info_get_proc_table(PredInfo, ProcTable),
-            ProcInfos = map.values(ProcTable),
-            module_info_get_globals(!.ModuleInfo, Globals),
-            globals.get_target(Globals, CompilationTarget),
-            ExportLang =
-                target_lang_to_foreign_export_lang(CompilationTarget),
-            ( if
-                ArgTypes = [Arg1Type, Arg2Type],
-                type_is_io_state(Arg1Type),
-                type_is_io_state(Arg2Type),
-                list.member(ProcInfo, ProcInfos),
-                proc_info_get_maybe_declared_argmodes(ProcInfo,
-                    MaybeHeadModes),
-                MaybeHeadModes = yes(HeadModes),
-                HeadModes = [di_mode, uo_mode],
-                proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
-                MaybeDetism = yes(Detism),
-                ( Detism = detism_det ; Detism = detism_cc_multi ),
-                pred_info_get_purity(PredInfo, Purity),
-                Purity = purity_pure
-            then
-                module_info_new_user_init_pred(SymName, Arity, CName,
-                    !ModuleInfo),
-                PredNameModesPF = pred_name_modes_pf(SymName,
-                    [di_mode, uo_mode], pf_predicate),
-                FPEInfo = pragma_info_foreign_proc_export(ExportLang,
-                    PredNameModesPF, CName),
-                % ZZZ should be do_not_allow_export
-                Attrs = item_compiler_attributes(do_allow_export,
-                    is_not_mutable),
-                Origin = item_origin_compiler(Attrs),
-                add_pragma_foreign_proc_export(Origin, FPEInfo, Context,
-                    !ModuleInfo, !Specs)
-            else if
-                ArgTypes = [],
-                list.member(ProcInfo, ProcInfos),
-                proc_info_get_maybe_declared_argmodes(ProcInfo,
-                    MaybeHeadModes),
-                MaybeHeadModes = yes(HeadModes),
-                HeadModes = [],
-                proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
-                MaybeDetism = yes(Detism),
-                ( Detism = detism_det ; Detism = detism_cc_multi ),
-                pred_info_get_purity(PredInfo, Purity),
-                Purity = purity_impure
-            then
-                module_info_new_user_init_pred(SymName, Arity, CName,
-                    !ModuleInfo),
-                PredNameModesPF = pred_name_modes_pf(SymName, [],
-                    pf_predicate),
-                FPEInfo = pragma_info_foreign_proc_export(ExportLang,
-                    PredNameModesPF, CName),
-                % ZZZ should be do_not_allow_export
-                Attrs = item_compiler_attributes(do_allow_export,
-                    is_not_mutable),
-                Origin = item_origin_compiler(Attrs),
-                add_pragma_foreign_proc_export(Origin, FPEInfo, Context,
-                    !ModuleInfo, !Specs)
-            else
-                Pieces = [words("Error:"),
-                    qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
-                    words("used in initialise declaration"),
-                    words("has invalid signature."), nl],
-                % TODO: provide verbose error information here.
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
-                !:Specs = [Spec | !.Specs]
-            )
-        ;
-            TailPredIds = [_ | _],
+        PredIds = [PredId],
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        ( if is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) then
+            module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
+            make_and_add_pragma_foreign_proc_export(SymName, ExpectedHeadModes,
+                CName, Context, !ModuleInfo, !Specs)
+        else
             Pieces = [words("Error:"),
                 qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 words("used in initialise declaration"),
-                words("matches multiple pred declarations."), nl],
+                words("has invalid signature."), nl],
+            % TODO: provide verbose error information here.
             Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
+    ;
+        PredIds = [_, _ | _],
+        Pieces = [words("Error:"),
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            words("used in initialise declaration"),
+            words("matches multiple pred declarations."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------%
@@ -1077,91 +1018,83 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ;
-        PredIds = [HeadPredId | TailPredIds],
-        (
-            TailPredIds = [],
-            PredId = HeadPredId,
-            module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-            pred_info_get_arg_types(PredInfo, ArgTypes),
-            pred_info_get_proc_table(PredInfo, ProcTable),
-            ProcInfos = map.values(ProcTable),
-            module_info_get_globals(!.ModuleInfo, Globals),
-            globals.get_target(Globals, CompilationTarget),
-            ExportLang = target_lang_to_foreign_export_lang(CompilationTarget),
-            ( if
-                ArgTypes = [Arg1Type, Arg2Type],
-                type_is_io_state(Arg1Type),
-                type_is_io_state(Arg2Type),
-                list.member(ProcInfo, ProcInfos),
-                proc_info_get_maybe_declared_argmodes(ProcInfo,
-                    MaybeHeadModes),
-                MaybeHeadModes = yes(HeadModes),
-                HeadModes = [di_mode, uo_mode],
-                proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
-                MaybeDetism = yes(Detism),
-                ( Detism = detism_det ; Detism = detism_cc_multi ),
-                pred_info_get_purity(PredInfo, Purity),
-                Purity = purity_pure
-            then
-                module_info_new_user_final_pred(SymName, Arity, CName,
-                    !ModuleInfo),
-                PredNameModesPF = pred_name_modes_pf(SymName,
-                    [di_mode, uo_mode], pf_predicate),
-                FPEInfo = pragma_info_foreign_proc_export(ExportLang,
-                    PredNameModesPF, CName),
-                % ZZZ should be do_not_allow_export
-                Attrs = item_compiler_attributes(do_allow_export,
-                    is_not_mutable),
-                PEOrigin = item_origin_compiler(Attrs),
-                add_pragma_foreign_proc_export(PEOrigin, FPEInfo, Context,
-                    !ModuleInfo, !Specs)
-            else if
-                ArgTypes = [],
-                list.member(ProcInfo, ProcInfos),
-                proc_info_get_maybe_declared_argmodes(ProcInfo,
-                    MaybeHeadModes),
-                MaybeHeadModes = yes(HeadModes),
-                HeadModes = [],
-                proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
-                MaybeDetism = yes(Detism),
-                ( Detism = detism_det; Detism = detism_cc_multi ),
-                pred_info_get_purity(PredInfo, Purity),
-                Purity = purity_impure
-            then
-                module_info_new_user_final_pred(SymName, Arity, CName,
-                    !ModuleInfo),
-                PredNameModesPF = pred_name_modes_pf(SymName,
-                    [], pf_predicate),
-                FPEInfo = pragma_info_foreign_proc_export(ExportLang,
-                    PredNameModesPF, CName),
-                % ZZZ should be do_not_allow_export
-                Attrs = item_compiler_attributes(do_allow_export,
-                    is_not_mutable),
-                PEOrigin = item_origin_compiler(Attrs),
-                add_pragma_foreign_proc_export(PEOrigin, FPEInfo, Context,
-                    !ModuleInfo, !Specs)
-            else
-                Pieces = [words("Error:"),
-                    qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
-                    words("used in"), decl("finalise"),
-                    words("declaration has invalid signature."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
-                !:Specs = [Spec | !.Specs]
-            )
-        ;
-            TailPredIds = [_ | _],
+        PredIds = [PredId],
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        ( if is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) then
+            module_info_new_user_final_pred(SymName, Arity, CName,
+                !ModuleInfo),
+            make_and_add_pragma_foreign_proc_export(SymName, ExpectedHeadModes,
+                CName, Context, !ModuleInfo, !Specs)
+        else
             Pieces = [words("Error:"),
                 qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
-                words("used in"), decl("finalise"), words("declaration"),
-                words("has multiple"), decl("pred"), words("declarations."),
-                nl],
+                words("used in"), decl("finalise"),
+                words("declaration has invalid signature."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
+    ;
+        PredIds = [_, _ | _],
+        Pieces = [words("Error:"),
+            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            words("used in"), decl("finalise"), words("declaration"),
+            words("has multiple"), decl("pred"), words("declarations."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
+
+:- pred is_valid_init_or_final_pred(pred_info::in, list(mer_mode)::out)
+    is semidet.
+
+is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) :-
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    ProcInfos = map.values(ProcTable),
+    (
+        ArgTypes = [Arg1Type, Arg2Type],
+        type_is_io_state(Arg1Type),
+        type_is_io_state(Arg2Type),
+        ExpectedHeadModes = [di_mode, uo_mode],
+        ExpectedPurity = purity_pure
+    ;
+        ArgTypes = [],
+        ExpectedHeadModes = [],
+        ExpectedPurity = purity_impure
+    ),
+    some [ProcInfo] (
+        list.member(ProcInfo, ProcInfos),
+        proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+        MaybeHeadModes = yes(HeadModes),
+        HeadModes = ExpectedHeadModes,
+        proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
+        MaybeDetism = yes(Detism),
+        ( Detism = detism_det ; Detism = detism_cc_multi )
+    ),
+    pred_info_get_purity(PredInfo, Purity),
+    Purity = ExpectedPurity.
+
+:- pred make_and_add_pragma_foreign_proc_export(sym_name::in,
+    list(mer_mode)::in, string::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+make_and_add_pragma_foreign_proc_export(SymName, HeadModes, CName, Context,
+        !ModuleInfo, !Specs) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_target(Globals, CompilationTarget),
+    ExportLang = target_lang_to_foreign_export_lang(CompilationTarget),
+    PredNameModesPF = pred_name_modes_pf(SymName, HeadModes, pf_predicate),
+    FPEInfo =
+        pragma_info_foreign_proc_export(ExportLang, PredNameModesPF, CName),
+    % XXX Why is the foreign_proc_export pragma *itself* allowed to be
+    % exported? Why does add_pragma_foreign_proc_export abort in some cases
+    % if it finds do_not_allow_export?
+    Attrs = item_compiler_attributes(do_allow_export, is_not_mutable),
+    PEOrigin = item_origin_compiler(Attrs),
+    add_pragma_foreign_proc_export(PEOrigin, FPEInfo, Context,
+        !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
