@@ -534,7 +534,7 @@ cast_from_uint32(_) = _ :-
     int32_bytes[0] = Byte3;
     int32_bytes[1] = Byte2;
     int32_bytes[2] = Byte1;
-    int32_bytes[3] = Byte2;
+    int32_bytes[3] = Byte0;
 #else
     int32_bytes[0] = Byte0;
     int32_bytes[1] = Byte1;
