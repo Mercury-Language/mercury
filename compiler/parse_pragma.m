@@ -131,15 +131,15 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             PragmaTerms, Context, SeqNum, ok1(canon), MaybeIOM)
     ;
         PragmaName = "foreign_decl",
-        parse_pragma_foreign_decl_pragma(VarSet, ErrorTerm,
+        parse_pragma_foreign_decl(VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "foreign_code",
-        parse_pragma_foreign_code_pragma(ErrorTerm,
+        parse_pragma_foreign_code(ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "foreign_proc",
-        parse_pragma_foreign_proc_pragma(ModuleName, VarSet, ErrorTerm,
+        parse_pragma_foreign_proc(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "foreign_export_enum",
@@ -170,76 +170,88 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
     ;
         (
             PragmaName = "inline",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_inline(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_inline(PredNameArity)
+                )
         ;
             PragmaName = "no_inline",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_no_inline(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_no_inline(PredNameArity)
+                )
         ;
             PragmaName = "consider_used",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_consider_used(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_consider_used(PredNameArity)
+                )
         ;
             PragmaName = "obsolete",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_obsolete(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_obsolete(PredNameArity)
+                )
         ;
             PragmaName = "no_determinism_warning",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_no_detism_warning(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_no_detism_warning(PredNameArity)
+                )
         ;
             PragmaName = "promise_equivalent_clauses",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_promise_eqv_clauses(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_promise_eqv_clauses(PredNameArity)
+                )
         ;
             PragmaName = "promise_pure",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_promise_pure(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_promise_pure(PredNameArity)
+                )
         ;
             PragmaName = "promise_semipure",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_promise_semipure(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_promise_semipure(PredNameArity)
+                )
         ;
             PragmaName = "terminates",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_terminates(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_terminates(PredNameArity)
+                )
         ;
             PragmaName = "does_not_terminate",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_does_not_terminate(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_does_not_terminate(PredNameArity)
+                )
         ;
             PragmaName = "check_termination",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_check_termination(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_check_termination(PredNameArity)
+                )
         ;
             PragmaName = "mode_check_clauses",
-            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-                PredNameArity = pred_name_arity(Name, Arity),
-                Pragma = pragma_mode_check_clauses(PredNameArity)
-            )
+            MakePragma =
+                ( pred(Name::in, Arity::in, Pragma::out) is det :-
+                    PredNameArity = pred_name_arity(Name, Arity),
+                    Pragma = pragma_mode_check_clauses(PredNameArity)
+                )
         ),
         parse_name_arity_pragma(ModuleName, PragmaName,
             "predicate or function", MakePragma, PragmaTerms, ErrorTerm,
@@ -380,22 +392,18 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeAssertionTerm = yes(AssertionTerm0)
         )
     then
-        LangContextPieces = cord.from_list([
-            words("In first argument of"), pragma_decl("foreign_type"),
-            words("declaration:")
-        ]),
+        LangContextPieces = cord.from_list([words("In first argument of"),
+            pragma_decl("foreign_type"), words("declaration:")]),
         parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
-        TypeDefnHeadContextPieces = cord.from_list([
-            words("In second argument of"), pragma_decl("foreign_type"),
-            words("declaration:")
-        ]),
+        TypeDefnHeadContextPieces =
+            cord.from_list([words("In second argument of"),
+            pragma_decl("foreign_type"), words("declaration:")]),
         parse_type_defn_head(TypeDefnHeadContextPieces,
             ModuleName, VarSet, MercuryTypeTerm, MaybeTypeDefnHead),
-        ForeignTypeContextPieces = cord.from_list([
-            words("In third argument of"), pragma_decl("foreign_type"),
-            words("declaration:")
-        ]),
+        ForeignTypeContextPieces =
+            cord.from_list([words("In third argument of"),
+            pragma_decl("foreign_type"), words("declaration:")]),
         parse_foreign_language_type(ForeignTypeContextPieces, ForeignTypeTerm,
             VarSet, MaybeForeignLang, MaybeForeignType),
         (
@@ -404,10 +412,9 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             AssertionSpecs = []
         ;
             MaybeAssertionTerm = yes(AssertionTerm),
-            AssertionContextPieces = cord.from_list([
-                words("In fourth argument of"), pragma_decl("foreign_type"),
-                words("declaration:")
-            ]),
+            AssertionContextPieces =
+                cord.from_list([words("In fourth argument of"),
+                pragma_decl("foreign_type"), words("declaration:")]),
             parse_foreign_type_assertions(AssertionContextPieces, VarSet,
                 AssertionTerm, set.init, AssertionsSet,
                 [], AssertionSpecs)
@@ -459,11 +466,10 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
             else
                 HeadTermStr = mercury_term_to_string(VarSet, print_name_only,
                     HeadTerm),
-                Pieces = cord.list(ContextPieces) ++ [
-                    lower_case_next_if_not_first,
-                    words("Error:"), words("foreign type assertion"),
-                    quote(HeadTermStr), words("is repeated.")
-                ],
+                Pieces = cord.list(ContextPieces) ++
+                    [lower_case_next_if_not_first, words("Error:"),
+                    words("foreign type assertion"), quote(HeadTermStr),
+                    words("is repeated."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(HeadTerm),
                         [always(Pieces)])]),
@@ -471,11 +477,10 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
             )
         else
             TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
-            Pieces = cord.list(ContextPieces) ++ [
-                lower_case_next_if_not_first,
+            Pieces = cord.list(ContextPieces) ++
+                [lower_case_next_if_not_first,
                 words("Error: expected a foreign type assertion,"),
-                words("got"), quote(TermStr), suffix(".")
-            ],
+                words("got"), quote(TermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
             !:Specs = [Spec | !.Specs]
@@ -484,11 +489,10 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
             !Assertions, !Specs)
     else
         TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
-        Pieces = cord.list(ContextPieces) ++ [
-            lower_case_next_if_not_first,
+        Pieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first,
             words("Error: expected a list of foreign type assertions,"),
-            words("got"), quote(TermStr), suffix(".")
-        ],
+            words("got"), quote(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error,
             phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
@@ -537,16 +541,12 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             MaybeOverridesTerm = yes(OverridesTerm)
         )
     then
-        LangContextPieces = cord.from_list([
-            words("In first argument of"),
-            pragma_decl("foreign_export_enum"), words("declaration:")
-        ]),
+        LangContextPieces = cord.from_list([words("In first argument of"),
+            pragma_decl("foreign_export_enum"), words("declaration:")]),
         parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
-        TypeContextPieces = cord.from_list([
-            words("In second argument of"),
-            pragma_decl("foreign_export_enum"), words("declaration:")
-        ]),
+        TypeContextPieces = cord.from_list([words("In second argument of"),
+            pragma_decl("foreign_export_enum"), words("declaration:")]),
         parse_type_ctor_name_arity(TypeContextPieces, VarSet, MercuryTypeTerm,
             MaybeTypeCtor),
         maybe_parse_export_enum_attributes(VarSet, MaybeAttributesTerm,
@@ -726,25 +726,19 @@ parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
 parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm] then
-        LangContextPieces = cord.from_list([
-            words("In first argument of"), pragma_decl("foreign_enum"),
-            words("declaration:")
-        ]),
+        LangContextPieces = cord.from_list([words("In first argument of"),
+            pragma_decl("foreign_enum"), words("declaration:")]),
         parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
-        TypeContextPieces = cord.from_list([
-            words("In second argument of"), pragma_decl("foreign_enum"),
-            words("declaration:")
-        ]),
+        TypeContextPieces = cord.from_list([words("In second argument of"),
+            pragma_decl("foreign_enum"), words("declaration:")]),
         parse_type_ctor_name_arity(TypeContextPieces, VarSet, MercuryTypeTerm,
             MaybeTypeCtor),
 
         UnrecognizedPieces =
             [words("Error: expected a valid mapping element")],
-        PairContextPieces = cord.from_list([
-            words("In"), pragma_decl("foreign_enum"),
-            words("mapping constructor name:")
-        ]),
+        PairContextPieces = cord.from_list([words("In"),
+            pragma_decl("foreign_enum"), words("mapping constructor name:")]),
         % XXX the following doesn't check that foreign values are sensible
         % (e.g. it should reject the empty string).
         convert_maybe_list("mapping elements", yes(VarSet), ValuesTerm,
@@ -754,11 +748,10 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeValues = ok1(Values),
             (
                 Values = [],
-                NoValuesPieces = [
-                    words("Error: expected a non-empty list"),
+                NoValuesPieces =
+                    [words("Error: expected a non-empty list"),
                     words("mapping constructors to foreign values in"),
-                    pragma_decl("foreign_enum"), words("declaration."), nl
-                ],
+                    pragma_decl("foreign_enum"), words("declaration."), nl],
                 NoValuesSpec = error_spec(severity_error,
                     phase_term_to_parse_tree,
                     [simple_msg(get_term_context(ValuesTerm),
@@ -811,11 +804,10 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
     ( if term_to_foreign_language(LangTerm, ForeignLang) then
         MaybeForeignLang = ok1(ForeignLang)
     else
-        LangPieces = cord.list(ContextPieces) ++ [
-            lower_case_next_if_not_first,
+        LangPieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first,
             words("Error: invalid foreign language"),
-            quote(describe_error_term(VarSet, LangTerm)), suffix(".")
-        ],
+            quote(describe_error_term(VarSet, LangTerm)), suffix("."), nl],
         LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(LangTerm), [always(LangPieces)])]),
             MaybeForeignLang = error1([LangSpec])
@@ -829,11 +821,10 @@ parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
         MaybeTypeCtor = ok1(type_ctor(Name, Arity))
     else
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
-        Pieces = cord.list(ContextPieces) ++ [
-            lower_case_next_if_not_first,
+        Pieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first,
             words("Error: expected name/arity for type,"),
-            words("got"), quote(TypeTermStr), suffix(".")
-        ],
+            words("got"), quote(TypeTermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
         MaybeTypeCtor = error1([Spec])
@@ -850,22 +841,19 @@ parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
 parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if PragmaTerms = [LangTerm, PredAndModesTerm, FunctionTerm] then
-        LangContextPieces = cord.from_list([
-            words("In first argument of"), pragma_decl("foreign_export"),
-            words("declaration:")
-        ]),
+        LangContextPieces =
+            cord.from_list([words("In first argument of"),
+            pragma_decl("foreign_export"), words("declaration:")]),
         parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
-        PredAndModesContextPieces = cord.from_list([
-            words("In second argument of"), pragma_decl("foreign_export"),
-            words("declaration:")
-        ]),
+        PredAndModesContextPieces =
+            cord.from_list([words("In second argument of"),
+            pragma_decl("foreign_export"), words("declaration:")]),
         parse_pred_or_func_and_arg_modes(no, VarSet, PredAndModesContextPieces,
             PredAndModesTerm, MaybePredAndModes),
-        ForeignFunctionContextPieces = cord.from_list([
-            words("In third argument of"), pragma_decl("foreign_export"),
-            words("declaration:")
-        ]),
+        ForeignFunctionContextPieces =
+            cord.from_list([words("In third argument of"),
+            pragma_decl("foreign_export"), words("declaration:")]),
         parse_foreign_function_name(VarSet, ForeignFunctionContextPieces,
             FunctionTerm, MaybeFunction),
         ( if
@@ -902,12 +890,11 @@ parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
         MaybeFunction) :-
     ( if FunctionTerm = term.functor(term.string(Function), [], _) then
         ( if Function = "" then
-            EmptyNamePieces = cord.list(ContextPieces) ++ [
-                lower_case_next_if_not_first,
+            EmptyNamePieces = cord.list(ContextPieces) ++
+                [lower_case_next_if_not_first,
                 words("Error: expected a non-empty string for the"),
                 words("foreign language name of the exported procedure,"),
-                words("got empty string.")
-            ],
+                words("got empty string."), nl],
             FunctionSpec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(FunctionTerm),
                     [always(EmptyNamePieces)])]),
@@ -918,13 +905,11 @@ parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
             MaybeFunction = ok1(Function)
         )
     else
-        FunctionPieces = cord.list(ContextPieces) ++ [
-            lower_case_next_if_not_first,
+        FunctionPieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first,
             words("Error: expected a non-empty string for the foreign"),
             words("language name of the exported procedure, got"),
-            quote(describe_error_term(VarSet, FunctionTerm)),
-            suffix("."), nl
-        ],
+            quote(describe_error_term(VarSet, FunctionTerm)), suffix("."), nl],
         FunctionSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(FunctionTerm),
                 [always(FunctionPieces)])]),
@@ -942,10 +927,9 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
     ( if
         PragmaTerms = [LangTerm, ModuleNameTerm]
     then
-        LangContextPieces = cord.from_list([
-            words("In first argument of"),
-            pragma_decl("foreign_import_module"), words("declaration:")
-        ]),
+        LangContextPieces =
+            cord.from_list([words("In first argument of"),
+            pragma_decl("foreign_import_module"), words("declaration:")]),
         parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
         ( if try_parse_sym_name_and_no_args(ModuleNameTerm, ModuleName0) then
@@ -1939,10 +1923,8 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
     is semidet.
 
 parse_foreign_decl_is_local(term.functor(Functor, [], _), IsLocal) :-
-    (
-        Functor = term.string(String)
-    ;
-        Functor = term.atom(String)
+    ( Functor = term.string(String)
+    ; Functor = term.atom(String)
     ),
     (
         String = "local",
@@ -1993,12 +1975,11 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
                     ForeignLangType = csharp(csharp_type(ForeignTypeName))
                 ),
                 ( if ForeignTypeName = "" then
-                    Pieces = cord.list(ContextPieces) ++ [
-                        lower_case_next_if_not_first,
+                    Pieces = cord.list(ContextPieces) ++
+                        [lower_case_next_if_not_first,
                         words("Error: foreign type descriptor for language"),
                         quote(foreign_language_string(Language)),
-                        words("must be a non-empty string.")
-                    ],
+                        words("must be a non-empty string."), nl],
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
                         [simple_msg(get_term_context(InputTerm),
                         [always(Pieces)])]),
@@ -2011,15 +1992,14 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
                 ( if ForeignTypeName = "" then
                     MaybeForeignLangType = ok1(erlang(erlang_type))
                 else
-                    Pieces = cord.list(ContextPieces) ++ [
-                        lower_case_next_if_not_first,
+                    Pieces = cord.list(ContextPieces) ++
+                        [lower_case_next_if_not_first,
                         words("Error: foreign type descriptor for language"),
                         quote(foreign_language_string(Language)),
-                        words("must be an empty string.")
-                    ],
+                        words("must be an empty string."), nl],
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
                         [simple_msg(get_term_context(InputTerm),
-                        [always(Pieces)])]),
+                            [always(Pieces)])]),
                     MaybeForeignLangType = error1([Spec])
                 )
             )
@@ -2031,12 +2011,10 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
         )
     else
         InputTermStr = describe_error_term(VarSet, InputTerm),
-        Pieces = cord.list(ContextPieces) ++ [
-            lower_case_next_if_not_first,
-            words("Error: expected a string specifying the"),
-            words("foreign type descriptor, got"), quote(InputTermStr),
-            suffix(".")
-        ],
+        Pieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first, words("Error: expected a string"),
+            words("specifying the foreign type descriptor,"),
+            words("got"), quote(InputTermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
         MaybeForeignLangType = error1([Spec])
@@ -2044,18 +2022,16 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
 
     % This predicate parses foreign_decl pragmas.
     %
-:- pred parse_pragma_foreign_decl_pragma(varset::in, term::in, list(term)::in,
+:- pred parse_pragma_foreign_decl(varset::in, term::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
-parse_pragma_foreign_decl_pragma(VarSet, ErrorTerm, PragmaTerms,
-        Context, SeqNum, MaybeIOM) :-
+parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
+        MaybeIOM) :-
     InvalidDeclPieces = [words("Error: invalid"),
         pragma_decl("foreign_decl"), words("declaration:")],
     (
-        (
-            PragmaTerms = []
-        ;
-            PragmaTerms = [_]
+        ( PragmaTerms = []
+        ; PragmaTerms = [_]
         ),
         Pieces = [words("Error: a"), pragma_decl("foreign_decl"),
             words("declaration requires at least two arguments"),
@@ -2147,13 +2123,12 @@ parse_pragma_foreign_decl_pragma(VarSet, ErrorTerm, PragmaTerms,
 
     % This predicate parses foreign_code pragmas.
     % Processing of foreign_proc pragmas is handled in
-    % parse_pragma_foreign_proc_pragma below.
+    % parse_pragma_foreign_proc below.
     %
-:- pred parse_pragma_foreign_code_pragma(term::in, list(term)::in,
+:- pred parse_pragma_foreign_code(term::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
-parse_pragma_foreign_code_pragma(ErrorTerm,
-        PragmaTerms, Context, SeqNum, MaybeIOM) :-
+parse_pragma_foreign_code(ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
     InvalidDeclPrefix = [words("Error: invalid"),
         pragma_decl("foreign_code"), words("declaration:")],
     ( if PragmaTerms = [LangTerm, CodeTerm] then
@@ -2204,18 +2179,16 @@ parse_pragma_foreign_code_pragma(ErrorTerm,
 
     % This predicate parses foreign_proc pragmas.
     %
-:- pred parse_pragma_foreign_proc_pragma(module_name::in, varset::in, term::in,
+:- pred parse_pragma_foreign_proc(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_pragma_foreign_proc_pragma(ModuleName, VarSet, ErrorTerm,
-        PragmaTerms, Context, SeqNum, MaybeIOM) :-
+parse_pragma_foreign_proc(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context,
+        SeqNum, MaybeIOM) :-
     (
         PragmaTerms = [LangTerm | RestTerms],
-        LangContextPieces = cord.from_list([
-            words("In first argument of"), pragma_decl("foreign_proc"),
-            words("declaration:")
-        ]),
+        LangContextPieces = cord.from_list([words("In first argument of"),
+            pragma_decl("foreign_proc"), words("declaration:")]),
         parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLanguage),
         (
@@ -2227,9 +2200,9 @@ parse_pragma_foreign_proc_pragma(ModuleName, VarSet, ErrorTerm,
         ),
         ( if
             RestTerms = [PredAndVarsTerm, FlagsTerm, CodeTerm],
-            parse_pragma_ordinary_foreign_proc_pragma(ModuleName,
-                VarSet, ForeignLanguage, PredAndVarsTerm, FlagsTerm, CodeTerm,
-                Context, SeqNum, MaybeRestIOM)
+            parse_pragma_ordinary_foreign_proc(ModuleName, VarSet,
+                ForeignLanguage, PredAndVarsTerm, FlagsTerm, CodeTerm, Context,
+                SeqNum, MaybeRestIOM)
         then
             (
                 MaybeRestIOM = ok1(IOM),
@@ -2245,32 +2218,27 @@ parse_pragma_foreign_proc_pragma(ModuleName, VarSet, ErrorTerm,
                 MaybeIOM = error1(LangSpecs ++ RestSpecs)
             )
         else
-            Pieces = [
-                words("Error: a "), pragma_decl("foreign_proc"),
-                words("declaration must have four arguments.")
-            ],
+            Pieces = [words("Error: a "), pragma_decl("foreign_proc"),
+                words("declaration must have four arguments."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
             MaybeIOM = error1([Spec])
         )
     ;
         PragmaTerms = [],
-        Pieces = [
-            words("Error: a "), pragma_decl("foreign_proc"),
-            words("declaration must have four arguments.")
-        ],
+        Pieces = [words("Error: a "), pragma_decl("foreign_proc"),
+            words("declaration must have four arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_pragma_ordinary_foreign_proc_pragma(module_name::in,
-    varset::in, foreign_language::in, term::in, term::in, term::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+:- pred parse_pragma_ordinary_foreign_proc(module_name::in, varset::in,
+    foreign_language::in, term::in, term::in, term::in, prog_context::in,
+    int::in, maybe1(item_or_marker)::out) is det.
 
-parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet,
-        ForeignLanguage, PredAndVarsTerm, FlagsTerm, CodeTerm,
-        Context, SeqNum, MaybeIOM) :-
+parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
+        PredAndVarsTerm, FlagsTerm, CodeTerm, Context, SeqNum, MaybeIOM) :-
     PredAndVarsContextPieces =
         cord.from_list([words("In the second argument of"),
             pragma_decl("foreign_proc"), words("declaration:")]),
@@ -2549,7 +2517,7 @@ process_attribute(coll_may_duplicate(MayDuplicate), !Attrs) :-
     set_may_duplicate(yes(MayDuplicate), !Attrs).
 
     % Check whether all the required attributes have been set for
-    % a particular language
+    % a particular language.
     %
 :- func check_required_attributes(foreign_language,
         pragma_foreign_proc_attributes, term.context)
@@ -3532,7 +3500,7 @@ convert_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces, Result) :-
     ).
 
     % This predicate does the same job as convert_list, but with a different
-    % type of supplied Pred, which returns a maybe(item_type), not item_type.
+    % type of supplied Pred, which returns a maybe1(item_type), not item_type.
     %
 :- pred convert_maybe_list(string::in, maybe(varset)::in, term::in,
     pred(term, maybe1(T))::(pred(in, out) is semidet),
