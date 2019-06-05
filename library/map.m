@@ -338,11 +338,29 @@
 :- func select(map(K, V), set(K)) = map(K, V).
 :- pred select(map(K, V)::in, set(K)::in, map(K, V)::out) is det.
 
-    % select_sorted_list takes a map and a sorted list of keys, and returns
-    % a map containing the keys in the list and their corresponding values.
+    % select_sorted_list takes a map and a sorted list of keys without
+    % duplicates, and returns a map containing the keys in the list
+    % and their corresponding values.
     %
 :- func select_sorted_list(map(K, V), list(K)) = map(K, V).
 :- pred select_sorted_list(map(K, V)::in, list(K)::in, map(K, V)::out) is det.
+
+    % select_unselect takes a map and a set of keys, and returns two maps:
+    % the first containing the keys in the set and their corresponding values,
+    % the second containing the keys NOT in the set and their corresponding
+    % values.
+    %
+:- pred select_unselect(map(K, V)::in, set(K)::in,
+    map(K, V)::out, map(K, V)::out) is det.
+
+    % select_unselect_sorted_list takes a map and a sorted list of keys
+    % without duplicates, and returns two maps:
+    % the first containing the keys in the list and their corresponding values,
+    % the second containing the keys NOT in the list and their corresponding
+    % values.
+    %
+:- pred select_unselect_sorted_list(map(K, V)::in, list(K)::in,
+    map(K, V)::out, map(K, V)::out) is det.
 
     % Given a list of keys, produce a list of their corresponding
     % values in a specified map.
@@ -1309,33 +1327,87 @@ overlay_large_map_2([K - V | AssocList], Map0, Map) :-
 
 %---------------------------------------------------------------------------%
 
-select(M1, S) = M2 :-
-    map.select(M1, S, M2).
+select(FullMap, KeySet) = SelectMap :-
+    map.select(FullMap, KeySet, SelectMap).
 
-select(Original, KeySet, NewMap) :-
+select(FullMap, KeySet, SelectMap) :-
     set.to_sorted_list(KeySet, Keys),
-    map.init(NewMap0),
-    map.select_loop(Keys, Original, NewMap0, NewMap).
+    select_sorted_list(FullMap, Keys, SelectMap).
 
-select_sorted_list(M1, S) = M2 :-
-    map.select_sorted_list(M1, S, M2).
+select_sorted_list(FullMap, Keys) = SelectMap :-
+    map.select_sorted_list(FullMap, Keys, SelectMap).
 
-select_sorted_list(Original, Keys, NewMap) :-
-    map.init(NewMap0),
-    map.select_loop(Keys, Original, NewMap0, NewMap).
+select_sorted_list(FullMap, Keys, SelectMap) :-
+    map.select_loop(Keys, FullMap, [], RevSelectAL),
+    map.from_rev_sorted_assoc_list(RevSelectAL, SelectMap).
 
 :- pred select_loop(list(K)::in, map(K, V)::in,
-    map(K, V)::in, map(K, V)::out) is det.
+    assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
 :- pragma type_spec(map.select_loop/4, K = var(_)).
 
-select_loop([], _Original, !New).
-select_loop([K | Ks], Original, !New) :-
-    ( if map.search(Original, K, V) then
-        map.det_insert(K, V, !New)
+select_loop([], _FullMap, !RevSelectAL).
+select_loop([K | Ks], FullMap, !RevSelectAL) :-
+    ( if map.search(FullMap, K, V) then
+        !:RevSelectAL = [K - V | !.RevSelectAL]
     else
         true
     ),
-    map.select_loop(Ks, Original, !New).
+    map.select_loop(Ks, FullMap, !RevSelectAL).
+
+%---------------------%
+
+select_unselect(FullMap, KeySet, SelectMap, UnselectMap) :-
+    set.to_sorted_list(KeySet, Keys),
+    select_unselect_sorted_list(FullMap, Keys, SelectMap, UnselectMap).
+
+select_unselect_sorted_list(FullMap, Keys, SelectMap, UnselectMap) :-
+    map.to_assoc_list(FullMap, FullAL),
+    map.select_unselect_loop(FullAL, Keys, [], RevSelectAL, [], RevUnselectAL),
+    map.from_rev_sorted_assoc_list(RevSelectAL, SelectMap),
+    map.from_rev_sorted_assoc_list(RevUnselectAL, UnselectMap).
+
+:- pred select_unselect_loop(assoc_list(K, V)::in, list(K)::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::out,
+    assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
+
+select_unselect_loop([], _, !RevSelectAL, !RevUnselectAL).
+select_unselect_loop(FullAL @ [FullK - FullV | TailFullAL], KeysAL,
+        !RevSelectAL, !RevUnselectAL) :-
+    (
+        KeysAL = [],
+        % There are no keys left in the key set.
+        % Move FullK - FullV (and every pair after them) to the unselect list.
+        NextFullAL = TailFullAL,
+        NextKeysAL = KeysAL,
+        !:RevUnselectAL = [FullK - FullV | !.RevUnselectAL]
+    ;
+        KeysAL = [KeyK | TailKeysAL],
+        compare(Result, KeyK, FullK),
+        (
+            Result = (<),
+            % KeyK does not occur in the full map. Consume it.
+            NextFullAL = FullAL,
+            NextKeysAL = TailKeysAL
+        ;
+            Result = (=),
+            % KeyK does occur in the full map. Consume both it
+            % and the matching FullK - FullV pair, and move the pair
+            % to the select list.
+            NextFullAL = TailFullAL,
+            NextKeysAL = TailKeysAL,
+            !:RevSelectAL = [FullK - FullV | !.RevSelectAL]
+        ;
+            Result = (>),
+            % We don't yet know whether KeyK occurs in the full map,
+            % but we know that FullK is not in the key set.
+            % Move the FullK - FullV pair to the unselect list.
+            NextFullAL = TailFullAL,
+            NextKeysAL = KeysAL,
+            !:RevUnselectAL = [FullK - FullV | !.RevUnselectAL]
+        )
+    ),
+    map.select_unselect_loop(NextFullAL, NextKeysAL,
+        !RevSelectAL, !RevUnselectAL).
 
 %---------------------------------------------------------------------------%
 

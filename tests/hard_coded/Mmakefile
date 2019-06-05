@@ -237,6 +237,7 @@ ORDINARY_PROGS = \
 	loop_inv_test3 \
 	loop_inv_test4 \
 	map_fold \
+	map_select_test \
 	mapped_module \
 	merge_and_remove_dups \
 	mode_check_clauses \

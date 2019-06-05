@@ -385,6 +385,8 @@ Changes to the Mercury standard library:
    - foldr5/12
    - intersect_list/4
    - union_list/4
+   - select_unselect/4
+   - select_unselect_sorted_list/4
 
 * The following predicate has been added to the set modules:
 
