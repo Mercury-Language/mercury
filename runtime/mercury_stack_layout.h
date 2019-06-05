@@ -476,7 +476,16 @@ struct MR_UserEventSpec_Struct {
 #define MR_NOT_HIDDEN   0
 
 struct MR_TypeParamLocns_Struct {
-    MR_uint_least32_t       MR_tp_param_count;
+    // Since the compiler generates a single array of values to hold
+    // *both* the count and the encoded parameter locations, the count
+    // field must have the same size as MR_LongLval.
+    //
+    // XXX Since MR_LongLval is a typedef for MR_Unsigned, the count
+    // should be unsigned as well. However, neither the code in the compiler
+    // that emits values of these structures nor the code in the trace
+    // and runtime directories handling these structures use unsigned
+    // values yet.
+    MR_Integer              MR_tp_param_count;
     MR_LongLval             MR_tp_param_locns[MR_VARIABLE_SIZED];
 };
 
