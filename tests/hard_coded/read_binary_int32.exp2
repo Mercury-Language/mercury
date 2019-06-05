@@ -1,0 +1,63 @@
+================
+Input: []
+Result: EOF (read big-endian)
+================
+Input: [1u8]
+Result: Incomplete ([1u8]) (read big-endian)
+================
+Input: [1u8, 2u8]
+Result: Incomplete ([1u8, 2u8]) (read big-endian)
+================
+Input: [1u8, 2u8, 3u8]
+Result: Incomplete ([1u8, 2u8, 3u8]) (read big-endian)
+================
+Input: [0u8, 0u8, 0u8, 1u8] (LE: 16777216) (BE: 1)
+Result: 1i32 (read big-endian)
+================
+Input: [255u8, 0u8, 0u8, 0u8] (LE: 255) (BE: -16777216)
+Result: -16777216i32 (read big-endian)
+================
+Input: [1u8, 1u8, 0u8, 0u8] (LE: 257) (BE: 16842752)
+Result: 16842752i32 (read big-endian)
+================
+Input: []
+Result: EOF (read little-endian)
+================
+Input: [1u8]
+Result: Incomplete ([1u8]) (read little-endian)
+================
+Input: [1u8, 2u8]
+Result: Incomplete ([1u8, 2u8]) (read little-endian)
+================
+Input: [1u8, 2u8, 3u8]
+Result: Incomplete ([1u8, 2u8, 3u8]) (read little-endian)
+================
+Input: [0u8, 0u8, 0u8, 1u8] (LE: 16777216) (BE: 1)
+Result: 16777216i32 (read little-endian)
+================
+Input: [255u8, 0u8, 0u8, 0u8] (LE: 255) (BE: -16777216)
+Result: 255i32 (read little-endian)
+================
+Input: [1u8, 1u8, 0u8, 0u8] (LE: 257) (BE: 16842752)
+Result: 257i32 (read little-endian)
+================
+Input: []
+Result: EOF (read native byte order)
+================
+Input: [1u8]
+Result: Incomplete ([1u8]) (read native byte order)
+================
+Input: [1u8, 2u8]
+Result: Incomplete ([1u8, 2u8]) (read native byte order)
+================
+Input: [1u8, 2u8, 3u8]
+Result: Incomplete ([1u8, 2u8, 3u8]) (read native byte order)
+================
+Input: [0u8, 0u8, 0u8, 1u8] (LE: 16777216) (BE: 1)
+Result: 1i32 (read native byte order)
+================
+Input: [255u8, 0u8, 0u8, 0u8] (LE: 255) (BE: -16777216)
+Result: -16777216i32 (read native byte order)
+================
+Input: [1u8, 1u8, 0u8, 0u8] (LE: 257) (BE: 16842752)
+Result: 16842752i32 (read native byte order)

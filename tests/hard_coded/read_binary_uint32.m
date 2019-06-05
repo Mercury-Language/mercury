@@ -4,6 +4,9 @@
 %
 % Test reading of binary uint32s.
 %
+% The .exp file is for little endian architectures.
+% The .exp2 file is for big endian architectures.
+%
 %---------------------------------------------------------------------------%
 
 :- module read_binary_uint32.
