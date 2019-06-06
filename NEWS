@@ -645,6 +645,8 @@ Changes to the Mercury compiler:
 
 * We have added support for Linux systems using musl libc.
 
+* We have improved support for AIX.
+
 * The compiler now reports an error for binary/octal/hexadecimal integer
   literals that cannot be represented in the compiler's native int type.
 

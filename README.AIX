@@ -1,62 +1,60 @@
 -----------------------------------------------------------------------------
 
-Mercury was tested on AIX in 2014.
+Mercury was tested on AIX in 2019.
 
-    * AIX 7.1 on POWER7 processor
-    * using xlc (IBM C compiler) or gcc 4.8.2
-    * in grades hlc.gc, reg.gc, none.gc
+    * AIX 7.1 on POWER9 processor
+    * using gcc version 6.3.0
+    * in high-level C grades (hlc.gc, hlc.par.gc)
 
-You must have GNU make, flex and bison.  RPMS are available from:
+PREREQUISITES
 
-    <http://www.ibm.com/systems/power/software/aix/linux/>
+Install yum by running this script:
 
-More recent packages, including GCC, are available from:
+    https://public.dhe.ibm.com/aix/freeSoftware/aixtoolbox/ezinstall/ppc/yum.sh
 
-    <http://www.perzl.org/aix/index.php>
+Then install the necessary packages:
 
------------------------------------------------------------------------------
-
-LIBATOMIC_OPS WORKAROUND
-
-libatomic_ops does not build correctly.  One workaround is to set
-AO_USE_PTHREAD_DEFS by modifying boehm_gc/build_atomic_ops.sh:
-
-    CFLAGS="-DAO_USE_PTHREAD_DEFS" \
-    ./configure --prefix=$P --libdir=$P/lib "$@"
-
-It is not recommended to use parallel Mercury grades in this configuration,
-if they even build.  They currently do not.
-
------------------------------------------------------------------------------
-
-BUILDING WITH IBM XL C COMPILER
-
-To use the IBM C compiler, pass "--with-cc=xlc" when configuring Mercury
-installation.  Use high-level C grades for better performance.
-
-Low-level C grades will overflow the default TOC data structure.  To use a
-large TOC, you can pass the option `-qpic=large' to the C compiler and the
-linker, or the option `-bbigtoc' to the linker.
+    yum install gcc make flex bison
 
 -----------------------------------------------------------------------------
 
 BUILDING WITH GCC
 
-gcc 4.2.0, as provided by IBM, is very old and will not work.  It crashes on
-long function names, which the Mercury compiler generates an abundance of.
+GCC defaults to -maix32. To build for the 64-bit AIX ABI, it may be easiest to
+create a shell script containing:
 
-gcc 4.8.2 does work, but requires some workarounds:
+    exec gcc -maix64 "$@"
 
-  * Low-level C grades will overflow the TOC.  Add this to Mmake.params:
+Mark the script executable, then run configure like this:
 
-	EXTRA_CFLAGS=-mminimal-toc
+    CC=/path/to/gcc-maix64 ./configure [options]
 
-    or perhaps
+If you are using /usr/bin/ar then you must also set an environment variable:
 
-	EXTRA_CFLAGS=-mcmodel=medium
+    export OBJECT_MODE=64
 
-    You would need the same flag when building user programs.
+If you try to use GNU ar instead (from binutils) you will run into problems
+when /usr/bin/ranlib is invoked on archives created by GNU ar.
 
-  * gcc generates some spurious warnings about uninitialized variables.
+The mercury_compile executable will overflow the PowerPC TOC with gcc in its
+default configuration. One solution is to add this to Mmake.params before
+running make:
+
+      EXTRA_CFLAGS=-mminimal-toc
+
+Your own programs may also overflow the TOC, depending on their size.
+
+-----------------------------------------------------------------------------
+
+BUILDING WITH IBM XL C COMPILER
+
+(Last tested in 2014.)
+
+To use the IBM C compiler, pass "--with-cc=xlc" when configuring Mercury
+installation. Use high-level C grades for better performance.
+
+Large programs will overflow the TOC. You can try passing the option
+`-qpic=large' to the C compiler and the linker, or passing `-bbigtoc' to the
+linker.
 
 -----------------------------------------------------------------------------
