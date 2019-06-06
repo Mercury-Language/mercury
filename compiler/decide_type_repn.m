@@ -53,17 +53,19 @@
         assoc_list(foreign_language, one_or_more(pair(sym_name, string)))).
 
     % decide_repns_for_simple_types(Globals,
-    %   IntTypeDefns, ImpTypeDefns, ForeignEnumTypeCtors, TypeRepnItems):
+    %   IntTypeDefns, ImpTypeDefns, ForeignEnumTypeCtors,
+    %   IntTypeRepnItems, NonIntTypeRepnItems):
     %
     % Given the type definitions in the two sections of a module,
     %
     % - figure out which type definitions define exported simple types,
     % - decide their representations, and
-    % - generate items recording those decisions.
+    % - generate items recording those decisions, for types that appear
+    %   in the interface, and for types that do not.
     %
 :- pred decide_repns_for_simple_types(module_name::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::in,
-    foreign_enum_map::in, list(item)::out) is det.
+    foreign_enum_map::in, list(item)::out, list(item)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -83,28 +85,44 @@
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Make decisions about simple types.
+%
 
 decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
-        ForeignEnumTypeCtors, Items) :-
-    list.foldl3(
-        decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors,
-            si_imp),
-        ImpTypeDefns, map.init, ImpTypeRepnMap0, map.init, ImpWordAlignedMap,
-        [], ImpForeignTypeDefns),
+        ForeignEnumTypeCtors, IntItems, NonIntItems) :-
+    list.foldl4(
+        decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors),
+        ImpTypeDefns, map.init, ImpTypeRepnMap0,
+        map.init, ImpWordAlignedMap,
+        [], ImpForeignTypeDefns, set_tree234.init, _ImpTypeSet),
+    list.foldl4(
+        decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors),
+        IntTypeDefns, ImpTypeRepnMap0, TypeRepnMap0,
+        ImpWordAlignedMap, WordAlignedMap,
+        ImpForeignTypeDefns, AllForeignTypeDefns,
+        set_tree234.init, IntTypeSet),
+
     list.foldl(record_foreign_type,
-        ImpForeignTypeDefns, ImpTypeRepnMap0, ImpTypeRepnMap),
-    list.foldl3(
-        decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors,
-            si_int(ImpTypeRepnMap, ImpWordAlignedMap)),
-        IntTypeDefns, map.init, TypeRepnMap0, map.init, WordAlignedMap,
-        [], IntForeignTypeDefns),
-    list.foldl(record_foreign_type,
-        IntForeignTypeDefns, TypeRepnMap0, TypeRepnMap),
-    map.foldl(make_type_repn_item(ModuleName), TypeRepnMap,
-        cord.init, ItemsCord0),
-    map.foldl(maybe_make_word_aligned_item(ModuleName), WordAlignedMap,
-        ItemsCord0, ItemsCord),
-    Items = cord.list(ItemsCord).
+        AllForeignTypeDefns, TypeRepnMap0, TypeRepnMap),
+
+    set_tree234.to_sorted_list(IntTypeSet, IntTypes),
+    map.select_unselect_sorted_list(TypeRepnMap, IntTypes,
+        IntTypeRepnMap, NonIntTypeRepnMap),
+    map.select_unselect_sorted_list(WordAlignedMap, IntTypes,
+        IntWordAlignedMap, NonIntWordAlignedMap),
+
+    map.foldl(make_type_repn_item(ModuleName), IntTypeRepnMap,
+        cord.init, IntItemsCord0),
+    map.foldl(maybe_make_word_aligned_item(ModuleName), IntWordAlignedMap,
+        IntItemsCord0, IntItemsCord),
+    map.foldl(make_type_repn_item(ModuleName), NonIntTypeRepnMap,
+        cord.init, NonIntItemsCord0),
+    map.foldl(maybe_make_word_aligned_item(ModuleName), NonIntWordAlignedMap,
+        NonIntItemsCord0, NonIntItemsCord),
+    IntItems = cord.list(IntItemsCord),
+    NonIntItems = cord.list(NonIntItemsCord).
 
 %---------------------%
 
@@ -210,19 +228,17 @@ maybe_make_word_aligned_item(ModuleName, UnqualTypeCtor, WordAligned,
 
 :- type word_aligned_map == map(unqual_type_ctor, maybe_word_aligned).
 
-:- type section_info
-    --->    si_imp
-    ;       si_int(type_repn_map, word_aligned_map).
-
 :- pred decide_repn_if_simple_du_type(module_name::in, foreign_enum_map::in,
-    section_info::in, item_type_defn_info::in,
+    item_type_defn_info::in,
     type_repn_map::in, type_repn_map::out,
     word_aligned_map::in, word_aligned_map::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
+    set_tree234(unqual_type_ctor)::in, set_tree234(unqual_type_ctor)::out)
+    is det.
 
 decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors,
-        SectionInfo, TypeDefnInfo, !TypeRepnMap, !WordAlignedMap,
-        !DeferredForeignTypeDefns) :-
+        TypeDefnInfo, !TypeRepnMap, !WordAlignedMap,
+        !DeferredForeignTypeDefns, !TypeSet) :-
     TypeDefnInfo = item_type_defn_info(TypeCtorSymName, TypeParams,
         TypeDefn, _TVarSet, _Context, _SeqNum),
     (
@@ -242,6 +258,7 @@ decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors,
     UnqualTypeCtor = unqual_type_ctor(TypeCtorName, TypeCtorArity),
     (
         TypeDefn = parse_tree_du_type(DuDetails),
+        set_tree234.insert(UnqualTypeCtor, !TypeSet),
         % XXX TYPE_REPN We should delete the "where direct_arg is" clause
         % from the Mercury language before we switch over to using this
         % module for anything but testing purposes. If we do not, we will
@@ -323,43 +340,12 @@ decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors,
             !WordAlignedMap)
     ;
         TypeDefn = parse_tree_foreign_type(_ForeignType),
+        set_tree234.insert(UnqualTypeCtor, !TypeSet),
         !:DeferredForeignTypeDefns =
             [TypeDefnInfo | !.DeferredForeignTypeDefns]
     ;
         TypeDefn = parse_tree_abstract_type(_),
-        (
-            SectionInfo = si_imp
-        ;
-            SectionInfo = si_int(ImpTypeRepnMap, ImpWordAlignedMap),
-            ( if map.search(ImpTypeRepnMap, UnqualTypeCtor, ImpRepn) then
-                ( if map.search(!.TypeRepnMap, UnqualTypeCtor, _) then
-                    % We have already found a definition of this type
-                    % in the interface that let us decide its representation,
-                    % so the type is defined at least twice. Keep the
-                    % representation we derived from the (first) definition
-                    % in the interface.
-                    true
-                else
-                    map.det_insert(UnqualTypeCtor, ImpRepn, !TypeRepnMap)
-                )
-            else
-                % Either the type is not defined in the implementation section,
-                % or if there such a definition, it is not simple enough
-                % to decide its representation in this pass.
-                %
-                % If there is a representation for this type in the interface
-                % section either, we want to keep that.
-                % If there is no representation for this type in the interface
-                % section either, we want to keep that absence as well.
-                true
-            ),
-            ( if map.search(ImpWordAlignedMap, UnqualTypeCtor, ImpWA) then
-                record_type_word_alignment(UnqualTypeCtor, ImpWA,
-                    !WordAlignedMap)
-            else
-                true
-            )
-        )
+        set_tree234.insert(UnqualTypeCtor, !TypeSet)
     ;
         ( TypeDefn = parse_tree_eqv_type(_)
         ; TypeDefn = parse_tree_solver_type(_)
@@ -557,6 +543,7 @@ record_foreign_type(ForeignTypeDefnInfo, !TypeRepnMap) :-
         unexpected($pred, "ForeignTypeDefnInfo not foreign")
     ).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
 % Auxiliary functions and predicates.

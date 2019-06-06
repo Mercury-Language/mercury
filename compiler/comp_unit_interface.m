@@ -201,8 +201,8 @@ generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt, !:Specs) :-
         IntTypeDefns = cord.list(IntTypeDefnsCord),
         ImpTypeDefns = cord.list(ImpTypeDefnsCord),
         decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
-            ForeignEnumTypeCtors, TypeRepnItems),
-        IntItems = IntItems0 ++ TypeRepnItems
+            ForeignEnumTypeCtors, IntTypeRepnItems, _NonIntTypeRepnItems),
+        IntItems = IntItems0 ++ IntTypeRepnItems
     else
         IntItems = IntItems0
     ),
