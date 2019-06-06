@@ -92,37 +92,68 @@
 
 decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
         ForeignEnumTypeCtors, IntItems, NonIntItems) :-
-    list.foldl4(
+    list.foldl5(
         decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors),
-        ImpTypeDefns, map.init, ImpTypeRepnMap0,
+        ImpTypeDefns, map.init, ImpDuTypeRepnMap,
         map.init, ImpWordAlignedMap,
-        [], ImpForeignTypeDefns, set_tree234.init, _ImpTypeSet),
-    list.foldl4(
+        [], ImpForeignTypeDefns, map.init, ImpEqvTypeMap,
+        set_tree234.init, _ImpTypeSet),
+    list.foldl5(
         decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors),
-        IntTypeDefns, ImpTypeRepnMap0, TypeRepnMap0,
+        IntTypeDefns, ImpDuTypeRepnMap, DuTypeRepnMap,
         ImpWordAlignedMap, WordAlignedMap,
-        ImpForeignTypeDefns, AllForeignTypeDefns,
+        ImpForeignTypeDefns, AllForeignTypeDefns, ImpEqvTypeMap, AllEqvTypeMap,
         set_tree234.init, IntTypeSet),
 
     list.foldl(record_foreign_type,
-        AllForeignTypeDefns, TypeRepnMap0, TypeRepnMap),
+        AllForeignTypeDefns, DuTypeRepnMap, DuForeignTypeRepnMap),
 
     set_tree234.to_sorted_list(IntTypeSet, IntTypes),
-    map.select_unselect_sorted_list(TypeRepnMap, IntTypes,
-        IntTypeRepnMap, NonIntTypeRepnMap),
+    map.select_unselect_sorted_list(DuForeignTypeRepnMap, IntTypes,
+        IntDuForeignTypeRepnMap, NonIntDuForeignTypeRepnMap),
     map.select_unselect_sorted_list(WordAlignedMap, IntTypes,
         IntWordAlignedMap, NonIntWordAlignedMap),
 
-    map.foldl(make_type_repn_item(ModuleName), IntTypeRepnMap,
-        cord.init, IntItemsCord0),
+    map.foldl(make_type_repn_item(ModuleName), IntDuForeignTypeRepnMap,
+        cord.init, IntDuForeignItemsCord0),
     map.foldl(maybe_make_word_aligned_item(ModuleName), IntWordAlignedMap,
-        IntItemsCord0, IntItemsCord),
-    map.foldl(make_type_repn_item(ModuleName), NonIntTypeRepnMap,
-        cord.init, NonIntItemsCord0),
+        IntDuForeignItemsCord0, IntDuForeignItemsCord),
+    map.foldl(make_type_repn_item(ModuleName), NonIntDuForeignTypeRepnMap,
+        cord.init, NonIntDuForeignItemsCord0),
     map.foldl(maybe_make_word_aligned_item(ModuleName), NonIntWordAlignedMap,
-        NonIntItemsCord0, NonIntItemsCord),
-    IntItems = cord.list(IntItemsCord),
-    NonIntItems = cord.list(NonIntItemsCord).
+        NonIntDuForeignItemsCord0, NonIntDuForeignItemsCord),
+    IntDuForeignItems = cord.list(IntDuForeignItemsCord),
+    NonIntDuForeignItems = cord.list(NonIntDuForeignItemsCord),
+
+    map.sorted_keys(DuForeignTypeRepnMap, SortedDuForeignTypeCtors),
+    map.select_unselect_sorted_list(AllEqvTypeMap, SortedDuForeignTypeCtors,
+        _AllDuAndEqvTypeMap, AllEqvOnlyTypeMap),
+    map.values(AllEqvOnlyTypeMap, AllEqvTypeItems),
+
+    % XXX TYPE_REPN Including type_representation items in the interface
+    % for *all* equivalence type definitions in the module, even the ones
+    % that appear in implementation sections, is an overapproximation.
+    % However, including type_representation items for *none* of the
+    % type equivalence definitions in implementation sections may be
+    % an *under*estimate. Consider this setup:
+    %
+    %   :- interface.
+    %   :- type t1 == list(t2).
+    %   :- implementation.
+    %   :- type t2 == int8.
+    %
+    % Knowing whether t1's representation is sub-word-sized requires
+    % access to the type representation item derived from the private
+    % definition of t2 as well as the one derived from the exported
+    % definition of t1.
+    %
+    % Exactly what subset of .int, .int2 and .int3 files this information
+    % should be included is a question for later work. For now, this
+    % overestimate is the most extensive possible test of the predicates
+    % that print out and read in type representation items.
+    %
+    IntItems = IntDuForeignItems ++ AllEqvTypeItems,
+    NonIntItems = NonIntDuForeignItems.
 
 %---------------------%
 
@@ -228,19 +259,22 @@ maybe_make_word_aligned_item(ModuleName, UnqualTypeCtor, WordAligned,
 
 :- type word_aligned_map == map(unqual_type_ctor, maybe_word_aligned).
 
+:- type eqv_type_repn_map == map(unqual_type_ctor, item).
+
 :- pred decide_repn_if_simple_du_type(module_name::in, foreign_enum_map::in,
     item_type_defn_info::in,
     type_repn_map::in, type_repn_map::out,
     word_aligned_map::in, word_aligned_map::out,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
+    eqv_type_repn_map::in, eqv_type_repn_map::out,
     set_tree234(unqual_type_ctor)::in, set_tree234(unqual_type_ctor)::out)
     is det.
 
 decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors,
         TypeDefnInfo, !TypeRepnMap, !WordAlignedMap,
-        !DeferredForeignTypeDefns, !TypeSet) :-
+        !DeferredForeignTypeDefns, !EqvTypeMap, !TypeSet) :-
     TypeDefnInfo = item_type_defn_info(TypeCtorSymName, TypeParams,
-        TypeDefn, _TVarSet, _Context, _SeqNum),
+        TypeDefn, TVarSet, _Context, _SeqNum),
     (
         TypeCtorSymName = unqualified(_),
         unexpected($pred, "unqualified TypeCtorSymName")
@@ -347,9 +381,19 @@ decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors,
         TypeDefn = parse_tree_abstract_type(_),
         set_tree234.insert(UnqualTypeCtor, !TypeSet)
     ;
-        ( TypeDefn = parse_tree_eqv_type(_)
-        ; TypeDefn = parse_tree_solver_type(_)
-        )
+        TypeDefn = parse_tree_eqv_type(type_details_eqv(EqvType)),
+        set_tree234.insert(UnqualTypeCtor, !TypeSet),
+
+        TypeRepn = tcrepn_is_eqv_to(EqvType),
+        EqvTypeRepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
+            TypeRepn, TVarSet, term.context_init, -1),
+        EqvItem = item_type_repn(EqvTypeRepnInfo),
+        % Insert the equivalence into !EqvTypeMap *unless* UnqualTypeCtor
+        % already has an entry there.
+        map.search_insert(UnqualTypeCtor, EqvItem, _MaybeOldEqvItem,
+            !EqvTypeMap)
+    ;
+        TypeDefn = parse_tree_solver_type(_)
     ).
 
 %---------------------%

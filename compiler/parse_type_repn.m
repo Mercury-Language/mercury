@@ -71,7 +71,7 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             RepnTerm = term.functor(term.atom(AtomStr), RepnArgs, RepnContext),
             ( AtomStr = "is_direct_dummy"
             ; AtomStr = "is_notag"
-            ; AtomStr = "is_equivalent_to"
+            ; AtomStr = "is_eqv_to"
             ; AtomStr = "fits_in_n_bits"
             ; AtomStr = "is_word_aligned_ptr"
             ; AtomStr = "has_direct_arg_functors"
@@ -88,8 +88,8 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 parse_no_arg_type_repn(AtomStr, RepnArgs, RepnContext,
                     tcrepn_is_notag, MaybeRepn)
             ;
-                AtomStr = "is_equivalent_to",
-                parse_type_repn_equivalent_to(VarSet, AtomStr, RepnArgs,
+                AtomStr = "is_eqv_to",
+                parse_type_repn_eqv_to(VarSet, AtomStr, RepnArgs,
                     RepnContext, MaybeRepn)
             ;
                 AtomStr = "fits_in_n_bits",
@@ -142,7 +142,7 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 words("Expected one of"),
                 quote("is_direct_dummy"), suffix(","),
                 quote("is_notag"), suffix(","),
-                quote("is_equivalent_to"), suffix(","),
+                quote("is_eqv_to"), suffix(","),
                 quote("fits_in_n_bits"), suffix(","),
                 quote("is_word_aligned_ptr"), suffix(","),
                 quote("has_direct_arg_functors"), suffix(","),
@@ -198,11 +198,10 @@ parse_no_arg_type_repn(RepnStr, RepnArgs, RepnContext,
 
 %-----------------------------------------------------------------------------e
 
-:- pred parse_type_repn_equivalent_to(varset::in, string::in, list(term)::in,
+:- pred parse_type_repn_eqv_to(varset::in, string::in, list(term)::in,
     term.context::in, maybe1(type_ctor_repn_info)::out) is det.
 
-parse_type_repn_equivalent_to(VarSet, RepnStr, RepnArgs, RepnContext,
-        MaybeRepn) :-
+parse_type_repn_eqv_to(VarSet, RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
     (
         RepnArgs = [RepnArg],
         HOInstInfo = no_allow_ho_inst_info(wnhii_eqv_type_defn_body),
