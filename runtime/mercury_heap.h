@@ -480,14 +480,21 @@
 // Copy a value of type T from `value' to `box', boxing it if necessary
 // (i.e. if type T won't fit in type MR_Box).
 
+#ifdef MR_BIG_ENDIAN
+  #define MR_IF_BIG_ENDIAN(x)   do { x } while (0)
+#else
+  #define MR_IF_BIG_ENDIAN(x)   do { } while (0)
+#endif
+
 #define MR_MAYBE_BOX_FOREIGN_TYPE(T, value, box)                            \
         do {                                                                \
             MR_CHECK_EXPR_TYPE((value), T);                                 \
             MR_CHECK_EXPR_TYPE((box), MR_Box);                              \
-            if (sizeof(T) == sizeof(MR_Box)) {                              \
+            long extra_bytes = (long) sizeof(T) - (long) sizeof(MR_Box);    \
+            if (extra_bytes == 0L) {                                        \
                 (box) = * (MR_Box *) &(value);                              \
-            } else if (sizeof(T) > sizeof(MR_Box)) {                        \
-                MR_Word     box_word;                                       \
+            } else if (extra_bytes > 0L) {                                  \
+                MR_Word box_word;                                           \
                 size_t size_in_words =                                      \
                     (sizeof(T) + sizeof(MR_Word) - 1) / sizeof(MR_Word);    \
                 /*                                                          \
@@ -506,19 +513,14 @@
                 MR_profmem_record_allocation(size_in_words, NULL,           \
                     "foreign type: " MR_STRINGIFY(T));                      \
             } else {                                                        \
-                /*                                                          \
-                ** We can't take the address of `box' here,                 \
-                ** since it might be a global register.                     \
-                ** Hence we need to use a temporary copy.                   \
-                */                                                          \
-                MR_Box box_copy;                                            \
-                if (sizeof(T) < sizeof(MR_Box)) {                           \
-                    /*                                                      \
-                    ** Make sure we don't leave any part of it uninitialized. \
-                    */                                                      \
-                    box_copy = 0;                                           \
-                }                                                           \
+                MR_Box box_copy = 0;                                        \
                 MR_memcpy(&box_copy, &(value), sizeof(T));                  \
+                /* Store value in least significant bits. */                \
+                MR_IF_BIG_ENDIAN(                                           \
+                    MR_Word box_word = (MR_Word) box_copy;                  \
+                    box_word >>= -(extra_bytes * CHAR_BIT);                 \
+                    box_copy = (MR_Box) box_word;                           \
+                );                                                          \
                 (box) = box_copy;                                           \
             }                                                               \
         } while (0)
@@ -530,20 +532,24 @@
         do {                                                                \
             MR_CHECK_EXPR_TYPE((value), T);                                 \
             MR_CHECK_EXPR_TYPE((box), MR_Box);                              \
-            if (sizeof(T) > sizeof(MR_Word)) {                              \
-                MR_assign_structure((value), * (T *) (box));                \
-            } else {                                                        \
+            long extra_bytes = (long) sizeof(T) - (long) sizeof(MR_Box);    \
+            if (extra_bytes == 0L) {                                        \
                 /*                                                          \
                 ** We can't take the address of `box' here,                 \
                 ** since it might be a global register.                     \
-                ** Hence we need to use a temporary copy.                   \
                 */                                                          \
                 MR_Box box_copy = (box);                                    \
-                if (sizeof(T) == sizeof(MR_Box)) {                          \
-                    (value) = * (T *) &box_copy;                            \
-                } else {                                                    \
-                    MR_memcpy(&(value), &box_copy, sizeof(T));              \
-                }                                                           \
+                (value) = * (T *) &box_copy;                                \
+            } else if (extra_bytes > 0L) {                                  \
+                MR_assign_structure((value), * (T *) (box));                \
+            } else {                                                        \
+                MR_Box box_copy = (box);                                    \
+                MR_IF_BIG_ENDIAN(                                           \
+                    MR_Word box_word = (MR_Word) box_copy;                  \
+                    box_word <<= -(extra_bytes * CHAR_BIT);                 \
+                    box_copy = (MR_Box) box_word;                           \
+                );                                                          \
+                MR_memcpy(&(value), &box_copy, sizeof(T));                  \
             }                                                               \
         } while (0)
 
