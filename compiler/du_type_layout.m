@@ -139,84 +139,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_double_word_floats
-    --->    no_double_word_floats
-    ;       use_double_word_floats.
-
-    % This setting applies to uint64s as well.
-:- type maybe_double_word_int64s
-    --->    no_double_word_int64s
-    ;       use_double_word_int64s.
-
-:- type maybe_primary_tags
-    --->    no_primary_tags
-    ;       max_primary_tag(ptag, int).
-            % The maximum ptag, and the number of bits it occupies.
-
-:- type maybe_unboxed_no_tag_types
-    --->    no_unboxed_no_tag_types
-    ;       use_unboxed_no_tag_types.
-
-:- type maybe_direct_args
-    --->    direct_args_disabled
-    ;       direct_args_enabled.
-
-:- type maybe_inform_about_packing
-    --->    do_not_inform_about_packing
-    ;       inform_about_packing.
-
-:- type show_which_types
-    --->    show_locally_defined_types
-    ;       show_all_visible_types.
-
-:- type maybe_for_developers
-    --->    not_for_developers
-    ;       for_developers.
-
-:- type maybe_show_type_repns
-    --->    do_not_show_type_repns
-    ;       show_type_repns(show_which_types, maybe_for_developers).
-
-:- type decide_du_params
-    --->    decide_du_params(
-                ddp_arg_pack_bits               :: int,
-                ddp_maybe_primary_tags          :: maybe_primary_tags,
-
-                ddp_target                      :: compilation_target,
-
-                ddp_double_word_floats          :: maybe_double_word_floats,
-                ddp_double_word_int64s          :: maybe_double_word_int64s,
-                ddp_unboxed_no_tag_types        :: maybe_unboxed_no_tag_types,
-
-                ddp_inform_suboptimal_pack      :: maybe_inform_about_packing,
-
-                % Only for bootstrapping.
-                ddp_allow_double_word_ints      :: bool,
-                ddp_allow_packing_ints          :: bool,
-                ddp_allow_packing_chars         :: bool,
-                ddp_allow_packing_dummies       :: bool,
-                ddp_allow_packing_local_sectags :: bool,
-                ddp_allow_packing_remote_sectags :: bool,
-                ddp_allow_packing_mini_types    :: bool,
-
-                % We use the direct_arg_map for two purposes:
-                % - to optimize data representations, and
-                % - to generate error messages for incorrect uses of
-                %   "where direct_arg is" clauses.
-                % We need the direct_arg for the first purpose
-                % only when the direct_arg optimization is enabled,
-                % but we use it for the second purpose even when it is
-                % disabled.
-                % XXX When we remove "where direct_arg is" clauses
-                % from the language, the second purpose will go away.
-                ddp_maybe_direct_args           :: maybe_direct_args,
-                ddp_direct_arg_map              :: direct_arg_map,
-
-                ddp_maybe_show_type_repns       :: maybe_show_type_repns
-            ).
-
-%---------------------------------------------------------------------------%
-
 decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     module_info_get_type_repn_dec(!.ModuleInfo, TypeRepnDec),
     TypeRepnDec = type_repn_decision_data(TypeRepns, DirectArgMap,
@@ -292,171 +214,6 @@ add_special_pred_decl_defns_for_types_maybe_lazily(
         TypeCtor, TypeDefn, !ModuleInfo),
     add_special_pred_decl_defns_for_types_maybe_lazily(
         TypeCtorsTypeDefns, !ModuleInfo).
-
-:- pred setup_decide_du_params(globals::in, direct_arg_map::in,
-    decide_du_params::out) is det.
-
-setup_decide_du_params(Globals, DirectArgMap, Params) :-
-    % Compute Target.
-    globals.get_target(Globals, Target),
-
-    % Compute DoubleWordFloats and DoubleWordInt64s.
-    globals.lookup_bool_option(Globals, allow_double_word_fields,
-        AllowDoubleWords),
-    (
-        AllowDoubleWords = yes,
-        globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
-        globals.lookup_bool_option(Globals, single_prec_float,
-            SinglePrecFloat),
-        ( if
-            TargetWordBits = 32,
-            SinglePrecFloat = no
-        then
-            DoubleWordFloats = use_double_word_floats
-        else
-            DoubleWordFloats = no_double_word_floats
-        ),
-        ( if TargetWordBits = 32 then
-            DoubleWordInt64s = use_double_word_int64s
-        else
-            DoubleWordInt64s = no_double_word_int64s
-        )
-    ;
-        AllowDoubleWords = no,
-        DoubleWordFloats = no_double_word_floats,
-        DoubleWordInt64s = no_double_word_int64s
-    ),
-
-    % Compute UnboxedNoTagTypes.
-    globals.lookup_bool_option(Globals, unboxed_no_tag_types,
-        UnboxedNoTagTypesBool),
-    (
-        UnboxedNoTagTypesBool = no,
-        UnboxedNoTagTypes = no_unboxed_no_tag_types
-    ;
-        UnboxedNoTagTypesBool = yes,
-        UnboxedNoTagTypes = use_unboxed_no_tag_types
-    ),
-
-    % Compute MaybePrimaryTags.
-    globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
-    ( if NumPtagBits = 0 then
-        MaybePrimaryTags = no_primary_tags
-    else if NumPtagBits = 2 then
-        MaybePrimaryTags = max_primary_tag(ptag(3u8), NumPtagBits)
-    else if NumPtagBits = 3 then
-        MaybePrimaryTags = max_primary_tag(ptag(7u8), NumPtagBits)
-    else
-        MaxPtagInt = (1 << NumPtagBits) - 1,
-        MaxPtagUint8 = uint8.det_from_int(MaxPtagInt),
-        MaybePrimaryTags = max_primary_tag(ptag(MaxPtagUint8), NumPtagBits)
-    ),
-
-    % Compute ArgPackBits.
-    globals.lookup_int_option(Globals, arg_pack_bits, ArgPackBits),
-
-    % Compute AllowDoubleWordInts, AllowPackingInts and AllocPackingDummies.
-    globals.lookup_bool_option(Globals, allow_double_word_ints,
-        AllowDoubleWordInts),
-    globals.lookup_bool_option(Globals, allow_packing_ints,
-        AllowPackingInts),
-    globals.lookup_bool_option(Globals, allow_packing_chars,
-        AllowPackingChars),
-    globals.lookup_bool_option(Globals, allow_packing_dummies,
-        AllowPackingDummies),
-    globals.lookup_bool_option(Globals, allow_packing_local_sectags,
-        AllowPackingLocalSegtags),
-    globals.lookup_bool_option(Globals, allow_packing_remote_sectags,
-        AllowPackingRemoteSegtags),
-    globals.lookup_bool_option(Globals, allow_packing_mini_types,
-        AllowPackingMiniTypes),
-
-    % Compute MaybeDirectArgs.
-    (
-        Target = target_c,
-        globals.lookup_bool_option(Globals, record_term_sizes_as_words,
-            TermSizeWords),
-        globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
-            TermSizeCells),
-        ( if
-            TermSizeWords = no,
-            TermSizeCells = no
-        then
-            MaybeDirectArgs = direct_args_enabled
-        else
-            % We cannot use direct arg functors in term size grades.
-            MaybeDirectArgs = direct_args_disabled
-        )
-    ;
-        ( Target = target_csharp
-        ; Target = target_java
-        ; Target = target_erlang
-        ),
-        % Direct arg functors have not (yet) been implemented on these targets.
-        MaybeDirectArgs = direct_args_disabled
-    ),
-
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    (
-        HighLevelData = no
-    ;
-        HighLevelData = yes,
-        expect(unify(AllowDoubleWords, no), $pred,
-            "AllowDoubleWords != no"),
-        expect(unify(AllowPackingInts, no), $pred,
-            "AllowPackingInts != no"),
-        expect(unify(AllowPackingDummies, no), $pred,
-            "AllowPackingDummies != no")
-    ),
-
-    % Compute MaybeInformPacking.
-    globals.lookup_bool_option(Globals, inform_suboptimal_packing,
-        InformPacking),
-    (
-        InformPacking = no,
-        MaybeInformPacking = do_not_inform_about_packing
-    ;
-        InformPacking = yes,
-        MaybeInformPacking = inform_about_packing
-    ),
-
-    % Compute MaybeDumpTypeRepns.
-    globals.lookup_bool_option(Globals, show_all_type_repns,
-        ShowAllTypeRepns),
-    globals.lookup_bool_option(Globals, show_local_type_repns,
-        ShowLocalTypeRepns),
-    globals.lookup_bool_option(Globals, show_developer_type_repns,
-        ShowDeveloperTypeRepns),
-    (
-        ShowDeveloperTypeRepns = no,
-        ForDevelopers = not_for_developers
-    ;
-        ShowDeveloperTypeRepns = yes,
-        ForDevelopers = for_developers
-    ),
-    (
-        ShowAllTypeRepns = no,
-        (
-            ShowLocalTypeRepns = no,
-            MaybeShowTypeRepns = do_not_show_type_repns
-        ;
-            ShowLocalTypeRepns = yes,
-            MaybeShowTypeRepns = show_type_repns(show_locally_defined_types,
-                ForDevelopers)
-        )
-    ;
-        ShowAllTypeRepns = yes,
-        MaybeShowTypeRepns = show_type_repns(show_all_visible_types,
-            ForDevelopers)
-    ),
-
-    Params = decide_du_params(ArgPackBits, MaybePrimaryTags, Target,
-        DoubleWordFloats, DoubleWordInt64s,
-        UnboxedNoTagTypes, MaybeInformPacking,
-        AllowDoubleWordInts, AllowPackingInts, AllowPackingChars,
-        AllowPackingDummies, AllowPackingLocalSegtags,
-        AllowPackingRemoteSegtags, AllowPackingMiniTypes,
-        MaybeDirectArgs, DirectArgMap, MaybeShowTypeRepns).
 
 %---------------------------------------------------------------------------%
 
@@ -3255,6 +3012,249 @@ output_sized_packable_functor_args(Stream, Params, ComponentTypeMap, Prefix,
     ),
     output_sized_packable_functor_args(Stream, Params, ComponentTypeMap, ", ",
         Args, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- type maybe_double_word_floats
+    --->    no_double_word_floats
+    ;       use_double_word_floats.
+
+    % This setting applies to uint64s as well.
+:- type maybe_double_word_int64s
+    --->    no_double_word_int64s
+    ;       use_double_word_int64s.
+
+:- type maybe_primary_tags
+    --->    no_primary_tags
+    ;       max_primary_tag(ptag, int).
+            % The maximum ptag, and the number of bits it occupies.
+
+:- type maybe_unboxed_no_tag_types
+    --->    no_unboxed_no_tag_types
+    ;       use_unboxed_no_tag_types.
+
+:- type maybe_direct_args
+    --->    direct_args_disabled
+    ;       direct_args_enabled.
+
+:- type maybe_inform_about_packing
+    --->    do_not_inform_about_packing
+    ;       inform_about_packing.
+
+:- type show_which_types
+    --->    show_locally_defined_types
+    ;       show_all_visible_types.
+
+:- type maybe_for_developers
+    --->    not_for_developers
+    ;       for_developers.
+
+:- type maybe_show_type_repns
+    --->    do_not_show_type_repns
+    ;       show_type_repns(show_which_types, maybe_for_developers).
+
+:- type decide_du_params
+    --->    decide_du_params(
+                ddp_arg_pack_bits               :: int,
+                ddp_maybe_primary_tags          :: maybe_primary_tags,
+
+                ddp_target                      :: compilation_target,
+
+                ddp_double_word_floats          :: maybe_double_word_floats,
+                ddp_double_word_int64s          :: maybe_double_word_int64s,
+                ddp_unboxed_no_tag_types        :: maybe_unboxed_no_tag_types,
+
+                ddp_inform_suboptimal_pack      :: maybe_inform_about_packing,
+
+                % Only for bootstrapping.
+                ddp_allow_double_word_ints      :: bool,
+                ddp_allow_packing_ints          :: bool,
+                ddp_allow_packing_chars         :: bool,
+                ddp_allow_packing_dummies       :: bool,
+                ddp_allow_packing_local_sectags :: bool,
+                ddp_allow_packing_remote_sectags :: bool,
+                ddp_allow_packing_mini_types    :: bool,
+
+                % We use the direct_arg_map for two purposes:
+                % - to optimize data representations, and
+                % - to generate error messages for incorrect uses of
+                %   "where direct_arg is" clauses.
+                % We need the direct_arg_map for the first purpose
+                % only when the direct_arg optimization is enabled,
+                % but we use it for the second purpose even when it is
+                % disabled.
+                % XXX When we remove "where direct_arg is" clauses
+                % from the language, the second purpose will go away.
+                ddp_maybe_direct_args           :: maybe_direct_args,
+                ddp_direct_arg_map              :: direct_arg_map,
+
+                ddp_maybe_show_type_repns       :: maybe_show_type_repns
+            ).
+
+:- pred setup_decide_du_params(globals::in, direct_arg_map::in,
+    decide_du_params::out) is det.
+
+setup_decide_du_params(Globals, DirectArgMap, Params) :-
+    % Compute Target.
+    globals.get_target(Globals, Target),
+
+    % Compute DoubleWordFloats and DoubleWordInt64s.
+    globals.lookup_bool_option(Globals, allow_double_word_fields,
+        AllowDoubleWords),
+    (
+        AllowDoubleWords = yes,
+        globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+        globals.lookup_bool_option(Globals, single_prec_float,
+            SinglePrecFloat),
+        ( if
+            TargetWordBits = 32,
+            SinglePrecFloat = no
+        then
+            DoubleWordFloats = use_double_word_floats
+        else
+            DoubleWordFloats = no_double_word_floats
+        ),
+        ( if TargetWordBits = 32 then
+            DoubleWordInt64s = use_double_word_int64s
+        else
+            DoubleWordInt64s = no_double_word_int64s
+        )
+    ;
+        AllowDoubleWords = no,
+        DoubleWordFloats = no_double_word_floats,
+        DoubleWordInt64s = no_double_word_int64s
+    ),
+
+    % Compute UnboxedNoTagTypes.
+    globals.lookup_bool_option(Globals, unboxed_no_tag_types,
+        UnboxedNoTagTypesBool),
+    (
+        UnboxedNoTagTypesBool = no,
+        UnboxedNoTagTypes = no_unboxed_no_tag_types
+    ;
+        UnboxedNoTagTypesBool = yes,
+        UnboxedNoTagTypes = use_unboxed_no_tag_types
+    ),
+
+    % Compute MaybePrimaryTags.
+    globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
+    ( if NumPtagBits = 0 then
+        MaybePrimaryTags = no_primary_tags
+    else if NumPtagBits = 2 then
+        MaybePrimaryTags = max_primary_tag(ptag(3u8), NumPtagBits)
+    else if NumPtagBits = 3 then
+        MaybePrimaryTags = max_primary_tag(ptag(7u8), NumPtagBits)
+    else
+        MaxPtagInt = (1 << NumPtagBits) - 1,
+        MaxPtagUint8 = uint8.det_from_int(MaxPtagInt),
+        MaybePrimaryTags = max_primary_tag(ptag(MaxPtagUint8), NumPtagBits)
+    ),
+
+    % Compute ArgPackBits.
+    globals.lookup_int_option(Globals, arg_pack_bits, ArgPackBits),
+
+    % Compute AllowDoubleWordInts, AllowPackingInts and AllocPackingDummies.
+    globals.lookup_bool_option(Globals, allow_double_word_ints,
+        AllowDoubleWordInts),
+    globals.lookup_bool_option(Globals, allow_packing_ints,
+        AllowPackingInts),
+    globals.lookup_bool_option(Globals, allow_packing_chars,
+        AllowPackingChars),
+    globals.lookup_bool_option(Globals, allow_packing_dummies,
+        AllowPackingDummies),
+    globals.lookup_bool_option(Globals, allow_packing_local_sectags,
+        AllowPackingLocalSegtags),
+    globals.lookup_bool_option(Globals, allow_packing_remote_sectags,
+        AllowPackingRemoteSegtags),
+    globals.lookup_bool_option(Globals, allow_packing_mini_types,
+        AllowPackingMiniTypes),
+
+    % Compute MaybeDirectArgs.
+    (
+        Target = target_c,
+        globals.lookup_bool_option(Globals, record_term_sizes_as_words,
+            TermSizeWords),
+        globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
+            TermSizeCells),
+        ( if
+            TermSizeWords = no,
+            TermSizeCells = no
+        then
+            MaybeDirectArgs = direct_args_enabled
+        else
+            % We cannot use direct arg functors in term size grades.
+            MaybeDirectArgs = direct_args_disabled
+        )
+    ;
+        ( Target = target_csharp
+        ; Target = target_java
+        ; Target = target_erlang
+        ),
+        % Direct arg functors have not (yet) been implemented on these targets.
+        MaybeDirectArgs = direct_args_disabled
+    ),
+
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    (
+        HighLevelData = no
+    ;
+        HighLevelData = yes,
+        expect(unify(AllowDoubleWords, no), $pred,
+            "AllowDoubleWords != no"),
+        expect(unify(AllowPackingInts, no), $pred,
+            "AllowPackingInts != no"),
+        expect(unify(AllowPackingDummies, no), $pred,
+            "AllowPackingDummies != no")
+    ),
+
+    % Compute MaybeInformPacking.
+    globals.lookup_bool_option(Globals, inform_suboptimal_packing,
+        InformPacking),
+    (
+        InformPacking = no,
+        MaybeInformPacking = do_not_inform_about_packing
+    ;
+        InformPacking = yes,
+        MaybeInformPacking = inform_about_packing
+    ),
+
+    % Compute MaybeDumpTypeRepns.
+    globals.lookup_bool_option(Globals, show_all_type_repns,
+        ShowAllTypeRepns),
+    globals.lookup_bool_option(Globals, show_local_type_repns,
+        ShowLocalTypeRepns),
+    globals.lookup_bool_option(Globals, show_developer_type_repns,
+        ShowDeveloperTypeRepns),
+    (
+        ShowDeveloperTypeRepns = no,
+        ForDevelopers = not_for_developers
+    ;
+        ShowDeveloperTypeRepns = yes,
+        ForDevelopers = for_developers
+    ),
+    (
+        ShowAllTypeRepns = no,
+        (
+            ShowLocalTypeRepns = no,
+            MaybeShowTypeRepns = do_not_show_type_repns
+        ;
+            ShowLocalTypeRepns = yes,
+            MaybeShowTypeRepns = show_type_repns(show_locally_defined_types,
+                ForDevelopers)
+        )
+    ;
+        ShowAllTypeRepns = yes,
+        MaybeShowTypeRepns = show_type_repns(show_all_visible_types,
+            ForDevelopers)
+    ),
+
+    Params = decide_du_params(ArgPackBits, MaybePrimaryTags, Target,
+        DoubleWordFloats, DoubleWordInt64s,
+        UnboxedNoTagTypes, MaybeInformPacking,
+        AllowDoubleWordInts, AllowPackingInts, AllowPackingChars,
+        AllowPackingDummies, AllowPackingLocalSegtags,
+        AllowPackingRemoteSegtags, AllowPackingMiniTypes,
+        MaybeDirectArgs, DirectArgMap, MaybeShowTypeRepns).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.du_type_layout.
