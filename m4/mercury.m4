@@ -245,7 +245,7 @@ AC_SUBST(READLINE_LIBRARIES)
 AC_DEFUN([MERCURY_CHECK_EDITLINE], [
 AC_REQUIRE([MERCURY_CHECK_READLINE])
 AC_ARG_WITH(editline,
-[  --without-editline      Do not use the editline library],
+[  --without-editline      Do not use the NetBSD editline library (libedit)],
 mercury_cv_with_editline="$withval", mercury_cv_with_editline=yes)
 
 if test $mercury_cv_with_editline = no; then

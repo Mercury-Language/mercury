@@ -564,8 +564,8 @@
 
 // MR_USE_EDITLINE
 //
-// The editline library is available and should be used by the debugger
-// for the command-line prompt.
+// The editline library (libedit) is available and should be used by the
+// debugger for the command-line prompt.
 // This will *not* be defined if MR_USE_READLINE is defined.
 //
 // MR_HAVE_EDITLINE_READLINE_H

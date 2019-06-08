@@ -5260,7 +5260,7 @@ AC_SUBST(USE_MSVCRT)
 
 #-----------------------------------------------------------------------------#
 #
-# Check for readline and editline.
+# Check for readline and editline (libedit).
 #
 
 MERCURY_CHECK_READLINE
