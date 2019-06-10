@@ -2,6 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2002, 2005, 2006-2007, 2010, 2012 The University of Melbourne.
+# Copyright (C) 2013, 2019 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -25,12 +26,10 @@ PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
 SRC=$(PROGS:%=%.c)
 
 # Link in local copy of getopt() only if required.
-# XXX The files in runtime/GETOPT may not compile cleanly with modern
-# compilers. We should replace it with another implementation.
 ifeq ("$(HAVE_GETOPT)","no")
-	GETOPT_SRC=$(RUNTIME_DIR)/GETOPT/getopt.c $(RUNTIME_DIR)/GETOPT/getopt1.c
+    GETOPT_SRC=../getopt/getopt.c
 else
-	GETOPT_SRC=
+    GETOPT_SRC=
 endif
 
 # mkinit.c needs `struct stat'

@@ -173,7 +173,7 @@ CFILES = \
 	mercury_file.c				\
 	mercury_float.c				\
 	mercury_getopt.c			\
-	mercury_getopt1.c			\
+	mercury_getopt_long.c			\
 	mercury_grade.c				\
 	mercury_hash_table.c			\
 	mercury_heap_profile.c			\

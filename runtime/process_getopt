@@ -1,56 +1,31 @@
 #!/bin/sh
+# This generates mercury_getopt*.[ch] from the files in ../getopt
 
-chmod 644 mercury_getopt.h mercury_getopt.c mercury_getopt1.c
+chmod 644 mercury_getopt.h mercury_getopt.c mercury_getopt_long.c
 
-for file in getopt.h getopt.c getopt1.c
+for file in getopt.h getopt.c getopt_long.c
 do
 	echo processing mercury_$file
-	cp GETOPT/$file mercury_$file
+	cp ../getopt/$file mercury_$file
 	ex mercury_$file << END
 	g/#include/s/getopt/mercury_getopt/
-	g/\<getopt/s//MR_getopt/g
-	g/\<optarg/s//MR_optarg/g
-	g/\<optind/s//MR_optind/g
-	g/\<opterr/s//MR_opterr/g
-	g/\<optopt/s//MR_optopt/g
-	g/\<option/s//MR_option/g
-	g/\<_getopt/s//MR__getopt/g
-	g/\<_GETOPT/s//MERCURY_GETOPT/g
-	g/no_argument/s//MR_no_argument/g
-	g/required_argument/s//MR_required_argument/g
-	g/#ifndef/s/ELIDE_CODE/XXXELIDE_CODEXXX/
+	g/\<getopt\(.*(\)/s//MR_getopt\1/g
+	g/\<optarg\>/s//MR_optarg/g
+	g/\<optind\>/s//MR_optind/g
+	g/\<opterr\>/s//MR_opterr/g
+	g/\<optopt\>/s//MR_optopt/g
+	g/\<optreset\>/s//MR_optreset/g
+	g/\<__optpos\>/s//MR__optpos/g
+	g/\<__optreset\>/s//MR__optreset/g
+	g/\<__getopt_msg\>/s//MR__getopt_msg/g
+	g/\<struct option\>/s//struct MR_option/g
+	g/\<no_argument\>/s//MR_no_argument/g
+	g/\<required_argument\>/s//MR_required_argument/g
+	g/\<optional_argument\>/s//MR_optional_argument/g
+	g/\<_GETOPT_H\>/s//MERCURY_GETOPT_H/g
 	w
 	q
 END
 done
 
-echo finalizing mercury_getopt.h
-ex mercury_getopt.h << END
-1i
-#undef __GNU_LIBRARY__
-#define __GNU_LIBRARY__
-.
-w
-q
-END
-
-echo finalizing mercury_getopt.c
-ex mercury_getopt.c << END
-1i
-extern	char	*getenv(const char *);
-.
-g/nextchar/s//MR_nextchar/g
-g/ordering/s//MR_ordering/g
-g/posixly_correct/s//MR_posixly_correct/g
-g/first_nonopt/s//MR_first_nonopt/g
-g/last_nonopt/s//MR_last_nonopt/g
-g/__getopt_initialized/s//MR____getopt_initialized/g
-g/%s: MR_option/s//%s: option/g
-g/%s: unrecognized MR_option/s//%s: unrecognized option/g
-g/%s: illegal MR_option/s//%s: illegal option/g
-g/%s: invalid MR_option/s//%s: invalid option/g
-w
-q
-END
-
-chmod 444 mercury_getopt.h mercury_getopt.c mercury_getopt1.c
+chmod 444 mercury_getopt.h mercury_getopt.c mercury_getopt_long.c

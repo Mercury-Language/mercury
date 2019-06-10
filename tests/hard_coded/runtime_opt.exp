@@ -8,7 +8,7 @@ Option `--detstack-size=128 --small-detstack-size=128':
 Hello world (with non-standard options).
 
 Option `--this-is-not-a-real-option':
-mercury_runtime: unrecognized option `--this-is-not-a-real-option'
+mercury_runtime: unrecognized option: `this-is-not-a-real-option'
 The MERCURY_OPTIONS environment variable contains an invalid option.
 Please refer to the Environment Variables section of the Mercury
 User's Guide for details.

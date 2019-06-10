@@ -77,7 +77,7 @@ big(
   3, 
   big(big(small, 4, big(small, 5, small)), 6, small))
 mdb> print --xyzzy 1
-print: unrecognized option `--xyzzy'
+print: unrecognized option: `xyzzy'
 mdb: print: usage error -- type `help print' for help.
 mdb> browse 1; print; quit
 big(

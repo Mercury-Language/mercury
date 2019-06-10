@@ -27,6 +27,12 @@ entirety.
 
 --------
 
+The files in the `getopt' directory, as well as runtime/mercury_getopt.c,
+runtime/mercury_getopt_long.c and runtime/mercury_getopt.h, are derived
+from the musl library. See the files for copyright information.
+
+--------
+
 A few files (config.guess, config.sub) are derived from code that is
 copyright by the Free Software Foundation, Inc, and are distributed
 under the GNU General Public License version 2.
