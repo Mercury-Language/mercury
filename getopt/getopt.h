@@ -46,6 +46,10 @@ int getopt_long_only(int, char *const *, const char *, const struct option *, in
 #define required_argument  1
 #define optional_argument  2
 
+#ifdef GETOPT_IMPL
+void __getopt_msg(const char *a, const char *b, const char *c, size_t l);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

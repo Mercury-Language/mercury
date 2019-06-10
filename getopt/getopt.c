@@ -26,25 +26,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
-#include "locale_impl.h"
-#include "stdio_impl.h"
+#include <stdio.h>
+#define GETOPT_IMPL
+#include "getopt.h"
 
 char *optarg;
-int optind=1, opterr=1, optopt, __optpos, __optreset=0;
+int optind=1, opterr=1, optopt, __optpos, optreset=0;
 
 #define optpos __optpos
-weak_alias(__optreset, optreset);
 
 void __getopt_msg(const char *a, const char *b, const char *c, size_t l)
 {
 	FILE *f = stderr;
-	b = __lctrans_cur(b);
-	FLOCK(f);
 	fputs(a, f)>=0
 	&& fwrite(b, strlen(b), 1, f)
 	&& fwrite(c, 1, l, f)==l
 	&& putc('\n', f);
-	FUNLOCK(f);
 }
 
 int getopt(int argc, char * const argv[], const char *optstring)
@@ -54,8 +51,8 @@ int getopt(int argc, char * const argv[], const char *optstring)
 	int k, l;
 	char *optchar;
 
-	if (!optind || __optreset) {
-		__optreset = 0;
+	if (!optind || optreset) {
+		optreset = 0;
 		__optpos = 0;
 		optind = 1;
 	}
@@ -123,5 +120,3 @@ int getopt(int argc, char * const argv[], const char *optstring)
 	}
 	return c;
 }
-
-weak_alias(getopt, __posix_getopt);

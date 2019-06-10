@@ -25,12 +25,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stddef.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <getopt.h>
 #include <stdio.h>
 #include <string.h>
-#include "stdio_impl.h"
+#define GETOPT_IMPL
+#include "getopt.h"
 
-extern int __optpos, __optreset;
+extern int __optpos;
 
 static void permute(char *const *argv, int dest, int src)
 {
@@ -47,8 +47,8 @@ static int __getopt_long_core(int argc, char *const *argv, const char *optstring
 static int __getopt_long(int argc, char *const *argv, const char *optstring, const struct option *longopts, int *idx, int longonly)
 {
 	int ret, skipped, resumed;
-	if (!optind || __optreset) {
-		__optreset = 0;
+	if (!optind || optreset) {
+		optreset = 0;
 		__optpos = 0;
 		optind = 1;
 	}
