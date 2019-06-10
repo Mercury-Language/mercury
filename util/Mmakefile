@@ -18,8 +18,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-# We need -I$(RUNTIME_DIR) for "mercury_std.h", etc.
-CFLAGS = -I$(RUNTIME_DIR)
+CFLAGS = -I$(RUNTIME_DIR) -I../getopt
 
 PROGS=mkinit mkinit_erl mdemangle mfiltercc info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))

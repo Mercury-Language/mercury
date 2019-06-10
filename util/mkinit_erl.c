@@ -52,6 +52,8 @@
 
 #ifdef MR_HAVE_UNISTD_H
   #include  <unistd.h>
+#else
+  #include  "getopt.h"
 #endif
 
 typedef enum

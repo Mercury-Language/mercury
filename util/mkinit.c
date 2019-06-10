@@ -39,7 +39,6 @@
 /* mercury_std.h includes mercury_regs.h, and must precede system headers */
 #include    "mercury_conf.h"
 #include    "mercury_std.h"
-#include    "getopt.h"
 #include    "mercury_array_macros.h"
 #include    "mkinit_common.h"
 
@@ -55,6 +54,8 @@
 
 #ifdef MR_HAVE_UNISTD_H
   #include  <unistd.h>
+#else
+  #include  "getopt.h"
 #endif
 
 /* --- adjustable limits --- */
