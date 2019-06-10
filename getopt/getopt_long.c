@@ -21,11 +21,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#define _GNU_SOURCE
-#include <stddef.h>
 #include <stdlib.h>
-#include <limits.h>
-#include <stdio.h>
 #include <string.h>
 #define GETOPT_IMPL
 #include "getopt.h"
@@ -98,7 +94,7 @@ static int __getopt_long_core(int argc, char *const *argv, const char *optstring
 			}
 			cnt++;
 		}
-		if (cnt==1 && longonly && arg-start == mblen(start, MB_LEN_MAX)) {
+		if (cnt==1 && longonly && arg-start == 1) {
 			int l = arg-start;
 			for (i=0; optstring[i]; i++) {
 				int j;

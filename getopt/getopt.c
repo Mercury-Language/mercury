@@ -21,11 +21,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <unistd.h>
-#include <wchar.h>
 #include <string.h>
-#include <limits.h>
-#include <stdlib.h>
 #include <stdio.h>
 #define GETOPT_IMPL
 #include "getopt.h"
@@ -47,7 +43,7 @@ void __getopt_msg(const char *a, const char *b, const char *c, size_t l)
 int getopt(int argc, char * const argv[], const char *optstring)
 {
 	int i;
-	wchar_t c, d;
+	int c, d;
 	int k, l;
 	char *optchar;
 
@@ -75,10 +71,8 @@ int getopt(int argc, char * const argv[], const char *optstring)
 		return optind++, -1;
 
 	if (!optpos) optpos++;
-	if ((k = mbtowc(&c, argv[optind]+optpos, MB_LEN_MAX)) < 0) {
-		k = 1;
-		c = 0xfffd; /* replacement char */
-	}
+	c = argv[optind][optpos];
+	k = 1;
 	optchar = argv[optind]+optpos;
 	optpos += k;
 
@@ -93,7 +87,8 @@ int getopt(int argc, char * const argv[], const char *optstring)
 	i = 0;
 	d = 0;
 	do {
-		l = mbtowc(&d, optstring+i, MB_LEN_MAX);
+		d = optstring[i];
+		l = d ? 1 : 0;
 		if (l>0) i+=l; else i++;
 	} while (l && d != c);
 
