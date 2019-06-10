@@ -34,10 +34,12 @@ int optind=1, opterr=1, optopt, __optpos, optreset=0;
 void __getopt_msg(const char *a, const char *b, const char *c, size_t l)
 {
 	FILE *f = stderr;
-	fputs(a, f)>=0
-	&& fwrite(b, strlen(b), 1, f)
-	&& fwrite(c, 1, l, f)==l
-	&& putc('\n', f);
+	if (
+		fputs(a, f)>=0
+		&& fwrite(b, strlen(b), 1, f)
+		&& fwrite(c, 1, l, f)==l
+		&& putc('\n', f)
+	) { }
 }
 
 int getopt(int argc, char * const argv[], const char *optstring)
