@@ -229,7 +229,7 @@ so if the interface section of a module refers to type t1,
 the code that creates the module's .int file needs to know
 which of the imported modules defines a type named t1.
 It gets this information from the .int3 files
-of the modules listed in import_module (and use_module) declarations.
+of the modules listed in import_module (and, for now, use_module) declarations.
 
 <p>
 The second piece of information is
@@ -300,7 +300,7 @@ Declarations of submodules are always included in the .int3 file unchanged.
 <p>
 <li>
 We include in the .int3 file
-the module's declarations that import or use other modules
+the module's import_module (but not use_module) declarations
 only if the .int3 file contains at least one item
 that contains a name (type name, inst name, mode name etc)
 that may be defined in those other modules.
@@ -321,16 +321,10 @@ the member types in the heads of abstract instance definitions.
 </ul>
 <p>
 If the interface contains any of these kinds of items,
-then <em>none</em> of the interface's module import and use declarations
+then <em>none</em> of the interface's import_module declarations
 will be included in the .int3 file.
 If it does, then <em>all</em> of the interface's
-module import and use declarations will be included in the .int3 file.
-
-<p>
-<em>XXX</em> This does not justify copying use_module declarations,
-since the source code must fully module qualify
-any reference to any type, inst etc in such a module,
-leaving nothing to be done by the readers of the .int3 file.
+import_module declarations will be included in the .int3 file.
 </ul>
 
 <p>

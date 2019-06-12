@@ -236,7 +236,8 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
     (
         Section = ms_interface,
         !:IntIncls = !.IntIncls ++ cord.from_list(Incls),
-        !:IntAvails = !.IntAvails ++ cord.from_list(Avails),
+        !:IntAvails = !.IntAvails ++
+            cord.from_list(list.filter(is_import, Avails)),
         get_short_interface_int3_from_items(Items, !IntItems, !IntTypeDefns,
             !ForeignEnumTypeCtors, !NeedAvails, !Specs)
     ;
@@ -246,6 +247,17 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
         !IntIncls, !IntAvails, !IntItems, !IntTypeDefns, !ImpTypeDefns,
         !ForeignEnumTypeCtors, !NeedAvails, !Specs).
+
+:- pred is_import(item_avail::in) is semidet.
+
+is_import(Avail) :-
+    require_complete_switch [Avail]
+    (
+        Avail = avail_import(_)
+    ;
+        Avail = avail_use(_),
+        fail
+    ).
 
 :- pred get_short_interface_int3_from_items(list(item)::in,
     cord(item)::in, cord(item)::out,
@@ -273,6 +285,12 @@ get_short_interface_int3_from_items([Item | Items], !IntItems, !IntTypeDefns,
             := class_interface_abstract,
         AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
         !:IntItems = cord.snoc(!.IntItems, AbstractItem),
+        % We may need the imported modules to module qualify the names
+        % of the type constructors in the superclass constraints, if any.
+        % XXX TYPE_REPN Then we should set do_need_avails only if there
+        % *are* some superclass constraints.
+        % XXX TYPE_REPN Also, why do we need to put the superclass
+        % constraints into .int3 files?
         !:NeedAvails = do_need_avails
     ;
         Item = item_instance(ItemInstanceInfo),
@@ -280,6 +298,8 @@ get_short_interface_int3_from_items([Item | Items], !IntItems, !IntTypeDefns,
             := instance_body_abstract,
         AbstractItem = item_instance(AbstractItemInstanceInfo),
         !:IntItems = cord.snoc(!.IntItems, AbstractItem),
+        % We may need the imported modules to module qualify the names
+        % of the type constructors in the instance's member types.
         !:NeedAvails = do_need_avails
     ;
         ( Item = item_inst_defn(_)
