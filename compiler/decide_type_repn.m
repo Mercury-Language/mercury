@@ -138,7 +138,7 @@ decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
     % an *under*estimate. Consider this setup:
     %
     %   :- interface.
-    %   :- type t1 == list(t2).
+    %   :- type t1 == t2.
     %   :- implementation.
     %   :- type t2 == int8.
     %
