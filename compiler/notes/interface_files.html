@@ -15,7 +15,7 @@ Interface files
 <h2>A warning</h2>
 
 <p>
-Our system of interface files is quite complex,
+Our system of interface files is quite complex.
 Some of the complexity is justified, or at least was justified at the time.
 Other aspects are almost certainly accidents.
 The compiler's old representation of parse trees as raw lists of items,
@@ -235,16 +235,18 @@ of the modules listed in import_module (and use_module) declarations.
 The second piece of information is
 whether the representation of the given type differs from the standard,
 and if so, how.
-<em>XXX</em> I intend to put this info into
-type representation items that are separate from the type definition items.
+<em>XXX</em> The compiler can now put this info into type representation items
+that are separate from the type definition items.
+For now, it actually does so only if the value of the --experiment option
+is set to a special value.
 
 <p>
 <li>
 Inst and mode definitions are always included in the .int3 file unchanged.
-<em>XXX</em> I know that the names of defined insts and modes must be put
-into the .int3 file for the same reason as the names of defined types,
-but I don't understand the reason for putting the entire definition
-into the .int3 file.
+Actually, we want only the the names of defined insts and modes,
+but until recently, the compiler had no syntax
+for abstract declarations of insts and modes.
+This syntax still is unused.
 
 <p>
 <li>
@@ -284,7 +286,7 @@ we generate a warning, as we do for clauses.
 
 <p>
 <li>
-Foreign_import_module items are never includes in .int3 files.
+Foreign_import_module items are never included in .int3 files.
 
 <p>
 <li>
@@ -297,34 +299,96 @@ Declarations of submodules are always included in the .int3 file unchanged.
 
 <p>
 <li>
-If the interface contains no inst definitions, mode definitions,
-typeclass definitions or instance definitions,
-then none of the interface's module import and use declarations
+We include in the .int3 file
+the module's declarations that import or use other modules
+only if the .int3 file contains at least one item
+that contains a name (type name, inst name, mode name etc)
+that may be defined in those other modules.
+In that case, the module qualification of that name
+will require knowing which other module defines that name.
+<p>
+At the moment, such possibly unqualified names may appear in
+<p>
+<ul>
+<li>
+the right hand sides of inst definitions and mode definitions,
+<li>
+the superclass constraints on abstract typeclass definitions
+(all typeclass definitions in .int3 files are abstract), and
+<li>
+the member types in the heads of abstract instance definitions.
+(all instance definitions in .int3 files are abstract).
+</ul>
+<p>
+If the interface contains any of these kinds of items,
+then <em>none</em> of the interface's module import and use declarations
 will be included in the .int3 file.
-If it does, then all of the interface's module import and use declarations
-will be included in the .int3 file.
+If it does, then <em>all</em> of the interface's
+module import and use declarations will be included in the .int3 file.
 
 <p>
-When generating .int3 files, the compiler has no way to know whether
-the names of the type constructors
-in the heads of the (abstract forms of) typeclass and instance definitions
-are fully qualified or not.
-Copying all the import_module declarations from the interface to the .int3 file
-allows readers of the .int3 file to fully module qualify them.
-
-<p>
-I (zs) don't think we should include
-the right hand sides of inst and mode definitions in .int3 files,
-but as long as we do, we need to copy
-all the import_module declarations from the interface to the .int3 file
-to help readers module qualify them.
-
-<p>
-<em>XXX</em> In neither case does this justify copying use_module declarations,
+<em>XXX</em> This does not justify copying use_module declarations,
 since the source code must fully module qualify
-any reference to any type in such a module,
+any reference to any type, inst etc in such a module,
 leaving nothing to be done by the readers of the .int3 file.
 </ul>
+
+<p>
+<em>XXX</em>
+While type definition items will never contain references
+to type constructor names that may require qualification,
+type <em>representation</em> items for equivalence types may.
+<p>
+<em>XXX</em>
+I (zs) don't think we should include
+the right hand sides of inst and mode definitions in .int3 files.
+<p>
+<em>XXX</em>
+Likewise, I don't know why the .int3 file needs
+the superclass constraints on typeclass definitions.
+<p>
+<em>XXX</em>
+If e.g. the constructor t1/0 appears in an abstract instance definition,
+and the module defines a type constructor t1/0,
+this arguably should <em>not</em> require us
+to include all the imports in the .int3 file.
+The reason has two parts.
+Either the t1/0 is defined in one or more of the imported modules, or it isn't.
+If it is not defined in any of them,
+then causing the readers of this module's .int3 file
+to read those other modules' .inte files
+will just compute the same result, only slower.
+On the other hand, if some of those modules do define t1/0,
+then this type constructor is multiply defined, so its appearance
+in the instance definition is ambiguous.
+This fact will be reported in an error message when
+this module is compiled to target code.
+Reporting it during some other compiler invocation
+that happens to read this module's .int3 file
+may be more of a distraction than a help.
+<p>
+<em>XXX</em>
+We should investigate replacing the copied import_module declaration list
+with a single item that says
+"these type, inst, etc names in this .int3 file
+may be defined in these other modules".
+This should have two benefits.
+One, it would allow us to stop the transitive grabbing of .int3 files
+as soon as we have read the .int3 files
+that define all the type, inst etc names that are still outstanding.
+Two, it should allow us to start using the transitively grabbed files
+<em>only</em> for their intended purpose,
+which should stop "leaks" of declarations/definitions
+from these transitively-included-only-for-module-qualification modules
+to the HLDS of the module being compiled.
+Right now, it is possible, though rare,
+to delete an import of module b from module a,
+and discover that this results in an error a type being undefined,
+when that type is defined in module c.
+This happens only because the import of b
+dragged with it the definitions inside c as well,
+so that the import of c was required by the language definition
+but <em>not</em> by the compiler.
 
 <h2>The contents of .int0 files</h2>
 
