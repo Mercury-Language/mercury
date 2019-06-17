@@ -205,10 +205,22 @@ LIBRARY_TRACE_MINIMUM = yes
 # The value of ENABLE_DEEP_PROFILER is either yes or no.
 ENABLE_DEEP_PROFILER=@ENABLE_DEEP_PROFILER@
 
-ifdef ALWAYS_MMAKE_TAGS_FILE
-TAGS_FILE_EXISTS = tags_file_exists
+# Making the tags file for a directory containing Mercury source files
+# requires giving mmake access to the list of source files in the directory.
+# We normally do this by having the programs' and/or libraries .dv files
+# define make variables such as "mer_std.ms".
+#
+# Mmc --make does not create .dv files, so these make variable don't get
+# defined. The resulting invocation of mtags with an empty argument list
+# (the default value of an undefined make variable) would yield an error.
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+  TAGS_FILE_EXISTS =
 else
-TAGS_FILE_EXISTS =
+  ifdef ALWAYS_MMAKE_TAGS_FILE
+    TAGS_FILE_EXISTS = tags_file_exists
+  else
+    TAGS_FILE_EXISTS =
+  endif
 endif
 
 #-----------------------------------------------------------------------------#
