@@ -6,6 +6,7 @@
 % whose conditions include nondet disjunctions, looking for problems caused
 % by the disjunction's clobbering some of the same redoip/redofr slots used
 % for the soft cut in the if-then-else.
+%
 
 :- module semi_fail_in_non_ite.
 
@@ -13,7 +14,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -21,9 +22,9 @@
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    { solutions(p1, Xs1) },
-    print_list(Xs1).
+main(!IO) :-
+    solutions(p1, Xs1),
+    print_list(Xs1, !IO).
 
 :- pred p1(int::out) is nondet.
 
@@ -43,10 +44,13 @@ p3(X) :-
 :- pred p(int::in, int::out) is nondet.
 
 p(A, X) :-
-    % The first if-then-else can hijack the redoip/redofr slots
-    % of p's frame.
+    % The first if-then-else can hijack the redoip/redofr slots of p's frame.
     ( if
-        some [B] ( q(A, B) ; r(A, B) )
+        some [B] (
+            q(A, B)
+        ;
+            r(A, B)
+        )
     then
         C = B * 10
         % s(B, C)
@@ -55,8 +59,8 @@ p(A, X) :-
         % s(A, C)
     ),
     % The second if-then-else cannot hijack the redoip/redofr slots
-    % of p's frame, since this may not be (and usually won't be)
-    % on top when execution gets here.
+    % of p's frame, since this may not be (and usually won't be) on top
+    % when execution gets here.
     ( if
         some [D] (
             q(C, D)
@@ -102,31 +106,28 @@ s(F, G) :-
         G = 10 * F + 1
     ).
 
-:- pred print_list(list(int), io__state, io__state).
-:- mode print_list(in, di, uo) is det.
+:- pred print_list(list(int)::in, io::di, io::uo) is det.
 
-print_list(Xs) -->
+print_list(Xs, !IO) :-
     (
-        { Xs = [] }
-    ->
-        io__write_string("[]\n")
+        Xs = [],
+        io.write_string("[]\n", !IO)
     ;
-        io__write_string("["),
-        print_list_2(Xs),
-        io__write_string("]\n")
+        Xs = [_ | _],
+        io.write_string("[", !IO),
+        print_list_2(Xs, !IO),
+        io.write_string("]\n", !IO)
     ).
 
-:- pred print_list_2(list(int), io__state, io__state).
-:- mode print_list_2(in, di, uo) is det.
+:- pred print_list_2(list(int)::in, io::di, io::uo) is det.
 
-print_list_2([]) --> [].
-print_list_2([X | Xs]) -->
-    io__write_int(X),
+print_list_2([], !IO).
+print_list_2([X | Xs], !IO) :-
+    io.write_int(X, !IO),
     (
-        { Xs = [] }
-    ->
-        []
+        Xs = []
     ;
-        io__write_string(", "),
-        print_list_2(Xs)
+        Xs = [_ | _],
+        io.write_string(", ", !IO),
+        print_list_2(Xs, !IO)
     ).
