@@ -86,7 +86,11 @@ endif
 ifneq "$(findstring mm,$(GRADE))" ""
 	PROGS2 = $(PROGS1)
 else
-	PROGS2 = $(PROGS1) $(TRAIL_PROGS)
+	ifeq "$(filter java% csharp% erlang%,$(GRADE))" ""
+		PROGS2 = $(PROGS1) $(TRAIL_PROGS)
+	else
+		PROGS2 = $(PROGS1)
+	endif
 endif
 
 ifneq "$(filter java% csharp% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
