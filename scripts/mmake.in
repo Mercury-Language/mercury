@@ -1,5 +1,6 @@
 #! /bin/sh
 # @configure_input@
+# vim: ts=4 sw=4 et ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-1999,2001-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -8,63 +9,63 @@
 #
 # mmake - Mercury Make.
 #
-#	Type mmake -h for help.
+#   Type mmake -h for help.
 #
 #-----------------------------------------------------------------------------#
 
-# IMPORTANT: the manpage is produced automatically from this help
-# message, so if you change the help message, don't forget to check
-# that the manpage still looks OK.
+# IMPORTANT: the manpage is produced automatically from this help message,
+# so if you change the help message, don't forget to check that
+# the manpage still looks OK.
 Help="\
 Name: mmake -- Mercury Make
 Usage: mmake [<mmake options>] [-- <make options>] <target>...
 Options:
-	--use-mmc-make:
-		Use \`mmc --make' to build Mercury targets.
-		Implies \`--use-subdirs'.
-	--use-subdirs:
-		Build intermediate files in a \`Mercury' subdirectory,
-		rather than in the current directory.
-		(If the current directory already contains a \`Mercury'
-		subdirectory, then this option is the default.)
-	--target c:
-		Compile via C, rather than going directly to assembler.
-		This is the default."
+    --use-mmc-make:
+        Use \`mmc --make' to build Mercury targets.
+        Implies \`--use-subdirs'.
+    --use-subdirs:
+        Build intermediate files in a \`Mercury' subdirectory,
+        rather than in the current directory.
+        (If the current directory already contains a \`Mercury'
+        subdirectory, then this option is the default.)
+    --target c:
+        Compile via C, rather than going directly to assembler.
+        This is the default."
 Help="$Help
-	--mercury-standard-library-directory <directory>
-	--mercury-stdlib-dir <directory>:
-		The directory containing the installed Mercury standard
-		library.
-	--no-mercury-standard-library-directory, --no-mercury-stdlib-dir:
-		Don't use an installed Mercury standard library.
-	-s, --save-makefile:
-		Save the generated makefile to \`Mmake.makefile'.
-		This is useful for tracking down syntax errors in
-		your Mmake file.
-	-f <filename>, --file <filename>:
-		Use the specified file as the Mmake file.
-	-v, --verbose:
-		Print verbose progress messages.
-	-w-, --no-warn-undefined-vars:
-		Normally Mmake will warn about variables which are used
-		but not defined.  This option disables that warning.
-		(The warning is never enabled when doing \`mmake clean'
-		or \`mmake depend' or the like, to avoid spurious
-		warnings when the dependencies have not yet been made.)
-	-h, --help:
-		Print this usage message.
+    --mercury-standard-library-directory <directory>
+    --mercury-stdlib-dir <directory>:
+        The directory containing the installed Mercury standard
+        library.
+    --no-mercury-standard-library-directory, --no-mercury-stdlib-dir:
+        Don't use an installed Mercury standard library.
+    -s, --save-makefile:
+        Save the generated makefile to \`Mmake.makefile'.
+        This is useful for tracking down syntax errors in
+        your Mmake file.
+    -f <filename>, --file <filename>:
+        Use the specified file as the Mmake file.
+    -v, --verbose:
+        Print verbose progress messages.
+    -w-, --no-warn-undefined-vars:
+        Normally Mmake will warn about variables which are used
+        but not defined. This option disables that warning.
+        (The warning is never enabled when doing \`mmake clean'
+        or \`mmake depend' or the like, to avoid spurious
+        warnings when the dependencies have not yet been made.)
+    -h, --help:
+        Print this usage message.
 Targets:
-	<module>.depend:
-		Make the files \`<module>.dep' and \`<module>.dv'.  This
-		step is required in preparation for the targets below.
-	<module>:
-		Compile and link a Mercury program with main module
-		\`<module>.m' to produce an executable.
-	clean:
-		Remove intermediate files.
-	realclean:
-		Remove all automatically-generated files: intermediate files,
-		dependency files, and executables.
+    <module>.depend:
+        Make the files \`<module>.dep' and \`<module>.dv'.
+        This step is required in preparation for the targets below.
+    <module>:
+        Compile and link a Mercury program with main module
+        \`<module>.m' to produce an executable.
+    clean:
+        Remove intermediate files.
+    realclean:
+        Remove all automatically-generated files: intermediate files,
+        dependency files, and executables.
 "
 
 MERCURY_CONFIG_DIR=${MERCURY_CONFIG_DIR-${MERCURY_STDLIB_DIR-@CONFIG_LIBDIR@}}
@@ -81,263 +82,280 @@ MMAKE=$0
 include_makefile=
 verbose=false
 save_makefile=false
-if [ -d Mercury ]; then
-	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
+if test -d Mercury
+then
+    use_subdirs=${MMAKE_USE_SUBDIRS=yes}
 else
-	use_subdirs=${MMAKE_USE_SUBDIRS=no}
+    use_subdirs=${MMAKE_USE_SUBDIRS=no}
 fi
 use_mmc_make=${MMAKE_USE_MMC_MAKE=no}
 warn_undefined_vars=true
 
-while [ $# -gt 0 ]; do
-	case "$1" in
-		-h|--help)
-			echo "$Help"
-			exit 0
-			;;
-		--use-subdirs)
-			use_subdirs=yes
-			shift
-			;;
-		--no-use-subdirs)
-			use_subdirs=no
-			shift
-			;;
-		--use-mmc-make)
-			use_mmc_make=yes
-			shift
-			;;
-		--no-mmc-make)
-			use_mmc_make=no
-			shift
-			;;
-		--target)
-			case "$2" in
-				c)	;;
-				*)	echo "$0: invalid argument to" \
-						"\`--target' option" 1>&2
-					exit 1 ;;
-			esac
-			shift; shift
-			;;
-		-s|--save-makefile)
-			save_makefile=true
-			MMAKE="$MMAKE $1"
-			shift
-			;;
-		-s-|--no-save-makefile)
-			save_makefile=false
-			MMAKE="$MMAKE $1"
-			shift
-			;;
-		-f|--file)
-			mmake="$2"
-			shift
-			shift
-			;;
-		-v|--verbose)
-			verbose=true
-			MMAKE="$MMAKE $1"
-			shift
-			;;
-		-v-|--no-verbose)
-			verbose=false
-			MMAKE="$MMAKE $1"
-			shift
-			;;
-		-w|--warn-undefined-vars)
-			warn_undefined_vars=true
-			shift
-			;;
-		-w-|--no-warn-undefined-vars)
-			warn_undefined_vars=false
-			shift
-			;;
-		--include-makefile)
-			# XXX check that $2 exists first
-			MMAKE="$MMAKE $1 $2"
-			include_makefile="$include_makefile $2"
-			shift
-			shift
-			;;
+while test $# -gt 0
+do
+    case "$1" in
+        -h|--help)
+            echo "$Help"
+            exit 0
+            ;;
+        --use-subdirs)
+            use_subdirs=yes
+            shift
+            ;;
+        --no-use-subdirs)
+            use_subdirs=no
+            shift
+            ;;
+        --use-mmc-make)
+            use_mmc_make=yes
+            shift
+            ;;
+        --no-mmc-make)
+            use_mmc_make=no
+            shift
+            ;;
+        --target)
+            case "$2" in
+                c)  ;;
+                *)  echo "$0: invalid argument to" \
+                        "\`--target' option" 1>&2
+                    exit 1 ;;
+            esac
+            shift; shift
+            ;;
+        -s|--save-makefile)
+            save_makefile=true
+            MMAKE="$MMAKE $1"
+            shift
+            ;;
+        -s-|--no-save-makefile)
+            save_makefile=false
+            MMAKE="$MMAKE $1"
+            shift
+            ;;
+        -f|--file)
+            mmake="$2"
+            shift
+            shift
+            ;;
+        -v|--verbose)
+            verbose=true
+            MMAKE="$MMAKE $1"
+            shift
+            ;;
+        -v-|--no-verbose)
+            verbose=false
+            MMAKE="$MMAKE $1"
+            shift
+            ;;
+        -w|--warn-undefined-vars)
+            warn_undefined_vars=true
+            shift
+            ;;
+        -w-|--no-warn-undefined-vars)
+            warn_undefined_vars=false
+            shift
+            ;;
+        --include-makefile)
+            # XXX check that $2 exists first
+            MMAKE="$MMAKE $1 $2"
+            include_makefile="$include_makefile $2"
+            shift
+            shift
+            ;;
 
-		--mercury-standard-library-directory|--mercury-stdlib-dir)
-			MERCURY_STDLIB_DIR="$2"
-			MERCURY_CONFIG_DIR="$2"
-			shift
-			;;
-		--no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
-			unset MERCURY_STDLIB_DIR
-			unset MERCURY_CONFIG_DIR
-			;;
+        --mercury-standard-library-directory|--mercury-stdlib-dir)
+            MERCURY_STDLIB_DIR="$2"
+            MERCURY_CONFIG_DIR="$2"
+            shift
+            ;;
+        --no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
+            unset MERCURY_STDLIB_DIR
+            unset MERCURY_CONFIG_DIR
+            ;;
 
-		--mercury-config-directory-directory|--mercury-config-dir)
-			MERCURY_CONFIG_DIR="$2"
-			shift
-			;;
-		# We don't allow `MERCURY_CONFIG_DIR' to be unset
-		# without `MERCURY_STDLIB_DIR' also being unset.
+        --mercury-config-directory-directory|--mercury-config-dir)
+            MERCURY_CONFIG_DIR="$2"
+            shift
+            ;;
+        # We don't allow `MERCURY_CONFIG_DIR' to be unset
+        # without `MERCURY_STDLIB_DIR' also being unset.
 
-		--)	
-			MMAKE="$MMAKE $1"
-			shift
-			break
-			;;
-		*)
-			break
-			;;
-	esac
+        --)
+            MMAKE="$MMAKE $1"
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
 done
 
 # With `mmc --make' we need to use subdirs to avoid make trying to
 # use Mmake rules to build the `.o' files for Mercury modules.
 case $use_mmc_make in
-	yes)	use_subdirs=yes ;;		
+    yes)
+        use_subdirs=yes
+        ;;
 esac
 
-if [ "$MERCURY_CONFIG_DIR" != "" ]
+if test "$MERCURY_CONFIG_DIR" != ""
 then
-	MMAKE_DIR=${MMAKE_DIR=$MERCURY_CONFIG_DIR/mmake}
-	export MERCURY_CONFIG_DIR
-	export MERCURY_STDLIB_DIR
+    MMAKE_DIR=${MMAKE_DIR=$MERCURY_CONFIG_DIR/mmake}
+    export MERCURY_CONFIG_DIR
+    export MERCURY_STDLIB_DIR
 fi
 
 case "$MMAKE_DIR" in
-	"")
-		echo "mmake: MMAKE_DIR not set"
-		exit 1
-		;;
-	*)
-		MMAKE_VARS=${MMAKE_VARS=$MMAKE_DIR/Mmake.vars}
-		MMAKE_RULES=${MMAKE_RULES=$MMAKE_DIR/Mmake.rules}
-		;;
+    "")
+        echo "mmake: MMAKE_DIR not set"
+        exit 1
+        ;;
+    *)
+        MMAKE_VARS=${MMAKE_VARS=$MMAKE_DIR/Mmake.vars}
+        MMAKE_RULES=${MMAKE_RULES=$MMAKE_DIR/Mmake.rules}
+        ;;
 esac
 
-if [ "$mmake" = "" ]; then
-	if [ "$MMAKEFILE" = "" ]; then
-		if [ -f Mmakefile ]; then
-			MMAKEFILE="Mmakefile"
-		else
-			if [ -f Mmake ]; then
-				MMAKEFILE="Mmake"
-			else
-				MMAKEFILE=""
-			fi
-		fi
-	fi
+if test "$mmake" = ""
+then
+    if test "$MMAKEFILE" = ""
+    then
+        if test -f Mmakefile
+        then
+            MMAKEFILE="Mmakefile"
+        else
+            if test -f Mmake
+            then
+                MMAKEFILE="Mmake"
+            else
+                MMAKEFILE=""
+            fi
+        fi
+    fi
 else
-	MMAKEFILE="$mmake"
+    MMAKEFILE="$mmake"
 fi
 
 case $use_subdirs in
-	no)
-		dvs="`echo *.dv`"
-		if [ "$dvs" = "*.dv" ]; then
-			dvs=""
-		fi
-		deps="`echo *.dep`"
-		if [ "$deps" = "*.dep" ]; then
-			deps=""
-		fi
-		ds="`echo *.d`"
-		if [ "$ds" = "*.d" ]; then
-			ds=""
-		fi
-		;;
-	yes)
-		dvs="`echo Mercury/deps/*.dv`"
-		if [ "$dvs" = "Mercury/deps/*.dv" ]; then
-			dvs=""
-		fi
-		deps="`echo Mercury/deps/*.dep`"
-		if [ "$deps" = "Mercury/deps/*.dep" ]; then
-			deps=""
-		fi
-		ds="`echo Mercury/ds/*.d`"
-		if [ "$ds" = "Mercury/ds/*.d" ]; then
-			ds=""
-		fi
-		;;
+    no)
+        dvs="`echo *.dv`"
+        if test "$dvs" = "*.dv"
+        then
+            dvs=""
+        fi
+        deps="`echo *.dep`"
+        if test "$deps" = "*.dep"
+        then
+            deps=""
+        fi
+        ds="`echo *.d`"
+        if test "$ds" = "*.d"
+        then
+            ds=""
+        fi
+        ;;
+    yes)
+        dvs="`echo Mercury/deps/*.dv`"
+        if test "$dvs" = "Mercury/deps/*.dv"
+        then
+            dvs=""
+        fi
+        deps="`echo Mercury/deps/*.dep`"
+        if test "$deps" = "Mercury/deps/*.dep"
+        then
+            deps=""
+        fi
+        ds="`echo Mercury/ds/*.d`"
+        if test "$ds" = "Mercury/ds/*.d"
+        then
+            ds=""
+        fi
+        ;;
 esac
 
 MMAKE_USE_SUBDIRS=$use_subdirs
 MMAKE_USE_MMC_MAKE=$use_mmc_make
 
-if $save_makefile; then
-	tmp=Mmake.makefile
+if $save_makefile
+then
+    tmp=Mmake.makefile
 else
-	case "$MKTEMP" in
-		"") 	old_umask=`umask`
-			umask 022
-			try=0
-			until
-				mmake_tmpdir=$TMPDIR/mmake$$-$try
-				tmp=$mmake_tmpdir/mmake
-				trap 'rmdir $mmake_tmpdir >/dev/null 2>&1; exit 1' \
-					1 2 3 13 15
-				mkdir $mmake_tmpdir
-			do
-				try=`expr $try + 1`
-				# give up after 20 tries
-				case $try in 20)
-					echo "mmake: unable to create directory" \
-						"for temporary makefile" 1>&2
-					exit 1
-				esac
-			done
-			trap 'status=$?; rm -rf $mmake_tmpdir; exit $status' \
-				0 1 2 3 13 15
-			umask $old_umask
-			;;
-		*)
-			# mktemp should give its own error message.
-			tmp=`$MKTEMP $TMPDIR/mmake.XXXXXX` || exit 1
-			trap 'status=$?; rm -f $tmp; exit $status' 0 1 2 3 13 15
-			;;
-	esac
+    case "$MKTEMP" in
+        "")     old_umask=`umask`
+            umask 022
+            try=0
+            until
+                mmake_tmpdir=$TMPDIR/mmake$$-$try
+                tmp=$mmake_tmpdir/mmake
+                trap 'rmdir $mmake_tmpdir >/dev/null 2>&1; exit 1' \
+                    1 2 3 13 15
+                mkdir $mmake_tmpdir
+            do
+                try=`expr $try + 1`
+                # give up after 20 tries
+                case $try in 20)
+                    echo "mmake: unable to create directory" \
+                        "for temporary makefile" 1>&2
+                    exit 1
+                esac
+            done
+            trap 'status=$?; rm -rf $mmake_tmpdir; exit $status' \
+                0 1 2 3 13 15
+            umask $old_umask
+            ;;
+        *)
+            # mktemp should give its own error message.
+            tmp=`$MKTEMP $TMPDIR/mmake.XXXXXX` || exit 1
+            trap 'status=$?; rm -f $tmp; exit $status' 0 1 2 3 13 15
+            ;;
+    esac
 fi
 
 MMAKE_MAKE_CMD="${MMAKE_MAKE} -f $tmp -r"
 
 # Enable checking for undefined variables -- but not when making the
-# dependencies, or when cleaning up, because in either of those two
-# cases the dependencies might not have been made yet, so there may be
+# dependencies, or when cleaning up, because in either of those two cases
+# the dependencies might not have been made yet, so there may be
 # lots of undefined variables.
 case "$@" in
-	dep*|*' dep'*|*.dep*|*clean*)
-		MMAKE_MAKE_OPTS=""
-		;;
-	*)
-		case $warn_undefined_vars in
-			true)	MMAKE_MAKE_OPTS="--warn-undefined-variables" ;;
-			false)	MMAKE_MAKE_OPTS="" ;;
-		esac
-		;;
+    dep*|*' dep'*|*.dep*|*clean*)
+        MMAKE_MAKE_OPTS=""
+        ;;
+    *)
+        case $warn_undefined_vars in
+            true)   MMAKE_MAKE_OPTS="--warn-undefined-variables" ;;
+            false)  MMAKE_MAKE_OPTS="" ;;
+        esac
+        ;;
 esac
 
 # For backwards compatibility/bootstrapping:
-# If no `.dv' files exist, use the `.dep' files instead.
-if [ "$dvs" = "" ] ; then
-	dvs=$deps
-	deps=
+# if no `.dv' files exist, use the `.dep' files instead.
+if test "$dvs" = ""
+then
+    dvs=$deps
+    deps=
 fi
 
-if $verbose; then
-	echo MMAKE=$MMAKE
-	echo export MMAKE
-	echo MMAKE_MAKE_CMD=$MMAKE_MAKE_CMD
-	echo export MMAKE_MAKE_CMD
-	echo MMAKE_USE_SUBDIRS=$MMAKE_USE_SUBDIRS
-	echo export MMAKE_USE_SUBDIRS
-	echo MMAKE_USE_MMC_MAKE=$MMAKE_USE_MMC_MAKE
-	echo export MMAKE_USE_MMC_MAKE
-	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
-	echo export MERCURY_DEFAULT_GRADE
-	echo MMAKEFILE=$MMAKEFILE
-	echo export MMAKEFILE
-	echo cat ${MMAKE_VARS} $include_makefile $MMAKEFILE $ds $dvs $deps \
-		${MMAKE_RULES}">>" $tmp
-	echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@"
+if $verbose
+then
+    echo MMAKE=$MMAKE
+    echo export MMAKE
+    echo MMAKE_MAKE_CMD=$MMAKE_MAKE_CMD
+    echo export MMAKE_MAKE_CMD
+    echo MMAKE_USE_SUBDIRS=$MMAKE_USE_SUBDIRS
+    echo export MMAKE_USE_SUBDIRS
+    echo MMAKE_USE_MMC_MAKE=$MMAKE_USE_MMC_MAKE
+    echo export MMAKE_USE_MMC_MAKE
+    echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
+    echo export MERCURY_DEFAULT_GRADE
+    echo MMAKEFILE=$MMAKEFILE
+    echo export MMAKEFILE
+    echo cat ${MMAKE_VARS} $include_makefile $MMAKEFILE $ds $dvs $deps \
+        ${MMAKE_RULES}">>" $tmp
+    echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@"
 fi
 export MMAKE
 export MMAKE_MAKE_CMD
@@ -345,12 +363,12 @@ export MMAKE_USE_SUBDIRS
 export MMAKE_USE_MMC_MAKE
 export MERCURY_DEFAULT_GRADE
 export MMAKEFILE
-# XXX The $dvs and $ds variables can be so long as to overflow the
-# command line size limits, so we use xargs.  However echo doesn't quote
-# the file names correctly, but this is not a problem in practice because
-# the way the file names are constructed no special characters are
-# included currently.  If fixed, the fix needs to be replicated in
-# `modules.m'.
+# XXX The $dvs and $ds variables can be so long as to overflow size limits
+# on command lines, so we use xargs. Echo doesn't quote the file names
+# correctly, but this is not a problem in practice because none of our
+# file names contain any special characters.
+# If this is fixed, then that fix needs to be replicated in one of the modules
+# that has been carved out of modules.m over the years.
 {
 cat ${MMAKE_VARS}
 echo $dvs | xargs cat
@@ -360,9 +378,17 @@ echo $ds | xargs cat
 echo 'endif'
 cat $deps ${MMAKE_RULES}
 } > $tmp
+
+if test "$MMAKE_DEBUG" != ""
+then
+    MMAKE_DEBUG_OPTS="-d"
+else
+    MMAKE_DEBUG_OPTS=""
+fi
+
 case $# in
-	# Note that we can't use `exec' here, because if we did that,
-	# that `trap' code which removes $tmp would never get executed.
-	0) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r ;;
-	*) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@" ;;
+    # Note that we can't use `exec' here, because if we did that,
+    # that `trap' code which removes $tmp would never get executed.
+    0) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} ${MMAKE_DEBUG_OPTS} -f $tmp -r ;;
+    *) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} ${MMAKE_DEBUG_OPTS} -f $tmp -r "$@" ;;
 esac
