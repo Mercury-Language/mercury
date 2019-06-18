@@ -865,6 +865,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         %   - store nondet environments on the heap
         %     Because Java has no way of allocating structs on the stack.
         %   - pretest-equality-cast-pointers
+        %   - no structure reuse
+        %     Because mlds_to_java_stmt.m does not handle assign_if_in_heap.
         %   - no library grade installation check with `mmc --make'.
         %
         % C# should be the same as Java, except that:
@@ -888,6 +890,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
         globals.set_option(pretest_equality_cast_pointers, bool(yes),
             !Globals),
+        globals.set_option(structure_reuse_analysis, bool(no), !Globals),
+        globals.set_option(structure_sharing_analysis, bool(no), !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
         (
             Target = target_csharp,
