@@ -9,13 +9,16 @@
 :- type triple
     --->    triple(int, int, int).
 
-:- inst triple1 == bound(triple(ground, free, free)).
-:- inst triple2 == bound(triple(free, ground, free)).
-:- inst triple12 == bound(triple(ground, ground, free)).
+:- inst triple1
+    --->    triple(ground, free, free).
+:- inst triple2
+    --->    triple(free, ground, free).
+:- inst triple12
+    --->    triple(ground, ground, free).
 
-:- pred p1(triple :: free >> triple1) is det.
-:- pred p2(triple :: free >> triple2) is det.
-:- pred q(triple :: triple12 >> triple12) is det.
+:- pred p1(triple::out(triple1)) is det.
+:- pred p2(triple::out(triple2)) is det.
+:- pred q(triple::in(triple12)) is det.
 
 :- implementation.
 
