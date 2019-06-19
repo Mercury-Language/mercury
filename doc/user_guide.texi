@@ -841,7 +841,7 @@ Mmake has a few options, including @samp{--use-subdirs}, @samp{--use-mmc-make},
 @samp{--save-makefile}, @samp{--verbose}, and @samp{--no-warn-undefined-vars}.
 For details about these options, see the man page or type @samp{mmake --help}.
 
-Finally, since Mmake is built on top of Make or GNU Make, you can also
+Finally, since Mmake is built on top of GNU Make, you can also
 make use of the features and options supported by the underlying Make.
 In particular, GNU Make has support for running jobs in parallel, which
 is very useful if you have a machine with more than one CPU.
@@ -919,8 +919,8 @@ These options will be passed @emph{after} any options given by the
 
 @item MSVC_FLAGS
 @vindex MSVC_FLAGS
-Options to pass to the C compiler, but on if the C compiler is
-Microsoft Visual C.
+Options to pass to the C compiler,
+but only if the C compiler is Microsoft Visual C.
 If the C compiler is not Visual C then this variable is ignored.
 These options will be passed @emph{after} any options given by the
 @samp{CFLAGS} variable.
@@ -965,9 +965,9 @@ This defines a module @samp{mypackage} containing
 sub-modules @samp{mypackage.foo}, @samp{mypackage.bar},
 and @samp{mypackage.baz}.
 
-It is also possible to build libraries of unrelated
-modules, so long as the top-level module imports all
-the necessary modules.  For example:
+It is also possible to build libraries of unrelated modules,
+so long as the top-level module imports all the necessary modules.
+For example:
 
 @example
 :- module blah.
