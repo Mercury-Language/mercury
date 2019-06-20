@@ -8124,14 +8124,16 @@ of the module.
 @node Declaring Mercury exports to other modules
 @section Declaring Mercury exports to other modules
 
-The declarations for Mercury predicates or functions exported to a 
-foreign language using a @samp{pragma foreign_export} declaration
-are visible to foreign code in a @samp{pragma foreign_code} or
-@samp{pragma foreign_proc} declaration of the same module and also in those
-of any sub-modules.
-They are not visible to the foreign code in @samp{pragma foreign_code} or
-@samp{pragma foreign_proc} declarations in any other module.
-They can be made visible using a declaration of the form:
+The declarations for Mercury predicates or functions
+exported to a foreign language using a @samp{pragma foreign_export} declaration
+are visible to foreign code
+in a @samp{pragma foreign_code} or @samp{pragma foreign_proc} declaration
+of the same module, and also in those of any submodules.
+By default, they are not visible to the foreign code
+in @samp{pragma foreign_code} or @samp{pragma foreign_proc} declarations
+in any other module,
+but this default can be overridden (giving access to all other modules)
+using a declaration of the form:
 
 @example
 :- pragma foreign_import_module("@var{Lang}", @var{ImportedModule}).
@@ -8141,7 +8143,7 @@ They can be made visible using a declaration of the form:
 where @var{ImportedModule} is the name of the module containing
 the @samp{pragma foreign_export} declarations.
 
-If @var{Lang} is @code{"C"} this is equivalent to
+If @var{Lang} is @code{"C"}, this is equivalent to
 
 @example
 :- pragma foreign_decl("C", "#include ""@var{ImportedModule}.mh""").
@@ -8158,14 +8160,32 @@ tells the implementation that @file{@var{ImportedModule}.mh} must be built
 before the object file for the module containing the
 @samp{pragma foreign_import_module} declaration.
 
-A cycle of @samp{pragma foreign_import_module}, where the language is
-@samp{"C#"} or @samp{"Java"}, is not permitted.
+@c This sentence used to be here:
+@c
+@c  A cycle of @samp{pragma foreign_import_module}, where the language is
+@c  @samp{"C#"} or @samp{"Java"}, is not permitted.
+@c
+@c but seems to be obsolete now. Julien says (on m-dev, 2019 jun 20):
+@c
+@c  That line (minus the bit about the Java) grade was added by Peter Ross
+@c  in commit e868b11d. At the time, it was with reference to the old IL
+@c  backend, the foreign languages involved were IL, C# and MC++.
+@c
+@c  I suspect the restriction on foreign_import_module cycles may have
+@c  arisen because C# and MC++ were secondary (i.e. non-target) foreign
+@c  languages. Compilation of secondary foreign languages is handled by
+@c  hoisting the code out to a separate source file and that requires
+@c  the foreign_import_module graph to be acyclic.
+@c
+@c  None of that line is applicable to C# and Java when they are the target
+@c  langugage.
 
-Note that the Melbourne Mercury implementation often implicitly inserts
-@samp{pragma foreign_import_module} declarations but programmers should
-@emph{not} write code that depends upon this behaviour;
-@samp{pragma foreign_import_module} declarations should always be explicitly
-included if needed.
+Note that the Melbourne Mercury implementation often behaves as if
+@samp{pragma foreign_import_module} declarations
+were implicitly added to modules.
+However, programmers should @emph{not} should not depend on this behaviour;
+they should always write explicit
+@samp{pragma foreign_import_module} declarations wherever they are needed.
 
 @c -----------------------------------------------------------------------
 
