@@ -177,7 +177,6 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.complexity.
 :- import_module transform_hlds.dead_proc_elim.
 
@@ -655,9 +654,6 @@ is_flat_simple_goal_list([Goal | Goals]) :-
                 % proc_info_get_has_parallel_conj returns `has_parallel_conj'?
                 i_inlined_parallel      :: bool,
 
-                % Does the goal need to be requantified?
-                i_need_requant          :: bool,
-
                 % Did we change the determinism of any subgoal?
                 i_changed_detism        :: bool,
 
@@ -691,25 +687,22 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         proc_info_get_vartypes(!.ProcInfo, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
 
-        DidInlining0 = no,
-        InlinedParallel0 = no,
-        Requantify0 = no,
-        DetChanged0 = no,
-        PurityChanged0 = no,
+        DidInlining0 = bool.no,
+        InlinedParallel0 = bool.no,
+        DetChanged0 = bool.no,
+        PurityChanged0 = bool.no,
 
         InlineInfo0 = inline_info(VarThresh, HighLevelCode, AnyTracing,
             !.ModuleInfo, UnivQTVars,
             ShouldInlineTailProcs, ShouldInlineProcs,
             VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
-            DidInlining0, InlinedParallel0, Requantify0,
-            DetChanged0, PurityChanged0),
+            DidInlining0, InlinedParallel0, DetChanged0, PurityChanged0),
 
         inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
         InlineInfo = inline_info(_, _, _, _, _, _, _,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps,
-            DidInlining, InlinedParallel, Requantify,
-            DetChanged, PurityChanged),
+            DidInlining, InlinedParallel, DetChanged, PurityChanged),
 
         pred_info_set_typevarset(TypeVarSet, !PredInfo),
 
@@ -726,14 +719,14 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         ),
 
         (
-            Requantify = yes,
-            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo)
-        ;
-            Requantify = no
-        ),
-
-        (
             DidInlining = yes,
+            % We want to requantify the procedure body if we did any inlining.
+            % If the body of the some inlined call did not use some of the
+            % call's input arg vars, and this was the only use of the
+            % corresponding caller variables, this will tell the simplification
+            % pass we invoke before code generation that the goal(s) that
+            % generate those caller variables can be optimized away.
+            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
                 !ProcInfo, !ModuleInfo)
         ;
@@ -843,7 +836,7 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ModuleInfo, ExternalTypeParams,
         ShouldInlineTailProcs, ShouldInlineProcs,
         VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0, _DidInlining0,
-        InlinedParallel0, Requantify0, DetChanged0, PurityChanged0),
+        InlinedParallel0, DetChanged0, PurityChanged0),
     GoalExpr0 =
         plain_call(PredId, ProcId, ArgVars, _Builtin, _Context, _SymName),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
@@ -884,15 +877,6 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
             InlinedParallel = InlinedParallel0
         ),
 
-        % If some of the output variables are not used in the calling
-        % procedure, requantify the procedure.
-        NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        ( if set_of_var.equal(NonLocals0, set_of_var.list_to_set(ArgVars)) then
-            Requantify = Requantify0
-        else
-            Requantify = yes
-        ),
-
         Goal1 = hlds_goal(_, GoalInfo1),
         % If the inferred determinism of the called goal differs from the
         % declared determinism, flag that we should rerun determinism analysis
@@ -917,7 +901,7 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
             ModuleInfo, ExternalTypeParams,
             ShouldInlineTailProcs, ShouldInlineProcs,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps, DidInlining,
-            InlinedParallel, Requantify, DetChanged, PurityChanged),
+            InlinedParallel, DetChanged, PurityChanged),
 
         (
             TailRec = not_tail_rec,
@@ -1161,7 +1145,7 @@ should_inline_at_call_site(Info, GoalExpr0, GoalInfo0, ShouldInline) :-
         ModuleInfo, _ExternalTypeParams,
         ShouldInlineTailProcs, ShouldInlineProcs,
         _VarSet, _VarTypes, _TypeVarSet, _RttiVarMaps, _DidInlining,
-        _InlinedParallel, _Requantify, _DetChanged, _PurityChanged),
+        _InlinedParallel, _DetChanged, _PurityChanged),
     GoalExpr0 =
         plain_call(PredId, ProcId, _ArgVars, Builtin, _Context, _SymName),
     PredProcId = proc(PredId, ProcId),
