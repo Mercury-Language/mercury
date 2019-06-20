@@ -693,7 +693,7 @@ init = empty.
 
 init(empty).
 
-empty(init).
+empty(empty).
 
 is_empty(empty).
 
