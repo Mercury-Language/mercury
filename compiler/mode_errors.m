@@ -25,6 +25,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -235,7 +236,7 @@
     include_detism_on_modes::in, list(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- func mode_decl_to_string(proc_id, pred_info) = string.
+:- func mode_decl_to_string(output_lang, proc_id, pred_info) = string.
 
 :- func mode_error_info_to_spec(mode_info, mode_error_info) = error_spec.
 
@@ -262,7 +263,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_mode.
@@ -350,9 +350,9 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
         ++ [suffix(":"), nl, words("error: duplicate mode declaration."), nl],
     VerbosePieces = [words("Modes"),
-        words_quote(mode_decl_to_string(OldProcId, PredInfo)),
+        words_quote(mode_decl_to_string(output_mercury, OldProcId, PredInfo)),
         words("and"),
-        words_quote(mode_decl_to_string(NewProcId, PredInfo)),
+        words_quote(mode_decl_to_string(output_mercury, NewProcId, PredInfo)),
         words("are indistinguishable.")],
     OldPieces = [words("Here is the conflicting mode declaration.")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
@@ -483,7 +483,7 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
 
 %---------------------------------------------------------------------------%
 
-mode_decl_to_string(ProcId, PredInfo) = String :-
+mode_decl_to_string(Lang, ProcId, PredInfo) = String :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Name0 = pred_info_name(PredInfo),
     Name = unqualified(Name0),
@@ -493,7 +493,7 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     proc_info_get_declared_determinism(ProcInfo, MaybeDet),
     varset.init(InstVarSet),
     strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
-    String = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
+    String = mercury_mode_subdecl_to_string(Lang, PredOrFunc,
         InstVarSet, Name, Modes, MaybeDet).
 
 %---------------------------------------------------------------------------%

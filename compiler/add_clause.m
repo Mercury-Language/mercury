@@ -523,7 +523,8 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo, Context,
     = list(format_component).
 
 mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
-    [words(":- mode"), words(mode_decl_to_string(ProcId, PredInfo)),
+    [words(":- mode"),
+    words(mode_decl_to_string(output_debug, ProcId, PredInfo)),
     suffix(".")].
 
     % Clauses can have mode annotations on them, to indicate that the

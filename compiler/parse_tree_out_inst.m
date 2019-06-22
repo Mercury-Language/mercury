@@ -557,19 +557,90 @@ mercury_mode_to_string(Lang, InstVarSet, Mode) = String :-
 mercury_format_mode(Lang, InstVarSet, Mode, !U) :-
     (
         Mode = from_to_mode(InstA, InstB),
-        % Output higher-order pred and func modes in a nice format.
-        ( if
-            InstA = ground(_Uniq, higher_order(
-                pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
-            InstB = InstA
-        then
-            mercury_format_inst(Lang, InstVarSet, InstA, !U)
-        else
-            add_string("(", !U),
-            mercury_format_inst(Lang, InstVarSet, InstA, !U),
-            add_string(" >> ", !U),
-            mercury_format_inst(Lang, InstVarSet, InstB, !U),
-            add_string(")", !U)
+        % In the general case, we output this mode as "(InstA >> InstB)".
+        % 
+        % We special case the builtin modes in, out, ui, di, uo, mui, mdi, muo
+        % because they are by far the most frequently used modes,
+        % and higher-order pred and func modes, because their (InstA >> InstB)
+        % forms can be very hard to read.
+        %
+        % However, when we are generating actual Mercury code,
+        % we must not replace the expansions of in, out, di and uo
+        % with their names. Doing so would make the actual *definitions*
+        % of these modes in builtin.int circular.
+        (
+            Lang = output_debug,
+            ( if
+                InstB = ground(shared, none_or_default_func),
+                (
+                    InstA = ground(shared, none_or_default_func),
+                    ModeStr = "in"
+                ;
+                    InstA = free,
+                    ModeStr = "out"
+                )
+            then
+                add_string(ModeStr, !U)
+            else if
+                InstA = ground(unique, none_or_default_func),
+                InstB = ground(clobbered, none_or_default_func)
+            then
+                add_string("di", !U)
+            else if
+                InstB = ground(unique, none_or_default_func),
+                (
+                    InstA = ground(unique, none_or_default_func),
+                    ModeStr = "ui"
+                ;
+                    InstA = free,
+                    ModeStr = "uo"
+                )
+            then
+                add_string(ModeStr, !U)
+            else if
+                InstA = ground(mostly_unique, none_or_default_func),
+                InstB = ground(mostly_clobbered, none_or_default_func)
+            then
+                add_string("mdi", !U)
+            else if
+                InstB = ground(mostly_unique, none_or_default_func),
+                (
+                    InstA = ground(mostly_unique, none_or_default_func),
+                    ModeStr = "mui"
+                ;
+                    InstA = free,
+                    ModeStr = "muo"
+                )
+            then
+                add_string(ModeStr, !U)
+            else if
+                InstA = ground(_Uniq, higher_order(
+                    pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
+                InstB = InstA
+            then
+                mercury_format_inst(Lang, InstVarSet, InstA, !U)
+            else
+                add_string("(", !U),
+                mercury_format_inst(Lang, InstVarSet, InstA, !U),
+                add_string(" >> ", !U),
+                mercury_format_inst(Lang, InstVarSet, InstB, !U),
+                add_string(")", !U)
+            )
+        ;
+            Lang = output_mercury,
+            ( if
+                InstA = ground(_Uniq, higher_order(
+                    pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
+                InstB = InstA
+            then
+                mercury_format_inst(Lang, InstVarSet, InstA, !U)
+            else
+                add_string("(", !U),
+                mercury_format_inst(Lang, InstVarSet, InstA, !U),
+                add_string(" >> ", !U),
+                mercury_format_inst(Lang, InstVarSet, InstB, !U),
+                add_string(")", !U)
+            )
         )
     ;
         Mode = user_defined_mode(Name, Args),

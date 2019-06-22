@@ -70,17 +70,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_errors.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.parse_tree_out_pred_decl.
-:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
@@ -88,7 +82,6 @@
 :- import_module maybe.
 :- import_module set.
 :- import_module string.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -159,53 +152,6 @@ report_undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
-
-    % Similar to report_undefined_mode_error, but gives more information.
-    % XXX the documentation here should be somewhat less circular.
-    %
-:- func report_undeclared_mode_error(list(mer_mode), prog_varset,
-    pred_id, pred_info, module_info, prog_context) = error_spec.
-:- pragma consider_used(report_undeclared_mode_error/6).
-
-report_undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
-        Context) = Spec :-
-    PredIdPieces = describe_one_pred_name(ModuleInfo,
-        should_not_module_qualify, PredId),
-    strip_builtin_qualifiers_from_mode_list(ModeList, StrippedModeList),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Name = pred_info_name(PredInfo),
-    MaybeDet = no,
-    SubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
-        varset.coerce(VarSet), unqualified(Name), StrippedModeList, MaybeDet),
-
-    MainPieces = [words("In clause for")] ++ PredIdPieces ++ [suffix(":"), nl,
-        words("error: mode annotation specifies undeclared mode"),
-        quote(SubDeclStr), suffix("."), nl],
-    ProcIds = pred_info_all_procids(PredInfo),
-    (
-        ProcIds = [],
-        VerbosePieces = [words("(There are no declared modes for this"),
-            p_or_f(PredOrFunc), suffix(".)"), nl]
-    ;
-        ProcIds = [_ | _],
-        VerbosePieces = [words("The declared modes for this"),
-            p_or_f(PredOrFunc), words("are the following:"),
-            nl_indent_delta(1)] ++
-            component_list_to_line_pieces(
-                list.map(mode_decl_for_pred_info_to_pieces(PredInfo), ProcIds),
-                []) ++
-            [nl_indent_delta(-1)]
-    ),
-    Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]).
-
-:- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
-    = list(format_component).
-
-mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
-    [words(":- mode"), words(mode_decl_to_string(ProcId, PredInfo)),
-    suffix(".")].
 
 %----------------------------------------------------------------------------%
 
