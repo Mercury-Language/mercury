@@ -721,7 +721,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         (
             DidInlining = yes,
             % We want to requantify the procedure body if we did any inlining.
-            % If the body of the some inlined call did not use some of the
+            % If the body of an inlined call did not use some of the
             % call's input arg vars, and this was the only use of the
             % corresponding caller variables, this will tell the simplification
             % pass we invoke before code generation that the goal(s) that
