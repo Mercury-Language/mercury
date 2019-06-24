@@ -133,7 +133,7 @@ up_to_date.runtest:
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 %.c: %.m
-	$(MCM) $@
+	$(MCM) $@ 2>&1 | grep -v "^Making" > $*.err
 endif
 
 #-----------------------------------------------------------------------------#
