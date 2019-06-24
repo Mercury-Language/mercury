@@ -5,6 +5,8 @@
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Mon Feb 11 17:52:44 EST 2002
 %---------------------------------------------------------------------------%
+% The .exp2 file is for C# and Java, which print out "-0" without the sign.
+%---------------------------------------------------------------------------%
 
 :- module string_to_float.
 
@@ -25,35 +27,34 @@
 
 %---------------------------------------------------------------------------%
 
-main -->
-    test("1.23"),
-    test("x1.23"),
-    test("1.23x"),
-    test("x1.23x"),
-    test(" 1.23"),
-    test("1.23 "),
-    test(" 1.23 "),
-    test("1"),
-    test("-1"),
-    test("+1"),
-    test("0"),
-    test("+0"),
-    test("-0"),
-    test("-"),
-    test("+"),
-    test(" "),
-    test("").
+main(!IO) :-
+    test("1.23", !IO),
+    test("x1.23", !IO),
+    test("1.23x", !IO),
+    test("x1.23x", !IO),
+    test(" 1.23", !IO),
+    test("1.23 ", !IO),
+    test(" 1.23 ", !IO),
+    test("1", !IO),
+    test("-1", !IO),
+    test("+1", !IO),
+    test("0", !IO),
+    test("+0", !IO),
+    test("-0", !IO),
+    test("-", !IO),
+    test("+", !IO),
+    test(" ", !IO),
+    test("", !IO).
 
 :- pred test(string::in, io::di, io::uo) is det.
 
-test(S) -->
-    io__format("string__to_float(\"%s\") %s\n",
-        [ s(S),
-          s( if   string__to_float(S, X)
-             then string__format("= %f", [f(X)])
-             else "FAILS"
-          )
-        ]).
+test(Str, !IO) :-
+    ( if string.to_float(Str, Float) then
+        Result = string.format("= %f", [f(Float)])
+    else
+        Result = "FAILS"
+    ),
+    io.format("string__to_float(\"%s\") %s\n", [s(Str), s(Result)], !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
