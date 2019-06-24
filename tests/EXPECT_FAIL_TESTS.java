@@ -1,4 +1,3 @@
-general/string_to_float
 hard_coded/ee_dummy
 hard_coded/eqv_type_bug
 hard_coded/functor_ho_inst_excp
