@@ -445,9 +445,7 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
 find_excess_assigns_in_conj(_, _, [], !RevGoals, !Subn).
 find_excess_assigns_in_conj(Info, ConjNonLocals, [Goal | Goals],
         !RevGoals, !Subn) :-
-    ( if
-        goal_is_excess_assign(Info, ConjNonLocals, Goal, !Subn)
-    then
+    ( if goal_is_excess_assign(Info, ConjNonLocals, Goal, !Subn) then
         true
     else
         !:RevGoals = [Goal | !.RevGoals]
