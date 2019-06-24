@@ -427,6 +427,12 @@
 
 :- type duration
     --->    duration(
+                % XXX I (zs) think that a duration should be expressed
+                % purely in terms of units that have fixed length.
+                % Seconds and microseconds qualify. Months do not,
+                % since obviously different months have different lengths.
+                % Even days do not have a fixed length in the presence of
+                % leap seconds, though this module ignores those.
                 dur_months          :: int,
                 dur_days            :: int,
                 dur_seconds         :: int,
@@ -817,33 +823,32 @@ microsecond_string(MicroSeconds) = Str :-
 % http://www.w3.org/TR/xmlschema-2/#adding-durations-to-dateTimes.
 %
 
-add_duration(D, S, E) :-
-    some [!Temp, !Carry, !E] (
-        !:E = date(0, 0, 0, 0, 0, 0, 0),
+add_duration(D, S, !:E) :-
+    some [!Temp, !Carry] (
         % Months
         !:Temp = S ^ dt_month + D ^ dur_months,
-        !E ^ dt_month := modulo(!.Temp, 1, 13),
+        EMonth = modulo(!.Temp, 1, 13),
         !:Carry = fquotient(!.Temp, 1, 13),
         % Years
-        !E ^ dt_year := S ^ dt_year + !.Carry,
+        EYear = S ^ dt_year + !.Carry,
         % Microseconds
         !:Temp = S ^ dt_microsecond + D ^ dur_microseconds,
-        !E ^ dt_microsecond := modulo(!.Temp, microseconds_per_second),
+        EMicrosecond = modulo(!.Temp, microseconds_per_second),
         !:Carry = div(!.Temp, microseconds_per_second),
         % Seconds
         !:Temp = S ^ dt_second + D ^ dur_seconds + !.Carry,
-        !E ^ dt_second := modulo(!.Temp, 60),
+        ESecond = modulo(!.Temp, 60),
         !:Carry = div(!.Temp, 60),
         % Minutes
         !:Temp = S ^ dt_minute + !.Carry,
-        !E ^ dt_minute := int.mod(!.Temp, 60),
+        EMinute = int.mod(!.Temp, 60),
         !:Carry = int.div(!.Temp, 60),
         % Hours
         !:Temp = S ^ dt_hour + !.Carry,
-        !E ^ dt_hour := int.mod(!.Temp, 24),
+        EHour = int.mod(!.Temp, 24),
         !:Carry = int.div(!.Temp, 24),
         % Days
-        MaxDaysInMonth = max_day_in_month_for(!.E ^ dt_year, !.E ^ dt_month),
+        MaxDaysInMonth = max_day_in_month_for(EYear, EMonth),
         ( if S ^ dt_day > MaxDaysInMonth then
             TempDays = MaxDaysInMonth
         else if S ^ dt_day < 1 then
@@ -851,9 +856,9 @@ add_duration(D, S, E) :-
         else
             TempDays = S ^ dt_day
         ),
-        !E ^ dt_day := TempDays + D ^ dur_days + !.Carry,
-        add_duration_loop(D, S, !E),
-        E = !.E
+        EDay = TempDays + D ^ dur_days + !.Carry,
+        !:E = date(EYear, EMonth, EDay, EHour, EMinute, ESecond, EMicrosecond),
+        add_duration_loop(D, S, !E)
     ).
 
 :- pred add_duration_loop(duration::in, date::in, date::in, date::out) is det.
@@ -1006,7 +1011,8 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
         HourA = DateA ^ dt_hour - !.Borrow,
         HourB = DateB ^ dt_hour,
         subtract_ints_with_borrow(24, HourA, HourB, Hours, !:Borrow),
-        ( OriginalOrder = descending,
+        (
+            OriginalOrder = descending,
             add_duration(duration(0, -1, 0, 0), DateA, DateAMinus1Month),
             DaysToBorrow = max_day_in_month_for(DateAMinus1Month ^ dt_year,
                 DateAMinus1Month ^ dt_month),
@@ -1014,7 +1020,8 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
                 DateA ^ dt_month),
             DayA = DateA ^ dt_day - !.Borrow,
             DayB = int.min(DateB ^ dt_day, DateAEndOfMonth)
-        ; OriginalOrder = ascending,
+        ;
+            OriginalOrder = ascending,
             DaysToBorrow = max_day_in_month_for(DateB ^ dt_year,
                 DateB ^ dt_month),
             DateBEndOfMonth = max_day_in_month_for(DateB ^ dt_year,

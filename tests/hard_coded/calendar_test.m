@@ -106,13 +106,13 @@ main(!IO) :-
 test_dur_leq(Str1, Str2, !IO) :-
     Dur1 = det_duration_from_string(Str1),
     Dur2 = det_duration_from_string(Str2),
-    ( duration_leq(Dur1, Dur2), duration_leq(Dur2, Dur1) ->
+    ( if duration_leq(Dur1, Dur2), duration_leq(Dur2, Dur1) then
         RelationStr = " == "
-    ; duration_leq(Dur1, Dur2) ->
+    else if duration_leq(Dur1, Dur2) then
         RelationStr = " =< "
-    ; duration_leq(Dur2, Dur1) ->
+    else if duration_leq(Dur2, Dur1) then
         RelationStr = " >= "
-    ;
+    else
         RelationStr = " <> "
     ),
     io.format("%s %s %s\n", [s(Str1), s(RelationStr), s(Str2)], !IO).
@@ -148,11 +148,10 @@ test_greedy_diff(Date1Str, Date2Str, !IO) :-
     DurStr = duration_to_string(Dur),
     io.format("%s -> %s = %s", [s(Date1Str), s(Date2Str), s(DurStr)], !IO),
     add_duration(Dur, Date1, Date3),
-    ( Date2 = Date3 ->
+    ( if Date2 = Date3 then
         io.write_string(" checked ok\n", !IO)
-    ;
-        io.write_string(" error: " ++ date_to_string(Date3) ++
-            "\n", !IO)
+    else
+        io.write_string(" error: " ++ date_to_string(Date3) ++ "\n", !IO)
     ).
 
 :- pred test_days_diff(string::in, string::in, io::di, io::uo) is det.
@@ -164,11 +163,10 @@ test_days_diff(Date1Str, Date2Str, !IO) :-
     DurStr = duration_to_string(Dur),
     io.format("%s -> %s = %s", [s(Date1Str), s(Date2Str), s(DurStr)], !IO),
     add_duration(Dur, Date1, Date3),
-    ( Date2 = Date3 ->
+    ( if Date2 = Date3 then
         io.write_string(" checked ok\n", !IO)
-    ;
-        io.write_string(" error: " ++ date_to_string(Date3) ++
-            "\n", !IO)
+    else
+        io.write_string(" error: " ++ date_to_string(Date3) ++ "\n", !IO)
     ).
 
 :- pred test_day_of_week(string::in, io::di, io::uo) is det.
@@ -193,25 +191,27 @@ test_month_to_int0(Month, !IO) :-
 :- pred test_int_to_month(int::in, io::di, io::uo) is det.
 
 test_int_to_month(Int, !IO) :-
-    ( if int_to_month(Int, Month)
-    then Result = string(Month)
-    else Result = "out-of-range"
+    ( if int_to_month(Int, Month) then
+        Result = string(Month)
+    else
+        Result = "out-of-range"
     ),
     io.format("%d -> %s\n", [i(Int), s(Result)], !IO).
 
 :- pred test_int0_to_month(int::in, io::di, io::uo) is det.
 
 test_int0_to_month(Int, !IO) :-
-    ( if int0_to_month(Int, Month)
-    then Result = string(Month)
-    else Result = "out-of-range"
+    ( if int0_to_month(Int, Month) then
+        Result = string(Month)
+    else
+        Result = "out-of-range"
     ),
     io.format("%d -> %s\n", [i(Int), s(Result)], !IO).
 
 :- pred test_same_date(date::in, date::in, io::di, io::uo) is det.
 
 test_same_date(A, B, !IO) :-
-    Result = ( if A `same_date` B then "==" else "!=" ),
+    Result = ( if same_date(A, B) then "==" else "!=" ),
     io.format("%s %s %s\n",
         [s(date_to_string(A)), s(Result), s(date_to_string(B))], !IO).
 
