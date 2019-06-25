@@ -272,41 +272,42 @@ get_short_interface_int3_from_items([Item | Items], !IntItems, !IntTypeDefns,
         !ForeignEnumTypeCtors, !NeedAvails, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        !:IntTypeDefns = cord.snoc(!.IntTypeDefns, ItemTypeDefnInfo),
+        cord.snoc(ItemTypeDefnInfo, !IntTypeDefns),
         % XXX TYPE_REPN do this in decide_type_repn.m?
         make_type_defn_abstract_type_for_int3(ItemTypeDefnInfo,
             AbstractOrForeignItemTypeDefnInfo),
         AbstractOrForeignItem =
             item_type_defn(AbstractOrForeignItemTypeDefnInfo),
-        !:IntItems = cord.snoc(!.IntItems, AbstractOrForeignItem)
+        cord.snoc(AbstractOrForeignItem, !IntItems)
     ;
         Item = item_typeclass(ItemTypeClassInfo),
-        AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
-            := class_interface_abstract,
+        ItemTypeClassInfo = item_typeclass_info(ClassName, ParamsTVars,
+            _Constraints, _FunDeps, _Methods, TVarSet, Context, SeqNum),
+        AbstractItemTypeClassInfo = item_typeclass_info(ClassName, ParamsTVars,
+            [], [], class_interface_abstract, TVarSet, Context, SeqNum),
         AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
-        !:IntItems = cord.snoc(!.IntItems, AbstractItem),
-        % We may need the imported modules to module qualify the names
-        % of the type constructors in the superclass constraints, if any.
-        % XXX TYPE_REPN Then we should set do_need_avails only if there
-        % *are* some superclass constraints.
-        % XXX TYPE_REPN Also, why do we need to put the superclass
-        % constraints into .int3 files?
-        !:NeedAvails = do_need_avails
+        cord.snoc(AbstractItem, !IntItems)
     ;
         Item = item_instance(ItemInstanceInfo),
         AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
             := instance_body_abstract,
         AbstractItem = item_instance(AbstractItemInstanceInfo),
-        !:IntItems = cord.snoc(!.IntItems, AbstractItem),
+        cord.snoc(AbstractItem, !IntItems),
         % We may need the imported modules to module qualify the names
         % of the type constructors in the instance's member types.
         !:NeedAvails = do_need_avails
     ;
-        ( Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ),
-        !:IntItems = cord.snoc(!.IntItems, Item),
-        !:NeedAvails = do_need_avails
+        Item = item_inst_defn(ItemInstInfo),
+        AbstractItemInstInfo =
+            ItemInstInfo ^ id_inst_defn := abstract_inst_defn,
+        AbstractItem = item_inst_defn(AbstractItemInstInfo),
+        cord.snoc(AbstractItem, !IntItems)
+    ;
+        Item = item_mode_defn(ItemModeInfo),
+        AbstractItemModeInfo =
+            ItemModeInfo ^ md_mode_defn := abstract_mode_defn,
+        AbstractItem = item_mode_defn(AbstractItemModeInfo),
+        cord.snoc(AbstractItem, !IntItems)
     ;
         Item = item_clause(ItemClause),
         Context = ItemClause ^ cl_context,
@@ -409,7 +410,7 @@ gather_imp_type_defns([], !ImpTypeDefns, !ForeignEnumTypeCtors).
 gather_imp_type_defns([Item | Items], !ImpTypeDefns, !ForeignEnumTypeCtors) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        !:ImpTypeDefns = cord.snoc(!.ImpTypeDefns, ItemTypeDefnInfo)
+        cord.snoc(ItemTypeDefnInfo, !ImpTypeDefns)
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
@@ -596,13 +597,11 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
             AllowedInInterface = no
         ;
             AllowedInInterface = yes,
-            !:SectionItemsCord = cord.snoc(!.SectionItemsCord, Item)
+            cord.snoc(Item, !SectionItemsCord)
         )
     ;
         % XXX ITEM_LIST The action here follows what this predicate used
-        % to do before the item list change. I (zs) don't think that
-        % it does the right thing for item_nothing, but then again
-        % I don't think that such items actually reach here ...
+        % to do before the item list change.
         ( Item = item_type_defn(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -612,12 +611,12 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
         ; Item = item_typeclass(_)
         ; Item = item_foreign_import_module(_)
         ),
-        !:SectionItemsCord = cord.snoc(!.SectionItemsCord, Item)
+        cord.snoc(Item, !SectionItemsCord)
     ;
         Item = item_instance(InstanceInfo),
         AbstractInstanceInfo = make_instance_abstract(InstanceInfo),
         AbstractItem = item_instance(AbstractInstanceInfo),
-        !:SectionItemsCord = cord.snoc(!.SectionItemsCord, AbstractItem)
+        cord.snoc(AbstractItem, !SectionItemsCord)
     ;
         Item = item_mutable(ItemMutable),
         ItemMutable = item_mutable_info(MutableName,
@@ -632,10 +631,8 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
                 MutableName, Type, Inst, Context),
             ConstantGetPredDeclItem = item_pred_decl(ConstantGetPredDecl),
             ConstantSetPredDeclItem = item_pred_decl(ConstantSetPredDecl),
-            !:SectionItemsCord =
-                cord.snoc(!.SectionItemsCord, ConstantGetPredDeclItem),
-            !:SectionItemsCord =
-                cord.snoc(!.SectionItemsCord, ConstantSetPredDeclItem)
+            cord.snoc(ConstantGetPredDeclItem, !SectionItemsCord),
+            cord.snoc(ConstantSetPredDeclItem, !SectionItemsCord)
         ;
             ConstantInterface = mutable_not_constant,
             StdGetPredDecl = std_get_pred_decl(ModuleName,
@@ -644,10 +641,8 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
                 MutableName, Type, Inst, Context),
             StdGetPredDeclItem = item_pred_decl(StdGetPredDecl),
             StdSetPredDeclItem = item_pred_decl(StdSetPredDecl),
-            !:SectionItemsCord =
-                cord.snoc(!.SectionItemsCord, StdGetPredDeclItem),
-            !:SectionItemsCord =
-                cord.snoc(!.SectionItemsCord, StdSetPredDeclItem),
+            cord.snoc(StdGetPredDeclItem, !SectionItemsCord),
+            cord.snoc(StdSetPredDeclItem, !SectionItemsCord),
 
             IOStateInterface = mutable_var_attach_to_io_state(Attrs),
             (
@@ -658,10 +653,8 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
                     MutableName, Type, Inst, Context),
                 IOGetPredDeclItem = item_pred_decl(IOGetPredDecl),
                 IOSetPredDeclItem = item_pred_decl(IOSetPredDecl),
-                !:SectionItemsCord =
-                    cord.snoc(!.SectionItemsCord, IOGetPredDeclItem),
-                !:SectionItemsCord =
-                    cord.snoc(!.SectionItemsCord, IOSetPredDeclItem)
+                cord.snoc(IOGetPredDeclItem, !SectionItemsCord),
+                cord.snoc(IOSetPredDeclItem, !SectionItemsCord)
             ;
                 IOStateInterface = mutable_dont_attach_to_io_state
             )
@@ -695,12 +688,8 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit,
         IntItems = IntItems0
     ;
         Langs = [_ | _],
-        % XXX ITEM_LIST Adding the foreign_import_module items to the
-        % interface section is a guess.
-        % XXX FIM_SECTION (It seems to be a wrong guess; the compiler
-        % bootstraps even if we add them to implementation section.)
-        % XXX FIM_SECTION We may be adding these items to the
-        % same lists of items more than once.
+        % XXX FIM We may be adding these items to the same lists of items
+        % more than once.
         list.foldl(accumulate_foreign_import(ModuleName), Langs,
             IntItems0, IntItems)
     ),
@@ -750,9 +739,9 @@ generate_pre_grab_pre_qual_items_int([Item | Items], !ItemsCord) :-
         AbstractItemInstance = ItemInstance ^ ci_method_instances
             := instance_body_abstract,
         AbstractItem = item_instance(AbstractItemInstance),
-        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
+        cord.snoc(AbstractItem, !ItemsCord)
     else
-        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        cord.snoc(Item, !ItemsCord)
     ),
     generate_pre_grab_pre_qual_items_int(Items, !ItemsCord).
 
@@ -764,7 +753,7 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ItemsCord) :-
     MaybeIncludeItem = include_in_int_file_implementation(Item),
     (
         MaybeIncludeItem = yes(IncludeItem),
-        !:ItemsCord = cord.snoc(!.ItemsCord, IncludeItem)
+        cord.snoc(IncludeItem, !ItemsCord)
     ;
         MaybeIncludeItem = no
     ),
@@ -1111,10 +1100,10 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         ItemTypeDefn = item_type_defn_info(Name, TypeParams, _, _, _, _),
         TypeCtor = type_ctor(Name, list.length(TypeParams)),
         multi_map.set(TypeCtor, ItemTypeDefn, !TypesMap),
-        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        cord.snoc(Item, !ItemsCord)
     ;
         Item = item_typeclass(ItemTypeClass),
-        !:ItemsCord = cord.snoc(!.ItemsCord, Item),
+        cord.snoc(Item, !ItemsCord),
         Constraints = ItemTypeClass ^ tc_constraints,
         list.foldl(accumulate_modules_from_constraint, Constraints,
             !NeededModules)
@@ -1133,7 +1122,7 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
             !:Specs = [Spec | !.Specs]
         ;
             AllowedInInterface = yes,
-            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+            cord.snoc(Item, !ItemsCord)
         )
     ;
         Item = item_promise(ItemPromise),
@@ -1148,7 +1137,7 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
             ; PromiseType = promise_type_exhaustive
             ; PromiseType = promise_type_exclusive_exhaustive
             ),
-            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+            cord.snoc(Item, !ItemsCord)
         )
     ;
         ( Item = item_inst_defn(_)
@@ -1157,10 +1146,10 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         ; Item = item_mode_decl(_)
         ; Item = item_instance(_)
         ),
-        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        cord.snoc(Item, !ItemsCord)
     ;
         Item = item_foreign_import_module(FIMInfo),
-        !:FIMsCord = cord.snoc(!.FIMsCord, FIMInfo)
+        cord.snoc(FIMInfo, !FIMsCord)
     ;
         ( Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -1204,23 +1193,22 @@ get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
         % new copies of the items from the type_ctor's entry in TypesMap.
     ;
         Item = item_typeclass(ItemTypeClass),
-        !:ItemsCord = cord.snoc(!.ItemsCord, Item),
+        cord.snoc(Item, !ItemsCord),
         Constraints = ItemTypeClass ^ tc_constraints,
         list.foldl(accumulate_modules_from_constraint, Constraints,
             !NeededModules)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, MaybeAttrs, Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, MaybeAttrs, _Context, _SeqNum),
         ( if Pragma = pragma_foreign_enum(FEInfo) then
-            Reconstructor = foreign_enum_reconstructor(FEInfo, MaybeAttrs,
-                Context, SeqNum),
-            !:ForeignEnumsCord = cord.snoc(!.ForeignEnumsCord, Reconstructor)
+            Reconstructor = foreign_enum_reconstructor(FEInfo, MaybeAttrs),
+            cord.snoc(Reconstructor, !ForeignEnumsCord)
         else
             unexpected($pred, "non-foreign-enum pragma")
         )
     ;
         Item = item_foreign_import_module(FIMInfo),
-        !:FIMsCord = cord.snoc(!.FIMsCord, FIMInfo)
+        cord.snoc(FIMInfo, !FIMsCord)
     ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -1950,16 +1938,7 @@ is_needed_avail(NeededModules, Avail) :-
 :- type foreign_enum_reconstructor
     --->    foreign_enum_reconstructor(
                 pragma_info_foreign_enum,
-                item_maybe_attrs,
-                % XXX ITEM_LIST The context and the sequence number
-                % don't get written to interface files, so we need
-                % the last two fields ONLY for the sanity check
-                % that compares the output of get_interface_int1
-                % with the output of the old code that used to do
-                % the same job. When that sanity check is deleted,
-                % these two fields should be deleted as well.
-                prog_context,
-                int
+                item_maybe_attrs
             ).
 
 :- pred add_foreign_enum_item_if_needed(type_defn_map::in,
@@ -1969,7 +1948,7 @@ is_needed_avail(NeededModules, Avail) :-
 add_foreign_enum_item_if_needed(IntTypesMap, ForeignEnumReconstuctor,
         !Items, !NeedForeignImportLangs) :-
     ForeignEnumReconstuctor = foreign_enum_reconstructor(FEInfo,
-        MaybeAttrs, Context, SeqNum),
+        MaybeAttrs),
     FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values),
     ( if
         map.search(IntTypesMap, TypeCtor, Defns),
@@ -1981,7 +1960,7 @@ add_foreign_enum_item_if_needed(IntTypesMap, ForeignEnumReconstuctor,
     then
         Pragma = pragma_foreign_enum(FEInfo),
         ItemPragmaInfo = item_pragma_info(Pragma,  MaybeAttrs,
-            Context, SeqNum),
+            term.context_init, -1),
         Item = item_pragma(ItemPragmaInfo),
         !:Items = [Item | !.Items],
         set.insert_list(pragma_needs_foreign_imports(Pragma),
@@ -2018,24 +1997,24 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
         maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
             MaybeAbstractItemTypeDefnInfo),
         MaybeAbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
-        !:ItemsCord = cord.snoc(!.ItemsCord, MaybeAbstractItem)
+        cord.snoc(MaybeAbstractItem, !ItemsCord)
     ;
         Item = item_typeclass(ItemTypeClassInfo),
         AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
             := class_interface_abstract,
         AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
-        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
+        cord.snoc(AbstractItem, !ItemsCord)
     ;
         Item = item_instance(ItemInstanceInfo),
         AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
             := instance_body_abstract,
         AbstractItem = item_instance(AbstractItemInstanceInfo),
-        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
+        cord.snoc(AbstractItem, !ItemsCord)
     ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ),
-        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        cord.snoc(Item, !ItemsCord)
     ;
         ( Item = item_clause(_)
         ; Item = item_pred_decl(_)
@@ -2110,8 +2089,7 @@ get_ifile_in_raw_item_blocks_acc([RawItemBlock | RawItemBlocks],
         else
             IFileItemBlock = item_block(ModuleName, Section,
                 IFileIncls, IFileAvails, IFileItems),
-            !:IFileItemBlocksCord =
-                cord.snoc(!.IFileItemBlocksCord, IFileItemBlock)
+            cord.snoc(IFileItemBlock, !IFileItemBlocksCord)
         )
     ;
         Section = ms_implementation
@@ -2129,9 +2107,9 @@ get_ifile_in_items_acc([Item | Items], !IFileItemsCord) :-
         % interface, ...
         AbstractItemInstance = make_instance_abstract(ItemInstance),
         AbstractItem = item_instance(AbstractItemInstance),
-        !:IFileItemsCord = cord.snoc(!.IFileItemsCord, AbstractItem)
+        cord.snoc(AbstractItem, !IFileItemsCord)
     else
-        !:IFileItemsCord = cord.snoc(!.IFileItemsCord, Item)
+        cord.snoc(Item, !IFileItemsCord)
     ),
     get_ifile_in_items_acc(Items, !IFileItemsCord).
 
@@ -2144,13 +2122,8 @@ get_ifile_in_items_acc([Item | Items], !IFileItemsCord) :-
 
 add_needed_foreign_import_module_items_to_raw_item_blocks(ModuleName,
         !ItemBlocks) :-
-    % XXX ITEM_LIST sms_interface is a guess. The original code (whose
-    % behavior the current code is trying to emulate) simply added
-    % the generated items to a raw item list, seemingly without caring
-    % about what section those items would end up (it certainly did not
-    % look for any section markers).
-    % XXX FIM_SECTION (It seems to be a wrong guess; the compiler bootstraps
-    % even if we pass ms_implementation here.)
+    % XXX FIM We may be adding these items to the same lists of items
+    % more than once.
     add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
         ms_interface, !ItemBlocks).
 

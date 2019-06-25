@@ -165,7 +165,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
         get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
         get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-            _IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
+            IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
         Contents = item_contents(ForeignIncludeFilesCord, FactTablesSet,
             LangSet, ForeignExportLangs, HasMain),
         FactTables = set.to_sorted_list(FactTablesSet),
@@ -187,14 +187,20 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
 
         set.sorted_list_to_set(map.keys(IntImportsMap1), IntImports1),
         set.sorted_list_to_set(map.keys(IntUsesMap1), IntUses1),
-        set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports),
-        set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses),
+        set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports1),
+        set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses1),
+        compute_implicit_import_needs(Globals, IntImplicitImportNeeds,
+            IntImplicitImports, IntImplicitUses),
         compute_implicit_import_needs(Globals, IntImpImplicitImportNeeds,
             IntImpImplicitImports, IntImpImplicitUses),
-        % XXX IMPLICIT_SECTION
-        % Why are these *all* added to the interface?
-        set.union(IntImpImplicitImports, IntImports1, IntImports2),
-        set.union(IntImpImplicitUses, IntUses1, IntUses2),
+        set.difference(IntImpImplicitImports, IntImplicitImports,
+            ImpImplicitImports),
+        set.difference(IntImpImplicitUses, IntImplicitUses,
+            ImpImplicitUses),
+        set.union(IntImplicitImports, IntImports1, IntImports2),
+        set.union(IntImplicitUses, IntUses1, IntUses2),
+        set.union(ImpImplicitImports, ImpImports1, ImpImports),
+        set.union(ImpImplicitUses, ImpUses1, ImpUses),
         set.to_sorted_list(LangSet, Langs),
         FIMItems = list.map(make_foreign_import(ModuleName), Langs),
         SrcIntIncls = IntIncls,
@@ -211,7 +217,6 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             % to the implementation section, leaving an abstract version
             % in the interface section, like we do in the else case.
             % XXX Why not?
-            % XXX FIM_SECTION
             SrcIntItems = FIMItems ++ IntItems,
             SrcImpItems = ImpItems,
             SrcSubItems = []
@@ -233,7 +238,6 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
                 [], RevImpClauseItems, [], RevImpDeclItems),
             list.reverse(RevImpClauseItems, ImpClauseItems),
             list.reverse(RevImpDeclItems, ImpDeclItems),
-            % XXX FIM_SECTION
             SrcIntItems = FIMItems ++ IntAbstractInstanceItems ++
                 IntNonInstanceItems,
             SrcImpItems = ImpClauseItems,
@@ -423,7 +427,6 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         make_and_add_item_block(ModuleName, sms_implementation,
             ImpIncls, ImpAvails, ImpItems,
             [], SrcItemBlocks0),
-        % XXX FIM_SECTION
         make_and_add_item_block(ModuleName, sms_interface,
             IntIncls, IntAvails, IntItemsWithFIMs,
             SrcItemBlocks0, SrcItemBlocks),
@@ -553,16 +556,21 @@ separate_instance_non_instance_loop([],
 separate_instance_non_instance_loop([Item | Items], 
         !AbstractInstanceCord, !InstanceCord, !NonInstanceCord) :-
     ( if Item = item_instance(ItemInstance) then
-        % XXX To me (zs) this does not look like the right thing to do
-        % if ItemInstance is *already* abstract.
-        AbstractItemInstance =
-            ItemInstance ^ ci_method_instances := instance_body_abstract,
-        AbstractItem = item_instance(AbstractItemInstance),
-        !:AbstractInstanceCord =
-            cord.snoc(!.AbstractInstanceCord, AbstractItem),
-        !:InstanceCord = cord.snoc(!.InstanceCord, Item)
+        Body = ItemInstance ^ ci_method_instances,
+        (
+            Body = instance_body_concrete(_),
+            AbstractItemInstance =
+                ItemInstance ^ ci_method_instances := instance_body_abstract,
+            AbstractItem = item_instance(AbstractItemInstance),
+            cord.snoc(AbstractItem, !AbstractInstanceCord),
+            cord.snoc(Item, !InstanceCord)
+        ;
+            Body = instance_body_abstract,
+            % Do not put another copy of this item into !InstanceCord.
+            cord.snoc(Item, !AbstractInstanceCord)
+        )
     else
-        !:NonInstanceCord = cord.snoc(!.NonInstanceCord, Item)
+        cord.snoc(Item, !NonInstanceCord)
     ),
     separate_instance_non_instance_loop(Items,
         !AbstractInstanceCord, !InstanceCord, !NonInstanceCord).
@@ -1989,7 +1997,7 @@ keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
             Pragma0 = pragma_structure_reuse(_)
         )
     then
-        !:ItemCord = cord.snoc(!.ItemCord, Item0)
+        cord.snoc(Item0, !ItemCord)
     else
         true
     ),
@@ -2027,7 +2035,7 @@ read_optimization_interfaces(Globals, Transitive,
     OptAvails = list.map(wrap_avail_use, OptUses),
     OptItemBlock = item_block(OptModuleName, OptSection,
         [], OptAvails, OptItems),
-    !:OptItemBlocksCord = cord.snoc(!.OptItemBlocksCord, OptItemBlock),
+    cord.snoc(OptItemBlock, !OptItemBlocksCord),
     update_opt_error_status(Globals, opt_file, FileName, OptSpecs, OptError,
         !Specs, !Error),
     maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
@@ -2105,7 +2113,7 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
     OptAvails = list.map(wrap_avail_use, OptUses),
     OptItemBlock = item_block(OptModuleName, OptSection,
         [], OptAvails, OptItems),
-    !:OptItemBlocks = cord.snoc(!.OptItemBlocks, OptItemBlock),
+    cord.snoc(OptItemBlock, !OptItemBlocks),
     read_trans_opt_files(Globals, Imports, !OptItemBlocks,
         !Specs, !Error, !IO).
 

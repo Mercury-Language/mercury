@@ -121,7 +121,7 @@
             ).
 
     % get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-    %   ImplicitImportNeeds, Contents):
+    %   IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents):
     %
     % Given the interface and implementation items of a raw compilation unit,
     % compute and return
