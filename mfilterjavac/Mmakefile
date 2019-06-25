@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2013 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -20,9 +20,9 @@ include $(MERCURY_DIR)/Mmake.common
 # create a missing optional params file.
 Mmake.mfilterjavac.params:
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.  But this hasn't been used in this directory
-# so it's commented out.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'. But this hasn't been used in this directory so far,
+# so it is commented out.
 # include Mercury.options
 
 MAIN_TARGET = all
@@ -78,7 +78,7 @@ mfilterjavac:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mfilterjavac:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 endif
 
-$(cs_subdir)mfilterjavac.c:			$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mfilterjavac.c:	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 
@@ -121,9 +121,11 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs
+.PHONY: os cs css javas
 os: $(mfilterjavac.os) $(os_subdir)mfilterjavac_init.o
 cs: $(mfilterjavac.cs) $(cs_subdir)mfilterjavac_init.c
+css: $(mfilterjavac.css)
+javas: $(mfilterjavac.javas)
 
 #-----------------------------------------------------------------------------#
 
@@ -133,7 +135,7 @@ realclean_local:
 
 #-----------------------------------------------------------------------------#
 
-# Installation target
+# Installation target.
 
 # See the comment above the 'install_compiler' target in compiler/Mmakefile
 # for the reasons why we handle the java grade specially here.

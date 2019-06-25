@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2000, 2002-2003, 2005, 2007, 2009-2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -12,8 +12,8 @@ MERCURY_DIR=..
 LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 MAIN_TARGET=all
@@ -41,7 +41,8 @@ depend:	mercury_profile.depend
 # it does not compile anymore.
 #
 # NOTE: if you add any programs here, you will need to modify the rule
-# for dep_profiler_aux in ../Mmakefile.
+# for dep_profiler_aux in ../Mmakefile, and the rules for os, cs, css and javas
+# below.
 aux:	demangle_test
 
 depend_aux: demangle_test.depend

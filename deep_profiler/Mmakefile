@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -26,12 +26,12 @@ C2INITFLAGS = --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init
 
 -include Mmake.deep.params
 
-# Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
-# create a missing optional params file.
+# Override the default rule in `mmake --use-mmc-make' that asks `mmc'
+# to create a missing optional params file.
 Mmake.deep.params:
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 MAIN_TARGET = all
@@ -114,9 +114,9 @@ depend:	$(MDBCOMP_MODULES) $(DEPEND)
 
 $(DEPEND): DEEP_FLAGS $(MDBCOMP_MODULES) Mercury.modules
 
-# This directory contains source files for which the module
-# name doesn't match the file name, so smart recompilation
-# won't work without the Mercury.modules file.
+# This directory contains source files for which the module name
+# does not match the file name, so smart recompilation won't work
+# without the Mercury.modules file.
 .PHONY: Mercury.modules
 Mercury.modules: DEEP_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m

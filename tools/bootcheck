@@ -449,7 +449,7 @@ case "$grade" in
         ;;
 esac
 case $use_subdirs in
-   yes)
+    yes)
         cs_subdir=Mercury/cs/
         css_subdir=Mercury/css/
         javas_subdir=Mercury/javas/jmercury/
@@ -735,7 +735,7 @@ then
         if $copy_runtime
         then
             # Remove symbolic link to the stage 1 runtime
-            # if it's present, which it can be with the -2 option.
+            # if it is present, which it can be with the -2 option.
             rm -f runtime
             mkdir runtime
             cd runtime
@@ -744,9 +744,8 @@ then
             $LN_S $root/runtime/*.cs .
             # We need to use $LN rather than $LN_S for the files
             # that get processed with Microsoft's tools, since
-            # Microsoft's tools don't understand Cygwin symbolic
-            # links (hard links are OK, Cygwin's ln just makes
-            # copies).
+            # Microsoft's tools don't understand Cygwin symbolic links
+            # (hard links are OK, Cygwin's ln just makes copies).
             rm -f mercury_conf*.h
             $LN $root/runtime/mercury_conf*.h .
             $LN_S $root/runtime/*.in .
@@ -781,7 +780,7 @@ then
         if $copy_boehm_gc
         then
             # Remove symbolic link to the stage 1 gc
-            # if it's present, which it can be with the -2 option.
+            # if it is present, which it can be with the -2 option.
             rm -f boehm_gc
             mkdir boehm_gc
             cd boehm_gc
@@ -1055,7 +1054,6 @@ then
             unset MMAKE_DIR && \
             unset MERCURY_CONFIG_DIR && \
             unset MERCURY_STDLIB_DIR && \
-            mmake $mmake_opts depend && \
             mmake $mmake_opts $jfactor all $ENVGRADE)
         then
             echo "building of stage 2 slice successful"
@@ -1070,12 +1068,39 @@ then
             unset MMAKE_DIR && \
             unset MERCURY_CONFIG_DIR && \
             unset MERCURY_STDLIB_DIR && \
-            mmake $mmake_opts depend depend_aux && \
             mmake $mmake_opts $jfactor all aux $ENVGRADE)
         then
             echo "building of stage 2 profiler successful"
         else
             echo "building of stage 2 profiler not successful"
+            exit 1
+        fi
+
+        if (cd $stage2dir/deep_profiler && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake $mmake_opts $jfactor all $ENVGRADE)
+        then
+            echo "building of stage 2 deep profiler successful"
+        else
+            echo "building of stage 2 deep profiler not successful"
+            exit 1
+        fi
+
+        if (cd $stage2dir/mfilterjavac && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake $mmake_opts $jfactor all $ENVGRADE)
+        then
+            echo "building of stage 2 mfilterjavac successful"
+        else
+            echo "building of stage 2 mfilterjavac not successful"
             exit 1
         fi
 
@@ -1190,9 +1215,9 @@ then
         cd $root
     fi
 
-    # In the java grade replace the generated mercury_compile wrapper script
-    # will not set the CLASSPATH correctly when building stage 3.  Replace it
-    # with one that will.
+    # In the java grade, the generated mercury_compile wrapper script
+    # will not set the CLASSPATH correctly when building stage 3.
+    # Replace it with one that will.
     #
     if test "$grade" = "java"
     then
@@ -1303,7 +1328,6 @@ EOF
     cp $root/ssdb/.mgnu* .
     $LN_S $root/ssdb/$SSDB_LIB_NAME.init .
     cd $root/$stage3dir
-    cd $root/$stage3dir
     $LN_S $root/$stage2dir/boehm_gc .
     $LN_S $root/$stage2dir/java .
     $LN_S $root/bindist .
@@ -1314,10 +1338,34 @@ EOF
     $LN_S $root/scripts .
     $LN_S $root/tools .
     $LN_S $root/util .
-    $LN_S $root/$stage2dir/slice .
-    $LN_S $root/$stage2dir/profiler .
-    $LN_S $root/$stage2dir/deep_profiler .
-    $LN_S $root/$stage2dir/mfilterjavac .
+    mkdir slice
+    cd slice
+    $LN_S $root/slice/*.m .
+    cp $root/slice/Mmake* $root/slice/Mercury.options .
+    cp $root/slice/*_FLAGS.in .
+    cp $root/slice/.mgnu* .
+    cd $root/$stage3dir
+    mkdir profiler
+    cd profiler
+    $LN_S $root/profiler/*.m .
+    cp $root/profiler/Mmake* $root/profiler/Mercury.options .
+    cp $root/profiler/*_FLAGS.in .
+    cp $root/profiler/.mgnu* .
+    cd $root/$stage3dir
+    mkdir deep_profiler
+    cd deep_profiler
+    $LN_S $root/deep_profiler/*.m .
+    cp $root/deep_profiler/Mmake* $root/deep_profiler/Mercury.options .
+    cp $root/deep_profiler/*_FLAGS.in .
+    cp $root/deep_profiler/.mgnu* .
+    cd $root/$stage3dir
+    mkdir mfilterjavac
+    cd mfilterjavac
+    $LN_S $root/mfilterjavac/*.m .
+    cp $root/mfilterjavac/Mmake* $root/mfilterjavac/Mercury.options .
+    cp $root/mfilterjavac/*_FLAGS.in .
+    cp $root/mfilterjavac/.mgnu* .
+    cd $root/$stage3dir
     $LN_S $root/conf* .
     $LN_S $root/aclocal.m4 .
     $LN_S $root/m4 .
@@ -1354,8 +1402,17 @@ EOF
         cp /dev/null "$type_stats"
     fi
 
-    if (cd $stage3dir && $MMAKE $mmake_opts dep_library dep_mdbcomp \
-        dep_browser_all dep_ssdb dep_compiler)
+    if (cd $stage3dir && \
+        $MMAKE $mmake_opts \
+        dep_library \
+        dep_mdbcomp \
+        dep_browser dep_browser_aux \
+        dep_ssdb \
+        dep_compiler \
+        dep_slice \
+        dep_profiler dep_profiler_aux \
+        dep_deep_profiler \
+        dep_mfilterjavac)
     then
         echo "building of stage 3 dependencies successful"
     else
@@ -1472,6 +1529,62 @@ EOF
         fi
     fi
 
+    if (cd $stage3dir/slice && \
+        unset MMAKE && \
+        unset MMAKE_VPATH && \
+        unset MMAKE_DIR && \
+        unset MERCURY_CONFIG_DIR && \
+        unset MERCURY_STDLIB_DIR && \
+        mmake $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 slice successful"
+    else
+        echo "building of stage 3 slice not successful"
+        exit 1
+    fi
+
+    if (cd $stage3dir/profiler && \
+        unset MMAKE && \
+        unset MMAKE_VPATH && \
+        unset MMAKE_DIR && \
+        unset MERCURY_CONFIG_DIR && \
+        unset MERCURY_STDLIB_DIR && \
+        mmake $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 profiler successful"
+    else
+        echo "building of stage 3 profiler not successful"
+        exit 1
+    fi
+
+    if (cd $stage3dir/deep_profiler && \
+        unset MMAKE && \
+        unset MMAKE_VPATH && \
+        unset MMAKE_DIR && \
+        unset MERCURY_CONFIG_DIR && \
+        unset MERCURY_STDLIB_DIR && \
+        mmake $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 deep profiler successful"
+    else
+        echo "building of stage 3 deep profiler not successful"
+        exit 1
+    fi
+
+    if (cd $stage3dir/mfilterjavac && \
+        unset MMAKE && \
+        unset MMAKE_VPATH && \
+        unset MMAKE_DIR && \
+        unset MERCURY_CONFIG_DIR && \
+        unset MERCURY_STDLIB_DIR && \
+        mmake $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 mfilterjavac successful"
+    else
+        echo "building of stage 3 mfilterjavac not successful"
+        exit 1
+    fi
+
     if test "$type_stats" != ""
     then
         echo "Saving stage 3 stats in $type_stats.stage3.$$"
@@ -1487,7 +1600,9 @@ EOF
         exec > "$outfile"   # redirect stdout to $outfile
     fi
 
-    for dir in library mdbcomp browser ssdb compiler; do
+    for dir in library mdbcomp browser ssdb compiler \
+        slice profiler deep_profiler mfilterjavac
+    do
         # `mmake cs' in the compiler directory doesn't build
         # `mercury_compile_init.c', so we only compare the `.c'
         # files present in the stage 3 directory.

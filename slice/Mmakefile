@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -16,7 +16,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 # Override some settings from ../Mmake.workspace so that in debugging grades
 # we do not include mer_mdbcomp.init when creating the _init.c files in
-# this directory.  We copy the mdbcomp modules into this directory so if we
+# this directory. We copy the mdbcomp modules into this directory so if we
 # do include mer_mdbcomp.init we will end up with duplicate entries in the
 # _init.c files.
 
@@ -36,7 +36,8 @@ include Mercury.options
 
 MAIN_TARGET		= all
 
-# If you add more modules, you'll also have to modify ../Mmakefile.
+# If you add more modules, you will also have to modify the os, cs, css
+# and java targets below, as well as ../Mmakefile.
 MERCURY_MAIN_MODULES	= mslice mdice mtc_union mcov mtc_diff
 
 DEPENDS	= $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
@@ -193,16 +194,39 @@ dates:
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs css javas
-os:	$(mslice.os) $(mdice.os) $(mtc_union.os) \
-	$(os_subdir)mslice_init.o $(os_subdir)mdice_init.o \
-	$(os_subdir)mtc_union.o $(os_subdir)mcov.o \
+os:	$(mslice.os) \
+	$(mdice.os) \
+	$(mtc_union.os) \
+	$(mcov.os) \
+	$(mtc_diff.os) \
+	$(os_subdir)mslice_init.o \
+	$(os_subdir)mdice_init.o \
+	$(os_subdir)mtc_union.o \
+	$(os_subdir)mcov.o \
 	$(os_subdir)mtc_diff.o
-cs:	$(mslice.cs) $(mdice.cs) $(mtc_union.cs) \
-	$(cs_subdir)mslice_init.c $(cs_subdir)mdice_init.c \
-	$(cs_subdir)mtc_union.c $(cs_subdir)mcov.c \
+
+cs:	$(mslice.cs) \
+	$(mdice.cs) \
+	$(mtc_union.cs) \
+	$(mcov.cs) \
+	$(mtc_diff.cs) \
+	$(cs_subdir)mslice_init.c \
+	$(cs_subdir)mdice_init.c \
+	$(cs_subdir)mtc_union.c \
+	$(cs_subdir)mcov.c \
 	$(cs_subdir)mtc_diff.c
-css:	$(mslice.css) $(mdice.css) $(mtc_union.css)
-javas:	$(mslice.javas) $(mdice.javas) $(mtc_union.javas)
+
+css:	$(mslice.css) \
+	$(mdice.css) \
+	$(mtc_union.css) \
+	$(mcov.css) \
+	$(mtc_diff.css)
+
+javas:	$(mslice.javas) \
+	$(mdice.javas) \
+	$(mtc_union.javas) \
+	$(mcov.javas) \
+	$(mtc_diff.javas)
 
 #-----------------------------------------------------------------------------#
 

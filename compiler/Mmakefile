@@ -78,9 +78,9 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-# targets
+# Targets.
 
-# specify the name of the top-level module to build
+# Specify the name of the top-level module to build.
 MC_PROG = mercury_compile
 
 # mercury_compile
@@ -175,7 +175,7 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-# Note that the cs and os targets don't build mercury_compile_init.{c,o}
+# Note that the cs and os targets don't build mercury_compile_init.{c,o}.
 .PHONY: os cs css javas opts
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MC_PROG).os)
