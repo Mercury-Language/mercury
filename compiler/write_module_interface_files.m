@@ -30,6 +30,10 @@
 % includes declarations (but not clauses) from the implementation section.
 % It is generated only for modules that have submodules.
 %
+% NOTE The above is only a summary, and may be out of date. An attempt
+% at an up-to-date and much more detailed description can be found in
+% notes/interface_files.html.
+%
 %---------------------------------------------------------------------------%
 %
 % The datestamp on the .date3 file gives the last time
