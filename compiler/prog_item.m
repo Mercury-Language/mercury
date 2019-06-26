@@ -1831,7 +1831,13 @@ get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
     multi_map.add(ModuleName, Context, !IncludedModuleNames).
 
 avail_is_import(Avail) :-
-    Avail = avail_import(_).
+    require_complete_switch [Avail]
+    (
+        Avail = avail_import(_)
+    ;
+        Avail = avail_use(_),
+        fail
+    ).
 
 wrap_avail_use(AvailUseInfo) = avail_use(AvailUseInfo).
 

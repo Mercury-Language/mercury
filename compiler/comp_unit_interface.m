@@ -237,7 +237,7 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
         Section = ms_interface,
         !:IntIncls = !.IntIncls ++ cord.from_list(Incls),
         !:IntAvails = !.IntAvails ++
-            cord.from_list(list.filter(is_import, Avails)),
+            cord.from_list(list.filter(avail_is_import, Avails)),
         get_short_interface_int3_from_items(Items, !IntItems, !IntTypeDefns,
             !ForeignEnumTypeCtors, !NeedAvails, !Specs)
     ;
@@ -247,17 +247,6 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
         !IntIncls, !IntAvails, !IntItems, !IntTypeDefns, !ImpTypeDefns,
         !ForeignEnumTypeCtors, !NeedAvails, !Specs).
-
-:- pred is_import(item_avail::in) is semidet.
-
-is_import(Avail) :-
-    require_complete_switch [Avail]
-    (
-        Avail = avail_import(_)
-    ;
-        Avail = avail_use(_),
-        fail
-    ).
 
 :- pred get_short_interface_int3_from_items(list(item)::in,
     cord(item)::in, cord(item)::out,
