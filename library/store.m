@@ -90,27 +90,26 @@
 :- pred set_mutvar(generic_mutvar(T, S)::in, T::in,
     S::di, S::uo) is det <= store(S).
 
-    % new_cyclic_mutvar(Func, Mutvar):
+    % new_cyclic_mutvar(Func, Mutvar, !S):
     %
-    % Create a new mutable variable, whose value is initialized
-    % with the value returned from the specified function `Func'.
-    % The argument passed to the function is the mutvar itself,
-    % whose value has not yet been initialized (this is safe
-    % because the function does not get passed the store, so
-    % it can't examine the uninitialized value).
+    % Create a new mutable variable, whose value is initialized with the value
+    % returned from the specified function `Func'. The argument passed to the
+    % function is the mutvar itself, whose value has not yet been initialized
+    % (this is safe because the function does not get passed the store, so it
+    % cannot examine the uninitialized value).
     %
-    % This predicate is useful for creating self-referential values
-    % such as circular linked lists.
-    % For example:
+    % This predicate is useful for creating self-referential values such as
+    % circular linked lists. For example:
     %
-    %   :- type clist(T, S) ---> node(T, mutvar(clist(T, S))).
+    %   :- type clist(T, S)
+    %       --->    node(T, generic_mutvar(clist(T, S), S)).
     %
-    %   :- pred init_cl(T::in, clist(T, S)::out,
-    %       store(S)::di, store(S)::uo) is det.
+    %   :- pred init_cl(T::in, clist(T, S)::out, S::di, S::uo)
+    %       is det <= store(S).
     %
     %   init_cl(X, CList, !Store) :-
-    %       new_cyclic_mutvar(func(CL) = node(X, CL), CList,
-    %       !Store).
+    %       new_cyclic_mutvar(func(CL) = node(X, CL), CListVar, !Store),
+    %       get_mutvar(CListVar, CList, !Store).
     %
 :- pred new_cyclic_mutvar((func(generic_mutvar(T, S)) = T)::in,
     generic_mutvar(T, S)::out, S::di, S::uo) is det <= store(S).
