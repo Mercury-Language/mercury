@@ -229,7 +229,7 @@ so if the interface section of a module refers to type t1,
 the code that creates the module's .int file needs to know
 which of the imported modules defines a type named t1.
 It gets this information from the .int3 files
-of the modules listed in import_module (and, for now, use_module) declarations.
+of the modules listed in import_module declarations.
 
 <p>
 The second piece of information is
@@ -242,15 +242,15 @@ is set to a special value.
 
 <p>
 <li>
-Inst and mode definitions are always included in the .int3 file unchanged.
-Actually, we want only the the names of defined insts and modes,
-but until recently, the compiler had no syntax
-for abstract declarations of insts and modes.
-This syntax still is unused.
+Inst and mode definitions are always included in the .int3 file
+in an abstract form that contains no information except their name and arity.
+The reason is to allow references to inst and mode names
+to be fully module qualified.
 
 <p>
 <li>
-Class definitions are always included in the .int3 file in abstract form.
+Class definitions are also included in the .int3 file
+in an abstract form that contains no information except their name and arity.
 Again, the reason is to allow references to class names
 to be fully module qualified.
 
@@ -291,7 +291,14 @@ Foreign_import_module items are never included in .int3 files.
 <p>
 <li>
 Promises are never included in .int3 files.
-Neither are definitions of mutables, or initialize and finalize declarations.
+
+<p>
+<li>
+Mutables are never included in .int3 files.
+
+<p>
+<li>
+Initialise and finalize declarations are never included in .int3 files.
 
 <p>
 <li>
@@ -311,12 +318,7 @@ At the moment, such possibly unqualified names may appear in
 <p>
 <ul>
 <li>
-the right hand sides of inst definitions and mode definitions,
-<li>
-the superclass constraints on abstract typeclass definitions
-(all typeclass definitions in .int3 files are abstract), and
-<li>
-the member types in the heads of abstract instance definitions.
+the member types in the heads of abstract instance definitions
 (all instance definitions in .int3 files are abstract).
 </ul>
 <p>
@@ -334,14 +336,6 @@ to type constructor names that may require qualification,
 type <em>representation</em> items for equivalence types may.
 <p>
 <em>XXX</em>
-I (zs) don't think we should include
-the right hand sides of inst and mode definitions in .int3 files.
-<p>
-<em>XXX</em>
-Likewise, I don't know why the .int3 file needs
-the superclass constraints on typeclass definitions.
-<p>
-<em>XXX</em>
 If e.g. the constructor t1/0 appears in an abstract instance definition,
 and the module defines a type constructor t1/0,
 this arguably should <em>not</em> require us
@@ -350,7 +344,7 @@ The reason has two parts.
 Either the t1/0 is defined in one or more of the imported modules, or it isn't.
 If it is not defined in any of them,
 then causing the readers of this module's .int3 file
-to read those other modules' .inte files
+to read those other modules' .int3 files
 will just compute the same result, only slower.
 On the other hand, if some of those modules do define t1/0,
 then this type constructor is multiply defined, so its appearance
@@ -387,7 +381,73 @@ but <em>not</em> by the compiler.
 <h2>The contents of .int0 files</h2>
 
 <p>
+The contents of the .int0 file of a module are derived from the contents of
+both the interface sections and the implementation sections of that module.
+
+<p>
+<ul>
+
+<li>
+Type definitions are always included in the .int0 unchanged.
+
+<p>
+<li>
+Inst and mode definitions are always included in the .int0 file unchanged.
+
+<p>
+<li>
+Class definitions are always included in the .int0 file unchanged.
+
+<p>
+<li>
+Instance definitions are always included in the .int3 file in abstract form.
+
+<p>
+<li>
+The type and mode declarations of predicates and functions
+are always included in .int0 files unchanged.
+
+<p>
+<li>
+Clauses are never included in .int0 files.
+
+<p>
+<li>
+Pragmas that may appear in interface sections
+are always included in .int0 files unchanged.
+Pragmas that may not appear in interface sections
+are never included in .int0 files.
+
+<p>
+<li>
+Foreign_import_module items are always included in .int0 files.
+
+<p>
+<li>
+Promises are always included in .int0 files unchanged.
+
+<p>
+<li>
+Initialize and finalize declarations are never included in .int0 files.
+
+<p>
+<li>
+Mutables are never included in .int0 files.
+(This is because every module that sees a mutable declaration
+would attempt to reserve its own memory for the mutable;
+having more than one location for a single mutable would obviously not work.)
+However, we do put automatically generated predmode declarations
+for all of the mutable's get and set predicates into .int0 files.
+
+<p>
+<li>
+Declarations of submodules are always included in the .int3 file unchanged.
+
+<p>
+<li>
+import_module and use_module declarations:
 TODO
+</ul>
 
 <h2>The contents of .int files</h2>
 
@@ -398,3 +458,22 @@ TODO
 
 <p>
 TODO
+
+<h2>Timestamp files</h2>
+
+<ul>
+<p>
+<li>
+The datestamp on the .date3 file gives the last time
+the .int3 file was checked for consistency.
+
+<p>
+<li>
+The datestamp on the .date0 file gives the last time
+the .int0 file was checked for consistency.
+
+<p>
+<li>
+The datestamp on the .date file gives the last time
+the .int and .int2 files were checked for consistency.
+</ul>
