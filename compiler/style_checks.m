@@ -26,7 +26,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
-:- import_module io.
 :- import_module list.
 
 :- type style_warnings_task
@@ -39,7 +38,7 @@
             ).
 
 :- pred generate_style_warnings(module_info::in, style_warnings_task::in,
-    list(error_spec)::out, io::di, io::uo) is det.
+    list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -50,6 +49,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 
+:- import_module edit_seq.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -57,7 +57,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_style_warnings(ModuleInfo, Task, !:Specs, !IO) :-
+generate_style_warnings(ModuleInfo, Task, !:Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, ValidPredIds),
     StyleInfo0 = pred_style_info([], [], []),
     (
@@ -79,6 +79,9 @@ generate_style_warnings(ModuleInfo, Task, !:Specs, !IO) :-
     ;
         (
             Task = inconsistent_pred_order_only(_),
+            % Even though we are throwing away ModeDeclItemNumberSpecs,
+            % We still execute the code that computes it, because it also
+            % computes ExportedPreds and NonExportedPreds, which we need.
             !:Specs = []
         ;
             Task = non_contiguous_decls_and_inconsistent_pred_order(_),
@@ -86,9 +89,9 @@ generate_style_warnings(ModuleInfo, Task, !:Specs, !IO) :-
         ),
         module_info_get_name_context(ModuleInfo, ModuleContext),
         generate_inconsistent_pred_order_warnings(ModuleContext,
-            "exported", ExportedPreds, !Specs, !IO),
+            "exported", ExportedPreds, !Specs),
         generate_inconsistent_pred_order_warnings(ModuleContext,
-            "nonexported", NonExportedPreds, !Specs, !IO)
+            "nonexported", NonExportedPreds, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -286,83 +289,25 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
 
 :- pred generate_inconsistent_pred_order_warnings(prog_context::in,
     string::in, list(pred_item_numbers)::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 generate_inconsistent_pred_order_warnings(ModuleContext, ExportedOrNotStr,
-        PredItemNumbers, !Specs, !IO) :-
+        PredItemNumbers, !Specs) :-
     list.sort(compare_decl_item_number, PredItemNumbers, DeclOrder),
     list.sort(compare_defn_item_number, PredItemNumbers, DefnOrder),
     ( if DeclOrder = DefnOrder then
         true
     else
-        some [!TempFileNames] (
-            make_order_temp_file(ExportedOrNotStr, "declaration_order",
-                DeclOrder, DeclResult, !IO),
-            make_order_temp_file(ExportedOrNotStr, "definition_order",
-                DefnOrder, DefnResult, !IO),
-            (
-                DeclResult = error_specs(HeadDeclSpec, TailDeclSpecs),
-                DefnResult = error_specs(HeadDefnSpec, TailDefnSpecs),
-                !:TempFileNames = [],
-                !:Specs =
-                    [HeadDeclSpec | TailDeclSpecs] ++
-                    [HeadDefnSpec | TailDefnSpecs] ++ !.Specs
-            ;
-                DeclResult = error_specs(HeadDeclSpec, TailDeclSpecs),
-                DefnResult = ok_no_spec(DefnFileName),
-                !:TempFileNames = [DefnFileName],
-                !:Specs = [HeadDeclSpec | TailDeclSpecs] ++ !.Specs
-            ;
-                DeclResult = ok_no_spec(DeclFileName),
-                DefnResult = error_specs(HeadDefnSpec, TailDefnSpecs),
-                !:TempFileNames = [DeclFileName],
-                !:Specs = [HeadDefnSpec | TailDefnSpecs] ++ !.Specs
-            ;
-                DeclResult = ok_no_spec(DeclFileName),
-                DefnResult = ok_no_spec(DefnFileName),
-                !:TempFileNames = [DeclFileName, DefnFileName],
-                io.make_temp_file("/tmp", "difference", "", DiffTempResult,
-                    !IO),
-                (
-                    DiffTempResult = error(DiffTempError),
-                    DiffTempSpec =
-                        cannot_create_temp_file_spec(ExportedOrNotStr,
-                            DiffTempError),
-                    !:Specs = [DiffTempSpec | !.Specs]
-                ;
-                    DiffTempResult = ok(DiffFileName),
-                    !:TempFileNames = [DiffFileName | !.TempFileNames],
-                    string.format("diff -u %s %s > %s",
-                        [s(DeclFileName), s(DefnFileName), s(DiffFileName)],
-                        Cmd),
-                    io.call_system(Cmd, CmdResult, !IO),
-                    (
-                        CmdResult = error(CmdError),
-                        CmdSpec = cannot_execute_cmd_spec(ExportedOrNotStr,
-                            Cmd, CmdError),
-                        !:Specs = [CmdSpec | !.Specs]
-                    ;
-                        CmdResult = ok(_ExitStatus),
-                        io.open_input(DiffFileName, DiffOpenResult, !IO),
-                        (
-                            DiffOpenResult = error(DiffOpenError),
-                            DiffOpenSpec =
-                                cannot_open_temp_file_spec(ExportedOrNotStr,
-                                    DiffFileName, DiffOpenError),
-                            !:Specs = [DiffOpenSpec | !.Specs]
-                        ;
-                            DiffOpenResult = ok(DiffStream),
-                            diff_file_to_spec(DiffStream, DiffFileName,
-                                ModuleContext, ExportedOrNotStr, DiffReadSpec,
-                                !IO),
-                            io.close_input(DiffStream, !IO),
-                            !:Specs = [DiffReadSpec | !.Specs]
-                        )
-                    )
-                )
-            ),
-            list.map_foldl(io.remove_file, !.TempFileNames, _Results, !IO)
-        )
+        list.map(desc_pred_item_numbers, DeclOrder, DeclStrs),
+        list.map(desc_pred_item_numbers, DefnOrder, DefnStrs),
+        CostDelete = 1,
+        CostInsert = 1,
+        CostReplace = 1,
+        Params = edit_params(CostDelete, CostInsert, CostReplace),
+        find_shortest_edit_seq(Params, DeclStrs, DefnStrs, EditSeq),
+        find_diff_seq(DeclStrs, EditSeq, DiffSeq),
+        diff_to_spec(ModuleContext, ExportedOrNotStr, DiffSeq, DiffSpec),
+        !:Specs = [DiffSpec | !.Specs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -385,163 +330,48 @@ compare_defn_item_number(A, B, R) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred make_order_temp_file(string::in, string::in,
-    list(pred_item_numbers)::in, maybe_error_specs(string)::out,
-    io::di, io::uo) is det.
+:- pred desc_pred_item_numbers(pred_item_numbers::in, string::out) is det.
 
-make_order_temp_file(ExportedOrNotStr, DeclOrDefnOrderStr, PredItemNumbers,
-        MaybeFileName, !IO) :-
-    io.make_temp_file("/tmp", DeclOrDefnOrderStr, "", TempResult, !IO),
-    (
-        TempResult = error(TempError),
-        TempSpec = cannot_create_temp_file_spec(ExportedOrNotStr, TempError),
-        MaybeFileName = error_specs(TempSpec, [])
-    ;
-        TempResult = ok(TempFileName),
-        io.open_output(TempFileName, OpenResult, !IO),
-        (
-            OpenResult = error(OpenError),
-            OpenSpec = cannot_open_temp_file_spec(ExportedOrNotStr,
-                TempFileName, OpenError),
-            MaybeFileName = error_specs(OpenSpec, [])
-        ;
-            OpenResult = ok(Stream),
-            list.foldl(write_pred_desc(Stream), PredItemNumbers, !IO),
-            io.close_output(Stream, !IO),
-            MaybeFileName = ok_no_spec(TempFileName)
-        )
-    ).
-
-:- pred write_pred_desc(io.text_output_stream::in, pred_item_numbers::in,
-    io::di, io::uo) is det.
-
-write_pred_desc(Stream, PredItemNumbers, !IO) :-
+desc_pred_item_numbers(PredItemNumbers, PredDescStr) :-
     PredItemNumbers = pred_item_numbers(_, PredInfo, _, _),
     PredPieces =
         describe_one_pred_info_name(should_not_module_qualify, PredInfo),
-    PredDesc = error_pieces_to_string(PredPieces),
-    io.write_string(Stream, PredDesc, !IO),
-    io.nl(Stream, !IO).
+    PredDescStr = error_pieces_to_string(PredPieces).
 
 %---------------------------------------------------------------------------%
 
-:- pred diff_file_to_spec(io.text_input_stream::in, string::in,
-    prog_context::in, string::in, error_spec::out, io::di, io::uo) is det.
+:- pred diff_to_spec(prog_context::in, string::in, diff_seq(string)::in,
+    error_spec::out) is det.
 
-diff_file_to_spec(DiffStream, DiffFileName, ModuleContext, ExportedOrNotStr,
-        Spec, !IO) :-
-    read_lines_as_rev_strings(DiffStream, [], RevLines, MaybeIOError, !IO),
+diff_to_spec(ModuleContext, ExportedOrNotStr, DiffSeq, Spec) :-
+    HeadPieces = [words("Warning: the order of"),
+        words("the declarations and definitions"),
+        words("of the"), words(ExportedOrNotStr), words("predicates"),
+        words("is inconsistent, as shown by this diff:"), nl,
+        blank_line,
+        fixed("--- declaration order"), nl,
+        fixed("+++ definition order"), nl],
+    list.map(diff_seq_line_to_pieces, DiffSeq, DiffPieceLists),
+    list.condense(DiffPieceLists, DiffPieces),
+    Pieces = HeadPieces ++ DiffPieces,
+    Msg = simple_msg(ModuleContext, [always(Pieces)]),
+    Spec = error_spec(severity_warning, phase_style, [Msg]).
+
+:- pred diff_seq_line_to_pieces(diff(string)::in, list(format_component)::out)
+    is det.
+
+diff_seq_line_to_pieces(Diff, Pieces) :-
     (
-        MaybeIOError = yes(Error),
-        io.error_message(Error, ErrorMsg),
-        Pieces = [words("Cannot generate diagnostics"),
-            words("about inconsistencies between the order of"),
-            words("the declarations and definitions of"),
-            words(ExportedOrNotStr), words("predicates,"),
-            words("because reading of the temporary file"),
-            fixed(DiffFileName), words("failed:"), nl,
-            words(ErrorMsg), suffix("."), nl],
-        Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-        Spec = error_spec(severity_warning, phase_style, [Msg])
+        Diff = unchanged(Str),
+        Line = " " ++ Str
     ;
-        MaybeIOError = no,
-        list.reverse(RevLines, Lines),
-        ( if
-            Lines = [Line1, Line2 | DiffLines],
-            string.prefix(Line1, "--- "),
-            string.prefix(Line2, "+++ ")
-        then
-            HeadPieces = [words("Warning: the order of"),
-                words("the declarations and definitions"),
-                words("of the"), words(ExportedOrNotStr), words("predicates"),
-                words("is inconsistent, as shown by this diff:"), nl,
-                blank_line,
-                fixed("--- declaration order"), nl,
-                fixed("+++ definition order"), nl],
-            list.map(diff_line_to_pieces, DiffLines, DiffPieceLists),
-            list.condense(DiffPieceLists, DiffPieces),
-            Pieces = HeadPieces ++ DiffPieces,
-            Msg = simple_msg(ModuleContext, [always(Pieces)]),
-            Spec = error_spec(severity_warning, phase_style, [Msg])
-        else
-            Pieces = [words("Cannot generate diagnostics"),
-                words("about inconsistencies between the order of"),
-                words("the declarations and definitions of"),
-                words(ExportedOrNotStr), words("predicates,"),
-                words("because the output of"), quote("diff -u"),
-                words("does not have the expected format."), nl],
-            Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-            Spec = error_spec(severity_warning, phase_style, [Msg])
-        )
-    ).
-
-:- pred read_lines_as_rev_strings(io.text_input_stream::in,
-    list(string)::in, list(string)::out, maybe(io.error)::out,
-    io::di, io::uo) is det.
-
-read_lines_as_rev_strings(Stream, !RevLines, MaybeIOError, !IO) :-
-    io.read_line_as_string(Stream, Result, !IO),
-    (
-        Result = error(Error),
-        MaybeIOError = yes(Error)
+        Diff = deleted(Str),
+        Line = "-" ++ Str
     ;
-        Result = eof,
-        MaybeIOError = no
-    ;
-        Result = ok(Line),
-        !:RevLines = [Line | !.RevLines],
-        read_lines_as_rev_strings(Stream, !RevLines, MaybeIOError, !IO)
-    ).
-
-:- pred diff_line_to_pieces(string::in, list(format_component)::out) is det.
-
-diff_line_to_pieces(Line0, Pieces) :-
-    Line = string.remove_suffix_if_present("\n", Line0),
+        Diff = inserted(Str),
+        Line = "+" ++ Str
+    ),
     Pieces = [fixed(Line), nl].
-
-%---------------------------------------------------------------------------%
-
-:- func cannot_create_temp_file_spec(string, io.error) = error_spec.
-
-cannot_create_temp_file_spec(ExportedOrNotStr, Error) = Spec :-
-    io.error_message(Error, ErrorMsg),
-    Pieces = [words("Cannot generate diagnostics"),
-        words("about inconsistencies between the order of"),
-        words("the declarations and definitions of the"),
-        words(ExportedOrNotStr), words("predicates,"),
-        words("because the creation of a temporary file failed:"), nl,
-        words(ErrorMsg), suffix("."), nl],
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_style, [Msg]).
-
-:- func cannot_open_temp_file_spec(string, string, io.error) = error_spec.
-
-cannot_open_temp_file_spec(ExportedOrNotStr, TempFileName, Error) = Spec :-
-    io.error_message(Error, ErrorMsg),
-    Pieces = [words("Cannot generate diagnostics"),
-        words("about inconsistencies between the order of"),
-        words("the declarations and definitions of"),
-        words(ExportedOrNotStr), words("predicates,"),
-        words("because the opening of the temporary file"),
-        fixed(TempFileName), words("failed:"), nl,
-        words(ErrorMsg), suffix("."), nl],
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_style, [Msg]).
-
-:- func cannot_execute_cmd_spec(string, string, io.error) = error_spec.
-
-cannot_execute_cmd_spec(ExportedOrNotStr, Cmd, Error) = Spec :-
-    io.error_message(Error, ErrorMsg),
-    Pieces = [words("Cannot generate diagnostics"),
-        words("about inconsistencies between the order of"),
-        words("the declarations and definitions of the"),
-        words(ExportedOrNotStr), words("predicates,"),
-        words("because the execution of the following command failed:"), nl,
-        fixed(Cmd), nl,
-        words("The error message was:"), nl,
-        words(ErrorMsg), suffix("."), nl],
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_style, [Msg]).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.style_checks.

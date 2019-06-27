@@ -1233,7 +1233,7 @@ maybe_generate_style_warnings(Verbose, Stats, !HLDS, !Specs, !IO) :-
         MaybeTask = yes(Task),
         maybe_write_string(Verbose,
             "% Generating style warnings...\n", !IO),
-        generate_style_warnings(!.HLDS, Task, StyleSpecs, !IO),
+        generate_style_warnings(!.HLDS, Task, StyleSpecs),
         !:Specs = StyleSpecs ++ !.Specs,
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
