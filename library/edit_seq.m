@@ -163,6 +163,9 @@
     % context of one change hunk and the initial context of the next change
     % hunk.
     % 
+    % To make sense, ContextSize must be least one. This predicate throws
+    % an exception if ContextSize is zero or negative.
+    %
 :- pred find_change_hunks(int::in, diff_seq(T)::in,
     list(change_hunk(T))::out) is det.
 
@@ -435,17 +438,14 @@ flush_deletes_inserts(!Deletes, !Inserts, !Diffs) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-find_change_hunks(ContextSize0, Diffs, CHunks) :-
-    % If our caller passes us an invalid ContextSize0, we replace it
-    % with the default context size 3.
-    % XXX Would programmers prefer us to throw an exception here?
-    ( if ContextSize0 > 0 then
-        ContextSize = ContextSize0
+find_change_hunks(ContextSize, Diffs, CHunks) :-
+    ( if ContextSize > 0 then
+        find_change_hunks_loop(ContextSize, Diffs, 1, 1, [], RevCHunks),
+        list.reverse(RevCHunks, CHunks)
     else
-        ContextSize = 3
-    ),
-    find_change_hunks_loop(ContextSize, Diffs, 1, 1, [], RevCHunks),
-    list.reverse(RevCHunks, CHunks).
+        unexpected($pred,
+            "A context size must be strictly positive to make sense.")
+    ).
 
 :- pred find_change_hunks_loop(int::in, diff_seq(T)::in, int::in, int::in,
     list(change_hunk(T))::in, list(change_hunk(T))::out) is det.
@@ -561,7 +561,14 @@ scan_change_hunk_diffs(ContextSize, Diffs, LeftOverDiffs, !RevCHunkDiffs,
         )
     ).
 
-    % If
+    % Our caller calls us when it finds ContextLines consecutive unchanged
+    % lines. Our caller wants to extend its change hunk *if and only if*
+    % this is followed by (a) ContextLines or fewer consecutive unchanged
+    % lines, and then (b) a deletion or insertion. We succeed iff this
+    % is the case. We return the unchanged lines by adding them to
+    % !RevUnchangedDiffs, counting them in !NumUnchanged. We leave the
+    % changed items in LeftOverDiffs.
+    %
 :- pred scan_joined_context(int::in, list(diff(T))::in, list(diff(T))::out,
     list(diff(T))::in, list(diff(T))::out, int::in, int::out) is semidet.
 
