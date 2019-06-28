@@ -306,8 +306,9 @@ generate_inconsistent_pred_order_warnings(ModuleContext, ExportedOrNotStr,
         Params = edit_params(CostDelete, CostInsert, CostReplace),
         find_shortest_edit_seq(Params, DeclStrs, DefnStrs, EditSeq),
         find_diff_seq(DeclStrs, EditSeq, DiffSeq),
-        diff_to_spec(ModuleContext, ExportedOrNotStr, DiffSeq, DiffSpec),
-        !:Specs = [DiffSpec | !.Specs]
+        find_change_hunks(3, DiffSeq, CHunks),
+        chunks_to_spec(ModuleContext, ExportedOrNotStr, CHunks, WarnSpec),
+        !:Specs = [WarnSpec | !.Specs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -340,10 +341,10 @@ desc_pred_item_numbers(PredItemNumbers, PredDescStr) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred diff_to_spec(prog_context::in, string::in, diff_seq(string)::in,
-    error_spec::out) is det.
+:- pred chunks_to_spec(prog_context::in, string::in,
+    list(change_hunk(string))::in, error_spec::out) is det.
 
-diff_to_spec(ModuleContext, ExportedOrNotStr, DiffSeq, Spec) :-
+chunks_to_spec(ModuleContext, ExportedOrNotStr, CHunks, Spec) :-
     HeadPieces = [words("Warning: the order of"),
         words("the declarations and definitions"),
         words("of the"), words(ExportedOrNotStr), words("predicates"),
@@ -351,11 +352,22 @@ diff_to_spec(ModuleContext, ExportedOrNotStr, DiffSeq, Spec) :-
         blank_line,
         fixed("--- declaration order"), nl,
         fixed("+++ definition order"), nl],
-    list.map(diff_seq_line_to_pieces, DiffSeq, DiffPieceLists),
-    list.condense(DiffPieceLists, DiffPieces),
-    Pieces = HeadPieces ++ DiffPieces,
+    list.map(change_hunk_to_pieces, CHunks, CHunkPieceLists),
+    list.condense(CHunkPieceLists, CHunkPieces),
+    Pieces = HeadPieces ++ CHunkPieces,
     Msg = simple_msg(ModuleContext, [always(Pieces)]),
     Spec = error_spec(severity_warning, phase_style, [Msg]).
+
+:- pred change_hunk_to_pieces(change_hunk(string)::in,
+    list(format_component)::out) is det.
+
+change_hunk_to_pieces(CHunk, CHunkPieces) :-
+    CHunk = change_hunk(StartA, LenA, StartB, LenB, Diffs),
+    string.format("@@ -%d,%d +%d,%d @@",
+        [i(StartA), i(LenA), i(StartB), i(LenB)], HeaderStr),
+    HeaderPieces = [fixed(HeaderStr), nl],
+    list.map(diff_seq_line_to_pieces, Diffs, DiffPieceLists),
+    list.condense([HeaderPieces | DiffPieceLists], CHunkPieces).
 
 :- pred diff_seq_line_to_pieces(diff(string)::in, list(format_component)::out)
     is det.

@@ -1,11 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% This module tests the diff module.
+% This tests the basic functionality of the edit_seq library module.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

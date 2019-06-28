@@ -16,8 +16,8 @@
 % The code is a naive implementation of the Wagner-Fischer algorithm,
 % which is documented on its own wikipedia page.
 %
-% Given two lists of length M and N, its complexity is O(MN) in both
-% time and space, so it is suitable for use only on reasonably short lists.
+% Given two lists of length M and N, its time complexity is O(MN),
+% so it is suitable for use only on reasonably short lists.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -43,10 +43,12 @@
             % Delete item #N in sequence A.
 
     ;       insert(int, T)
-            % Insert the given item after item #N in sequence A.
+            % Insert the given item from sequence B
+            % after item #N in sequence A.
 
     ;       replace(int, T).
-            % Replace item #N in sequence A with the given item.
+            % Replace item #N in sequence A with the given item
+            % from sequence B.
 
 :- type edit_params
     --->    edit_params(
@@ -71,7 +73,9 @@
 
 %---------------------------------------------------------------------------%
 
-    % A diff_seq represents a unified diff such as the output of "diff -u".
+    % A diff_seq represents a unified diff with unlimited context,
+    % such as the output of "diff -u --context=MAXINT".
+    %
     % Each line (or in general, one item) in it can be an item from SeqA
     % that is left unchanged, an item from SeqA that is to be deleted, or
     % an item (from SeqB) that is to be inserted.
@@ -92,6 +96,75 @@
     % printing the insertions of their replacements.
     %
 :- pred find_diff_seq(list(T)::in, edit_seq(T)::in, diff_seq(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % This type and its fields are documented below.
+:- type change_hunk(T)
+    --->    change_hunk(
+                ch_seq_a_start      :: int,
+                ch_seq_a_length     :: int,
+                ch_seq_b_start      :: int,
+                ch_seq_b_length     :: int,
+                ch_diff             :: diff_seq(T)
+            ).
+
+    % find_change_hunks(ContextSize, DiffSeq, ChangeHunks):
+    %
+    % A diff_seq may contain long sequences of unchanged items, which are
+    % often not of interest. This predicate computes from a diff sequence
+    % a list of its *change hunks*, which are its interesting parts,
+    % the parts that contain insertions and/or deletions.
+    %
+    % A change hunk looks like this, using the syntax of "diff -u".
+    % The ContextSize of this example is 3.
+    %
+    %   @@ -25,6 +25,7 @@
+    %    Roosevelt
+    %    Taft
+    %    Wilson
+    %   +Pershing
+    %    Harding
+    %    Coolidge
+    %    Hoover
+    %
+    % This change hunk shows the insertion of one line containing "Pershing"
+    % into a list of US presidents. The "-25,6" part of the header shows that 
+    % the part of the original sequence (sequence A) covered by this change
+    % hunk contains six lines, starting at line 25. The "+25,7" part shows that
+    % the part of the updated sequence (sequence B) contains seven lines,
+    % starting at line at 25 in that sequence as well. The first four fields
+    % of the change_hunk type contain these two pairs of numbers.
+    %
+    % A change hunk consists of three parts, of which the first and/or last
+    % may be empty.
+    %
+    % - The first part is a sequence of up to ContextSize unchanged items
+    %   (the initial context).
+    % - The second part is a sequence of unchanged, insertion or deletion
+    %   items that
+    %       * starts with an insertion or deletion item,
+    %       * ends with an insertion or deletion item, and
+    %       * contains at most 2 * ContextSize consecutive unchanged items.
+    %   The start and end item may be the same, as in the example above.
+    % - The third part is a sequence of up to ContextSize unchanged items
+    %   (the trailing context).
+    %
+    % The idea is to surround regions of changes with ContextSize unchanged
+    % items to provide context (hence the name ContextSize). The first and
+    % third parts will always contain *exactly* ContextSize unchanged items,
+    % unless the changed region occurs so close to the start or to the end
+    % of the item sequence that there are fewer than ContextSize unchanged
+    % items there.
+    %
+    % The reason why there may be up to 2 * ContextSize consecutive unchanged 
+    % items in the middle of a change hunk is that if the limit were any lower,
+    % then some of those unchanged items would end up *both* in the trailing
+    % context of one change hunk and the initial context of the next change
+    % hunk.
+    % 
+:- pred find_change_hunks(int::in, diff_seq(T)::in,
+    list(change_hunk(T))::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -162,6 +235,8 @@ process_rows(Params, RowNum, [HeadSeqA | TailSeqA], SeqB, !Table) :-
 
 process_columns(_Params, _RowNum, _RowA, _ColNum, [], !Table).
 process_columns(Params, RowNum, RowA, ColNum, [HeadSeqB | TailSeqB], !Table) :-
+    % We need only the current row and the one before it.
+    delete_row(RowNum - 2, !Table),
     process_entry(Params, RowNum, RowA, ColNum, HeadSeqB, !Table),
     process_columns(Params, RowNum, RowA, ColNum + 1, TailSeqB, !Table).
 
@@ -262,6 +337,12 @@ add_entry(RowNum, ColNum, Entry, !Table) :-
         map.det_insert(RowNum, Row, !Table)
     ).
 
+:- pred delete_row(int::in, 
+    dynprog_table(T)::in, dynprog_table(T)::out) is det.
+
+delete_row(RowNum, !Table) :-
+    map.delete(RowNum, !Table).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -350,6 +431,156 @@ flush_deletes_inserts(!Deletes, !Inserts, !Diffs) :-
     !:Diffs = !.Diffs ++ !.Deletes ++ !.Inserts,
     !:Deletes = cord.init,
     !:Inserts = cord.init.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+find_change_hunks(ContextSize0, Diffs, CHunks) :-
+    % If our caller passes us an invalid ContextSize0, we replace it
+    % with the default context size 3.
+    % XXX Would programmers prefer us to throw an exception here?
+    ( if ContextSize0 > 0 then
+        ContextSize = ContextSize0
+    else
+        ContextSize = 3
+    ),
+    find_change_hunks_loop(ContextSize, Diffs, 1, 1, [], RevCHunks),
+    list.reverse(RevCHunks, CHunks).
+
+:- pred find_change_hunks_loop(int::in, diff_seq(T)::in, int::in, int::in,
+    list(change_hunk(T))::in, list(change_hunk(T))::out) is det.
+
+find_change_hunks_loop(ContextSize, Diffs, InitPosA, InitPosB, !RevCHunks) :-
+    scan_initial_unchanged_diffs(Diffs, AfterInitUnchangedsDiffs,
+        [], RevUnchangedDiffs, 0, NumUnchangedDiffs),
+    scan_change_hunk_diffs(ContextSize, AfterInitUnchangedsDiffs,
+        LeftOverDiffs, [], RevChangeTrailContextDiffs,
+        0, NumCHunkDeleted, 0, NumCHunkInserted,
+        0, NumCHunkUnchanged, 0, _),
+    (
+        RevChangeTrailContextDiffs = []
+        % Diffs does not contain any change hunk.
+    ;
+        RevChangeTrailContextDiffs = [_ | _],
+        list.reverse(RevChangeTrailContextDiffs, ChangeTrailContextDiffs),
+        % ChangeTrailContextDiffs contains the trailing context,
+        % but the initial context is in RevUnchangedDiffs.
+        list.take_upto(ContextSize, RevUnchangedDiffs, RevInitContextDiffs),
+        list.reverse(RevInitContextDiffs, InitContextDiffs),
+        list.length(InitContextDiffs, NumInitContextDiffs),
+        CHunkDiffs = InitContextDiffs ++ ChangeTrailContextDiffs,
+        NumSkippedUnchangedDiffs = NumUnchangedDiffs - NumInitContextDiffs,
+        StartA = InitPosA + NumSkippedUnchangedDiffs,
+        StartB = InitPosB + NumSkippedUnchangedDiffs,
+        LenA = NumInitContextDiffs + NumCHunkUnchanged + NumCHunkDeleted,
+        LenB = NumInitContextDiffs + NumCHunkUnchanged + NumCHunkInserted,
+        CHunk = change_hunk(StartA, LenA, StartB, LenB, CHunkDiffs),
+        !:RevCHunks = [CHunk | !.RevCHunks],
+
+        NextPosA = StartA + LenA,
+        NextPosB = StartB + LenB,
+        find_change_hunks_loop(ContextSize, LeftOverDiffs,
+            NextPosA, NextPosB, !RevCHunks)
+    ).
+
+:- pred scan_initial_unchanged_diffs(list(diff(T))::in, list(diff(T))::out,
+    list(diff(T))::in, list(diff(T))::out, int::in, int::out) is det.
+
+scan_initial_unchanged_diffs(Diffs, LeftOverDiffs,
+        !RevUnchangedDiffs, !NumUnchanged) :-
+    (
+        Diffs = [],
+        LeftOverDiffs = []
+    ;
+        Diffs = [HeadDiff | TailDiffs],
+        (
+            HeadDiff = unchanged(_),
+            !:RevUnchangedDiffs = [HeadDiff | !.RevUnchangedDiffs],
+            !:NumUnchanged = !.NumUnchanged + 1,
+            scan_initial_unchanged_diffs(TailDiffs, LeftOverDiffs,
+                !RevUnchangedDiffs, !NumUnchanged)
+        ;
+            ( HeadDiff = deleted(_)
+            ; HeadDiff = inserted(_)
+            ),
+            LeftOverDiffs = Diffs
+        )
+    ).
+
+:- pred scan_change_hunk_diffs(int::in, list(diff(T))::in, list(diff(T))::out,
+    list(diff(T))::in, list(diff(T))::out,
+    int::in, int::out, int::in, int::out,
+    int::in, int::out, int::in, int::out) is det.
+
+scan_change_hunk_diffs(ContextSize, Diffs, LeftOverDiffs, !RevCHunkDiffs,
+        !NumDeleted, !NumInserted, !NumUnchanged, !NumContigUnchanged) :-
+    (
+        Diffs = [],
+        LeftOverDiffs = []
+    ;
+        Diffs = [HeadDiff | TailDiffs],
+        (
+            HeadDiff = unchanged(_),
+            ( if ContextSize =< !.NumContigUnchanged then
+                ( if
+                    scan_joined_context(ContextSize, Diffs, AfterContextDiffs,
+                        !RevCHunkDiffs, !NumUnchanged)
+                then
+                    !:NumContigUnchanged = 0,
+                    scan_change_hunk_diffs(ContextSize, AfterContextDiffs,
+                        LeftOverDiffs,
+                        !RevCHunkDiffs, !NumDeleted, !NumInserted,
+                        !NumUnchanged, !NumContigUnchanged)
+                else
+                    LeftOverDiffs = Diffs
+                )
+            else
+                !:RevCHunkDiffs = [HeadDiff | !.RevCHunkDiffs],
+                !:NumUnchanged = !.NumUnchanged + 1,
+                !:NumContigUnchanged = !.NumContigUnchanged + 1,
+                scan_change_hunk_diffs(ContextSize, TailDiffs, LeftOverDiffs,
+                    !RevCHunkDiffs, !NumDeleted, !NumInserted,
+                    !NumUnchanged, !NumContigUnchanged)
+            )
+        ;
+            HeadDiff = deleted(_),
+            !:RevCHunkDiffs = [HeadDiff | !.RevCHunkDiffs],
+            !:NumDeleted = !.NumDeleted + 1,
+            !:NumContigUnchanged = 0,
+            scan_change_hunk_diffs(ContextSize, TailDiffs, LeftOverDiffs,
+                !RevCHunkDiffs, !NumDeleted, !NumInserted,
+                !NumUnchanged, !NumContigUnchanged)
+        ;
+            HeadDiff = inserted(_),
+            !:RevCHunkDiffs = [HeadDiff | !.RevCHunkDiffs],
+            !:NumInserted = !.NumInserted + 1,
+            !:NumContigUnchanged = 0,
+            scan_change_hunk_diffs(ContextSize, TailDiffs, LeftOverDiffs,
+                !RevCHunkDiffs, !NumDeleted, !NumInserted,
+                !NumUnchanged, !NumContigUnchanged)
+        )
+    ).
+
+    % If
+:- pred scan_joined_context(int::in, list(diff(T))::in, list(diff(T))::out,
+    list(diff(T))::in, list(diff(T))::out, int::in, int::out) is semidet.
+
+scan_joined_context(MaxUnchanged, Diffs, LeftOverDiffs,
+        !RevUnchangedDiffs, !NumUnchanged) :-
+    Diffs = [HeadDiff | TailDiffs],
+    (
+        HeadDiff = unchanged(_),
+        MaxUnchanged > 0,
+        !:RevUnchangedDiffs = [HeadDiff | !.RevUnchangedDiffs],
+        !:NumUnchanged = !.NumUnchanged + 1,
+        scan_joined_context(MaxUnchanged - 1, TailDiffs, LeftOverDiffs,
+            !RevUnchangedDiffs, !NumUnchanged)
+    ;
+        ( HeadDiff = deleted(_)
+        ; HeadDiff = inserted(_)
+        ),
+        LeftOverDiffs = Diffs
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module edit_seq.

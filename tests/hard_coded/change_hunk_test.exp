@@ -1,0 +1,1178 @@
+
+------------------
+
+SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
+Params: replace
+
+Edits:  [delete(17), insert(18, "Sherman"), insert(33, "Nixon"), delete(36), replace(44, "Clinton")]
+
+Diff:
+ Washington
+ Adams
+ Jefferson
+ Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+ Lincoln
+-Johnson
+ Grant
++Sherman
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+ Truman
+ Eisenhower
++Nixon
+ Kennedy
+ Johnson
+-Nixon
+ Ford
+ Carter
+ Reagan
+ Bush
+ Clinton
+ Bush
+ Obama
+-Trump
++Clinton
+
+Change hunks:
+@@ -14,8 +14,8 @@
+ Pierce
+ Buchanan
+ Lincoln
+-Johnson
+ Grant
++Sherman
+ Hayes
+ Garfield
+ Arthur
+@@ -31,9 +31,9 @@
+ Roosevelt
+ Truman
+ Eisenhower
++Nixon
+ Kennedy
+ Johnson
+-Nixon
+ Ford
+ Carter
+ Reagan
+@@ -41,4 +41,4 @@
+ Clinton
+ Bush
+ Obama
+-Trump
++Clinton
+
+------------------
+
+SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+SeqB:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
+Params: replace
+
+Edits:  [replace(1, "George III"), replace(16, "Douglas"), insert(27, "Pershing"), replace(39, "Mondale"), replace(40, "Perot"), delete(44)]
+
+Diff:
+-Washington
++George III
+ Adams
+ Jefferson
+ Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+-Lincoln
++Douglas
+ Johnson
+ Grant
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
++Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+ Truman
+ Eisenhower
+ Kennedy
+ Johnson
+ Nixon
+ Ford
+ Carter
+-Reagan
+-Bush
++Mondale
++Perot
+ Clinton
+ Bush
+ Obama
+-Trump
+
+Change hunks:
+@@ -1,4 +1,4 @@
+-Washington
++George III
+ Adams
+ Jefferson
+ Madison
+@@ -13,7 +13,7 @@
+ Fillmore
+ Pierce
+ Buchanan
+-Lincoln
++Douglas
+ Johnson
+ Grant
+ Hayes
+@@ -25,6 +25,7 @@
+ Roosevelt
+ Taft
+ Wilson
++Pershing
+ Harding
+ Coolidge
+ Hoover
+@@ -36,9 +37,8 @@
+ Nixon
+ Ford
+ Carter
+-Reagan
+-Bush
++Mondale
++Perot
+ Clinton
+ Bush
+ Obama
+-Trump
+
+------------------
+
+SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+SeqB:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+Params: replace
+
+Edits:  [delete(2), delete(3), delete(4), insert(18, "Sherman"), insert(18, "Sheridan"), insert(31, "Garner"), insert(31, "Wallace")]
+
+Diff:
+ Washington
+-Adams
+-Jefferson
+-Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+ Lincoln
+ Johnson
+ Grant
++Sherman
++Sheridan
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
++Garner
++Wallace
+ Truman
+ Eisenhower
+ Kennedy
+ Johnson
+ Nixon
+ Ford
+ Carter
+ Reagan
+ Bush
+ Clinton
+ Bush
+ Obama
+ Trump
+
+Change hunks:
+@@ -1,7 +1,4 @@
+ Washington
+-Adams
+-Jefferson
+-Madison
+ Monroe
+ Quincy Adams
+ Jackson
+@@ -16,6 +13,8 @@
+ Lincoln
+ Johnson
+ Grant
++Sherman
++Sheridan
+ Hayes
+ Garfield
+ Arthur
+@@ -29,6 +28,8 @@
+ Coolidge
+ Hoover
+ Roosevelt
++Garner
++Wallace
+ Truman
+ Eisenhower
+ Kennedy
+
+------------------
+
+SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
+SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+Params: replace
+
+Edits:  [insert(16, "Johnson"), delete(18), delete(34), insert(36, "Nixon"), replace(44, "Trump")]
+
+Diff:
+ Washington
+ Adams
+ Jefferson
+ Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+ Lincoln
++Johnson
+ Grant
+-Sherman
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+ Truman
+ Eisenhower
+-Nixon
+ Kennedy
+ Johnson
++Nixon
+ Ford
+ Carter
+ Reagan
+ Bush
+ Clinton
+ Bush
+ Obama
+-Clinton
++Trump
+
+Change hunks:
+@@ -14,8 +14,8 @@
+ Pierce
+ Buchanan
+ Lincoln
++Johnson
+ Grant
+-Sherman
+ Hayes
+ Garfield
+ Arthur
+@@ -31,9 +31,9 @@
+ Roosevelt
+ Truman
+ Eisenhower
+-Nixon
+ Kennedy
+ Johnson
++Nixon
+ Ford
+ Carter
+ Reagan
+@@ -41,4 +41,4 @@
+ Clinton
+ Bush
+ Obama
+-Clinton
++Trump
+
+------------------
+
+SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
+SeqB:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
+Params: replace
+
+Edits:  [replace(1, "George III"), replace(16, "Douglas"), insert(16, "Johnson"), delete(18), insert(27, "Pershing"), delete(34), insert(36, "Nixon"), replace(39, "Mondale"), replace(40, "Perot"), delete(44)]
+
+Diff:
+-Washington
++George III
+ Adams
+ Jefferson
+ Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+-Lincoln
++Douglas
++Johnson
+ Grant
+-Sherman
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
++Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+ Truman
+ Eisenhower
+-Nixon
+ Kennedy
+ Johnson
++Nixon
+ Ford
+ Carter
+-Reagan
+-Bush
++Mondale
++Perot
+ Clinton
+ Bush
+ Obama
+-Clinton
+
+Change hunks:
+@@ -1,4 +1,4 @@
+-Washington
++George III
+ Adams
+ Jefferson
+ Madison
+@@ -13,9 +13,9 @@
+ Fillmore
+ Pierce
+ Buchanan
+-Lincoln
++Douglas
++Johnson
+ Grant
+-Sherman
+ Hayes
+ Garfield
+ Arthur
+@@ -25,20 +25,20 @@
+ Roosevelt
+ Taft
+ Wilson
++Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+ Truman
+ Eisenhower
+-Nixon
+ Kennedy
+ Johnson
++Nixon
+ Ford
+ Carter
+-Reagan
+-Bush
++Mondale
++Perot
+ Clinton
+ Bush
+ Obama
+-Clinton
+
+------------------
+
+SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
+SeqB:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+Params: replace
+
+Edits:  [delete(2), delete(3), delete(4), insert(16, "Johnson"), insert(18, "Sheridan"), insert(31, "Garner"), insert(31, "Wallace"), delete(34), insert(36, "Nixon"), replace(44, "Trump")]
+
+Diff:
+ Washington
+-Adams
+-Jefferson
+-Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+ Lincoln
++Johnson
+ Grant
+ Sherman
++Sheridan
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
++Garner
++Wallace
+ Truman
+ Eisenhower
+-Nixon
+ Kennedy
+ Johnson
++Nixon
+ Ford
+ Carter
+ Reagan
+ Bush
+ Clinton
+ Bush
+ Obama
+-Clinton
++Trump
+
+Change hunks:
+@@ -1,7 +1,4 @@
+ Washington
+-Adams
+-Jefferson
+-Madison
+ Monroe
+ Quincy Adams
+ Jackson
+@@ -14,8 +11,10 @@
+ Pierce
+ Buchanan
+ Lincoln
++Johnson
+ Grant
+ Sherman
++Sheridan
+ Hayes
+ Garfield
+ Arthur
+@@ -29,11 +28,13 @@
+ Coolidge
+ Hoover
+ Roosevelt
++Garner
++Wallace
+ Truman
+ Eisenhower
+-Nixon
+ Kennedy
+ Johnson
++Nixon
+ Ford
+ Carter
+ Reagan
+@@ -41,4 +42,4 @@
+ Clinton
+ Bush
+ Obama
+-Clinton
++Trump
+
+------------------
+
+SeqA:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
+SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+Params: replace
+
+Edits:  [replace(1, "Washington"), replace(16, "Lincoln"), delete(28), replace(40, "Reagan"), replace(41, "Bush"), insert(44, "Trump")]
+
+Diff:
+-George III
++Washington
+ Adams
+ Jefferson
+ Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+-Douglas
++Lincoln
+ Johnson
+ Grant
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+-Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+ Truman
+ Eisenhower
+ Kennedy
+ Johnson
+ Nixon
+ Ford
+ Carter
+-Mondale
+-Perot
++Reagan
++Bush
+ Clinton
+ Bush
+ Obama
++Trump
+
+Change hunks:
+@@ -1,4 +1,4 @@
+-George III
++Washington
+ Adams
+ Jefferson
+ Madison
+@@ -13,7 +13,7 @@
+ Fillmore
+ Pierce
+ Buchanan
+-Douglas
++Lincoln
+ Johnson
+ Grant
+ Hayes
+@@ -25,7 +25,6 @@
+ Roosevelt
+ Taft
+ Wilson
+-Pershing
+ Harding
+ Coolidge
+ Hoover
+@@ -37,8 +36,9 @@
+ Nixon
+ Ford
+ Carter
+-Mondale
+-Perot
++Reagan
++Bush
+ Clinton
+ Bush
+ Obama
++Trump
+
+------------------
+
+SeqA:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
+SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
+Params: replace
+
+Edits:  [replace(1, "Washington"), replace(16, "Lincoln"), delete(17), insert(18, "Sherman"), delete(28), insert(34, "Nixon"), delete(37), replace(40, "Reagan"), replace(41, "Bush"), insert(44, "Clinton")]
+
+Diff:
+-George III
++Washington
+ Adams
+ Jefferson
+ Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+-Douglas
+-Johnson
++Lincoln
+ Grant
++Sherman
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+-Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+ Truman
+ Eisenhower
++Nixon
+ Kennedy
+ Johnson
+-Nixon
+ Ford
+ Carter
+-Mondale
+-Perot
++Reagan
++Bush
+ Clinton
+ Bush
+ Obama
++Clinton
+
+Change hunks:
+@@ -1,4 +1,4 @@
+-George III
++Washington
+ Adams
+ Jefferson
+ Madison
+@@ -13,9 +13,9 @@
+ Fillmore
+ Pierce
+ Buchanan
+-Douglas
+-Johnson
++Lincoln
+ Grant
++Sherman
+ Hayes
+ Garfield
+ Arthur
+@@ -25,20 +25,20 @@
+ Roosevelt
+ Taft
+ Wilson
+-Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+ Truman
+ Eisenhower
++Nixon
+ Kennedy
+ Johnson
+-Nixon
+ Ford
+ Carter
+-Mondale
+-Perot
++Reagan
++Bush
+ Clinton
+ Bush
+ Obama
++Clinton
+
+------------------
+
+SeqA:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
+SeqB:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+Params: replace
+
+Edits:  [replace(1, "Washington"), delete(2), delete(3), delete(4), replace(16, "Lincoln"), insert(18, "Sherman"), insert(18, "Sheridan"), delete(28), insert(32, "Garner"), insert(32, "Wallace"), replace(40, "Reagan"), replace(41, "Bush"), insert(44, "Trump")]
+
+Diff:
+-George III
+-Adams
+-Jefferson
+-Madison
++Washington
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+-Douglas
++Lincoln
+ Johnson
+ Grant
++Sherman
++Sheridan
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+-Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
++Garner
++Wallace
+ Truman
+ Eisenhower
+ Kennedy
+ Johnson
+ Nixon
+ Ford
+ Carter
+-Mondale
+-Perot
++Reagan
++Bush
+ Clinton
+ Bush
+ Obama
++Trump
+
+Change hunks:
+@@ -1,7 +1,4 @@
+-George III
+-Adams
+-Jefferson
+-Madison
++Washington
+ Monroe
+ Quincy Adams
+ Jackson
+@@ -13,9 +10,11 @@
+ Fillmore
+ Pierce
+ Buchanan
+-Douglas
++Lincoln
+ Johnson
+ Grant
++Sherman
++Sheridan
+ Hayes
+ Garfield
+ Arthur
+@@ -25,11 +24,12 @@
+ Roosevelt
+ Taft
+ Wilson
+-Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
++Garner
++Wallace
+ Truman
+ Eisenhower
+ Kennedy
+@@ -37,8 +37,9 @@
+ Nixon
+ Ford
+ Carter
+-Mondale
+-Perot
++Reagan
++Bush
+ Clinton
+ Bush
+ Obama
++Trump
+
+------------------
+
+SeqA:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+Params: replace
+
+Edits:  [insert(1, "Adams"), insert(1, "Jefferson"), insert(1, "Madison"), delete(16), delete(17), delete(31), delete(32)]
+
+Diff:
+ Washington
++Adams
++Jefferson
++Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+ Lincoln
+ Johnson
+ Grant
+-Sherman
+-Sheridan
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+-Garner
+-Wallace
+ Truman
+ Eisenhower
+ Kennedy
+ Johnson
+ Nixon
+ Ford
+ Carter
+ Reagan
+ Bush
+ Clinton
+ Bush
+ Obama
+ Trump
+
+Change hunks:
+@@ -1,4 +1,7 @@
+ Washington
++Adams
++Jefferson
++Madison
+ Monroe
+ Quincy Adams
+ Jackson
+@@ -13,8 +16,6 @@
+ Lincoln
+ Johnson
+ Grant
+-Sherman
+-Sheridan
+ Hayes
+ Garfield
+ Arthur
+@@ -28,8 +29,6 @@
+ Coolidge
+ Hoover
+ Roosevelt
+-Garner
+-Wallace
+ Truman
+ Eisenhower
+ Kennedy
+
+------------------
+
+SeqA:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
+Params: replace
+
+Edits:  [insert(1, "Adams"), insert(1, "Jefferson"), insert(1, "Madison"), delete(14), delete(17), delete(31), delete(32), insert(34, "Nixon"), delete(37), replace(45, "Clinton")]
+
+Diff:
+ Washington
++Adams
++Jefferson
++Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+ Lincoln
+-Johnson
+ Grant
+ Sherman
+-Sheridan
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+-Garner
+-Wallace
+ Truman
+ Eisenhower
++Nixon
+ Kennedy
+ Johnson
+-Nixon
+ Ford
+ Carter
+ Reagan
+ Bush
+ Clinton
+ Bush
+ Obama
+-Trump
++Clinton
+
+Change hunks:
+@@ -1,4 +1,7 @@
+ Washington
++Adams
++Jefferson
++Madison
+ Monroe
+ Quincy Adams
+ Jackson
+@@ -11,10 +14,8 @@
+ Pierce
+ Buchanan
+ Lincoln
+-Johnson
+ Grant
+ Sherman
+-Sheridan
+ Hayes
+ Garfield
+ Arthur
+@@ -28,13 +29,11 @@
+ Coolidge
+ Hoover
+ Roosevelt
+-Garner
+-Wallace
+ Truman
+ Eisenhower
++Nixon
+ Kennedy
+ Johnson
+-Nixon
+ Ford
+ Carter
+ Reagan
+@@ -42,4 +41,4 @@
+ Clinton
+ Bush
+ Obama
+-Trump
++Clinton
+
+------------------
+
+SeqA:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
+SeqB:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
+Params: replace
+
+Edits:  [replace(1, "George III"), insert(1, "Adams"), insert(1, "Jefferson"), insert(1, "Madison"), replace(13, "Douglas"), delete(16), delete(17), insert(26, "Pershing"), delete(31), delete(32), replace(40, "Mondale"), replace(41, "Perot"), delete(45)]
+
+Diff:
+-Washington
++George III
++Adams
++Jefferson
++Madison
+ Monroe
+ Quincy Adams
+ Jackson
+ Van Buren
+ Harrison
+ Tyler
+ Polk
+ Taylor
+ Fillmore
+ Pierce
+ Buchanan
+-Lincoln
++Douglas
+ Johnson
+ Grant
+-Sherman
+-Sheridan
+ Hayes
+ Garfield
+ Arthur
+ Cleveland
+ Harrison
+ McKinley
+ Roosevelt
+ Taft
+ Wilson
++Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+-Garner
+-Wallace
+ Truman
+ Eisenhower
+ Kennedy
+ Johnson
+ Nixon
+ Ford
+ Carter
+-Reagan
+-Bush
++Mondale
++Perot
+ Clinton
+ Bush
+ Obama
+-Trump
+
+Change hunks:
+@@ -1,4 +1,7 @@
+-Washington
++George III
++Adams
++Jefferson
++Madison
+ Monroe
+ Quincy Adams
+ Jackson
+@@ -10,11 +13,9 @@
+ Fillmore
+ Pierce
+ Buchanan
+-Lincoln
++Douglas
+ Johnson
+ Grant
+-Sherman
+-Sheridan
+ Hayes
+ Garfield
+ Arthur
+@@ -24,12 +25,11 @@
+ Roosevelt
+ Taft
+ Wilson
++Pershing
+ Harding
+ Coolidge
+ Hoover
+ Roosevelt
+-Garner
+-Wallace
+ Truman
+ Eisenhower
+ Kennedy
+@@ -37,9 +37,8 @@
+ Nixon
+ Ford
+ Carter
+-Reagan
+-Bush
++Mondale
++Perot
+ Clinton
+ Bush
+ Obama
+-Trump
