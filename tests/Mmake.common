@@ -40,7 +40,7 @@ endif
 # file by setting both GRADEFLAGS-foo.
 
 ifndef DIFF_OPTS
-DIFF_OPTS=-c
+DIFF_OPTS=-u
 endif
 
 # Override this with `RUN_RECOMPILATION_TESTS=no' if your compiler
