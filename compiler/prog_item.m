@@ -298,7 +298,7 @@
     ;       import_locn_ancestor_int0_interface
     ;       import_locn_ancestor_int0_implementation.
             % The item is from the interface or implementation section
-            % of the.int0 file of an ancestor module.
+            % of the .int0 file of an ancestor module.
 
 %-----------------------------------------------------------------------------%
 
