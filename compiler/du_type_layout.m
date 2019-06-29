@@ -2105,10 +2105,10 @@ module_visibilities_allow_direct_arg(TypeStatus, ArgCond) = AllowDirectArg :-
                 % non-submodules would infer different things.
                 (
                     ArgImportLocn =
-                        import_locn_ancestor_private_interface_proper
+                        import_locn_ancestor_int0_implementation
                 =>
                     TypeImportLocn =
-                        import_locn_ancestor_private_interface_proper
+                        import_locn_ancestor_int0_implementation
                 )
             then
                 AllowDirectArg = yes

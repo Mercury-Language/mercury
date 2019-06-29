@@ -84,7 +84,8 @@ int_section_mq_info(IntSection, MQSection, Permissions) :-
                 % conservative approximation.
                 ( Locn = import_locn_interface
                 ; Locn = import_locn_import_by_ancestor
-                ; Locn = import_locn_ancestor_private_interface_proper
+                ; Locn = import_locn_ancestor_int0_interface
+                ; Locn = import_locn_ancestor_int0_implementation
                 ),
                 PermInInt = may_use_in_int(NeedQual)
             ;
@@ -196,7 +197,9 @@ collect_mq_info_in_item_avail(MQSection, _Permissions, Avail,
     (
         ( MQSection = mq_section_local
         ; MQSection = mq_section_imported(
-            import_locn_ancestor_private_interface_proper)
+            import_locn_ancestor_int0_interface)
+        ; MQSection = mq_section_imported(
+            import_locn_ancestor_int0_implementation)
         ),
         set.insert(ModuleName, !ImportedModules)
     ;

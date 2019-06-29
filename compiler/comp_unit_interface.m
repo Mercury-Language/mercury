@@ -524,10 +524,6 @@ get_private_interface_int0_from_item_blocks(ModuleName,
         SrcSection = sms_interface,
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
         !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
-        % XXX ITEM_LIST Document why we need to add ImportAvails
-        % to !ImpAvailsCord.
-        list.filter(avail_is_import, Avails, ImportAvails),
-        !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(ImportAvails),
         get_private_interface_int0_from_items(ModuleName, Items,
             !IntItemsCord)
     ;

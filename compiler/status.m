@@ -521,11 +521,13 @@ old_status_defined_in_impl_section(status_imported(ImportLocn)) =
 :- func import_locn_defined_in_impl_section(import_locn) = bool.
 
 % XXX Returning "yes" for import_locn_interface seems wrong.
+% XXX Returning "yes" for everything seems wrong.
 import_locn_defined_in_impl_section(import_locn_implementation) = yes.
 import_locn_defined_in_impl_section(import_locn_interface) = yes.
 import_locn_defined_in_impl_section(import_locn_import_by_ancestor) = yes.
-import_locn_defined_in_impl_section(
-    import_locn_ancestor_private_interface_proper) = yes.
+import_locn_defined_in_impl_section(import_locn_ancestor_int0_interface) = yes.
+import_locn_defined_in_impl_section(import_locn_ancestor_int0_implementation)
+    = yes.
 
 :- func instmode_status_defined_in_impl_section(new_instmode_status) = bool.
 
@@ -609,9 +611,11 @@ combine_status_2(status_imported(ImportLocn), Status2, Status) :-
         ),
         combine_status_imported_non_private(Status2, Status)
     ;
-        ImportLocn = import_locn_ancestor_private_interface_proper,
-        % If it's private, it's private.
-        Status = status_imported(import_locn_ancestor_private_interface_proper)
+        ImportLocn = import_locn_ancestor_int0_interface,
+        Status = status_imported(import_locn_ancestor_int0_interface)
+    ;
+        ImportLocn = import_locn_ancestor_int0_implementation,
+        Status = status_imported(import_locn_ancestor_int0_implementation)
     ).
 combine_status_2(status_local, Status2, Status) :-
     combine_status_local(Status2, Status).
@@ -746,7 +750,13 @@ item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus) :-
                 ImportLocn = import_locn_import_by_ancestor,
                 unexpected($pred, "import_locn_import_by_ancestor")
             ;
-                ImportLocn = import_locn_ancestor_private_interface_proper,
+                ImportLocn = import_locn_ancestor_int0_interface,
+                % XXX Maybe we should have an equivalent to
+                % this value of ImportLocn in the type of InstImportLocn
+                % as well.
+                InstImportLocn = instmode_import_plain_int
+            ;
+                ImportLocn = import_locn_ancestor_int0_implementation,
                 InstImportLocn = instmode_import_plain_ancestors_priv_int_file
             ),
             InstImport = instmode_import_plain(InstImportLocn)

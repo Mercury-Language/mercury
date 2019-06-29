@@ -295,9 +295,10 @@
             % The item is from a module imported by an ancestor.
             % XXX Did the ancestor do the import in its interface, or not?
 
-    ;       import_locn_ancestor_private_interface_proper.
-            % The item is from the _actual_ private interface of an ancestor
-            % module, i.e. the implementation section of a `.int0' file.
+    ;       import_locn_ancestor_int0_interface
+    ;       import_locn_ancestor_int0_implementation.
+            % The item is from the interface or implementation section
+            % of the.int0 file of an ancestor module.
 
 %-----------------------------------------------------------------------------%
 

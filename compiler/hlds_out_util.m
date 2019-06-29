@@ -1074,10 +1074,13 @@ old_import_status_to_string(status_imported(import_locn_interface)) =
 old_import_status_to_string(status_imported(import_locn_implementation)) =
     "imported in the implementation".
 old_import_status_to_string(status_imported(
-        import_locn_ancestor_private_interface_proper)) =
-    "imported from an ancestor's private interface".
+        import_locn_ancestor_int0_interface)) =
+    "imported by an ancestor in its interface".
+old_import_status_to_string(status_imported(
+        import_locn_ancestor_int0_implementation)) =
+    "imported by an ancestor in its implementation".
 old_import_status_to_string(status_imported(import_locn_import_by_ancestor)) =
-    "imported by an ancestor".
+    "imported by a module imported by an ancestor".
 old_import_status_to_string(status_external(Status)) =
     "external (and " ++ old_import_status_to_string(Status) ++ ")".
 old_import_status_to_string(status_abstract_imported) =
