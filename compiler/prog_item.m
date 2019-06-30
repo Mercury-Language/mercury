@@ -310,6 +310,8 @@
     int_module_section.
 :- func make_ims_abstract_imported(module_name, int_file_kind) =
     int_module_section.
+:- func make_ims_int3_implementation(module_name, int_file_kind) =
+    int_module_section.
 
 :- func make_oms_opt_imported(module_name, opt_file_kind) =
     opt_module_section.
@@ -1675,6 +1677,9 @@ make_ims_used_and_imported(ImportLocn, ModuleName, IntFileKind) =
         iou_used_and_imported).
 make_ims_abstract_imported(ModuleName, IntFileKind) =
     ims_abstract_imported(ModuleName, IntFileKind).
+make_ims_int3_implementation(_ModuleName, _IntFileKind) = _ :-
+    unexpected($pred,
+        "An .int3 file should not have an implementation section").
 
 make_oms_opt_imported(ModuleName, OptFileKind) =
     oms_opt_imported(ModuleName, OptFileKind).
