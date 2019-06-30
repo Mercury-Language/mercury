@@ -280,8 +280,8 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         % Uses of the items declared in ancestor modules do not need
         % module qualifiers. Modules imported by ancestors are considered
         % to be visible in the current module.
-        % XXX grab_unqual_imported_modules treats ParentImported and ParentUsed
-        % slightly differently from !.IntImported and !.IntUsed.
+        % XXX grab_unqual_imported_modules_make_int treats AncestorImported and
+        % AncestorUsed slightly differently from !.IntImported and !.IntUsed.
         process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
             "ancestors",
             make_ims_imported(import_locn_ancestor_int0_interface),
@@ -455,7 +455,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             make_ims_imported(import_locn_ancestor_int0_interface),
             make_ims_imported(import_locn_ancestor_int0_implementation),
             module_and_imports_add_direct_int_item_blocks,
-            Ancestors, set.init, ParentImported, set.init, ParentUsed,
+            Ancestors, set.init, AncestorImported, set.init, AncestorUsed,
             !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `import_module'.
@@ -466,7 +466,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             make_ims_imported(import_locn_import_by_ancestor),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            ParentImported,
+            AncestorImported,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_int_imported", pik_direct(int123_3, may_be_unqualified),
@@ -485,11 +485,11 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 
         % Get the .int3 files of the modules imported using `use_module'.
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_parent_used", pik_direct(int123_3, may_be_unqualified),
+            "unqual_parent_used", pik_direct(int123_3, must_be_qualified),
             make_ims_imported(import_locn_import_by_ancestor),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            ParentUsed,
+            AncestorUsed,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_int_used", pik_direct(int123_3, must_be_qualified),
