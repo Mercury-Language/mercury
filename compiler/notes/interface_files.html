@@ -181,7 +181,17 @@ it may be left out of the .int3 file.
 </ul>
 
 <p>
-The rules for choosing between these three outcomes
+If the item is included in the .int3 file, whether changed or unchanged,
+it stays in the interface section,
+so .int3 files contain no implementation section.
+<p>
+After we decide what items to include in the .int3 file,
+its contents are module qualified to the maximum extent possible.
+However, this cannot guarantee <em>full</em> module qualification,
+for reasons explained below.
+
+<p>
+The rules for choosing between the above three outcomes
 of course depend on the item's type.
 
 <p>
@@ -382,13 +392,35 @@ but <em>not</em> by the compiler.
 
 <p>
 The contents of the .int0 file of a module are derived from the contents of
-both the interface sections and the implementation sections of that module.
+both the interface sections and the implementation sections of that module,
+<em>after</em> they are fully module qualified.
+This requires reading in, via grab_unqual_imported_modules_make_int,
+<ul>
+<li>
+the .int0 files of this module's ancestor modules;
+<li>
+the .int3 files of the modules used or imported by this module;
+<li>
+the .int3 files of the modules imported by the .int0 or .int3 files
+we have read in under the first, second or <em>third</em> point,
+until we get to a fixpoint.
+</ul>
+
+<p>
+Items are never moved between sections:
+items in the interface section of the module
+are put into the interface section of the .int0 file,
+while items in the implementation section of the module
+are put into the implementation section of the .int0 file.
 
 <p>
 <ul>
 
 <li>
 Type definitions are always included in the .int0 file unchanged.
+<em>XXX</em> Julien says this may be the wrong thing to do for solver types,
+and that the failure of the submodules/ts test case
+with intermodule optimization may be caused by this.
 
 <p>
 <li>
@@ -414,7 +446,8 @@ Clauses are never included in .int0 files.
 <p>
 <li>
 Pragmas that may appear in interface sections
-are always included in .int0 files unchanged.
+are always included in .int0 files unchanged
+(regardless of which section they <em>actually</em> appear in).
 Pragmas that may not appear in interface sections
 are never included in .int0 files.
 
@@ -445,8 +478,8 @@ Declarations of submodules are always included in the .int3 file unchanged.
 
 <p>
 <li>
-import_module and use_module declarations:
-TODO
+Import_module and use_module declarations
+are always included in the .int3 file unchanged.
 </ul>
 
 <h2>The contents of .int files</h2>
