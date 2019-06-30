@@ -99,6 +99,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module libs.
@@ -208,6 +209,11 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         ContainsErrors = contains_errors(Globals, ModeSpecs),
         (
             ContainsErrors = yes,
+            trace [io(!IO)] (
+                maybe_dump_hlds(!.ModuleInfo, 46, "cse_repeat_modecheck",
+                    no_prev_dump, _DumpInfo, !IO),
+                write_error_specs_ignore(ModeSpecs, Globals, !IO)
+            ),
             unexpected($pred, "mode check fails when repeated")
         ;
             ContainsErrors = no
@@ -529,10 +535,7 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
         !CseInfo, GoalExpr) :-
     instmap_lookup_var(InstMap0, Var, VarInst0),
     ( if
-        ModuleInfo = !.CseInfo ^ csei_module_info,
-        % XXX We only need inst_is_bound, but leave this as it is until
-        % mode analysis can handle aliasing between free variables.
-        inst_is_ground_or_any(ModuleInfo, VarInst0),
+        may_pull_lhs_inst(!.CseInfo, VarInst0),
         common_deconstruct(Goals0, Var, !CseInfo, UnifyGoal,
             FirstOldNew, LaterOldNew, Goals)
     then
@@ -569,10 +572,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
     ( if
         Var \= SwitchVar,
         instmap_lookup_var(InstMap0, Var, VarInst0),
-        ModuleInfo = !.CseInfo ^ csei_module_info,
-        % XXX We only need inst_is_bound, but leave this as it is until
-        % mode analysis can handle aliasing between free variables.
-        inst_is_ground_or_any(ModuleInfo, VarInst0),
+        may_pull_lhs_inst(!.CseInfo, VarInst0),
         common_deconstruct_cases(Cases0, Var, !CseInfo,
             UnifyGoal, FirstOldNew, LaterOldNew, Cases)
     then
@@ -610,10 +610,7 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, GoalExpr) :-
     instmap_lookup_var(InstMap, Var, VarInst0),
     ( if
-        % XXX We only need inst_is_bound, but leave this as it is until
-        % mode analysis can handle aliasing between free variables.
-        ModuleInfo = !.CseInfo ^ csei_module_info,
-        inst_is_ground_or_any(ModuleInfo, VarInst0),
+        may_pull_lhs_inst(!.CseInfo, VarInst0),
         common_deconstruct([Then0, Else0], Var, !CseInfo,
             UnifyGoal, FirstOldNew, LaterOldNew, Goals),
         Goals = [Then, Else]
@@ -1072,6 +1069,24 @@ find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
     else
         true
     ).
+
+%---------------------------------------------------------------------------%
+
+    % May we pull a deconstruction unification whose left hand side
+    % variable has this inst out of two or more arms, to put before
+    % the disjunction, switch or if-then-else?
+    %
+:- pred may_pull_lhs_inst(cse_info::in, mer_inst::in) is semidet.
+
+may_pull_lhs_inst(CseInfo, VarInst) :-
+    ModuleInfo = CseInfo ^ csei_module_info,
+    % XXX We only need inst_is_bound, but leave this as it is until
+    % mode analysis can handle aliasing between free variables.
+    inst_is_ground_or_any(ModuleInfo, VarInst),
+    % We need this test until we can track uniqueness through
+    % the extra unifications we introduce when we pull a deconstruction
+    % out of an arm of a disjunction, switch or if-then-else.
+    inst_is_not_partly_unique(ModuleInfo, VarInst).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.cse_detection.

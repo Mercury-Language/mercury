@@ -90,9 +90,9 @@ OTHER_PROGS = \
 	builtin_false \
 	call_failure \
 	common_struct_bug \
+	compl_unify_bug \
 	complete_int8_switch \
 	complete_uint8_switch \
-	compl_unify_bug \
 	complicated_unify \
 	constr_inst_syntax \
 	constrained_poly_bound_arg \
@@ -100,6 +100,7 @@ OTHER_PROGS = \
 	constrained_poly_multi \
 	constraint_prop_bug \
 	constructor_arg_names \
+	cse_unique \
 	dcg_test \
 	deforest_bug \
 	deforest_loop \
