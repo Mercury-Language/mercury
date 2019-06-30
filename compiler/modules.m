@@ -486,7 +486,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         % Get the .int3 files of the modules imported using `use_module'.
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_parent_used", pik_direct(int123_3, must_be_qualified),
-            make_ims_imported(import_locn_import_by_ancestor),
+            make_ims_used(import_locn_import_by_ancestor),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
             AncestorUsed,
