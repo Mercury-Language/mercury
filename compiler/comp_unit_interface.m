@@ -209,7 +209,7 @@ generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt, !:Specs) :-
     MaybeVersionNumbers = no,
     ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, [], IntAvails, [], IntItems, []),
-    module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
+    module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt,
         !Specs).
 
 :- type need_avails

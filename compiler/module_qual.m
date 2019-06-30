@@ -121,13 +121,13 @@
     maybe_found_undef_mode::out, maybe_found_undef_typeclass::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
+    % module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt,
     %   !Specs):
     %
-    % ParseTreeInt is ParseTreeInt0 with all items module qualified
-    % as much as possible.
+    % ParseTreeInt is ParseTreeInt0 with all items in the .int3 file
+    % module qualified as much as possible.
     %
-:- pred module_qualify_parse_tree_int(globals::in,
+:- pred module_qualify_parse_tree_int3(globals::in,
     parse_tree_int::in, parse_tree_int::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -245,6 +245,7 @@
 :- import_module bool.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module term.
 
@@ -327,23 +328,17 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         true
     ).
 
-module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
+module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntItems0, ImpItems0),
+        IntItems0, ImpItems),
     IntSrcItemBlocks0 = [item_block(ModuleName, sms_interface,
         IntIncls, IntAvails, IntItems0)],
-    ImpSrcItemBlocks0 = [item_block(ModuleName, sms_implementation,
-        ImpIncls, ImpAvails, ImpItems0)],
-    % XXX ITEM_LIST The completely separate treatment of the interface
-    % and implementation part of an interface file preserves old behavior;
-    % write_short_interface_file in write_module_interface_files.m used
-    % to call module_qualify_items separately on the interface and
-    % implementation items. I (zs) this is likely to be a bug, in that
-    % the module qualification of the items in the implementation section
-    % doesn't see the declarations in the interface section.
+    expect(unify(ImpIncls, []), $pred, "ImpIncls != []"),
+    expect(unify(ImpAvails, []), $pred, "ImpAvails != []"),
+    expect(unify(ImpItems, []), $pred, "ImpItems != []"),
     % XXX ITEM_LIST Check whether we can get a nonempty list of implicit
-    % dependencies in either call to collect_mq_info_in_aug_item_blocks below.
+    % dependencies in collect_mq_info_in_aug_item_blocks below.
     DummyItemBlocks = []:list(src_item_block),
     some [!IntInfo] (
         init_mq_info(Globals, ModuleName, IntSrcItemBlocks0,
@@ -353,15 +348,6 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
             !IntInfo),
         module_qualify_items_loop(mq_used_in_interface,
             IntItems0, IntItems, !.IntInfo, _, !Specs)
-    ),
-    some [!ImpInfo] (
-        init_mq_info(Globals, ModuleName, ImpSrcItemBlocks0,
-            DummyItemBlocks, DummyItemBlocks, DummyItemBlocks,
-            should_not_report_errors, !:ImpInfo),
-        collect_mq_info_in_item_blocks(src_section_mq_info, ImpSrcItemBlocks0,
-            !ImpInfo),
-        module_qualify_items_loop(mq_not_used_in_interface,
-            ImpItems0, ImpItems, !.ImpInfo, _, !Specs)
     ),
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
