@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2018 The Mercury Team
+% Copyright (C) 2014-2019 The Mercury Team
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -17,13 +17,13 @@
 % and predicates to lookup the priority of a key, to insert and to remove
 % priority-key pairs, to adjust the priority of a given key, and to retrieve
 % the priority/key pair with the highest conceptual priority. However,
-% since in many applications of psqueues, a low number represents represents
-% high priority; for example, Dijkstra's shortest path algorithm wants to
-% process the nearest nodes first. Therefore, given two priorities PrioA and
-% PrioB, this module considers priority PrioA to have the higher conceptual
-% priority if compare(CMP, PrioA, PrioB) returns CMP = (<). If priorities
-% are numerical, which is common but is not required, then higher priorities
-% are represented by lower numbers.
+% since in many applications of psqueues, a low number represents high
+% priority; for example, Dijkstra's shortest path algorithm wants to process
+% the nearest nodes first. Therefore, given two priorities PrioA and PrioB,
+% this module considers priority PrioA to have the higher conceptual priority
+% if compare(CMP, PrioA, PrioB) returns CMP = (<). If priorities are numerical,
+% which is common but is not required, then higher priorities are represented
+% by lower numbers.
 %
 % The operations in this module are based on the algorithms described in
 % Ralf Hinze: A simple implementation technique for priority search queues,
