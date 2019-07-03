@@ -651,7 +651,7 @@ clique_call_site_to_rows(MaybeCurModuleName, ModuleQual, Prefs,
             Rows = [Row]
         ;
             CalleePerfs = [_, _ | _],
-            unexpected($module, $pred, "more than one callee at normal")
+            unexpected($pred, "more than one callee at normal")
         )
     ;
         (
@@ -2677,7 +2677,7 @@ perf_table_row_time(TotalsMeaningful, Fields, RowData, TimeCells) :-
                 MaybeTotal = yes(Total)
             ;
                 MaybeTotal = no,
-                unexpected($module, $pred, "no total")
+                unexpected($pred, "no total")
             ),
             TotalTicks =            Total ^ perf_row_ticks,
             TotalTime =             Total ^ perf_row_time,
@@ -2876,7 +2876,7 @@ perf_table_row_callseqs(TotalsMeaningful, Fields, RowData, CallSeqsCells) :-
                 MaybeTotal = yes(Total)
             ;
                 MaybeTotal = no,
-                unexpected($module, $pred, "no total")
+                unexpected($pred, "no total")
             ),
             TotalCallSeqs =             Total ^ perf_row_callseqs,
             TotalCallSeqsPercent =      Total ^ perf_row_callseqs_percent,
@@ -3003,7 +3003,7 @@ perf_table_row_allocs(TotalsMeaningful, Fields, RowData, AllocCells) :-
                 MaybeTotal = yes(Total)
             ;
                 MaybeTotal = no,
-                unexpected($module, $pred, "no total")
+                unexpected($pred, "no total")
             ),
             TotalAllocs =               Total ^ perf_row_allocs,
             TotalAllocsPercent =        Total ^ perf_row_allocs_percent,
@@ -3130,7 +3130,7 @@ perf_table_row_memory(TotalsMeaningful, Fields, RowData, MemoryCells) :-
                 MaybeTotal = yes(Total)
             ;
                 MaybeTotal = no,
-                unexpected($module, $pred, "no total")
+                unexpected($pred, "no total")
             ),
             TotalMem =            Total ^ perf_row_mem,
             TotalMemPerCall =     Total ^ perf_row_mem_percall,
@@ -5185,7 +5185,7 @@ compare_perf_row_datas_by_time(InclDesc, Scope, PerfA, PerfB, Result) :-
                 compare(Result, TimeA, TimeB)
             )
         else
-            unexpected($module, $pred, "self_and_desc")
+            unexpected($pred, "self_and_desc")
         )
     ).
 
@@ -5229,7 +5229,7 @@ compare_perf_row_datas_by_callseqs(InclDesc, Scope, PerfA, PerfB, Result) :-
                 compare(Result, CallSeqsA, CallSeqsB)
             )
         else
-            unexpected($module, $pred, "self_and_desc")
+            unexpected($pred, "self_and_desc")
         )
     ).
 
@@ -5273,7 +5273,7 @@ compare_perf_row_datas_by_allocs(InclDesc, Scope, PerfA, PerfB, Result) :-
                 compare(Result, AllocsA, AllocsB)
             )
         else
-            unexpected($module, $pred, "missing total")
+            unexpected($pred, "missing total")
         )
     ).
 
@@ -5317,7 +5317,7 @@ compare_perf_row_datas_by_words(InclDesc, Scope, PerfA, PerfB, Result) :-
                 compare_memory(MemoryA, MemoryB, Result)
             )
         else
-            unexpected($module, $pred, "missing total")
+            unexpected($pred, "missing total")
         )
     ).
 

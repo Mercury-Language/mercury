@@ -391,8 +391,7 @@ adjust_time_for_waits(!Time, !Executions) :-
         !.Executions = [Execution | NextExecution],
         ( Start - End ) = Execution,
         ( if (!.Time + adjust_time_for_waits_epsilon) < Start then
-            unexpected($module, $pred,
-                "Time occurs before the current execution")
+            unexpected($pred, "Time occurs before the current execution")
         else if !.Time =< (End + adjust_time_for_waits_epsilon) then
             % The production is within the current execution, no adjustment is
             % necessary.
@@ -404,7 +403,7 @@ adjust_time_for_waits(!Time, !Executions) :-
         )
     ;
         !.Executions = [],
-        unexpected($module, $pred, "Time occurs after all executions")
+        unexpected($pred, "Time occurs after all executions")
     ).
 
 :- pred adjust_time_for_waits_2(float::in, float::in, float::out,
@@ -419,7 +418,7 @@ adjust_time_for_waits_2(LastEnd, !Time, !Executions) :-
         !:Time = !.Time + (Start - LastEnd),
 
         ( if (!.Time + adjust_time_for_waits_epsilon) < Start then
-            unexpected($module, $pred,
+            unexpected($pred,
                 string.format("Adjustment didn't work, " ++
                 "time occurs before the current execution. " ++
                 "Time: %f, Start: %f.", [f(!.Time), f(Start)]))
@@ -595,14 +594,14 @@ var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
                 FindProdOrCons = find_production
             ;
                 FindProdOrCons = find_consumption,
-                unexpected($module, $pred,
+                unexpected($pred,
                     "Found production when looking for consumption")
             )
         ;
             UseType = var_use_consumption,
             (
                 FindProdOrCons = find_production,
-                unexpected($module, $pred,
+                unexpected($pred,
                     "Found consumption when looking for production")
             ;
                 FindProdOrCons = find_consumption

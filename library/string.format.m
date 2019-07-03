@@ -1217,7 +1217,7 @@ get_octal_digit(Int) = Octal :-
     ( if octal_digit(Int, OctalPrime) then
         Octal = OctalPrime
     else
-        unexpected($module, $pred, "octal_digit failed")
+        unexpected($pred, "octal_digit failed")
     ).
 
     % Given an int between 0 and 9, return the decimal digit representing it.
@@ -1229,7 +1229,7 @@ get_decimal_digit(Int) = Decimal :-
     ( if decimal_digit(Int, DecimalPrime) then
         Decimal = DecimalPrime
     else
-        unexpected($module, $pred, "decimal_digit failed")
+        unexpected($pred, "decimal_digit failed")
     ).
 
     % Given an int between 0 and 15, return the hexadecimal digit
@@ -1245,14 +1245,14 @@ get_hex_digit_lc(Int) = HexLC :-
     ( if hex_digit(Int, HexLCPrime, _HexUC) then
         HexLC = HexLCPrime
     else
-        unexpected($module, $pred, "hex_digit failed")
+        unexpected($pred, "hex_digit failed")
     ).
 
 get_hex_digit_uc(Int) = HexUC :-
     ( if hex_digit(Int, _HexLC, HexUCPrime) then
         HexUC = HexUCPrime
     else
-        unexpected($module, $pred, "hex_digit failed")
+        unexpected($pred, "hex_digit failed")
     ).
 
 :- pred octal_digit(int::in, string::out) is semidet.

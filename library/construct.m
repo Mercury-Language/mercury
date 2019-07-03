@@ -164,7 +164,7 @@ det_num_functors(TypeInfo) =
     ( if N = num_functors(TypeInfo) then
         N
     else
-        unexpected($module, $pred, "type does not have functors")
+        unexpected($pred, "type does not have functors")
     ).
 
 get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, PseudoTypeInfoList) :-

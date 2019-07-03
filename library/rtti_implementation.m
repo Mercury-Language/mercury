@@ -292,7 +292,7 @@ generic_unify(X, Y) :-
     else if
         ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
     then
-        unexpected($module, $pred, "unimplemented: higher order unification")
+        unexpected($pred, "unimplemented: higher order unification")
     else
         Arity = TypeCtorInfo ^ type_ctor_arity,
         UnifyPred = TypeCtorInfo ^ type_ctor_unify_pred,
@@ -344,7 +344,7 @@ generic_compare(Res, X, Y) :-
     else if
         ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
     then
-        unexpected($module, $pred, "unimplemented: higher order comparisons")
+        unexpected($pred, "unimplemented: higher order comparisons")
     else
         Arity = TypeCtorInfo ^ type_ctor_arity,
         ComparePred = TypeCtorInfo ^ type_ctor_compare_pred,
@@ -710,7 +710,7 @@ compare_pseudo_type_infos(Res, PTI1, PTI2) :-
                     )
                 )
             else
-                unexpected($module, $pred, "impossible pseudo_type_infos")
+                unexpected($pred, "impossible pseudo_type_infos")
             )
         )
     ).
@@ -740,11 +740,11 @@ compare_pseudo_type_info_args(Res, Args1, Args2) :-
     ;
         Args1 = [_ | _],
         Args2 = [],
-        unexpected($module, $pred, "argument list mismatch")
+        unexpected($pred, "argument list mismatch")
     ;
         Args1 = [],
         Args2 = [_ | _],
-        unexpected($module, $pred, "argument list mismatch")
+        unexpected($pred, "argument list mismatch")
     ).
 
 %---------------------%
@@ -941,7 +941,7 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
         fail
     ;
         TypeCtorRep = tcr_unknown,
-        unexpected($module, $pred, "unknown type_ctor_rep")
+        unexpected($pred, "unknown type_ctor_rep")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1054,7 +1054,7 @@ get_functor_impl(TypeInfo, FunctorNumber,
         fail
     ;
         TypeCtorRep = tcr_unknown,
-        unexpected($module, $pred, "unknown type_ctor_rep")
+        unexpected($pred, "unknown type_ctor_rep")
     ).
 
 %---------------------%
@@ -1180,7 +1180,7 @@ create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
         NewTypeInfo = make_type_info(TypeCtorInfo, list.length(Args), Args),
         private_builtin.unsafe_type_cast(NewTypeInfo, ArgPseudoTypeInfo)
     else
-        unexpected($module, $pred, "create_pseudo_type_info")
+        unexpected($pred, "create_pseudo_type_info")
     ).
 
 :- func make_type_info(type_ctor_info, int, list(pseudo_type_info)) =
@@ -2970,8 +2970,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         else if
             char.is_surrogate(Char)
         then
-            unexpected($module, $pred,
-                "attempt to deconstruct surrogate code point")
+            unexpected($pred, "attempt to deconstruct surrogate code point")
         else
             Functor = string.from_char_list(['\'', Char, '\''])
         ),
@@ -3030,7 +3029,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         % There is no way to create values of type `void', so this
         % should never happen.
         TypeCtorRep = tcr_void,
-        unexpected($module, $pred, "cannot deconstruct void types")
+        unexpected($pred, "cannot deconstruct void types")
     ;
         TypeCtorRep = tcr_c_pointer,
         det_dynamic_cast(Term, CPtr),
@@ -3054,7 +3053,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             has_type(Elem, ElemType),
             same_array_elem_type(Array, Elem)
         else
-            unexpected($module, $pred, "array without a type_ctor arg")
+            unexpected($pred, "array without a type_ctor arg")
         ),
 
         det_dynamic_cast(Term, Array),
@@ -3162,7 +3161,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         TypeCtorRep = tcr_unknown,
-        unexpected($module, $pred, "unknown type_ctor rep")
+        unexpected($pred, "unknown type_ctor rep")
     ).
 
 univ_named_arg(Term, NonCanon, Name, Argument) :-
@@ -3201,8 +3200,7 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
         TypeCtorRep = tcr_du_usereq,
         (
             NonCanon = do_not_allow,
-            unexpected($module, $pred,
-                "attempt to deconstruct noncanonical term")
+            unexpected($pred, "attempt to deconstruct noncanonical term")
         ;
             NonCanon = canonicalize,
             MaybeArgument = no
@@ -3304,10 +3302,10 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
         MaybeArgument = no
     ;
         TypeCtorRep = tcr_void,
-        unexpected($module, $pred, "cannot deconstruct void types")
+        unexpected($pred, "cannot deconstruct void types")
     ;
         TypeCtorRep = tcr_unknown,
-        unexpected($module, $pred, "unknown type_ctor rep")
+        unexpected($pred, "unknown type_ctor rep")
     ).
 
 :- pred det_dynamic_cast(T::in, U::out) is det.
@@ -3343,7 +3341,7 @@ handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor, Ordinal, Arity, Arguments) :-
     (
         NonCanon = do_not_allow,
-        unexpected($module, $pred, "attempt to deconstruct noncanonical term")
+        unexpected($pred, "attempt to deconstruct noncanonical term")
     ;
         NonCanon = canonicalize,
         Functor = expand_type_name(TypeCtorInfo, yes),
@@ -3608,7 +3606,7 @@ get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
         ( if get_du_functor_exist_info(FunctorDesc, ExistInfo0) then
             ExistInfo = ExistInfo0
         else
-            unexpected($module, $pred, "no exist_info")
+            unexpected($pred, "no exist_info")
         ),
 
         % We count variables from one so we need to add 1.
@@ -5313,7 +5311,7 @@ enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
 :- mode get_foreign_enum_functor_desc(in(foreign_enum), in, in) = out is det.
 
 get_foreign_enum_functor_desc(_, _, _) = _ :-
-    unexpected($module, $pred, "get_foreign_enum_functor_desc").
+    unexpected($pred, "get_foreign_enum_functor_desc").
 
 :- pragma foreign_proc("C#",
     get_foreign_enum_functor_desc(_TypeCtorRep::in(foreign_enum), X::in,
@@ -5338,7 +5336,7 @@ get_foreign_enum_functor_desc(_, _, _) = _ :-
 :- mode foreign_enum_functor_desc(in(foreign_enum), in, in) = out is det.
 
 foreign_enum_functor_desc(_, _, _) = _ :-
-    unexpected($module, $pred, "foreign_enum_functor_desc").
+    unexpected($pred, "foreign_enum_functor_desc").
 
 :- pragma foreign_proc("C#",
     foreign_enum_functor_desc(_TypeCtorRep::in(foreign_enum), X::in,

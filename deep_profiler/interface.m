@@ -180,7 +180,7 @@ send_term(ToPipeName, Debug, Data, !IO) :-
         io.error_message(ToPipeError, ToPipeErrorMsg),
         string.format("couldn't open pipe %s: %s",
             [s(ToPipeName), s(ToPipeErrorMsg)], ToPipeMsg),
-        unexpected($module, $pred, ToPipeMsg)
+        unexpected($pred, ToPipeMsg)
     ),
     (
         Debug = yes,
@@ -196,7 +196,7 @@ send_term(ToPipeName, Debug, Data, !IO) :-
             io.error_message(DebugError, DebugErrorMsg),
             string.format("couldn't open debug file %s: %s",
                 [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
-            unexpected($module, $pred, DebugMsg)
+            unexpected($pred, DebugMsg)
         )
     ;
         Debug = no
@@ -213,7 +213,7 @@ send_string(ToPipeName, Debug, Data, !IO) :-
         io.error_message(ToPipeError, ToPipeErrorMsg),
         string.format("couldn't open pipe %s: %s",
             [s(ToPipeName), s(ToPipeErrorMsg)], ToPipeMsg),
-        unexpected($module, $pred, ToPipeMsg)
+        unexpected($pred, ToPipeMsg)
     ),
     (
         Debug = yes,
@@ -228,7 +228,7 @@ send_string(ToPipeName, Debug, Data, !IO) :-
             io.error_message(DebugError, DebugErrorMsg),
             string.format("couldn't open debug file %s: %s",
                 [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
-            unexpected($module, $pred, DebugMsg)
+            unexpected($pred, DebugMsg)
         )
     ;
         Debug = no
@@ -243,12 +243,12 @@ recv_term(FromPipeName, Debug, Resp, !IO) :-
             ReadRes = ok(Resp)
         ;
             ReadRes = eof,
-            unexpected($module, $pred, "read failed: premature eof")
+            unexpected($pred, "read failed: premature eof")
         ;
             ReadRes = error(ReadErrorMsg, ReadErrorLineNumber),
             string.format("read failed at line %d: %s",
                 [i(ReadErrorLineNumber), s(ReadErrorMsg)], ReadMsg),
-            unexpected($module, $pred, ReadMsg)
+            unexpected($pred, ReadMsg)
         ),
         io.close_input(FromStream, !IO),
         (
@@ -265,7 +265,7 @@ recv_term(FromPipeName, Debug, Resp, !IO) :-
                 io.error_message(DebugError, DebugErrorMsg),
                 string.format("couldn't open debug file %s: %s",
                     [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
-                unexpected($module, $pred, DebugMsg)
+                unexpected($pred, DebugMsg)
             )
         ;
             Debug = no
@@ -275,7 +275,7 @@ recv_term(FromPipeName, Debug, Resp, !IO) :-
         io.error_message(FromPipeError, FromPipeErrorMsg),
         string.format("couldn't open pipe %s: %s",
             [s(FromPipeName), s(FromPipeErrorMsg)], FromPipeMsg),
-        unexpected($module, $pred, FromPipeMsg)
+        unexpected($pred, FromPipeMsg)
     ).
 
 recv_string(FromPipeName, Debug, Resp, !IO) :-
@@ -290,7 +290,7 @@ recv_string(FromPipeName, Debug, Resp, !IO) :-
             io.error_message(ReadError, ReadErrorMsg),
             string.format("read failed: %s",
                 [s(ReadErrorMsg)], ReadMsg),
-            unexpected($module, $pred, ReadMsg)
+            unexpected($pred, ReadMsg)
         ),
         io.close_input(FromStream, !IO),
         (
@@ -307,7 +307,7 @@ recv_string(FromPipeName, Debug, Resp, !IO) :-
                 io.error_message(DebugError, DebugErrorMsg),
                 string.format("couldn't open debug file %s: %s",
                     [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
-                unexpected($module, $pred, DebugMsg)
+                unexpected($pred, DebugMsg)
             )
         ;
             Debug = no
@@ -317,7 +317,7 @@ recv_string(FromPipeName, Debug, Resp, !IO) :-
         io.error_message(FromPipeError, FromPipeErrorMsg),
         string.format("couldn't open pipe %s: %s",
             [s(FromPipeName), s(FromPipeErrorMsg)], FromPipeMsg),
-        unexpected($module, $pred, FromPipeMsg)
+        unexpected($pred, FromPipeMsg)
     ).
 
 %---------------------------------------------------------------------------%

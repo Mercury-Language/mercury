@@ -70,36 +70,36 @@ init = array([0]).
 
 member(I, A) :-
     max(A, Max),
-    ( word(I) >= 0, word(I) =< Max ->
+    ( if word(I) >= 0, word(I) =< Max then
         lookup(A, word(I), Word),
         bit(I) /\ Word \= 0
-    ;
+    else
         fail
     ).
 
 insert(A0, I) = A :-
     max(A0, Max),
-    ( word(I) > Max ->
+    ( if word(I) > Max then
         resize((Max + 1) * 2, 0, A0, A1),
         A = insert(A1, I)
-    ; I >= 0 ->
+    else if I >= 0 then
         lookup(A0, word(I), Word0),
         Word = Word0 \/ bit(I),
         set(word(I), Word, A0, A)
-    ;
-        unexpected($module, $pred, "cannot use indexes < 0")
+    else
+        unexpected($pred, "cannot use indexes < 0")
     ).
 
 delete(A0, I) = A :-
     max(A0, Max),
-    ( I > Max ->
+    ( if I > Max then
         A = A0
-    ; I >= 0 ->
+    else if I >= 0 then
         lookup(A0, word(I), Word0),
         Word = Word0 /\ \ bit(I),
         set(word(I), Word, A0, A)
-    ;
-        unexpected($module, $pred, "cannot use indexes < 0")
+    else
+        unexpected($pred, "cannot use indexes < 0")
     ).
 
 union(A, B) = C :-
@@ -118,10 +118,10 @@ foldl(P, A0, !Acc) :-
         array_di, array_uo) is det.
 
 foldl1(Min, Max, P, A0, !Acc) :-
-    ( Min =< Max ->
+    ( if Min =< Max then
         foldl2(0, Min, P, A0, !Acc),
         foldl1(Min + 1, Max, P, A0, !Acc)
-    ;
+    else
         true
     ).
 
@@ -132,16 +132,16 @@ foldl1(Min, Max, P, A0, !Acc) :-
         array_di, array_uo) is det.
 
 foldl2(B, W, P, A0, !Acc) :-
-    ( B =< 31 ->
+    ( if B =< 31 then
         lookup(A0, W, Word),
-        ( (1 << B) /\ Word \= 0 ->
+        ( if (1 << B) /\ Word \= 0 then
             I = B + W * 32,
             P(I, !Acc)
-        ;
+        else
             true
         ),
         foldl2(B + 1, W, P, A0, !Acc)
-    ;
+    else
         true
     ).
 

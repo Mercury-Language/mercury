@@ -216,7 +216,7 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
         FirstCostlyGoalIndex = FirstCostlyGoalIndexPrime,
         LastCostlyGoalIndex = LastCostlyGoalIndexPrime
     else
-        unexpected($module, $pred, "too few costly goals")
+        unexpected($pred, "too few costly goals")
     ),
 
     % Phase 3: Check that all the middle goals are model det.
@@ -351,7 +351,7 @@ goal_accumulate_detism(_, Goal, !Detism) :-
     then
         !:Detism = FinalDetism
     else
-        unexpected($module, $pred, "cannot compute detism from components.")
+        unexpected($pred, "cannot compute detism from components.")
     ).
 
     % foldl(preprocess_conjunction_into_groups, Goals, FirstCostlyGoalIndex,
@@ -488,10 +488,10 @@ generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
         !:GoalGroups = GoalsForParallelisation ^ gfp_groups,
         (
             !.GoalGroups = [],
-            unexpected($module, $pred, "no goal groups")
+            unexpected($pred, "no goal groups")
         ;
             !.GoalGroups = [_],
-            unexpected($module, $pred, "only one goal group")
+            unexpected($pred, "only one goal group")
         ;
             !.GoalGroups = [Group, _ | _],
             !.GoalGroups = [_ | !:GoalGroups],
@@ -665,7 +665,7 @@ finalise_parallelisation(Incomplete, Best) :-
         MaybeCostData = yes(CostData)
     ;
         MaybeCostData = no,
-        unexpected($module, $pred, "parallelisation has no cost data")
+        unexpected($pred, "parallelisation has no cost data")
     ),
     CostData = parallelisation_cost_data(_, Overlap, Metrics0, _),
 
@@ -830,8 +830,7 @@ incomplete_parallelisation_cost(IncompleteParallelisation) = Cost :-
         MaybeCostData = yes(CostData)
     ;
         MaybeCostData = no,
-        unexpected($module, $pred,
-            "incomplete parallelisation has no cost data")
+        unexpected($pred, "incomplete parallelisation has no cost data")
     ),
     IncompleteMetrics = CostData ^ pcd_par_exec_metrics,
     FullMetrics = finalise_parallel_exec_metrics(IncompleteMetrics),

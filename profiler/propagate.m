@@ -108,7 +108,7 @@ identify_cycles_2([Key | Keys0], CycleNum0, InvG, Visit0, !ATSort,
 
     (
         DfsRev = [],
-        unexpected($module, $pred, "empty list\n")
+        unexpected($pred, "empty list\n")
     ;
         DfsRev = [_],
         CycleNum = CycleNum0
@@ -188,7 +188,7 @@ propagate_counts_2([Pred | Preds], CycleInfo, AddrDeclMap, !ProfNodeMap) :-
             process_cycle(CyclePreds, Cycle, AddrDeclMap, !ProfNodeMap),
             propagate_counts_2(NewPreds, CycleInfo, AddrDeclMap, !ProfNodeMap)
         else
-            unexpected($module, $pred, "list_drop failed\n")
+            unexpected($pred, "list_drop failed\n")
         )
     else
         get_prof_node(Pred, AddrDeclMap, !.ProfNodeMap, ProfNode),
@@ -342,7 +342,7 @@ build_parent_map(CliqueList, AddrMap, ProfNodeMap, TotalCalls, SelfCalls,
         ParentMap) :-
     (
         CliqueList = [],
-        unexpected($module, $pred, "empty cycle list\n")
+        unexpected($pred, "empty cycle list\n")
     ;
         CliqueList = [_ | _],
         build_parent_map_2(CliqueList, CliqueList, AddrMap, ProfNodeMap,

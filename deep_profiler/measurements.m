@@ -770,7 +770,7 @@ add_goal_costs_seq(non_trivial_goal(CostA, CallsA),
         Calls = 0,
         CostTotal \= 0.0
     then
-        unexpected($module, $pred, "Calls = 0, Cost \\= 0")
+        unexpected($pred, "Calls = 0, Cost \\= 0")
     else
         true
     ).
@@ -784,7 +784,7 @@ add_goal_costs_branch(TotalCalls, A, B) = R :-
             CallsA = 0,
             (
                 B = dead_goal,
-                unexpected($module, $pred, "TotalCalls \\= 0 for a dead goal")
+                unexpected($pred, "TotalCalls \\= 0 for a dead goal")
             ;
                 B = trivial_goal(CallsB),
                 R = trivial_goal(TotalCalls)
@@ -830,7 +830,7 @@ check_total_calls(CallsA, CallsB, TotalCalls) :-
     ( if unify(Calls, TotalCalls) then
         true
     else
-        unexpected($module, $pred, "TotalCalls \\= CallsA + CallsB")
+        unexpected($pred, "TotalCalls \\= CallsA + CallsB")
     ).
 
 goal_cost_get_percall(dead_goal) = 0.0.
@@ -852,7 +852,7 @@ goal_cost_get_calls(trivial_goal(Calls)) = Calls.
 goal_cost_get_calls(non_trivial_goal(_, Calls)) = Calls.
 
 goal_cost_change_calls(dead_goal, _) =
-    unexpected($module, $pred, "Cannot compute new cost").
+    unexpected($pred, "Cannot compute new cost").
 goal_cost_change_calls(trivial_goal(_), Calls) = trivial_goal(Calls).
 goal_cost_change_calls(non_trivial_goal(Cost0, Calls0), Calls) =
         non_trivial_goal(Cost, Calls) :-
@@ -912,7 +912,7 @@ recursion_depth_descend(recursion_depth(D), recursion_depth(D - 1.0)) :-
     ( if D >= 0.5 then
         true
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             format("Recursion depth will be less than zero: %f", [f(D - 1.0)]))
     ).
 
@@ -939,7 +939,7 @@ add_coverage_arrays(NewArray, yes(!.Array), yes(!:Array)) :-
                 array.set(Index, Value + E, A0, A)
             ), NewArray, !Array)
     else
-        unexpected($module, $pred, "arrays' bounds do not match")
+        unexpected($pred, "arrays' bounds do not match")
     ).
 
 array_to_static_coverage(Array, yes(Array)).
@@ -973,8 +973,7 @@ no_parallelism = parallelism_amount(1.0).
 
 some_parallelism(Num) = parallelism_amount(Num) :-
     ( if Num < 1.0 then
-        unexpected($module, $pred,
-            "Parallelism amount cannot ever be less than 1.0")
+        unexpected($pred, "Parallelism amount cannot ever be less than 1.0")
     else
         true
     ).
@@ -1071,7 +1070,7 @@ init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeWaits,
         then
             true
         else
-            unexpected($module, $pred, "TimeWaits != 0 or TimeBDead != 0")
+            unexpected($pred, "TimeWaits != 0 or TimeBDead != 0")
         )
     ),
     Metrics = Metrics0 ^ pemi_internal := yes(Internal).
@@ -1088,7 +1087,7 @@ finalise_parallel_exec_metrics(IncompleteMetrics) = Metrics :-
         MaybeInternal = yes(Internal)
     ;
         MaybeInternal = no,
-        unexpected($module, $pred, "cannot finalise empty parallel metrics")
+        unexpected($pred, "cannot finalise empty parallel metrics")
     ),
     BeforeAndAfterTime = TimeBefore + TimeAfter,
 

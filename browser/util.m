@@ -132,7 +132,7 @@ call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO) :-
         Success = 0
     ;
         Result = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 trace_get_command(Prompt, Result, !IO) :-
@@ -186,7 +186,7 @@ trace_get_command_fallback(Prompt, String, MdbIn, MdbOut, !IO) :-
         String = "quit"
     ;
         Result = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 zip_with(Pred, XXs, YYs, Zipped) :-
@@ -197,7 +197,7 @@ zip_with(Pred, XXs, YYs, Zipped) :-
         zip_with(Pred, Xs, Ys, ZippedTail),
         Zipped = [PXY | ZippedTail]
     else
-        unexpected($module, $pred, "list arguments are of unequal length")
+        unexpected($pred, "list arguments are of unequal length")
     ).
 
 limit(Pred, Xs, Ys) :-

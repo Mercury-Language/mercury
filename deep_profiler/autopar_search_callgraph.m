@@ -141,7 +141,7 @@ candidate_parallel_conjunctions_clique(Opts, Deep, ParentParallelism,
         else
             CliquePtr = clique_ptr(CliqueNum),
             string.format("Clique %d has no entry proc", [i(CliqueNum)], Msg),
-            unexpected($module, $pred, Msg)
+            unexpected($pred, Msg)
         )
     ),
 
@@ -444,7 +444,7 @@ merge_candidate_par_conjs_proc(A, B, Result) :-
         Result = candidate_par_conjunctions_proc(VarNameTableA, PushGoals,
             CPCs)
     else
-        unexpected($module, $pred, "var tables do not match")
+        unexpected($pred, "var tables do not match")
     ).
 
 :- pred merge_pushes_for_proc(list(push_goal)::in, list(push_goal)::out)
@@ -626,7 +626,7 @@ build_candidate_par_conjunction_maps(ProcLabel, VarNameTable, Candidate,
         CandidateProc0 = candidate_par_conjunctions_proc(VarNameTablePrime,
             PushGoals, CPCs0),
         CPCs = [Candidate | CPCs0],
-        expect(unify(VarNameTable, VarNameTablePrime), $module, $pred,
+        expect(unify(VarNameTable, VarNameTablePrime), $pred,
             "var tables do not match")
     else
         CPCs = [Candidate],

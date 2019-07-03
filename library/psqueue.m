@@ -1388,7 +1388,7 @@ verify_and_dump_psqueue(PSQ) = Str :-
     then
         Str = dump_psqueue(PSQ)
     else
-        unexpected($module, $pred, "verification failed")
+        unexpected($pred, "verification failed")
     ).
 
 :- func indent_string(int) = string.

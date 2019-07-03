@@ -833,8 +833,7 @@ get_elements_and_args(MakeElement, TypeDesc, Elements, MaybeFunctors,
                 MakeElement(TypeDesc, A, B, C)),
             list.map2(P, Requests, Elements, AttributeLists)
         else
-            unexpected($module, $pred,
-                "get_functor failed for discriminated union")
+            unexpected($pred, "get_functor failed for discriminated union")
         )
     else
         MakeElement(TypeDesc, non_du, Element, AttrFromSources),
@@ -1428,7 +1427,7 @@ write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
             put(Stream, "\n]>", !State),
             DTDResult = ok
         else
-            unexpected($module, $pred, "not ok to generate DTD")
+            unexpected($pred, "not ok to generate DTD")
         )
     ;
         ( DTDResult = multiple_functors_for_root

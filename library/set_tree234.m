@@ -751,7 +751,7 @@ sorted_list_to_set(List, Tree) :-
         find_num_234_levels(Len, Level, AllThrees),
         do_from_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
         trace [compiletime(flag("set_tree234_sanity_checks"))] (
-            expect(unify(LeftOver, []), $module, $pred, "leftovers")
+            expect(unify(LeftOver, []), $pred, "leftovers")
         )
     ).
 
@@ -766,25 +766,24 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 Tree = two(E1, empty, empty)
             ;
                 !.List = [],
-                unexpected($module, $pred, "len 1 nil")
+                unexpected($pred, "len 1 nil")
             )
         else if Len = 2 then
             trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                expect(unify(Level0, 1), $module, $pred,
-                    "Len = 2 but Level != 1")
+                expect(unify(Level0, 1), $pred, "Len = 2 but Level != 1")
             ),
             (
                 !.List = [E1, E2 | !:List],
                 Tree = three(E1, E2, empty, empty, empty)
             ;
                 !.List = [_],
-                unexpected($module, $pred, "len 2 one")
+                unexpected($pred, "len 2 one")
             ;
                 !.List = [],
-                unexpected($module, $pred, "len 2 nil")
+                unexpected($pred, "len 2 nil")
             )
         else
-            unexpected($module, $pred, "level 1, but len not 1 or 2")
+            unexpected($pred, "level 1, but len not 1 or 2")
         )
     else
         Level = Level0 - 1,
@@ -806,7 +805,7 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 SubLen3 = BaseSubLen - 1
             else
                 trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                    expect(unify(Diff, 2), $module, $pred, "Diff != 2")
+                    expect(unify(Diff, 2), $pred, "Diff != 2")
                 ),
                 % Len = BaseSubLen * 3 + 2:
                 % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
@@ -827,14 +826,14 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [E1 | !:List]
             ;
                 !.List = [],
-                unexpected($module, $pred, "tree E1 nil")
+                unexpected($pred, "tree E1 nil")
             ),
             do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
             (
                 !.List = [E2 | !:List]
             ;
                 !.List = [],
-                unexpected($module, $pred, "tree E2 nil")
+                unexpected($pred, "tree E2 nil")
             ),
             do_from_sorted_list(SubLen3, !List, Level, AllThrees, SubTree3),
             Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
@@ -854,7 +853,7 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 SubLen2 = BaseSubLen - 1
             else
                 trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                    expect(unify(Diff, 1), $module, $pred, "Diff != 1")
+                    expect(unify(Diff, 1), $pred, "Diff != 1")
                 ),
                 % Len = BaseSubLen * 2 + 1:
                 % (BaseSubLen) + 1 + (BaseSubLen)
@@ -874,7 +873,7 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [E1 | !:List]
             ;
                 !.List = [],
-                unexpected($module, $pred, "two E1 nil")
+                unexpected($pred, "two E1 nil")
             ),
             do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
             Tree = two(E1, SubTree1, SubTree2),
@@ -900,7 +899,7 @@ rev_sorted_list_to_set(List, Tree) :-
         find_num_234_levels(Len, Level, AllThrees),
         do_from_rev_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
         trace [compiletime(flag("set_tree234_sanity_checks"))] (
-            expect(unify(LeftOver, []), $module, $pred, "leftovers")
+            expect(unify(LeftOver, []), $pred, "leftovers")
         )
     ).
 
@@ -915,25 +914,24 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 Tree = two(E1, empty, empty)
             ;
                 !.List = [],
-                unexpected($module, $pred, "len 1 nil")
+                unexpected($pred, "len 1 nil")
             )
         else if Len = 2 then
             trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                expect(unify(Level0, 1), $module, $pred,
-                    "Len = 2 but Level != 1")
+                expect(unify(Level0, 1), $pred, "Len = 2 but Level != 1")
             ),
             (
                 !.List = [E2, E1 | !:List],
                 Tree = three(E1, E2, empty, empty, empty)
             ;
                 !.List = [_],
-                unexpected($module, $pred, "len 2 one")
+                unexpected($pred, "len 2 one")
             ;
                 !.List = [],
-                unexpected($module, $pred, "len 2 nil")
+                unexpected($pred, "len 2 nil")
             )
         else
-            unexpected($module, $pred, "level 1, but len not 1 or 2")
+            unexpected($pred, "level 1, but len not 1 or 2")
         )
     else
         Level = Level0 - 1,
@@ -955,7 +953,7 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 SubLen3 = BaseSubLen - 1
             else
                 trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                    expect(unify(Diff, 2), $module, $pred, "Diff != 2")
+                    expect(unify(Diff, 2), $pred, "Diff != 2")
                 ),
                 % Len = BaseSubLen * 3 + 2:
                 % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
@@ -977,7 +975,7 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [E2 | !:List]
             ;
                 !.List = [],
-                unexpected($module, $pred, "tree E2 nil")
+                unexpected($pred, "tree E2 nil")
             ),
             do_from_rev_sorted_list(SubLen2, !List, Level, AllThrees,
                 SubTree2),
@@ -985,7 +983,7 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [E1 | !:List]
             ;
                 !.List = [],
-                unexpected($module, $pred, "tree E1 nil")
+                unexpected($pred, "tree E1 nil")
             ),
             do_from_rev_sorted_list(SubLen1, !List, Level, AllThrees,
                 SubTree1),
@@ -1006,7 +1004,7 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 SubLen2 = BaseSubLen - 1
             else
                 trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                    expect(unify(Diff, 1), $module, $pred, "Diff != 1")
+                    expect(unify(Diff, 1), $pred, "Diff != 1")
                 ),
                 % Len = BaseSubLen * 2 + 1:
                 % (BaseSubLen) + 1 + (BaseSubLen)
@@ -1027,7 +1025,7 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [E1 | !:List]
             ;
                 !.List = [],
-                unexpected($module, $pred, "two E1 nil")
+                unexpected($pred, "two E1 nil")
             ),
             do_from_rev_sorted_list(SubLen1, !List, Level, AllThrees,
                 SubTree1),
@@ -2295,7 +2293,7 @@ fix_2node_t0(E0, T0, T1, Tout, RH) :-
         RH = yes
     ;
         T1 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = two(E0, T0, T1),
         % RH = yes
     ).
@@ -2326,7 +2324,7 @@ fix_2node_t1(E0, T0, T1, Tout, RH) :-
         RH = yes
     ;
         T0 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = two(E0, T0, T1),
         % RH = yes
     ).
@@ -2357,7 +2355,7 @@ fix_3node_t0(E0, E1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T1 and T2 are unchanged
         % RH = no
@@ -2389,7 +2387,7 @@ fix_3node_t1(E0, E1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T0 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T0 and T2 are unchanged
         % RH = no
@@ -2421,7 +2419,7 @@ fix_3node_t2(E0, E1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T0 and T1 are unchanged
         % RH = no
@@ -2454,7 +2452,7 @@ fix_4node_t0(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T1, T2 and T3 are unchanged
         % RH = no
@@ -2487,7 +2485,7 @@ fix_4node_t1(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T2 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T2 and T3 are unchanged
         % RH = no
@@ -2520,7 +2518,7 @@ fix_4node_t2(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T3 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T1 and T3 are unchanged
         % RH = no
@@ -2553,7 +2551,7 @@ fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T2 = empty,
-        unexpected($module, $pred, "unbalanced 234 tree")
+        unexpected($pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T1 and T2 are unchanged
         % RH = no

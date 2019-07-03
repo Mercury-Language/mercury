@@ -65,15 +65,14 @@ maybe_read_label_addr(MaybeLabelAddr, !IO) :-
         else if string.base_string_to_int(16, LabelAddrStr, LabelAddrHex) then
             MaybeLabelAddr = yes(LabelAddrHex)
         else
-            unexpected($module, $pred,
-                "Label address not hexadecimal or integer")
+            unexpected($pred, "Label address not hexadecimal or integer")
         )
     ;
         WordResult = eof,
         MaybeLabelAddr = no
     ;
         WordResult = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 %---------------------------------------------------------------------------%
@@ -97,7 +96,7 @@ maybe_read_label_name(MaybeLabelName, !IO) :-
         MaybeLabelName = no
     ;
         WordResult = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 %---------------------------------------------------------------------------%
@@ -112,15 +111,14 @@ read_label_addr(LabelAddr, !IO) :-
         else if string.base_string_to_int(16,LabelAddrStr, LabelAddrHex) then
             LabelAddr = LabelAddrHex
         else
-            unexpected($module, $pred,
-                "Label address not hexadecimal or integer")
+            unexpected($pred, "Label address not hexadecimal or integer")
         )
     ;
         WordResult = eof,
-        unexpected($module, $pred, "EOF reached")
+        unexpected($pred, "EOF reached")
     ;
         WordResult = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 %---------------------------------------------------------------------------%
@@ -140,10 +138,10 @@ read_label_name(LabelName, !IO) :-
         )
     ;
         WordResult = eof,
-        unexpected($module, $pred, "EOF reached")
+        unexpected($pred, "EOF reached")
     ;
         WordResult = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 %---------------------------------------------------------------------------%
@@ -155,10 +153,10 @@ read_string(String, !IO) :-
         string.from_char_list(CharList, String)
     ;
         WordResult = eof,
-        unexpected($module, $pred, "EOF reached")
+        unexpected($pred, "EOF reached")
     ;
         WordResult = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 %---------------------------------------------------------------------------%
@@ -168,7 +166,7 @@ read_int(Int, !IO) :-
     ( if string.to_int(IntStr, Int0) then
         Int = Int0
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             string.format("Invalid input: not an integer %s", [s(IntStr)]))
     ).
 
@@ -179,7 +177,7 @@ read_float(Float, !IO) :-
     ( if string.to_float(FloatStr, Float0) then
         Float = Float0
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             string.format("Invalid input: not a float %s", [s(FloatStr)]))
     ).
 
@@ -190,7 +188,7 @@ read_what_to_profile(WhatToProfile, !IO) :-
     ( if what_to_profile(Str, WhatToProfile0) then
         WhatToProfile = WhatToProfile0
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             string.format("Invalid input: WhatToProfile = %s", [s(Str)]))
     ).
 

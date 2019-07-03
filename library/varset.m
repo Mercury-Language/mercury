@@ -394,7 +394,7 @@ new_vars_loop(NumVars, !RevNewVars, !VarSet) :-
     else if NumVars = 0 then
         true
     else
-        unexpected($module, $pred, "invalid call")
+        unexpected($pred, "invalid call")
     ).
 
 %---------------------------------------------------------------------------%

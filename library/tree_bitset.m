@@ -574,8 +574,7 @@ make_leaf_node(Offset, Bits) = leaf_node(Offset, Bits).
 enum_to_index(Elem) = Index :-
     Index = enum.to_int(Elem),
     trace [compile_time(flag("tree-bitset-checks"))] (
-        expect((Index >= 0), $module, $pred,
-            "enums must map to nonnegative integers")
+        expect((Index >= 0), $pred, "enums must map to nonnegative integers")
     ).
 
 :- func index_to_enum(int) = T <= enum(T).
@@ -586,7 +585,7 @@ index_to_enum(Index) = Elem :-
     else
         % We only apply `from_int/1' to integers returned by `to_int/1',
         % so it should never fail.
-        unexpected($module, $pred, "`enum.from_int/1' failed")
+        unexpected($pred, "`enum.from_int/1' failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -613,7 +612,7 @@ wrap_tree_bitset(NodeList) = Set :-
             Integrity = yes
         ;
             Integrity = no,
-            unexpected($module, $pred, "integrity failed")
+            unexpected($pred, "integrity failed")
         )
     ),
     Set = tree_bitset(NodeList).
@@ -790,7 +789,7 @@ expand_range(Index, SubNodes, CurLevel, CurInitOffset, CurLimitOffset,
             ( if CurLimitOffset - CurInitOffset = Range then
                 true
             else
-                unexpected($module, $pred, "bad range for level")
+                unexpected($pred, "bad range for level")
             )
         ;
             true
@@ -880,7 +879,7 @@ raise_to_common_level(CurLevel, HeadA, TailA, HeadB, TailB,
     ( if ParentInitOffsetA = ParentInitOffsetB then
         trace [compile_time(flag("tree-bitset-checks"))] (
             expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                $module, $pred, "limit mismatch")
+                $pred, "limit mismatch")
         ),
         TopHeadA = HeadA,
         TopTailA = TailA,
@@ -923,7 +922,7 @@ prune_top_levels(List, PrunedList) :-
     interior_node::out, list(interior_node)::out) is det.
 
 head_and_tail([], _, _) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 head_and_tail([Head | Tail], Head, Tail).
 
 %---------------------------------------------------------------------------%
@@ -942,7 +941,7 @@ equal(SetA, SetB) :-
          then
              true
         else
-             unexpected($module, $pred, "set and list equality differ")
+             unexpected($pred, "set and list equality differ")
         )
     ),
     SetA = SetB.
@@ -1111,8 +1110,7 @@ insert(Set0, Elem) = Set :-
         (
             InteriorList0 = [],
             % This is a violation of our invariants.
-            unexpected($module, $pred,
-                "insert into empty list of interior nodes")
+            unexpected($pred, "insert into empty list of interior nodes")
         ;
             InteriorList0 = [InteriorNode0 | _],
             range_of_parent_node(InteriorNode0 ^ init_offset, InteriorLevel,
@@ -1182,7 +1180,7 @@ interiorlist_insert(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         (
             Components0 = leaf_list(LeafList0),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(Level, 1), $module, $pred,
+                expect(unify(Level, 1), $pred,
                     "bad component list (leaf)")
             ),
             leaflist_insert(Index, LeafList0, LeafList),
@@ -1190,7 +1188,7 @@ interiorlist_insert(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         ;
             Components0 = interior_list(InteriorLevel, InteriorList0),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(InteriorLevel, Level - 1), $module, $pred,
+                expect(unify(InteriorLevel, Level - 1), $pred,
                     "bad component list (interior)")
             ),
             interiorlist_insert(Index, InteriorLevel,
@@ -1240,8 +1238,7 @@ insert_new(Elem, Set0, Set) :-
         (
             InteriorList0 = [],
             % This is a violation of our invariants.
-            unexpected($module, $pred,
-                "insert_new into empty list of interior nodes")
+            unexpected($pred, "insert_new into empty list of interior nodes")
         ;
             InteriorList0 = [InteriorNode0 | _],
             range_of_parent_node(InteriorNode0 ^ init_offset, InteriorLevel,
@@ -1308,7 +1305,7 @@ interiorlist_insert_new(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         (
             Components0 = leaf_list(LeafList0),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(Level, 1), $module, $pred,
+                expect(unify(Level, 1), $pred,
                     "bad component list (leaf)")
             ),
             leaflist_insert_new(Index, LeafList0, LeafList),
@@ -1316,7 +1313,7 @@ interiorlist_insert_new(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         ;
             Components0 = interior_list(InteriorLevel, InteriorList0),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(InteriorLevel, Level - 1), $module, $pred,
+                expect(unify(InteriorLevel, Level - 1), $pred,
                     "bad component list (interior)")
             ),
             interiorlist_insert_new(Index, InteriorLevel,
@@ -1611,7 +1608,7 @@ remove_least(Elem, Set0, Set) :-
         List0 = interior_list(Level, InteriorNodes0),
         (
             InteriorNodes0 = [],
-            unexpected($module, $pred, "empty InteriorNodes0")
+            unexpected($pred, "empty InteriorNodes0")
         ;
             InteriorNodes0 = [InteriorHead | InteriorTail],
             remove_least_interior(InteriorHead, InteriorTail, Index,
@@ -1632,7 +1629,7 @@ remove_least_interior(Head0, Tail0, Index, Nodes) :-
         Components0 = leaf_list(LeafNodes0),
         (
             LeafNodes0 = [],
-            unexpected($module, $pred, "empty LeafNodes0")
+            unexpected($pred, "empty LeafNodes0")
         ;
             LeafNodes0 = [LeafHead0 | LeafTail0],
             remove_least_leaf(LeafHead0, LeafTail0, Index, LeafNodes),
@@ -1650,7 +1647,7 @@ remove_least_interior(Head0, Tail0, Index, Nodes) :-
         Components0 = interior_list(Level, InteriorNodes0),
         (
             InteriorNodes0 = [],
-            unexpected($module, $pred, "empty InteriorNodes0")
+            unexpected($pred, "empty InteriorNodes0")
         ;
             InteriorNodes0 = [InteriorHead0 | InteriorTail0],
             remove_least_interior(InteriorHead0, InteriorTail0, Index,
@@ -1731,7 +1728,7 @@ sorted_list_to_set(Elems) = Set :-
         group_leaf_nodes(LeafHead, LeafTail, InteriorNodes0),
         (
             InteriorNodes0 = [],
-            unexpected($module, $pred, "empty InteriorNodes0")
+            unexpected($pred, "empty InteriorNodes0")
         ;
             InteriorNodes0 = [InteriorNode],
             List = InteriorNode ^ components
@@ -1808,7 +1805,7 @@ group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
     ( if ParentInitOffset = HeadParentInitOffset then
         trace [compile_time(flag("tree-bitset-checks"))] (
             expect(unify(ParentLimitOffset, HeadParentLimitOffset),
-                $module, $pred, "limit mismatch")
+                $pred, "limit mismatch")
         ),
         !:RevAcc = [Head | !.RevAcc],
         group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset,
@@ -1825,7 +1822,7 @@ group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
 recursively_group_interior_nodes(CurLevel, CurNodes, List) :-
     (
         CurNodes = [],
-        unexpected($module, $pred, "empty CurNodes")
+        unexpected($pred, "empty CurNodes")
     ;
         CurNodes = [CurNodesHead | CurNodesTail],
         (
@@ -1871,7 +1868,7 @@ group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
     ( if ParentInitOffset = HeadParentInitOffset then
         trace [compile_time(flag("tree-bitset-checks"))] (
             expect(unify(ParentLimitOffset, HeadParentLimitOffset),
-                $module, $pred, "limit mismatch")
+                $pred, "limit mismatch")
         ),
         !:RevAcc = [Head | !.RevAcc],
         group_interior_nodes_in_range(Level,
@@ -2412,7 +2409,7 @@ union(SetA, SetB) = Set :-
             ( if ParentInitOffsetA = ParentInitOffsetB then
                 trace [compile_time(flag("tree-bitset-checks"))] (
                     expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                        $module, $pred, "limit mismatch")
+                        $pred, "limit mismatch")
                 ),
                 leaflist_union(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
@@ -2528,17 +2525,16 @@ interiorlist_union(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
         ;
             ComponentsA = leaf_list(_LeafListA),
             ComponentsB = interior_list(_LevelB, _InteriorListB),
-            unexpected($module, $pred, "inconsistent components")
+            unexpected($pred, "inconsistent components")
         ;
             ComponentsA = interior_list(_LevelA, _InteriorListA),
             ComponentsB = leaf_list(_LeafListB),
-            unexpected($module, $pred, "inconsistent components")
+            unexpected($pred, "inconsistent components")
         ;
             ComponentsA = interior_list(LevelA, InteriorListA),
             ComponentsB = interior_list(LevelB, InteriorListB),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(LevelA, LevelB), $module, $pred,
-                    "inconsistent levels")
+                expect(unify(LevelA, LevelB), $pred, "inconsistent levels")
             ),
             interiorlist_union(InteriorListA, InteriorListB, InteriorList),
             Components = interior_list(LevelA, InteriorList),
@@ -2622,7 +2618,7 @@ intersect(SetA, SetB) = Set :-
             ( if ParentInitOffsetA = ParentInitOffsetB then
                 trace [compile_time(flag("tree-bitset-checks"))] (
                     expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                        $module, $pred, "limit mismatch")
+                        $pred, "limit mismatch")
                 ),
                 leaflist_intersect(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
@@ -2717,10 +2713,10 @@ descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
             trace [compile_time(flag("tree-bitset-checks"))] (
                 expect(
                     unify(InteriorNodeA ^ init_offset, HeadB ^ init_offset),
-                    $module, $pred, "inconsistent inits"),
+                    $pred, "inconsistent inits"),
                 expect(
                     unify(InteriorNodeA ^ limit_offset, HeadB ^ limit_offset),
-                    $module, $pred, "inconsistent limits")
+                    $pred, "inconsistent limits")
             ),
             ComponentsA = InteriorNodeA ^ components,
             ComponentsB = HeadB ^ components,
@@ -2732,11 +2728,11 @@ descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
             ;
                 ComponentsA = leaf_list(_),
                 ComponentsB = interior_list(_, _),
-                unexpected($module, $pred, "inconsistent levels")
+                unexpected($pred, "inconsistent levels")
             ;
                 ComponentsA = interior_list(_, _),
                 ComponentsB = leaf_list(_),
-                unexpected($module, $pred, "inconsistent levels")
+                unexpected($pred, "inconsistent levels")
             ;
                 ComponentsA = interior_list(_SubLevelA, InteriorNodesA),
                 ComponentsB = interior_list(_SubLevelB, InteriorNodesB),
@@ -2746,12 +2742,12 @@ descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
             )
         else
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(LevelA < LevelB, $module, $pred, "LevelA > LevelB")
+                expect(LevelA < LevelB, $pred, "LevelA > LevelB")
             ),
             ComponentsB = HeadB ^ components,
             (
                 ComponentsB = leaf_list(_),
-                unexpected($module, $pred, "bad ComponentsB")
+                unexpected($pred, "bad ComponentsB")
             ;
                 ComponentsB = interior_list(SubLevelB, InteriorNodesB),
                 descend_and_intersect(LevelA, InteriorNodeA,
@@ -2811,17 +2807,16 @@ interiorlist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         ;
             ComponentsA = interior_list(_LevelA, _InteriorNodesA),
             ComponentsB = leaf_list(_LeafNodesB),
-            unexpected($module, $pred, "inconsistent components")
+            unexpected($pred, "inconsistent components")
         ;
             ComponentsB = interior_list(_LevelB, _InteriorNodesB),
             ComponentsA = leaf_list(_LeafNodesA),
-            unexpected($module, $pred, "inconsistent components")
+            unexpected($pred, "inconsistent components")
         ;
             ComponentsA = interior_list(LevelA, InteriorNodesA),
             ComponentsB = interior_list(LevelB, InteriorNodesB),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(LevelA, LevelB), $module, $pred,
-                    "inconsistent levels")
+                expect(unify(LevelA, LevelB), $pred, "inconsistent levels")
             ),
             interiorlist_intersect(InteriorNodesA, InteriorNodesB,
                 InteriorNodes),
@@ -2910,7 +2905,7 @@ difference(SetA, SetB) = Set :-
             ( if ParentInitOffsetA = ParentInitOffsetB then
                 trace [compile_time(flag("tree-bitset-checks"))] (
                     expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                        $module, $pred, "limit mismatch")
+                        $pred, "limit mismatch")
                 ),
                 leaflist_difference(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
@@ -3010,7 +3005,7 @@ find_leaf_nodes_at_parent_offset(LevelB, [HeadB | TailB],
             ( if HeadB ^ init_offset >= ParentLimitOffsetA then
                 true
             else
-                unexpected($module, $pred, "screwed-up offsets")
+                unexpected($pred, "screwed-up offsets")
             )
         ),
         LeafNodesB = []
@@ -3020,15 +3015,15 @@ find_leaf_nodes_at_parent_offset(LevelB, [HeadB | TailB],
         (
             HeadNodeListB = leaf_list(HeadLeafNodesB),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(LevelB, 1), $module, $pred, "LevelB != 1")
+                expect(unify(LevelB, 1), $pred, "LevelB != 1")
             ),
             LeafNodesB = HeadLeafNodesB
         ;
             HeadNodeListB = interior_list(HeadSubLevelB, HeadInteriorNodesB),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect_not(unify(LevelB, 1), $module, $pred, "LevelB = 1"),
-                expect(unify(HeadSubLevelB, LevelB - 1),
-                    $module, $pred, "HeadSubLevelB != LevelB - 1")
+                expect_not(unify(LevelB, 1), $pred, "LevelB = 1"),
+                expect(unify(HeadSubLevelB, LevelB - 1), $pred,
+                    "HeadSubLevelB != LevelB - 1")
             ),
             find_leaf_nodes_at_parent_offset(HeadSubLevelB, HeadInteriorNodesB,
                 ParentInitOffsetA, ParentLimitOffsetA, LeafNodesB)
@@ -3059,7 +3054,7 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
                 ( if HeadB ^ init_offset >= ParentLimitOffsetA then
                     true
                 else
-                    unexpected($module, $pred, "screwed-up offsets")
+                    unexpected($pred, "screwed-up offsets")
                 )
             ),
             NodesB = []
@@ -3068,14 +3063,14 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
             HeadNodeListB = HeadB ^ components,
             (
                 HeadNodeListB = leaf_list(_),
-                unexpected($module, $pred, "HeadNodeListB is a leaf list")
+                unexpected($pred, "HeadNodeListB is a leaf list")
             ;
                 HeadNodeListB = interior_list(HeadSubLevelB,
                     HeadInteriorNodesB),
                 trace [compile_time(flag("tree-bitset-checks"))] (
-                    expect_not(unify(LevelB, 1), $module, $pred, "LevelB = 1"),
-                    expect(unify(HeadSubLevelB, LevelB - 1),
-                        $module, $pred, "HeadSubLevelB != LevelB - 1")
+                    expect_not(unify(LevelB, 1), $pred, "LevelB = 1"),
+                    expect(unify(HeadSubLevelB, LevelB - 1), $pred,
+                        "HeadSubLevelB != LevelB - 1")
                 ),
                 find_interior_nodes_at_parent_offset(HeadSubLevelB,
                     HeadInteriorNodesB,
@@ -3089,7 +3084,7 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
         )
     else
         trace [compile_time(flag("tree-bitset-checks"))] (
-            expect(unify(ParentLevelA, LevelB), $module, $pred,
+            expect(unify(ParentLevelA, LevelB), $pred,
                 "ParentLevelA != LevelB")
         ),
         ( if HeadB ^ init_offset > ParentInitOffsetA then
@@ -3105,7 +3100,7 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
                 ( if HeadB ^ init_offset >= ParentLimitOffsetA then
                     true
                 else
-                    unexpected($module, $pred, "screwed-up offsets")
+                    unexpected($pred, "screwed-up offsets")
                 )
             ),
             NodesB = []
@@ -3113,7 +3108,7 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
             ComponentsB = HeadB ^ components,
             (
                 ComponentsB = leaf_list(_),
-                unexpected($module, $pred, "leaf_list")
+                unexpected($pred, "leaf_list")
             ;
                 ComponentsB = interior_list(_, NodesB)
             )
@@ -3141,8 +3136,8 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
                 descend_and_difference_one(LevelA, TailA,
                     LevelB, InteriorNodeB, LevelTail, ListTail),
                 trace [compile_time(flag("tree-bitset-checks"))] (
-                    expect(unify(LevelTail, LevelA),
-                        $module, $pred, "LevelTail != LevelA")
+                    expect(unify(LevelTail, LevelA), $pred,
+                        "LevelTail != LevelA")
                 ),
                 Level = LevelA,
                 List = [HeadA | ListTail]
@@ -3155,7 +3150,7 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
                     then
                         true
                     else
-                        unexpected($module, $pred, "weird region relationship")
+                        unexpected($pred, "weird region relationship")
                     )
                 ),
                 (
@@ -3163,8 +3158,7 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
                     % LevelB is at least 1, LevelA is greater than LevelB,
                     % so stepping one level down from levelA should get us
                     % to at least level 1; level 0 cannot happen.
-                    unexpected($module, $pred,
-                        "HeadA ^ components is leaf_list")
+                    unexpected($pred, "HeadA ^ components is leaf_list")
                 ;
                     HeadA ^ components = interior_list(HeadASubLevel,
                         HeadASubNodes)
@@ -3185,8 +3179,8 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
                     % all its nodes should have been gathered under a single
                     % LevelA interior node, RaisedHead.
                     trace [compile_time(flag("tree-bitset-checks"))] (
-                        expect(unify(RaisedTail, []),
-                            $module, $pred, "RaisedTail != []")
+                        expect(unify(RaisedTail, []), $pred,
+                            "RaisedTail != []")
                     ),
                     Level = LevelA,
                     List = [RaisedHead | TailA]
@@ -3203,7 +3197,7 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
         interiorlist_difference(InteriorNodesA, [InteriorNodeB], List),
         Level = LevelA
     else
-        unexpected($module, $pred, "LevelA < LevelB")
+        unexpected($pred, "LevelA < LevelB")
     ).
 
 :- pred descend_and_difference_list(int::in, list(interior_node)::in,
@@ -3225,15 +3219,14 @@ descend_and_difference_list(LevelA, InteriorNodesA,
                 trace [compile_time(flag("tree-bitset-checks"))] (
                     list.det_last([InteriorNodeB | InteriorNodesB], LastB),
                     expect((HeadA ^ limit_offset =< LastB ^ init_offset),
-                        $module, $pred,
-                        "HeadA ^ limit_offset > LastB ^ init_offset")
+                        $pred, "HeadA ^ limit_offset > LastB ^ init_offset")
                 ),
                 descend_and_difference_list(LevelA, TailA,
                     LevelB, InteriorNodeB, InteriorNodesB,
                     LevelTail, ListTail),
                 trace [compile_time(flag("tree-bitset-checks"))] (
-                    expect(unify(LevelTail, LevelA),
-                        $module, $pred, "LevelTail != LevelA")
+                    expect(unify(LevelTail, LevelA), $pred,
+                        "LevelTail != LevelA")
                 ),
                 Level = LevelA,
                 List = [HeadA | ListTail]
@@ -3246,7 +3239,7 @@ descend_and_difference_list(LevelA, InteriorNodesA,
                     then
                         true
                     else
-                        unexpected($module, $pred, "weird region relationship")
+                        unexpected($pred, "weird region relationship")
                     )
                 ),
                 (
@@ -3254,8 +3247,7 @@ descend_and_difference_list(LevelA, InteriorNodesA,
                     % LevelB is at least 1, LevelA is greater than LevelB,
                     % so stepping one level down from levelA should get us
                     % to at least level 1; level 0 cannot happen.
-                    unexpected($module, $pred,
-                        "HeadA ^ components is leaf_list")
+                    unexpected($pred, "HeadA ^ components is leaf_list")
                 ;
                     HeadA ^ components = interior_list(HeadASubLevel,
                         HeadASubNodes)
@@ -3276,8 +3268,8 @@ descend_and_difference_list(LevelA, InteriorNodesA,
                     % all its nodes should have been gathered under a single
                     % LevelA interior node, RaisedHead.
                     trace [compile_time(flag("tree-bitset-checks"))] (
-                        expect(unify(RaisedTail, []),
-                            $module, $pred, "RaisedTail != []")
+                        expect(unify(RaisedTail, []), $pred,
+                            "RaisedTail != []")
                     ),
                     Level = LevelA,
                     List = [RaisedHead | TailA]
@@ -3295,7 +3287,7 @@ descend_and_difference_list(LevelA, InteriorNodesA,
             [InteriorNodeB | InteriorNodesB], List),
         Level = LevelA
     else
-        unexpected($module, $pred, "LevelA < LevelB")
+        unexpected($pred, "LevelA < LevelB")
     ).
 
 :- pred interiornode_difference(
@@ -3306,8 +3298,7 @@ descend_and_difference_list(LevelA, InteriorNodesA,
 interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
         Level, List) :-
     trace [compile_time(flag("tree-bitset-checks"))] (
-        expect(unify(LevelA, LevelB),
-            $module, $pred, "level mismatch")
+        expect(unify(LevelA, LevelB), $pred, "level mismatch")
     ),
     range_of_parent_node(HeadA ^ init_offset, LevelA,
         ParentInitOffsetA, ParentLimitOffsetA),
@@ -3315,8 +3306,8 @@ interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
         ParentInitOffsetB, ParentLimitOffsetB),
     ( if ParentInitOffsetA = ParentInitOffsetB then
         trace [compile_time(flag("tree-bitset-checks"))] (
-            expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-                $module, $pred, "limit mismatch")
+            expect(unify(ParentLimitOffsetA, ParentLimitOffsetB), $pred,
+                "limit mismatch")
         ),
         interiorlist_difference([HeadA | TailA], [HeadB | TailB], List),
         Level = LevelA
@@ -3330,8 +3321,8 @@ interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
             interiornode_difference(LevelA, HeadTailA, TailTailA,
                 LevelA, HeadB, TailB, Level, Tail),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(LevelA, Level),
-                    $module, $pred, "final level mismatch")
+                expect(unify(LevelA, Level), $pred,
+                    "final level mismatch")
             ),
             List = [HeadA | Tail]
         )
@@ -3394,17 +3385,16 @@ interiorlist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         ;
             ComponentsA = interior_list(_LevelA, _InteriorNodesA),
             ComponentsB = leaf_list(_LeafNodesB),
-            unexpected($module, $pred, "inconsistent components")
+            unexpected($pred, "inconsistent components")
         ;
             ComponentsB = interior_list(_LevelB, _InteriorNodesB),
             ComponentsA = leaf_list(_LeafNodesA),
-            unexpected($module, $pred, "inconsistent components")
+            unexpected($pred, "inconsistent components")
         ;
             ComponentsA = interior_list(LevelA, InteriorNodesA),
             ComponentsB = interior_list(LevelB, InteriorNodesB),
             trace [compile_time(flag("tree-bitset-checks"))] (
-                expect(unify(LevelA, LevelB), $module, $pred,
-                    "inconsistent levels")
+                expect(unify(LevelA, LevelB), $pred, "inconsistent levels")
             ),
             interiorlist_difference(InteriorNodesA, InteriorNodesB,
                 InteriorNodes),
@@ -3585,7 +3575,7 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
                 then
                     true
                 else
-                    unexpected($module, $pred, "strange offsets")
+                    unexpected($pred, "strange offsets")
                 ),
                 divide_by_set_descend_divide_by(DBLevel, DBNodes,
                     0, InitOffset, LimitOffset, List, InList0, OutList0),
@@ -3659,7 +3649,7 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
 
 divide_by_set_descend_divide_by(DBLevel, DBNodes,
         Level, InitOffset, LimitOffset, List, InList, OutList) :-
-    expect((DBLevel > Level), $module, $pred, "not DBLevel > Level"),
+    expect((DBLevel > Level), $pred, "not DBLevel > Level"),
     (
         DBNodes = [],
         % Every node in the original DivideByList is before List.
@@ -3684,8 +3674,8 @@ divide_by_set_descend_divide_by(DBLevel, DBNodes,
             % dividing List by the original DivideBySet.
             (
                 DBHeadComponents = leaf_list(DBHeadLeafNodes),
-                expect(unify(DBLevel, 1), $pred, $module, "DBLevel != 1"),
-                expect(unify(Level, 0), $pred, $module, "Level != 0"),
+                expect(unify(DBLevel, 1), $pred, "DBLevel != 1"),
+                expect(unify(Level, 0), $pred, "Level != 0"),
                 % The other nodes in the original DivideByList are all
                 % outside the range of List.
                 (
@@ -3698,11 +3688,11 @@ divide_by_set_descend_divide_by(DBLevel, DBNodes,
                     List = interior_list(_, _),
                     % divide_by_set_descend_divide_by should have stopped
                     % recursing when it got to Level.
-                    unexpected($module, $pred, "List is not leaf_list")
+                    unexpected($pred, "List is not leaf_list")
                 )
             ;
                 DBHeadComponents = interior_list(DBSubLevel, DBSubNodes),
-                expect(unify(DBLevel, DBSubLevel + 1), $pred, $module,
+                expect(unify(DBLevel, DBSubLevel + 1), $pred,
                     "DBLevel != SubLevel + 1"),
                 ( if DBSubLevel > Level then
                     divide_by_set_descend_divide_by(DBSubLevel, DBSubNodes,
@@ -3713,7 +3703,7 @@ divide_by_set_descend_divide_by(DBLevel, DBNodes,
                         % Since DBHeadComponents is an interior list,
                         % and List is at the same level, it should be
                         % an interior list too.
-                        unexpected($module, $pred, "List is leaf_list")
+                        unexpected($pred, "List is leaf_list")
                     ;
                         List = interior_list(_, Nodes),
                         interiorlist_divide_by_set(Level,
@@ -3734,7 +3724,7 @@ divide_by_set_descend_divide_by(DBLevel, DBNodes,
                         )
                     )
                 else
-                    unexpected($module, $pred, "DBSubLevel < Level")
+                    unexpected($pred, "DBSubLevel < Level")
                 )
             )
         )
@@ -3754,7 +3744,7 @@ interiorlist_divide_by_set(Level, DBNodes @ [DBNodesHead | DBNodesTail],
     % they cover the same region only if their initial and limit offsets
     % both match.
     ( if DBInitOffset = InitOffset then
-        expect(unify(DBLimitOffset, LimitOffset), $module, $pred,
+        expect(unify(DBLimitOffset, LimitOffset), $pred,
             "DBLimitOffset != LimitOffset"),
         interiorlist_divide_by_set(Level, DBNodesTail, NodesTail,
             InNodesTail, OutNodesTail),
@@ -3784,17 +3774,17 @@ interiorlist_divide_by_set(Level, DBNodes @ [DBNodesHead | DBNodesTail],
         ;
             DBComponents = interior_list(_, _),
             Components = leaf_list(_),
-            unexpected($module, $pred, "DB interior vs leaf")
+            unexpected($pred, "DB interior vs leaf")
         ;
             DBComponents = leaf_list(_),
             Components = interior_list(_, _),
-            unexpected($module, $pred, "DB leaf vs interior")
+            unexpected($pred, "DB leaf vs interior")
         ;
             DBComponents = interior_list(DBSubLevel, DBSubNodes),
             Components = interior_list(SubLevel, SubNodes),
-            expect(unify(DBSubLevel, SubLevel), $module, $pred,
+            expect(unify(DBSubLevel, SubLevel), $pred,
                 "DBSubLevel != SubLevel"),
-            expect(unify(SubLevel, Level - 1), $module, $pred,
+            expect(unify(SubLevel, Level - 1), $pred,
                 "DBSubLevel != SubLevel"),
             interiorlist_divide_by_set(SubLevel, DBSubNodes, SubNodes,
                 SubInNodes, SubOutNodes),
@@ -3901,7 +3891,7 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %                 DivideByParentInitOffset, DivideByParentLimitOffset),
 %             ( if DivideByParentInitOffset = ParentInitOffset then
 %                 expect(unify(DivideByParentLimitOffset, ParentLimitOffset),
-%                     $module, $pred, "limit mismatch"),
+%                     $pred, "limit mismatch"),
 %                 leaflist_divide_by_set(DivideByLeafNodes, LeafNodes,
 %                     InLeafNodes, OutLeafNodes),
 %                 InList = leaf_list(InLeafNodes),
@@ -3970,13 +3960,13 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %             (
 %                 ComponentsB = leaf_list(_),
 %                 expect(unify(LevelA, 1),
-%                     $module, $pred, "bad leaf level"),
+%                     $pred, "bad leaf level"),
 %                 interiorlist_difference([HeadA | TailA], [ChosenB], List),
 %                 Level = LevelA
 %             ;
 %                 ComponentsB = interior_list(SubLevelB, SubNodesB),
 %                 expect(unify(LevelB, SubLevelB + 1),
-%                     $module, $pred, "bad levels"),
+%                     $pred, "bad levels"),
 %                 head_and_tail(SubNodesB, SubHeadB, SubTailB),
 %                 interiornode_difference(LevelA, HeadA, TailA,
 %                     SubLevelB, SubHeadB, SubTailB, Level, List)
@@ -3994,7 +3984,7 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %             ParentInitOffsetB, ParentLimitOffsetB),
 %         ( if ParentInitOffsetA = ParentInitOffsetB then
 %             expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
-%                 $module, $pred, "limit mismatch"),
+%                 $pred, "limit mismatch"),
 %             interiorlist_difference([HeadA | TailA],
 %                 [RaisedHeadB | RaisedTailB], List),
 %             Level = LevelA

@@ -3276,7 +3276,7 @@ verify_sorted(A, Lo, Hi) :-
     ( if Lo >= Hi then
         true
     else if compare((<), A ^ elem(Lo + 1), A ^ elem(Lo)) then
-        unexpected($module, $pred, "array range not sorted")
+        unexpected($pred, "array range not sorted")
     else
         verify_sorted(A, Lo + 1, Hi)
     ).
@@ -3290,7 +3290,7 @@ verify_identical(A, B, Lo, Hi) :-
     else if A ^ elem(Lo) = B ^ elem(Lo) then
         verify_identical(A, B, Lo + 1, Hi)
     else
-        unexpected($module, $pred, "array ranges not identical")
+        unexpected($pred, "array ranges not identical")
     ).
 
 %---------------------------------------------------------------------------%

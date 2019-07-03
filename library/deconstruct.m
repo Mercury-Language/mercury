@@ -466,7 +466,7 @@ arg(Term, NonCanon, Index, Argument) :-
         univ_arg_can(Term, Index, Univ)
     ;
         NonCanon = include_details_cc,
-        unexpected($module, $pred, "called with include_details_cc")
+        unexpected($pred, "called with include_details_cc")
     ),
     Argument = univ_value(Univ).
 
@@ -487,7 +487,7 @@ named_arg(Term, NonCanon, Name, Argument) :-
         univ_named_arg_can(Term, Name, Univ)
     ;
         NonCanon = include_details_cc,
-        unexpected($module, $pred, "called with include_details_cc")
+        unexpected($pred, "called with include_details_cc")
     ),
     Argument = univ_value(Univ).
 
@@ -513,20 +513,20 @@ det_arg(Term, NonCanon, Index, Argument) :-
         ( if univ_arg_dna(Term, Index, Univ0) then
             Univ = Univ0
         else
-            unexpected($module, $pred, "argument number out of range")
+            unexpected($pred, "argument number out of range")
         )
     ;
         NonCanon = canonicalize,
         ( if univ_arg_can(Term, Index, Univ0) then
             Univ = Univ0
         else
-            unexpected($module, $pred, "argument number out of range")
+            unexpected($pred, "argument number out of range")
         )
     ;
         NonCanon = include_details_cc,
         univ_arg_idcc(Term, Index, dummy_univ, Univ0, Success),
         ( if Success = 0 then
-            unexpected($module, $pred, "argument number out of range")
+            unexpected($pred, "argument number out of range")
         else
             Univ = Univ0
         )
@@ -545,7 +545,7 @@ det_named_arg(Term, NonCanon, Name, Argument) :-
             NonCanon = include_details_cc,
             univ_named_arg_idcc(Term, Name, dummy_univ, Univ0, Success),
             ( if Success = 0 then
-                unexpected($module, $pred, "no argument with that name")
+                unexpected($pred, "no argument with that name")
             else
                 Univ = Univ0
             )
@@ -553,7 +553,7 @@ det_named_arg(Term, NonCanon, Name, Argument) :-
     then
         Argument = univ_value(Univ)
     else
-        unexpected($module, $pred, "no argument with that name")
+        unexpected($pred, "no argument with that name")
     ).
 
 deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
@@ -615,7 +615,7 @@ limited_deconstruct(Term, NonCanon, MaxArity, Functor, Arity, Arguments) :-
         limited_deconstruct_can(Term, MaxArity, Functor, Arity, Arguments)
     ;
         NonCanon = include_details_cc,
-        unexpected($module, $pred, "called with include_details_cc")
+        unexpected($pred, "called with include_details_cc")
     ).
 
 limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-

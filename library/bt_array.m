@@ -251,7 +251,7 @@ lookup(bt_array(Low, High, RaList), Index, Item) :-
     ( if ra_list_lookup(Pos, RaList, Item0) then
         Item = Item0
     else
-        unexpected($module, $pred, "array subscript out of bounds")
+        unexpected($pred, "array subscript out of bounds")
     ).
 
 semidet_lookup(bt_array(Low, High, RaList), Index, Item) :-
@@ -269,7 +269,7 @@ set(BtArray0, Index, Item, BtArray) :-
     ( if semidet_set(BtArray0, Index, Item, BtArray1) then
         BtArray = BtArray1
     else
-        unexpected($module, $pred, "index out of bounds")
+        unexpected($pred, "index out of bounds")
     ).
 
 semidet_set(bt_array(Low, High, RaListIn), Index, Item,
@@ -293,8 +293,7 @@ resize(Array0, L, H, Item, Array) :-
             ( if ra_list_drop(SizeDiff, RaList0, RaList1) then
                 RaList = RaList1
             else
-                unexpected($module, $pred,
-                    "can't resize to a less-than-empty array")
+                unexpected($pred, "can't resize to a less-than-empty array")
             ),
             Array = bt_array(L, H, RaList)
         else if H > H0 then
@@ -318,7 +317,7 @@ shrink(BT1A, N1, N2) = BTA2 :-
 shrink(Array0, L, H, Array) :-
     Array0 = bt_array(L0, H0, RaList0),
     ( if ( L < L0 ; H > H0 ) then
-        unexpected($module, $pred, "new bounds are larger than old ones")
+        unexpected($pred, "new bounds are larger than old ones")
     else if L = L0 then
         % Optimise the common case where the lower bounds are the same.
 
@@ -326,15 +325,14 @@ shrink(Array0, L, H, Array) :-
         ( if ra_list_drop(SizeDiff, RaList0, RaList1) then
             RaList = RaList1
         else
-            unexpected($module, $pred,
-                "can't resize to a less-than-empty array")
+            unexpected($pred, "can't resize to a less-than-empty array")
         ),
         Array = bt_array(L, H, RaList)
     else
         ( if ra_list_head(RaList0, Item0) then
             Item = Item0
         else
-            unexpected($module, $pred, "can't shrink an empty array")
+            unexpected($pred, "can't shrink an empty array")
         ),
         int.max(L, L0, L1),
         int.min(H, H0, H1),

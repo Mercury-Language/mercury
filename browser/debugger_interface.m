@@ -435,7 +435,7 @@ get_var_number(DebuggerRequest) = VarNumber :-
     ( if DebuggerRequest = current_nth_var(Var) then
         Var = VarNumber
     else
-        unexpected($module, $pred, "not a current_nth_var request")
+        unexpected($pred, "not a current_nth_var request")
     ).
 
 %---------------------------------------------------------------------------%
@@ -483,7 +483,7 @@ found_match_user(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
         match(MatchArgs, Args),
         match(MatchPath, Path)
     else
-        unexpected($module, $pred, "forward_move expected")
+        unexpected($pred, "forward_move expected")
     ).
 
     % match(MatchPattern, Value) is true iff Value matches the specified
@@ -546,7 +546,7 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
         match(MatchArgs, Args),
         match(MatchPath, Path)
     else
-        unexpected($module, $pred, "forward_move expected")
+        unexpected($pred, "forward_move expected")
     ).
 
 %---------------------------------------------------------------------------%
@@ -596,7 +596,7 @@ get_list_modules_to_import(DebuggerRequest, ListLength, ModulesList) :-
     else if DebuggerRequest = io_query(List) then
         ModulesList = List
     else
-        unexpected($module, $pred, "not a query request")
+        unexpected($pred, "not a query request")
     ),
     length(ModulesList, ListLength).
 
@@ -610,7 +610,7 @@ get_mmc_options(DebuggerRequest, Options) :-
     ( if DebuggerRequest = mmc_options(OptionsPrim) then
         Options = OptionsPrim
     else
-        unexpected($module, $pred, "not a mmc_options request")
+        unexpected($pred, "not a mmc_options request")
     ).
 
 %---------------------------------------------------------------------------%
@@ -627,7 +627,7 @@ get_object_file_name(DebuggerRequest, ObjectFileName) :-
     ( if DebuggerRequest = link_collect(ObjectFileNamePrime) then
         ObjectFileName = ObjectFileNamePrime
     else
-        unexpected($module, $pred, "not a link_collect request")
+        unexpected($pred, "not a link_collect request")
     ).
 
 %---------------------------------------------------------------------------%
@@ -651,7 +651,7 @@ get_variable_name(DebuggerRequest, Options) :-
     ( if DebuggerRequest = browse(OptionsPrime) then
         Options = OptionsPrime
     else
-        unexpected($module, $pred, "not a browse request")
+        unexpected($pred, "not a browse request")
     ).
 
 %---------------------------------------------------------------------------%

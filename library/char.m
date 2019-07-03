@@ -520,7 +520,7 @@ det_from_int(Int, Char) :-
     ( if from_int(Int, CharPrime) then
         Char = CharPrime
     else
-        unexpected($module, $pred, "char.det_from_int: conversion failed")
+        unexpected($pred, "conversion failed")
     ).
 
 %---------------------------------------------------------------------------%

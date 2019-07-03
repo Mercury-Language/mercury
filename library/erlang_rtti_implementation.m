@@ -232,7 +232,7 @@ generic_unify(X, Y) :-
     else if
         ( TypeCtorRep = etcr_pred ; TypeCtorRep = etcr_func )
     then
-        unexpected($module, $pred, "higher order unification not possible")
+        unexpected($pred, "higher order unification not possible")
     else
         Arity = TypeCtorInfo ^ type_ctor_arity,
         UnifyPred = TypeCtorInfo ^ type_ctor_unify_pred,
@@ -268,7 +268,7 @@ generic_unify(X, Y) :-
                 TypeInfo ^ type_info_index(5),
                 X, Y)
         else
-            unexpected($module, $pred, "type arity > 5 not supported")
+            unexpected($pred, "type arity > 5 not supported")
         )
     ).
 
@@ -309,7 +309,7 @@ generic_compare(Res, X, Y) :-
     else if
         ( TypeCtorRep = etcr_pred ; TypeCtorRep = etcr_func )
     then
-        unexpected($module, $pred, "higher order comparison not possible")
+        unexpected($pred, "higher order comparison not possible")
     else
         Arity = TypeCtorInfo ^ type_ctor_arity,
         ComparePred = TypeCtorInfo ^ type_ctor_compare_pred,
@@ -345,7 +345,7 @@ generic_compare(Res, X, Y) :-
                 TypeInfo ^ type_info_index(5),
                 X, Y)
         else
-            unexpected($module, $pred, "type arity > 5 not supported")
+            unexpected($pred, "type arity > 5 not supported")
         )
     ).
 
@@ -805,8 +805,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             has_type(Elem, ElemType),
             same_array_elem_type(Array, Elem)
         else
-            unexpected($module, $pred,
-                "An array which doesn't have a type_ctor arg")
+            unexpected($pred, "An array which doesn't have a type_ctor arg")
         ),
 
         det_dynamic_cast(Term, Array),
@@ -925,7 +924,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         % There is no way to create values of type `void', so this
         % should never happen.
         TypeCtorRep = etcr_void,
-        unexpected($module, $pred, "cannot deconstruct void types")
+        unexpected($pred, "cannot deconstruct void types")
     ;
         TypeCtorRep = etcr_stable_c_pointer,
         det_dynamic_cast(Term, CPtr),
@@ -964,8 +963,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ),
         (
             NonCanon = do_not_allow,
-            unexpected($module, $pred,
-                "attempt to deconstruct noncanonical term")
+            unexpected($pred, "attempt to deconstruct noncanonical term")
         ;
             NonCanon = canonicalize,
             Functor = Name,
@@ -994,8 +992,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
         ),
-        unexpected($module, $pred,
-            "should never occur: " ++ string(TypeCtorRep))
+        unexpected($pred, "should never occur: " ++ string(TypeCtorRep))
     ).
 
     % matching_du_functor(FunctorReps, Term, FunctorRep)
@@ -1007,7 +1004,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     erlang_du_functor::out) is det.
 
 matching_du_functor([], _, _) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 matching_du_functor([F | Fs], T, Functor) :-
     ( if matches_du_functor(T, F) then
         Functor = F
@@ -1294,7 +1291,7 @@ num_functors(TypeInfo, MaybeNumFunctors) :-
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
         ),
-        unexpected($module, $pred, "type_ctor_rep not handled")
+        unexpected($pred, "type_ctor_rep not handled")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1420,7 +1417,7 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
         ),
-        unexpected($module, $pred, "type_ctor_rep not handled")
+        unexpected($pred, "type_ctor_rep not handled")
     ).
 
 get_functor_ordinal(TypeDesc, FunctorNum, Ordinal) :-
@@ -1488,7 +1485,7 @@ matching_du_ordinal(Fs, Ordinal, Functor) :-
     ( if Functor ^ edu_ordinal = Ordinal then
         true
     else
-        unexpected($module, $pred, "sanity check failed")
+        unexpected($pred, "sanity check failed")
     ).
 
 :- pred matching_du_functor_number(list(erlang_du_functor)::in,
@@ -1516,7 +1513,7 @@ construct(TypeDesc, Index, Args) = Term :-
             SubtypeInfo}),
         (
             SubtypeInfo = functor_subtype_exists,
-            unexpected($module, $pred,
+            unexpected($pred,
                 "unable to construct term with subtype constraints")
         ;
             SubtypeInfo = functor_subtype_none,
@@ -1578,7 +1575,7 @@ construct(TypeDesc, Index, Args) = Term :-
         ; TypeCtorRep = etcr_subgoal
         ; TypeCtorRep = etcr_ticket
         ),
-        unexpected($module, $pred,
+        unexpected($pred,
             "unable to construct something of type " ++ string(TypeCtorRep))
     ).
 
@@ -1680,14 +1677,13 @@ construct_list_cons_univ(_, _, _) = _ :-
 
 :- pragma foreign_code(erlang, "
     % Get the value out of the univ.
-    % Note we assume that we've checked that the value is consistent
+    % Note we assume that we have checked that the value is consistent
     % with another type_info elsewhere,
     % for example in check_arg_types and check_tuple_arg_types.
     %
 univ_to_value(Univ) ->
     {univ_cons, _UnivTypeInfo, Value} = Univ,
     Value.
-
 ").
 
 %---------------------------------------------------------------------------%
@@ -2359,7 +2355,7 @@ concrete_type_info(Info, MaybePTI) = TypeInfo :-
                 ParentTypeInfo, MaybeFunctorAndTerm, PseudoThunk)
         ;
             Info = no,
-            unexpected($module, $pred, "missing parent type_info")
+            unexpected($pred, "missing parent type_info")
         )
     ;
         MaybePTI = plain(PlainThunk),
@@ -2427,7 +2423,7 @@ exist_type_info(TypeInfo, Functor, Term, N) = ArgTypeInfo :-
         )
     ;
         MaybeExist = no,
-        unexpected($module, $pred, "no exist info")
+        unexpected($pred, "no exist info")
     ).
 
 :- func eval_type_info_thunk(ti_info(T), type_info_thunk) = type_info.
@@ -2440,14 +2436,14 @@ eval_type_info_thunk(I, Thunk) = TypeInfo :-
 
 eval_type_info(I, TI) = TypeInfo :-
     TypeCtorInfo = TI ^ type_ctor_info_evaled,
-    ( type_ctor_is_variable_arity(TypeCtorInfo) ->
+    ( if type_ctor_is_variable_arity(TypeCtorInfo) then
         Arity = TI ^ var_arity_type_info_arity,
         ArgTypeInfos = list.map(var_arity_arg_type_info(I, TI), 1 .. Arity),
         TypeInfo = create_var_arity_type_info(TypeCtorInfo, Arity,
             ArgTypeInfos)
-    ; TypeCtorInfo ^ type_ctor_arity = 0 ->
+    else if TypeCtorInfo ^ type_ctor_arity = 0 then
         TypeInfo = TI
-    ;
+    else
         Arity = TypeCtorInfo ^ type_ctor_arity,
         ArgTypeInfos = list.map(arg_type_info(I, TI), 1 .. Arity),
         TypeInfo = create_type_info(TypeCtorInfo, ArgTypeInfos)

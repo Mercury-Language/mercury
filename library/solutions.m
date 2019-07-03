@@ -273,7 +273,7 @@ assert_num_solutions(_Pred::pred(out) is multi,
         List0::in, List::out(non_empty_list)) :-
     (
         List0 = [],
-        unexpected($module, $pred, "no solutions")
+        unexpected($pred, "no solutions")
     ;
         List0 = [_ | _],
         List = List0

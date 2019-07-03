@@ -52,7 +52,7 @@
 make_pipe_cmd(PipeName) = Cmd :-
     mkfifo_cmd(CmdName),
     ( if CmdName = "" then
-        unexpected($module, $pred, "do not know what command to use")
+        unexpected($pred, "do not know what command to use")
     else
         string.format("%s %s", [s(CmdName), s(PipeName)], Cmd)
     ).
@@ -104,33 +104,31 @@ server_name_2(ServerName, !IO) :-
                         then
                             ServerName = ServerNamePrime
                         else
-                            unexpected($module, $pred,
-                                "malformed server name")
+                            unexpected($pred, "malformed server name")
                         )
                     ;
                         TmpReadRes = error(_, _),
-                        unexpected($module, $pred,
-                            "cannot read server's name")
+                        unexpected($pred, "cannot read server's name")
                     ),
                     io.close_input(TmpStream, !IO)
                 ;
                     TmpRes = error(_),
-                    unexpected($module, $pred,
+                    unexpected($pred,
                         "cannot open file to find the server's name")
                 ),
                 io.remove_file(TmpFile, _, !IO)
             else
-                unexpected($module, $pred,
+                unexpected($pred,
                     "cannot execute cmd to find the server's name")
             )
         ;
             Res1 = error(_),
-            unexpected($module, $pred,
+            unexpected($pred,
                 "cannot execute cmd to find the server's name")
         )
     ;
         TmpFileResult = error(_),
-        unexpected($module, $pred, "Cannot create temporary file")
+        unexpected($pred, "Cannot create temporary file")
     ).
 
 :- pred maybe_server_port(maybe(string)::out, io::di, io::uo) is det.

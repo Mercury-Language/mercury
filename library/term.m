@@ -1364,9 +1364,9 @@ substitute_corresponding_in_terms(Vars, ReplacementTerms, Terms0, Terms) :-
 
 build_subst([], [], !Subst).
 build_subst([], [_ | _], !Subst) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 build_subst([_ | _], [], !Subst) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 build_subst([Var | Vars], [Term | Terms], !Subst) :-
     map.set(Var, Term, !Subst),
     build_subst(Vars, Terms, !Subst).
@@ -1438,7 +1438,7 @@ term_list_to_var_list(Terms) = Vars :-
     ( if term_list_to_var_list(Terms, VarsPrime) then
         Vars = VarsPrime
     else
-        unexpected($module, $pred, "not all vars")
+        unexpected($pred, "not all vars")
     ).
 
 term_list_to_var_list([], []).

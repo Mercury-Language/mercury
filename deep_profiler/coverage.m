@@ -164,7 +164,7 @@ get_coverage_after_det(Coverage, After) :-
 :- pred complete_coverage_error is erroneous.
 
 complete_coverage_error :-
-    unexpected($module, $pred, "Expected complete coverage information").
+    unexpected($pred, "Expected complete coverage information").
 
 %---------------------------------------------------------------------------%
 
@@ -173,7 +173,7 @@ coverage_point_arrays_to_list(StaticArray, DynamicArray, CoveragePoints) :-
     ( if array.bounds(DynamicArray, Min, Max) then
         true
     else
-        unexpected($module, $pred, "bounds do not match")
+        unexpected($pred, "bounds do not match")
     ),
     coverage_point_arrays_to_list_2(Min, Max, StaticArray, DynamicArray,
         [], CoveragePoints).
@@ -335,7 +335,7 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
                   "Coverage before call doesn't match calls port on call site"),
                 After0 = after_coverage(Exits)
             else
-                unexpected($module, $pred,
+                unexpected($pred,
                     "Couldn't look up call site for port counts GP: " ++
                     rev_goal_path_to_string(RevGoalPath))
             )
@@ -383,7 +383,7 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
         ( if check_coverage_complete(GoalCoverage, GoalExpr) then
             true
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 string.format("check_coverage_complete failed\n" ++
                     "\tCoverage: %s\n\tGoalPath: %s\n\tProc: %s\n",
                     [s(string(GoalCoverage)),
@@ -393,7 +393,7 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
         ( if check_coverage_regarding_detism(GoalCoverage, Detism) then
             true
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 string.format("check_coverage_regarding_detism failed: %s %s",
                     [s(string(GoalCoverage)), s(string(Detism))]))
         )
@@ -535,7 +535,7 @@ switch_annotate_coverage(Cases, Info, CanFail, Before, After, !Array) :-
             Result = yes
         ;
             Result = no,
-            unexpected($module, $pred,
+            unexpected($pred,
                 string.format(
                     "check_switch_coverage failed\n\t" ++
                     "CanFail: %s\n\tCases: %s\n\tBefore: %s, After: %s\n",
@@ -732,7 +732,7 @@ ite_annotate_coverage(Cond, Then, Else, Info, RevGoalPath, Before, After,
         then
             true
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 string.format(
                     "check_ite_coverage/4 failed\n" ++
                     "\tWhole: %s %s\n" ++

@@ -160,8 +160,7 @@ recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
             recursion_level_report(0, BaseCount, BaseProb, BaseCost, 0.0),
         ( if set.empty(Errors) then
             ( if Maximum < 0 then
-                unexpected($module, $pred,
-                    "negative number of recursive calls")
+                unexpected($pred, "negative number of recursive calls")
             else if Maximum = 0 then
                 Type = rt_not_recursive
             else if Maximum = 1 then
@@ -172,7 +171,7 @@ recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
                         round_to_int(RecCountF), RecProb, RecCost, 1.0)
                 else
                     string.format("maximum level %d not found", [i(1)], Msg),
-                    unexpected($module, $pred, Msg)
+                    unexpected($pred, Msg)
                 ),
                 AvgMaxDepth = TotalCalls / ParentCalls,
                 AvgRecCost = single_rec_average_recursion_cost(BaseCost,
@@ -192,7 +191,7 @@ recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
                         RecCountF*2.0)
                 else
                     string.format("maximum level %d not found", [i(1)], Msg),
-                    unexpected($module, $pred, Msg)
+                    unexpected($pred, Msg)
                 ),
                 Type = rt_divide_and_conquer(BaseLevel, RecLevel)
             else
@@ -309,7 +308,7 @@ goal_recursion_data(Info, RevGoalPath, GoalRep, !:RecursionData) :-
     ( if get_coverage_before(CoverageInfo, CallsPrime) then
         Calls = CallsPrime
     else
-        unexpected($module, $pred, "couldn't retrieve coverage information")
+        unexpected($pred, "couldn't retrieve coverage information")
     ),
     ( if Calls = 0 then
         !:RecursionData = no_recursion_data_dead_proc
@@ -466,7 +465,7 @@ success_probability_from_coverage(Coverage, SuccessProb) :-
             SuccessProb = probable(float(After) / float(Before))
         )
     else
-        unexpected($module, $pred, "expected complete coverage information")
+        unexpected($pred, "expected complete coverage information")
     ).
 
 :- pred ite_recursion_data(recursion_analysis_info::in,
@@ -528,7 +527,7 @@ switch_recursion_data(Info, RevGoalPath, CaseNum, [Case | Cases],
     ( if get_coverage_before(CoverageInfo, CallsPrime) then
         Calls = CallsPrime
     else
-        unexpected($module, $pred, "expected coverage information")
+        unexpected($pred, "expected coverage information")
     ),
     CaseProb = probable(float(Calls) / TotalCalls),
     recursion_data_and_probability(CaseProb, CaseRecursionData0,

@@ -1868,7 +1868,7 @@ encode_utf8(Char, CodeList0, CodeList) :-
     ( if char.to_utf8(Char, CharCodes) then
         CodeList = CharCodes ++ CodeList0
     else
-        unexpected($module, $pred, "char.to_utf8 failed")
+        unexpected($pred, "char.to_utf8 failed")
     ).
 
 %---------------------%
@@ -1886,7 +1886,7 @@ encode_utf16(Char, CodeList0, CodeList) :-
     ( if char.to_utf16(Char, CharCodes) then
         CodeList = CharCodes ++ CodeList0
     else
-        unexpected($module, $pred, "char.to_utf16 failed")
+        unexpected($pred, "char.to_utf16 failed")
     ).
 
 %---------------------%

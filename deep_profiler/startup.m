@@ -803,7 +803,7 @@ summarize_proc_dynamic_with_coverage(PDOwnArray, PDDescArray, PDCompTableArray,
         )
     ;
         MaybeDynamicCoverage = no,
-        unexpected($module, $pred, "no coverage point array in proc dynamic")
+        unexpected($pred, "no coverage point array in proc dynamic")
     ).
 
 %---------------------------------------------------------------------------%
@@ -897,7 +897,7 @@ summarize_proc_static_coverage(Index, PS, !CoverageArray) :-
         array.set(Index, Coverage, !CoverageArray)
     ;
         MaybeCoverage = no,
-        unexpected($module, $pred, "no coverage data in proc static")
+        unexpected($pred, "no coverage data in proc static")
     ).
 
 %---------------------------------------------------------------------------%

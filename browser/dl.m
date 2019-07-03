@@ -209,19 +209,19 @@ check_proc_spec_matches_result_type(_Result, Value, Proc0, Proc) :-
         ; TypeName \= "pred", TypeName \= "func"
         )
     then
-        unexpected($module, $pred,
+        unexpected($pred,
             "result type (`" ++ type_name(ResultType) ++ "')" ++
             " is not a higher-order type")
     else if
         IsPredOrFunc = predicate, TypeName \= "pred"
     then
-        unexpected($module, $pred,
+        unexpected($pred,
             "predicate/function mismatch: " ++
             "argument is a predicate, result type is a function")
     else if
         IsPredOrFunc = function, TypeName \= "func"
     then
-        unexpected($module, $pred,
+        unexpected($pred,
             "predicate/function mismatch: " ++
             "argument is a function, result type is a predicate")
     else if
@@ -232,7 +232,7 @@ check_proc_spec_matches_result_type(_Result, Value, Proc0, Proc) :-
         string.append_list(["arity mismatch: ",
             "argument has ", ProcArityString, " argument(s), ",
             "result type has ", TypeArityString, " arguments(s)"], Msg),
-        unexpected($module, $pred, Msg)
+        unexpected($pred, Msg)
     else
         Proc = Proc0
     ).
@@ -272,8 +272,7 @@ check_type_is_supported(_Result, Value, Proc0, Proc) :-
         ),
         type_ctor_module_name(ArgTypeCtor) = "builtin"
     then
-        sorry($module, $pred,
-            "procedure with argument type `float' or `char'")
+        sorry($pred, "procedure with argument type `float' or `char'")
     else if
         high_level_code,
         % The generic wrapper only works for procedures with up to 20
@@ -282,7 +281,7 @@ check_type_is_supported(_Result, Value, Proc0, Proc) :-
         % only support 18 other arguments.
         type_ctor_arity(type_ctor(type_of(Value))) > 18
     then
-        sorry($module, $pred, "procedure with more than 18 arguments")
+        sorry($pred, "procedure with more than 18 arguments")
     else
         Proc = Proc0
     ).

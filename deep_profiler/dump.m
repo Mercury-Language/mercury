@@ -192,8 +192,7 @@ det_string_to_dumpable_array(String, Array) :-
     ( if string_to_dumpable_array(String, ArrayP) then
         Array = ArrayP
     else
-        unexpected($module, $pred,
-            "Invalid array name in dump options: " ++ String)
+        unexpected($pred, "Invalid array name in dump options: " ++ String)
     ).
 
 :- pred string_to_dumpable_array(string::in, dumpable_array::out) is semidet.

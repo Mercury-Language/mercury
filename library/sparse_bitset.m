@@ -527,7 +527,7 @@ is_singleton(sparse_bitset([Node]), Elem) :-
     else
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
-        unexpected($module, $pred, "`enum.from_int/1' failed")
+        unexpected($pred, "`enum.from_int/1' failed")
     ).
 
     % Do a binary search for the 1 bits in an int.
@@ -584,7 +584,7 @@ member(Elem::out, sparse_bitset(Set)::in) :-
     else
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
-        unexpected($module, $pred, "`enum.from_int/1' failed")
+        unexpected($pred, "`enum.from_int/1' failed")
     ).
 
 :- pred member_search_nodes(int::out, bitset_impl::in) is nondet.
@@ -789,7 +789,7 @@ remove_least(Elem, sparse_bitset(Set0), sparse_bitset(Set)) :-
     else
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
-        unexpected($module, $pred, "`enum.from_int/1' failed")
+        unexpected($pred, "`enum.from_int/1' failed")
     ),
     Bits = clear_bit(Bits0, Bit),
     ( if Bits = 0u then
@@ -1109,7 +1109,7 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
         else
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
-            unexpected($module, $pred, "`enum.from_int/1' failed")
+            unexpected($pred, "`enum.from_int/1' failed")
         )
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -1168,7 +1168,7 @@ fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
         else
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
-            unexpected($module, $pred, "`enum.from_int/1' failed")
+            unexpected($pred, "`enum.from_int/1' failed")
         )
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -1222,7 +1222,7 @@ all_true_bits(P, Offset, Bits, Size) :-
         else
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
-            unexpected($module, $pred, "`enum.from_int/1' failed")
+            unexpected($pred, "`enum.from_int/1' failed")
         )
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -1473,7 +1473,7 @@ divide_bits(P, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
         else
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
-            unexpected($module, $pred, "`enum.from_int/1' failed")
+            unexpected($pred, "`enum.from_int/1' failed")
         )
     else
         HalfSize = unchecked_right_shift(Size, 1),

@@ -1945,13 +1945,13 @@ is_not_empty([_ | _]).
 head([X | _]) = X.
 
 det_head([]) = _ :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 det_head([X | _]) = X.
 
 tail([_ | Xs]) = Xs.
 
 det_tail([]) = _ :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 det_tail([_ | Xs]) = Xs.
 
 cons(H, T) = [H | T].
@@ -2056,7 +2056,7 @@ det_index0(List, N, Elem) :-
     ( if list.index0(List, N, Elem0) then
         Elem = Elem0
     else
-        unexpected($module, $pred, "index out of range")
+        unexpected($pred, "index out of range")
     ).
 
 det_index1(Xs, N) = A :-
@@ -2095,14 +2095,14 @@ det_index0_of_first_occurrence(Xs, SearchX) = N :-
     ( if list.index0_of_first_occurrence(Xs, SearchX, N0) then
         N = N0
     else
-        unexpected($module, $pred, "item not found")
+        unexpected($pred, "item not found")
     ).
 
 det_index1_of_first_occurrence(Xs, SearchX) = N :-
     ( if list.index1_of_first_occurrence(Xs, SearchX, N0) then
         N = N0
     else
-        unexpected($module, $pred, "item not found")
+        unexpected($pred, "item not found")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2218,12 +2218,12 @@ det_replace_nth(Xs, N, To, RXs) :-
         ( if list.replace_nth_loop(Xs, N, To, RXsPrime) then
             RXs = RXsPrime
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 "Cannot replace element whose index position " ++
                 "is past the end of the list")
         )
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "Cannot replace element whose index position " ++
             "is less than 1.")
     ).
@@ -2481,7 +2481,7 @@ sort(ComparePred, List, SortedList) :-
         then
             SortedList = SortedListPrime
         else
-            unexpected($module, $pred, "hosort failed")
+            unexpected($pred, "hosort failed")
         )
     ).
 
@@ -2548,13 +2548,13 @@ det_split_list(N, List, Start, End) :-
             Start = [Head | StartTail]
         ;
             List = [],
-            unexpected($module, $pred, "index out of range")
+            unexpected($pred, "index out of range")
         )
     else if N = 0 then
         Start = [],
         End = List
     else
-        unexpected($module, $pred, "index out of range")
+        unexpected($pred, "index out of range")
     ).
 
 split_upto(N, List, Start, End) :-
@@ -2594,7 +2594,7 @@ det_last(List) = Last :-
     list.det_last(List, Last).
 
 det_last([], _) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 det_last([H | T], Last) :-
     list.det_last_loop(H, T, Last).
 
@@ -2621,7 +2621,7 @@ split_last([H | T], AllButLast, Last) :-
     ).
 
 det_split_last([], _, _) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 det_split_last([H | T], AllButLast, Last) :-
     (
         T = [],
@@ -2885,18 +2885,18 @@ all_false(P, [X | Xs]) :-
 
 all_true_corresponding(_P, [], []).
 all_true_corresponding(_P, [], [_ | _]) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 all_true_corresponding(_P, [_ | _], []) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 all_true_corresponding(P, [X | Xs], [Y | Ys]) :-
     P(X, Y),
     all_true_corresponding(P, Xs, Ys).
 
 all_false_corresponding(_P, [], []).
 all_false_corresponding(_P, [], [_ | _]) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 all_false_corresponding(_P, [_ | _], []) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 all_false_corresponding(P, [X | Xs], [Y | Ys]) :-
     not P(X, Y),
     all_false_corresponding(P, Xs, Ys).
@@ -3044,17 +3044,17 @@ map8(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
 
 map_corresponding(_, [], []) = [].
 map_corresponding(_, [], [_ | _]) =
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding(_, [_ | _], []) =
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding(F, [HA | TAs], [HB | TBs]) =
     [F(HA, HB) | list.map_corresponding(F, TAs, TBs)].
 
 map_corresponding(_, [], [], []).
 map_corresponding(_, [], [_ | _], _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding(_, [_ | _], [], _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding(P, [HA | TAs], [HB | TBs], [HR | TRs]) :-
     P(HA, HB, HR),
     list.map_corresponding(P, TAs, TBs, TRs).
@@ -3073,16 +3073,16 @@ map_corresponding3(F, As, Bs, Cs) =
     then
         []
     else
-        unexpected($module, $pred, "mismatched list lengths")
+        unexpected($pred, "mismatched list lengths")
     ).
 
 %---------------------------------------------------------------------------%
 
 filter_map_corresponding(_, [], []) = [].
 filter_map_corresponding(_, [], [_ | _]) =
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 filter_map_corresponding(_, [_ | _], []) =
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 filter_map_corresponding(F, [HA | TAs], [HB | TBs]) =
     ( if F(HA, HB) = HR then
         [HR | list.filter_map_corresponding(F, TAs, TBs)]
@@ -3092,9 +3092,9 @@ filter_map_corresponding(F, [HA | TAs], [HB | TBs]) =
 
 filter_map_corresponding(_, [], [], []).
 filter_map_corresponding(_, [], [_ | _], _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 filter_map_corresponding(_, [_ | _], [], _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 filter_map_corresponding(P, [HA | TAs], [HB | TBs], Rs) :-
     ( if P(HA, HB, HR) then
         list.filter_map_corresponding(P, TAs, TBs, TRs),
@@ -3121,7 +3121,7 @@ filter_map_corresponding3(F, As, Bs, Cs) =
     then
         []
     else
-        unexpected($module, $pred, "mismatched list lengths")
+        unexpected($pred, "mismatched list lengths")
     ).
 
 filter_map_corresponding3(P, As, Bs, Cs, Rs) :-
@@ -3143,7 +3143,7 @@ filter_map_corresponding3(P, As, Bs, Cs, Rs) :-
     then
         Rs = []
     else
-        unexpected($module, $pred, "mismatched list lengths")
+        unexpected($pred, "mismatched list lengths")
     ).
 
 %---------------------------------------------------------------------------%
@@ -3207,70 +3207,70 @@ foldr3(P, [H | T], !A, !B, !C) :-
 
 foldl_corresponding(_, [], [], !Acc).
 foldl_corresponding(_, [], [_ | _], _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding(_, [_ | _], [], _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding(P, [A | As], [B | Bs], !Acc) :-
     P(A, B, !Acc),
     list.foldl_corresponding(P, As, Bs, !Acc).
 
 foldl_corresponding(_, [], [], Acc) = Acc.
 foldl_corresponding(_, [], [_ | _], _) = _ :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding(_, [_ | _], [], _) = _ :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding(F, [A | As], [B | Bs], !.Acc) = !:Acc :-
     !:Acc = F(A, B, !.Acc),
     !:Acc = list.foldl_corresponding(F, As, Bs, !.Acc).
 
 foldl2_corresponding(_, [], [], !Acc1, !Acc2).
 foldl2_corresponding(_, [], [_ | _], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl2_corresponding(_, [_ | _], [], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
     P(A, B, !Acc1, !Acc2),
     list.foldl2_corresponding(P, As, Bs, !Acc1, !Acc2).
 
 foldl3_corresponding(_, [], [], !Acc1, !Acc2, !Acc3).
 foldl3_corresponding(_, [], [_ | _], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl3_corresponding(_, [_ | _], [], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl3_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2, !Acc3) :-
     P(A, B, !Acc1, !Acc2, !Acc3),
     list.foldl3_corresponding(P, As, Bs, !Acc1, !Acc2, !Acc3).
 
 foldl_corresponding3(_, [], [], [], !Acc).
 foldl_corresponding3(_, [_ | _], [], [], _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding3(_, [], [_ | _], [], _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding3(_, [], [], [_ | _], _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding3(_, [], [_ | _], [_ | _], _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding3(_, [_ | _], [], [_ | _], _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding3(_, [_ | _], [_ | _], [], _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs], !Acc) :-
     P(A, B, C, !Acc),
     list.foldl_corresponding3(P, As, Bs, Cs, !Acc).
 
 foldl2_corresponding3(_, [], [], [], !Acc1, !Acc2).
 foldl2_corresponding3(_, [_ | _], [], [], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl2_corresponding3(_, [], [_ | _], [], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl2_corresponding3(_, [], [], [_ | _], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl2_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl2_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl2_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl2_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2) :-
     P(A, B, C, !Acc1, !Acc2),
@@ -3278,17 +3278,17 @@ foldl2_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
 
 foldl3_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3).
 foldl3_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl3_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl3_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl3_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl3_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl3_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl3_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2, !Acc3) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3),
@@ -3296,17 +3296,17 @@ foldl3_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
 
 foldl4_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3, !Acc4).
 foldl4_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl4_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl4_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl4_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl4_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl4_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 foldl4_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
         !Acc1, !Acc2, !Acc3, !Acc4) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3, !Acc4),
@@ -3388,27 +3388,27 @@ map_foldr(P, [H0 | T0], [H | T], !A) :-
 
 map_corresponding_foldl(_, [], [], [], !Acc).
 map_corresponding_foldl(_, [], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding_foldl(_, [_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding_foldl(P, [A | As], [B | Bs], [C | Cs], !Acc) :-
     P(A, B, C, !Acc),
     list.map_corresponding_foldl(P, As, Bs, Cs, !Acc).
 
 map_corresponding_foldl2(_, [], [], [], !Acc1, !Acc2).
 map_corresponding_foldl2(_, [], [_ | _], _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding_foldl2(_, [_ | _], [], _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding_foldl2(P, [A | As], [B | Bs], [C | Cs], !Acc1, !Acc2) :-
     P(A, B, C, !Acc1, !Acc2),
     list.map_corresponding_foldl2(P, As, Bs, Cs, !Acc1, !Acc2).
 
 map_corresponding_foldl3(_, [], [], [], !Acc1, !Acc2, !Acc3).
 map_corresponding_foldl3(_, [], [_ | _], _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding_foldl3(_, [_ | _], [], _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding_foldl3(P, [A | As], [B | Bs], [C | Cs], !Acc1,
         !Acc2, !Acc3) :-
     P(A, B, C, !Acc1, !Acc2, !Acc3),
@@ -3416,17 +3416,17 @@ map_corresponding_foldl3(P, [A | As], [B | Bs], [C | Cs], !Acc1,
 
 map_corresponding3_foldl(_, [], [], [], [], !Acc).
 map_corresponding3_foldl(_, [], [_ | _], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding3_foldl(_, [_ | _], [], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding3_foldl(_, [_ | _], [_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding3_foldl(_, [], [], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding3_foldl(_, [], [_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding3_foldl(_, [_ | _], [], [], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 map_corresponding3_foldl(P, [A | As], [B | Bs], [C | Cs], [D | Ds],
         !Acc) :-
     P(A, B, C, D, !Acc),

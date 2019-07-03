@@ -159,7 +159,7 @@
 average_var_use(Uses) = var_use_info(CostUntilUse, AvgProcCost, Type) :-
     (
         Uses = [],
-        unexpected($module, $pred, "cannot average zero items")
+        unexpected($pred, "cannot average zero items")
     ;
         Uses = [var_use_info(_, _, Type) | _],
         foldl2(sum_use_info_costs, Uses, 0.0, SumCost, 0.0, SumProcCost),
@@ -173,7 +173,7 @@ average_var_use(Uses) = var_use_info(CostUntilUse, AvgProcCost, Type) :-
         ( if all_true(TestType, Uses) then
             true
         else
-            unexpected($module, $pred, "use types do not match")
+            unexpected($pred, "use types do not match")
         )
     ).
 
@@ -378,7 +378,7 @@ clique_var_use_info(CliquePtr, ArgNum, VarUseOptions, MaybeVarUseInfo) :-
         )
     ;
         MaybeFirstProc = no,
-        unexpected($module, $pred, "clique has no first procedure")
+        unexpected($pred, "clique has no first procedure")
     ).
 
 proc_dynamic_var_use_info(CliquePtr, PDPtr, ArgNum, RecursionType,
@@ -533,7 +533,7 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
                     ++ "procrep: %s, Arg %d in proc dynamic %d",
                     [s(string(VarUseType)), s(string(ComputedUse)),
                      i(ArgNum), i(PDNum)], Msg),
-                unexpected($module, $pred, Msg)
+                unexpected($pred, Msg)
             ),
 
             % Prepare callsite information.
@@ -559,7 +559,7 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
                 MaybeCoveragePointsArray = yes(CoveragePointsArray)
             ;
                 MaybeCoveragePointsArray = no,
-                unexpected($module, $pred, "Couldn't get coverage info")
+                unexpected($pred, "Couldn't get coverage info")
             ),
             foldl2(add_coverage_point_to_map, CoveragePoints,
                 map.init, SolnsCoveragePointMap,
@@ -815,15 +815,14 @@ call_var_first_use(AtomicGoal, BoundVars, RevGoalPath, StaticInfo,
             call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Times),
             (
                 Times = [],
-                unexpected($module, $pred,
-                    "no solutions for variable first use time")
+                unexpected($pred, "no solutions for variable first use time")
             ;
                 Times = [FirstTime | LaterTimes],
                 ( if
                     VarUseType = var_use_production,
                     LaterTimes = [_ | _]
                 then
-                    unexpected($module, $pred,
+                    unexpected($pred,
                         "multiple solutions for variable production time")
                 else
                     true
@@ -838,7 +837,7 @@ call_var_first_use(AtomicGoal, BoundVars, RevGoalPath, StaticInfo,
             VarUseType = var_use_production,
             not list.member(Var, BoundVars)
         then
-            unexpected($module, $pred,
+            unexpected($pred,
                 "a bound var must be produced by a call if it is an argument.")
         else
             true
@@ -847,7 +846,7 @@ call_var_first_use(AtomicGoal, BoundVars, RevGoalPath, StaticInfo,
             VarUseType = var_use_consumption,
             list.member(Var, BoundVars)
         then
-            unexpected($module, $pred,
+            unexpected($pred,
                 "a consumed var must not be mentioned in BoundVars")
         else
             true
@@ -858,8 +857,7 @@ call_var_first_use(AtomicGoal, BoundVars, RevGoalPath, StaticInfo,
             ; AtomicGoal = method_call_rep(Var, _, _)
             )
         then
-            unexpected($module, $pred,
-                "a HO call site cannot produce its own HO value")
+            unexpected($pred, "a HO call site cannot produce its own HO value")
         else
             true
         )
@@ -899,8 +897,7 @@ call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Times) :-
                 ArgNums, Times0),
             list.sort_and_remove_dups(Times0, Times)
         else
-            unexpected($module, $pred,
-                "wrong number of callees for normal call site")
+            unexpected($pred, "wrong number of callees for normal call site")
         )
     ;
         HigherOrder = higher_order_call,
@@ -1079,8 +1076,7 @@ disj_var_first_use_2(RevGoalPath, DisjNum, [Disj | Disjs], StaticInfo,
             ( if get_coverage_before(DisjCoverage, HeadCount) then
                 HeadWeight = float(HeadCount)
             else
-                unexpected($module, $pred,
-                    "unknown coverage before disjunct")
+                unexpected($pred, "unknown coverage before disjunct")
             ),
             (
                 Disjs = [],
@@ -1092,8 +1088,7 @@ disj_var_first_use_2(RevGoalPath, DisjNum, [Disj | Disjs], StaticInfo,
                 ( if get_coverage_before(FirstTailCoverage, TailCount) then
                     TailWeight = float(TailCount)
                 else
-                    unexpected($module, $pred,
-                        "unknown coverage before disjunct")
+                    unexpected($pred, "unknown coverage before disjunct")
                 )
             ),
             weighted_average([HeadWeight, TailWeight], [HeadCost, TailCost],
@@ -1835,7 +1830,7 @@ found_first_use_to_use_info(FoundFirstUse, Cost, VarUseType, VarUseInfo) :-
         %     performed.
         (
             VarUseType = var_use_production,
-            unexpected($module, $pred,
+            unexpected($pred,
                 "goal did not produce a variable that it should have")
         ;
             VarUseType = var_use_consumption,

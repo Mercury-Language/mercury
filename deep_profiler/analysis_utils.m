@@ -291,8 +291,7 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
             )
         ;
             MaybeDepth = no,
-            unexpected($module,
-                "Expected valid depth for known recursion type")
+            unexpected($pred, "Expected valid depth for known recursion type")
         )
     ;
         ( RecursionType = rt_divide_and_conquer(_, _)

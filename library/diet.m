@@ -527,7 +527,7 @@ balance(X, L, R) = T :-
     ( if int_gt(HL, HR + bal_const) then
         (
             L = empty,
-            unexpected($module, $pred, "L empty")
+            unexpected($pred, "L empty")
         ;
             L = node(LVX, _, LL, LR),
             ( if int_ge(height(LL), height(LR)) then
@@ -535,7 +535,7 @@ balance(X, L, R) = T :-
             else
                 (
                     LR = empty,
-                    unexpected($module, $pred, "LR empty")
+                    unexpected($pred, "LR empty")
                 ;
                     LR = node(LRX, _, LRL, LRR),
                     T = create(LRX, create(LVX, LL, LRL), create(X, LRR, R))
@@ -545,7 +545,7 @@ balance(X, L, R) = T :-
     else if int_gt(HR, HL + bal_const) then
         (
             R = empty,
-            unexpected($module, $pred, "R empty")
+            unexpected($pred, "R empty")
         ;
             R = node(RVX, _, RL, RR),
             ( if int_ge(height(RR), height(RL)) then
@@ -553,7 +553,7 @@ balance(X, L, R) = T :-
             else
                 (
                     RL = empty,
-                    unexpected($module, $pred, "RL empty")
+                    unexpected($pred, "RL empty")
                 ;
                     RL = node(RLX, _, RLL, RLR),
                     T = create(RLX, create(X, L, RLL), create(RVX, RLR, RR))
@@ -634,7 +634,7 @@ reroot(L, R) = T :-
     ( if int_gt(height(L), height(R)) then
         (
             L = empty,
-            unexpected($module, $pred, "L empty")
+            unexpected($pred, "L empty")
         ;
             L = node(_, _, _, _),
             take_max(L, I, L1),

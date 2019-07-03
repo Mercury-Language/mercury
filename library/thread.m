@@ -209,7 +209,7 @@ spawn(Goal0, !IO) :-
         Res = ok(_)
     ;
         Res = error(Error),
-        unexpected($module, $pred, Error)
+        unexpected($pred, Error)
     ).
 
 spawn(Goal, Res, !IO) :-

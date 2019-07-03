@@ -511,7 +511,7 @@ det_remove(X, !Bag) :-
     ( if bag.remove(X, !Bag) then
         true
     else
-        unexpected($module, $pred, "item not in bag")
+        unexpected($pred, "item not in bag")
     ).
 
 remove_list([], !Bag).
@@ -526,7 +526,7 @@ det_remove_list(Xs, !Bag) :-
     ( if bag.remove_list(Xs, !Bag) then
         true
     else
-        unexpected($module, $pred, "some item not in bag")
+        unexpected($pred, "some item not in bag")
     ).
 
 remove_set(Set, !Bag) :-

@@ -227,7 +227,7 @@ compute_var_use_lazy(Info, RevGoalPath, Var, Args, VarUseType) = EarliestUse :-
         VarUseType = var_use_consumption,
         (
             Uses = [],
-            unexpected($module, $pred, "No uses")
+            unexpected($pred, "No uses")
         ;
             Uses = [FirstUse | OtherUses],
             find_earliest_use(FirstUse, OtherUses, EarliestUse)
@@ -238,12 +238,12 @@ compute_var_use_lazy(Info, RevGoalPath, Var, Args, VarUseType) = EarliestUse :-
         ),
         (
             Uses = [],
-            unexpected($module, $pred, "No uses")
+            unexpected($pred, "No uses")
         ;
             Uses = [EarliestUse]
         ;
             Uses = [_, _ | _],
-            unexpected($module, $pred, "Too many uses")
+            unexpected($pred, "Too many uses")
         )
     ).
 
@@ -285,7 +285,7 @@ compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
                 then
                     Callee = CalleePrime
                 else
-                    unexpected($module, $pred,
+                    unexpected($pred,
                         "first-order call site has wrong number of CSDs")
                 ),
                 CSDPtr = Callee ^ c_csd,
@@ -303,7 +303,7 @@ compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
             ( if VarUseType = var_use_consumption then
                 Uses = [var_use_info(0.0, CostPercall, VarUseType)]
             else
-                unexpected($module, $pred,
+                unexpected($pred,
                     "Var use type most be consumption if " ++
                     "\\+ member(Var, Args)")
             )

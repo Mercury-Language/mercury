@@ -545,7 +545,7 @@ chop_uint64(N, Div, Mod) :-
 det_first(i(_, Digits)) = First :-
     (
         Digits = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ;
         Digits = [First | _]
     ).
@@ -555,10 +555,10 @@ det_first(i(_, Digits)) = First :-
 det_second(i(_, Digits)) = Second :-
     (
         Digits = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ;
         Digits = [_],
-        unexpected($module, $pred, "short list")
+        unexpected($pred, "short list")
     ;
         Digits = [_, Second | _]
     ).
@@ -568,7 +568,7 @@ det_second(i(_, Digits)) = Second :-
 det_tail(i(Len, Digits)) = I :-
     (
         Digits = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ;
         Digits = [_ | T],
         I = i(Len - 1, T)
@@ -751,7 +751,7 @@ add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
         chop(H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
     else
-        unexpected($module, $pred, "invalid integer")
+        unexpected($pred, "invalid integer")
     ).
 
 :- pred add_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
@@ -789,7 +789,7 @@ diff_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
         chop(H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
     else
-        unexpected($module, $pred, "invalid integer")
+        unexpected($pred, "invalid integer")
     ).
 
 :- pred diff_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
@@ -838,7 +838,7 @@ pos_mul_karatsuba(i(L1, Ds1), i(L2, Ds2)) = Res :-
         Res = pos_mul_list(Ds1, integer.zero, i(L2, Ds2))
     else
         ( if L2 < L1 then
-            unexpected($module, $pred, "second factor smaller")
+            unexpected($pred, "second factor smaller")
         else
             Middle = L2 div 2,
             HiDigits = L2 - Middle,
@@ -1303,7 +1303,7 @@ and_pairs(i(L1, D1), i(L2, D2)) = Integer :-
         i(_, DsT) = and_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L2, DsT)
     else
-        unexpected($module, $pred, "invalid integer")
+        unexpected($pred, "invalid integer")
     ).
 
 :- func and_pairs_equal(list(digit), list(digit)) = list(digit).
@@ -1330,7 +1330,7 @@ or_pairs(i(L1, D1), i(L2, D2)) = Integer :-
         i(_, DsT) = or_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
     else
-        unexpected($module, $pred, "invalid integer")
+        unexpected($pred, "invalid integer")
     ).
 
 :- func or_pairs_equal(list(digit), list(digit)) = list(digit).
@@ -1357,7 +1357,7 @@ xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
         i(_, DsT) = xor_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
     else
-        unexpected($module, $pred, "invalid integer")
+        unexpected($pred, "invalid integer")
     ).
 
 :- func xor_pairs_equal(list(digit), list(digit)) = list(digit).
@@ -1385,7 +1385,7 @@ and_not_pairs(i(L1, D1), i(L2, D2)) = Integer :-
         i(_, DsT) = and_not_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
     else
-        unexpected($module, $pred, "invalid integer")
+        unexpected($pred, "invalid integer")
     ).
 
 :- func and_not_pairs_equal(list(digit), list(digit)) = list(digit).
@@ -1659,7 +1659,7 @@ to_base_string(Integer, Base) = String :-
     ( if 2 =< Base, Base =< 36 then
         true
     else
-        unexpected($module, $pred, "invalid base")
+        unexpected($pred, "invalid base")
     ),
     PrintBase = printbase(pow(Base, printbase_exponent)),
     Integer = i(Sign, Digits),
@@ -1684,7 +1684,7 @@ digits_to_string(Base, PrintBase, Digits) = Str :-
         string.append_list([HeadStr | TailStrs], Str)
     ;
         DigitsInPrintBase = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ).
 
 :- pred printbase_rep(printbase::in, integer::in, list(digit)::in,
@@ -1800,7 +1800,7 @@ printbase_add_pairs(Base, Div, i(L1, D1), i(L2, D2), Ds) :-
         printbase_chop(Base, H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
     else
-        unexpected($module, $pred, "integer.printbase_add_pairs")
+        unexpected($pred, "integer.printbase_add_pairs")
     ).
 
 :- pred printbase_add_pairs_equal(printbase::in, digit::out,
@@ -2074,7 +2074,7 @@ det_from_string(S) = I :-
     ( if integer.from_string(S, IPrime) then
         I = IPrime
     else
-        unexpected($module, $pred, "conversion failed")
+        unexpected($pred, "conversion failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2114,7 +2114,7 @@ det_from_base_string(Base, String) = Integer :-
     ( if integer.from_base_string(Base, String, IntegerPrime) then
         Integer = IntegerPrime
     else
-        unexpected($module, $pred, "conversion failed")
+        unexpected($pred, "conversion failed")
     ).
 
 from_base_string_underscore(Base, String, Integer) :-

@@ -174,7 +174,7 @@ try_term_to_univ_2(Term, Type, Context, Result) :-
                 then
                     Result = ok(Value)
                 else
-                    unexpected($module, $pred, "construct/3 failed")
+                    unexpected($pred, "construct/3 failed")
                 )
             ;
                 ArgsResult = error(Error),
@@ -418,11 +418,11 @@ det_term_to_type(Term, X) :-
     ( if term_to_type(Term, XPrime) then
         X = XPrime
     else if \+ is_ground(Term) then
-        unexpected($module, $pred, "the term is not ground")
+        unexpected($pred, "the term is not ground")
     else
         Message = "type error:\nthe term is not a valid term" ++
             " for type `" ++ type_name(type_of(X)) ++ "'",
-        unexpected($module, $pred, Message)
+        unexpected($pred, Message)
     ).
 
 %---------------------------------------------------------------------------%
@@ -456,7 +456,7 @@ univ_to_term(Univ, Term) :-
             Term = SpecialCaseTerm
         else
             Message = "unknown type `" ++ type_name(univ_type(Univ)) ++ "'",
-            unexpected($module, $pred, Message)
+            unexpected($pred, Message)
         )
     ).
 

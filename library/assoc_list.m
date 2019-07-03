@@ -245,7 +245,7 @@ from_corresponding_lists(Ks, Vs, KVs) :-
             ++ "\n\tKey list length: " ++ KeyLengthString
             ++ "\n\tValue list type: " ++ ValueType
             ++ "\n\tValue list length: " ++ ValueLengthString,
-        unexpected($module, $pred, ErrorString)
+        unexpected($pred, ErrorString)
     ).
 
 :- pred assoc_list.from_corresponding_2(list(K)::in, list(V)::in,

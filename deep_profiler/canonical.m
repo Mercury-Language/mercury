@@ -262,7 +262,7 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
         % special calls, but only before we added callcode to the
         % unify/compare routines of builtin types.
         % ChosenPDPtr = proc_dynamic_ptr(0),
-        unexpected($module, $pred, "no valid pdptrs")
+        unexpected($pred, "no valid pdptrs")
     ).
 
 :- pred merge_proc_dynamic_slots(merge_info::in, int::in,
@@ -495,7 +495,7 @@ lookup_normal_sites([RestArray | RestArrays], SlotNum, [CSDPtr | CSDPtrs]) :-
         Slot = slot_normal(CSDPtr)
     ;
         Slot = slot_multi(_, _),
-        unexpected($module, $pred, "found slot_multi")
+        unexpected($pred, "found slot_multi")
     ),
     lookup_normal_sites(RestArrays, SlotNum, CSDPtrs).
 
@@ -507,7 +507,7 @@ lookup_multi_sites([RestArray | RestArrays], SlotNum, [CSDList | CSDLists]) :-
     array.lookup(RestArray, SlotNum, Slot),
     (
         Slot = slot_normal(_),
-        unexpected($module, $pred, "found normal")
+        unexpected($pred, "found normal")
     ;
         Slot = slot_multi(_, CSDArray),
         array.to_list(CSDArray, CSDList)
@@ -530,7 +530,7 @@ record_pd_redirect(RestPDPtrs, PrimePDPtr, !Redirect) :-
     ( if OldRedirect = proc_dynamic_ptr(0) then
         record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect)
     else
-        unexpected($module, $pred, "prime is redirected")
+        unexpected($pred, "prime is redirected")
     ).
 
 :- pred record_pd_redirect_2(list(proc_dynamic_ptr)::in, proc_dynamic_ptr::in,
@@ -544,7 +544,7 @@ record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr, !Redirect) :-
         set_pd_redirect(u(ProcRedirect0), RestPDPtr, PrimePDPtr,
             ProcRedirect)
     else
-        unexpected($module, $pred, "already redirected")
+        unexpected($pred, "already redirected")
     ),
     !Redirect ^ pd_redirect := ProcRedirect,
     record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect).
@@ -565,7 +565,7 @@ record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, !Redirect) :-
     ( if OldRedirect = call_site_dynamic_ptr(0) then
         record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect)
     else
-        unexpected($module, $pred, "prime is redirected")
+        unexpected($pred, "prime is redirected")
     ).
 
 :- pred record_csd_redirect_2(list(call_site_dynamic_ptr)::in,
@@ -579,7 +579,7 @@ record_csd_redirect_2([RestCSDPtr | RestCSDPtrs], PrimeCSDPtr, !Redirect) :-
         set_csd_redirect(u(CallSiteRedirect0), RestCSDPtr, PrimeCSDPtr,
             CallSiteRedirect)
     else
-        unexpected($module, $pred, "already redirected")
+        unexpected($pred, "already redirected")
     ),
     !Redirect ^ csd_redirect := CallSiteRedirect,
     record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect).

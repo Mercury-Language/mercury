@@ -337,7 +337,7 @@ decimal_fraction(Format, Measure) = Representation :-
     then
         add_commas_intstr(WholeString, Representation)
     else
-        unexpected($module, $pred, "didn't split on decimal point properly")
+        unexpected($pred, "didn't split on decimal point properly")
     ).
 
 one_decimal_fraction(Measure) = decimal_fraction("%.1f", Measure).

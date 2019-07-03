@@ -576,11 +576,10 @@ from_corresponding_lists(Keys, Values, MultiMap) :-
 
 from_corresponding_lists_2([], [], !MultiMap).
 from_corresponding_lists_2([], [_ | _], !MultiMap) :-
-    unexpected($module, "from_corresponding_lists", "list length mismatch").
+    unexpected("from_corresponding_lists", "list length mismatch").
 from_corresponding_lists_2([_ | _], [], !MultiMap) :-
-    unexpected($module, "from_corresponding_lists", "list length mismatch").
-from_corresponding_lists_2([Key | Keys], [Value | Values],
-        !MultiMap) :-
+    unexpected("from_corresponding_lists", "list length mismatch").
+from_corresponding_lists_2([Key | Keys], [Value | Values], !MultiMap) :-
     multi_map.add(Key, Value, !MultiMap),
     multi_map.from_corresponding_lists_2(Keys, Values, !MultiMap).
 

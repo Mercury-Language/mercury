@@ -153,10 +153,10 @@ parse_alloc_site_decls(Stream, AllocSiteMap, SizeMap, !IO) :-
         )
     ;
         LineRes = eof,
-        unexpected($module, $pred, "format error: cannot find declarations")
+        unexpected($pred, "format error: cannot find declarations")
     ;
         LineRes = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 :- pred parse_size_map(string::in, list(int)::out) is det.
@@ -168,7 +168,7 @@ parse_size_map(Line, SizeMap) :-
     then
         SizeMap = Ints
     else
-        unexpected($module, $pred, "format error: bad size_map line")
+        unexpected($pred, "format error: bad size_map line")
     ).
 
 :- pred parse_alloc_site_lines(io.input_stream::in,
@@ -184,7 +184,7 @@ parse_alloc_site_lines(Stream, !AllocSiteMap, !IO) :-
         LineRes = eof
     ;
         LineRes = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 :- pred parse_alloc_site_line(string::in,
@@ -204,7 +204,7 @@ parse_alloc_site_line(Line0, !AllocSiteMap, !IO) :-
         AllocSite = alloc_site(ProcName, Type, FileName, LineNum, NumWords),
         map.det_insert(alloc_id(Id), AllocSite, !AllocSiteMap)
     else
-        unexpected($module, $pred, "format error: bad alloc site declaration")
+        unexpected($pred, "format error: bad alloc site declaration")
     ).
 
 %---------------------------------------------------------------------------%
@@ -228,7 +228,7 @@ show_all_snapshots(Stream, Options, AllocSiteMap, SizeMap, !IO) :-
         LineRes = eof
     ;
         LineRes = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 :- pred show_single_snapshot(io.input_stream::in, snapshot_options::in,
@@ -264,10 +264,10 @@ parse_snapshot(Stream, Options, AllocSiteMap, SizeMap, AllocCounts, !IO) :-
         )
     ;
         LineRes = eof,
-        unexpected($module, $pred, "format error")
+        unexpected($pred, "format error")
     ;
         LineRes = error(Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 :- pred parse_alloc_site(snapshot_options::in, alloc_site_map::in,

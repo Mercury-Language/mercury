@@ -176,7 +176,7 @@ count(SetA - SetB) = Count :-
     ( if CountA = CountB then
         Count = CountA
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -187,7 +187,7 @@ is_empty(A - B) :-
     ( if EmptyA = EmptyB then
         EmptyA = yes
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 is_non_empty(A - B) :-
@@ -196,7 +196,7 @@ is_non_empty(A - B) :-
     ( if NonEmptyA = NonEmptyB then
         NonEmptyA = yes
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 is_singleton(A - B, E) :-
@@ -213,7 +213,7 @@ is_singleton(A - B, E) :-
     ( if NonEmptyA = NonEmptyB then
         NonEmptyA = yes(E)
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 contains(SetA - SetB, E) :-
@@ -222,7 +222,7 @@ contains(SetA - SetB, E) :-
     ( if InSetA = InSetB then
         InSetA = yes
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 :- pragma promise_equivalent_clauses(member/2).
@@ -233,7 +233,7 @@ member(E::in, (SetA - SetB)::in) :-
     ( if InSetA = InSetB then
         InSetA = yes
     else
-        unexpected($module, $pred, "failed (in, in)")
+        unexpected($pred, "failed (in, in)")
     ).
 
 member(E::out, (SetA - SetB)::in) :-
@@ -244,7 +244,7 @@ member(E::out, (SetA - SetB)::in) :-
     ( if SolnsA = SolnsB then
         tree_bitset.member(E, SetA)
     else
-        unexpected($module, $pred, "failed (out, in)")
+        unexpected($pred, "failed (out, in)")
     ).
 
 equal(SetA1 - SetB1, SetA2 - SetB2) :-
@@ -253,7 +253,7 @@ equal(SetA1 - SetB1, SetA2 - SetB2) :-
     ( if EqualA = EqualB then
         EqualA = yes
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 subset(SetA1 - SetB1, SetA2 - SetB2) :-
@@ -261,10 +261,10 @@ subset(SetA1 - SetB1, SetA2 - SetB2) :-
         ( if set_ordlist.subset(SetB1, SetB2) then
             true
         else
-            unexpected($module, $pred, "unexpected success")
+            unexpected($pred, "unexpected success")
         )
     else if set_ordlist.subset(SetB1, SetB2) then
-        unexpected($module, $pred, "unexpected failure")
+        unexpected($pred, "unexpected failure")
     else
         fail
     ).
@@ -274,10 +274,10 @@ superset(SetA1 - SetB1, SetA2 - SetB2) :-
         ( if set_ordlist.superset(SetB1, SetB2) then
             true
         else
-            unexpected($module, $pred, "unexpected success")
+            unexpected($pred, "unexpected success")
         )
     else if set_ordlist.superset(SetB1, SetB2) then
-        unexpected($module, $pred, "unexpected failure")
+        unexpected($pred, "unexpected failure")
     else
         fail
     ).
@@ -301,7 +301,7 @@ to_sorted_list(A - B) = List :-
     ( if ListA = ListB then
         List = ListB
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 list_to_set(A, test_bitset.list_to_set(A)).
@@ -331,13 +331,11 @@ insert_new(E, SetA0 - SetB0, Result) :-
         ( if set_ordlist.insert_new(E, SetB0, SetB) then
             check1("insert", SetA0 - SetB0, SetA - SetB, Result)
         else
-            unexpected($module, $pred,
-                "success/fail in tree_bitset/set_ordlist")
+            unexpected($pred, "success/fail in tree_bitset/set_ordlist")
         )
     else
         ( if set_ordlist.insert_new(E, SetB0, _SetB) then
-            unexpected($module, $pred,
-                "fail/success in tree_bitset/set_ordlist")
+            unexpected($pred, "fail/success in tree_bitset/set_ordlist")
         else
             % insert_new failed in both tree_bitset and set_ordlist.
             fail
@@ -366,10 +364,10 @@ remove(E, SetA0 - SetB0, Result) :-
             SetB = SetB1,
             check1("remove", SetA0 - SetB0, SetA - SetB, Result)
         else
-            unexpected($module, $pred, "unexpected success")
+            unexpected($pred, "unexpected success")
         )
     else if set_ordlist.remove(E, SetB0, _) then
-        unexpected($module, $pred, "unexpected failure")
+        unexpected($pred, "unexpected failure")
     else
         fail
     ).
@@ -381,10 +379,10 @@ remove_list(Es, SetA0 - SetB0, Result) :-
             SetB = SetB1,
             check1("remove_list", SetA0 - SetB0, SetA - SetB, Result)
         else
-            unexpected($module, $pred, "unexpected success")
+            unexpected($pred, "unexpected success")
         )
     else if set_ordlist.remove_list(Es, SetB0, _) then
-        unexpected($module, $pred, "unexpected failure")
+        unexpected($pred, "unexpected failure")
     else
         fail
     ).
@@ -396,13 +394,13 @@ remove_least(Least, SetA0 - SetB0, Result) :-
                 Least = LeastA,
                 check1("remove_least", SetA0 - SetB0, SetA1 - SetB1, Result)
             else
-                unexpected($module, $pred, "wrong least element")
+                unexpected($pred, "wrong least element")
             )
         else
-            unexpected($module, $pred, "should be no least value")
+            unexpected($pred, "should be no least value")
         )
     else if set_ordlist.remove_least(_, SetB0, _) then
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     else
         fail
     ).
@@ -452,7 +450,7 @@ get_sets(Op, [SetA - SetB | SetsAB], [SetA | SetsA], [SetB | SetsB]) :-
     ( if SetListA = SetListB then
         get_sets(Op, SetsAB, SetsA, SetsB)
     else
-        unexpected($module, $pred, "unequal sets in " ++ Op ++ " arg list")
+        unexpected($pred, "unequal sets in " ++ Op ++ " arg list")
     ).
 
 divide(Pred, SetA - SetB, ResultIn, ResultOut) :-
@@ -473,7 +471,7 @@ divide(Pred, SetA - SetB, ResultIn, ResultOut) :-
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
@@ -497,7 +495,7 @@ divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -510,7 +508,7 @@ foldl(Pred, SetA - SetB, Acc0, Acc) :-
     ( if SetListA = SetListB, AccA = AccB then
         Acc = AccA
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 foldl(Pred, SetA - SetB, Acc0) = Acc :-
@@ -521,7 +519,7 @@ foldl(Pred, SetA - SetB, Acc0) = Acc :-
     ( if SetListA = SetListB, AccA = AccB then
         Acc = AccA
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 all_true(Pred, SetA - SetB) :-
@@ -529,11 +527,11 @@ all_true(Pred, SetA - SetB) :-
         ( if set_ordlist.all_true(Pred, SetB) then
             true
         else
-            unexpected($module, $pred, "tree_bitset but not set_ordlist")
+            unexpected($pred, "tree_bitset but not set_ordlist")
         )
     else
         ( if set_ordlist.all_true(Pred, SetB) then
-            unexpected($module, $pred, "set_ordlist but not tree_bitset")
+            unexpected($pred, "set_ordlist but not tree_bitset")
         else
             fail
         )
@@ -549,7 +547,7 @@ filter(Pred, SetA - SetB) = Result :-
     ( if SetListA = SetListB, InSetListA = InSetListB then
         Result = InSetA - InSetB
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
@@ -569,7 +567,7 @@ filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 %---------------------------------------------------------------------------%

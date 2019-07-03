@@ -492,7 +492,7 @@ push_and_build_candidate_conjunction(Info, RevGoalPath, Conjs,
             MaybeCandidate = no
         )
     else
-        unexpected($module, $pred, "bad goal path for Single")
+        unexpected($pred, "bad goal path for Single")
     ).
 
 :- pred merge_same_level_pushes(
@@ -506,7 +506,7 @@ merge_same_level_pushes(MainCandidate, [], MainPush) :-
         MaybeMainPush = yes(MainPush)
     ;
         MaybeMainPush = no,
-        unexpected($module, $pred, "no push")
+        unexpected($pred, "no push")
     ).
 merge_same_level_pushes(MainCandidate, [HeadCandidate | TailCandidates],
         Push) :-
@@ -516,7 +516,7 @@ merge_same_level_pushes(MainCandidate, [HeadCandidate | TailCandidates],
         MaybeMainPush = yes(MainPush)
     ;
         MaybeMainPush = no,
-        unexpected($module, $pred, "no push")
+        unexpected($pred, "no push")
     ),
     ( if
         MainPush = push_goal(GoalPathStr, Lo, Hi, [MainPushInto]),
@@ -524,7 +524,7 @@ merge_same_level_pushes(MainCandidate, [HeadCandidate | TailCandidates],
     then
         Push = push_goal(GoalPathStr, Lo, Hi, [MainPushInto | RestPushInto])
     else
-        unexpected($module, $pred, "mismatch on pushed goals")
+        unexpected($pred, "mismatch on pushed goals")
     ).
 
 :- pred push_goals_create_candidate(implicit_parallelism_info::in,
@@ -591,7 +591,7 @@ push_goals_create_candidate(Info, RevCurPath, ForwardGoalPath,
                     )
                 )
             else
-                unexpected($module, $pred, "not conj")
+                unexpected($pred, "not conj")
             )
         ;
             FirstRelStep = step_disj(N),
@@ -602,7 +602,7 @@ push_goals_create_candidate(Info, RevCurPath, ForwardGoalPath,
                     TailRelPath, SubGoal, GoalsToPush0,
                     RevCandidateGoalPath, CandidateConjs)
             else
-                unexpected($module, $pred, "not disj")
+                unexpected($pred, "not disj")
             )
         ;
             FirstRelStep = step_switch(N, _),
@@ -614,7 +614,7 @@ push_goals_create_candidate(Info, RevCurPath, ForwardGoalPath,
                     TailRelPath, SubGoal, GoalsToPush0,
                     RevCandidateGoalPath, CandidateConjs)
             else
-                unexpected($module, $pred, "not switch")
+                unexpected($pred, "not switch")
             )
         ;
             FirstRelStep = step_ite_then,
@@ -624,7 +624,7 @@ push_goals_create_candidate(Info, RevCurPath, ForwardGoalPath,
                     TailRelPath, Then, GoalsToPush0,
                     RevCandidateGoalPath, CandidateConjs)
             else
-                unexpected($module, $pred, "not ite_then")
+                unexpected($pred, "not ite_then")
             )
         ;
             FirstRelStep = step_ite_else,
@@ -634,16 +634,16 @@ push_goals_create_candidate(Info, RevCurPath, ForwardGoalPath,
                     TailRelPath, Else, GoalsToPush0,
                     RevCandidateGoalPath, CandidateConjs)
             else
-                unexpected($module, $pred, "not ite_else")
+                unexpected($pred, "not ite_else")
             )
         ;
             FirstRelStep = step_ite_cond,
             % We cannot push into a condition.
-            unexpected($module, $pred, "ite_cond")
+            unexpected($pred, "ite_cond")
         ;
             FirstRelStep = step_neg,
             % We cannot push into a negated goal.
-            unexpected($module, $pred, "neg")
+            unexpected($pred, "neg")
         ;
             FirstRelStep = step_scope(_),
             ( if GoalExpr = scope_rep(SubGoal, _) then
@@ -652,24 +652,24 @@ push_goals_create_candidate(Info, RevCurPath, ForwardGoalPath,
                     TailRelPath, SubGoal, GoalsToPush0,
                     RevCandidateGoalPath, CandidateConjs)
             else
-                unexpected($module, $pred, "not scope")
+                unexpected($pred, "not scope")
             )
         ;
             FirstRelStep = step_lambda,
             % These should not exist in a profiled program.
-            unexpected($module, $pred, "lambda")
+            unexpected($pred, "lambda")
         ;
             FirstRelStep = step_try,
             % These should not exist in a profiled program.
-            unexpected($module, $pred, "try")
+            unexpected($pred, "try")
         ;
             FirstRelStep = step_atomic_main,
             % These should not exist in a profiled program.
-            unexpected($module, $pred, "atomic_main")
+            unexpected($pred, "atomic_main")
         ;
             FirstRelStep = step_atomic_orelse(_),
             % These should not exist in a profiled program.
-            unexpected($module, $pred, "atomic_orelse")
+            unexpected($pred, "atomic_orelse")
         )
     ).
 
@@ -744,10 +744,10 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPath,
                     )
                 ;
                     Location = pl_clique(_),
-                    unexpected($module, $pred, "location is a clique")
+                    unexpected($pred, "location is a clique")
                 ;
                     Location = pl_csd(_),
-                    unexpected($module, $pred, "location is a csd")
+                    unexpected($pred, "location is a csd")
                 ),
 
                 convert_candidate_par_conjunction(

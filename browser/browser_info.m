@@ -378,7 +378,7 @@ convert_dirs_to_term_path(Term, Dirs, TermPath) :-
         then
             convert_dirs_to_term_path(Subterm, DirsTail, TermPathTail)
         else
-            unexpected($module, $pred, "invalid argument")
+            unexpected($pred, "invalid argument")
         ),
         TermPath = [N | TermPathTail]
     ;
@@ -390,7 +390,7 @@ convert_dirs_to_term_path(Term, Dirs, TermPath) :-
             convert_dirs_to_term_path(Subterm, DirsTail, TermPathTail),
             N = Pos
         else
-            unexpected($module, $pred, "invalid field name")
+            unexpected($pred, "invalid field name")
         ),
         TermPath = [N | TermPathTail]
     ).
@@ -878,7 +878,7 @@ maybe_set_param_2(no, _, Params, Params).
 maybe_set_param_2(yes, setting_depth(D), Params, Params ^ depth := D).
 maybe_set_param_2(yes, setting_size(S), Params, Params ^ size := S).
 maybe_set_param_2(yes, setting_format(_), _, _) :-
-    unexpected($module, $pred, "cannot set format here").
+    unexpected($pred, "cannot set format here").
 maybe_set_param_2(yes, setting_width(W), Params, Params ^ width := W).
 maybe_set_param_2(yes, setting_lines(L), Params, Params ^ lines := L).
 

@@ -422,7 +422,7 @@ update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
         Colour = "White"
     ),
     ( if set.member(ColumnClassStr, !.ColouredClassStrs) then
-        unexpected($module, $pred, "repeated table_column_class")
+        unexpected($pred, "repeated table_column_class")
     else
         set.insert(ColumnClassStr, !ColouredClassStrs)
     ),
@@ -501,7 +501,7 @@ table_cell_to_html(FormatInfo, MaybeClassMap, !StyleControlMap, !ColumnNum,
                 Msg = string.format(
                     "Class map had no class for col %d, check table structure",
                     [i(!.ColumnNum)]),
-                unexpected($module, $pred, Msg)
+                unexpected($pred, Msg)
             )
         ;
             MaybeClassMap = no,

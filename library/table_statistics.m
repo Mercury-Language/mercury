@@ -300,7 +300,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
         else
-            unexpected($module, $pred, "extra counts for hash")
+            unexpected($pred, "extra counts for hash")
         )
     else if KindInt = 1 then                    % MR_TABLE_STATS_DETAIL_ENUM
         ( if
@@ -322,7 +322,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
         then
             Details = step_stats_enum(EnumNodeAllocs, EnumNodeBytes)
         else
-            unexpected($module, $pred, "extra counts for enum")
+            unexpected($pred, "extra counts for enum")
         )
     else if KindInt = 2 then                    % MR_TABLE_STATS_DETAIL_START
         ( if
@@ -344,7 +344,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
         then
             Details = step_stats_start(StartAllocs, StartBytes)
         else
-            unexpected($module, $pred, "extra counts for start")
+            unexpected($pred, "extra counts for start")
         )
     else if KindInt = 3 then                    % MR_TABLE_STATS_DETAIL_DU
         ( if
@@ -358,7 +358,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
         else
-            unexpected($module, $pred, "extra counts for du")
+            unexpected($pred, "extra counts for du")
         )
     else if KindInt = 4 then                    % MR_TABLE_STATS_DETAIL_POLY
         ( if
@@ -372,7 +372,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
         else
-            unexpected($module, $pred, "extra counts for poly")
+            unexpected($pred, "extra counts for poly")
         )
     else if KindInt = 5 then                    % MR_TABLE_STATS_DETAIL_NONE
         ( if
@@ -395,10 +395,10 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
         then
             Details = step_stats_none
         else
-            unexpected($module, $pred, "extra counts for none")
+            unexpected($pred, "extra counts for none")
         )
     else
-        unexpected($module, $pred, "unexpected detail kind")
+        unexpected($pred, "unexpected detail kind")
     ),
     Stats = table_step_stats(VarName, NumLookups, NumLookupsIsDupl, Details).
 
@@ -555,7 +555,7 @@ table_step_stats_diff([StepA | StepsA], [StepB | StepsB])
     then
         DetailsDiff = DetailsDiffPrime
     else
-        unexpected($module, $pred, "mismatches in details")
+        unexpected($pred, "mismatches in details")
     ),
 
     StepDiff = table_step_stats(VarNameA, LookupsDiff, LookupsIsDuplDiff,
