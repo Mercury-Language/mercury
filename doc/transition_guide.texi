@@ -106,7 +106,7 @@ Mercury code typically has a very different style to most Prolog code.
 
 Prolog and Mercury have very similar syntax.
 Although there are a few differences,
-by and large if a program is accepted by a Prolog system,
+by and large if the syntax of a program is accepted by a Prolog system,
 it will be accepted by Mercury.
 There are however a few extra operators defined by the Mercury term parser
 (see the ``Builtin operators'' section of the ``Syntax'' chapter of the
@@ -257,7 +257,7 @@ These @emph{module qualifications} are not strictly necessary
 (unless two or more modules define predicates
 with the same names and argument types,
 the Mercury compiler can figure out which modules called predicates are in),
-but Mercury convention is to make write the module qualifier explicitly
+but Mercury convention is to make the module qualifier explicit
 in order to make the intent of the code crystal clear to readers.
 
 The above could also be written more compactly like this:
@@ -493,7 +493,7 @@ the different solutions are produced by different conjuncts,
 like this:
 
 @example
-generate_solutions(In1, In2, [Soln| Solns]) :-
+generate_solutions(In1, In2, [Soln | Solns]) :-
     generate_one_soln(In1, In2, Soln),
     In2' = ....
     generate_solutions(In1, In2', Solns).
