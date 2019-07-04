@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module export_test2.
 
 :- interface.
@@ -10,12 +10,12 @@
 :- import_module int.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
-:- pred foo(io__output_stream::in, io__output_stream::out,
+:- pred foo(io.output_stream::in, io.output_stream::out,
     foo::in, foo::out) is det.
 
-:- pred bar(io__output_stream::in, io__output_stream::out,
+:- pred bar(io.output_stream::in, io.output_stream::out,
     foo::in, foo::out) is det.
 
     :- module export_test2.sub.
@@ -30,20 +30,20 @@
 :- import_module enum.
 :- import_module require.
 
-main -->
-    io__stdout_stream(Stream0),
-    ( { Foo = from_int(41) } ->
-        { bar(Stream0, Stream, Foo, X) },
-        io__write(Stream, to_int(X)),
-        io__write_char(Stream, '\n')
-    ;
-        { error("from_int failed") }
+main(!IO) :-
+    io.stdout_stream(Stream0, !IO),
+    ( if Foo = from_int(41) then
+        bar(Stream0, Stream, Foo, X),
+        io.write(Stream, to_int(X), !IO),
+        io.write_char(Stream, '\n', !IO)
+    else
+        error("from_int failed")
     ).
 
 foo(S, S, X0, X) :-
-    ( ( X1 = from_int(to_int(X0) + 1)) ->
+    ( if X1 = from_int(to_int(X0) + 1) then
         X = X1
-    ;
+    else
         error("from_int failed")
     ).
 
@@ -51,11 +51,13 @@ foo(S, S, X0, X) :-
 #include ""mercury_library_types.h""
 
 /*
-** Make sure the foreign type definitions of io__input_stream
-** and export_test2.sub.foo are available here.  If not, the
-** automatically generated definition of foo() will be
-**  void foo(MR_Word, MR_Word *, MR_Word, MR_Word *);
+** Make sure the foreign type definitions of io.input_stream
+** and export_test2.sub.foo are available here.
+** If not, the automatically generated definition of foo() will be
+**
+**      void foo(MR_Word, MR_Word *, MR_Word, MR_Word *);
 */
+
 void foo(MercuryFilePtr, MercuryFilePtr *, int, int *);
 
 ").
@@ -78,7 +80,8 @@ void foo(MercuryFilePtr, MercuryFilePtr *, int, int *);
     :- module export_test2.sub.
     :- implementation.
 
-    :- type foo ---> foo(int).
+    :- type foo
+        --->    foo(int).
     :- pragma foreign_type("C", foo, "MT_Foo").
 
     % This needs to be visible in export_test2 for any use

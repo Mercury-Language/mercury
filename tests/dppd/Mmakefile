@@ -7,9 +7,9 @@ SUBDIRS =
 TESTS_DIR = ..
 MAYBE_J1 = -j1
 
-# For this directory, rather than having a separate main
-# for each test, there is a single Mercury test harness
-# which invokes all of the different tests.
+# For this directory, rather than having a separate main for each test,
+# there is a single Mercury test harness which invokes all of the
+# different tests.
 PROGS = run
 
 TESTS = $(sort $(PROGS))

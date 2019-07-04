@@ -51,12 +51,12 @@
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
-    (
+    ( if
         Args = ["-n", Arg2],
         string.to_int(Arg2, Iterations0)
-    ->
+    then
         Iterations = Iterations0
-    ;
+    else
         Iterations = 1
     ),
     io.write_string("Iterations: ", !IO),
@@ -85,17 +85,17 @@ run_benchmark(Iterations, Name, Closure, !IO) :-
     % This can be useful for testing the effect of optimizations.
     CallClosure =
         ( pred(_Input::in, Output::out) is det :-
-            ( call(Closure) ->
+            ( if call(Closure) then
                 Output = 1
-            ;
+            else
                 Output = 0
             )
         ),
     benchmark_det(CallClosure, 0, Result, Iterations, Time),
-    ( Iterations > 1 ->
+    ( if Iterations > 1 then
         io.format("%-30s     result %3d        time (ms) %8d\n",
             [s(Name), i(Result), i(Time)], !IO)
-    ;
+    else
         io.format("%-30s     result %3d\n", [s(Name), i(Result)], !IO)
     ),
     io.flush_output(!IO),
