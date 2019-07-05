@@ -103,33 +103,6 @@
 % The predicates in rest of the interface should not be needed at all.
 %
 
-    % get_interface(RawCompUnit, InterfaceRawCompUnit):
-    %
-    % We return interface sections almost intact, changing them only by
-    % making instance declarations abstract. We delete implementation
-    % sections entirely.
-    %
-    % XXX ITEM_LIST This predicate is called from module_imports.m.
-    % The caller is part of the code that implements --generate-dependencies.
-    % The code in write_module_interface_files.m that generates .int and
-    % .int2 files calls generate_pre_grab_pre_qual_item_blocks.
-    % Since the contents of the .d and .dep files should be derived
-    % from what goes into .int and .int2 files, the fact that it uses
-    % a different predicate, and therefore a different algorithm,
-    % looks like a bug. This is almost certainly the reason why
-    % the contents put into .d files by mmc --generate-dependencies
-    % gets overwritten by *different* contents after we start generating
-    % interface files.
-    %
-    % XXX ITEM_LIST Change the outputs to two lists of includes, two lists
-    % of avails, and two lists of items, for the interface and
-    % implementation sections respectively.
-    %
-:- pred get_interface(raw_compilation_unit::in, raw_compilation_unit::out)
-    is det.
-
-%---------------------------------------------------------------------------%
-
     % This predicate is exported for use by modules.m.
     %
     % XXX ITEM_LIST When the predicate above is deleted, this function
@@ -2036,103 +2009,6 @@ clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
 %---------------------------------------------------------------------------%
 % The rest of this module should not be needed.
 %---------------------------------------------------------------------------%
-
-get_interface(RawCompUnit, InterfaceRawCompUnit) :-
-    RawCompUnit =
-        raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
-    get_ifile_in_raw_item_blocks_acc(RawItemBlocks,
-        cord.init, IFileItemBlocksCord),
-    IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
-    add_needed_foreign_import_module_items_to_raw_item_blocks(ModuleName,
-        IFileItemBlocks0, IFileItemBlocks),
-    InterfaceRawCompUnit =
-        raw_compilation_unit(ModuleName, ModuleNameContext, IFileItemBlocks).
-
-%---------------------------------------------------------------------------%
-
-:- pred get_ifile_in_raw_item_blocks_acc(list(raw_item_block),
-    cord(raw_item_block), cord(raw_item_block)).
-:- mode get_ifile_in_raw_item_blocks_acc(in, in, out) is det.
-
-get_ifile_in_raw_item_blocks_acc([], !IFileItemBlocksCord).
-get_ifile_in_raw_item_blocks_acc([RawItemBlock | RawItemBlocks],
-        !IFileItemBlocksCord) :-
-    RawItemBlock = item_block(ModuleName, Section, Incls, Avails, Items),
-    (
-        Section = ms_interface,
-        IFileIncls = Incls,
-        IFileAvails = Avails,
-        get_ifile_in_items_acc(Items,
-            cord.init, IFileItemsCord),
-        IFileItems = cord.list(IFileItemsCord),
-        ( if
-            IFileIncls = [],
-            IFileAvails = [],
-            IFileItems = []
-        then
-            true
-        else
-            IFileItemBlock = item_block(ModuleName, Section,
-                IFileIncls, IFileAvails, IFileItems),
-            cord.snoc(IFileItemBlock, !IFileItemBlocksCord)
-        )
-    ;
-        Section = ms_implementation
-    ),
-    get_ifile_in_raw_item_blocks_acc(RawItemBlocks, !IFileItemBlocksCord).
-
-:- pred get_ifile_in_items_acc(list(item),
-    cord(item), cord(item)).
-:- mode get_ifile_in_items_acc(in, in, out) is det.
-
-get_ifile_in_items_acc([], !IFileItemsCord).
-get_ifile_in_items_acc([Item | Items], !IFileItemsCord) :-
-    ( if Item = item_instance(ItemInstance) then
-        % Include the abstract version of the instance in the
-        % interface, ...
-        AbstractItemInstance = make_instance_abstract(ItemInstance),
-        AbstractItem = item_instance(AbstractItemInstance),
-        cord.snoc(AbstractItem, !IFileItemsCord)
-    else
-        cord.snoc(Item, !IFileItemsCord)
-    ),
-    get_ifile_in_items_acc(Items, !IFileItemsCord).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred add_needed_foreign_import_module_items_to_raw_item_blocks(
-    module_name::in,
-    list(raw_item_block)::in, list(raw_item_block)::out) is det.
-
-add_needed_foreign_import_module_items_to_raw_item_blocks(ModuleName,
-        !ItemBlocks) :-
-    % XXX FIM We may be adding these items to the same lists of items
-    % more than once.
-    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ms_interface, !ItemBlocks).
-
-%---------------------%
-
-:- pred add_needed_foreign_import_module_items_to_item_blocks(
-    module_name::in, MS::in,
-    list(item_block(MS))::in, list(item_block(MS))::out) is det.
-
-add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
-        ItemBlocks0, ItemBlocks) :-
-    list.foldl(accumulate_foreign_import_langs_in_item_block, ItemBlocks0,
-        set.init, LangSet),
-    set.to_sorted_list(LangSet, Langs),
-    (
-        Langs = [],
-        ItemBlocks = ItemBlocks0
-    ;
-        Langs = [_ | _],
-        ImportItems = list.map(make_foreign_import(ModuleName), Langs),
-        ImportItemBlock = item_block(ModuleName, Section,
-            [], [], ImportItems),
-        ItemBlocks = [ImportItemBlock | ItemBlocks0]
-    ).
 
 :- pred accumulate_foreign_import(module_name::in, foreign_language::in,
     list(item)::in, list(item)::out) is det.
