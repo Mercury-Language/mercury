@@ -5142,7 +5142,7 @@ which matches that in the @samp{:- include_module} declaration
 in the parent, followed by the interface and (if necessary)
 implementation sections, and it may optionally end with a @samp{:- end_module}
 declaration.  (Note: the module names in the @samp{:- module},
-@samp{:- end_module}, and @samp{:- include_module} declarations
+@samp{:- end_module}, and @w{@samp{:- include_module}} declarations
 need not be fully-qualified.  However,
 if the file name used for a particular module does
 not include all the module qualifiers, then the University of Melbourne
