@@ -525,17 +525,36 @@ generate_and_use_solutions(In1, In2, !Acc) :-
 @chapter Cuts and indexing
 
 The Prolog cut operator is not part of the Mercury language.
+Most Prolog code that uses cuts
+should probably be translated into Mercury using if-then-elses.
+
+In both Prolog and Mercury,
+the behavior of an if-then-else @samp{C -> T ; E}
+depends on whether the condition @samp{C} has any solutions.
+If it does, then they both execute the then-part @samp{T};
+if it does not, then they both execute the else-part @samp{E}.
+However, Prolog and Mercury differ in what they do
+if the condition has @emph{more} than one solution.
+
+In most versions of Prolog, 
+if the condition of an if-then-else has more than one solution,
+the if-then-else throws away all its solutions after the first.
+The way this is usually implemented is that
+after the condition generates its first solution,
+and before execution continues to the then-part goal
+with the bindings in that first solution,
+the Prolog implementation cuts away all the choice points in the condition.
+This prevents backtracking into the condition,
+which thus cannot generate any of its @emph{other} solutions.
+
+Mercury does @emph{not} prune away later solutions in conditions.
+If the condition has more than one solution,
+Mercury will execute the then-part goal on every one of them in turn,
+using the usual rules of backtracking.
 
 Mercury allows if-then-elses to be written
 not just as @samp{C -> T ; E}, but also as @samp{if C then T else E}.
-In Mercury, an if-then-else prunes away
-either the `else' goal (if the condition succeeded)
-or the `then' goal (if the condition failed),
-but if there are multiple solutions to the condition,
-they will all be found on backtracking,
-and the `then' goal will be executed for each of those solutions.
-By contrast, an if-then-else in Prolog
-prunes away all solutions of the condition except the first.
+These two syntaxes have identical semantics.
 
 Prolog programs that use cuts and a `catch-all' clause
 should be transformed to use if-then-else in Mercury.
