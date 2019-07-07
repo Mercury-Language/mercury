@@ -111,7 +111,7 @@
     lambda_eval_method, prog_var, list(prog_var), type_assign_set)
     = error_spec.
 
-:- func report_error_functor_type(type_error_clause_context,
+:- func report_error_functor_type(typecheck_info,
     unify_context, prog_context, prog_var,
     list(cons_type_info), cons_id, int, type_assign_set) = error_spec.
 
@@ -136,7 +136,7 @@
                 expected_type   :: list(format_component)
             ).
 
-:- func report_error_var(type_error_clause_context, type_error_goal_context,
+:- func report_error_var(typecheck_info, type_error_goal_context,
     prog_context, prog_var, mer_type, type_assign_set)
     = spec_and_maybe_actual_expected.
 
@@ -210,6 +210,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
@@ -750,8 +751,9 @@ report_error_lambda_var(ClauseContext, UnifyContext, Context,
 
 %-----------------------------------------------------------------------------%
 
-report_error_functor_type(ClauseContext, UnifyContext, Context,
+report_error_functor_type(Info, UnifyContext, Context,
         Var, ConsDefnList, Functor, Arity, TypeAssignSet) = Spec :-
+    typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     % XXX We could append UnifyContextPieces after InClauseForPieces
     % instead of after the empty list.
@@ -769,11 +771,23 @@ report_error_functor_type(ClauseContext, UnifyContext, Context,
         type_of_functor_to_pieces(Functor, Arity, ConsDefnList) ++
         [suffix("."), nl],
 
+    ( if
+        Functor = int_const(_),
+        get_type_stuff(TypeAssignSet, Var, TypeStuffList),
+        TypesOfVar = list.map(typestuff_to_type, TypeStuffList),
+        list.any_true(expected_type_needs_int_constant_suffix, TypesOfVar)
+    then
+        NoSuffixIntegerPieces = nosuffix_integer_pieces
+    else
+        NoSuffixIntegerPieces = []
+    ),
+
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
 
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
-        always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
+        always(MainPieces ++ NoSuffixIntegerPieces),
+        verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
@@ -1118,27 +1132,28 @@ report_possible_expected_actual_types(CurrPossNum, [Mismatch | Mismatches])
 
 %-----------------------------------------------------------------------------%
 
-report_error_var(ClauseContext, GoalContext, Context, Var, Type,
-        TypeAssignSet0) = SpecAndMaybeActualExpected :-
+report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
+        = SpecAndMaybeActualExpected :-
+    typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
-    get_type_stuff(TypeAssignSet0, Var, TypeStuffList),
+    get_type_stuff(TypeAssignSet, Var, TypeStuffList),
     ActualExpectedList0 = list.map(type_stuff_to_actual_expected(Type),
         TypeStuffList),
     list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
 
-    Pieces1 = [words("type error:")],
+    TypeErrorPieces = [words("type error:")],
     VarSet = ClauseContext ^ tecc_varset,
     ( if ActualExpectedList = [ActualExpected] then
         MaybeActualExpected = yes(ActualExpected),
         ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
-        Pieces2 = argument_name_to_pieces(VarSet, Var) ++
+        MismatchPieces = argument_name_to_pieces(VarSet, Var) ++
             [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
             words("expected type was")] ++ ExpectedPieces ++ [suffix("."), nl]
     else
         MaybeActualExpected = no,
-        Pieces2 = [words("type of")] ++
+        MismatchPieces = [words("type of")] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
             argument_name_to_pieces(VarSet, Var) ++
@@ -1147,12 +1162,22 @@ report_error_var(ClauseContext, GoalContext, Context, Var, Type,
             actual_expected_types_list_to_pieces(ActualExpectedList) ++
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
+    typecheck_info_get_nosuffix_integer_vars(Info, NoSuffixIntegerVarSet),
+    ( if
+        set_tree234.contains(NoSuffixIntegerVarSet, Var),
+        expected_type_needs_int_constant_suffix(Type)
+    then
+        NoSuffixIntegerPieces = nosuffix_integer_pieces
+    else
+        NoSuffixIntegerPieces = []
+    ),
 
-    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
+    TypeAssignSetPieces =
+        type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(GoalContextPieces),
-        always(Pieces1 ++ Pieces2),
-        verbose_only(verbose_always, VerbosePieces)]),
+        always(TypeErrorPieces ++ MismatchPieces ++ NoSuffixIntegerPieces),
+        verbose_only(verbose_always, TypeAssignSetPieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
@@ -1160,7 +1185,7 @@ report_error_var(ClauseContext, GoalContext, Context, Var, Type,
 %-----------------------------------------------------------------------------%
 
 report_arg_vector_type_errors(ClauseContext, Context, ArgVectorKind,
-        TypeAssignSet0, ArgVectorTypeErrors0) = Spec :-
+        TypeAssignSet, ArgVectorTypeErrors0) = Spec :-
     list.sort(ArgVectorTypeErrors0, ArgVectorTypeErrors),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     ArgVectorKindPieces =
@@ -1176,7 +1201,7 @@ report_arg_vector_type_errors(ClauseContext, Context, ArgVectorKind,
     arg_vector_type_errors_to_pieces(VarSet, ArgVectorTypeErrors,
         HeadArgVectorTypeErrors, TailArgVectorTypeErrors,
         ArgErrorPieces),
-    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
+    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(ArgVectorKindPieces),
         always(ArgErrorPieces), verbose_only(verbose_always, VerbosePieces)]),
@@ -1263,11 +1288,11 @@ find_expecteds_matching_actual(VarSet, SearchActualPieces,
 %-----------------------------------------------------------------------------%
 
 report_error_var_either_type(ClauseContext, GoalContext, Context,
-        Var, TypeA, TypeB, TypeAssignSet0) = Spec :-
+        Var, TypeA, TypeB, TypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
-    get_type_stuff(TypeAssignSet0, Var, TypeStuffList),
+    get_type_stuff(TypeAssignSet, Var, TypeStuffList),
     ActualExpectedListA0 = list.map(type_stuff_to_actual_expected(TypeA),
         TypeStuffList),
     ActualExpectedListB0 = list.map(type_stuff_to_actual_expected(TypeB),
@@ -1300,7 +1325,7 @@ report_error_var_either_type(ClauseContext, GoalContext, Context,
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
-    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
+    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
         always(Pieces1 ++ Pieces2),
@@ -1310,11 +1335,11 @@ report_error_var_either_type(ClauseContext, GoalContext, Context,
 %-----------------------------------------------------------------------------%
 
 report_error_arg_var(ClauseContext, GoalContext, Context, Var,
-        ArgTypeAssignSet0) = Spec :-
+        ArgTypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
-    get_arg_type_stuff(ArgTypeAssignSet0, Var, ArgTypeStuffList),
+    get_arg_type_stuff(ArgTypeAssignSet, Var, ArgTypeStuffList),
     ActualExpectedList0 = list.map(arg_type_stuff_to_actual_expected,
         ArgTypeStuffList),
     list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
@@ -1337,7 +1362,7 @@ report_error_arg_var(ClauseContext, GoalContext, Context, Var,
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
-    VerbosePieces = args_type_assign_set_msg_to_pieces(ArgTypeAssignSet0,
+    VerbosePieces = args_type_assign_set_msg_to_pieces(ArgTypeAssignSet,
         VarSet),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
@@ -1911,16 +1936,17 @@ cons_type_list_to_pieces([ConsDefn | ConsDefns], Functor, Arity) = Pieces :-
 :- func type_assign_set_msg_to_pieces(type_assign_set, prog_varset)
     = list(format_component).
 
-type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet) = Pieces :-
-    ( if TypeAssignSet0 = [_] then
+type_assign_set_msg_to_pieces(TypeAssignSet, VarSet) = Pieces :-
+    ( if TypeAssignSet = [_] then
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
     else
         FirstWords = "The possible partial type assignments were:",
         MaybeSeq = yes(1)
     ),
-    list.sort(TypeAssignSet0, TypeAssignSet),
-    LaterPieces = type_assign_set_to_pieces(TypeAssignSet, MaybeSeq, VarSet),
+    list.sort(TypeAssignSet, SortedTypeAssignSet),
+    LaterPieces = type_assign_set_to_pieces(SortedTypeAssignSet,
+        MaybeSeq, VarSet),
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
 
@@ -1934,17 +1960,17 @@ type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet) = Pieces :-
 :- func args_type_assign_set_msg_to_pieces(args_type_assign_set, prog_varset)
     = list(format_component).
 
-args_type_assign_set_msg_to_pieces(ArgTypeAssignSet0, VarSet) = Pieces :-
-    ( if ArgTypeAssignSet0 = [_] then
+args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet) = Pieces :-
+    ( if ArgTypeAssignSet = [_] then
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
     else
         FirstWords = "The possible partial type assignments were:",
         MaybeSeq = yes(1)
     ),
-    list.sort(ArgTypeAssignSet0, ArgTypeAssignSet),
-    LaterPieces = args_type_assign_set_to_pieces(ArgTypeAssignSet, MaybeSeq,
-        VarSet),
+    list.sort(ArgTypeAssignSet, SortedArgTypeAssignSet),
+    LaterPieces = args_type_assign_set_to_pieces(SortedArgTypeAssignSet,
+        MaybeSeq, VarSet),
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
 
@@ -2306,14 +2332,21 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
         TypeStuffs = [TypeStuff | TailTypeStuffs]
     ).
 
+:- func typestuff_to_type(type_stuff) = mer_type.
+
+typestuff_to_type(TypeStuff) = Type :-
+    TypeStuff = type_stuff(Type0, _TypeVarSet, TypeBindings,
+        _ExternalTypeParams),
+    apply_rec_subst_to_type(TypeBindings, Type0, Type1),
+    strip_builtin_qualifiers_from_type(Type1, Type).
+
 :- func typestuff_to_typestr(type_stuff) = string.
 
 typestuff_to_typestr(TypeStuff) = TypeStr :-
-    TypeStuff = type_stuff(Type0, TypeVarSet, TypeBindings,
-        ExternalTypeParams),
-    apply_rec_subst_to_type(TypeBindings, Type0, Type1),
-    strip_builtin_qualifiers_from_type(Type1, Type),
+    Type = typestuff_to_type(TypeStuff),
     unparse_type(Type, Term0),
+    TypeStuff = type_stuff(_Type0, TypeVarSet, _TypeBindings,
+        ExternalTypeParams),
     list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
     varset.coerce(TypeVarSet, VarSet),
@@ -2514,6 +2547,30 @@ arg_decl_lines(PredOrFuncStr, TVarSet, NonLastArgTypes, LastArgType, Suffix,
 :- func one_indent = string.
 
 one_indent = "    ".
+
+%-----------------------------------------------------------------------------%
+
+:- pred expected_type_needs_int_constant_suffix(mer_type::in) is semidet.
+
+expected_type_needs_int_constant_suffix(Type) :-
+    Type = builtin_type(BuiltinType),
+    BuiltinType = builtin_type_int(BuiltinTypeInt),
+    BuiltinTypeInt \= int_type_int.
+
+:- func nosuffix_integer_pieces = list(format_component).
+
+nosuffix_integer_pieces = Pieces :-
+    Pieces = [words("A integer constant that consists only of digits"),
+        words("is always of type"), quote("int"), suffix("."),
+        words("Unsigned integer constants of the default size"),
+        words("should have the suffix"), quote("u"), suffix(";"),
+        words("constants of sized integer types should have"),
+        words("an"), quote("i8"), suffix(","), quote("i16"), suffix(","),
+        quote("i32"), words("or"), quote("i64"), words("suffix"),
+        words("if they are signed, and"),
+        words("an"), quote("u8"), suffix(","), quote("u16"), suffix(","),
+        quote("u32"), words("or"), quote("u64"), words("suffix"),
+        words("if they are unsigned."), nl].
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_errors.

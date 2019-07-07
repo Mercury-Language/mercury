@@ -183,6 +183,7 @@ SINGLEMODULE= \
 	instance_bug \
 	instance_no_type \
 	instance_var_bug \
+	integral_constant_no_suffix \
 	invalid_binary_literal \
 	invalid_decimal_literal \
 	invalid_event \
