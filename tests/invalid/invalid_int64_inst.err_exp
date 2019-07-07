@@ -1,8 +1,0 @@
-invalid_int64_inst.m:015: In clause for `main(di, uo)':
-invalid_int64_inst.m:015:   in argument 1 of call to function
-invalid_int64_inst.m:015:   `invalid_int64_inst.foo'/1:
-invalid_int64_inst.m:015:   mode error: variable `N' has instantiatedness
-invalid_int64_inst.m:015:   `unique(7i64)',
-invalid_int64_inst.m:015:   expected instantiatedness was
-invalid_int64_inst.m:015:   `bound(2i64 ; 4i64 ; 6i64)'.
-For more information, recompile with `-E'.

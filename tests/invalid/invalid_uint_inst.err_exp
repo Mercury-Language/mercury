@@ -1,7 +1,0 @@
-invalid_uint_inst.m:015: In clause for `main(di, uo)':
-invalid_uint_inst.m:015:   in argument 1 of call to function
-invalid_uint_inst.m:015:   `invalid_uint_inst.foo'/1:
-invalid_uint_inst.m:015:   mode error: variable `N' has instantiatedness
-invalid_uint_inst.m:015:   `unique(7u)',
-invalid_uint_inst.m:015:   expected instantiatedness was `bound(2u ; 4u ; 6u)'.
-For more information, recompile with `-E'.

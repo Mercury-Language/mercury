@@ -1,6 +1,0 @@
-invalid_int8_inst.m:015: In clause for predicate `main'/2:
-invalid_int8_inst.m:015:   in unification of variable `X'
-invalid_int8_inst.m:015:   and term `foo(N)':
-invalid_int8_inst.m:015:   type error in argument of functor `foo'/1.
-invalid_int8_inst.m:015:   Argument 1 (N) has type `uint8',
-invalid_int8_inst.m:015:   expected type was `int8'.

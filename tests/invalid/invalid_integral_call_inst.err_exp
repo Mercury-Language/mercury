@@ -1,0 +1,71 @@
+invalid_integral_call_inst.m:036: In clause for `main_i08(di, uo)':
+invalid_integral_call_inst.m:036:   in argument 1 of call to function
+invalid_integral_call_inst.m:036:   `invalid_integral_call_inst.test_int08'/1:
+invalid_integral_call_inst.m:036:   mode error: variable `NI08' has
+invalid_integral_call_inst.m:036:   instantiatedness `unique(7i8)',
+invalid_integral_call_inst.m:036:   expected instantiatedness was
+invalid_integral_call_inst.m:036:   `bound(2i8 ; 4i8 ; 6i8)'.
+invalid_integral_call_inst.m:043: In clause for `main_i16(di, uo)':
+invalid_integral_call_inst.m:043:   in argument 1 of call to function
+invalid_integral_call_inst.m:043:   `invalid_integral_call_inst.test_int16'/1:
+invalid_integral_call_inst.m:043:   mode error: variable `NI16' has
+invalid_integral_call_inst.m:043:   instantiatedness `unique(7i16)',
+invalid_integral_call_inst.m:043:   expected instantiatedness was
+invalid_integral_call_inst.m:043:   `bound(2i16 ; 4i16 ; 6i16)'.
+invalid_integral_call_inst.m:050: In clause for `main_i32(di, uo)':
+invalid_integral_call_inst.m:050:   in argument 1 of call to function
+invalid_integral_call_inst.m:050:   `invalid_integral_call_inst.test_int32'/1:
+invalid_integral_call_inst.m:050:   mode error: variable `NI32' has
+invalid_integral_call_inst.m:050:   instantiatedness `unique(7i32)',
+invalid_integral_call_inst.m:050:   expected instantiatedness was
+invalid_integral_call_inst.m:050:   `bound(2i32 ; 4i32 ; 6i32)'.
+invalid_integral_call_inst.m:057: In clause for `main_i64(di, uo)':
+invalid_integral_call_inst.m:057:   in argument 1 of call to function
+invalid_integral_call_inst.m:057:   `invalid_integral_call_inst.test_int64'/1:
+invalid_integral_call_inst.m:057:   mode error: variable `NI64' has
+invalid_integral_call_inst.m:057:   instantiatedness `unique(7i64)',
+invalid_integral_call_inst.m:057:   expected instantiatedness was
+invalid_integral_call_inst.m:057:   `bound(2i64 ; 4i64 ; 6i64)'.
+invalid_integral_call_inst.m:064: In clause for `main_i(di, uo)':
+invalid_integral_call_inst.m:064:   in argument 1 of call to function
+invalid_integral_call_inst.m:064:   `invalid_integral_call_inst.test_int'/1:
+invalid_integral_call_inst.m:064:   mode error: variable `NI' has
+invalid_integral_call_inst.m:064:   instantiatedness `unique(7)',
+invalid_integral_call_inst.m:064:   expected instantiatedness was
+invalid_integral_call_inst.m:064:   `bound(2 ; 4 ; 6)'.
+invalid_integral_call_inst.m:071: In clause for `main_u08(di, uo)':
+invalid_integral_call_inst.m:071:   in argument 1 of call to function
+invalid_integral_call_inst.m:071:   `invalid_integral_call_inst.test_uint08'/1:
+invalid_integral_call_inst.m:071:   mode error: variable `NU08' has
+invalid_integral_call_inst.m:071:   instantiatedness `unique(7u8)',
+invalid_integral_call_inst.m:071:   expected instantiatedness was
+invalid_integral_call_inst.m:071:   `bound(2u8 ; 4u8 ; 6u8)'.
+invalid_integral_call_inst.m:078: In clause for `main_u16(di, uo)':
+invalid_integral_call_inst.m:078:   in argument 1 of call to function
+invalid_integral_call_inst.m:078:   `invalid_integral_call_inst.test_uint16'/1:
+invalid_integral_call_inst.m:078:   mode error: variable `NU16' has
+invalid_integral_call_inst.m:078:   instantiatedness `unique(7u16)',
+invalid_integral_call_inst.m:078:   expected instantiatedness was
+invalid_integral_call_inst.m:078:   `bound(2u16 ; 4u16 ; 6u16)'.
+invalid_integral_call_inst.m:085: In clause for `main_u32(di, uo)':
+invalid_integral_call_inst.m:085:   in argument 1 of call to function
+invalid_integral_call_inst.m:085:   `invalid_integral_call_inst.test_uint32'/1:
+invalid_integral_call_inst.m:085:   mode error: variable `NU32' has
+invalid_integral_call_inst.m:085:   instantiatedness `unique(7u32)',
+invalid_integral_call_inst.m:085:   expected instantiatedness was
+invalid_integral_call_inst.m:085:   `bound(2u32 ; 4u32 ; 6u32)'.
+invalid_integral_call_inst.m:092: In clause for `main_u64(di, uo)':
+invalid_integral_call_inst.m:092:   in argument 1 of call to function
+invalid_integral_call_inst.m:092:   `invalid_integral_call_inst.test_uint64'/1:
+invalid_integral_call_inst.m:092:   mode error: variable `NU64' has
+invalid_integral_call_inst.m:092:   instantiatedness `unique(7u64)',
+invalid_integral_call_inst.m:092:   expected instantiatedness was
+invalid_integral_call_inst.m:092:   `bound(2u64 ; 4u64 ; 6u64)'.
+invalid_integral_call_inst.m:099: In clause for `main_u(di, uo)':
+invalid_integral_call_inst.m:099:   in argument 1 of call to function
+invalid_integral_call_inst.m:099:   `invalid_integral_call_inst.test_uint'/1:
+invalid_integral_call_inst.m:099:   mode error: variable `NU' has
+invalid_integral_call_inst.m:099:   instantiatedness `unique(7u)',
+invalid_integral_call_inst.m:099:   expected instantiatedness was
+invalid_integral_call_inst.m:099:   `bound(2u ; 4u ; 6u)'.
+For more information, recompile with `-E'.
