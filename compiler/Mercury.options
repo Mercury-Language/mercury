@@ -104,6 +104,9 @@ MCFLAGS-libs.mmakefiles               = --warn-implicit-stream-calls
 MCFLAGS-parse_tree.write_deps_file    = --warn-implicit-stream-calls
 MCFLAGS-hlds.du_type_layout           = --warn-implicit-stream-calls
 
+MCFLAGS-check_hlds.typecheck_errors   += --warn-inconsistent-pred-order-clauses
+MCFLAGS-check_hlds.typecheck_info     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-check_hlds.typecheck          += --warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.hlds_data                += --warn-inconsistent-pred-order-clauses
 MCFLAGS-ll_backend.unify_gen          += --warn-inconsistent-pred-order-clauses
 MCFLAGS-ll_backend.unify_gen_deconstruct += --warn-inconsistent-pred-order-clauses

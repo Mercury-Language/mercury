@@ -2830,7 +2830,7 @@ builtin_atomic_type(impl_defined_const(Name), Type) :-
 
 builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
     ConsId = cons(SymName, _, _),
-    typecheck_info_get_preds(Info, PredicateTable),
+    typecheck_info_get_pred_table(Info, PredicateTable),
     typecheck_info_get_calls_are_fully_qualified(Info, IsFullyQualified),
     predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
         PredIds),
@@ -3034,8 +3034,8 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
     ;
         IsFieldAccessFunc = yes(_)
     ),
-    module_info_get_cons_table(ModuleInfo, Ctors),
-    lookup_cons_table_of_type_ctor(Ctors, TypeCtor, ConsId, ConsDefn),
+    module_info_get_cons_table(ModuleInfo, ConsTable),
+    lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
     MaybeExistConstraints = ConsDefn ^ cons_maybe_exist,
     (
         MaybeExistConstraints = no_exist_constraints,
@@ -3281,10 +3281,10 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalId, ConsInfos,
     % Check if `Functor/Arity' has been defined as a constructor in some
     % discriminated union type(s). This gives us a list of possible
     % cons_type_infos.
-    typecheck_info_get_ctors(Info, Ctors),
+    typecheck_info_get_cons_table(Info, ConsTable),
     ( if
         Functor = cons(_, _, _),
-        search_cons_table(Ctors, Functor, HLDS_ConsDefns)
+        search_cons_table(ConsTable, Functor, HLDS_ConsDefns)
     then
         convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
             HLDS_ConsDefns, PlainMaybeConsInfos)
@@ -3312,7 +3312,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalId, ConsInfos,
         Functor = cons(Name, Arity, FunctorTypeCtor),
         remove_new_prefix(Name, OrigName),
         OrigFunctor = cons(OrigName, Arity, FunctorTypeCtor),
-        search_cons_table(Ctors, OrigFunctor, HLDS_ExistQConsDefns)
+        search_cons_table(ConsTable, OrigFunctor, HLDS_ExistQConsDefns)
     then
         convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
             HLDS_ExistQConsDefns, UnivQuantifiedMaybeConsInfos)
@@ -3457,7 +3457,7 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     HLDS_ConsDefn = hlds_cons_defn(TypeCtor, ConsTypeVarSet, ConsTypeParams,
         ConsTypeKinds, MaybeExistConstraints, Args, _),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),
-    typecheck_info_get_types(Info, TypeTable),
+    typecheck_info_get_type_table(Info, TypeTable),
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, Body),
 

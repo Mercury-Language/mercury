@@ -137,35 +137,36 @@
 % Basic access predicates for typecheck_info.
 %
 
-:- pred typecheck_info_get_module_info(typecheck_info::in,
-    module_info::out) is det.
 :- pred typecheck_info_get_error_clause_context(typecheck_info::in,
     type_error_clause_context::out) is det.
-:- pred typecheck_info_get_ambiguity_error_limit(typecheck_info::in,
+:- pred typecheck_info_get_overloaded_symbol_map(typecheck_info::in,
+    overloaded_symbol_map::out) is det.
+:- pred typecheck_info_get_ambiguity_warn_limit(typecheck_info::in,
     int::out) is det.
 
+:- pred typecheck_info_get_module_info(typecheck_info::in,
+    module_info::out) is det.
 :- pred typecheck_info_get_pred_id(typecheck_info::in,
     pred_id::out) is det.
+
 :- pred typecheck_info_get_calls_are_fully_qualified(typecheck_info::in,
     is_fully_qualified::out) is det.
+:- pred typecheck_info_get_ambiguity_error_limit(typecheck_info::in,
+    int::out) is det.
 :- pred typecheck_info_get_is_field_access_function(typecheck_info::in,
     maybe(pred_status)::out) is det.
 :- pred typecheck_info_get_non_overload_errors(typecheck_info::in,
     list(error_spec)::out) is det.
 :- pred typecheck_info_get_overload_error(typecheck_info::in,
     maybe(error_spec)::out) is det.
-:- pred typecheck_info_get_overloaded_symbol_map(typecheck_info::in,
-    overloaded_symbol_map::out) is det.
-:- pred typecheck_info_get_ambiguity_warn_limit(typecheck_info::in,
-    int::out) is det.
 :- pred typecheck_info_get_nosuffix_integer_vars(typecheck_info::in,
     set_tree234(prog_var)::out) is det.
 
-:- pred typecheck_info_set_overload_error(maybe(error_spec)::in,
-    typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_overloaded_symbol_map(overloaded_symbol_map::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_non_overload_errors(list(error_spec)::in,
+    typecheck_info::in, typecheck_info::out) is det.
+:- pred typecheck_info_set_overload_error(maybe(error_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -175,10 +176,12 @@
 
 :- pred typecheck_info_get_module_name(typecheck_info::in, module_name::out)
     is det.
-:- pred typecheck_info_get_preds(typecheck_info::in, predicate_table::out)
+:- pred typecheck_info_get_pred_table(typecheck_info::in, predicate_table::out)
     is det.
-:- pred typecheck_info_get_types(typecheck_info::in, type_table::out) is det.
-:- pred typecheck_info_get_ctors(typecheck_info::in, cons_table::out) is det.
+:- pred typecheck_info_get_type_table(typecheck_info::in, type_table::out)
+    is det.
+:- pred typecheck_info_get_cons_table(typecheck_info::in, cons_table::out)
+    is det.
 
 :- pred typecheck_info_add_overloaded_symbol(overloaded_symbol::in,
     prog_context::in, typecheck_info::in, typecheck_info::out) is det.
@@ -202,10 +205,6 @@
 :- import_module libs.options.
 
 :- import_module term.
-
-%-----------------------------------------------------------------------------%
-
-project_cons_type_info_source(CTI) = CTI ^ cti_source.
 
 %-----------------------------------------------------------------------------%
 
@@ -303,6 +302,10 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
 
 %-----------------------------------------------------------------------------%
 
+project_cons_type_info_source(CTI) = CTI ^ cti_source.
+
+%-----------------------------------------------------------------------------%
+
 :- pred typecheck_info_set_nosuffix_integer_vars(set_tree234(prog_var)::in,
     typecheck_info::in, typecheck_info::out) is det.
 
@@ -385,13 +388,13 @@ typecheck_info_set_nosuffix_integer_vars(X, !Info) :-
 typecheck_info_get_module_name(Info, Name) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_name(ModuleInfo, Name).
-typecheck_info_get_preds(Info, Preds) :-
+typecheck_info_get_pred_table(Info, Preds) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, Preds).
-typecheck_info_get_types(Info, Types) :-
+typecheck_info_get_type_table(Info, Types) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_type_table(ModuleInfo, Types).
-typecheck_info_get_ctors(Info, Ctors) :-
+typecheck_info_get_cons_table(Info, Ctors) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_cons_table(ModuleInfo, Ctors).
 
