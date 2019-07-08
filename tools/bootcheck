@@ -1117,7 +1117,7 @@ then
         then
             ls -lt $stage2dir/library/*.c
             ls -lt $stage2dir/library/*.o
-            ls -lt $stage2dir/library/*.{a,so}
+            ls -lt $stage2dir/library/*.{a,so,dylib}
             ls -lt $stage2dir/compiler/*.c
             ls -lt $stage2dir/compiler/*.o
             ls -lt $stage2dir/compiler/mercury_compile
