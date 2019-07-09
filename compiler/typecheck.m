@@ -2261,7 +2261,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
         GoalId, TypeAssignSet0, TypeAssignSet, !Info) :-
     typecheck_info_get_error_clause_context(!.Info, ClauseContext),
     ( if cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) then
-        ( if BuiltinTypeName = "int" then
+        ( if ConsType = builtin_type(builtin_type_int(int_type_int)) then
             typecheck_info_add_nosuffix_integer_var(Var, !Info)
         else
             true
