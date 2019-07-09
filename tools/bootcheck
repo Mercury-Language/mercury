@@ -489,6 +489,38 @@ fi
 
 #-----------------------------------------------------------------------------#
 
+# Work out how to parallelise the bootcheck when -jN with N > 1 is given.
+#
+# If --use-mmc-make is *not* enabled then all parallelism is handled by mmake,
+# using its -jN option.
+#
+# If --use-mmc-make is enabled, then each directory containing Mercury libraries
+# or executables must be built using a single invocation of mmc --make.  Multiple
+# invocation of mmc --make in the same directory will conflict with each other.
+# Directories containing target code only, such as the runtime or trace
+# directories, still need to be built with mmake in order to parallelise their
+# builds.
+#
+# Regardless of whether --use-mmc-make is enabled or not, we run the test suite
+# using mmake -jN.
+
+if test "$jfactor" != ""
+then
+    if test "$use_mmc_make" = "yes"
+    then
+        mmake_jobs=
+        mmc_make_jobs="MCFLAGS += $jfactor"
+    else
+        mmake_jobs="$jfactor"
+        mmc_make_jobs=
+    fi
+else
+    mmake_jobs=
+    mmc_make_jobs=
+fi
+
+#-----------------------------------------------------------------------------#
+
 if $use_cp
 then
     LN="cp -pr"
@@ -909,6 +941,10 @@ then
         then
             echo "GRADE = $grade" >> Mmake.params
         fi
+        if test "$use_mmc_make" = "yes"
+        then
+            echo "$mmc_make_jobs" >> Mmake.params
+        fi
         cd $root
 
         # set -x
@@ -981,7 +1017,7 @@ then
         fi
 
         if (cd $stage2dir/library && \
-            $MMAKE $mmake_opts $jfactor all-ints mercury $ENVGRADE)
+            $MMAKE $mmake_opts $mmake_jobs all-ints mercury $ENVGRADE)
         then
             echo "building of stage 2 library successful"
         else
@@ -990,7 +1026,7 @@ then
         fi
 
         if (cd $stage2dir/mdbcomp && \
-            $MMAKE $mmake_opts $jfactor library $ENVGRADE)
+            $MMAKE $mmake_opts $mmake_jobs library $ENVGRADE)
         then
             echo "building of stage 2 mdbcomp successful"
         else
@@ -999,7 +1035,7 @@ then
         fi
 
         if (cd $stage2dir/browser && \
-            $MMAKE $mmake_opts $jfactor library aux $ENVGRADE)
+            $MMAKE $mmake_opts $mmake_jobs library aux $ENVGRADE)
         then
             echo "building of stage 2 browser successful"
         else
@@ -1008,7 +1044,7 @@ then
         fi
 
         if (cd $stage2dir/ssdb && \
-            $MMAKE $mmake_opts $jfactor library $ENVGRADE)
+            $MMAKE $mmake_opts $mmake_jobs library $ENVGRADE)
         then
             echo "building of stage 2 ssdb successful"
         else
@@ -1036,7 +1072,7 @@ then
         fi
 
         if (cd $stage2dir/compiler && \
-            $MMAKE $mmake_opts $jfactor mercury_compile $ENVGRADE)
+            $MMAKE $mmake_opts $mmake_jobs mercury_compile $ENVGRADE)
         then
             echo "building of stage 2 compiler successful"
         else
@@ -1054,7 +1090,7 @@ then
             unset MMAKE_DIR && \
             unset MERCURY_CONFIG_DIR && \
             unset MERCURY_STDLIB_DIR && \
-            mmake $mmake_opts $jfactor all $ENVGRADE)
+            mmake $mmake_opts $mmake_jobs all $ENVGRADE)
         then
             echo "building of stage 2 slice successful"
         else
@@ -1068,7 +1104,7 @@ then
             unset MMAKE_DIR && \
             unset MERCURY_CONFIG_DIR && \
             unset MERCURY_STDLIB_DIR && \
-            mmake $mmake_opts $jfactor all aux $ENVGRADE)
+            mmake $mmake_opts $mmake_jobs all aux $ENVGRADE)
         then
             echo "building of stage 2 profiler successful"
         else
@@ -1082,7 +1118,7 @@ then
             unset MMAKE_DIR && \
             unset MERCURY_CONFIG_DIR && \
             unset MERCURY_STDLIB_DIR && \
-            mmake $mmake_opts $jfactor all $ENVGRADE)
+            mmake $mmake_opts $mmake_jobs all $ENVGRADE)
         then
             echo "building of stage 2 deep profiler successful"
         else
@@ -1096,7 +1132,7 @@ then
             unset MMAKE_DIR && \
             unset MERCURY_CONFIG_DIR && \
             unset MERCURY_STDLIB_DIR && \
-            mmake $mmake_opts $jfactor all $ENVGRADE)
+            mmake $mmake_opts $mmake_jobs all $ENVGRADE)
         then
             echo "building of stage 2 mfilterjavac successful"
         else
@@ -1105,7 +1141,7 @@ then
         fi
 
         if (cd $stage2dir && \
-            $MMAKE $mmake_opts MMAKEFLAGS=$jfactor all $ENVGRADE)
+            $MMAKE $mmake_opts MMAKEFLAGS=$mmake_jobs all $ENVGRADE)
         then
             echo "building of stage 2 successful"
         else
@@ -1421,8 +1457,8 @@ EOF
     fi
 
     if (cd $stage3dir/library &&
-        $MMAKE $mmake_opts $jfactor all-ints &&
-        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        $MMAKE $mmake_opts $mmake_jobs all-ints &&
+        $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 library successful"
     else
@@ -1430,8 +1466,8 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd $stage3dir/library &&
-            $MMAKE $mmake_opts $jfactor all-ints &&
-            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+            $MMAKE $mmake_opts $mmake_jobs all-ints &&
+            $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
         then
             echo "building of stage 3 library successful"
         else
@@ -1455,8 +1491,8 @@ EOF
     fi
 
     if (cd $stage3dir/mdbcomp &&
-        $MMAKE $mmake_opts $jfactor all-ints &&
-        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        $MMAKE $mmake_opts $mmake_jobs all-ints &&
+        $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 mdbcomp successful"
     else
@@ -1464,7 +1500,7 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd $stage3dir/mdbcomp && \
-            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+            $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
         then
             echo "building of stage 3 mdbcomp successful"
         else
@@ -1474,8 +1510,8 @@ EOF
     fi
 
     if (cd $stage3dir/browser &&
-        $MMAKE $mmake_opts $jfactor all-ints &&
-        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        $MMAKE $mmake_opts $mmake_jobs all-ints &&
+        $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 browser successful"
     else
@@ -1483,7 +1519,7 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd $stage3dir/browser && \
-            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+            $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
         then
             echo "building of stage 3 browser successful"
         else
@@ -1493,8 +1529,8 @@ EOF
     fi
 
     if (cd $stage3dir/ssdb &&
-        $MMAKE $mmake_opts $jfactor all-ints &&
-        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        $MMAKE $mmake_opts $mmake_jobs all-ints &&
+        $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 ssdb successful"
     else
@@ -1502,7 +1538,7 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd $stage3dir/ssdb && \
-            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+            $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
         then
             echo "building of stage 3 ssdb successful"
         else
@@ -1512,7 +1548,7 @@ EOF
     fi
 
     if (cd $stage3dir/compiler && \
-        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 compiler successful"
     else
@@ -1520,7 +1556,7 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd $stage3dir/compiler && \
-            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+            $MMAKE $mmake_opts $mmake_jobs ${target_ext}s)
         then
             echo "building of stage 3 compiler successful"
         else
@@ -1535,7 +1571,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake $mmake_opts $jfactor ${target_ext}s)
+        mmake $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 slice successful"
     else
@@ -1549,7 +1585,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake $mmake_opts $jfactor ${target_ext}s)
+        mmake $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 profiler successful"
     else
@@ -1563,7 +1599,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake $mmake_opts $jfactor ${target_ext}s)
+        mmake $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 deep profiler successful"
     else
@@ -1577,7 +1613,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake $mmake_opts $jfactor ${target_ext}s)
+        mmake $mmake_opts $mmake_jobs ${target_ext}s)
     then
         echo "building of stage 3 mfilterjavac successful"
     else
@@ -2009,11 +2045,11 @@ then
         if test -f $testdir/Mmakefile -a ! -f $testdir/NOBOOTTEST
         then
             (cd $testdir;
-            mmake $mmake_opts $jfactor realclean;
-            mmake $mmake_opts $jfactor depend &&
-            mmake $mmake_opts $jfactor &&
-            mmake $mmake_opts $jfactor check &&
-            mmake $mmake_opts $jfactor realclean ) ||
+            mmake $mmake_opts $mmake_jobs realclean;
+            mmake $mmake_opts $mmake_jobs depend &&
+            mmake $mmake_opts $mmake_jobs &&
+            mmake $mmake_opts $mmake_jobs check &&
+            mmake $mmake_opts $mmake_jobs realclean ) ||
             extras_status=1
         fi
     done
