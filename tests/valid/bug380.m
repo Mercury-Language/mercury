@@ -1,6 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% The bug was that mercury_string.h was #included in the generated C file
+% only if the module being compiled imported the string module, but
+% despite this, the compiler could generate references to macros
+% defined in that file. 
+%
+%---------------------------------------------------------------------------%
 
 :- module bug380.
 :- interface.
@@ -10,8 +17,6 @@
 :- mode word(out) is multi.
 
 :- implementation.
-
-% :- import_module string.
 
 word("aback").
 word("abaft").
