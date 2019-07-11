@@ -1112,12 +1112,14 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         ( Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
-        ),
-        % XXX ITEM_LIST The presence of these items in the interface section
-        % is an error. I (zs) think they should be silently deleted here;
+        )
+        % The presence of these items in the interface section is an error.
+        % We delay reporting this bug until we generate target code
+        % for this module. (Aborting would not be a good idea; it would
+        % lead to the failure of tests/valid/mutable_interface_in_main
+        % I (zs) think they should be silently deleted here;
         % the error should be reported when we try to generate code
         % for this module.
-        unexpected($pred, "item_initialise/finalise/mutable")
     ;
         Item = item_type_repn(_),
         % We shouldn't yet have invoked any code that creates
