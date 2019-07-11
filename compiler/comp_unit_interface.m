@@ -78,6 +78,8 @@
     % foreign_import_module declaration for the current module
     % for the any language, we add such an item.
     %
+    % XXX ITEM_LIST Document why we do all this *before* module qualification.
+    %
     % XXX ITEM_LIST The original comment on this predicate,
     % when it was conjoined with the code of get_interface above, was:
     % "Given the raw compilation unit of a module, extract and return
@@ -100,6 +102,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
+% XXX ITEM_LIST
 % The predicates in rest of the interface should not be needed at all.
 %
 
@@ -572,7 +575,8 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
         cord.snoc(Item, !SectionItemsCord)
     ;
         Item = item_instance(InstanceInfo),
-        AbstractInstanceInfo = make_instance_abstract(InstanceInfo),
+        AbstractInstanceInfo =
+            InstanceInfo ^ ci_method_instances := instance_body_abstract,
         AbstractItem = item_instance(AbstractInstanceInfo),
         cord.snoc(AbstractItem, !SectionItemsCord)
     ;
@@ -818,15 +822,16 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     set.union(ModulesNeededByTypeClassDefns, ModulesNeededByTypeDefns,
         NeededModules),
 
-    % Compute the list of type definitions we deleted from the implementation
-    % section we want to add back, possibly in their abstract form.
+    % Compute the list of type definitions we deleted from ImpItems0
+    % that we want to add back to the implementation section,
+    % possibly in their abstract form.
     map.foldl(
         maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap,
             NeededImpTypeCtors),
         ImpTypesMap, [], ImpTypeDefnItems),
 
-    % Figure out which of the foreign enum items we deleted from the
-    % implementation section above we want to add back.
+    % Figure out which of the foreign enum items we deleted from ImpItems0
+    % we want to add back to the implementation section.
     % Record the needs of these foreign enum items for
     % foreign_import_module items.
     list.foldl2(add_foreign_enum_item_if_needed(IntTypesMap), ImpForeignEnums,
@@ -878,7 +883,7 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
 
     %------%
 
-    % The rest of this predicate body constructs the .int2 file
+    % The rest of this predicate body constructs the .int2 file.
 
     % We start from the versions of the .int item lists from *before*
     % we added any foreign_import_module items to them, since for the
@@ -1068,6 +1073,8 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
     ;
         Item = item_clause(ItemClause),
         Context = ItemClause ^ cl_context,
+        % XXX ITEM_LIST We should delay reporting this bug until
+        % we generate target code for this module.
         Spec = clause_in_interface_warning("clause", Context),
         !:Specs = [Spec | !.Specs]
     ;
@@ -1076,6 +1083,8 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         AllowedInInterface = pragma_allowed_in_interface(Pragma),
         (
             AllowedInInterface = no,
+            % XXX ITEM_LIST We should delay reporting this bug until
+            % we generate target code for this module.
             Spec = clause_in_interface_warning("pragma", Context),
             !:Specs = [Spec | !.Specs]
         ;
@@ -1182,7 +1191,8 @@ get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
         ; Item = item_mutable(_)
         ; Item = item_type_repn(_)
         ),
-        unexpected($pred, "imp item that should be deleted by get_interface")
+        unexpected($pred,
+            "generate_pre_grab_pre_qual_items_imp should've deleted imp item")
     ),
     get_interface_int1_items_loop_imp(Items, !ItemsCord,
         !ForeignEnumsCord, !FIMsCord, !TypesMap, !NeededModules, !Specs).
@@ -1997,6 +2007,93 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
         unexpected($pred, "item_foreign_import_module/type_repn/nothing")
     ),
     get_int2_items_from_int1_acc(Items, !ItemsCord).
+
+%---------------------------------------------------------------------------%
+
+    % XXX make_abstract_defn should be merged with make_abstract_unify_compare
+    % and made det, returning the unchanged item if it does not need to be made
+    % abstract (so we can use det switches instead semidet tests in the code).
+    %
+    % XXX TYPE_REPN The operation of both of those predicates should be changed
+    % to remove representation from type_defn items and to put it into separate
+    % type_repn items instead.
+    %
+    % XXX TYPE_REPN Consider the relationship between this predicate and
+    % make_impl_type_abstract in write_module_interface_files.m. Unlike this
+    % predicate, that one has access to the definitions of the types
+    % in this module, so it knows whether e.g. an equivalence type definition
+    % makes the defined type equivalent to a type that needs special treatment
+    % by the algorithm that decides data representations.
+    %
+    % XXX Needs a better name.
+    %
+:- pred maybe_make_abstract_type_defn_for_int2(
+    item_type_defn_info::in, item_type_defn_info::out) is det.
+
+maybe_make_abstract_type_defn_for_int2(ItemTypeDefn,
+        MaybeAbstractItemTypeDefn) :-
+    TypeDefn = ItemTypeDefn ^ td_ctor_defn,
+    (
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(Ctors, MaybeCanonical,
+            MaybeDirectArgCtors),
+        % For the `.int2' files, we need the full definitions of
+        % discriminated union types. Even if the functors for a type
+        % are not used within a module, we may need to know them for
+        % comparing insts, e.g. for comparing `ground' and `bound(...)'.
+        % XXX zs: That may be so, but writing out the type definition
+        % unchanged, without something on it that says "use these functors
+        % *only* for these purposes", is a bug in my opinion.
+        (
+            MaybeCanonical = canon,
+            MaybeAbstractItemTypeDefn = ItemTypeDefn
+        ;
+            MaybeCanonical = noncanon(_NonCanonical),
+            AbstractDetailsDu = type_details_du(Ctors,
+                noncanon(noncanon_abstract(non_solver_type)),
+                MaybeDirectArgCtors),
+            AbstractTypeDefn = parse_tree_du_type(AbstractDetailsDu),
+            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
+                AbstractTypeDefn
+        )
+    ;
+        TypeDefn = parse_tree_abstract_type(_AbstractDetails),
+        MaybeAbstractItemTypeDefn = ItemTypeDefn
+    ;
+        TypeDefn = parse_tree_solver_type(_),
+        % rafe: XXX we need to also export the details of the
+        % forwarding type for the representation and the forwarding
+        % pred for initialization.
+        AbstractDetails = abstract_solver_type,
+        MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
+    ;
+        TypeDefn = parse_tree_eqv_type(_),
+        % For the `.int2' files, we need the full definitions of
+        % equivalence types. They are needed to ensure that
+        % non-abstract equivalence types always get fully expanded
+        % before code generation, even in modules that only indirectly
+        % import the definition of the equivalence type.
+        MaybeAbstractItemTypeDefn = ItemTypeDefn
+    ;
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
+            Assertions),
+        % We always need the definitions of foreign types
+        % to handle inter-language interfacing correctly.
+        % However, we want to abstract away any unify and compare predicates.
+        (
+            MaybeCanonical = canon,
+            MaybeAbstractItemTypeDefn = ItemTypeDefn
+        ;
+            MaybeCanonical = noncanon(_NonCanonical),
+            AbstractDetailsForeign = type_details_foreign(ForeignType,
+                noncanon(noncanon_abstract(non_solver_type)), Assertions),
+            AbstractTypeDefn = parse_tree_foreign_type(AbstractDetailsForeign),
+            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
+                AbstractTypeDefn
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

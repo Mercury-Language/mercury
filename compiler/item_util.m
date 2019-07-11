@@ -30,34 +30,6 @@
     --->    sifk_int2   % the qualified short interface, for the .int2 file
     ;       sifk_int3.  % the unqualified short interface, for the .int3 file
 
-    % XXX make_abstract_defn should be merged with make_abstract_unify_compare
-    % and made det, returning the unchanged item if it does not need to be made
-    % abstract (so we can use det switches instead semidet tests in the code).
-    %
-    % XXX TYPE_REPN The operation of both of those predicates should be changed
-    % to remove representation from type_defn items and to put it into separate
-    % type_repn items instead.
-    %
-    % XXX TYPE_REPN Consider the relationship between this predicate and
-    % make_impl_type_abstract in write_module_interface_files.m. Unlike this
-    % predicate, that one has access to the definitions of the types
-    % in this module, so it knows whether e.g. an equivalence type definition
-    % makes the defined type equivalent to a type that needs special treatment
-    % by the algorithm that decides data representations.
-    %
-:- pred maybe_make_abstract_type_defn_for_int2(
-    item_type_defn_info::in, item_type_defn_info::out) is det.
-
-:- pred make_abstract_typeclass(item_typeclass_info::in,
-    item_typeclass_info::out) is det.
-
-    % All instance declarations must be written to `.int' files as
-    % abstract instance declarations, because the method names have not yet
-    % been module qualified. This could cause the wrong predicate to be
-    % used if calls to the method are specialized.
-    %
-:- func make_instance_abstract(item_instance_info) = item_instance_info.
-
 %-----------------------------------------------------------------------------%
 
     % Could this item use items from imported modules.
@@ -77,83 +49,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 
-:- import_module maybe.
 :- import_module require.
-
-%-----------------------------------------------------------------------------%
-
-maybe_make_abstract_type_defn_for_int2(ItemTypeDefn,
-        MaybeAbstractItemTypeDefn) :-
-    TypeDefn = ItemTypeDefn ^ td_ctor_defn,
-    (
-        TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(Ctors, MaybeCanonical,
-            MaybeDirectArgCtors),
-        % For the `.int2' files, we need the full definitions of
-        % discriminated union types. Even if the functors for a type
-        % are not used within a module, we may need to know them for
-        % comparing insts, e.g. for comparing `ground' and `bound(...)'.
-        % XXX zs: That may be so, but writing out the type definition
-        % unchanged, without something on it that says "use these functors
-        % *only* for these purposes", is a bug in my opinion.
-        (
-            MaybeCanonical = canon,
-            MaybeAbstractItemTypeDefn = ItemTypeDefn
-        ;
-            MaybeCanonical = noncanon(_NonCanonical),
-            AbstractDetailsDu = type_details_du(Ctors,
-                noncanon(noncanon_abstract(non_solver_type)),
-                MaybeDirectArgCtors),
-            AbstractTypeDefn = parse_tree_du_type(AbstractDetailsDu),
-            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
-                AbstractTypeDefn
-        )
-    ;
-        TypeDefn = parse_tree_abstract_type(_AbstractDetails),
-        MaybeAbstractItemTypeDefn = ItemTypeDefn
-    ;
-        TypeDefn = parse_tree_solver_type(_),
-        % rafe: XXX we need to also export the details of the
-        % forwarding type for the representation and the forwarding
-        % pred for initialization.
-        AbstractDetails = abstract_solver_type,
-        MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
-    ;
-        TypeDefn = parse_tree_eqv_type(_),
-        % For the `.int2' files, we need the full definitions of
-        % equivalence types. They are needed to ensure that
-        % non-abstract equivalence types always get fully expanded
-        % before code generation, even in modules that only indirectly
-        % import the definition of the equivalence type.
-        MaybeAbstractItemTypeDefn = ItemTypeDefn
-    ;
-        TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
-            Assertions),
-        % We always need the definitions of foreign types
-        % to handle inter-language interfacing correctly.
-        % However, we want to abstract away any unify and compare predicates.
-        (
-            MaybeCanonical = canon,
-            MaybeAbstractItemTypeDefn = ItemTypeDefn
-        ;
-            MaybeCanonical = noncanon(_NonCanonical),
-            AbstractDetailsForeign = type_details_foreign(ForeignType,
-                noncanon(noncanon_abstract(non_solver_type)), Assertions),
-            AbstractTypeDefn = parse_tree_foreign_type(AbstractDetailsForeign),
-            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
-                AbstractTypeDefn
-        )
-    ).
-
-make_abstract_typeclass(ItemTypeClass, AbstractItemTypeClass) :-
-    AbstractItemTypeClass = ItemTypeClass ^ tc_class_methods
-        := class_interface_abstract.
-
-make_instance_abstract(ItemInstance0) = ItemInstance :-
-    ItemInstance = ItemInstance0 ^ ci_method_instances
-        := instance_body_abstract.
 
 %-----------------------------------------------------------------------------%
 
