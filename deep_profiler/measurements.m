@@ -867,12 +867,12 @@ goal_cost_change_calls(non_trivial_goal(Cost0, Calls0), Calls) =
 :- func cost_get_total(float, cost) = float.
 
 cost_get_total(_, cost_total(Total)) = Total.
-cost_get_total(Calls, cost_per_call(PC)) = Calls * PC.
+cost_get_total(Calls, cost_per_call(Percall)) = Calls * Percall.
 
 :- func cost_get_percall(float, cost) = float.
 
 cost_get_percall(Calls, cost_total(Total)) = Total / Calls.
-cost_get_percall(_, cost_per_call(PC)) = PC.
+cost_get_percall(_, cost_per_call(Percall)) = Percall.
 
 :- func (cost) / (int) = cost.
 
@@ -887,8 +887,10 @@ Cost0 / Denom = Cost :-
 
 :- func cost_by_weight(float, cost) = cost.
 
-cost_by_weight(Weight, cost_total(Total)) = cost_total(Total * Weight).
-cost_by_weight(Weight, cost_per_call(PC)) = cost_per_call(PC * Weight).
+cost_by_weight(Weight, cost_total(Total)) =
+    cost_total(Total * Weight).
+cost_by_weight(Weight, cost_per_call(Percall)) =
+    cost_per_call(Percall * Weight).
 
 :- func sum_costs(float, cost, float, cost) = cost.
 
