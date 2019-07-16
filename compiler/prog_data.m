@@ -298,6 +298,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 eqv_type            :: mer_type
             ).
 
+    % XXX TYPE_REPN Once we transmit type representation information between
+    % modules using specialized type_repn items, we should not need this type.
 :- type type_details_abstract
     --->    abstract_type_general
 
@@ -307,7 +309,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % XXX TYPE_REPN The part about "is an enumeration type"
             % is a temporary limitation. In the future, we will also use this
             % for the abstract versions of other types that can fit in less
-            % then one word, including builtin types such as int8.
+            % than one word, including builtin types such as int8.
 
     ;       abstract_dummy_type
             % The abstract type is a dummy type.
