@@ -51,7 +51,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % generate_pre_grab_pre_qual_item_blocks_int1_int2(RawCompUnit,
+    % generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit,
     %   InterfaceRawCompUnit):
     %
     % Prepare for the generation of .int and .int2 files by generating
@@ -640,6 +640,8 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit,
     ImpAvails = cord.list(ImpAvailsCord),
     IntItems0 = cord.list(IntItemsCord),
     ImpItems = cord.list(ImpItemsCord),
+    % XXX ITEM_LIST Why do we do this *before* module qualification?
+    % Module qualification *ignores* foreign_import_module items.
     list.foldl(accumulate_foreign_import_langs_in_item, IntItems0,
         set.init, LangSet0),
     list.foldl(accumulate_foreign_import_langs_in_item, ImpItems,
@@ -712,43 +714,31 @@ generate_pre_grab_pre_qual_items_int([Item | Items], !ItemsCord) :-
 
 generate_pre_grab_pre_qual_items_imp([], !ItemsCord).
 generate_pre_grab_pre_qual_items_imp([Item | Items], !ItemsCord) :-
-    MaybeIncludeItem = include_in_int_file_implementation(Item),
+    % `:- typeclass' declarations may be referred to by the constructors
+    % in type declarations. Since these constructors are abstractly
+    % exported, we won't need the local instance declarations.
     (
-        MaybeIncludeItem = yes(IncludeItem),
-        cord.snoc(IncludeItem, !ItemsCord)
-    ;
-        MaybeIncludeItem = no
-    ),
-    generate_pre_grab_pre_qual_items_imp(Items, !ItemsCord).
-
-:- func include_in_int_file_implementation(item) = maybe(item).
-
-include_in_int_file_implementation(Item) = MaybeIFileItem :-
-    (
-        % `:- typeclass declarations' may be referred to by the constructors
-        % in type declarations. Since these constructors are abstractly
-        % exported, we won't need the local instance declarations.
         Item = item_type_defn(ItemTypeDefnInfo),
         maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
             MaybeAbstractItemTypeDefnInfo),
         AbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
-        MaybeIFileItem = yes(AbstractItem)
+        cord.snoc(AbstractItem, !ItemsCord)
     ;
         Item = item_typeclass(ItemTypeClassInfo),
         AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
             := class_interface_abstract,
         AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
-        MaybeIFileItem = yes(AbstractItem)
+        cord.snoc(AbstractItem, !ItemsCord)
     ;
         Item = item_foreign_import_module(_),
-        MaybeIFileItem = yes(Item)
+        cord.snoc(Item, !ItemsCord)
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         ( if Pragma = pragma_foreign_enum(_) then
-            MaybeIFileItem = yes(Item)
+            cord.snoc(Item, !ItemsCord)
         else
-            MaybeIFileItem = no
+            true
         )
     ;
         ( Item = item_clause(_)
@@ -761,13 +751,13 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
-        ),
-        MaybeIFileItem = no
+        )
     ;
         Item = item_type_repn(_),
         % XXX TYPE_REPN Implement this.
         unexpected($pred, "item_type_repn")
-    ).
+    ),
+    generate_pre_grab_pre_qual_items_imp(Items, !ItemsCord).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -947,7 +937,7 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     % The input is the list of source item blocks in the module's
     % augmented compilation unit, *after* they have been processed
     %
-    % - by get_interface(include_impl_types, ...), which deletes
+    % - by generate_pre_grab_pre_qual_item_blocks_int1_int2, which deletes
     %   most kinds of items from implementation sections, and
     %
     % - by having everything fully module qualified (in the absence of any
@@ -987,11 +977,12 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     % in several target languages, and because of the potential presence
     % of erroneous double definitions.)
     %
-    % !:NeededModules is the list of the modules needed by any superclass
-    % constraints on any typeclass declaration in either the interface or the
-    % implementation section. A module may be needed because it defines
-    % the typeclass in the superclass constraint, or because it defines
-    % a type constructor mentioned anywhere in the superclass constraint.
+    % !:ModulesNeededByTypeClassDefns is the list of the modules needed by
+    % any superclass constraints on any typeclass declaration in either
+    % the interface or the implementation section. A module may be needed
+    % because it defines the typeclass in the superclass constraint,
+    % or because it defines a type constructor mentioned anywhere
+    % in the superclass constraint.
     %
 :- pred get_interface_int1_item_blocks_loop(list(src_item_block)::in,
     cord(item_include)::in, cord(item_include)::out,
@@ -1014,26 +1005,26 @@ get_interface_int1_item_blocks_loop([],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
         !IntFIMsCord, !ImpFIMsCord,
-        !IntTypesMap, !ImpTypesMap, !NeededModules, !Specs).
+        !IntTypesMap, !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs).
 get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
         !IntFIMsCord, !ImpFIMsCord,
-        !IntTypesMap, !ImpTypesMap, !NeededModules, !Specs) :-
+        !IntTypesMap, !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs) :-
     SrcItemBlock = item_block(_, SrcSection, Incls, Avails, Items),
     (
         SrcSection = sms_interface,
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
         !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
         get_interface_int1_items_loop_int(Items, !IntItemsCord,
-            !IntFIMsCord, !IntTypesMap, !NeededModules, !Specs)
+            !IntFIMsCord, !IntTypesMap, !ModulesNeededByTypeClassDefns, !Specs)
     ;
         SrcSection = sms_implementation,
         !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
         !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(Avails),
         get_interface_int1_items_loop_imp(Items, !ImpItemsCord,
             !ImpForeignEnumsCord, !ImpFIMsCord,
-            !ImpTypesMap, !NeededModules, !Specs)
+            !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs)
     ;
         SrcSection = sms_impl_but_exported_to_submodules,
         % The code that transforms sms_implementation to this
@@ -1044,7 +1035,7 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
         !IntFIMsCord, !ImpFIMsCord,
-        !IntTypesMap, !ImpTypesMap, !NeededModules, !Specs).
+        !IntTypesMap, !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs).
 
 :- pred get_interface_int1_items_loop_int(list(item)::in,
     cord(item)::in, cord(item)::out,
@@ -1055,9 +1046,9 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
     list(error_spec)::in, list(error_spec)::out) is det.
 
 get_interface_int1_items_loop_int([], !ItemsCord, !FIMsCord,
-        !TypesMap, !NeededModules, !Specs).
+        !TypesMap, !ModulesNeededByTypeClassDefns, !Specs).
 get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
-        !TypesMap, !NeededModules, !Specs) :-
+        !TypesMap, !ModulesNeededByTypeClassDefns, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(Name, TypeParams, _, _, _, _),
@@ -1069,7 +1060,7 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         cord.snoc(Item, !ItemsCord),
         Constraints = ItemTypeClass ^ tc_constraints,
         list.foldl(accumulate_modules_from_constraint, Constraints,
-            !NeededModules)
+            !ModulesNeededByTypeClassDefns)
     ;
         Item = item_clause(ItemClause),
         Context = ItemClause ^ cl_context,
@@ -1136,7 +1127,7 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         unexpected($pred, "item_type_repn")
     ),
     get_interface_int1_items_loop_int(Items, !ItemsCord, !FIMsCord,
-        !TypesMap, !NeededModules, !Specs).
+        !TypesMap, !ModulesNeededByTypeClassDefns, !Specs).
 
 :- pred get_interface_int1_items_loop_imp(list(item)::in,
     cord(item)::in, cord(item)::out,
@@ -1149,9 +1140,11 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 get_interface_int1_items_loop_imp([], !ItemsCord,
-        !ForeignEnumsCord, !FIMsCord, !TypesMap, !NeededModules, !Specs).
+        !ForeignEnumsCord, !FIMsCord, !TypesMap,
+        !ModulesNeededByTypeClassDefns, !Specs).
 get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
-        !ForeignEnumsCord, !FIMsCord, !TypesMap, !NeededModules, !Specs) :-
+        !ForeignEnumsCord, !FIMsCord, !TypesMap,
+        !ModulesNeededByTypeClassDefns, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(Name, TypeParams, _, _, _, _),
@@ -1165,7 +1158,7 @@ get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
         cord.snoc(Item, !ItemsCord),
         Constraints = ItemTypeClass ^ tc_constraints,
         list.foldl(accumulate_modules_from_constraint, Constraints,
-            !NeededModules)
+            !ModulesNeededByTypeClassDefns)
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, MaybeAttrs, _Context, _SeqNum),
@@ -1195,7 +1188,8 @@ get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
             "generate_pre_grab_pre_qual_items_imp should've deleted imp item")
     ),
     get_interface_int1_items_loop_imp(Items, !ItemsCord,
-        !ForeignEnumsCord, !FIMsCord, !TypesMap, !NeededModules, !Specs).
+        !ForeignEnumsCord, !FIMsCord, !TypesMap,
+        !ModulesNeededByTypeClassDefns, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -1270,24 +1264,32 @@ accumulate_modules_from_type(Type, !Modules) :-
     %   but necessarily as an abstract type), then include the type_ctor
     %   in AbsExpEqvLhsTypeCtors. We include these type_ctors in
     %   NeededImpTypeCtors because on 32-bit platforms, if type t1 is
-    %   defined to be equivalent to a 64 bit float, then code that handles
-    %   values of type t1 needs to know this even if type t1 is abstract
-    %   exported.
+    %   defined to be equivalent to a 64 bit float, then we need to take
+    %   this into account when deciding the representation of types
+    %   with t1 fields even if type t1 is abstract exported.
+    %   XXX TYPE_REPN We should convey this info in type_repn items,
+    %   not type_defn items, since the latter can be used for purposes
+    %   other than type representation.
     %
     % - We handle foreign type definitions the same way as equivalence type
     %   definitions, just in case the foreign type is also bigger than a word.
+    %   XXX TYPE_REPN Again, this info should be in a type_repn item.
+    %   XXX TYPE_REPN Shouldn't boxing make the size of the foreign type
+    %   immaterial?
     %
     % - If the definition defines an enum type, and there is a definition
     %   of the same type_ctor in the interface, we include the type_ctor in
     %   AbsExpEnumTypeCtors. This is so that when we abstract export
     %   the type_ctor, we can record that its size is less than one word.
+    %   XXX TYPE_REPN Again, this info should be in a type_repn item.
     %
     % - If the definition defines a dummy type, we include the type_ctor in
-    %   DummyTypeCtors. XXX ITEM_LIST Presumably (by me -zs) this is so that
-    %   when we abstract export them, we can record that it needs no storage.
-    %   However, we currently include dummy types in the implementation section
-    %   of the .int file unchanged, and we do so even if the type is not
-    %   mentioned in the interface section at all.
+    %   DirectDummyTypeCtors. XXX ITEM_LIST Presumably (by me -zs) this is
+    %   so that when we abstract export them, we can record that it needs
+    %   no storage. XXX However, we currently include dummy types in the
+    %   implementation section of the .int file unchanged, and we do so
+    %   even if the type is not mentioned in the interface section at all.
+    %   XXX TYPE_REPN Again, this info should be in a type_repn item.
     %
     % The first pass ignores all other type definitions.
     %
@@ -1336,7 +1338,7 @@ accumulate_modules_from_type(Type, !Modules) :-
     %% constructors, and the set of private type constructors referred to
     %% by the right hand side of any type in NeededTypeCtors.
     %%
-    %% XXX Return in DummyTypeCtors the set of dummy type constructors.
+    %% XXX Return in DirectDummyTypeCtors the set of dummy type constructors.
     %%
     %% Given a du type definition in the implementation section, we should
     %% include it in AbsImpExpLhsTypeCtors if the type constructor is abstract
@@ -1359,13 +1361,13 @@ get_requirements_of_imp_exported_types(IntTypesMap, ImpTypesMap,
     map.foldl3(
         accumulate_abs_imp_exported_type_lhs(IntTypesMap, BothTypesMap),
         ImpTypesMap, set.init, AbsExpEqvLhsTypeCtors,
-        set.init, AbsExpEnumTypeCtors, set.init, DummyTypeCtors),
+        set.init, AbsExpEnumTypeCtors, set.init, DirectDummyTypeCtors),
     set.fold3(accumulate_abs_imp_exported_type_rhs(ImpTypesMap),
         AbsExpEqvLhsTypeCtors,
         set.init, AbsExpEqvRhsTypeCtors, set.init, DuArgTypeCtors,
         set.init, ModulesNeededByTypeDefns),
     NeededImpTypeCtors = set.union_list([AbsExpEqvLhsTypeCtors,
-        AbsExpEqvRhsTypeCtors, AbsExpEnumTypeCtors, DummyTypeCtors,
+        AbsExpEqvRhsTypeCtors, AbsExpEnumTypeCtors, DirectDummyTypeCtors,
         DuArgTypeCtors]).
 
 :- pred accumulate_abs_imp_exported_type_lhs(type_defn_map::in,
@@ -1376,18 +1378,19 @@ get_requirements_of_imp_exported_types(IntTypesMap, ImpTypesMap,
 
 accumulate_abs_imp_exported_type_lhs(IntTypesMap, BothTypesMap,
         TypeCtor, ImpItemTypeDefnInfos, !AbsExpEqvLhsTypeCtors,
-        !AbsExpEnumTypeCtors, !DummyTypeCtors) :-
+        !AbsExpEnumTypeCtors, !DirectDummyTypeCtors) :-
     (
         ImpItemTypeDefnInfos = [],
         % The list of values for a key in a multi_map should never be empty.
         unexpected($pred, "ImpItemTypeDefnInfos = []")
     ;
         ImpItemTypeDefnInfos = [ImpItemTypeDefnInfo],
-        % Don't construct a closure when a type_ctor has only definition
+        % Don't construct a closure when a type_ctor has only one definition
         % in the implementation section, since this the common case.
-        accumulate_abs_imp_exported_type_lhs_2(IntTypesMap, BothTypesMap,
+        accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
             TypeCtor, ImpItemTypeDefnInfo,
-            !AbsExpEqvLhsTypeCtors, !AbsExpEnumTypeCtors, !DummyTypeCtors)
+            !AbsExpEqvLhsTypeCtors, !AbsExpEnumTypeCtors,
+            !DirectDummyTypeCtors)
     ;
         ImpItemTypeDefnInfos = [_, _ | _],
         % A type may have multiple definitions in the implementation section
@@ -1396,21 +1399,22 @@ accumulate_abs_imp_exported_type_lhs(IntTypesMap, BothTypesMap,
         % an equivalence type among those definitions, but we have to be
         % prepared for such an eventuality anyway.
         list.foldl3(
-            accumulate_abs_imp_exported_type_lhs_2(IntTypesMap, BothTypesMap,
-                TypeCtor),
+            accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap,
+                BothTypesMap, TypeCtor),
             ImpItemTypeDefnInfos,
-            !AbsExpEqvLhsTypeCtors, !AbsExpEnumTypeCtors, !DummyTypeCtors)
+            !AbsExpEqvLhsTypeCtors, !AbsExpEnumTypeCtors,
+            !DirectDummyTypeCtors)
     ).
 
-:- pred accumulate_abs_imp_exported_type_lhs_2(type_defn_map::in,
+:- pred accumulate_abs_imp_exported_type_lhs_in_defn(type_defn_map::in,
     type_defn_map::in, type_ctor::in, item_type_defn_info::in,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
-accumulate_abs_imp_exported_type_lhs_2(IntTypesMap, BothTypesMap,
+accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
         TypeCtor, ImpItemTypeDefnInfo, !AbsExpEqvLhsTypeCtors,
-        !AbsExpEnumTypeCtors, !DummyTypeCtors) :-
+        !AbsExpEnumTypeCtors, !DirectDummyTypeCtors) :-
     ImpItemTypeDefnInfo = item_type_defn_info(_, _, ImpTypeDefn, _, _, _),
     (
         ImpTypeDefn = parse_tree_eqv_type(_),
@@ -1445,17 +1449,17 @@ accumulate_abs_imp_exported_type_lhs_2(IntTypesMap, BothTypesMap,
         then
             set.insert(TypeCtor, !AbsExpEnumTypeCtors)
         else if
-            % XXX ITEM_LIST We don't we insist that TypeCtor occurs
+            % XXX ITEM_LIST Why don't we insist that TypeCtor occurs
             % in IntTypesMap?
             % XXX ITEM_LIST If a type has one function symbol with arity one
             % and the argument type is equivalent to a dummy type that is
             % defined in another module, we will NOT include TypeCtor in
-            % !DummyTypeCtors, since we won't know enough about the contents
-            % of the other module.
+            % !DirectDummyTypeCtors, since we won't know enough about
+            % the contents of the other module.
             constructor_list_represents_dummy_argument_type(BothTypesMap,
                 OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
         then
-            set.insert(TypeCtor, !DummyTypeCtors)
+            set.insert(TypeCtor, !DirectDummyTypeCtors)
         else
             true
         )
@@ -1473,7 +1477,9 @@ accumulate_abs_imp_exported_type_lhs_2(IntTypesMap, BothTypesMap,
 accumulate_abs_imp_exported_type_rhs(ImpTypesMap, TypeCtor,
         !AbsExpEqvRhsTypeCtors, !DuArgTypeCtors, !ModulesNeededByTypeDefns) :-
     ( if map.search(ImpTypesMap, TypeCtor, ImpTypeDefns) then
-        list.foldl3(accumulate_abs_eqv_type_rhs_2(ImpTypesMap), ImpTypeDefns,
+        list.foldl3(
+            accumulate_abs_eqv_type_rhs_in_defn(ImpTypesMap),
+            ImpTypeDefns,
             !AbsExpEqvRhsTypeCtors, !DuArgTypeCtors, !ModulesNeededByTypeDefns)
     else
         % TypeCtor is not defined in the implementation section
@@ -1481,13 +1487,13 @@ accumulate_abs_imp_exported_type_rhs(ImpTypesMap, TypeCtor,
         true
     ).
 
-:- pred accumulate_abs_eqv_type_rhs_2(type_defn_map::in,
+:- pred accumulate_abs_eqv_type_rhs_in_defn(type_defn_map::in,
     item_type_defn_info::in,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_abs_eqv_type_rhs_2(ImpTypesMap, ImpItemTypeDefnInfo,
+accumulate_abs_eqv_type_rhs_in_defn(ImpTypesMap, ImpItemTypeDefnInfo,
         !AbsExpEqvRhsTypeCtors, !DuArgTypeCtors, !ModulesNeededByTypeDefns) :-
     ImpItemTypeDefnInfo = item_type_defn_info(_, _, ImpTypeDefn, _, _, _),
     (
@@ -1759,6 +1765,10 @@ is_pure_abstract_type_defn(ImpItemTypeDefnInfo) :-
     list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
 
 make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfos) :-
+    % XXX TYPE_REPN We should record the aspects of the type definition
+    % that are relevant to type representation (such as "is dummy",
+    % "fits in n bits", "is equivalent to ...") in a type_repn item,
+    % and then make the type definition abstract.
     (
         !.ImpItemTypeDefnInfos = [],
         % The list of values for a key in a multi_map should never be empty.
@@ -1809,8 +1819,10 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfos) :-
             TypeDefn0 = parse_tree_abstract_type(_)
             % This type is already abstract.
         ;
-            TypeDefn0 = parse_tree_solver_type(_)
-            % get_interface has already made this type abstract.
+            TypeDefn0 = parse_tree_solver_type(_),
+            % generate_pre_grab_pre_qual_items_imp should have already made
+            % this type abstract.
+            unexpected($pred, "solver type should have been made abstract")
         )
     ;
         !.ImpItemTypeDefnInfos = [_, _ | _],
@@ -1922,11 +1934,7 @@ add_foreign_enum_item_if_needed(IntTypesMap, ForeignEnumReconstuctor,
     FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values),
     ( if
         map.search(IntTypesMap, TypeCtor, Defns),
-        not (
-            Defns = [Defn],
-            Defn = item_type_defn_info(_, _, Body, _, _, _),
-            Body = parse_tree_abstract_type(_)
-        )
+        some_type_defn_is_non_abstract(Defns)
     then
         Pragma = pragma_foreign_enum(FEInfo),
         ItemPragmaInfo = item_pragma_info(Pragma,  MaybeAttrs,
@@ -1935,6 +1943,17 @@ add_foreign_enum_item_if_needed(IntTypesMap, ForeignEnumReconstuctor,
         !:Items = [Item | !.Items],
         set.insert_list(pragma_needs_foreign_imports(Pragma),
             !NeedForeignImportLangs)
+    else
+        true
+    ).
+
+:- pred some_type_defn_is_non_abstract(list(item_type_defn_info)::in)
+    is semidet.
+
+some_type_defn_is_non_abstract([Defn | Defns]) :-
+    Defn = item_type_defn_info(_, _, Body, _, _, _),
+    ( if Body = parse_tree_abstract_type(_) then
+        some_type_defn_is_non_abstract(Defns)
     else
         true
     ).
@@ -2013,6 +2032,7 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
     % XXX make_abstract_defn should be merged with make_abstract_unify_compare
     % and made det, returning the unchanged item if it does not need to be made
     % abstract (so we can use det switches instead semidet tests in the code).
+    % XXX This seems to have been done already.
     %
     % XXX TYPE_REPN The operation of both of those predicates should be changed
     % to remove representation from type_defn items and to put it into separate
@@ -2035,23 +2055,29 @@ maybe_make_abstract_type_defn_for_int2(ItemTypeDefn,
     TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
         TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(Ctors, MaybeCanonical,
-            MaybeDirectArgCtors),
+        DetailsDu = type_details_du(_Ctors, MaybeCanonical,
+            _MaybeDirectArgCtors),
         % For the `.int2' files, we need the full definitions of
         % discriminated union types. Even if the functors for a type
         % are not used within a module, we may need to know them for
         % comparing insts, e.g. for comparing `ground' and `bound(...)'.
-        % XXX zs: That may be so, but writing out the type definition
-        % unchanged, without something on it that says "use these functors
-        % *only* for these purposes", is a bug in my opinion.
+        % XXX ITEM_LIST: zs: That may be so, but writing out the type
+        % definition unchanged, without something on it that says
+        % "use these functors *only* for these purposes",
+        % is a bug in my opinion.
+        % XXX ITEM_LIST: And most types do NOT have any insts defined for them.
+        % We could collect (a) the set of type constructors mentioned
+        % explicitly in insts as being for that type, and (b) the set of
+        % function symbol/arity pairs that occur in bound insts, and then
+        % make the type definition totally abstract unless the type constructor
+        % either is in set (a) or a member of Ctors is in set (b).
         (
             MaybeCanonical = canon,
             MaybeAbstractItemTypeDefn = ItemTypeDefn
         ;
             MaybeCanonical = noncanon(_NonCanonical),
-            AbstractDetailsDu = type_details_du(Ctors,
+            AbstractDetailsDu = DetailsDu ^ du_canonical :=
                 noncanon(noncanon_abstract(non_solver_type)),
-                MaybeDirectArgCtors),
             AbstractTypeDefn = parse_tree_du_type(AbstractDetailsDu),
             MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
                 AbstractTypeDefn
@@ -2065,8 +2091,8 @@ maybe_make_abstract_type_defn_for_int2(ItemTypeDefn,
         % forwarding type for the representation and the forwarding
         % pred for initialization.
         AbstractDetails = abstract_solver_type,
-        MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
+        MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
+            parse_tree_abstract_type(AbstractDetails)
     ;
         TypeDefn = parse_tree_eqv_type(_),
         % For the `.int2' files, we need the full definitions of
@@ -2074,11 +2100,14 @@ maybe_make_abstract_type_defn_for_int2(ItemTypeDefn,
         % non-abstract equivalence types always get fully expanded
         % before code generation, even in modules that only indirectly
         % import the definition of the equivalence type.
+        % XXX TYPE_REPN: *After* we have generated a type_repn item
+        % including this information, we should be able to make
+        % MaybeAbstractItemTypeDefn actually abstract.
         MaybeAbstractItemTypeDefn = ItemTypeDefn
     ;
         TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
-            Assertions),
+        DetailsForeign = type_details_foreign(_ForeignType, MaybeCanonical,
+            _Assertions),
         % We always need the definitions of foreign types
         % to handle inter-language interfacing correctly.
         % However, we want to abstract away any unify and compare predicates.
@@ -2087,8 +2116,8 @@ maybe_make_abstract_type_defn_for_int2(ItemTypeDefn,
             MaybeAbstractItemTypeDefn = ItemTypeDefn
         ;
             MaybeCanonical = noncanon(_NonCanonical),
-            AbstractDetailsForeign = type_details_foreign(ForeignType,
-                noncanon(noncanon_abstract(non_solver_type)), Assertions),
+            AbstractDetailsForeign = DetailsForeign ^ foreign_canonical :=
+                noncanon(noncanon_abstract(non_solver_type)),
             AbstractTypeDefn = parse_tree_foreign_type(AbstractDetailsForeign),
             MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
                 AbstractTypeDefn
