@@ -461,10 +461,6 @@ Promises are always included in .int0 files unchanged.
 
 <p>
 <li>
-Initialize and finalize declarations are never included in .int0 files.
-
-<p>
-<li>
 Mutables are never included in .int0 files.
 (This is because every module that sees a mutable declaration
 would attempt to reserve its own memory for the mutable;
@@ -474,18 +470,257 @@ for all of the mutable's get and set predicates into .int0 files.
 
 <p>
 <li>
-Declarations of submodules are always included in the .int3 file unchanged.
+Initialize and finalize declarations are never included in .int0 files.
+
+<p>
+<li>
+Declarations of submodules are always included in the .int0 file unchanged.
 
 <p>
 <li>
 Import_module and use_module declarations
-are always included in the .int3 file unchanged.
+are always included in the .int0 file unchanged.
 </ul>
 
 <h2>The contents of .int files</h2>
 
 <p>
-TODO
+<em>TODO</em>
+The contents of the .int0 file of a module are derived from the contents of
+both the interface sections and the implementation sections of that module,
+<em>after</em> they are fully module qualified.
+This requires reading in, via grab_unqual_imported_modules_make_int,
+<ul>
+<li>
+the .int0 files of this module's ancestor modules;
+<li>
+the .int3 files of the modules used or imported by this module;
+<li>
+the .int3 files of the modules imported by the .int0 or .int3 files
+we have read in under the first, second or <em>third</em> point,
+until we get to a fixpoint.
+</ul>
+
+<p>
+<em>TODO</em>
+Items are never moved between sections:
+items in the interface section of the module
+are put into the interface section of the .int0 file,
+while items in the implementation section of the module
+are put into the implementation section of the .int0 file.
+
+<p>
+<em>XXX</em>
+pre vs post qual; interface vs implementation
+<p>
+<em>XXX</em>
+pre-qual in the interface:
+keep instance definitions after deleting the instance's methods;
+keep everything else unchanged.
+<p>
+<em>XXX</em>
+pre-qual in the implementation:
+keep type_defns after calling maybe_make_abstract_type_defn_for_int2;
+keep class defns after deleting the class's methods;
+keep foreign enum pragmas;
+keep foreign_import_modules;
+delete everything else,
+
+<p>
+<ul>
+
+<li>
+<p>
+Type definitions in the interface
+are always included in the .int file unchanged.
+<p>
+Type definitions in the implementation section
+are transformed in two stages: before and after qualification.
+<p>
+In the first, pre-qualification stage,
+we transform such all type definitions as follows:
+<ul>
+<li>
+Abstract type definitions (i.e. type declarations) are left unchanged.
+<li>
+Definitions of discriminated union (du) types
+are included with only one minor change:
+if the type has user-specified unification and/or comparison predicates,
+the part of the type definition naming those predicates is deleted.
+The part of the definition
+that specifies the function symbols and their argument types is left in.
+<em>XXX</em>
+The reason given for keeping the function symbol info is that
+they may be needed for processing insts that may name those function symbols,
+but the function symbols of most nonexported types
+are not named by any inst in scope.
+<li>
+Definitions of foreign types are also included
+with the only change being the deletion of the names
+of any user-specified unification and/or comparison predicates.
+<li>
+Definitions that define a type to be equivalent to another type
+are included as as, <em>without</em> being made abstract.
+<em>XXX</em>
+To handle 64 bit floats on 32 bit platforms correctly,
+the compiler needs to be able to fully expand all chains of type equivalences.
+However, the right way to transmit the fact of the equivalence
+is through type_repn items (which can be used only for this purpose),
+and not type_defn items (which can be used for semantic checks as well,
+possibly violating encapsulation).
+<li>
+Solver type definitions are made fully abstract.
+There is an <em>XXX</em> by rafe on the relevant code,
+saying this may be the wrong thing to do.
+</ul>
+<p>
+<em>XXX</em> This is done by maybe_make_abstract_type_defn_for_int2,
+which is relevant for the .int2 section below.
+<p>
+In the second, post-qualification stage,
+we keep only a subset of the type definitions in the implementation section,
+and even the ones we keep, we transform further.
+<em>XXX</em> Actually, we transform them further
+<em>only</em> if they have only one definition in the implementation section.
+If they have two or more, we leave them alone.
+This is almost certainly a bug.
+<p>
+We keep a type definition in the implementation section
+if the type constructor being defined
+satisfies any of the following conditions:
+<ul>
+<li>
+The type constructor has a definition is a du type that is
+either a direct dummy type or an abstract enum type.
+We preserve these because they provide information
+for decisions about type representation.
+The <em>form</em> in we preserve them is as abtract types
+that nevertheless say that the type is a direct dummy or an enum type.
+<em>XXX</em> This info should be in type_repn items.
+<li>
+The type constructor has a definition is a foreign type.
+We preserve such type definitions unchanged.
+<em>XXX</em> The ostensible reason is that
+this is also for decisions about type representation, but I do not believe it.
+<li>
+The type constructor has a definition that is an equivalence type.
+We preserve such type definitions unchanged,
+because equivalence chains have to be expanded fully
+when deciding type representations.
+<em>XXX</em> The info about type equivalences should be in type_repn items.
+<li>
+The type constructor appears in the expansion
+of the right hand side of a type equivalence.
+We preserve the definitions of such types
+because the algorithm deciding type representations needs to know about them.
+because equivalence chains have to be expanded fully
+Such a type can be of any kind: discriminated union, foreign, abstract,
+another equivalence type, or even a solver type,
+though solver types will have been made abstract before qualification.
+The <em>form</em> in which the type definition will be preserved
+is given by the relevant bullet point above.
+<li>
+The type constructor appears in the argument type of a function symbol
+in the discriminated union definition of another type constructor
+that occurs in the expansion of the right hand side of a type equivalence.
+Again, the reason is that the
+algorithm deciding type representations needs to know about them,
+And again, the <em>form</em> in which the type definition will be preserved
+is given by the relevant bullet point above.
+<em>XXX</em>
+only SOME expansions
+<li>
+<em>TODO check if there are any more categories</em>
+</ul>
+<p>
+Note that a type constructor may have more than one definition
+either within the rules of Mercury
+(e.g. an abstract and a non-abstract definition,
+or a Mercury definition and some foreign definitions),
+or violating the rules of Mercury,
+as in the case of buggy code.
+
+<p>
+<li>
+Inst and mode definitions in the interface
+are always included in the .int file unchanged.
+Inst and mode definitions in the implementation
+are never included in the .int file unchanged.
+<em>XXX</em>
+We don't touch the type constructors
+in ":- inst ... for typector" declarations.
+Maybe we should treat them as type constructors
+in superclasses in typeclass declarations:
+i.e. we should consider them ground for importing any modules they mention.
+
+<p>
+<li>
+Class definitions in the interface
+are always included in the .int file unchanged.
+Class definitions in the implementation
+are always included in the .int file with the methods deleted.
+<em>XXX Why?</em>
+
+<p>
+<li>
+Instance definitions in the interface
+are always included in the .int file with the methods deleted.
+Instance definitions in the implementation
+are never included in the .int file.
+
+<p>
+<li>
+The type and mode declarations of predicates and functions in the interface
+are always included in the .int file unchanged.
+The type and mode declarations of predicates and functions
+in the implementation
+are never included in the .int file.
+
+<p>
+<li>
+Clauses are never included in .int files.
+
+<p>
+<li>
+Pragmas in the interface section
+are always included in .int files unchanged,
+provided that they <em>may</em> appear in interface sections.
+The only pragmas in the implementation section
+that are included in the .int file are foreign_enum pragmas
+for type constructors that are defined in the interface section
+in a non-abstract form.
+
+<p>
+<li>
+Promises in the interface section
+are included in .int files if and only if they promise
+exclusivity, exhaustiveness, or both.
+<em>XXX Why the limitation?</em>
+Promises in the implementation section
+are never included in .int files.
+
+<p>
+<li>
+Mutables are never included in .int files.
+
+<p>
+<li>
+Initialize and finalize declarations are never included in .int files.
+
+<p>
+<li>
+Declarations of submodules are always included in the .int file unchanged.
+
+<p>
+<li>
+<em>TODO</em>
+Foreign_import_module items ...
+
+<p>
+<li>
+<em>TODO</em>
+Import_module and use_module declarations ..
+</ul>
 
 <h2>The contents of .int2 files</h2>
 
