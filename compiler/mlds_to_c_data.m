@@ -73,11 +73,18 @@
 :- import_module char.
 :- import_module float.
 :- import_module int.
+:- import_module int8.
+:- import_module int16.
+:- import_module int32.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
+:- import_module uint8.
+:- import_module uint16.
+:- import_module uint32.
 
 %---------------------------------------------------------------------------%
 
@@ -766,9 +773,9 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
     ;
         Op = unsigned_le,
         io.write_string("(((MR_Unsigned) ", !IO),
-        mlds_output_rval(Opts, X, !IO),
+        mlds_output_rval_as_unsigned_op_arg(Opts, 2147483647, X, !IO),
         io.write_string(") <= ((MR_Unsigned) ", !IO),
-        mlds_output_rval(Opts, Y, !IO),
+        mlds_output_rval_as_unsigned_op_arg(Opts, 2147483647, Y, !IO),
         io.write_string("))", !IO)
     ;
         ( Op = int_add(IntType), OpStr = "+"
@@ -776,31 +783,39 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         ; Op = int_mul(IntType), OpStr = "*"
         ),
         (
+            % Max is the maximum signed integer of the given size
+            % that can be converted to the target unsigned type
+            % on all platforms.
             (
                 IntType = int_type_int,
                 SignedType = "MR_Integer",
-                UnsignedType = "MR_Unsigned"
+                UnsignedType = "MR_Unsigned",
+                Max = 2147483647
             ;
                 IntType = int_type_int8,
                 SignedType = "int8_t",
-                UnsignedType = "uint8_t"
+                UnsignedType = "uint8_t",
+                Max = 127
             ;
                 IntType = int_type_int16,
                 SignedType = "int16_t",
-                UnsignedType = "uint16_t"
+                UnsignedType = "uint16_t",
+                Max = 32767
             ;
                 IntType = int_type_int32,
                 SignedType = "int32_t",
-                UnsignedType = "uint32_t"
+                UnsignedType = "uint32_t",
+                Max = 2147483647
             ;
                 IntType = int_type_int64,
                 SignedType = "int64_t",
-                UnsignedType = "uint64_t"
+                UnsignedType = "uint64_t",
+                Max = 2147483647            % for 32 bit platforms
             ),
             io.format("(%s) ((%s) ", [s(SignedType), s(UnsignedType)], !IO),
-            mlds_output_rval_as_op_arg(Opts, X, !IO),
+            mlds_output_rval_as_unsigned_op_arg(Opts, Max, X, !IO),
             io.format(" %s (%s) ", [s(OpStr), s(UnsignedType)], !IO),
-            mlds_output_rval_as_op_arg(Opts, Y, !IO),
+            mlds_output_rval_as_unsigned_op_arg(Opts, Max, Y, !IO),
             io.write_string(")", !IO)
         ;
             ( IntType = int_type_uint
@@ -900,6 +915,69 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
             mlds_output_rval_as_op_arg(Opts, Y, !IO),
             io.write_string(")", !IO)
         )
+    ).
+
+    % mlds_output_rval_as_unsigned_op_arg(Opts, Max, Rval, !IO):
+    %
+    % If Rval is a signed or unsigned integer constant in [0 .. Max],
+    % the write out its value without casting it; it will be cast
+    % to the right unsigned type by our caller. Otherwise, write it out
+    % with whatever intermediate casts our general rules require for it.
+    % These intermediate casts will usually be redundant in a context
+    % in which the Rval is immediately cast to a different type.
+    % The avoidance of these redundant casts when possible is the
+    % purpose of this predicate.
+    %
+:- pred mlds_output_rval_as_unsigned_op_arg(mlds_to_c_opts::in, int::in,
+    mlds_rval::in, io::di, io::uo) is det.
+
+mlds_output_rval_as_unsigned_op_arg(Opts, Max, Rval, !IO) :-
+    ( if Rval = ml_const(Const) then
+        ( if
+            % The argument of an mlconst_int64 may not fit inside an int.
+            (
+                Const = mlconst_int(Int),
+                Int >= 0
+            ;
+                Const = mlconst_int8(Int8),
+                Int8 >= 0i8,
+                Int = int8.cast_to_int(Int8)
+            ;
+                Const = mlconst_int16(Int16),
+                Int16 >= 0i16,
+                Int = int16.cast_to_int(Int16)
+            ;
+                Const = mlconst_int32(Int32),
+                Int32 >= 0i32,
+                Int = int32.cast_to_int(Int32)
+            ),
+            Int =< Max
+        then
+            io.write_int(Int, !IO)
+        else if
+            % The argument of an mlconst_uint64 may not fit in an uint.
+            % We do the tests separately from the ints because a uint
+            % may not fit in an int either.
+            (
+                Const = mlconst_uint(Uint)
+            ;
+                Const = mlconst_uint8(Uint8),
+                Uint = uint8.cast_to_uint(Uint8)
+            ;
+                Const = mlconst_uint16(Uint16),
+                Uint = uint16.cast_to_uint(Uint16)
+            ;
+                Const = mlconst_uint32(Uint32),
+                Uint = uint32.cast_to_uint(Uint32)
+            ),
+            Uint =< uint.cast_from_int(Max)
+        then
+            io.write_uint(Uint, !IO)
+        else
+            mlds_output_rval_as_op_arg(Opts, Rval, !IO)
+        )
+    else
+        mlds_output_rval_as_op_arg(Opts, Rval, !IO)
     ).
 
 :- pred mlds_output_rval_as_op_arg(mlds_to_c_opts::in, mlds_rval::in,
