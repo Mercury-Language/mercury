@@ -1554,7 +1554,7 @@ accumulate_modules_used_by_type_ctor(TypeCtor, !Modules) :-
         set.insert(ModuleName, !Modules)
     ;
         SymName = unqualified(_),
-        % Our ancestor generate_interface_int1_int2 should be invoked
+        % Our ancestor generate_interfaces_int1_int2 should be invoked
         % only *after* the module qualification of the augmented compilation
         % unit whose contents we are now processing.
         unexpected($pred, "unqualified type encountered")
