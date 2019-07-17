@@ -638,25 +638,8 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit,
     ImpIncls = cord.list(ImpInclsCord),
     IntAvails = cord.list(IntAvailsCord),
     ImpAvails = cord.list(ImpAvailsCord),
-    IntItems0 = cord.list(IntItemsCord),
+    IntItems = cord.list(IntItemsCord),
     ImpItems = cord.list(ImpItemsCord),
-    % XXX ITEM_LIST Why do we do this *before* module qualification?
-    % Module qualification *ignores* foreign_import_module items.
-    list.foldl(accumulate_foreign_import_langs_in_item, IntItems0,
-        set.init, LangSet0),
-    list.foldl(accumulate_foreign_import_langs_in_item, ImpItems,
-        LangSet0, LangSet),
-    Langs = set.to_sorted_list(LangSet),
-    (
-        Langs = [],
-        IntItems = IntItems0
-    ;
-        Langs = [_ | _],
-        % XXX FIM We may be adding these items to the same lists of items
-        % more than once.
-        list.foldl(accumulate_foreign_import(ModuleName), Langs,
-            IntItems0, IntItems)
-    ),
     int_imp_items_to_item_blocks(ModuleName, ms_interface, ms_implementation,
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
         InterfaceItemBlocks),
@@ -827,7 +810,22 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     list.foldl2(add_foreign_enum_item_if_needed(IntTypesMap), ImpForeignEnums,
         [], ImpForeignEnumItems, set.init, NeedForeignImportLangs0),
 
-    list.foldl(add_foreign_import_item, IntFIMs, IntItems0, IntItems),
+    list.foldl(add_foreign_import_item, IntFIMs, IntItems0, IntItems1),
+    list.foldl(accumulate_foreign_import_langs_in_item, IntItems0,
+        set.init, LangSet0),
+    list.foldl(accumulate_foreign_import_langs_in_item, ImpItems0,
+        LangSet0, LangSet),
+    Langs = set.to_sorted_list(LangSet),
+    (
+        Langs = [],
+        IntItems = IntItems1
+    ;
+        Langs = [_ | _],
+        % XXX FIM We may be adding these items to the same lists of items
+        % more than once.
+        list.foldl(accumulate_foreign_import(ModuleName), Langs,
+            IntItems1, IntItems)
+    ),
 
     ImpItems1 = ImpForeignEnumItems ++ ImpItems0,
     ImpItems2 = ImpTypeDefnItems ++ ImpItems1,
