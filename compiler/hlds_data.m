@@ -253,7 +253,7 @@
     --->    remote_args_only_functor
             % This is for functors in types that have only a single functor.
             % For these types, we don't need any tags, primary or secondary,
-            % to distingish between function symbols. However, we do have
+            % to distinguish between function symbols. However, we do have
             % to decide what to put into bottom two or three bits (on 32-
             % and 64-bit systems respectively) of the representation of
             % every term, the area reserved for the primary tag. For these
@@ -760,7 +760,7 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % this type? We need to know when we are generating e.g.
                 % optimization interface files, because we want to make
                 % such files valid in all grades, not just the grade that is
-                % currently selecyed grade. In this case, it is possible
+                % currently selected grade. In this case, it is possible
                 % for this field to be a yes(...) wrapped around a foreign
                 % type body that applies to the current grade, which means
                 % that if we were generating code for this module,
