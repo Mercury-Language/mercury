@@ -449,20 +449,6 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
 generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, C_Code, Context, GoalInfo, CanOptAwayUnnamedArgs,
         Code, !CI, !CLD) :-
-    % Extract the attributes.
-    MayCallMercury = get_may_call_mercury(Attributes),
-    ThreadSafe = get_thread_safe(Attributes),
-
-    % The maybe_thread_safe attribute should have been changed
-    % to the real value by now.
-    (
-        ThreadSafe = proc_thread_safe
-    ;
-        ThreadSafe = proc_maybe_thread_safe,
-        unexpected($pred, "maybe_thread_safe")
-    ;
-        ThreadSafe = proc_not_thread_safe
-    ),
     % First we need to get a list of input and output arguments.
     ArgInfos = get_pred_proc_arginfo(!.CI, PredId, ProcId),
     make_c_arg_list(Args, ArgInfos, OrigCArgs),
@@ -477,6 +463,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     find_dead_input_vars(InCArgs, PostDeaths, DeadVars0, DeadVars),
 
     % Generate code to <save live variables on stack>.
+    MayCallMercury = get_may_call_mercury(Attributes),
     (
         MayCallMercury = proc_will_not_call_mercury,
         SaveVarsCode = empty
@@ -535,12 +522,18 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ),
 
     % Code fragments to obtain and release the global lock.
+    ThreadSafe = get_thread_safe(Attributes),
     (
         ThreadSafe = proc_thread_safe,
         ObtainLock = foreign_proc_raw_code(cannot_branch_away,
             proc_does_not_affect_liveness, live_lvals_info(set.init), ""),
         ReleaseLock = foreign_proc_raw_code(cannot_branch_away,
             proc_does_not_affect_liveness, live_lvals_info(set.init), "")
+    ;
+        ThreadSafe = proc_maybe_thread_safe,
+        % The maybe_thread_safe attribute should have been changed
+        % to the real value by now.
+        unexpected($pred, "maybe_thread_safe")
     ;
         ThreadSafe = proc_not_thread_safe,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
