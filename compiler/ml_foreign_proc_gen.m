@@ -638,18 +638,19 @@ var_is_singleton(Name) :-
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_foreign_proc_ccsj_input_args(Lang, ArgList, AssignInputs, !Info) :-
-    list.map_foldl(ml_gen_foreign_proc_ccsj_input_arg(Lang), ArgList,
+    list.map_foldl(ml_gen_foreign_proc_ccsj_input_arg_if_used(Lang), ArgList,
         AssignInputsList, !Info),
     list.condense(AssignInputsList, AssignInputs).
 
-    % ml_gen_foreign_proc_c_input_arg generates C, C# or Java code
+    % ml_gen_foreign_proc_c_input_arg_if_used generates C, C# or Java code
     % to assign the value of an input arg for a foreign_proc.
     %
-:- pred ml_gen_foreign_proc_ccsj_input_arg(foreign_language::in,
+:- pred ml_gen_foreign_proc_ccsj_input_arg_if_used(foreign_language::in,
     foreign_arg::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_foreign_proc_ccsj_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
+ml_gen_foreign_proc_ccsj_input_arg_if_used(Lang, ForeignArg, AssignInput,
+        !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ( if
         ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
@@ -694,8 +695,7 @@ ml_gen_foreign_proc_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     MaybeForeignType = is_this_a_foreign_type(ModuleInfo, OrigType),
     TypeString =
         maybe_foreign_type_to_string(Lang, OrigType, MaybeForeignType),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     ( if
         input_arg_assignable_with_cast(Lang, HighLevelData, OrigType,
             MaybeForeignType, TypeString, Cast)
