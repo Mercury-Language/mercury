@@ -10246,25 +10246,26 @@ and @var{arity} is the number of type parameters it takes):
 
 These functions are impure because of the semantic gap issue mentioned above.
 
-@c XXX zs: I think this is wrong.
-@c These functions are constructed in-line
-@c as part of a source-to-source transformation,
-@c hence it is an error to define a solver type
-@c in the interface section of a module.
+Solver types may be exported from their defining module,
+but only in an abstract form.
+This requires the full definition
+to appear in the implementation section of the module,
+and an abstract declaration like the following in its interface:
 
-@c XXX it was also a requirement that if solver_type is exported then
-@c initialisation_pred also be exported -- see comment above.
+@example
+:- solver type @var{solver_type}.
+@end example
 
-If @var{solver_type} is exported
-then it is a requirement that @var{representation_type},
-and, if specified, @var{equality_pred} and @var{comparison_pred}
-are also exported from the same module.
+If a solver type is exported,
+then its representation type,
+and, if specified, its equality and/or comparison predicates
+must also exported from the same module.
 
-If @var{equality_pred} is not specified
+If a solver type has no equality predicate specified,
 then the compiler will generate an equality predicate
 that throws an exception of type @samp{exception.software_error/0} when called.
 
-Likewise, if @var{comparison_pred} is not specified
+Likewise, if a solver type has no equality comparison specified,
 then the compiler will generate a comparison predicate
 that throws an exception of type @samp{exception.software_error/0} when called.
 
