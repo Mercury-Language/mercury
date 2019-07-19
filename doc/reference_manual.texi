@@ -4337,7 +4337,7 @@ And there are a variety of other applications.
 When defining abstract data types,
 often it is convenient to use a non-canonical representation ---
 that is, one for which a single abstract value
-may have more than one different possible concrete representations.
+may have more than one different possible concrete representation.
 For example, you may wish to implement an abstract type @samp{set}
 by representing a set as an (unsorted) list.
 
@@ -5667,7 +5667,7 @@ then @samp{bar} is set with an initial value of 561
 and the @samp{baz/2} is invoked.
 
 The effect of a mutable initial value expression
-terminating with an uncaught exceptio
+terminating with an uncaught exception
 is also the same as though it were
 a predicate specified in an @samp{initialise} directive.
 
@@ -7109,7 +7109,7 @@ then you can be guaranteed that it will work correctly
 on every implementation, under every possible implementation-defined semantics.
 
 The University of Melbourne Mercury implementation offers
-,ight different semantics,
+eight different semantics,
 which can be selected with different combinations
 of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
 and @samp{--no-fully-strict} options.
@@ -8535,7 +8535,7 @@ for the module containing the @samp{pragma foreign_import_module} declaration.
 @c  the foreign_import_module graph to be acyclic.
 @c
 @c  None of that line is applicable to C# and Java when they are the target
-@c  langugage.
+@c  language.
 
 Note that the Melbourne Mercury implementation often behaves
 as if @samp{pragma foreign_import_module} declarations
