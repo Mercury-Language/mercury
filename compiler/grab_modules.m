@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: modules.m.
-% Main author: fjh.
+% File: grab_modules.m.
+% Main author: fjh (original), zs (current).
 %
 % Given a module_and_imports structure initialized for a raw_comp_unit,
 % this module has the task of figuring out which interface files the
@@ -29,7 +29,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.modules.
+:- module parse_tree.grab_modules.
 :- interface.
 
 :- import_module libs.
@@ -2208,5 +2208,5 @@ update_opt_error_status(_Globals, FileType, FileName,
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.modules.
+:- end_module parse_tree.grab_modules.
 %---------------------------------------------------------------------------%
