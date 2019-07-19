@@ -8535,7 +8535,7 @@ for the module containing the @samp{pragma foreign_import_module} declaration.
 @c  the foreign_import_module graph to be acyclic.
 @c
 @c  None of that line is applicable to C# and Java when they are the target
-@c  langugage.
+@c  language.
 
 Note that the Melbourne Mercury implementation often behaves
 as if @samp{pragma foreign_import_module} declarations
