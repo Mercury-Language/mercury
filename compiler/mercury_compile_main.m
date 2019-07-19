@@ -78,7 +78,7 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.module_qual.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.grab_modules.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.prog_data.

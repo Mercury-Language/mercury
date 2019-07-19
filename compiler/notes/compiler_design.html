@@ -432,22 +432,12 @@ such as pretty-printing.
 
 <li>
     <p>
-    imports are handled at this point (modules.m)
+    grab_modules.m figures out what interface files to read,
+    and also does a bunch of other semi-related things.
 
     <p>
     read_module.m has code to read in modules in the form of .m,
     .int, .opt etc files.
-
-    <p>
-    canicalize_interface.m has code to put the contents of
-    `.int0', `.int', `.int2', and `.int3' files into a standard order,
-    to prevent the need to recompile the modules that import them
-    if the only change to a module is a reordering of some declarations
-    (which causes no change in the module's semantics).
-
-    <p>
-    write_module_interface_files.m has the code to write out
-    `.int0', `.int', `.int2', and `.int3' files.
 
     <p>
     split_parse_tree_src.m splits up the parse tree of a source file
@@ -455,16 +445,23 @@ such as pretty-printing.
     contained in the source file.
 
     <p>
-    comp_unit_interface.m separates the parts of a raw compilation unit
-    that belong in its .int file from those that don't.
+    write_module_interface_files.m has the code to write out
+    `.int0', `.int', `.int2', and `.int3' files.
+
+    <p>
+    comp_unit_interface.m figures out which parts of a raw compilation unit
+    belong in its .int3, .int0, .int and .int2 files.
 
     <p>
     decide_type_repn.m generates type_representation items
     that we put into interface files.
 
     <p>
-    modules.m figures out what interface files to read,
-    and also does a bunch of other semi-related things.
+    canicalize_interface.m has code to put the contents of
+    `.int0', `.int', `.int2', and `.int3' files into a standard order,
+    to prevent the need to recompile the modules that import them
+    if the only change to a module is a reordering of some declarations
+    (which causes no change in the module's semantics).
 
     <p>
     check_raw_comp_unit.m checks whether a compilation unit

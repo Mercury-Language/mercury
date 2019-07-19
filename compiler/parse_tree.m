@@ -96,11 +96,11 @@
 :- include_module file_names.
 :- include_module generate_dep_d_files.
 :- include_module get_dependencies.
+:- include_module grab_modules.
 :- include_module module_cmds.
 :- include_module module_deps_graph.
 :- include_module module_imports.
 :- include_module module_qual.
-:- include_module modules.
 :- include_module read_modules.
 :- include_module split_parse_tree_src.
 :- include_module source_file_map.
