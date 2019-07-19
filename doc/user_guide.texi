@@ -10110,7 +10110,7 @@ to install each directory. The default option is @samp{-R}.
 @sp 1
 @item --no-detect-libgrades
 @findex --no-detect-libgrades
-Do not scan the installation direcotry to determine which
+Do not scan the installation directory to determine which
 standard library grades are available.
 
 @sp 1
