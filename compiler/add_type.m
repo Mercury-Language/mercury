@@ -110,15 +110,15 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
             % XXX STATUS The status should tell us.
         )
     then
-        type_make_status_abstract(TypeStatus0, TypeStatus1)
+        type_make_status_abstract(TypeStatus0, TypeStatus)
     else
-        TypeStatus1 = TypeStatus0
+        TypeStatus = TypeStatus0
     ),
     % XXX kind inference:
     % We set the kinds to `star'. This will be different when we have a
     % kind system.
     map.init(KindMap),
-    create_hlds_type_defn(TVarSet, TypeParams, KindMap, Body, no, TypeStatus1,
+    create_hlds_type_defn(TVarSet, TypeParams, KindMap, Body, no, TypeStatus,
         NeedQual, type_defn_no_prev_errors, Context, HLDSTypeDefn0),
 
     % Our caller in make_hlds_passes.m ensures that we get called
@@ -129,19 +129,37 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
 
     (
         ParseTreeTypeDefn = parse_tree_abstract_type(_),
-        module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body,
+        module_add_type_defn_abstract(TypeStatus, TypeCtor, Body,
             HLDSTypeDefn0, Context, !ModuleInfo, !FoundInvalidType, [], Specs)
     ;
         ( ParseTreeTypeDefn = parse_tree_du_type(_)
         ; ParseTreeTypeDefn = parse_tree_eqv_type(_)
-        ; ParseTreeTypeDefn = parse_tree_solver_type(_)
         ),
-        module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
+        module_add_type_defn_mercury(TypeStatus, TypeCtor, TypeParams,
             ParseTreeTypeDefn, Body, HLDSTypeDefn0, Context,
             !ModuleInfo, !FoundInvalidType, [], Specs)
     ;
+        ParseTreeTypeDefn = parse_tree_solver_type(_),
+        ( if
+            type_status_defined_in_this_module(TypeStatus) = yes,
+            type_status_defined_in_impl_section(TypeStatus) = no
+        then
+            SolverPieces = [words("Error: the definition"),
+                words("(as opposed to the name) of a solver type such as"),
+                unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+                words("must not be exported from its defining module."), nl],
+            SolverSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [simple_msg(Context, [always(SolverPieces)])]),
+            Specs0 = [SolverSpec]
+        else
+            Specs0 = []
+        ),
+        module_add_type_defn_mercury(TypeStatus, TypeCtor, TypeParams,
+            ParseTreeTypeDefn, Body, HLDSTypeDefn0, Context,
+            !ModuleInfo, !FoundInvalidType, Specs0, Specs)
+    ;
         ParseTreeTypeDefn = parse_tree_foreign_type(_),
-        module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor, Body,
+        module_add_type_defn_foreign(TypeStatus0, TypeStatus, TypeCtor, Body,
             HLDSTypeDefn0, Context, !ModuleInfo, !FoundInvalidType, [], Specs)
     ),
     ( if contains_errors(Globals, Specs) = yes then

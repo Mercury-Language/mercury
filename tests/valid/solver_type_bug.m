@@ -10,11 +10,7 @@
 :- module solver_type_bug.
 :- interface.
 
-:- solver type foo
-    where representation is int,
-          ground         is ground,
-          any            is ground,
-          equality       is eq_foo.
+:- solver type foo.
 
 :- pred eq_foo(foo::in(any), foo::in(any)) is semidet.
 
@@ -28,6 +24,12 @@
 :- mode p2(in(any)) is nondet.
 
 :- implementation.
+
+:- solver type foo
+    where representation is int,
+          ground         is ground,
+          any            is ground,
+          equality       is eq_foo.
 
 eq_foo(X, Y) :-
     promise_pure (
