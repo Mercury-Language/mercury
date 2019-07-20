@@ -410,10 +410,14 @@ do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         else
             write_indent(Indent, !IO),
             ( if string.contains_char(DumpOptions, 'D') then
-                io.write_string("% new insts: ", !IO),
-                write_instmap_delta(VarSet, VarNamePrint, Indent,
-                    InstMapDelta, !IO),
-                io.write_string("\n", !IO)
+                ( if instmap_delta_is_unreachable(InstMapDelta) then
+                    io.write_string("% new insts: unreachable\n", !IO)
+                else
+                    io.write_string("% new insts:\n", !IO),
+                    instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
+                    write_new_var_inst_list(VarSet, VarNamePrint, Indent,
+                        NewVarInsts, !IO)
+                )
             else
                 io.write_string("% vars with new insts: ", !IO),
                 write_instmap_delta_vars(VarSet, VarNamePrint,
@@ -532,6 +536,21 @@ do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
     else
         true
     ).
+
+:- pred write_new_var_inst_list(prog_varset::in, var_name_print::in, int::in,
+    assoc_list(prog_var, mer_inst)::in, io::di, io::uo) is det.
+
+write_new_var_inst_list(_VarSet, _VarNamePrint, _Indent, [], !IO).
+write_new_var_inst_list(VarSet, VarNamePrint, Indent, [Var - Inst | VarInsts],
+        !IO) :-
+    write_indent(Indent, !IO),
+    io.write_string("%   ", !IO),
+    mercury_output_var(VarSet, VarNamePrint, Var, !IO),
+    io.write_string(" -> ", !IO),
+    varset.init(InstVarSet),
+    mercury_output_inst(output_debug, InstVarSet, Inst, !IO),
+    io.nl(!IO),
+    write_new_var_inst_list(VarSet, VarNamePrint, Indent, VarInsts, !IO).
 
 write_goal_list(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         Indent, Separator, Goals, !IO) :-
@@ -731,17 +750,6 @@ write_var_to_abs_locns(VarSet, VarNamePrint, Indent, [Var - Loc | VarLocs],
     ),
     io.write_string("\n", !IO),
     write_var_to_abs_locns(VarSet, VarNamePrint, Indent, VarLocs, !IO).
-
-:- pred write_instmap_delta(prog_varset::in, var_name_print::in,
-    int::in, instmap_delta::in, io::di, io::uo) is det.
-
-write_instmap_delta(VarSet, VarNamePrint, Indent, InstMapDelta, !IO) :-
-    ( if instmap_delta_is_unreachable(InstMapDelta) then
-        io.write_string("unreachable", !IO)
-    else
-        instmap_delta_to_assoc_list(InstMapDelta, AssocList),
-        write_var_inst_list(VarSet, VarNamePrint, Indent, AssocList, !IO)
-    ).
 
 :- pred write_instmap_delta_vars(prog_varset::in, var_name_print::in,
     instmap_delta::in, io::di, io::uo) is det.

@@ -97,18 +97,18 @@
 
 %-----------------------------------------------------------------------------%
 
-write_instmap(VarSet, AppendVarNums, Indent, InstMap, !IO) :-
+write_instmap(VarSet, VarNamePrint, Indent, InstMap, !IO) :-
     ( if instmap_is_unreachable(InstMap) then
         io.write_string("unreachable", !IO)
     else
         instmap_to_assoc_list(InstMap, AssocList),
-        write_var_inst_list(VarSet, AppendVarNums, Indent, AssocList, !IO)
+        write_var_inst_list(VarSet, VarNamePrint, Indent, AssocList, !IO)
     ).
 
 write_var_inst_list(_, _, _, [], !IO).
-write_var_inst_list(VarSet, AppendVarNums, Indent, [Var - Inst | VarsInsts],
+write_var_inst_list(VarSet, VarNamePrint, Indent, [Var - Inst | VarsInsts],
         !IO) :-
-    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+    mercury_output_var(VarSet, VarNamePrint, Var, !IO),
     io.write_string(" -> ", !IO),
     varset.init(InstVarSet),
     mercury_output_inst(output_debug, InstVarSet, Inst, !IO),
@@ -118,7 +118,7 @@ write_var_inst_list(VarSet, AppendVarNums, Indent, [Var - Inst | VarsInsts],
         VarsInsts = [_ | _],
         mercury_output_newline(Indent, !IO),
         io.write_string("%            ", !IO),
-        write_var_inst_list(VarSet, AppendVarNums, Indent, VarsInsts, !IO)
+        write_var_inst_list(VarSet, VarNamePrint, Indent, VarsInsts, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
