@@ -880,7 +880,7 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     ;
         MaybePredProcIds = no
     ),
-    write_constraint_proof_map(VarSet, VarNamePrint, Indent, ProofMap, !IO).
+    write_constraint_proof_map(Indent, VarNamePrint, VarSet, ProofMap, !IO).
 
 :- pred write_instance_methods(list(instance_method)::in, int::in, int::in,
     io::di, io::uo) is det.
