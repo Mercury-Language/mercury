@@ -523,8 +523,8 @@ ARCH_OPTS=""
 
 # XXX gcc generates warnings about possibly uninitialized variables in
 # high-level C code. clang would, too, if we did not suppress all warnings.
-case "$highlevel_code" in
-    true)
+case "$COMPILER,$highlevel_code" in
+    gcc,true)
         CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
         ;;
 esac
