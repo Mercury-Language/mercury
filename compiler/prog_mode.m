@@ -796,8 +796,24 @@ inst_name_contains_unconstrained_var(InstName) :-
 
 bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
     BoundInst = bound_functor(ConsId0, _ArgInsts),
-    ( if ConsId0 = cons(SymName, Arity, _TypeCtor) then
-        ConsId = cons(SymName, Arity, TypeCtor)
+    ( if ConsId0 = cons(ConsIdSymName0, ConsIdArity, _ConsIdTypeCtor) then
+        % Insts don't (yet) have to say what type they are for,
+        % so we cannot rely on the bound_functors inside them
+        % being correctly module qualified, and in fact it may be that
+        % the same functor in such an inst should be module qualified
+        % *differently* in different contexts. Therefore in cases like this,
+        % when the context of use (the type of the function symbol) is known,
+        % we copy the module qualifier from the type to the function symbol.
+        TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
+        (
+            TypeCtorSymName = unqualified(_),
+            unexpected($pred, "unqualified TypeCtorSymName")
+        ;
+            TypeCtorSymName = qualified(TypeCtorModuleName, _TypeCtorName),
+            ConsIdName = unqualify_name(ConsIdSymName0),
+            ConsIdSymName = qualified(TypeCtorModuleName, ConsIdName)
+        ),
+        ConsId = cons(ConsIdSymName, ConsIdArity, TypeCtor)
     else
         ConsId = ConsId0
     ).
