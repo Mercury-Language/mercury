@@ -1,3 +1,6 @@
+any_mode.m:009: Error: the definition (as opposed to the name) of a solver type
+any_mode.m:009:   such as `foo'/0 must not be exported from its defining
+any_mode.m:009:   module.
 any_mode.m:020: In clause for `p((any >> ground))':
 any_mode.m:020:   in argument 1 of call to predicate `any_mode.q'/1:
 any_mode.m:020:   mode error: variable `X' has instantiatedness `any',

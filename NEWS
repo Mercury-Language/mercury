@@ -33,7 +33,8 @@ Changes that may break compatibility:
 
 * We have enabled stricter checking of type declarations and definitions:
   all declarations and definitions of a type must agree on whether the type
-  is a solver type or not.
+  is a solver type or not, and the definitions (as opposed to the names)
+  of solver types may not be exported from their defining module.
 
 * We have enabled stricter checking of module accessibility rules.
   If a module m has an import_module or use_module declaration for
