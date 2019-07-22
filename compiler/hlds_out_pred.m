@@ -18,7 +18,6 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -49,13 +48,6 @@
     var_name_print::in, write_which_modes::in, int::in,
     list(prog_term)::in, clause::in, io::di, io::uo) is det.
 
-    % write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
-    %   ProcId, ProcInfo, !IO).
-    %
-:- pred write_proc(hlds_out_info::in, module_info::in,
-    pred_id::in, pred_status::in, var_name_print::in, int::in,
-    proc_id::in, proc_info::in, io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- pred write_table_arg_infos(tvarset::in, table_arg_infos::in,
@@ -85,6 +77,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.status.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
@@ -140,6 +133,9 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
     else
         VarNamePrint = print_name_only
     ),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.to_assoc_list(ProcTable, ProcIdsInfos),
+    find_filled_in_procs(ProcIdsInfos, FilledInProcIdsInfos),
     ( if string.contains_char(DumpOptions, 'C') then
         % Information about predicates is dumped if 'C' suboption is on.
         (
@@ -153,11 +149,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
             mercury_output_func_type(TVarSet, VarNamePrint, ExistQVars,
                 qualified(Module, PredName), FuncArgTypes, FuncRetType, no,
                 Purity, ClassContext, !IO)
-        )
-    else
-        true
-    ),
-    ( if string.contains_char(DumpOptions, 'C') then
+        ),
         ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars,
             ClausesRep, _ItemNumbers, RttiVarMaps,
             _HaveForeignClauses, _HadSyntaxErrors),
@@ -179,14 +171,18 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
         write_pred_proc_var_name_remap(Indent, VarSet, VarNameRemap, !IO),
 
         get_clause_list_maybe_repeated(ClausesRep, Clauses),
-        (
+        ( if
+            % Print the clauses only if (a) we have some, and (b) we haven't
+            % already copied them to the proc_infos.
             Clauses = [_ | _],
+            FilledInProcIdsInfos = []
+        then
             set_dump_opts_for_clauses(Info, InfoForClauses),
             write_clauses(InfoForClauses, Lang, ModuleInfo, PredId, PredOrFunc,
                 VarSet, no_varset_vartypes, VarNamePrint, Indent,
                 HeadVars, Clauses, !IO)
-        ;
-            Clauses = []
+        else
+            true
         ),
 
         pred_info_get_origin(PredInfo, Origin),
@@ -194,11 +190,29 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
     else
         true
     ),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    ValidProcIds = pred_info_procids(PredInfo),
-    write_procs_loop(Info, ModuleInfo, PredId, PredStatus, VarNamePrint,
-        ProcTable, Indent, ValidProcIds, !IO),
+    write_procs_loop(Info, Indent, VarNamePrint, ModuleInfo,
+        PredId, PredInfo, FilledInProcIdsInfos, !IO),
     io.write_string("\n", !IO).
+
+:- pred find_filled_in_procs(assoc_list(proc_id, proc_info)::in,
+    assoc_list(proc_id, proc_info)::out) is det.
+
+find_filled_in_procs([], []).
+find_filled_in_procs([ProcIdInfo | ProcIdsInfos], FilledInProcIdsInfos) :-
+    find_filled_in_procs(ProcIdsInfos, TailFilledInProcIdsInfos),
+    ProcIdInfo = _ProcId - ProcInfo,
+    proc_info_get_goal(ProcInfo, Goal),
+    Goal = hlds_goal(GoalExpr, _),
+    ( if
+        proc_info_is_valid_mode(ProcInfo),
+        not (
+            GoalExpr = conj(plain_conj, [])
+        )
+    then
+        FilledInProcIdsInfos = [ProcIdInfo | TailFilledInProcIdsInfos]
+    else
+        FilledInProcIdsInfos = TailFilledInProcIdsInfos
+    ).
 
 :- pred write_pred_markers(pred_markers::in, io::di, io::uo) is det.
 
@@ -803,22 +817,24 @@ write_var_name_remap(VarSet, Head, Tail, !IO) :-
 % Write out procedures.
 %
 
-:- pred write_procs_loop(hlds_out_info::in, module_info::in,
-    pred_id::in, pred_status::in, var_name_print::in, proc_table::in,
-    int::in, list(proc_id)::in, io::di, io::uo) is det.
+:- pred write_procs_loop(hlds_out_info::in, int::in, var_name_print::in,
+    module_info::in, pred_id::in, pred_info::in,
+    assoc_list(proc_id, proc_info)::in, io::di, io::uo) is det.
 
-write_procs_loop(_, _, _, _, _, _, _, [], !IO).
-write_procs_loop(Info, ModuleInfo, PredId, PredStatus, VarNamePrint,
-        ProcTable, Indent, [ProcId | ProcIds], !IO) :-
-    map.lookup(ProcTable, ProcId, ProcInfo),
-    write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint,
-        Indent, ProcId, ProcInfo, !IO),
-    write_procs_loop(Info, ModuleInfo, PredId, PredStatus, VarNamePrint,
-        ProcTable, Indent, ProcIds, !IO).
+write_procs_loop(_, _, _, _, _, _, [], !IO).
+write_procs_loop(Info, Indent, VarNamePrint, ModuleInfo, PredId, PredInfo,
+        [ProcId - ProcInfo | ProcIdsInfos], !IO) :-
+    write_proc(Info, Indent, VarNamePrint, ModuleInfo, PredId, PredInfo,
+        ProcId, ProcInfo, !IO),
+    write_procs_loop(Info, Indent, VarNamePrint, ModuleInfo, PredId, PredInfo,
+        ProcIdsInfos, !IO).
 
-write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
+:- pred write_proc(hlds_out_info::in, int::in, var_name_print::in,
+    module_info::in, pred_id::in, pred_info::in, proc_id::in, proc_info::in,
+    io::di, io::uo) is det.
+
+write_proc(Info, Indent, VarNamePrint, ModuleInfo, PredId, PredInfo,
         ProcId, ProcInfo, !IO) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_can_process(ProcInfo, CanProcess),
     proc_info_get_varset(ProcInfo, VarSet),
@@ -898,6 +914,7 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
         ),
         write_proc_arg_info(DumpOptions, Indent, VarSet, VarNamePrint,
             MaybeArgLives, RegR_HeadVars, MaybeArgInfos, !IO),
+        pred_info_get_status(PredInfo, PredStatus),
         ( if
             PredStatus = pred_status(status_pseudo_imported),
             hlds_pred.in_in_unification_proc_id(ProcId)
