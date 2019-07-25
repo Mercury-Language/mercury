@@ -1,5 +1,5 @@
-x:008: In module `bug10':
-x:008:   warning: module `list' is imported in the interface, but it is not
-x:008:   used in the interface.
-x:016: In clause for predicate `main'/2:
-x:016:   error: undefined predicate `foo'/2.
+x:012: In module `bug10':
+x:012:   warning: module `list' is imported in the interface, but it is not
+x:012:   used in the interface.
+x:020: In clause for predicate `main'/2:
+x:020:   error: undefined predicate `foo'/2.

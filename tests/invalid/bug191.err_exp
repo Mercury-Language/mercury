@@ -1,10 +1,10 @@
-bug191.m:020: In clause for type class method implementation for `baz(in, in,
-bug191.m:020:   out((bug191.a)))':
-bug191.m:020:   mode error: argument 3 did not get sufficiently instantiated.
-bug191.m:020:   Final instantiatedness of `HeadVar__3' was `ground',
-bug191.m:020:   expected final instantiatedness was
-bug191.m:020:     named inst a,
-bug191.m:020:     which expands to
-bug191.m:020:       bound(
-bug191.m:020:         a(ground)
-bug191.m:020:       ).
+bug191.m:029: In clause for type class method implementation for `baz(in, in,
+bug191.m:029:   out((bug191.a)))':
+bug191.m:029:   mode error: argument 3 did not get sufficiently instantiated.
+bug191.m:029:   Final instantiatedness of `HeadVar__3' was `ground',
+bug191.m:029:   expected final instantiatedness was
+bug191.m:029:     named inst a,
+bug191.m:029:     which expands to
+bug191.m:029:       bound(
+bug191.m:029:         a(ground)
+bug191.m:029:       ).

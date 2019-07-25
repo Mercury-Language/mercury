@@ -1,5 +1,11 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Check that all of the symbols in the third argument of a foreign_enum pragma
 % are data constructors of the type referred to by the foreign_enum pragma.
+%
+%---------------------------------------------------------------------------%
 
 :- module bug436.
 :- interface.

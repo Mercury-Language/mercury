@@ -1,6 +1,6 @@
-type_lhs_var.m:006: On the left hand side of type definition: error: expected a
-type_lhs_var.m:006:   type constructor and zero or more type variables as
-type_lhs_var.m:006:   arguments, got `A'.
-type_lhs_var.m:008: On the left hand side of type definition: error: expected a
-type_lhs_var.m:008:   type constructor and zero or more type variables as
-type_lhs_var.m:008:   arguments, got `B'.
+type_lhs_var.m:010: On the left hand side of type definition: error: expected a
+type_lhs_var.m:010:   type constructor and zero or more type variables as
+type_lhs_var.m:010:   arguments, got `A'.
+type_lhs_var.m:012: On the left hand side of type definition: error: expected a
+type_lhs_var.m:012:   type constructor and zero or more type variables as
+type_lhs_var.m:012:   arguments, got `B'.
