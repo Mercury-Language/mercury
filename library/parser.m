@@ -94,28 +94,28 @@
     % predicates, except that the term is read from a string rather than from
     % the current input stream. The returned value `EndPos' is the position
     % one character past the end of the term read. The arguments `MaxOffset'
-    % and `StartPos' in the six-argument version specify the length of the
-    % string and the position within the string at which to start parsing.
+    % and `StartPos' in the read_term_from_substring* versions specify
+    % the length of the string and the position within the string
+    % at which to start parsing.
 
     % read_term_from_string(FileName, String, EndPos, Term).
     %
 :- pred read_term_from_string(string::in, string::in, posn::out,
     read_term(T)::out) is det.
 
-    % read_term_from_string_with_op_table(Ops, FileName,
-    %   String, EndPos, Term).
+    % read_term_from_string_with_op_table(Ops, FileName, String, EndPos, Term).
     %
 :- pred read_term_from_string_with_op_table(Ops::in, string::in,
     string::in, posn::out, read_term(T)::out) is det <= op_table(Ops).
 
-    % read_term_from_string(FileName, String, MaxOffset, StartPos,
-    %   EndPos, Term).
+    % read_term_from_substring(FileName, String, MaxOffset, StartPos, EndPos,
+    %   Term).
     %
 :- pred read_term_from_substring(string::in, string::in, int::in,
     posn::in, posn::out, read_term(T)::out) is det.
 
-    % read_term_from_string_with_op_table(Ops, FileName, String,
-    %   MaxOffset, StartPos, EndPos, Term).
+    % read_term_from_substring_with_op_table(Ops, FileName, String, MaxOffset,
+    %   StartPos, EndPos, Term).
     %
 :- pred read_term_from_substring_with_op_table(Ops::in, string::in,
     string::in, int::in, posn::in, posn::out, read_term(T)::out) is det
