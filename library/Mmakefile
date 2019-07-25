@@ -74,12 +74,12 @@ INTER_FLAGS =
 
 endif
 
-# We compile the files in the library directory with --trace minimum by
-# default (set in FLAGS), which has no effect in non-debugging grades and
+# We compile the files in the library directory with --trace minimum by default
+# (set in LIB_FLAGS.in), which has no effect in non-debugging grades, and
 # causes the library to be shallow traced, not deep traced, in debugging
 # grades. This is probably what most users want, and it makes it much easier to
 # maintain the expected output of the debugging test cases in debugging grades.
-# However, this can be overridden by setting LIBRARY_TRACE_MINIMUM to no.
+# However, this can be overridden by setting LIBRARY_TRACE_MINIMUM to `no'.
 #
 # Always generate dependencies for use by `mmc --make'.
 
