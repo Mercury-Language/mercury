@@ -343,22 +343,29 @@
     % The type `posn' represents a position within a string.
     %
 :- type posn
-    --->    posn(int, int, int).
-            % line number, offset of start of line, current offset (the first
-            % two are used only for the purposes of computing term_contexts,
-            % for use e.g. in error messages). Offsets start at zero.
+    --->    posn(
+                % The first two fields are used only for computing
+                % term contexts, for use e.g. in error messages.
+                %
+                % Line numbers start at 1; offsets start at zero.
+                % So the usual posn at the start of a file is posn(1, 0, 0).
+                posn_current_line_number        :: int,
+                posn_offset_of_start_of_line    :: int,
+                posn_current_offset             :: int
+            ).
 
     % read_from_string(FileName, String, MaxPos, Result, Posn0, Posn):
-    % Same as read/4 except that it reads from a string rather than from a
-    % stream.
+    %
+    % Does the same job as read/4, but reads from a string, not from a stream.
+    %
     % FileName is the name of the source (for use in error messages).
     % String is the string to be parsed.
     % Posn0 is the position to start parsing from.
     % Posn is the position one past where the term read in ends.
     % MaxPos is the offset in the string which should be considered the
-    % end-of-stream -- this is the upper bound for Posn. (In the usual case,
-    % MaxPos is just the length of the String.)
-    % WARNING: if MaxPos > length of String then the behaviour is UNDEFINED.
+    % end-of-stream -- this is the upper bound for Posn.
+    % (In the usual case, MaxPos is just the length of the String.)
+    % WARNING: if MaxPos > length of String, then the behaviour is UNDEFINED.
     %
 :- pred read_from_string(string::in, string::in, int::in,
     read_result(T)::out, posn::in, posn::out) is det.
@@ -3847,8 +3854,8 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
 ").
 
 read_line_as_string_2(Stream, FirstCall, Res, String, Error, !IO) :-
-    % XXX This is terribly inefficient, a better approach would be to
-    % use a buffer like what is done for io.read_file_as_string.
+    % XXX This is terribly inefficient, a better approach would be
+    % to use a buffer like what is done for io.read_file_as_string.
     read_char_code(input_stream(Stream), ResultCode, Char, Error0, !IO),
     (
         ResultCode = result_code_ok,
@@ -14060,5 +14067,3 @@ res_to_stream_res(error(E)) = error(E).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-%---------------------%
