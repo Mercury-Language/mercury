@@ -1,6 +1,6 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et tw=0
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module bug383.
 :- interface.
@@ -9,8 +9,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -21,13 +21,13 @@
 :- import_module pair.
 :- import_module solutions.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     term_io.read_term_with_op_table(cadmium_op_table, Res, !IO),
     io.print_line(Res, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cadmium_op_table
     --->    cadmium_op_table.
@@ -46,7 +46,7 @@ main(!IO) :-
     func(arg_priority/1) is cadmium_arg_priority
 ].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_op_infos(cadmium_op_table::in, string::in,
     op_info::out, list(op_info)::out) is semidet.
@@ -54,7 +54,7 @@ main(!IO) :-
 lookup_cadmium_op_infos(_, Name, OpInfo, OpInfos) :-
     solutions(cadmium_op_info(Name), [OpInfo | OpInfos]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_op_infos(cadmium_op_table::in, string::in,
     list(op_info)::out) is det.
@@ -62,14 +62,14 @@ lookup_cadmium_op_infos(_, Name, OpInfo, OpInfos) :-
 lookup_cadmium_op_infos(_, Name, OpInfos) :-
     solutions(cadmium_op_info(Name), OpInfos).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred cadmium_op_info(string::in, op_info::out) is nondet.
 
 cadmium_op_info(Name, OpInfo) :-
     cadmium_op_table(Name, OpInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_infix_op(cadmium_op_table::in, string::in,
     priority::out, assoc::out, assoc::out) is semidet.
@@ -79,13 +79,13 @@ lookup_cadmium_infix_op(_, Name, Priority, LeftAssoc, RightAssoc) :-
     find_first(is_infix_op, OpInfos, OpInfo),
     OpInfo = op_info(infix(LeftAssoc, RightAssoc), Priority).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred is_infix_op(op_info::in) is semidet.
 
 is_infix_op(op_info(infix(_, _), _)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_operator_term(cadmium_op_table::in, priority::out,
     assoc::out, assoc::out) is semidet.
@@ -93,7 +93,7 @@ is_infix_op(op_info(infix(_, _), _)).
 lookup_cadmium_operator_term(_, 100, y, x) :-
     semidet_true.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_prefix_op(cadmium_op_table::in, string::in,
     priority::out, assoc::out) is semidet.
@@ -103,13 +103,13 @@ lookup_cadmium_prefix_op(_, Name, Priority, LeftAssoc) :-
     find_first(is_prefix_op, OpInfos, OpInfo),
     OpInfo = op_info(prefix(LeftAssoc), Priority).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred is_prefix_op(op_info::in) is semidet.
 
 is_prefix_op(op_info(prefix(_), _)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_binary_prefix_op(cadmium_op_table, string, priority,
     assoc, assoc).
@@ -120,13 +120,13 @@ lookup_cadmium_binary_prefix_op(_, Name, Priority, LeftAssoc, RightAssoc) :-
     find_first(is_binary_prefix_op, OpInfos, OpInfo),
     OpInfo = op_info(binary_prefix(LeftAssoc, RightAssoc), Priority).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred is_binary_prefix_op(op_info::in) is semidet.
 
 is_binary_prefix_op(op_info(binary_prefix(_,_),_)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_postfix_op(cadmium_op_table::in, string::in,
     priority::out, assoc::out) is semidet.
@@ -136,33 +136,33 @@ lookup_cadmium_postfix_op(_, Name, Priority, LeftAssoc) :-
     find_first(is_postfix_op, OpInfos, OpInfo),
     OpInfo = op_info(postfix(LeftAssoc), Priority).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred is_postfix_op(op_info::in) is semidet.
 
 is_postfix_op(op_info(postfix(_),_)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_op(cadmium_op_table::in, string::in) is semidet.
 
 lookup_cadmium_op(_, Name) :-
     cadmium_op_table(Name, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func cadmium_max_priority(cadmium_op_table) = priority.
 
 cadmium_max_priority(_) = 1400.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func cadmium_arg_priority(cadmium_op_table) = priority.
 
 cadmium_arg_priority(_) = comma_priority - 1.
     % See ops.m docs for an explanation of this.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred find_first(pred(T)::(pred(in) is semidet), list(T)::in, T::out)
     is semidet.
@@ -174,7 +174,7 @@ find_first(Pred, [X | Xs], Y) :-
         find_first(Pred, Xs, Y)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func comma_priority = int.
 
@@ -217,5 +217,5 @@ cadmium_op_table(":=",          op_info(infix(x, x), 70)).
 cadmium_op_table("@",           op_info(infix(x, x), 70)).
 cadmium_op_table(".",           op_info(infix(y, x), 10)).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
