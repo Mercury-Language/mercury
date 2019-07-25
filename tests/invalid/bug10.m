@@ -1,5 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 % Regression test for bug #10: the source_file pragma was being ignored
 % when reporting the unused module in the interface.
+%---------------------------------------------------------------------------%
 
 :- pragma source_file("x").
 :- module bug10.
@@ -14,4 +18,4 @@
 
 main(!IO) :-
     foo(!IO),
-    nl(!IO).
+    io.nl(!IO).

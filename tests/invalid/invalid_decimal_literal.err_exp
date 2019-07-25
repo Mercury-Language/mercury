@@ -1,4 +1,4 @@
-invalid_decimal_literal.m:006: Error: no clauses for function `foo1'/0.
-invalid_decimal_literal.m:007: Error: no clauses for function `foo2'/0.
-invalid_decimal_literal.m:011: Syntax error: unterminated decimal literal.
-invalid_decimal_literal.m:013: Syntax error: unterminated decimal literal.
+invalid_decimal_literal.m:012: Error: no clauses for function `foo1'/0.
+invalid_decimal_literal.m:013: Error: no clauses for function `foo2'/0.
+invalid_decimal_literal.m:017: Syntax error: unterminated decimal literal.
+invalid_decimal_literal.m:019: Syntax error: unterminated decimal literal.

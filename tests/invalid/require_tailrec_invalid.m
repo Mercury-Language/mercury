@@ -1,7 +1,12 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
-% This test case tests for invalid uses of the require_tail_recursion
-% pragma.  It does not test the use of this pragma on a non tail recursive
+% This test case tests for invalid uses of the require_tail_recursion pragma.
+% It does not test the use of this pragma on a non tail recursive
 % predicate or function, that will be tested separately.
+%
+%---------------------------------------------------------------------------%
 
 :- module require_tailrec_invalid.
 

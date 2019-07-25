@@ -1,20 +1,11 @@
-invalid_hex_literal.m:006: Error: no clauses for function `foo1'/0.
-invalid_hex_literal.m:007: Error: no clauses for function `foo2'/0.
-invalid_hex_literal.m:008: Error: no clauses for function `foo3'/0.
-invalid_hex_literal.m:009: Error: no clauses for function `foo4'/0.
-invalid_hex_literal.m:010: Error: no clauses for function `foo5'/0.
-invalid_hex_literal.m:011: Error: no clauses for function `foo6'/0.
-invalid_hex_literal.m:012: Error: no clauses for function `foo7'/0.
-invalid_hex_literal.m:013: Error: no clauses for function `foo8'/0.
-invalid_hex_literal.m:017: Syntax error at token `. ': unexpected token at
-invalid_hex_literal.m:017:   start of (sub)term.
-invalid_hex_literal.m:017: Syntax error: unterminated hexadecimal literal.
-invalid_hex_literal.m:019: Syntax error at token `. ': unexpected token at
-invalid_hex_literal.m:019:   start of (sub)term.
-invalid_hex_literal.m:019: Syntax error: unterminated hexadecimal literal.
-invalid_hex_literal.m:021: Syntax error at token `. ': unexpected token at
-invalid_hex_literal.m:021:   start of (sub)term.
-invalid_hex_literal.m:021: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:012: Error: no clauses for function `foo1'/0.
+invalid_hex_literal.m:013: Error: no clauses for function `foo2'/0.
+invalid_hex_literal.m:014: Error: no clauses for function `foo3'/0.
+invalid_hex_literal.m:015: Error: no clauses for function `foo4'/0.
+invalid_hex_literal.m:016: Error: no clauses for function `foo5'/0.
+invalid_hex_literal.m:017: Error: no clauses for function `foo6'/0.
+invalid_hex_literal.m:018: Error: no clauses for function `foo7'/0.
+invalid_hex_literal.m:019: Error: no clauses for function `foo8'/0.
 invalid_hex_literal.m:023: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:023:   start of (sub)term.
 invalid_hex_literal.m:023: Syntax error: unterminated hexadecimal literal.
@@ -24,9 +15,18 @@ invalid_hex_literal.m:025: Syntax error: unterminated hexadecimal literal.
 invalid_hex_literal.m:027: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:027:   start of (sub)term.
 invalid_hex_literal.m:027: Syntax error: unterminated hexadecimal literal.
-invalid_hex_literal.m:029: Error: clause for predicate
-invalid_hex_literal.m:029:   `invalid_hex_literal.xff'/0
-invalid_hex_literal.m:029:   without corresponding `:- pred' declaration.
-invalid_hex_literal.m:029: Inferred :- pred xff.
-invalid_hex_literal.m:029: Syntax error: unterminated decimal literal.
-invalid_hex_literal.m:031: Syntax error: unterminated decimal literal.
+invalid_hex_literal.m:029: Syntax error at token `. ': unexpected token at
+invalid_hex_literal.m:029:   start of (sub)term.
+invalid_hex_literal.m:029: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:031: Syntax error at token `. ': unexpected token at
+invalid_hex_literal.m:031:   start of (sub)term.
+invalid_hex_literal.m:031: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:033: Syntax error at token `. ': unexpected token at
+invalid_hex_literal.m:033:   start of (sub)term.
+invalid_hex_literal.m:033: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:035: Error: clause for predicate
+invalid_hex_literal.m:035:   `invalid_hex_literal.xff'/0
+invalid_hex_literal.m:035:   without corresponding `:- pred' declaration.
+invalid_hex_literal.m:035: Inferred :- pred xff.
+invalid_hex_literal.m:035: Syntax error: unterminated decimal literal.
+invalid_hex_literal.m:037: Syntax error: unterminated decimal literal.
