@@ -2892,10 +2892,8 @@ codepoint_offset(String, N, Index) :-
 %
 % Computing hashes of strings.
 %
-%
-% NOTE: hash, hash2 and hash3 are also defined as MR_hash_string,
-% MR_hash_string2 and MR_hash_string3 in runtime/mercury_string.h.
-% The corresponding definitions must be kept identical.
+% Note that these functions are also defined in runtime/mercury_string.h.
+% The definition here and in mercury_string.h must be kept equivalent.
 %
 
 hash(String) = HashVal :-

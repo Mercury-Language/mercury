@@ -820,7 +820,7 @@ uint_hash(!.Key, Hash) :-
     else
         !:Key = (\ !.Key) + (!.Key << 21), % !:Key = (!.Key << 21) - !.Key - 1
         !:Key = !.Key `xor` (!.Key >> 24),
-        !:Key = (!.Key + (!.Key << 3)) + (!.Key << 8), % !.Key * 245
+        !:Key = (!.Key + (!.Key << 3)) + (!.Key << 8), % !.Key * 265
         !:Key = !.Key `xor` (!.Key >> 14),
         !:Key = (!.Key + (!.Key << 2)) + (!.Key << 4), % !.Key * 21
         !:Key = !.Key `xor` (!.Key >> 28),

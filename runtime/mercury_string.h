@@ -194,13 +194,14 @@
         (ptr) = make_aligned_string_ptr;                                \
     } while (0)
 
-// MR_do_hash_string{,2,3}(int & hash, MR_Word string):
+// MR_do_hash_string{,2,3,4,5,6}(int & hash, MR_Word string):
 //
 // Given a Mercury string `string', set `hash' to the hash value
 // for that string. (`hash' must be an lvalue.)
 //
-// This is an implementation detail used to implement MR_hash_string{,2,3}().
-// It should not be used directly. Use MR_hash_string{,2,3}() instead.
+// This is an implementation detail used to implement
+// MR_hash_string{,2,3,4,5,6}(). It should not be used directly.
+// Use MR_hash_string{,2,3,4,5,6}() instead.
 //
 // Note that these functions are also defined in library/string.m.
 // The definition here and in string.m must be kept equivalent.
@@ -292,7 +293,7 @@
         hash ^= i;                                                          \
     }
 
-// MR_hash_string{,2,3}(s):
+// MR_hash_string{,2,3,4,5,6}(s):
 //
 // Given a Mercury string `s', return a hash value for that string.
 
