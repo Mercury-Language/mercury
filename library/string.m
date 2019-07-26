@@ -2929,7 +2929,7 @@ hash2_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
         unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 37,
-        !:HashVal= !.HashVal + C,
+        !:HashVal = !.HashVal + C,
         hash2_loop(String, Index + 1, Length, !HashVal)
     else
         true
@@ -2947,7 +2947,7 @@ hash3_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
         unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 49,
-        !:HashVal= !.HashVal + C,
+        !:HashVal = !.HashVal + C,
         hash3_loop(String, Index + 1, Length, !HashVal)
     else
         true
@@ -2988,7 +2988,7 @@ hash5_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
         unsafe_index_code_unit(String, Index, C),
         !:HashVal = keep_30_bits(!.HashVal * 37),
-        !:HashVal= keep_30_bits(!.HashVal + C),
+        !:HashVal = keep_30_bits(!.HashVal + C),
         hash5_loop(String, Index + 1, Length, !HashVal)
     else
         true
@@ -3006,7 +3006,7 @@ hash6_loop(String, Index, Length, !HashVal) :-
     ( if Index < Length then
         unsafe_index_code_unit(String, Index, C),
         !:HashVal = keep_30_bits(!.HashVal * 49),
-        !:HashVal= keep_30_bits(!.HashVal + C),
+        !:HashVal = keep_30_bits(!.HashVal + C),
         hash6_loop(String, Index + 1, Length, !HashVal)
     else
         true
