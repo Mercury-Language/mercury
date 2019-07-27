@@ -185,7 +185,7 @@ get_token_list(Stream, Tokens, !IO) :-
     %
     % Comments of the form
     %   foo --> bar . baz
-    % mean that we are parsing a `foo', and we've already scanned past
+    % mean that we are parsing a `foo', and we have already scanned past
     % the `bar', so now we need to match with a `baz'.
     get_token(Stream, Token, Context, !IO),
     get_token_list_2(Stream, Token, Context, Tokens, !IO).
@@ -286,10 +286,9 @@ get_context(Stream, Context, !IO) :-
 
 :- type string_token_context == token_context.
 
-:- pred string_get_context(posn::in, string_token_context::out,
-    posn::in, posn::out) is det.
+:- pred string_get_context(posn::in, string_token_context::out) is det.
 
-string_get_context(StartPosn, Context, !Posn) :-
+string_get_context(StartPosn, Context) :-
     StartPosn = posn(StartLineNum, _, _),
     Context = StartLineNum.
     % In future, we might want to modify this code to read something like this:
@@ -313,7 +312,16 @@ string_read_char(String, Len, Char, Posn0, Posn) :-
         Posn = posn(LineNum0, LineOffset0, Offset)
     ).
 
+    % We used to use this predicate as the equivalent in !Posn variants
+    % of io.putback_char in the !IO variants. However, it is simpler to
+    % simply remember the position *before* we stepped over the character
+    % we want to put back. The obsolete pragma is so that people get
+    % a warning if they use it without knowing this, while the consider_used
+    % allows us to keep it around anyway, at least for now.
+    %
 :- pred string_ungetchar(string::in, posn::in, posn::out) is det.
+:- pragma obsolete(string_ungetchar/3).
+:- pragma consider_used(string_ungetchar/3).
 
 string_ungetchar(String, Posn0, Posn) :-
     Posn0 = posn(LineNum0, LineOffset0, Offset0),
@@ -328,10 +336,9 @@ string_ungetchar(String, Posn0, Posn) :-
         Posn = Posn0
     ).
 
-:- pred grab_string(string::in, posn::in, string::out,
-    posn::in, posn::out) is det.
+:- pred grab_string(string::in, posn::in, posn::in, string::out) is det.
 
-grab_string(String, Posn0, SubString, Posn, Posn) :-
+grab_string(String, Posn0, Posn, SubString) :-
     Posn0 = posn(_, _, Offset0),
     Posn = posn(_, _, Offset),
     string.unsafe_between(String, Offset0, Offset, SubString).
@@ -342,10 +349,9 @@ grab_string(String, Posn0, SubString, Posn, Posn) :-
     % converting strings into floats (sscanf in C, parseDouble in Java etc)
     % cannot handle underscores in their input.
     %
-:- pred grab_float_string(string::in, posn::in, string::out,
-    posn::in, posn::out) is det.
+:- pred grab_float_string(string::in, posn::in, posn::in, string::out) is det.
 
-grab_float_string(String, Posn0, FloatString, Posn, Posn) :-
+grab_float_string(String, Posn0, Posn, FloatString) :-
     Posn0 = posn(_, _, Offset0),
     Posn = posn(_, _, Offset),
     unsafe_get_float_between(String, Offset0, Offset, FloatString).
@@ -441,9 +447,9 @@ get_token(Stream, Token, Context, !IO) :-
     % the recursive call can be compiled to a loop on backends that cannot
     % eliminate tail calls in general.
     %
-:- pragma inline(get_token_2/6).
 :- pred get_token_2(io.input_stream::in, scanned_past_whitespace::in,
     token::out, token_context::out, io::di, io::uo) is det.
+:- pragma inline(get_token_2/6).
 
 get_token_2(Stream, ScannedPastWhiteSpace, Token, Context, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
@@ -473,28 +479,214 @@ string_get_token(String, Len, Token, Context, !Posn) :-
     string_get_token_2(String, Len, not_scanned_past_whitespace,
         Token, Context, !Posn).
 
-:- pragma inline(string_get_token_2/7). % see get_token_2
 :- pred string_get_token_2(string::in, int::in, scanned_past_whitespace::in,
     token::out, token_context::out, posn::in, posn::out) is det.
+% Due to the inlining of the calls to lookup_token_action and the only call
+% to the !Posn version of execute_get_token_action (which could thus be
+% deleted), all the calls to string_get_token_2 are self-tail-recursive,
+% with one exception: the call from string_get_token. Given this fact,
+% unlike get_token_2, this call should not be inlined: the elimination
+% of the overhead of one call would be outweighed by the pollution
+% of the instruction cache.
+% :- pragma inline(string_get_token_2/7).
 
-string_get_token_2(String, Len, ScannedPastWhiteSpace, Token, Context, !Posn)
-        :-
+string_get_token_2(String, Len, ScannedPastWhiteSpace,
+        Token, Context, !Posn) :-
     Posn0 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
-        ( if lookup_token_action(Char, Action) then
-            execute_string_get_token_action(String, Len, Posn0, Char, Action,
-                ScannedPastWhiteSpace, Token, Context, !Posn)
+        ( if
+            % The condition of this if-then-else is effectively
+            % this conjunction,
+            %
+            %   lookup_token_action(Char, Action),
+            %   execute_string_get_token_action(String, Len, Posn0, Char,
+            %       Action, ScannedPastWhiteSpace, Token, Context, !Posn)
+            %
+            % with both calls inlined and then Action being optimized away
+            % through deforestation, saving the second switch.
+            %
+            % Note that get_token_2, the !IO variant of the predicate,
+            % cannot use this approach, because the switch in
+            % lookup_token_action is incomplete, and we cannot update !IO
+            % in the arms of such switches.
+            (
+                % This list of characters comes from the code of
+                % char.is_whitespace. Any update here will also require
+                % an update there.
+                ( Char = ' '
+                ; Char = '\t'
+                ; Char = '\n'
+                ; Char = '\r'
+                ; Char = '\f'
+                ; Char = '\v'
+                ),
+                % Action = action_whitespace
+                string_get_token_2(String, Len, scanned_past_whitespace,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                % This list of characters comes
+                % from char.is_alnum_or_underscore and char.lower_upper.
+                ( Char = 'a' ; Char = 'b' ; Char = 'c' ; Char = 'd'
+                ; Char = 'e' ; Char = 'f' ; Char = 'g' ; Char = 'h'
+                ; Char = 'i' ; Char = 'j' ; Char = 'k' ; Char = 'l'
+                ; Char = 'm' ; Char = 'n' ; Char = 'o' ; Char = 'p'
+                ; Char = 'q' ; Char = 'r' ; Char = 's' ; Char = 't'
+                ; Char = 'u' ; Char = 'v' ; Char = 'w' ; Char = 'x'
+                ; Char = 'y' ; Char = 'z'
+                ),
+                % Action = action_alpha_lower
+                string_get_name(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                % This list of characters comes from
+                % char.is_alnum_or_underscore and char.lower_upper.
+                ( Char = '_'
+                ; Char = 'A' ; Char = 'B' ; Char = 'C' ; Char = 'D'
+                ; Char = 'E' ; Char = 'F' ; Char = 'G' ; Char = 'H'
+                ; Char = 'I' ; Char = 'J' ; Char = 'K' ; Char = 'L'
+                ; Char = 'M' ; Char = 'N' ; Char = 'O' ; Char = 'P'
+                ; Char = 'Q' ; Char = 'R' ; Char = 'S' ; Char = 'T'
+                ; Char = 'U' ; Char = 'V' ; Char = 'W' ; Char = 'X'
+                ; Char = 'Y' ; Char = 'Z'
+                ),
+                % Action = action_alpha_upper_uscore
+                string_get_variable(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = '0',
+                % Action = action_zero
+                string_get_zero(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                % This list of characters comes from
+                % char.is_alnum_or_underscore and char.is_digit.
+                ( Char = '1' ; Char = '2' ; Char = '3' ; Char = '4'
+                ; Char = '5' ; Char = '6' ; Char = '7' ; Char = '8'
+                ; Char = '9'
+                ),
+                % Action = action_nonzero_digit
+                LastDigit = last_digit_is_not_underscore,
+                string_get_number(String, Len, LastDigit, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                % These are the characters for which special_token succeeds.
+                ( Char = ('(')
+                ; Char = (')')
+                ; Char = ('[')
+                ; Char = (']')
+                ; Char = ('{')
+                ; Char = ('}')
+                ; Char = ('|')
+                ; Char = (',')
+                ; Char = (';')
+                ),
+                % Action = action_special_token
+                handle_special_token(Char, ScannedPastWhiteSpace, TokenPrime),
+                string_get_context(Posn0, ContextPrime)
+            ;
+                Char = ('.'),
+                % Action = action_dot
+                string_get_dot(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = ('%'),
+                % Action = action_percent
+                string_skip_to_eol(String, Len, TokenPrime0, HaveToken0,
+                    !Posn),
+                ( if have_token_with_context(HaveToken0, ContextPrime0) then
+                    TokenPrime = TokenPrime0,
+                    ContextPrime = ContextPrime0
+                else
+                    string_get_token_2(String, Len, scanned_past_whitespace,
+                        TokenPrime, ContextPrime, !Posn)
+                )
+            ;
+                Char = ('/'),
+                % Action = action_slash
+                string_get_slash(String, Len, Posn0, TokenPrime0, HaveToken0,
+                    !Posn),
+                ( if have_token_with_context(HaveToken0, ContextPrime0) then
+                    TokenPrime = TokenPrime0,
+                    ContextPrime = ContextPrime0
+                else
+                    string_get_token_2(String, Len, scanned_past_whitespace,
+                        TokenPrime, ContextPrime, !Posn)
+                )
+            ;
+                ( Char = '"'
+                ; Char = ''''
+                ),
+                % Action = action_quote
+                string_start_quoted_name(String, Len, Char, [], Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = ('#'),
+                % Action = action_hash
+                string_get_source_line_number(String, Len, !.Posn,
+                    TokenPrime0, HaveToken0, !Posn),
+                ( if have_token_with_context(HaveToken0, ContextPrime0) then
+                    TokenPrime = TokenPrime0,
+                    ContextPrime = ContextPrime0
+                else
+                    string_get_token_2(String, Len,
+                        not_scanned_past_whitespace,
+                        TokenPrime, ContextPrime, !Posn)
+                )
+            ;
+                Char = ('`'),
+                % Action = action_backquote
+                string_get_context(Posn0, ContextPrime),
+                TokenPrime = name("`")
+            ;
+                Char = ('$'),
+                % Action = action_dollar
+                string_get_implementation_defined_literal_rest(String, Len,
+                    Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                % These are the characters for which graphic_token_char
+                % succeeds. The ones that are commented out have their own
+                % actions.
+                ( Char = ('!')
+                % ; Char = ('#')    handled as action_hash
+                % ; Char = ('$')    handled as action_dollar
+                ; Char = ('&')
+                ; Char = ('*')
+                ; Char = ('+')
+                ; Char = ('-')
+                % ; Char = ('.')    handled as action_dot
+                % ; Char = ('/')    handled as action_slash
+                ; Char = (':')
+                ; Char = ('<')
+                ; Char = ('=')
+                ; Char = ('>')
+                ; Char = ('?')
+                ; Char = ('@')
+                ; Char = ('^')
+                ; Char = ('~')
+                ; Char = ('\\')
+                ),
+                % Action = action_graphic_token
+                string_get_graphic(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            )
+        then
+            Token = TokenPrime,
+            Context = ContextPrime
         else
-            string_get_context(Posn0, Context, !Posn),
+            string_get_context(Posn0, Context),
             Token = junk(Char)
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_get_context(Posn0, Context),
         Token = eof
     ).
 
     % Decide on how the given character should be treated. Note that
     % performance suffers significantly if this predicate is not inlined.
+    %
+    % Note that string_get_token_2 contains an inlined copy of this predicate,
+    % so any changes here should be reflected there, and vice versa.
     %
 :- pred lookup_token_action(char::in, get_token_action::out) is semidet.
 :- pragma inline(lookup_token_action/2).
@@ -656,11 +848,10 @@ lookup_token_action(Char, Action) :-
 have_token(Stream, maybe_have_valid_token(Context), !IO) :-
     get_context(Stream, Context, !IO).
 
-:- pred string_have_token(posn::in, maybe_have_valid_token::out,
-    posn::in, posn::out) is det.
+:- pred string_have_token(posn::in, maybe_have_valid_token::out) is det.
 
-string_have_token(Posn0, maybe_have_valid_token(Context), !Posn) :-
-    string_get_context(Posn0, Context, !Posn).
+string_have_token(Posn0, maybe_have_valid_token(Context)) :-
+    string_get_context(Posn0, Context).
 
 :- pred do_not_have_token(token::out, maybe_have_valid_token::out) is det.
 
@@ -739,8 +930,8 @@ execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
             Token = Token0,
             Context = Context0
         else
-            get_token_2(Stream, not_scanned_past_whitespace, Token, Context,
-                !IO)
+            get_token_2(Stream, not_scanned_past_whitespace,
+                Token, Context, !IO)
         )
     ;
         Action = action_backquote,
@@ -754,83 +945,6 @@ execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
         Action = action_graphic_token,
         get_context(Stream, Context, !IO),
         get_graphic(Stream, [Char], Token, !IO)
-    ).
-
-    % The string version of execute_get_token_action.
-    %
-:- pred execute_string_get_token_action(string::in, int::in, posn::in,
-    char::in, get_token_action::in, scanned_past_whitespace::in, token::out,
-    token_context::out, posn::in, posn::out) is det.
-% :- pragma inline(execute_string_get_token_action/10).
-
-execute_string_get_token_action(String, Len, Posn0, Char, Action,
-        ScannedPastWhiteSpace, Token, Context, !Posn) :-
-    (
-        Action = action_whitespace,
-        string_get_token_2(String, Len, scanned_past_whitespace,
-            Token, Context, !Posn)
-    ;
-        Action = action_alpha_upper_uscore,
-        string_get_variable(String, Len, Posn0, Token, Context, !Posn)
-    ;
-        Action = action_alpha_lower,
-        string_get_name(String, Len, Posn0, Token, Context, !Posn)
-    ;
-        Action = action_zero,
-        string_get_zero(String, Len, Posn0, Token, Context, !Posn)
-    ;
-        Action = action_nonzero_digit,
-        LastDigit = last_digit_is_not_underscore,
-        string_get_number(String, LastDigit, Len, Posn0, Token, Context,
-            !Posn)
-    ;
-        Action = action_special_token,
-        string_get_context(Posn0, Context, !Posn),
-        handle_special_token(Char, ScannedPastWhiteSpace, Token)
-    ;
-        Action = action_dot,
-        string_get_dot(String, Len, Posn0, Token, Context, !Posn)
-    ;
-        Action = action_quote,
-        string_start_quoted_name(String, Len, Char, [], Posn0, Token,
-            Context, !Posn)
-    ;
-        (
-            Action = action_percent,
-            string_skip_to_eol(String, Len, Token0, HaveToken0, !Posn)
-        ;
-            Action = action_slash,
-            string_get_slash(String, Len, Posn0, Token0, HaveToken0, !Posn)
-        ),
-        ( if have_token_with_context(HaveToken0, Context0) then
-            Token = Token0,
-            Context = Context0
-        else
-            string_get_token_2(String, Len, scanned_past_whitespace,
-                Token, Context, !Posn)
-        )
-    ;
-        Action = action_hash,
-        string_get_source_line_number(String, Len, !.Posn, Token0, HaveToken0,
-            !Posn),
-        ( if have_token_with_context(HaveToken0, Context0) then
-            Token = Token0,
-            Context = Context0
-        else
-            string_get_token_2(String, Len, not_scanned_past_whitespace,
-                Token, Context, !Posn)
-        )
-    ;
-        Action = action_backquote,
-        string_get_context(Posn0, Context, !Posn),
-        Token = name("`")
-    ;
-        Action = action_dollar,
-        string_get_implementation_defined_literal_rest(String, Len, Posn0,
-            Token, Context, !Posn)
-    ;
-        Action = action_graphic_token,
-        string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
     ).
 
 %---------------------------------------------------------------------------%
@@ -904,20 +1018,21 @@ get_dot(Stream, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_dot(String, Len, Posn0, Token, Context, !Posn) :-
+    LastCharPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if whitespace_after_dot(Char) then
-            string_ungetchar(String, !Posn),
-            string_get_context(Posn0, Context, !Posn),
+            !:Posn = LastCharPosn,
+            string_get_context(Posn0, Context),
             Token = end
         else if graphic_token_char(Char) then
             string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
         else
-            string_ungetchar(String, !Posn),
-            string_get_context(Posn0, Context, !Posn),
+            !:Posn = LastCharPosn,
+            string_get_context(Posn0, Context),
             Token = name(".")
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_get_context(Posn0, Context),
         Token = end
     ).
 
@@ -968,7 +1083,7 @@ string_skip_to_eol(String, Len, Token, HaveToken, !Posn) :-
             )
         )
     else
-        string_have_token(!.Posn, HaveToken, !Posn),
+        string_have_token(!.Posn, HaveToken),
         Token = eof
     ).
 
@@ -1003,6 +1118,7 @@ get_slash(Stream, Token, HaveToken, !IO) :-
     maybe_have_valid_token::out, posn::in, posn::out) is det.
 
 string_get_slash(String, Len, Posn0, Token, HaveToken, !Posn) :-
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = ('*') then
             string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn)
@@ -1010,12 +1126,12 @@ string_get_slash(String, Len, Posn0, Token, HaveToken, !Posn) :-
             string_get_graphic(String, Len, Posn0, Token, Context, !Posn),
             HaveToken = maybe_have_valid_token(Context)
         else
-            string_ungetchar(String, !Posn),
-            string_have_token(Posn0, HaveToken, !Posn),
+            !:Posn = LastPosn,
+            string_have_token(Posn0, HaveToken),
             Token = name("/")
         )
     else
-        string_have_token(Posn0, HaveToken, !Posn),
+        string_have_token(Posn0, HaveToken),
         Token = name("/")
     ).
 
@@ -1054,7 +1170,7 @@ string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn) :-
             )
         )
     else
-        string_have_token(Posn0, HaveToken, !Posn),
+        string_have_token(Posn0, HaveToken),
         Token = error("unterminated '/*' comment")
     ).
 
@@ -1100,7 +1216,7 @@ string_get_comment_2(String, Len, Posn0, Token, HaveToken, !Posn) :-
             string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn)
         )
     else
-        string_have_token(Posn0, HaveToken, !Posn),
+        string_have_token(Posn0, HaveToken),
         Token = error("unterminated '/*' comment")
     ).
 
@@ -1189,7 +1305,7 @@ string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
             )
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_get_context(Posn0, Context),
         Token = eof
     ).
 
@@ -1221,18 +1337,19 @@ get_quoted_name_quote(Stream, QuoteChar, !.RevChars, Token, !IO) :-
 
 string_get_quoted_name_quote(String, Len, QuoteChar, !.RevChars,
         Posn0, Token, Context, !Posn) :-
+    LastCharPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = QuoteChar then
             !:RevChars = [Char | !.RevChars],
             string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
                 Posn0, Token, Context, !Posn)
         else
-            string_ungetchar(String, !Posn),
-            string_get_context(Posn0, Context, !Posn),
+            !:Posn = LastCharPosn,
+            string_get_context(Posn0, Context),
             finish_quoted_name(QuoteChar, !.RevChars, Token)
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_get_context(Posn0, Context),
         finish_quoted_name(QuoteChar, !.RevChars, Token)
     ).
 
@@ -1294,37 +1411,59 @@ get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO) :-
 string_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars, Posn0,
         Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
-        ( if Char = '\n' then
-            string_get_quoted_name(String, Len, QuoteChar,
-                !.RevChars, Posn0, Token, Context, !Posn)
-        else if Char = '\r' then
-            % Files created on Windows may have an extra return character.
-            disable_warning [suspicious_recursion] (
-                string_get_quoted_name_escape(String, Len, QuoteChar,
-                    !.RevChars, Posn0, Token, Context, !Posn)
+        ( if
+            % Note that get_quoted_name, the !IO variant of the predicate,
+            % cannot use this switch, because it is incomplete,
+            % and we cannot update !IO in the arms of such switches.
+            (
+                Char = '\n',
+                string_get_quoted_name(String, Len, QuoteChar,
+                    !.RevChars, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = '\r',
+                % Files created on Windows may have an extra return character.
+                disable_warning [suspicious_recursion] (
+                    string_get_quoted_name_escape(String, Len, QuoteChar,
+                        !.RevChars, Posn0,
+                        TokenPrime, ContextPrime, !Posn)
+                )
+            ;
+                Char = 'x',
+                string_get_hex_escape(String, Len, QuoteChar,
+                    !.RevChars, [], Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = 'u',
+                string_get_unicode_escape(4, String, Len, QuoteChar,
+                    !.RevChars, [], Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = 'U',
+                string_get_unicode_escape(8, String, Len, QuoteChar,
+                    !.RevChars, [], Posn0,
+                    TokenPrime, ContextPrime, !Posn)
             )
-        else if escape_char(Char, EscapedChar) then
+        then
+            Token = TokenPrime,
+            Context = ContextPrime
+        else if
+            char.is_octal_digit(Char)
+        then
+            string_get_octal_escape(String, Len, QuoteChar, !.RevChars, [Char],
+                Posn0, Token, Context, !Posn)
+        else if
+            escape_char(Char, EscapedChar)
+        then
             !:RevChars = [EscapedChar | !.RevChars],
-            string_get_quoted_name(String, Len, QuoteChar,
-                !.RevChars, Posn0, Token, Context, !Posn)
-        else if Char = 'x' then
-            string_get_hex_escape(String, Len, QuoteChar,
-                !.RevChars, [], Posn0, Token, Context, !Posn)
-        else if Char = 'u' then
-            string_get_unicode_escape(4, String, Len, QuoteChar,
-                !.RevChars, [], Posn0, Token, Context, !Posn)
-        else if Char = 'U' then
-            string_get_unicode_escape(8, String, Len, QuoteChar,
-                !.RevChars, [], Posn0, Token, Context, !Posn)
-        else if char.is_octal_digit(Char) then
-            string_get_octal_escape(String, Len, QuoteChar,
-                !.RevChars, [Char], Posn0, Token, Context, !Posn)
+            string_get_quoted_name(String, Len, QuoteChar, !.RevChars, Posn0,
+                Token, Context, !Posn)
         else
-            string_get_context(!.Posn, Context, !Posn),
+            string_get_context(!.Posn, Context),
             Token = error("invalid escape character")
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_get_context(Posn0, Context),
         Token = eof
     ).
 
@@ -1397,7 +1536,7 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
             char.from_int(UnicodeCharCode, UnicodeChar)
         then
             ( if UnicodeCharCode = 0 then
-                string_get_context(Posn0, Context, !Posn),
+                string_get_context(Posn0, Context),
                 Token = null_character_error
             else
                 !:RevChars = [UnicodeChar | !.RevChars],
@@ -1405,7 +1544,7 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
                     Posn0, Token, Context, !Posn)
             )
         else
-            string_get_context(Posn0, Context, !Posn),
+            string_get_context(Posn0, Context),
             Token = error("invalid Unicode character code")
         )
     else
@@ -1414,15 +1553,15 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
                 !:RevHexChars = [Char | !.RevHexChars],
                 disable_warning [suspicious_recursion] (
                     string_get_unicode_escape(NumHexChars, String, Len,
-                        QuoteChar, !.RevChars, !.RevHexChars, Posn0, Token,
-                        Context, !Posn)
+                        QuoteChar, !.RevChars, !.RevHexChars, Posn0,
+                        Token, Context, !Posn)
                 )
             else
-                string_get_context(Posn0, Context, !Posn),
+                string_get_context(Posn0, Context),
                 Token = error("invalid hex character in Unicode escape")
             )
         else
-            string_get_context(Posn0, Context, !Posn),
+            string_get_context(Posn0, Context),
             Token = eof
         )
     ).
@@ -1482,11 +1621,11 @@ string_get_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
             string_finish_hex_escape(String, Len, QuoteChar, !.RevChars,
                 !.RevHexChars, Posn0, Token, Context, !Posn)
         else
-            string_get_context(Posn0, Context, !Posn),
+            string_get_context(Posn0, Context),
             Token = error("unterminated hex escape")
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_get_context(Posn0, Context),
         Token = eof
     ).
 
@@ -1523,7 +1662,7 @@ string_finish_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
         Posn0, Token, Context, !Posn) :-
     (
         !.RevHexChars = [],
-        string_get_context(Posn0, Context, !Posn),
+        string_get_context(Posn0, Context),
         Token = error("empty hex escape")
     ;
         !.RevHexChars = [_ | _],
@@ -1534,14 +1673,14 @@ string_finish_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
         then
             ( if Int = 0 then
                 Token = null_character_error,
-                string_get_context(Posn0, Context, !Posn)
+                string_get_context(Posn0, Context)
             else
                 !:RevChars = [Char | !.RevChars],
                 string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
                     Posn0, Token, Context, !Posn)
             )
         else
-            string_get_context(Posn0, Context, !Posn),
+            string_get_context(Posn0, Context),
             Token = error("invalid hex escape")
         )
     ).
@@ -1588,12 +1727,12 @@ string_get_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
             string_finish_octal_escape(String, Len, QuoteChar,
                 !.RevChars, !.RevOctalChars, Posn0, Token, Context, !Posn)
         else
-            string_get_context(Posn0, Context, !Posn),
+            string_get_context(Posn0, Context),
             Token = error("unterminated octal escape")
         )
     else
         Token = eof,
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 :- pred finish_octal_escape(io.input_stream::in, char::in, list(char)::in,
@@ -1631,7 +1770,7 @@ string_finish_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
     (
         !.RevOctalChars = [],
         Token = error("empty octal escape"),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ;
         !.RevOctalChars = [_ | _],
         ( if
@@ -1641,7 +1780,7 @@ string_finish_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
         then
             ( if Int = 0 then
                 Token = null_character_error,
-                string_get_context(Posn0, Context, !Posn)
+                string_get_context(Posn0, Context)
             else
                 !:RevChars = [Char | !.RevChars],
                 string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
@@ -1649,7 +1788,7 @@ string_finish_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
             )
         else
             Token = error("invalid octal escape"),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     ).
 
@@ -1692,21 +1831,22 @@ get_name(Stream, !.RevChars, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_name(String, Len, Posn0, Token, Context, !Posn) :-
+    LastCharPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_alnum_or_underscore(Char) then
             disable_warning [suspicious_recursion] (
                 string_get_name(String, Len, Posn0, Token, Context, !Posn)
             )
         else
-            string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, Name, !Posn),
+            grab_string(String, Posn0, LastCharPosn, Name),
+            !:Posn = LastCharPosn,
             Token = name(Name),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
-        grab_string(String, Posn0, Name, !Posn),
+        grab_string(String, Posn0, !.Posn, Name),
         Token = name(Name),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 :- pred get_implementation_defined_literal_rest(io.input_stream::in,
@@ -1743,10 +1883,10 @@ get_implementation_defined_literal_rest(Stream, Token, !IO) :-
 
 string_get_implementation_defined_literal_rest(String, Len, Posn0,
         Token, Context, !Posn) :-
-    Posn1 = !.Posn,
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_lower(Char) then
-            string_get_name(String, Len, Posn1, Token0, Context, !Posn),
+            string_get_name(String, Len, LastPosn, Token0, Context, !Posn),
             ( if Token0 = name(S) then
                 Token = implementation_defined(S)
             else
@@ -1755,13 +1895,13 @@ string_get_implementation_defined_literal_rest(String, Len, Posn0,
         else if graphic_token_char(Char) then
             string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             Token = name("$"),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
         Token = name("$"),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
     % A line number directive token is `#' followed by an integer
@@ -1825,14 +1965,15 @@ get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO) :-
     token::out, maybe_have_valid_token::out, posn::in, posn::out) is det.
 
 string_get_source_line_number(String, Len, Posn1, Token, HaveToken, !Posn) :-
+    LastCharPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             disable_warning [suspicious_recursion] (
-                string_get_source_line_number(String, Len, Posn1, Token,
-                    HaveToken, !Posn)
+                string_get_source_line_number(String, Len, Posn1,
+                    Token, HaveToken, !Posn)
             )
         else if Char = '\n' then
-            grab_string(String, Posn1, LineNumString, !Posn),
+            grab_string(String, Posn1, LastCharPosn, LineNumString),
             ( if
                 string.base_string_to_int(10, LineNumString, LineNum),
                 LineNum > 0
@@ -1840,13 +1981,13 @@ string_get_source_line_number(String, Len, Posn1, Token, HaveToken, !Posn) :-
                 string_set_line_number(LineNum, !Posn),
                 do_not_have_token(Token, HaveToken)
             else
-                string_have_token(Posn1, HaveToken, !Posn),
+                string_have_token(Posn1, HaveToken),
                 string.append_list(["invalid line number `", LineNumString,
                     "' in `#' line number directive"], Message),
                 Token = error(Message)
             )
         else
-            string_have_token(Posn1, HaveToken, !Posn),
+            string_have_token(Posn1, HaveToken),
             ( if char.to_int(Char, 0) then
                 DirectiveString = "NUL"
             else
@@ -1857,7 +1998,7 @@ string_get_source_line_number(String, Len, Posn1, Token, HaveToken, !Posn) :-
             Token = error(Message)
         )
     else
-        string_have_token(Posn1, HaveToken, !Posn),
+        string_have_token(Posn1, HaveToken),
         Token = error("unexpected end-of-file in `#' line number directive")
     ).
 
@@ -1895,20 +2036,21 @@ get_graphic(Stream, !.RevChars, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_graphic(String, Len, Posn0, Token, Context, !Posn) :-
+    LastCharPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if graphic_token_char(Char) then
             disable_warning [suspicious_recursion] (
                 string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
             )
         else
-            string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, Name, !Posn),
+            !:Posn = LastCharPosn,
+            grab_string(String, Posn0, !.Posn, Name),
             Token = name(Name),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
-        grab_string(String, Posn0, Name, !Posn),
-        string_get_context(Posn0, Context, !Posn),
+        grab_string(String, Posn0, !.Posn, Name),
+        string_get_context(Posn0, Context),
         Token = name(Name)
     ).
 
@@ -1946,21 +2088,22 @@ get_variable(Stream, !.RevChars, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_variable(String, Len, Posn0, Token, Context, !Posn) :-
+    LastCharPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_alnum_or_underscore(Char) then
             disable_warning [suspicious_recursion] (
                 string_get_variable(String, Len, Posn0, Token, Context, !Posn)
             )
         else
-            string_ungetchar(String, !Posn),
-            grab_string(String, Posn0, VariableName, !Posn),
+            !:Posn = LastCharPosn,
+            grab_string(String, Posn0, !.Posn, VariableName),
             Token = variable(VariableName),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
-        grab_string(String, Posn0, VariableName, !Posn),
+        grab_string(String, Posn0, !.Posn, VariableName),
         Token = variable(VariableName),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2018,13 +2161,12 @@ get_zero(Stream, Token, !IO) :-
         )
     ).
 
-    % This type records whether the last "digit" seen by the
-    % lexer as it process a numeric token was an underscore or not.
-    % This is needed to detect invalid uses of underscores in numeric
-    % literals.
-    % Note that there may be other intervening characters in the
-    % token between the last digit and the current one (e.g. the
-    % decimal point or beginning of an exponent a float literal.)
+    % This type records whether the last "digit" seen by the lexer
+    % as it process a numeric token was an underscore or not.
+    % We need this to detect invalid uses of underscores in numeric literals.
+    % Note that there may be other intervening characters in the token
+    % between the last digit and the current one (e.g. the decimal point
+    % or beginning of an exponent a float literal.)
     %
 :- type last_digit_is_underscore
     --->    last_digit_is_underscore
@@ -2034,46 +2176,69 @@ get_zero(Stream, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_zero(String, Len, Posn0, Token, Context, !Posn) :-
-    Posn1 = !.Posn,
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            string_get_number(String, LastDigit, Len, Posn0, Token, Context,
-                !Posn)
-        else if Char = '_' then
-            LastDigit = last_digit_is_underscore,
-            string_get_number(String, LastDigit, Len, Posn0, Token, Context,
-                !Posn)
-        else if Char = '''' then
-            string_get_char_code(String, Len, Posn0, Token, Context, !Posn)
-        else if Char = 'b' then
-            string_get_binary(String, Len, Posn0, Token, Context, !Posn)
-        else if Char = 'o' then
-            string_get_octal(String, Len, Posn0, Token, Context, !Posn)
-        else if Char = 'x' then
-            string_get_hex(String, Len, Posn0, Token, Context, !Posn)
-        else if Char = 'u' then
-            string_get_integer_size_suffix(String, Len, Posn0, Posn1, base_10,
-                unsigned, Token, !Posn),
-            string_get_context(Posn0, Context, !Posn)
-        else if Char = 'i' then
-            string_get_integer_size_suffix(String, Len, Posn0, Posn1, base_10,
-                signed, Token, !Posn),
-            string_get_context(Posn0, Context, !Posn)
-        else if Char = ('.') then
-            LastDigit = last_digit_is_not_underscore,
-            string_get_int_dot(String, LastDigit, Len, Posn0, Token, Context,
-                !Posn)
-        else if ( Char = 'e' ; Char = 'E' ) then
-            string_get_float_exponent(String, Len, Posn0, Token, Context,
-                !Posn)
+            string_get_number(String, Len, LastDigit, Posn0,
+                Token, Context, !Posn)
+        else if
+            % Note that get_zero, the !IO variant of the predicate,
+            % cannot use this switch, because it is incomplete,
+            % and we cannot update !IO in the arms of such switches.
+            (
+                Char = '_',
+                LastDigit = last_digit_is_underscore,
+                string_get_number(String, Len, LastDigit, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = '''',
+                string_get_char_code(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = 'b',
+                string_get_binary(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = 'o',
+                string_get_octal(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = 'x',
+                string_get_hex(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                Char = 'u',
+                string_get_integer_size_suffix(String, Len, Posn0, LastPosn,
+                    base_10, unsigned, TokenPrime, !Posn),
+                string_get_context(Posn0, ContextPrime)
+            ;
+                Char = 'i',
+                string_get_integer_size_suffix(String, Len, Posn0, LastPosn,
+                    base_10, signed, TokenPrime, !Posn),
+                string_get_context(Posn0, ContextPrime)
+            ;
+                Char = ('.'),
+                LastDigit = last_digit_is_not_underscore,
+                string_get_int_dot(String, Len, LastDigit, Posn0, LastPosn,
+                    TokenPrime, ContextPrime, !Posn)
+            ;
+                ( Char = 'e'
+                ; Char = 'E'
+                ),
+                string_get_float_exponent(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
+            )
+        then
+            Token = TokenPrime,
+            Context = ContextPrime
         else
-            string_ungetchar(String, !Posn),
-            string_get_context(Posn0, Context, !Posn),
+            !:Posn = LastPosn,
+            string_get_context(Posn0, Context),
             Token = integer(base_10, integer.zero, signed, size_word)
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_get_context(Posn0, Context),
         Token = integer(base_10, integer.zero, signed, size_word)
     ).
 
@@ -2100,10 +2265,10 @@ string_get_char_code(String, Len, Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         char.to_int(Char, CharCode),
         Token = integer(base_10, integer(CharCode), signed, size_word),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     else
         Token = error("unterminated char code literal"),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 :- pred get_binary(io.input_stream::in, token::out, io::di, io::uo) is det.
@@ -2133,22 +2298,22 @@ get_binary(Stream, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_binary(String, Len, Posn0, Token, Context, !Posn) :-
-    Posn1 = !.Posn,
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_binary_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            string_get_binary_2(String, LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            string_get_binary_2(String, Len, LastDigit, LastPosn,
+                Token, Context, !Posn)
         else if Char = '_' then
-            string_get_binary(String, Len, Posn1, Token, Context, !Posn)
+            string_get_binary(String, Len, LastPosn, Token, Context, !Posn)
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             Token = error("unterminated binary literal"),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
         Token = error("unterminated binary literal"),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 :- pred get_binary_2(io.input_stream::in, last_digit_is_underscore::in,
@@ -2197,64 +2362,63 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         )
     ).
 
-:- pred string_get_binary_2(string::in, last_digit_is_underscore::in,
-    int::in, posn::in, token::out, string_token_context::out,
-    posn::in, posn::out) is det.
+:- pred string_get_binary_2(string::in, int::in,
+    last_digit_is_underscore::in, posn::in,
+    token::out, string_token_context::out, posn::in, posn::out) is det.
 
-string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
-    %
+string_get_binary_2(String, Len, !.LastDigit, Posn1, Token, Context, !Posn) :-
     % The last character we saw _may_ be the last digit (or underscore) in the
     % token; save its position as LastDigitPosn. In the event that the next
     % character is the beginning of a signedness / size suffix, Posn1 to
     % LastDigitPosn will define the substring that needs to passed to the
     % integer conversion procedure.
-    %
+
     LastDigitPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_binary_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
-                    Context, !Posn)
+                string_get_binary_2(String, Len, !.LastDigit, Posn1,
+                    Token, Context, !Posn)
             )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
-                    Context, !Posn)
+                string_get_binary_2(String, Len, !.LastDigit, Posn1,
+                    Token, Context, !Posn)
             )
         else if Char = 'u' then
             string_get_integer_size_suffix(String, Len, Posn1,
                 LastDigitPosn, base_2, unsigned, Token, !Posn),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_context(Posn1, Context)
         else if Char = 'i' then
             string_get_integer_size_suffix(String, Len, Posn1,
                 LastDigitPosn, base_2, signed, Token, !Posn),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_context(Posn1, Context)
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastDigitPosn,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                grab_string(String, Posn1, BinaryString, !Posn),
+                grab_string(String, Posn1, !.Posn, BinaryString),
                 conv_string_to_int(BinaryString, base_2, signed, size_word,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated binary literal")
             ),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_context(Posn1, Context)
         )
     else
         (
             !.LastDigit = last_digit_is_not_underscore,
-            grab_string(String, Posn1, BinaryString, !Posn),
+            grab_string(String, Posn1, !.Posn, BinaryString),
             conv_string_to_int(BinaryString, base_2, signed, size_word,
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated binary literal")
         ),
-        string_get_context(Posn1, Context, !Posn)
+        string_get_context(Posn1, Context)
     ).
 
 :- pred get_octal(io.input_stream::in, token::out, io::di, io::uo) is det.
@@ -2284,24 +2448,24 @@ get_octal(Stream, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_octal(String, Len, Posn0, Token, Context, !Posn) :-
-    Posn1 = !.Posn,
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            string_get_octal_2(String, LastDigit, Len, Posn1, Token, Context,
-                !Posn)
+            string_get_octal_2(String, Len, LastDigit, LastPosn,
+                Token, Context, !Posn)
         else if Char = '_' then
             disable_warning [suspicious_recursion] (
                 string_get_octal(String, Len, Posn0, Token, Context, !Posn)
             )
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             Token = error("unterminated octal literal"),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
         Token = error("unterminated octal literal"),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 :- pred get_octal_2(io.input_stream::in, last_digit_is_underscore::in,
@@ -2350,57 +2514,56 @@ get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         )
     ).
 
-:- pred string_get_octal_2(string::in, last_digit_is_underscore::in,
-    int::in, posn::in, token::out, string_token_context::out,
-    posn::in, posn::out) is det.
+:- pred string_get_octal_2(string::in, int::in,
+    last_digit_is_underscore::in, posn::in,
+    token::out, string_token_context::out, posn::in, posn::out) is det.
 
-string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
+string_get_octal_2(String, Len, !.LastDigit, Posn1, Token, Context, !Posn) :-
     LastDigitPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_octal_2(String, !.LastDigit, Len, Posn1, Token,
-                    Context, !Posn)
+                string_get_octal_2(String, Len, !.LastDigit, Posn1,
+                    Token, Context, !Posn)
             )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_octal_2(String, !.LastDigit, Len, Posn1, Token,
-                    Context, !Posn)
+                string_get_octal_2(String, Len, !.LastDigit, Posn1,
+                    Token, Context, !Posn)
             )
         else if Char = 'u' then
-            string_get_integer_size_suffix(String, Len, Posn1,
-                LastDigitPosn, base_8, unsigned, Token, !Posn),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn,
+                base_8, unsigned, Token, !Posn),
+            string_get_context(Posn1, Context)
         else if Char = 'i' then
-            string_get_integer_size_suffix(String, Len, Posn1,
-                LastDigitPosn, base_8, signed, Token, !Posn),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn,
+                base_8, signed, Token, !Posn),
+            string_get_context(Posn1, Context)
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastDigitPosn,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                grab_string(String, Posn1, BinaryString, !Posn),
+                grab_string(String, Posn1, !.Posn, BinaryString),
                 conv_string_to_int(BinaryString, base_8, signed, size_word,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated octal literal")
             ),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_context(Posn1, Context)
         )
     else
         (
             !.LastDigit = last_digit_is_not_underscore,
-            grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, base_8, signed, size_word,
-                Token)
+            grab_string(String, Posn1, !.Posn, BinaryString),
+            conv_string_to_int(BinaryString, base_8, signed, size_word, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated octal literal")
         ),
-        string_get_context(Posn1, Context, !Posn)
+        string_get_context(Posn1, Context)
     ).
 
 :- pred get_hex(io.input_stream::in, token::out, io::di, io::uo) is det.
@@ -2430,26 +2593,26 @@ get_hex(Stream, Token, !IO) :-
     string_token_context::out, posn::in, posn::out) is det.
 
 string_get_hex(String, Len, Posn0, Token, Context, !Posn) :-
-    Posn1 = !.Posn,
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_hex_2(String, LastDigit, Len, Posn1, Token,
-                    Context, !Posn)
+                string_get_hex_2(String, Len, LastDigit, LastPosn,
+                    Token, Context, !Posn)
             )
         else if Char = '_' then
             disable_warning [suspicious_recursion] (
                 string_get_hex(String, Len, Posn0, Token, Context, !Posn)
             )
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             Token = error("unterminated hexadecimal literal"),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
         Token = error("unterminated hexadecimal literal"),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 :- pred get_hex_2(io.input_stream::in, last_digit_is_underscore::in,
@@ -2500,57 +2663,57 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         )
     ).
 
-:- pred string_get_hex_2(string::in, last_digit_is_underscore::in,
-    int::in, posn::in, token::out, string_token_context::out,
-    posn::in, posn::out) is det.
+:- pred string_get_hex_2(string::in, int::in,
+    last_digit_is_underscore::in, posn::in,
+    token::out, string_token_context::out, posn::in, posn::out) is det.
 
-string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
+string_get_hex_2(String, Len, !.LastDigit, Posn1, Token, Context, !Posn) :-
     LastDigitPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_hex_2(String, !.LastDigit, Len, Posn1, Token,
-                    Context, !Posn)
+                string_get_hex_2(String, Len, !.LastDigit, Posn1,
+                    Token, Context, !Posn)
             )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_hex_2(String, !.LastDigit, Len, Posn1, Token,
-                    Context, !Posn)
+                string_get_hex_2(String, Len, !.LastDigit, Posn1,
+                    Token, Context, !Posn)
             )
         else if Char = 'u' then
             string_get_integer_size_suffix(String, Len, Posn1,
                 LastDigitPosn, base_16, unsigned, Token, !Posn),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_context(Posn1, Context)
         else if Char = 'i' then
             string_get_integer_size_suffix(String, Len, Posn1,
                 LastDigitPosn, base_16, signed, Token, !Posn),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_context(Posn1, Context)
         else
+            !:Posn = LastDigitPosn,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                string_ungetchar(String, !Posn),
-                grab_string(String, Posn1, BinaryString, !Posn),
+                grab_string(String, Posn1, !.Posn, BinaryString),
                 conv_string_to_int(BinaryString, base_16, signed, size_word,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated hexadecimal literal")
             ),
-            string_get_context(Posn1, Context, !Posn)
+            string_get_context(Posn1, Context)
         )
     else
         (
             !.LastDigit = last_digit_is_not_underscore,
-            grab_string(String, Posn1, BinaryString, !Posn),
+            grab_string(String, Posn1, !.Posn, BinaryString),
             conv_string_to_int(BinaryString, base_16, signed, size_word,
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated hexadecimal literal")
         ),
-        string_get_context(Posn1, Context, !Posn)
+        string_get_context(Posn1, Context)
     ).
 
 :- pred get_number(io.input_stream::in, last_digit_is_underscore::in,
@@ -2616,77 +2779,92 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         )
     ).
 
-:- pred string_get_number(string::in, last_digit_is_underscore::in,
-    int::in, posn::in, token::out, string_token_context::out,
-    posn::in, posn::out) is det.
+:- pred string_get_number(string::in, int::in,
+    last_digit_is_underscore::in, posn::in,
+    token::out, string_token_context::out, posn::in, posn::out) is det.
 
-string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
-    Posn1 = !.Posn,
+string_get_number(String, Len, !.LastDigit, Posn0, Token, Context, !Posn) :-
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_number(String, !.LastDigit, Len, Posn0, Token,
-                    Context, !Posn)
+                string_get_number(String, Len, !.LastDigit, Posn0,
+                    Token, Context, !Posn)
             )
-        else if Char = '_' then
-            !:LastDigit = last_digit_is_underscore,
-            disable_warning [suspicious_recursion] (
-                string_get_number(String, !.LastDigit, Len, Posn0, Token,
-                    Context, !Posn)
-            )
-        else if Char = ('.') then
+        else if
+            % Note that get_number, the !IO variant of the predicate,
+            % cannot use this switch, because it is incomplete,
+            % and we cannot update !IO in the arms of such switches.
             (
-                !.LastDigit = last_digit_is_not_underscore,
-                string_get_int_dot(String, !.LastDigit, Len, Posn0, Token,
-                    Context, !Posn)
+                Char = '_',
+                !:LastDigit = last_digit_is_underscore,
+                disable_warning [suspicious_recursion] (
+                    string_get_number(String, Len, !.LastDigit, Posn0,
+                        TokenPrime, ContextPrime, !Posn)
+                )
             ;
-                !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal literal"),
-                string_get_context(Posn0, Context, !Posn)
-            )
-        else if Char = 'u' then
-            string_get_integer_size_suffix(String, Len, Posn0, Posn1, base_10,
-                unsigned, Token, !Posn),
-            string_get_context(Posn0, Context, !Posn)
-        else if Char = 'i' then
-            string_get_integer_size_suffix(String, Len, Posn0, Posn1, base_10,
-                signed, Token, !Posn),
-            string_get_context(Posn0, Context, !Posn)
-        else if ( Char = 'e' ; Char = 'E' ) then
-            (
-                !.LastDigit = last_digit_is_not_underscore,
-                string_get_float_exponent(String, Len, Posn0, Token, Context,
-                    !Posn)
+                Char = ('.'),
+                (
+                    !.LastDigit = last_digit_is_not_underscore,
+                    string_get_int_dot(String, Len, !.LastDigit, Posn0,
+                        LastPosn, TokenPrime, ContextPrime, !Posn)
+                ;
+                    !.LastDigit = last_digit_is_underscore,
+                    TokenPrime = error("unterminated decimal literal"),
+                    string_get_context(Posn0, ContextPrime)
+                )
             ;
-                !.LastDigit = last_digit_is_underscore,
-                Token = error("underscore before exponent"),
-                string_get_context(Posn0, Context, !Posn)
+                Char = 'u',
+                string_get_integer_size_suffix(String, Len, Posn0, LastPosn,
+                    base_10, unsigned, TokenPrime, !Posn),
+                string_get_context(Posn0, ContextPrime)
+            ;
+                Char = 'i',
+                string_get_integer_size_suffix(String, Len, Posn0, LastPosn,
+                    base_10, signed, TokenPrime, !Posn),
+                string_get_context(Posn0, ContextPrime)
+            ;
+                ( Char = 'e'
+                ; Char = 'E'
+                ),
+                (
+                    !.LastDigit = last_digit_is_not_underscore,
+                    string_get_float_exponent(String, Len, Posn0,
+                        TokenPrime, ContextPrime, !Posn)
+                ;
+                    !.LastDigit = last_digit_is_underscore,
+                    TokenPrime = error("underscore before exponent"),
+                    string_get_context(Posn0, ContextPrime)
+                )
             )
+        then
+            Token = TokenPrime,
+            Context = ContextPrime
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                grab_string(String, Posn0, NumberString, !Posn),
+                grab_string(String, Posn0, !.Posn, NumberString),
                 conv_string_to_int(NumberString, base_10, signed, size_word,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated decimal literal")
             ),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
         (
             !.LastDigit = last_digit_is_not_underscore,
-            grab_string(String, Posn0, NumberString, !Posn),
+            grab_string(String, Posn0, !.Posn, NumberString),
             conv_string_to_int(NumberString, base_10, signed, size_word,
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated decimal literal")
         ),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 :- pred get_integer_size_suffix(io.input_stream::in, list(char)::in,
@@ -2750,9 +2928,10 @@ get_integer_size_suffix_2(Stream, RevChars, Base, Signedness, ExpectedNextChar,
 
 string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, Base,
         Signedness, Token, !Posn) :-
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = '8' then
-            grab_string(String, Posn1, DigitString, LastDigitPosn, _),
+            grab_string(String, Posn1, LastDigitPosn, DigitString),
             conv_string_to_int(DigitString, Base, Signedness, size_8_bit,
                 Token)
         else if Char = '1' then
@@ -2767,13 +2946,13 @@ string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, Base,
         else if char.is_digit(Char) then
             Token = error("invalid integer size suffix")
         else
-            string_ungetchar(String, !Posn),
-            grab_string(String, Posn1, DigitString, LastDigitPosn, _),
+            !:Posn = LastPosn,
+            grab_string(String, Posn1, LastDigitPosn, DigitString),
             conv_string_to_int(DigitString, Base, Signedness, size_word,
                 Token)
         )
     else
-        grab_string(String, Posn1, DigitString, LastDigitPosn, _),
+        grab_string(String, Posn1, LastDigitPosn, DigitString),
         conv_string_to_int(DigitString, Base, Signedness, size_word,
             Token)
     ).
@@ -2786,7 +2965,7 @@ string_get_integer_size_suffix_2(String, Len, Posn1, LastDigitPosn,
         Base, Signedness, ExpectedChar, Size, Token, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = ExpectedChar then
-            grab_string(String, Posn1, DigitString, LastDigitPosn, _),
+            grab_string(String, Posn1, LastDigitPosn, DigitString),
             conv_string_to_int(DigitString, Base, Signedness, Size, Token)
         else
             Token = error("invalid integer size suffix")
@@ -2845,45 +3024,45 @@ get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         )
     ).
 
-:- pred string_get_int_dot(string::in, last_digit_is_underscore::in, int::in,
-    posn::in, token::out, string_token_context::out,
-    posn::in, posn::out) is det.
+:- pred string_get_int_dot(string::in, int::in,
+    last_digit_is_underscore::in, posn::in, posn::in,
+    token::out, string_token_context::out, posn::in, posn::out) is det.
 
-string_get_int_dot(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
+string_get_int_dot(String, Len, !.LastDigit, Posn0, PosnBeforeDot,
+        Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
-            string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token,
-                Context, !Posn)
+            string_get_float_decimals(String, Len, !.LastDigit, Posn0,
+                Token, Context, !Posn)
         else if Char = '_' then
             Token = error("underscore following decimal point"),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         else
-            string_ungetchar(String, !Posn),
-            string_ungetchar(String, !Posn),
+            !:Posn = PosnBeforeDot,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                grab_string(String, Posn0, NumberString, !Posn),
-                conv_string_to_int(NumberString, base_10, signed,
-                    size_word, Token)
+                grab_string(String, Posn0, !.Posn, NumberString),
+                conv_string_to_int(NumberString, base_10, signed, size_word,
+                    Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated decimal literal")
             ),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
-        string_ungetchar(String, !Posn),
+        !:Posn = PosnBeforeDot,
         (
             !.LastDigit = last_digit_is_not_underscore,
-            grab_string(String, Posn0, NumberString, !Posn),
+            grab_string(String, Posn0, !.Posn, NumberString),
             conv_string_to_int(NumberString, base_10, signed, size_word,
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated decimal literal")
         ),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
     % We have read past the decimal point, so now get the decimals.
@@ -2930,51 +3109,52 @@ get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         )
     ).
 
-:- pred string_get_float_decimals(string::in, last_digit_is_underscore::in,
-    int::in, posn::in, token::out, string_token_context::out,
-    posn::in, posn::out) is det.
+:- pred string_get_float_decimals(string::in, int::in,
+    last_digit_is_underscore::in, posn::in,
+    token::out, string_token_context::out, posn::in, posn::out) is det.
 
-string_get_float_decimals(String, !.LastDigit, Len, Posn0, Token, Context,
-        !Posn) :-
+string_get_float_decimals(String, Len, !.LastDigit, Posn0,
+        Token, Context, !Posn) :-
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_float_decimals(String, !.LastDigit, Len, Posn0,
+                string_get_float_decimals(String, Len, !.LastDigit, Posn0,
                     Token, Context, !Posn)
             )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_float_decimals(String, !.LastDigit, Len, Posn0,
+                string_get_float_decimals(String, Len, !.LastDigit, Posn0,
                     Token, Context, !Posn)
             )
         else if ( Char = 'e' ; Char = 'E' ) then
-            string_get_float_exponent(String, Len, Posn0, Token, Context,
-                !Posn)
+            string_get_float_exponent(String, Len, Posn0,
+                Token, Context, !Posn)
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                grab_float_string(String, Posn0, FloatString, !Posn),
+                grab_float_string(String, Posn0, !.Posn, FloatString),
                 conv_to_float(FloatString, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token =
                     error("fractional part of float terminated by underscore")
             ),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
         (
             !.LastDigit = last_digit_is_not_underscore,
-            grab_float_string(String, Posn0, FloatString, !Posn),
+            grab_float_string(String, Posn0, !.Posn, FloatString),
             conv_to_float(FloatString, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
             Token = error("fractional part of float terminated by underscore")
         ),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 :- pred get_float_exponent(io.input_stream::in, list(char)::in, token::out,
@@ -3007,23 +3187,24 @@ get_float_exponent(Stream, !.RevChars, Token, !IO) :-
     token::out, string_token_context::out, posn::in, posn::out) is det.
 
 string_get_float_exponent(String, Len, Posn0, Token, Context, !Posn) :-
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if ( Char = ('+') ; Char = ('-') ) then
-            string_get_float_exponent_2(String, Len, Posn0, Token, Context,
-                !Posn)
+            string_get_float_exponent_2(String, Len, Posn0,
+                Token, Context, !Posn)
         else if char.is_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            string_get_float_exponent_3(String, LastDigit, Len, Posn0, Token,
-                Context, !Posn)
+            string_get_float_exponent_3(String, Len, LastDigit, Posn0,
+                Token, Context, !Posn)
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             Token = error("unterminated exponent in float literal"),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
-        grab_float_string(String, Posn0, FloatString, !Posn),
+        grab_float_string(String, Posn0, !.Posn, FloatString),
         conv_to_float(FloatString, Token),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
     % We have read past the E signalling the start of the exponent -
@@ -3061,19 +3242,20 @@ get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
     token::out, string_token_context::out, posn::in, posn::out) is det.
 
 string_get_float_exponent_2(String, Len, Posn0, Token, Context, !Posn) :-
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             LastDigit = last_digit_is_not_underscore,
-            string_get_float_exponent_3(String, LastDigit, Len, Posn0, Token,
-                Context, !Posn)
+            string_get_float_exponent_3(String, Len, LastDigit, Posn0,
+                Token, Context, !Posn)
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             Token = error("unterminated exponent in float literal"),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
         Token = error("unterminated exponent in float literal"),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
     % We have read past the first digit of the exponent -
@@ -3117,39 +3299,40 @@ get_float_exponent_3(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
         )
     ).
 
-:- pred string_get_float_exponent_3(string::in, last_digit_is_underscore::in,
-    int::in, posn::in, token::out, string_token_context::out,
-    posn::in, posn::out) is det.
+:- pred string_get_float_exponent_3(string::in, int::in,
+    last_digit_is_underscore::in, posn::in,
+    token::out, string_token_context::out, posn::in, posn::out) is det.
 
-string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token, Context,
-        !Posn) :-
+string_get_float_exponent_3(String, Len, !.LastDigit, Posn0,
+        Token, Context, !Posn) :-
+    LastPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
             !:LastDigit = last_digit_is_not_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_float_exponent_3(String, !.LastDigit, Len, Posn0,
+                string_get_float_exponent_3(String, Len, !.LastDigit, Posn0,
                     Token, Context, !Posn)
             )
         else if Char = '_' then
             !:LastDigit = last_digit_is_underscore,
             disable_warning [suspicious_recursion] (
-                string_get_float_exponent_3(String, !.LastDigit, Len, Posn0,
+                string_get_float_exponent_3(String, Len, !.LastDigit, Posn0,
                     Token, Context, !Posn)
             )
         else
-            string_ungetchar(String, !Posn),
+            !:Posn = LastPosn,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                grab_float_string(String, Posn0, FloatString, !Posn),
+                grab_float_string(String, Posn0, !.Posn, FloatString),
                 conv_to_float(FloatString, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
                 Token = error("unterminated exponent in float literal")
             ),
-            string_get_context(Posn0, Context, !Posn)
+            string_get_context(Posn0, Context)
         )
     else
-        grab_float_string(String, Posn0, FloatString, !Posn),
+        grab_float_string(String, Posn0, !.Posn, FloatString),
         (
             !.LastDigit = last_digit_is_not_underscore,
             conv_to_float(FloatString, Token)
@@ -3157,7 +3340,7 @@ string_get_float_exponent_3(String, !.LastDigit, Len, Posn0, Token, Context,
             !.LastDigit = last_digit_is_underscore,
             Token = error("unterminated exponent in float literal")
         ),
-        string_get_context(Posn0, Context, !Posn)
+        string_get_context(Posn0, Context)
     ).
 
 %---------------------------------------------------------------------------%
