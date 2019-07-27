@@ -2971,7 +2971,7 @@ hash4_loop(String, Index, Length, !HashVal) :-
         !:HashVal = keep_30_bits(!.HashVal `xor`
             (!.HashVal `unchecked_left_shift` 5)),
         !:HashVal = !.HashVal `xor` C,
-        hash_loop(String, Index + 1, Length, !HashVal)
+        hash4_loop(String, Index + 1, Length, !HashVal)
     else
         true
     ).
