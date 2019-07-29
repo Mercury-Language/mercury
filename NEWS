@@ -233,6 +233,10 @@ Changes to the Mercury standard library:
 * io.print and string_writer.print now print arbitrary precision integers
   in their decimal form instead of printing their underlying representation.
 
+* We have added io.read_line_as_string_and_num_code_units, a variant of
+  io.read_line_as_string that also returns the number of code units
+  in the file that was read in.
+
 * We have added temp_directory/3, make_temp_directory/3 and
   make_temp_directory/5 predicates to the io module.
 

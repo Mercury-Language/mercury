@@ -221,10 +221,9 @@
 
 peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
         SourceFileName0, ModuleName, Specs, !IO) :-
-    io.read_file_as_string(FileStream, MaybeResult, !IO),
+    io.read_file_as_string_and_num_code_units(FileStream, MaybeResult, !IO),
     (
-        MaybeResult = ok(FileString),
-        MaxOffset = string.length(FileString),
+        MaybeResult = ok2(FileString, MaxOffset),
         counter.init(1, SeqNumCounter0),
         Posn0 = posn(1, 0, 0),
         read_first_module_decl(FileString, MaxOffset, dont_require_module_decl,
@@ -243,7 +242,7 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
                 right_module_decl_present(ModuleName, _ModuleNameContext)
         )
     ;
-        MaybeResult = error(_PartialFileString, ErrorCode),
+        MaybeResult = error2(_PartialFileString, _MaxOffset, ErrorCode),
         ModuleName = DefaultModuleName,
         io.error_message(ErrorCode, ErrorMsg0),
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
