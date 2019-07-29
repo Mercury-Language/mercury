@@ -250,6 +250,12 @@ else
                     ${root}/batch/Deep.data.`basename ${file} .gz`.run${count}
             fi
 
+            if test -s Deep.procrep
+            then
+                mv Deep.procrep \
+                    ${root}/batch/Deep.procrep.`basename ${file} .gz`.run${count}
+            fi
+
             if test "${count}" -eq 1 -a "${framesizefile}" != ""
             then
                 echo
