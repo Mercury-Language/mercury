@@ -374,8 +374,8 @@ parse_whole_term(Term, !TokensLeft, !PS) :-
                 !TokensLeft, !.PS)
         )
     ;
-        % Propagate error upwards.
         Term0 = error(_, _),
+        % Propagate error upwards.
         Term = Term0
     ).
 
@@ -793,8 +793,8 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
                     !TokensLeft, !.PS)
             )
         ;
-            % Propagate error upwards.
             SubTermParse = error(_, _),
+            % Propagate error upwards.
             BaseTermParse = SubTermParse
         )
     ;
@@ -922,8 +922,8 @@ parse_special_atom(Atom, TermContext, Term, !TokensLeft, !PS) :-
             Args0 = ok(Args),
             Term = ok(term.functor(term.atom(Atom), Args, TermContext))
         ;
-            % Propagate error upwards.
             Args0 = error(Message, Tokens),
+            % Propagate error upwards.
             Term = error(Message, Tokens)
         )
     else
