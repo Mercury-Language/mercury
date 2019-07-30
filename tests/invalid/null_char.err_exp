@@ -1,3 +1,32 @@
-mercury_compile: I/O error: null character in input
-Warning: interface for module `null_char' does not export anything.
-For more information, recompile with `-E'.
+null_char.m:017: Error: clause for predicate `null_char.int'/0
+null_char.m:017:   without corresponding `:- pred' declaration.
+null_char.m:017: Inferred :- pred int.
+null_char.m:017: Syntax error: null character is illegal in strings and names.
+null_char.m:019: In clause head: error: atom expected at 1.
+null_char.m:019: Syntax error: null character is illegal in strings and names.
+null_char.m:021: Error: no clauses for predicate `wrong2'/1.
+null_char.m:023: Syntax error at token `)': unexpected token at start of
+null_char.m:023:   (sub)term.
+null_char.m:023: Syntax error: null character is illegal in strings and names.
+null_char.m:025: Error: no clauses for predicate `wrong3'/1.
+null_char.m:027: Syntax error at token `. ': unexpected token at start of
+null_char.m:027:   (sub)term.
+null_char.m:027: Syntax error: null character is illegal in strings and names.
+null_char.m:029: Error: no clauses for predicate `wrong4'/1.
+null_char.m:031: Syntax error at token `)': unexpected token at start of
+null_char.m:031:   (sub)term.
+null_char.m:031: Syntax error: null character is illegal in strings and names.
+null_char.m:033: Syntax error at token `. ': unexpected token at start of
+null_char.m:033:   (sub)term.
+null_char.m:033: Syntax error: null character is illegal in strings and names.
+null_char.m:035: Syntax error at token `. ': unexpected token at start of
+null_char.m:035:   (sub)term.
+null_char.m:035: Syntax error: null character is illegal in strings and names.
+null_char.m:039: Error: no clauses for predicate `wrong7'/1.
+null_char.m:041: Syntax error at token `)': unexpected token at start of
+null_char.m:041:   (sub)term.
+null_char.m:041: Syntax error: null character is illegal in strings and names.
+null_char.m:043: Error: no clauses for predicate `wrong8'/1.
+null_char.m:045: Syntax error at token `)': unexpected token at start of
+null_char.m:045:   (sub)term.
+null_char.m:045: Syntax error: null character is illegal in strings and names.
