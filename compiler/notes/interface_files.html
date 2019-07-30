@@ -713,8 +713,31 @@ Declarations of submodules are always included in the .int file unchanged.
 
 <p>
 <li>
-<em>TODO</em>
-Foreign_import_module items ...
+Explicit foreign_import_module items in the source file
+are included in the .int file,
+in the same section as their original occurrence.
+These foreign_import_module items may import
+either the current module or any other module, in any target language.
+<p>
+The compiler also puts foreign_import_module items into .int files
+automatically, without explicit action by the programmer.
+These implicit foreign_import_module items always import the current module.
+<p>
+We put such an implicit self-import
+into the interface of the .int file for a given target language
+if the .int file interface also contains either
+a foreign type definition or a foreign enum pragma for that language.
+Likewise, we put such an implicit self-import
+into the implementation of the .int file for a given target language
+if the .int file interprocess also contains either
+a foreign type definition or a foreign enum pragma for that language.
+<p>
+There is one exception from the above.
+If the interface section of the .int file contains
+a foreign_import_module for a given module in a given target language,
+then the compiler won't include
+a copy of the same foreign_import_module item in the implementation section,
+either explicitly or implicitly.
 
 <p>
 <li>
