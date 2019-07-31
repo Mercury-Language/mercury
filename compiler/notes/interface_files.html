@@ -66,7 +66,8 @@ In Mercury, the source code of each module is in a single file,
 whose suffix is .m,
 and the generation of interface files is solely the job of the compiler.
 However, unlike most other similar programming languages,
-the compiler generates three or four different interface files for each source file,
+the compiler generates three or four different interface files
+for each source file,
 and it generates these in two or three steps.
 <p>
 The steps are as follows.
@@ -127,7 +128,7 @@ either creating their .int/.int2 files, or generating target code for them.
 <li>
 The .int and .int2 files are the interface files that are generated last,
 using as input not only the module's .m file,
-but also the .int3 files of the other modules
+but also the .int3 files of other modules
 (certainly those imported by this module, but possibly others as well),
 and the .int0 files of any ancestor modules.
 
@@ -381,8 +382,8 @@ from these transitively-included-only-for-module-qualification modules
 to the HLDS of the module being compiled.
 Right now, it is possible, though rare,
 to delete an import of module b from module a,
-and discover that this results in an error a type being undefined,
-when that type is defined in module c.
+and discover that this results in an error:
+a type being undefined, when that type is defined in module c.
 This happens only because the import of b
 dragged with it the definitions inside c as well,
 so that the import of c was required by the language definition
@@ -485,8 +486,7 @@ are always included in the .int0 file unchanged.
 <h2>The contents of .int files</h2>
 
 <p>
-<em>TODO</em>
-The contents of the .int0 file of a module are derived from the contents of
+The contents of the .int file of a module are derived from the contents of
 both the interface sections and the implementation sections of that module,
 <em>after</em> they are fully module qualified.
 This requires reading in, via grab_unqual_imported_modules_make_int,
@@ -502,13 +502,13 @@ until we get to a fixpoint.
 </ul>
 
 <p>
-<em>TODO</em>
 Items are never moved between sections:
 items in the interface section of the module
-are put into the interface section of the .int0 file,
+are put into the interface section of the .int file,
 while items in the implementation section of the module
-are put into the implementation section of the .int0 file.
+are put into the implementation section of the .int file.
 
+<!--
 <p>
 <em>XXX</em>
 pre vs post qual; interface vs implementation
@@ -525,6 +525,7 @@ keep class defns after deleting the class's methods;
 keep foreign enum pragmas;
 keep foreign_import_modules;
 delete everything else,
+-->
 
 <p>
 <ul>
