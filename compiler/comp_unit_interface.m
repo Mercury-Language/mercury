@@ -137,6 +137,7 @@
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.
 
@@ -762,13 +763,20 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     % modules that we need access to due to references in typeclass
     % definition items.
     !:Specs = [],
+    map.init(IntFIMsMap0),
+    map.init(ImpFIMsMap0),
+    set.init(IntSelfFIMs0),
+    set.init(ImpSelfFIMs0),
+    multi_map.init(IntTypesMap0),
+    multi_map.init(ImpTypesMap0),
     get_interface_int1_item_blocks_loop(SrcItemBlocks,
         cord.init, IntInclsCord, cord.init, ImpInclsCord,
         cord.init, IntAvailsCord, cord.init, ImpAvailsCord0,
         cord.init, IntItemsCord0, cord.init, ImpItemsCord0,
         cord.init, ImpForeignEnumsCord,
-        cord.init, IntFIMsCord, cord.init, ImpFIMsCord,
-        multi_map.init, IntTypesMap, multi_map.init, ImpTypesMap,
+        IntFIMsMap0, IntFIMsMap1, ImpFIMsMap0, ImpFIMsMap1,
+        IntSelfFIMs0, IntSelfFIMs, ImpSelfFIMs0, ImpSelfFIMs1,
+        IntTypesMap0, IntTypesMap, ImpTypesMap0, ImpTypesMap,
         set.init, ModulesNeededByTypeClassDefns, !Specs),
 
     IntIncls = cord.list(IntInclsCord),
@@ -778,8 +786,6 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     IntItems0 = cord.list(IntItemsCord0),
     ImpItems0 = cord.list(ImpItemsCord0),
     ImpForeignEnums = cord.list(ImpForeignEnumsCord),
-    IntFIMs = cord.list(IntFIMsCord),
-    ImpFIMs = cord.list(ImpFIMsCord),
 
     BothTypesMap = multi_map.merge(IntTypesMap, ImpTypesMap),
     % Compute the set of type_ctors whose definitions in the implementation
@@ -798,64 +804,42 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     % Compute the list of type definitions we deleted from ImpItems0
     % that we want to add back to the implementation section,
     % possibly in their abstract form.
-    map.foldl(
+    map.foldl2(
         maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap,
             NeededImpTypeCtors),
-        ImpTypesMap, [], ImpTypeDefnItems),
+        ImpTypesMap, [], ImpTypeDefnItems, ImpSelfFIMs1, ImpSelfFIMs2),
 
     % Figure out which of the foreign enum items we deleted from ImpItems0
     % we want to add back to the implementation section.
     % Record the needs of these foreign enum items for
     % foreign_import_module items.
     list.foldl2(add_foreign_enum_item_if_needed(IntTypesMap), ImpForeignEnums,
-        [], ImpForeignEnumItems, set.init, NeedForeignImportLangs0),
+        [], ImpForeignEnumItems, ImpSelfFIMs2, ImpSelfFIMs),
 
-    list.foldl(add_foreign_import_item, IntFIMs, IntItems0, IntItems1),
-    list.foldl(accumulate_foreign_import_langs_in_item, IntItems0,
-        set.init, LangSet0),
-    list.foldl(accumulate_foreign_import_langs_in_item, ImpItems0,
-        LangSet0, LangSet),
-    Langs = set.to_sorted_list(LangSet),
-    (
-        Langs = [],
-        IntItems = IntItems1
-    ;
-        Langs = [_ | _],
-        % XXX FIM We may be adding these items to the same lists of items
-        % more than once.
-        list.foldl(accumulate_foreign_import(ModuleName), Langs,
-            IntItems1, IntItems)
-    ),
+    ImpItems1 = ImpTypeDefnItems ++ ImpForeignEnumItems ++ ImpItems0,
 
-    ImpItems1 = ImpForeignEnumItems ++ ImpItems0,
-    ImpItems2 = ImpTypeDefnItems ++ ImpItems1,
+    add_self_fims(ModuleName, IntSelfFIMs, IntFIMsMap1, IntFIMsMap),
+    add_self_fims(ModuleName, ImpSelfFIMs, ImpFIMsMap1, ImpFIMsMap2),
+    map.map_values(subtract_int_fims_map(IntFIMsMap), ImpFIMsMap2, ImpFIMsMap),
+
+    map.foldl(acccumulate_foreign_import_items, IntFIMsMap, [], IntFIMItems),
+    map.foldl(acccumulate_foreign_import_items, ImpFIMsMap, [], ImpFIMItems),
+
+    IntItems = IntFIMItems ++ IntItems0,
+    ImpItems = ImpFIMItems ++ ImpItems1,
+
     % Find out whether anything we are about to put into the implementation
     % section needs any ":- import_module"s or ":- use_module"s at all.
     % XXX ITEM_LIST Given that we have already computed NeededModules,
     % why do we need to compute this cruder measure as well?
-    %
-    % Record the needs of the ImpTypeDefnItems items for
-    % foreign_import_module items.
-    find_need_imports(ImpTypeDefnItems, ImpItems1,
-        NeedImports, NeedForeignImportLangs0, NeedForeignImportLangs),
+    find_need_imports(ImpItems,
+        NeedImports, set.init, _NeedForeignImportLangs),
     (
         NeedImports = need_imports,
         strip_unneeded_imp_avails(NeededModules, ImpAvails0, ImpAvails)
     ;
         NeedImports = dont_need_imports,
         ImpAvails = []
-    ),
-    % XXX ITEM_LIST Keeping foreign_import_modules items for *all*
-    % foreign languages if we need them for *any* language
-    % seems overkill to me (-zs). Similarly, just because we need
-    % a foreign_import_module item for *one* module does not mean
-    % we need to keep them for *all* modules. True, get_interface
-    % *adds* foreign_import_module items only for the current module,
-    % but the source code may have them for other modules as well.
-    ( if set.is_non_empty(NeedForeignImportLangs) then
-        list.foldl(add_foreign_import_item, ImpFIMs, ImpItems2, ImpItems)
-    else
-        ImpItems = ImpItems2
     ),
 
     ToCheckIntItemBlock = item_block(ModuleName, ms_interface,
@@ -883,10 +867,10 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     % rules here. And I don't understand why these rules treat
     % the interface section the same as the implementation section.
     get_int2_items_from_int1(IntItems0, ShortIntItems0),
-    get_int2_items_from_int1(ImpItems2, ShortImpItems0),
-    find_need_imports(ShortIntItems0, [],
+    get_int2_items_from_int1(ImpItems1, ShortImpItems0),
+    find_need_imports(ShortIntItems0,
         ShortIntNeedImports, set.init, ShortIntNeedForeignImportLangs),
-    find_need_imports(ShortImpItems0, [],
+    find_need_imports(ShortImpItems0,
         ShortImpNeedImports, set.init, ShortImpNeedForeignImportLangs),
     (
         ShortIntNeedImports = need_imports,
@@ -903,14 +887,12 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
         ShortImpAvails = []
     ),
     ( if set.is_non_empty(ShortIntNeedForeignImportLangs) then
-        list.foldl(add_foreign_import_item, IntFIMs,
-            ShortIntItems0, ShortIntItems)
+        ShortIntItems = IntFIMItems ++ ShortIntItems0
     else
         ShortIntItems = ShortIntItems0
     ),
     ( if set.is_non_empty(ShortImpNeedForeignImportLangs) then
-        list.foldl(add_foreign_import_item, ImpFIMs,
-            ShortImpItems0, ShortImpItems)
+        ShortImpItems = ImpFIMItems ++ ShortImpItems0
     else
         ShortImpItems = ShortImpItems0
     ),
@@ -921,13 +903,57 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
 
 %---------------------%
 
+:- pred add_self_fims(module_name::in, set(foreign_language)::in,
+    map(module_name, set(foreign_language))::in,
+    map(module_name, set(foreign_language))::out) is det.
+
+add_self_fims(ModuleName, SelfFIMs, !FIMsMap) :-
+    ( if map.search(!.FIMsMap, ModuleName, Langs0) then
+        set.union(SelfFIMs, Langs0, Langs),
+        map.det_update(ModuleName, Langs, !FIMsMap)
+    else
+        map.det_insert(ModuleName, SelfFIMs, !FIMsMap)
+    ).
+
+:- pred subtract_int_fims_map(map(module_name, set(foreign_language))::in,
+    module_name::in, set(foreign_language)::in, set(foreign_language)::out)
+    is det.
+
+subtract_int_fims_map(IntFIMsMap, ModuleName, ImpLangs0, ImpLangs) :-
+    ( if map.search(IntFIMsMap, ModuleName, IntLangs) then
+        set.difference(ImpLangs0, IntLangs, ImpLangs)
+    else
+        ImpLangs = ImpLangs0
+    ).
+
+%---------------------%
+
+:- pred acccumulate_foreign_import_items(module_name::in,
+    set(foreign_language)::in,
+    list(item)::in, list(item)::out) is det.
+
+acccumulate_foreign_import_items(ModuleName, Langs, !Items) :-
+    set.fold(acccumulate_foreign_import_item(ModuleName), Langs, !Items).
+
+:- pred acccumulate_foreign_import_item(module_name::in, foreign_language::in,
+    list(item)::in, list(item)::out) is det.
+
+acccumulate_foreign_import_item(ModuleName, Lang, !Items) :-
+    FIMInfo = item_foreign_import_module_info(Lang, ModuleName,
+        term.context_init, -1),
+    Item = item_foreign_import_module(FIMInfo),
+    !:Items = [Item | !.Items].
+
+%---------------------%
+
 :- type type_defn_map == multi_map(type_ctor, item_type_defn_info).
 :- type type_defn_pair == pair(type_ctor, item_type_defn_info).
 
     % get_interface_int1_item_blocks_loop(SrcItemBlocks,
     %   !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
-    %   !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord, !ImpFIMsCord,
-    %   !IntTypesMap, !ImpTypesMap, !NeededModules, !Specs).
+    %   !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
+    %   !IntFIMsMap, !ImpFIMsMap, !IntTypesMap, !ImpTypesMap,
+    %   !NeededModules, !Specs).
     %
     % Do the bulk of the work needed to generate a module's .int file
     % from the module's augmented compilation unit.
@@ -990,10 +1016,12 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out,
     cord(foreign_enum_reconstructor)::in,
     cord(foreign_enum_reconstructor)::out,
-    cord(item_foreign_import_module_info)::in,
-    cord(item_foreign_import_module_info)::out,
-    cord(item_foreign_import_module_info)::in,
-    cord(item_foreign_import_module_info)::out,
+    map(module_name, set(foreign_language))::in,
+    map(module_name, set(foreign_language))::out,
+    map(module_name, set(foreign_language))::in,
+    map(module_name, set(foreign_language))::out,
+    set(foreign_language)::in, set(foreign_language)::out,
+    set(foreign_language)::in, set(foreign_language)::out,
     type_defn_map::in, type_defn_map::out,
     type_defn_map::in, type_defn_map::out,
     set(module_name)::in, set(module_name)::out,
@@ -1002,12 +1030,12 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
 get_interface_int1_item_blocks_loop([],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
-        !IntFIMsCord, !ImpFIMsCord,
+        !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
         !IntTypesMap, !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs).
 get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
-        !IntFIMsCord, !ImpFIMsCord,
+        !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
         !IntTypesMap, !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs) :-
     SrcItemBlock = item_block(_, SrcSection, Incls, Avails, Items),
     (
@@ -1015,14 +1043,15 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
         !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
         get_interface_int1_items_loop_int(Items, !IntItemsCord,
-            !IntFIMsCord, !IntTypesMap, !ModulesNeededByTypeClassDefns, !Specs)
+            !IntFIMsMap, !IntSelfFIMs, !IntTypesMap,
+            !ModulesNeededByTypeClassDefns, !Specs)
     ;
         SrcSection = sms_implementation,
         !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
         !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(Avails),
         get_interface_int1_items_loop_imp(Items, !ImpItemsCord,
-            !ImpForeignEnumsCord, !ImpFIMsCord,
-            !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs)
+            !ImpForeignEnumsCord, !ImpFIMsMap, !ImpSelfFIMs, !ImpTypesMap,
+            !ModulesNeededByTypeClassDefns, !Specs)
     ;
         SrcSection = sms_impl_but_exported_to_submodules,
         % The code that transforms sms_implementation to this
@@ -1032,30 +1061,42 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
     get_interface_int1_item_blocks_loop(SrcItemBlocks,
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
-        !IntFIMsCord, !ImpFIMsCord,
+        !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
         !IntTypesMap, !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs).
 
 :- pred get_interface_int1_items_loop_int(list(item)::in,
     cord(item)::in, cord(item)::out,
-    cord(item_foreign_import_module_info)::in,
-    cord(item_foreign_import_module_info)::out,
+    map(module_name, set(foreign_language))::in,
+    map(module_name, set(foreign_language))::out,
+    set(foreign_language)::in, set(foreign_language)::out,
     type_defn_map::in, type_defn_map::out,
     set(module_name)::in, set(module_name)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_interface_int1_items_loop_int([], !ItemsCord, !FIMsCord,
-        !TypesMap, !ModulesNeededByTypeClassDefns, !Specs).
-get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
-        !TypesMap, !ModulesNeededByTypeClassDefns, !Specs) :-
+get_interface_int1_items_loop_int([], !IntItemsCord,
+        !IntFIMsMap, !IntSelfFIMs, !IntTypesMap,
+        !ModulesNeededByTypeClassDefns, !Specs).
+get_interface_int1_items_loop_int([Item | Items], !IntItemsCord,
+        !IntFIMsMap, !IntSelfFIMs, !IntTypesMap,
+        !ModulesNeededByTypeClassDefns, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(Name, TypeParams, _, _, _, _),
+        ItemTypeDefn =
+            item_type_defn_info(Name, TypeParams, TypeDefn, _, _, _),
         TypeCtor = type_ctor(Name, list.length(TypeParams)),
-        multi_map.set(TypeCtor, ItemTypeDefn, !TypesMap),
-        cord.snoc(Item, !ItemsCord)
+        multi_map.set(TypeCtor, ItemTypeDefn, !IntTypesMap),
+        cord.snoc(Item, !IntItemsCord),
+        ( if
+            TypeDefn = parse_tree_foreign_type(DetailsForeign),
+            DetailsForeign = type_details_foreign(ForeignType, _, _)
+        then
+            set.insert(foreign_type_language(ForeignType), !IntSelfFIMs)
+        else
+            true
+        )
     ;
         Item = item_typeclass(ItemTypeClass),
-        cord.snoc(Item, !ItemsCord),
+        cord.snoc(Item, !IntItemsCord),
         Constraints = ItemTypeClass ^ tc_constraints,
         list.foldl(accumulate_modules_from_constraint, Constraints,
             !ModulesNeededByTypeClassDefns)
@@ -1078,7 +1119,14 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
             !:Specs = [Spec | !.Specs]
         ;
             AllowedInInterface = yes,
-            cord.snoc(Item, !ItemsCord)
+            cord.snoc(Item, !IntItemsCord),
+            Langs = pragma_needs_foreign_imports(Pragma),
+            ( if Pragma = pragma_foreign_enum(_) then
+                set.insert_list(Langs, !IntSelfFIMs)
+            else
+                expect(unify(Langs, []), $pred,
+                    "interface pragma other than foreign_enum needs Langs ")
+            )
         )
     ;
         Item = item_promise(ItemPromise),
@@ -1093,7 +1141,7 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
             ; PromiseType = promise_type_exhaustive
             ; PromiseType = promise_type_exclusive_exhaustive
             ),
-            cord.snoc(Item, !ItemsCord)
+            cord.snoc(Item, !IntItemsCord)
         )
     ;
         ( Item = item_inst_defn(_)
@@ -1102,10 +1150,18 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         ; Item = item_mode_decl(_)
         ; Item = item_instance(_)
         ),
-        cord.snoc(Item, !ItemsCord)
+        cord.snoc(Item, !IntItemsCord)
     ;
         Item = item_foreign_import_module(FIMInfo),
-        cord.snoc(FIMInfo, !FIMsCord)
+        FIMInfo = item_foreign_import_module_info(Lang, ModuleName,
+            _Context, _SeqNum),
+        ( if map.search(!.IntFIMsMap, ModuleName, Langs0) then
+            set.insert(Lang, Langs0, Langs),
+            map.det_update(ModuleName, Langs, !IntFIMsMap)
+        else
+            Langs = set.make_singleton_set(Lang),
+            map.det_insert(ModuleName, Langs, !IntFIMsMap)
+        )
     ;
         ( Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -1114,7 +1170,7 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         % The presence of these items in the interface section is an error.
         % We delay reporting this bug until we generate target code
         % for this module. (Aborting would not be a good idea; it would
-        % lead to the failure of tests/valid/mutable_interface_in_main
+        % lead to the failure of tests/valid/mutable_interface_in_main.)
         % I (zs) think they should be silently deleted here;
         % the error should be reported when we try to generate code
         % for this module.
@@ -1124,36 +1180,38 @@ get_interface_int1_items_loop_int([Item | Items], !ItemsCord, !FIMsCord,
         % type_repn items.
         unexpected($pred, "item_type_repn")
     ),
-    get_interface_int1_items_loop_int(Items, !ItemsCord, !FIMsCord,
-        !TypesMap, !ModulesNeededByTypeClassDefns, !Specs).
+    get_interface_int1_items_loop_int(Items, !IntItemsCord,
+        !IntFIMsMap, !IntSelfFIMs, !IntTypesMap,
+        !ModulesNeededByTypeClassDefns, !Specs).
 
 :- pred get_interface_int1_items_loop_imp(list(item)::in,
     cord(item)::in, cord(item)::out,
     cord(foreign_enum_reconstructor)::in,
     cord(foreign_enum_reconstructor)::out,
-    cord(item_foreign_import_module_info)::in,
-    cord(item_foreign_import_module_info)::out,
+    map(module_name, set(foreign_language))::in,
+    map(module_name, set(foreign_language))::out,
+    set(foreign_language)::in, set(foreign_language)::out,
     type_defn_map::in, type_defn_map::out,
     set(module_name)::in, set(module_name)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_interface_int1_items_loop_imp([], !ItemsCord,
-        !ForeignEnumsCord, !FIMsCord, !TypesMap,
+get_interface_int1_items_loop_imp([], !ImpItemsCord,
+        !ImpForeignEnumsCord, !ImpFIMsMap, !ImpSelfFIMs, !ImpTypesMap,
         !ModulesNeededByTypeClassDefns, !Specs).
-get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
-        !ForeignEnumsCord, !FIMsCord, !TypesMap,
+get_interface_int1_items_loop_imp([Item | Items], !ImpItemsCord,
+        !ImpForeignEnumsCord, !ImpFIMsMap, !ImpSelfFIMs, !ImpTypesMap,
         !ModulesNeededByTypeClassDefns, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(Name, TypeParams, _, _, _, _),
         TypeCtor = type_ctor(Name, list.length(TypeParams)),
-        multi_map.set(TypeCtor, ItemTypeDefn, !TypesMap)
-        % We don't add this to !ItemsCord yet -- we may be removing it.
+        multi_map.set(TypeCtor, ItemTypeDefn, !ImpTypesMap)
+        % We don't add this to !ImpItemsCord yet -- we may be removing it.
         % If we *do* want the items for a given type_ctor, we will create
-        % new copies of the items from the type_ctor's entry in TypesMap.
+        % new copies of the items from the type_ctor's entry in ImpTypesMap.
     ;
         Item = item_typeclass(ItemTypeClass),
-        cord.snoc(Item, !ItemsCord),
+        cord.snoc(Item, !ImpItemsCord),
         Constraints = ItemTypeClass ^ tc_constraints,
         list.foldl(accumulate_modules_from_constraint, Constraints,
             !ModulesNeededByTypeClassDefns)
@@ -1162,13 +1220,23 @@ get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
         ItemPragma = item_pragma_info(Pragma, MaybeAttrs, _Context, _SeqNum),
         ( if Pragma = pragma_foreign_enum(FEInfo) then
             Reconstructor = foreign_enum_reconstructor(FEInfo, MaybeAttrs),
-            cord.snoc(Reconstructor, !ForeignEnumsCord)
+            cord.snoc(Reconstructor, !ImpForeignEnumsCord),
+            FEInfo = pragma_info_foreign_enum(FELang, _, _),
+            set.insert(FELang, !ImpSelfFIMs)
         else
             unexpected($pred, "non-foreign-enum pragma")
         )
     ;
         Item = item_foreign_import_module(FIMInfo),
-        cord.snoc(FIMInfo, !FIMsCord)
+        FIMInfo = item_foreign_import_module_info(Lang, ModuleName,
+            _Context, _SeqNum),
+        ( if map.search(!.ImpFIMsMap, ModuleName, Langs0) then
+            set.insert(Lang, Langs0, Langs),
+            map.det_update(ModuleName, Langs, !ImpFIMsMap)
+        else
+            Langs = set.make_singleton_set(Lang),
+            map.det_insert(ModuleName, Langs, !ImpFIMsMap)
+        )
     ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -1185,8 +1253,8 @@ get_interface_int1_items_loop_imp([Item | Items], !ItemsCord,
         unexpected($pred,
             "generate_pre_grab_pre_qual_items_imp should've deleted imp item")
     ),
-    get_interface_int1_items_loop_imp(Items, !ItemsCord,
-        !ForeignEnumsCord, !FIMsCord, !TypesMap,
+    get_interface_int1_items_loop_imp(Items, !ImpItemsCord,
+        !ImpForeignEnumsCord, !ImpFIMsMap, !ImpSelfFIMs, !ImpTypesMap,
         !ModulesNeededByTypeClassDefns, !Specs).
 
 %---------------------------------------------------------------------------%
@@ -1732,10 +1800,12 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
 :- pred maybe_add_maybe_abstract_type_defn_items(
     type_defn_map::in, type_defn_map::in, set(type_ctor)::in,
     type_ctor::in, list(item_type_defn_info)::in,
-    list(item)::in, list(item)::out) is det.
+    list(item)::in, list(item)::out,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
 
 maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap,
-        NeededTypeCtors, TypeCtor, ImpItemTypeDefnInfos, !ImpTypeDefnItems) :-
+        NeededTypeCtors, TypeCtor, ImpItemTypeDefnInfos,
+        !ImpTypeDefnItems, !ImpSelfFIMs) :-
     ( if
         set.member(TypeCtor, NeededTypeCtors),
         make_imp_type_abstract(BothTypesMap,
@@ -1746,7 +1816,8 @@ maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap,
                 AbstractImpItemTypeDefnInfos)
         )
     then
-        add_type_defn_items(AbstractImpItemTypeDefnInfos, !ImpTypeDefnItems)
+        add_type_defn_items(AbstractImpItemTypeDefnInfos,
+            !ImpTypeDefnItems, !ImpSelfFIMs)
     else
         true
     ).
@@ -1839,14 +1910,24 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfos) :-
     ).
 
 :- pred add_type_defn_items(list(item_type_defn_info)::in,
-    list(item)::in, list(item)::out) is det.
+    list(item)::in, list(item)::out,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
 
-add_type_defn_items([], !ImpTypeDefnItems).
+add_type_defn_items([], !ImpTypeDefnItems, !ImpSelfFIMs).
 add_type_defn_items([ImpItemTypeDefnInfo | ImpItemTypeDefnInfos],
-        !ImpTypeDefnItems) :-
+        !ImpTypeDefnItems, !ImpSelfFIMs) :-
     ImpTypeDefnItem = item_type_defn(ImpItemTypeDefnInfo),
     !:ImpTypeDefnItems = [ImpTypeDefnItem | !.ImpTypeDefnItems],
-    add_type_defn_items(ImpItemTypeDefnInfos, !ImpTypeDefnItems).
+    ImpItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
+    ( if
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        DetailsForeign = type_details_foreign(ForeignType, _, _)
+    then
+        set.insert(foreign_type_language(ForeignType), !ImpSelfFIMs)
+    else
+        true
+    ),
+    add_type_defn_items(ImpItemTypeDefnInfos, !ImpTypeDefnItems, !ImpSelfFIMs).
 
 %---------------------%
 
@@ -1858,23 +1939,14 @@ add_type_defn_items([ImpItemTypeDefnInfo | ImpItemTypeDefnInfos],
     --->    dont_need_foreign_imports
     ;       need_foreign_imports.
 
-:- pred find_need_imports(list(item)::in, list(item)::in,
+:- pred find_need_imports(list(item)::in,
     maybe_need_imports::out,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
-find_need_imports(MaybeForeignItems, NotForeignItems,
-        !:NeedImports, !NeedForeignImportLangs) :-
+find_need_imports(MaybeForeignItems, !:NeedImports, !NeedForeignImportLangs) :-
     !:NeedImports = dont_need_imports,
     find_need_imports_acc(MaybeForeignItems,
-        !NeedImports, !NeedForeignImportLangs),
-    % Some items in MaybeForeignItems may add new languages to
-    % !NeedForeignImportLangs. The items in NotForeignItems shouldn't.
-    NeedForeignImportLangs1 = !.NeedForeignImportLangs,
-    find_need_imports_acc(NotForeignItems,
-        !NeedImports, !NeedForeignImportLangs),
-    NeedForeignImportLangs = !.NeedForeignImportLangs,
-    expect(set.equal(NeedForeignImportLangs1, NeedForeignImportLangs), $pred,
-        "NeedForeignImportLangs1 != NeedForeignImportLangs").
+        !NeedImports, !NeedForeignImportLangs).
 
 :- pred find_need_imports_acc(list(item)::in,
     maybe_need_imports::in, maybe_need_imports::out,
@@ -1955,15 +2027,6 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     else
         true
     ).
-
-%---------------------%
-
-:- pred add_foreign_import_item(item_foreign_import_module_info::in,
-    list(item)::in, list(item)::out) is det.
-
-add_foreign_import_item(FIMInfo, !Items) :-
-    Item = item_foreign_import_module(FIMInfo),
-    !:Items = [Item | !.Items].
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2135,12 +2198,6 @@ clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
 %---------------------------------------------------------------------------%
 % The rest of this module should not be needed.
 %---------------------------------------------------------------------------%
-
-:- pred accumulate_foreign_import(module_name::in, foreign_language::in,
-    list(item)::in, list(item)::out) is det.
-
-accumulate_foreign_import(ModuleName, Lang, !Items) :-
-    !:Items = [make_foreign_import(ModuleName, Lang) | !.Items].
 
 make_foreign_import(ModuleName, Lang) = Item :-
     ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
