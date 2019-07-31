@@ -62,6 +62,10 @@
     % making instance declarations abstract. We delete most kinds of items
     % from implementation sections, keeping only
     %
+    % - Module includes.
+    %
+    % - Module imports and uses.
+    %
     % - Type definitions, in a possibly changed form. Specifically,
     %   we replace the definitions (a) solver types and (b) noncanonical
     %   du and foreign types with their abstract forms. We leave the
@@ -70,13 +74,9 @@
     %
     % - Typeclass declarations in their abstract from.
     %
-    % - Foreign_import_module declarations.
-    %
     % - Foreign_enum pragmas.
     %
-    % If any item in the final raw compilation unit needs a
-    % foreign_import_module declaration for the current module
-    % for the any language, we add such an item.
+    % - Foreign_import_module declarations.
     %
     % XXX ITEM_LIST Document why we do all this *before* module qualification.
     %
@@ -681,23 +681,23 @@ generate_pre_grab_pre_qual_item_blocks([RawItemBlock | RawItemBlocks],
 :- pred generate_pre_grab_pre_qual_items_int(list(item)::in,
     cord(item)::in, cord(item)::out) is det.
 
-generate_pre_grab_pre_qual_items_int([], !ItemsCord).
-generate_pre_grab_pre_qual_items_int([Item | Items], !ItemsCord) :-
+generate_pre_grab_pre_qual_items_int([], !IntItemsCord).
+generate_pre_grab_pre_qual_items_int([Item | Items], !IntItemsCord) :-
     ( if Item = item_instance(ItemInstance) then
         AbstractItemInstance = ItemInstance ^ ci_method_instances
             := instance_body_abstract,
         AbstractItem = item_instance(AbstractItemInstance),
-        cord.snoc(AbstractItem, !ItemsCord)
+        cord.snoc(AbstractItem, !IntItemsCord)
     else
-        cord.snoc(Item, !ItemsCord)
+        cord.snoc(Item, !IntItemsCord)
     ),
-    generate_pre_grab_pre_qual_items_int(Items, !ItemsCord).
+    generate_pre_grab_pre_qual_items_int(Items, !IntItemsCord).
 
 :- pred generate_pre_grab_pre_qual_items_imp(list(item)::in,
     cord(item)::in, cord(item)::out) is det.
 
-generate_pre_grab_pre_qual_items_imp([], !ItemsCord).
-generate_pre_grab_pre_qual_items_imp([Item | Items], !ItemsCord) :-
+generate_pre_grab_pre_qual_items_imp([], !ImpItemsCord).
+generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
     % `:- typeclass' declarations may be referred to by the constructors
     % in type declarations. Since these constructors are abstractly
     % exported, we won't need the local instance declarations.
@@ -706,21 +706,21 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ItemsCord) :-
         maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
             MaybeAbstractItemTypeDefnInfo),
         AbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
-        cord.snoc(AbstractItem, !ItemsCord)
+        cord.snoc(AbstractItem, !ImpItemsCord)
     ;
         Item = item_typeclass(ItemTypeClassInfo),
         AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
             := class_interface_abstract,
         AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
-        cord.snoc(AbstractItem, !ItemsCord)
+        cord.snoc(AbstractItem, !ImpItemsCord)
     ;
         Item = item_foreign_import_module(_),
-        cord.snoc(Item, !ItemsCord)
+        cord.snoc(Item, !ImpItemsCord)
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         ( if Pragma = pragma_foreign_enum(_) then
-            cord.snoc(Item, !ItemsCord)
+            cord.snoc(Item, !ImpItemsCord)
         else
             true
         )
@@ -741,7 +741,7 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ItemsCord) :-
         % XXX TYPE_REPN Implement this.
         unexpected($pred, "item_type_repn")
     ),
-    generate_pre_grab_pre_qual_items_imp(Items, !ItemsCord).
+    generate_pre_grab_pre_qual_items_imp(Items, !ImpItemsCord).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
