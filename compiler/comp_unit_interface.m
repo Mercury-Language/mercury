@@ -952,8 +952,8 @@ acccumulate_foreign_import_item(ModuleName, Lang, !Items) :-
     % get_interface_int1_item_blocks_loop(SrcItemBlocks,
     %   !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
     %   !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
-    %   !IntFIMsMap, !ImpFIMsMap, !IntTypesMap, !ImpTypesMap,
-    %   !NeededModules, !Specs).
+    %   !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
+    %   !IntTypesMap, !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs).
     %
     % Do the bulk of the work needed to generate a module's .int file
     % from the module's augmented compilation unit.
@@ -993,6 +993,11 @@ acccumulate_foreign_import_item(ModuleName, Lang, !Items) :-
     %
     % We return foreign enums and foreign_import_modules separately
     % because our caller wants to process them separately.
+    %
+    % We return in !:IntSelfFIMs and !:ImpSelfFIMs respectively
+    % the set of languages for which we need to generate an implicit
+    % foreign_import_module for the current module, as needed by the
+    % items we return in !:IntItems and !:ImpItems.
     %
     % !:IntTypesMap and !:ImpTypesMap each map the type constructors
     % of the types defined in the interface and implementation sections
