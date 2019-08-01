@@ -85,8 +85,8 @@
                 %
                 % For type defn items for solver types, this controls whether
                 % references to the solver type's auxiliary predicates
-                % (initialization, representation change, etc) have to be
-                % fully qualified or not.
+                % (for representation changes) have to be fully qualified
+                % or not.
                 %
                 % For type defn items for du types, this controls whether
                 % references to the type's function symbols have to be

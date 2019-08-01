@@ -36,7 +36,6 @@
     %
     % :- solver type st
     %   where representation is rt,     % type
-    %         initialisation is ip,     % pred
     %         ground         is gi,     % inst
     %         any            is ai, ... % inst
     %
