@@ -383,9 +383,9 @@ dead_proc_initialize_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
     ),
     dead_proc_initialize_type_ctor_infos(TypeCtorGenInfos, !Queue, !Needed).
 
-:- pred dead_proc_initialize_class_methods(class_table::in,
-    instance_table::in, entity_queue::in, entity_queue::out,
-    needed_map::in, needed_map::out) is det.
+:- pred dead_proc_initialize_class_methods(class_table::in, instance_table::in,
+    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+    is det.
 
 dead_proc_initialize_class_methods(Classes, Instances,
         !Queue, !Needed) :-
@@ -1315,15 +1315,20 @@ dead_pred_elim(!ModuleInfo) :-
     list.foldl2(dead_pred_elim_add_entity, Entities, Queue1, Queue,
         NeededPreds0, NeededPreds1),
 
+    module_info_get_type_table(!.ModuleInfo, TypeTable),
+    get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
+    list.foldl(dead_pred_initialize_referred_preds(!.ModuleInfo),
+        TypeCtorDefns, NeededPreds1, NeededPreds2),
+
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
 
     Preds0 = set_tree234.init,
     Names0 = set_tree234.init,
-    DeadInfo0 = pred_elim_info(!.ModuleInfo, Queue, Preds0, NeededPreds1,
+    DeadInfo0 = pred_elim_info(!.ModuleInfo, Queue, Preds0, NeededPreds2,
         Names0),
     list.foldl(dead_pred_elim_initialize, PredIds, DeadInfo0, DeadInfo1),
     dead_pred_elim_analyze(DeadInfo1, DeadInfo),
-    DeadInfo = pred_elim_info(!:ModuleInfo, _, _, NeededPreds2, _),
+    DeadInfo = pred_elim_info(!:ModuleInfo, _, _, NeededPreds3, _),
 
     % If a predicate is not needed, predicates which were added in make_hlds.m
     % to force type specialization are also not needed. Here we add in those
@@ -1332,7 +1337,7 @@ dead_pred_elim(!ModuleInfo) :-
     module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
     TypeSpecInfo0 = type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
         SpecMap0, PragmaMap0),
-    set_tree234.to_sorted_list(NeededPreds2) = NeededPredList2,
+    set_tree234.to_sorted_list(NeededPreds3) = NeededPredList3,
     list.foldl(
         ( pred(NeededPred::in, AllPreds0::in, AllPreds::out) is det :-
             ( if map.search(SpecMap0, NeededPred, NewNeededPreds) then
@@ -1340,7 +1345,7 @@ dead_pred_elim(!ModuleInfo) :-
             else
                 AllPreds = AllPreds0
             )
-        ), NeededPredList2, NeededPreds2, NeededPreds),
+        ), NeededPredList3, NeededPreds3, NeededPreds),
     % We expect TypeSpecForcePreds0 to have very few elements, and NeededPreds
     % to have many. Therefore doing an individual O(log N) lookup in
     % NeededPreds for each element of TypeSpecForcePreds0 is a better approach
@@ -1358,6 +1363,86 @@ dead_pred_elim(!ModuleInfo) :-
     predicate_table_restrict(PartialQualInfo,
         set_tree234.to_sorted_list(NeededPreds), PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
+
+:- pred dead_pred_initialize_referred_preds(module_info::in,
+    pair(type_ctor, hlds_type_defn)::in,
+    set_tree234(pred_id)::in, set_tree234(pred_id)::out) is det.
+
+dead_pred_initialize_referred_preds(ModuleInfo, _TypeCtor - TypeDefn,
+        !NeededPreds) :-
+    get_type_defn_body(TypeDefn, TypeDefnBody),
+    (
+        TypeDefnBody = hlds_du_type(_Ctors, MaybeCanon, _Repn, _IsForeign),
+        dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon,
+            !NeededPreds)
+    ;
+        TypeDefnBody = hlds_foreign_type(ForeignTypeBody),
+        ForeignTypeBody = foreign_type_body(C, Java, CSharp, Erlang),
+        dead_pred_initialize_forein_type_lang_body(ModuleInfo, C,
+            !NeededPreds),
+        dead_pred_initialize_forein_type_lang_body(ModuleInfo, Java,
+            !NeededPreds),
+        dead_pred_initialize_forein_type_lang_body(ModuleInfo, CSharp,
+            !NeededPreds),
+        dead_pred_initialize_forein_type_lang_body(ModuleInfo, Erlang,
+            !NeededPreds)
+    ;
+        TypeDefnBody = hlds_solver_type(DetailsSolver),
+        DetailsSolver = type_details_solver(_SolverTypeDetails, MaybeCanon),
+        dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon,
+            !NeededPreds)
+    ;
+        ( TypeDefnBody = hlds_eqv_type(_)
+        ; TypeDefnBody = hlds_abstract_type(_)
+        )
+    ).
+
+:- pred dead_pred_initialize_forein_type_lang_body(module_info::in,
+    foreign_type_lang_body(_)::in,
+    set_tree234(pred_id)::in, set_tree234(pred_id)::out) is det.
+
+dead_pred_initialize_forein_type_lang_body(ModuleInfo, ForeignTypeLangBody,
+        !NeededPreds) :-
+    (
+        ForeignTypeLangBody = no
+    ;
+        ForeignTypeLangBody = yes(foreign_type_lang_data(_, MaybeCanon, _)),
+        dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon,
+            !NeededPreds)
+    ).
+
+:- pred dead_pred_initialize_maybe_canonical(module_info::in,
+    maybe_canonical::in,
+    set_tree234(pred_id)::in, set_tree234(pred_id)::out) is det.
+
+dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon, !NeededPreds) :-
+    (
+        MaybeCanon = canon
+    ;
+        MaybeCanon = noncanon(NonCanonical),
+        module_info_get_predicate_table(ModuleInfo, PredTable),
+        (
+            NonCanonical = noncanon_uni_cmp(UniPredSymName, CmpPredSymName),
+            predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
+                UniPredSymName, 2, UniPredIds),
+            predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
+                CmpPredSymName, 3, CmpPredIds),
+            set_tree234.insert_list(UniPredIds, !NeededPreds),
+            set_tree234.insert_list(CmpPredIds, !NeededPreds)
+        ;
+            NonCanonical = noncanon_uni_only(UniPredSymName),
+            predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
+                UniPredSymName, 2, UniPredIds),
+            set_tree234.insert_list(UniPredIds, !NeededPreds)
+        ;
+            NonCanonical = noncanon_cmp_only(CmpPredSymName),
+            predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
+                CmpPredSymName, 3, CmpPredIds),
+            set_tree234.insert_list(CmpPredIds, !NeededPreds)
+        ;
+            NonCanonical = noncanon_abstract(_IsSolverType)
+        )
+    ).
 
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
     queue(pred_id)::out, set_tree234(pred_id)::in, set_tree234(pred_id)::out)
