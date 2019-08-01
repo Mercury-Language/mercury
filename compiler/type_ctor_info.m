@@ -141,7 +141,7 @@ gen_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtorDefn | TypeCtorDefns],
         SymName = qualified(TypeModuleName, TypeName),
         ( if
             TypeModuleName = ModuleName,
-            create_type_ctor_gen(ModuleInfo, TypeCtorDefn,
+            should_create_type_ctor_gen(ModuleInfo, TypeCtorDefn,
                 TypeModuleName, TypeName, TypeArity, TypeDefn)
         then
             gen_type_ctor_gen_info(ModuleInfo, TypeCtor, TypeModuleName,
@@ -172,11 +172,11 @@ gen_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtorDefn | TypeCtorDefns],
     % The first category are handled by gen_builtin_type_ctor_gen_infos;
     % this predicate handles the other three.
     %
-:- pred create_type_ctor_gen(module_info::in,
+:- pred should_create_type_ctor_gen(module_info::in,
     pair(type_ctor, hlds_type_defn)::in, module_name::in, string::in, int::in,
     hlds_type_defn::out) is semidet.
 
-create_type_ctor_gen(ModuleInfo, TypeCtor - TypeDefn, TypeModuleName,
+should_create_type_ctor_gen(ModuleInfo, TypeCtor - TypeDefn, TypeModuleName,
         TypeName, TypeArity, TypeDefn) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     ( if
