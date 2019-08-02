@@ -742,8 +742,24 @@ either explicitly or implicitly.
 
 <p>
 <li>
-<em>TODO</em>
-Import_module and use_module declarations ..
+We copy to the interface section of the .int file
+all of the import_module and use_module declarations
+in the module's interface section.
+<p>
+We copy to the implementation section of the .int file
+an import_module or use_module declaration
+in the module's implementation section
+<ul>
+<li>
+only if the module defines an entity
+that occurs in a superclass constraint of a typeclass declaration
+in the implementation section of the .int file; or
+<li>
+if the module defines an entity
+that occurs on the right hand side of a type definition
+in the implementation section of the .int file.
+</ul>
+<p>
 </ul>
 
 <h2>The contents of .int2 files</h2>
