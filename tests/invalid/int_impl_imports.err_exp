@@ -1,0 +1,4 @@
+int_impl_imports.m:014: In definition of type `int_impl_imports.foo'/0:
+int_impl_imports.m:014:   error: undefined type `bar'/0.
+int_impl_imports.m:014:   (Only fully module qualified names may refer to the
+int_impl_imports.m:014:   entities defined in the module `int_impl_imports_2'.)

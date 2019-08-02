@@ -329,8 +329,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         % Get the .int files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "int_used_imp_imported",
-            pik_direct(int123_1, may_be_unqualified),
+            "int_used_imp_imported", pik_direct(int123_1, may_be_unqualified),
             make_ims_used_and_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
@@ -405,10 +404,16 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             _IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
         Contents = item_contents(_ForeignInclFiles, _FactTables,
             LangSet, ForeignExportLangs, HasMain),
-        set.sorted_list_to_set(map.keys(IntImportsMap0), IntImports0),
-        set.sorted_list_to_set(map.keys(IntUsesMap0), IntUses0),
-        set.sorted_list_to_set(map.keys(ImpImportsMap0), ImpImports),
-        set.sorted_list_to_set(map.keys(ImpUsesMap0), ImpUses),
+
+        warn_if_duplicate_use_import_decls(ModuleName, ModuleNameContext,
+            IntImportsMap0, IntImportsMap1, IntUsesMap0, IntUsesMap1,
+            ImpImportsMap0, ImpImportsMap, ImpUsesMap0, ImpUsesMap,
+            IntUsedImpImported, [], _Specs),
+
+        set.sorted_list_to_set(map.keys(IntImportsMap1), IntImports0),
+        set.sorted_list_to_set(map.keys(IntUsesMap1), IntUses0),
+        set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports),
+        set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses),
         % XXX SECTION
         compute_implicit_import_needs(Globals, IntImpImplicitImportNeeds,
             ImplicitIntImports, ImplicitIntUses),
@@ -455,7 +460,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             make_ims_imported(import_locn_ancestor_int0_interface),
             make_ims_imported(import_locn_ancestor_int0_implementation),
             module_and_imports_add_direct_int_item_blocks,
-            Ancestors, set.init, AncestorImported, set.init, AncestorUsed,
+            Ancestors, set.init, AncestorImports, set.init, AncestorUses,
             !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `import_module'.
@@ -466,7 +471,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             make_ims_imported(import_locn_import_by_ancestor),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            AncestorImported,
+            AncestorImports,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_int_imported", pik_direct(int123_3, may_be_unqualified),
@@ -489,7 +494,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             make_ims_used(import_locn_import_by_ancestor),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            AncestorUsed,
+            AncestorUses,
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_int_used", pik_direct(int123_3, must_be_qualified),
@@ -505,6 +510,16 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             module_and_imports_add_direct_int_item_blocks,
             ImpUses,
             !ImpIndirectImported, set.init, _, !ModuleAndImports, !IO),
+
+        % Get the .int files of the modules imported using `use_module'
+        % in the interface and `import_module' in the implementation.
+        process_module_int123_files(Globals, HaveReadModuleMapInt,
+            "int_used_imp_imported", pik_direct(int123_1, may_be_unqualified),
+            make_ims_used_and_imported(import_locn_interface),
+            make_ims_abstract_imported,
+            module_and_imports_add_direct_int_item_blocks,
+            IntUsedImpImported, !IntIndirectImported, set.init, _,
+            !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported in .int3 files.
         process_module_indirect_interfaces_transitively(Globals,
@@ -948,7 +963,7 @@ process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
         !IntIndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO) :-
     ( if set.remove_least(FirstModule, Modules, LaterModules) then
         ( if
-            % Have we already processed FirstModule.IntFileKind?
+            % Have we already processed FirstModule.some_extension?
             (
                 module_and_imports_get_module_name(!.ModuleAndImports,
                     ModuleName),

@@ -19,10 +19,11 @@ MULTIMODULE_PROGS= \
 	duplicate_instance_2 \
 	exported_unify \
 	exported_unify3 \
-	ii_parent.ii_child \
 	ho_default_func_2.sub \
+	ii_parent.ii_child \
 	import_in_parent \
 	imported_mode \
+	int_impl_imports \
 	missing_interface_import2 \
 	missing_parent_import \
 	partial_implied_mode \

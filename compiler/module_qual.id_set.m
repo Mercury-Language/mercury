@@ -253,7 +253,15 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
             id_set_search_sym(IdSet, SymName0, PossibleArities),
             report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
                 ThisModuleName, IntMismatches, QualMismatches,
-                PossibleArities, !Specs)
+                PossibleArities, !Specs),
+
+            % If a module defines an entity that this module refers to,
+            % even without the required module qualification, then reporting
+            % that module as being unused would be wrong.
+            %
+            % This is so even if the correct definition of Id0 could have
+            % come from any one of several modules.
+            list.foldl(mq_info_set_module_used(InInt), QualMismatches, !Info)
         ;
             ReportErrors = should_not_report_errors
         )
