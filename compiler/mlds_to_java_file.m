@@ -567,10 +567,16 @@ output_env_var_definition_for_java(Indent, EnvVarName, !IO) :-
 output_src_start_for_java(Info, Indent, MercuryModuleName, Imports,
         ForeignDecls, FuncDefns, Errors, !IO) :-
     output_auto_gen_comment(Info ^ joi_source_filename, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("/* :- module ", !IO),
-    prog_out.write_sym_name(MercuryModuleName, !IO),
-    io.write_string(". */\n\n", !IO),
+    AutoComments = Info ^ joi_auto_comments,
+    (
+        AutoComments = yes,
+        output_n_indents(Indent, !IO),
+        io.write_string("/* :- module ", !IO),
+        prog_out.write_sym_name(MercuryModuleName, !IO),
+        io.write_string(". */\n\n", !IO)
+    ;
+        AutoComments = no
+    ),
     output_n_indents(Indent, !IO),
     io.write_string("package jmercury;\n", !IO),
 
