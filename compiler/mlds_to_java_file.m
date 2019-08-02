@@ -256,11 +256,11 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
             CellDefns ++ TableStructDefns, !IO)
     ),
 
+    % Scalar common data must appear after the previous data definitions, and
+    % the vector common data after that.
     ( if map.is_empty(ScalarCellGroupMap) then
         true
     else
-        % Scalar common data must appear after the previous data definitions,
-        % and the vector common data after that.
         io.write_string("\n// Scalar common data\n", !IO),
         output_scalar_common_data_for_java(Info, Indent + 1,
             ScalarCellGroupMap, !IO)
