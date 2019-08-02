@@ -306,10 +306,17 @@ make_code_addr_map_for_java([CodeAddr | CodeAddrs], !Map) :-
 % Code to output imports.
 %
 
-:- pred output_imports(mlds_imports::in, io::di, io::uo) is det.
+:- pred output_imports(java_out_info::in, mlds_imports::in,
+    io::di, io::uo) is det.
 
-output_imports(Imports, !IO) :-
-    list.foldl(output_import, Imports, !IO).
+output_imports(Info, Imports, !IO) :-
+    AutoComments = Info ^ joi_auto_comments,
+    (
+        AutoComments = yes,
+        list.foldl(output_import, Imports, !IO)
+    ;
+        AutoComments = no
+    ).
 
 :- pred output_import(mlds_import::in, io::di, io::uo) is det.
 
@@ -512,7 +519,7 @@ output_src_start_for_java(Info, Indent, MercuryModuleName, Imports,
     output_n_indents(Indent, !IO),
     io.write_string("package jmercury;\n", !IO),
 
-    output_imports(Imports, !IO),
+    output_imports(Info, Imports, !IO),
     list.map_foldl(output_java_decl(Info, Indent),
         ForeignDecls, ForeignDeclResults, !IO),
     list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
