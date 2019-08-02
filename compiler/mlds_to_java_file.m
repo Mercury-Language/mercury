@@ -339,7 +339,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
             EnvVarNamesSet, !IO)
     ),
 
-    output_src_end_for_java(Indent, ModuleName, !IO),
+    output_src_end_for_java(Info, Indent, ModuleName, !IO),
     % XXX Need to handle non-Java foreign code at this point.
 
     Errors = ForeignDeclErrors ++ ForeignCodeErrors.
@@ -590,7 +590,7 @@ output_src_start_for_java(Info, Indent, MercuryModuleName, Imports,
     io.write_string(ClassName, !IO),
     io.write_string(" {\n", !IO),
 
-    output_debug_class_init(MercuryModuleName, "start", !IO),
+    output_debug_class_init(Info, MercuryModuleName, "start", !IO),
 
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting Java class that calls the `main'
@@ -635,29 +635,41 @@ write_main_driver_for_java(Indent, ClassName, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_src_end_for_java(indent::in, mercury_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_src_end_for_java(java_out_info::in, indent::in,
+        mercury_module_name::in, io::di, io::uo) is det.
 
-output_src_end_for_java(Indent, ModuleName, !IO) :-
-    output_debug_class_init(ModuleName, "end", !IO),
+output_src_end_for_java(Info, Indent, ModuleName, !IO) :-
+    output_debug_class_init(Info, ModuleName, "end", !IO),
     io.write_string("}\n", !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("// :- end_module ", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO).
+    AutoComments = Info ^ joi_auto_comments,
+    (
+        AutoComments = yes,
+        output_n_indents(Indent, !IO),
+        io.write_string("// :- end_module ", !IO),
+        prog_out.write_sym_name(ModuleName, !IO),
+        io.write_string(".\n", !IO)
+    ;
+        AutoComments = no
+    ).
 
-:- pred output_debug_class_init(mercury_module_name::in, string::in,
-    io::di, io::uo) is det.
+:- pred output_debug_class_init(java_out_info::in, mercury_module_name::in,
+    string::in, io::di, io::uo) is det.
 
-output_debug_class_init(ModuleName, State, !IO) :-
-    list.foldl(io.write_string, [
+output_debug_class_init(Info, ModuleName, State, !IO) :-
+    DebugClassInit = get_debug_class_init(Info),
+    (
+        DebugClassInit = yes,
+        list.foldl(io.write_string, [
         "  static {\n",
         "    if (System.getenv(""MERCURY_DEBUG_CLASS_INIT"") != null) {\n",
         "      System.out.println(""[", sym_name_mangle(ModuleName),
         " ", State, " init]"");\n",
         "    }\n",
         "  }\n"
-    ], !IO).
+        ], !IO)
+    ;
+        DebugClassInit = no
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_java_file.

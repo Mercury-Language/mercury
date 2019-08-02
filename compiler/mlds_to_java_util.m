@@ -56,6 +56,8 @@
 :- func init_java_out_info(module_info, string,
     map(mlds_code_addr, code_addr_wrapper)) = java_out_info.
 
+:- func get_debug_class_init(java_out_info) = bool.
+
 %---------------------------------------------------------------------------%
 
 :- type context_marker
@@ -116,6 +118,13 @@ init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap) = Info :-
     Info = java_out_info(ModuleInfo, AutoComments,
         LineNumbers, ForeignLineNumbers, MLDS_ModuleName, SourceFileName,
         AddrOfMap, do_not_output_generics, bc_none, []).
+
+get_debug_class_init(Info) = DebugClassInit :-
+    % It's not worth having an extra fieldin the java_out_info struct for
+    % this since we only look it up twice per module.
+    ModuleInfo = Info ^ joi_module_info,
+    module_info_get_globals(ModuleInfo, Globals),
+    lookup_bool_option(Globals, debug_class_init, DebugClassInit).
 
 %---------------------------------------------------------------------------%
 

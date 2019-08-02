@@ -39,7 +39,7 @@
 % - Every option should have a clause in the long_options predicate
 %   that converts the user-visible name of the option into its internal
 %   representation as a value in the options type. For options whose names
-%   include words that whose spelling differs in American vs British english,
+%   include words that whose spelling differs in American vs British English,
 %   there should normally be one entry for each spelling. In the rare case
 %   that the option is used very frequently, there may also be an entry
 %   for the option in the short_option predicate.
@@ -696,6 +696,7 @@
     ;       prefer_while_loop_over_jump_self
     ;       prefer_while_loop_over_jump_mutual
     ;       opt_no_return_calls
+    ;       debug_class_init
 
     % Optimization Options
     ;       opt_level
@@ -1590,7 +1591,8 @@ option_defaults_2(code_gen_option, [
     prefer_switch                       -   bool(yes),
     prefer_while_loop_over_jump_self    -   bool(yes),
     prefer_while_loop_over_jump_mutual  -   bool(no),
-    opt_no_return_calls                 -   bool(yes)
+    opt_no_return_calls                 -   bool(yes),
+    debug_class_init                    -   bool(no)
 ]).
 option_defaults_2(special_optimization_option, [
     % Special optimization options.
@@ -2537,6 +2539,7 @@ long_option("prefer-while-loop-over-jump-self",
 long_option("prefer-while-loop-over-jump-mutual",
                                     prefer_while_loop_over_jump_mutual).
 long_option("opt-no-return-calls",  opt_no_return_calls).
+long_option("debug-class-init",     debug_class_init).
 
 % optimization options
 
@@ -4899,7 +4902,7 @@ options_help_compilation_model -->
         % RBMM is undocumented since it is still experimental.
         % should also document rbmmd rbmmp rbmmdp
         %"--use-regions\t\t(grade modifier: `.rbmm')",
-        %"\tEnable support for region-based memory managment."
+        %"\tEnable support for region-based memory management."
         %"--use-alloc-regions",
         %"\tCompute and use the exact set of regions",
         %"\t that may be allocated into by a call."
@@ -5024,7 +5027,7 @@ options_help_compilation_model -->
 %        "\tDo not box 64-bit integer numbers",
 %        "\tThis assumes that word size of the target machine is at least",
 %        "\t64-bits in size.",
-%        "\tThe C code needs to be compiled iwth `-UMR_BOXED_INT64S'.",
+%        "\tThe C code needs to be compiled with `-UMR_BOXED_INT64S'.",
 
         % This is a developer only option.
 %       "--no-unboxed-no-tag-types",
@@ -5253,6 +5256,11 @@ options_help_code_generation -->
 %       "--no-opt-no-return-calls",
 %       "\tDo not optimize the stack usage of calls that cannot return.",
 
+        % This is a developer only option.
+%        "--debug-class-init",
+%        "\tIn Java grades, generate code that causes a trace of class",
+%        "\tinitialization to be printed to the standard output when the",
+%        "\tenvironment variable MERCURY_DEBUG_CLASS_INIT is defined."
     ]),
 
     io.write_string("\n    Code generation target options:\n"),
@@ -5585,7 +5593,7 @@ options_help_hlds_hlds_optimization -->
 %        "\tEnable the analysis for region-based memory management."
     ]).
 
-    % XXX This is out-of-date. --smart-indxing also affects the
+    % XXX This is out-of-date. --smart-indexing also affects the
     % MLDS backend.
     %
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.
