@@ -7411,14 +7411,16 @@ by an experimental debugger.
 
 @item --auto-comments
 @findex --auto-comments
-Output comments in the @file{@var{module}.c} file.
+Output comments in the generated target language file.
 This is primarily useful for trying to understand
-how the generated C code relates to the source code,
+how the generated target language code relates to the source code,
 e.g.@: in order to debug the compiler.
 The code may be easier to understand if you also use the
-@samp{--no-llds-optimize} option.
+@samp{--no-llds-optimize} or @samp{--no-mlds-optimize} options.
 @findex --no-llds-optimize
 @findex --llds-optimize
+@findex --no-mlds-optimize
+@findex --mlds-optimize
 
 @sp 1
 @item -n-
@@ -7936,7 +7938,7 @@ The set of aspects and their alternatives are:
 @table @asis
 @item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
 @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, @samp{asm_fast}, @samp{hl}, @samp{hlc}, @samp{il}, @samp{csharp},
+@samp{fast}, @samp{asm_fast}, @samp{hl}, @samp{hlc}, @samp{csharp},
 @samp{java} and
 @samp{erlang}
 (the default is system dependent).
@@ -8419,7 +8421,6 @@ For now, this option itself is for developers only.
 @findex --gc
 @findex --garbage-collection
 Specify which method of garbage collection to use.
-@c and @samp{il}.
 Grades containing @samp{csharp}, @samp{java}, or @samp{erlang} use
 @samp{--gc automatic},
 grades containing @samp{.gc} use @samp{--gc boehm},

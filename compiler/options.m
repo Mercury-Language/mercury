@@ -4368,7 +4368,7 @@ options_help_aux_output -->
         "\tchanges (e.g. because the location of a predicate declaration",
         "\tchanges in the Mercury source file).",
         "--auto-comments",
-        "\tOutput comments in the `<module>.c' file.",
+        "\tOutput comments in the generated target language file.",
 % This option is for developers only. Since it can include one C comment inside
 % another, the resulting code is not guaranteed to be valid C.
 %       "--frameopt-comments",
