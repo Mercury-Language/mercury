@@ -170,15 +170,16 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             LangSet, ForeignExportLangs, HasMain),
         FactTables = set.to_sorted_list(FactTablesSet),
 
-        Ancestors = set.list_to_set(get_ancestors(ModuleName)),
+        Ancestors = get_ancestors(ModuleName),
+        AncestorsSet = set.list_to_set(Ancestors),
         !:Specs = [],
-        warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+        warn_if_import_for_self_or_ancestor(ModuleName, AncestorsSet,
             IntImportsMap0, !Specs),
-        warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+        warn_if_import_for_self_or_ancestor(ModuleName, AncestorsSet,
             ImpUsesMap0, !Specs),
-        warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+        warn_if_import_for_self_or_ancestor(ModuleName, AncestorsSet,
             ImpImportsMap0, !Specs),
-        warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
+        warn_if_import_for_self_or_ancestor(ModuleName, AncestorsSet,
             ImpUsesMap0, !Specs),
         warn_if_duplicate_use_import_decls(ModuleName, ModuleNameContext,
             IntImportsMap0, IntImportsMap1, IntUsesMap0, IntUsesMap1,
@@ -300,14 +301,16 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             make_ims_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            IntImports, !IntIndirectImported, !IntImpIndirectImported,
+            set.to_sorted_list(IntImports),
+            !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "imp_imported", pik_direct(int123_1, may_be_unqualified),
             make_ims_imported(import_locn_implementation),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            ImpImports, !ImpIndirectImported, !ImpImpIndirectImported,
+            set.to_sorted_list(ImpImports),
+            !ImpIndirectImported, !ImpImpIndirectImported,
             !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `use_module'.
@@ -316,14 +319,16 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             make_ims_used(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            IntUses, !IntIndirectImported, !IntImpIndirectImported,
+            set.to_sorted_list(IntUses),
+            !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "imp_used", pik_direct(int123_1, must_be_qualified),
             make_ims_used(import_locn_implementation),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            ImpUses, !ImpIndirectImported, !ImpImpIndirectImported,
+            set.to_sorted_list(ImpUses),
+            !ImpIndirectImported, !ImpImpIndirectImported,
             !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `use_module'
@@ -333,7 +338,8 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             make_ims_used_and_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            IntUsedImpImported, !IntIndirectImported, !IntImpIndirectImported,
+            set.to_sorted_list(IntUsedImpImported),
+            !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
 
         % Get the .int2 files of the modules imported in .int files.
@@ -452,9 +458,9 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             !:ModuleAndImports),
 
         map.init(HaveReadModuleMapInt),
-        Ancestors = set.list_to_set(get_ancestors(ModuleName)),
 
         % Get the .int0 files of the ancestor modules.
+        Ancestors = get_ancestors(ModuleName),
         process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
             "unqual_ancestors",
             make_ims_imported(import_locn_ancestor_int0_interface),
@@ -471,21 +477,21 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             make_ims_imported(import_locn_import_by_ancestor),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            AncestorImports,
+            set.to_sorted_list(AncestorImports),
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_int_imported", pik_direct(int123_3, may_be_unqualified),
             make_ims_imported(import_locn_interface),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            IntImports,
+            set.to_sorted_list(IntImports),
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_imp_imported", pik_direct(int123_3, may_be_unqualified),
             make_ims_imported(import_locn_implementation),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            ImpImports,
+            set.to_sorted_list(ImpImports),
             !ImpIndirectImported, set.init, _, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'.
@@ -494,21 +500,21 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             make_ims_used(import_locn_import_by_ancestor),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            AncestorUses,
+            set.to_sorted_list(AncestorUses),
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_int_used", pik_direct(int123_3, must_be_qualified),
             make_ims_used(import_locn_interface),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            IntUses,
+            set.to_sorted_list(IntUses),
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_imp_used", pik_direct(int123_3, must_be_qualified),
             make_ims_used(import_locn_implementation),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            ImpUses,
+            set.to_sorted_list(ImpUses),
             !ImpIndirectImported, set.init, _, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'
@@ -519,7 +525,8 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             make_ims_used_and_imported(import_locn_interface),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
-            IntUsedImpImported, !IntIndirectImported, set.init, _,
+            set.to_sorted_list(IntUsedImpImported),
+            !IntIndirectImported, set.init, _,
             !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported in .int3 files.
@@ -826,36 +833,33 @@ wrap_symname(ModuleName) = qual_sym_name(ModuleName).
     have_read_module_int_map::in, string::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
     section_appender(MS)::in(section_appender),
-    set(module_name)::in,
+    list(module_name)::in,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
+process_int0_files_of_ancestor_modules(_Globals, _HaveReadModuleMapInt, _Why,
+        _NewIntSection, _NewImpSection, _SectionAppend, [],
+        !DirectImports, !DirectUses, !ModuleAndImports, !IO).
 process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt, Why,
-        NewIntSection, NewImpSection, SectionAppend, Ancestors,
+        NewIntSection, NewImpSection, SectionAppend, [Ancestor | Ancestors],
         !DirectImports, !DirectUses, !ModuleAndImports, !IO) :-
-    ( if set.remove_least(FirstAncestor, Ancestors, LaterAncestors) then
-        module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
-        expect_not(unify(FirstAncestor, ModuleName), $pred,
-            "module is its own ancestor?"),
-        module_and_imports_get_ancestors(!.ModuleAndImports, ModAncestors0),
-        ( if set.member(FirstAncestor, ModAncestors0) then
-            % We have already read it.
-            maybe_log_augment_decision(Why, pik_int0, FirstAncestor,
-                no, !IO)
-        else
-            maybe_log_augment_decision(Why, pik_int0, FirstAncestor,
-                yes, !IO),
-            process_module_int0_file(Globals, HaveReadModuleMapInt,
-                FirstAncestor, NewIntSection, NewImpSection, SectionAppend,
-                !DirectImports, !DirectUses, !ModuleAndImports, !IO)
-        ),
-        process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
-            Why, NewIntSection, NewImpSection, SectionAppend, LaterAncestors,
-            !DirectImports, !DirectUses, !ModuleAndImports, !IO)
+    module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
+    expect_not(unify(Ancestor, ModuleName), $pred,
+        "module is its own ancestor?"),
+    module_and_imports_get_ancestors(!.ModuleAndImports, ModAncestors0),
+    ( if set.member(Ancestor, ModAncestors0) then
+        % We have already read it.
+        maybe_log_augment_decision(Why, pik_int0, Ancestor, no, !IO)
     else
-        true
-    ).
+        maybe_log_augment_decision(Why, pik_int0, Ancestor, yes, !IO),
+        process_module_int0_file(Globals, HaveReadModuleMapInt,
+            Ancestor, NewIntSection, NewImpSection, SectionAppend,
+            !DirectImports, !DirectUses, !ModuleAndImports, !IO)
+    ),
+    process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
+        Why, NewIntSection, NewImpSection, SectionAppend, Ancestors,
+        !DirectImports, !DirectUses, !ModuleAndImports, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -923,7 +927,8 @@ process_module_indirect_interfaces_transitively(Globals, HaveReadModuleMapInt,
         Why, PIKind, NewIntSection, NewImpSection, SectionAppend,
         Modules, !ImpIndirectImports, !ModuleAndImports, !IO) :-
     process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
-        NewIntSection, NewImpSection, SectionAppend, Modules,
+        NewIntSection, NewImpSection, SectionAppend,
+        set.to_sorted_list(Modules),
         set.init, IndirectImports, !ImpIndirectImports,
         !ModuleAndImports, !IO),
     ( if set.is_empty(IndirectImports) then
@@ -957,55 +962,50 @@ process_module_indirect_interfaces_transitively(Globals, HaveReadModuleMapInt,
 :- pred process_module_int123_files(globals::in, have_read_module_int_map::in,
     string::in, process_interface_kind::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender), set(module_name)::in,
+    section_appender(MS)::in(section_appender), list(module_name)::in,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
+process_module_int123_files(_Globals, _HaveReadModuleMapInt, _Why, _PIKind,
+        _NewIntSection, _NewImpSection, _SectionAppend, [],
+        !IntIndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO).
 process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
-        NewIntSection, NewImpSection, SectionAppend, Modules,
+        NewIntSection, NewImpSection, SectionAppend, [Module | Modules],
         !IntIndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO) :-
-    ( if set.remove_least(FirstModule, Modules, LaterModules) then
-        ( if
-            % Have we already processed FirstModule.some_extension?
-            (
-                module_and_imports_get_module_name(!.ModuleAndImports,
-                    ModuleName),
-                FirstModule = ModuleName
-            ;
-                module_and_imports_get_ancestors(!.ModuleAndImports,
-                    Ancestors),
-                set.member(FirstModule, Ancestors)
-            ;
-                module_and_imports_get_int_deps_map(!.ModuleAndImports,
-                    IntDeps),
-                map.search(IntDeps, FirstModule, _)
-            ;
-                module_and_imports_get_imp_deps_map(!.ModuleAndImports,
-                    ImpDeps),
-                map.search(ImpDeps, FirstModule, _)
-            ;
-                PIKind = pik_indirect(_),
-                module_and_imports_get_indirect_deps(!.ModuleAndImports,
-                    IndirectDeps),
-                set.member(FirstModule, IndirectDeps)
-            )
-        then
-            maybe_log_augment_decision(Why, PIKind, FirstModule, no, !IO)
-        else
-            maybe_log_augment_decision(Why, PIKind, FirstModule, yes, !IO),
-            process_module_int123_file(Globals, HaveReadModuleMapInt,
-                PIKind, NewIntSection, NewImpSection, SectionAppend,
-                FirstModule, !IntIndirectImports, !ImpIndirectImports,
-                !ModuleAndImports, !IO)
-        ),
-        process_module_int123_files(Globals, HaveReadModuleMapInt, Why,
-            PIKind, NewIntSection, NewImpSection, SectionAppend,
-            LaterModules, !IntIndirectImports, !ImpIndirectImports,
-            !ModuleAndImports, !IO)
+    ( if
+        % Have we already processed Module.some_extension?
+        (
+            module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
+            Module = ModuleName
+        ;
+            module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors),
+            set.member(Module, Ancestors)
+        ;
+            module_and_imports_get_int_deps_map(!.ModuleAndImports, IntDeps),
+            map.search(IntDeps, Module, _)
+        ;
+            module_and_imports_get_imp_deps_map(!.ModuleAndImports, ImpDeps),
+            map.search(ImpDeps, Module, _)
+        ;
+            PIKind = pik_indirect(_),
+            module_and_imports_get_indirect_deps(!.ModuleAndImports,
+                IndirectDeps),
+            set.member(Module, IndirectDeps)
+        )
+    then
+        maybe_log_augment_decision(Why, PIKind, Module, no, !IO)
     else
-        true
-    ).
+        maybe_log_augment_decision(Why, PIKind, Module, yes, !IO),
+        process_module_int123_file(Globals, HaveReadModuleMapInt,
+            PIKind, NewIntSection, NewImpSection, SectionAppend,
+            Module, !IntIndirectImports, !ImpIndirectImports,
+            !ModuleAndImports, !IO)
+    ),
+    process_module_int123_files(Globals, HaveReadModuleMapInt, Why,
+        PIKind, NewIntSection, NewImpSection, SectionAppend,
+        Modules, !IntIndirectImports, !ImpIndirectImports,
+        !ModuleAndImports, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1962,7 +1962,8 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
         "opt_int0s", make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
-        Int0Files, set.init, AncestorImports1, set.init, AncestorImports2,
+        set.to_sorted_list(Int0Files),
+        set.init, AncestorImports1, set.init, AncestorImports2,
         !ModuleAndImports, !IO),
 
     % Figure out which .int files are needed by the .opt files
@@ -1982,7 +1983,8 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
         "opt_new_deps", pik_direct(int123_1, must_be_qualified),
         make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
-        NewDeps, set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
+        set.to_sorted_list(NewDeps),
+        set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
         !ModuleAndImports, !IO),
     process_module_indirect_interfaces_and_impls_transitively(Globals,
         HaveReadModuleMapInt, "opt_new_indirect_deps", pik_indirect(int123_2),
