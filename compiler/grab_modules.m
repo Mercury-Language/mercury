@@ -514,7 +514,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         % Get the .int files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "int_used_imp_imported", pik_direct(int123_1, may_be_unqualified),
+            "int_used_imp_imported", pik_direct(int123_3, may_be_unqualified),
             make_ims_used_and_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
