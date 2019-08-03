@@ -2078,16 +2078,11 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
     is det.
 
 check_libraries_are_installed(Globals, Succeeded, !IO) :-
-    % NOTE: we don't look up the value of the option init_files here because
-    % that may include .init files other than those associated with any
-    % libraries.
     globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
-    globals.lookup_accumulating_option(Globals, init_file_directories,
-        InitFileDirs),
     grade_directory_component(Globals, Grade),
     check_stdlib_is_installed(Globals, Grade, Succeeded0, !IO),
-    list.foldl2(check_library_is_installed(Globals, InitFileDirs, Grade),
-        Libs, Succeeded0, Succeeded, !IO).
+    list.foldl2(check_library_is_installed(Globals, Grade), Libs,
+        Succeeded0, Succeeded, !IO).
 
 :- pred check_stdlib_is_installed(globals::in, string::in, bool::out,
     io::di, io::uo) is det.
@@ -2102,11 +2097,28 @@ check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
         mercury_standard_library_directory, MaybeStdLibDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
-        % We check for the presence mer_std.init in the required grade.
-        % Unless the installation is broken this implies the presence
-        % of the other standard .init files in that grade.
-        StdLibInitFile = StdLibDir / "modules" / Grade / "mer_std.init",
-        io.see(StdLibInitFile, Result, !IO),
+        globals.get_target(Globals, Target),
+        (
+            ( Target = target_c
+            ; Target = target_erlang
+            ),
+            % In C or Erlang grades, check for the presence of mer_std.init in
+            % the required grade.  Unless the installation is broken this
+            % implies the presence of the other standard library files in that
+            % grade.
+            StdLibCheckFile = StdLibDir / "modules" / Grade / "mer_std.init"
+        ;
+            % Java grades do not use .init files, so check for the presence of
+            % the standard library JAR.
+            Target = target_java,
+            StdLibCheckFile = StdLibDir / "lib" / Grade / "mer_std.jar"
+        ;
+            % C# grades do not use .init files, so check for the presence of
+            % the standard library DLL.
+            Target = target_csharp,
+            StdLibCheckFile = StdLibDir / "lib" / Grade / "mer_std.dll"
+        ),
+        io.see(StdLibCheckFile, Result, !IO),
         (
             Result = ok,
             io.seen(!IO),
@@ -2126,20 +2138,46 @@ check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
         Succeeded = yes
     ).
 
-:- pred check_library_is_installed(globals::in, list(string)::in, string::in,
+:- pred check_library_is_installed(globals::in, string::in,
     string::in, bool::in, bool::out, io::di, io::uo) is det.
 
-check_library_is_installed(Globals, Dirs, Grade, LibName, !Succeeded, !IO) :-
+check_library_is_installed(Globals, Grade, LibName, !Succeeded, !IO) :-
     verbose_make_msg_option(Globals, debug_make,
         ( pred(!.IO::di, !:IO::uo) is det :-
             io.format("Checking that %s is installed in grade `%s'.\n",
                 [s(LibName), s(Grade)], !IO)
         ), !IO),
-    % We check for the presence of a library in a particular grade by seeing
-    % whether its .init file exists. This will work because all libraries
-    % have a grade dependent .init file.
-    InitFileName = LibName ++ ".init",
-    search_for_file_returning_dir(Dirs, InitFileName, MaybeDirName, !IO),
+    globals.get_target(Globals, Target),
+    (
+        % In C and Erlang grades, check for the presence of a library by seeing
+        % if its .init files exists.
+        ( Target = target_c
+        ; Target = target_erlang
+        ),
+        CheckFileName = LibName ++ ".init",
+        % NOTE: we don't look up the value of the option init_files here
+        % because that may include .init files other than those associated with
+        % any libraries.
+        globals.lookup_accumulating_option(Globals, init_file_directories,
+            SearchDirs)
+    ;
+        (
+            % In Java grades, check for the presence of the JAR for library.
+            Target = target_java,
+            CheckFileName = LibName ++ ".jar"
+        ;
+            % In C# grades, check for the presence of the DLL for the library.
+            Target = target_csharp,
+            CheckFileName = LibName ++ ".dll"
+        ),
+        globals.lookup_accumulating_option(Globals,
+            mercury_library_directories, MercuryLibDirs),
+        grade_directory_component(Globals, GradeDir),
+        SearchDirs = list.map((func(LibDir) = LibDir / "lib" / GradeDir),
+            MercuryLibDirs)
+    ),
+    search_for_file_returning_dir(SearchDirs, CheckFileName, MaybeDirName,
+        !IO),
     (
         MaybeDirName = ok(_)
     ;
