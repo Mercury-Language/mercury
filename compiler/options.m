@@ -2036,7 +2036,7 @@ option_defaults_2(miscellaneous_option, [
     experiment                          -   string(""),
     experiment1                         -   bool(no),
     experiment2                         -   bool(no),
-    experiment3                         -   bool(no),
+    experiment3                         -   bool(yes),
     experiment4                         -   bool(no),
     experiment5                         -   bool(no),
     ignore_par_conjunctions             -   bool(no),

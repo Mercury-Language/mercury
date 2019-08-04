@@ -882,10 +882,18 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     % XXX ITEM_LIST Since everything we put into a .int file should be
     % fully module qualified, we should convert all import_modules
     % into use_modules. XXX This may require a fix Mantis bug #401.
+    globals.lookup_bool_option(Globals, experiment3, Experiment3),
+    (
+        Experiment3 = no,
+        MakeImportOrUse = make_import
+    ;
+        Experiment3 = yes,
+        MakeImportOrUse = make_use
+    ),
     IntImports = IntImports1,
     set.difference(IntUses1, IntImports, IntUses),
     IntAvails =
-        list.map(make_import, set.to_sorted_list(IntImports)) ++
+        list.map(MakeImportOrUse, set.to_sorted_list(IntImports)) ++
         list.map(make_use, set.to_sorted_list(IntUses)),
     ( if set.is_empty(ImpNeededModules) then
         % This gets the same result as the else case, only more quickly.
@@ -899,7 +907,7 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
             set.intersect(ImpUses1, ImpNeededModules),
             set.union(IntModules, ImpImports)),
         ImpAvails =
-            list.map(make_import, set.to_sorted_list(ImpImports)) ++
+            list.map(MakeImportOrUse, set.to_sorted_list(ImpImports)) ++
             list.map(make_use, set.to_sorted_list(ImpUses))
     ),
 

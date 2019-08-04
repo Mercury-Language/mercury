@@ -742,24 +742,37 @@ either explicitly or implicitly.
 
 <p>
 <li>
-We copy to the interface section of the .int file
-all of the import_module and use_module declarations
+We put a use_module declaration
+into the interface section of the .int file
+for all of the modules that have an import_module and/or use_module declaration
 in the module's interface section.
 <p>
-We copy to the implementation section of the .int file
-an import_module or use_module declaration
-in the module's implementation section
+We put a use_module declaration
+into the implementation section of the .int file
+for all of the modules that have an import_module and/or use_module declaration
+in the module's implementation section, provided
 <ul>
 <li>
-only if the module defines an entity
+the module defines an entity
 that occurs in a superclass constraint of a typeclass declaration
 in the implementation section of the .int file; or
 <li>
-if the module defines an entity
+the module defines an entity
 that occurs on the right hand side of a type definition
 in the implementation section of the .int file.
 </ul>
 <p>
+The reason why we need to mention the implementation of these modules
+is that the compiler creates entries
+for e.g. the types we are imported from them
+only when it sees them defined, not when it sees them used.
+<p>
+The reason why we can turn what were originally import_module declarations
+into use_module declarations
+is that we generate the .int file at all
+only if we can successfully module qualify everything in it
+(actually, everything in the augmented compilation unit
+from which we derive the .int file's contents).
 </ul>
 
 <h2>The contents of .int2 files</h2>
