@@ -778,7 +778,7 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
         Pieces = [words("Warning:"),
             words(choose_number(ImportedAndUsedList, "module", "modules"))] ++
             component_list_to_pieces("and",
-                list.map(wrap_symname, ImportedAndUsedList)) ++
+                list.map(wrap_module_name, ImportedAndUsedList)) ++
             [words(choose_number(ImportedAndUsedList, "is", "are")),
             words("imported using both"), decl("import_module"),
             words("and"), decl("use_module"), words("declarations."), nl],
@@ -793,10 +793,6 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
         % were imported using `:- import_module.'
         map.delete_sorted_list(set.to_sorted_list(ImportedAndUsed), !UsedMap)
     ).
-
-:- func wrap_symname(module_name) = format_component.
-
-wrap_symname(ModuleName) = qual_sym_name(ModuleName).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
