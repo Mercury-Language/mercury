@@ -65,7 +65,8 @@
     %
 :- pred decide_repns_for_simple_types(module_name::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::in,
-    foreign_enum_map::in, list(item)::out, list(item)::out) is det.
+    foreign_enum_map::in,
+    list(item_type_repn_info)::out, list(item_type_repn_info)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -159,7 +160,7 @@ decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
 
 :- pred make_type_repn_item(module_name::in,
     unqual_type_ctor::in, du_or_foreign_repn::in,
-    cord(item)::in, cord(item)::out) is det.
+    cord(item_type_repn_info)::in, cord(item_type_repn_info)::out) is det.
 
 make_type_repn_item(ModuleName, UnqualTypeCtor, Repn, !Items) :-
     UnqualTypeCtor = unqual_type_ctor(TypeName, Arity),
@@ -199,9 +200,8 @@ make_type_repn_item(ModuleName, UnqualTypeCtor, Repn, !Items) :-
         ),
         TypeRepn = tcrepn_maybe_foreign(OoMLangRepns, MaybeDuRepn)
     ),
-    TypeRepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
+    Item = item_type_repn_info(TypeCtorSymName, TypeParams,
         TypeRepn, TVarSet, term.context_init, -1),
-    Item = item_type_repn(TypeRepnInfo),
     !:Items = cord.snoc(!.Items, Item).
 
 :- pred gather_used_foreign_languages(
@@ -221,7 +221,7 @@ is_non_overridden_foreign_enum(OverriddenLangs, Lang - _ForeignEnums) :-
 
 :- pred maybe_make_word_aligned_item(module_name::in,
     unqual_type_ctor::in, maybe_word_aligned::in,
-    cord(item)::in, cord(item)::out) is det.
+    cord(item_type_repn_info)::in, cord(item_type_repn_info)::out) is det.
 
 maybe_make_word_aligned_item(ModuleName, UnqualTypeCtor, WordAligned,
         !Items) :-
@@ -233,9 +233,8 @@ maybe_make_word_aligned_item(ModuleName, UnqualTypeCtor, WordAligned,
         TypeCtorSymName = qualified(ModuleName, TypeName),
         varset.init(TVarSet0),
         varset.new_vars(Arity, TypeParams, TVarSet0, TVarSet),
-        TypeRepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
+        Item = item_type_repn_info(TypeCtorSymName, TypeParams,
             tcrepn_is_word_aligned_ptr, TVarSet, term.context_init, -1),
-        Item = item_type_repn(TypeRepnInfo),
         !:Items = cord.snoc(!.Items, Item)
     ).
 
@@ -259,7 +258,7 @@ maybe_make_word_aligned_item(ModuleName, UnqualTypeCtor, WordAligned,
 
 :- type word_aligned_map == map(unqual_type_ctor, maybe_word_aligned).
 
-:- type eqv_type_repn_map == map(unqual_type_ctor, item).
+:- type eqv_type_repn_map == map(unqual_type_ctor, item_type_repn_info).
 
 :- pred decide_repn_if_simple_du_type(module_name::in, foreign_enum_map::in,
     item_type_defn_info::in,
@@ -385,9 +384,8 @@ decide_repn_if_simple_du_type(ModuleName, ForeignEnumTypeCtors,
         set_tree234.insert(UnqualTypeCtor, !TypeSet),
 
         TypeRepn = tcrepn_is_eqv_to(EqvType),
-        EqvTypeRepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
+        EqvItem = item_type_repn_info(TypeCtorSymName, TypeParams,
             TypeRepn, TVarSet, term.context_init, -1),
-        EqvItem = item_type_repn(EqvTypeRepnInfo),
         % Insert the equivalence into !EqvTypeMap *unless* UnqualTypeCtor
         % already has an entry there.
         map.search_insert(UnqualTypeCtor, EqvItem, _MaybeOldEqvItem,

@@ -36,7 +36,7 @@
     % XXX Why do we report errors NOW, as opposed to when we generate code?
     %
 :- pred generate_short_interface_int3(globals::in, raw_compilation_unit::in,
-    parse_tree_int::out, list(error_spec)::out) is det.
+    parse_tree_int3::out, parse_tree_int::out, list(error_spec)::out) is det.
 
     % Generate the .int2 using the same approach as we use for .int3 files.
     % THIS PREDICATE IS ONLY FOR EXPERIMENTAL PURPOSES.
@@ -160,128 +160,153 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt, !:Specs) :-
+generate_short_interface_int3(Globals, RawCompUnit,
+        ParseTreeInt3, ParseTreeInt, !:Specs) :-
     RawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
     !:Specs = [],
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
-        cord.init, IntInclsCord, cord.init, IntAvailsCord0,
-        cord.init, IntItemsCord0,
-        cord.init, IntTypeDefnsCord, cord.init, ImpTypeDefnsCord,
-        map.init, ForeignEnumTypeCtors, do_not_need_avails, NeedAvails,
+        set.init, IntInclModuleNames, set.init, IntImportModuleNames0,
+        cord.init, IntTypeDefnsCord,
+        cord.init, IntInstDefnsCord, cord.init, IntModeDefnsCord,
+        cord.init, IntTypeClassesCord, cord.init, IntInstancesCord,
+        cord.init, OrigIntTypeDefnsCord, cord.init, OrigImpTypeDefnsCord,
+        map.init, ForeignEnumTypeCtors, do_not_need_imports, NeedImports,
         !Specs),
-    IntIncls = cord.list(IntInclsCord),
     (
-        NeedAvails = do_not_need_avails,
-        IntAvails = []
+        NeedImports = do_not_need_imports,
+        IntImportModuleNames = set.init
     ;
-        NeedAvails = do_need_avails,
-        IntAvails = cord.list(IntAvailsCord0)
+        NeedImports = do_need_imports,
+        IntImportModuleNames = IntImportModuleNames0
     ),
-    IntItems0 = cord.list(IntItemsCord0),
+    IntTypeDefns = cord.list(IntTypeDefnsCord),
+    IntInstDefns = cord.list(IntInstDefnsCord),
+    IntModeDefns = cord.list(IntModeDefnsCord),
+    IntTypeClasses = cord.list(IntTypeClassesCord),
+    IntInstances = cord.list(IntInstancesCord),
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
-        IntItems = IntItems0
+        TypeRepnInfos = []
     ;
         Experiment1 = yes,
-        IntTypeDefns = cord.list(IntTypeDefnsCord),
-        ImpTypeDefns = cord.list(ImpTypeDefnsCord),
-        decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
-            ForeignEnumTypeCtors, IntTypeRepnItems, _NonIntTypeRepnItems),
-        IntItems = IntItems0 ++ IntTypeRepnItems
+        OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
+        OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
+        decide_repns_for_simple_types(ModuleName,
+            OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
+            IntTypeRepnInfos, _NonIntTypeRepnInfos),
+        TypeRepnInfos = IntTypeRepnInfos
     ),
-    MaybeVersionNumbers = no,
-    ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, [], IntAvails, [], IntItems, []),
+    ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
+        IntInclModuleNames, IntImportModuleNames,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, TypeRepnInfos),
+    ParseTreeInt0 = convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3),
     module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt,
         !Specs).
 
-:- type need_avails
-    --->    do_not_need_avails
-    ;       do_need_avails.
+:- type need_imports
+    --->    do_not_need_imports
+    ;       do_need_imports.
 
 :- pred get_short_interface_int3_from_item_blocks(list(raw_item_block)::in,
-    cord(item_include)::in, cord(item_include)::out,
-    cord(item_avail)::in, cord(item_avail)::out,
-    cord(item)::in, cord(item)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     foreign_enum_map::in, foreign_enum_map::out,
-    need_avails::in, need_avails::out,
+    need_imports::in, need_imports::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 get_short_interface_int3_from_item_blocks([],
-        !IntIncls, !IntAvails, !IntItems, !IntTypeDefns, !ImpTypeDefns,
-        !ForeignEnumTypeCtors, !NeedAvails, !Specs).
+        !IntIncls, !IntImports, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns, !OrigImpTypeDefns,
+        !ForeignEnumTypeCtors, !NeedImports, !Specs).
 get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
-        !IntIncls, !IntAvails, !IntItems, !IntTypeDefns, !ImpTypeDefns,
-        !ForeignEnumTypeCtors, !NeedAvails, !Specs) :-
+        !IntIncls, !IntImports, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns, !OrigImpTypeDefns,
+        !ForeignEnumTypeCtors, !NeedImports, !Specs) :-
     RawItemBlock = item_block(_, Section, Incls, Avails, Items),
     (
         Section = ms_interface,
-        !:IntIncls = !.IntIncls ++ cord.from_list(Incls),
-        !:IntAvails = !.IntAvails ++
-            cord.from_list(list.filter(avail_is_import, Avails)),
-        get_short_interface_int3_from_items(Items, !IntItems, !IntTypeDefns,
-            !ForeignEnumTypeCtors, !NeedAvails, !Specs)
+
+        IncludeModuleNames = list.map(item_include_module_name, Incls),
+        set.insert_list(IncludeModuleNames, !IntIncls),
+
+        list.filter_map(avail_is_import, Avails, Imports),
+        ImportModuleNames = list.map(avail_import_info_module_name, Imports),
+        set.insert_list(ImportModuleNames, !IntImports),
+
+        get_short_interface_int3_from_items(Items,
+            !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+            !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
+            !ForeignEnumTypeCtors, !NeedImports, !Specs)
     ;
         Section = ms_implementation,
-        gather_imp_type_defns(Items, !ImpTypeDefns, !ForeignEnumTypeCtors)
+        gather_imp_type_defns(Items, !OrigImpTypeDefns, !ForeignEnumTypeCtors)
     ),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
-        !IntIncls, !IntAvails, !IntItems, !IntTypeDefns, !ImpTypeDefns,
-        !ForeignEnumTypeCtors, !NeedAvails, !Specs).
+        !IntIncls, !IntImports, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns, !OrigImpTypeDefns,
+        !ForeignEnumTypeCtors, !NeedImports, !Specs).
 
 :- pred get_short_interface_int3_from_items(list(item)::in,
-    cord(item)::in, cord(item)::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     foreign_enum_map::in, foreign_enum_map::out,
-    need_avails::in, need_avails::out,
+    need_imports::in, need_imports::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_short_interface_int3_from_items([], !IntItems, !IntTypeDefns,
-        !ForeignEnumTypeCtors, !NeedAvails, !Specs).
-get_short_interface_int3_from_items([Item | Items], !IntItems, !IntTypeDefns,
-        !ForeignEnumTypeCtors, !NeedAvails, !Specs) :-
+get_short_interface_int3_from_items([],
+        !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
+        !ForeignEnumTypeCtors, !NeedImports, !Specs).
+get_short_interface_int3_from_items([Item | Items],
+        !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
+        !ForeignEnumTypeCtors, !NeedImports, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        cord.snoc(ItemTypeDefnInfo, !IntTypeDefns),
+        cord.snoc(ItemTypeDefnInfo, !OrigIntTypeDefns),
         % XXX TYPE_REPN do this in decide_type_repn.m?
         make_type_defn_abstract_type_for_int3(ItemTypeDefnInfo,
             AbstractOrForeignItemTypeDefnInfo),
-        AbstractOrForeignItem =
-            item_type_defn(AbstractOrForeignItemTypeDefnInfo),
-        cord.snoc(AbstractOrForeignItem, !IntItems)
+        cord.snoc(AbstractOrForeignItemTypeDefnInfo, !IntTypeDefns)
     ;
         Item = item_typeclass(ItemTypeClassInfo),
         ItemTypeClassInfo = item_typeclass_info(ClassName, ParamsTVars,
             _Constraints, _FunDeps, _Methods, TVarSet, Context, SeqNum),
         AbstractItemTypeClassInfo = item_typeclass_info(ClassName, ParamsTVars,
             [], [], class_interface_abstract, TVarSet, Context, SeqNum),
-        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
-        cord.snoc(AbstractItem, !IntItems)
+        cord.snoc(AbstractItemTypeClassInfo, !IntTypeClasses)
     ;
         Item = item_instance(ItemInstanceInfo),
         AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
             := instance_body_abstract,
-        AbstractItem = item_instance(AbstractItemInstanceInfo),
-        cord.snoc(AbstractItem, !IntItems),
+        cord.snoc(AbstractItemInstanceInfo, !IntInstances),
         % We may need the imported modules to module qualify the names
         % of the type constructors in the instance's member types.
-        !:NeedAvails = do_need_avails
+        !:NeedImports = do_need_imports
     ;
         Item = item_inst_defn(ItemInstInfo),
         AbstractItemInstInfo =
             ItemInstInfo ^ id_inst_defn := abstract_inst_defn,
-        AbstractItem = item_inst_defn(AbstractItemInstInfo),
-        cord.snoc(AbstractItem, !IntItems)
+        cord.snoc(AbstractItemInstInfo, !IntInstDefns)
     ;
         Item = item_mode_defn(ItemModeInfo),
         AbstractItemModeInfo =
             ItemModeInfo ^ md_mode_defn := abstract_mode_defn,
-        AbstractItem = item_mode_defn(AbstractItemModeInfo),
-        cord.snoc(AbstractItem, !IntItems)
+        cord.snoc(AbstractItemModeInfo, !IntModeDefns)
     ;
         Item = item_clause(ItemClause),
         Context = ItemClause ^ cl_context,
@@ -310,8 +335,10 @@ get_short_interface_int3_from_items([Item | Items], !IntItems, !IntTypeDefns,
         ; Item = item_type_repn(_)
         )
     ),
-    get_short_interface_int3_from_items(Items, !IntItems, !IntTypeDefns,
-        !ForeignEnumTypeCtors, !NeedAvails, !Specs).
+    get_short_interface_int3_from_items(Items,
+        !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
+        !ForeignEnumTypeCtors, !NeedImports, !Specs).
 
 :- pred make_type_defn_abstract_type_for_int3(item_type_defn_info::in,
     item_type_defn_info::out) is det.
@@ -438,36 +465,43 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23,
         _OptItemBlocks, _IntForOptItemBlocks),
     list.map(src_to_raw_item_block, SrcItemBlocks, RawItemBlocks),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
-        cord.init, IntInclsCord, cord.init, IntAvailsCord0,
-        cord.init, IntItemsCord0,
-        cord.init, IntTypeDefnsCord, cord.init, ImpTypeDefnsCord,
-        map.init, ForeignEnumTypeCtors, do_not_need_avails, NeedAvails,
+        set.init, IntInclModuleNames, set.init, IntImportModuleNames0,
+        cord.init, IntTypeDefnsCord,
+        cord.init, IntInstDefnsCord, cord.init, IntModeDefnsCord,
+        cord.init, IntTypeClassesCord, cord.init, IntInstancesCord,
+        cord.init, OrigIntTypeDefnsCord, cord.init, OrigImpTypeDefnsCord,
+        map.init, ForeignEnumTypeCtors, do_not_need_imports, NeedImports,
         !Specs),
-    IntIncls = cord.list(IntInclsCord),
     (
-        NeedAvails = do_not_need_avails,
-        IntAvails = []
+        NeedImports = do_not_need_imports,
+        IntImportModuleNames = set.init
     ;
-        NeedAvails = do_need_avails,
-        IntAvails = cord.list(IntAvailsCord0)
+        NeedImports = do_need_imports,
+        IntImportModuleNames = IntImportModuleNames0
     ),
-    IntItems0 = cord.list(IntItemsCord0),
+    IntTypeDefns = cord.list(IntTypeDefnsCord),
+    IntInstDefns = cord.list(IntInstDefnsCord),
+    IntModeDefns = cord.list(IntModeDefnsCord),
+    IntTypeClasses = cord.list(IntTypeClassesCord),
+    IntInstances = cord.list(IntInstancesCord),
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
-        IntItems = IntItems0
+        TypeRepnInfos = []
     ;
         Experiment1 = yes,
-        IntTypeDefns = cord.list(IntTypeDefnsCord),
-        ImpTypeDefns = cord.list(ImpTypeDefnsCord),
-        decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
-            ForeignEnumTypeCtors, IntTypeRepnItems, _NonIntTypeRepnItems),
-        IntItems = IntItems0 ++ IntTypeRepnItems
+        OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
+        OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
+        decide_repns_for_simple_types(ModuleName,
+            OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
+            IntTypeRepnInfos, _NonIntTypeRepnInfos),
+        TypeRepnInfos = IntTypeRepnInfos
     ),
-    MaybeVersionNumbers = no,
-    ParseTreeInt23 = parse_tree_int(ModuleName, ifk_int2,
-        ModuleNameContext, MaybeVersionNumbers,
-        IntIncls, [], IntAvails, [], IntItems, []).
+    ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
+        IntInclModuleNames, IntImportModuleNames,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, TypeRepnInfos),
+    ParseTreeInt23 = convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3).
 
 :- pred src_to_raw_item_block(src_item_block::in, raw_item_block::out) is det.
 

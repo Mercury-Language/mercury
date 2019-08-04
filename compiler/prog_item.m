@@ -124,6 +124,32 @@
                 pti_imp_items               :: list(item)
             ).
 
+    % A version of parse_tree_int specialized to hold the contents of
+    % .int3 files.
+:- type parse_tree_int3
+    --->    parse_tree_int3(
+                pti3_module_name            :: module_name,
+
+                % The context of the `:- module' declaration.
+                pti3_module_name_context    :: prog_context,
+
+                % The set of modules mentioned in `:- include_module'
+                % declarations in the interface.
+                pti3_included_modules       :: set(module_name),
+
+                % The set of modules mentioned in `:- import_module'
+                % declarations in the interface.
+                pti3_imported_modules       :: set(module_name),
+
+                % Items of various kinds in the interface.
+                pti3_type_defns             :: list(item_type_defn_info),
+                pti3_inst_defns             :: list(item_inst_defn_info),
+                pti3_mode_defns             :: list(item_mode_defn_info),
+                pti3_typeclasses            :: list(item_typeclass_info),
+                pti3_instances              :: list(item_instance_info),
+                pti3_type_repns             :: list(item_type_repn_info)
+            ).
+
 :- type parse_tree_opt
     --->    parse_tree_opt(
                 pto_module_name             :: module_name,
@@ -137,6 +163,9 @@
 
                 pto_items                   :: list(item)
             ).
+
+:- func convert_parse_tree_int3_to_parse_tree_int(parse_tree_int3)
+    = parse_tree_int.
 
 %-----------------------------------------------------------------------------%
 %
@@ -733,8 +762,12 @@
 :- type avail_use_info
     --->    avail_use_info(module_name, prog_context, int).
 
-:- pred avail_is_import(item_avail::in) is semidet.
+:- func item_include_module_name(item_include) = module_name.
 
+:- pred avail_is_import(item_avail::in, avail_import_info::out) is semidet.
+:- pred avail_is_use(item_avail::in, avail_use_info::out) is semidet.
+
+:- func wrap_avail_import(avail_import_info) = item_avail.
 :- func wrap_avail_use(avail_use_info) = item_avail.
 
 :- pred avail_imports_uses(list(item_avail)::in,
@@ -1655,8 +1688,58 @@
 
 :- import_module parse_tree.prog_foreign.
 
+:- import_module list.
 :- import_module map.
 :- import_module require.
+:- import_module term.
+
+%-----------------------------------------------------------------------------%
+
+convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3) = ParseTreeInt :-
+    ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
+        IntInclModuleNames, IntImportModuleNames,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, TypeRepnInfos),
+
+    MaybeVersionNumbers = no,
+    IntIncls = list.map(wrap_include,
+        set.to_sorted_list(IntInclModuleNames)),
+    IntAvails = list.map(wrap_import_avail,
+        set.to_sorted_list(IntImportModuleNames)),
+    IntItems =
+        list.map(wrap_type_defn_item, IntTypeDefns) ++
+        list.map(wrap_inst_defn_item, IntInstDefns) ++
+        list.map(wrap_mode_defn_item, IntModeDefns) ++
+        list.map(wrap_typeclass_item, IntTypeClasses) ++
+        list.map(wrap_instance_item, IntInstances) ++
+        list.map(wrap_type_repn_item, TypeRepnInfos),
+    ParseTreeInt = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, [], IntAvails, [], IntItems, []).
+
+:- func wrap_include(module_name) = item_include.
+
+wrap_include(ModuleName) = Include :-
+    Include = item_include(ModuleName, term.context_init, -1).
+
+:- func wrap_import_avail(module_name) = item_avail.
+
+wrap_import_avail(ModuleName) = Avail :-
+    ImportInfo = avail_import_info(ModuleName, term.context_init, -1),
+    Avail = avail_import(ImportInfo).
+
+:- func wrap_type_defn_item(item_type_defn_info) = item.
+:- func wrap_inst_defn_item(item_inst_defn_info) = item.
+:- func wrap_mode_defn_item(item_mode_defn_info) = item.
+:- func wrap_typeclass_item(item_typeclass_info) = item.
+:- func wrap_instance_item(item_instance_info) = item.
+:- func wrap_type_repn_item(item_type_repn_info) = item.
+
+wrap_type_defn_item(TypeDefnInfo) = item_type_defn(TypeDefnInfo).
+wrap_inst_defn_item(InstDefnInfo) = item_inst_defn(InstDefnInfo).
+wrap_mode_defn_item(ModeDefnInfo) = item_mode_defn(ModeDefnInfo).
+wrap_typeclass_item(TypeClassInfo) = item_typeclass(TypeClassInfo).
+wrap_instance_item(InstanceInfo) = item_instance(InstanceInfo).
+wrap_type_repn_item(TypeRepnInfo) = item_type_repn(TypeRepnInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1813,14 +1896,28 @@ get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
     Incl = item_include(ModuleName, Context, _SeqNum),
     multi_map.add(ModuleName, Context, !IncludedModuleNames).
 
-avail_is_import(Avail) :-
+item_include_module_name(Incl) = ModuleName :-
+    Incl = item_include(ModuleName, _Context, _SeqNum).
+
+avail_is_import(Avail, ImportInfo) :-
     require_complete_switch [Avail]
     (
-        Avail = avail_import(_)
+        Avail = avail_import(ImportInfo)
     ;
         Avail = avail_use(_),
         fail
     ).
+
+avail_is_use(Avail, UseInfo) :-
+    require_complete_switch [Avail]
+    (
+        Avail = avail_import(_),
+        fail
+    ;
+        Avail = avail_use(UseInfo)
+    ).
+
+wrap_avail_import(AvailImportInfo) = avail_import(AvailImportInfo).
 
 wrap_avail_use(AvailUseInfo) = avail_use(AvailUseInfo).
 
