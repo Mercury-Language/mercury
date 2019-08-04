@@ -694,14 +694,6 @@
                 incl_seq_num                    :: int
             ).
 
-    % get_included_modules_in_item_blocks(ItemBlocks, IncludeDeps):
-    %
-    % IncludeDeps is the list of submodules named in `:- include_module'
-    % declarations in ItemBlocks.
-    %
-:- pred get_included_modules_in_item_blocks(list(item_block(MS))::in,
-    module_names_contexts::out) is det.
-
     % An accumulator version of the above predicate restricted to operate
     % only on item_includes.
     %
@@ -1816,21 +1808,6 @@ get_item_context(Item) = Context :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-get_included_modules_in_item_blocks(ItemBlocks, IncludedModuleNames) :-
-    get_included_modules_in_item_blocks_acc(ItemBlocks,
-        multi_map.init, IncludedModuleNames).
-
-:- pred get_included_modules_in_item_blocks_acc(list(item_block(MS))::in,
-    module_names_contexts::in, module_names_contexts::out) is det.
-
-get_included_modules_in_item_blocks_acc([], !IncludedModuleNames).
-get_included_modules_in_item_blocks_acc([ItemBlock | ItemBlocks],
-        !IncludedModuleNames) :-
-    ItemBlock = item_block(_, _, Incls, _Avails, _Items),
-    list.foldl(get_included_modules_in_item_include_acc, Incls,
-        !IncludedModuleNames),
-    get_included_modules_in_item_blocks_acc(ItemBlocks, !IncludedModuleNames).
 
 get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
     Incl = item_include(ModuleName, Context, _SeqNum),
