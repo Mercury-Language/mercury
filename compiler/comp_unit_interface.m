@@ -1238,7 +1238,7 @@ get_interface_int1_items_loop_int([Item | Items], !IntItemsCord,
         cord.snoc(Item, !IntItemsCord),
         % The superclass constraints on the typeclass being declared
         % may refer to typeclasses that this module has imported.
-        Constraints = ItemTypeClass ^ tc_constraints,
+        Constraints = ItemTypeClass ^ tc_superclasses,
         list.foldl(accumulate_modules_from_constraint, Constraints,
             !IntModulesNeeded)
     ;
@@ -1355,7 +1355,7 @@ get_interface_int1_items_loop_imp([Item | Items], !ImpItemsCord,
         cord.snoc(Item, !ImpItemsCord),
         % The superclass constraints on the typeclass being declared
         % may refer to typeclasses that this module has imported.
-        Constraints = ItemTypeClass ^ tc_constraints,
+        Constraints = ItemTypeClass ^ tc_superclasses,
         list.foldl(accumulate_modules_from_constraint, Constraints,
             !ImpModulesNeededByTypeClassDefns)
     ;

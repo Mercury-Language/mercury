@@ -210,7 +210,7 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
             (
                 NotInParams = [],
                 ItemTypeClass = ((ItemTypeClass0
-                    ^ tc_constraints := ConstraintList)
+                    ^ tc_superclasses := ConstraintList)
                     ^ tc_fundeps := FunDeps),
                 MaybeItemTypeClass = ok1(ItemTypeClass)
             ;

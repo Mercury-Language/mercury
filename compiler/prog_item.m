@@ -557,7 +557,7 @@
     --->    item_typeclass_info(
                 tc_class_name                   :: class_name,
                 tc_class_params                 :: list(tvar),
-                tc_constraints                  :: list(prog_constraint),
+                tc_superclasses                 :: list(prog_constraint),
                 tc_fundeps                      :: list(prog_fundep),
                 tc_class_methods                :: class_interface,
                 tc_varset                       :: tvarset,
