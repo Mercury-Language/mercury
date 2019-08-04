@@ -137,7 +137,7 @@
 % Write out .int3 files.
 %
 
-write_short_interface_file_int3(Globals, SourceFileName, RawCompUnit, !IO) :-
+write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
 
@@ -145,8 +145,7 @@ write_short_interface_file_int3(Globals, SourceFileName, RawCompUnit, !IO) :-
     generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt3, Specs),
     write_error_specs_ignore(Specs, Globals, !IO),
     % XXX Why do we do this even if there are some errors?
-    actually_write_interface_file(Globals, SourceFileName, ParseTreeInt3,
-        no, !IO),
+    actually_write_interface_file(Globals, ParseTreeInt3, "", no, !IO),
     touch_interface_datestamp(Globals, ModuleName, ".date3", !IO).
 
 %---------------------------------------------------------------------------%
@@ -184,8 +183,8 @@ write_private_interface_file_int0(Globals, SourceFileName,
             Specs = [],
             % Construct and write out the `.int0' file.
             generate_private_interface_int0(AugCompUnit, ParseTreeInt0),
-            actually_write_interface_file(Globals, SourceFileName,
-                ParseTreeInt0, MaybeTimestamp, !IO),
+            actually_write_interface_file(Globals, ParseTreeInt0, "",
+                MaybeTimestamp, !IO),
             touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
         )
     ).
@@ -231,20 +230,31 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
             generate_interfaces_int1_int2(Globals, AugCompUnit,
                 ParseTreeInt1, ParseTreeInt2, InterfaceSpecs),
             write_error_specs_ignore(InterfaceSpecs, Globals, !IO),
-            actually_write_interface_file(Globals, SourceFileName,
-                ParseTreeInt1, MaybeTimestamp, !IO),
-            actually_write_interface_file(Globals, SourceFileName,
-                ParseTreeInt2, MaybeTimestamp, !IO),
+            actually_write_interface_file(Globals, ParseTreeInt1, "",
+                MaybeTimestamp, !IO),
+            actually_write_interface_file(Globals, ParseTreeInt2, "",
+                MaybeTimestamp, !IO),
+            globals.lookup_bool_option(Globals, experiment2, Experiment2),
+            (
+                Experiment2 = no
+            ;
+                Experiment2 = yes,
+                generate_interface_int2_via_int3(Globals, AugCompUnit,
+                    ParseTreeInt23, [], Int23Specs),
+                write_error_specs_ignore(Int23Specs, NoHaltAtWarnGlobals, !IO),
+                actually_write_interface_file(Globals, ParseTreeInt23, ".via3",
+                    MaybeTimestamp, !IO)
+            ),
             touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred actually_write_interface_file(globals::in, file_name::in,
-    parse_tree_int::in, maybe(timestamp)::in, io::di, io::uo) is det.
+:- pred actually_write_interface_file(globals::in, parse_tree_int::in,
+    string::in, maybe(timestamp)::in, io::di, io::uo) is det.
 
-actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
+actually_write_interface_file(Globals, ParseTreeInt0, ExtraSuffix,
         MaybeTimestamp, !IO) :-
     order_parse_tree_int_contents(ParseTreeInt0, ParseTreeInt1),
 
@@ -252,11 +262,10 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
     ModuleName = ParseTreeInt1 ^ pti_module_name,
     IntFileKind = ParseTreeInt1 ^ pti_int_file_kind,
     Suffix = int_file_kind_to_extension(IntFileKind),
-    TmpSuffix = Suffix ++ ".tmp",
     module_name_to_file_name(Globals, do_create_dirs, Suffix,
-        ModuleName, OutputFileName, !IO),
-    module_name_to_file_name(Globals, do_not_create_dirs, TmpSuffix,
-        ModuleName, TmpOutputFileName, !IO),
+        ModuleName, OutputFileName0, !IO),
+    OutputFileName = OutputFileName0 ++ ExtraSuffix,
+    TmpOutputFileName = OutputFileName ++ ".tmp",
 
     globals.set_option(line_numbers, bool(no),
         Globals, NoLineNumGlobals0),

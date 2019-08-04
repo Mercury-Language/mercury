@@ -1093,18 +1093,29 @@
             % configure.in.
 
     ;       experiment
-            % This option is provided for use by implementors who want to
-            % compare a new way of doing something with the old way. The idea
-            % is that the code that switches between the two ways should
-            % consult this option and make its decision accordingly.
+    ;       experiment1
+    ;       experiment2
+    ;       experiment3
+    ;       experiment4
+    ;       experiment5
+            % These options are provided for use by implementors who want to
+            % compare a new way of doing something with the old way.
+            % The idea is that the code that switches between the two ways
+            % should consult one (or more) of these options and make its
+            % decision accordingly.
             %
-            % The intention is that all use of this option is within developer
-            % workspaces; no code using this option should be committed.
+            % Experiment[1-5] are booleans; experiment itself is a string.
+            %
+            % The intention is that most use of these options is
+            % within developer workspaces, with rare examples of code
+            % using some of these options being committed, but only
+            % for short lengths of time (a week or two at most;
+            % enough for all members of a team to try out the experiment).
             %
             % Of course, a developer could always create a purpose-specific
             % option to control their code, but adding an option requires
-            % recompiling most of the modules in the compiler. Having this
-            % option permanently here should reduce the need for that.
+            % recompiling most of the modules in the compiler. Having these
+            % options permanently here should reduce the need for that.
 
     ;       ignore_par_conjunctions
     ;       control_granularity
@@ -2023,6 +2034,11 @@ option_defaults_2(miscellaneous_option, [
     analysis_file_cache_dir             -   string(""),
     compiler_sufficiently_recent        -   bool(no),
     experiment                          -   string(""),
+    experiment1                         -   bool(no),
+    experiment2                         -   bool(no),
+    experiment3                         -   bool(no),
+    experiment4                         -   bool(no),
+    experiment5                         -   bool(no),
     ignore_par_conjunctions             -   bool(no),
     control_granularity                 -   bool(no),
     distance_granularity                -   int(0),
@@ -3084,6 +3100,11 @@ long_option("builtin-lt-gt-2018-10-08",
 long_option("fixed-contiguity-2018-10-19",
                                     compiler_sufficiently_recent).
 long_option("experiment",           experiment).
+long_option("experiment1",          experiment1).
+long_option("experiment2",          experiment2).
+long_option("experiment3",          experiment3).
+long_option("experiment4",          experiment4).
+long_option("experiment5",          experiment5).
 long_option("ignore-par-conjunctions",
                                     ignore_par_conjunctions).
 long_option("control-granularity",  control_granularity).

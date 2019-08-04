@@ -38,6 +38,12 @@
 :- pred generate_short_interface_int3(globals::in, raw_compilation_unit::in,
     parse_tree_int::out, list(error_spec)::out) is det.
 
+    % Generate the .int2 using the same approach as we use for .int3 files.
+    % THIS PREDICATE IS ONLY FOR EXPERIMENTAL PURPOSES.
+    %
+:- pred generate_interface_int2_via_int3(globals::in, aug_compilation_unit::in,
+    parse_tree_int::out, list(error_spec)::in, list(error_spec)::out) is det.
+
 %---------------------------------------------------------------------------%
 
     % generate_private_interface_int0(AugCompUnit, ParseTreeInt0):
@@ -173,15 +179,17 @@ generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt, !:Specs) :-
         IntAvails = cord.list(IntAvailsCord0)
     ),
     IntItems0 = cord.list(IntItemsCord0),
-    globals.lookup_string_option(Globals, experiment, Experiment),
-    ( if Experiment = "type_repn_int3" then
+    globals.lookup_bool_option(Globals, experiment1, Experiment1),
+    (
+        Experiment1 = no,
+        IntItems = IntItems0
+    ;
+        Experiment1 = yes,
         IntTypeDefns = cord.list(IntTypeDefnsCord),
         ImpTypeDefns = cord.list(ImpTypeDefnsCord),
         decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
             ForeignEnumTypeCtors, IntTypeRepnItems, _NonIntTypeRepnItems),
         IntItems = IntItems0 ++ IntTypeRepnItems
-    else
-        IntItems = IntItems0
     ),
     MaybeVersionNumbers = no,
     ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
@@ -419,6 +427,62 @@ maybe_record_foreign_enum(Pragma, !ForeignEnumTypeCtors) :-
     else
         true
     ).
+
+%---------------------------------------------------------------------------%
+
+generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23,
+        !Specs) :-
+    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
+        _ModuleVersionNumbers, SrcItemBlocks,
+        _DirectIntItemBlocks, _IndirectIntItemBlocks,
+        _OptItemBlocks, _IntForOptItemBlocks),
+    list.map(src_to_raw_item_block, SrcItemBlocks, RawItemBlocks),
+    get_short_interface_int3_from_item_blocks(RawItemBlocks,
+        cord.init, IntInclsCord, cord.init, IntAvailsCord0,
+        cord.init, IntItemsCord0,
+        cord.init, IntTypeDefnsCord, cord.init, ImpTypeDefnsCord,
+        map.init, ForeignEnumTypeCtors, do_not_need_avails, NeedAvails,
+        !Specs),
+    IntIncls = cord.list(IntInclsCord),
+    (
+        NeedAvails = do_not_need_avails,
+        IntAvails = []
+    ;
+        NeedAvails = do_need_avails,
+        IntAvails = cord.list(IntAvailsCord0)
+    ),
+    IntItems0 = cord.list(IntItemsCord0),
+    globals.lookup_bool_option(Globals, experiment1, Experiment1),
+    (
+        Experiment1 = no,
+        IntItems = IntItems0
+    ;
+        Experiment1 = yes,
+        IntTypeDefns = cord.list(IntTypeDefnsCord),
+        ImpTypeDefns = cord.list(ImpTypeDefnsCord),
+        decide_repns_for_simple_types(ModuleName, IntTypeDefns, ImpTypeDefns,
+            ForeignEnumTypeCtors, IntTypeRepnItems, _NonIntTypeRepnItems),
+        IntItems = IntItems0 ++ IntTypeRepnItems
+    ),
+    MaybeVersionNumbers = no,
+    ParseTreeInt23 = parse_tree_int(ModuleName, ifk_int2,
+        ModuleNameContext, MaybeVersionNumbers,
+        IntIncls, [], IntAvails, [], IntItems, []).
+
+:- pred src_to_raw_item_block(src_item_block::in, raw_item_block::out) is det.
+
+src_to_raw_item_block(SrcItemBlock, RawItemBlock) :-
+    SrcItemBlock = item_block(ModuleName, SrcSection, Incls, Avails, Items),
+    (
+        SrcSection = sms_interface,
+        RawSection = ms_interface
+    ;
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
+        ),
+        RawSection = ms_implementation
+    ),
+    RawItemBlock = item_block(ModuleName, RawSection, Incls, Avails, Items).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
