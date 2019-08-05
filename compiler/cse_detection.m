@@ -1083,10 +1083,33 @@ may_pull_lhs_inst(CseInfo, VarInst) :-
     % XXX We only need inst_is_bound, but leave this as it is until
     % mode analysis can handle aliasing between free variables.
     inst_is_ground_or_any(ModuleInfo, VarInst),
-    % We need this test until we can track uniqueness through
-    % the extra unifications we introduce when we pull a deconstruction
-    % out of an arm of a disjunction, switch or if-then-else.
-    inst_is_not_partly_unique(ModuleInfo, VarInst).
+
+    % We need to test for the absence of uniqueness until we can track
+    % uniqueness through the extra unifications we introduce when we pull
+    % a deconstruction out of an arm of a disjunction, switch or if-then-else.
+    %
+    % We only need the insts of the *arguments* to be free of uniqueness.
+    % However, the vast majority of the time, the whole inst is free
+    % of uniqueness, so for efficiency in the common case, we test that first.
+    (
+        inst_is_not_partly_unique(ModuleInfo, VarInst)
+    ;
+        inst_is_bound_to_functors(ModuleInfo, VarInst, FunctorBoundInsts),
+        % XXX Ideally, we should test only whether the arguments
+        % of the *specific cons_id* we want to pull out of the disjunction
+        % are free of unique components. However, our caller calls us
+        % *before* we enter the disjunction, and thus it does not know
+        % the cons_is yet. And the vast majority of the time, FunctorBoundInsts
+        % contains only one bound inst anyway. If it is the one will end up
+        % pulling out of the disjunction, we do the right thing; if it isn't,
+        % we won't pull it out of the disjunction. Either way, we do the
+        % right thing. We can be overly cautious here only if FunctorBoundInsts
+        % contains two or more elements.
+        ArgInstLists = list.map((func(bound_functor(_, Args)) = Args),
+            FunctorBoundInsts),
+        list.condense(ArgInstLists, ArgInsts),
+        list.all_true(inst_is_not_partly_unique(ModuleInfo), ArgInsts)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.cse_detection.
