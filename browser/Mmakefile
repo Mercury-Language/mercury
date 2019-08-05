@@ -163,29 +163,6 @@ aux:
 .PHONY: depend_aux
 depend_aux: browse_test.depend declarative_test.depend
 
-.NOTPARALLEL:
-
-# $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
-# 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
-
-# The need for these dependencies should be obviated by the fact that the
-# mdbcomp directory is brought up-to-date first.
-
-# lib$(BROWSER_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
-# lib$(BROWSER_LIB_NAME).dylib: lib$(MDBCOMP_LIB_NAME).dylib
-# lib$(BROWSER_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
-# lib$(BROWSER_LIB_NAME).int3s: lib$(MDBCOMP_LIB_NAME).int3s
-# lib$(BROWSER_LIB_NAME).ints: lib$(MDBCOMP_LIB_NAME).ints
-# lib$(BROWSER_LIB_NAME).cs: lib$(MDBCOMP_LIB_NAME).cs
-# lib$(BROWSER_LIB_NAME).javas: lib$(MDBCOMP_LIB_NAME).javas
-# lib$(BROWSER_LIB_NAME).check: lib$(MDBCOMP_LIB_NAME).check
-# $($(BROWSER_LIB_NAME).ints): $($(MDBCOMP_LIB_NAME).ints)
-# $($(BROWSER_LIB_NAME).cs): $($(MDBCOMP_LIB_NAME).cs)
-# $($(BROWSER_LIB_NAME).javas): $($(MDBCOMP_LIB_NAME).java_dates)
-# $($(BROWSER_LIB_NAME).c_dates): $($(MDBCOMP_LIB_NAME).c_dates)
-# $($(BROWSER_LIB_NAME).s_dates): $($(MDBCOMP_LIB_NAME).s_dates)
-# $($(BROWSER_LIB_NAME).java_dates): $($(MDBCOMP_LIB_NAME).java_dates)
-
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
 # won't work without the Mercury.modules file.

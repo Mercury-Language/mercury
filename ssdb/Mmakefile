@@ -149,29 +149,6 @@ library: $(LIBS)
 depend:	SSDB_FLAGS $(DEPENDS)
 $(DEPENDS): Mercury.modules
 
-.NOTPARALLEL:
-
-# $(SSDB_LIB_NAME).dep $(SSDB_LIB_NAME).depend:
-# 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
-
-# The need for these dependencies should be obviated by the fact that the
-# mdbcomp directory is brought up-to-date first.
-
-# lib$(SSDB_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
-# lib$(SSDB_LIB_NAME).dylib: lib$(MDBCOMP_LIB_NAME).dylib
-# lib$(SSDB_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
-# lib$(SSDB_LIB_NAME).int3s: lib$(MDBCOMP_LIB_NAME).int3s
-# lib$(SSDB_LIB_NAME).ints: lib$(MDBCOMP_LIB_NAME).ints
-# lib$(SSDB_LIB_NAME).cs: lib$(MDBCOMP_LIB_NAME).cs
-# lib$(SSDB_LIB_NAME).javas: lib$(MDBCOMP_LIB_NAME).javas
-# lib$(SSDB_LIB_NAME).check: lib$(MDBCOMP_LIB_NAME).check
-# $($(SSDB_LIB_NAME).ints): $($(MDBCOMP_LIB_NAME).ints)
-# $($(SSDB_LIB_NAME).cs): $($(MDBCOMP_LIB_NAME).cs)
-# $($(SSDB_LIB_NAME).javas): $($(MDBCOMP_LIB_NAME).java_dates)
-# $($(SSDB_LIB_NAME).c_dates): $($(MDBCOMP_LIB_NAME).c_dates)
-# $($(SSDB_LIB_NAME).s_dates): $($(MDBCOMP_LIB_NAME).s_dates)
-# $($(SSDB_LIB_NAME).java_dates): $($(MDBCOMP_LIB_NAME).java_dates)
-
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
 # won't work without the Mercury.modules file.
