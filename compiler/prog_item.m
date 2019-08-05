@@ -1688,7 +1688,6 @@
 
 :- import_module parse_tree.prog_foreign.
 
-:- import_module list.
 :- import_module map.
 :- import_module require.
 :- import_module term.
