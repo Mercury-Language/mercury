@@ -63,11 +63,13 @@
     %
 :- pred inst_is_mostly_unique(module_info::in, mer_inst::in) is semidet.
 
-    % Succeed if the inst is not `mostly_unique' or `unique'.
+    % Succeed if the inst is not `mostly_unique' or `unique', i.e.
+    % if it is shared or free. It fails for abstract insts.
     %
 :- pred inst_is_not_partly_unique(module_info::in, mer_inst::in) is semidet.
 
-    % Succeed if the inst is not `unique'.
+    % Succeed if the inst is not `unique', i.e. if it is mostly_unique,
+    % shared, or free. It fails for abstract insts.
     %
 :- pred inst_is_not_fully_unique(module_info::in, mer_inst::in) is semidet.
 
@@ -354,7 +356,7 @@ inst_is_ground_mt_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
             inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions)
         )
     else
-        % ZZZ make this work on Inst's *address*.
+        % XXX Make this work on Inst's *address*.
         ( if set_tree234.insert_new(Inst, !Expansions) then
             % Inst was not yet in Expansions, but we have now inserted it.
             inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions)
@@ -560,9 +562,6 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
 
 %-----------------------------------------------------------------------------%
 
-    % inst_is_not_partly_unique succeeds iff the inst passed is not unique
-    % or mostly_unique, i.e. if it is shared free. It fails for abstract insts.
-    %
 inst_is_not_partly_unique(ModuleInfo, Inst) :-
     set.init(Expansions0),
     inst_is_not_partly_unique_2(ModuleInfo, Inst, Expansions0, _Expansions).
@@ -617,10 +616,6 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
 
 %-----------------------------------------------------------------------------%
 
-    % inst_is_not_fully_unique succeeds iff the inst passed is not unique,
-    % i.e. if it is mostly_unique, shared, or free. It fails for abstract
-    % insts.
-    %
 inst_is_not_fully_unique(ModuleInfo, Inst) :-
     set.init(Expansions0),
     inst_is_not_fully_unique_2(ModuleInfo, Inst, Expansions0, _Expansions).
