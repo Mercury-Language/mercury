@@ -1099,12 +1099,12 @@ may_pull_lhs_inst(CseInfo, VarInst) :-
         % of the *specific cons_id* we want to pull out of the disjunction
         % are free of unique components. However, our caller calls us
         % *before* we enter the disjunction, and thus it does not know
-        % the cons_is yet. And the vast majority of the time, FunctorBoundInsts
-        % contains only one bound inst anyway. If it is the one will end up
-        % pulling out of the disjunction, we do the right thing; if it isn't,
-        % we won't pull it out of the disjunction. Either way, we do the
-        % right thing. We can be overly cautious here only if FunctorBoundInsts
-        % contains two or more elements.
+        % the cons_id yet. And the vast majority of the time, FunctorBoundInsts
+        % contains only one bound inst anyway. If it is the one that
+        % we will end up pulling out of the disjunction, we do the right
+        % thing here; if it isn't, we won't pull it out of the disjunction.
+        % Either way, we do the right thing. We can be overly cautious
+        % here only if FunctorBoundInsts contains two or more elements.
         ArgInstLists = list.map((func(bound_functor(_, Args)) = Args),
             FunctorBoundInsts),
         list.condense(ArgInstLists, ArgInsts),
