@@ -494,21 +494,6 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23,
         convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3),
     ParseTreeInt23 = ParseTreeInt23Prime ^ pti_int_file_kind := ifk_int2.
 
-:- pred src_to_raw_item_block(src_item_block::in, raw_item_block::out) is det.
-
-src_to_raw_item_block(SrcItemBlock, RawItemBlock) :-
-    SrcItemBlock = item_block(ModuleName, SrcSection, Incls, Avails, Items),
-    (
-        SrcSection = sms_interface,
-        RawSection = ms_interface
-    ;
-        ( SrcSection = sms_implementation
-        ; SrcSection = sms_impl_but_exported_to_submodules
-        ),
-        RawSection = ms_implementation
-    ),
-    RawItemBlock = item_block(ModuleName, RawSection, Incls, Avails, Items).
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

@@ -525,7 +525,7 @@ rebuild_module_and_imports_for_dep_file(Globals,
         _ModuleVersionNumbers, SrcItemBlocks,
         _DirectIntItemBlocksCord, _IndirectIntItemBlocksCord,
         _OptItemBlocksCord, _IntForOptItemBlocksCord),
-    convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks),
+    list.map(src_to_raw_item_block, SrcItemBlocks, RawItemBlocks),
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
     module_and_imports_get_source_file_name(ModuleAndImports0,
@@ -538,25 +538,6 @@ rebuild_module_and_imports_for_dep_file(Globals,
     init_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
         NestedChildren, Specs, ReadModuleErrors0, RawCompUnit,
         ModuleAndImports).
-
-:- pred convert_back_to_raw_item_blocks(list(src_item_block)::in,
-    list(raw_item_block)::out) is det.
-
-convert_back_to_raw_item_blocks([], []).
-convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
-        [RawItemBlock | RawItemBlocks]) :-
-    SrcItemBlock = item_block(ModuleName, SrcSection, Incls, Avails, Items),
-    (
-        SrcSection = sms_interface,
-        RawSection = ms_interface
-    ;
-        ( SrcSection = sms_implementation
-        ; SrcSection = sms_impl_but_exported_to_submodules
-        ),
-        RawSection = ms_implementation
-    ),
-    RawItemBlock = item_block(ModuleName, RawSection, Incls, Avails, Items),
-    convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks).
 
 %---------------------------------------------------------------------------%
 

@@ -258,6 +258,8 @@
 
 :- type module_names_contexts == multi_map(module_name, prog_context).
 
+:- pred src_to_raw_item_block(src_item_block::in, raw_item_block::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- type module_section
@@ -1739,6 +1741,21 @@ wrap_mode_defn_item(ModeDefnInfo) = item_mode_defn(ModeDefnInfo).
 wrap_typeclass_item(TypeClassInfo) = item_typeclass(TypeClassInfo).
 wrap_instance_item(InstanceInfo) = item_instance(InstanceInfo).
 wrap_type_repn_item(TypeRepnInfo) = item_type_repn(TypeRepnInfo).
+
+%-----------------------------------------------------------------------------%
+
+src_to_raw_item_block(SrcItemBlock, RawItemBlock) :-
+    SrcItemBlock = item_block(ModuleName, SrcSection, Incls, Avails, Items),
+    (
+        SrcSection = sms_interface,
+        RawSection = ms_interface
+    ;
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
+        ),
+        RawSection = ms_implementation
+    ),
+    RawItemBlock = item_block(ModuleName, RawSection, Incls, Avails, Items).
 
 %-----------------------------------------------------------------------------%
 
