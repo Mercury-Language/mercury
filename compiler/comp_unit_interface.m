@@ -501,7 +501,9 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23,
         IntInclModuleNames, IntImportModuleNames,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances, TypeRepnInfos),
-    ParseTreeInt23 = convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3).
+    ParseTreeInt23Prime =
+        convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3),
+    ParseTreeInt23 = ParseTreeInt23Prime ^ pti_int_file_kind := ifk_int2.
 
 :- pred src_to_raw_item_block(src_item_block::in, raw_item_block::out) is det.
 
@@ -913,9 +915,8 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     % do tend to delete such unnecessary imports from the interface,
     % so fixing this overestimation is not all that urgent.
     %
-    % XXX ITEM_LIST Since everything we put into a .int file should be
-    % fully module qualified, we should convert all import_modules
-    % into use_modules. XXX This may require a fix Mantis bug #401.
+    % Since everything we put into a .int file should be fully module
+    % qualified, we convert all import_modules into use_modules.
     globals.lookup_bool_option(Globals, experiment3, Experiment3),
     (
         Experiment3 = no,
@@ -1026,10 +1027,21 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     else
         ShortImpItems = ShortImpItems0
     ),
-    ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
+    OldParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
         ModuleNameContext, DummyMaybeVersionNumbers,
         IntIncls, ImpIncls, ShortIntAvails, ShortImpAvails,
-        ShortIntItems, ShortImpItems).
+        ShortIntItems, ShortImpItems),
+
+    globals.lookup_bool_option(Globals, experiment4, Experiment4),
+    (
+        Experiment4 = no,
+        ParseTreeInt2 = OldParseTreeInt2
+    ;
+        Experiment4 = yes,
+        generate_interface_int2(ModuleName, ModuleNameContext,
+            IntIncls, IntAvails, IntItems0, ImpItems1,
+            IntFIMItems, ImpFIMItems, ParseTreeInt2)
+    ).
 
 %---------------------%
 
@@ -2274,6 +2286,171 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
         unexpected($pred, "item_foreign_import_module/type_repn/nothing")
     ),
     get_int2_items_from_int1_acc(Items, !ItemsCord).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % generate_interface_int2(ModuleName, ModuleNameContext,
+    %     IntIncls, IntAvails, IntItems, ImpItems, IntFIMItems, ImpFIMItems,
+    %     ParseTreeInt2):
+    %
+    % The input arguments should be the relevant parts of the .int1 file
+    % computed by our parent. Any foreign_import_items should be passed
+    % in the IntFIMItems and ImpFIMItems arguments (depending on section),
+    % since for the .int2 file, we want to decide whether we want to keep
+    % the foreign_import_module in each section on somewhat different
+    % criteria than those used for .int files.
+    %
+:- pred generate_interface_int2(module_name::in, prog_context::in,
+    list(item_include)::in, list(item_avail)::in,
+    list(item)::in, list(item)::in, list(item)::in, list(item)::in,
+    parse_tree_int::out) is det.
+
+generate_interface_int2(ModuleName, ModuleNameContext,
+        IntIncls, IntAvails, IntItems, ImpItems, IntFIMItems, ImpFIMItems,
+        ParseTreeInt2) :-
+    get_int2_items_from_int1_int(IntItems, cord.init, ShortIntItemsCord0),
+    get_int2_items_from_int1_imp(ImpItems, set.init, ShortImpLangs,
+        cord.init, ShortImpItemsCord0),
+    ShortIntItems0 = cord.list(ShortIntItemsCord0),
+    ShortImpItems0 = cord.list(ShortImpItemsCord0),
+
+    find_need_imports(ShortIntItems0,
+        ShortIntNeedImports, set.init, ShortIntNeedForeignImportLangs),
+    (
+        ShortIntNeedImports = need_imports,
+        ShortIntAvails = IntAvails
+    ;
+        ShortIntNeedImports = dont_need_imports,
+        ShortIntAvails = []
+    ),
+    ( if set.is_non_empty(ShortIntNeedForeignImportLangs) then
+        ShortIntItems = IntFIMItems ++ ShortIntItems0
+    else
+        ShortIntItems = ShortIntItems0
+    ),
+    ( if set.is_non_empty(ShortImpLangs) then
+        ShortImpItems = ImpFIMItems ++ ShortImpItems0
+    else
+        ShortImpItems = ShortImpItems0
+    ),
+    DummyMaybeVersionNumbers = no,
+    ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
+        ModuleNameContext, DummyMaybeVersionNumbers,
+        IntIncls, [], ShortIntAvails, [], ShortIntItems, ShortImpItems).
+
+:- pred get_int2_items_from_int1_int(list(item)::in,
+    cord(item)::in, cord(item)::out) is det.
+
+get_int2_items_from_int1_int([], !IntItemsCord).
+get_int2_items_from_int1_int([Item | Items], !IntItemsCord) :-
+    (
+        Item = item_type_defn(ItemTypeDefnInfo),
+        maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
+            MaybeAbstractItemTypeDefnInfo),
+        MaybeAbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
+        cord.snoc(MaybeAbstractItem, !IntItemsCord)
+    ;
+        Item = item_typeclass(ItemTypeClassInfo),
+        AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
+            := class_interface_abstract,
+        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
+        cord.snoc(AbstractItem, !IntItemsCord)
+    ;
+        Item = item_instance(ItemInstanceInfo),
+        AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
+            := instance_body_abstract,
+        AbstractItem = item_instance(AbstractItemInstanceInfo),
+        cord.snoc(AbstractItem, !IntItemsCord)
+    ;
+        ( Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ),
+        cord.snoc(Item, !IntItemsCord)
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        )
+        % Do not include Item in !IntItemsCord.
+    ;
+        ( Item = item_foreign_import_module(_)
+        ; Item = item_type_repn(_)
+        ),
+        % We should have filtered out foreign_import_module items
+        % before we get here, and we are not yet generating type_repn
+        % items at all.
+        unexpected($pred, "item_foreign_import_module/type_repn/nothing")
+    ),
+    get_int2_items_from_int1_int(Items, !IntItemsCord).
+
+    % For now, we need the implementation sections of .int2 files to contain
+    % all the information that other modules reading that .int file will need
+    % to correctly decide the representation of the types exported by this
+    % module.
+    %
+    % The computation we use to decide which types' type_defn items
+    % need to stay in the implementation section of the .int file
+    % and in what form computes exactly this information. Therefore
+    % we need only the copy the type_defn items that this previous computation
+    % has left.
+    %
+    % XXX TYPE_REPN In the future, these type_defn items (which include
+    % some for types that *shouldn't* be exported from the module)
+    % should be replaced by type_repn items (for only the types which
+    % *are* exported from the module).
+    %
+    % The implementation section of .int2 files needs no other items,
+    % and when we switch to using type_repn items to decide type
+    % representations, the implementation sections of .int2 files
+    % should be empty (as are the implementation sections of .int3 files).
+    %
+:- pred get_int2_items_from_int1_imp(list(item)::in,
+    set(foreign_language)::in, set(foreign_language)::out,
+    cord(item)::in, cord(item)::out) is det.
+
+get_int2_items_from_int1_imp([], !Langs, !ImpItemsCord).
+get_int2_items_from_int1_imp([Item | Items], !Langs, !ImpItemsCord) :-
+    (
+        Item = item_type_defn(ItemTypeDefnInfo),
+        TypeDefn = ItemTypeDefnInfo ^ td_ctor_defn,
+        ( if TypeDefn = parse_tree_foreign_type(DetailsForeign) then
+            DetailsForeign = type_details_foreign(ForeignType, _, _),
+            set.insert(foreign_type_language(ForeignType), !Langs)
+        else
+            true
+        ),
+        cord.snoc(Item, !ImpItemsCord)
+    ;
+        ( Item = item_typeclass(_)
+        ; Item = item_instance(_ItemInstanceInfo)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_clause(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        )
+        % Do not include Item in !ImpItemsCord.
+    ;
+        ( Item = item_foreign_import_module(_)
+        ; Item = item_type_repn(_)
+        ),
+        % We should have filtered out foreign_import_module items
+        % before we get here, and we are not yet generating type_repn
+        % items at all.
+        unexpected($pred, "item_foreign_import_module/type_repn/nothing")
+    ),
+    get_int2_items_from_int1_imp(Items, !Langs, !ImpItemsCord).
 
 %---------------------------------------------------------------------------%
 

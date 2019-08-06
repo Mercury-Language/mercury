@@ -2037,7 +2037,7 @@ option_defaults_2(miscellaneous_option, [
     experiment1                         -   bool(no),
     experiment2                         -   bool(no),
     experiment3                         -   bool(yes),
-    experiment4                         -   bool(no),
+    experiment4                         -   bool(yes),
     experiment5                         -   bool(no),
     ignore_par_conjunctions             -   bool(no),
     control_granularity                 -   bool(no),
