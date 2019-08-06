@@ -337,8 +337,8 @@
 
 :- implementation.
 
-:- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.get_dependencies.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.split_parse_tree_src.
 
 :- import_module dir.
@@ -756,6 +756,32 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         SrcItemBlocks, DirectIntBlocksCord, IndirectIntBlocksCord,
         OptBlocksCords, IntForOptBlocksCords,
         VersionNumbers, MaybeTimestampMap, Specs, Errors, mcm_init).
+
+    % XXX ITEM_LIST This shouldn't be needed; the representation of the
+    % compilation unit should have all this information separate from
+    % the items.
+    %
+:- pred get_foreign_self_imports_from_item_blocks(list(item_block(MS))::in,
+    list(foreign_language)::out) is det.
+
+get_foreign_self_imports_from_item_blocks(ItemBlocks, Langs) :-
+    list.foldl(accumulate_foreign_import_langs_in_item_block, ItemBlocks,
+        set.init, LangSet),
+    set.to_sorted_list(LangSet, Langs).
+
+:- pred accumulate_foreign_import_langs_in_item_block(item_block(MS)::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
+accumulate_foreign_import_langs_in_item_block(ItemBlock, !LangSet) :-
+    ItemBlock = item_block(_, _, _, _, Items),
+    list.foldl(accumulate_foreign_import_langs_in_item, Items, !LangSet).
+
+:- pred accumulate_foreign_import_langs_in_item(item::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
+accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
+    Langs = item_needs_foreign_imports(Item),
+    set.insert_list(Langs, !LangSet).
 
 %---------------------------------------------------------------------------%
 

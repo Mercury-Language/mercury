@@ -121,17 +121,6 @@
 :- func make_foreign_import(module_name, foreign_language) = item.
 
 %---------------------------------------------------------------------------%
-
-    % This predicate is exported for use by module_imports.m.
-    %
-    % XXX ITEM_LIST They shouldn't be needed; the representation of the
-    % compilation unit should have all this information separate from
-    % the items.
-    %
-:- pred get_foreign_self_imports_from_item_blocks(list(item_block(MS))::in,
-    list(foreign_language)::out) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -2567,27 +2556,6 @@ make_foreign_import(ModuleName, Lang) = Item :-
     ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
         term.context_init, -1),
     Item = item_foreign_import_module(ItemFIM).
-
-%---------------------------------------------------------------------------%
-
-get_foreign_self_imports_from_item_blocks(ItemBlocks, Langs) :-
-    list.foldl(accumulate_foreign_import_langs_in_item_block, ItemBlocks,
-        set.init, LangSet),
-    set.to_sorted_list(LangSet, Langs).
-
-:- pred accumulate_foreign_import_langs_in_item_block(item_block(MS)::in,
-    set(foreign_language)::in, set(foreign_language)::out) is det.
-
-accumulate_foreign_import_langs_in_item_block(ItemBlock, !LangSet) :-
-    ItemBlock = item_block(_, _, _, _, Items),
-    list.foldl(accumulate_foreign_import_langs_in_item, Items, !LangSet).
-
-:- pred accumulate_foreign_import_langs_in_item(item::in,
-    set(foreign_language)::in, set(foreign_language)::out) is det.
-
-accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
-    Langs = item_needs_foreign_imports(Item),
-    set.insert_list(Langs, !LangSet).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.
