@@ -792,7 +792,7 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
     % exported, we won't need the local instance declarations.
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
+        make_canon_make_du_and_solver_types_abstract(ItemTypeDefnInfo,
             MaybeAbstractItemTypeDefnInfo),
         AbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
         cord.snoc(AbstractItem, !ImpItemsCord)
@@ -2232,7 +2232,7 @@ get_int2_items_from_int1_acc([], !ItemsCord).
 get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
+        make_canon_make_du_and_solver_types_abstract(ItemTypeDefnInfo,
             MaybeAbstractItemTypeDefnInfo),
         MaybeAbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
         cord.snoc(MaybeAbstractItem, !ItemsCord)
@@ -2335,7 +2335,7 @@ get_int2_items_from_int1_int([], !IntItemsCord).
 get_int2_items_from_int1_int([Item | Items], !IntItemsCord) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
+        make_canon_make_du_and_solver_types_abstract(ItemTypeDefnInfo,
             MaybeAbstractItemTypeDefnInfo),
         MaybeAbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
         cord.snoc(MaybeAbstractItem, !IntItemsCord)
@@ -2443,15 +2443,6 @@ get_int2_items_from_int1_imp([Item | Items], !Langs, !ImpItemsCord) :-
 
 %---------------------------------------------------------------------------%
 
-    % XXX make_abstract_defn should be merged with make_abstract_unify_compare
-    % and made det, returning the unchanged item if it does not need to be made
-    % abstract (so we can use det switches instead semidet tests in the code).
-    % XXX This seems to have been done already.
-    %
-    % XXX TYPE_REPN The operation of both of those predicates should be changed
-    % to remove representation from type_defn items and to put it into separate
-    % type_repn items instead.
-    %
     % XXX TYPE_REPN Consider the relationship between this predicate and
     % make_impl_type_abstract in write_module_interface_files.m. Unlike this
     % predicate, that one has access to the definitions of the types
@@ -2459,12 +2450,10 @@ get_int2_items_from_int1_imp([Item | Items], !Langs, !ImpItemsCord) :-
     % makes the defined type equivalent to a type that needs special treatment
     % by the algorithm that decides data representations.
     %
-    % XXX Needs a better name.
-    %
-:- pred maybe_make_abstract_type_defn_for_int2(
+:- pred make_canon_make_du_and_solver_types_abstract(
     item_type_defn_info::in, item_type_defn_info::out) is det.
 
-maybe_make_abstract_type_defn_for_int2(ItemTypeDefn,
+make_canon_make_du_and_solver_types_abstract(ItemTypeDefn,
         MaybeAbstractItemTypeDefn) :-
     TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
