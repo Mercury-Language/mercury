@@ -5,8 +5,13 @@
 :- module transitive_inst_type3.
 :- interface.
 
-:- type my_list(T) ---> [] ; [T | my_list(T)].
-:- inst my_list(I) ---> [] ; [I | my_list(I)].
+:- type my_list(T)
+    --->    []
+    ;       [T | my_list(T)].
+
+:- inst my_list(I) for my_list/1
+    --->    []
+    ;       [I | my_list(I)].
 
 :- pred length(my_list(T), int).
 :- mode length(in(my_list(ground)), out) is det.
