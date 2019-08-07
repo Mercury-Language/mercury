@@ -24,6 +24,7 @@ MCFLAGS-deforest_cc_bug =	--deforestation
 MCFLAGS-delay_partial_test =    --delay-partial-instantiations
 MCFLAGS-delay_partial_test2 =   --delay-partial-instantiations
 MCFLAGS-ground_terms = 		--from-ground-term-threshold=2
+MCFLAGS-impl_defn_literals = 		--no-warn-simple-code
 
 MCFLAGS-lp		=	--intermodule-optimization -O3
 MCFLAGS-elim_local_var_char =   --eliminate-local-vars
