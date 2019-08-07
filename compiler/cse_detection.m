@@ -119,6 +119,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -535,8 +536,8 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
         !CseInfo, GoalExpr) :-
     instmap_lookup_var(InstMap0, Var, VarInst0),
     ( if
-        may_pull_lhs_inst(!.CseInfo, VarInst0),
-        common_deconstruct(Goals0, Var, !CseInfo, UnifyGoal,
+        may_pull_lhs_inst(!.CseInfo, VarInst0, MayPull),
+        common_deconstruct(Goals0, Var, MayPull, !CseInfo, UnifyGoal,
             FirstOldNew, LaterOldNew, Goals)
     then
         maybe_update_existential_data_structures(UnifyGoal,
@@ -572,8 +573,8 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
     ( if
         Var \= SwitchVar,
         instmap_lookup_var(InstMap0, Var, VarInst0),
-        may_pull_lhs_inst(!.CseInfo, VarInst0),
-        common_deconstruct_cases(Cases0, Var, !CseInfo,
+        may_pull_lhs_inst(!.CseInfo, VarInst0, MayPull),
+        common_deconstruct_cases(Cases0, Var, MayPull, !CseInfo,
             UnifyGoal, FirstOldNew, LaterOldNew, Cases)
     then
         maybe_update_existential_data_structures(UnifyGoal,
@@ -610,8 +611,8 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, GoalExpr) :-
     instmap_lookup_var(InstMap, Var, VarInst0),
     ( if
-        may_pull_lhs_inst(!.CseInfo, VarInst0),
-        common_deconstruct([Then0, Else0], Var, !CseInfo,
+        may_pull_lhs_inst(!.CseInfo, VarInst0, MayPull),
+        common_deconstruct([Then0, Else0], Var, MayPull, !CseInfo,
             UnifyGoal, FirstOldNew, LaterOldNew, Goals),
         Goals = [Then, Else]
     then
@@ -638,11 +639,12 @@ detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
 
 %---------------------------------------------------------------------------%
 
-    % common_deconstruct(Goals0, Var, !CseInfo, Unify, Goals):
+    % common_deconstruct(Goals0, Var, MayPull, !CseInfo, Unify, Goals):
     % input vars:
     %   Goals0 is a list of parallel goals in a branched structure
     %   (disjunction, if-then-else, or switch).
     %   Var is the variable we are looking for a common deconstruction on.
+    %   MayPull says which Var = cons_id(...) unifications we may pull out.
     %   !.CseInfo contains the original varset and type map.
     % output vars:
     %   !:CseInfo has a varset and a type map reflecting the new variables
@@ -651,53 +653,54 @@ detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
     %   has been hoisted out, with the new variables as the functor arguments.
     %   Unify is the unification that was hoisted out.
     %
-:- pred common_deconstruct(list(hlds_goal)::in, prog_var::in, cse_info::in,
-    cse_info::out, hlds_goal::out, assoc_list(prog_var)::out,
+:- pred common_deconstruct(list(hlds_goal)::in, prog_var::in, may_pull::in,
+    cse_info::in, cse_info::out, hlds_goal::out, assoc_list(prog_var)::out,
     list(assoc_list(prog_var))::out, list(hlds_goal)::out) is semidet.
 
-common_deconstruct(Goals0, Var, !CseInfo, Unify, FirstOldNew, LaterOldNew,
-        Goals) :-
-    common_deconstruct_2(Goals0, Var, before_candidate,
+common_deconstruct(Goals0, Var, MayPull, !CseInfo, Unify,
+        FirstOldNew, LaterOldNew, Goals) :-
+    common_deconstruct_2(Goals0, Var, MayPull, before_candidate,
         have_candidate(Unify, FirstOldNew, LaterOldNew), !CseInfo, Goals),
     LaterOldNew = [_ | _].
 
-:- pred common_deconstruct_2(list(hlds_goal)::in, prog_var::in,
+:- pred common_deconstruct_2(list(hlds_goal)::in, prog_var::in, may_pull::in,
     cse_state::in, cse_state::out, cse_info::in, cse_info::out,
     list(hlds_goal)::out) is semidet.
 
-common_deconstruct_2([], _Var, !CseState, !CseInfo, []).
-common_deconstruct_2([Goal0 | Goals0], Var, !CseState, !CseInfo,
+common_deconstruct_2([], _Var, _MayPull, !CseState, !CseInfo, []).
+common_deconstruct_2([Goal0 | Goals0], Var, MayPull, !CseState, !CseInfo,
         [Goal | Goals]) :-
-    find_bind_var(Var, find_bind_var_for_cse_in_deconstruct, Goal0, Goal,
-        !CseState, !CseInfo, did_find_deconstruct),
+    find_bind_var(Var, MayPull, find_bind_var_for_cse_in_deconstruct,
+        Goal0, Goal, !CseState, !CseInfo, did_find_deconstruct),
     !.CseState = have_candidate(_, _, _),
-    common_deconstruct_2(Goals0, Var, !CseState, !CseInfo, Goals).
+    common_deconstruct_2(Goals0, Var, MayPull, !CseState, !CseInfo, Goals).
 
 %---------------------------------------------------------------------------%
 
-:- pred common_deconstruct_cases(list(case)::in, prog_var::in,
+:- pred common_deconstruct_cases(list(case)::in, prog_var::in, may_pull::in,
     cse_info::in, cse_info::out, hlds_goal::out, assoc_list(prog_var)::out,
     list(assoc_list(prog_var))::out, list(case)::out) is semidet.
 
-common_deconstruct_cases(Cases0, Var, !CseInfo, Unify,
+common_deconstruct_cases(Cases0, Var, MayPull, !CseInfo, Unify,
         FirstOldNew, LaterOldNew, Cases) :-
-    common_deconstruct_cases_2(Cases0, Var, before_candidate,
+    common_deconstruct_cases_2(Cases0, Var, MayPull, before_candidate,
         have_candidate(Unify, FirstOldNew, LaterOldNew), !CseInfo, Cases),
     LaterOldNew = [_ | _].
 
-:- pred common_deconstruct_cases_2(list(case)::in, prog_var::in,
+:- pred common_deconstruct_cases_2(list(case)::in, prog_var::in, may_pull::in,
     cse_state::in, cse_state::out, cse_info::in, cse_info::out,
     list(case)::out) is semidet.
 
-common_deconstruct_cases_2([], _Var, !CseState, !CseInfo, []).
-common_deconstruct_cases_2([Case0 | Cases0], Var, !CseState, !CseInfo,
+common_deconstruct_cases_2([], _Var, _MayPull, !CseState, !CseInfo, []).
+common_deconstruct_cases_2([Case0 | Cases0], Var, MayPull, !CseState, !CseInfo,
         [Case | Cases]) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    find_bind_var(Var, find_bind_var_for_cse_in_deconstruct, Goal0, Goal,
-        !CseState, !CseInfo, did_find_deconstruct),
+    find_bind_var(Var, MayPull, find_bind_var_for_cse_in_deconstruct,
+        Goal0, Goal, !CseState, !CseInfo, did_find_deconstruct),
     Case = case(MainConsId, OtherConsIds, Goal),
     !.CseState = have_candidate(_, _, _),
-    common_deconstruct_cases_2(Cases0, Var, !CseState, !CseInfo, Cases).
+    common_deconstruct_cases_2(Cases0, Var, MayPull,
+        !CseState, !CseInfo, Cases).
 
 %---------------------------------------------------------------------------%
 
@@ -1076,9 +1079,10 @@ find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
     % variable has this inst out of two or more arms, to put before
     % the disjunction, switch or if-then-else?
     %
-:- pred may_pull_lhs_inst(cse_info::in, mer_inst::in) is semidet.
+:- pred may_pull_lhs_inst(cse_info::in, mer_inst::in, may_pull::out)
+    is semidet.
 
-may_pull_lhs_inst(CseInfo, VarInst) :-
+may_pull_lhs_inst(CseInfo, VarInst, MayPull) :-
     ModuleInfo = CseInfo ^ csei_module_info,
     % XXX We only need inst_is_bound, but leave this as it is until
     % mode analysis can handle aliasing between free variables.
@@ -1091,24 +1095,38 @@ may_pull_lhs_inst(CseInfo, VarInst) :-
     % We only need the insts of the *arguments* to be free of uniqueness.
     % However, the vast majority of the time, the whole inst is free
     % of uniqueness, so for efficiency in the common case, we test that first.
-    (
-        inst_is_not_partly_unique(ModuleInfo, VarInst)
-    ;
+    ( if inst_is_not_partly_unique(ModuleInfo, VarInst) then
+        MayPull = may_pull_all_functors
+    else
         inst_is_bound_to_functors(ModuleInfo, VarInst, FunctorBoundInsts),
-        % XXX Ideally, we should test only whether the arguments
-        % of the *specific cons_id* we want to pull out of the disjunction
-        % are free of unique components. However, our caller calls us
-        % *before* we enter the disjunction, and thus it does not know
-        % the cons_id yet. And the vast majority of the time, FunctorBoundInsts
-        % contains only one bound inst anyway. If it is the one that
-        % we will end up pulling out of the disjunction, we do the right
-        % thing here; if it isn't, we won't pull it out of the disjunction.
-        % Either way, we do the right thing. We can be overly cautious
-        % here only if FunctorBoundInsts contains two or more elements.
-        ArgInstLists = list.map((func(bound_functor(_, Args)) = Args),
-            FunctorBoundInsts),
-        list.condense(ArgInstLists, ArgInsts),
-        list.all_true(inst_is_not_partly_unique(ModuleInfo), ArgInsts)
+        may_pull_which_functors(ModuleInfo, FunctorBoundInsts,
+            MayPullConsIds, MayNotPullConsIds),
+        % Fail if there are *no* constructors we may pull.
+        MayPullConsIds = [_ | _],
+        (
+            MayNotPullConsIds = [],
+            MayPull = may_pull_all_functors
+        ;
+            MayNotPullConsIds = [_ | _],
+            MayPull = may_pull_some_functors(set.list_to_set(MayPullConsIds))
+        )
+    ).
+
+:- pred may_pull_which_functors(module_info::in, list(bound_inst)::in,
+    list(cons_id)::out, list(cons_id)::out) is det.
+
+may_pull_which_functors(_, [], [], []).
+may_pull_which_functors(ModuleInfo, [BoundInst | BoundInsts],
+        MayPullConsIds, MayNotPullConsIds) :-
+    may_pull_which_functors(ModuleInfo, BoundInsts,
+        TailMayPullConsIds, TailMayNotPullConsIds),
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    ( if list.all_true(inst_is_not_partly_unique(ModuleInfo), ArgInsts) then
+        MayPullConsIds = [ConsId | TailMayPullConsIds],
+        MayNotPullConsIds = TailMayNotPullConsIds
+    else
+        MayPullConsIds = TailMayPullConsIds,
+        MayNotPullConsIds = [ConsId | TailMayNotPullConsIds]
     ).
 
 %---------------------------------------------------------------------------%
