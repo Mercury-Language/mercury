@@ -10,15 +10,15 @@
 
 :- interface.
 
-:- import_module int.
+:- import_module uint32.
 
 :- type tausworthe3.
 
 :- func init_tausworthe3 = tausworthe3.
 
-:- func seed_tausworthe3(int, int, int) = tausworthe3.
+:- func seed_tausworthe3(uint32, uint32, uint32) = tausworthe3.
 
-:- pred rand_tausworthe3(int::out, tausworthe3::in, tausworthe3::out) is det.
+:- pred rand_tausworthe3(uint32::out, tausworthe3::in, tausworthe3::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -52,21 +52,31 @@
 %-----------------------------------------------------------------------------%
 %
 % Adapted from http://remus.rutgers.edu/~rhoads/Code/tausworth.c
+% (Now at http://gcrhoads.byethost4.com/Code/Random/tausworth.c)
 %
 
 :- implementation.
 
+:- import_module int.
+
 :- instance random(tausworthe3.tausworthe3, tausworthe3_seed) where [
-    seed(tausworthe3_seed(A, B, C), _, tausworthe3.seed_tausworthe3(A, B, C)),
-    pred(next/3) is tausworthe3.rand_tausworthe3,
+    ( seed(tausworthe3_seed(A, B, C), _, RNG) :-
+        RNG = tausworthe3.seed_tausworthe3(
+                uint32.cast_from_int(A),
+                uint32.cast_from_int(B),
+                uint32.cast_from_int(C))
+    ),
+    ( next(int.abs(uint32.cast_to_int(I)), !RNG) :-
+        tausworthe3.rand_tausworthe3(I, !RNG)
+    ),
     max(int.max_int, !RNG)
 ].
 
 :- type tausworthe3
     --->    state(
-                s1  ::  int,
-                s2  ::  int,
-                s3  ::  int,
+                s1  ::  uint32,
+                s2  ::  uint32,
+                s3  ::  uint32,
                 tausworthe3_consts
             ).
 
@@ -75,14 +85,14 @@
                 shft1   ::  int,
                 shft2   ::  int,
                 shft3   ::  int,
-                mask1   ::  int,
-                mask2   ::  int,
-                mask3   ::  int
+                mask1   ::  uint32,
+                mask2   ::  uint32,
+                mask3   ::  uint32
             ).
 
 %-----------------------------------------------------------------------------%
 
-init_tausworthe3 = state(0, 0, 0, consts(0, 0, 0, 0, 0, 0)).
+init_tausworthe3 = state(0u32, 0u32, 0u32, consts(0, 0, 0, 0u32, 0u32, 0u32)).
 
 seed_tausworthe3(A, B, C) = R :-
     P1     = 12,
@@ -93,7 +103,7 @@ seed_tausworthe3(A, B, C) = R :-
     K2     = 29,
     K3     = 28,
 
-    X      = 4294967295,
+    X      = 4294967295u32,
 
     Shft1  = K1 - P1,
     Shft2  = K2 - P2,
@@ -103,9 +113,9 @@ seed_tausworthe3(A, B, C) = R :-
     Mask2  = X << (32 - K2),
     Mask3  = X << (32 - K3),
 
-    S1     = ( if A > (1 << (32 - K1)) then A else 390451501 ),
-    S2     = ( if A > (1 << (32 - K2)) then B else 613566701 ),
-    S3     = ( if A > (1 << (32 - K3)) then C else 858993401 ),
+    S1     = ( if A > (1u32 << (32 - K1)) then A else 390451501u32 ),
+    S2     = ( if B > (1u32 << (32 - K2)) then B else 613566701u32 ),
+    S3     = ( if C > (1u32 << (32 - K3)) then C else 858993401u32 ),
 
     Consts = consts(Shft1, Shft2, Shft3, Mask1, Mask2, Mask3),
     R0     = state(S1, S2, S3, Consts),
@@ -134,7 +144,7 @@ rand_tausworthe3(I, R0, R) :-
     B3     = ((S3_0 << Q3)`xor`S3_0) >> Shft3,
     S3     = ((S3_0 /\ Mask3) << P3)`xor`B3,
 
-    I      = abs(S1`xor`S2`xor`S3),
+    I      = S1`xor`S2`xor`S3,
     R      = state(S1,   S2,   S3,   Consts).
 
 %-----------------------------------------------------------------------------%
