@@ -32,7 +32,8 @@
     pred seed(Seed, RNG,  RNG),
     mode seed(in,   in,   out) is det,
 
-        % Return the next random number.
+        % Return the next random number. This must be no less than zero
+        % and no greater than the number returned by the max/3 method.
         %
     pred next(int, RNG, RNG),
     mode next(out, in,  out) is det,
