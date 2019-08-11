@@ -104,7 +104,7 @@ seed_tausworthe3(A, B, C) = R :-
     K2     = 29,
     K3     = 28,
 
-    X      = 4294967295u32,
+    X      = uint32.max_uint32,
 
     Shft1  = K1 - P1,
     Shft2  = K2 - P2,
