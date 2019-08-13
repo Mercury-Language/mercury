@@ -321,6 +321,8 @@ ORDINARY_PROGS = \
 	rev_arith \
 	reverse_arith \
 	rnd \
+	rng1 \
+	rng2 \
 	rtree_test \
 	rtti_strings \
 	sectag_bits \

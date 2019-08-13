@@ -61,6 +61,10 @@ ranges.m
 rational.m
 rbtree.m
 require.m
+rng.m
+rng.binfile.m
+rng.marsaglia.m
+rng.tausworthe.m
 rtree.m
 set.m
 set_bbbtree.m

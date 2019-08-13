@@ -124,6 +124,10 @@
 :- import_module rational.
 :- import_module rbtree.
 :- import_module require.
+:- import_module rng.
+:- import_module rng.binfile.
+:- import_module rng.marsaglia.
+:- import_module rng.tausworthe.
 :- import_module robdd.
 :- import_module rtree.
 :- import_module set.
@@ -309,6 +313,10 @@ mercury_std_library_module("rational").
 mercury_std_library_module("rbtree").
 mercury_std_library_module("region_builtin").
 mercury_std_library_module("require").
+mercury_std_library_module("rng").
+mercury_std_library_module("rng.binfile").
+mercury_std_library_module("rng.marsaglia").
+mercury_std_library_module("rng.tausworthe").
 mercury_std_library_module("robdd").
 mercury_std_library_module("rtree").
 mercury_std_library_module("rtti_implementation").
