@@ -1,15 +1,15 @@
 # vim: ts=4 sw=4 expandtab
 #
-# Inter-module optimization changes the diagnostics for some
-# tests (in most cases reporting diagnostics when writing the `.opt'
-# file). For those tests, we just disable inter-module optimization.
+# Inter-module optimization changes the diagnostics for some tests
+# (in most cases reporting diagnostics when writing the `.opt' file).
+# For those tests, we just disable inter-module optimization.
 
 MCFLAGS-any_mode                = --infer-types
 
-# XXX This test should work with --intermodule-optimization, but
-# the compiler doesn't know whether items imported from `.opt' files
-# were imported in the interface or the implementation. The error
-# is reported correctly when building the `.opt' file.
+# XXX This test should work with --intermodule-optimization, but the compiler
+# doesn't know whether items imported from `.opt' files were imported
+# in the interface or the implementation. The error is reported correctly
+# when building the `.opt' file.
 MCFLAGS-assert_in_interface     = --no-intermodule-optimization \
                                     --verbose-error-messages
 
@@ -23,7 +23,6 @@ MCFLAGS-duplicate_modes         = --verbose-error-messages
 MCFLAGS-ee_invalid              = --verbose-error-messages
 MCFLAGS-exported_mode           = --infer-all --no-intermodule-optimization
 MCFLAGS-exported_unify          = --no-intermodule-optimization
-MCFLAGS-exported_unify3         = --no-intermodule-optimization
 MCFLAGS-fe_unmapped_verbose     = --verbose-error-messages
 MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers \
                                     --line-numbers-for-c-headers \
@@ -39,9 +38,6 @@ MCFLAGS-ii_parent               = --no-intermodule-optimization
 MCFLAGS-ii_parent.ii_child      = --no-intermodule-optimization
 MCFLAGS-illtyped_compare        = --no-intermodule-optimization \
                                     --verbose-error-messages
-MCFLAGS-import_in_parent        = --no-intermodule-optimization \
-                                    --warn-unused-imports
-MCFLAGS-import_in_parent.sub    = --no-intermodule-optimization
 MCFLAGS-imported_mode           = --infer-all --no-intermodule-optimization
 MCFLAGS-impure_method_impl      = --no-intermodule-optimization \
                                     --verbose-error-messages
@@ -59,7 +55,6 @@ MCFLAGS-method_impl             = --no-intermodule-optimization \
 MCFLAGS-missing_det_decls       = --no-infer-det --verbose-error-messages
 MCFLAGS-missing_interface_import = --make-interface
 MCFLAGS-missing_interface_import2 = --no-intermodule-optimization
-MCFLAGS-missing_parent_import = --no-intermodule-optimization
 MCFLAGS-mode_inf                = --infer-all --verbose-error-messages
 MCFLAGS-mpj1                    = --infer-all --verbose-error-messages
 MCFLAGS-multisoln_func          = --infer-types --verbose-error-messages
@@ -72,8 +67,6 @@ MCFLAGS-string_format_bad       = --halt-at-warn --warn-known-bad-format-calls \
                                     --warn-unknown-format-calls
 MCFLAGS-string_format_unknown   = --halt-at-warn --warn-known-bad-format-calls \
                                     --warn-unknown-format-calls
-MCFLAGS-sub_c                   = --verbose-error-messages \
-                                    --no-intermodule-optimization
 MCFLAGS-synth_attr_error        = --event-set-file-name synth_attr_error_spec
 MCFLAGS-syntax_error_event      = --event-set-file-name syntax_error_event_spec
 
@@ -89,12 +82,9 @@ MCFLAGS-transitive_import_class = --no-intermodule-optimization
 MCFLAGS-transitive_import_class2 = --no-intermodule-optimization
 MCFLAGS-transitive_import_class3 = --no-intermodule-optimization
 MCFLAGS-typeclass_mode          = --infer-all
-MCFLAGS-undef_mod_qual          = --no-intermodule-optimization
 MCFLAGS-undef_symbol            = --no-intermodule-optimization
-MCFLAGS-unresolved_overloading  = --no-intermodule-optimization
 
 # Include the verbose part of the error message where we have one.
-#
 MCFLAGS-ambiguous_method        = --verbose-error-messages
 MCFLAGS-anys_in_negated_contexts = --verbose-error-messages
 MCFLAGS-bad_foreign_type        = --verbose-error-messages

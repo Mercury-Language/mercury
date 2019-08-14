@@ -7,32 +7,31 @@ SUBDIRS =
 TESTS_DIR = ..
 MAYBE_J1 =
 
-# Note: multi-module tests (including tests of nested modules)
-# need to be listed separately from single-module tests, since
-# we need to make dependencies only for multimodule tests.
+# Note: multi-module tests are listed separately from single-module tests
+# because we need to make dependencies only for multi-module tests.
 # However, multi-module tests where the error is detected when
-# building the dependencies (e.g. duplicate_module_test.m) should
+# building the dependencies (e.g. bad_module_name.m) should
 # not be included in this list; we handle those specially (see below).
+#
+# Tests in which a single source file contains more than one nested module
+# should be put into the invalid_submodules directory, not this one.
+# In that directory, we disable parallel make to avoid intermittent failures
+# caused by interface files of nested submodules not being ready
+# when another job, executed in parallel by mmake, wants to read them.
 
 MULTIMODULE_PROGS= \
 	abstract_eqv \
 	duplicate_instance_2 \
 	exported_unify \
-	exported_unify3 \
 	ho_default_func_2.sub \
 	ii_parent.ii_child \
-	import_in_parent \
 	imported_mode \
 	int_impl_imports \
 	missing_interface_import2 \
-	missing_parent_import \
 	partial_implied_mode \
-	sub_c \
 	test_nested \
 	transitive_import \
-	transitive_import_class \
-	undef_mod_qual \
-	unresolved_overloading
+	transitive_import_class
 
 SINGLEMODULE= \
 	abstract_solver_type \
@@ -131,7 +130,6 @@ SINGLEMODULE= \
 	det_errors \
 	det_errors_cc \
 	duplicate_modes \
-	duplicate_module_test \
 	ee_invalid \
 	erroneous_throw_promise \
 	error_in_list \
@@ -156,7 +154,6 @@ SINGLEMODULE= \
 	foreign_type_visibility \
 	fp_dup_bug \
 	freefree \
-	func_class \
 	func_errors \
 	funcs_as_preds \
 	functor_ho_inst_bad \
@@ -229,7 +226,6 @@ SINGLEMODULE= \
 	multimode_syntax \
 	multiply_star \
 	multisoln_func \
-	nested_impl_in_int \
 	no_exports \
 	not_a_switch \
 	not_in_interface \
@@ -437,7 +433,7 @@ SINGLEMODULE_PROGS = $(SINGLEMODULE) \
 
 #-----------------------------------------------------------------------------#
 
-PROGS =  $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS)
+PROGS = $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS)
 TESTS = $(sort $(MULTIMODULE_PROGS) $(SINGLEMODULE_PROGS:%=%-nodepend))
 include $(TESTS_DIR)/Mmake.common
 
@@ -454,7 +450,9 @@ ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 %.err: %.m
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
 		> $*.err 2>&1; \
-	then false; else true; fi
+	then false; \
+	else true; \
+	fi
 
 else
 
@@ -466,7 +464,10 @@ else
 # should appear.
 $(addsuffix .err,$(PROGS)):
 	-$(MCM) $@
-	if $(MCM) -r $@ > /dev/null 2>&1 ; then false; else true; fi
+	if $(MCM) -r $@ > /dev/null 2>&1 ; \
+	then false; \
+	else true; \
+	fi
 
 endif
 
@@ -508,15 +509,15 @@ foreign_type_line_number.err: foreign_type_line_number.m
 # the error output, we just check the command return status.
 duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m
 	if $(MCM) duplicate_instance_2 > /dev/null 2>&1; \
-	then	false; \
-	else	echo "Error was successfully detected" > $*.err; \
+	then false; \
+	else echo "Error was successfully detected" > $*.err; \
 	fi
 
-# For these test cases, the bug is caught when generating dependencies,
+# For this test case, the bug is caught when generating dependencies,
 # so it is easiest just to do that step.
-bad_module_name.err duplicate_module_test.err func_class.err nested_impl_in_int.err: %.err: %.m
+bad_module_name.err: %.err: %.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
-			--generate-dependencies $* > $*.err 2>&1; \
+		--generate-dependencies $* > $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi
@@ -525,7 +526,7 @@ bad_module_name.err duplicate_module_test.err func_class.err nested_impl_in_int.
 # when building the `.opt' files.
 make_opt_error.err: make_opt_error.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
-			--make-optimization-interface $* > $*.err 2>&1; \
+		--make-optimization-interface $* > $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi
@@ -533,7 +534,7 @@ make_opt_error.err: make_opt_error.m
 # This test case tests that we don't abort when building the `.opt' files.
 illtyped_compare.err: illtyped_compare.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
-			--make-optimization-interface $* > $*.err 2>&1; \
+		--make-optimization-interface $* > $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi
@@ -542,16 +543,14 @@ illtyped_compare.err: illtyped_compare.m
 .PHONY: missing_file
 require_tailrec_1.err require_tailrec_2.err require_tailrec_3.err foreign_include_file_missing.err: %.err : %.m
 	if $(MC) --target-code-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
-			$* > $*.err 2>&1; \
+		$* > $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi
 
-$(dates_subdir)undef_mod_qual.date: $(int0s_subdir)undef_mod_qual.int0
-
 clean_local: clean_invalid
 
 clean_invalid:
-	rm -f *.err *.err_res
+	rm -f *.dep_err *.err *.err_res
 
 #-----------------------------------------------------------------------------#

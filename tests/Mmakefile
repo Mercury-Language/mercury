@@ -5,6 +5,8 @@
 THIS_DIR=tests
 PROGS=
 TESTS=
+
+# If you modify this, modify all_test_dirs in tools/bootcheck as well.
 SUBDIRS = \
 	accumulator \
 	analysis \
@@ -26,14 +28,15 @@ SUBDIRS = \
 	hard_coded \
 	invalid \
 	invalid_purity \
+	invalid_submodules \
 	misc_tests \
 	mmc_make \
 	par_conj \
 	purity \
 	recompilation \
-	submodules \
 	string_format \
 	structure_reuse \
+	submodules \
 	tabling \
 	term \
 	trailing \

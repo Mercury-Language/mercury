@@ -1843,6 +1843,7 @@ then
             < ${tests_prefix}tests/.mgnuc_copts.ws \
             > ${tests_prefix}tests/.mgnuc_copts
 
+        # If you modify this, modify SUBDIRS in tests/Mmakefile as well.
         all_test_dirs="
             accumulator
             analysis
@@ -1863,6 +1864,7 @@ then
             hard_coded
             invalid
             invalid_purity
+            invalid_submodules
             misc_tests
             mmc_make
             par_conj
@@ -1878,6 +1880,7 @@ then
             valid
             valid_seq
             warnings"
+        # We omit the feedback directory, since its tests do not work yet.
 
         for d in $all_test_dirs
         do
