@@ -1859,6 +1859,7 @@ then
             declarative_debugger
             dppd
             exceptions
+            feedback
             general
             grade_subdirs
             hard_coded
@@ -1880,7 +1881,6 @@ then
             valid
             valid_seq
             warnings"
-        # We omit the feedback directory, since its tests do not work yet.
 
         for d in $all_test_dirs
         do
