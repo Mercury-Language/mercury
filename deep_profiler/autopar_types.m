@@ -111,10 +111,10 @@
     pard_goal_detail::in, pard_goal::out) is det.
 
     % Build sets of produced and consumed vars for a conjunct in a conjunction.
-    % Use with foldl to build these sets up for the whole conjunction.  At the
-    % end of a conjunction there may be variables in the intersection of the
-    % sets, that's okay, those goals are produced early in the conjunction and
-    % consumed later in the conjunction.
+    % Use with foldl to build these sets up for the whole conjunction.
+    % At the end of a conjunction, there may be variables in the intersection
+    % of the sets, that is okay, those goals are produced early in the
+    % conjunction and consumed later in the conjunction.
     %
 :- pred conj_produced_and_consumed_vars(pard_goal_detail::in,
     set(var_rep)::in, set(var_rep)::out,
@@ -147,7 +147,7 @@
 
     % inst_map_info now contains information that it does not need to contain.
     % Namely, the im_after field can be calculated from the im_before and
-    % im_bound_vars fields.  However since this information will probably
+    % im_bound_vars fields. However since this information will probably
     % be attached to a different goal there is not much extra cost in having a
     % pointer to it from here.
     %
@@ -176,7 +176,7 @@
     --->    incomplete_parallelisation(
                 ip_goals                    :: array(pard_goal_detail),
 
-                % The index of the first goal in the parallelised goals,
+                % The index of the first goal in the parallelised goals.
                 % This is also the number of goals executed in sequence before
                 % the parallel conjunction.
                 ip_first_par_goal           :: int,
@@ -185,7 +185,7 @@
                 ip_last_par_goal            :: int,
 
                 % The index of the last goal that has been (tentatively)
-                % scheduled.  All goals between this +1 and ip_last_par_goal
+                % scheduled. All goals between this +1 and ip_last_par_goal
                 % have not been scheduled.
                 ip_last_scheduled_goal      :: int,
 
@@ -365,13 +365,23 @@ identify_costly_goals([Goal | Goals], Index, Indexes) :-
 ip_get_goals_before(Parallelisation) = GoalsBefore :-
     Goals = Parallelisation ^ ip_goals,
     FirstParGoalIndex = Parallelisation ^ ip_first_par_goal,
-    array.fetch_items(Goals, 0, FirstParGoalIndex - 1, GoalsBefore).
+    LastGoalBefore = FirstParGoalIndex - 1,
+    ( if LastGoalBefore < 0 then
+        GoalsBefore = []
+    else
+        array.fetch_items(Goals, 0, LastGoalBefore, GoalsBefore)
+    ).
 
 ip_get_goals_after(Parallelisation) = GoalsAfter :-
     Goals = Parallelisation ^ ip_goals,
     LastParGoalIndex = Parallelisation ^ ip_last_par_goal,
     NumGoals = array.size(Goals),
-    array.fetch_items(Goals, LastParGoalIndex + 1, NumGoals - 1, GoalsAfter).
+    FirstGoalAfter = LastParGoalIndex + 1,
+    ( if FirstGoalAfter >= NumGoals then
+        GoalsAfter = []
+    else
+        array.fetch_items(Goals, FirstGoalAfter, NumGoals - 1, GoalsAfter)
+    ).
 
 ip_get_par_conjs(Incomplete) = ParConjs :-
     Goals = Incomplete ^ ip_goals,
@@ -413,7 +423,7 @@ build_sharedvars_set(seq_conj(Conjs), !BoundVars, !SharedVars) :-
     list.foldl2(conj_produced_and_consumed_vars, Conjs,
         set.init, ProducedVars, set.init, ConsumedVars),
     % The new shared vars are previously bound variables that are consumed in
-    % this conjunct.  This must be calculated before !BoundVars is updated.
+    % this conjunct. This must be calculated before !BoundVars is updated.
     SharedVars = set.intersect(!.BoundVars, ConsumedVars),
     !:SharedVars = set.union(!.SharedVars, SharedVars),
     !:BoundVars = set.union(!.BoundVars, ProducedVars).

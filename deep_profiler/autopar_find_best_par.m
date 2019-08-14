@@ -68,7 +68,7 @@
 find_best_parallelisation(Info, Location, Goals, MaybeBestParallelisation,
         !Messages) :-
     % Decide which algorithm to use.
-    ConjunctionSize = length(Goals),
+    ConjunctionSize = list.length(Goals),
     choose_algorithm(Info, ConjunctionSize, Algorithm),
     preprocess_conjunction(Goals, MaybePreprocessedGoals, Location, !Messages),
     (
@@ -86,8 +86,8 @@ find_best_parallelisation(Info, Location, Goals, MaybeBestParallelisation,
     --->    affbps_complete(maybe(int))
     ;       affbps_greedy.
 
-:- pred choose_algorithm(implicit_parallelism_info::in,
-    int::in, alg_for_finding_best_par_simple::out) is det.
+:- pred choose_algorithm(implicit_parallelism_info::in, int::in,
+    alg_for_finding_best_par_simple::out) is det.
 
 choose_algorithm(Info, ConjunctionSize, Algorithm) :-
     Algorithm0 = Info ^ ipi_opts ^ cpcp_alg_for_best_par,
@@ -142,7 +142,7 @@ gg_get_details(gg_multiple(Index, Num, P), Index, Num, P).
     % The valid placement decisions that can be made for a given goal.
     %
     % Note that this type is not as expressive as it could be, this is
-    % deliberate to avoid symmetry.  It is however still complete.
+    % deliberate to avoid symmetry. It is however still complete.
     %
     %  + place_independent is just gpe_place_in_new_conj with the next goal
     %    having gpe_place_in_new_conj.
@@ -172,19 +172,21 @@ gg_get_details(gg_multiple(Index, Num, P), Index, Num, P).
     %
 :- type goals_for_parallelisation
     --->    goals_for_parallelisation(
-                gfp_goals                   :: array(pard_goal_detail),
+                gfp_goals               :: array(pard_goal_detail),
 
-                gfp_first_costly_goal       :: int,
-                gfp_last_costly_goal        :: int,
+                gfp_first_costly_goal   :: int,
+                gfp_last_costly_goal    :: int,
 
-                gfp_groups                  ::
-                    list(goal_group(goal_classification)),
+                gfp_groups              :: list(goal_group(
+                                                goal_classification)),
 
                 % The indexes in the dependency graph are 1-based.
-                gfp_dependency_graphs       :: dependency_graphs,
+                % XXX Why? This unnecessary difference looks to be
+                % a likely source of bugs.
+                gfp_dependency_graphs   :: dependency_graphs,
 
-                gfp_costly_goal_indexes     :: list(int),
-                gfp_num_calls               :: int
+                gfp_costly_goal_indexes :: list(int),
+                gfp_num_calls           :: int
             ).
 
 :- inst goals_for_parallelisation for goals_for_parallelisation/0
@@ -197,8 +199,8 @@ gg_get_details(gg_multiple(Index, Num, P), Index, Num, P).
             ).
 
 :- pred preprocess_conjunction(list(pard_goal_detail)::in,
-    maybe(goals_for_parallelisation)::out,
-    program_location::in, cord(message)::in, cord(message)::out) is det.
+    maybe(goals_for_parallelisation)::out, program_location::in,
+    cord(message)::in, cord(message)::out) is det.
 
 preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
         !Messages) :-
@@ -232,7 +234,7 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
             FirstCostlyGoalIndex, LastCostlyGoalIndex, [], RevGoalGroups),
         list.reverse(RevGoalGroups, GoalGroups),
 
-        FirstCostlyGoal = lookup(GoalsArray, FirstCostlyGoalIndex),
+        FirstCostlyGoal = array.lookup(GoalsArray, FirstCostlyGoalIndex),
         Cost = FirstCostlyGoal ^ goal_annotation ^ pgd_cost,
         NumCalls = goal_cost_get_calls(Cost),
 
@@ -249,8 +251,8 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
         ; Detism = cc_nondet_rep
         ),
         MaybeGoalsForParallelisation = no,
-        append_message(Location, notice_candidate_conjunction_not_det(Detism),
-            !Messages)
+        Msg = notice_candidate_conjunction_not_det(Detism),
+        append_message(Location, Msg, !Messages)
     ).
 
 %---------------------------------------------------------------------------%
@@ -260,45 +262,62 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
 
 build_dependency_graphs(Goals, Maps) :-
     Graph0 = digraph.init,
-    build_dependency_graph(Goals, 1, map.init, _VarDepMap, Graph0, Graph),
+    build_dependency_graph_for_conjuncts(Goals, 1,
+        map.init, _VarDepMap, Graph0, Graph),
     Maps = dependency_graphs(Graph, tc(Graph)).
 
-:- pred build_dependency_graph(list(pard_goal_detail)::in, int::in,
-    map(var_rep, int)::in, map(var_rep, int)::out,
+    % This type maps each variable to the conjunct number of the conjunct
+    % that produces it.
+:- type producer_map == map(var_rep, int).
+
+:- pred build_dependency_graph_for_conjuncts(list(pard_goal_detail)::in,
+    int::in, producer_map::in, producer_map::out,
     digraph(int)::in, digraph(int)::out) is det.
 
-build_dependency_graph([], _ConjNum, !VarDepMap, !Graph).
-build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
+build_dependency_graph_for_conjuncts([], _ConjNum,
+        !VarProducerMap, !Graph).
+build_dependency_graph_for_conjuncts([PG | PGs], ConjNum,
+        !VarProducerMap, !Graph) :-
+    build_dependency_graph_for_conjunct(PG, ConjNum,
+        !VarProducerMap, !Graph),
+    build_dependency_graph_for_conjuncts(PGs, ConjNum + 1,
+        !VarProducerMap, !Graph).
+
+:- pred build_dependency_graph_for_conjunct(pard_goal_detail::in, int::in,
+    producer_map::in, producer_map::out,
+    digraph(int)::in, digraph(int)::out) is det.
+
+build_dependency_graph_for_conjunct(PG, ConjNum, !ProducerMap, !Graph) :-
     InstMapInfo = PG ^ goal_annotation ^ pgd_inst_map_info,
 
-    % For each variable consumed by a goal we find out which goals instantiate
-    % that variable and add them as its dependencies along with their
-    % dependencies.  NOTE: We only consider variables that are read
-    % and not those that are set. This is safe because we only analyse
-    % single assignment code.
-    RefedVars = InstMapInfo ^ im_consumed_vars,
+    % For each variable consumed by a goal, we find out which previous
+    % conjunct, if any, instantiates that variable, and add it as one of
+    % this conjunct's dependencies.
+    ConsumedVars = InstMapInfo ^ im_consumed_vars,
     digraph.add_vertex(ConjNum, ThisConjKey, !Graph),
-    MaybeAddEdge = ( pred(RefedVar::in, GraphI0::in, GraphI::out) is det :-
-        ( if map.search(!.VarDepMap, RefedVar, DepConj) then
-            % DepConj should already be in the graph.
-            digraph.lookup_key(GraphI0, DepConj, DepConjKey),
-            digraph.add_edge(DepConjKey, ThisConjKey, GraphI0, GraphI)
-        else
-            GraphI = GraphI0
-        )
-    ),
-    list.foldl(MaybeAddEdge, set.to_sorted_list(RefedVars), !Graph),
+    MaybeAddEdge =
+        ( pred(ConsumedVar::in, Graph0::in, Graph::out) is det :-
+            ( if map.search(!.ProducerMap, ConsumedVar, ProducerConjNum) then
+                % ProducerConjNum should already be in the graph.
+                digraph.lookup_key(Graph0, ProducerConjNum, ProducerKey),
+                digraph.add_edge(ProducerKey, ThisConjKey, Graph0, Graph)
+            else
+                % ConsumedVar must have been instantiated *before*
+                % this whole conjunction, possibly but not necessarily
+                % in the clause head.
+                Graph = Graph0
+            )
+        ),
+    list.foldl(MaybeAddEdge, set.to_sorted_list(ConsumedVars), !Graph),
 
-    % For each variable instantiated by this goal, add it to the VarDepMap
-    % with this goal as its instantiator. That is a mapping from the variable
-    % to the conj num.
-    InstVars = InstMapInfo ^ im_bound_vars,
-    InsertForConjNum = ( pred(InstVar::in, MapI0::in, MapI::out) is det :-
-        map.det_insert(InstVar, ConjNum, MapI0, MapI)
-    ),
-    set.fold(InsertForConjNum, InstVars, !VarDepMap),
-
-    build_dependency_graph(PGs, ConjNum + 1, !VarDepMap, !Graph).
+    % For each variable instantiated by this goal, add it to !ProducerMap
+    % with this goal as its producer.
+    ProducedVars = InstMapInfo ^ im_bound_vars,
+    InsertThisConjAsProducer =
+        ( pred(ProducedVar::in, ProducerMap0::in, ProducerMap::out) is det :-
+            map.det_insert(ProducedVar, ConjNum, ProducerMap0, ProducerMap)
+        ),
+    set.fold(InsertThisConjAsProducer, ProducedVars, !ProducerMap).
 
 %---------------------------------------------------------------------------%
 
@@ -358,7 +377,7 @@ goal_accumulate_detism(_, Goal, !Detism) :-
     %   LastCostlyGoalIndex, RevGoalGroups)).
     %
     % GoalGroups are Goals divided into groups of single costly goals, Larger
-    % groups are not currently used.  Only the goals within the range of costly
+    % groups are not currently used. Only the goals within the range of costly
     % goals inclusive are analysed.
     %
 :- pred preprocess_conjunction_into_groups(int::in, pard_goal_detail::in,
@@ -493,9 +512,9 @@ generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
             !.GoalGroups = [_],
             unexpected($pred, "only one goal group")
         ;
-            !.GoalGroups = [Group, _ | _],
-            !.GoalGroups = [_ | !:GoalGroups],
-            gg_get_details(Group, Index, Num, _),
+            !.GoalGroups = [Group1 | !:GoalGroups],
+            !.GoalGroups = [_ | _],
+            gg_get_details(Group1, Index, Num, _),
             LastScheduledGoal = Index + Num - 1,
             !IncompleteParallelisation ^ ip_last_scheduled_goal
                 := LastScheduledGoal
@@ -536,17 +555,20 @@ generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
 
 generate_parallelisations_loop(_, _, [],
         !.IncompleteParallelisation, !MaybeBestSolns, !Profile) :-
-    % Verify that we have generated at least two parallel conjuncts.
+    % Check whether we have generated at least two parallel conjuncts.
     ( if ip_get_num_parallel_conjuncts(!.IncompleteParallelisation) >= 2 then
         maybe_update_best_complete_parallelisation(!.IncompleteParallelisation,
             !MaybeBestSolns, !Profile)
     else
-        % This is not a solution, so do not try to update !MaybeBestSolns.
+        % We have not. That means that this is not a solution, so
+        % do not try to update !MaybeBestSolns.
         !Profile ^ bnbp_complete_non_solution :=
             !.Profile ^ bnbp_complete_non_solution + 1
     ).
 generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
         !.IncompleteParallelisation, !MaybeBestSolns, !Profile) :-
+    % XXX The algorithm could be closer to the one in the paper.
+
     LastScheduledGoal0 = !.IncompleteParallelisation ^ ip_last_scheduled_goal,
     gg_get_details(GoalGroup, _Index, Num, _Classification),
 
@@ -598,26 +620,26 @@ generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
         )
     ),
 
-    % XXX: This ite could be simpler, and the algorithm would be closer to the
-    % one in the paper.
+    CurProfile = !.Profile,
+
+    is_incomplete_parallelisation_good_enough(Info, !.MaybeBestSolns,
+        Best0, Best, !Profile, BestGoodEnough),
+    (
+        BestGoodEnough = is_good_enough,
+        generate_parallelisations_loop(Info, Algorithm,
+            GoalGroups, Best, !MaybeBestSolns, !Profile)
+    ;
+        BestGoodEnough = is_not_good_enough
+    ),
+
     ( if
         % Can we create an alternative branch here?
         MaybeNextBest0 = yes(NextBest0),
         % Should we create an alternative branch here?
-        should_expand_search(Algorithm, !.Profile)
+        may_add_choice_point(Algorithm, CurProfile) = add_choice_point
     then
-        % Create a branch.
-        incomplete_parallelisation_is_good_enough(Info, !.MaybeBestSolns,
-            Best0, Best, !Profile, BestGoodEnough),
-        (
-            BestGoodEnough = is_good_enough,
-            generate_parallelisations_loop(Info, Algorithm,
-                GoalGroups, Best, !MaybeBestSolns, !Profile)
-        ;
-            BestGoodEnough = is_not_good_enough
-        ),
-
-        incomplete_parallelisation_is_good_enough(Info, !.MaybeBestSolns,
+        % Create the alternative branch.
+        is_incomplete_parallelisation_good_enough(Info, !.MaybeBestSolns,
             NextBest0, NextBest, !Profile, NextBestGoodEnough),
         (
             NextBestGoodEnough = is_good_enough,
@@ -627,15 +649,7 @@ generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
             NextBestGoodEnough = is_not_good_enough
         )
     else
-        incomplete_parallelisation_is_good_enough(Info, !.MaybeBestSolns,
-            Best0, Best, !Profile, BestGoodEnough),
-        (
-            BestGoodEnough = is_good_enough,
-            generate_parallelisations_loop(Info, Algorithm,
-                GoalGroups, Best, !MaybeBestSolns, !Profile)
-        ;
-            BestGoodEnough = is_not_good_enough
-        )
+        true
     ).
 
 :- pred start_building_parallelisation(goals_for_parallelisation::in,
@@ -675,22 +689,36 @@ finalise_parallelisation(Incomplete, Best) :-
     Best = fp_parallel_execution(GoalsBefore, ParConjs, GoalsAfter,
         IsDependent, Metrics).
 
+:- type maybe_add_choice_point
+    --->    do_not_add_choice_point
+    ;       add_choice_point.
+
     % True if we should expand the search for parallelisation alternatives by
     % creating a choice point.
     %
-:- pred should_expand_search(alg_for_finding_best_par_simple::in,
-    bnb_profile::in) is semidet.
+:- func may_add_choice_point(alg_for_finding_best_par_simple, bnb_profile)
+    = maybe_add_choice_point.
 
-should_expand_search(Algorithm, Profile) :-
-    Algorithm = affbps_complete(MaybeLimit),
+may_add_choice_point(Algorithm, Profile) = MayAddChoicePoint :-
     (
-        MaybeLimit = yes(Limit),
-        NumIncompleteTests =
-            Profile ^ bnbp_incomplete_not_good_enough +
-            Profile ^ bnbp_incomplete_good_enough,
-        NumIncompleteTests < Limit
+        Algorithm = affbps_greedy,
+        MayAddChoicePoint = do_not_add_choice_point
     ;
-        MaybeLimit = no
+        Algorithm = affbps_complete(MaybeLimit),
+        (
+            MaybeLimit = yes(Limit),
+            NumIncompleteTests =
+                Profile ^ bnbp_incomplete_not_good_enough +
+                Profile ^ bnbp_incomplete_good_enough,
+            ( if NumIncompleteTests < Limit then
+                MayAddChoicePoint = add_choice_point
+            else
+                MayAddChoicePoint = do_not_add_choice_point
+            )
+        ;
+            MaybeLimit = no,
+            MayAddChoicePoint = add_choice_point
+        )
     ).
 
 :- pred maybe_update_best_complete_parallelisation(
@@ -735,13 +763,13 @@ maybe_update_best_complete_parallelisation(CurSoln,
     % Test the parallelisation against the best one known to the branch and
     % bound solver.
     %
-:- pred incomplete_parallelisation_is_good_enough(
+:- pred is_incomplete_parallelisation_good_enough(
     implicit_parallelism_info::in,
     best_solutions(incomplete_parallelisation)::in,
     incomplete_parallelisation::in, incomplete_parallelisation::out,
     bnb_profile::in, bnb_profile::out, is_good_enough::out) is det.
 
-incomplete_parallelisation_is_good_enough(Info, MaybeBestSolns,
+is_incomplete_parallelisation_good_enough(Info, MaybeBestSolns,
         !IncompleteParallelisation, !Profile, GoodEnough) :-
     calculate_parallel_cost(Info, !IncompleteParallelisation, CostData),
     ( if test_dependence(Info, CostData) then

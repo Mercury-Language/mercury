@@ -65,11 +65,11 @@ calculate_parallel_cost(Info, !Parallelisation, CostData) :-
     maybe_calc_sequential_cost(
         (func(P) = P ^ ip_maybe_goals_before_cost),
         (func(P0, MaybeCost) = P0 ^ ip_maybe_goals_before_cost := MaybeCost),
-        ip_get_goals_before, CostBeforePercall, NumCalls, !Parallelisation),
+        ip_get_goals_before, NumCalls, CostBeforePercall, !Parallelisation),
     maybe_calc_sequential_cost(
         (func(P) = P ^ ip_maybe_goals_after_cost),
         (func(P0, MaybeCost) = P0 ^ ip_maybe_goals_after_cost := MaybeCost),
-        ip_get_goals_after, CostAfterPercall, NumCalls, !Parallelisation),
+        ip_get_goals_after, NumCalls, CostAfterPercall, !Parallelisation),
 
     Opts = Info ^ ipi_opts,
     SparkCost = Opts ^ cpcp_sparking_cost,
@@ -91,10 +91,10 @@ calculate_parallel_cost(Info, !Parallelisation, CostData) :-
 
 :- pred maybe_calc_sequential_cost((func(T) = maybe(goal_cost_csq))::in,
     (func(T, maybe(goal_cost_csq)) = T)::in,
-    (func(T) = list(pard_goal_detail))::in, float::out,
-    int::in, T::in, T::out) is det.
+    (func(T) = list(pard_goal_detail))::in,
+    int::in, float::out, T::in, T::out) is det.
 
-maybe_calc_sequential_cost(GetMaybe, SetMaybe, GetGoals, CostPercall, Calls,
+maybe_calc_sequential_cost(GetMaybe, SetMaybe, GetGoals, Calls, CostPercall,
         !Acc) :-
     MaybeCost = GetMaybe(!.Acc),
     (
