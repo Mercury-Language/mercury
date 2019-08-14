@@ -421,7 +421,7 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep, RecursionType,
                 deep_lookup_proc_statics(Deep, PD ^ pd_proc_static, PS),
                 ProcName = PS ^ ps_q_refined_id,
                 io.format(io.stderr_stream,
-                    "Exception while analyising proc dynamic %d (%s)\n",
+                    "Exception while analysing proc dynamic %d (%s)\n",
                     [i(PDId), s(ProcName)], !IO)
             ),
             throw(Exp)
