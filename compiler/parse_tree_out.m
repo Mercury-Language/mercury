@@ -1044,6 +1044,9 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
         io.write_string(")).\n", !IO)
     ;
         MaybeAbstractInstDefn = nonabstract_inst_defn(eqv_inst(Inst)),
+        % XXX The parentheses around the inst name and its arguments
+        % is redundant *most* of the time, in which case it is only clutter.
+        % It would be nice to eliminate this clutter.
         io.write_string(":- inst (", !IO),
         mercury_output_term(InstVarSet, print_name_only, InstTerm, !IO),
         io.write_string(") ", !IO),
@@ -1058,6 +1061,14 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
             io.write_int(ForTypeCtorArity, !IO),
             io.write_string(" ", !IO)
         ),
+        % XXX If Inst is bound(...), it would be nice to print the inst
+        % definition using the easier-to-read
+        %
+        %   :- inst i
+        %       --->    f1(...)
+        %       ;       f2(...).
+        %
+        % syntax.
         io.write_string("== ", !IO),
         mercury_output_inst(Lang, InstVarSet, Inst, !IO),
         io.write_string(".\n", !IO)
