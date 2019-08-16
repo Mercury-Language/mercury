@@ -433,7 +433,15 @@
     % Returns a list containing the items in the array with index in the range
     % Lo..Hi (both inclusive) in the same order that they occurred in the
     % array. Returns an empty list if Hi < Lo. Throws an index_out_of_bounds/0
-    % exception if Lo or Hi is out of bounds and Hi >= Lo.
+    % exception if either Lo or Hi is out of bounds, *and* Hi >= Lo.
+    %
+    % If Hi < Lo, we do not generate an exception even if either or both
+    % are out of bounds, for two reasons. First, there is no need; if Hi < Lo,
+    % we can return the empty list without accessing any element of the array.
+    % Second, without this rule, some programming techniques for accessing
+    % consecutive contiguous regions of an array would require explicit
+    % bound checks in the *caller* of fetch_items, which would duplicate
+    % the checks inside fetch_items itself.
     %
 :- pred fetch_items(array(T), int, int, list(T)).
 :- mode fetch_items(in, in, in, out) is det.
@@ -2350,8 +2358,10 @@ fetch_items(Array, Low, High, List) :-
     ( if High < Low then
         % If High is less than Low, then there cannot be any array indexes
         % within the range Low -> High (inclusive). This can happen when
-        % calling to_list/2 on the empty array. Testing for this condition
-        % here rather than in to_list/2 is more general.
+        % calling to_list/2 on the empty array, or when iterative over
+        % consecutive contiguous regions of an array. (For an example of
+        % the latter, see ip_get_goals_{before,after} and their callers
+        % in the deep_profiler directory.)
         List = []
     else if not in_bounds(Array, Low) then
         arg_out_of_bounds_error(Array, "second", "fetch_items", Low)
