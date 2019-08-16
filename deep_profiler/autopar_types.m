@@ -366,22 +366,14 @@ ip_get_goals_before(Parallelisation) = GoalsBefore :-
     Goals = Parallelisation ^ ip_goals,
     FirstParGoalIndex = Parallelisation ^ ip_first_par_goal,
     LastGoalBefore = FirstParGoalIndex - 1,
-    ( if LastGoalBefore < 0 then
-        GoalsBefore = []
-    else
-        array.fetch_items(Goals, 0, LastGoalBefore, GoalsBefore)
-    ).
+    array.fetch_items(Goals, 0, LastGoalBefore, GoalsBefore).
 
 ip_get_goals_after(Parallelisation) = GoalsAfter :-
     Goals = Parallelisation ^ ip_goals,
     LastParGoalIndex = Parallelisation ^ ip_last_par_goal,
     NumGoals = array.size(Goals),
     FirstGoalAfter = LastParGoalIndex + 1,
-    ( if FirstGoalAfter >= NumGoals then
-        GoalsAfter = []
-    else
-        array.fetch_items(Goals, FirstGoalAfter, NumGoals - 1, GoalsAfter)
-    ).
+    array.fetch_items(Goals, FirstGoalAfter, NumGoals - 1, GoalsAfter).
 
 ip_get_par_conjs(Incomplete) = ParConjs :-
     Goals = Incomplete ^ ip_goals,

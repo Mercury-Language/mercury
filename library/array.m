@@ -433,7 +433,7 @@
     % Returns a list containing the items in the array with index in the range
     % Lo..Hi (both inclusive) in the same order that they occurred in the
     % array. Returns an empty list if Hi < Lo. Throws an index_out_of_bounds/0
-    % exception if Lo or Hi is out of bounds.
+    % exception if Lo or Hi is out of bounds and Hi >= Lo.
     %
 :- pred fetch_items(array(T), int, int, list(T)).
 :- mode fetch_items(in, in, in, out) is det.
@@ -2347,16 +2347,16 @@ fetch_items(Array, Low, High) = List :-
     fetch_items(Array, Low, High, List).
 
 fetch_items(Array, Low, High, List) :-
-    ( if not in_bounds(Array, Low) then
-        arg_out_of_bounds_error(Array, "second", "fetch_items", Low)
-    else if not in_bounds(Array, High) then
-        arg_out_of_bounds_error(Array, "third", "fetch_items", High)
-    else if High < Low then
+    ( if High < Low then
         % If High is less than Low, then there cannot be any array indexes
         % within the range Low -> High (inclusive). This can happen when
         % calling to_list/2 on the empty array. Testing for this condition
         % here rather than in to_list/2 is more general.
         List = []
+    else if not in_bounds(Array, Low) then
+        arg_out_of_bounds_error(Array, "second", "fetch_items", Low)
+    else if not in_bounds(Array, High) then
+        arg_out_of_bounds_error(Array, "third", "fetch_items", High)
     else
         List = do_foldr_func(func(X, Xs) = [X | Xs], Array, [], Low, High)
     ).

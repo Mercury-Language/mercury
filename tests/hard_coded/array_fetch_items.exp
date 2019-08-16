@@ -28,3 +28,13 @@ Array = array([1, 2, 3, 4, 5])
 Lo = 4
 Hi = 2
 List = []
+================
+Array = array([1, 2, 3, 4, 5])
+Lo = 561
+Hi = -1
+List = []
+================
+Array = array([1, 2, 3, 4, 5])
+Lo = 561
+Hi = 561
+EXCEPTION: "second argument of fetch_items: index 561 not in range [0, 4]"

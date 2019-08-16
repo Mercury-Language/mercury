@@ -27,7 +27,9 @@ main(!IO) :-
     test_fetch_items([1, 2, 3, 4, 5], 0, 0, !IO),
     test_fetch_items([1, 2, 3, 4, 5], -1, 0, !IO),
     test_fetch_items([1, 2, 3, 4, 5], 0, 6, !IO),
-    test_fetch_items([1, 2, 3, 4, 5], 4, 2, !IO).
+    test_fetch_items([1, 2, 3, 4, 5], 4, 2, !IO),
+    test_fetch_items([1, 2, 3, 4, 5], 561, -1, !IO),
+    test_fetch_items([1, 2, 3, 4, 5], 561, 561, !IO).
 
 :- pred test_fetch_items(list(T)::in, int::in, int::in, io::di, io::uo)
     is cc_multi.
