@@ -120,8 +120,8 @@ init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap) = Info :-
         AddrOfMap, do_not_output_generics, bc_none, []).
 
 get_debug_class_init(Info) = DebugClassInit :-
-    % It's not worth having an extra fieldin the java_out_info struct for
-    % this since we only look it up twice per module.
+    % It is not worth having an extra field in Info for this option,
+    % since we only look it up twice per module.
     ModuleInfo = Info ^ joi_module_info,
     module_info_get_globals(ModuleInfo, Globals),
     lookup_bool_option(Globals, debug_class_init, DebugClassInit).
