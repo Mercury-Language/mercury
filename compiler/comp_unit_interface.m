@@ -836,10 +836,8 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     % in the interface section as well, in IntTypesMap. Record the set of
     % modules that we need access to due to references in typeclass
     % definition items.
-    set.init(IntImports0),
-    set.init(IntUses0),
-    set.init(ImpImports0),
-    set.init(ImpUses0),
+    set.init(IntImportsUses0),
+    set.init(ImpImportsUses0),
     map.init(IntFIMsMap0),
     map.init(ImpFIMsMap0),
     set.init(IntSelfFIMs0),
@@ -849,8 +847,7 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     !:Specs = [],
     get_interface_int1_item_blocks_loop(SrcItemBlocks,
         cord.init, IntInclsCord, cord.init, ImpInclsCord,
-        IntImports0, IntImports1, IntUses0, IntUses1,
-        ImpImports0, ImpImports1, ImpUses0, ImpUses1,
+        IntImportsUses0, IntImportsUses, ImpImportsUses0, ImpImportsUses1,
         cord.init, IntItemsCord0, cord.init, ImpItemsCord0,
         cord.init, ImpForeignEnumsCord,
         IntFIMsMap0, IntFIMsMap1, ImpFIMsMap0, ImpFIMsMap1,
@@ -880,44 +877,24 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     set.union(ImpModulesNeededByTypeClassDefns, ImpModulesNeededByTypeDefns,
         ImpNeededModules),
 
-    % XXX ITEM_LIST We should put an import_module/use_module into
-    % the interface of the .int file ONLY IF it is actually used
-    % in the interface.
+    % XXX ITEM_LIST We should put a use_module decl into the interface
+    % of the .int file ONLY IF the module is actually used in the interface.
     %
-    % We already *do* generate warnings for any modules we import
+    % We already *do* generate warnings for any modules we import or use
     % in the interface that are not required in the interface, and programmers
     % do tend to delete such unnecessary imports from the interface,
     % so fixing this overestimation is not all that urgent.
     %
     % Since everything we put into a .int file should be fully module
     % qualified, we convert all import_modules into use_modules.
-    globals.lookup_bool_option(Globals, experiment3, Experiment3),
-    (
-        Experiment3 = no,
-        MakeImportOrUse = make_import
-    ;
-        Experiment3 = yes,
-        MakeImportOrUse = make_use
-    ),
-    IntImports = IntImports1,
-    set.difference(IntUses1, IntImports, IntUses),
-    IntAvails =
-        list.map(MakeImportOrUse, set.to_sorted_list(IntImports)) ++
-        list.map(make_use, set.to_sorted_list(IntUses)),
+    IntAvails = list.map(make_use, set.to_sorted_list(IntImportsUses)),
     ( if set.is_empty(ImpNeededModules) then
         % This gets the same result as the else case, only more quickly.
         ImpAvails = []
     else
-        set.union(IntImports, IntUses, IntModules),
-        ImpImports = set.difference(
-            set.intersect(ImpImports1, ImpNeededModules),
-            IntModules),
-        ImpUses = set.difference(
-            set.intersect(ImpUses1, ImpNeededModules),
-            set.union(IntModules, ImpImports)),
-        ImpAvails =
-            list.map(MakeImportOrUse, set.to_sorted_list(ImpImports)) ++
-            list.map(make_use, set.to_sorted_list(ImpUses))
+        ImpImportsUses2 = set.intersect(ImpImportsUses1, ImpNeededModules),
+        ImpImportsUses = set.difference(ImpImportsUses2, IntImportsUses),
+        ImpAvails = list.map(make_use, set.to_sorted_list(ImpImportsUses))
     ),
 
     % Compute the list of type definitions we deleted from ImpItems0
@@ -1148,8 +1125,6 @@ acccumulate_foreign_import_item(ModuleName, Lang, !Items) :-
     cord(item_include)::in, cord(item_include)::out,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
     cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out,
     cord(foreign_enum_reconstructor)::in,
     cord(foreign_enum_reconstructor)::out,
@@ -1166,15 +1141,13 @@ acccumulate_foreign_import_item(ModuleName, Lang, !Items) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 get_interface_int1_item_blocks_loop([],
-        !IntInclsCord, !ImpInclsCord,
-        !IntImports, !IntUses, !ImpImports, !ImpUses,
+        !IntInclsCord, !ImpInclsCord, !IntImportsUses, !ImpImportsUses,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
         !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
         !IntTypesMap, !ImpTypesMap,
         !IntModulesNeeded, !ImpModulesNeededByTypeClassDefns, !Specs).
 get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
-        !IntInclsCord, !ImpInclsCord,
-        !IntImports, !IntUses, !ImpImports, !ImpUses,
+        !IntInclsCord, !ImpInclsCord, !IntImportsUses, !ImpImportsUses,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
         !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
         !IntTypesMap, !ImpTypesMap,
@@ -1183,14 +1156,14 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
     (
         SrcSection = sms_interface,
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
-        get_interface_int1_avails_loop(Avails, !IntImports, !IntUses),
+        get_interface_int1_avails_loop(Avails, !IntImportsUses),
         get_interface_int1_items_loop_int(Items, !IntItemsCord,
             !IntFIMsMap, !IntSelfFIMs, !IntTypesMap,
             !IntModulesNeeded, !Specs)
     ;
         SrcSection = sms_implementation,
         !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
-        get_interface_int1_avails_loop(Avails, !ImpImports, !ImpUses),
+        get_interface_int1_avails_loop(Avails, !ImpImportsUses),
         get_interface_int1_items_loop_imp(Items, !ImpItemsCord,
             !ImpForeignEnumsCord, !ImpFIMsMap, !ImpSelfFIMs, !ImpTypesMap,
             !ImpModulesNeededByTypeClassDefns, !Specs)
@@ -1201,27 +1174,24 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         unexpected($pred, "sms_impl_but_exported_to_submodules")
     ),
     get_interface_int1_item_blocks_loop(SrcItemBlocks,
-        !IntInclsCord, !ImpInclsCord,
-        !IntImports, !IntUses, !ImpImports, !ImpUses,
+        !IntInclsCord, !ImpInclsCord, !IntImportsUses, !ImpImportsUses,
         !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
         !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
         !IntTypesMap, !ImpTypesMap,
         !IntModulesNeeded, !ImpModulesNeededByTypeClassDefns, !Specs).
 
 :- pred get_interface_int1_avails_loop(list(item_avail)::in,
-    set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_interface_int1_avails_loop([], !Imports, !Uses).
-get_interface_int1_avails_loop([Avail | Avails], !Imports, !Uses) :-
+get_interface_int1_avails_loop([], !ImportsUses).
+get_interface_int1_avails_loop([Avail | Avails], !ImportsUses) :-
     (
-        Avail = avail_import(avail_import_info(ModuleName, _Ctxt, _SeqNum)),
-        set.insert(ModuleName, !Imports)
+        Avail = avail_import(avail_import_info(ModuleName, _Ctxt, _SeqNum))
     ;
-        Avail = avail_use(avail_use_info(ModuleName, _Ctxt, _SeqNum)),
-        set.insert(ModuleName, !Uses)
+        Avail = avail_use(avail_use_info(ModuleName, _Ctxt, _SeqNum))
     ),
-    get_interface_int1_avails_loop(Avails, !Imports, !Uses).
+    set.insert(ModuleName, !ImportsUses),
+    get_interface_int1_avails_loop(Avails, !ImportsUses).
 
 :- pred get_interface_int1_items_loop_int(list(item)::in,
     cord(item)::in, cord(item)::out,
