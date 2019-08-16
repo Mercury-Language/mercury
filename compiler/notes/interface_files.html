@@ -143,17 +143,17 @@ that the compiler has found it needed over the years.
 <p>
 The compiler generates .int2 files from .int files
 by filtering out some items.
-The filtering algorithm is the same as we apply to the original module
-to generate .int3 files.
+The original filtering algorithm was the same as
+the one we applied to the original module to generate .int3 files.
 I believe the intention was to make each .int2 file
 a fully module qualified version of the corresponding .int3 file.
 However, since the differences between the two starting points
 (the unqualified whole module for .int3 files
 and its fully module qualified .int file)
 are not restricted to differences in qualification,
-I (at least as yet) see no argument that would persuade me to believe
-that the differences between a module's .int2 and .int3 files
-are guaranteed to be restricted to qualification.
+and the two filtering algorithms have also diverged over time,
+so the differences between a module's .int2 and .int3 files
+are <em>not</em> be restricted to just qualification.
 
 <p>
 Something to keep in mind:
@@ -161,8 +161,8 @@ while the --make-short-interface compiler option
 calls for the creation of .int3 files,
 several predicate and variable names inside the compiler
 use the term "short interface files" to refer to .int2 files.
-While sort-of justifiable, in that .int2 files
-are in fact shorter versions of .int files,
+While sort-of justifiable, in that
+.int2 files are in fact shorter versions of .int files,
 it can nevertheless be extremely confusing.
 </ul>
 
@@ -780,20 +780,79 @@ from which we derive the .int file's contents).
 <p>
 TODO
 
+<h2>Inclusion</h2>
+
+<p>
+A module's .int, .int2 and .int3 files
+are supposed to maintain the property that
+<ul>
+<li>
+every piece of information that is in items in the .int3 file
+is also in the .int2 file, and
+<li>
+every piece of information that is in items in the .int2 file
+is also in the .int file.
+</ul>
+<p>
+This is implicit in the fact that
+the algorithm we use to read in interface files (in grab_modules.m)
+never reads in a .int2 file if it has read in that module's .int file, and
+never reads in a .int3 file if it has read in that module's .int or .int2 file.
+In fact, making this possible is the reason why
+it reads in .int files first, .int2 files next, and .int3 files last.
+<p>
+I (zs) don't see any inclusion requirements being placed on .int0 files.
+However, grab_modules.m does have to read in its ancestors'.int0 files first,
+because the set of .int files it needs to read includes
+not just the .int files of the modules imported by the current module,
+but also the .int files of the modules imported by its ancestors.
+<p>
+Note that the inclusion property
+does not apply to import_module and use_module declarations.
+While .int and .int2 files contain only use_module declarations,
+.int3 files contain only import_module declarations,
+which can be considered more expressive,
+and .int3 files may contain import_module declarations for modules
+for which the corresponding .int and/or .int2 files
+do <em>not</em> contain use_module declarations.
+This is because in the absence of errors,
+.int and .int2 files are always fully module qualified,
+which is something we cannot insist on for .int3 files.
+This difference is
+<ul>
+<li>
+why .int and .int2 files can avoid importing or using
+modules that they do not refer to, and
+<li>
+why .int and .int2 files can use, not import,
+modules that they do refer to.
+</ul>
+<p>
+Consumers of .int3 files need import_module declarations
+because they need to <em>find</em>
+which module defines an entity, such as a type constructor;
+consumers of .int and .int2 files need only use_module declarations
+because they need only to <em>look up</em>
+the definition of that entity.
+<p>
+That definition should be needed only in two cases.
+First, the case of type definitions,
+we may need to follow chains of type equivalences to the end
+in order to make decisions about type representations involving that type.
+Second, the case of inst and mode definitions,
+we may likewise need to follow chains of equivalences to the end
+in order to figure out the exact expansions of named insts and modes,
+which we may need for mode analysis.
+
 <h2>Timestamp files</h2>
 
 <ul>
-<p>
 <li>
 The datestamp on the .date3 file gives the last time
 the .int3 file was checked for consistency.
-
-<p>
 <li>
 The datestamp on the .date0 file gives the last time
 the .int0 file was checked for consistency.
-
-<p>
 <li>
 The datestamp on the .date file gives the last time
 the .int and .int2 files were checked for consistency.
