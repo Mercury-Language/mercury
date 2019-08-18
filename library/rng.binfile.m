@@ -45,6 +45,11 @@
 :- pred rand(binfile, uint64, io, io).
 :- mode rand(in, out, di, uo) is det.
 
+    % Returns max_uint64, the maximum number that can be returned by this
+    % generator.
+    %
+:- func rand_max(binfile) = uint64.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -59,7 +64,7 @@
 
 :- instance urng(binfile, io) where [
     pred(urandom/4) is rand,
-    ( urandom_max(_) = uint64.max_uint64 )
+    func(urandom_max/1) is rand_max
 ].
 
 %---------------------------------------------------------------------------%
@@ -92,5 +97,7 @@ rand(binfile(Stream), N, !IO) :-
         Res = error(E),
         unexpected($pred, io.error_message(E))
     ).
+
+rand_max(_) = uint64.max_uint64.
 
 %---------------------------------------------------------------------------%

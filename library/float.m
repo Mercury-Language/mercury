@@ -139,16 +139,16 @@
 :- func from_int16(int16) = float.
 
     % Convert a signed 32-bit integer into a float.
-    % Always succeeds as all signed 32-bit integers have an exact
-    % floating-point representation.
+    % The behaviour when the integer exceeds the range of what can be
+    % exactly represented by a float is undefined.
     %
-:- func from_int32(int32) = float.
+:- func cast_from_int32(int32) = float.
 
     % Convert a signed 64-bit integer into a float.
     % The behaviour when the integer exceeds the range of what can be
     % exactly represented by a float is undefined.
     %
-:- func from_int64(int64) = float.
+:- func cast_from_int64(int64) = float.
 
     % Convert an unsigned 8-bit integer into a float.
     % Always succeeds as all unsigned 8-bit integers have an exact
@@ -163,16 +163,16 @@
 :- func from_uint16(uint16) = float.
 
     % Convert an unsigned 32-bit integer into a float.
-    % Always succeeds as all unsigned 32-bit integers have an exact
-    % floating-point representation.
+    % The behaviour when the integer exceeds the range of what can be
+    % exactly represented by a float is undefined.
     %
-:- func from_uint32(uint32) = float.
+:- func cast_from_uint32(uint32) = float.
 
     % Convert an unsigned 64-bit integer into a float.
     % The behaviour when the integer exceeds the range of what can be
     % exactly represented by a float is undefined.
     %
-:- func from_uint64(uint64) = float.
+:- func cast_from_uint64(uint64) = float.
 
 %---------------------------------------------------------------------------%
 %
@@ -584,7 +584,7 @@ X / Y = Z :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    from_int32(Int32Val::in) = (FloatVal::out),
+    cast_from_int32(Int32Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -592,21 +592,21 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C#",
-    from_int32(Int32Val::in) = (FloatVal::out),
+    cast_from_int32(Int32Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) Int32Val;
 ").
 
 :- pragma foreign_proc("Java",
-    from_int32(Int32Val::in) = (FloatVal::out),
+    cast_from_int32(Int32Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) Int32Val;
 ").
 
 :- pragma foreign_proc("Erlang",
-    from_int32(Int32Val::in) = (FloatVal::out),
+    cast_from_int32(Int32Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = float(Int32Val)
@@ -615,7 +615,7 @@ X / Y = Z :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    from_uint32(UInt32Val::in) = (FloatVal::out),
+    cast_from_uint32(UInt32Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -623,21 +623,21 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C#",
-    from_uint32(UInt32Val::in) = (FloatVal::out),
+    cast_from_uint32(UInt32Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) UInt32Val;
 ").
 
 :- pragma foreign_proc("Java",
-    from_uint32(UInt32Val::in) = (FloatVal::out),
+    cast_from_uint32(UInt32Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) (UInt32Val & 0xffffffff);
 ").
 
 :- pragma foreign_proc("Erlang",
-    from_uint32(UInt32Val::in) = (FloatVal::out),
+    cast_from_uint32(UInt32Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = float(UInt32Val)
@@ -646,7 +646,7 @@ X / Y = Z :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    from_int64(Int64Val::in) = (FloatVal::out),
+    cast_from_int64(Int64Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -654,21 +654,21 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C#",
-    from_int64(Int64Val::in) = (FloatVal::out),
+    cast_from_int64(Int64Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) Int64Val;
 ").
 
 :- pragma foreign_proc("Java",
-    from_int64(Int64Val::in) = (FloatVal::out),
+    cast_from_int64(Int64Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) Int64Val;
 ").
 
 :- pragma foreign_proc("Erlang",
-    from_int64(Int64Val::in) = (FloatVal::out),
+    cast_from_int64(Int64Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = float(Int64Val)
@@ -677,7 +677,7 @@ X / Y = Z :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    from_uint64(UInt64Val::in) = (FloatVal::out),
+    cast_from_uint64(UInt64Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -685,21 +685,21 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C#",
-    from_uint64(UInt64Val::in) = (FloatVal::out),
+    cast_from_uint64(UInt64Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) UInt64Val;
 ").
 
 :- pragma foreign_proc("Java",
-    from_uint64(UInt64Val::in) = (FloatVal::out),
+    cast_from_uint64(UInt64Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) UInt64Val;
 ").
 
 :- pragma foreign_proc("Erlang",
-    from_uint64(UInt64Val::in) = (FloatVal::out),
+    cast_from_uint64(UInt64Val::in) = (FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = float(UInt64Val)
