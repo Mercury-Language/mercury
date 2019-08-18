@@ -41,6 +41,11 @@
 :- pred rand(uint32, marsaglia, marsaglia).
 :- mode rand(out, in, out) is det.
 
+    % Return max_uint32, the maximum number that can be returned by this
+    % generator.
+    %
+:- func rand_max(marsaglia) = uint32.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -57,7 +62,7 @@
         rand(N0, !RNG),
         N = uint32.cast_to_uint64(N0)
     ),
-    ( random_max(_) = uint32.cast_to_uint64(uint32.max_uint32) )
+    ( random_max(RNG) = uint32.cast_to_uint64(rand_max(RNG)) )
 ].
 
 %---------------------------------------------------------------------------%
@@ -82,6 +87,8 @@ rand(N, RNG0, RNG) :-
     N = (SX << 16) + (SY /\ M),
     S = pack_uint64(SX, SY),
     RNG = marsaglia(S).
+
+rand_max(_) = uint32.max_uint32.
 
 %---------------------------------------------------------------------------%
 

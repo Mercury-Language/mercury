@@ -69,6 +69,11 @@
 :- pred rand(params, uint32, state, state).
 :- mode rand(in, out, di, uo) is det.
 
+    % Return max_uint32, the maximum number that can be returned by this
+    % generator.
+    %
+:- func rand_max(params) = uint32.
+
     % Duplicate a tausworthe RNG state.
     %
 :- pred dup(state, state, state).
@@ -104,7 +109,7 @@
         rand(RP, N0, !RS),
         N = uint32.cast_to_uint64(N0)
     ),
-    ( urandom_max(_) = uint32.cast_to_uint64(uint32.max_uint32) )
+    ( urandom_max(RP) = uint32.cast_to_uint64(rand_max(RP)) )
 ].
 
 :- instance urng_dup(state) where [
@@ -183,6 +188,8 @@ rand_2(RP, I, Size, N0, N, !Seed) :-
     else
         N = N0
     ).
+
+rand_max(_) = uint32.max_uint32.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

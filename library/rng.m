@@ -23,7 +23,7 @@
 %     a new generator that will generate the same sequence of numbers).
 %     This may be regarded as an advantage or a disadvantage.
 %   - Some RNGs, for example the binfile generator that reads data from
-%     a file, use the IO state and therefore must use the unique interface.
+%     a file, use the I/O state and therefore must use the unique interface.
 %
 % Each RNG defined in the submodules is natively one of these two styles.
 % Conversion between the two styles can be done with make_urng/3 and
@@ -89,13 +89,14 @@
 
     % random_int(Start, Range, N, !RNG)
     %
-    % Generate a random integer between Start and Start+Range-1 inclusive.
+    % Generate a uniformly distributed random integer between Start and
+    % Start+Range-1 inclusive.
     % Throws an exception if Range < 1 or Range > random_max.
     %
 :- pred random_int(int, int, int, RNG, RNG) <= rng(RNG).
 :- mode random_int(in, in, out, in, out) is det.
 
-    % Generate a random float between 0.0 and 1.0, inclusive.
+    % Generate a uniformly distributed random float in the range [0, 1).
     %
 :- pred random_float(float, RNG, RNG) <= rng(RNG).
 :- mode random_float(out, in, out) is det.
@@ -115,12 +116,14 @@
     %
 :- typeclass rng(RNG) where [
 
-        % Generate a random integer between 0 and random_max, inclusive.
+        % Generate a uniformly distributed random integer between 0 and
+        % random_max, inclusive.
         %
     pred random(uint64, RNG, RNG),
     mode random(out, in, out) is det,
 
-        % Return the largest integer that can be generated.
+        % Return the largest integer that can be generated. This must be
+        % no less than 65535.
         %
     func random_max(RNG) = uint64
 ].
@@ -130,13 +133,14 @@
 
     % urandom_int(RP, Start, Range, N, !RS)
     %
-    % Generate a random integer between Start and Start+Range-1 inclusive.
+    % Generate a uniformly distributed random integer between Start and
+    % Start+Range-1 inclusive.
     % Throws an exception if Range < 1 or Range > urandom_max.
     %
 :- pred urandom_int(RP, int, int, int, RS, RS) <= urng(RP, RS).
 :- mode urandom_int(in, in, in, out, di, uo) is det.
 
-    % Generate a random float between 0.0 and 1.0, inclusive.
+    % Generate a uniformly distributed random float in the interval [0, 1).
     %
 :- pred urandom_float(RP, float, RS, RS) <= urng(RP, RS).
 :- mode urandom_float(in, out, di, uo) is det.
@@ -158,12 +162,14 @@
     %
 :- typeclass urng(RP, RS) <= (RP -> RS) where [
 
-        % Generate a random integer between 0 and random_max, inclusive.
+        % Generate a uniformly distributed random integer between 0 and
+        % random_max, inclusive.
         %
     pred urandom(RP, uint64, RS, RS),
     mode urandom(in, out, di, uo) is det,
 
-        % Return the largest integer that can be generated.
+        % Return the largest integer that can be generated. This must be
+        % no less than 65535.
         %
     func urandom_max(RP) = uint64
 ].
@@ -233,7 +239,7 @@ random_int(Start, Range0, N, !RNG) :-
 random_float(F, !RNG) :-
     random(N, !RNG),
     Max = random_max(!.RNG),
-    F = float.from_uint64(N) / float.from_uint64(Max).
+    F = float.cast_from_uint64(N) / (float.cast_from_uint64(Max) + 1.0).
 
 random_gauss(U, V, !RNG) :-
     random_float(X, !RNG),
@@ -261,7 +267,7 @@ urandom_int(RP, Start, Range0, N, !RS) :-
 urandom_float(RP, F, !RS) :-
     urandom(RP, N, !RS),
     Max = urandom_max(RP),
-    F = float.from_uint64(N) / float.from_uint64(Max).
+    F = float.cast_from_uint64(N) / (float.cast_from_uint64(Max) + 1.0).
 
 urandom_gauss(RP, U, V, !RS) :-
     urandom_float(RP, X, !RS),

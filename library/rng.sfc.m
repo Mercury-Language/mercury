@@ -44,6 +44,11 @@
 :- pred rand16(uint16, sfc, sfc).
 :- mode rand16(out, in, out) is det.
 
+    % Return max_uint16, the maximum number that can be returned by this
+    % generator.
+    %
+:- func rand16_max(sfc) = uint16.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -73,6 +78,11 @@
     %
 :- pred rand(uint64, state, state).
 :- mode rand(out, di, uo) is det.
+
+    % Return max_uint64, the maximum number that can be returned by this
+    % generator.
+    %
+:- func rand_max = uint64.
 
     % Duplicate a 64-bit SFC state.
     %
@@ -112,6 +122,11 @@
 :- pred rand32(uint32, state32, state32).
 :- mode rand32(out, di, uo) is det.
 
+    % Return max_uint32, the maximum number that can be returned by this
+    % generator.
+    %
+:- func rand32_max = uint32.
+
     % Duplicate a 32-bit SFC state.
     %
 :- pred dup32(state32, state32, state32).
@@ -139,7 +154,7 @@
         rand16(N0, !RNG),
         N = uint16.cast_to_uint64(N0)
     ),
-    ( random_max(_) = uint16.cast_to_uint64(uint16.max_uint16) )
+    ( random_max(RNG) = uint16.cast_to_uint64(rand16_max(RNG)) )
 ].
 
 init16 = seed16(0x6048_5623_5e79_371e_u64).
@@ -168,6 +183,8 @@ rand16(N, sfc(S0), sfc(S)) :-
     C = ((C0 << 6) \/ (C0 >> 10)) + N,
     Counter = Counter0 + 1u16,
     S = pack_uint64(A, B, C, Counter).
+
+rand16_max(_) = uint16.max_uint16.
 
 :- func pack_uint64(uint16, uint16, uint16, uint16) = uint64.
 
@@ -200,7 +217,7 @@ unpack_uint64(S, P1, P2, P3, P4) :-
     ( urandom(_, N, !RS) :-
         rand(N, !RS)
     ),
-    ( urandom_max(_) = uint64.max_uint64 )
+    ( urandom_max(_) = rand_max )
 ].
 
 :- instance urng_dup(state) where [
@@ -258,6 +275,8 @@ rand(N, RS0, RS) :-
     array.unsafe_set(3, Counter, S3, S),
     RS = unsafe_promise_unique(state(S)).
 
+rand_max = uint64.max_uint64.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -272,7 +291,7 @@ rand(N, RS0, RS) :-
         rand32(N0, !RS),
         N = uint32.cast_to_uint64(N0)
     ),
-    ( urandom_max(_) = uint32.cast_to_uint64(uint32.max_uint32) )
+    ( urandom_max(_) = uint32.cast_to_uint64(rand32_max) )
 ].
 
 :- instance urng_dup(state32) where [
@@ -329,5 +348,7 @@ rand32(N, RS0, RS) :-
     array.unsafe_set(2, C, S2, S3),
     array.unsafe_set(3, Counter, S3, S),
     RS = unsafe_promise_unique(state32(S)).
+
+rand32_max = uint32.max_uint32.
 
 %---------------------------------------------------------------------------%
