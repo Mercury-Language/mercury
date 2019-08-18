@@ -13,12 +13,27 @@
 :- import_module int.
 :- import_module rng.
 :- import_module rng.marsaglia.
+:- import_module rng.sfc.
 :- import_module rng.tausworthe.
 
 main(!IO) :-
     io.write_string("marsaglia:\n", !IO),
-    RNG1 = marsaglia.init,
-    test(20, RNG1, _, !IO),
+    RNGm = marsaglia.init,
+    test(20, RNGm, _, !IO),
+
+    io.write_string("\nsfc16:\n", !IO),
+    RNGsfc16 = sfc.init16,
+    test(20, RNGsfc16, _, !IO),
+
+    io.write_string("\nsfc32:\n", !IO),
+    sfc.init32(RPsfc32, RSsfc32),
+    RNGsfc32 = make_shared_rng(RPsfc32, RSsfc32),
+    test(20, RNGsfc32, _, !IO),
+
+    io.write_string("\nsfc:\n", !IO),
+    sfc.init(RPsfc, RSsfc),
+    RNGsfc = make_shared_rng(RPsfc, RSsfc),
+    test(20, RNGsfc, _, !IO),
 
     io.write_string("\ntausworthe3:\n", !IO),
     tausworthe.init_t3(RP2, RS2),

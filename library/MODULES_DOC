@@ -64,6 +64,7 @@ require.m
 rng.m
 rng.binfile.m
 rng.marsaglia.m
+rng.sfc.m
 rng.tausworthe.m
 rtree.m
 set.m
