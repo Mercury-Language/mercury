@@ -323,6 +323,7 @@ ORDINARY_PROGS = \
 	rnd \
 	rng1 \
 	rng2 \
+	rng3 \
 	rtree_test \
 	rtti_strings \
 	sectag_bits \

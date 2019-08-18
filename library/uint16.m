@@ -81,6 +81,27 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion to/from uint64.
+%
+
+    % cast_to_uint64(U16) = U64:
+    %
+    % Convert a uint16 to a uint64.
+    % Always succeeds, and yields a result that is mathematically equal
+    % to U16.
+    %
+:- func cast_to_uint64(uint16) = uint64.
+
+    % cast_from_uint64(U64) = U16:
+    %
+    % Convert a uint64 to a uint16.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to I only if I is in [0, 2^16 - 1].
+    %
+:- func cast_from_uint64(uint64) = uint16.
+
+%---------------------------------------------------------------------------%
+%
 % Change of signedness.
 %
 
@@ -470,6 +491,64 @@ cast_to_int(_) = _ :-
 
 cast_to_uint(_) = _ :-
     sorry($module, "uint16.cast_to_uint/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_uint64/1).
+
+:- pragma foreign_proc("C",
+    cast_to_uint64(U16::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U64 = (uint64_t) U16;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_uint64(U16::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (ulong) U16;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_uint64(U16::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (long) U16 & 0xffffL;
+").
+
+cast_to_uint64(_) = _ :-
+    sorry($module, "uint16.cast_to_uint64/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_from_uint64/1).
+
+:- pragma foreign_proc("C",
+    cast_from_uint64(U64::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U16 = (uint16_t) U64;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint64(U64::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (ushort) U64;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint64(U64::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (short) U64;
+").
+
+cast_from_uint64(_) = _ :-
+    sorry($module, "uint16.cast_from_uint64/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 

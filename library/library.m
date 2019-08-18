@@ -127,6 +127,7 @@
 :- import_module rng.
 :- import_module rng.binfile.
 :- import_module rng.marsaglia.
+:- import_module rng.sfc.
 :- import_module rng.tausworthe.
 :- import_module robdd.
 :- import_module rtree.
@@ -316,6 +317,7 @@ mercury_std_library_module("require").
 mercury_std_library_module("rng").
 mercury_std_library_module("rng.binfile").
 mercury_std_library_module("rng.marsaglia").
+mercury_std_library_module("rng.sfc").
 mercury_std_library_module("rng.tausworthe").
 mercury_std_library_module("robdd").
 mercury_std_library_module("rtree").

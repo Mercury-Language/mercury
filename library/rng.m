@@ -82,6 +82,7 @@
 
 :- include_module binfile.
 :- include_module marsaglia.
+:- include_module sfc.
 :- include_module tausworthe.
 
 %---------------------------------------------------------------------------%
