@@ -423,10 +423,10 @@
 %
 
 :- pred ml_generate_constants_for_arms(list(prog_var)::in, list(hlds_goal)::in,
-    list(list(mlds_rval))::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(list(mlds_rval))::out, ml_gen_info::in, ml_gen_info::out) is semidet.
 
 :- pred ml_generate_constants_for_arm(list(prog_var)::in, hlds_goal::in,
-    list(mlds_rval)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_rval)::out, ml_gen_info::in, ml_gen_info::out) is semidet.
 
 :- pred ml_generate_field_assign(mlds_lval::in, mlds_type::in,
     mlds_field_id::in, mlds_vector_common::in, mlds_type::in,
@@ -1656,24 +1656,14 @@ ml_generate_constants_for_arm(Vars, Goal, Soln, !Info) :-
     ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
     ml_gen_goal(model_det, Goal, _LocalVarDefns, _FuncDefns, _Stmts, !Info),
     ml_gen_info_get_const_var_map(!.Info, FinalConstVarMap),
-    list.map(lookup_ground_rval(FinalConstVarMap), Vars, Soln),
+    list.map(search_ground_rval(FinalConstVarMap), Vars, Soln),
     ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
 
-:- pred lookup_ground_rval(ml_ground_term_map::in, prog_var::in,
-    mlds_rval::out) is det.
+:- pred search_ground_rval(ml_ground_term_map::in, prog_var::in,
+    mlds_rval::out) is semidet.
 
-lookup_ground_rval(FinalConstVarMap, Var, Rval) :-
-    % We can do a map.lookup instead of a map.search here because
-    % - we execute this code only if we have already determined that
-    %   goal_is_conj_of_unify succeeds for this arm,
-    % - we don't even start looking for lookup switches unless we know
-    %   that the mark_static_terms pass has been run, and
-    % - for every arm on which goal_is_conj_of_unify succeeds,
-    %   mark_static_terms will mark all the variables to which Var
-    %   may be bound as being constructed statically. (There can be no need
-    %   to construct them dynamically, since all the arm's nonlocals are
-    %   output, which means none of them can be input.)
-    map.lookup(FinalConstVarMap, Var, GroundTerm),
+search_ground_rval(FinalConstVarMap, Var, Rval) :-
+    map.search(FinalConstVarMap, Var, GroundTerm),
     GroundTerm = ml_ground_term(Rval, _, _).
 
 ml_generate_field_assign(OutVarLval, FieldType, FieldId, VectorCommon,
