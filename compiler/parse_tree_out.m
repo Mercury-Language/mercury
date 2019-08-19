@@ -754,7 +754,7 @@ mercury_output_where_attributes(Info, TypeVarSet,
     then
         true
     else
-        io.write_string("\n\twhere\t", !IO),
+        io.write_string("\n    where   ", !IO),
         (
             MaybeCanonical = noncanon(noncanon_abstract(_)),
             MaybeUniPred = no,
