@@ -1765,8 +1765,7 @@ is_exist_pseudo_type_info(_, _) :-
 "
     private static bool
     ML_construct(runtime.TypeInfo_Struct TypeInfo, int FunctorNumber,
-        list.List_1 ArgList,
-        out univ.Univ_0 Term)
+        list.List_1 ArgList, out univ.Univ_0 Term)
     {
         // If type_info is an equivalence type, expand it.
         TypeInfo = ML_collapse_equivalences(TypeInfo);
@@ -2206,8 +2205,8 @@ is_exist_pseudo_type_info(_, _) :-
     }
 ").
 
-:- pragma foreign_code("Java", "
-
+:- pragma foreign_code("Java",
+"
     private static Object[]
     ML_construct(TypeInfo_Struct TypeInfo, int FunctorNumber,
         list.List_1<univ.Univ_0> ArgList)
@@ -2251,7 +2250,8 @@ is_exist_pseudo_type_info(_, _) :-
                 {
                     DuFunctorDesc functor_desc = functor_descs[FunctorNumber];
                     if (functor_desc.du_functor_subtype_info.value !=
-                        private_builtin.MR_FUNCTOR_SUBTYPE_NONE) {
+                        private_builtin.MR_FUNCTOR_SUBTYPE_NONE)
+                    {
                         throw new Error(""not yet implemented: construction ""
                             + ""of terms containing subtype constraints"");
                     }
@@ -2643,7 +2643,6 @@ is_exist_pseudo_type_info(_, _) :-
 
         return array;
     }
-
 ").
 
 :- pragma foreign_proc("C#",
