@@ -70,10 +70,10 @@
 :- type exist_type
     --->    some [T] xyzzy(f21name :: T).
 
-    % By using nine non-constant functors, we are forcing packed8
-    % and packed 9 to share a primary tag even on 64 bit systems.
-    % packed_1 tests the secondary tag absent case, while packed_8
-    % tests the secondary tag present case in the construct predicate.
+    % By using nine non-constant functors, we are forcing packed_8
+    % and packed_9 to share a primary tag even on 64 bit systems.
+    % packed_1 tests the secondary tag absent case in the construct predicate,
+    % while and packed_8 tests the secondary tag present case.
 :- type packed(T)
     --->    packed_1(int8, uint8, dummy, dummy, int8, uint8, T)
     ;       some [U] packed_2(dummy, U, int8, uint8, dummy, int8, uint8)
