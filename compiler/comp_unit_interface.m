@@ -821,7 +821,29 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
 %---------------------------------------------------------------------------%
 
 generate_interfaces_int1_int2(Globals, AugCompUnit,
-        ParseTreeInt1, ParseTreeInt2, !:Specs) :-
+        ParseTreeInt1, ParseTreeInt2, Specs) :-
+    generate_interface_int1(Globals, AugCompUnit,
+        IntIncls, IntAvails, IntItems0, ImpItems1, IntFIMItems, ImpFIMItems,
+        ParseTreeInt1, Specs),
+    generate_interface_int2(AugCompUnit,
+        IntIncls, IntAvails, IntItems0, ImpItems1, IntFIMItems, ImpFIMItems,
+        ParseTreeInt2).
+
+:- pred generate_interface_int1(globals::in, aug_compilation_unit::in,
+    list(item_include)::out, list(item_avail)::out,
+    list(item)::out, list(item)::out, list(item)::out, list(item)::out,
+    parse_tree_int::out, list(error_spec)::out) is det.
+
+generate_interface_int1(Globals, AugCompUnit,
+        IntIncls, IntAvails, IntItems0, ImpItems1, IntFIMItems, ImpFIMItems,
+        ParseTreeInt1, !:Specs) :-
+    % We return some of our intermediate results to our caller, for use
+    % in constructing the .int2 file. We return the item lists from *before*
+    % we added any foreign_import_module items to them, since for the
+    % .int2 file, we want to decide whether we want to keep the
+    % foreign_import_module in each section on somewhat different
+    % criteria than those used for .int files.
+
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _ModuleVersionNumbers, SrcItemBlocks,
         _DirectIntItemBlocks, _IndirectIntItemBlocks,
@@ -933,66 +955,7 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     DummyMaybeVersionNumbers = no,
     ParseTreeInt1 = parse_tree_int(ModuleName, ifk_int,
         ModuleNameContext, DummyMaybeVersionNumbers,
-        IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems),
-
-    %------%
-
-    % The rest of this predicate body constructs the .int2 file.
-
-    % We start from the versions of the .int item lists from *before*
-    % we added any foreign_import_module items to them, since for the
-    % .int2 file, we want to decide whether we want to keep the
-    % foreign_import_module in each section on somewhat different
-    % criteria than those used for .int files.
-    %
-    % XXX I (zs) don't really understand the motivation behind the
-    % rules here. And I don't understand why these rules treat
-    % the interface section the same as the implementation section.
-    get_int2_items_from_int1(IntItems0, ShortIntItems0),
-    get_int2_items_from_int1(ImpItems1, ShortImpItems0),
-    find_need_imports(ShortIntItems0,
-        ShortIntNeedImports, set.init, ShortIntNeedForeignImportLangs),
-    find_need_imports(ShortImpItems0,
-        ShortImpNeedImports, set.init, ShortImpNeedForeignImportLangs),
-    (
-        ShortIntNeedImports = need_imports,
-        ShortIntAvails = IntAvails
-    ;
-        ShortIntNeedImports = dont_need_imports,
-        ShortIntAvails = []
-    ),
-    (
-        ShortImpNeedImports = need_imports,
-        ShortImpAvails = ImpAvails
-    ;
-        ShortImpNeedImports = dont_need_imports,
-        ShortImpAvails = []
-    ),
-    ( if set.is_non_empty(ShortIntNeedForeignImportLangs) then
-        ShortIntItems = IntFIMItems ++ ShortIntItems0
-    else
-        ShortIntItems = ShortIntItems0
-    ),
-    ( if set.is_non_empty(ShortImpNeedForeignImportLangs) then
-        ShortImpItems = ImpFIMItems ++ ShortImpItems0
-    else
-        ShortImpItems = ShortImpItems0
-    ),
-    OldParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
-        ModuleNameContext, DummyMaybeVersionNumbers,
-        IntIncls, ImpIncls, ShortIntAvails, ShortImpAvails,
-        ShortIntItems, ShortImpItems),
-
-    globals.lookup_bool_option(Globals, experiment4, Experiment4),
-    (
-        Experiment4 = no,
-        ParseTreeInt2 = OldParseTreeInt2
-    ;
-        Experiment4 = yes,
-        generate_interface_int2(ModuleName, ModuleNameContext,
-            IntIncls, IntAvails, IntItems0, ImpItems1,
-            IntFIMItems, ImpFIMItems, ParseTreeInt2)
-    ).
+        IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems).
 
 %---------------------%
 
@@ -2234,7 +2197,7 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % generate_interface_int2(ModuleName, ModuleNameContext,
+    % generate_interface_int2(AugCompUnit,
     %     IntIncls, IntAvails, IntItems, ImpItems, IntFIMItems, ImpFIMItems,
     %     ParseTreeInt2):
     %
@@ -2245,14 +2208,19 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
     % the foreign_import_module in each section on somewhat different
     % criteria than those used for .int files.
     %
-:- pred generate_interface_int2(module_name::in, prog_context::in,
+:- pred generate_interface_int2(aug_compilation_unit::in,
     list(item_include)::in, list(item_avail)::in,
     list(item)::in, list(item)::in, list(item)::in, list(item)::in,
     parse_tree_int::out) is det.
 
-generate_interface_int2(ModuleName, ModuleNameContext,
+generate_interface_int2(AugCompUnit,
         IntIncls, IntAvails, IntItems, ImpItems, IntFIMItems, ImpFIMItems,
         ParseTreeInt2) :-
+    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
+        _ModuleVersionNumbers, _SrcItemBlocks,
+        _DirectIntItemBlocks, _IndirectIntItemBlocks,
+        _OptItemBlocks, _IntForOptItemBlocks),
+
     get_int2_items_from_int1_int(IntItems,
         no_unqual_symnames, UnqualSymNames, set.init, UsedModuleNamesSet,
         cord.init, ShortIntItemsCord0),
