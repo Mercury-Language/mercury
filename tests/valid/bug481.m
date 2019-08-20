@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
-% Before 2019 aug 19, the compiler aborted when t compiling this in hlc.gc.
+% Before 2019 aug 19, the compiler aborted when compiling this in hlc.gc.
 % The problem was a map.lookup that tried to look up the variable String's
 % entry in the constant variable map. Since String is not a constant,
 % the lookup aborted. The MLDS code generator had code to ensure that
