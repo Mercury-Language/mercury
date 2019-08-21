@@ -2186,6 +2186,10 @@ get_int2_items_from_int1_int([Item | Items], !MaybeUnqual, !ModuleNames,
         !IntItemsCord) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
+        % generate_pre_grab_pre_qual_interface_for_int1_int2 had invoked
+        % make_canon_make_du_and_solver_types_abstract on type_defn items
+        % in the implementation section of the module. We now do the same
+        % for type_defn items in the interface section.
         make_canon_make_du_and_solver_types_abstract(ItemTypeDefnInfo,
             MaybeAbstractItemTypeDefnInfo),
         MaybeAbstractItemTypeDefnInfo = item_type_defn_info(_TypeSymName,
@@ -2196,6 +2200,11 @@ get_int2_items_from_int1_int([Item | Items], !MaybeUnqual, !ModuleNames,
             ; TypeDefn = parse_tree_abstract_type(_)
             ; TypeDefn = parse_tree_foreign_type(_)
             )
+            % We just made du and solver types abstract, and abstract types
+            % were abstract already, so they cannot refer to other modules.
+            % And foreign types can never refer to Mercury code in other
+            % modules (though they can refer to target language code
+            % in other modules).
         ;
             TypeDefn = parse_tree_eqv_type(DetailsEqv),
             DetailsEqv = type_details_eqv(EqvType),
