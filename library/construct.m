@@ -595,7 +595,7 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
     // Ensure words holding packed arguments are zeroed before filling them in.
   #ifndef MR_BOEHM_GC
     if (arg_locns != NULL) {
-        MR_memset(new_data_ptr, 0, alloc_size * sizeof(MR_Word));
+        MR_memset((void *) new_data, 0, alloc_size * sizeof(MR_Word));
     }
   #endif
 
