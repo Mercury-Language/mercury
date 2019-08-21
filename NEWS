@@ -20,9 +20,40 @@ Changes that may break compatibility:
   typically by changing the names of some function symbols, functions
   or predicates.
 
+* Code that switches on a field of a term could previously written
+  directly as
+
+      (
+        Term ^ field = value1,
+        ...
+      ;
+        Term ^ field = value2,
+        ...
+      )
+
+  The compiler would then internally rearrange this as
+
+      Field = Term ^ field,
+      (
+        Field = value1,
+        ...
+      ;
+        Field = value2,
+        ...
+      )
+
+  and then recognize this as a switch on Field.
+
+  However, it turns out that while this transformation is valid
+  in the vast majority of cases (well in excess of 99%), it is not valid
+  in some rare circumstances involving terms with unique arguments.
+  This means that the current version of the compiler is not allowed
+  to do the above transformation automatically, so programmers must
+  perform it themselves if needed.
+
 * We have enabled stricter checking of non-ground final insts to reject more
-  mode-incorrect code.  Due to compiler limitations, some code that should be
-  accepted will now be rejected.  They will require modifications to appease
+  mode-incorrect code. Due to compiler limitations, some code that should be
+  accepted will now be rejected. They will require modifications to appease
   the compiler.
 
 * We have enabled stricter checking of the requirement that a type, inst
@@ -48,7 +79,7 @@ Changes that may break compatibility:
 
 * `for' is now an operator.
 
-* It is now an error for a program to redefine a builtin type.  The affected
+* It is now an error for a program to redefine a builtin type. The affected
   type names are:
 
       int
@@ -67,7 +98,7 @@ Changes that may break compatibility:
       impure
       ''
 
-* It is now an error for a program to redefine a builtin inst.  The affected
+* It is now an error for a program to redefine a builtin inst. The affected
   inst names are:
 
       =<
@@ -86,7 +117,7 @@ Changes that may break compatibility:
       unique
       unique_any
 
-* It is now an error for a program to redefine a builtin mode.  The affected
+* It is now an error for a program to redefine a builtin mode. The affected
   mode names are:
 
       =
@@ -107,8 +138,8 @@ Changes that may break compatibility:
   backend is now Java SE 8.
 
 * The representation of integer constants in the standard library's term and
-  lexer modules has been generalised.  The base, signedness and size of each
-  integer constant is now recorded.  Furthermore, these modules now use
+  lexer modules has been generalised. The base, signedness and size of each
+  integer constant is now recorded. Furthermore, these modules now use
   arbitrary-precision integers to represent the values of integer constants.
 
   Code that relies on the old representation of integer constants used by
@@ -116,13 +147,13 @@ Changes that may break compatibility:
   extras instead.
 
 * We have changed the semantics of int.(<<) and int.(>>) so that they throw
-  an exception if their second operand is not in [0, bits_per_int).  For now,
+  an exception if their second operand is not in [0, bits_per_int). For now,
   the old behaviour of these operations is provided by the functions
-  int.legacy_left_shift/2 and int.legacy_right_shift/2.  These functions
+  int.legacy_left_shift/2 and int.legacy_right_shift/2. These functions
   will be deleted in a future release.
 
 * We have changed the semantics of int.abs/1 so that it throws an exception
-  if its argument is equal to int.min_int.  The old behaviour of this function
+  if its argument is equal to int.min_int. The old behaviour of this function
   is provided by the new function int.unchecked_abs/1.
 
 * We have changed the semantics of array.map_corresponding_foldl/6 so that it
@@ -139,7 +170,7 @@ Changes that may break compatibility:
 Changes to the Mercury language:
 
 * We have added a new primitive type, uint, which is an unsigned integer type
-  of the same size as Mercury's int type.  Literals of this type must have the
+  of the same size as Mercury's int type. Literals of this type must have the
   suffix `u', for example:
 
        999u
@@ -148,7 +179,7 @@ Changes to the Mercury language:
        0x3e7u
 
   Basic operations on uint values are provided by the new standard library
-  module `uint'.  (See below for details.)
+  module `uint'. (See below for details.)
 
 * We have added a new kind of scope to the language: determinism checks
   for switch arms. These scopes are introduced by any of the new keywords
@@ -222,7 +253,7 @@ Changes to the Mercury standard library:
   of the new error type into strings.
 
 * We have added the print_line and write_line family of predicates to the
-  io module.  These behave like the print and write predicates, but also
+  io module. These behave like the print and write predicates, but also
   write a terminating newline.
 
 * We have added the predicates write_array/5 and write_array/6 to the io
@@ -262,18 +293,18 @@ Changes to the Mercury standard library:
   an explicitly specified input stream, not from the current input stream.
 
 * We have added a module for discrete interval encoding trees, which are a
-  highly efficient set implementation for fat sets.  This module is a
+  highly efficient set implementation for fat sets. This module is a
   contribution from Yes Logic Pty. Ltd.
 
 + We have added two new modules for concurrent programming: thread.barrier
-  and thread.future.  The barrier module provides a barrier type which can
-  be used to control progress in concurrent code.  The future module
+  and thread.future. The barrier module provides a barrier type which can
+  be used to control progress in concurrent code. The future module
   provides future and future_io data types which can be used to compute
-  values in parallel using other threads.  These modules were contributed by
+  values in parallel using other threads. These modules were contributed by
   Mission Critical IT.
 
 * We have added a new module, ranges, that represents sets of integers using
-  a sorted list of ranges.  The new module exports operations that make it
+  a sorted list of ranges. The new module exports operations that make it
   suitable for implementing domains in finite domain constraint solvers.
 
 * We have added thread.spawn_native/4 to dedicate an OS thread to a Mercury
@@ -330,7 +361,7 @@ Changes to the Mercury standard library:
   only succeed for decimal digits (0-9) may be broken.
 
 * Float special values, NaNs and Infinities, are now converted to strings in
-  a way that is backend- and grade-independent.  (Bug #348)
+  a way that is backend- and grade-independent. (Bug #348)
 
 * string.base_digit_to_int/3 and string.det_base_digit_to_int/2 now check
   for overflow and underflow in all bases, not only base 10.
@@ -418,7 +449,7 @@ Changes to the Mercury standard library:
    - same_date/1
 
 * We have added a new module, psqueue, that implements a priority search
-  queue ADT.  This is a blend between a priority queue and a map.  This was
+  queue ADT. This is a blend between a priority queue and a map. This was
   contributed by Matthias Güdemann.
 
 * The following predicates and functions have been added to the int module:
@@ -628,7 +659,7 @@ Changes to the Mercury compiler:
   contain only *self* tail recursion.
 
 * We have fixed a long-standing bug causing crashes in deep profiling
-  grades, related to unify/compare for tuples.  (Bug #3)
+  grades, related to unify/compare for tuples. (Bug #3)
 
 * We have fixed some bugs with constrained polymorphic modes.
 
@@ -698,7 +729,7 @@ Change to the Mercury debugger:
 Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and
-  regex libraries.  Thanks to Sebastian Godelet.
+  regex libraries. Thanks to Sebastian Godelet.
 
 
 NEWS for Mercury 14.01.2
@@ -706,10 +737,10 @@ NEWS for Mercury 14.01.2
 
 This is a bug-fix release.
 
-* Fix array.sort, which has been buggy since 2001.  You may wish to
+* Fix array.sort, which has been buggy since 2001. You may wish to
   reference array.sort_fix_2014 to ensure that you using the fixed version.
 * Fix the handling of nondet code by the auto-parallelisation analysis in
-  mdprof_create_feedback.  (Bug #364)
+  mdprof_create_feedback. (Bug #364)
 * Fix string.between_codepoints so that the clamping of start/end points
   works as documented.
 
@@ -725,25 +756,25 @@ This is a bug-fix release.
 * The mfilterjavac program is now generated with the correct file extension
   on Windows.
 * A problem that caused compilation of the Boehm GC to fail on 64-bit
-  openSUSE 13.1 systems has been fixed.  (Github issue #14)
+  openSUSE 13.1 systems has been fixed. (Github issue #14)
 * The documentation now builds correctly on Cygwin systems.
 * The script configure_mingw_cross now supports 64-bit Windows targets.
 * We have added workarounds for problems with (arguably broken)
   system headers on MinGW and MinGW64 systems.
 * The MinGW port now builds in the absence of POSIX threads library.
 * Low-level C parallel grades now work on Windows instead of crashing
-  at startup.  (Bug #338)
-* We now use thread-safe alternatives to strerror().  (Bug #340)
+  at startup. (Bug #338)
+* We now use thread-safe alternatives to strerror(). (Bug #340)
 * We have added the configure option --enable-gc-mmap.
 * We configure Boehm GC to use mmap in threaded grades on Linux to avoid
   conflicts with glibc malloc leading to memory corruption.
 * A problem that caused string.format/[23] to sometimes return incorrect
   results when formatting floats with the 'g' conversion specifier has
-  been fixed.  This bug only affected the non-C backends.  (Bug #342)
+  been fixed. This bug only affected the non-C backends. (Bug #342)
 * string.format now handles special float values (i.e. nan, inf,  and -inf)
   correctly with the non-C backends.
 * A bug that caused io.write_float/[34] to append ".0" to float special values
-  has been fixed.  This bug affected the C and C# backends.
+  has been fixed. This bug affected the C and C# backends.
 * In the C# and Java grades, the predicate string.from_char_list now
   implements the documented behaviour for input lists containing null
   characters (i.e. it throws an exception).
@@ -754,7 +785,7 @@ This is a bug-fix release.
 Changes to the Mercury compiler:
 
 * The compiler now supports stripping of executables in a separate
-  post-link step.  The new options, --strip-executable-command,
+  post-link step. The new options, --strip-executable-command,
   --strip-executable-shared-flags and --strip-executable-static-flags
   are used to control this.
   (This is now the default on Mac OS X systems.)
