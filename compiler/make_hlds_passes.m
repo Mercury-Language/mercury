@@ -150,12 +150,12 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %
     % The constraints of what we have to add before what are documented below.
 
-    separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists,
+    separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists, ItemFIMs,
         ItemTypeDefnsAbstract, ItemTypeDefnsMercury, ItemTypeDefnsForeign,
         ItemInstDefns, ItemModeDefns, ItemPredDecls, ItemModeDecls,
         ItemPromises, ItemTypeclasses, ItemInstances,
         ItemInitialises, ItemFinalises, ItemMutables,
-        ItemFIMs, ItemTypeRepns,
+        ItemTypeRepns,
         ItemForeignEnums, ItemForeignExportEnums,
         ItemPragmas2, ItemPragmas3, ItemClauses),
 

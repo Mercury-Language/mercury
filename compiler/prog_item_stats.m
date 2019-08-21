@@ -196,7 +196,7 @@ section_name_int_for_opt(ioms_opt_imported(_, _)) = "int_for_opt_imported".
 gather_stats_in_item_blocks(_, [], !CompUnitStats).
 gather_stats_in_item_blocks(SectionFunc, [ItemBlock | ItemBlocks],
         !CompUnitStats) :-
-    ItemBlock = item_block(_, Section, _, _, Items),
+    ItemBlock = item_block(_, Section, _, _, _, Items),
     SectionName = SectionFunc(Section),
     ( if map.search(!.CompUnitStats, SectionName, SectionStats0) then
         SectionStats0 = section_stats(ItemStats0, GoalStats0),
@@ -273,9 +273,6 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
     ;
         Item = item_mutable(_),
         !ItemStats ^ item_num_mutable := !.ItemStats ^ item_num_mutable + 1
-    ;
-        Item = item_foreign_import_module(_),
-        !ItemStats ^ item_num_fim := !.ItemStats ^ item_num_fim + 1
     ;
         Item = item_type_repn(_),
         !ItemStats ^ item_num_type_repn := !.ItemStats ^ item_num_type_repn + 1

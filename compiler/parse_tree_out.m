@@ -220,7 +220,7 @@ mercury_output_parse_tree_src(Info, ParseTree, !IO) :-
 mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_int(ModuleName, _IntFileKind, _ModuleContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntItems, ImpItems),
+        IntFIMs, ImpFIMs, IntItems, ImpItems),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
@@ -233,33 +233,36 @@ mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
     ( if
         IntIncls = [],
         IntAvails = [],
+        IntFIMs = [],
         IntItems = []
     then
         true
     else
         IntItemBlock = item_block(ModuleName, ms_interface,
-            IntIncls, IntAvails, IntItems),
+            IntIncls, IntAvails, IntFIMs, IntItems),
         mercury_output_raw_item_block(Info, IntItemBlock, !IO)
     ),
     ( if
         ImpIncls = [],
         ImpAvails = [],
+        ImpFIMs = [],
         ImpItems = []
     then
         true
     else
         ImpItemBlock = item_block(ModuleName, ms_implementation,
-            ImpIncls, ImpAvails, ImpItems),
+            ImpIncls, ImpAvails, ImpFIMs, ImpItems),
         mercury_output_raw_item_block(Info, ImpItemBlock, !IO)
     ).
 
 mercury_output_parse_tree_opt(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_opt(ModuleName, _OptFileKind, _Context,
-        Use, Items),
+        Use, FIMs, Items),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
     list.foldl(mercury_output_item_use(Info), Use, !IO),
+    list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
     mercury_output_items(Info, Items, !IO).
 
 mercury_output_raw_compilation_unit(Info, CompUnit, !IO) :-
@@ -314,12 +317,14 @@ mercury_output_module_components(Info, MaybePrevSectionKind,
         [Component | Components], !IO) :-
     (
         Component = mc_section(_, SectionKind, _SectionContext,
-            InclsCord, AvailsCord, ItemsCord),
+            InclsCord, AvailsCord, FIMsCord, ItemsCord),
         mercury_output_section_marker(SectionKind, !IO),
         list.foldl(mercury_output_item_include(Info),
             cord.list(InclsCord), !IO),
         list.foldl(mercury_output_item_avail(Info),
             cord.list(AvailsCord), !IO),
+        list.foldl(mercury_output_item_foreign_import_module,
+            cord.list(FIMsCord), !IO),
         mercury_output_items(Info, cord.list(ItemsCord), !IO),
         MaybeCurSectionKind = yes(SectionKind)
     ;
@@ -360,10 +365,11 @@ mercury_output_raw_item_blocks(Info, [RawItemBlock | RawItemBlocks], !IO) :-
     mercury_output_raw_item_blocks(Info, RawItemBlocks, !IO).
 
 mercury_output_raw_item_block(Info, RawItemBlock, !IO) :-
-    RawItemBlock = item_block(_, SectionKind, Incls, Avails, Items),
+    RawItemBlock = item_block(_, SectionKind, Incls, Avails, FIMs, Items),
     mercury_output_section_marker(SectionKind, !IO),
     list.foldl(mercury_output_item_include(Info), Incls, !IO),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
+    list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
     mercury_output_items(Info, Items, !IO).
 
 %---------------------------------------------------------------------------%
@@ -374,10 +380,11 @@ mercury_output_src_item_blocks(Info, [SrcItemBlock | SrcItemBlocks], !IO) :-
     mercury_output_src_item_blocks(Info, SrcItemBlocks, !IO).
 
 mercury_output_src_item_block(Info, SrcItemBlock, !IO) :-
-    SrcItemBlock = item_block(_, SrcSectionKind, Incls, Avails, Items),
+    SrcItemBlock = item_block(_, SrcSectionKind, Incls, Avails, FIMs, Items),
     mercury_output_src_section_marker(SrcSectionKind, !IO),
     list.foldl(mercury_output_item_include(Info), Incls, !IO),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
+    list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
     mercury_output_items(Info, Items, !IO).
 
 mercury_output_int_item_blocks(_, [], !IO).
@@ -386,10 +393,11 @@ mercury_output_int_item_blocks(Info, [IntItemBlock | IntItemBlocks], !IO) :-
     mercury_output_int_item_blocks(Info, IntItemBlocks, !IO).
 
 mercury_output_int_item_block(Info, IntItemBlock, !IO) :-
-    IntItemBlock = item_block(_, IntSectionKind, Incls, Avails, Items),
+    IntItemBlock = item_block(_, IntSectionKind, Incls, Avails, FIMs, Items),
+    mercury_output_int_section_marker(IntSectionKind, !IO),
     list.foldl(mercury_output_item_include(Info), Incls, !IO),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
-    mercury_output_int_section_marker(IntSectionKind, !IO),
+    list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
     mercury_output_items(Info, Items, !IO).
 
 mercury_output_opt_item_blocks(_, [], !IO).
@@ -398,10 +406,11 @@ mercury_output_opt_item_blocks(Info, [OptItemBlock | OptItemBlocks], !IO) :-
     mercury_output_opt_item_blocks(Info, OptItemBlocks, !IO).
 
 mercury_output_opt_item_block(Info, OptItemBlock, !IO) :-
-    OptItemBlock = item_block(_, OptSectionKind, Incls, Avails, Items),
+    OptItemBlock = item_block(_, OptSectionKind, Incls, Avails, FIMs, Items),
+    mercury_output_opt_section_marker(OptSectionKind, !IO),
     expect(unify(Incls, []), $pred, "Incls != []"),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
-    mercury_output_opt_section_marker(OptSectionKind, !IO),
+    list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
     mercury_output_items(Info, Items, !IO).
 
 mercury_output_int_for_opt_item_blocks(_, [], !IO).
@@ -412,10 +421,11 @@ mercury_output_int_for_opt_item_blocks(Info,
 
 mercury_output_int_for_opt_item_block(Info, IntForOptItemBlock, !IO) :-
     IntForOptItemBlock = item_block(_, IntForOptSectionKind,
-        Incls, Avails, Items),
+        Incls, Avails, FIMs, Items),
+    mercury_output_int_for_opt_section_marker(IntForOptSectionKind, !IO),
     list.foldl(mercury_output_item_include(Info), Incls, !IO),
     list.foldl(mercury_output_item_avail(Info), Avails, !IO),
-    mercury_output_int_for_opt_section_marker(IntForOptSectionKind, !IO),
+    list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
     mercury_output_items(Info, Items, !IO).
 
 %---------------------------------------------------------------------------%
@@ -598,9 +608,6 @@ mercury_output_item(Info, Item, !IO) :-
     ;
         Item = item_mutable(ItemMutable),
         mercury_output_item_mutable(Info, ItemMutable, !IO)
-    ;
-        Item = item_foreign_import_module(ItemFIM),
-        mercury_output_item_foreign_import_module(ItemFIM, !IO)
     ;
         Item = item_type_repn(ItemTypeRepn),
         mercury_output_item_type_repn(Info, ItemTypeRepn, !IO)
@@ -1496,12 +1503,11 @@ mercury_output_item_mutable(Info, ItemMutable, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_foreign_import_module(
-    item_foreign_import_module_info::in, io::di, io::uo) is det.
+:- pred mercury_output_item_foreign_import_module(item_fim::in,
+    io::di, io::uo) is det.
 
 mercury_output_item_foreign_import_module(ItemFIM, !IO) :-
-    ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
-        _Context, _SeqNum),
+    ItemFIM = item_fim(Lang, ModuleName, _Context, _SeqNum),
     FIM = foreign_import_module_info(Lang, ModuleName),
     mercury_output_foreign_import_module_info(FIM, !IO).
 

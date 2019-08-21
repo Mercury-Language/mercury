@@ -80,7 +80,8 @@
 module_qualify_items_in_src_item_blocks([], [], !Info, !Specs).
 module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],
         [SrcItemBlock | SrcItemBlocks], !Info, !Specs) :-
-    SrcItemBlock0 = item_block(ModuleName, SrcSection, Incls, Avails, Items0),
+    SrcItemBlock0 = item_block(ModuleName, SrcSection,
+        Incls, Avails, FIMs, Items0),
     (
         SrcSection = sms_interface,
         InInt = mq_used_in_interface
@@ -111,7 +112,8 @@ module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],
         )
     ),
     module_qualify_items_loop(InInt, Items0, Items, !Info, !Specs),
-    SrcItemBlock = item_block(ModuleName, SrcSection, Incls, Avails, Items),
+    SrcItemBlock = item_block(ModuleName, SrcSection,
+        Incls, Avails, FIMs, Items),
     module_qualify_items_in_src_item_blocks(SrcItemBlocks0, SrcItemBlocks,
         !Info, !Specs).
 
@@ -134,7 +136,6 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         ; Item0 = item_initialise(_)
         ; Item0 = item_finalise(_)
         ; Item0 = item_promise(_)
-        ; Item0 = item_foreign_import_module(_)
         ),
         Item = Item0
     ;

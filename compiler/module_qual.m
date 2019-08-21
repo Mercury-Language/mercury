@@ -331,11 +331,12 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
 module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntItems0, ImpItems),
+        IntFIMs, ImpFIMs, IntItems0, ImpItems),
     IntSrcItemBlocks0 = [item_block(ModuleName, sms_interface,
-        IntIncls, IntAvails, IntItems0)],
+        IntIncls, IntAvails, IntFIMs, IntItems0)],
     expect(unify(ImpIncls, []), $pred, "ImpIncls != []"),
     expect(unify(ImpAvails, []), $pred, "ImpAvails != []"),
+    expect(unify(ImpFIMs, []), $pred, "ImpFIMs != []"),
     expect(unify(ImpItems, []), $pred, "ImpItems != []"),
     % XXX ITEM_LIST Check whether we can get a nonempty list of implicit
     % dependencies in collect_mq_info_in_aug_item_blocks below.
@@ -351,7 +352,7 @@ module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ),
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntItems, ImpItems).
+        IntFIMs, ImpFIMs, IntItems, ImpItems).
 
 %---------------------------------------------------------------------------%
 

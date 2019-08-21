@@ -285,13 +285,16 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
         ParseTreeInt, ModuleSpecs, Errors, !IO),
     ParseTreeInt = parse_tree_int(_ActualModuleName, _IntFileKind,
         _ActualModuleNameContext, _MaybeVersionNumbers,
-        IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImplItems),
+        IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntFIMs, ImpFIMs, IntItems, ImplItems),
     ( if
         IntIncls = [],
         ImpIncls = [],
         IntAvails = [],
-        IntItems = [],
         ImpAvails = [],
+        IntFIMs = [],
+        ImpFIMs = [],
+        IntItems = [],
         ImplItems = []
     then
         IsEmpty = yes

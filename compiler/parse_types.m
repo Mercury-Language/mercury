@@ -36,6 +36,10 @@
             % The term contains an `:- import_module' or `:- use_module'
             % declaration.
 
+    ;       iom_marker_fim(item_fim)
+            % The term contains a `:- pragma foreign_import_module'
+            % declaration.
+
     ;       iom_marker_version_numbers(version_numbers)
             % The term was a record of the version numbers of the items
             % in an interface file.

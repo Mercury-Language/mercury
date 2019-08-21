@@ -161,7 +161,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             RawItemBlocks),
 
         get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-            IntAvails, ImpAvails, IntItems, ImpItems),
+            IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems),
         get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
         get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
         get_implicits_foreigns_fact_tables(IntItems, ImpItems,
@@ -203,9 +203,10 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         set.union(ImpImplicitImports, ImpImports1, ImpImports),
         set.union(ImpImplicitUses, ImpUses1, ImpUses),
         set.to_sorted_list(LangSet, Langs),
-        FIMItems = list.map(make_foreign_import(ModuleName), Langs),
+        ImplicitFIMs = list.map(make_foreign_import(ModuleName), Langs),
         SrcIntIncls = IntIncls,
         SrcIntAvails = IntAvails,
+        SrcIntFIMs = IntFIMs ++ ImplicitFIMs,
         ( if
             IntIncls = [],
             ImpIncls = []
@@ -214,11 +215,13 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             SrcSubIncls = [],
             SrcImpAvails = ImpAvails,
             SrcSubAvails = [],
+            SrcImpFIMs = ImpFIMs,
+            SrcSubFIMs = [],
             % We are NOT moving instance items from the interface sections
             % to the implementation section, leaving an abstract version
             % in the interface section, like we do in the else case.
             % XXX Why not?
-            SrcIntItems = FIMItems ++ IntItems,
+            SrcIntItems = IntItems,
             SrcImpItems = ImpItems,
             SrcSubItems = []
         else
@@ -226,6 +229,8 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             SrcSubIncls = ImpIncls,
             SrcImpAvails = [],
             SrcSubAvails = ImpAvails,
+            SrcImpFIMs = [],
+            SrcSubFIMs = ImpFIMs,
             % We are moving instance items from the interface sections
             % to the implementation section, leaving an abstract version
             % in the interface section. However, we then also move
@@ -239,8 +244,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
                 [], RevImpClauseItems, [], RevImpDeclItems),
             list.reverse(RevImpClauseItems, ImpClauseItems),
             list.reverse(RevImpDeclItems, ImpDeclItems),
-            SrcIntItems = FIMItems ++ IntAbstractInstanceItems ++
-                IntNonInstanceItems,
+            SrcIntItems = IntAbstractInstanceItems ++ IntNonInstanceItems,
             SrcImpItems = ImpClauseItems,
             SrcSubItems = IntInstanceItems ++ ImpDeclItems
         ),
@@ -250,13 +254,13 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
 
         make_and_add_item_block(ModuleName,
             sms_impl_but_exported_to_submodules,
-            SrcSubIncls, SrcSubAvails, SrcSubItems,
+            SrcSubIncls, SrcSubAvails, SrcIntFIMs, SrcSubItems,
             [], SrcItemBlocks0),
         make_and_add_item_block(ModuleName, sms_implementation,
-            SrcImpIncls, SrcImpAvails, SrcImpItems,
+            SrcImpIncls, SrcImpAvails, SrcImpFIMs, SrcImpItems,
             SrcItemBlocks0, SrcItemBlocks1),
         make_and_add_item_block(ModuleName, sms_interface,
-            SrcIntIncls, SrcIntAvails, SrcIntItems,
+            SrcIntIncls, SrcIntAvails, SrcSubFIMs, SrcIntItems,
             SrcItemBlocks1, SrcItemBlocks),
 
         (
@@ -403,7 +407,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             RawItemBlocks),
 
         get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-            IntAvails, ImpAvails, IntItems, ImpItems),
+            IntAvails, ImpAvails, IntFIMs0, ImpFIMs, IntItems, ImpItems),
         get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
         get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
         get_implicits_foreigns_fact_tables(IntItems, ImpItems,
@@ -428,18 +432,18 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         set.to_sorted_list(LangSet, Langs),
         (
             Langs = [],
-            IntItemsWithFIMs = IntItems
+            IntFIMs = IntFIMs0
         ;
             Langs = [_ | _],
-            FIMItems = list.map(make_foreign_import(ModuleName), Langs),
-            IntItemsWithFIMs = FIMItems ++ IntItems
+            ImplicitFIMs = list.map(make_foreign_import(ModuleName), Langs),
+            IntFIMs = ImplicitFIMs ++ IntFIMs0
         ),
 
         make_and_add_item_block(ModuleName, sms_implementation,
-            ImpIncls, ImpAvails, ImpItems,
+            ImpIncls, ImpAvails, ImpFIMs, ImpItems,
             [], SrcItemBlocks0),
         make_and_add_item_block(ModuleName, sms_interface,
-            IntIncls, IntAvails, IntItemsWithFIMs,
+            IntIncls, IntAvails, IntFIMs, IntItems,
             SrcItemBlocks0, SrcItemBlocks),
 
         map.init(PublicChildren),
@@ -635,7 +639,6 @@ split_items_into_clauses_and_decls([Item | Items],
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ; Item = item_mutable(_)
-        ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
         ),
         !:RevImpDecls = [Item | !.RevImpDecls]
@@ -1093,8 +1096,8 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
         ParseTree, Specs, Errors, !IO),
 
     ParseTree = parse_tree_int(ParseTreeModuleName, IntKind,
-        _Context, MaybeVersionNumbers,
-        IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems),
+        _Context, MaybeVersionNumbers, IntIncls, ImpIncls,
+        IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems),
     expect(unify(ModuleName, ParseTreeModuleName), $pred,
         "ModuleName != ParseTreeModuleName"),
     module_and_imports_maybe_add_module_version_numbers(
@@ -1106,23 +1109,25 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
     ( if
         ImpIncls = [],
         ImpAvails = [],
+        ImpFIMs = [],
         ImpItems = []
     then
         ItemBlocks1 = []
     else
         ImpBlock = item_block(ModuleName, NewImpSection(ModuleName, IntKind),
-            ImpIncls, ImpAvails, ImpItems),
+            ImpIncls, ImpAvails, ImpFIMs, ImpItems),
         ItemBlocks1 = [ImpBlock]
     ),
     ( if
         IntIncls = [],
         IntAvails = [],
+        IntFIMs = [],
         IntItems = []
     then
         ItemBlocks = ItemBlocks1
     else
         IntBlock = item_block(ModuleName, NewIntSection(ModuleName, IntKind),
-            IntIncls, IntAvails, IntItems),
+            IntIncls, IntAvails, IntFIMs, IntItems),
         ItemBlocks = [IntBlock | ItemBlocks1]
     ),
 
@@ -1501,7 +1506,7 @@ record_includes_imports_uses_in_item_blocks_acc(_,
 record_includes_imports_uses_in_item_blocks_acc(Ancestors,
         [ItemBlock | ItemBlocks], SectionVisibility, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    ItemBlock = item_block(ModuleName, Section, Incls, Avails, _Items),
+    ItemBlock = item_block(ModuleName, Section, Incls, Avails, _FIMs, _Items),
     set.insert(ModuleName, !ReadModules),
     WhichMap = SectionVisibility(Section),
     (
@@ -2010,13 +2015,15 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
 keep_only_unused_and_reuse_pragmas_in_blocks(_, _, [], []).
 keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
         [ItemBlock0 | ItemBlocks0], [ItemBlock | ItemBlocks]) :-
-    ItemBlock0 = item_block(ModuleName, Section, _Incls0, _Imports0, Items0),
+    ItemBlock0 = item_block(ModuleName, Section,
+        _Incls0, _Imports0, _FIMs0, Items0),
     Incls = [],
     Imports = [],
+    FIMs = [],
     keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
         Items0, cord.init, ItemCord),
     Items = cord.list(ItemCord),
-    ItemBlock = item_block(ModuleName, Section, Incls, Imports, Items),
+    ItemBlock = item_block(ModuleName, Section, Incls, Imports, FIMs, Items),
     keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
         ItemBlocks0, ItemBlocks).
 
@@ -2070,11 +2077,11 @@ read_optimization_interfaces(Globals, Transitive,
     actually_read_module_opt(ofk_opt, Globals, FileName, ModuleToRead, [],
         ParseTreeOpt, OptSpecs, OptError, !IO),
     ParseTreeOpt = parse_tree_opt(OptModuleName, OptFileKind,
-        _OptModuleContext, OptUses, OptItems),
+        _OptModuleContext, OptUses, OptFIMs, OptItems),
     OptSection = oms_opt_imported(OptModuleName, OptFileKind),
     OptAvails = list.map(wrap_avail_use, OptUses),
     OptItemBlock = item_block(OptModuleName, OptSection,
-        [], OptAvails, OptItems),
+        [], OptAvails, OptFIMs, OptItems),
     cord.snoc(OptItemBlock, !OptItemBlocksCord),
     update_opt_error_status(Globals, opt_file, FileName, OptSpecs, OptError,
         !Specs, !Error),
@@ -2148,11 +2155,11 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
     maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
 
     ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, _OptContext,
-        OptUses, OptItems),
+        OptUses, OptFIMs, OptItems),
     OptSection = oms_opt_imported(OptModuleName, ofk_trans_opt),
     OptAvails = list.map(wrap_avail_use, OptUses),
     OptItemBlock = item_block(OptModuleName, OptSection,
-        [], OptAvails, OptItems),
+        [], OptAvails, OptFIMs, OptItems),
     cord.snoc(OptItemBlock, !OptItemBlocks),
     read_trans_opt_files(Globals, Imports, !OptItemBlocks,
         !Specs, !Error, !IO).

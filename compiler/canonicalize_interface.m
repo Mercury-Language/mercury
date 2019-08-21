@@ -111,11 +111,13 @@
 order_parse_tree_int_contents(ParseTreeInt0, ParseTreeInt) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls0, ImpIncls0, IntAvails0, ImpAvails0,
-        IntItems0, ImpItems0),
+        IntFIMs0, ImpFIMs0, IntItems0, ImpItems0),
     list.sort(IntIncls0, IntIncls),
     list.sort(ImpIncls0, ImpIncls),
     order_avails(IntAvails0, IntAvails),
     order_avails(ImpAvails0, ImpAvails),
+    list.sort(IntFIMs0, IntFIMs),
+    list.sort(ImpFIMs0, ImpFIMs),
     order_items(IntItems0, IntItems),
     (
         ImpItems0 = [],
@@ -128,7 +130,7 @@ order_parse_tree_int_contents(ParseTreeInt0, ParseTreeInt) :-
     ),
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntItems, ImpItems).
+        IntFIMs, ImpFIMs, IntItems, ImpItems).
 
 %---------------------------------------------------------------------------%
 
@@ -463,7 +465,6 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         ( Item = item_promise(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
-        ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
         ),
         set.insert(Item, !SortableItems)

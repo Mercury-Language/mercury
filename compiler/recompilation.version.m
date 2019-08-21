@@ -99,13 +99,13 @@ compute_version_numbers(SourceFileTime, CurParseTreeInt, MaybeOldParseTreeInt,
     CurParseTreeInt = parse_tree_int(_ModuleName, _IntFileKind,
         _ModuleNameContext, _CurMaybeVersionNumbers,
         _CurIntIncls, _CurImpIncls, _CurIntAvails, _CurImpAvails,
-        CurIntItems, CurImpItems),
+        _CurIntFIMs, _CurImpFIMs, CurIntItems, CurImpItems),
     gather_items(CurIntItems, CurImpItems, CurGatheredItems, CurInstanceItems),
     ( if
         MaybeOldParseTreeInt = yes(OldParseTreeInt),
         OldParseTreeInt = parse_tree_int(_, _, _, OldMaybeVersionNumbers,
             _OldIntIncls, _OldImpIncls, _OldIntAvails, _OldImpAvails,
-            OldIntItems, OldImpItems),
+            _OldIntFIMs, _OldImpFIMs, OldIntItems, OldImpItems),
         OldMaybeVersionNumbers = yes(OldVersionNumbers)
     then
         OldVersionNumbers = version_numbers(OldItemVersionNumbers,
@@ -423,8 +423,6 @@ gather_in_item(Section, Item, !Info) :-
         add_gathered_item(Item, item_id(type_body_item, TypeCtorItem),
             Section, GatheredItems0, GatheredItems),
         !Info ^ gii_gathered_items := GatheredItems
-    ;
-        Item = item_foreign_import_module(_)
     ;
         ( Item = item_clause(_)
         ; Item = item_initialise(_)
@@ -1057,12 +1055,9 @@ is_item_changed(Item1, Item2, Changed) :-
             Changed = changed
         )
     ;
-        ( Item1 = item_foreign_import_module(_)
-        ; Item1 = item_type_repn(_)
-        ),
-        % Foreign import module and type representation items record
-        % information derived from *other items*. They cannot change
-        % unless those other items change.
+        Item1 = item_type_repn(_),
+        % Type representation items record information derived from
+        % *other items*. They cannot change unless those other items change.
         Changed = unchanged
     ).
 

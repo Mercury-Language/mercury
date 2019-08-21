@@ -372,14 +372,14 @@ make_dummy_parse_tree_src(ModuleName, ParseTree) :-
 
 make_dummy_parse_tree_int(IntFileKind, ModuleName, ParseTree) :-
     ParseTree = parse_tree_int(ModuleName, IntFileKind, term.context_init,
-        no, [], [], [], [], [], []).
+        no, [], [], [], [], [], [], [], []).
 
 :- pred make_dummy_parse_tree_opt(opt_file_kind::in, module_name::in,
     parse_tree_opt::out) is det.
 
 make_dummy_parse_tree_opt(OptFileKind, ModuleName, ParseTree) :-
     ParseTree = parse_tree_opt(ModuleName, OptFileKind, term.context_init,
-        [], []).
+        [], [], []).
 
 %---------------------------------------------------------------------------%
 
@@ -525,6 +525,7 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
         ModuleName = DefaultModuleName,
         ModuleNameContext = term.context_init,
         Uses = [],
+        FIMs = [],
         Items = []
     ;
         ModuleDeclPresent =
@@ -532,13 +533,15 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
         report_wrong_module_start(ModuleNameContext,
             DefaultModuleName, ModuleName, !Specs, !Errors),
         Uses = [],
+        FIMs = [],
         Items = []
     ;
         ModuleDeclPresent =
             right_module_decl_present(ModuleName, ModuleNameContext),
         read_item_sequence(FileString, MaxOffset, Globals, ModuleName,
             no_lookahead, FinalLookAhead, dont_allow_version_numbers, _,
-            cord.init, InclsCord, cord.init, AvailsCord, cord.init, ItemsCord,
+            cord.init, InclsCord, cord.init, AvailsCord,
+            cord.init, FIMsCord, cord.init, ItemsCord,
             SourceFileName1, SourceFileName, SeqNumCounter1, SeqNumCounter,
             !Specs, !Errors, !LineContext, !LinePosn),
         check_for_unexpected_item(SourceFileName, FileString, MaxOffset,
@@ -549,10 +552,11 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
         Avails = cord.list(AvailsCord),
         avail_imports_uses(Avails, Imports, Uses),
         expect(unify(Imports, []), $pred, "Imports != []"),
+        FIMs = cord.list(FIMsCord),
         Items = cord.list(ItemsCord)
     ),
     ParseTree = parse_tree_opt(ModuleName, OptFileKind, ModuleNameContext,
-        Uses, Items).
+        Uses, FIMs, Items).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -609,6 +613,8 @@ read_parse_tree_int(IntFileKind, SourceFileName0,
         ImpIncls = [],
         IntAvails = [],
         ImpAvails = [],
+        IntFIMs = [],
+        ImpFIMs = [],
         IntItems = [],
         ImpItems = []
     ;
@@ -621,6 +627,8 @@ read_parse_tree_int(IntFileKind, SourceFileName0,
         ImpIncls = [],
         IntAvails = [],
         ImpAvails = [],
+        IntFIMs = [],
+        ImpFIMs = [],
         IntItems = [],
         ImpItems = []
     ;
@@ -648,38 +656,43 @@ read_parse_tree_int(IntFileKind, SourceFileName0,
             !Specs, !Errors,
             !.LineContext, _LineContext, !.LinePosn, _LinePosn),
         separate_int_imp_items(RawItemBlocks, IntIncls, ImpIncls,
-            IntAvails, ImpAvails, IntItems, ImpItems)
+            IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems)
     ),
     ParseTree = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntItems, ImpItems).
+        IntFIMs, ImpFIMs, IntItems, ImpItems).
 
 :- pred separate_int_imp_items(list(raw_item_block)::in,
     list(item_include)::out, list(item_include)::out,
     list(item_avail)::out, list(item_avail)::out,
+    list(item_fim)::out, list(item_fim)::out,
     list(item)::out, list(item)::out) is det.
 
-separate_int_imp_items([], [], [], [], [], [], []).
+separate_int_imp_items([], [], [], [], [], [], [], [], []).
 separate_int_imp_items([ItemBlock | ItemBlocks], IntIncls, ImpIncls,
-        IntAvails, ImpAvails, IntItems, ImpItems) :-
+        IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems) :-
     separate_int_imp_items(ItemBlocks, IntIncls0, ImpIncls0,
-        IntAvails0, ImpAvails0, IntItems0, ImpItems0),
-    ItemBlock = item_block(_, Section, Incls, Avails, Items),
+        IntAvails0, ImpAvails0, IntFIMs0, ImpFIMs0, IntItems0, ImpItems0),
+    ItemBlock = item_block(_, Section, Incls, Avails, FIMs, Items),
     (
         Section = ms_interface,
         IntIncls = Incls ++ IntIncls0,
         IntAvails = Avails ++ IntAvails0,
+        IntFIMs = FIMs ++ IntFIMs0,
         IntItems = Items ++ IntItems0,
         ImpIncls = ImpIncls0,
         ImpAvails = ImpAvails0,
+        ImpFIMs = ImpFIMs0,
         ImpItems = ImpItems0
     ;
         Section = ms_implementation,
         IntIncls = IntIncls0,
         IntAvails = IntAvails0,
+        IntFIMs = IntFIMs0,
         IntItems = IntItems0,
         ImpIncls = Incls ++ ImpIncls0,
         ImpAvails = Avails ++ ImpAvails0,
+        ImpFIMs = FIMs ++ ImpFIMs0,
         ImpItems = Items ++ ImpItems0
     ).
 
@@ -795,13 +808,14 @@ read_parse_tree_int_section(FileString, MaxOffset, Globals, CurModuleName,
             IOM = iom_marker_section(SectionKind, _SectionContext,
                 _SectionSeqNum),
             read_item_sequence(FileString, MaxOffset, Globals, CurModuleName,
-                no_lookahead, FinalLookAhead, !VNInfo, cord.init, InclsCord,
-                cord.init, AvailsCord, cord.init, ItemsCord,
+                no_lookahead, FinalLookAhead,
+                !VNInfo, cord.init, InclsCord, cord.init, AvailsCord,
+                cord.init, FIMsCord, cord.init, ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                 !LineContext, !LinePosn),
             RawItemBlock = item_block(CurModuleName, SectionKind,
                 cord.list(InclsCord), cord.list(AvailsCord),
-                cord.list(ItemsCord)),
+                cord.list(FIMsCord), cord.list(ItemsCord)),
             MaybeRawItemBlock = yes(RawItemBlock)
         ;
             IOM = iom_marker_version_numbers(MVN),
@@ -815,6 +829,7 @@ read_parse_tree_int_section(FileString, MaxOffset, Globals, CurModuleName,
         ;
             ( IOM = iom_marker_include(_)
             ; IOM = iom_marker_avail(_)
+            ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
             ; IOM = iom_handled(_)
             ),
@@ -897,11 +912,13 @@ read_item_sequence_in_hdr_file_without_section_marker(FileString, MaxOffset,
     ItemSeqInitLookAhead = lookahead(IOMVarSet, IOMTerm),
     read_item_sequence(FileString, MaxOffset, Globals, CurModuleName,
         ItemSeqInitLookAhead, FinalLookAhead, !VNInfo,
-        cord.init, InclsCord, cord.init, AvailsCord, cord.init, ItemsCord,
+        cord.init, InclsCord, cord.init, AvailsCord,
+        cord.init, FIMsCord, cord.init, ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn),
     RawItemBlock = item_block(CurModuleName, SectionKind,
-        cord.list(InclsCord), cord.list(AvailsCord), cord.list(ItemsCord)),
+        cord.list(InclsCord), cord.list(AvailsCord),
+        cord.list(FIMsCord), cord.list(ItemsCord)),
     MaybeRawItemBlock = yes(RawItemBlock).
 
 %---------------------------------------------------------------------------%
@@ -1055,12 +1072,13 @@ read_parse_tree_src_components(FileString, MaxOffset, Globals,
         ItemSeqInitLookAhead = lookahead(IOMVarSet, IOMTerm),
         read_item_sequence(FileString, MaxOffset, Globals, CurModuleName,
             ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
-            dont_allow_version_numbers, _, cord.init, InclsCord,
-            cord.init, AvailsCord, cord.init, ItemsCord,
+            dont_allow_version_numbers, _,
+            cord.init, InclsCord, cord.init, AvailsCord,
+            cord.init, FIMsCord, cord.init, ItemsCord,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
             !LineContext, !LinePosn),
         add_section_component(CurModuleName, SectionKind, SectionContext,
-            InclsCord, AvailsCord, ItemsCord, !ModuleComponents),
+            InclsCord, AvailsCord, FIMsCord, ItemsCord, !ModuleComponents),
         % We have read in one component; recurse to read in other components.
         read_parse_tree_src_components(FileString, MaxOffset,
             Globals, CurModuleName,
@@ -1138,6 +1156,7 @@ read_parse_tree_src_components(FileString, MaxOffset, Globals,
             ( IOM = iom_marker_section(_, _, _)
             ; IOM = iom_marker_include(_)
             ; IOM = iom_marker_avail(_)
+            ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
             ; IOM = iom_handled(_)
             ),
@@ -1148,6 +1167,7 @@ read_parse_tree_src_components(FileString, MaxOffset, Globals,
             ;
                 ( IOM = iom_marker_include(_)
                 ; IOM = iom_marker_avail(_)
+                ; IOM = iom_marker_fim(_)
                 ; IOM = iom_item(_)
                 ; IOM = iom_handled(_)
                 ),
@@ -1173,12 +1193,13 @@ read_parse_tree_src_components(FileString, MaxOffset, Globals,
             % read_iom_parse_errors above.
             read_item_sequence(FileString, MaxOffset, Globals, CurModuleName,
                 ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
-                dont_allow_version_numbers, _, cord.init, InclsCord,
-                cord.init, AvailsCord, cord.init, ItemsCord,
+                dont_allow_version_numbers, _,
+                cord.init, InclsCord, cord.init, AvailsCord,
+                cord.init, FIMsCord, cord.init, ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                 !LineContext, !LinePosn),
             add_section_component(CurModuleName, SectionKind, SectionContext,
-                InclsCord, AvailsCord, ItemsCord, !ModuleComponents),
+                InclsCord, AvailsCord, FIMsCord, ItemsCord, !ModuleComponents),
             % We have read in one component; recurse to read in other
             % components.
             read_parse_tree_src_components(FileString, MaxOffset,
@@ -1198,21 +1219,22 @@ read_parse_tree_src_components(FileString, MaxOffset, Globals,
     ).
 
 :- pred add_section_component(module_name::in, module_section::in,
-    prog_context::in,
-    cord(item_include)::in, cord(item_avail)::in, cord(item)::in,
+    prog_context::in, cord(item_include)::in, cord(item_avail)::in,
+    cord(item_fim)::in, cord(item)::in,
     cord(module_component)::in, cord(module_component)::out) is det.
 
 add_section_component(ModuleName, SectionKind, SectionContext,
-        InclsCord, AvailsCord, ItemsCord, !ModuleComponents) :-
+        InclsCord, AvailsCord, FIMsCord, ItemsCord, !ModuleComponents) :-
     ( if
         cord.is_empty(InclsCord),
         cord.is_empty(AvailsCord),
+        cord.is_empty(FIMsCord),
         cord.is_empty(ItemsCord)
     then
         true
     else
         Component = mc_section(ModuleName, SectionKind, SectionContext,
-            InclsCord, AvailsCord, ItemsCord),
+            InclsCord, AvailsCord, FIMsCord, ItemsCord),
         !:ModuleComponents = cord.snoc(!.ModuleComponents, Component)
     ).
 
@@ -1444,6 +1466,7 @@ read_first_module_decl(FileString, MaxOffset, RequireModuleDecl,
             ; FirstIOM = iom_marker_section(_, _, _)
             ; FirstIOM = iom_marker_include(_)
             ; FirstIOM = iom_marker_avail(_)
+            ; FirstIOM = iom_marker_fim(_)
             ; FirstIOM = iom_item(_)
             ; FirstIOM = iom_handled(_)
             ),
@@ -1490,6 +1513,7 @@ read_first_module_decl(FileString, MaxOffset, RequireModuleDecl,
     version_number_info::in, version_number_info::out,
     cord(item_include)::in, cord(item_include)::out,
     cord(item_avail)::in, cord(item_avail)::out,
+    cord(item_fim)::in, cord(item_fim)::out,
     cord(item)::in, cord(item)::out,
     file_name::in, file_name::out, counter::in, counter::out,
     list(error_spec)::in, list(error_spec)::out,
@@ -1498,18 +1522,18 @@ read_first_module_decl(FileString, MaxOffset, RequireModuleDecl,
 
 read_item_sequence(FileString, MaxOffset, Globals, ModuleName,
         InitLookAhead, FinalLookAhead,
-        !VNInfo, !InclsCord, !AvailsCord, !ItemsCord,
+        !VNInfo, !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn) :-
     read_item_sequence_inner(FileString, MaxOffset, Globals, ModuleName,
         1024, NumItemsLeft, InitLookAhead, MidLookAhead,
-        !VNInfo, !InclsCord, !AvailsCord, !ItemsCord,
+        !VNInfo, !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn),
     ( if NumItemsLeft = 0 then
         read_item_sequence(FileString, MaxOffset, Globals, ModuleName,
             MidLookAhead, FinalLookAhead,
-            !VNInfo, !InclsCord, !AvailsCord, !ItemsCord,
+            !VNInfo, !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
             !LineContext, !LinePosn)
     else
@@ -1524,6 +1548,7 @@ read_item_sequence(FileString, MaxOffset, Globals, ModuleName,
     version_number_info::in, version_number_info::out,
     cord(item_include)::in, cord(item_include)::out,
     cord(item_avail)::in, cord(item_avail)::out,
+    cord(item_fim)::in, cord(item_fim)::out,
     cord(item)::in, cord(item)::out, file_name::in, file_name::out,
     counter::in, counter::out, list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out,
@@ -1531,7 +1556,7 @@ read_item_sequence(FileString, MaxOffset, Globals, ModuleName,
 
 read_item_sequence_inner(FileString, MaxOffset, Globals, ModuleName,
         !NumItemsLeft, InitLookAhead, FinalLookAhead, !VNInfo,
-        !InclsCord, !AvailsCord, !ItemsCord,
+        !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn) :-
     ( if !.NumItemsLeft =< 0 then
@@ -1557,7 +1582,7 @@ read_item_sequence_inner(FileString, MaxOffset, Globals, ModuleName,
             read_item_sequence_inner(FileString, MaxOffset,
                 Globals, ModuleName,
                 !NumItemsLeft, no_lookahead, FinalLookAhead, !VNInfo,
-                !InclsCord, !AvailsCord, !ItemsCord,
+                !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                 !LineContext, !LinePosn)
         ;
@@ -1575,7 +1600,7 @@ read_item_sequence_inner(FileString, MaxOffset, Globals, ModuleName,
                 read_item_sequence_inner(FileString, MaxOffset,
                     Globals, ModuleName,
                     !NumItemsLeft, no_lookahead, FinalLookAhead, !VNInfo,
-                    !InclsCord, !AvailsCord, !ItemsCord,
+                    !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                     !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                     !LineContext, !LinePosn)
             ;
@@ -1592,6 +1617,9 @@ read_item_sequence_inner(FileString, MaxOffset, Globals, ModuleName,
                     !:AvailsCord = !.AvailsCord ++
                         cord.from_list([HeadAvail | TailAvails])
                 ;
+                    IOM = iom_marker_fim(FIM),
+                    !:FIMsCord = cord.snoc(!.FIMsCord, FIM)
+                ;
                     IOM = iom_item(Item),
                     !:ItemsCord = cord.snoc(!.ItemsCord, Item)
                 ;
@@ -1601,7 +1629,7 @@ read_item_sequence_inner(FileString, MaxOffset, Globals, ModuleName,
                 read_item_sequence_inner(FileString, MaxOffset,
                     Globals, ModuleName,
                     !NumItemsLeft, no_lookahead, FinalLookAhead, !VNInfo,
-                    !InclsCord, !AvailsCord, !ItemsCord,
+                    !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                     !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                     !LineContext, !LinePosn)
             )

@@ -501,10 +501,10 @@ parse_tree_int_to_module_and_imports(Globals, IntFileName,
         ParseTreeInt, ReadModuleErrors, ModuleAndImports) :-
     ParseTreeInt = parse_tree_int(ModuleName, _, ModuleContext,
         _MaybeVersionNumbers, IntIncl, ImpIncls, IntAvails, ImpAvails,
-        IntItems, ImpItems),
-    int_imp_items_to_item_blocks(ModuleName,
-        ms_interface, ms_implementation, IntIncl, ImpIncls,
-        IntAvails, ImpAvails, IntItems, ImpItems, RawItemBlocks),
+        IntFIMs, ImpFIMs, IntItems, ImpItems),
+    int_imp_items_to_item_blocks(ModuleName, ms_interface, ms_implementation,
+        IntIncl, ImpIncls, IntAvails, ImpAvails, IntFIMs, ImpFIMs,
+        IntItems, ImpItems, RawItemBlocks),
     RawCompUnit =
         raw_compilation_unit(ModuleName, ModuleContext, RawItemBlocks),
 
@@ -580,8 +580,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % Use case 2: our caller rebuild_module_and_imports_for_dep_file
     % passes to as NestedModuleNames the value of the same field
     % of the original module_and_imports structure being rebuilt.
-    % This works because the operation of this if-then-else
-    % is idempotent.
+    % This works because the operation of this if-then-else is idempotent.
     ( if ModuleName = SourceFileModuleName then
         set.delete(ModuleName, NestedModuleNames, NestedDeps)
     else
@@ -661,7 +660,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % XXX END OF THE REMAINS OF THE OLD CODE
 
     get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-        IntAvails, ImpAvails, IntItems, ImpItems),
+        IntAvails, ImpAvails, _IntFIMs, _ImpFIMs, IntItems, ImpItems),
     list.foldl(get_included_modules_in_item_include_acc, IntIncls,
         multi_map.init, PublicChildrenMap),
     list.foldl(get_included_modules_in_item_include_acc, ImpIncls,
@@ -754,7 +753,7 @@ get_foreign_self_imports_from_item_blocks(ItemBlocks, Langs) :-
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
 accumulate_foreign_import_langs_in_item_block(ItemBlock, !LangSet) :-
-    ItemBlock = item_block(_, _, _, _, Items),
+    ItemBlock = item_block(_, _, _, _, _, Items),
     list.foldl(accumulate_foreign_import_langs_in_item, Items, !LangSet).
 
 :- pred accumulate_foreign_import_langs_in_item(item::in,

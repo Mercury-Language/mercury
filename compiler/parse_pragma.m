@@ -949,10 +949,8 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
             MaybeForeignLang = ok1(Language),
             MaybeModuleName = ok1(ModuleName)
         then
-            FIMInfo = item_foreign_import_module_info(Language, ModuleName,
-                Context, SeqNum),
-            Item = item_foreign_import_module(FIMInfo),
-            MaybeIOM = ok1(iom_item(Item))
+            FIM = item_fim(Language, ModuleName, Context, SeqNum),
+            MaybeIOM = ok1(iom_marker_fim(FIM))
         else
             Specs = get_any_errors1(MaybeForeignLang) ++
                 get_any_errors1(MaybeModuleName),

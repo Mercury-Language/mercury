@@ -79,9 +79,6 @@ item_needs_imports(Item) = NeedsImports :-
         ),
         NeedsImports = yes
     ;
-        Item = item_foreign_import_module(_),
-        NeedsImports = no
-    ;
         Item = item_type_repn(_),
         % These should not be generated yet.
         unexpected($pred, "item_type_repn")
@@ -118,7 +115,6 @@ item_needs_foreign_imports(Item) = Langs :-
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
-        ; Item = item_foreign_import_module(_)
         ),
         Langs = []
     ;
