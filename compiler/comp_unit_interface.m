@@ -959,12 +959,6 @@ generate_interface_int1(Globals, AugCompUnit,
 
 %---------------------%
 
-:- func make_import(module_name) = item_avail.
-
-make_import(ModuleName) = Avail :-
-    ImportInfo = avail_import_info(ModuleName, term.context_init, -1),
-    Avail = avail_import(ImportInfo).
-
 :- func make_use(module_name) = item_avail.
 
 make_use(ModuleName) = Avail :-
@@ -1954,11 +1948,6 @@ make_imp_types_abstract(BothTypesMap, !ImpItemTypeDefnInfos) :-
         % assertions from that definition, but no more.
     ).
 
-:- pred item_type_defn_info_is_abstract(item_type_defn_info::in) is semidet.
-
-item_type_defn_info_is_abstract(ItemTypeDefn) :-
-    ItemTypeDefn ^ td_ctor_defn = parse_tree_abstract_type(_).
-
 :- pred make_imp_type_abstract(type_defn_map::in,
     item_type_defn_info::in, item_type_defn_info::out) is det.
 
@@ -2074,25 +2063,6 @@ find_need_imports_acc([Item | Items], !NeedImports, !NeedForeignImportLangs) :-
 
 %---------------------%
 
-    % strip_unneeded_imp_avails(NeededModules, !Avails):
-    %
-    % Remove all import_module and use_module declarations for modules
-    % that are not in NeededModules.
-    %
-:- pred strip_unneeded_imp_avails(set(module_name)::in,
-    list(item_avail)::in, list(item_avail)::out) is det.
-
-strip_unneeded_imp_avails(NeededModules, !Avails) :-
-    list.filter(is_needed_avail(NeededModules), !Avails).
-
-:- pred is_needed_avail(set(module_name)::in, item_avail::in) is semidet.
-
-is_needed_avail(NeededModules, Avail) :-
-    ModuleName = item_avail_module_name(Avail),
-    set.member(ModuleName, NeededModules).
-
-%---------------------%
-
 :- type foreign_enum_reconstructor
     --->    foreign_enum_reconstructor(
                 pragma_info_foreign_enum,
@@ -2133,66 +2103,6 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     else
         true
     ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred get_int2_items_from_int1(list(item)::in, list(item)::out) is det.
-
-get_int2_items_from_int1(Int1Items, Int2Items) :-
-    get_int2_items_from_int1_acc(Int1Items, cord.init, Int2ItemsCord),
-    Int2Items = cord.list(Int2ItemsCord).
-
-:- pred get_int2_items_from_int1_acc(list(item)::in,
-    cord(item)::in, cord(item)::out) is det.
-
-get_int2_items_from_int1_acc([], !ItemsCord).
-get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
-    (
-        Item = item_type_defn(ItemTypeDefnInfo),
-        make_canon_make_du_and_solver_types_abstract(ItemTypeDefnInfo,
-            MaybeAbstractItemTypeDefnInfo),
-        MaybeAbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
-        cord.snoc(MaybeAbstractItem, !ItemsCord)
-    ;
-        Item = item_typeclass(ItemTypeClassInfo),
-        AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
-            := class_interface_abstract,
-        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
-        cord.snoc(AbstractItem, !ItemsCord)
-    ;
-        Item = item_instance(ItemInstanceInfo),
-        AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
-            := instance_body_abstract,
-        AbstractItem = item_instance(AbstractItemInstanceInfo),
-        cord.snoc(AbstractItem, !ItemsCord)
-    ;
-        ( Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ),
-        cord.snoc(Item, !ItemsCord)
-    ;
-        ( Item = item_clause(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_pragma(_)
-        ; Item = item_promise(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        )
-        % Do not include Item in !ItemsCord.
-        % XXX TYPE_REPN Is this the right thing to do for item_type_repn?
-    ;
-        ( Item = item_foreign_import_module(_)
-        ; Item = item_type_repn(_)
-        ),
-        % We should have filtered out foreign_import_module and nothing
-        % items before we get here, and we are not yet generating type_repn
-        % items at all.
-        unexpected($pred, "item_foreign_import_module/type_repn/nothing")
-    ),
-    get_int2_items_from_int1_acc(Items, !ItemsCord).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
