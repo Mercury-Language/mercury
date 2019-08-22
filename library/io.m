@@ -7957,7 +7957,7 @@ mercury_open(const char *filename, const char *openmode,
     }
 #endif
 
-    MR_incr_hp_type_msg(mf, MercuryFile, alloc_id, ""MercuryFile"");
+    mf = MR_GC_NEW_ATTRIB(MercuryFile, alloc_id);
     MR_mercuryfile_init(f, 1, mf);
     return mf;
 }
