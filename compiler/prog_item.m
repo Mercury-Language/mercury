@@ -99,6 +99,17 @@
                 mcns_submodule              :: parse_tree_src
             ).
 
+    % When comp_unit_interface.m creates the contents of an interface file,
+    % it will always set the maybe_version_numbers field of that interface file
+    % to `no_version_numbers'. If the value of that field is needed,
+    % it will be filled in by the actually_write_interface_file predicate
+    % in write_module_interface_files.m, which (unlike comp_unit_interface.m)
+    % has access to the I/O state to read in the *previous* version
+    % of that interface file.
+:- type maybe_version_numbers
+    --->    no_version_numbers
+    ;       version_numbers(version_numbers).
+
 :- type parse_tree_int
     --->    parse_tree_int(
                 pti_module_name             :: module_name,
@@ -108,7 +119,7 @@
                 pti_module_name_context     :: prog_context,
 
                 % For .int0, .int and .int2; not for .int3.
-                pti_maybe_version_numbers   :: maybe(version_numbers),
+                pti_maybe_version_numbers   :: maybe_version_numbers,
 
                 % `:- include_module' declarations in the interface and
                 % in the implementation.
@@ -128,6 +139,93 @@
                 % Items in the interface and in the implementation.
                 pti_int_items               :: list(item),
                 pti_imp_items               :: list(item)
+            ).
+
+    % A version of parse_tree_int specialized to hold the contents of
+    % .int files.
+:- type parse_tree_int1
+    --->    parse_tree_int1(
+                pti1_module_name            :: module_name,
+
+                % The context of the `:- module' declaration.
+                pti1_module_name_context    :: prog_context,
+
+                pti1_maybe_version_numbers  :: maybe_version_numbers,
+
+                % The set of modules mentioned in `:- include_module'
+                % declarations in the interface and implementation.
+                pti1_int_included_modules   :: set(module_name),
+                pti1_imp_included_modules   :: set(module_name),
+
+                % The set of modules mentioned in `:- import_module'
+                % declarations in the interface and implementation.
+                pti1_int_used_modules       :: set(module_name),
+                pti1_imp_used_modules       :: set(module_name),
+
+                % `:- pragma foreign_import_module' declarations
+                % in the interface and in the implementation.
+                pti1_int_fims               :: set(fim_spec),
+                pti1_imp_fims               :: set(fim_spec),
+
+                % Items of various kinds in the interface.
+                pti1_int_type_defns         :: list(item_type_defn_info),
+                pti1_int_inst_defns         :: list(item_inst_defn_info),
+                pti1_int_mode_defns         :: list(item_mode_defn_info),
+                pti1_int_typeclasses        :: list(item_typeclass_info),
+                pti1_int_instances          :: list(item_instance_info),
+                pti1_int_pred_decls         :: list(item_pred_decl_info),
+                pti1_int_mode_decls         :: list(item_mode_decl_info),
+                pti1_int_pragmas            :: list(item_pragma_info),
+                pti1_int_promises           :: list(item_promise_info),
+
+                pti1_int_type_repns         :: list(item_type_repn_info),
+
+                % Items of various kinds in the implementation.
+                % Should not be needed after we switch to use type_repn items.
+                pti1_imp_type_defns         :: list(item_type_defn_info),
+                pti1_imp_foreign_enum_specs :: list(foreign_enum_spec),
+                pti1_imp_typeclasses        :: list(item_typeclass_info)
+            ).
+
+    % A version of parse_tree_int specialized to hold the contents of
+    % .int2 files.
+:- type parse_tree_int2
+    --->    parse_tree_int2(
+                pti2_module_name            :: module_name,
+
+                % The context of the `:- module' declaration.
+                pti2_module_name_context    :: prog_context,
+
+                % XXX While it is clear that .int files need version number
+                % fields while .int3 files do not, I (zs) don't see any
+                % clear argument either way for .int2 files. Having
+                % the field here preserves old behavior.
+                pti2_maybe_version_numbers  :: maybe_version_numbers,
+
+                % The set of modules mentioned in `:- include_module'
+                % declarations in the interface.
+                pti2_int_included_modules   :: set(module_name),
+
+                % The set of modules mentioned in `:- import_module'
+                % declarations in the interface.
+                pti2_int_used_modules       :: set(module_name),
+
+                % `:- pragma foreign_import_module' declarations
+                % in the interface and in the implementation.
+                pti2_int_fims               :: set(fim_spec),
+                pti2_imp_fims               :: set(fim_spec),
+
+                % Items of various kinds in the interface.
+                pti2_int_type_defns         :: list(item_type_defn_info),
+                pti2_int_inst_defns         :: list(item_inst_defn_info),
+                pti2_int_mode_defns         :: list(item_mode_defn_info),
+                pti2_int_typeclasses        :: list(item_typeclass_info),
+                pti2_int_instances          :: list(item_instance_info),
+                pti2_int_type_repns         :: list(item_type_repn_info),
+
+                % Items of various kinds in the implementation.
+                % Should not be needed after we switch to use type_repn items.
+                pti2_imp_type_defns         :: list(item_type_defn_info)
             ).
 
     % A version of parse_tree_int specialized to hold the contents of
@@ -171,6 +269,10 @@
                 pto_items                   :: list(item)
             ).
 
+:- func convert_parse_tree_int1_to_parse_tree_int(parse_tree_int1)
+    = parse_tree_int.
+:- func convert_parse_tree_int2_to_parse_tree_int(parse_tree_int2)
+    = parse_tree_int.
 :- func convert_parse_tree_int3_to_parse_tree_int(parse_tree_int3)
     = parse_tree_int.
 
@@ -786,6 +888,17 @@
                 fim_seq_num                     :: int
             ).
 
+:- type fim_spec
+    --->    fim_spec(
+                % The specification of a foreign_import_module declaration,
+                % without information about where it came from, used where
+                % it *does not matter* where it came from.
+                fimspec_lang                    :: foreign_language,
+                fimspec_module_name             :: module_name
+            ).
+
+:- pred fim_spec_to_item(fim_spec::in, item_fim::out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Type classes.
@@ -920,9 +1033,9 @@
 :- func mutable_var_trailed(mutable_var_attributes) = mutable_trailed.
 :- func mutable_var_maybe_foreign_names(mutable_var_attributes)
     = maybe(list(foreign_name)).
-:- func mutable_var_constant(mutable_var_attributes) = mutable_constant.
 :- func mutable_var_attach_to_io_state(mutable_var_attributes)
     = mutable_attach_to_io_state.
+:- func mutable_var_constant(mutable_var_attributes) = mutable_constant.
 :- func mutable_var_thread_local(mutable_var_attributes)
     = mutable_thread_local.
 
@@ -1421,6 +1534,12 @@
                 rfs_feature_set         :: set(required_feature)
             ).
 
+:- type foreign_enum_spec
+    --->    foreign_enum_spec(
+                pragma_info_foreign_enum,
+                item_maybe_attrs
+            ).
+
     % These types identify procedures in pragmas.
 
 :- type pred_name_arity
@@ -1703,13 +1822,85 @@
 
 %-----------------------------------------------------------------------------%
 
+convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1) = ParseTreeInt :-
+    ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
+        MaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
+        IntUsedModuleNames, ImpUsedModuleNames, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntPragmas, IntPromises, IntTypeRepns,
+        ImpTypeDefns, ImpForeignEnums, ImpTypeClasses),
+
+    IntIncls = list.map(wrap_include,
+        set.to_sorted_list(IntInclModuleNames)),
+    ImpIncls = list.map(wrap_include,
+        set.to_sorted_list(ImpInclModuleNames)),
+    IntAvails = list.map(wrap_use_avail,
+        set.to_sorted_list(IntUsedModuleNames)),
+    ImpAvails = list.map(wrap_use_avail,
+        set.to_sorted_list(ImpUsedModuleNames)),
+    set.map(fim_spec_to_item, IntFIMSpecs, IntFIMsSet),
+    set.map(fim_spec_to_item, ImpFIMSpecs, ImpFIMsSet),
+    set.to_sorted_list(IntFIMsSet, IntFIMs),
+    set.to_sorted_list(ImpFIMsSet, ImpFIMs),
+
+    IntItems =
+        list.map(wrap_type_defn_item, IntTypeDefns) ++
+        list.map(wrap_inst_defn_item, IntInstDefns) ++
+        list.map(wrap_mode_defn_item, IntModeDefns) ++
+        list.map(wrap_typeclass_item, IntTypeClasses) ++
+        list.map(wrap_instance_item, IntInstances) ++
+        list.map(wrap_pred_decl_item, IntPredDecls) ++
+        list.map(wrap_mode_decl_item, IntModeDecls) ++
+        list.map(wrap_pragma_item, IntPragmas) ++
+        list.map(wrap_promise_item, IntPromises) ++
+        list.map(wrap_type_repn_item, IntTypeRepns),
+    ImpItems =
+        list.map(wrap_type_defn_item, ImpTypeDefns) ++
+        list.map(make_foreign_enum_item, ImpForeignEnums) ++
+        list.map(wrap_typeclass_item, ImpTypeClasses),
+
+    ParseTreeInt = parse_tree_int(ModuleName, ifk_int, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntFIMs, ImpFIMs, IntItems, ImpItems).
+
+convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2) = ParseTreeInt :-
+    ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
+        MaybeVersionNumbers,
+        IntInclModuleNames, IntUsedModuleNames, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, IntTypeRepns,
+        ImpTypeDefns),
+
+    IntIncls = list.map(wrap_include,
+        set.to_sorted_list(IntInclModuleNames)),
+    IntAvails = list.map(wrap_use_avail,
+        set.to_sorted_list(IntUsedModuleNames)),
+    set.map(fim_spec_to_item, IntFIMSpecs, IntFIMsSet),
+    set.map(fim_spec_to_item, ImpFIMSpecs, ImpFIMsSet),
+    set.to_sorted_list(IntFIMsSet, IntFIMs),
+    set.to_sorted_list(ImpFIMsSet, ImpFIMs),
+
+    IntItems =
+        list.map(wrap_type_defn_item, IntTypeDefns) ++
+        list.map(wrap_inst_defn_item, IntInstDefns) ++
+        list.map(wrap_mode_defn_item, IntModeDefns) ++
+        list.map(wrap_typeclass_item, IntTypeClasses) ++
+        list.map(wrap_instance_item, IntInstances) ++
+        list.map(wrap_type_repn_item, IntTypeRepns),
+    ImpItems =
+        list.map(wrap_type_defn_item, ImpTypeDefns),
+    ParseTreeInt = parse_tree_int(ModuleName, ifk_int2, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, [], IntAvails, [],
+        IntFIMs, ImpFIMs, IntItems, ImpItems).
+
 convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3) = ParseTreeInt :-
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         IntInclModuleNames, IntImportModuleNames,
         IntTypeDefns, IntInstDefns, IntModeDefns,
-        IntTypeClasses, IntInstances, TypeRepnInfos),
+        IntTypeClasses, IntInstances, IntTypeRepns),
 
-    MaybeVersionNumbers = no,
+    MaybeVersionNumbers = no_version_numbers,
     IntIncls = list.map(wrap_include,
         set.to_sorted_list(IntInclModuleNames)),
     IntAvails = list.map(wrap_import_avail,
@@ -1720,7 +1911,7 @@ convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3) = ParseTreeInt :-
         list.map(wrap_mode_defn_item, IntModeDefns) ++
         list.map(wrap_typeclass_item, IntTypeClasses) ++
         list.map(wrap_instance_item, IntInstances) ++
-        list.map(wrap_type_repn_item, TypeRepnInfos),
+        list.map(wrap_type_repn_item, IntTypeRepns),
     ParseTreeInt = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, [], IntAvails, [],
         [], [], IntItems, []).
@@ -1736,19 +1927,42 @@ wrap_import_avail(ModuleName) = Avail :-
     ImportInfo = avail_import_info(ModuleName, term.context_init, -1),
     Avail = avail_import(ImportInfo).
 
+:- func wrap_use_avail(module_name) = item_avail.
+
+wrap_use_avail(ModuleName) = Avail :-
+    UseInfo = avail_use_info(ModuleName, term.context_init, -1),
+    Avail = avail_use(UseInfo).
+
 :- func wrap_type_defn_item(item_type_defn_info) = item.
 :- func wrap_inst_defn_item(item_inst_defn_info) = item.
 :- func wrap_mode_defn_item(item_mode_defn_info) = item.
 :- func wrap_typeclass_item(item_typeclass_info) = item.
 :- func wrap_instance_item(item_instance_info) = item.
+:- func wrap_pred_decl_item(item_pred_decl_info) = item.
+:- func wrap_mode_decl_item(item_mode_decl_info) = item.
+:- func wrap_pragma_item(item_pragma_info) = item.
+:- func wrap_promise_item(item_promise_info) = item.
 :- func wrap_type_repn_item(item_type_repn_info) = item.
 
-wrap_type_defn_item(TypeDefnInfo) = item_type_defn(TypeDefnInfo).
-wrap_inst_defn_item(InstDefnInfo) = item_inst_defn(InstDefnInfo).
-wrap_mode_defn_item(ModeDefnInfo) = item_mode_defn(ModeDefnInfo).
-wrap_typeclass_item(TypeClassInfo) = item_typeclass(TypeClassInfo).
-wrap_instance_item(InstanceInfo) = item_instance(InstanceInfo).
-wrap_type_repn_item(TypeRepnInfo) = item_type_repn(TypeRepnInfo).
+wrap_type_defn_item(X) = item_type_defn(X).
+wrap_inst_defn_item(X) = item_inst_defn(X).
+wrap_mode_defn_item(X) = item_mode_defn(X).
+wrap_typeclass_item(X) = item_typeclass(X).
+wrap_instance_item(X) = item_instance(X).
+wrap_pred_decl_item(X) = item_pred_decl(X).
+wrap_mode_decl_item(X) = item_mode_decl(X).
+wrap_pragma_item(X) = item_pragma(X).
+wrap_promise_item(X) = item_promise(X).
+wrap_type_repn_item(X) = item_type_repn(X).
+
+:- func make_foreign_enum_item(foreign_enum_spec) = item.
+
+make_foreign_enum_item(ForeignEnumSpec) = Item :-
+    ForeignEnumSpec = foreign_enum_spec(FEInfo, MaybeAttrs),
+    Pragma = pragma_foreign_enum(FEInfo),
+    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs,
+        term.context_init, -1),
+    Item = item_pragma(ItemPragmaInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1926,6 +2140,9 @@ get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
     Incl = item_include(ModuleName, Context, _SeqNum),
     multi_map.add(ModuleName, Context, !IncludedModuleNames).
 
+import_or_use_decl_name(import_decl) = "import_module".
+import_or_use_decl_name(use_decl) = "use_module".
+
 item_include_module_name(Incl) = ModuleName :-
     Incl = item_include(ModuleName, _Context, _SeqNum).
 
@@ -1977,8 +2194,9 @@ avail_import_info_module_name(AvailImportInfo) = ModuleName :-
 avail_use_info_module_name(AvailUseInfo) = ModuleName :-
     AvailUseInfo = avail_use_info(ModuleName, _, _).
 
-import_or_use_decl_name(import_decl) = "import_module".
-import_or_use_decl_name(use_decl) = "use_module".
+fim_spec_to_item(FIMSpec, FIM) :-
+    FIMSpec = fim_spec(Lang, ModuleName),
+    FIM = item_fim(Lang, ModuleName, term.context_init, -1).
 
 %-----------------------------------------------------------------------------%
 %

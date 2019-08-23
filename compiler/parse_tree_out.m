@@ -225,9 +225,9 @@ mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
     (
-        MaybeVersionNumbers = no
+        MaybeVersionNumbers = no_version_numbers
     ;
-        MaybeVersionNumbers = yes(VersionNumbers),
+        MaybeVersionNumbers = version_numbers(VersionNumbers),
         mercury_output_module_version_numbers(ModuleName, VersionNumbers, !IO)
     ),
     ( if

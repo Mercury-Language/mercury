@@ -305,9 +305,9 @@ actually_write_interface_file(Globals, ParseTreeInt0, ExtraSuffix,
         ),
         recompilation.version.compute_version_numbers(Timestamp,
             ParseTreeInt1, MaybeOldParseTreeInt, VersionNumbers),
-        MaybeVersionNumbers = yes(VersionNumbers)
+        MaybeVersionNumbers = version_numbers(VersionNumbers)
     else
-        MaybeVersionNumbers = no
+        MaybeVersionNumbers = no_version_numbers
     ),
     ParseTreeInt = ParseTreeInt1 ^ pti_maybe_version_numbers
         := MaybeVersionNumbers,

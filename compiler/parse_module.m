@@ -372,7 +372,7 @@ make_dummy_parse_tree_src(ModuleName, ParseTree) :-
 
 make_dummy_parse_tree_int(IntFileKind, ModuleName, ParseTree) :-
     ParseTree = parse_tree_int(ModuleName, IntFileKind, term.context_init,
-        no, [], [], [], [], [], [], [], []).
+        no_version_numbers, [], [], [], [], [], [], [], []).
 
 :- pred make_dummy_parse_tree_opt(opt_file_kind::in, module_name::in,
     parse_tree_opt::out) is det.
@@ -608,7 +608,7 @@ read_parse_tree_int(IntFileKind, SourceFileName0,
         report_missing_module_start(LookAheadContext, !Specs, !Errors),
         ModuleName = DefaultModuleName,
         ModuleNameContext = term.context_init,
-        MaybeVersionNumbers = no,
+        MaybeVersionNumbers = no_version_numbers,
         IntIncls = [],
         ImpIncls = [],
         IntAvails = [],
@@ -622,7 +622,7 @@ read_parse_tree_int(IntFileKind, SourceFileName0,
             wrong_module_decl_present(ModuleName, ModuleNameContext),
         report_wrong_module_start(ModuleNameContext,
             DefaultModuleName, ModuleName, !Specs, !Errors),
-        MaybeVersionNumbers = no,
+        MaybeVersionNumbers = no_version_numbers,
         IntIncls = [],
         ImpIncls = [],
         IntAvails = [],
@@ -641,10 +641,10 @@ read_parse_tree_int(IntFileKind, SourceFileName0,
             !Specs, !Errors, !LineContext, !LinePosn),
         (
             VNInfo = allow_version_numbers_not_seen,
-            MaybeVersionNumbers = no
+            MaybeVersionNumbers = no_version_numbers
         ;
             VNInfo = allow_version_numbers_seen(MVN),
-            MaybeVersionNumbers = yes(MVN)
+            MaybeVersionNumbers = version_numbers(MVN)
         ;
             VNInfo = dont_allow_version_numbers,
             % If you start with allow_version_numbers_not_seen, you shouldn't

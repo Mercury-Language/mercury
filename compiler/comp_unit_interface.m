@@ -506,9 +506,9 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt) :-
         cord.init, IntFIMsCord, cord.init, ImpFIMsCord,
         cord.init, IntItemsCord, cord.init, ImpItemsCord),
     ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
-        MaybeVersionNumbers = yes(VersionNumbers)
+        MaybeVersionNumbers = version_numbers(VersionNumbers)
     else
-        MaybeVersionNumbers = no
+        MaybeVersionNumbers = no_version_numbers
     ),
     IntIncls = cord.list(IntInclsCord),
     ImpIncls = cord.list(ImpInclsCord),
@@ -831,20 +831,29 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
 generate_interfaces_int1_int2(Globals, AugCompUnit,
         ParseTreeInt1, ParseTreeInt2, Specs) :-
     generate_interface_int1(Globals, AugCompUnit,
-        IntIncls, IntAvails, IntFIMs, ImpFIMs, IntItems, ImpItems,
-        ParseTreeInt1, Specs),
+        IntInclModuleNames, IntImportsUses, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt1A, Specs),
     generate_interface_int2(AugCompUnit,
-        IntIncls, IntAvails, IntFIMs, ImpFIMs, IntItems, ImpItems,
-        ParseTreeInt2).
+        IntInclModuleNames, IntImportsUses, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt2A),
+    ParseTreeInt1 = convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1A),
+    ParseTreeInt2 = convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2A).
 
 :- pred generate_interface_int1(globals::in, aug_compilation_unit::in,
-    list(item_include)::out, list(item_avail)::out,
-    list(item_fim)::out, list(item_fim)::out, list(item)::out, list(item)::out,
-    parse_tree_int::out, list(error_spec)::out) is det.
+    set(module_name)::out, set(module_name)::out,
+    set(fim_spec)::out, set(fim_spec)::out,
+    list(item_type_defn_info)::out,
+    list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
+    list(item_typeclass_info)::out, list(item_instance_info)::out,
+    list(item_type_defn_info)::out,
+    parse_tree_int1::out, list(error_spec)::out) is det.
 
 generate_interface_int1(Globals, AugCompUnit,
-        IntIncls, IntAvails, IntFIMs, ImpFIMs, IntItems, ImpItems,
-        ParseTreeInt1, !:Specs) :-
+        IntInclModuleNames, IntImportsUses, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt1, !:Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
@@ -863,30 +872,50 @@ generate_interface_int1(Globals, AugCompUnit,
     % definition items.
     set.init(IntImportsUses0),
     set.init(ImpImportsUses0),
-    map.init(IntFIMsMap0),
-    map.init(ImpFIMsMap0),
-    set.init(IntSelfFIMs0),
-    set.init(ImpSelfFIMs0),
+    set.init(IntExplicitFIMSpecs0),
+    set.init(ImpExplicitFIMSpecs0),
+    set.init(IntImplicitFIMLangs0),
+    set.init(ImpImplicitFIMLangs0),
     multi_map.init(IntTypesMap0),
     multi_map.init(ImpTypesMap0),
     !:Specs = [],
+
+    % XXX Why are we ignoring _IntModulesNeededByTypeClassDefns?
     get_interface_int1_item_blocks_loop(SrcItemBlocks,
         cord.init, IntInclsCord, cord.init, ImpInclsCord,
         IntImportsUses0, IntImportsUses, ImpImportsUses0, ImpImportsUses1,
-        cord.init, IntItemsCord0, cord.init, ImpItemsCord0,
-        cord.init, ImpForeignEnumsCord,
-        IntFIMsMap0, IntFIMsMap1, ImpFIMsMap0, ImpFIMsMap1,
-        IntSelfFIMs0, IntSelfFIMs, ImpSelfFIMs0, ImpSelfFIMs1,
-        IntTypesMap0, IntTypesMap, ImpTypesMap0, ImpTypesMap,
-        set.init, _IntModulesNeeded,
+        IntExplicitFIMSpecs0, IntExplicitFIMSpecs,
+        ImpExplicitFIMSpecs0, ImpExplicitFIMSpecs,
+        IntImplicitFIMLangs0, IntImplicitFIMLangs,
+        ImpImplicitFIMLangs0, ImpImplicitFIMLangs1,
+        cord.init, IntItemsCord,
+        IntTypesMap0, IntTypesMap, cord.init, IntTypeDefnsCord,
+        cord.init, IntInstDefnsCord, cord.init, IntModeDefnsCord,
+        cord.init, IntTypeClassesCord, cord.init, IntInstancesCord,
+        cord.init, IntPredDeclsCord, cord.init, IntModeDeclsCord,
+        cord.init, IntPragmasCord, cord.init, IntPromisesCord,
+        set.init, _IntModulesNeededByTypeClassDefns,
+        ImpTypesMap0, ImpTypesMap,
+        cord.init, ImpTypeClassesCord, cord.init, ImpForeignEnumsCord,
         set.init, ImpModulesNeededByTypeClassDefns, !Specs),
 
     IntIncls = cord.list(IntInclsCord),
     ImpIncls = cord.list(ImpInclsCord),
 
-    IntItems = cord.list(IntItemsCord0),
-    ImpItems0 = cord.list(ImpItemsCord0),
-    ImpForeignEnums = cord.list(ImpForeignEnumsCord),
+    IntItems = cord.list(IntItemsCord),
+
+    IntTypeDefns = cord.list(IntTypeDefnsCord),
+    IntInstDefns = cord.list(IntInstDefnsCord),
+    IntModeDefns = cord.list(IntModeDefnsCord),
+    IntTypeClasses = cord.list(IntTypeClassesCord),
+    IntInstances = cord.list(IntInstancesCord),
+    IntPredDecls = cord.list(IntPredDeclsCord),
+    IntModeDecls = cord.list(IntModeDeclsCord),
+    IntPragmas = cord.list(IntPragmasCord),
+    IntPromises = cord.list(IntPromisesCord),
+
+    ImpTypeClasses = cord.list(ImpTypeClassesCord),
+    ImpForeignEnums0 = cord.list(ImpForeignEnumsCord),
 
     BothTypesMap = multi_map.merge(IntTypesMap, ImpTypesMap),
     % Compute the set of type_ctors whose definitions in the implementation
@@ -912,99 +941,70 @@ generate_interface_int1(Globals, AugCompUnit,
     %
     % Since everything we put into a .int file should be fully module
     % qualified, we convert all import_modules into use_modules.
-    IntAvails = list.map(make_use, set.to_sorted_list(IntImportsUses)),
     ( if set.is_empty(ImpNeededModules) then
         % This gets the same result as the else case, only more quickly.
-        ImpAvails = []
+        set.init(ImpImportsUses)
     else
         ImpImportsUses2 = set.intersect(ImpImportsUses1, ImpNeededModules),
-        ImpImportsUses = set.difference(ImpImportsUses2, IntImportsUses),
-        ImpAvails = list.map(make_use, set.to_sorted_list(ImpImportsUses))
+        ImpImportsUses = set.difference(ImpImportsUses2, IntImportsUses)
     ),
 
     % Compute the list of type definitions we deleted from ImpItems0
     % that we want to add back to the implementation section,
     % possibly in their abstract form.
     map.foldl2(
-        maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap,
+        maybe_add_maybe_abstract_type_defns(BothTypesMap, IntTypesMap,
             NeededImpTypeCtors),
-        ImpTypesMap, [], ImpTypeDefnItems, ImpSelfFIMs1, ImpSelfFIMs2),
+        ImpTypesMap, [], ImpTypeDefns,
+        ImpImplicitFIMLangs1, ImpImplicitFIMLangs2),
 
     % Figure out which of the foreign enum items we deleted from ImpItems0
     % we want to add back to the implementation section.
     % Record the needs of these foreign enum items for
     % foreign_import_module items.
-    list.foldl2(add_foreign_enum_item_if_needed(IntTypesMap), ImpForeignEnums,
-        [], ImpForeignEnumItems, ImpSelfFIMs2, ImpSelfFIMs),
+    list.foldl2(add_foreign_enum_spec_if_needed(IntTypesMap),
+        ImpForeignEnums0, [], ImpForeignEnums,
+        ImpImplicitFIMLangs2, ImpImplicitFIMLangs),
 
-    ImpItems = ImpTypeDefnItems ++ ImpForeignEnumItems ++ ImpItems0,
+    set.foldl(add_self_fim(ModuleName), IntImplicitFIMLangs,
+        IntExplicitFIMSpecs, IntFIMSpecs),
+    set.foldl(add_self_fim(ModuleName), ImpImplicitFIMLangs,
+        ImpExplicitFIMSpecs, ImpFIMSpecs0),
+    set.difference(ImpFIMSpecs0, IntFIMSpecs, ImpFIMSpecs),
 
-    add_self_fims(ModuleName, IntSelfFIMs, IntFIMsMap1, IntFIMsMap),
-    add_self_fims(ModuleName, ImpSelfFIMs, ImpFIMsMap1, ImpFIMsMap2),
-    map.map_values(subtract_int_fims_map(IntFIMsMap), ImpFIMsMap2, ImpFIMsMap),
-
-    map.foldl(acccumulate_foreign_import_items, IntFIMsMap, [], IntFIMs),
-    map.foldl(acccumulate_foreign_import_items, ImpFIMsMap, [], ImpFIMs),
-
+    % Module imports and/or uses, either in Mercury or in a foreign language,
+    % do not interest check_interface_item_blocks_for_no_exports.
     ToCheckIntItemBlock = item_block(ModuleName, ms_interface,
-        IntIncls, IntAvails, IntFIMs, IntItems),
+        IntIncls, [], [], IntItems),
     check_interface_item_blocks_for_no_exports(Globals,
         ModuleName, ModuleNameContext, [ToCheckIntItemBlock], !Specs),
 
-    % XXX ITEM_LIST See the comment about version numbers in our caller.
-    DummyMaybeVersionNumbers = no,
-    ParseTreeInt1 = parse_tree_int(ModuleName, ifk_int,
-        ModuleNameContext, DummyMaybeVersionNumbers, IntIncls, ImpIncls,
-        IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems).
+    IntInclModuleNames = set.list_to_set(
+        list.map(item_include_module_name, IntIncls)),
+    ImpInclModuleNames = set.list_to_set(
+        list.map(item_include_module_name, ImpIncls)),
+
+    DummyMaybeVersionNumbers = no_version_numbers,
+    % XXX TODO
+    IntTypeRepns = [],
+    ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
+        DummyMaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
+        IntImportsUses, ImpImportsUses, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances,
+        IntPredDecls, IntModeDecls,
+        IntPragmas, IntPromises,
+        IntTypeRepns,
+        ImpTypeDefns, ImpForeignEnums, ImpTypeClasses).
 
 %---------------------%
 
-:- func make_use(module_name) = item_avail.
+:- pred add_self_fim(module_name::in, foreign_language::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
 
-make_use(ModuleName) = Avail :-
-    UseInfo = avail_use_info(ModuleName, term.context_init, -1),
-    Avail = avail_use(UseInfo).
-
-%---------------------%
-
-:- pred add_self_fims(module_name::in, set(foreign_language)::in,
-    map(module_name, set(foreign_language))::in,
-    map(module_name, set(foreign_language))::out) is det.
-
-add_self_fims(ModuleName, SelfFIMs, !FIMsMap) :-
-    ( if map.search(!.FIMsMap, ModuleName, Langs0) then
-        set.union(SelfFIMs, Langs0, Langs),
-        map.det_update(ModuleName, Langs, !FIMsMap)
-    else
-        map.det_insert(ModuleName, SelfFIMs, !FIMsMap)
-    ).
-
-:- pred subtract_int_fims_map(map(module_name, set(foreign_language))::in,
-    module_name::in, set(foreign_language)::in, set(foreign_language)::out)
-    is det.
-
-subtract_int_fims_map(IntFIMsMap, ModuleName, ImpLangs0, ImpLangs) :-
-    ( if map.search(IntFIMsMap, ModuleName, IntLangs) then
-        set.difference(ImpLangs0, IntLangs, ImpLangs)
-    else
-        ImpLangs = ImpLangs0
-    ).
-
-%---------------------%
-
-:- pred acccumulate_foreign_import_items(module_name::in,
-    set(foreign_language)::in,
-    list(item_fim)::in, list(item_fim)::out) is det.
-
-acccumulate_foreign_import_items(ModuleName, Langs, !FIMs) :-
-    set.fold(acccumulate_foreign_import_item(ModuleName), Langs, !FIMs).
-
-:- pred acccumulate_foreign_import_item(module_name::in, foreign_language::in,
-    list(item_fim)::in, list(item_fim)::out) is det.
-
-acccumulate_foreign_import_item(ModuleName, Lang, !FIMs) :-
-    FIM = item_fim(Lang, ModuleName, term.context_init, -1),
-    !:FIMs = [FIM | !.FIMs].
+add_self_fim(ModuleName, Lang, !FIMSpecs) :-
+    FIMSpec = fim_spec(Lang, ModuleName),
+    set.insert(FIMSpec, !FIMSpecs).
 
 %---------------------%
 
@@ -1012,10 +1012,16 @@ acccumulate_foreign_import_item(ModuleName, Lang, !FIMs) :-
 :- type type_defn_pair == pair(type_ctor, item_type_defn_info).
 
     % get_interface_int1_item_blocks_loop(SrcItemBlocks,
-    %   !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
-    %   !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
-    %   !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
-    %   !IntTypesMap, !ImpTypesMap, !ModulesNeededByTypeClassDefns, !Specs).
+    %   !IntInclsCord, !ImpInclsCord, !IntImportsUses, !ImpImportsUses,
+    %   !IntExplicitFIMSpecs, !ImpExplicitFIMSpecs,
+    %   !IntImplicitFIMLangs, !ImpImplicitFIMLangs,
+    %   !IntItemsCord, !IntTypesMap, !IntTypeDefnsCord,
+    %   !IntInstDefnsCord, !IntModeDefnsCord,
+    %   !IntTypeClassesCord, !IntInstancesCord,
+    %   !IntPredDeclsCord, !IntModeDeclsCord,
+    %   !IntPragmasCord, !IntPromisesCord, !IntModulesNeededByTypeClassDefns,
+    %   !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
+    %   !ImpModulesNeededByTypeClassDefns, !Specs):
     %
     % Do the bulk of the work needed to generate a module's .int file
     % from the module's augmented compilation unit.
@@ -1031,46 +1037,46 @@ acccumulate_foreign_import_item(ModuleName, Lang, !FIMs) :-
     %
     % Our outputs are as follows.
     %
-    % !:IntInclsCord, !:ImpInclsCord, !:IntAvailsCord, and !:ImpAvailsCord are
-    % the includes and avails in the interface and implementation sections
-    % respectively.
+    % !:IntInclsCord and !:ImpInclsCord, are the includes in the
+    % interface and implementation sections respectively.
     %
-    % !:IntItems is a filtered version of !.IntItems. Specifically,
-    % we delete any promise_type_true promise items, and we both delete,
-    % and generate error messages for, any clauses and any pragmas that
-    % should not appear in a module's interface, We also filter out
-    % any foreign_import_modules and return them separarely in !:IntFIMsCord.
+    % !:IntImportsUses and !:ImpImportsUses are the modules imported and/or
+    % used in the interface and implementation sections respectively.
     %
-    % !:ImpItems is also a filtered version of !.ImpItems. Our caller
-    % ensures that !.ImpItems can have only four kinds of items, which
-    % we handle as follows.
+    % !:IntExplicitFIMSpecs and !:ImpExplicitFIMSpecs are the
+    % foreign_import_modules explicitly includes in the
+    % the interface and implementation sections respectively.
+    % !:IntImplicitFIMLangs and !:ImpImplicitFIMLangs are the languages
+    % for which we need to generate an implicit foreign_import_module
+    % for the current module, as needed by the interface and implementation
+    % items we return in the following arguments.
     %
-    % - We delete type definitions. If one of these type definitions later
-    %   turns out to be needed, it can be reconstructed from !:ImpTypesMap.
-    % - We keep typeclass declarations.
-    % - We filter out any foreign enum pragmas, and return them separately
-    %   in !:ImpForeignEnumsCord.
-    % - We filter out any foreign_import_modules, and return them separately
-    %   in !:ImpFIMsCord.
+    % !:IntItems is a list of all the items in the interface. Our caller
+    % should use it solely to check whether the interface is empty.
+    % XXX Why do we need that check when creating .int files?
     %
-    % We return foreign enums and foreign_import_modules separately
-    % because our caller wants to process them separately.
+    % The arguments from !:IntTypeDefnsCord to !:IntPromisesCord
+    % contain the parts of the interface section of the source module
+    % that we want to include in the .int file. Likewise,
+    % the arguments !:ImpTypeClassesCord and !:ImpForeignEnumsCord
+    % contain parts of the implementation section of the source module
+    % that we want to include in the .int file. However, until we switch over
+    % to using type_repn items, we also need to include in the .int file
+    % a subset of the type definitions from the implementation section.
     %
-    % We return in !:IntSelfFIMs and !:ImpSelfFIMs respectively
-    % the set of languages for which we need to generate an implicit
-    % foreign_import_module for the current module, as needed by the
-    % items we return in !:IntItems and !:ImpItems.
-    %
-    % !:IntTypesMap and !:ImpTypesMap each map the type constructors
+    % We return !:IntTypesMap and !:ImpTypesMap, which contain
+    % the type definitions in the interface and implementation sections
+    % respectively, to our caller as the raw material for it to use in
+    % computing that subset. They both map the type constructors
     % of the types defined in the interface and implementation sections
     % respectively to the list of definitions of that type. (We need a list
     % for two reasons: because a type may be defined both in Mercury and
     % in several target languages, and because of the potential presence
     % of erroneous double definitions.)
     %
-    % !:ModulesNeededByTypeClassDefns is the list of the modules needed by
-    % any superclass constraints on any typeclass declaration in either
-    % the interface or the implementation section. A module may be needed
+    % !:{Int,Imp}ModulesNeededByTypeClassDefns are the sets of the modules
+    % needed by any superclass constraints on any typeclass declaration
+    % in the interface and the implementation sections. A module may be needed
     % because it defines the typeclass in the superclass constraint,
     % or because it defines a type constructor mentioned anywhere
     % in the superclass constraint.
@@ -1080,48 +1086,71 @@ acccumulate_foreign_import_item(ModuleName, Lang, !FIMs) :-
     cord(item_include)::in, cord(item_include)::out,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
-    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out,
-    cord(foreign_enum_reconstructor)::in,
-    cord(foreign_enum_reconstructor)::out,
-    map(module_name, set(foreign_language))::in,
-    map(module_name, set(foreign_language))::out,
-    map(module_name, set(foreign_language))::in,
-    map(module_name, set(foreign_language))::out,
+    set(fim_spec)::in, set(fim_spec)::out,
+    set(fim_spec)::in, set(fim_spec)::out,
     set(foreign_language)::in, set(foreign_language)::out,
     set(foreign_language)::in, set(foreign_language)::out,
+    cord(item)::in, cord(item)::out,
     type_defn_map::in, type_defn_map::out,
-    type_defn_map::in, type_defn_map::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(item_instance_info)::in, cord(item_instance_info)::out,
+    cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
+    cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(item_pragma_info)::in, cord(item_pragma_info)::out,
+    cord(item_promise_info)::in, cord(item_promise_info)::out,
     set(module_name)::in, set(module_name)::out,
+    type_defn_map::in, type_defn_map::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
     set(module_name)::in, set(module_name)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 get_interface_int1_item_blocks_loop([],
         !IntInclsCord, !ImpInclsCord, !IntImportsUses, !ImpImportsUses,
-        !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
-        !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
-        !IntTypesMap, !ImpTypesMap,
-        !IntModulesNeeded, !ImpModulesNeededByTypeClassDefns, !Specs).
+        !IntExplicitFIMSpecs, !ImpExplicitFIMSpecs,
+        !IntImplicitFIMLangs, !ImpImplicitFIMLangs,
+        !IntItemsCord, !IntTypesMap, !IntTypeDefnsCord,
+        !IntInstDefnsCord, !IntModeDefnsCord,
+        !IntTypeClassesCord, !IntInstancesCord,
+        !IntPredDeclsCord, !IntModeDeclsCord,
+        !IntPragmasCord, !IntPromisesCord, !IntModulesNeededByTypeClassDefns,
+        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
+        !ImpModulesNeededByTypeClassDefns, !Specs).
 get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntInclsCord, !ImpInclsCord, !IntImportsUses, !ImpImportsUses,
-        !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
-        !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
-        !IntTypesMap, !ImpTypesMap,
-        !IntModulesNeeded, !ImpModulesNeededByTypeClassDefns, !Specs) :-
+        !IntExplicitFIMSpecs, !ImpExplicitFIMSpecs,
+        !IntImplicitFIMLangs, !ImpImplicitFIMLangs,
+        !IntItemsCord, !IntTypesMap, !IntTypeDefnsCord,
+        !IntInstDefnsCord, !IntModeDefnsCord,
+        !IntTypeClassesCord, !IntInstancesCord,
+        !IntPredDeclsCord, !IntModeDeclsCord,
+        !IntPragmasCord, !IntPromisesCord, !IntModulesNeededByTypeClassDefns,
+        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
+        !ImpModulesNeededByTypeClassDefns, !Specs) :-
     SrcItemBlock = item_block(_, SrcSection, Incls, Avails, FIMs, Items),
     (
         SrcSection = sms_interface,
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
         get_interface_int1_avails_loop(Avails, !IntImportsUses),
-        list.foldl(add_fim_to_map, FIMs, !IntFIMsMap),
-        get_interface_int1_items_loop_int(Items, !IntItemsCord,
-            !IntSelfFIMs, !IntTypesMap, !IntModulesNeeded, !Specs)
+        list.foldl(add_fim_to_specs, FIMs, !IntExplicitFIMSpecs),
+        !:IntItemsCord = !.IntItemsCord ++ cord.from_list(Items),
+        get_interface_int1_items_loop_int(Items, !IntImplicitFIMLangs,
+            !IntTypesMap, !IntTypeDefnsCord,
+            !IntInstDefnsCord, !IntModeDefnsCord,
+            !IntTypeClassesCord, !IntInstancesCord,
+            !IntPredDeclsCord, !IntModeDeclsCord,
+            !IntPragmasCord, !IntPromisesCord,
+            !IntModulesNeededByTypeClassDefns, !Specs)
     ;
         SrcSection = sms_implementation,
         !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
         get_interface_int1_avails_loop(Avails, !ImpImportsUses),
-        list.foldl(add_fim_to_map, FIMs, !ImpFIMsMap),
-        get_interface_int1_items_loop_imp(Items, !ImpItemsCord,
-            !ImpForeignEnumsCord, !ImpSelfFIMs, !ImpTypesMap,
+        list.foldl(add_fim_to_specs, FIMs, !ImpExplicitFIMSpecs),
+        get_interface_int1_items_loop_imp(Items, !ImpImplicitFIMLangs,
+            !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
             !ImpModulesNeededByTypeClassDefns, !Specs)
     ;
         SrcSection = sms_impl_but_exported_to_submodules,
@@ -1131,10 +1160,15 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
     ),
     get_interface_int1_item_blocks_loop(SrcItemBlocks,
         !IntInclsCord, !ImpInclsCord, !IntImportsUses, !ImpImportsUses,
-        !IntItemsCord, !ImpItemsCord, !ImpForeignEnumsCord,
-        !IntFIMsMap, !ImpFIMsMap, !IntSelfFIMs, !ImpSelfFIMs,
-        !IntTypesMap, !ImpTypesMap,
-        !IntModulesNeeded, !ImpModulesNeededByTypeClassDefns, !Specs).
+        !IntExplicitFIMSpecs, !ImpExplicitFIMSpecs,
+        !IntImplicitFIMLangs, !ImpImplicitFIMLangs,
+        !IntItemsCord, !IntTypesMap, !IntTypeDefnsCord,
+        !IntInstDefnsCord, !IntModeDefnsCord,
+        !IntTypeClassesCord, !IntInstancesCord,
+        !IntPredDeclsCord, !IntModeDeclsCord,
+        !IntPragmasCord, !IntPromisesCord, !IntModulesNeededByTypeClassDefns,
+        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
+        !ImpModulesNeededByTypeClassDefns, !Specs).
 
 :- pred get_interface_int1_avails_loop(list(item_avail)::in,
     set(module_name)::in, set(module_name)::out) is det.
@@ -1148,39 +1182,56 @@ get_interface_int1_avails_loop([Avail | Avails], !ImportsUses) :-
     get_interface_int1_avails_loop(Avails, !ImportsUses).
 
 :- pred get_interface_int1_items_loop_int(list(item)::in,
-    cord(item)::in, cord(item)::out,
     set(foreign_language)::in, set(foreign_language)::out,
     type_defn_map::in, type_defn_map::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(item_instance_info)::in, cord(item_instance_info)::out,
+    cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
+    cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(item_pragma_info)::in, cord(item_pragma_info)::out,
+    cord(item_promise_info)::in, cord(item_promise_info)::out,
     set(module_name)::in, set(module_name)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_interface_int1_items_loop_int([], !IntItemsCord,
-        !IntSelfFIMs, !IntTypesMap, !IntModulesNeeded, !Specs).
-get_interface_int1_items_loop_int([Item | Items], !IntItemsCord,
-        !IntSelfFIMs, !IntTypesMap, !IntModulesNeeded, !Specs) :-
+get_interface_int1_items_loop_int([], !IntImplicitFIMLangs,
+        !IntTypesMap, !IntTypeDefnsCord, !IntInstDefnsCord, !IntModeDefnsCord,
+        !IntTypeClassesCord, !IntInstancesCord,
+        !IntPredDeclsCord, !IntModeDeclsCord,
+        !IntPragmasCord, !IntPromisesCord,
+        !IntModulesNeededByTypeClassDefns, !Specs).
+get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
+        !IntTypesMap, !IntTypeDefnsCord, !IntInstDefnsCord, !IntModeDefnsCord,
+        !IntTypeClassesCord, !IntInstancesCord,
+        !IntPredDeclsCord, !IntModeDeclsCord,
+        !IntPragmasCord, !IntPromisesCord,
+        !IntModulesNeededByTypeClassDefns, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn =
             item_type_defn_info(Name, TypeParams, TypeDefn, _, _, _),
         TypeCtor = type_ctor(Name, list.length(TypeParams)),
         multi_map.set(TypeCtor, ItemTypeDefn, !IntTypesMap),
-        cord.snoc(Item, !IntItemsCord),
+        cord.snoc(ItemTypeDefn, !IntTypeDefnsCord),
         ( if
             TypeDefn = parse_tree_foreign_type(DetailsForeign),
             DetailsForeign = type_details_foreign(ForeignType, _, _)
         then
-            set.insert(foreign_type_language(ForeignType), !IntSelfFIMs)
+            Lang = foreign_type_language(ForeignType),
+            set.insert(Lang, !IntImplicitFIMLangs)
         else
             true
         )
     ;
         Item = item_typeclass(ItemTypeClass),
-        cord.snoc(Item, !IntItemsCord),
+        cord.snoc(ItemTypeClass, !IntTypeClassesCord),
         % The superclass constraints on the typeclass being declared
         % may refer to typeclasses that this module has imported.
         Constraints = ItemTypeClass ^ tc_superclasses,
         list.foldl(accumulate_modules_from_constraint, Constraints,
-            !IntModulesNeeded)
+            !IntModulesNeededByTypeClassDefns)
     ;
         Item = item_clause(ItemClause),
         Context = ItemClause ^ cl_context,
@@ -1200,10 +1251,10 @@ get_interface_int1_items_loop_int([Item | Items], !IntItemsCord,
             !:Specs = [Spec | !.Specs]
         ;
             AllowedInInterface = yes,
-            cord.snoc(Item, !IntItemsCord),
+            cord.snoc(ItemPragma, !IntPragmasCord),
             Langs = pragma_needs_foreign_imports(Pragma),
             ( if Pragma = pragma_foreign_enum(_) then
-                set.insert_list(Langs, !IntSelfFIMs)
+                set.insert_list(Langs, !IntImplicitFIMLangs)
             else
                 expect(unify(Langs, []), $pred,
                     "interface pragma other than foreign_enum needs Langs")
@@ -1222,16 +1273,23 @@ get_interface_int1_items_loop_int([Item | Items], !IntItemsCord,
             ; PromiseType = promise_type_exhaustive
             ; PromiseType = promise_type_exclusive_exhaustive
             ),
-            cord.snoc(Item, !IntItemsCord)
+            cord.snoc(ItemPromise, !IntPromisesCord)
         )
     ;
-        ( Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_instance(_)
-        ),
-        cord.snoc(Item, !IntItemsCord)
+        Item = item_inst_defn(ItemInstDefn),
+        cord.snoc(ItemInstDefn, !IntInstDefnsCord)
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        cord.snoc(ItemModeDefn, !IntModeDefnsCord)
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        cord.snoc(ItemPredDecl, !IntPredDeclsCord)
+    ;
+        Item = item_mode_decl(ItemModeDecl),
+        cord.snoc(ItemModeDecl, !IntModeDeclsCord)
+    ;
+        Item = item_instance(ItemInstance),
+        cord.snoc(ItemInstance, !IntInstancesCord)
     ;
         ( Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -1250,35 +1308,38 @@ get_interface_int1_items_loop_int([Item | Items], !IntItemsCord,
         % type_repn items.
         unexpected($pred, "item_type_repn")
     ),
-    get_interface_int1_items_loop_int(Items, !IntItemsCord,
-        !IntSelfFIMs, !IntTypesMap, !IntModulesNeeded, !Specs).
+    get_interface_int1_items_loop_int(Items, !IntImplicitFIMLangs,
+        !IntTypesMap, !IntTypeDefnsCord, !IntInstDefnsCord, !IntModeDefnsCord,
+        !IntTypeClassesCord, !IntInstancesCord,
+        !IntPredDeclsCord, !IntModeDeclsCord,
+        !IntPragmasCord, !IntPromisesCord,
+        !IntModulesNeededByTypeClassDefns, !Specs).
 
 :- pred get_interface_int1_items_loop_imp(list(item)::in,
-    cord(item)::in, cord(item)::out,
-    cord(foreign_enum_reconstructor)::in,
-    cord(foreign_enum_reconstructor)::out,
     set(foreign_language)::in, set(foreign_language)::out,
     type_defn_map::in, type_defn_map::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
     set(module_name)::in, set(module_name)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_interface_int1_items_loop_imp([], !ImpItemsCord,
-        !ImpForeignEnumsCord, !ImpSelfFIMs, !ImpTypesMap,
+get_interface_int1_items_loop_imp([], !ImpImplicitFIMLangs,
+        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
         !ImpModulesNeededByTypeClassDefns, !Specs).
-get_interface_int1_items_loop_imp([Item | Items], !ImpItemsCord,
-        !ImpForeignEnumsCord, !ImpSelfFIMs, !ImpTypesMap,
+get_interface_int1_items_loop_imp([Item | Items], !ImpImplicitFIMLangs,
+        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
         !ImpModulesNeededByTypeClassDefns, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(Name, TypeParams, _, _, _, _),
         TypeCtor = type_ctor(Name, list.length(TypeParams)),
         multi_map.set(TypeCtor, ItemTypeDefn, !ImpTypesMap)
-        % We don't add this to !ImpItemsCord yet -- we may be removing it.
+        % We don't add this to an item cord yet -- we may be removing it.
         % If we *do* want the items for a given type_ctor, we will create
         % new copies of the items from the type_ctor's entry in ImpTypesMap.
     ;
         Item = item_typeclass(ItemTypeClass),
-        cord.snoc(Item, !ImpItemsCord),
+        cord.snoc(ItemTypeClass, !ImpTypeClassesCord),
         % The superclass constraints on the typeclass being declared
         % may refer to typeclasses that this module has imported.
         Constraints = ItemTypeClass ^ tc_superclasses,
@@ -1288,10 +1349,10 @@ get_interface_int1_items_loop_imp([Item | Items], !ImpItemsCord,
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, MaybeAttrs, _Context, _SeqNum),
         ( if Pragma = pragma_foreign_enum(FEInfo) then
-            Reconstructor = foreign_enum_reconstructor(FEInfo, MaybeAttrs),
-            cord.snoc(Reconstructor, !ImpForeignEnumsCord),
+            FESpec = foreign_enum_spec(FEInfo, MaybeAttrs),
+            cord.snoc(FESpec, !ImpForeignEnumsCord),
             FEInfo = pragma_info_foreign_enum(FELang, _, _),
-            set.insert(FELang, !ImpSelfFIMs)
+            set.insert(FELang, !ImpImplicitFIMLangs)
         else
             unexpected($pred, "non-foreign-enum pragma")
         )
@@ -1311,23 +1372,17 @@ get_interface_int1_items_loop_imp([Item | Items], !ImpItemsCord,
         unexpected($pred,
             "generate_pre_grab_pre_qual_items_imp should've deleted imp item")
     ),
-    get_interface_int1_items_loop_imp(Items, !ImpItemsCord,
-        !ImpForeignEnumsCord, !ImpSelfFIMs, !ImpTypesMap,
+    get_interface_int1_items_loop_imp(Items, !ImpImplicitFIMLangs,
+        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
         !ImpModulesNeededByTypeClassDefns, !Specs).
 
-:- pred add_fim_to_map(item_fim::in, 
-    map(module_name, set(foreign_language))::in,
-    map(module_name, set(foreign_language))::out) is det.
+:- pred add_fim_to_specs(item_fim::in, 
+    set(fim_spec)::in, set(fim_spec)::out) is det.
 
-add_fim_to_map(FIM, !FIMsMap) :-
+add_fim_to_specs(FIM, !FIMSpecs) :-
     FIM = item_fim(Lang, ModuleName, _Context, _SeqNum),
-    ( if map.search(!.FIMsMap, ModuleName, Langs0) then
-        set.insert(Lang, Langs0, Langs),
-        map.det_update(ModuleName, Langs, !FIMsMap)
-    else
-        Langs = set.make_singleton_set(Lang),
-        map.det_insert(ModuleName, Langs, !FIMsMap)
-    ).
+    FIMSpec = fim_spec(Lang, ModuleName),
+    set.insert(FIMSpec, !FIMSpecs).
 
 %---------------------------------------------------------------------------%
 
@@ -1869,15 +1924,15 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
     % definitions are erroneous, such a type that is defined both as
     % an equivalence type and as a du type.
     %
-:- pred maybe_add_maybe_abstract_type_defn_items(
+:- pred maybe_add_maybe_abstract_type_defns(
     type_defn_map::in, type_defn_map::in, set(type_ctor)::in,
     type_ctor::in, list(item_type_defn_info)::in,
-    list(item)::in, list(item)::out,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
-maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap,
+maybe_add_maybe_abstract_type_defns(BothTypesMap, IntTypesMap,
         NeededTypeCtors, TypeCtor, ImpItemTypeDefnInfos,
-        !ImpTypeDefnItems, !ImpSelfFIMs) :-
+        !ImpTypeDefns, !ImpImplicitFIMLangs) :-
     ( if
         set.member(TypeCtor, NeededTypeCtors),
         make_imp_types_abstract(BothTypesMap,
@@ -1889,7 +1944,7 @@ maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap,
         )
     then
         add_type_defn_items(AbstractImpItemTypeDefnInfos,
-            !ImpTypeDefnItems, !ImpSelfFIMs)
+            !ImpTypeDefns, !ImpImplicitFIMLangs)
     else
         true
     ).
@@ -1987,90 +2042,41 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfo) :-
     ).
 
 :- pred add_type_defn_items(list(item_type_defn_info)::in,
-    list(item)::in, list(item)::out,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
-add_type_defn_items([], !ImpTypeDefnItems, !ImpSelfFIMs).
-add_type_defn_items([ImpItemTypeDefnInfo | ImpItemTypeDefnInfos],
-        !ImpTypeDefnItems, !ImpSelfFIMs) :-
-    ImpTypeDefnItem = item_type_defn(ImpItemTypeDefnInfo),
-    !:ImpTypeDefnItems = [ImpTypeDefnItem | !.ImpTypeDefnItems],
-    ImpItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
+add_type_defn_items([], !RevImpTypeDefns, !ImpImplicitFIMLangs).
+add_type_defn_items([ImpTypeDefn | ImpTypeDefns],
+        !RevImpTypeDefns, !ImpImplicitFIMLangs) :-
+    !:RevImpTypeDefns = [ImpTypeDefn | !.RevImpTypeDefns],
+    ImpTypeDefn = item_type_defn_info(_, _, TypeDefn, _, _, _),
     ( if
         TypeDefn = parse_tree_foreign_type(DetailsForeign),
         DetailsForeign = type_details_foreign(ForeignType, _, _)
     then
-        set.insert(foreign_type_language(ForeignType), !ImpSelfFIMs)
+        set.insert(foreign_type_language(ForeignType), !ImpImplicitFIMLangs)
     else
         true
     ),
-    add_type_defn_items(ImpItemTypeDefnInfos, !ImpTypeDefnItems, !ImpSelfFIMs).
+    add_type_defn_items(ImpTypeDefns, !RevImpTypeDefns, !ImpImplicitFIMLangs).
 
 %---------------------%
 
-:- type maybe_need_imports
-    --->    dont_need_imports
-    ;       need_imports.
-
-:- type maybe_need_foreign_imports
-    --->    dont_need_foreign_imports
-    ;       need_foreign_imports.
-
-:- pred find_need_imports(list(item)::in,
-    maybe_need_imports::out,
+:- pred add_foreign_enum_spec_if_needed(type_defn_map::in,
+    foreign_enum_spec::in,
+    list(foreign_enum_spec)::in, list(foreign_enum_spec)::out,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
-find_need_imports(MaybeForeignItems, !:NeedImports, !NeedForeignImportLangs) :-
-    !:NeedImports = dont_need_imports,
-    find_need_imports_acc(MaybeForeignItems,
-        !NeedImports, !NeedForeignImportLangs).
-
-:- pred find_need_imports_acc(list(item)::in,
-    maybe_need_imports::in, maybe_need_imports::out,
-    set(foreign_language)::in, set(foreign_language)::out) is det.
-
-find_need_imports_acc([], !NeedImports, !NeedForeignImports).
-find_need_imports_acc([Item | Items], !NeedImports, !NeedForeignImportLangs) :-
-    % XXX ITEM_LIST Should do with one call and one switch.
-    ItemNeedsImports = item_needs_imports(Item),
-    ItemNeedsForeignImportLangs = item_needs_foreign_imports(Item),
-    (
-        ItemNeedsImports = yes,
-        !:NeedImports = need_imports
-    ;
-        ItemNeedsImports = no
-    ),
-    set.insert_list(ItemNeedsForeignImportLangs, !NeedForeignImportLangs),
-    find_need_imports_acc(Items, !NeedImports, !NeedForeignImportLangs).
-
-%---------------------%
-
-:- type foreign_enum_reconstructor
-    --->    foreign_enum_reconstructor(
-                pragma_info_foreign_enum,
-                item_maybe_attrs
-            ).
-
-:- pred add_foreign_enum_item_if_needed(type_defn_map::in,
-    foreign_enum_reconstructor::in, list(item)::in, list(item)::out,
-    set(foreign_language)::in, set(foreign_language)::out) is det.
-
-add_foreign_enum_item_if_needed(IntTypesMap, ForeignEnumReconstuctor,
-        !ImpItems, !NeedForeignImportLangs) :-
-    ForeignEnumReconstuctor = foreign_enum_reconstructor(FEInfo,
-        MaybeAttrs),
-    FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values),
+add_foreign_enum_spec_if_needed(IntTypesMap, ForeignEnumSpec,
+        !ImpForeignEnumSpecs, !ImpImplicitFIMLangs) :-
+    ForeignEnumSpec = foreign_enum_spec(FEInfo, _MaybeAttrs),
+    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, _Values),
     ( if
         map.search(IntTypesMap, TypeCtor, Defns),
         some_type_defn_is_non_abstract(Defns)
     then
-        Pragma = pragma_foreign_enum(FEInfo),
-        ItemPragmaInfo = item_pragma_info(Pragma,  MaybeAttrs,
-            term.context_init, -1),
-        Item = item_pragma(ItemPragmaInfo),
-        !:ImpItems = [Item | !.ImpItems],
-        set.insert_list(pragma_needs_foreign_imports(Pragma),
-            !NeedForeignImportLangs)
+        !:ImpForeignEnumSpecs = [ForeignEnumSpec | !.ImpForeignEnumSpecs],
+        set.insert(Lang, !ImpImplicitFIMLangs)
     else
         true
     ).
@@ -2090,194 +2096,90 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
 %---------------------------------------------------------------------------%
 
     % generate_interface_int2(AugCompUnit,
-    %     IntIncls, IntAvails, IntFIMs, ImpFIMs, IntItems, ImpItems,
-    %     ParseTreeInt2):
+    %   IntInclModuleNames, IntAvailModuleNames,
+    %   IntFIMSpecs, ImpFIMSpecs, IntItems, ImpItems, ParseTreeInt2):
     %
     % The input arguments should be the relevant parts of the .int1 file
-    % computed by our parent. Any foreign_import_items should be passed
-    % in the IntFIMItems and ImpFIMItems arguments (depending on section),
-    % since for the .int2 file, we want to decide whether we want to keep
-    % the foreign_import_module in each section on somewhat different
-    % criteria than those used for .int files.
+    % computed by our parent.
     %
 :- pred generate_interface_int2(aug_compilation_unit::in,
-    list(item_include)::in, list(item_avail)::in,
-    list(item_fim)::in, list(item_fim)::in, list(item)::in, list(item)::in,
-    parse_tree_int::out) is det.
+    set(module_name)::in, set(module_name)::in,
+    set(fim_spec)::in, set(fim_spec)::in,
+    list(item_type_defn_info)::in,
+    list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
+    list(item_typeclass_info)::in, list(item_instance_info)::in,
+    list(item_type_defn_info)::in, parse_tree_int2::out) is det.
 
-generate_interface_int2(AugCompUnit,
-        IntIncls, IntAvails, IntFIMs, ImpFIMs, IntItems, ImpItems,
-        ParseTreeInt2) :-
+generate_interface_int2(AugCompUnit, IntInclModuleNames, IntImportsUses,
+        IntFIMSpecs, ImpFIMSpecs, IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt2) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _ModuleVersionNumbers, _SrcItemBlocks,
         _DirectIntItemBlocks, _IndirectIntItemBlocks,
         _OptItemBlocks, _IntForOptItemBlocks),
 
-    get_int2_items_from_int1_int(IntItems,
-        no_unqual_symnames, UnqualSymNames, set.init, UsedModuleNamesSet,
-        cord.init, ShortIntItemsCord),
-    get_int2_items_from_int1_imp(ImpItems, set.init, ShortImpLangs,
-        cord.init, ShortImpItemsCord),
-    ShortIntItems = cord.list(ShortIntItemsCord),
-    ShortImpItems = cord.list(ShortImpItemsCord),
+    some [!UnqualSymNames, !UsedModuleNames, !ShortIntImplicitFIMLangs] (
+        !:UnqualSymNames = no_unqual_symnames,
+        set.init(!:UsedModuleNames),
+        set.init(!:ShortIntImplicitFIMLangs),
 
-    IntAvailModuleNames = list.map(item_avail_module_name, IntAvails),
-    IntAvailModuleNamesSet = set.list_to_set(IntAvailModuleNames),
+        get_int2_items_from_int1_int_type_defn(IntTypeDefns,
+            !UnqualSymNames, !UsedModuleNames,
+            cord.init, ShortIntTypeDefnsCord, !ShortIntImplicitFIMLangs),
+        get_int2_items_from_int1_int_inst_defn(IntInstDefns,
+            !UnqualSymNames, !UsedModuleNames,
+            cord.init, ShortIntInstDefnsCord),
+        get_int2_items_from_int1_int_mode_defn(IntModeDefns,
+            !UnqualSymNames, !UsedModuleNames,
+            cord.init, ShortIntModeDefnsCord),
+        get_int2_items_from_int1_int_typeclass(IntTypeClasses,
+            !UnqualSymNames, !UsedModuleNames,
+            cord.init, ShortIntTypeClassesCord),
+        get_int2_items_from_int1_int_instance(IntInstances,
+            !UnqualSymNames, !UsedModuleNames,
+            cord.init, ShortIntInstancesCord),
+
+        ShortIntTypeDefns = cord.list(ShortIntTypeDefnsCord),
+        ShortIntInstDefns = cord.list(ShortIntInstDefnsCord),
+        ShortIntModeDefns = cord.list(ShortIntModeDefnsCord),
+        ShortIntTypeClasses = cord.list(ShortIntTypeClassesCord),
+        ShortIntInstances = cord.list(ShortIntInstancesCord),
+
+        UnqualSymNames = !.UnqualSymNames,
+        UsedModuleNames = !.UsedModuleNames,
+        ShortIntImplicitFIMLangs = !.ShortIntImplicitFIMLangs
+    ),
+
+    get_int2_items_from_int1_imp_types(ImpTypeDefns,
+        set.init, ShortImpImplicitFIMLangs),
+
     (
         UnqualSymNames = no_unqual_symnames,
-        % UsedModuleNamesSet may contain references to implicitly imported
+        % UsedModuleNames may contain references to implicitly imported
         % builtin modules, which we do not want to *explicitly* import.
-        % Intersecting it with IntAvailModuleNamesSet deletes these.
-        set.intersect(UsedModuleNamesSet, IntAvailModuleNamesSet,
-            ShortIntAvailModuleNamesSet),
-        ShortIntAvails = list.map(make_use,
-            set.to_sorted_list(ShortIntAvailModuleNamesSet))
+        % Intersecting it with IntImportsUses deletes these.
+        set.intersect(UsedModuleNames, IntImportsUses, ShortIntUsedModuleNames)
     ;
         UnqualSymNames = some_unqual_symnames,
         % Since some item did not get fully qualified, the module has an error.
-        % If we deleted any element of IntAvails, a compiler invocation that
-        % read the .int2 file we are generating could print an error message
-        % that points the blame at that modification, rather than at the
-        % contents of the .m file we were given.
-        ShortIntAvails = IntAvails
+        % If we deleted any element of IntImportsUses, a compiler invocation
+        % that read the .int2 file we are generating could print
+        % an error message that points the blame at that modification,
+        % rather than at the contents of the .m file we were given.
+        ShortIntUsedModuleNames = IntImportsUses
     ),
-    find_need_imports(ShortIntItems, _ShortIntNeedImports,
-        set.init, ShortIntNeedForeignImportLangs),
-    ( if set.is_non_empty(ShortIntNeedForeignImportLangs) then
-        ShortIntFIMs = IntFIMs
+    % XXX This overestimates the required Short{Int,Imp}FIMSpecs.
+    ( if set.is_non_empty(ShortIntImplicitFIMLangs) then
+        ShortIntFIMSpecs = IntFIMSpecs
     else
-        ShortIntFIMs = []
+        set.init(ShortIntFIMSpecs)
     ),
-    ( if set.is_non_empty(ShortImpLangs) then
-        ShortImpFIMs = ImpFIMs
+    ( if set.is_non_empty(ShortImpImplicitFIMLangs) then
+        ShortImpFIMSpecs = ImpFIMSpecs
     else
-        ShortImpFIMs = []
+        set.init(ShortImpFIMSpecs)
     ),
-    DummyMaybeVersionNumbers = no,
-    ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
-        ModuleNameContext, DummyMaybeVersionNumbers,
-        IntIncls, [], ShortIntAvails, [], ShortIntFIMs, ShortImpFIMs,
-        ShortIntItems, ShortImpItems).
-
-:- pred get_int2_items_from_int1_int(list(item)::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out,
-    cord(item)::in, cord(item)::out) is det.
-
-get_int2_items_from_int1_int([], !MaybeUnqual, !ModuleNames, !IntItemsCord).
-get_int2_items_from_int1_int([Item | Items], !MaybeUnqual, !ModuleNames,
-        !IntItemsCord) :-
-    (
-        Item = item_type_defn(ItemTypeDefnInfo),
-        % generate_pre_grab_pre_qual_interface_for_int1_int2 had invoked
-        % make_canon_make_du_and_solver_types_abstract on type_defn items
-        % in the implementation section of the module. We now do the same
-        % for type_defn items in the interface section.
-        make_canon_make_du_and_solver_types_abstract(ItemTypeDefnInfo,
-            MaybeAbstractItemTypeDefnInfo),
-        MaybeAbstractItemTypeDefnInfo = item_type_defn_info(_TypeSymName,
-            _TypeParams, TypeDefn, _TVarSet, _Context, _SeqNum),
-        (
-            ( TypeDefn = parse_tree_du_type(_)
-            ; TypeDefn = parse_tree_solver_type(_)
-            ; TypeDefn = parse_tree_abstract_type(_)
-            ; TypeDefn = parse_tree_foreign_type(_)
-            )
-            % We just made du and solver types abstract, and abstract types
-            % were abstract already, so they cannot refer to other modules.
-            % And foreign types can never refer to Mercury code in other
-            % modules (though they can refer to target language code
-            % in other modules).
-        ;
-            TypeDefn = parse_tree_eqv_type(DetailsEqv),
-            DetailsEqv = type_details_eqv(EqvType),
-            accumulate_modules_in_type(EqvType, !MaybeUnqual, !ModuleNames)
-        ),
-        MaybeAbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
-        cord.snoc(MaybeAbstractItem, !IntItemsCord)
-    ;
-        Item = item_typeclass(ItemTypeClassInfo),
-        ItemTypeClassInfo = item_typeclass_info(ClassSymName,
-            TypeParams, SuperclassConstraints, FunDeps, _Methods0, TVarSet,
-            Context, SeqNum),
-        accumulate_modules_in_constraints(SuperclassConstraints,
-            !MaybeUnqual, !ModuleNames),
-        Methods = class_interface_abstract,
-        AbstractItemTypeClassInfo = item_typeclass_info(ClassSymName,
-            TypeParams, SuperclassConstraints, FunDeps, Methods, TVarSet,
-            Context, SeqNum),
-        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
-        cord.snoc(AbstractItem, !IntItemsCord)
-    ;
-        Item = item_instance(ItemInstanceInfo),
-        ItemInstanceInfo = item_instance_info(ClassSymName,
-            ArgTypes, OrigArgTypes, ClassConstraints, _InstanceBody0,
-            TVarSet, ContainingModuleName, Context, SeqNum),
-        accumulate_module(ClassSymName, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_types(OrigArgTypes, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_constraints(ClassConstraints,
-            !MaybeUnqual, !ModuleNames),
-        InstanceBody = instance_body_abstract,
-        AbstractItemInstanceInfo = item_instance_info(ClassSymName,
-            ArgTypes, OrigArgTypes, ClassConstraints, InstanceBody,
-            TVarSet, ContainingModuleName, Context, SeqNum),
-        AbstractItem = item_instance(AbstractItemInstanceInfo),
-        cord.snoc(AbstractItem, !IntItemsCord)
-    ;
-        Item = item_inst_defn(ItemInstDefnInfo),
-        ItemInstDefnInfo = item_inst_defn_info(_SymName, _InstArgVars,
-            MaybeForTypeCtor, MaybeAbstractInstDefn, _InstVarSet,
-            _Context, _SeqNum),
-        (
-            MaybeForTypeCtor = no
-        ;
-            MaybeForTypeCtor = yes(TypeCtor),
-            TypeCtor = type_ctor(TypeCtorSymName, _TypectorArity),
-            accumulate_module(TypeCtorSymName, !MaybeUnqual, !ModuleNames)
-        ),
-        (
-            MaybeAbstractInstDefn = abstract_inst_defn
-        ;
-            MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn),
-            InstDefn = eqv_inst(Inst),
-            accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames)
-        ),
-        % XXX ITEM_LIST Consider making the inst definition abstract
-        % if it does not refer to any other non-builtin modules.
-        cord.snoc(Item, !IntItemsCord)
-    ;
-        Item = item_mode_defn(ItemModeDefnInfo),
-        ItemModeDefnInfo = item_mode_defn_info(_SymName, _InstArgVars,
-            MaybeAbstractModeDefn, _InstVarSet, _Context, _SeqNum),
-        (
-            MaybeAbstractModeDefn = abstract_mode_defn
-        ;
-            MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
-            ModeDefn = eqv_mode(Mode),
-            accumulate_modules_in_mode(Mode, !MaybeUnqual, !ModuleNames)
-        ),
-        % XXX ITEM_LIST Consider making the mode definition abstract
-        % if it does not refer to any other non-builtin modules.
-        cord.snoc(Item, !IntItemsCord)
-    ;
-        ( Item = item_clause(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_pragma(_)
-        ; Item = item_promise(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        )
-        % Do not include Item in !IntItemsCord.
-    ;
-        Item = item_type_repn(_),
-        % We are not yet generating type_repn items.
-        unexpected($pred, "item_type_repn")
-    ),
-    get_int2_items_from_int1_int(Items, !MaybeUnqual, !ModuleNames,
-        !IntItemsCord).
+    DummyMaybeVersionNumbers = no_version_numbers,
 
     % For now, we need the implementation sections of .int2 files to contain
     % all the information that other modules reading that .int file will need
@@ -2285,10 +2187,10 @@ get_int2_items_from_int1_int([Item | Items], !MaybeUnqual, !ModuleNames,
     % module.
     %
     % The computation we use to decide which types' type_defn items
-    % need to stay in the implementation section of the .int file
-    % and in what form computes exactly this information. Therefore
-    % we need only the copy the type_defn items that this previous computation
-    % has left.
+    % need to stay in the implementation section of the .int file,
+    % and in what form, computes exactly this information. Therefore
+    % we need only the copy the type_defn items that this previous
+    % computation has given us.
     %
     % XXX TYPE_REPN In the future, these type_defn items (which include
     % some for types that *shouldn't* be exported from the module)
@@ -2300,43 +2202,178 @@ get_int2_items_from_int1_int([Item | Items], !MaybeUnqual, !ModuleNames,
     % representations, the implementation sections of .int2 files
     % should be empty (as are the implementation sections of .int3 files).
     %
-:- pred get_int2_items_from_int1_imp(list(item)::in,
-    set(foreign_language)::in, set(foreign_language)::out,
-    cord(item)::in, cord(item)::out) is det.
+    ShortImpTypeDefns = ImpTypeDefns,
+    ShortIntTypeRepns = [],
+    ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
+        DummyMaybeVersionNumbers,
+        IntInclModuleNames, ShortIntUsedModuleNames,
+        ShortIntFIMSpecs, ShortImpFIMSpecs,
+        ShortIntTypeDefns, ShortIntInstDefns, ShortIntModeDefns,
+        ShortIntTypeClasses, ShortIntInstances, ShortIntTypeRepns,
+        ShortImpTypeDefns).
 
-get_int2_items_from_int1_imp([], !Langs, !ImpItemsCord).
-get_int2_items_from_int1_imp([Item | Items], !Langs, !ImpItemsCord) :-
+%---------------------%
+
+:- pred get_int2_items_from_int1_int_type_defn(list(item_type_defn_info)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
+get_int2_items_from_int1_int_type_defn([],
+        !MaybeUnqual, !ModuleNames, !IntTypeDefnsCord, !IntImplicitFIMLangs).
+get_int2_items_from_int1_int_type_defn([TypeDefnInfo | TypeDefnInfos],
+        !MaybeUnqual, !ModuleNames, !IntTypeDefnsCord, !IntImplicitFIMLangs) :-
+    % generate_pre_grab_pre_qual_interface_for_int1_int2 had invoked
+    % make_canon_make_du_and_solver_types_abstract on type_defn items
+    % in the implementation section of the module. We now do the same
+    % for type_defn items in the interface section.
+    make_canon_make_du_and_solver_types_abstract(TypeDefnInfo,
+        MaybeAbstractTypeDefnInfo),
+    MaybeAbstractTypeDefnInfo = item_type_defn_info(_TypeSymName,
+        _TypeParams, TypeDefn, _TVarSet, _Context, _SeqNum),
     (
-        Item = item_type_defn(ItemTypeDefnInfo),
-        TypeDefn = ItemTypeDefnInfo ^ td_ctor_defn,
-        ( if TypeDefn = parse_tree_foreign_type(DetailsForeign) then
-            DetailsForeign = type_details_foreign(ForeignType, _, _),
-            set.insert(foreign_type_language(ForeignType), !Langs)
-        else
-            true
-        ),
-        cord.snoc(Item, !ImpItemsCord)
-    ;
-        ( Item = item_typeclass(_)
-        ; Item = item_instance(_ItemInstanceInfo)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_clause(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_pragma(_)
-        ; Item = item_promise(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
+        ( TypeDefn = parse_tree_du_type(_)
+        ; TypeDefn = parse_tree_solver_type(_)
+        ; TypeDefn = parse_tree_abstract_type(_)
         )
-        % Do not include Item in !ImpItemsCord.
+        % We just made du and solver types abstract, and abstract types
+        % were abstract already, so they cannot refer to other modules.
     ;
-        Item = item_type_repn(_),
-        % We are not yet generating type_repn items.
-        unexpected($pred, "item_type_repn")
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        % Foreign types can never refer to Mercury code in other
+        % modules (though they can refer to target language code
+        % in other modules).
+        DetailsForeign = type_details_foreign(ForeignType, _, _),
+        Lang = foreign_type_language(ForeignType),
+        set.insert(Lang, !IntImplicitFIMLangs)
+    ;
+        TypeDefn = parse_tree_eqv_type(DetailsEqv),
+        DetailsEqv = type_details_eqv(EqvType),
+        accumulate_modules_in_type(EqvType, !MaybeUnqual, !ModuleNames)
     ),
-    get_int2_items_from_int1_imp(Items, !Langs, !ImpItemsCord).
+    cord.snoc(MaybeAbstractTypeDefnInfo, !IntTypeDefnsCord),
+    get_int2_items_from_int1_int_type_defn(TypeDefnInfos,
+        !MaybeUnqual, !ModuleNames, !IntTypeDefnsCord, !IntImplicitFIMLangs).
+
+:- pred get_int2_items_from_int1_int_inst_defn(list(item_inst_defn_info)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out) is det.
+
+get_int2_items_from_int1_int_inst_defn([],
+        !MaybeUnqual, !ModuleNames, !IntInstDefnsCord).
+get_int2_items_from_int1_int_inst_defn([InstDefnInfo | InstDefnInfos],
+        !MaybeUnqual, !ModuleNames, !IntInstDefnsCord) :-
+    InstDefnInfo = item_inst_defn_info(_SymName, _InstArgVars,
+        MaybeForTypeCtor, MaybeAbstractInstDefn, _InstVarSet,
+        _Context, _SeqNum),
+    (
+        MaybeForTypeCtor = no
+    ;
+        MaybeForTypeCtor = yes(TypeCtor),
+        TypeCtor = type_ctor(TypeCtorSymName, _TypectorArity),
+        accumulate_module(TypeCtorSymName, !MaybeUnqual, !ModuleNames)
+    ),
+    (
+        MaybeAbstractInstDefn = abstract_inst_defn
+    ;
+        MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn),
+        InstDefn = eqv_inst(Inst),
+        accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames)
+    ),
+    % XXX ITEM_LIST Consider making the inst definition abstract
+    % if it does not refer to any other non-builtin modules.
+    cord.snoc(InstDefnInfo, !IntInstDefnsCord),
+    get_int2_items_from_int1_int_inst_defn(InstDefnInfos,
+        !MaybeUnqual, !ModuleNames, !IntInstDefnsCord).
+
+:- pred get_int2_items_from_int1_int_mode_defn(list(item_mode_defn_info)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out) is det.
+
+get_int2_items_from_int1_int_mode_defn([],
+        !MaybeUnqual, !ModuleNames, !IntModeDefnsCord).
+get_int2_items_from_int1_int_mode_defn([ModeDefnInfo | ModeDefnInfos],
+        !MaybeUnqual, !ModuleNames, !IntModeDefnsCord) :-
+    ModeDefnInfo = item_mode_defn_info(_SymName, _InstArgVars,
+        MaybeAbstractModeDefn, _InstVarSet, _Context, _SeqNum),
+    (
+        MaybeAbstractModeDefn = abstract_mode_defn
+    ;
+        MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
+        ModeDefn = eqv_mode(Mode),
+        accumulate_modules_in_mode(Mode, !MaybeUnqual, !ModuleNames)
+    ),
+    % XXX ITEM_LIST Consider making the mode definition abstract
+    % if it does not refer to any other non-builtin modules.
+    cord.snoc(ModeDefnInfo, !IntModeDefnsCord),
+    get_int2_items_from_int1_int_mode_defn(ModeDefnInfos,
+        !MaybeUnqual, !ModuleNames, !IntModeDefnsCord).
+
+:- pred get_int2_items_from_int1_int_typeclass(list(item_typeclass_info)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out) is det.
+
+get_int2_items_from_int1_int_typeclass([],
+        !MaybeUnqual, !ModuleNames, !IntTypeClassesCord).
+get_int2_items_from_int1_int_typeclass([TypeClassInfo | TypeClassInfos],
+        !MaybeUnqual, !ModuleNames, !IntTypeClassesCord) :-
+    TypeClassInfo = item_typeclass_info(ClassSymName, TypeParams,
+        SuperclassConstraints, FunDeps, _Methods0, TVarSet, Context, SeqNum),
+    accumulate_modules_in_constraints(SuperclassConstraints,
+        !MaybeUnqual, !ModuleNames),
+    Methods = class_interface_abstract,
+    AbstractTypeClassInfo = item_typeclass_info(ClassSymName, TypeParams,
+        SuperclassConstraints, FunDeps, Methods, TVarSet, Context, SeqNum),
+    cord.snoc(AbstractTypeClassInfo, !IntTypeClassesCord),
+    get_int2_items_from_int1_int_typeclass(TypeClassInfos,
+        !MaybeUnqual, !ModuleNames, !IntTypeClassesCord).
+
+:- pred get_int2_items_from_int1_int_instance(list(item_instance_info)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out,
+    cord(item_instance_info)::in, cord(item_instance_info)::out) is det.
+
+get_int2_items_from_int1_int_instance([],
+        !MaybeUnqual, !ModuleNames, !IntInstancesCord).
+get_int2_items_from_int1_int_instance([InstanceInfo | InstanceInfos],
+        !MaybeUnqual, !ModuleNames, !IntInstancesCord) :-
+    InstanceInfo = item_instance_info(ClassSymName,
+        ArgTypes, OrigArgTypes, ClassConstraints, _InstanceBody0,
+        TVarSet, ContainingModuleName, Context, SeqNum),
+    accumulate_module(ClassSymName, !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_types(OrigArgTypes, !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_constraints(ClassConstraints,
+        !MaybeUnqual, !ModuleNames),
+    InstanceBody = instance_body_abstract,
+    AbstractInstanceInfo = item_instance_info(ClassSymName,
+        ArgTypes, OrigArgTypes, ClassConstraints, InstanceBody,
+        TVarSet, ContainingModuleName, Context, SeqNum),
+    cord.snoc(AbstractInstanceInfo, !IntInstancesCord),
+    get_int2_items_from_int1_int_instance(InstanceInfos,
+        !MaybeUnqual, !ModuleNames, !IntInstancesCord).
+
+%---------------------%
+
+:- pred get_int2_items_from_int1_imp_types(list(item_type_defn_info)::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
+get_int2_items_from_int1_imp_types([], !ImpImplicitFIMLangs).
+get_int2_items_from_int1_imp_types([ImpTypeDefn | ImpTypeDefns],
+        !ImpImplicitFIMLangs) :-
+    TypeDefn = ImpTypeDefn ^ td_ctor_defn,
+    ( if TypeDefn = parse_tree_foreign_type(DetailsForeign) then
+        DetailsForeign = type_details_foreign(ForeignType, _, _),
+        Lang = foreign_type_language(ForeignType),
+        set.insert(Lang, !ImpImplicitFIMLangs)
+    else
+        true
+    ),
+    get_int2_items_from_int1_imp_types(ImpTypeDefns, !ImpImplicitFIMLangs).
 
 %---------------------------------------------------------------------------%
 

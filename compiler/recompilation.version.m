@@ -36,6 +36,11 @@
 
 :- pred write_version_numbers(version_numbers::in, io::di, io::uo) is det.
 
+    % The version number for the format of the version numbers
+    % written to the interface files.
+    %
+:- func version_numbers_version_number = int.
+
     % Parse a term that maps item ids to timestamps. These terms
     % look like this:
     %
@@ -62,11 +67,6 @@
     % }
     %
 :- pred parse_version_numbers(term::in, maybe1(version_numbers)::out) is det.
-
-    % The version number for the format of the version numbers
-    % written to the interface files.
-    %
-:- func version_numbers_version_number = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -106,7 +106,7 @@ compute_version_numbers(SourceFileTime, CurParseTreeInt, MaybeOldParseTreeInt,
         OldParseTreeInt = parse_tree_int(_, _, _, OldMaybeVersionNumbers,
             _OldIntIncls, _OldImpIncls, _OldIntAvails, _OldImpAvails,
             _OldIntFIMs, _OldImpFIMs, OldIntItems, OldImpItems),
-        OldMaybeVersionNumbers = yes(OldVersionNumbers)
+        OldMaybeVersionNumbers = version_numbers(OldVersionNumbers)
     then
         OldVersionNumbers = version_numbers(OldItemVersionNumbers,
             OldInstanceVersionNumbers),

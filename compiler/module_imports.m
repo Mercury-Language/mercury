@@ -30,7 +30,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
-:- import_module recompilation.
 
 :- import_module cord.
 :- import_module io.
@@ -288,7 +287,7 @@
     module_and_imports::in, module_and_imports::out) is det.
 
 :- pred module_and_imports_maybe_add_module_version_numbers(
-    module_name::in, maybe(version_numbers)::in,
+    module_name::in, maybe_version_numbers::in,
     module_and_imports::in, module_and_imports::out) is det.
 
 :- pred module_and_imports_add_specs(list(error_spec)::in,
@@ -340,6 +339,7 @@
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.split_parse_tree_src.
+:- import_module recompilation.
 
 :- import_module dir.
 :- import_module multi_map.
@@ -1651,9 +1651,9 @@ module_and_imports_add_int_for_opt_item_blocks(NewIntItemBlocks,
 module_and_imports_maybe_add_module_version_numbers(ModuleName,
         MaybeVersionNumbers, !ModuleAndImports) :-
     (
-        MaybeVersionNumbers = no
+        MaybeVersionNumbers = no_version_numbers
     ;
-        MaybeVersionNumbers = yes(VersionNumbers),
+        MaybeVersionNumbers = version_numbers(VersionNumbers),
         module_and_imports_get_version_numbers_map(!.ModuleAndImports,
             ModuleVersionNumbersMap0),
         map.det_insert(ModuleName, VersionNumbers,

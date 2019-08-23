@@ -749,7 +749,7 @@ check_imported_module(Globals, Term, !Info, !IO) :-
                     MaybeVersionNumbers, IntIncls, ImpIncls,
                     IntAvails, ImpAvails, IntFIMs, ImpFIMs,
                     IntItems, ImplItems),
-                MaybeVersionNumbers = yes(VersionNumbers)
+                MaybeVersionNumbers = version_numbers(VersionNumbers)
             then
                 int_imp_items_to_item_blocks(ParseTreeModuleName,
                     ms_interface, ms_implementation,
