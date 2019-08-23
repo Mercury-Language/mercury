@@ -33,18 +33,18 @@
 :- pred apply_deep_profiling_transform(module_info::in, module_info::out)
     is det.
 
-    % Create a variable with the given name and type, adding it to the
-    % prog_var_set_types structure.
-    %
-:- pred generate_var(string::in, mer_type::in, prog_var::out,
-    prog_var_set_types::in, prog_var_set_types::out) is det.
-
 :- pred generate_deep_call(module_info::in, string::in, int::in,
     list(prog_var)::in, maybe(list(prog_var))::in, determinism::in,
     hlds_goal::out) is det.
 
 :- pred generate_deep_const_unify(cons_id::in, prog_var::in, hlds_goal::out)
     is det.
+
+    % Create a variable with the given name and type, adding it to the
+    % prog_var_set_types structure.
+    %
+:- pred generate_var(string::in, mer_type::in, prog_var::out,
+    prog_var_set_types::in, prog_var_set_types::out) is det.
 
 :- pred get_deep_profile_builtin_ppid(module_info::in, string::in, int::in,
     pred_id::out, proc_id::out) is det.

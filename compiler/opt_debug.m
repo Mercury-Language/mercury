@@ -92,13 +92,13 @@
 
 :- func dump_rtti_type_ctor(rtti_type_ctor) = string.
 
-:- func dump_rtti_type_class_name(tc_name) = string.
-
-:- func dump_rtti_type_class_instance_types(list(tc_type)) = string.
-
 :- func dump_rtti_name(ctor_rtti_name) = string.
 
 :- func dump_tc_rtti_name(tc_rtti_name) = string.
+
+:- func dump_rtti_type_class_name(tc_name) = string.
+
+:- func dump_rtti_type_class_instance_types(list(tc_type)) = string.
 
 :- func dump_layout_slot_name(layout_slot_name) = string.
 
@@ -110,6 +110,12 @@
 
 :- func dump_binop(binary_op) = string.
 
+:- func dump_maybe_rvals(maybe(proc_label), list(maybe(rval)), int) = string.
+
+:- func dump_code_addr(maybe(proc_label), code_addr) = string.
+
+:- func dump_code_addrs(maybe(proc_label), list(code_addr)) = string.
+
 :- func dump_label(maybe(proc_label), label) = string.
 
 :- func dump_labels_or_not_reached(maybe(proc_label), list(maybe(label)))
@@ -120,12 +126,6 @@
 :- func dump_label_pairs(maybe(proc_label), list(pair(label))) = string.
 
 :- func dump_proclabel(proc_label) = string.
-
-:- func dump_maybe_rvals(maybe(proc_label), list(maybe(rval)), int) = string.
-
-:- func dump_code_addr(maybe(proc_label), code_addr) = string.
-
-:- func dump_code_addrs(maybe(proc_label), list(code_addr)) = string.
 
 :- func dump_bool(bool) = string.
 

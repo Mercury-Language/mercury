@@ -70,14 +70,14 @@
     list(layout_slot_name)::out, list(proc_layout_exec_trace)::out,
     list(proc_layout_data)::out, list(module_layout_data)::out) is det.
 
+:- pred convert_table_arg_info(table_arg_infos::in, int::out,
+    rval::out, rval::out, static_cell_info::in, static_cell_info::out) is det.
+
 :- pred construct_closure_layout(proc_label::in, int::in,
     closure_layout_info::in, proc_label::in, module_name::in,
     string::in, int::in, pred_origin::in, string::in,
     static_cell_info::in, static_cell_info::out,
     list(typed_rval)::out, closure_proc_id_data::out) is det.
-
-:- pred convert_table_arg_info(table_arg_infos::in, int::out,
-    rval::out, rval::out, static_cell_info::in, static_cell_info::out) is det.
 
     % Construct a representation of a variable location as a 32-bit
     % integer.
@@ -378,10 +378,11 @@ format_label_table(FileName - LineNoMap, FileLayoutData) :-
     map.to_assoc_list(LineNoMap, LineNoList),
     % And this step should preserve that order.
     flatten_label_table(LineNoList, [], FlatLineNoList),
-    Filter = (pred(LineNoInfo::in, FilteredLineNoInfo::out) is det :-
-        LineNoInfo = LineNo - (Label - _IsReturn),
-        FilteredLineNoInfo = LineNo - Label
-    ),
+    Filter =
+        ( pred(LineNoInfo::in, FilteredLineNoInfo::out) is det :-
+            LineNoInfo = LineNo - (Label - _IsReturn),
+            FilteredLineNoInfo = LineNo - Label
+        ),
     list.map(Filter, FlatLineNoList, FilteredList),
     FileLayoutData = file_layout_data(FileName, FilteredList).
 
@@ -1272,107 +1273,6 @@ construct_var_name_rvals(VarNamesHeadTail @ [Var - Name | VarNamesTail],
 
 %---------------------------------------------------------------------------%
 
-compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap) :-
-    some [!VarNumMap, !Counter] (
-        !:VarNumMap = map.init,
-        !:Counter = counter.init(1), % to match term.var_supply_init
-        goal_util.goal_vars(Goal, GoalVarSet),
-        set_of_var.to_sorted_list(GoalVarSet, GoalVars),
-        list.foldl2(add_var_to_var_number_map(VarSet), GoalVars,
-            !VarNumMap, !Counter),
-        list.foldl2(add_var_to_var_number_map(VarSet), HeadVars,
-            !VarNumMap, !Counter),
-        list.foldl2(internal_var_number_map(VarSet), Internals, !VarNumMap,
-            !.Counter, _),
-        VarNumMap = !.VarNumMap
-    ).
-
-:- pred internal_var_number_map(prog_varset::in,
-    pair(int, internal_layout_info)::in,
-    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
-
-internal_var_number_map(VarSet, _Label - Internal, !VarNumMap, !Counter) :-
-    Internal = internal_layout_info(MaybeTrace, MaybeResume, MaybeReturn),
-    (
-        MaybeTrace = yes(Trace),
-        Trace = trace_port_layout_info(_, _, _, _, MaybeUser, TraceLayout),
-        label_layout_var_number_map(TraceLayout, !VarNumMap, !Counter),
-        (
-            MaybeUser = no
-        ;
-            MaybeUser = yes(UserEvent),
-            UserEvent = user_event_info(_UserEventNumber, Attributes),
-            list.foldl2(user_attribute_var_num_map(VarSet), Attributes,
-                !VarNumMap, !Counter)
-        )
-    ;
-        MaybeTrace = no
-    ),
-    (
-        MaybeResume = yes(ResumeLayout),
-        label_layout_var_number_map(ResumeLayout, !VarNumMap, !Counter)
-    ;
-        MaybeResume = no
-    ),
-    (
-        MaybeReturn = yes(Return),
-        Return = return_layout_info(_, ReturnLayout),
-        label_layout_var_number_map(ReturnLayout, !VarNumMap, !Counter)
-    ;
-        MaybeReturn = no
-    ).
-
-:- pred label_layout_var_number_map(layout_label_info::in,
-    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
-
-label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
-    LabelLayout = layout_label_info(VarInfoSet, _),
-    VarInfos = set.to_sorted_list(VarInfoSet),
-    FindVar = (pred(VarInfo::in, Var - Name::out) is semidet :-
-        VarInfo = layout_var_info(_, LiveValueType, _),
-        LiveValueType = live_value_var(Var, Name, _, _)
-    ),
-    list.filter_map(FindVar, VarInfos, VarsNames),
-    list.foldl2(add_named_var_to_var_number_map, VarsNames,
-        !VarNumMap, !Counter).
-
-:- pred user_attribute_var_num_map(prog_varset::in, maybe(user_attribute)::in,
-    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
-
-user_attribute_var_num_map(VarSet, MaybeAttribute, !VarNumMap, !Counter) :-
-    (
-        MaybeAttribute = yes(Attribute),
-        Attribute = user_attribute(_Locn, Var),
-        add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter)
-    ;
-        MaybeAttribute = no
-    ).
-
-:- pred add_var_to_var_number_map(prog_varset::in, prog_var::in,
-    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
-
-add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter) :-
-    ( if varset.search_name(VarSet, Var, VarName) then
-        Name = VarName
-    else
-        Name = ""
-    ),
-    add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter).
-
-:- pred add_named_var_to_var_number_map(pair(prog_var, string)::in,
-    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
-
-add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
-    ( if map.search(!.VarNumMap, Var, _) then
-        % Name shouldn't differ from the name recorded in !.VarNumMap.
-        true
-    else
-        counter.allocate(VarNum, !Counter),
-        map.det_insert(Var, VarNum - Name, !VarNumMap)
-    ).
-
-%---------------------------------------------------------------------------%
-
 :- type exec_traces_info
     --->    exec_traces_info(
                 % The arrays that hold (components of) exec trace structures.
@@ -1725,28 +1625,30 @@ select_trace_return(LocnInfo) :-
     is det.
 
 sort_livevals(OrigInfos, FinalInfos) :-
-    IsNamedVar = (pred(LvalInfo::in) is semidet :-
-        LvalInfo = layout_var_info(_Lval, LvalType, _),
-        LvalType = live_value_var(_, Name, _, _),
-        Name \= ""
-    ),
+    IsNamedVar =
+        ( pred(LvalInfo::in) is semidet :-
+            LvalInfo = layout_var_info(_Lval, LvalType, _),
+            LvalType = live_value_var(_, Name, _, _),
+            Name \= ""
+        ),
     list.filter(IsNamedVar, OrigInfos, NamedVarInfos0, OtherInfos0),
-    CompareVarInfos = (pred(Var1::in, Var2::in, Result::out) is det :-
-        Var1 = layout_var_info(Lval1, LiveType1, _),
-        Var2 = layout_var_info(Lval2, LiveType2, _),
-        get_name_from_live_value_type(LiveType1, Name1),
-        get_name_from_live_value_type(LiveType2, Name2),
-        compare(NameResult, Name1, Name2),
-        (
-            NameResult = (=),
-            compare(Result, Lval1, Lval2)
-        ;
-            ( NameResult = (<)
-            ; NameResult = (>)
-            ),
-            Result = NameResult
-        )
-    ),
+    CompareVarInfos =
+        ( pred(Var1::in, Var2::in, Result::out) is det :-
+            Var1 = layout_var_info(Lval1, LiveType1, _),
+            Var2 = layout_var_info(Lval2, LiveType2, _),
+            get_name_from_live_value_type(LiveType1, Name1),
+            get_name_from_live_value_type(LiveType2, Name2),
+            compare(NameResult, Name1, Name2),
+            (
+                NameResult = (=),
+                compare(Result, Lval1, Lval2)
+            ;
+                ( NameResult = (<)
+                ; NameResult = (>)
+                ),
+                Result = NameResult
+            )
+        ),
     list.sort(CompareVarInfos, NamedVarInfos0, NamedVarInfos),
     list.sort(CompareVarInfos, OtherInfos0, OtherInfos),
     FinalInfos = NamedVarInfos ++ OtherInfos.
@@ -2642,6 +2544,108 @@ init_stack_layout_params(ModuleInfo) = Params :-
         TraceLevel, TraceSuppress, DeepProfiling,
         AgcLayout, TraceLayout, ProcIdLayout, StaticCodeAddr,
         UnboxedFloat, UnboxedInt64s, RttiLineNumbers).
+
+%---------------------------------------------------------------------------%
+
+compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap) :-
+    some [!VarNumMap, !Counter] (
+        !:VarNumMap = map.init,
+        !:Counter = counter.init(1), % to match term.var_supply_init
+        goal_util.goal_vars(Goal, GoalVarSet),
+        set_of_var.to_sorted_list(GoalVarSet, GoalVars),
+        list.foldl2(add_var_to_var_number_map(VarSet), GoalVars,
+            !VarNumMap, !Counter),
+        list.foldl2(add_var_to_var_number_map(VarSet), HeadVars,
+            !VarNumMap, !Counter),
+        list.foldl2(internal_var_number_map(VarSet), Internals, !VarNumMap,
+            !.Counter, _),
+        VarNumMap = !.VarNumMap
+    ).
+
+:- pred internal_var_number_map(prog_varset::in,
+    pair(int, internal_layout_info)::in,
+    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+internal_var_number_map(VarSet, _Label - Internal, !VarNumMap, !Counter) :-
+    Internal = internal_layout_info(MaybeTrace, MaybeResume, MaybeReturn),
+    (
+        MaybeTrace = yes(Trace),
+        Trace = trace_port_layout_info(_, _, _, _, MaybeUser, TraceLayout),
+        label_layout_var_number_map(TraceLayout, !VarNumMap, !Counter),
+        (
+            MaybeUser = no
+        ;
+            MaybeUser = yes(UserEvent),
+            UserEvent = user_event_info(_UserEventNumber, Attributes),
+            list.foldl2(user_attribute_var_num_map(VarSet), Attributes,
+                !VarNumMap, !Counter)
+        )
+    ;
+        MaybeTrace = no
+    ),
+    (
+        MaybeResume = yes(ResumeLayout),
+        label_layout_var_number_map(ResumeLayout, !VarNumMap, !Counter)
+    ;
+        MaybeResume = no
+    ),
+    (
+        MaybeReturn = yes(Return),
+        Return = return_layout_info(_, ReturnLayout),
+        label_layout_var_number_map(ReturnLayout, !VarNumMap, !Counter)
+    ;
+        MaybeReturn = no
+    ).
+
+:- pred label_layout_var_number_map(layout_label_info::in,
+    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
+    LabelLayout = layout_label_info(VarInfoSet, _),
+    VarInfos = set.to_sorted_list(VarInfoSet),
+    FindVar =
+        ( pred(VarInfo::in, Var - Name::out) is semidet :-
+            VarInfo = layout_var_info(_, LiveValueType, _),
+            LiveValueType = live_value_var(Var, Name, _, _)
+        ),
+    list.filter_map(FindVar, VarInfos, VarsNames),
+    list.foldl2(add_named_var_to_var_number_map, VarsNames,
+        !VarNumMap, !Counter).
+
+:- pred user_attribute_var_num_map(prog_varset::in, maybe(user_attribute)::in,
+    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+user_attribute_var_num_map(VarSet, MaybeAttribute, !VarNumMap, !Counter) :-
+    (
+        MaybeAttribute = yes(Attribute),
+        Attribute = user_attribute(_Locn, Var),
+        add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter)
+    ;
+        MaybeAttribute = no
+    ).
+
+:- pred add_var_to_var_number_map(prog_varset::in, prog_var::in,
+    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter) :-
+    ( if varset.search_name(VarSet, Var, VarName) then
+        Name = VarName
+    else
+        Name = ""
+    ),
+    add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter).
+
+:- pred add_named_var_to_var_number_map(pair(prog_var, string)::in,
+    var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
+    ( if map.search(!.VarNumMap, Var, _) then
+        % Name shouldn't differ from the name recorded in !.VarNumMap.
+        true
+    else
+        counter.allocate(VarNum, !Counter),
+        map.det_insert(Var, VarNum - Name, !VarNumMap)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.stack_layout.

@@ -28,6 +28,9 @@
     %
 :- pred const_is_constant(rval_const::in, exprn_opts::in, bool::out) is det.
 
+:- pred vars_in_rval(rval::in, list(prog_var)::out) is det.
+:- pred vars_in_lval(lval::in, list(prog_var)::out) is det.
+
     % transform_lval_in_instr(Transform, !Instr, !Acc):
     %
     % Transform all lvals in !.Instr with the predicate Transform.
@@ -69,10 +72,6 @@
 :- pred substitute_rvals_in_rval(assoc_list(rval, rval)::in,
     rval::in, rval::out) is det.
 
-:- pred vars_in_lval(lval::in, list(prog_var)::out) is det.
-
-:- pred vars_in_rval(rval::in, list(prog_var)::out) is det.
-
 :- pred simplify_rval(rval::in, rval::out) is det.
 
     % The following predicates take an lval/rval (list)
@@ -80,15 +79,11 @@
     %
 :- pred rval_list_addrs(list(rval)::in,
     list(code_addr)::out, list(data_id)::out) is det.
-
 :- pred lval_list_addrs(list(lval)::in,
     list(code_addr)::out, list(data_id)::out) is det.
 
-:- pred rval_addrs(rval::in, list(code_addr)::out, list(data_id)::out)
-    is det.
-
-:- pred lval_addrs(lval::in, list(code_addr)::out, list(data_id)::out)
-    is det.
+:- pred rval_addrs(rval::in, list(code_addr)::out, list(data_id)::out) is det.
+:- pred lval_addrs(lval::in, list(code_addr)::out, list(data_id)::out) is det.
 
 :- func var_lval_to_rval(prog_var, lval) = rval.
 
@@ -843,6 +838,20 @@ simplify_rval_2(Rval0, Rval) :-
 
 %-----------------------------------------------------------------------------%
 
+rval_list_addrs([], [], []).
+rval_list_addrs([Rval | Rvals], CodeAddrs, DataIds) :-
+    rval_addrs(Rval, HeadCodeAddrs, HeadDataIds),
+    rval_list_addrs(Rvals, TailCodeAddrs, TailDataIds),
+    CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs,
+    DataIds = HeadDataIds ++ TailDataIds.
+
+lval_list_addrs([], [], []).
+lval_list_addrs([Lval | Lvals], CodeAddrs, DataIds) :-
+    lval_addrs(Lval, HeadCodeAddrs, HeadDataIds),
+    lval_list_addrs(Lvals, TailCodeAddrs, TailDataIds),
+    CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs,
+    DataIds = HeadDataIds ++ TailDataIds.
+
 rval_addrs(Rval, CodeAddrs, DataIds) :-
     (
         Rval = lval(Lval),
@@ -917,20 +926,6 @@ lval_addrs(Lval, CodeAddrs, DataIds) :-
         CodeAddrs = CodeAddrsA ++ CodeAddrsB,
         DataIds = DataIdsA ++ DataIdsB
     ).
-
-rval_list_addrs([], [], []).
-rval_list_addrs([Rval | Rvals], CodeAddrs, DataIds) :-
-    rval_addrs(Rval, HeadCodeAddrs, HeadDataIds),
-    rval_list_addrs(Rvals, TailCodeAddrs, TailDataIds),
-    CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs,
-    DataIds = HeadDataIds ++ TailDataIds.
-
-lval_list_addrs([], [], []).
-lval_list_addrs([Lval | Lvals], CodeAddrs, DataIds) :-
-    lval_addrs(Lval, HeadCodeAddrs, HeadDataIds),
-    lval_list_addrs(Lvals, TailCodeAddrs, TailDataIds),
-    CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs,
-    DataIds = HeadDataIds ++ TailDataIds.
 
 :- pred mem_ref_addrs(mem_ref::in,
     list(code_addr)::out, list(data_id)::out) is det.

@@ -417,257 +417,6 @@ find_errors_loop([X | Xs], !Results, !Specs) :-
     ).
 
 %---------------------------------------------------------------------------%
-%
-% Predicates for parsing various kinds of constraints.
-%
-
-parse_class_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
-    Pieces = [words("Sorry, not implemented:"),
-        words("constraints may only constrain type variables"),
-        words("and ground types"), nl],
-    parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm, Pieces,
-        Result).
-
-:- pred parse_simple_class_constraints(module_name::in, varset::in, term::in,
-    list(format_component)::in, maybe1(list(prog_constraint))::out) is det.
-
-parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
-        Result) :-
-    parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
-    (
-        Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
-        ( if
-            % Fail if any of the constraints aren't simple.
-            get_simple_constraint(HeadArbConstraint, HeadConstraint),
-            list.map(get_simple_constraint,
-                TailArbConstraints, TailConstraints)
-        then
-            % XXX ITEM_LIST Loosens representation; switching from one_or_more
-            % to list allows an empty list.
-            Result = ok1([HeadConstraint | TailConstraints])
-        else
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ConstraintsTerm),
-                    [always(Pieces)])]),
-            Result = error1([Spec])
-        )
-    ;
-        Result0 = error1(Specs),
-        Result = error1(Specs)
-    ).
-
-:- pred get_simple_constraint(arbitrary_constraint::in, prog_constraint::out)
-    is semidet.
-
-get_simple_constraint(simple(Constraint), Constraint).
-
-parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
-        Result) :-
-    parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
-    (
-        Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
-        ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
-        collect_class_and_inst_constraints(ArbitraryConstraints,
-            ProgConstraints, FunDeps, InstVarSub),
-        (
-            FunDeps = [],
-            Result = ok2(ProgConstraints, InstVarSub)
-        ;
-            FunDeps = [_ | _],
-            Pieces = [words("Error: functional dependencies are only allowed"),
-                words("in typeclass declarations."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ConstraintsTerm),
-                    [always(Pieces)])]),
-            Result = error2([Spec])
-        )
-    ;
-        Result0 = error1(Specs),
-        Result = error2(Specs)
-    ).
-
-:- pred collect_class_and_inst_constraints(list(arbitrary_constraint)::in,
-    list(prog_constraint)::out, list(prog_fundep)::out, inst_var_sub::out)
-    is det.
-
-collect_class_and_inst_constraints([], [], [], map.init).
-collect_class_and_inst_constraints([Constraint | Constraints],
-        !:ProgConstraints, !:FunDeps, !:InstVarSub) :-
-    collect_class_and_inst_constraints(Constraints,
-        !:ProgConstraints, !:FunDeps, !:InstVarSub),
-    (
-        ( Constraint = simple(ProgConstraint)
-        ; Constraint = non_simple(ProgConstraint)
-        ),
-        !:ProgConstraints = [ProgConstraint | !.ProgConstraints]
-    ;
-        Constraint = inst_constraint(InstVar, Inst),
-        map.set(InstVar, Inst, !InstVarSub)
-    ;
-        Constraint = fundep(FunDep),
-        !:FunDeps = [FunDep | !.FunDeps]
-    ).
-
-:- type arbitrary_constraint
-    --->    simple(prog_constraint)
-            % A class constraint whose arguments are either variables
-            % or ground terms.
-
-    ;       non_simple(prog_constraint)
-            % An arbitrary class constraint not matching the description
-            % of "simple".
-
-    ;       inst_constraint(inst_var, mer_inst)
-            % A constraint on an inst variable (that is, one whose head
-            % is '=<'/2).
-
-    ;       fundep(prog_fundep).
-            % A functional dependency (that is, one whose head is '->'/2)
-            % and whose arguments are comma-separated variables.
-
-:- type arbitrary_constraints == one_or_more(arbitrary_constraint).
-
-:- pred parse_arbitrary_constraints(varset::in, term::in,
-    maybe1(arbitrary_constraints)::out) is det.
-
-parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result) :-
-    conjunction_to_one_or_more(ConstraintsTerm,
-        one_or_more(HeadConstraintTerm, TailConstraintTerms)),
-    parse_arbitrary_constraint_list(VarSet,
-        HeadConstraintTerm, TailConstraintTerms, Result).
-
-:- pred parse_arbitrary_constraint_list(varset::in, term::in, list(term)::in,
-    maybe1(arbitrary_constraints)::out) is det.
-
-parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
-    parse_arbitrary_constraint(VarSet, HeadTerm, HeadResult),
-    (
-        TailTerms = [],
-        (
-            HeadResult = ok1(HeadConstraint),
-            Result = ok1(one_or_more(HeadConstraint, []))
-        ;
-            HeadResult = error1(Specs),
-            Result = error1(Specs)
-        )
-    ;
-        TailTerms = [HeadTailTerm | TailTailTerms],
-        parse_arbitrary_constraint_list(VarSet, HeadTailTerm, TailTailTerms,
-            TailResult),
-        ( if
-            HeadResult = ok1(HeadConstraint),
-            TailResult = ok1(TailConstraints)
-        then
-            Result = ok1(one_or_more_cons(HeadConstraint, TailConstraints))
-        else
-            Result = error1(get_any_errors1(HeadResult) ++
-                get_any_errors1(TailResult))
-        )
-    ).
-
-:- pred parse_arbitrary_constraint(varset::in, term::in,
-    maybe1(arbitrary_constraint)::out) is det.
-
-parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
-    ( if
-        ConstraintTerm = term.functor(term.atom("=<"), [LHSTerm, RHSTerm], _)
-    then
-        (
-            LHSTerm = term.variable(InstVar0, _),
-            term.coerce_var(InstVar0, InstVar1),
-            MaybeInstVar = ok1(InstVar1)
-        ;
-            LHSTerm = term.functor(_, _, LHSContext),
-            LHSTermStr = describe_error_term(VarSet, LHSTerm),
-            LHSPieces = [words("Error: a non-variable inst such as"),
-                quote(LHSTermStr), words("may not be the subject"),
-                words("of an inst constraint."), nl],
-            LHSSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(LHSContext, [always(LHSPieces)])]),
-            MaybeInstVar = error1([LHSSpec])
-        ),
-        ContextPieces = cord.from_list([words("In the constraining inst"),
-            words("of an inst constraint:")]),
-        parse_inst(no_allow_constrained_inst_var(wnciv_constraint_rhs),
-            VarSet, ContextPieces, RHSTerm, MaybeInst),
-        ( if
-            MaybeInstVar = ok1(InstVar),
-            MaybeInst = ok1(Inst)
-        then
-            Result = ok1(inst_constraint(InstVar, Inst))
-        else
-            Specs = get_any_errors1(MaybeInstVar)
-                ++ get_any_errors1(MaybeInst),
-            Result = error1(Specs)
-        )
-    else if
-        parse_fundep(ConstraintTerm, Result0)
-    then
-        Result = Result0
-    else if
-        try_parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
-    then
-        ArgsResultContextPieces =
-            cord.singleton(words("In class constraint:")),
-        parse_types(no_allow_ho_inst_info(wnhii_class_constraint),
-            VarSet, ArgsResultContextPieces, Args0, ArgsResult),
-        (
-            ArgsResult = ok1(Args),
-            Constraint = constraint(ClassName, Args),
-            ( if constraint_is_not_simple(Constraint) then
-                Result = ok1(non_simple(Constraint))
-            else
-                Result = ok1(simple(Constraint))
-            )
-        ;
-            ArgsResult = error1(Specs),
-            Result = error1(Specs)
-        )
-    else
-        Pieces = [words("Error: expected atom"),
-            words("as class name or inst constraint."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ConstraintTerm), [always(Pieces)])]),
-        Result = error1([Spec])
-    ).
-
-:- pred parse_fundep(term::in, maybe1(arbitrary_constraint)::out) is semidet.
-
-parse_fundep(Term, Result) :-
-    Term = term.functor(term.atom("->"), [DomainTerm, RangeTerm], _),
-    ( if
-        parse_fundep_2(DomainTerm, Domain),
-        parse_fundep_2(RangeTerm, Range)
-    then
-        Result = ok1(fundep(fundep(Domain, Range)))
-    else
-        Pieces = [words("Error: the domain and range"),
-            words("of a functional dependency"),
-            words("must be comma-separated lists of variables."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        Result = error1([Spec])
-    ).
-
-    % XXX ITEM_LIST Should return one_or_more(tvar).
-    %
-:- pred parse_fundep_2(term::in, list(tvar)::out) is semidet.
-
-parse_fundep_2(TypesTerm0, TypeVars) :-
-    TypesTerm = term.coerce(TypesTerm0),
-    conjunction_to_list(TypesTerm, TypeTerms),
-    term.term_list_to_var_list(TypeTerms, TypeVars).
-
-:- pred constraint_is_not_simple(prog_constraint::in) is semidet.
-
-constraint_is_not_simple(constraint(_ClassName, ArgTypes)) :-
-    some [ArgType] (
-        list.member(ArgType, ArgTypes),
-        type_is_nonvar(ArgType),
-        type_is_nonground(ArgType)
-    ).
-
-%---------------------------------------------------------------------------%
 
 parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM) :-
@@ -982,6 +731,257 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 MaybeInstanceMethod = error1([Spec])
             )
         )
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Predicates for parsing various kinds of constraints.
+%
+
+parse_class_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
+    Pieces = [words("Sorry, not implemented:"),
+        words("constraints may only constrain type variables"),
+        words("and ground types"), nl],
+    parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm, Pieces,
+        Result).
+
+:- pred parse_simple_class_constraints(module_name::in, varset::in, term::in,
+    list(format_component)::in, maybe1(list(prog_constraint))::out) is det.
+
+parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
+        Result) :-
+    parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
+    (
+        Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
+        ( if
+            % Fail if any of the constraints aren't simple.
+            get_simple_constraint(HeadArbConstraint, HeadConstraint),
+            list.map(get_simple_constraint,
+                TailArbConstraints, TailConstraints)
+        then
+            % XXX ITEM_LIST Loosens representation; switching from one_or_more
+            % to list allows an empty list.
+            Result = ok1([HeadConstraint | TailConstraints])
+        else
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ConstraintsTerm),
+                    [always(Pieces)])]),
+            Result = error1([Spec])
+        )
+    ;
+        Result0 = error1(Specs),
+        Result = error1(Specs)
+    ).
+
+:- pred get_simple_constraint(arbitrary_constraint::in, prog_constraint::out)
+    is semidet.
+
+get_simple_constraint(simple(Constraint), Constraint).
+
+parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
+        Result) :-
+    parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
+    (
+        Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
+        ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
+        collect_class_and_inst_constraints(ArbitraryConstraints,
+            ProgConstraints, FunDeps, InstVarSub),
+        (
+            FunDeps = [],
+            Result = ok2(ProgConstraints, InstVarSub)
+        ;
+            FunDeps = [_ | _],
+            Pieces = [words("Error: functional dependencies are only allowed"),
+                words("in typeclass declarations."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ConstraintsTerm),
+                    [always(Pieces)])]),
+            Result = error2([Spec])
+        )
+    ;
+        Result0 = error1(Specs),
+        Result = error2(Specs)
+    ).
+
+:- pred collect_class_and_inst_constraints(list(arbitrary_constraint)::in,
+    list(prog_constraint)::out, list(prog_fundep)::out, inst_var_sub::out)
+    is det.
+
+collect_class_and_inst_constraints([], [], [], map.init).
+collect_class_and_inst_constraints([Constraint | Constraints],
+        !:ProgConstraints, !:FunDeps, !:InstVarSub) :-
+    collect_class_and_inst_constraints(Constraints,
+        !:ProgConstraints, !:FunDeps, !:InstVarSub),
+    (
+        ( Constraint = simple(ProgConstraint)
+        ; Constraint = non_simple(ProgConstraint)
+        ),
+        !:ProgConstraints = [ProgConstraint | !.ProgConstraints]
+    ;
+        Constraint = inst_constraint(InstVar, Inst),
+        map.set(InstVar, Inst, !InstVarSub)
+    ;
+        Constraint = fundep(FunDep),
+        !:FunDeps = [FunDep | !.FunDeps]
+    ).
+
+:- type arbitrary_constraint
+    --->    simple(prog_constraint)
+            % A class constraint whose arguments are either variables
+            % or ground terms.
+
+    ;       non_simple(prog_constraint)
+            % An arbitrary class constraint not matching the description
+            % of "simple".
+
+    ;       inst_constraint(inst_var, mer_inst)
+            % A constraint on an inst variable (that is, one whose head
+            % is '=<'/2).
+
+    ;       fundep(prog_fundep).
+            % A functional dependency (that is, one whose head is '->'/2)
+            % and whose arguments are comma-separated variables.
+
+:- type arbitrary_constraints == one_or_more(arbitrary_constraint).
+
+:- pred parse_arbitrary_constraints(varset::in, term::in,
+    maybe1(arbitrary_constraints)::out) is det.
+
+parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result) :-
+    conjunction_to_one_or_more(ConstraintsTerm,
+        one_or_more(HeadConstraintTerm, TailConstraintTerms)),
+    parse_arbitrary_constraint_list(VarSet,
+        HeadConstraintTerm, TailConstraintTerms, Result).
+
+:- pred parse_arbitrary_constraint_list(varset::in, term::in, list(term)::in,
+    maybe1(arbitrary_constraints)::out) is det.
+
+parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
+    parse_arbitrary_constraint(VarSet, HeadTerm, HeadResult),
+    (
+        TailTerms = [],
+        (
+            HeadResult = ok1(HeadConstraint),
+            Result = ok1(one_or_more(HeadConstraint, []))
+        ;
+            HeadResult = error1(Specs),
+            Result = error1(Specs)
+        )
+    ;
+        TailTerms = [HeadTailTerm | TailTailTerms],
+        parse_arbitrary_constraint_list(VarSet, HeadTailTerm, TailTailTerms,
+            TailResult),
+        ( if
+            HeadResult = ok1(HeadConstraint),
+            TailResult = ok1(TailConstraints)
+        then
+            Result = ok1(one_or_more_cons(HeadConstraint, TailConstraints))
+        else
+            Result = error1(get_any_errors1(HeadResult) ++
+                get_any_errors1(TailResult))
+        )
+    ).
+
+:- pred parse_arbitrary_constraint(varset::in, term::in,
+    maybe1(arbitrary_constraint)::out) is det.
+
+parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
+    ( if
+        ConstraintTerm = term.functor(term.atom("=<"), [LHSTerm, RHSTerm], _)
+    then
+        (
+            LHSTerm = term.variable(InstVar0, _),
+            term.coerce_var(InstVar0, InstVar1),
+            MaybeInstVar = ok1(InstVar1)
+        ;
+            LHSTerm = term.functor(_, _, LHSContext),
+            LHSTermStr = describe_error_term(VarSet, LHSTerm),
+            LHSPieces = [words("Error: a non-variable inst such as"),
+                quote(LHSTermStr), words("may not be the subject"),
+                words("of an inst constraint."), nl],
+            LHSSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(LHSContext, [always(LHSPieces)])]),
+            MaybeInstVar = error1([LHSSpec])
+        ),
+        ContextPieces = cord.from_list([words("In the constraining inst"),
+            words("of an inst constraint:")]),
+        parse_inst(no_allow_constrained_inst_var(wnciv_constraint_rhs),
+            VarSet, ContextPieces, RHSTerm, MaybeInst),
+        ( if
+            MaybeInstVar = ok1(InstVar),
+            MaybeInst = ok1(Inst)
+        then
+            Result = ok1(inst_constraint(InstVar, Inst))
+        else
+            Specs = get_any_errors1(MaybeInstVar)
+                ++ get_any_errors1(MaybeInst),
+            Result = error1(Specs)
+        )
+    else if
+        parse_fundep(ConstraintTerm, Result0)
+    then
+        Result = Result0
+    else if
+        try_parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
+    then
+        ArgsResultContextPieces =
+            cord.singleton(words("In class constraint:")),
+        parse_types(no_allow_ho_inst_info(wnhii_class_constraint),
+            VarSet, ArgsResultContextPieces, Args0, ArgsResult),
+        (
+            ArgsResult = ok1(Args),
+            Constraint = constraint(ClassName, Args),
+            ( if constraint_is_not_simple(Constraint) then
+                Result = ok1(non_simple(Constraint))
+            else
+                Result = ok1(simple(Constraint))
+            )
+        ;
+            ArgsResult = error1(Specs),
+            Result = error1(Specs)
+        )
+    else
+        Pieces = [words("Error: expected atom"),
+            words("as class name or inst constraint."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(ConstraintTerm), [always(Pieces)])]),
+        Result = error1([Spec])
+    ).
+
+:- pred parse_fundep(term::in, maybe1(arbitrary_constraint)::out) is semidet.
+
+parse_fundep(Term, Result) :-
+    Term = term.functor(term.atom("->"), [DomainTerm, RangeTerm], _),
+    ( if
+        parse_fundep_2(DomainTerm, Domain),
+        parse_fundep_2(RangeTerm, Range)
+    then
+        Result = ok1(fundep(fundep(Domain, Range)))
+    else
+        Pieces = [words("Error: the domain and range"),
+            words("of a functional dependency"),
+            words("must be comma-separated lists of variables."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Result = error1([Spec])
+    ).
+
+    % XXX ITEM_LIST Should return one_or_more(tvar).
+    %
+:- pred parse_fundep_2(term::in, list(tvar)::out) is semidet.
+
+parse_fundep_2(TypesTerm0, TypeVars) :-
+    TypesTerm = term.coerce(TypesTerm0),
+    conjunction_to_list(TypesTerm, TypeTerms),
+    term.term_list_to_var_list(TypeTerms, TypeVars).
+
+:- pred constraint_is_not_simple(prog_constraint::in) is semidet.
+
+constraint_is_not_simple(constraint(_ClassName, ArgTypes)) :-
+    some [ArgType] (
+        list.member(ArgType, ArgTypes),
+        type_is_nonvar(ArgType),
+        type_is_nonground(ArgType)
     ).
 
 %---------------------------------------------------------------------------%

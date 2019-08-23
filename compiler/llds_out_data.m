@@ -2157,12 +2157,6 @@ output_record_data_id_decls_format(Info, DataId, FirstIndent, LaterIndent,
 % Output references to global variables.
 %
 
-output_data_id_addr(Info, DataId, !IO) :-
-    io.write_string("&", !IO),
-    output_data_id(Info, DataId, !IO).
-
-    % Output a data id.
-    %
 output_data_id(Info, DataId, !IO) :-
     (
         DataId = rtti_data_id(RttiId),
@@ -2192,6 +2186,10 @@ output_data_id(Info, DataId, !IO) :-
         output_layout_slot_id(use_layout_macro, MangledModuleName,
             LayoutSlotName, !IO)
     ).
+
+output_data_id_addr(Info, DataId, !IO) :-
+    io.write_string("&", !IO),
+    output_data_id(Info, DataId, !IO).
 
 output_common_scalar_cell_array_name(type_num(TypeNum), !IO) :-
     io.write_string(mercury_scalar_common_array_prefix, !IO),

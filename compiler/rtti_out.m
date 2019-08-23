@@ -38,18 +38,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Output a C expression holding the address of the C name of the specified
-    % rtti_data, preceded by the string in the first argument (that string will
-    % usually be a C cast).
-    %
-:- pred output_cast_addr_of_rtti_data(string::in, rtti_data::in,
-    io::di, io::uo) is det.
-
-    % Output a C expression holding the address of the C name of
-    % the specified rtti_data.
-    %
-:- pred output_addr_of_rtti_data(rtti_data::in, io::di, io::uo) is det.
-
     % Output a C declaration for the rtti_datas.
     %
 :- pred output_rtti_data_decl_list(llds_out_info::in, list(rtti_data)::in,
@@ -77,6 +65,18 @@
     %
 :- pred register_rtti_data_if_nec(rtti_data::in, io::di, io::uo)
     is det.
+
+    % Output a C expression holding the address of the C name of the specified
+    % rtti_data, preceded by the string in the first argument (that string will
+    % usually be a C cast).
+    %
+:- pred output_cast_addr_of_rtti_data(string::in, rtti_data::in,
+    io::di, io::uo) is det.
+
+    % Output a C expression holding the address of the C name of
+    % the specified rtti_data.
+    %
+:- pred output_addr_of_rtti_data(rtti_data::in, io::di, io::uo) is det.
 
     % Output the C name of the rtti_data specified by the given rtti_id.
     %
@@ -140,6 +140,118 @@
 :- import_module uint32.
 :- import_module uint8.
 :- import_module univ.
+
+%-----------------------------------------------------------------------------%
+
+output_rtti_data_decl_list(Info, RttiDatas, !DeclSet, !IO) :-
+    classify_rtti_datas_to_decl(RttiDatas, multi_map.init, GroupMap),
+    multi_map.to_assoc_list(GroupMap, GroupList),
+    list.foldl2(output_rtti_data_decl_group(Info), GroupList, !DeclSet, !IO).
+
+:- type data_group
+    --->    data_group(
+                data_c_type     :: string,
+                data_is_array   :: is_array,
+                data_linkage    :: linkage
+            ).
+
+:- pred classify_rtti_datas_to_decl(list(rtti_data)::in,
+    multi_map(data_group, rtti_id)::in,
+    multi_map(data_group, rtti_id)::out) is det.
+
+classify_rtti_datas_to_decl([], !GroupMap).
+classify_rtti_datas_to_decl([RttiData | RttiDatas], !GroupMap) :-
+    ( if RttiData = rtti_data_pseudo_type_info(type_var(_)) then
+        % These just get represented as integers, so we don't need to declare
+        % them. Also rtti_data_to_id/3 does not handle this case.
+        true
+    else
+        rtti_data_to_id(RttiData, RttiId),
+        rtti_id_c_type(RttiId, CType, IsArray),
+        rtti_id_linkage(RttiId, Linkage),
+        Group = data_group(CType, IsArray, Linkage),
+        multi_map.set(Group, RttiId, !GroupMap)
+    ),
+    classify_rtti_datas_to_decl(RttiDatas, !GroupMap).
+
+:- pred output_rtti_data_decl_group(llds_out_info::in,
+    pair(data_group, list(rtti_id))::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
+
+output_rtti_data_decl_group(Info, Group - RttiIds, !DeclSet, !IO) :-
+    % ChunkSize should be as large as possible to reduce the size of the
+    % file being generated, but small enough not to overload the fixed
+    % limits of our target C compilers.
+    ChunkSize = 10,
+    % The process of creating the multi_map reverses the order of rtti_ids,
+    % we now undo this reversal.
+    list.chunk(list.reverse(RttiIds), ChunkSize, RttiIdChunks),
+    list.foldl2(output_rtti_data_decl_chunk(Info, Group), RttiIdChunks,
+        !DeclSet, !IO).
+
+:- pred output_rtti_data_decl_chunk(llds_out_info::in, data_group::in,
+    list(rtti_id)::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_rtti_data_decl_chunk(Info, Group, RttiIds, !DeclSet, !IO) :-
+    (
+        % Pick a representative RttiId. All the operations we perform on it
+        % below would have the same result regardless of which one we picked.
+        RttiIds = [RttiId | _]
+    ;
+        RttiIds = [],
+        unexpected($pred, "empty list")
+    ),
+    Group = data_group(CType, IsArray, Linkage),
+
+    io.nl(!IO),
+    output_rtti_type_decl(RttiId, !DeclSet, !IO),
+    Globals = Info ^ lout_globals,
+    LinkageStr = c_data_linkage_string(Linkage, no),
+    InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
+
+    io.write_string(LinkageStr, !IO),
+    io.write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
+    c_util.output_quoted_string_cur_stream(CType, !IO),
+    io.nl(!IO),
+
+    output_rtti_data_decl_chunk_entries(IsArray, RttiIds, !DeclSet, !IO).
+
+:- pred output_rtti_data_decl_chunk_entries(is_array::in, list(rtti_id)::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
+    unexpected($pred, "empty list").
+output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
+        !DeclSet, !IO) :-
+    decl_set_insert(decl_rtti_id(RttiId), !DeclSet),
+    io.write_string("\t", !IO),
+    output_rtti_id(RttiId, !IO),
+    (
+        IsArray = is_array,
+        io.write_string("[]", !IO)
+    ;
+        IsArray = not_array
+    ),
+    (
+        RttiIds = [_ | _],
+        io.write_string(",\n", !IO),
+        output_rtti_data_decl_chunk_entries(IsArray, RttiIds, !DeclSet, !IO)
+    ;
+        RttiIds = [],
+        io.write_string(";\n", !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+output_rtti_data_decl(Info, RttiData, !DeclSet, !IO) :-
+    ( if RttiData = rtti_data_pseudo_type_info(type_var(_)) then
+        % These just get represented as integers, so we don't need to declare
+        % them. Also rtti_data_to_id/3 does not handle this case.
+        true
+    else
+        rtti_data_to_id(RttiData, RttiId),
+        output_generic_rtti_data_decl(Info, RttiId, !DeclSet, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1472,118 +1584,6 @@ output_functor_number_map_value(NumUint32, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type data_group
-    --->    data_group(
-                data_c_type     :: string,
-                data_is_array   :: is_array,
-                data_linkage    :: linkage
-            ).
-
-output_rtti_data_decl_list(Info, RttiDatas, !DeclSet, !IO) :-
-    classify_rtti_datas_to_decl(RttiDatas, multi_map.init, GroupMap),
-    multi_map.to_assoc_list(GroupMap, GroupList),
-    list.foldl2(output_rtti_data_decl_group(Info), GroupList, !DeclSet, !IO).
-
-:- pred classify_rtti_datas_to_decl(list(rtti_data)::in,
-    multi_map(data_group, rtti_id)::in,
-    multi_map(data_group, rtti_id)::out) is det.
-
-classify_rtti_datas_to_decl([], !GroupMap).
-classify_rtti_datas_to_decl([RttiData | RttiDatas], !GroupMap) :-
-    ( if RttiData = rtti_data_pseudo_type_info(type_var(_)) then
-        % These just get represented as integers, so we don't need to declare
-        % them. Also rtti_data_to_id/3 does not handle this case.
-        true
-    else
-        rtti_data_to_id(RttiData, RttiId),
-        rtti_id_c_type(RttiId, CType, IsArray),
-        rtti_id_linkage(RttiId, Linkage),
-        Group = data_group(CType, IsArray, Linkage),
-        multi_map.set(Group, RttiId, !GroupMap)
-    ),
-    classify_rtti_datas_to_decl(RttiDatas, !GroupMap).
-
-:- pred output_rtti_data_decl_group(llds_out_info::in,
-    pair(data_group, list(rtti_id))::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
-
-output_rtti_data_decl_group(Info, Group - RttiIds, !DeclSet, !IO) :-
-    % ChunkSize should be as large as possible to reduce the size of the
-    % file being generated, but small enough not to overload the fixed
-    % limits of our target C compilers.
-    ChunkSize = 10,
-    % The process of creating the multi_map reverses the order of rtti_ids,
-    % we now undo this reversal.
-    list.chunk(list.reverse(RttiIds), ChunkSize, RttiIdChunks),
-    list.foldl2(output_rtti_data_decl_chunk(Info, Group), RttiIdChunks,
-        !DeclSet, !IO).
-
-:- pred output_rtti_data_decl_chunk(llds_out_info::in, data_group::in,
-    list(rtti_id)::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_rtti_data_decl_chunk(Info, Group, RttiIds, !DeclSet, !IO) :-
-    (
-        % Pick a representative RttiId. All the operations we perform on it
-        % below would have the same result regardless of which one we picked.
-        RttiIds = [RttiId | _]
-    ;
-        RttiIds = [],
-        unexpected($pred, "empty list")
-    ),
-    Group = data_group(CType, IsArray, Linkage),
-
-    io.nl(!IO),
-    output_rtti_type_decl(RttiId, !DeclSet, !IO),
-    Globals = Info ^ lout_globals,
-    LinkageStr = c_data_linkage_string(Linkage, no),
-    InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
-
-    io.write_string(LinkageStr, !IO),
-    io.write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
-    c_util.output_quoted_string_cur_stream(CType, !IO),
-    io.nl(!IO),
-
-    output_rtti_data_decl_chunk_entries(IsArray, RttiIds, !DeclSet, !IO).
-
-:- pred output_rtti_data_decl_chunk_entries(is_array::in, list(rtti_id)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
-    unexpected($pred, "empty list").
-output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
-        !DeclSet, !IO) :-
-    decl_set_insert(decl_rtti_id(RttiId), !DeclSet),
-    io.write_string("\t", !IO),
-    output_rtti_id(RttiId, !IO),
-    (
-        IsArray = is_array,
-        io.write_string("[]", !IO)
-    ;
-        IsArray = not_array
-    ),
-    (
-        RttiIds = [_ | _],
-        io.write_string(",\n", !IO),
-        output_rtti_data_decl_chunk_entries(IsArray, RttiIds, !DeclSet, !IO)
-    ;
-        RttiIds = [],
-        io.write_string(";\n", !IO)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-output_rtti_data_decl(Info, RttiData, !DeclSet, !IO) :-
-    ( if RttiData = rtti_data_pseudo_type_info(type_var(_)) then
-        % These just get represented as integers, so we don't need to declare
-        % them. Also rtti_data_to_id/3 does not handle this case.
-        true
-    else
-        rtti_data_to_id(RttiData, RttiId),
-        output_generic_rtti_data_decl(Info, RttiId, !DeclSet, !IO)
-    ).
-
-%-----------------------------------------------------------------------------%
-
 :- pred output_generic_rtti_data_decl(llds_out_info::in, rtti_id::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
@@ -1599,129 +1599,6 @@ output_generic_rtti_data_defn_start(Info, RttiId, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_rtti_id_storage_type_name(Info, RttiId, yes, !DeclSet, !IO),
     decl_set_insert(decl_rtti_id(RttiId), !DeclSet).
-
-output_rtti_id_storage_type_name_no_decl(Info, RttiId, BeingDefined, !IO) :-
-    decl_set_init(DeclSet0),
-    output_rtti_id_storage_type_name(Info, RttiId, BeingDefined, DeclSet0, _,
-        !IO).
-
-output_rtti_id_storage_type_name(Info, RttiId, BeingDefined, !DeclSet, !IO) :-
-    output_rtti_type_decl(RttiId, !DeclSet, !IO),
-    rtti_id_linkage(RttiId, Linkage),
-    LinkageStr = c_data_linkage_string(Linkage, BeingDefined),
-    io.write_string(LinkageStr, !IO),
-
-    Globals = Info ^ lout_globals,
-    InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
-    io.write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
-
-    rtti_id_c_type(RttiId, CType, IsArray),
-    c_util.output_quoted_string_cur_stream(CType, !IO),
-    io.write_string(" ", !IO),
-    output_rtti_id(RttiId, !IO),
-    (
-        IsArray = is_array,
-        io.write_string("[]", !IO)
-    ;
-        IsArray = not_array
-    ).
-
-    % Each type_info and pseudo_type_info may have a different C type,
-    % depending on what kind of type_info or pseudo_type_info it is,
-    % and also on its arity. We need to declare that C type here.
-    %
-:- pred output_rtti_type_decl(rtti_id::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
-
-output_rtti_type_decl(RttiId, !DeclSet, !IO) :-
-    ( if
-        RttiId = ctor_rtti_id(_, RttiName),
-        rtti_type_ctor_template_arity(RttiName, Arity),
-        Arity > max_always_declared_arity_type_ctor
-    then
-        DeclId = decl_type_info_like_struct(Arity),
-        ( if decl_set_is_member(DeclId, !.DeclSet) then
-            true
-        else
-            Template =
-"#ifndef MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
-#define MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
-MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
-#endif
-",
-            io.format(Template, [i(Arity), i(Arity), i(Arity)], !IO),
-            decl_set_insert(DeclId, !DeclSet)
-        )
-    else if
-        RttiId = tc_rtti_id(_, TCRttiName),
-        rtti_type_class_constraint_template_arity(TCRttiName, Arity),
-        Arity > max_always_declared_arity_type_class_constraint
-    then
-        DeclId = decl_typeclass_constraint_struct(Arity),
-        ( if decl_set_is_member(DeclId, !.DeclSet) then
-            true
-        else
-            Template =
-"#ifndef MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
-#define MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
-MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_%d, %d);
-#endif
-",
-            io.format(Template, [i(Arity), i(Arity), i(Arity), i(Arity)],
-                !IO),
-            decl_set_insert(DeclId, !DeclSet)
-        )
-    else
-        true
-    ).
-
-:- pred rtti_type_ctor_template_arity(ctor_rtti_name::in, int::out) is semidet.
-
-rtti_type_ctor_template_arity(RttiName, NumArgTypes) :-
-    (
-        RttiName = type_ctor_type_info(TypeInfo),
-        require_complete_switch [TypeInfo]
-        (
-            ( TypeInfo = plain_type_info(_, ArgTypes)
-            ; TypeInfo = var_arity_type_info(_, ArgTypes)
-            ),
-            list.length(ArgTypes, NumArgTypes)
-        ;
-            TypeInfo = plain_arity_zero_type_info(_),
-            NumArgTypes = 0
-        )
-    ;
-        RttiName = type_ctor_pseudo_type_info(PseudoTypeInfo),
-        require_complete_switch [PseudoTypeInfo]
-        (
-            ( PseudoTypeInfo = plain_pseudo_type_info(_, ArgTypes)
-            ; PseudoTypeInfo = var_arity_pseudo_type_info(_, ArgTypes)
-            ),
-            list.length(ArgTypes, NumArgTypes)
-        ;
-            PseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
-            NumArgTypes = 0
-        ;
-            PseudoTypeInfo = type_var(_),
-            fail
-        )
-    ).
-
-:- func max_always_declared_arity_type_ctor = int.
-
-max_always_declared_arity_type_ctor = 20.
-
-:- pred rtti_type_class_constraint_template_arity(tc_rtti_name::in, int::out)
-    is semidet.
-
-rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
-    ( TCRttiName = type_class_decl_super(_, Arity)
-    ; TCRttiName = type_class_instance_constraint(_, _, Arity)
-    ).
-
-:- func max_always_declared_arity_type_class_constraint = int.
-
-max_always_declared_arity_type_class_constraint = 10.
 
 %-----------------------------------------------------------------------------%
 
@@ -2039,6 +1916,133 @@ rtti_id_linkage(RttiId, Linkage) :-
         ; Exported = no, Linkage = static
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+output_rtti_id_storage_type_name(Info, RttiId, BeingDefined, !DeclSet, !IO) :-
+    output_rtti_type_decl(RttiId, !DeclSet, !IO),
+    rtti_id_linkage(RttiId, Linkage),
+    LinkageStr = c_data_linkage_string(Linkage, BeingDefined),
+    io.write_string(LinkageStr, !IO),
+
+    Globals = Info ^ lout_globals,
+    InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
+    io.write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
+
+    rtti_id_c_type(RttiId, CType, IsArray),
+    c_util.output_quoted_string_cur_stream(CType, !IO),
+    io.write_string(" ", !IO),
+    output_rtti_id(RttiId, !IO),
+    (
+        IsArray = is_array,
+        io.write_string("[]", !IO)
+    ;
+        IsArray = not_array
+    ).
+
+    % Each type_info and pseudo_type_info may have a different C type,
+    % depending on what kind of type_info or pseudo_type_info it is,
+    % and also on its arity. We need to declare that C type here.
+    %
+:- pred output_rtti_type_decl(rtti_id::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
+
+output_rtti_type_decl(RttiId, !DeclSet, !IO) :-
+    ( if
+        RttiId = ctor_rtti_id(_, RttiName),
+        rtti_type_ctor_template_arity(RttiName, Arity),
+        Arity > max_always_declared_arity_type_ctor
+    then
+        DeclId = decl_type_info_like_struct(Arity),
+        ( if decl_set_is_member(DeclId, !.DeclSet) then
+            true
+        else
+            Template =
+"#ifndef MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
+#define MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
+MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
+#endif
+",
+            io.format(Template, [i(Arity), i(Arity), i(Arity)], !IO),
+            decl_set_insert(DeclId, !DeclSet)
+        )
+    else if
+        RttiId = tc_rtti_id(_, TCRttiName),
+        rtti_type_class_constraint_template_arity(TCRttiName, Arity),
+        Arity > max_always_declared_arity_type_class_constraint
+    then
+        DeclId = decl_typeclass_constraint_struct(Arity),
+        ( if decl_set_is_member(DeclId, !.DeclSet) then
+            true
+        else
+            Template =
+"#ifndef MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
+#define MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_%d, %d);
+#endif
+",
+            io.format(Template, [i(Arity), i(Arity), i(Arity), i(Arity)],
+                !IO),
+            decl_set_insert(DeclId, !DeclSet)
+        )
+    else
+        true
+    ).
+
+:- pred rtti_type_ctor_template_arity(ctor_rtti_name::in, int::out) is semidet.
+
+rtti_type_ctor_template_arity(RttiName, NumArgTypes) :-
+    (
+        RttiName = type_ctor_type_info(TypeInfo),
+        require_complete_switch [TypeInfo]
+        (
+            ( TypeInfo = plain_type_info(_, ArgTypes)
+            ; TypeInfo = var_arity_type_info(_, ArgTypes)
+            ),
+            list.length(ArgTypes, NumArgTypes)
+        ;
+            TypeInfo = plain_arity_zero_type_info(_),
+            NumArgTypes = 0
+        )
+    ;
+        RttiName = type_ctor_pseudo_type_info(PseudoTypeInfo),
+        require_complete_switch [PseudoTypeInfo]
+        (
+            ( PseudoTypeInfo = plain_pseudo_type_info(_, ArgTypes)
+            ; PseudoTypeInfo = var_arity_pseudo_type_info(_, ArgTypes)
+            ),
+            list.length(ArgTypes, NumArgTypes)
+        ;
+            PseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
+            NumArgTypes = 0
+        ;
+            PseudoTypeInfo = type_var(_),
+            fail
+        )
+    ).
+
+:- func max_always_declared_arity_type_ctor = int.
+
+max_always_declared_arity_type_ctor = 20.
+
+:- pred rtti_type_class_constraint_template_arity(tc_rtti_name::in, int::out)
+    is semidet.
+
+rtti_type_class_constraint_template_arity(TCRttiName, Arity) :-
+    ( TCRttiName = type_class_decl_super(_, Arity)
+    ; TCRttiName = type_class_instance_constraint(_, _, Arity)
+    ).
+
+:- func max_always_declared_arity_type_class_constraint = int.
+
+max_always_declared_arity_type_class_constraint = 10.
+
+%-----------------------------------------------------------------------------%
+
+output_rtti_id_storage_type_name_no_decl(Info, RttiId, BeingDefined, !IO) :-
+    decl_set_init(DeclSet0),
+    output_rtti_id_storage_type_name(Info, RttiId, BeingDefined, DeclSet0, _,
+        !IO).
 
 %-----------------------------------------------------------------------------%
 

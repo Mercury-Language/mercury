@@ -66,10 +66,10 @@
 :- pred output_code_addr_from_pieces(string::in, bool::in, wrapper::in,
     io::di, io::uo) is det.
 
-:- pred output_label_as_code_addr(label::in, io::di, io::uo) is det.
-
 :- pred code_addr_to_string_base(code_addr::in, string::out,
     bool::out, wrapper::out) is det.
+
+:- pred output_label_as_code_addr(label::in, io::di, io::uo) is det.
 
 :- func label_is_external_to_c_module(label) = bool.
 

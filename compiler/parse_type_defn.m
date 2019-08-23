@@ -40,16 +40,6 @@
     list(term)::in, prog_context::in, int::in, is_solver_type::in,
     maybe1(item_or_marker)::out) is det.
 
-    % parse_type_defn_head(ParseContext, ModuleName, VarSet, Head, HeadResult):
-    %
-    % Check the head of a type definition for errors.
-    %
-    % Exported to parse_pragma.m for use when parsing foreign type pragmas.
-    %
-:- pred parse_type_defn_head(cord(format_component)::in,
-    module_name::in, varset::in, term::in,
-    maybe2(sym_name, list(type_param))::out) is det.
-
     % Parses the attributes in a "where" clause. It looks for and processes
     % only the attributes that can occur on foreign_type pragmas. This includes
     % only the specification of equality and/or comparison predicates,
@@ -60,6 +50,16 @@
     %
 :- pred parse_where_unify_compare(module_name::in, varset::in, term::in,
     maybe1(maybe_canonical)::out) is det.
+
+    % parse_type_defn_head(ParseContext, ModuleName, VarSet, Head, HeadResult):
+    %
+    % Check the head of a type definition for errors.
+    %
+    % Exported to parse_pragma.m for use when parsing foreign type pragmas.
+    %
+:- pred parse_type_defn_head(cord(format_component)::in,
+    module_name::in, varset::in, term::in,
+    maybe2(sym_name, list(type_param))::out) is det.
 
 %---------------------------------------------------------------------------%
 

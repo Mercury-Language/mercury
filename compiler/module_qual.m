@@ -163,32 +163,7 @@
     mer_type::in, mer_type::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % The type mq_info holds information needed for doing module qualification.
-    %
-:- type mq_info.
-
-:- pred mq_info_get_found_undef_type(mq_info::in,
-    maybe_found_undef_type::out) is det.
-:- pred mq_info_get_found_undef_inst(mq_info::in,
-    maybe_found_undef_inst::out) is det.
-:- pred mq_info_get_found_undef_mode(mq_info::in,
-    maybe_found_undef_mode::out) is det.
-:- pred mq_info_get_found_undef_typeclass(mq_info::in,
-    maybe_found_undef_typeclass::out) is det.
-
-:- type maybe_suppress_found_undef
-    --->    do_not_suppress_found_undef
-    ;       suppress_found_undef.
-
-:- pred mq_info_get_suppress_found_undef(mq_info::in,
-    maybe_suppress_found_undef::out) is det.
-:- pred mq_info_set_suppress_found_undef(maybe_suppress_found_undef::in,
-    mq_info::in, mq_info::out) is det.
-
-:- pred mq_info_get_recompilation_info(mq_info::in,
-    maybe(recompilation_info)::out) is det.
-:- pred mq_info_set_recompilation_info(maybe(recompilation_info)::in,
-    mq_info::in, mq_info::out) is det.
+%---------------------------------------------------------------------------%
 
     % The type partial_qualifier_info holds info need for computing which
     % partial quantifiers are visible -- see get_partial_qualifiers/3.
@@ -224,6 +199,34 @@
     %
 :- pred get_partial_qualifiers(mq_in_interface::in, module_name::in,
     partial_qualifier_info::in, list(module_name)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % The type mq_info holds information needed for doing module qualification.
+    %
+:- type mq_info.
+
+:- type maybe_suppress_found_undef
+    --->    do_not_suppress_found_undef
+    ;       suppress_found_undef.
+
+:- pred mq_info_get_recompilation_info(mq_info::in,
+    maybe(recompilation_info)::out) is det.
+:- pred mq_info_get_found_undef_type(mq_info::in,
+    maybe_found_undef_type::out) is det.
+:- pred mq_info_get_found_undef_inst(mq_info::in,
+    maybe_found_undef_inst::out) is det.
+:- pred mq_info_get_found_undef_mode(mq_info::in,
+    maybe_found_undef_mode::out) is det.
+:- pred mq_info_get_found_undef_typeclass(mq_info::in,
+    maybe_found_undef_typeclass::out) is det.
+:- pred mq_info_get_suppress_found_undef(mq_info::in,
+    maybe_suppress_found_undef::out) is det.
+
+:- pred mq_info_set_recompilation_info(maybe(recompilation_info)::in,
+    mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_suppress_found_undef(maybe_suppress_found_undef::in,
+    mq_info::in, mq_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -681,9 +684,9 @@ mq_info_get_should_warn_unused_imports_in_parents(Info, X) :-
     mq_info::in, mq_info::out) is det.
 % mq_info_get_recompilation_info is exported
 
-:- pred mq_info_set_imported_instance_modules(set(module_name)::in,
-    mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_imported_modules(set(module_name)::in,
+    mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_imported_instance_modules(set(module_name)::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_exported_instances_flag(bool::in,
     mq_info::in, mq_info::out) is det.

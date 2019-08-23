@@ -719,58 +719,6 @@ contains_errors_and_or_warnings(Globals, Specs) = ErrorsOrWarnings :-
 
 %---------------------------------------------------------------------------%
 
-:- type error_spec_accumulator == maybe(pair(set(error_spec))).
-
-init_error_spec_accumulator = no.
-
-accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
-    list.filter((pred(error_spec(_, Phase, _)::in) is semidet :-
-            ModeReportControl = get_maybe_mode_report_control(Phase),
-            ModeReportControl = yes(report_only_if_in_all_modes)
-        ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
-    ProcAnyModeSpecSet = set.from_list(ProcAnyModeSpecs),
-    ProcAllModeSpecSet = set.from_list(ProcAllModeSpecs),
-    (
-        !.MaybeSpecs = yes(AnyModeSpecSet0 - AllModeSpecSet0),
-        set.union(AnyModeSpecSet0, ProcAnyModeSpecSet, AnyModeSpecSet),
-        set.intersect(AllModeSpecSet0, ProcAllModeSpecSet, AllModeSpecSet),
-        !:MaybeSpecs = yes(AnyModeSpecSet - AllModeSpecSet)
-    ;
-        !.MaybeSpecs = no,
-        !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
-    ).
-
-error_spec_accumulator_to_list(no) = [].
-error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
-    set.to_sorted_list(set.union(AnyModeSpecSet, AllModeSpecSet)).
-
-:- func get_maybe_mode_report_control(error_phase) =
-    maybe(mode_report_control).
-
-get_maybe_mode_report_control(phase_options) = no.
-get_maybe_mode_report_control(phase_read_files) = no.
-get_maybe_mode_report_control(phase_module_name) = no.
-get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
-get_maybe_mode_report_control(phase_parse_tree_to_hlds) = no.
-get_maybe_mode_report_control(phase_expand_types) = no.
-get_maybe_mode_report_control(phase_type_check) = no.
-get_maybe_mode_report_control(phase_inst_check) = no.
-get_maybe_mode_report_control(phase_polymorphism) = no.
-get_maybe_mode_report_control(phase_mode_check(Control)) = yes(Control).
-get_maybe_mode_report_control(phase_purity_check) = no.
-get_maybe_mode_report_control(phase_detism_check) = no.
-get_maybe_mode_report_control(phase_oisu_check) = no.
-get_maybe_mode_report_control(phase_simplify(Control)) = yes(Control).
-get_maybe_mode_report_control(phase_style) = no.
-get_maybe_mode_report_control(phase_dead_code) = no.
-get_maybe_mode_report_control(phase_termination_analysis) = no.
-get_maybe_mode_report_control(phase_accumulator_intro) = no.
-get_maybe_mode_report_control(phase_auto_parallelism) = no.
-get_maybe_mode_report_control(phase_interface_gen) = no.
-get_maybe_mode_report_control(phase_code_gen) = no.
-
-%---------------------------------------------------------------------------%
-
 :- pred sort_error_specs(globals::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -986,6 +934,58 @@ project_msg_components(Msg) = Components :-
     ;
         Msg = error_msg(_, _, _, Components)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- type error_spec_accumulator == maybe(pair(set(error_spec))).
+
+init_error_spec_accumulator = no.
+
+accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
+    list.filter((pred(error_spec(_, Phase, _)::in) is semidet :-
+            ModeReportControl = get_maybe_mode_report_control(Phase),
+            ModeReportControl = yes(report_only_if_in_all_modes)
+        ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
+    ProcAnyModeSpecSet = set.from_list(ProcAnyModeSpecs),
+    ProcAllModeSpecSet = set.from_list(ProcAllModeSpecs),
+    (
+        !.MaybeSpecs = yes(AnyModeSpecSet0 - AllModeSpecSet0),
+        set.union(AnyModeSpecSet0, ProcAnyModeSpecSet, AnyModeSpecSet),
+        set.intersect(AllModeSpecSet0, ProcAllModeSpecSet, AllModeSpecSet),
+        !:MaybeSpecs = yes(AnyModeSpecSet - AllModeSpecSet)
+    ;
+        !.MaybeSpecs = no,
+        !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
+    ).
+
+error_spec_accumulator_to_list(no) = [].
+error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
+    set.to_sorted_list(set.union(AnyModeSpecSet, AllModeSpecSet)).
+
+:- func get_maybe_mode_report_control(error_phase) =
+    maybe(mode_report_control).
+
+get_maybe_mode_report_control(phase_options) = no.
+get_maybe_mode_report_control(phase_read_files) = no.
+get_maybe_mode_report_control(phase_module_name) = no.
+get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
+get_maybe_mode_report_control(phase_parse_tree_to_hlds) = no.
+get_maybe_mode_report_control(phase_expand_types) = no.
+get_maybe_mode_report_control(phase_type_check) = no.
+get_maybe_mode_report_control(phase_inst_check) = no.
+get_maybe_mode_report_control(phase_polymorphism) = no.
+get_maybe_mode_report_control(phase_mode_check(Control)) = yes(Control).
+get_maybe_mode_report_control(phase_purity_check) = no.
+get_maybe_mode_report_control(phase_detism_check) = no.
+get_maybe_mode_report_control(phase_oisu_check) = no.
+get_maybe_mode_report_control(phase_simplify(Control)) = yes(Control).
+get_maybe_mode_report_control(phase_style) = no.
+get_maybe_mode_report_control(phase_dead_code) = no.
+get_maybe_mode_report_control(phase_termination_analysis) = no.
+get_maybe_mode_report_control(phase_accumulator_intro) = no.
+get_maybe_mode_report_control(phase_auto_parallelism) = no.
+get_maybe_mode_report_control(phase_interface_gen) = no.
+get_maybe_mode_report_control(phase_code_gen) = no.
 
 %---------------------------------------------------------------------------%
 
@@ -2066,12 +2066,12 @@ get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
 
 %---------------------------------------------------------------------------%
 
+describe_sym_name(SymName) =
+    string.append_list(["`", sym_name_to_string(SymName), "'"]).
+
 describe_sym_name_and_arity(sym_name_arity(SymName, Arity)) =
     string.append_list(["`", sym_name_to_string(SymName), "/",
         string.int_to_string(Arity), "'"]).
-
-describe_sym_name(SymName) =
-    string.append_list(["`", sym_name_to_string(SymName), "'"]).
 
 pred_or_func_to_string(pf_predicate) = "predicate".
 pred_or_func_to_string(pf_function) = "function".

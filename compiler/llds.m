@@ -1426,13 +1426,13 @@
 
 :- pred break_up_local_label(label::in, proc_label::out, int::out) is det.
 
-    % Given a non-var rval, figure out its type.
-    %
-:- pred rval_type(rval::in, llds_type::out) is det.
-
     % Given a non-var lval, figure out its type.
     %
 :- pred lval_type(lval::in, llds_type::out) is det.
+
+    % Given a non-var rval, figure out its type.
+    %
+:- pred rval_type(rval::in, llds_type::out) is det.
 
     % Given a constant, figure out its type.
     %
@@ -1799,14 +1799,14 @@ get_defining_module_name(special_proc_label(ModuleName, _, _, _, _, _))
 
 get_nonlocal_gotos(ExprnOpts) = ExprnOpts ^ non_local_gotos.
 get_asm_labels(ExprnOpts) = ExprnOpts ^ asm_labels.
-get_static_ground_cells(ExprnOpts) = ExprnOpts ^ static_ground_cells.
 get_unboxed_floats(ExprnOpts) = ExprnOpts ^ unboxed_floats.
 get_float_registers(ExprnOpts) = ExprnOpts ^ float_registers.
 get_det_stack_float_width(ExprnOpts) = ExprnOpts ^ det_stack_float_width.
+get_unboxed_int64s(ExprnOpts) = ExprnOpts ^ unboxed_int64s.
+get_static_ground_cells(ExprnOpts) = ExprnOpts ^ static_ground_cells.
 get_static_ground_floats(ExprnOpts) = ExprnOpts ^ static_ground_floats.
 get_static_ground_int64s(ExprnOpts) = ExprnOpts ^ static_ground_int64s.
 get_static_code_addresses(ExprnOpts) = ExprnOpts ^ static_code_addresses.
-get_unboxed_int64s(ExprnOpts) = ExprnOpts ^ unboxed_int64s.
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.llds.

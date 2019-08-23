@@ -70,16 +70,16 @@
 
 %-----------------------------------------------------------------------------%
 
-construct_llds_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
-        !StaticCellInfo, Pseudo) :-
-    construct_typed_llds_pseudo_type_info(Type,
-        NumUnivQTvars, ExistQTvars, !StaticCellInfo, Pseudo, _LldsType).
-
 construct_typed_llds_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
         !StaticCellInfo, PseudoRval, LldsType) :-
     pseudo_type_info.construct_pseudo_type_info(Type, NumUnivQTvars,
         ExistQTvars, Pseudo),
     convert_pseudo_type_info(Pseudo, !StaticCellInfo, PseudoRval, LldsType).
+
+construct_llds_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
+        !StaticCellInfo, Pseudo) :-
+    construct_typed_llds_pseudo_type_info(Type,
+        NumUnivQTvars, ExistQTvars, !StaticCellInfo, Pseudo, _LldsType).
 
 :- pred convert_pseudo_type_info(rtti_pseudo_type_info::in,
     static_cell_info::in, static_cell_info::out,

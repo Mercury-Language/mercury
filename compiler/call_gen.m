@@ -43,10 +43,6 @@
     determinism::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred generate_builtin(code_model::in, pred_id::in, proc_id::in,
-    list(prog_var)::in, llds_code::out,
-    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
-
 :- type known_call_variant
     --->    ho_call_known_num
     ;       ho_call_unknown.
@@ -58,6 +54,10 @@
 :- pred generic_call_info(globals::in, generic_call::in, int::in, int::in,
     code_addr::out, assoc_list(prog_var, arg_info)::out, int::out,
     known_call_variant::out) is det.
+
+:- pred generate_builtin(code_model::in, pred_id::in, proc_id::in,
+    list(prog_var)::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred input_arg_locs(assoc_list(prog_var, arg_info)::in,
     assoc_list(prog_var, arg_loc)::out) is det.

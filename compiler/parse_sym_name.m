@@ -65,16 +65,20 @@
     term(T)::in, maybe_functor(T)::out) is det.
 :- pred try_parse_sym_name_and_args(term(T)::in,
     sym_name::out, list(term(T))::out) is semidet.
-:- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out) is semidet.
 
     % When given the first two arguments Functor and FunctorArgs,
-    % try_parse_sym_name_and_args_from_f_args will do does exactly the same as
+    % try_parse_sym_name_and_args_from_f_args will do exactly the same as
     % what try_parse_sym_name_and_args would do when given the term
     % term.functor(Functor, FunctorArgs, _), but it does so without
     % requiring its caller to construct that term.
     %
 :- pred try_parse_sym_name_and_args_from_f_args(const::in, list(term(T))::in,
     sym_name::out, list(term(T))::out) is semidet.
+
+    % A version of try_parse_sym_name_and_args that succeeds
+    % if the given term has no argument terms.
+    %
+:- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out) is semidet.
 
     % parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
     %   VarSet, ContextPieces, Result):
@@ -97,14 +101,6 @@
 :- pred try_parse_implicitly_qualified_sym_name_and_no_args(module_name::in,
     term(T)::in, sym_name::out) is semidet.
 
-    % A SymbolNameSpecifier is one of
-    %   SymbolName
-    %   SymbolName/Arity
-    %       Matches only symbols of the specified arity.
-    %
-:- pred parse_symbol_name_specifier(varset::in, term::in,
-    maybe1(sym_name_specifier)::out) is det.
-
     % A SymbolName is one of
     %   Name
     %       Matches symbols with the specified name in the
@@ -122,6 +118,14 @@
 
 :- pred parse_implicitly_qualified_symbol_name(module_name::in, varset::in,
     term::in, maybe1(sym_name)::out) is det.
+
+    % A SymbolNameSpecifier is one of
+    %   SymbolName
+    %   SymbolName/Arity
+    %       Matches only symbols of the specified arity.
+    %
+:- pred parse_symbol_name_specifier(varset::in, term::in,
+    maybe1(sym_name_specifier)::out) is det.
 
 :- pred parse_implicitly_qualified_symbol_name_specifier(module_name::in,
     varset::in, term::in, maybe1(sym_name_specifier)::out) is det.

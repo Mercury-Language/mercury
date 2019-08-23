@@ -34,7 +34,7 @@
     ;       interface_unchanged
     ;       interface_error.
 
-    % update_interface_return_changed(Globals, FileName, Result):
+    % update_interface_return_changed(Globals, FileName, Result, !IO):
     %
     % Update the interface file FileName from FileName.tmp if it has changed.
     %
@@ -220,27 +220,6 @@
 
 %-----------------------------------------------------------------------------%
 
-update_interface(Globals, OutputFileName, !IO) :-
-    update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO),
-    (
-        Succeeded = no,
-        report_error("problem updating interface files.", !IO)
-    ;
-        Succeeded = yes
-    ).
-
-update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO) :-
-    update_interface_return_changed(Globals, OutputFileName, Result, !IO),
-    (
-        ( Result = interface_new_or_changed
-        ; Result = interface_unchanged
-        ),
-        Succeeded = yes
-    ;
-        Result = interface_error,
-        Succeeded = no
-    ).
-
 update_interface_return_changed(Globals, OutputFileName, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Updating interface:\n", !IO),
@@ -295,6 +274,29 @@ update_interface_return_changed(Globals, OutputFileName, Result, !IO) :-
         update_interface_create_file(Globals, "been CREATED",
             OutputFileName, TmpOutputFileName, Result, !IO)
     ).
+
+update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO) :-
+    update_interface_return_changed(Globals, OutputFileName, Result, !IO),
+    (
+        ( Result = interface_new_or_changed
+        ; Result = interface_unchanged
+        ),
+        Succeeded = yes
+    ;
+        Result = interface_error,
+        Succeeded = no
+    ).
+
+update_interface(Globals, OutputFileName, !IO) :-
+    update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO),
+    (
+        Succeeded = no,
+        report_error("problem updating interface files.", !IO)
+    ;
+        Succeeded = yes
+    ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred update_interface_create_file(globals::in, string::in, string::in,
     string::in, update_interface_result::out, io::di, io::uo) is det.

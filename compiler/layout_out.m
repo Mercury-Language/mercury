@@ -65,26 +65,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Given a Mercury representation of a proc layout structure, output its
-    % definition in the appropriate C global variable.
-    %
-:- pred output_proc_layout_data_defn(llds_out_info::in, proc_layout_data::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-    % Given a Mercury representation of a module layout structure, output its
-    % definition in the appropriate C global variable.
-    %
-:- pred output_module_layout_data_defn(llds_out_info::in,
-    module_layout_data::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
-
-    % Given a Mercury representation of a closure layout structure, output its
-    % definition in the appropriate C global variable.
-    %
-:- pred output_closure_layout_data_defn(llds_out_info::in,
-    closure_proc_id_data::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
-
     % Given the name of a layout structure, output the declaration
     % of the C global variable which will hold it.
     %
@@ -95,27 +75,6 @@
     %
 :- pred output_maybe_layout_name_decl(layout_name::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-:- type being_defined
-    --->    not_being_defined
-    ;       being_defined.
-
-    % Given a reference to a layout structure, output the storage class
-    % (e.g. static), type and name of the global variable that will hold it.
-    % The second arg says whether the output is part of the definition of that
-    % variable; this influences e.g. whether we output "extern" or not.
-    %
-:- pred output_layout_name_storage_type_name(layout_name::in,
-    being_defined::in, io::di, io::uo) is det.
-
-    % Given a mangled module name and a reference to a layout array, output
-    % the storage class (e.g. static), type and name of the global variable
-    % that will hold it. The bool says whether the output is part of the
-    % definition of that variable; this influences e.g. whether we output
-    % "extern" or not.
-    %
-:- pred output_layout_array_name_storage_type_name(string::in,
-    layout_array_name::in, being_defined::in, io::di, io::uo) is det.
 
 :- type use_layout_macro
     --->    do_not_use_layout_macro
@@ -145,6 +104,53 @@
     % global variable that will hold it.
     %
 :- pred output_layout_name(layout_name::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- type being_defined
+    --->    not_being_defined
+    ;       being_defined.
+
+    % Given a reference to a layout structure, output the storage class
+    % (e.g. static), type and name of the global variable that will hold it.
+    % The second arg says whether the output is part of the definition of that
+    % variable; this influences e.g. whether we output "extern" or not.
+    %
+:- pred output_layout_name_storage_type_name(layout_name::in,
+    being_defined::in, io::di, io::uo) is det.
+
+    % Given a mangled module name and a reference to a layout array, output
+    % the storage class (e.g. static), type and name of the global variable
+    % that will hold it. The bool says whether the output is part of the
+    % definition of that variable; this influences e.g. whether we output
+    % "extern" or not.
+    %
+:- pred output_layout_array_name_storage_type_name(string::in,
+    layout_array_name::in, being_defined::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Given a Mercury representation of a proc layout structure, output its
+    % definition in the appropriate C global variable.
+    %
+:- pred output_proc_layout_data_defn(llds_out_info::in, proc_layout_data::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+    % Given a Mercury representation of a closure layout structure, output its
+    % definition in the appropriate C global variable.
+    %
+:- pred output_closure_layout_data_defn(llds_out_info::in,
+    closure_proc_id_data::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
+
+    % Given a Mercury representation of a module layout structure, output its
+    % definition in the appropriate C global variable.
+    %
+:- pred output_module_layout_data_defn(llds_out_info::in,
+    module_layout_data::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 
     % Given a reference to a layout structure, return a bool that is true
     % iff the layout structure contains code addresses.
@@ -2023,126 +2029,6 @@ output_layout_name(Name, !IO) :-
         io.write_string(ModuleNameStr, !IO)
     ).
 
-output_layout_array_name_storage_type_name(ModuleName, Name, BeingDefined,
-        !IO) :-
-    (
-        BeingDefined = being_defined,
-        io.write_string("static ", !IO)
-    ;
-        % Avoid problems with MS Visual C.
-        % See the comments in llds_out_file.output_static_linkage_define/2
-        % for a further explanation.
-        BeingDefined = not_being_defined,
-        io.write_string("MR_STATIC_LINKAGE ", !IO)
-    ),
-    (
-        Name = label_layout_array(label_has_no_var_info),
-        io.write_string("const MR_LabelLayoutNoVarInfo ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = label_layout_array(label_has_short_var_info),
-        io.write_string("const MR_LabelLayoutShort ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = label_layout_array(label_has_long_var_info),
-        io.write_string("const MR_LabelLayout ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = pseudo_type_info_array,
-        io.write_string("const MR_PseudoTypeInfo ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = long_locns_array,
-        io.write_string("const MR_LongLval ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = short_locns_array,
-        io.write_string("const MR_ShortLval ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = hlds_var_nums_array,
-        io.write_string("const MR_HLDSVarNum ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = user_event_var_nums_array,
-        io.write_string("const MR_HLDSVarNum ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = user_event_layout_array,
-        io.write_string("const struct MR_UserEvent_Struct ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_static_call_sites_array,
-        io.write_string("const MR_CallSiteStatic ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_static_cp_static_array,
-        io.write_string("const MR_CoveragePointStatic ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_static_cp_dynamic_array,
-        io.write_string("MR_Unsigned ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_static_array,
-        io.write_string("MR_ProcStatic ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_head_var_nums_array,
-        io.write_string("const MR_uint_least16_t ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_var_names_array,
-        io.write_string("const MR_uint_least32_t ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_body_bytecodes_array,
-        io.write_string("const MR_uint_least8_t ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_table_io_entry_array,
-        io.write_string("const MR_TableIoEntry ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_event_layouts_array,
-        io.write_string("const MR_LabelLayout *", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = proc_exec_trace_array,
-        io.write_string("MR_STATIC_CODE_CONST MR_ExecTrace ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = threadscope_string_table_array,
-        io.write_string("MR_Threadscope_String ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ;
-        Name = alloc_site_array,
-        % The type field may be updated at runtime so this array is not const.
-        io.write_string("MR_AllocSiteInfo ", !IO),
-        output_layout_array_name(do_not_use_layout_macro, ModuleName,
-            Name, !IO)
-    ).
-
 output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
     (
         Name = proc_layout(RttiProcLabel, Kind),
@@ -2265,36 +2151,125 @@ output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
         output_layout_name(Name, !IO)
     ).
 
-layout_name_would_include_code_addr(LayoutName) = InclCodeAddr :-
+output_layout_array_name_storage_type_name(ModuleName, Name, BeingDefined,
+        !IO) :-
     (
-        ( LayoutName = proc_layout(_, _)
-        ; LayoutName = closure_proc_id(_, _, _)
-        ; LayoutName = file_layout(_, _)
-        ; LayoutName = file_layout_line_number_vector(_, _)
-        ; LayoutName = file_layout_label_layout_vector(_, _)
-        ; LayoutName = module_layout_string_table(_)
-        ; LayoutName = module_layout_file_vector(_)
-        ; LayoutName = module_layout_proc_vector(_)
-        ; LayoutName = module_layout_label_exec_count(_, _)
-        ; LayoutName = module_layout_event_set_desc(_)
-        ; LayoutName = module_layout_event_arg_names(_, _)
-        ; LayoutName = module_layout_event_synth_attrs(_, _)
-        ; LayoutName = module_layout_event_synth_attr_args(_, _, _)
-        ; LayoutName = module_layout_event_synth_attr_order(_, _, _)
-        ; LayoutName = module_layout_event_synth_order(_, _)
-        ; LayoutName = module_layout_event_specs(_)
-        ; LayoutName = module_layout_oisu_bytes(_)
-        ; LayoutName = module_layout_type_table_bytes(_)
-        ; LayoutName = module_layout(_)
-        ),
-        InclCodeAddr = no
+        BeingDefined = being_defined,
+        io.write_string("static ", !IO)
+    ;
+        % Avoid problems with MS Visual C.
+        % See the comments in llds_out_file.output_static_linkage_define/2
+        % for a further explanation.
+        BeingDefined = not_being_defined,
+        io.write_string("MR_STATIC_LINKAGE ", !IO)
+    ),
+    (
+        Name = label_layout_array(label_has_no_var_info),
+        io.write_string("const MR_LabelLayoutNoVarInfo ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = label_layout_array(label_has_short_var_info),
+        io.write_string("const MR_LabelLayoutShort ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = label_layout_array(label_has_long_var_info),
+        io.write_string("const MR_LabelLayout ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = pseudo_type_info_array,
+        io.write_string("const MR_PseudoTypeInfo ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = long_locns_array,
+        io.write_string("const MR_LongLval ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = short_locns_array,
+        io.write_string("const MR_ShortLval ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = hlds_var_nums_array,
+        io.write_string("const MR_HLDSVarNum ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = user_event_var_nums_array,
+        io.write_string("const MR_HLDSVarNum ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = user_event_layout_array,
+        io.write_string("const struct MR_UserEvent_Struct ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_static_call_sites_array,
+        io.write_string("const MR_CallSiteStatic ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_static_cp_static_array,
+        io.write_string("const MR_CoveragePointStatic ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_static_cp_dynamic_array,
+        io.write_string("MR_Unsigned ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_static_array,
+        io.write_string("MR_ProcStatic ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_head_var_nums_array,
+        io.write_string("const MR_uint_least16_t ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_var_names_array,
+        io.write_string("const MR_uint_least32_t ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_body_bytecodes_array,
+        io.write_string("const MR_uint_least8_t ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_table_io_entry_array,
+        io.write_string("const MR_TableIoEntry ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_event_layouts_array,
+        io.write_string("const MR_LabelLayout *", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = proc_exec_trace_array,
+        io.write_string("MR_STATIC_CODE_CONST MR_ExecTrace ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = threadscope_string_table_array,
+        io.write_string("MR_Threadscope_String ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = alloc_site_array,
+        % The type field may be updated at runtime so this array is not const.
+        io.write_string("MR_AllocSiteInfo ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
     ).
-
-:- func proc_layout_kind_to_type(proc_layout_kind) = string.
-
-proc_layout_kind_to_type(proc_layout_traversal) = "MR_ProcLayout_Traversal".
-proc_layout_kind_to_type(proc_layout_proc_id(user)) = "MR_ProcLayoutUser".
-proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_ProcLayoutUCI".
 
 %-----------------------------------------------------------------------------%
 
@@ -2313,23 +2288,6 @@ output_rval_as_addr(Info, Rval, !IO) :-
         io.write_string("\n", !IO),
         output_rval(Info, Rval, !IO)
     ).
-
-trace_port_to_string(port_call) =            "CALL".
-trace_port_to_string(port_exit) =            "EXIT".
-trace_port_to_string(port_redo) =            "REDO".
-trace_port_to_string(port_fail) =            "FAIL".
-trace_port_to_string(port_tailrec_call) =    "TAILREC_CALL".
-trace_port_to_string(port_exception) =       "EXCEPTION".
-trace_port_to_string(port_ite_cond) =        "COND".
-trace_port_to_string(port_ite_then) =        "THEN".
-trace_port_to_string(port_ite_else) =        "ELSE".
-trace_port_to_string(port_neg_enter) =       "NEG_ENTER".
-trace_port_to_string(port_neg_success) =     "NEG_SUCCESS".
-trace_port_to_string(port_neg_failure) =     "NEG_FAILURE".
-trace_port_to_string(port_disj_first) =      "DISJ_FIRST".
-trace_port_to_string(port_disj_later) =      "DISJ_LATER".
-trace_port_to_string(port_switch) =          "SWITCH".
-trace_port_to_string(port_user) =            "USER".
 
 %-----------------------------------------------------------------------------%
 
@@ -2434,19 +2392,7 @@ output_proc_layout_data_defn(Info, ProcLayoutData, !DeclSet, !IO) :-
     DeclId = decl_layout_id(ProcLayoutName),
     decl_set_insert(DeclId, !DeclSet).
 
-proc_label_user_or_uci(ordinary_proc_label(_, _, _, _, _, _)) = user.
-proc_label_user_or_uci(special_proc_label(_, _, _, _, _, _)) = uci.
-
-:- func detism_to_c_detism(determinism) = string.
-
-detism_to_c_detism(detism_det) =       "MR_DETISM_DET".
-detism_to_c_detism(detism_semi) =      "MR_DETISM_SEMI".
-detism_to_c_detism(detism_non) =       "MR_DETISM_NON".
-detism_to_c_detism(detism_multi) =     "MR_DETISM_MULTI".
-detism_to_c_detism(detism_erroneous) = "MR_DETISM_ERRONEOUS".
-detism_to_c_detism(detism_failure) =   "MR_DETISM_FAILURE".
-detism_to_c_detism(detism_cc_non) =    "MR_DETISM_CCNON".
-detism_to_c_detism(detism_cc_multi) =  "MR_DETISM_CCMULTI".
+%-----------------------------------------------------------------------------%
 
     % The job of this predicate is to minimize stack space consumption in
     % grades that do not allow output_bytecodes to be tail recursive.
@@ -3462,15 +3408,6 @@ quote_and_write_string(String, !IO) :-
     c_util.output_quoted_string_cur_stream(String, !IO),
     io.write_string("""", !IO).
 
-output_pred_or_func(PredOrFunc, !IO) :-
-    (
-        PredOrFunc = pf_predicate,
-        io.write_string("MR_PREDICATE", !IO)
-    ;
-        PredOrFunc = pf_function,
-        io.write_string("MR_FUNCTION", !IO)
-    ).
-
 :- pred long_length(list(T)::in, int::out) is det.
 
 long_length(List, Length) :-
@@ -3494,6 +3431,79 @@ long_length_inner_loop([H | T], Count, LeftOver, !Length) :-
     else
         LeftOver = [H | T]
     ).
+
+%-----------------------------------------------------------------------------%
+
+layout_name_would_include_code_addr(LayoutName) = InclCodeAddr :-
+    (
+        ( LayoutName = proc_layout(_, _)
+        ; LayoutName = closure_proc_id(_, _, _)
+        ; LayoutName = file_layout(_, _)
+        ; LayoutName = file_layout_line_number_vector(_, _)
+        ; LayoutName = file_layout_label_layout_vector(_, _)
+        ; LayoutName = module_layout_string_table(_)
+        ; LayoutName = module_layout_file_vector(_)
+        ; LayoutName = module_layout_proc_vector(_)
+        ; LayoutName = module_layout_label_exec_count(_, _)
+        ; LayoutName = module_layout_event_set_desc(_)
+        ; LayoutName = module_layout_event_arg_names(_, _)
+        ; LayoutName = module_layout_event_synth_attrs(_, _)
+        ; LayoutName = module_layout_event_synth_attr_args(_, _, _)
+        ; LayoutName = module_layout_event_synth_attr_order(_, _, _)
+        ; LayoutName = module_layout_event_synth_order(_, _)
+        ; LayoutName = module_layout_event_specs(_)
+        ; LayoutName = module_layout_oisu_bytes(_)
+        ; LayoutName = module_layout_type_table_bytes(_)
+        ; LayoutName = module_layout(_)
+        ),
+        InclCodeAddr = no
+    ).
+
+:- func proc_layout_kind_to_type(proc_layout_kind) = string.
+
+proc_layout_kind_to_type(proc_layout_traversal) = "MR_ProcLayout_Traversal".
+proc_layout_kind_to_type(proc_layout_proc_id(user)) = "MR_ProcLayoutUser".
+proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_ProcLayoutUCI".
+
+proc_label_user_or_uci(ordinary_proc_label(_, _, _, _, _, _)) = user.
+proc_label_user_or_uci(special_proc_label(_, _, _, _, _, _)) = uci.
+
+output_pred_or_func(PredOrFunc, !IO) :-
+    (
+        PredOrFunc = pf_predicate,
+        io.write_string("MR_PREDICATE", !IO)
+    ;
+        PredOrFunc = pf_function,
+        io.write_string("MR_FUNCTION", !IO)
+    ).
+
+:- func detism_to_c_detism(determinism) = string.
+
+detism_to_c_detism(detism_det) =       "MR_DETISM_DET".
+detism_to_c_detism(detism_semi) =      "MR_DETISM_SEMI".
+detism_to_c_detism(detism_non) =       "MR_DETISM_NON".
+detism_to_c_detism(detism_multi) =     "MR_DETISM_MULTI".
+detism_to_c_detism(detism_erroneous) = "MR_DETISM_ERRONEOUS".
+detism_to_c_detism(detism_failure) =   "MR_DETISM_FAILURE".
+detism_to_c_detism(detism_cc_non) =    "MR_DETISM_CCNON".
+detism_to_c_detism(detism_cc_multi) =  "MR_DETISM_CCMULTI".
+
+trace_port_to_string(port_call) =            "CALL".
+trace_port_to_string(port_exit) =            "EXIT".
+trace_port_to_string(port_redo) =            "REDO".
+trace_port_to_string(port_fail) =            "FAIL".
+trace_port_to_string(port_tailrec_call) =    "TAILREC_CALL".
+trace_port_to_string(port_exception) =       "EXCEPTION".
+trace_port_to_string(port_ite_cond) =        "COND".
+trace_port_to_string(port_ite_then) =        "THEN".
+trace_port_to_string(port_ite_else) =        "ELSE".
+trace_port_to_string(port_neg_enter) =       "NEG_ENTER".
+trace_port_to_string(port_neg_success) =     "NEG_SUCCESS".
+trace_port_to_string(port_neg_failure) =     "NEG_FAILURE".
+trace_port_to_string(port_disj_first) =      "DISJ_FIRST".
+trace_port_to_string(port_disj_later) =      "DISJ_LATER".
+trace_port_to_string(port_switch) =          "SWITCH".
+trace_port_to_string(port_user) =            "USER".
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.layout_out.

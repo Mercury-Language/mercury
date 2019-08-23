@@ -200,11 +200,6 @@
     llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred generate_tailrec_event_code(trace_info::in,
-    assoc_list(prog_var, arg_info)::in, goal_id::in, prog_context::in,
-    llds_code::out, label::out,
-    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
-
 :- type external_event_info
     --->    external_event_info(
                 % The label associated with the external event.
@@ -227,6 +222,11 @@
     %
 :- pred generate_external_event_code(external_trace_port::in,
     trace_info::in, prog_context::in, maybe(external_event_info)::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
+
+:- pred generate_tailrec_event_code(trace_info::in,
+    assoc_list(prog_var, arg_info)::in, goal_id::in, prog_context::in,
+    llds_code::out, label::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
     % If the trace level calls for redo events, generate code that pushes
@@ -267,6 +267,53 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
+
+    % Information for tracing that is valid throughout the execution
+    % of a procedure.
+:- type trace_info
+    --->    trace_info(
+                ti_trace_level          :: trace_level,
+                ti_trace_suppress_items :: trace_suppress_items,
+
+                % If the trace level is shallow, the lval of the slot
+                % that holds the from-full flag.
+                ti_from_full_lval       :: maybe(lval),
+
+                % If the procedure has I/O state arguments, the lval
+                % of the slot that holds the initial value of the
+                % I/O action counter.
+                ti_io_seq_lval          :: maybe(lval),
+
+                % If trailing is enabled, the lvals of the slots that hold
+                % the value of the trail pointer and the ticket counter
+                % at the time of the call.
+                ti_trail_lvals          :: maybe(pair(lval)),
+
+                % If we reserve a slot for holding the value of maxfr
+                % at entry for use in implementing retry, the lval of the slot.
+                ti_maxfr_lval           :: maybe(lval),
+
+                % If we reserve a slot for holding the value of the call table
+                % tip variable, the lval of this variable.
+                ti_call_table_tip_lval  :: maybe(lval),
+
+                % If we reserve a slot for holding the number of times the
+                % stack frame was reused by tail recursive calls, the lval
+                % holding this counter, and the label that a tail recursive
+                % call should jump to.
+                ti_tail_rec_info        :: maybe(pair(lval, label)),
+
+                % If we are generating redo events, this has the label
+                % associated with the fail event, which we then reserve
+                % in advance, so we can put the address of its layout struct
+                % into the slot which holds the layout for the redo event
+                % (the two events have identical layouts).
+                ti_redo_label           :: maybe(label)
+            ).
+
+get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ ti_tail_rec_info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1359,53 +1406,6 @@ redo_layout_slot(CodeModel, RedoLayoutSlot) :-
         unexpected($pred,
             "attempt to access redo layout slot for det or semi procedure")
     ).
-
-%-----------------------------------------------------------------------------%
-
-    % Information for tracing that is valid throughout the execution
-    % of a procedure.
-:- type trace_info
-    --->    trace_info(
-                ti_trace_level          :: trace_level,
-                ti_trace_suppress_items :: trace_suppress_items,
-
-                % If the trace level is shallow, the lval of the slot
-                % that holds the from-full flag.
-                ti_from_full_lval       :: maybe(lval),
-
-                % If the procedure has I/O state arguments, the lval
-                % of the slot that holds the initial value of the
-                % I/O action counter.
-                ti_io_seq_lval          :: maybe(lval),
-
-                % If trailing is enabled, the lvals of the slots that hold
-                % the value of the trail pointer and the ticket counter
-                % at the time of the call.
-                ti_trail_lvals          :: maybe(pair(lval)),
-
-                % If we reserve a slot for holding the value of maxfr
-                % at entry for use in implementing retry, the lval of the slot.
-                ti_maxfr_lval           :: maybe(lval),
-
-                % If we reserve a slot for holding the value of the call table
-                % tip variable, the lval of this variable.
-                ti_call_table_tip_lval  :: maybe(lval),
-
-                % If we reserve a slot for holding the number of times the
-                % stack frame was reused by tail recursive calls, the lval
-                % holding this counter, and the label that a tail recursive
-                % call should jump to.
-                ti_tail_rec_info        :: maybe(pair(lval, label)),
-
-                % If we are generating redo events, this has the label
-                % associated with the fail event, which we then reserve
-                % in advance, so we can put the address of its layout struct
-                % into the slot which holds the layout for the redo event
-                % (the two events have identical layouts).
-                ti_redo_label           :: maybe(label)
-            ).
-
-get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ ti_tail_rec_info).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.trace_gen.

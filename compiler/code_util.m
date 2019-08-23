@@ -81,9 +81,9 @@
     % and an lval respectively. Lvals referenced indirectly through
     % lvals of the form var(_) are not counted.
     %
+:- func lvals_in_lvals(list(lval)) = list(lval).
 :- func lvals_in_rval(rval) = list(lval).
 :- func lvals_in_lval(lval) = list(lval).
-:- func lvals_in_lvals(list(lval)) = list(lval).
 
     % Given a procedure that already has its arg_info field filled in,
     % return a list giving its input variables and their initial locations.

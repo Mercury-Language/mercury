@@ -223,50 +223,6 @@
 
 %-----------------------------------------------------------------------------%
 
-detect_liveness_preds_parallel(!HLDS) :-
-    module_info_get_valid_pred_ids(!.HLDS, PredIds),
-    detect_liveness_preds_parallel_2(PredIds, !.HLDS, !HLDS).
-
-:- pred detect_liveness_preds_parallel_2(list(pred_id)::in,
-    module_info::in, module_info::in, module_info::out) is det.
-
-detect_liveness_preds_parallel_2(PredIds, HLDS0, !HLDS) :-
-    ( if list.split_list(1000, PredIds, HeadPredIds, TailPredIds) then
-        ( detect_liveness_preds_parallel_3(HeadPredIds, HLDS0, !HLDS)
-        % XXX The following should be a parallel conjunction.
-        , detect_liveness_preds_parallel_2(TailPredIds, HLDS0, !HLDS)
-        )
-    else
-        detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS)
-    ).
-
-:- pred detect_liveness_preds_parallel_3(list(pred_id)::in,
-    module_info::in, module_info::in, module_info::out) is det.
-
-detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS) :-
-    list.map(detect_liveness_pred(HLDS0), PredIds, PredInfos),
-    list.foldl_corresponding(module_info_set_pred_info, PredIds, PredInfos,
-        !HLDS).
-
-:- pred detect_liveness_pred(module_info::in, pred_id::in, pred_info::out)
-    is det.
-
-detect_liveness_pred(ModuleInfo, PredId, PredInfo) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo0),
-    ProcIds = pred_info_non_imported_procids(PredInfo0),
-    list.foldl(detect_liveness_pred_proc(ModuleInfo, PredId), ProcIds,
-        PredInfo0, PredInfo).
-
-:- pred detect_liveness_pred_proc(module_info::in, pred_id::in,
-    proc_id::in, pred_info::in, pred_info::out) is det.
-
-detect_liveness_pred_proc(ModuleInfo, PredId, ProcId, !PredInfo) :-
-    pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
-    detect_liveness_proc_2(ModuleInfo, PredId, ProcInfo0, ProcInfo),
-    pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo).
-
-%-----------------------------------------------------------------------------%
-
 detect_liveness_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo).
 
@@ -381,6 +337,50 @@ maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredIdInt, VarSet,
     else
         true
     ).
+
+%-----------------------------------------------------------------------------%
+
+detect_liveness_preds_parallel(!HLDS) :-
+    module_info_get_valid_pred_ids(!.HLDS, PredIds),
+    detect_liveness_preds_parallel_2(PredIds, !.HLDS, !HLDS).
+
+:- pred detect_liveness_preds_parallel_2(list(pred_id)::in,
+    module_info::in, module_info::in, module_info::out) is det.
+
+detect_liveness_preds_parallel_2(PredIds, HLDS0, !HLDS) :-
+    ( if list.split_list(1000, PredIds, HeadPredIds, TailPredIds) then
+        ( detect_liveness_preds_parallel_3(HeadPredIds, HLDS0, !HLDS)
+        % XXX The following should be a parallel conjunction.
+        , detect_liveness_preds_parallel_2(TailPredIds, HLDS0, !HLDS)
+        )
+    else
+        detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS)
+    ).
+
+:- pred detect_liveness_preds_parallel_3(list(pred_id)::in,
+    module_info::in, module_info::in, module_info::out) is det.
+
+detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS) :-
+    list.map(detect_liveness_pred(HLDS0), PredIds, PredInfos),
+    list.foldl_corresponding(module_info_set_pred_info, PredIds, PredInfos,
+        !HLDS).
+
+:- pred detect_liveness_pred(module_info::in, pred_id::in, pred_info::out)
+    is det.
+
+detect_liveness_pred(ModuleInfo, PredId, PredInfo) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo0),
+    ProcIds = pred_info_non_imported_procids(PredInfo0),
+    list.foldl(detect_liveness_pred_proc(ModuleInfo, PredId), ProcIds,
+        PredInfo0, PredInfo).
+
+:- pred detect_liveness_pred_proc(module_info::in, pred_id::in,
+    proc_id::in, pred_info::in, pred_info::out) is det.
+
+detect_liveness_pred_proc(ModuleInfo, PredId, ProcId, !PredInfo) :-
+    pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
+    detect_liveness_proc_2(ModuleInfo, PredId, ProcInfo0, ProcInfo),
+    pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

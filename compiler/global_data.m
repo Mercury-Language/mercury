@@ -82,23 +82,28 @@
 :- pred global_data_set_static_cell_info(static_cell_info::in,
     global_data::in, global_data::out) is det.
 
-:- type static_cell_info.
-
-:- func init_static_cell_info(module_name, have_unboxed_floats,
-    have_unboxed_int64s, bool) = static_cell_info.
-
-:- pred add_scalar_static_cell(list(typed_rval)::in, data_id::out,
-    static_cell_info::in, static_cell_info::out) is det.
-
-:- pred add_scalar_static_cell_natural_types(list(rval)::in, data_id::out,
-    static_cell_info::in, static_cell_info::out) is det.
-
 :- pred global_data_add_new_alloc_sites(set_tree234(alloc_site_info)::in,
     global_data::in, global_data::out) is det.
 
 :- pred global_data_get_all_alloc_sites(global_data::in,
     list(alloc_site_info)::out, map(alloc_site_id, layout_slot_name)::out)
     is det.
+
+%-----------------------------------------------------------------------------%
+
+:- type static_cell_info.
+
+:- func init_static_cell_info(module_name, have_unboxed_floats,
+    have_unboxed_int64s, bool) = static_cell_info.
+
+:- pred add_scalar_static_cell_natural_types(list(rval)::in, data_id::out,
+    static_cell_info::in, static_cell_info::out) is det.
+
+:- pred add_scalar_static_cell(list(typed_rval)::in, data_id::out,
+    static_cell_info::in, static_cell_info::out) is det.
+
+:- pred search_scalar_static_cell_offset(static_cell_info::in, data_id::in,
+    int::in, rval::out) is semidet.
 
 :- pred find_general_llds_types(have_unboxed_floats::in,
     have_unboxed_int64s::in, list(mer_type)::in, list(list(rval))::in,
@@ -107,9 +112,6 @@
 :- pred add_vector_static_cell(list(llds_type)::in,
     list(list(rval))::in, data_id::out,
     static_cell_info::in, static_cell_info::out) is det.
-
-:- pred search_scalar_static_cell_offset(static_cell_info::in, data_id::in,
-    int::in, rval::out) is semidet.
 
 :- pred get_static_cells(static_cell_info::in,
     list(scalar_common_data_array)::out, list(vector_common_data_array)::out)

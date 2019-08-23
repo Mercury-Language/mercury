@@ -104,71 +104,115 @@ MCFLAGS-libs.mmakefiles               = --warn-implicit-stream-calls
 MCFLAGS-parse_tree.write_deps_file    = --warn-implicit-stream-calls
 MCFLAGS-hlds.du_type_layout           = --warn-implicit-stream-calls
 
-MCFLAGS-check_hlds.typecheck_errors   += --warn-inconsistent-pred-order-clauses
-MCFLAGS-check_hlds.typecheck_info     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-check_hlds.typecheck          += --warn-inconsistent-pred-order-clauses
-MCFLAGS-hlds.hlds_data                += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ll_backend.unify_gen          += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ll_backend.unify_gen_deconstruct += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ll_backend.unify_gen_construct += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ll_backend.unify_gen_test     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ll_backend.unify_gen_util     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.ml_unify_gen       += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.ml_unify_gen_deconstruct += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.ml_unify_gen_construct += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.ml_unify_gen_test  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.ml_unify_gen_util  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_class    += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_data     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_export   += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_file     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_func     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_global   += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_name     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_stmt     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_type     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_c_util     += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_class   += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_data    += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_export  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_file    += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_func    += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_global  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_name    += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_stmt    += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_type    += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_cs_util    += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_class += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_data  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_export+= --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_file  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_func  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_global+= --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_name  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_stmt  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_type  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_util  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-ml_backend.mlds_to_java_wrap  += --warn-inconsistent-pred-order-clauses
+# Keep all modules' contents in a consistent order, except these (for now).
+MCFLAGS-analysis                += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-analysis.file           += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-backend_libs.export     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-backend_libs.name_mangle += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-backend_libs.pseudo_type_info += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-backend_libs.rtti       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-backend_libs.switch_util += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-backend_libs.type_class_info += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-check_hlds.clause_to_proc += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-check_hlds.mode_info    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-check_hlds.mode_util    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-check_hlds.polymorphism += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.assertion          += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.const_struct       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.goal_util          += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.hlds_clauses       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.hlds_dependency_graph += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.hlds_goal          += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.hlds_module        += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.hlds_out.hlds_out_mode += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.hlds_pred          += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.hlds_promise       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.inst_graph         += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.instmap            += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.make_goal          += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.make_hlds.qual_info += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.make_hlds.state_var += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.passes_aux         += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.pred_table         += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-hlds.quantification     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.compute_grade      += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.globals            += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.handle_options     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.lp_rational        += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.options            += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.polyhedron         += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.process_util       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.rat                += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.timestamp          += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-libs.trace_params       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.code_info    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.code_loc_dep += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.opt_util     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.var_locn     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-make                    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-make.dependencies       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-make.options_file       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-make.util               += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.ml_gen_info  += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.ml_global_data += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.ml_target_util += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.ml_type_gen  += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-mode_robdd.tfeirn       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.parse_tree_out_inst += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.parse_tree_out_pragma += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.parse_tree_to_term += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.parse_type_name += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.prog_ctgc    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.prog_data    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.prog_data_foreign += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.prog_mode    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.prog_mutable += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.prog_out     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.prog_type    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.prog_util    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.source_file_map += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-parse_tree.write_deps_file += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-recompilation           += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-top_level.mercury_compile_llds_back_end += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.complexity += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.ctgc.datastruct += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.ctgc.fixpoint_table += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.ctgc.selector += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.ctgc.structure_reuse.domain += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.ctgc.structure_reuse.indirect += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.ctgc.structure_sharing.analysis += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.ctgc.structure_sharing.domain += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.ctgc.util += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.lambda   += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.pd_debug += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.pd_info  += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.pd_term  += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.pd_util  += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.rbmm.points_to_graph += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.rbmm.region_liveness_info += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.term_constr_data += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.term_constr_fixpoint += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.term_constr_util += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-transform_hlds.term_traversal += --no-warn-inconsistent-pred-order-clauses
 
 # Bug workarounds.
 
 # This works around bug 48 in Mantis.
 # (This has been fixed, and the workaround can be removed once new compilers
 # have been installed.)
-MCFLAGS-analysis = --no-common-struct
+MCFLAGS-analysis += --no-common-struct
 
 # XXX work around a bug that sometimes appears at -O4 and above.
 # mmc -r analysis.file.c -s asm_fast.gc -O4 --intermodule-optimisation
-MCFLAGS-analysis.file = --no-optimise-higher-order
+MCFLAGS-analysis.file += --no-optimise-higher-order
 
 # This works around bug 32 in Mantis.
-MCFLAGS-check_hlds.check_typeclass = --no-loop-invariants
+MCFLAGS-check_hlds.check_typeclass += --no-loop-invariants
 
 # This is the same bug as tests/valid/ho_and_type_spec_bug2.
-MCFLAGS-mode_robdd.tfeirn = -O3
-MCFLAGS-mode_robdd.implications = -O0
+MCFLAGS-mode_robdd.tfeirn += -O3
+MCFLAGS-mode_robdd.implications += -O0
 
 # Work around a problem in the HiPE compiler (as of Erlang R11B5).
 MCFLAGS-libs.options += --erlang-switch-on-strings-as-atoms
-
-MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses

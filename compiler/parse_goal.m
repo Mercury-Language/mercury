@@ -43,17 +43,6 @@
     maybe3(list(prog_var), list(prog_var), goal)::out,
     prog_varset::in, prog_varset::out) is det.
 
-    % apply_purity_marker_to_maybe_goal(GoalTerm, Purity,
-    %   MaybeGoal0, MaybeGoal):
-    %
-    % Given a GoalTerm which has a purity annotation for Purity in front of it,
-    % which has been parsed as MaybeGoal0, marking the Goal0 in MaybeGoal0
-    % as having the given purity, if it is a goal to which purity annotations
-    % are applicable.
-    %
-:- pred apply_purity_marker_to_maybe_goal(term::in, purity::in,
-    maybe1(goal)::in, maybe1(goal)::out) is det.
-
     % Functions to construct error messages. Exported to parse_dcg_goal.m,
     % to allow DCG and non-DCG clauses to generate identical error messages
     % in analogous situations.
@@ -66,6 +55,17 @@
     term.context, string) = error_spec.
 :- func should_have_one_x_one_goal_prefix(cord(format_component),
     term.context, string, string) = error_spec.
+
+    % apply_purity_marker_to_maybe_goal(GoalTerm, Purity,
+    %   MaybeGoal0, MaybeGoal):
+    %
+    % Given a GoalTerm which has a purity annotation for Purity in front of it,
+    % which has been parsed as MaybeGoal0, marking the Goal0 in MaybeGoal0
+    % as having the given purity, if it is a goal to which purity annotations
+    % are applicable.
+    %
+:- pred apply_purity_marker_to_maybe_goal(term::in, purity::in,
+    maybe1(goal)::in, maybe1(goal)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -121,6 +121,41 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
                 purity_pure)
         ),
         MaybeGoal = ok1(Goal)
+    ).
+
+%---------------------------------------------------------------------------%
+
+parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
+    % We parse existentially quantified goals in non-DCG contexts here,
+    % while we parse them in DCG contexts in parse_some_vars_dcg_goal
+    % in parse_dcg_goal.m.
+    ( if
+        Term = term.functor(term.atom("some"), [VarsTerm, SubGoalTerm],
+            _Context)
+    then
+        varset.coerce(!.VarSet, GenericVarSet),
+        VarsTailPieces = [lower_case_next_if_not_first,
+            words("In first argument of"), quote("some"), suffix(":")],
+        VarsContextPieces = ContextPieces ++ cord.from_list(VarsTailPieces),
+        parse_vars_state_vars(VarsTerm, GenericVarSet, VarsContextPieces,
+            MaybeVars),
+        GoalTerm = SubGoalTerm
+    else
+        MaybeVars = ok1(plain_state_vars([], [])),
+        GoalTerm = Term
+    ),
+    parse_goal(GoalTerm, ContextPieces, MaybeGoal, !VarSet),
+    ( if
+        MaybeVars = ok1(plain_state_vars(Vars0, StateVars0)),
+        MaybeGoal = ok1(Goal)
+    then
+        list.map(term.coerce_var, Vars0, Vars),
+        list.map(term.coerce_var, StateVars0, StateVars),
+        MaybeVarsAndGoal = ok3(Vars, StateVars, Goal)
+    else
+        Specs = get_any_errors1(MaybeVars) ++
+            get_any_errors1(MaybeGoal),
+        MaybeVarsAndGoal = error3(Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1283,41 +1318,6 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
             get_any_errors1(MaybeMaybePlainVar) ++
             get_any_errors1(MaybeMaybeDotVar),
         MaybePODVar = error1(Specs)
-    ).
-
-%---------------------------------------------------------------------------%
-
-parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
-    % We parse existentially quantified goals in non-DCG contexts here,
-    % while we parse them in DCG contexts in parse_some_vars_dcg_goal
-    % in parse_dcg_goal.m.
-    ( if
-        Term = term.functor(term.atom("some"), [VarsTerm, SubGoalTerm],
-            _Context)
-    then
-        varset.coerce(!.VarSet, GenericVarSet),
-        VarsTailPieces = [lower_case_next_if_not_first,
-            words("In first argument of"), quote("some"), suffix(":")],
-        VarsContextPieces = ContextPieces ++ cord.from_list(VarsTailPieces),
-        parse_vars_state_vars(VarsTerm, GenericVarSet, VarsContextPieces,
-            MaybeVars),
-        GoalTerm = SubGoalTerm
-    else
-        MaybeVars = ok1(plain_state_vars([], [])),
-        GoalTerm = Term
-    ),
-    parse_goal(GoalTerm, ContextPieces, MaybeGoal, !VarSet),
-    ( if
-        MaybeVars = ok1(plain_state_vars(Vars0, StateVars0)),
-        MaybeGoal = ok1(Goal)
-    then
-        list.map(term.coerce_var, Vars0, Vars),
-        list.map(term.coerce_var, StateVars0, StateVars),
-        MaybeVarsAndGoal = ok3(Vars, StateVars, Goal)
-    else
-        Specs = get_any_errors1(MaybeVars) ++
-            get_any_errors1(MaybeGoal),
-        MaybeVarsAndGoal = error3(Specs)
     ).
 
 %---------------------------------------------------------------------------%
