@@ -315,24 +315,6 @@
 :- func update_local_and_nonlocal_vars(abstract_goal, local_vars,
     nonlocal_vars) = abstract_goal.
 
-    % For any two goals whose recursion types are known return the
-    % recursion type of the conjunction of the two goals.
-    %
-:- func combine_recursion_types(recursion_type, recursion_type)
-    = recursion_type.
-
-    % Combines the constraints contained in two primitive goals into
-    % a single primitive goal. It is an error to pass any other kind
-    % of abstract goal as an argument to this function.
-    %
-:- func combine_primitive_goals(abstract_goal, abstract_goal) = abstract_goal.
-
-    % Take a list of conjoined primitive goals and simplify them
-    % so there is one large block of constraints.
-    %
-:- func simplify_abstract_rep(abstract_goal) = abstract_goal.
-:- func simplify_conjuncts(list(abstract_goal)) = list(abstract_goal).
-
     % Succeeds iff the given SCC contains recursion.
     %
 :- pred scc_contains_recursion(abstract_scc::in) is semidet.
@@ -350,6 +332,24 @@
     % of some higher-order variables.
     %
 :- pred analysis_depends_on_ho(abstract_proc::in) is semidet.
+
+    % For any two goals whose recursion types are known return the
+    % recursion type of the conjunction of the two goals.
+    %
+:- func combine_recursion_types(recursion_type, recursion_type)
+    = recursion_type.
+
+    % Combines the constraints contained in two primitive goals into
+    % a single primitive goal. It is an error to pass any other kind
+    % of abstract goal as an argument to this function.
+    %
+:- func combine_primitive_goals(abstract_goal, abstract_goal) = abstract_goal.
+
+    % Take a list of conjoined primitive goals and simplify them
+    % so there is one large block of constraints.
+    %
+:- func simplify_abstract_rep(abstract_goal) = abstract_goal.
+:- func simplify_conjuncts(list(abstract_goal)) = list(abstract_goal).
 
 %-----------------------------------------------------------------------------%
 %
@@ -440,6 +440,41 @@ size_varset_from_abstract_scc(SCC) = SizeVarSet :-
 
 analysis_depends_on_ho(Proc) :-
     list.is_not_empty(Proc ^ ap_ho_calls).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for dealing with different types of recursion.
+%
+
+combine_recursion_types(none,        none)        = none.
+combine_recursion_types(none,        direct_only) = direct_only.
+combine_recursion_types(none,        mutual_only) = mutual_only.
+combine_recursion_types(none,        both)        = both.
+combine_recursion_types(direct_only, none)        = direct_only.
+combine_recursion_types(direct_only, direct_only) = direct_only.
+combine_recursion_types(direct_only, mutual_only) = both.
+combine_recursion_types(direct_only, both)        = both.
+combine_recursion_types(mutual_only, none)        = mutual_only.
+combine_recursion_types(mutual_only, direct_only) = both.
+combine_recursion_types(mutual_only, mutual_only) = mutual_only.
+combine_recursion_types(mutual_only, both)        = both.
+combine_recursion_types(both,        none)        = both.
+combine_recursion_types(both,        direct_only) = both.
+combine_recursion_types(both,        mutual_only) = both.
+combine_recursion_types(both,        both)        = both.
+
+combine_primitive_goals(GoalA, GoalB) = Goal :-
+    ( if
+        GoalA = term_primitive(PolyA, LocalsA, NonLocalsA),
+        GoalB = term_primitive(PolyB, LocalsB, NonLocalsB)
+    then
+        Poly      = polyhedron.intersection(PolyA, PolyB),
+        Locals    = LocalsA ++ LocalsB,
+        NonLocals = NonLocalsA ++ NonLocalsB,
+        Goal      = term_primitive(Poly, Locals, NonLocals)
+    else
+        unexpected($pred, "non-primitive goals")
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -581,41 +616,6 @@ is_empty_primitive(term_primitive(Poly, _, _)) :-
 :- pred is_empty_conj(abstract_goal::in) is semidet.
 
 is_empty_conj(term_conj([], _, _)).
-
-%-----------------------------------------------------------------------------%
-%
-% Code for dealing with different types of recursion.
-%
-
-combine_recursion_types(none,        none)        = none.
-combine_recursion_types(none,        direct_only) = direct_only.
-combine_recursion_types(none,        mutual_only) = mutual_only.
-combine_recursion_types(none,        both)        = both.
-combine_recursion_types(direct_only, none)        = direct_only.
-combine_recursion_types(direct_only, direct_only) = direct_only.
-combine_recursion_types(direct_only, mutual_only) = both.
-combine_recursion_types(direct_only, both)        = both.
-combine_recursion_types(mutual_only, none)        = mutual_only.
-combine_recursion_types(mutual_only, direct_only) = both.
-combine_recursion_types(mutual_only, mutual_only) = mutual_only.
-combine_recursion_types(mutual_only, both)        = both.
-combine_recursion_types(both,        none)        = both.
-combine_recursion_types(both,        direct_only) = both.
-combine_recursion_types(both,        mutual_only) = both.
-combine_recursion_types(both,        both)        = both.
-
-combine_primitive_goals(GoalA, GoalB) = Goal :-
-    ( if
-        GoalA = term_primitive(PolyA, LocalsA, NonLocalsA),
-        GoalB = term_primitive(PolyB, LocalsB, NonLocalsB)
-    then
-        Poly      = polyhedron.intersection(PolyA, PolyB),
-        Locals    = LocalsA ++ LocalsB,
-        NonLocals = NonLocalsA ++ NonLocalsB,
-        Goal      = term_primitive(Poly, Locals, NonLocals)
-    else
-        unexpected($pred, "non-primitive goals")
-    ).
 
 %-----------------------------------------------------------------------------%
 %

@@ -91,18 +91,22 @@
                 bag(prog_var)
             ).
 
-:- type term_traversal_params.
-
-:- pred init_term_traversal_params(functor_info::in,
-    pred_proc_id::in, prog_context::in, vartypes::in,
-    used_args::in, used_args::in, int::in, int::in,
-    term_traversal_params::out) is det.
+%-----------------------------------------------------------------------------%
 
 :- pred term_traverse_goal(module_info::in, term_traversal_params::in,
     hlds_goal::in, term_traversal_info::in, term_traversal_info::out) is det.
 
 :- pred upper_bound_active_vars(list(term_path_info)::in, bag(prog_var)::out)
     is det.
+
+%-----------------------------------------------------------------------------%
+
+:- type term_traversal_params.
+
+:- pred init_term_traversal_params(functor_info::in,
+    pred_proc_id::in, prog_context::in, vartypes::in,
+    used_args::in, used_args::in, int::in, int::in,
+    term_traversal_params::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -693,14 +697,22 @@ init_term_traversal_params(FunctorInfo, PredProcId, Context, VarTypes,
 :- pred params_get_max_errors(term_traversal_params::in, int::out) is det.
 :- pred params_get_max_paths(term_traversal_params::in, int::out) is det.
 
-params_get_functor_info(Params, Params ^ term_trav_functor_info).
-params_get_ppid(Params, Params ^ term_trav_ppid).
-params_get_context(Params, Params ^ term_trav_context).
-params_get_var_types(Params, Params ^ term_trav_vartypes).
-params_get_output_suppliers(Params, Params ^ term_trav_output_suppliers).
-params_get_rec_input_suppliers(Params, Params ^ term_trav_rec_input_supplier).
-params_get_max_errors(Params, Params ^ term_trav_max_errors).
-params_get_max_paths(Params, Params ^ term_trav_max_paths).
+params_get_functor_info(Params, X) :-
+    X = Params ^ term_trav_functor_info.
+params_get_ppid(Params, X) :-
+    X = Params ^ term_trav_ppid.
+params_get_context(Params, X) :-
+    X = Params ^ term_trav_context.
+params_get_var_types(Params, X) :-
+    X = Params ^ term_trav_vartypes.
+params_get_output_suppliers(Params, X) :-
+    X = Params ^ term_trav_output_suppliers.
+params_get_rec_input_suppliers(Params, X) :-
+    X = Params ^ term_trav_rec_input_supplier.
+params_get_max_errors(Params, X) :-
+    X = Params ^ term_trav_max_errors.
+params_get_max_paths(Params, X) :-
+    X = Params ^ term_trav_max_paths.
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_traversal.

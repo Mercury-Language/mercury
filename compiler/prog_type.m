@@ -971,6 +971,13 @@ name_is_type_info("base_typeclass_info").
 
 %-----------------------------------------------------------------------------%
 
+du_type_is_notag(OoMCtors, MaybeCanonical) :-
+    OoMCtors = one_or_more(Ctor, []),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [_CtorArg], 1,
+        _Context),
+    MaybeExistConstraints = no_exist_constraints,
+    MaybeCanonical = canon.
+
 du_type_is_enum(DuDetails, NumBits) :-
     DuDetails = type_details_du(OoMCtors, _MaybeCanonical,
         _MaybeDirectArgCtors),
@@ -990,15 +997,6 @@ all_functors_are_enum([Ctor | Ctors], !NumFunctors) :-
     MaybeExistConstraints = no_exist_constraints,
     !:NumFunctors = !.NumFunctors + 1,
     all_functors_are_enum(Ctors, !NumFunctors).
-
-%-----------------------------------------------------------------------------%
-
-du_type_is_notag(OoMCtors, MaybeCanonical) :-
-    OoMCtors = one_or_more(Ctor, []),
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [_CtorArg], 1,
-        _Context),
-    MaybeExistConstraints = no_exist_constraints,
-    MaybeCanonical = canon.
 
 du_type_is_dummy(DuDetails) :-
     DuDetails = type_details_du(Ctors, MaybeCanonical, MaybeDirectArgCtors),

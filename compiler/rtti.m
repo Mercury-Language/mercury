@@ -674,15 +674,15 @@
 
 :- func encode_type_ctor_flags(set(type_ctor_flag)) = uint16.
 
-    % Return the id of the type constructor.
-    %
-:- func tcd_get_rtti_type_ctor(type_ctor_data) = rtti_type_ctor.
-
     % Convert a rtti_data to an rtti_id.
     % This calls error/1 if the argument is a type_var/1 rtti_data,
     % since there is no rtti_id to return in that case.
     %
 :- pred rtti_data_to_id(rtti_data::in, rtti_id::out) is det.
+
+    % Return the id of the type constructor.
+    %
+:- func tcd_get_rtti_type_ctor(type_ctor_data) = rtti_type_ctor.
 
     % Convert an id that specifies a kind of variable arity type_info
     % or pseudo_type_info into the type_ctor of the canonical (arity-zero)
@@ -722,6 +722,26 @@
     %
 :- pred id_to_c_identifier(rtti_id::in, string::out) is det.
 
+    % Given a type in a type vector in a type class instance declaration,
+    % return its string encoding for use in RTTI data structures, e.g. as
+    % part of C identifiers.
+    %
+:- func encode_tc_instance_type(tc_type) = string.
+
+    % Return the C representation of the type_ctor_rep value of the given
+    % type_ctor.
+    %
+:- pred type_ctor_rep_to_string(type_ctor_data::in,
+    target_prefixes::out, string::out) is det.
+
+    % Return a name which identifies the rtti_type_info
+    %
+:- func type_info_to_string(rtti_type_info) = string.
+
+    % Return a name which identifies the pseudo_type_info
+    %
+:- func pseudo_type_info_to_string(rtti_pseudo_type_info) = string.
+
 :- type target_prefixes
     --->    target_prefixes(
                 % The prefixes that mlds_to_{java,cs}.m respectively
@@ -750,20 +770,6 @@
     %
 :- pred functor_subtype_info_to_string(functor_subtype_info::in,
     target_prefixes::out, string::out) is det.
-
-    % Return the C representation of the type_ctor_rep value of the given
-    % type_ctor.
-    %
-:- pred type_ctor_rep_to_string(type_ctor_data::in,
-    target_prefixes::out, string::out) is det.
-
-    % Return a name which identifies the rtti_type_info
-    %
-:- func type_info_to_string(rtti_type_info) = string.
-
-    % Return a name which identifies the pseudo_type_info
-    %
-:- func pseudo_type_info_to_string(rtti_pseudo_type_info) = string.
 
     % Return the rtti_data containing the given type_info.
     %
@@ -859,12 +865,6 @@
     is_array::out) is det.
 :- pred tc_rtti_name_csharp_type(tc_rtti_name::in, string::out, is_array::out)
     is det.
-
-    % Given a type in a type vector in a type class instance declaration,
-    % return its string encoding for use in RTTI data structures, e.g. as
-    % part of C identifiers.
-    %
-:- func encode_tc_instance_type(tc_type) = string.
 
     % Return yes iff the name of the given data structure should be module
     % qualified.
@@ -1445,145 +1445,6 @@ mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr) :-
 
 %-----------------------------------------------------------------------------%
 
-type_info_to_string(TypeInfo) = Str :-
-    (
-        TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
-        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
-        id_to_c_identifier(RttiId, Str)
-    ;
-        TypeInfo = plain_type_info(RttiTypeCtor, Args),
-        mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr),
-        ArgsStr = type_info_list_to_string(Args),
-        Str = ModuleName ++ "__ti_" ++ TypeName ++ "_" ++ ArityStr ++ ArgsStr
-    ;
-        TypeInfo = var_arity_type_info(VarArityId, Args),
-        RealArity = list.length(Args),
-        ArgsStr = type_info_list_to_string(Args),
-        IdStr = var_arity_ctor_id_to_string(VarArityId),
-        Str = "__vti_" ++ IdStr ++ "_" ++ int_to_string(RealArity) ++ ArgsStr
-    ).
-
-pseudo_type_info_to_string(PseudoTypeInfo) = Str :-
-    (
-        PseudoTypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
-        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
-        id_to_c_identifier(RttiId, Str)
-    ;
-        PseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, Args),
-        mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr),
-        ArgsStr = maybe_pseudo_type_info_list_to_string(Args),
-        Str = ModuleName ++ "__pti_" ++ TypeName ++ "_" ++ ArityStr ++ ArgsStr
-    ;
-        PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, Args),
-        RealArity = list.length(Args),
-        ArgsStr = maybe_pseudo_type_info_list_to_string(Args),
-        IdStr = var_arity_ctor_id_to_string(VarArityId),
-        Str = "__vpti_" ++ IdStr ++ "_" ++ int_to_string(RealArity) ++ ArgsStr
-    ;
-        PseudoTypeInfo = type_var(VarNum),
-        string.int_to_string(VarNum, Str)
-    ).
-
-:- func maybe_pseudo_type_info_to_string(rtti_maybe_pseudo_type_info) = string.
-
-maybe_pseudo_type_info_to_string(plain(TypeInfo)) =
-    "__plain_" ++ type_info_to_string(TypeInfo).
-maybe_pseudo_type_info_to_string(pseudo(PseudoTypeInfo)) =
-    "__pseudo_" ++ pseudo_type_info_to_string(PseudoTypeInfo).
-
-:- func var_arity_ctor_id_to_string(var_arity_ctor_id) = string.
-
-var_arity_ctor_id_to_string(pred_type_info) = "pred".
-var_arity_ctor_id_to_string(func_type_info) = "func".
-var_arity_ctor_id_to_string(tuple_type_info) = "tuple".
-
-%-----------------------------------------------------------------------------%
-
-:- func maybe_pseudo_type_info_list_to_string(
-    list(rtti_maybe_pseudo_type_info)) = string.
-
-maybe_pseudo_type_info_list_to_string(MaybePseudoTypeInfoList) =
-    string.append_list(
-        list.map(maybe_pseudo_type_info_to_string, MaybePseudoTypeInfoList)).
-
-:- func type_info_list_to_string(list(rtti_type_info)) = string.
-
-type_info_list_to_string(TypeInfoList) =
-    string.append_list(list.map(type_info_to_string, TypeInfoList)).
-
-%-----------------------------------------------------------------------------%
-
-pred_or_func_to_string(PredOrFunc, TargetPrefixes, String) :-
-    TargetPrefixes = target_prefixes("private_builtin.", "runtime.Constants."),
-    (
-        PredOrFunc = pf_predicate,
-        String = "MR_PREDICATE"
-    ;
-        PredOrFunc = pf_function,
-        String = "MR_FUNCTION"
-    ).
-
-sectag_locn_to_string(SecTag, TargetPrefixes, String) :-
-    % The code of this predicate should produce output using the same scheme
-    % as sectag_and_locn_to_locn_string.
-    TargetPrefixes =
-        target_prefixes("private_builtin.", "runtime.Sectag_Locn."),
-    (
-        SecTag = sectag_none,
-        String = "MR_SECTAG_NONE"
-    ;
-        SecTag = sectag_none_direct_arg,
-        String = "MR_SECTAG_NONE_DIRECT_ARG"
-    ;
-        SecTag = sectag_local_rest_of_word,
-        String = "MR_SECTAG_LOCAL_REST_OF_WORD"
-    ;
-        SecTag = sectag_local_bits(_, _),
-        String = "MR_SECTAG_LOCAL_BITS"
-    ;
-        SecTag = sectag_remote_word,
-        String = "MR_SECTAG_REMOTE_FULL_WORD"
-    ;
-        SecTag = sectag_remote_bits(_, _),
-        String = "MR_SECTAG_REMOTE_BITS"
-    ).
-
-sectag_and_locn_to_locn_string(SecTag, TargetPrefixes, String) :-
-    % The code of this predicate should produce output using the same scheme
-    % as sectag_locn_to_string.
-    TargetPrefixes =
-        target_prefixes("private_builtin.", "runtime.Sectag_Locn."),
-    (
-        SecTag = sectag_locn_none,
-        String = "MR_SECTAG_NONE"
-    ;
-        SecTag = sectag_locn_none_direct_arg,
-        String = "MR_SECTAG_NONE_DIRECT_ARG"
-    ;
-        SecTag = sectag_locn_local_rest_of_word(_),
-        String = "MR_SECTAG_LOCAL_REST_OF_WORD"
-    ;
-        SecTag = sectag_locn_local_bits(_, _, _),
-        String = "MR_SECTAG_LOCAL_BITS"
-    ;
-        SecTag = sectag_locn_remote_word(_),
-        String = "MR_SECTAG_REMOTE_FULL_WORD"
-    ;
-        SecTag = sectag_locn_remote_bits(_, _, _),
-        String = "MR_SECTAG_REMOTE_BITS"
-    ).
-
-functor_subtype_info_to_string(FunctorSubtypeInfo, TargetPrefixes, String) :-
-    TargetPrefixes =
-        target_prefixes("private_builtin.", "runtime.FunctorSubtypeInfo."),
-    (
-        FunctorSubtypeInfo = functor_subtype_none,
-        String = "MR_FUNCTOR_SUBTYPE_NONE"
-    ;
-        FunctorSubtypeInfo = functor_subtype_exists,
-        String = "MR_FUNCTOR_SUBTYPE_EXISTS"
-    ).
-
 type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
     TargetPrefixes = target_prefixes("jmercury.runtime.TypeCtorRep.",
         "runtime.TypeCtorRep."),
@@ -1733,6 +1594,147 @@ impl_ctor_rep_to_string(impl_ctor_redoip, "MR_TYPECTOR_REP_REDOIP").
 impl_ctor_rep_to_string(impl_ctor_trail_ptr, "MR_TYPECTOR_REP_TRAIL_PTR").
 impl_ctor_rep_to_string(impl_ctor_ticket, "MR_TYPECTOR_REP_TICKET").
 impl_ctor_rep_to_string(impl_ctor_subgoal, "MR_TYPECTOR_REP_SUBGOAL").
+
+%-----------------------------------------------------------------------------%
+
+type_info_to_string(TypeInfo) = Str :-
+    (
+        TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
+        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+        id_to_c_identifier(RttiId, Str)
+    ;
+        TypeInfo = plain_type_info(RttiTypeCtor, Args),
+        mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr),
+        ArgsStr = type_info_list_to_string(Args),
+        Str = ModuleName ++ "__ti_" ++ TypeName ++ "_" ++ ArityStr ++ ArgsStr
+    ;
+        TypeInfo = var_arity_type_info(VarArityId, Args),
+        RealArity = list.length(Args),
+        ArgsStr = type_info_list_to_string(Args),
+        IdStr = var_arity_ctor_id_to_string(VarArityId),
+        Str = "__vti_" ++ IdStr ++ "_" ++ int_to_string(RealArity) ++ ArgsStr
+    ).
+
+pseudo_type_info_to_string(PseudoTypeInfo) = Str :-
+    (
+        PseudoTypeInfo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
+        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+        id_to_c_identifier(RttiId, Str)
+    ;
+        PseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, Args),
+        mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr),
+        ArgsStr = maybe_pseudo_type_info_list_to_string(Args),
+        Str = ModuleName ++ "__pti_" ++ TypeName ++ "_" ++ ArityStr ++ ArgsStr
+    ;
+        PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, Args),
+        RealArity = list.length(Args),
+        ArgsStr = maybe_pseudo_type_info_list_to_string(Args),
+        IdStr = var_arity_ctor_id_to_string(VarArityId),
+        Str = "__vpti_" ++ IdStr ++ "_" ++ int_to_string(RealArity) ++ ArgsStr
+    ;
+        PseudoTypeInfo = type_var(VarNum),
+        string.int_to_string(VarNum, Str)
+    ).
+
+:- func maybe_pseudo_type_info_to_string(rtti_maybe_pseudo_type_info) = string.
+
+maybe_pseudo_type_info_to_string(plain(TypeInfo)) =
+    "__plain_" ++ type_info_to_string(TypeInfo).
+maybe_pseudo_type_info_to_string(pseudo(PseudoTypeInfo)) =
+    "__pseudo_" ++ pseudo_type_info_to_string(PseudoTypeInfo).
+
+:- func var_arity_ctor_id_to_string(var_arity_ctor_id) = string.
+
+var_arity_ctor_id_to_string(pred_type_info) = "pred".
+var_arity_ctor_id_to_string(func_type_info) = "func".
+var_arity_ctor_id_to_string(tuple_type_info) = "tuple".
+
+%-----------------------------------------------------------------------------%
+
+:- func maybe_pseudo_type_info_list_to_string(
+    list(rtti_maybe_pseudo_type_info)) = string.
+
+maybe_pseudo_type_info_list_to_string(MaybePseudoTypeInfoList) =
+    string.append_list(
+        list.map(maybe_pseudo_type_info_to_string, MaybePseudoTypeInfoList)).
+
+:- func type_info_list_to_string(list(rtti_type_info)) = string.
+
+type_info_list_to_string(TypeInfoList) =
+    string.append_list(list.map(type_info_to_string, TypeInfoList)).
+
+%-----------------------------------------------------------------------------%
+
+pred_or_func_to_string(PredOrFunc, TargetPrefixes, String) :-
+    TargetPrefixes = target_prefixes("private_builtin.", "runtime.Constants."),
+    (
+        PredOrFunc = pf_predicate,
+        String = "MR_PREDICATE"
+    ;
+        PredOrFunc = pf_function,
+        String = "MR_FUNCTION"
+    ).
+
+sectag_locn_to_string(SecTag, TargetPrefixes, String) :-
+    % The code of this predicate should produce output using the same scheme
+    % as sectag_and_locn_to_locn_string.
+    TargetPrefixes =
+        target_prefixes("private_builtin.", "runtime.Sectag_Locn."),
+    (
+        SecTag = sectag_none,
+        String = "MR_SECTAG_NONE"
+    ;
+        SecTag = sectag_none_direct_arg,
+        String = "MR_SECTAG_NONE_DIRECT_ARG"
+    ;
+        SecTag = sectag_local_rest_of_word,
+        String = "MR_SECTAG_LOCAL_REST_OF_WORD"
+    ;
+        SecTag = sectag_local_bits(_, _),
+        String = "MR_SECTAG_LOCAL_BITS"
+    ;
+        SecTag = sectag_remote_word,
+        String = "MR_SECTAG_REMOTE_FULL_WORD"
+    ;
+        SecTag = sectag_remote_bits(_, _),
+        String = "MR_SECTAG_REMOTE_BITS"
+    ).
+
+sectag_and_locn_to_locn_string(SecTag, TargetPrefixes, String) :-
+    % The code of this predicate should produce output using the same scheme
+    % as sectag_locn_to_string.
+    TargetPrefixes =
+        target_prefixes("private_builtin.", "runtime.Sectag_Locn."),
+    (
+        SecTag = sectag_locn_none,
+        String = "MR_SECTAG_NONE"
+    ;
+        SecTag = sectag_locn_none_direct_arg,
+        String = "MR_SECTAG_NONE_DIRECT_ARG"
+    ;
+        SecTag = sectag_locn_local_rest_of_word(_),
+        String = "MR_SECTAG_LOCAL_REST_OF_WORD"
+    ;
+        SecTag = sectag_locn_local_bits(_, _, _),
+        String = "MR_SECTAG_LOCAL_BITS"
+    ;
+        SecTag = sectag_locn_remote_word(_),
+        String = "MR_SECTAG_REMOTE_FULL_WORD"
+    ;
+        SecTag = sectag_locn_remote_bits(_, _, _),
+        String = "MR_SECTAG_REMOTE_BITS"
+    ).
+
+functor_subtype_info_to_string(FunctorSubtypeInfo, TargetPrefixes, String) :-
+    TargetPrefixes =
+        target_prefixes("private_builtin.", "runtime.FunctorSubtypeInfo."),
+    (
+        FunctorSubtypeInfo = functor_subtype_none,
+        String = "MR_FUNCTOR_SUBTYPE_NONE"
+    ;
+        FunctorSubtypeInfo = functor_subtype_exists,
+        String = "MR_FUNCTOR_SUBTYPE_EXISTS"
+    ).
 
 type_info_to_rtti_data(TypeInfo) = rtti_data_type_info(TypeInfo).
 

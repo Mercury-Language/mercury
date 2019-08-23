@@ -32,8 +32,8 @@
     % support switching on 64-bit values, so we treat that case separately.
     %
 :- func globals_target_supports_int_switch(globals) = bool.
-:- func globals_target_supports_int_type_switch(globals, int_type) = bool.
 :- func globals_target_supports_int64_switch(globals) = bool.
+:- func globals_target_supports_int_type_switch(globals, int_type) = bool.
 :- func globals_target_supports_string_switch(globals) = bool.
 :- func globals_target_supports_goto(globals) = bool.
 :- func globals_target_supports_computed_goto(globals) = bool.
@@ -122,18 +122,18 @@ target_supports_string_switch(target_java) = yes.
 target_supports_string_switch(target_erlang) =
     unexpected($pred, "target erlang").
 
-target_supports_computed_goto(target_c) = yes.
-target_supports_computed_goto(target_csharp) = no.
-target_supports_computed_goto(target_java) = no.
-target_supports_computed_goto(target_erlang) =
-    unexpected($pred, "target erlang").
-
 target_supports_goto(target_c) = yes.
 % XXX C# *does* support gotos but mlds_to_cs_stmt.m currently aborts
 % if it encounters them.
 target_supports_goto(target_csharp) = no.
 target_supports_goto(target_java) = no.
 target_supports_goto(target_erlang) =
+    unexpected($pred, "target erlang").
+
+target_supports_computed_goto(target_c) = yes.
+target_supports_computed_goto(target_csharp) = no.
+target_supports_computed_goto(target_java) = no.
+target_supports_computed_goto(target_erlang) =
     unexpected($pred, "target erlang").
 
 target_supports_break_and_continue(target_c) = yes.

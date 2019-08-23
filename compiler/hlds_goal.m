@@ -1527,12 +1527,6 @@
 :- func impure_unreachable_init_goal_info(set_of_progvar, determinism)
     = hlds_goal_info.
 
-:- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set_of_progvar)
-    = hlds_goal_info.
-:- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred add_impurity_if_needed(bool::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
-
 % Instead of recording the liveness of every variable at every part
 % of the goal, we just keep track of the initial liveness, and of the changes
 % in liveness. Note that when traversing forwards through a goal,
@@ -1540,74 +1534,89 @@
 % certain circumstances where a variable can occur in both the post-death
 % and post-birth sets, or in both the pre-death and pre-birth sets.
 
-    % see also goal_info_get_code_model in code_model.m
+    % See also goal_info_get_code_model in code_model.m.
 :- func goal_info_get_determinism(hlds_goal_info) = determinism.
-:- func goal_info_get_instmap_delta(hlds_goal_info) = instmap_delta.
-:- func goal_info_get_context(hlds_goal_info) = prog_context.
-:- func goal_info_get_nonlocals(hlds_goal_info) = set_of_progvar.
-:- func goal_info_get_code_gen_nonlocals(hlds_goal_info) = set_of_progvar.
 :- func goal_info_get_purity(hlds_goal_info) = purity.
+:- func goal_info_get_instmap_delta(hlds_goal_info) = instmap_delta.
+:- func goal_info_get_nonlocals(hlds_goal_info) = set_of_progvar.
 :- func goal_info_get_features(hlds_goal_info) = set(goal_feature).
 :- func goal_info_get_goal_id(hlds_goal_info) = goal_id.
-:- func goal_info_get_reverse_goal_path(hlds_goal_info) = reverse_goal_path.
 :- func goal_info_get_code_gen_info(hlds_goal_info) = hlds_goal_code_gen_info.
+
+:- func goal_info_get_context(hlds_goal_info) = prog_context.
+:- func goal_info_get_reverse_goal_path(hlds_goal_info) = reverse_goal_path.
 :- func goal_info_get_ho_values(hlds_goal_info) = ho_values.
 :- func goal_info_get_goal_mode(hlds_goal_info) = goal_mode.
+:- func goal_info_get_maybe_ctgc(hlds_goal_info) = maybe(ctgc_goal_info).
 :- func goal_info_get_maybe_rbmm(hlds_goal_info) = maybe(rbmm_goal_info).
 :- func goal_info_get_maybe_mode_constr(hlds_goal_info) =
     maybe(mode_constr_goal_info).
-:- func goal_info_get_maybe_ctgc(hlds_goal_info) = maybe(ctgc_goal_info).
-:- func goal_info_get_maybe_lfu(hlds_goal_info) = maybe(set_of_progvar).
-:- func goal_info_get_maybe_lbu(hlds_goal_info) = maybe(set_of_progvar).
-:- func goal_info_get_maybe_reuse(hlds_goal_info) = maybe(reuse_description).
 :- func goal_info_get_maybe_dp_info(hlds_goal_info) = maybe(dp_goal_info).
 
 :- pred goal_info_set_determinism(determinism::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_instmap_delta(instmap_delta::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_context(prog_context::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_purity(purity::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_nonlocals(set_of_progvar::in,
+:- pred goal_info_set_instmap_delta(instmap_delta::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_code_gen_nonlocals(set_of_progvar::in,
+:- pred goal_info_set_nonlocals(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_features(set(goal_feature)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_goal_id(goal_id::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_reverse_goal_path(reverse_goal_path::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_code_gen_info(hlds_goal_code_gen_info::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+:- pred goal_info_set_context(prog_context::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_reverse_goal_path(reverse_goal_path::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_ho_values(ho_values::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_goal_mode(goal_mode::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_maybe_ctgc(maybe(ctgc_goal_info)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_maybe_rbmm(maybe(rbmm_goal_info)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_maybe_mode_constr(maybe(mode_constr_goal_info)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_maybe_ctgc(maybe(ctgc_goal_info)::in,
+:- pred goal_info_set_maybe_dp_info(maybe(dp_goal_info)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
+
+:- func goal_info_get_code_gen_nonlocals(hlds_goal_info) = set_of_progvar.
+:- pred goal_info_set_code_gen_nonlocals(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % The following functions produce an 'unexpected' error when the
+    % requested values have not been set.
+    %
+:- func goal_info_get_rbmm(hlds_goal_info) = rbmm_goal_info.
+
+%-----------------------------------------------------------------------------%
+
+:- func goal_info_get_maybe_lfu(hlds_goal_info) = maybe(set_of_progvar).
+:- func goal_info_get_maybe_lbu(hlds_goal_info) = maybe(set_of_progvar).
+:- func goal_info_get_maybe_reuse(hlds_goal_info) = maybe(reuse_description).
+
+    % The following functions produce an 'unexpected' error when the
+    % requested values have not been set.
+    %
+:- func goal_info_get_lfu(hlds_goal_info) = set_of_progvar.
+:- func goal_info_get_lbu(hlds_goal_info) = set_of_progvar.
+:- func goal_info_get_reuse(hlds_goal_info) = reuse_description.
+
 :- pred goal_info_set_lfu(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_lbu(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_reuse(reuse_description::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_maybe_dp_info(maybe(dp_goal_info)::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
 
-    % The following functions produce an 'unexpected' error when the
-    % requested values have not been set.
-    %
-:- func goal_info_get_rbmm(hlds_goal_info) = rbmm_goal_info.
-:- func goal_info_get_lfu(hlds_goal_info) = set_of_progvar.
-:- func goal_info_get_lbu(hlds_goal_info) = set_of_progvar.
-:- func goal_info_get_reuse(hlds_goal_info) = reuse_description.
+%-----------------------------------------------------------------------------%
 
 :- pred goal_info_get_occurring_vars(hlds_goal_info::in, set_of_progvar::out)
     is det.
@@ -1644,6 +1653,16 @@
 :- func need_visible_vars(hlds_goal_info) = set_of_progvar.
 :- func 'need_visible_vars :='(hlds_goal_info, set_of_progvar)
     = hlds_goal_info.
+
+%-----------------------------------------------------------------------------%
+
+:- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set_of_progvar)
+    = hlds_goal_info.
+:- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred add_impurity_if_needed(bool::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+%-----------------------------------------------------------------------------%
 
 :- type contains_trace_goal
     --->    contains_trace_goal
@@ -1895,6 +1914,11 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+rbmm_info_init =
+    rbmm_goal_info(set.init, set.init, set.init, set.init, set.init).
+
+%-----------------------------------------------------------------------------%
 %
 % Information stored with all kinds of goals.
 %
@@ -1984,6 +2008,20 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
                 egi_maybe_dp            :: maybe(dp_goal_info)
             ).
 
+%  i       same      diff   same%
+%  0     389614   2409489  13.919%  determinism
+%  1   10027360  13578654  42.478%  instmap_delta
+%  2     497826  15861153   3.043%  nonlocals
+%  3   10060683     41741  99.587%  purity
+%  4       8442   4617849   0.182%  features
+%  5      19010   3313840   0.570%  goal_id
+%  6        164      2328   6.581%  rev_goal_path
+%  7          0   4323322   0.000%  code_gen_info
+%  8    1761371   2616953  40.229%  context
+%  9        174         3  98.305%  ho_values
+
+%-----------------------------------------------------------------------------%
+
 :- pragma inline(goal_info_init/1).
 
 goal_info_init(GoalInfo) :-
@@ -2036,9 +2074,6 @@ hlds_goal_extra_info_init(Context) = ExtraInfo :-
 ctgc_goal_info_init =
     ctgc_goal_info(set_of_var.init, set_of_var.init, no_reuse_info).
 
-rbmm_info_init = rbmm_goal_info(set.init, set.init, set.init, set.init,
-    set.init).
-
 impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
         GoalInfo0),
@@ -2057,67 +2092,48 @@ impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
     goal_info_add_feature(feature_not_impure_for_determinism,
         GoalInfo0, GoalInfo).
 
-goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
-    NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
-    NonLocals = set_of_var.union(NonLocals0, NewNonLocals),
-    goal_info_set_nonlocals(NonLocals, !GoalInfo),
-    make_impure(!GoalInfo).
-
-make_impure(!GoalInfo) :-
-    Purity = goal_info_get_purity(!.GoalInfo),
-    (
-        Purity = purity_impure
-        % We don't add not_impure_for_determinism, since we want to
-        % keep the existing determinism.
-    ;
-        ( Purity = purity_pure
-        ; Purity = purity_semipure
-        ),
-        goal_info_set_purity(purity_impure, !GoalInfo),
-        goal_info_add_feature(feature_not_impure_for_determinism, !GoalInfo)
-    ).
-
-add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
-    (
-        AddedImpurity = no
-    ;
-        AddedImpurity = yes,
-        make_impure(!GoalInfo)
-    ).
+%-----------------------------------------------------------------------------%
 
 goal_info_get_determinism(GoalInfo) = X :-
     X = GoalInfo ^ gi_determinism.
+goal_info_get_purity(GoalInfo) = X :-
+    X = GoalInfo ^ gi_purity.
 goal_info_get_instmap_delta(GoalInfo) = X :-
     X = GoalInfo ^ gi_instmap_delta.
 goal_info_get_nonlocals(GoalInfo) = X :-
     X = GoalInfo ^ gi_nonlocals.
-goal_info_get_purity(GoalInfo) = X :-
-    X = GoalInfo ^ gi_purity.
 goal_info_get_features(GoalInfo) = X :-
     X = GoalInfo ^ gi_features.
 goal_info_get_goal_id(GoalInfo) = X :-
     X = GoalInfo ^ gi_goal_id.
-goal_info_get_reverse_goal_path(GoalInfo) = X :-
-    X = GoalInfo ^ gi_extra ^ egi_rev_goal_path.
 goal_info_get_code_gen_info(GoalInfo) = X :-
     X = GoalInfo ^ gi_code_gen_info.
+
 goal_info_get_context(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_context.
+goal_info_get_reverse_goal_path(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_rev_goal_path.
 goal_info_get_ho_values(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_ho_vals.
 goal_info_get_goal_mode(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_goal_mode.
+goal_info_get_maybe_ctgc(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_maybe_ctgc.
 goal_info_get_maybe_rbmm(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_maybe_rbmm.
 goal_info_get_maybe_mode_constr(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_maybe_mode_constr.
-goal_info_get_maybe_ctgc(GoalInfo) = X :-
-    X = GoalInfo ^ gi_extra ^ egi_maybe_ctgc.
 goal_info_get_maybe_dp_info(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_maybe_dp.
 
 goal_info_set_determinism(X, !GoalInfo) :-
     !GoalInfo ^ gi_determinism := X.
+goal_info_set_purity(X, !GoalInfo) :-
+    ( if X = !.GoalInfo ^ gi_purity then
+        true
+    else
+        !GoalInfo ^ gi_purity := X
+    ).
 goal_info_set_instmap_delta(X, !GoalInfo) :-
     ( if private_builtin.pointer_equal(X, !.GoalInfo ^ gi_instmap_delta) then
         true
@@ -2126,22 +2142,17 @@ goal_info_set_instmap_delta(X, !GoalInfo) :-
     ).
 goal_info_set_nonlocals(X, !GoalInfo) :-
     !GoalInfo ^ gi_nonlocals := X.
-goal_info_set_purity(X, !GoalInfo) :-
-    ( if X = !.GoalInfo ^ gi_purity then
-        true
-    else
-        !GoalInfo ^ gi_purity := X
-    ).
 goal_info_set_features(X, !GoalInfo) :-
     !GoalInfo ^ gi_features := X.
 goal_info_set_goal_id(X, !GoalInfo) :-
     !GoalInfo ^ gi_goal_id := X.
-goal_info_set_reverse_goal_path(X, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_rev_goal_path := X.
 goal_info_set_code_gen_info(X, !GoalInfo) :-
     !GoalInfo ^ gi_code_gen_info := X.
+
 goal_info_set_context(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_context := X.
+goal_info_set_reverse_goal_path(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_rev_goal_path := X.
 goal_info_set_ho_values(X, !GoalInfo) :-
     ( if private_builtin.pointer_equal(X, !.GoalInfo ^ gi_extra ^ egi_ho_vals)
     then
@@ -2151,26 +2162,16 @@ goal_info_set_ho_values(X, !GoalInfo) :-
     ).
 goal_info_set_goal_mode(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_goal_mode := X.
+goal_info_set_maybe_ctgc(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := X.
 goal_info_set_maybe_rbmm(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_maybe_rbmm := X.
 goal_info_set_maybe_mode_constr(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := X.
-goal_info_set_maybe_ctgc(X, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := X.
 goal_info_set_maybe_dp_info(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_maybe_dp := X.
 
-%  i       same      diff   same%
-%  0     389614   2409489  13.919%  determinism
-%  1   10027360  13578654  42.478%  instmap_delta
-%  2     497826  15861153   3.043%  nonlocals
-%  3   10060683     41741  99.587%  purity
-%  4       8442   4617849   0.182%  features
-%  5      19010   3313840   0.570%  goal_id
-%  6        164      2328   6.581%  rev_goal_path
-%  7          0   4323322   0.000%  code_gen_info
-%  8    1761371   2616953  40.229%  context
-%  9        174         3  98.305%  ho_values
+%-----------------------------------------------------------------------------%
 
     % The code-gen non-locals are always the same as the
     % non-locals when structure reuse is not being performed.
@@ -2181,6 +2182,8 @@ goal_info_get_code_gen_nonlocals(GoalInfo) =
 goal_info_set_code_gen_nonlocals(NonLocals, !GoalInfo) :-
     goal_info_set_nonlocals(NonLocals, !GoalInfo).
 
+%-----------------------------------------------------------------------------%
+
 goal_info_get_rbmm(GoalInfo) = RBMM :-
     MaybeRBMM = goal_info_get_maybe_rbmm(GoalInfo),
     (
@@ -2189,6 +2192,104 @@ goal_info_get_rbmm(GoalInfo) = RBMM :-
         MaybeRBMM = no,
         unexpected($pred, "Requesting unavailable RBMM information.")
     ).
+
+goal_info_get_maybe_lfu(GoalInfo) = MaybeLFU :-
+    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
+    (
+        MaybeCTGC = yes(CTGC),
+        MaybeLFU = yes(CTGC ^ ctgc_lfu)
+    ;
+        MaybeCTGC = no,
+        MaybeLFU = no
+    ).
+
+goal_info_get_maybe_lbu(GoalInfo) = MaybeLBU :-
+    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
+    (
+        MaybeCTGC = yes(CTGC),
+        MaybeLBU = yes(CTGC ^ ctgc_lbu)
+    ;
+        MaybeCTGC = no,
+        MaybeLBU = no
+    ).
+
+goal_info_get_maybe_reuse(GoalInfo) = MaybeReuse :-
+    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
+    (
+        MaybeCTGC = yes(CTGC),
+        MaybeReuse = yes(CTGC ^ ctgc_reuse)
+    ;
+        MaybeCTGC = no,
+        MaybeReuse = no
+    ).
+
+goal_info_get_lfu(GoalInfo) = LFU :-
+    MaybeLFU = goal_info_get_maybe_lfu(GoalInfo),
+    (
+        MaybeLFU = yes(LFU)
+    ;
+        MaybeLFU = no,
+        unexpected($pred,
+            "Requesting LFU information while CTGC field not set.")
+    ).
+
+goal_info_get_lbu(GoalInfo) = LBU :-
+    MaybeLBU = goal_info_get_maybe_lbu(GoalInfo),
+    (
+        MaybeLBU = yes(LBU)
+    ;
+        MaybeLBU = no,
+        unexpected($pred,
+            "Requesting LBU information while CTGC field not set.")
+    ).
+
+goal_info_get_reuse(GoalInfo) = Reuse :-
+    MaybeReuse = goal_info_get_maybe_reuse(GoalInfo),
+    (
+        MaybeReuse = yes(Reuse)
+    ;
+        MaybeReuse = no,
+        unexpected($pred,
+            "Requesting reuse information while CTGC field not set.")
+    ).
+
+goal_info_set_lfu(LFU, !GoalInfo) :-
+    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_goal_info_init
+    ),
+    CTGC = CTGC0 ^ ctgc_lfu := LFU,
+    MaybeCTGC = yes(CTGC),
+    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
+
+goal_info_set_lbu(LBU, !GoalInfo) :-
+    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_goal_info_init
+    ),
+    CTGC = CTGC0 ^ ctgc_lbu := LBU,
+    MaybeCTGC = yes(CTGC),
+    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
+
+goal_info_set_reuse(Reuse, !GoalInfo) :-
+    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_goal_info_init
+    ),
+    CTGC = CTGC0 ^ ctgc_reuse := Reuse,
+    MaybeCTGC = yes(CTGC),
+    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
+
+%-----------------------------------------------------------------------------%
 
 goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
     MMCI = GoalInfo ^ gi_extra ^ egi_maybe_mode_constr,
@@ -2344,100 +2445,34 @@ need_visible_vars(GoalInfo) = NeedVisibleVars :-
 'need_visible_vars :='(GoalInfo0, NeedVisibleVars) = GoalInfo :-
     goal_info_set_need_visible_vars(NeedVisibleVars, GoalInfo0, GoalInfo).
 
-goal_info_get_maybe_lfu(GoalInfo) = MaybeLFU :-
-    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
+%-----------------------------------------------------------------------------%
+
+goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
+    NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
+    NonLocals = set_of_var.union(NonLocals0, NewNonLocals),
+    goal_info_set_nonlocals(NonLocals, !GoalInfo),
+    make_impure(!GoalInfo).
+
+make_impure(!GoalInfo) :-
+    Purity = goal_info_get_purity(!.GoalInfo),
     (
-        MaybeCTGC = yes(CTGC),
-        MaybeLFU = yes(CTGC ^ ctgc_lfu)
+        Purity = purity_impure
+        % We don't add not_impure_for_determinism, since we want to
+        % keep the existing determinism.
     ;
-        MaybeCTGC = no,
-        MaybeLFU = no
+        ( Purity = purity_pure
+        ; Purity = purity_semipure
+        ),
+        goal_info_set_purity(purity_impure, !GoalInfo),
+        goal_info_add_feature(feature_not_impure_for_determinism, !GoalInfo)
     ).
 
-goal_info_get_maybe_lbu(GoalInfo) = MaybeLBU :-
-    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
+add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
     (
-        MaybeCTGC = yes(CTGC),
-        MaybeLBU = yes(CTGC ^ ctgc_lbu)
+        AddedImpurity = no
     ;
-        MaybeCTGC = no,
-        MaybeLBU = no
-    ).
-
-goal_info_get_maybe_reuse(GoalInfo) = MaybeReuse :-
-    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC = yes(CTGC),
-        MaybeReuse = yes(CTGC ^ ctgc_reuse)
-    ;
-        MaybeCTGC = no,
-        MaybeReuse = no
-    ).
-
-goal_info_set_lfu(LFU, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_goal_info_init
-    ),
-    CTGC = CTGC0 ^ ctgc_lfu := LFU,
-    MaybeCTGC = yes(CTGC),
-    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
-
-goal_info_set_lbu(LBU, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_goal_info_init
-    ),
-    CTGC = CTGC0 ^ ctgc_lbu := LBU,
-    MaybeCTGC = yes(CTGC),
-    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
-
-goal_info_set_reuse(Reuse, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_goal_info_init
-    ),
-    CTGC = CTGC0 ^ ctgc_reuse := Reuse,
-    MaybeCTGC = yes(CTGC),
-    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
-
-goal_info_get_lfu(GoalInfo) = LFU :-
-    MaybeLFU = goal_info_get_maybe_lfu(GoalInfo),
-    (
-        MaybeLFU = yes(LFU)
-    ;
-        MaybeLFU = no,
-        unexpected($pred,
-            "Requesting LFU information while CTGC field not set.")
-    ).
-
-goal_info_get_lbu(GoalInfo) = LBU :-
-    MaybeLBU = goal_info_get_maybe_lbu(GoalInfo),
-    (
-        MaybeLBU = yes(LBU)
-    ;
-        MaybeLBU = no,
-        unexpected($pred,
-            "Requesting LBU information while CTGC field not set.")
-    ).
-
-goal_info_get_reuse(GoalInfo) = Reuse :-
-    MaybeReuse = goal_info_get_maybe_reuse(GoalInfo),
-    (
-        MaybeReuse = yes(Reuse)
-    ;
-        MaybeReuse = no,
-        unexpected($pred,
-            "Requesting reuse information while CTGC field not set.")
+        AddedImpurity = yes,
+        make_impure(!GoalInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2736,6 +2771,109 @@ rename_unify_rhs(Must, Subn, RHS0, RHS) :-
         rename_vars_in_goal(Must, Subn, Goal0, Goal),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
+    !.GoalInfo = goal_info(Detism, Purity, InstMapDelta0, NonLocals0,
+        Features, GoalPath, CodeGenInfo0, ExtraInfo0),
+
+    rename_vars_in_set_of_var(Must, Subn, NonLocals0, NonLocals),
+    instmap_delta_apply_sub(Must, Subn, InstMapDelta0, InstMapDelta),
+    (
+        CodeGenInfo0 = no_code_gen_info,
+        CodeGenInfo = no_code_gen_info
+    ;
+        CodeGenInfo0 = llds_code_gen_info(LldsInfo0),
+        rename_vars_in_llds_code_gen_info(Must, Subn, LldsInfo0, LldsInfo),
+        CodeGenInfo = llds_code_gen_info(LldsInfo)
+    ),
+
+    ExtraInfo0 = extra_goal_info(Context, RevGoalPath, HO_Values, GoalMode0,
+        MaybeCTGC0, MaybeRBMM0, MaybeMCI0, MaybeDPInfo0),
+    rename_vars_in_goal_mode(Must, Subn, GoalMode0, GoalMode),
+    (
+        MaybeCTGC0 = no,
+        MaybeCTGC = no
+    ;
+        MaybeCTGC0 = yes(CTGC0),
+        CTGC0 = ctgc_goal_info(ForwardUse0, BackwardUse0, ReuseDesc0),
+        rename_vars_in_set_of_var(Must, Subn, ForwardUse0, ForwardUse),
+        rename_vars_in_set_of_var(Must, Subn, BackwardUse0, BackwardUse),
+        (
+            ( ReuseDesc0 = no_reuse_info
+            ; ReuseDesc0 = no_possible_reuse
+            ; ReuseDesc0 = missed_reuse(_)
+            ),
+            ReuseDesc = ReuseDesc0
+        ;
+            ReuseDesc0 = potential_reuse(ShortReuseDesc0),
+            rename_vars_in_short_reuse_desc(Must, Subn,
+                ShortReuseDesc0, ShortReuseDesc),
+            ReuseDesc = potential_reuse(ShortReuseDesc)
+        ;
+            ReuseDesc0 = reuse(ShortReuseDesc0),
+            rename_vars_in_short_reuse_desc(Must, Subn,
+                ShortReuseDesc0, ShortReuseDesc),
+            ReuseDesc = reuse(ShortReuseDesc)
+        ),
+        CTGC = ctgc_goal_info(ForwardUse, BackwardUse, ReuseDesc),
+        MaybeCTGC = yes(CTGC)
+    ),
+    (
+        MaybeRBMM0 = no,
+        MaybeRBMM = no
+    ;
+        MaybeRBMM0 = yes(RBMM0),
+        RBMM0 = rbmm_goal_info(Created0, Removed0, Carried0, Alloc0,
+            NonAlloc0),
+        rename_vars_in_var_set(Must, Subn, Created0, Created),
+        rename_vars_in_var_set(Must, Subn, Removed0, Removed),
+        rename_vars_in_var_set(Must, Subn, Carried0, Carried),
+        rename_vars_in_var_set(Must, Subn, Alloc0, Alloc),
+        rename_vars_in_var_set(Must, Subn, NonAlloc0, NonAlloc),
+        RBMM = rbmm_goal_info(Created, Removed, Carried, Alloc, NonAlloc),
+        MaybeRBMM = yes(RBMM)
+    ),
+    (
+        MaybeMCI0 = no,
+        MaybeMCI = no
+    ;
+        MaybeMCI0 = yes(MCI0),
+        MCI0 = mode_constr_goal_info(Occurring0, Producing0, Consuming0,
+            MakeVisible0, NeedVisible0),
+        rename_vars_in_set_of_var(Must, Subn, Occurring0, Occurring),
+        rename_vars_in_set_of_var(Must, Subn, Producing0, Producing),
+        rename_vars_in_set_of_var(Must, Subn, Consuming0, Consuming),
+        rename_vars_in_set_of_var(Must, Subn, MakeVisible0, MakeVisible),
+        rename_vars_in_set_of_var(Must, Subn, NeedVisible0, NeedVisible),
+        MCI = mode_constr_goal_info(Occurring, Producing, Consuming,
+            MakeVisible, NeedVisible),
+        MaybeMCI = yes(MCI)
+    ),
+    MaybeDPInfo = MaybeDPInfo0,
+    ExtraInfo = extra_goal_info(Context, RevGoalPath, HO_Values, GoalMode,
+        MaybeCTGC, MaybeRBMM, MaybeMCI, MaybeDPInfo),
+
+    !:GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
+        Features, GoalPath, CodeGenInfo, ExtraInfo).
+
+:- pred rename_vars_in_short_reuse_desc(must_rename::in, prog_var_renaming::in,
+    short_reuse_description::in, short_reuse_description::out) is det.
+
+rename_vars_in_short_reuse_desc(Must, Subn, ShortReuseDesc0, ShortReuseDesc) :-
+    (
+        ( ShortReuseDesc0 = cell_died
+        ; ShortReuseDesc0 = reuse_call(_, _)
+        ),
+        ShortReuseDesc = ShortReuseDesc0
+    ;
+        ShortReuseDesc0 = cell_reused(DeadVar0, IsCond, ConsIds,
+            FieldNeedUpdates),
+        rename_var(Must, Subn, DeadVar0, DeadVar),
+        ShortReuseDesc = cell_reused(DeadVar, IsCond, ConsIds,
+            FieldNeedUpdates)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3090,107 +3228,6 @@ rename_generic_call(Must, Subn, Call0, Call) :-
         ; Call0 = cast(_CastKind)
         ),
         Call = Call0
-    ).
-
-rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
-    !.GoalInfo = goal_info(Detism, Purity, InstMapDelta0, NonLocals0,
-        Features, GoalPath, CodeGenInfo0, ExtraInfo0),
-
-    rename_vars_in_set_of_var(Must, Subn, NonLocals0, NonLocals),
-    instmap_delta_apply_sub(Must, Subn, InstMapDelta0, InstMapDelta),
-    (
-        CodeGenInfo0 = no_code_gen_info,
-        CodeGenInfo = no_code_gen_info
-    ;
-        CodeGenInfo0 = llds_code_gen_info(LldsInfo0),
-        rename_vars_in_llds_code_gen_info(Must, Subn, LldsInfo0, LldsInfo),
-        CodeGenInfo = llds_code_gen_info(LldsInfo)
-    ),
-
-    ExtraInfo0 = extra_goal_info(Context, RevGoalPath, HO_Values, GoalMode0,
-        MaybeCTGC0, MaybeRBMM0, MaybeMCI0, MaybeDPInfo0),
-    rename_vars_in_goal_mode(Must, Subn, GoalMode0, GoalMode),
-    (
-        MaybeCTGC0 = no,
-        MaybeCTGC = no
-    ;
-        MaybeCTGC0 = yes(CTGC0),
-        CTGC0 = ctgc_goal_info(ForwardUse0, BackwardUse0, ReuseDesc0),
-        rename_vars_in_set_of_var(Must, Subn, ForwardUse0, ForwardUse),
-        rename_vars_in_set_of_var(Must, Subn, BackwardUse0, BackwardUse),
-        (
-            ( ReuseDesc0 = no_reuse_info
-            ; ReuseDesc0 = no_possible_reuse
-            ; ReuseDesc0 = missed_reuse(_)
-            ),
-            ReuseDesc = ReuseDesc0
-        ;
-            ReuseDesc0 = potential_reuse(ShortReuseDesc0),
-            rename_vars_in_short_reuse_desc(Must, Subn,
-                ShortReuseDesc0, ShortReuseDesc),
-            ReuseDesc = potential_reuse(ShortReuseDesc)
-        ;
-            ReuseDesc0 = reuse(ShortReuseDesc0),
-            rename_vars_in_short_reuse_desc(Must, Subn,
-                ShortReuseDesc0, ShortReuseDesc),
-            ReuseDesc = reuse(ShortReuseDesc)
-        ),
-        CTGC = ctgc_goal_info(ForwardUse, BackwardUse, ReuseDesc),
-        MaybeCTGC = yes(CTGC)
-    ),
-    (
-        MaybeRBMM0 = no,
-        MaybeRBMM = no
-    ;
-        MaybeRBMM0 = yes(RBMM0),
-        RBMM0 = rbmm_goal_info(Created0, Removed0, Carried0, Alloc0,
-            NonAlloc0),
-        rename_vars_in_var_set(Must, Subn, Created0, Created),
-        rename_vars_in_var_set(Must, Subn, Removed0, Removed),
-        rename_vars_in_var_set(Must, Subn, Carried0, Carried),
-        rename_vars_in_var_set(Must, Subn, Alloc0, Alloc),
-        rename_vars_in_var_set(Must, Subn, NonAlloc0, NonAlloc),
-        RBMM = rbmm_goal_info(Created, Removed, Carried, Alloc, NonAlloc),
-        MaybeRBMM = yes(RBMM)
-    ),
-    (
-        MaybeMCI0 = no,
-        MaybeMCI = no
-    ;
-        MaybeMCI0 = yes(MCI0),
-        MCI0 = mode_constr_goal_info(Occurring0, Producing0, Consuming0,
-            MakeVisible0, NeedVisible0),
-        rename_vars_in_set_of_var(Must, Subn, Occurring0, Occurring),
-        rename_vars_in_set_of_var(Must, Subn, Producing0, Producing),
-        rename_vars_in_set_of_var(Must, Subn, Consuming0, Consuming),
-        rename_vars_in_set_of_var(Must, Subn, MakeVisible0, MakeVisible),
-        rename_vars_in_set_of_var(Must, Subn, NeedVisible0, NeedVisible),
-        MCI = mode_constr_goal_info(Occurring, Producing, Consuming,
-            MakeVisible, NeedVisible),
-        MaybeMCI = yes(MCI)
-    ),
-    MaybeDPInfo = MaybeDPInfo0,
-    ExtraInfo = extra_goal_info(Context, RevGoalPath, HO_Values, GoalMode,
-        MaybeCTGC, MaybeRBMM, MaybeMCI, MaybeDPInfo),
-
-    !:GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
-        Features, GoalPath, CodeGenInfo, ExtraInfo).
-
-:- pred rename_vars_in_short_reuse_desc(must_rename::in, prog_var_renaming::in,
-    short_reuse_description::in, short_reuse_description::out) is det.
-
-rename_vars_in_short_reuse_desc(Must, Subn, ShortReuseDesc0, ShortReuseDesc) :-
-    (
-        ( ShortReuseDesc0 = cell_died
-        ; ShortReuseDesc0 = reuse_call(_, _)
-        ),
-        ShortReuseDesc = ShortReuseDesc0
-    ;
-        ShortReuseDesc0 = cell_reused(DeadVar0, IsCond, ConsIds,
-            FieldNeedUpdates),
-        rename_var(Must, Subn, DeadVar0, DeadVar),
-        ShortReuseDesc = cell_reused(DeadVar, IsCond, ConsIds,
-            FieldNeedUpdates)
     ).
 
 % Not currently needed.

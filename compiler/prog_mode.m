@@ -73,13 +73,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % mode_substitute_arg_list(Mode0, Params, Args, Mode) is true iff Mode is
-    % the mode that results from substituting all occurrences of Params
-    % in Mode0 with the corresponding value in Args.
-    %
-:- pred mode_substitute_arg_list(mer_mode::in, list(inst_var)::in,
-    list(mer_inst)::in, mer_mode::out) is det.
-
     % inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes):
     %
     % Given two lists of corresponding initial and final insts, return
@@ -96,6 +89,13 @@
 :- pred insts_to_mode(mer_inst::in, mer_inst::in, mer_mode::out) is det.
 
 %---------------------------------------------------------------------------%
+
+    % mode_substitute_arg_list(Mode0, Params, Args, Mode) is true iff Mode is
+    % the mode that results from substituting all occurrences of Params
+    % in Mode0 with the corresponding value in Args.
+    %
+:- pred mode_substitute_arg_list(mer_mode::in, list(inst_var)::in,
+    list(mer_inst)::in, mer_mode::out) is det.
 
     % inst_substitute_arg_list(Params, Args, Inst0, Inst) is true iff Inst
     % is the inst that results from substituting all occurrences of Params
@@ -147,6 +147,12 @@
 :- pred get_arg_insts_det(mer_inst::in, cons_id::in, arity::in,
     list(mer_inst)::out) is det.
 
+%---------------------------------------------------------------------------%
+
+:- pred mode_id_to_int(mode_id::in, int::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % Given a (list of) bound_insts, get the corresponding cons_ids.
     % The type_ctor should be the type constructor of the variable
     % the bound_insts are for.
@@ -161,7 +167,7 @@
 :- pred bound_insts_to_cons_ids(type_ctor::in, list(bound_inst)::in,
     list(cons_id)::out) is det.
 
-:- pred mode_id_to_int(mode_id::in, int::out) is det.
+%---------------------------------------------------------------------------%
 
     % Predicates to make error messages more readable by stripping
     % "builtin." module qualifiers from modes.
@@ -221,22 +227,28 @@
 %---------------------------------------------------------------------------%
 
 in_mode(in_mode).
-out_mode(out_mode).
-di_mode(di_mode).
-uo_mode(uo_mode).
-mdi_mode(mdi_mode).
-muo_mode(muo_mode).
-unused_mode(unused_mode).
-
 in_mode = make_std_mode("in", []).
 in_mode(I) = make_std_mode("in", [I]).
+
+out_mode(out_mode).
 out_mode = make_std_mode("out", []).
 out_mode(I) = make_std_mode("out", [I]).
+
+di_mode(di_mode).
 di_mode = make_std_mode("di", []).
+
+uo_mode(uo_mode).
 uo_mode = make_std_mode("uo", []).
+
+mdi_mode(mdi_mode).
 mdi_mode = make_std_mode("mdi", []).
+
+muo_mode(muo_mode).
 muo_mode = make_std_mode("muo", []).
+
+unused_mode(unused_mode).
 unused_mode = make_std_mode("unused", []).
+
 in_any_mode = make_std_mode("in", [any_inst]).
 out_any_mode = make_std_mode("out", [any_inst]).
 
@@ -794,38 +806,6 @@ inst_name_contains_unconstrained_var(InstName) :-
 
 %---------------------------------------------------------------------------%
 
-bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
-    BoundInst = bound_functor(ConsId0, _ArgInsts),
-    ( if ConsId0 = cons(ConsIdSymName0, ConsIdArity, _ConsIdTypeCtor) then
-        % Insts don't (yet) have to say what type they are for,
-        % so we cannot rely on the bound_functors inside them
-        % being correctly module qualified, and in fact it may be that
-        % the same functor in such an inst should be module qualified
-        % *differently* in different contexts. Therefore in cases like this,
-        % when the context of use (the type of the function symbol) is known,
-        % we copy the module qualifier from the type to the function symbol.
-        TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
-        (
-            TypeCtorSymName = unqualified(_),
-            unexpected($pred, "unqualified TypeCtorSymName")
-        ;
-            TypeCtorSymName = qualified(TypeCtorModuleName, _TypeCtorName),
-            ConsIdName = unqualify_name(ConsIdSymName0),
-            ConsIdSymName = qualified(TypeCtorModuleName, ConsIdName)
-        ),
-        ConsId = cons(ConsIdSymName, ConsIdArity, TypeCtor)
-    else
-        ConsId = ConsId0
-    ).
-
-bound_insts_to_cons_ids(_, [], []).
-bound_insts_to_cons_ids(TypeCtor, [BoundInst | BoundInsts],
-        [ConsId | ConsIds]) :-
-    bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId),
-    bound_insts_to_cons_ids(TypeCtor, BoundInsts, ConsIds).
-
-%---------------------------------------------------------------------------%
-
 get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
     % XXX This is very similar to get_single_arg_inst in mode_util.
     % XXX Actually, it should be MORE similar; it does not handle
@@ -891,8 +871,42 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
         get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
     ).
 
+%---------------------------------------------------------------------------%
+
     % In case we later decide to change the representation of mode_ids.
 mode_id_to_int(mode_id(_, X), X).
+
+%---------------------------------------------------------------------------%
+
+bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
+    BoundInst = bound_functor(ConsId0, _ArgInsts),
+    ( if ConsId0 = cons(ConsIdSymName0, ConsIdArity, _ConsIdTypeCtor) then
+        % Insts don't (yet) have to say what type they are for,
+        % so we cannot rely on the bound_functors inside them
+        % being correctly module qualified, and in fact it may be that
+        % the same functor in such an inst should be module qualified
+        % *differently* in different contexts. Therefore in cases like this,
+        % when the context of use (the type of the function symbol) is known,
+        % we copy the module qualifier from the type to the function symbol.
+        TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
+        (
+            TypeCtorSymName = unqualified(_),
+            unexpected($pred, "unqualified TypeCtorSymName")
+        ;
+            TypeCtorSymName = qualified(TypeCtorModuleName, _TypeCtorName),
+            ConsIdName = unqualify_name(ConsIdSymName0),
+            ConsIdSymName = qualified(TypeCtorModuleName, ConsIdName)
+        ),
+        ConsId = cons(ConsIdSymName, ConsIdArity, TypeCtor)
+    else
+        ConsId = ConsId0
+    ).
+
+bound_insts_to_cons_ids(_, [], []).
+bound_insts_to_cons_ids(TypeCtor, [BoundInst | BoundInsts],
+        [ConsId | ConsIds]) :-
+    bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId),
+    bound_insts_to_cons_ids(TypeCtor, BoundInsts, ConsIds).
 
 %---------------------------------------------------------------------------%
 %

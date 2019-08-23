@@ -272,12 +272,12 @@
 :- pred module_info_get_inst_table(module_info::in, inst_table::out) is det.
 :- pred module_info_get_mode_table(module_info::in, mode_table::out) is det.
 :- pred module_info_get_cons_table(module_info::in, cons_table::out) is det.
-:- pred module_info_get_class_table(module_info::in, class_table::out) is det.
 :- pred module_info_get_ctor_field_table(module_info::in,
     ctor_field_table::out) is det.
 
 :- pred module_info_get_special_pred_maps(module_info::in,
     special_pred_maps::out) is det.
+:- pred module_info_get_class_table(module_info::in, class_table::out) is det.
 :- pred module_info_get_instance_table(module_info::in,
     instance_table::out) is det.
 :- pred module_info_get_type_spec_info(module_info::in,
@@ -370,12 +370,12 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_cons_table(cons_table::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_class_table(class_table::in,
-    module_info::in, module_info::out) is det.
 :- pred module_info_set_ctor_field_table(ctor_field_table::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_set_special_pred_maps(special_pred_maps::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_class_table(class_table::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_instance_table(instance_table::in,
     module_info::in, module_info::out) is det.
@@ -500,9 +500,9 @@
 :- pred module_info_set_pred_info(pred_id::in, pred_info::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_set_pred_proc_info(pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
 :- pred module_info_set_pred_proc_info(pred_proc_id::in,
+    pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
+:- pred module_info_set_pred_proc_info(pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, module_info::in, module_info::out) is det.
 
 %---------------------%
@@ -881,6 +881,64 @@
                 mri_type_repn_dec               :: type_repn_decision_data
             ).
 
+% Access stats for the module_info structure on 30 december 2014.
+%
+%  i      read      same      diff   same%
+%  0 188233540        17  38369323   0.00%  predicate_table
+%  1      7933         0       480   0.00%  proc_requests
+%  2    261171         0    103230   0.00%  special_pred_maps
+%  3   4576898         0         0          partial_qualifier_info
+%  4  21758620      2908   1589788   0.18%  type_table
+%  5  22754063         0   2360725   0.00%  inst_table
+%  6 145877431     10501    149637   6.56%  mode_table
+%  7  16110150      3767    803152   0.47%  cons_table
+%  8   7125765       353     65777   0.53%  class_table
+%  9   2543131       353    206012   0.17%  instance_table
+% 10      7935         0      3798   0.00%  assertion_table
+% 11         0         0         0          exclusive_table
+% 12   4552293    620283    180042  77.50%  ctor_field_table
+% 13   2256146   2219707       235  99.99%  maybe_recompilation_info
+% 14  14893776         0         0          name
+% 15         0         0         0          dump_hlds_base_file_name
+% 16  39144524         0     16950   0.00%  globals
+% 17      8481        17        64  20.99%  has_parallel_conj
+% 18       253         4         5  44.44%  has_user_event
+% 19         0    223574      3371  98.51%  contains_foreign_type
+% 20      9180         0       710   0.00%  foreign_decl_codes
+% 21      3683         0       856   0.00%  foreign_body_codes
+% 22    966008         0    963108   0.00%  foreign_import_modules
+% 23    331870    281405     35898  88.69%  pragma_exported_procs
+% 24         1         0         0          fact_table_file_names
+% 25     10630     11345      8490  57.20%  maybe_dependency_info
+% 26     11342      4885       128  97.45%  num_errors
+% 27     35292      2442      3209  43.21%  type_ctor_gen_infos
+% 28      3506         0         2   0.00%  must_be_stratified_preds
+% 29         1         0         1   0.00%  unused_arg_info
+% 30   3972001         0   3445467   0.00%  exception_info
+% 31       296         0         0          trailing_info
+% 32      4071         0        75   0.00%  table_struct_map
+% 33       296         0         0          mm_tabling_info
+% 34      4019         0      4019   0.00%  lambdas_per_context
+% 35         0         0         0          atomics_per_context
+% 36      7053         0         0          imported_module_names
+% 37      3135         0         0          indirectly_imported_mod_specs
+% 38         1         0         0          interface_module_names
+% 39      6568         0      3767   0.00%  used_modules
+% 40   1656135         0    126058   0.00%  type_spec_info
+% 41  22588003         0     87106   0.00%  no_tag_types
+% 42    171993         0         0          complexity_proc_map
+% 43      2821         0         0          complexity_proc_infos
+% 44       763       336         2  99.41%  analysis_info
+% 45       316         0        20   0.00%  structure_reuse_preds
+% 46      5703         0        55   0.00%  exported_enums
+% 47        48         0      3767   0.00%  event_set
+% 48      3510         0         6   0.00%  oisu_map
+% 49         0         0         2   0.00%  oisu_procs
+% 50   2684695   2592456     10222  99.61%  const_struct_db
+% 51      2821         0         0          threadscope_string_table
+
+%---------------------------------------------------------------------------%
+
 module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         MaybeRecompInfo, ModuleInfo) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
@@ -1101,13 +1159,13 @@ module_info_optimize(!ModuleInfo) :-
 :- pred module_info_get_user_final_pred_c_names(module_info::in,
     assoc_list(sym_name_and_arity, string)::out) is det.
 
+:- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
+    module_info::in, module_info::out) is det.
 :- pred module_info_set_num_errors(int::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_lambdas_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
-    module_info::in, module_info::out) is det.
-:- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_user_init_pred_c_names(
     assoc_list(sym_name_and_arity, string)::in,
@@ -1354,64 +1412,6 @@ module_info_set_ts_rev_string_table(X, Y, !MI) :-
     !MI ^ mi_rare_info ^ mri_ts_rev_string_table := Y.
 module_info_set_type_repn_dec(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_type_repn_dec := X.
-
-%---------------------------------------------------------------------------%
-
-% Access stats for the module_info structure on 30 december 2014.
-%
-%  i      read      same      diff   same%
-%  0 188233540        17  38369323   0.00%  predicate_table
-%  1      7933         0       480   0.00%  proc_requests
-%  2    261171         0    103230   0.00%  special_pred_maps
-%  3   4576898         0         0          partial_qualifier_info
-%  4  21758620      2908   1589788   0.18%  type_table
-%  5  22754063         0   2360725   0.00%  inst_table
-%  6 145877431     10501    149637   6.56%  mode_table
-%  7  16110150      3767    803152   0.47%  cons_table
-%  8   7125765       353     65777   0.53%  class_table
-%  9   2543131       353    206012   0.17%  instance_table
-% 10      7935         0      3798   0.00%  assertion_table
-% 11         0         0         0          exclusive_table
-% 12   4552293    620283    180042  77.50%  ctor_field_table
-% 13   2256146   2219707       235  99.99%  maybe_recompilation_info
-% 14  14893776         0         0          name
-% 15         0         0         0          dump_hlds_base_file_name
-% 16  39144524         0     16950   0.00%  globals
-% 17      8481        17        64  20.99%  has_parallel_conj
-% 18       253         4         5  44.44%  has_user_event
-% 19         0    223574      3371  98.51%  contains_foreign_type
-% 20      9180         0       710   0.00%  foreign_decl_codes
-% 21      3683         0       856   0.00%  foreign_body_codes
-% 22    966008         0    963108   0.00%  foreign_import_modules
-% 23    331870    281405     35898  88.69%  pragma_exported_procs
-% 24         1         0         0          fact_table_file_names
-% 25     10630     11345      8490  57.20%  maybe_dependency_info
-% 26     11342      4885       128  97.45%  num_errors
-% 27     35292      2442      3209  43.21%  type_ctor_gen_infos
-% 28      3506         0         2   0.00%  must_be_stratified_preds
-% 29         1         0         1   0.00%  unused_arg_info
-% 30   3972001         0   3445467   0.00%  exception_info
-% 31       296         0         0          trailing_info
-% 32      4071         0        75   0.00%  table_struct_map
-% 33       296         0         0          mm_tabling_info
-% 34      4019         0      4019   0.00%  lambdas_per_context
-% 35         0         0         0          atomics_per_context
-% 36      7053         0         0          imported_module_names
-% 37      3135         0         0          indirectly_imported_mod_specs
-% 38         1         0         0          interface_module_names
-% 39      6568         0      3767   0.00%  used_modules
-% 40   1656135         0    126058   0.00%  type_spec_info
-% 41  22588003         0     87106   0.00%  no_tag_types
-% 42    171993         0         0          complexity_proc_map
-% 43      2821         0         0          complexity_proc_infos
-% 44       763       336         2  99.41%  analysis_info
-% 45       316         0        20   0.00%  structure_reuse_preds
-% 46      5703         0        55   0.00%  exported_enums
-% 47        48         0      3767   0.00%  event_set
-% 48      3510         0         6   0.00%  oisu_map
-% 49         0         0         2   0.00%  oisu_procs
-% 50   2684695   2592456     10222  99.61%  const_struct_db
-% 51      2821         0         0          threadscope_string_table
 
 %---------------------------------------------------------------------------%
 %

@@ -267,11 +267,6 @@ update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-make_atomic_unification(Var, RHS, Context, MainContext, SubContext,
-        Goal, !QualInfo) :-
-    make_atomic_unification(Var, RHS, Context, MainContext, SubContext,
-        purity_pure, Goal, !QualInfo).
-
 make_atomic_unification(Var, RHS, Context, MainContext, SubContext, Purity,
         Goal, !QualInfo) :-
     (
@@ -284,6 +279,11 @@ make_atomic_unification(Var, RHS, Context, MainContext, SubContext, Purity,
     ),
     create_atomic_complicated_unification(Var, RHS, Context,
         MainContext, SubContext, Purity, Goal).
+
+make_atomic_unification(Var, RHS, Context, MainContext, SubContext,
+        Goal, !QualInfo) :-
+    make_atomic_unification(Var, RHS, Context, MainContext, SubContext,
+        purity_pure, Goal, !QualInfo).
 
 record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
     Id = item_name(SymName, Arity),

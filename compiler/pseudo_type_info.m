@@ -24,6 +24,17 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+    % construct_maybe_pseudo_type_info(Type, NumUnivQTvars, ExistQVars,
+    %   MaybePseudoTypeInfo):
+    %
+    % Given a Mercury type (`Type'), this predicate checks whether it is
+    % ground or not. If it is ground, it returns a typeinfo for it; if it
+    % is not ground, it returns a pseudo type info for it. The arguments
+    % are the same as for construct_pseudo_type_info.
+    %
+:- pred construct_maybe_pseudo_type_info(mer_type::in, int::in,
+    existq_tvars::in, rtti_maybe_pseudo_type_info::out) is det.
+
     % construct_pseudo_type_info(Type, NumUnivQTvars, ExistQVars,
     %   PseudoTypeInfo):
     %
@@ -46,17 +57,6 @@
     % representation of the type info for that type.
     %
 :- pred construct_type_info(mer_type::in, rtti_type_info::out) is det.
-
-    % construct_maybe_pseudo_type_info(Type, NumUnivQTvars, ExistQVars,
-    %   MaybePseudoTypeInfo):
-    %
-    % Given a Mercury type (`Type'), this predicate checks whether it is
-    % ground or not. If it is ground, it returns a typeinfo for it; if it
-    % is not ground, it returns a pseudo type info for it. The arguments
-    % are the same as for construct_pseudo_type_info.
-    %
-:- pred construct_maybe_pseudo_type_info(mer_type::in, int::in,
-    existq_tvars::in, rtti_maybe_pseudo_type_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

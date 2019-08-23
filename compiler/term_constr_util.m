@@ -123,9 +123,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % substitute_size_vars: Takes a list of constraints and a
-    % var_substitution. Returns the constraints with the specified
-    % substitutions made.
+    % substitute_size_vars: Takes a list of constraints and a var_substitution.
+    % Returns the constraints with the specified substitutions made.
     %
 :- func substitute_size_vars(constraints, map(size_var, size_var))
     = constraints.
@@ -155,9 +154,9 @@
 
 :- pred write_size_vars(size_varset::in, size_vars::in, io::di, io::uo) is det.
 
-:- pred dump_size_varset(size_varset::in, io::di, io::uo) is det.
-
 :- pred dump_size_vars(size_vars::in, size_varset::in, io::di, io::uo) is det.
+
+:- pred dump_size_varset(size_varset::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -235,6 +234,22 @@ lookup_proc_constr_arg_size_info(ModuleInfo, PredProcId) = MaybeArgSizeInfo :-
 
 %-----------------------------------------------------------------------------%
 
+get_abstract_scc(ModuleInfo, SCC) =
+    set.map(get_abstract_proc(ModuleInfo), SCC).
+
+get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
+    proc_info_get_termination2_info(ProcInfo, Term2Info),
+    MaybeAbstractProc = term2_info_get_abstract_rep(Term2Info),
+    (
+        MaybeAbstractProc = yes(AbstractProc)
+    ;
+        MaybeAbstractProc = no,
+        unexpected($pred, "no abstract rep. for proc")
+    ).
+
+%-----------------------------------------------------------------------------%
+
 make_size_var_map(ProgVars, SizeVarset, SizeVarMap) :-
     make_size_var_map(ProgVars, varset.init, SizeVarset, SizeVarMap).
 
@@ -281,27 +296,6 @@ is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
         is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
     ).
 
-add_context_to_constr_termination_info(no, _, no).
-add_context_to_constr_termination_info(yes(cannot_loop(_)), _,
-        yes(cannot_loop(term_reason_import_supplied))).
-add_context_to_constr_termination_info(yes(can_loop(_)), Context,
-        yes(can_loop([term2_error(Context, imported_pred)]))).
-
-%-----------------------------------------------------------------------------%
-
-substitute_size_vars(Constraints0, SubstMap) = Constraints :-
-    SubVarInCoeff =
-        ( func(OldVar - Rat) = NewVar - Rat :-
-            map.lookup(SubstMap, OldVar, NewVar)
-        ),
-    SubVarInEqn =
-        ( func(Constr0) = Constr :-
-            deconstruct_constraint(Constr0, Coeffs0, Op, Rat),
-            Coeffs = list.map(SubVarInCoeff, Coeffs0),
-            Constr = construct_constraint(Coeffs, Op, Rat)
-        ),
-    Constraints = list.map(SubVarInEqn, Constraints0).
-
 %-----------------------------------------------------------------------------%
 %
 % Utility procedures used by various parts of the IR analysis.
@@ -345,6 +339,29 @@ make_arg_constraints([Var | Vars], Zeros) = Constraints :-
 
 is_zero_size_var(Zeros, SizeVar) :-
     set.member(SizeVar, Zeros).
+
+%-----------------------------------------------------------------------------%
+
+add_context_to_constr_termination_info(no, _, no).
+add_context_to_constr_termination_info(yes(cannot_loop(_)), _,
+        yes(cannot_loop(term_reason_import_supplied))).
+add_context_to_constr_termination_info(yes(can_loop(_)), Context,
+        yes(can_loop([term2_error(Context, imported_pred)]))).
+
+%-----------------------------------------------------------------------------%
+
+substitute_size_vars(Constraints0, SubstMap) = Constraints :-
+    SubVarInCoeff =
+        ( func(OldVar - Rat) = NewVar - Rat :-
+            map.lookup(SubstMap, OldVar, NewVar)
+        ),
+    SubVarInEqn =
+        ( func(Constr0) = Constr :-
+            deconstruct_constraint(Constr0, Coeffs0, Op, Rat),
+            Coeffs = list.map(SubVarInCoeff, Coeffs0),
+            Constr = construct_constraint(Coeffs, Op, Rat)
+        ),
+    Constraints = list.map(SubVarInEqn, Constraints0).
 
 %-----------------------------------------------------------------------------%
 %
@@ -460,22 +477,6 @@ change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
         true
     ),
     change_procs_constr_arg_size_info(ProcIds, Override, ArgSize, !ProcTable).
-
-%-----------------------------------------------------------------------------%
-
-get_abstract_scc(ModuleInfo, SCC) =
-    set.map(get_abstract_proc(ModuleInfo), SCC).
-
-get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
-    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_get_termination2_info(ProcInfo, Term2Info),
-    MaybeAbstractProc = term2_info_get_abstract_rep(Term2Info),
-    (
-        MaybeAbstractProc = yes(AbstractProc)
-    ;
-        MaybeAbstractProc = no,
-        unexpected($pred, "no abstract rep. for proc")
-    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_util.

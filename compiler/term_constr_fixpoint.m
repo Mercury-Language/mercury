@@ -77,17 +77,6 @@
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-
-:- type fixpoint_options
-    --->    fixpoint_options(
-                fo_widening :: widening,
-                fo_max_size :: int
-            ).
-
-fixpoint_options_init(Widening, MaxMatrixSize) =
-    fixpoint_options(Widening, MaxMatrixSize).
-
-%-----------------------------------------------------------------------------%
 %
 % Perform the fixpoint calculation on the AR.
 %
@@ -479,6 +468,17 @@ test_fixpoint(NewPoly, OldPoly, SizeVarSet) = ChangeFlag :-
     else
         ChangeFlag = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- type fixpoint_options
+    --->    fixpoint_options(
+                fo_widening :: widening,
+                fo_max_size :: int
+            ).
+
+fixpoint_options_init(Widening, MaxMatrixSize) =
+    fixpoint_options(Widening, MaxMatrixSize).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_fixpoint.

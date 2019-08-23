@@ -333,6 +333,12 @@
     %
 :- type case_id_ptags_map == map(case_id, set(ptag)).
 
+    % Find out how many secondary tags share each primary tag
+    % of the given variable.
+    %
+:- pred get_ptag_counts(mer_type::in, module_info::in,
+    uint8::out, ptag_count_map::out) is det.
+
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
     %
@@ -363,12 +369,6 @@
     %
 :- pred order_ptags_by_value(ptag::in, ptag::in,
     ptag_case_map(CaseRep)::in, ptag_case_list(CaseRep)::out) is det.
-
-    % Find out how many secondary tags share each primary tag
-    % of the given variable.
-    %
-:- pred get_ptag_counts(mer_type::in, module_info::in,
-    uint8::out, ptag_count_map::out) is det.
 
 %-----------------------------------------------------------------------------%
 

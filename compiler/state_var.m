@@ -81,14 +81,6 @@
     svar_state::out, svar_store::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Finish processing a clause. Make the final values of the clause's state
-    % vars match the mapping we decided on when processing the head.
-    %
-:- pred svar_finish_clause_body(prog_context::in, map(svar, prog_var)::in,
-    hlds_goal::in, hlds_goal::in, hlds_goal::out,
-    svar_state::in, svar_state::in, svar_store::in,
-    list(error_spec)::out, list(error_spec)::out) is det.
-
     % Prepare for processing a lambda expression by processing its head.
     %
     % In most ways, this is very similar to processing the head of a clause,
@@ -101,6 +93,14 @@
     map(svar, prog_var)::out, svar_state::in, svar_state::out,
     prog_varset::in, prog_varset::out,
     list(error_spec)::in, list(error_spec)::out) is det.
+
+    % Finish processing a clause. Make the final values of the clause's state
+    % vars match the mapping we decided on when processing the head.
+    %
+:- pred svar_finish_clause_body(prog_context::in, map(svar, prog_var)::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::out,
+    svar_state::in, svar_state::in, svar_store::in,
+    list(error_spec)::out, list(error_spec)::out) is det.
 
     % Finish processing a lambda expression.
     %

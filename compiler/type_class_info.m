@@ -36,9 +36,9 @@
 :- pred generate_type_class_info_rtti(module_info::in, bool::in,
     list(rtti_data)::out) is det.
 
-:- func generate_class_constraint(prog_constraint) = tc_constraint.
-
 :- func generate_class_name(class_id) = tc_name.
+
+:- func generate_class_constraint(prog_constraint) = tc_constraint.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -34,20 +34,24 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_process_compiler_args(globals::in, list(string)::in,
-    options_variables::in, list(string)::in, list(file_name)::in,
-    io::di, io::uo) is det.
+:- type make_info.
+
+:- type rebuild_module_deps
+    --->    do_rebuild_module_deps
+    ;       do_not_rebuild_module_deps.
+
+%-----------------------------------------------------------------------------%
 
 :- pred make_write_module_dep_file(globals::in, module_and_imports::in,
     io::di, io::uo) is det.
 
 :- func make_module_dep_file_extension = string.
 
-:- type make_info.
+%-----------------------------------------------------------------------------%
 
-:- type rebuild_module_deps
-    --->    do_rebuild_module_deps
-    ;       do_not_rebuild_module_deps.
+:- pred make_process_compiler_args(globals::in, list(string)::in,
+    options_variables::in, list(string)::in, list(file_name)::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -271,6 +275,8 @@ make_write_module_dep_file(Globals, Imports, !IO) :-
     make.module_dep_file.write_module_dep_file(Globals, Imports, !IO).
 
 make_module_dep_file_extension = ".module_dep".
+
+%-----------------------------------------------------------------------------%
 
 make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         Targets0, !IO) :-

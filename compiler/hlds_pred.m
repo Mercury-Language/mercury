@@ -1478,10 +1478,6 @@ pred_info_set_proc_table(X, !PI) :-
 
 % The non-trivial access predicates.
 
-pred_info_all_procids(PredInfo) = ProcIds :-
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    map.keys(ProcTable, ProcIds).
-
 pred_info_procids(PredInfo) = ValidProcIds :-
     AllProcIds = pred_info_all_procids(PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
@@ -1491,6 +1487,10 @@ pred_info_procids(PredInfo) = ValidProcIds :-
             proc_info_is_valid_mode(ProcInfo)
         ),
     list.filter(IsValid, AllProcIds, ValidProcIds).
+
+pred_info_all_procids(PredInfo) = ProcIds :-
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.keys(ProcTable, ProcIds).
 
 pred_info_non_imported_procids(PredInfo) = ProcIds :-
     pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
@@ -1582,6 +1582,13 @@ pred_info_set_arg_types(X, Y, Z, !PredInfo) :-
     !PredInfo ^ pi_decl_typevarset := X,
     !PredInfo ^ pi_exist_quant_tvars := Y,
     !PredInfo ^ pi_arg_types := Z.
+
+pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    type_vars_list(ArgTypes, ArgTypeVars0),
+    list.sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
+    pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
+    list.delete_elems(ArgTypeVars, ExistQVars, UnivQVars).
 
 pred_info_proc_info(PredInfo, ProcId, ProcInfo) :-
     pred_info_get_proc_table(PredInfo, ProcTable),
@@ -1758,13 +1765,6 @@ pred_info_infer_modes(PredInfo) :-
 purity_to_markers(purity_pure, []).
 purity_to_markers(purity_semipure, [marker_is_semipure]).
 purity_to_markers(purity_impure, [marker_is_impure]).
-
-pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    type_vars_list(ArgTypes, ArgTypeVars0),
-    list.sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
-    pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
-    list.delete_elems(ArgTypeVars, ExistQVars, UnivQVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -2380,20 +2380,18 @@ marker_list_to_markers(Markers, MarkerSet) :-
 
 :- pred proc_info_head_modes_constraint(proc_info::in, mode_constraint::out)
     is det.
+:- pred proc_info_declared_argmodes(proc_info::in, list(mer_mode)::out) is det.
 
     % See also proc_info_interface_code_model in code_model.m.
     %
 :- pred proc_info_interface_determinism(proc_info::in, determinism::out)
     is det.
 
-    % proc_info_never_succeeds(ProcInfo, Result):
-    %
     % Return Result = yes if the procedure is known to never succeed
     % according to the declared determinism.
     %
 :- pred proc_info_never_succeeds(proc_info::in, bool::out) is det.
 
-:- pred proc_info_declared_argmodes(proc_info::in, list(mer_mode)::out) is det.
 :- pred proc_info_arglives(proc_info::in, module_info::in,
     list(is_live)::out) is det.
 :- pred proc_info_arg_info(proc_info::in, list(arg_info)::out) is det.
@@ -3167,10 +3165,10 @@ proc_info_get_has_user_event(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_user_event.
 proc_info_get_has_tail_rec_call(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_tail_rec_call.
-proc_info_get_maybe_require_tailrec_info(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_maybe_require_tailrec.
 proc_info_get_oisu_kind_fors(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_oisu_kind_fors.
+proc_info_get_maybe_require_tailrec_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_require_tailrec.
 proc_info_get_reg_r_headvars(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_reg_r_headvars.
 proc_info_get_maybe_arg_info(PI, X) :-
@@ -3290,6 +3288,54 @@ proc_info_set_trailing_info(X, !PI) :-
 proc_info_set_mm_tabling_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_mm_tabling_info := X.
 
+proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
+    MaybeSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_sharing.
+
+proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing ^ maybe_sharing :=
+        yes(Sharing).
+
+proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, Sharing) :-
+    MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_imported_sharing,
+    MaybeImportedSharing = yes(ImportedSharing),
+    ImportedSharing = imported_sharing(HeadVars, Types, Sharing).
+
+proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing,
+        !ProcInfo) :-
+    ImportedSharing = imported_sharing(HeadVars, Types, Sharing),
+    MaybeImportedSharing = yes(ImportedSharing),
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_imported_sharing := MaybeImportedSharing.
+
+proc_info_reset_imported_structure_sharing(!ProcInfo) :-
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_imported_sharing := no.
+
+proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
+    MaybeReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse.
+
+proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse
+        := yes(Reuse).
+
+proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
+    MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse
+        ^ maybe_imported_reuse,
+    MaybeImportedReuse = yes(ImportedReuse),
+    ImportedReuse = imported_reuse(HeadVars, Types, Reuse).
+
+proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse, !ProcInfo) :-
+    ImportedReuse = imported_reuse(HeadVars, Types, Reuse),
+    MaybeImportedReuse = yes(ImportedReuse),
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_imported_reuse :=
+        MaybeImportedReuse.
+
+proc_info_reset_imported_structure_reuse(!ProcInfo) :-
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse
+        ^ maybe_imported_reuse := no.
+
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
     MaybeHeadModesConstraint = ProcInfo ^ proc_maybe_head_modes_constr,
     (
@@ -3298,13 +3344,6 @@ proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
         MaybeHeadModesConstraint = no,
         unexpected($pred, "no constraint")
     ).
-
-proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
-    proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_argmodes(ProcInfo, ArgModes),
-    mode_list_get_initial_insts(ModuleInfo, ArgModes, InitialInsts),
-    assoc_list.from_corresponding_lists(HeadVars, InitialInsts, InstAL),
-    InstMap = instmap_from_assoc_list(InstAL).
 
 proc_info_declared_argmodes(ProcInfo, ArgModes) :-
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
@@ -3358,10 +3397,6 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
         get_arg_lives(ModuleInfo, Modes, ArgLives)
     ).
 
-proc_info_is_valid_mode(ProcInfo) :-
-    proc_info_get_mode_errors(ProcInfo, ModeErrors),
-    ModeErrors = [].
-
 proc_info_arg_info(ProcInfo, ArgInfo) :-
     proc_info_get_maybe_arg_info(ProcInfo, MaybeArgInfo0),
     (
@@ -3371,53 +3406,12 @@ proc_info_arg_info(ProcInfo, ArgInfo) :-
         unexpected($pred, "arg_info not set")
     ).
 
-proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
-    MaybeSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_sharing.
-
-proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing ^ maybe_sharing :=
-        yes(Sharing).
-
-proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, Sharing) :-
-    MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing,
-    MaybeImportedSharing = yes(ImportedSharing),
-    ImportedSharing = imported_sharing(HeadVars, Types, Sharing).
-
-proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing,
-        !ProcInfo) :-
-    ImportedSharing = imported_sharing(HeadVars, Types, Sharing),
-    MaybeImportedSharing = yes(ImportedSharing),
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing := MaybeImportedSharing.
-
-proc_info_reset_imported_structure_sharing(!ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing := no.
-
-proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
-    MaybeReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse.
-
-proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse
-        := yes(Reuse).
-
-proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
-    MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse
-        ^ maybe_imported_reuse,
-    MaybeImportedReuse = yes(ImportedReuse),
-    ImportedReuse = imported_reuse(HeadVars, Types, Reuse).
-
-proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse, !ProcInfo) :-
-    ImportedReuse = imported_reuse(HeadVars, Types, Reuse),
-    MaybeImportedReuse = yes(ImportedReuse),
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_imported_reuse :=
-        MaybeImportedReuse.
-
-proc_info_reset_imported_structure_reuse(!ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse
-        ^ maybe_imported_reuse := no.
+proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    mode_list_get_initial_insts(ModuleInfo, ArgModes, InitialInsts),
+    assoc_list.from_corresponding_lists(HeadVars, InitialInsts, InstAL),
+    InstMap = instmap_from_assoc_list(InstAL).
 
 proc_info_ensure_unique_names(!ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
@@ -3642,6 +3636,10 @@ find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
     else
         CloneProcId = TrialProcId
     ).
+
+proc_info_is_valid_mode(ProcInfo) :-
+    proc_info_get_mode_errors(ProcInfo, ModeErrors),
+    ModeErrors = [].
 
 ensure_all_headvars_are_named(!ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),

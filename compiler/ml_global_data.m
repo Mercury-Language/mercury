@@ -91,13 +91,6 @@
 :- func ml_global_data_init(mlds_target_lang, use_common_cells,
     have_unboxed_floats, have_unboxed_int64s) = ml_global_data.
 
-:- pred ml_global_data_get_target(ml_global_data::in,
-    mlds_target_lang::out) is det.
-:- pred ml_global_data_have_unboxed_floats(ml_global_data::in,
-    have_unboxed_floats::out) is det.
-:- pred ml_global_data_have_unboxed_int64s(ml_global_data::in,
-    have_unboxed_int64s::out) is det.
-
     % ml_global_data_get_all_global_defns(GlobalData,
     %     ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
     %     RttiDefns, CellDefns, ClosureWrapperFuncDefns):
@@ -109,6 +102,13 @@
     assoc_list(mlds_alloc_id, ml_alloc_site_data)::out,
     list(mlds_global_var_defn)::out, list(mlds_global_var_defn)::out,
     list(mlds_function_defn)::out) is det.
+
+:- pred ml_global_data_get_target(ml_global_data::in,
+    mlds_target_lang::out) is det.
+:- pred ml_global_data_have_unboxed_floats(ml_global_data::in,
+    have_unboxed_floats::out) is det.
+:- pred ml_global_data_have_unboxed_int64s(ml_global_data::in,
+    have_unboxed_int64s::out) is det.
 
     % This type maps the names of rtti data structures that have already been
     % generated to the rval that refers to that data structure, and its type.

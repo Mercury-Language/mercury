@@ -83,6 +83,9 @@
     ;       ordinary_nonlocals_no_lambda
     ;       code_gen_nonlocals_no_lambda.
 
+:- pred requantify_proc_general(nonlocals_to_recompute::in,
+    proc_info::in, proc_info::out) is det.
+
 :- pred implicitly_quantify_clause_body_general(nonlocals_to_recompute::in,
     list(prog_var)::in, list(quant_warning)::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
@@ -92,9 +95,6 @@
     set_of_progvar::in, list(quant_warning)::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
-
-:- pred requantify_proc_general(nonlocals_to_recompute::in,
-    proc_info::in, proc_info::out) is det.
 
     % free_goal_vars(Goal) = Vars:
     %
@@ -131,12 +131,6 @@
 
 %-----------------------------------------------------------------------------%
 
-implicitly_quantify_clause_body_general(NonLocalsToRecompute, HeadVars,
-        Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
-    OutsideVars = set_of_var.list_to_set(HeadVars),
-    implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars,
-        Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps).
-
 requantify_proc_general(NonLocalsToRecompute, !ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_varset(!.ProcInfo, VarSet0),
@@ -150,6 +144,12 @@ requantify_proc_general(NonLocalsToRecompute, !ProcInfo) :-
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarmaps, !ProcInfo).
+
+implicitly_quantify_clause_body_general(NonLocalsToRecompute, HeadVars,
+        Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
+    OutsideVars = set_of_var.list_to_set(HeadVars),
+    implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars,
+        Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps).
 
 implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars, Warnings,
         !Goal, !VarSet, !VarTypes, !RttiVarMaps) :-

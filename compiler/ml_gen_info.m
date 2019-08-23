@@ -256,7 +256,6 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_decrement_func_nest_depth(
     ml_gen_info::in, ml_gen_info::out) is det.
-:- pred ml_gen_info_get_func_nest_depth(ml_gen_info::in, int::out) is det.
 
     % We keep a partial mapping from vars to lvals. This is used in special
     % cases to override the normal lval for a variable. ml_gen_var will check
@@ -522,6 +521,7 @@
     set_of_progvar::out) is det.
 :- pred ml_gen_info_get_packed_word_map(ml_gen_info::in,
     packed_word_map::out) is det.
+:- pred ml_gen_info_get_func_nest_depth(ml_gen_info::in, int::out) is det.
 
 :- pred ml_gen_info_set_const_var_map(map(prog_var, ml_ground_term)::in,
     ml_gen_info::in, ml_gen_info::out) is det.

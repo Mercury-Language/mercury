@@ -54,6 +54,16 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type new_pred_id
+    --->    newpred_counter(int, int)                   % Line number, Counter
+    ;       newpred_type_subst(tvarset, type_subst)
+    ;       newpred_unused_args(list(int))
+    ;       newpred_parallel_args(list(int))
+    ;       newpred_parallel_loop_control
+    ;       newpred_structure_reuse(int, list(int))     % Mode, no-clobber
+                                                        % arguments.
+    ;       newpred_distance_granularity(int).          % Distance
+
     % make_pred_name_with_context(ModuleName, Prefix, PredOrFunc,
     %   PredName, Line, Counter, SymName):
     %
@@ -77,16 +87,6 @@
     %
 :- pred make_pred_name(module_name::in, string::in, maybe(pred_or_func)::in,
     string::in, new_pred_id::in, sym_name::out) is det.
-
-:- type new_pred_id
-    --->    newpred_counter(int, int)                   % Line number, Counter
-    ;       newpred_type_subst(tvarset, type_subst)
-    ;       newpred_unused_args(list(int))
-    ;       newpred_parallel_args(list(int))
-    ;       newpred_parallel_loop_control
-    ;       newpred_structure_reuse(int, list(int))     % Mode, no-clobber
-                                                        % arguments.
-    ;       newpred_distance_granularity(int).          % Distance
 
 %-----------------------------------------------------------------------------%
 
@@ -256,6 +256,77 @@ adjust_func_arity(pf_predicate, Arity, Arity).
 adjust_func_arity(pf_function, Arity - 1, Arity).
 
 %-----------------------------------------------------------------------------%
+
+make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
+        Line, Counter, SymName) :-
+    make_pred_name(ModuleName, Prefix, yes(PredOrFunc), PredName,
+        newpred_counter(Line, Counter), SymName).
+
+make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
+        NewPredId, SymName) :-
+    (
+        MaybePredOrFunc = yes(PredOrFunc),
+        PFS = pred_or_func_to_str(PredOrFunc)
+    ;
+        MaybePredOrFunc = no,
+        PFS = "pred_or_func"
+    ),
+    (
+        NewPredId = newpred_counter(Line, Counter),
+        string.format("%d__%d", [i(Line), i(Counter)], PredIdStr)
+    ;
+        NewPredId = newpred_type_subst(VarSet, TypeSubst),
+        SubstToString = (pred(SubstElem::in, SubstStr::out) is det :-
+            SubstElem = Var - Type,
+            varset.lookup_name(VarSet, Var, VarName),
+            TypeString = mercury_type_to_string(VarSet, print_name_only, Type),
+            string.append_list([VarName, " = ", TypeString], SubstStr)
+        ),
+        list_to_string(SubstToString, TypeSubst, PredIdStr)
+    ;
+        ( NewPredId = newpred_unused_args(Args)
+        ; NewPredId = newpred_parallel_args(Args)
+        ),
+        list_to_string(int_to_string, Args, PredIdStr)
+    ;
+        NewPredId = newpred_structure_reuse(ModeNum, Args),
+        int_to_string(ModeNum, ModeStr),
+        list_to_string(int_to_string, Args, ArgsStr),
+        PredIdStr = ModeStr ++ "__" ++ ArgsStr
+    ;
+        NewPredId = newpred_distance_granularity(Distance),
+        int_to_string(Distance, PredIdStr)
+    ;
+        NewPredId = newpred_parallel_loop_control,
+        PredIdStr = ""
+    ),
+
+    string.format("%s__%s__%s__%s",
+        [s(Prefix), s(PFS), s(PredName), s(PredIdStr)], Name),
+    SymName = qualified(ModuleName, Name).
+
+:- pred list_to_string(pred(T, string)::in(pred(in, out) is det),
+    list(T)::in, string::out) is det.
+
+list_to_string(Pred, List, String) :-
+    list_to_string_2(Pred, List, ["]"], Strings),
+    string.append_list(["[" | Strings], String).
+
+:- pred list_to_string_2(pred(T, string)::in(pred(in, out) is det),
+    list(T)::in, list(string)::in, list(string)::out) is det.
+
+list_to_string_2(_, [], !Strings).
+list_to_string_2(Pred, [T | Ts], !Strings) :-
+    (
+        Ts = []
+    ;
+        Ts = [_ | _],
+        list_to_string_2(Pred, Ts, !Strings),
+        !:Strings = [", " | !.Strings]
+    ),
+    call(Pred, T, String),
+    !:Strings = [String | !.Strings].
+
 %-----------------------------------------------------------------------------%
 
 split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
@@ -550,78 +621,6 @@ rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
     term.rename_var_in_term(OldVar, NewVar, Term0, Term),
     rename_in_goal(OldVar, NewVar, Goal0, Goal),
     Catch = catch_expr(Term, Goal).
-
-%-----------------------------------------------------------------------------%
-
-make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
-        Line, Counter, SymName) :-
-    make_pred_name(ModuleName, Prefix, yes(PredOrFunc), PredName,
-        newpred_counter(Line, Counter), SymName).
-
-make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
-        NewPredId, SymName) :-
-    (
-        MaybePredOrFunc = yes(PredOrFunc),
-        PFS = pred_or_func_to_str(PredOrFunc)
-    ;
-        MaybePredOrFunc = no,
-        PFS = "pred_or_func"
-    ),
-    (
-        NewPredId = newpred_counter(Line, Counter),
-        string.format("%d__%d", [i(Line), i(Counter)], PredIdStr)
-    ;
-        NewPredId = newpred_type_subst(VarSet, TypeSubst),
-        SubstToString = (pred(SubstElem::in, SubstStr::out) is det :-
-            SubstElem = Var - Type,
-            varset.lookup_name(VarSet, Var, VarName),
-            TypeString = mercury_type_to_string(VarSet, print_name_only, Type),
-            string.append_list([VarName, " = ", TypeString], SubstStr)
-        ),
-        list_to_string(SubstToString, TypeSubst, PredIdStr)
-    ;
-        ( NewPredId = newpred_unused_args(Args)
-        ; NewPredId = newpred_parallel_args(Args)
-        ),
-        list_to_string(int_to_string, Args, PredIdStr)
-    ;
-        NewPredId = newpred_structure_reuse(ModeNum, Args),
-        int_to_string(ModeNum, ModeStr),
-        list_to_string(int_to_string, Args, ArgsStr),
-        PredIdStr = ModeStr ++ "__" ++ ArgsStr
-    ;
-        NewPredId = newpred_distance_granularity(Distance),
-        int_to_string(Distance, PredIdStr)
-    ;
-        NewPredId = newpred_parallel_loop_control,
-        PredIdStr = ""
-    ),
-
-    string.format("%s__%s__%s__%s",
-        [s(Prefix), s(PFS), s(PredName), s(PredIdStr)], Name),
-    SymName = qualified(ModuleName, Name).
-
-:- pred list_to_string(pred(T, string)::in(pred(in, out) is det),
-    list(T)::in, string::out) is det.
-
-list_to_string(Pred, List, String) :-
-    list_to_string_2(Pred, List, ["]"], Strings),
-    string.append_list(["[" | Strings], String).
-
-:- pred list_to_string_2(pred(T, string)::in(pred(in, out) is det),
-    list(T)::in, list(string)::in, list(string)::out) is det.
-
-list_to_string_2(_, [], !Strings).
-list_to_string_2(Pred, [T | Ts], !Strings) :-
-    (
-        Ts = []
-    ;
-        Ts = [_ | _],
-        list_to_string_2(Pred, Ts, !Strings),
-        !:Strings = [", " | !.Strings]
-    ),
-    call(Pred, T, String),
-    !:Strings = [String | !.Strings].
 
 %-----------------------------------------------------------------------------%
 

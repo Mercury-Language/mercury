@@ -131,6 +131,13 @@
 :- pred clauses_info_set_had_syntax_errors(maybe_clause_syntax_errors::in,
     clauses_info::in, clauses_info::out) is det.
 
+    % Return the headvars as a list rather than as a proc_arg_vector.
+    % New code should avoid using this, and should instead be written to
+    % work with the arg_vector structure directly.
+    %
+:- pred clauses_info_get_headvar_list(clauses_info::in, list(prog_var)::out)
+    is det.
+
 %-----------------------------------------------------------------------------%
 
 :- type clauses_rep.
@@ -145,10 +152,6 @@
     % Returns the number of clauses in the clauses list.
     %
 :- func num_clauses_in_clauses_rep(clauses_rep) = int.
-
-    % Adds the given clause to the end of the clause list.
-    %
-:- pred add_clause(clause::in, clauses_rep::in, clauses_rep::out) is det.
 
     % Get the list of clauses in the given clauses_rep in program order.
     %
@@ -198,22 +201,19 @@
 
 :- pred get_first_clause(clauses_rep::in, clause::out) is semidet.
 
-    % Set the list of clauses to the one given.
-    %
-:- pred set_clause_list(list(clause)::in, clauses_rep::out) is det.
-
-    % Return the headvars as a list rather than as a proc_arg_vector.
-    % New code should avoid using this, and should instead be written to
-    % work with the arg_vector structure directly.
-    %
-:- pred clauses_info_get_headvar_list(clauses_info::in, list(prog_var)::out)
-    is det.
-
     % Return the list of clauses in program order, and if necessary update
     % the cache of this info in the clauses_info.
     %
 :- pred clauses_info_clauses(list(clause)::out, clause_item_numbers::out,
     clauses_info::in, clauses_info::out) is det.
+
+    % Set the list of clauses to the one given.
+    %
+:- pred set_clause_list(list(clause)::in, clauses_rep::out) is det.
+
+    % Adds the given clause to the end of the clause list.
+    %
+:- pred add_clause(clause::in, clauses_rep::in, clauses_rep::out) is det.
 
 :- type clause
     --->    clause(
@@ -309,6 +309,9 @@
                 cnr_upper_item_context  ::  term.context
             ).
 
+:- func init_clause_item_numbers_user = clause_item_numbers.
+:- func init_clause_item_numbers_comp_gen = clause_item_numbers.
+
 :- type clause_item_number_types
     --->    only_clauses
     ;       clauses_and_foreign_procs.
@@ -328,9 +331,6 @@
 :- pred add_clause_item_number(maybe(int)::in, term.context::in,
     clause_item_number_type::in,
     clause_item_numbers::in, clause_item_numbers::out) is det.
-
-:- func init_clause_item_numbers_user = clause_item_numbers.
-:- func init_clause_item_numbers_comp_gen = clause_item_numbers.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -356,6 +356,124 @@
                 list(clause_item_number_region)
             )
     ;       comp_gen_clauses.
+
+%-----------------------------------------------------------------------------%
+
+clauses_info_init(PredOrFunc, Arity, ItemNumbers, ClausesInfo) :-
+    varset.init(VarSet0),
+    make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
+    init_vartypes(VarTypes),
+    map.init(TVarNameMap),
+    HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
+    set_clause_list([], ClausesRep),
+    rtti_varmaps_init(RttiVarMaps),
+    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
+        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
+        no_foreign_lang_clauses, no_clause_syntax_errors).
+
+clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
+    varset.init(VarSet),
+    init_vartypes(VarTypes),
+    map.init(TVarNameMap),
+    % Procedures introduced for assertions are always predicates, never
+    % functions.
+    HeadVarVec = proc_arg_vector_init(pf_predicate, HeadVars),
+    set_clause_list([], ClausesRep),
+    ItemNumbers = init_clause_item_numbers_comp_gen,
+    rtti_varmaps_init(RttiVarMaps),
+    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
+        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
+        no_foreign_lang_clauses, no_clause_syntax_errors).
+
+clauses_info_get_varset(CI, CI ^ cli_varset).
+clauses_info_get_tvar_name_map(CI, CI ^ cli_tvar_name_map).
+clauses_info_get_explicit_vartypes(CI, CI ^ cli_explicit_vartypes).
+clauses_info_get_vartypes(CI, CI ^ cli_vartypes).
+clauses_info_get_headvars(CI, CI ^ cli_headvars).
+clauses_info_get_clauses_rep(CI, CI ^ cli_rep, CI ^ cli_item_numbers).
+clauses_info_get_rtti_varmaps(CI, CI ^ cli_rtti_varmaps).
+clauses_info_get_have_foreign_clauses(CI, CI ^ cli_have_foreign_clauses).
+clauses_info_get_had_syntax_errors(CI, CI ^ cli_had_syntax_errors).
+
+clauses_info_set_varset(X, !CI) :-
+    !CI ^ cli_varset := X.
+clauses_info_set_tvar_name_map(X, !CI) :-
+    !CI ^ cli_tvar_name_map := X.
+clauses_info_set_explicit_vartypes(X, !CI) :-
+    !CI ^ cli_explicit_vartypes := X.
+clauses_info_set_vartypes(X, !CI) :-
+    !CI ^ cli_vartypes := X.
+clauses_info_set_headvars(X, !CI) :-
+    !CI ^ cli_headvars := X.
+clauses_info_set_clauses_rep(X, Y, !CI) :-
+    !CI ^ cli_rep := X,
+    !CI ^ cli_item_numbers := Y.
+clauses_info_set_rtti_varmaps(X, !CI) :-
+    !CI ^ cli_rtti_varmaps := X.
+clauses_info_set_have_foreign_clauses(X, !CI) :-
+    !CI ^ cli_have_foreign_clauses := X.
+clauses_info_set_had_syntax_errors(X, !CI) :-
+    !CI ^ cli_had_syntax_errors := X.
+
+%-----------------------------------------------------------------------------%
+
+clauses_info_get_headvar_list(CI, HeadVarList) :-
+    clauses_info_get_headvars(CI, HeadVars),
+    HeadVarList = proc_arg_vector_to_list(HeadVars).
+
+:- type clauses_rep
+    --->    clauses_rep(
+                cr_num_clauses      :: int,
+                cr_clauses_cord     :: cord(clause)
+            ).
+
+init_clauses_rep = clauses_rep(0, cord.init).
+
+clause_list_is_empty(ClausesRep) = IsEmpty :-
+    ClausesRep = clauses_rep(_, ClausesCord),
+    ( if cord.is_empty(ClausesCord) then
+        IsEmpty = yes
+    else
+        IsEmpty = no
+    ).
+
+num_clauses_in_clauses_rep(ClausesRep) = NumClauses :-
+    ClausesRep = clauses_rep(NumClauses, _).
+
+get_clause_list(Clauses, ClausesRep0, ClausesRep) :-
+    ClausesRep0 = clauses_rep(NumClauses, ClausesCord0),
+    Clauses = cord.list(ClausesCord0),
+    ClausesCord = cord.from_list(Clauses),
+    ClausesRep = clauses_rep(NumClauses, ClausesCord).
+
+get_clause_list_for_replacement(ClausesRep, Clauses) :-
+    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
+    Clauses = cord.list(ClausesCord).
+
+get_clause_list_maybe_repeated(ClausesRep, Clauses) :-
+    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
+    Clauses = cord.list(ClausesCord).
+
+get_first_clause(ClausesRep, FirstClause) :-
+    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
+    cord.get_first(ClausesCord, FirstClause).
+
+clauses_info_clauses(Clauses, ItemNumbers, !CI) :-
+    ItemNumbers = !.CI ^ cli_item_numbers,
+    ClausesRep0 = !.CI ^ cli_rep,
+    get_clause_list(Clauses, ClausesRep0, ClausesRep),
+    !CI ^ cli_rep := ClausesRep.
+
+set_clause_list(Clauses, ClausesRep) :-
+    ClausesRep = clauses_rep(list.length(Clauses), cord.from_list(Clauses)).
+
+add_clause(Clause, !ClausesRep) :-
+    !.ClausesRep = clauses_rep(NumClauses0, ClausesCord0),
+    NumClauses = NumClauses0 + 1,
+    ClausesCord = cord.snoc(ClausesCord0, Clause),
+    !:ClausesRep = clauses_rep(NumClauses, ClausesCord).
+
+%-----------------------------------------------------------------------------%
 
 init_clause_item_numbers_user = user_clauses([], []).
 init_clause_item_numbers_comp_gen = comp_gen_clauses.
@@ -491,122 +609,6 @@ maybe_merge_clause_item_number_regions(Region0, Regions12, Regions) :-
             Regions = [Region0, Region1 | Regions2]
         )
     ).
-
-%-----------------------------------------------------------------------------%
-
-clauses_info_init(PredOrFunc, Arity, ItemNumbers, ClausesInfo) :-
-    varset.init(VarSet0),
-    make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
-    init_vartypes(VarTypes),
-    map.init(TVarNameMap),
-    HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
-    set_clause_list([], ClausesRep),
-    rtti_varmaps_init(RttiVarMaps),
-    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
-        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
-        no_foreign_lang_clauses, no_clause_syntax_errors).
-
-clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
-    varset.init(VarSet),
-    init_vartypes(VarTypes),
-    map.init(TVarNameMap),
-    % Procedures introduced for assertions are always predicates, never
-    % functions.
-    HeadVarVec = proc_arg_vector_init(pf_predicate, HeadVars),
-    set_clause_list([], ClausesRep),
-    ItemNumbers = init_clause_item_numbers_comp_gen,
-    rtti_varmaps_init(RttiVarMaps),
-    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
-        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
-        no_foreign_lang_clauses, no_clause_syntax_errors).
-
-clauses_info_get_varset(CI, CI ^ cli_varset).
-clauses_info_get_tvar_name_map(CI, CI ^ cli_tvar_name_map).
-clauses_info_get_explicit_vartypes(CI, CI ^ cli_explicit_vartypes).
-clauses_info_get_vartypes(CI, CI ^ cli_vartypes).
-clauses_info_get_headvars(CI, CI ^ cli_headvars).
-clauses_info_get_clauses_rep(CI, CI ^ cli_rep, CI ^ cli_item_numbers).
-clauses_info_get_rtti_varmaps(CI, CI ^ cli_rtti_varmaps).
-clauses_info_get_have_foreign_clauses(CI, CI ^ cli_have_foreign_clauses).
-clauses_info_get_had_syntax_errors(CI, CI ^ cli_had_syntax_errors).
-
-clauses_info_set_varset(X, !CI) :-
-    !CI ^ cli_varset := X.
-clauses_info_set_tvar_name_map(X, !CI) :-
-    !CI ^ cli_tvar_name_map := X.
-clauses_info_set_explicit_vartypes(X, !CI) :-
-    !CI ^ cli_explicit_vartypes := X.
-clauses_info_set_vartypes(X, !CI) :-
-    !CI ^ cli_vartypes := X.
-clauses_info_set_headvars(X, !CI) :-
-    !CI ^ cli_headvars := X.
-clauses_info_set_clauses_rep(X, Y, !CI) :-
-    !CI ^ cli_rep := X,
-    !CI ^ cli_item_numbers := Y.
-clauses_info_set_rtti_varmaps(X, !CI) :-
-    !CI ^ cli_rtti_varmaps := X.
-clauses_info_set_have_foreign_clauses(X, !CI) :-
-    !CI ^ cli_have_foreign_clauses := X.
-clauses_info_set_had_syntax_errors(X, !CI) :-
-    !CI ^ cli_had_syntax_errors := X.
-
-%-----------------------------------------------------------------------------%
-
-clauses_info_get_headvar_list(CI, HeadVarList) :-
-    clauses_info_get_headvars(CI, HeadVars),
-    HeadVarList = proc_arg_vector_to_list(HeadVars).
-
-:- type clauses_rep
-    --->    clauses_rep(
-                cr_num_clauses      :: int,
-                cr_clauses_cord     :: cord(clause)
-            ).
-
-init_clauses_rep = clauses_rep(0, cord.init).
-
-clause_list_is_empty(ClausesRep) = IsEmpty :-
-    ClausesRep = clauses_rep(_, ClausesCord),
-    ( if cord.is_empty(ClausesCord) then
-        IsEmpty = yes
-    else
-        IsEmpty = no
-    ).
-
-num_clauses_in_clauses_rep(ClausesRep) = NumClauses :-
-    ClausesRep = clauses_rep(NumClauses, _).
-
-get_clause_list(Clauses, ClausesRep0, ClausesRep) :-
-    ClausesRep0 = clauses_rep(NumClauses, ClausesCord0),
-    Clauses = cord.list(ClausesCord0),
-    ClausesCord = cord.from_list(Clauses),
-    ClausesRep = clauses_rep(NumClauses, ClausesCord).
-
-get_clause_list_for_replacement(ClausesRep, Clauses) :-
-    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
-    Clauses = cord.list(ClausesCord).
-
-get_clause_list_maybe_repeated(ClausesRep, Clauses) :-
-    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
-    Clauses = cord.list(ClausesCord).
-
-get_first_clause(ClausesRep, FirstClause) :-
-    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
-    cord.get_first(ClausesCord, FirstClause).
-
-set_clause_list(Clauses, ClausesRep) :-
-    ClausesRep = clauses_rep(list.length(Clauses), cord.from_list(Clauses)).
-
-clauses_info_clauses(Clauses, ItemNumbers, !CI) :-
-    ItemNumbers = !.CI ^ cli_item_numbers,
-    ClausesRep0 = !.CI ^ cli_rep,
-    get_clause_list(Clauses, ClausesRep0, ClausesRep),
-    !CI ^ cli_rep := ClausesRep.
-
-add_clause(Clause, !ClausesRep) :-
-    !.ClausesRep = clauses_rep(NumClauses0, ClausesCord0),
-    NumClauses = NumClauses0 + 1,
-    ClausesCord = cord.snoc(ClausesCord0, Clause),
-    !:ClausesRep = clauses_rep(NumClauses, ClausesCord).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_clauses.
