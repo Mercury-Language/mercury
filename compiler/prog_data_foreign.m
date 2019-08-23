@@ -263,17 +263,18 @@ default_export_enum_attributes =
 :- type pragma_foreign_proc_attributes.
 
 :- func default_attributes(foreign_language) = pragma_foreign_proc_attributes.
+
+:- func get_foreign_language(pragma_foreign_proc_attributes) =
+    foreign_language.
 :- func get_may_call_mercury(pragma_foreign_proc_attributes) =
     proc_may_call_mercury.
 :- func get_thread_safe(pragma_foreign_proc_attributes) = proc_thread_safe.
+:- func get_tabled_for_io(pragma_foreign_proc_attributes) =
+    proc_tabled_for_io.
 :- func get_purity(pragma_foreign_proc_attributes) = purity.
 :- func get_terminates(pragma_foreign_proc_attributes) = proc_terminates.
 :- func get_user_annotated_sharing(pragma_foreign_proc_attributes) =
     user_annotated_sharing.
-:- func get_foreign_language(pragma_foreign_proc_attributes) =
-    foreign_language.
-:- func get_tabled_for_io(pragma_foreign_proc_attributes) =
-    proc_tabled_for_io.
 :- func get_may_throw_exception(pragma_foreign_proc_attributes) =
     proc_may_throw_exception.
 :- func get_ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
@@ -488,9 +489,11 @@ default_export_enum_attributes =
 :- type pragma_foreign_proc_extra_attributes ==
     list(pragma_foreign_proc_extra_attribute).
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
-    % If you add an attribute you may need to modify
+    % If you add an attribute, you may need to modify
     % `foreign_proc_attributes_to_strings'.
     %
 :- type pragma_foreign_proc_attributes
@@ -524,9 +527,9 @@ default_attributes(Language) =
         proc_default_allocates_memory, proc_default_registers_roots,
         no, []).
 
+get_foreign_language(Attrs) = Attrs ^ attr_foreign_language.
 get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
 get_thread_safe(Attrs) = Attrs ^ attr_thread_safe.
-get_foreign_language(Attrs) = Attrs ^ attr_foreign_language.
 get_tabled_for_io(Attrs) = Attrs ^ attr_tabled_for_io.
 get_purity(Attrs) = Attrs ^ attr_purity.
 get_terminates(Attrs) = Attrs ^ attr_terminates.

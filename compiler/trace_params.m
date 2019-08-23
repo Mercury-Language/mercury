@@ -68,6 +68,25 @@
     is semidet.
 :- func default_trace_suppress = trace_suppress_items.
 
+%-----------------------------------------------------------------------------%
+
+:- func eff_trace_level(module_info, pred_info, proc_info, trace_level)
+    = trace_level.
+
+    % Given a trace level for a module, return the trace level we should use
+    % for compiler-generated unify, index and compare predicates.
+    %
+:- func trace_level_for_unify_compare(trace_level) = trace_level.
+
+%-----------------------------------------------------------------------------%
+
+:- func trace_level_none = trace_level.
+
+:- func at_least_at_shallow(trace_level) = bool.
+:- func at_least_at_deep(trace_level) = bool.
+
+%-----------------------------------------------------------------------------%
+
     % These functions check for various properties of the global trace level.
     %
 :- func given_trace_level_is_none(trace_level) = bool.
@@ -104,18 +123,7 @@
 :- func eff_trace_needs_port(module_info, pred_info, proc_info, trace_level,
     trace_suppress_items, trace_port) = bool.
 
-:- func eff_trace_level(module_info, pred_info, proc_info, trace_level)
-    = trace_level.
-
-:- func trace_level_none = trace_level.
-
-:- func at_least_at_shallow(trace_level) = bool.
-:- func at_least_at_deep(trace_level) = bool.
-
-    % Given a trace level for a module, return the trace level we should use
-    % for compiler-generated unify, index and compare predicates.
-    %
-:- func trace_level_for_unify_compare(trace_level) = trace_level.
+%-----------------------------------------------------------------------------%
 
     % This is used to represent the trace level in the module layout
     % and in proc layouts.
@@ -173,28 +181,7 @@
 
 :- type trace_suppress_items == set(trace_suppress_item).
 
-trace_level_none = none.
-
-trace_level_for_unify_compare(none) = none.
-trace_level_for_unify_compare(basic) = none.
-trace_level_for_unify_compare(basic_user) = none.
-trace_level_for_unify_compare(shallow) = shallow.
-trace_level_for_unify_compare(deep) = shallow.
-trace_level_for_unify_compare(decl_rep) = shallow.
-
-at_least_at_shallow(none) = no.
-at_least_at_shallow(basic) = no.
-at_least_at_shallow(basic_user) = no.
-at_least_at_shallow(shallow) = yes.
-at_least_at_shallow(deep) = yes.
-at_least_at_shallow(decl_rep) = yes.
-
-at_least_at_deep(none) = no.
-at_least_at_deep(basic) = no.
-at_least_at_deep(basic_user) = no.
-at_least_at_deep(shallow) = no.
-at_least_at_deep(deep) = yes.
-at_least_at_deep(decl_rep) = yes.
+%-----------------------------------------------------------------------------%
 
 convert_trace_level("minimum", no,  no,  yes(none)).
 convert_trace_level("minimum", yes, no,  yes(shallow)).
@@ -208,6 +195,90 @@ convert_trace_level("rep",     _,   _,   yes(decl_rep)).
 convert_trace_level("default", no,  no,  yes(none)).
 convert_trace_level("default", yes, no,  yes(deep)).
 convert_trace_level("default", _,   yes, yes(decl_rep)).
+
+convert_trace_suppress(SuppressString, SuppressItemSet) :-
+    SuppressWords = string.words_separator(char_is_comma, SuppressString),
+    list.map(convert_item_name, SuppressWords, SuppressItemLists),
+    list.condense(SuppressItemLists, SuppressItems),
+    set.list_to_set(SuppressItems, SuppressItemSet).
+
+:- pred char_is_comma(char::in) is semidet.
+
+char_is_comma(',').
+
+:- pred convert_item_name(string::in, list(trace_suppress_item)::out)
+    is semidet.
+
+convert_item_name(String, Names) :-
+    ( if convert_port_name(String) = PortName then
+        Names = [suppress_port(PortName)]
+    else if convert_port_class_name(String) = PortNames then
+        list.map(wrap_port, PortNames, Names)
+    else if convert_other_name(String) = OtherName then
+        Names = [OtherName]
+    else
+        fail
+    ).
+
+:- pred wrap_port(trace_port::in, trace_suppress_item::out) is det.
+
+wrap_port(Port, suppress_port(Port)).
+
+:- func convert_port_name(string) = trace_port is semidet.
+
+    % The call port cannot be disabled, because its layout structure is
+    % referred to implicitly by the redo command in mdb.
+    %
+    % The exception port cannot be disabled, because it is never put into
+    % compiler-generated code in the first place; such events are created
+    % on the fly by library/exception.m.
+% convert_port_name("call") = port_call.
+convert_port_name("exit") = port_exit.
+convert_port_name("fail") = port_fail.
+convert_port_name("redo") = port_redo.
+% convert_port_name("excp") = port_exception.
+convert_port_name("exception") = port_exception.
+convert_port_name("cond") = port_ite_cond.
+convert_port_name("ite_cond") = port_ite_cond.
+convert_port_name("then") = port_ite_then.
+convert_port_name("ite_then") = port_ite_then.
+convert_port_name("else") = port_ite_else.
+convert_port_name("ite_else") = port_ite_else.
+convert_port_name("nege") = port_neg_enter.
+convert_port_name("neg_enter") = port_neg_enter.
+convert_port_name("negs") = port_neg_success.
+convert_port_name("neg_success") = port_neg_success.
+convert_port_name("negf") = port_neg_failure.
+convert_port_name("neg_failure") = port_neg_failure.
+convert_port_name("swtc") = port_switch.
+convert_port_name("switch") = port_switch.
+convert_port_name("disj_first") = port_disj_first.
+convert_port_name("disj_later") = port_disj_later.
+convert_port_name("tail") = port_tailrec_call.
+convert_port_name("user") = port_user.
+
+:- func convert_port_class_name(string) = list(trace_port) is semidet.
+
+convert_port_class_name("interface") =
+    [port_call, port_exit, port_redo, port_fail, port_exception].
+convert_port_class_name("internal") =
+    [port_ite_then, port_ite_else, port_switch,
+    port_disj_first, port_disj_later].
+convert_port_class_name("context") =
+    [port_ite_cond, port_neg_enter, port_neg_success, port_neg_failure].
+
+:- func convert_other_name(string) = trace_suppress_item is semidet.
+
+convert_other_name("return") = suppress_return_info.
+convert_other_name("return_info") = suppress_return_info.
+convert_other_name("names") = suppress_all_var_names.
+convert_other_name("all_var_names") = suppress_all_var_names.
+convert_other_name("bodies") = suppress_proc_body_reps.
+convert_other_name("proc_body_reps") = suppress_proc_body_reps.
+
+default_trace_suppress = set.init.
+
+%-----------------------------------------------------------------------------%
 
 eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
     ( if TraceLevel = none then
@@ -298,48 +369,37 @@ usual_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
         EffTraceLevel = TraceLevel
     ).
 
+trace_level_for_unify_compare(none) = none.
+trace_level_for_unify_compare(basic) = none.
+trace_level_for_unify_compare(basic_user) = none.
+trace_level_for_unify_compare(shallow) = shallow.
+trace_level_for_unify_compare(deep) = shallow.
+trace_level_for_unify_compare(decl_rep) = shallow.
+
+%-----------------------------------------------------------------------------%
+
+trace_level_none = none.
+
+at_least_at_shallow(none) = no.
+at_least_at_shallow(basic) = no.
+at_least_at_shallow(basic_user) = no.
+at_least_at_shallow(shallow) = yes.
+at_least_at_shallow(deep) = yes.
+at_least_at_shallow(decl_rep) = yes.
+
+at_least_at_deep(none) = no.
+at_least_at_deep(basic) = no.
+at_least_at_deep(basic_user) = no.
+at_least_at_deep(shallow) = no.
+at_least_at_deep(deep) = yes.
+at_least_at_deep(decl_rep) = yes.
+
 given_trace_level_is_none(TraceLevel) =
     trace_level_is_none(TraceLevel).
 
-eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
-    trace_level_is_none(
-        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
-eff_trace_level_needs_input_vars(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
-    trace_level_needs_input_vars(
-        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
-eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
-    trace_level_needs_fail_vars(
-        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
-eff_trace_level_needs_fixed_slots(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
-    trace_level_needs_fixed_slots(
-        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
-eff_trace_level_needs_from_full_slot(ModuleInfo, PredInfo, ProcInfo,
-        TraceLevel) =
-    trace_level_needs_from_full_slot(
-        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
-eff_trace_needs_all_var_names(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
-        SuppressItems) =
-    trace_needs_all_var_names(
-        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
-        SuppressItems).
-eff_trace_needs_proc_body_reps(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
-        SuppressItems) =
-    trace_needs_proc_body_reps(
-        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
-        SuppressItems).
-eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo, TraceLevel, SuppressItems,
-        Port) =
-    trace_needs_port(
-        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
-        SuppressItems, Port).
+%-----------------------------------------------------------------------------%
 
 :- func trace_level_is_none(trace_level) = bool.
-:- func trace_level_needs_input_vars(trace_level) = bool.
-:- func trace_level_needs_fail_vars(trace_level) = bool.
-:- func trace_level_needs_fixed_slots(trace_level) = bool.
-:- func trace_level_needs_from_full_slot(trace_level) = bool.
-:- func trace_needs_all_var_names(trace_level, trace_suppress_items) = bool.
-:- func trace_needs_port(trace_level, trace_suppress_items, trace_port) = bool.
 
 trace_level_is_none(none) = yes.
 trace_level_is_none(basic) = no.
@@ -348,12 +408,16 @@ trace_level_is_none(shallow) = no.
 trace_level_is_none(deep) = no.
 trace_level_is_none(decl_rep) = no.
 
+:- func trace_level_needs_input_vars(trace_level) = bool.
+
 trace_level_needs_input_vars(none) = no.
 trace_level_needs_input_vars(basic) = no.
 trace_level_needs_input_vars(basic_user) = no.
 trace_level_needs_input_vars(shallow) = yes.
 trace_level_needs_input_vars(deep) = yes.
 trace_level_needs_input_vars(decl_rep) = yes.
+
+:- func trace_level_needs_fail_vars(trace_level) = bool.
 
 trace_level_needs_fail_vars(none) = no.
 trace_level_needs_fail_vars(basic) = no.
@@ -362,12 +426,16 @@ trace_level_needs_fail_vars(shallow) = yes.
 trace_level_needs_fail_vars(deep) = yes.
 trace_level_needs_fail_vars(decl_rep) = yes.
 
+:- func trace_level_needs_fixed_slots(trace_level) = bool.
+
 trace_level_needs_fixed_slots(none) = no.
 trace_level_needs_fixed_slots(basic) = yes.
 trace_level_needs_fixed_slots(basic_user) = yes.
 trace_level_needs_fixed_slots(shallow) = yes.
 trace_level_needs_fixed_slots(deep) = yes.
 trace_level_needs_fixed_slots(decl_rep) = yes.
+
+:- func trace_level_needs_from_full_slot(trace_level) = bool.
 
 trace_level_needs_from_full_slot(none) = no.
 trace_level_needs_from_full_slot(basic) = no.
@@ -383,20 +451,6 @@ trace_level_allows_delay_death(shallow) = no.
 trace_level_allows_delay_death(deep) = yes.
 trace_level_allows_delay_death(decl_rep) = yes.
 
-trace_level_needs_meaningful_var_names(none) = no.
-trace_level_needs_meaningful_var_names(basic) = no.
-trace_level_needs_meaningful_var_names(basic_user) = yes.
-trace_level_needs_meaningful_var_names(shallow) = no.
-trace_level_needs_meaningful_var_names(deep) = yes.
-trace_level_needs_meaningful_var_names(decl_rep) = yes.
-
-trace_level_allows_tail_rec(none) = yes.
-trace_level_allows_tail_rec(basic) = yes.
-trace_level_allows_tail_rec(basic_user) = yes.
-trace_level_allows_tail_rec(shallow) = no.
-trace_level_allows_tail_rec(deep) = yes.
-trace_level_allows_tail_rec(decl_rep) = no.
-
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
     ( if
         trace_level_has_return_info(TraceLevel) = yes,
@@ -406,6 +460,22 @@ trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
     else
         Need = no
     ).
+
+trace_level_allows_tail_rec(none) = yes.
+trace_level_allows_tail_rec(basic) = yes.
+trace_level_allows_tail_rec(basic_user) = yes.
+trace_level_allows_tail_rec(shallow) = no.
+trace_level_allows_tail_rec(deep) = yes.
+trace_level_allows_tail_rec(decl_rep) = no.
+
+trace_level_needs_meaningful_var_names(none) = no.
+trace_level_needs_meaningful_var_names(basic) = no.
+trace_level_needs_meaningful_var_names(basic_user) = yes.
+trace_level_needs_meaningful_var_names(shallow) = no.
+trace_level_needs_meaningful_var_names(deep) = yes.
+trace_level_needs_meaningful_var_names(decl_rep) = yes.
+
+:- func trace_needs_all_var_names(trace_level, trace_suppress_items) = bool.
 
 trace_needs_all_var_names(TraceLevel, TraceSuppressItems) = Need :-
     ( if
@@ -427,9 +497,50 @@ trace_needs_proc_body_reps(TraceLevel, TraceSuppressItems) = Need :-
         Need = no
     ).
 
+%-----------------------------------------------------------------------------%
+
+eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
+    trace_level_is_none(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+
+eff_trace_level_needs_input_vars(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
+    trace_level_needs_input_vars(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+
+eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
+    trace_level_needs_fail_vars(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+
+eff_trace_level_needs_fixed_slots(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
+    trace_level_needs_fixed_slots(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+
+eff_trace_level_needs_from_full_slot(ModuleInfo, PredInfo, ProcInfo,
+        TraceLevel) =
+    trace_level_needs_from_full_slot(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
+
+eff_trace_needs_all_var_names(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
+        SuppressItems) =
+    trace_needs_all_var_names(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
+        SuppressItems).
+
+eff_trace_needs_proc_body_reps(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
+        SuppressItems) =
+    trace_needs_proc_body_reps(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
+        SuppressItems).
+
+eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo, TraceLevel, SuppressItems,
+        Port) =
+    trace_needs_port(
+        eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
+        SuppressItems, Port).
+
+%-----------------------------------------------------------------------------%
+
 :- func trace_level_has_return_info(trace_level) = bool.
-:- func trace_level_has_all_var_names(trace_level) = bool.
-:- func trace_level_has_proc_body_reps(trace_level) = bool.
 
 trace_level_has_return_info(none) = no.
 trace_level_has_return_info(basic) = yes.
@@ -438,6 +549,8 @@ trace_level_has_return_info(shallow) = yes.
 trace_level_has_return_info(deep) = yes.
 trace_level_has_return_info(decl_rep) = yes.
 
+:- func trace_level_has_all_var_names(trace_level) = bool.
+
 trace_level_has_all_var_names(none) = no.
 trace_level_has_all_var_names(basic) = no.
 trace_level_has_all_var_names(basic_user) = no.
@@ -445,94 +558,14 @@ trace_level_has_all_var_names(shallow) = no.
 trace_level_has_all_var_names(deep) = no.
 trace_level_has_all_var_names(decl_rep) = yes.
 
+:- func trace_level_has_proc_body_reps(trace_level) = bool.
+
 trace_level_has_proc_body_reps(none) = no.
 trace_level_has_proc_body_reps(basic) = no.
 trace_level_has_proc_body_reps(basic_user) = no.
 trace_level_has_proc_body_reps(shallow) = no.
 trace_level_has_proc_body_reps(deep) = no.
 trace_level_has_proc_body_reps(decl_rep) = yes.
-
-convert_trace_suppress(SuppressString, SuppressItemSet) :-
-    SuppressWords = string.words_separator(char_is_comma, SuppressString),
-    list.map(convert_item_name, SuppressWords, SuppressItemLists),
-    list.condense(SuppressItemLists, SuppressItems),
-    set.list_to_set(SuppressItems, SuppressItemSet).
-
-:- pred char_is_comma(char::in) is semidet.
-
-char_is_comma(',').
-
-default_trace_suppress = set.init.
-
-:- func convert_port_name(string) = trace_port is semidet.
-
-    % The call port cannot be disabled, because its layout structure is
-    % referred to implicitly by the redo command in mdb.
-    %
-    % The exception port cannot be disabled, because it is never put into
-    % compiler-generated code in the first place; such events are created
-    % on the fly by library/exception.m.
-% convert_port_name("call") = port_call.
-convert_port_name("exit") = port_exit.
-convert_port_name("fail") = port_fail.
-convert_port_name("redo") = port_redo.
-% convert_port_name("excp") = port_exception.
-convert_port_name("exception") = port_exception.
-convert_port_name("cond") = port_ite_cond.
-convert_port_name("ite_cond") = port_ite_cond.
-convert_port_name("then") = port_ite_then.
-convert_port_name("ite_then") = port_ite_then.
-convert_port_name("else") = port_ite_else.
-convert_port_name("ite_else") = port_ite_else.
-convert_port_name("nege") = port_neg_enter.
-convert_port_name("neg_enter") = port_neg_enter.
-convert_port_name("negs") = port_neg_success.
-convert_port_name("neg_success") = port_neg_success.
-convert_port_name("negf") = port_neg_failure.
-convert_port_name("neg_failure") = port_neg_failure.
-convert_port_name("swtc") = port_switch.
-convert_port_name("switch") = port_switch.
-convert_port_name("disj_first") = port_disj_first.
-convert_port_name("disj_later") = port_disj_later.
-convert_port_name("tail") = port_tailrec_call.
-convert_port_name("user") = port_user.
-
-:- func convert_port_class_name(string) = list(trace_port) is semidet.
-
-convert_port_class_name("interface") =
-    [port_call, port_exit, port_redo, port_fail, port_exception].
-convert_port_class_name("internal") =
-    [port_ite_then, port_ite_else, port_switch,
-    port_disj_first, port_disj_later].
-convert_port_class_name("context") =
-    [port_ite_cond, port_neg_enter, port_neg_success, port_neg_failure].
-
-:- func convert_other_name(string) = trace_suppress_item is semidet.
-
-convert_other_name("return") = suppress_return_info.
-convert_other_name("return_info") = suppress_return_info.
-convert_other_name("names") = suppress_all_var_names.
-convert_other_name("all_var_names") = suppress_all_var_names.
-convert_other_name("bodies") = suppress_proc_body_reps.
-convert_other_name("proc_body_reps") = suppress_proc_body_reps.
-
-:- pred convert_item_name(string::in, list(trace_suppress_item)::out)
-    is semidet.
-
-convert_item_name(String, Names) :-
-    ( if convert_port_name(String) = PortName then
-        Names = [suppress_port(PortName)]
-    else if convert_port_class_name(String) = PortNames then
-        list.map(wrap_port, PortNames, Names)
-    else if convert_other_name(String) = OtherName then
-        Names = [OtherName]
-    else
-        fail
-    ).
-
-:- pred wrap_port(trace_port::in, trace_suppress_item::out) is det.
-
-wrap_port(Port, suppress_port(Port)).
 
     % If this is modified, then the corresponding code in
     % runtime/mercury_stack_layout.h needs to be updated.
@@ -600,6 +633,8 @@ trace_level_allows_port_suppression(basic_user) = yes.
 trace_level_allows_port_suppression(shallow) = yes.
 trace_level_allows_port_suppression(deep) = yes.
 trace_level_allows_port_suppression(decl_rep) = no.
+
+:- func trace_needs_port(trace_level, trace_suppress_items, trace_port) = bool.
 
 trace_needs_port(TraceLevel, TraceSuppressItems, Port) = NeedsPort :-
     ( if

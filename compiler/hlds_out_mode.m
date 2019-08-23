@@ -59,27 +59,27 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_structured_unify_mode(unify_mode::in, int::in,
-    output_lang::in, incl_addr::in, inst_varset::in, io::di, io::uo) is det.
-:- func mercury_structured_unify_mode_to_string(unify_mode, int,
-    output_lang, incl_addr, inst_varset) = string.
-
 :- pred mercury_output_structured_unify_mode_list(list(unify_mode)::in,
     int::in, output_lang::in, incl_addr::in, inst_varset::in,
     io::di, io::uo) is det.
 :- func mercury_structured_unify_mode_list_to_string(list(unify_mode),
     int, output_lang, incl_addr, inst_varset) = string.
 
-%-----------------------------------------------------------------------------%
+:- pred mercury_output_structured_unify_mode(unify_mode::in, int::in,
+    output_lang::in, incl_addr::in, inst_varset::in, io::di, io::uo) is det.
+:- func mercury_structured_unify_mode_to_string(unify_mode, int,
+    output_lang, incl_addr, inst_varset) = string.
 
-:- pred mercury_output_unify_mode(unify_mode::in, inst_varset::in,
-    io::di, io::uo) is det.
-:- func mercury_unify_mode_to_string(unify_mode, inst_varset) = string.
+%-----------------------------------------------------------------------------%
 
 :- pred mercury_output_unify_mode_list(list(unify_mode)::in, inst_varset::in,
     io::di, io::uo) is det.
 :- func mercury_unify_mode_list_to_string(list(unify_mode), inst_varset)
     = string.
+
+:- pred mercury_output_unify_mode(unify_mode::in, inst_varset::in,
+    io::di, io::uo) is det.
+:- func mercury_unify_mode_to_string(unify_mode, inst_varset) = string.
 
 :- implementation.
 
@@ -119,101 +119,6 @@ write_var_inst_list(VarSet, VarNamePrint, Indent, [Var - Inst | VarsInsts],
         mercury_output_newline(Indent, !IO),
         io.write_string("%            ", !IO),
         write_var_inst_list(VarSet, VarNamePrint, Indent, VarsInsts, !IO)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-mercury_output_structured_unify_mode_list(Insts, Indent, Lang, InclAddr,
-        InstVarSet, !IO) :-
-    mercury_format_structured_unify_mode_list(Insts, 1, Indent, Lang, InclAddr,
-        InstVarSet, !IO).
-
-mercury_structured_unify_mode_list_to_string(Insts, Indent, Lang, InclAddr,
-        InstVarSet) = String :-
-    mercury_format_structured_unify_mode_list(Insts, 1, Indent, Lang, InclAddr,
-        InstVarSet, "", String).
-
-:- pred mercury_format_structured_unify_mode_list(list(unify_mode)::in,
-    int::in, int::in, output_lang::in, incl_addr::in, inst_varset::in,
-    U::di, U::uo) is det <= output(U).
-
-mercury_format_structured_unify_mode_list([], _, _, _, _, _, !U).
-mercury_format_structured_unify_mode_list([UnifyMode | UnifyModes], ArgNum,
-        Indent, Lang, InclAddr, InstVarSet, !U) :-
-    mercury_format_tabs(Indent, !U),
-    add_string("argument ", !U),
-    add_int(ArgNum, !U),
-    add_string(":\n", !U),
-    mercury_format_structured_unify_mode(UnifyMode, Indent,
-        Lang, InclAddr, InstVarSet, !U),
-    mercury_format_structured_unify_mode_list(UnifyModes, ArgNum +1, Indent,
-        Lang, InclAddr, InstVarSet, !U).
-
-%-----------------------------------------------------------------------------%
-
-mercury_output_structured_unify_mode(Inst, Indent, Lang, InclAddr,
-        InstVarSet, !IO) :-
-    mercury_format_structured_unify_mode(Inst, Indent, Lang, InclAddr,
-        InstVarSet, !IO).
-
-mercury_structured_unify_mode_to_string(Inst, Indent, Lang, InclAddr,
-        InstVarSet) = String :-
-    mercury_format_structured_unify_mode(Inst, Indent, Lang, InclAddr,
-        InstVarSet, "", String).
-
-:- pred mercury_format_structured_unify_mode(unify_mode::in, int::in,
-    output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo) is det
-    <= output(U).
-
-mercury_format_structured_unify_mode(UnifyMode, Indent, Lang, InclAddr,
-        InstVarSet, !U) :-
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(LHSInit, LHSFinal),
-        from_to_insts(RHSInit, RHSFinal)),
-    get_inst_addr(LHSInit, LHSInitAddr),
-    get_inst_addr(RHSInit, RHSInitAddr),
-    get_inst_addr(LHSFinal, LHSFinalAddr),
-    get_inst_addr(RHSFinal, RHSFinalAddr),
-
-    mercury_format_tabs(Indent, !U),
-    add_string("old lhs inst:\n", !U),
-    mercury_format_structured_inst("\n", LHSInit, Indent, Lang, InclAddr,
-        InstVarSet, !U),
-
-    mercury_format_tabs(Indent, !U),
-    ( if RHSInitAddr = LHSInitAddr then
-        % We have printed the old lhs inst.
-        add_string("old rhs inst: same as old lhs inst\n", !U)
-    else
-        add_string("old rhs inst:\n", !U),
-        mercury_format_structured_inst("\n", RHSInit, Indent, Lang, InclAddr,
-            InstVarSet, !U)
-    ),
-
-    mercury_format_tabs(Indent, !U),
-    ( if LHSFinalAddr = LHSInitAddr then
-        % We have printed the old lhs inst.
-        add_string("new lhs inst: unchanged\n", !U)
-    else if LHSFinalAddr = RHSInitAddr then
-        % We have printed or described the old rhs inst.
-        add_string("new lhs inst: changed to old rhs inst\n", !U)
-    else
-        add_string("new lhs inst:\n", !U),
-        mercury_format_structured_inst("\n", LHSFinal, Indent, Lang, InclAddr,
-            InstVarSet, !U)
-    ),
-
-    mercury_format_tabs(Indent, !U),
-    ( if RHSFinalAddr = RHSInitAddr then
-        % We have printed or described the old rhs inst.
-        add_string("new rhs inst: unchanged\n", !U)
-    else if RHSFinalAddr = LHSFinalAddr then
-        % We have printed or described the new lhs inst.
-        add_string("new rhs inst: changed to new lhs inst\n", !U)
-    else
-        add_string("new rhs inst:\n", !U),
-        mercury_format_structured_inst("\n", RHSFinal, Indent, Lang, InclAddr,
-            InstVarSet, !U)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -407,6 +312,101 @@ mercury_format_structured_bound_insts([BoundInst | BoundInsts],
 ").
 
 get_inst_addr(_, -1).
+
+%-----------------------------------------------------------------------------%
+
+mercury_output_structured_unify_mode_list(Insts, Indent, Lang, InclAddr,
+        InstVarSet, !IO) :-
+    mercury_format_structured_unify_mode_list(Insts, 1, Indent, Lang, InclAddr,
+        InstVarSet, !IO).
+
+mercury_structured_unify_mode_list_to_string(Insts, Indent, Lang, InclAddr,
+        InstVarSet) = String :-
+    mercury_format_structured_unify_mode_list(Insts, 1, Indent, Lang, InclAddr,
+        InstVarSet, "", String).
+
+:- pred mercury_format_structured_unify_mode_list(list(unify_mode)::in,
+    int::in, int::in, output_lang::in, incl_addr::in, inst_varset::in,
+    U::di, U::uo) is det <= output(U).
+
+mercury_format_structured_unify_mode_list([], _, _, _, _, _, !U).
+mercury_format_structured_unify_mode_list([UnifyMode | UnifyModes], ArgNum,
+        Indent, Lang, InclAddr, InstVarSet, !U) :-
+    mercury_format_tabs(Indent, !U),
+    add_string("argument ", !U),
+    add_int(ArgNum, !U),
+    add_string(":\n", !U),
+    mercury_format_structured_unify_mode(UnifyMode, Indent,
+        Lang, InclAddr, InstVarSet, !U),
+    mercury_format_structured_unify_mode_list(UnifyModes, ArgNum +1, Indent,
+        Lang, InclAddr, InstVarSet, !U).
+
+%-----------------------------------------------------------------------------%
+
+mercury_output_structured_unify_mode(Inst, Indent, Lang, InclAddr,
+        InstVarSet, !IO) :-
+    mercury_format_structured_unify_mode(Inst, Indent, Lang, InclAddr,
+        InstVarSet, !IO).
+
+mercury_structured_unify_mode_to_string(Inst, Indent, Lang, InclAddr,
+        InstVarSet) = String :-
+    mercury_format_structured_unify_mode(Inst, Indent, Lang, InclAddr,
+        InstVarSet, "", String).
+
+:- pred mercury_format_structured_unify_mode(unify_mode::in, int::in,
+    output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo) is det
+    <= output(U).
+
+mercury_format_structured_unify_mode(UnifyMode, Indent, Lang, InclAddr,
+        InstVarSet, !U) :-
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(LHSInit, LHSFinal),
+        from_to_insts(RHSInit, RHSFinal)),
+    get_inst_addr(LHSInit, LHSInitAddr),
+    get_inst_addr(RHSInit, RHSInitAddr),
+    get_inst_addr(LHSFinal, LHSFinalAddr),
+    get_inst_addr(RHSFinal, RHSFinalAddr),
+
+    mercury_format_tabs(Indent, !U),
+    add_string("old lhs inst:\n", !U),
+    mercury_format_structured_inst("\n", LHSInit, Indent, Lang, InclAddr,
+        InstVarSet, !U),
+
+    mercury_format_tabs(Indent, !U),
+    ( if RHSInitAddr = LHSInitAddr then
+        % We have printed the old lhs inst.
+        add_string("old rhs inst: same as old lhs inst\n", !U)
+    else
+        add_string("old rhs inst:\n", !U),
+        mercury_format_structured_inst("\n", RHSInit, Indent, Lang, InclAddr,
+            InstVarSet, !U)
+    ),
+
+    mercury_format_tabs(Indent, !U),
+    ( if LHSFinalAddr = LHSInitAddr then
+        % We have printed the old lhs inst.
+        add_string("new lhs inst: unchanged\n", !U)
+    else if LHSFinalAddr = RHSInitAddr then
+        % We have printed or described the old rhs inst.
+        add_string("new lhs inst: changed to old rhs inst\n", !U)
+    else
+        add_string("new lhs inst:\n", !U),
+        mercury_format_structured_inst("\n", LHSFinal, Indent, Lang, InclAddr,
+            InstVarSet, !U)
+    ),
+
+    mercury_format_tabs(Indent, !U),
+    ( if RHSFinalAddr = RHSInitAddr then
+        % We have printed or described the old rhs inst.
+        add_string("new rhs inst: unchanged\n", !U)
+    else if RHSFinalAddr = LHSFinalAddr then
+        % We have printed or described the new lhs inst.
+        add_string("new rhs inst: changed to new lhs inst\n", !U)
+    else
+        add_string("new rhs inst:\n", !U),
+        mercury_format_structured_inst("\n", RHSFinal, Indent, Lang, InclAddr,
+            InstVarSet, !U)
+    ).
 
 %-----------------------------------------------------------------------------%
 

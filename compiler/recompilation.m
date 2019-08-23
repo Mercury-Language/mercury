@@ -50,11 +50,11 @@
     % This could be done using a timestamp or a hash value.
 :- type version_number == timestamp.
 
-:- pred write_version_number(version_number::in, io::di, io::uo) is det.
-
 :- func term_to_version_number(term(T)) = version_number is semidet.
 
 :- func term_to_timestamp(term(T)) = timestamp is semidet.
+
+:- pred write_version_number(version_number::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -100,6 +100,9 @@
     --->    predicate_item
     ;       function_item.
 
+:- func pred_or_func_to_item_type(pred_or_func::in)
+    = (item_type::out(pred_or_func_item)) is det.
+
 :- pred is_simple_item_type(item_type::(ground >> simple_item)) is semidet.
 
 :- pred is_pred_or_func_item_type(item_type::(ground >> pred_or_func_item))
@@ -108,9 +111,6 @@
 :- pred string_to_item_type(string, item_type).
 :- mode string_to_item_type(in, out) is semidet.
 :- mode string_to_item_type(out, in) is det.
-
-:- func pred_or_func_to_item_type(pred_or_func::in)
-    = (item_type::out(pred_or_func_item)) is det.
 
 :- func type_ctor_to_item_name(type_ctor) = item_name.
 :- func inst_id_to_item_name(inst_id) = item_name.
@@ -345,6 +345,14 @@ item_name_to_mode_id(item_name(SymName, Arity)) = mode_id(SymName, Arity).
 
 %-----------------------------------------------------------------------------%
 
+init_recompilation_info(ModuleName) =
+    recompilation_info(
+        ModuleName,
+        init_used_items,
+        map.init,
+        map.init
+    ).
+
 init_item_id_set(Init) =
     item_id_set(Init, Init, Init, Init, Init, Init, Init, Init, Init, Init).
 
@@ -440,14 +448,6 @@ module_qualify_name(Qualifier, Name) =
     ).
 
 %-----------------------------------------------------------------------------%
-
-init_recompilation_info(ModuleName) =
-    recompilation_info(
-        ModuleName,
-        init_used_items,
-        map.init,
-        map.init
-    ).
 
 record_used_item(ItemType, Id, QualifiedId, !Info) :-
     QualifiedId = item_name(QualifiedName, Arity),

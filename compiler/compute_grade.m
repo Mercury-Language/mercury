@@ -51,10 +51,6 @@
 :- pred postprocess_options_libgrades(globals::in, globals::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Given the current set of options, figure out which grade to use.
-    %
-:- pred compute_grade(globals::in, string::out) is det.
-
     % The inverse of compute_grade: given a grade, set the appropriate options.
     %
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
@@ -63,6 +59,12 @@
     % Produce the grade component of grade-specific installation directories.
     %
 :- pred grade_directory_component(globals::in, string::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % Given the current set of options, figure out which grade to use.
+    %
+:- pred compute_grade(globals::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -33,13 +33,11 @@
     module_info::in, module_info::out) is det.
 :- pred copy_clauses_to_procs_for_pred_in_module_info(pred_id::in,
     module_info::in, module_info::out) is det.
-:- pred copy_clauses_to_proc_in_proc_info(pred_info::in, proc_id::in,
-    proc_info::in, proc_info::out) is det.
-
-%-----------------------------------------------------------------------------%
-
 :- pred copy_clauses_to_nonmethod_procs_for_preds_in_module_info(
     list(pred_id)::in, module_info::in, module_info::out) is det.
+
+:- pred copy_clauses_to_proc_in_proc_info(pred_info::in, proc_id::in,
+    proc_info::in, proc_info::out) is det.
 
 :- pred should_copy_clauses_to_procs(pred_info::in) is semidet.
 
@@ -157,12 +155,6 @@ copy_pred_clauses_to_nonmethod_procs_in_pred_table(PredId, !PredTable) :-
     else
         true
     ).
-
-should_copy_clauses_to_procs(PredInfo) :-
-    % Don't process typeclass methods, because their proc_infos
-    % are generated already mode-correct.
-    pred_info_get_markers(PredInfo, PredMarkers),
-    not check_marker(PredMarkers, marker_class_method).
 
 %-----------------------------------------------------------------------------%
 
@@ -380,6 +372,14 @@ accumulate_disjunction_purity([Disjunct | Disjuncts], !Purity) :-
     DisjunctPurity = goal_get_purity(Disjunct),
     !:Purity = worst_purity(!.Purity, DisjunctPurity),
     accumulate_disjunction_purity(Disjuncts, !Purity).
+
+%-----------------------------------------------------------------------------%
+
+should_copy_clauses_to_procs(PredInfo) :-
+    % Don't process typeclass methods, because their proc_infos
+    % are generated already mode-correct.
+    pred_info_get_markers(PredInfo, PredMarkers),
+    not check_marker(PredMarkers, marker_class_method).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.clause_to_proc.

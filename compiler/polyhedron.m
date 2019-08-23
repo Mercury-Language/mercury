@@ -62,24 +62,24 @@
 
     % The `empty' polyhedron. Equivalent to the constraint `false'.
     %
-:- func polyhedron.empty = polyhedron.
+:- func empty = polyhedron.
 
     % The `universe' polyhedron. Equivalent to the constraint `true'.
     %
-:- func polyhedron.universe = polyhedron.
+:- func universe = polyhedron.
 
     % Constructs a convex polyhedron from a system of linear constraints.
     %
-:- func polyhedron.from_constraints(constraints) = polyhedron.
+:- func from_constraints(constraints) = polyhedron.
 
     % Returns a system of constraints whose solution space defines
     % the given polyhedron.
     %
-:- func polyhedron.constraints(polyhedron) = constraints.
+:- func constraints(polyhedron) = constraints.
 
     % As above but throws an exception if the given polyhedron is empty.
     %
-:- func polyhedron.non_false_constraints(polyhedron) = constraints.
+:- func non_false_constraints(polyhedron) = constraints.
 
     % Succeeds iff the given polyhedron is the empty polyhedron.
     %
@@ -88,49 +88,46 @@
     % is inconsistent. You currently need to call polyhedron.optimize
     % to force this to always work.
     %
-:- pred polyhedron.is_empty(polyhedron::in) is semidet.
+:- pred is_empty(polyhedron::in) is semidet.
 
     % Succeeds iff the given polyhedron is the `universe' polyhedron,
     % that is the one whose constraint representation corresponds to `true'.
     % (ie. it is unbounded in all dimensions).
     %
-:- pred polyhedron.is_universe(polyhedron::in) is semidet.
+:- pred is_universe(polyhedron::in) is semidet.
 
     % Optimizes the representation of a polyhedron.
     % At the moment this performs a consistency check and then replaces the
     % polyhedron by empty if necessary.
     %
-:- pred polyhedron.optimize(lp_varset::in, polyhedron::in, polyhedron::out)
-    is det.
+:- pred optimize(lp_varset::in, polyhedron::in, polyhedron::out) is det.
 
     % intersection(A, B, C):
     % The polyhedron `C' is the intersection of  the polyhedra `A' and `B'.
     %
-:- func polyhedron.intersection(polyhedron, polyhedron) = polyhedron.
-:- pred polyhedron.intersection(polyhedron::in, polyhedron::in,
-    polyhedron::out) is det.
+:- func intersection(polyhedron, polyhedron) = polyhedron.
+:- pred intersection(polyhedron::in, polyhedron::in, polyhedron::out) is det.
 
     % Returns a polyhedron that is a closed convex approximation of
     % union of the two polyhedra.
     %
-:- func polyhedron.convex_union(lp_varset, polyhedron, polyhedron) =
-    polyhedron.
-:- pred polyhedron.convex_union(lp_varset::in, polyhedron::in, polyhedron::in,
+:- func convex_union(lp_varset, polyhedron, polyhedron) = polyhedron.
+:- pred convex_union(lp_varset::in, polyhedron::in, polyhedron::in,
     polyhedron::out) is det.
 
     % As above but takes an extra argument that weakens the approximation even
     % further if the size of the internal matrices exceeds the supplied
     % threshold
     %
-:- func polyhedron.convex_union(lp_varset, maybe(int), polyhedron,
-    polyhedron) = polyhedron.
-:- pred polyhedron.convex_union(lp_varset::in, maybe(int)::in, polyhedron::in,
+:- func convex_union(lp_varset, maybe(int), polyhedron, polyhedron)
+    = polyhedron.
+:- pred convex_union(lp_varset::in, maybe(int)::in, polyhedron::in,
     polyhedron::in, polyhedron::out) is det.
 
     % Approximate a (convex) polyhedron by a rectangular region
     % whose sides are parallel to the axes.
     %
-:- func polyhedron.bounding_box(polyhedron, lp_varset) = polyhedron.
+:- func bounding_box(polyhedron, lp_varset) = polyhedron.
 
     % polyhedron.widen(A, B, Varset) = C.
     % Remove faces from the polyhedron `A' to form the polyhedron `C'
@@ -138,17 +135,17 @@
     % should be removed and that `C' must be a superset of `B'.
     % This operation is not commutative.
     %
-:- func polyhedron.widen(polyhedron, polyhedron, lp_varset) = polyhedron.
+:- func widen(polyhedron, polyhedron, lp_varset) = polyhedron.
 
     % project_all(Varset, Variables, Polyhedra) returns a list
     % of polyhedra in which the variables listed have been eliminated
     % from each polyhedron.
     %
-:- func polyhedron.project_all(lp_varset, lp_vars, polyhedra) = polyhedra.
+:- func project_all(lp_varset, lp_vars, polyhedra) = polyhedra.
 
-:- func polyhedron.project(lp_vars, lp_varset, polyhedron) = polyhedron.
-:- pred polyhedron.project(lp_vars::in, lp_varset::in, polyhedron::in,
-    polyhedron::out) is det.
+:- func project(lp_vars, lp_varset, polyhedron) = polyhedron.
+:- pred project(lp_vars::in, lp_varset::in, polyhedron::in, polyhedron::out)
+    is det.
 
     % XXX It might be nicer to think of this as relabelling the axes.
     % Conceptually it alters the names of the variables in the polyhedron
@@ -156,27 +153,23 @@
     % easy to do (at the moment) as the polyhedra are represented as
     % constraints anyway.
     %
-:- func polyhedron.substitute_vars(lp_vars, lp_vars, polyhedron) = polyhedron.
-:- func polyhedron.substitute_vars(map(lp_var, lp_var), polyhedron) =
-    polyhedron.
+:- func substitute_vars(lp_vars, lp_vars, polyhedron) = polyhedron.
+:- func substitute_vars(map(lp_var, lp_var), polyhedron) = polyhedron.
 
     % polyhedron.zero_vars(Set, Polyhedron0) = Polyhedron <=>
     %
     %   Constraints0 = polyhedron.constraints(Polyhedron0),
-    %   Constraints  = lp_rational.set_vars_to_zero(
-    %       Set, Constraints0)
+    %   Constraints  = lp_rational.set_vars_to_zero(Set, Constraints0)
     %   Polyhedron   = polyhedron.from_constraints(Constraints)
     %
     % This is a little more efficient than the above because
     % we don't end up traversing the list of constraints as much.
     %
-:- func polyhedron.zero_vars(set(lp_var), polyhedron) = polyhedron.
+:- func zero_vars(set(lp_var), polyhedron) = polyhedron.
 
-    % Print out the polyhedron using the names of the variables in the
-    % varset.
+    % Print out the polyhedron using the names of the variables in the varset.
     %
-:- pred polyhedron.write_polyhedron(polyhedron::in, lp_varset::in, io::di,
-    io::uo) is det.
+:- pred write_polyhedron(polyhedron::in, lp_varset::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -247,14 +240,14 @@ optimize(Varset, eqns(Constraints0), Result) :-
 % Intersection.
 %
 
-intersection(PolyA, PolyB, polyhedron.intersection(PolyA, PolyB)).
-
 intersection(empty_poly, _) = empty_poly.
 intersection(eqns(_), empty_poly) = empty_poly.
 intersection(eqns(MatrixA), eqns(MatrixB)) = eqns(Constraints) :-
     Constraints0 = MatrixA ++ MatrixB,
     restore_equalities(Constraints0, Constraints1),
     Constraints = simplify_constraints(Constraints1).
+
+intersection(PolyA, PolyB, polyhedron.intersection(PolyA, PolyB)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -358,9 +351,10 @@ convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, Varset0) :-
     PolyInfo = polyhedra_info(VarMaps, Sigmas, Varset),
     add_sigma_constraints(Sigmas, Matrix0, Matrix1),
     Matrix   = add_last_constraints(Matrix1, VarMaps),
-    AppendValues = (func(Map, Varlist0) = Varlist :-
-        Varlist = Varlist0 ++ map.values(Map)
-    ),
+    AppendValues =
+        ( func(Map, Varlist0) = Varlist :-
+            Varlist = Varlist0 ++ map.values(Map)
+        ),
     VarsToEliminate = Sigmas ++ list.foldl(AppendValues, VarMaps, []),
 
     % Calculate the closure of the convex hull of the original polyhedra by
@@ -506,7 +500,7 @@ bounding_box(eqns(Constraints), Varset) =
 
 %-----------------------------------------------------------------------------%
 %
-% Widening
+% Widening.
 %
 
 widen(empty_poly, empty_poly, _) = empty_poly.
@@ -523,27 +517,28 @@ widen(eqns(Poly1), eqns(Poly2), Varset) = eqns(WidenedEqns) :-
 %
 
 project_all(Varset, Locals, Polyhedra) =
-    list.map((func(Poly0) = Poly :-
-        (
-            Poly0 = eqns(Constraints0),
-            lp_rational.project(Locals, Varset, Constraints0,
-                ProjectionResult),
+    list.map(
+        ( func(Poly0) = Poly :-
             (
-                ProjectionResult = pr_res_aborted,
-                unexpected($pred, "abort from project")
+                Poly0 = eqns(Constraints0),
+                lp_rational.project(Locals, Varset, Constraints0,
+                    ProjectionResult),
+                (
+                    ProjectionResult = pr_res_aborted,
+                    unexpected($pred, "abort from project")
+                ;
+                    ProjectionResult = pr_res_inconsistent,
+                    Poly = empty_poly
+                ;
+                    ProjectionResult = pr_res_ok(Constraints1),
+                    restore_equalities(Constraints1, Constraints),
+                    Poly = eqns(Constraints)
+                )
             ;
-                ProjectionResult = pr_res_inconsistent,
-                Poly = empty_poly
-            ;
-                ProjectionResult = pr_res_ok(Constraints1),
-                restore_equalities(Constraints1, Constraints),
-                Poly = eqns(Constraints)
+                Poly0 = empty_poly,
+                Poly  = empty_poly
             )
-        ;
-            Poly0 = empty_poly,
-            Poly  = empty_poly
-        )
-    ), Polyhedra).
+        ), Polyhedra).
 
 project(Vars, Varset, Polyhedron0) = Polyhedron :-
     project(Vars, Varset, Polyhedron0, Polyhedron).

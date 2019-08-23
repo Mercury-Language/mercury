@@ -36,12 +36,12 @@
     global_data::out, list(c_procedure)::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
 
+:- pred map_args_to_regs(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
 :- pred llds_output_pass(op_mode_codegen::in, module_info::in, global_data::in,
     list(c_procedure)::in, module_name::in, bool::out, list(string)::out,
     io::di, io::uo) is det.
-
-:- pred map_args_to_regs(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

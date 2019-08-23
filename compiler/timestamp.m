@@ -39,6 +39,14 @@
     % of the times represented.
 :- type timestamp.
 
+    % Return a timestamp which is older than any other timestamp.
+    %
+:- func oldest_timestamp = timestamp.
+
+    % Return a timestamp which is newer than any other timestamp.
+    %
+:- func newest_timestamp = timestamp.
+
     % Converts the calendar time value `Time' into a timestamp.
     % Equivalent to `gm_time_to_timestamp(gmtime(Time))'.
     %
@@ -53,14 +61,6 @@
     % Fails if the string does not have the correct format.
     %
 :- func string_to_timestamp(string) = timestamp is semidet.
-
-    % Return a timestamp which is older than any other timestamp.
-    %
-:- func oldest_timestamp = timestamp.
-
-    % Return a timestamp which is newer than any other timestamp.
-    %
-:- func newest_timestamp = timestamp.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -521,6 +521,46 @@ parse_type_no_mode(AllowHOInstInfo, Varset, ContextPieces, Term, MaybeType) :-
 
 %---------------------------------------------------------------------------%
 
+maybe_parse_types(AllowHOInstInfo, Terms, Types) :-
+    % The values of VarSet and ContextPieces do not matter since we succeed
+    % only if they aren't used.
+    VarSet = varset.init,
+    ContextPieces = cord.init,
+    parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, ok1(Types)).
+
+parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, Result) :-
+    parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, Terms,
+        [], RevTypes, [], Specs),
+    (
+        Specs = [],
+        Result = ok1(list.reverse(RevTypes))
+    ;
+        Specs = [_ | _],
+        Result = error1(Specs)
+    ).
+
+:- pred parse_types_acc(allow_ho_inst_info::in, varset::in,
+    cord(format_component)::in, list(term)::in,
+    list(mer_type)::in, list(mer_type)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_types_acc(_, _, _, [], !RevTypes, !Specs).
+parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, [Term | Terms],
+        !RevTypes, !Specs) :-
+    % XXX We should pass a ContextPieces updated as the "nth type in ...".
+    parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, TermResult),
+    (
+        TermResult = ok1(Type),
+        !:RevTypes = [Type | !.RevTypes]
+    ;
+        TermResult = error1(TermSpecs),
+        !:Specs = TermSpecs ++ !.Specs
+    ),
+    parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, Terms,
+        !RevTypes, !Specs).
+
+%---------------------------------------------------------------------------%
+
 parse_type_and_modes(_, _, _, _, _, [], _, [], !Specs).
 parse_type_and_modes(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
         ArgContextFunc, [Term | Terms], ArgNum, TypesAndModes, !Specs) :-
@@ -803,46 +843,6 @@ no_ho_inst_allowed_result(ContextPieces, Why, VarSet, Term) = Result :-
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(get_term_context(Term), [always(Pieces)])]),
     Result = error1([Spec]).
-
-%---------------------------------------------------------------------------%
-
-maybe_parse_types(AllowHOInstInfo, Terms, Types) :-
-    % The values of VarSet and ContextPieces do not matter since we succeed
-    % only if they aren't used.
-    VarSet = varset.init,
-    ContextPieces = cord.init,
-    parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, ok1(Types)).
-
-parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, Result) :-
-    parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, Terms,
-        [], RevTypes, [], Specs),
-    (
-        Specs = [],
-        Result = ok1(list.reverse(RevTypes))
-    ;
-        Specs = [_ | _],
-        Result = error1(Specs)
-    ).
-
-:- pred parse_types_acc(allow_ho_inst_info::in, varset::in,
-    cord(format_component)::in, list(term)::in,
-    list(mer_type)::in, list(mer_type)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-parse_types_acc(_, _, _, [], !RevTypes, !Specs).
-parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, [Term | Terms],
-        !RevTypes, !Specs) :-
-    % XXX We should pass a ContextPieces updated as the "nth type in ...".
-    parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, TermResult),
-    (
-        TermResult = ok1(Type),
-        !:RevTypes = [Type | !.RevTypes]
-    ;
-        TermResult = error1(TermSpecs),
-        !:Specs = TermSpecs ++ !.Specs
-    ),
-    parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, Terms,
-        !RevTypes, !Specs).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_type_name.

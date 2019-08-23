@@ -273,6 +273,131 @@ inst_to_term_with_context(Lang, Context, Inst) = Term :-
         Term = make_atom(Context, "not_reached")
     ).
 
+%---------------------------------------------------------------------------%
+
+inst_name_to_term(Lang, InstName) =
+    inst_name_to_term_with_context(Lang, term.context_init, InstName).
+
+:- func inst_name_to_term_with_context(output_lang, prog_context, inst_name)
+    = prog_term.
+
+inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
+    (
+        InstName = user_inst(Name, Args),
+        construct_qualified_term_with_context(Name,
+            list.map(inst_to_term_with_context(Lang, Context), Args),
+            Context, Term)
+    ;
+        InstName = unify_inst(Liveness, Real, InstA, InstB),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "unify_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$unify"),
+                [make_atom(Context, is_live_to_str(Liveness)),
+                make_atom(Context, unify_is_real_to_str(Real)),
+                inst_to_term_with_context(Lang, Context, InstA),
+                inst_to_term_with_context(Lang, Context, InstB)],
+                Context, Term)
+        )
+    ;
+        InstName = merge_inst(InstA, InstB),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "merge_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$merge_inst"),
+                list.map(inst_to_term_with_context(Lang, Context),
+                [InstA, InstB]),
+                Context, Term)
+        )
+    ;
+        InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "ground_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$ground"),
+                [inst_name_to_term_with_context(Lang, Context, SubInstName),
+                make_atom(Context, inst_uniqueness(Uniq, "shared")),
+                make_atom(Context, is_live_to_str(IsLive)),
+                make_atom(Context, unify_is_real_to_str(Real))],
+                Context, Term)
+        )
+    ;
+        InstName = any_inst(SubInstName, Uniq, IsLive, Real),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "any_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$any"),
+                [inst_name_to_term_with_context(Lang, Context, SubInstName),
+                make_atom(Context, inst_uniqueness(Uniq, "shared")),
+                make_atom(Context, is_live_to_str(IsLive)),
+                make_atom(Context, unify_is_real_to_str(Real))],
+                Context, Term)
+        )
+    ;
+        InstName = shared_inst(SubInstName),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "shared_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$shared_inst"),
+                [inst_name_to_term_with_context(Lang, Context, SubInstName)],
+                Context, Term)
+        )
+    ;
+        InstName = mostly_uniq_inst(SubInstName),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "mostly_uniq_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(
+                unqualified("$mostly_uniq_inst"),
+                [inst_name_to_term_with_context(Lang, Context, SubInstName)],
+                Context, Term)
+        )
+    ;
+        InstName = typed_ground(Uniq, Type),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "typed_ground")
+        ;
+            Lang = output_debug,
+            unparse_type(Type, Term0),
+            construct_qualified_term_with_context(unqualified("$typed_ground"),
+                [make_atom(Context, inst_uniqueness(Uniq, "shared")),
+                term.coerce(Term0)],
+                Context, Term)
+        )
+    ;
+        InstName = typed_inst(Type, SubInstName),
+        (
+            Lang = output_mercury,
+            % Inst names in the inst tables can (and often do) have the types
+            % they apply pushed into them by inst_user.m. However, the typed
+            % nature of such inst names cannot (yet) be expressed in Mercury
+            % source code.
+            Term = inst_name_to_term_with_context(Lang, Context, SubInstName)
+        ;
+            Lang = output_debug,
+            unparse_type(Type, Term0),
+            construct_qualified_term_with_context(unqualified("$typed_inst"),
+                [term.coerce(Term0),
+                inst_name_to_term_with_context(Lang, Context, SubInstName)],
+                Context, Term)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
 inst_test_results_to_term(Context, InstResults) = Term :-
     (
         InstResults = inst_test_results(GroundnessResult, AnyResult,
@@ -452,126 +577,7 @@ any_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo) = Term :-
     construct_qualified_term_with_context(unqualified("is"),
         [ModesTerm, det_to_term(Context, Det)], Context, Term).
 
-inst_name_to_term(Lang, InstName) =
-    inst_name_to_term_with_context(Lang, term.context_init, InstName).
-
-:- func inst_name_to_term_with_context(output_lang, prog_context, inst_name)
-    = prog_term.
-
-inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
-    (
-        InstName = user_inst(Name, Args),
-        construct_qualified_term_with_context(Name,
-            list.map(inst_to_term_with_context(Lang, Context), Args),
-            Context, Term)
-    ;
-        InstName = unify_inst(Liveness, Real, InstA, InstB),
-        (
-            Lang = output_mercury,
-            unexpected($pred, "unify_inst")
-        ;
-            Lang = output_debug,
-            construct_qualified_term_with_context(unqualified("$unify"),
-                [make_atom(Context, is_live_to_str(Liveness)),
-                make_atom(Context, unify_is_real_to_str(Real)),
-                inst_to_term_with_context(Lang, Context, InstA),
-                inst_to_term_with_context(Lang, Context, InstB)],
-                Context, Term)
-        )
-    ;
-        InstName = merge_inst(InstA, InstB),
-        (
-            Lang = output_mercury,
-            unexpected($pred, "merge_inst")
-        ;
-            Lang = output_debug,
-            construct_qualified_term_with_context(unqualified("$merge_inst"),
-                list.map(inst_to_term_with_context(Lang, Context),
-                [InstA, InstB]),
-                Context, Term)
-        )
-    ;
-        InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
-        (
-            Lang = output_mercury,
-            unexpected($pred, "ground_inst")
-        ;
-            Lang = output_debug,
-            construct_qualified_term_with_context(unqualified("$ground"),
-                [inst_name_to_term_with_context(Lang, Context, SubInstName),
-                make_atom(Context, inst_uniqueness(Uniq, "shared")),
-                make_atom(Context, is_live_to_str(IsLive)),
-                make_atom(Context, unify_is_real_to_str(Real))],
-                Context, Term)
-        )
-    ;
-        InstName = any_inst(SubInstName, Uniq, IsLive, Real),
-        (
-            Lang = output_mercury,
-            unexpected($pred, "any_inst")
-        ;
-            Lang = output_debug,
-            construct_qualified_term_with_context(unqualified("$any"),
-                [inst_name_to_term_with_context(Lang, Context, SubInstName),
-                make_atom(Context, inst_uniqueness(Uniq, "shared")),
-                make_atom(Context, is_live_to_str(IsLive)),
-                make_atom(Context, unify_is_real_to_str(Real))],
-                Context, Term)
-        )
-    ;
-        InstName = shared_inst(SubInstName),
-        (
-            Lang = output_mercury,
-            unexpected($pred, "shared_inst")
-        ;
-            Lang = output_debug,
-            construct_qualified_term_with_context(unqualified("$shared_inst"),
-                [inst_name_to_term_with_context(Lang, Context, SubInstName)],
-                Context, Term)
-        )
-    ;
-        InstName = mostly_uniq_inst(SubInstName),
-        (
-            Lang = output_mercury,
-            unexpected($pred, "mostly_uniq_inst")
-        ;
-            Lang = output_debug,
-            construct_qualified_term_with_context(
-                unqualified("$mostly_uniq_inst"),
-                [inst_name_to_term_with_context(Lang, Context, SubInstName)],
-                Context, Term)
-        )
-    ;
-        InstName = typed_ground(Uniq, Type),
-        (
-            Lang = output_mercury,
-            unexpected($pred, "typed_ground")
-        ;
-            Lang = output_debug,
-            unparse_type(Type, Term0),
-            construct_qualified_term_with_context(unqualified("$typed_ground"),
-                [make_atom(Context, inst_uniqueness(Uniq, "shared")),
-                term.coerce(Term0)],
-                Context, Term)
-        )
-    ;
-        InstName = typed_inst(Type, SubInstName),
-        (
-            Lang = output_mercury,
-            % Inst names in the inst tables can (and often do) have the types
-            % they apply pushed into them by inst_user.m. However, the typed
-            % nature of such inst names cannot (yet) be expressed in Mercury
-            % source code.
-            Term = inst_name_to_term_with_context(Lang, Context, SubInstName)
-        ;
-            Lang = output_debug,
-            unparse_type(Type, Term0),
-            construct_qualified_term_with_context(unqualified("$typed_inst"),
-                [term.coerce(Term0),
-                inst_name_to_term_with_context(Lang, Context, SubInstName)],
-                Context, Term)
-        )
-    ).
+%---------------------------------------------------------------------------%
 
 :- func is_live_to_str(is_live) = string.
 

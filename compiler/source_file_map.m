@@ -75,8 +75,6 @@ lookup_module_source_file(ModuleName, FileName, !IO) :-
         FileName = default_source_file(ModuleName)
     ).
 
-default_source_file(ModuleName) = sym_name_to_string(ModuleName) ++ ".m".
-
 have_source_file_map(HaveMap, !IO) :-
     get_source_file_map(SourceFileMap, !IO),
     ( if map.is_empty(SourceFileMap) then
@@ -84,6 +82,8 @@ have_source_file_map(HaveMap, !IO) :-
     else
         HaveMap = yes
     ).
+
+default_source_file(ModuleName) = sym_name_to_string(ModuleName) ++ ".m".
 
     % Read the Mercury.modules file (if it exists) to find the mapping
     % from module name to file name.

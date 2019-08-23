@@ -514,31 +514,6 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
 
 %---------------------------------------------------------------------------%
 
-ctors_with_and_without_secondary_tag(CtorRepns, NumWith, NumWithout) :-
-    ctors_with_and_without_secondary_tag_loop(CtorRepns,
-        0, NumWith, 0, NumWithout).
-
-:- pred ctors_with_and_without_secondary_tag_loop(list(constructor_repn)::in,
-    int::in, int::out, int::in, int::out) is det.
-
-ctors_with_and_without_secondary_tag_loop([],
-        !NumWith, !NumWithout).
-ctors_with_and_without_secondary_tag_loop([CtorRepn | CtorRepns],
-        !NumWith, !NumWithout) :-
-    TagVal = CtorRepn ^ cr_tag,
-    MaybeSecTag = get_maybe_secondary_tag(TagVal),
-    (
-        MaybeSecTag = yes(_),
-        !:NumWith = !.NumWith + 1
-    ;
-        MaybeSecTag = no,
-        !:NumWithout = !.NumWithout + 1
-    ),
-    ctors_with_and_without_secondary_tag_loop(CtorRepns,
-        !NumWith, !NumWithout).
-
-%---------------------------------------------------------------------------%
-
 :- func ml_gen_hld_tag_constant(prog_context, constructor_repn)
     = list(mlds_field_var_defn).
 :- pragma consider_used(ml_gen_hld_tag_constant/2).
@@ -999,6 +974,31 @@ ml_gen_const_member_data_decl_flags =
 
 ml_gen_enum_constant_data_decl_flags =
     mlds_field_var_decl_flags(one_copy, const).
+
+%---------------------------------------------------------------------------%
+
+ctors_with_and_without_secondary_tag(CtorRepns, NumWith, NumWithout) :-
+    ctors_with_and_without_secondary_tag_loop(CtorRepns,
+        0, NumWith, 0, NumWithout).
+
+:- pred ctors_with_and_without_secondary_tag_loop(list(constructor_repn)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+ctors_with_and_without_secondary_tag_loop([],
+        !NumWith, !NumWithout).
+ctors_with_and_without_secondary_tag_loop([CtorRepn | CtorRepns],
+        !NumWith, !NumWithout) :-
+    TagVal = CtorRepn ^ cr_tag,
+    MaybeSecTag = get_maybe_secondary_tag(TagVal),
+    (
+        MaybeSecTag = yes(_),
+        !:NumWith = !.NumWith + 1
+    ;
+        MaybeSecTag = no,
+        !:NumWithout = !.NumWithout + 1
+    ),
+    ctors_with_and_without_secondary_tag_loop(CtorRepns,
+        !NumWith, !NumWithout).
 
 %---------------------------------------------------------------------------%
 

@@ -179,8 +179,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func stage_num_str(int) = string.
-
     % should_dump_stage(StageNum, StageNumStr, StageName, DumpStages):
     %
     % If StageName or the string form of StateNum appears in DumpStages,
@@ -188,6 +186,8 @@
     %
 :- pred should_dump_stage(int::in, string::in, string::in, list(string)::in)
     is semidet.
+
+:- func stage_num_str(int) = string.
 
 :- type dump_info
     --->    no_prev_dump

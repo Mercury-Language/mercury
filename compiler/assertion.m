@@ -194,6 +194,55 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+assert_id_goal(ModuleInfo, AssertId, Goal) :-
+    module_info_get_assertion_table(ModuleInfo, AssertTable),
+    assertion_table_lookup(AssertTable, AssertId, PredId),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
+    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
+    get_clause_list_maybe_repeated(ClausesRep, Clauses),
+    (
+        Clauses = [Clause],
+        Goal0 = Clause ^ clause_body,
+        normalise_goal(Goal0, Goal)
+    ;
+        ( Clauses = []
+        ; Clauses = [_, _ | _]
+        ),
+        unexpected($pred, "goal is not an assertion")
+    ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+record_preds_used_in(Goal, AssertId, !ModuleInfo) :-
+    pred_ids_called_from_goal(Goal, CalleePredIds),
+    % Sanity check.
+    ( if list.member(invalid_pred_id, CalleePredIds) then
+        unexpected($pred, "invalid pred_id")
+    else
+        true
+    ),
+    list.foldl(record_use_in_assertion(AssertId), CalleePredIds, !ModuleInfo).
+
+    % record_use_in_assertion(AssertId, PredId, !ModuleInfo):
+    %
+    % Record in PredId's pred_info that that predicate is used
+    % in assertion AssertId.
+    %
+:- pred record_use_in_assertion(assert_id::in, pred_id::in,
+    module_info::in, module_info::out) is det.
+
+record_use_in_assertion(AssertId, PredId, !ModuleInfo) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_get_assertions(PredInfo0, Assertions0),
+    set.insert(AssertId, Assertions0, Assertions),
+    pred_info_set_assertions(Assertions, PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 is_commutativity_assertion(ModuleInfo, AssertId, CallVars, CommutativeVars) :-
     assert_id_goal(ModuleInfo, AssertId, Goal),
     is_commutativity_assertion_goal(Goal, CallVars, CommutativeVars).
@@ -512,27 +561,6 @@ ignore_exist_quant_scope(Goal0, Goal) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assert_id_goal(ModuleInfo, AssertId, Goal) :-
-    module_info_get_assertion_table(ModuleInfo, AssertTable),
-    assertion_table_lookup(AssertTable, AssertId, PredId),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-    get_clause_list_maybe_repeated(ClausesRep, Clauses),
-    (
-        Clauses = [Clause],
-        Goal0 = Clause ^ clause_body,
-        normalise_goal(Goal0, Goal)
-    ;
-        ( Clauses = []
-        ; Clauses = [_, _ | _]
-        ),
-        unexpected($pred, "goal is not an assertion")
-    ).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 :- pred goal_is_implication(hlds_goal::in, hlds_goal::out, hlds_goal::out)
     is semidet.
 
@@ -758,34 +786,6 @@ equal_goals_cases([CaseA | CaseAs], [CaseB | CaseBs], !Subst) :-
     list.sort([MainConsIdB | OtherConsIdsB], SortedConsIds),
     equal_goals(GoalA, GoalB, !Subst),
     equal_goals_cases(CaseAs, CaseBs, !Subst).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-record_preds_used_in(Goal, AssertId, !ModuleInfo) :-
-    pred_ids_called_from_goal(Goal, CalleePredIds),
-    % Sanity check.
-    ( if list.member(invalid_pred_id, CalleePredIds) then
-        unexpected($pred, "invalid pred_id")
-    else
-        true
-    ),
-    list.foldl(record_use_in_assertion(AssertId), CalleePredIds, !ModuleInfo).
-
-    % record_use_in_assertion(AssertId, PredId, !ModuleInfo):
-    %
-    % Record in PredId's pred_info that that predicate is used
-    % in assertion AssertId.
-    %
-:- pred record_use_in_assertion(assert_id::in, pred_id::in,
-    module_info::in, module_info::out) is det.
-
-record_use_in_assertion(AssertId, PredId, !ModuleInfo) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    pred_info_get_assertions(PredInfo0, Assertions0),
-    set.insert(AssertId, Assertions0, Assertions),
-    pred_info_set_assertions(Assertions, PredInfo0, PredInfo),
-    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -542,16 +542,22 @@
 :- func std_get_pred_decl(module_name, string, mer_type, mer_inst,
     prog_context) = item_pred_decl_info.
 
-    % Create a predmode declaration for the impure mutable set predicate.
-    % (This is the default set predicate.)
-    %
-:- func std_set_pred_decl(module_name, string, mer_type, mer_inst,
-    prog_context) = item_pred_decl_info.
-
     % Create a predmode declaration for a get predicate for a constant mutable.
     % (This is only created if the `constant' attribute is given.)
     %
 :- func constant_get_pred_decl(module_name, string, mer_type, mer_inst,
+    prog_context) = item_pred_decl_info.
+
+    % Create a predmode declaration for a get predicate using the I/O state.
+    % (This is created only if the `attach_to_io_state' attribute is given.)
+    %
+:- func io_get_pred_decl(module_name, string, mer_type, mer_inst,
+    prog_context) = item_pred_decl_info.
+
+    % Create a predmode declaration for the impure mutable set predicate.
+    % (This is the default set predicate.)
+    %
+:- func std_set_pred_decl(module_name, string, mer_type, mer_inst,
     prog_context) = item_pred_decl_info.
 
     % Create a predmode declaration for a set predicate for a constant mutable;
@@ -560,12 +566,6 @@
     % (This is created only if the `constant' attribute is given.)
     %
 :- func constant_set_pred_decl(module_name, string, mer_type, mer_inst,
-    prog_context) = item_pred_decl_info.
-
-    % Create a predmode declaration for a get predicate using the I/O state.
-    % (This is created only if the `attach_to_io_state' attribute is given.)
-    %
-:- func io_get_pred_decl(module_name, string, mer_type, mer_inst,
     prog_context) = item_pred_decl_info.
 
     % Create a predmode declaration for a set predicate using the I/O state.

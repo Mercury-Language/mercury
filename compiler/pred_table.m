@@ -52,10 +52,6 @@
 :- pred predicate_table_optimize(predicate_table::in, predicate_table::out)
     is det.
 
-    % Get the pred_id->pred_info map.
-    %
-:- pred predicate_table_get_preds(predicate_table::in, pred_table::out) is det.
-
     % Restrict the predicate table to the list of predicates. This predicate
     % should only be used when the set of predicates to restrict the table to
     % is significantly smaller than the predicate_table size, as rather than
@@ -63,6 +59,10 @@
     %
 :- pred predicate_table_restrict(partial_qualifier_info::in,
     list(pred_id)::in, predicate_table::in, predicate_table::out) is det.
+
+    % Get the pred_id->pred_info map.
+    %
+:- pred predicate_table_get_preds(predicate_table::in, pred_table::out) is det.
 
     % Set the pred_id->pred_info map.
     % NB You shouldn't modify the keys in this table, only
@@ -257,6 +257,14 @@
 :- type constraint_search == pred(int, list(prog_constraint)).
 :- inst constraint_search == (pred(in, out) is semidet).
 
+    % Get the pred_id matching a higher-order term with
+    % the given argument types, failing if none is found.
+    %
+:- pred get_pred_id_by_types(is_fully_qualified::in, sym_name::in,
+    pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
+    external_type_params::in, module_info::in, prog_context::in,
+    pred_id::out) is semidet.
+
     % Get the pred_id and proc_id matching a higher-order term with
     % the given argument types, aborting with an error if none is found.
     %
@@ -264,14 +272,6 @@
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in, module_info::in, prog_context::in,
     pred_id::out, proc_id::out) is det.
-
-    % Get the pred_id matching a higher-order term with
-    % the given argument types, failing if none is found.
-    %
-:- pred get_pred_id_by_types(is_fully_qualified::in, sym_name::in,
-    pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
-    external_type_params::in, module_info::in, prog_context::in, pred_id::out)
-    is semidet.
 
     % Given a pred_id, return the single proc_id, aborting
     % if there are no modes or more than one mode.
@@ -389,6 +389,52 @@ predicate_table_optimize(PredicateTable0, PredicateTable) :-
         ValidPredIds, AccessibilityTable,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
+
+predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
+        !:PredicateTable) :-
+    predicate_table_reset(OrigPredicateTable, !:PredicateTable),
+    predicate_table_get_preds(OrigPredicateTable, Preds),
+    AccessibilityTable = OrigPredicateTable ^ accessibility_table,
+    list.foldl(
+        reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable),
+        PredIds, !PredicateTable).
+
+:- pred reinsert_for_restrict(partial_qualifier_info::in, pred_table::in,
+    accessibility_table::in, pred_id::in,
+    predicate_table::in, predicate_table::out) is det.
+
+reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable, PredId,
+        !PredicateTable) :-
+    PredInfo = map.lookup(Preds, PredId),
+    Access = map.lookup(AccessibilityTable, PredId),
+    Access = access(Unqualified, PartiallyQualified),
+    (
+        Unqualified = yes,
+        NeedQual = may_be_unqualified
+    ;
+        Unqualified = no,
+        NeedQual = must_be_qualified
+    ),
+    (
+        PartiallyQualified = yes,
+        MaybeQualInfo = yes(PartialQualInfo)
+    ;
+        PartiallyQualified = no,
+        MaybeQualInfo = no
+    ),
+    do_predicate_table_insert(yes(PredId), PredInfo, NeedQual, MaybeQualInfo,
+        _, !PredicateTable).
+
+:- pred predicate_table_reset(predicate_table::in, predicate_table::out)
+    is det.
+
+predicate_table_reset(PredicateTable0, PredicateTable) :-
+    NextPredId = PredicateTable0 ^ next_pred_id,
+    PredicateTable = predicate_table(map.init, NextPredId,
+        set_tree234.init, map.init,
+        map.init, map.init, map.init, map.init, map.init, map.init).
+
+%-----------------------------------------------------------------------------%
 
 predicate_table_get_preds(PredicateTable, PredicateTable ^ preds).
 
@@ -813,59 +859,13 @@ predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified, PredOrFunc,
 
 %-----------------------------------------------------------------------------%
 
-predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
-        !:PredicateTable) :-
-    predicate_table_reset(OrigPredicateTable, !:PredicateTable),
-    predicate_table_get_preds(OrigPredicateTable, Preds),
-    AccessibilityTable = OrigPredicateTable ^ accessibility_table,
-    list.foldl(
-        reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable),
-        PredIds, !PredicateTable).
-
-:- pred reinsert_for_restrict(partial_qualifier_info::in, pred_table::in,
-    accessibility_table::in, pred_id::in,
-    predicate_table::in, predicate_table::out) is det.
-
-reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable, PredId,
-        !PredicateTable) :-
-    PredInfo = map.lookup(Preds, PredId),
-    Access = map.lookup(AccessibilityTable, PredId),
-    Access = access(Unqualified, PartiallyQualified),
-    (
-        Unqualified = yes,
-        NeedQual = may_be_unqualified
-    ;
-        Unqualified = no,
-        NeedQual = must_be_qualified
-    ),
-    (
-        PartiallyQualified = yes,
-        MaybeQualInfo = yes(PartialQualInfo)
-    ;
-        PartiallyQualified = no,
-        MaybeQualInfo = no
-    ),
-    do_predicate_table_insert(yes(PredId), PredInfo, NeedQual, MaybeQualInfo,
-        _, !PredicateTable).
-
-:- pred predicate_table_reset(predicate_table::in, predicate_table::out)
-    is det.
-
-predicate_table_reset(PredicateTable0, PredicateTable) :-
-    NextPredId = PredicateTable0 ^ next_pred_id,
-    PredicateTable = predicate_table(map.init, NextPredId,
-        set_tree234.init, map.init,
-        map.init, map.init, map.init, map.init, map.init, map.init).
-
-%-----------------------------------------------------------------------------%
-
-predicate_table_insert(PredInfo, PredId, !PredicateTable) :-
-    do_predicate_table_insert(no, PredInfo, must_be_qualified, no, PredId,
-        !PredicateTable).
-
 predicate_table_insert_qual(PredInfo, NeedQual, QualInfo, PredId,
         !PredicateTable) :-
     do_predicate_table_insert(no, PredInfo, NeedQual, yes(QualInfo), PredId,
+        !PredicateTable).
+
+predicate_table_insert(PredInfo, PredId, !PredicateTable) :-
+    do_predicate_table_insert(no, PredInfo, must_be_qualified, no, PredId,
         !PredicateTable).
 
 :- pred do_predicate_table_insert(maybe(pred_id)::in, pred_info::in,

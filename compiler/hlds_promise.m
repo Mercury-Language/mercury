@@ -156,11 +156,11 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
 exclusive_table_init(ExclusiveTable) :-
     multi_map.init(ExclusiveTable).
 
-exclusive_table_lookup(ExclusiveTable, PredId, ExclusiveIds) :-
-    multi_map.lookup(ExclusiveTable, PredId, ExclusiveIds).
-
 exclusive_table_search(ExclusiveTable, Id, ExclusiveIds) :-
     multi_map.search(ExclusiveTable, Id, ExclusiveIds).
+
+exclusive_table_lookup(ExclusiveTable, PredId, ExclusiveIds) :-
+    multi_map.lookup(ExclusiveTable, PredId, ExclusiveIds).
 
 exclusive_table_optimize(!ExclusiveTable) :-
     multi_map.optimize(!ExclusiveTable).

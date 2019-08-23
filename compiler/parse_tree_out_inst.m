@@ -76,18 +76,18 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_mode(output_lang::in, inst_varset::in, mer_mode::in,
-    io::di, io::uo) is det.
-:- func mercury_mode_to_string(output_lang, inst_varset, mer_mode) = string.
-:- pred mercury_format_mode(output_lang::in, inst_varset::in, mer_mode::in,
-    U::di, U::uo) is det <= output(U).
-
 :- pred mercury_output_mode_list(output_lang::in, inst_varset::in,
     list(mer_mode)::in, io::di, io::uo) is det.
 :- func mercury_mode_list_to_string(output_lang, inst_varset, list(mer_mode))
     = string.
 :- pred mercury_format_mode_list(output_lang::in, inst_varset::in,
     list(mer_mode)::in, U::di, U::uo) is det <= output(U).
+
+:- pred mercury_output_mode(output_lang::in, inst_varset::in, mer_mode::in,
+    io::di, io::uo) is det.
+:- func mercury_mode_to_string(output_lang, inst_varset, mer_mode) = string.
+:- pred mercury_format_mode(output_lang::in, inst_varset::in, mer_mode::in,
+    U::di, U::uo) is det <= output(U).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

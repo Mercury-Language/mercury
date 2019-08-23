@@ -262,11 +262,6 @@ maybe_qualify_name(Module0, Name0) = Name :-
 
 %-----------------------------------------------------------------------------%
 
-output_base_typeclass_info_name(TCName, TypeNames, !IO) :-
-    Str = make_base_typeclass_info_name(TCName, TypeNames),
-    io.write_string(mercury_data_prefix, !IO),
-    io.write_string(Str, !IO).
-
 make_base_typeclass_info_name(TCName, TypeNames) = Str :-
     TCName = tc_name(ModuleName, ClassName, ClassArity),
     ClassSym = qualified(ModuleName, ClassName),
@@ -275,6 +270,11 @@ make_base_typeclass_info_name(TCName, TypeNames) = Str :-
     MangledTypeNames = name_mangle(TypeNames),
     string.append_list(["base_typeclass_info_", MangledClassString,
         "__arity", ArityString, "__", MangledTypeNames], Str).
+
+output_base_typeclass_info_name(TCName, TypeNames, !IO) :-
+    Str = make_base_typeclass_info_name(TCName, TypeNames),
+    io.write_string(mercury_data_prefix, !IO),
+    io.write_string(Str, !IO).
 
 %-----------------------------------------------------------------------------%
 

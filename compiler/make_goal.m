@@ -90,22 +90,6 @@
 :- pred make_const_construction(prog_context::in,
     prog_var::in, cons_id::in, hlds_goal::out) is det.
 
-:- pred make_int_const_construction_alloc(int::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-:- pred make_string_const_construction_alloc(string::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-:- pred make_float_const_construction_alloc(float::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-:- pred make_char_const_construction_alloc(char::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-:- pred make_const_construction_alloc(cons_id::in, mer_type::in,
-    maybe(string)::in, hlds_goal::out, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-
 :- pred make_int_const_construction_alloc_in_proc(int::in,
     maybe(string)::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
@@ -121,6 +105,22 @@
 :- pred make_const_construction_alloc_in_proc(cons_id::in, mer_type::in,
     maybe(string)::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
+
+:- pred make_int_const_construction_alloc(int::in, maybe(string)::in,
+    hlds_goal::out, prog_var::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+:- pred make_string_const_construction_alloc(string::in, maybe(string)::in,
+    hlds_goal::out, prog_var::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+:- pred make_float_const_construction_alloc(float::in, maybe(string)::in,
+    hlds_goal::out, prog_var::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+:- pred make_char_const_construction_alloc(char::in, maybe(string)::in,
+    hlds_goal::out, prog_var::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+:- pred make_const_construction_alloc(cons_id::in, mer_type::in,
+    maybe(string)::in, hlds_goal::out, prog_var::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
     % Produce a goal to construct or deconstruct a unification with a functor.
     % It fills in the non-locals, instmap_delta and determinism fields
@@ -184,11 +184,6 @@ fail_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-create_pure_atomic_complicated_unification(LHS, RHS, Context,
-        UnifyMainContext, UnifySubContext, Goal) :-
-    create_atomic_complicated_unification(LHS, RHS, Context,
-        UnifyMainContext, UnifySubContext, purity_pure, Goal).
-
 create_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, Purity, Goal) :-
     UnifyMode = unify_modes_lhs_rhs(
@@ -200,6 +195,11 @@ create_atomic_complicated_unification(LHS, RHS, Context,
     goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
     GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
+
+create_pure_atomic_complicated_unification(LHS, RHS, Context,
+        UnifyMainContext, UnifySubContext, Goal) :-
+    create_atomic_complicated_unification(LHS, RHS, Context,
+        UnifyMainContext, UnifySubContext, purity_pure, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -229,6 +229,37 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
+make_int_const_construction(Context, Var, Int, Goal) :-
+    make_const_construction(Context, Var, int_const(Int), Goal).
+
+make_string_const_construction(Context, Var, String, Goal) :-
+    make_const_construction(Context, Var, string_const(String), Goal).
+
+make_float_const_construction(Context, Var, Float, Goal) :-
+    make_const_construction(Context, Var, float_const(Float), Goal).
+
+make_char_const_construction(Context, Var, Char, Goal) :-
+    make_const_construction(Context, Var, char_const(Char), Goal).
+
+make_const_construction(Context, Var, ConsId, Goal) :-
+    RHS = rhs_functor(ConsId, is_not_exist_constr, []),
+    Inst = bound(unique, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
+    UnifyMode = unify_modes_lhs_rhs(
+        from_to_insts(free, Inst),
+        from_to_insts(Inst, Inst)),
+    Unification = construct(Var, ConsId, [], [],
+        construct_dynamically, cell_is_unique, no_construct_sub_info),
+    UnifyContext = unify_context(umc_explicit, []),
+    GoalExpr = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
+    NonLocals = set_of_var.make_singleton(Var),
+    instmap_delta_init_reachable(InstMapDelta0),
+    instmap_delta_insert_var(Var, Inst, InstMapDelta0, InstMapDelta),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+%-----------------------------------------------------------------------------%
+
 make_int_const_construction_alloc_in_proc(Int, MaybeName, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(int_type, MaybeName, Var, !ProcInfo),
@@ -253,6 +284,8 @@ make_const_construction_alloc_in_proc(ConsId, Type, MaybeName, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Type, MaybeName, Var, !ProcInfo),
     make_const_construction(term.context_init, Var, ConsId, Goal).
+
+%-----------------------------------------------------------------------------%
 
 make_int_const_construction_alloc(Int, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
@@ -284,34 +317,7 @@ make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
     add_var_type(Var, Type, !VarTypes),
     make_const_construction(term.context_init, Var, ConsId, Goal).
 
-make_int_const_construction(Context, Var, Int, Goal) :-
-    make_const_construction(Context, Var, int_const(Int), Goal).
-
-make_string_const_construction(Context, Var, String, Goal) :-
-    make_const_construction(Context, Var, string_const(String), Goal).
-
-make_float_const_construction(Context, Var, Float, Goal) :-
-    make_const_construction(Context, Var, float_const(Float), Goal).
-
-make_char_const_construction(Context, Var, Char, Goal) :-
-    make_const_construction(Context, Var, char_const(Char), Goal).
-
-make_const_construction(Context, Var, ConsId, Goal) :-
-    RHS = rhs_functor(ConsId, is_not_exist_constr, []),
-    Inst = bound(unique, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free, Inst),
-        from_to_insts(Inst, Inst)),
-    Unification = construct(Var, ConsId, [], [],
-        construct_dynamically, cell_is_unique, no_construct_sub_info),
-    UnifyContext = unify_context(umc_explicit, []),
-    GoalExpr = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
-    NonLocals = set_of_var.make_singleton(Var),
-    instmap_delta_init_reachable(InstMapDelta0),
-    instmap_delta_insert_var(Var, Inst, InstMapDelta0, InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
-        GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
+%-----------------------------------------------------------------------------%
 
 construct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),

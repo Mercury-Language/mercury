@@ -209,64 +209,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
     ).
 
 %---------------------------------------------------------------------------%
-
-generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
-        DepsMap, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    module_name_to_file_name(Globals, do_create_dirs, ".dv",
-        ModuleName, DvFileName, !IO),
-    maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
-    maybe_write_string(Verbose, DvFileName, !IO),
-    maybe_write_string(Verbose, "'...\n", !IO),
-    io.open_output(DvFileName, DvResult, !IO),
-    (
-        DvResult = ok(DvStream),
-        start_mmakefile(MmakeFile0),
-        generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
-            MmakeFile0, MmakeFile, !IO),
-        end_mmakefile(DvStream, MmakeFile, !IO),
-        io.close_output(DvStream, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
-        DvResult = error(IOError),
-        maybe_write_string(Verbose, " failed.\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.append_list(["error opening file `", DvFileName,
-            "' for output: ", IOErrorMessage], DvMessage),
-        report_error(DvMessage, !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
-        DepsMap, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    module_name_to_file_name(Globals, do_create_dirs, ".dep",
-        ModuleName, DepFileName, !IO),
-    maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
-    maybe_write_string(Verbose, DepFileName, !IO),
-    maybe_write_string(Verbose, "'...\n", !IO),
-    io.open_output(DepFileName, DepResult, !IO),
-    (
-        DepResult = ok(DepStream),
-        start_mmakefile(MmakeFile0),
-        generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
-            MmakeFile0, MmakeFile, !IO),
-        end_mmakefile(DepStream, MmakeFile, !IO),
-        io.close_output(DepStream, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
-        DepResult = error(IOError),
-        maybe_write_string(Verbose, " failed.\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.append_list(["error opening file `", DepFileName,
-            "' for output: ", IOErrorMessage], DepMessage),
-        report_error(DepMessage, !IO)
-    ).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred generate_d_file(globals::in, module_and_imports::in,
@@ -1113,6 +1055,35 @@ get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
 
 %---------------------------------------------------------------------------%
 
+generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
+        DepsMap, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    module_name_to_file_name(Globals, do_create_dirs, ".dv",
+        ModuleName, DvFileName, !IO),
+    maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
+    maybe_write_string(Verbose, DvFileName, !IO),
+    maybe_write_string(Verbose, "'...\n", !IO),
+    io.open_output(DvFileName, DvResult, !IO),
+    (
+        DvResult = ok(DvStream),
+        start_mmakefile(MmakeFile0),
+        generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
+            MmakeFile0, MmakeFile, !IO),
+        end_mmakefile(DvStream, MmakeFile, !IO),
+        io.close_output(DvStream, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO)
+    ;
+        DvResult = error(IOError),
+        maybe_write_string(Verbose, " failed.\n", !IO),
+        maybe_flush_output(Verbose, !IO),
+        io.error_message(IOError, IOErrorMessage),
+        string.append_list(["error opening file `", DvFileName,
+            "' for output: ", IOErrorMessage], DvMessage),
+        report_error(DvMessage, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred generate_dv_file(globals::in, file_name::in, module_name::in,
     deps_map::in, mmakefile::in, mmakefile::out, io::di, io::uo) is det.
 
@@ -1518,6 +1489,35 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
     NewLinkObjs = FactTableObjs,
     list.append(NewLinkObjs, !ExtraLinkObjs),
     get_extra_link_objects_2(Modules, DepsMap, Target, !ExtraLinkObjs).
+
+%---------------------------------------------------------------------------%
+
+generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
+        DepsMap, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    module_name_to_file_name(Globals, do_create_dirs, ".dep",
+        ModuleName, DepFileName, !IO),
+    maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
+    maybe_write_string(Verbose, DepFileName, !IO),
+    maybe_write_string(Verbose, "'...\n", !IO),
+    io.open_output(DepFileName, DepResult, !IO),
+    (
+        DepResult = ok(DepStream),
+        start_mmakefile(MmakeFile0),
+        generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
+            MmakeFile0, MmakeFile, !IO),
+        end_mmakefile(DepStream, MmakeFile, !IO),
+        io.close_output(DepStream, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO)
+    ;
+        DepResult = error(IOError),
+        maybe_write_string(Verbose, " failed.\n", !IO),
+        maybe_flush_output(Verbose, !IO),
+        io.error_message(IOError, IOErrorMessage),
+        string.append_list(["error opening file `", DepFileName,
+            "' for output: ", IOErrorMessage], DepMessage),
+        report_error(DepMessage, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

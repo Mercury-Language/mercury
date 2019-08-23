@@ -94,6 +94,13 @@
 :- pred expand_lambdas_in_pred(pred_id::in, module_info::in, module_info::out)
     is det.
 
+:- pred expand_lambda(purity::in, ho_groundness::in,
+    pred_or_func::in, lambda_eval_method::in, reg_wrapper_proc::in,
+    list(prog_var)::in, list(mer_mode)::in, determinism::in,
+    list(prog_var)::in, hlds_goal::in, unification::in,
+    unify_rhs::out, unification::out,
+    lambda_info::in, lambda_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 % The following are exported for float_reg.m.
@@ -127,13 +134,6 @@
 :- pred lambda_info_set_recompute_nonlocals(bool::in,
     lambda_info::in, lambda_info::out) is det.
 
-:- pred expand_lambda(purity::in, ho_groundness::in,
-    pred_or_func::in, lambda_eval_method::in, reg_wrapper_proc::in,
-    list(prog_var)::in, list(mer_mode)::in, determinism::in,
-    list(prog_var)::in, hlds_goal::in, unification::in,
-    unify_rhs::out, unification::out,
-    lambda_info::in, lambda_info::out) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -164,53 +164,6 @@
 :- import_module set.
 :- import_module term.
 :- import_module varset.
-
-%-----------------------------------------------------------------------------%
-
-:- type lambda_info
-    --->    lambda_info(
-                li_varset               :: prog_varset,
-                li_vartypes             :: vartypes,
-                li_tvarset              :: tvarset,
-                li_inst_varset          :: inst_varset,
-                li_rtti_varmaps         :: rtti_varmaps,
-                li_pred_info            :: pred_info,
-                li_module_info          :: module_info,
-
-                li_has_parallel_conj    :: has_parallel_conj,
-
-                li_recompute_nonlocals  :: bool,
-                % True iff we need to recompute the nonlocals.
-
-                li_have_expanded_lambda :: bool
-                % True if we expanded some lambda expressions.
-            ).
-
-init_lambda_info(VarSet, VarTypes, TypeVarSet, InstVarSet, RttiVarMaps,
-        HasParallelConj, PredInfo, ModuleInfo, Info) :-
-    MustRecomputeNonLocals = no,
-    HaveExpandedLambdas = no,
-    Info = lambda_info(VarSet, VarTypes, TypeVarSet, InstVarSet,
-        RttiVarMaps, PredInfo, ModuleInfo, HasParallelConj,
-        MustRecomputeNonLocals, HaveExpandedLambdas).
-
-lambda_info_get_varset(Info, Info ^ li_varset).
-lambda_info_get_vartypes(Info, Info ^ li_vartypes).
-lambda_info_get_tvarset(Info, Info ^ li_tvarset).
-lambda_info_get_rtti_varmaps(Info, Info ^ li_rtti_varmaps).
-lambda_info_get_inst_varset(Info, Info ^ li_inst_varset).
-lambda_info_get_pred_info(Info, Info ^ li_pred_info).
-lambda_info_get_module_info(Info, Info ^ li_module_info).
-lambda_info_get_recompute_nonlocals(Info, Info ^ li_recompute_nonlocals).
-
-lambda_info_set_varset(VarSet, !Info) :-
-    !Info ^ li_varset := VarSet.
-lambda_info_set_vartypes(VarTypes, !Info) :-
-    !Info ^ li_vartypes := VarTypes.
-lambda_info_set_module_info(ModuleInfo, !Info) :-
-    !Info ^ li_module_info := ModuleInfo.
-lambda_info_set_recompute_nonlocals(Recompute, !Info) :-
-    !Info ^ li_recompute_nonlocals := Recompute.
 
 %-----------------------------------------------------------------------------%
 %
@@ -960,5 +913,60 @@ mark_vars_as_used([Var | Vars], !VarUses) :-
     mark_vars_as_used(Vars, !VarUses).
 
 %---------------------------------------------------------------------------%
+
+:- type lambda_info
+    --->    lambda_info(
+                li_varset               :: prog_varset,
+                li_vartypes             :: vartypes,
+                li_tvarset              :: tvarset,
+                li_inst_varset          :: inst_varset,
+                li_rtti_varmaps         :: rtti_varmaps,
+                li_pred_info            :: pred_info,
+                li_module_info          :: module_info,
+
+                li_has_parallel_conj    :: has_parallel_conj,
+
+                li_recompute_nonlocals  :: bool,
+                % True iff we need to recompute the nonlocals.
+
+                li_have_expanded_lambda :: bool
+                % True if we expanded some lambda expressions.
+            ).
+
+init_lambda_info(VarSet, VarTypes, TypeVarSet, InstVarSet, RttiVarMaps,
+        HasParallelConj, PredInfo, ModuleInfo, Info) :-
+    MustRecomputeNonLocals = no,
+    HaveExpandedLambdas = no,
+    Info = lambda_info(VarSet, VarTypes, TypeVarSet, InstVarSet,
+        RttiVarMaps, PredInfo, ModuleInfo, HasParallelConj,
+        MustRecomputeNonLocals, HaveExpandedLambdas).
+
+lambda_info_get_varset(Info, X) :-
+    X = Info ^ li_varset.
+lambda_info_get_vartypes(Info, X) :-
+    X = Info ^ li_vartypes.
+lambda_info_get_tvarset(Info, X) :-
+    X = Info ^ li_tvarset.
+lambda_info_get_rtti_varmaps(Info, X) :-
+    X = Info ^ li_rtti_varmaps.
+lambda_info_get_inst_varset(Info, X) :-
+    X = Info ^ li_inst_varset.
+lambda_info_get_pred_info(Info, X) :-
+    X = Info ^ li_pred_info.
+lambda_info_get_module_info(Info, X) :-
+    X = Info ^ li_module_info.
+lambda_info_get_recompute_nonlocals(Info, X) :-
+    X = Info ^ li_recompute_nonlocals.
+
+lambda_info_set_varset(X, !Info) :-
+    !Info ^ li_varset := X.
+lambda_info_set_vartypes(X, !Info) :-
+    !Info ^ li_vartypes := X.
+lambda_info_set_module_info(X, !Info) :-
+    !Info ^ li_module_info := X.
+lambda_info_set_recompute_nonlocals(X, !Info) :-
+    !Info ^ li_recompute_nonlocals := X.
+
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.lambda.
 %---------------------------------------------------------------------------%

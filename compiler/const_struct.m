@@ -69,17 +69,6 @@
     %
 :- pred const_struct_db_init(globals::in, const_struct_db::out) is det.
 
-    % Return whether the generation of separate constant structures is enabled
-    % for (a) structures created by polymorphism, and (b) for structures
-    % created in from_ground_term_construct scopes. If it is not, then
-    % lookup_insert_const_struct should not be called from polymorphism.m
-    % and simplify.m respectively.
-    %
-:- pred const_struct_db_get_poly_enabled(const_struct_db::in,
-    bool::out) is det.
-:- pred const_struct_db_get_ground_term_enabled(const_struct_db::in,
-    bool::out) is det.
-
     % Look up a constant structure in the database. If it is not there, add it.
     %
 :- pred lookup_insert_const_struct(const_struct::in, int::out,
@@ -114,6 +103,17 @@
     %
 :- pred const_struct_db_get_structs(const_struct_db::in,
     assoc_list(int, const_struct)::out) is det.
+
+    % Return whether the generation of separate constant structures is enabled
+    % for (a) structures created by polymorphism, and (b) for structures
+    % created in from_ground_term_construct scopes. If it is not, then
+    % lookup_insert_const_struct should not be called from polymorphism.m
+    % and simplify.m respectively.
+    %
+:- pred const_struct_db_get_poly_enabled(const_struct_db::in,
+    bool::out) is det.
+:- pred const_struct_db_get_ground_term_enabled(const_struct_db::in,
+    bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 

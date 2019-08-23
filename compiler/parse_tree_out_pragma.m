@@ -74,14 +74,6 @@
     maybe(generic_arg_size_info(T))::in,
     maybe(generic_termination_info(S, T))::in, io::di, io::uo) is det.
 
-:- pred write_pragma_structure_sharing_info(output_lang::in,
-    maybe(prog_varset)::in, maybe(tvarset)::in,
-    pragma_info_structure_sharing::in, io::di, io::uo) is det.
-
-:- pred write_pragma_structure_reuse_info(output_lang::in,
-    maybe(prog_varset)::in, maybe(tvarset)::in,
-    pragma_info_structure_reuse::in, io::di, io::uo) is det.
-
     % Write the given arg size info. Verbose if the second arg is yes.
     %
 :- pred write_maybe_arg_size_info(bool::in,
@@ -91,6 +83,16 @@
     %
 :- pred write_maybe_termination_info(bool::in,
     maybe(generic_termination_info(S, T))::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred write_pragma_structure_sharing_info(output_lang::in,
+    maybe(prog_varset)::in, maybe(tvarset)::in,
+    pragma_info_structure_sharing::in, io::di, io::uo) is det.
+
+:- pred write_pragma_structure_reuse_info(output_lang::in,
+    maybe(prog_varset)::in, maybe(tvarset)::in,
+    pragma_info_structure_reuse::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

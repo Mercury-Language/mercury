@@ -328,27 +328,6 @@ sigint = _ :-
 
 %-----------------------------------------------------------------------------%
 
-call_in_forked_process(P, Success, !IO) :-
-    call_in_forked_process_with_backup(P, P, Success, !IO).
-
-call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
-    ( if can_fork then
-        start_in_forked_process(P, MaybePid, !IO),
-        (
-            MaybePid = yes(Pid),
-            do_wait(Pid, _, CallStatus, !IO),
-            Status = decode_system_command_exit_code(CallStatus),
-            Success = ( if Status = ok(exited(0)) then yes else no )
-        ;
-            MaybePid = no,
-            Success = no
-        )
-    else
-        AltP(Success, !IO)
-    ).
-
-can_fork :- semidet_fail.
-
 :- pragma foreign_proc("C",
     can_fork,
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -368,6 +347,27 @@ can_fork :- semidet_fail.
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+
+can_fork :- semidet_fail.
+
+call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
+    ( if can_fork then
+        start_in_forked_process(P, MaybePid, !IO),
+        (
+            MaybePid = yes(Pid),
+            do_wait(Pid, _, CallStatus, !IO),
+            Status = decode_system_command_exit_code(CallStatus),
+            Success = ( if Status = ok(exited(0)) then yes else no )
+        ;
+            MaybePid = no,
+            Success = no
+        )
+    else
+        AltP(Success, !IO)
+    ).
+
+call_in_forked_process(P, Success, !IO) :-
+    call_in_forked_process_with_backup(P, P, Success, !IO).
 
 start_in_forked_process(P, MaybePid, !IO) :-
     start_in_forked_process_2(P, Pid, !IO),

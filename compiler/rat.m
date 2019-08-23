@@ -32,47 +32,36 @@
 
 :- type rat.
 
+:- func one = rat.
+:- func zero = rat.
+
 :- pred '<'(rat::in, rat::in) is semidet.
-
 :- pred '>'(rat::in, rat::in) is semidet.
-
 :- pred '=<'(rat::in, rat::in) is semidet.
-
 :- pred '>='(rat::in, rat::in) is semidet.
 
-:- func rat.rat(int) = rat.
-
-:- func rat.rat(int, int) = rat.
+:- func rat(int) = rat.
+:- func rat(int, int) = rat.
 
 :- func '+'(rat) = rat.
-
 :- func '-'(rat) = rat.
-
 :- func rat + rat = rat.
-
 :- func rat - rat = rat.
-
 :- func rat * rat = rat.
-
 :- func rat / rat = rat.
 
-:- func rat.numer(rat) = int.
+:- func numer(rat) = int.
+:- func denom(rat) = int.
 
-:- func rat.denom(rat) = int.
-
-:- func rat.abs(rat) = rat.
-
-:- func rat.one = rat.
-
-:- func rat.zero = rat.
+:- func abs(rat) = rat.
 
     % Convert a rational to a string of the form: "(<Num>/<Denom>)".
     %
-:- func rat.to_string(rat) = string.
+:- func to_string(rat) = string.
 
     % Write a rat in the form: r(<Numerator>, <Denominator>).
     %
-:- pred rat.write_rat(rat::in, io::di, io::uo) is det.
+:- pred write_rat(rat::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -103,6 +92,10 @@
 :- type rat
     --->    r(int, int).
 
+one = r(1, 1).
+
+zero = r(0, 1).
+
 '<'(X, Y) :- cmp(X, Y) = (<).
 
 '>'(X, Y) :- cmp(X, Y) = (>).
@@ -111,13 +104,9 @@
 
 '>='(X, Y) :- cmp(X, Y) \= (<).
 
-rat.rat(Int) = r(Int, 1).
+rat(Int) = r(Int, 1).
 
-rat.rat(Num, Den) = rat_norm(Num, Den).
-
-rat.one = r(1, 1).
-
-rat.zero = r(0, 1).
+rat(Num, Den) = rat_norm(Num, Den).
 
 '+'(Rat) = Rat.
 
@@ -149,11 +138,11 @@ reciprocal(r(Num, Den)) =
         r(signum(Num) * Den, int.abs(Num))
     ).
 
-rat.numer(r(Num, _)) = Num.
+numer(r(Num, _)) = Num.
 
-rat.denom(r(_, Den)) = Den.
+denom(r(_, Den)) = Den.
 
-rat.abs(r(Num, Den)) = r(int.abs(Num), Den).
+abs(r(Num, Den)) = r(int.abs(Num), Den).
 
 :- func rat_norm(int, int) = rat.
 
@@ -214,7 +203,7 @@ is_zero(r(0, _)).
 
 is_negative(r(Num, _)) :- Num < 0.
 
-rat.to_string(r(Num, Denom)) =
+to_string(r(Num, Denom)) =
     ( if Num = 0 then
         "0"
     else
