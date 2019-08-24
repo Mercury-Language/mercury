@@ -14,11 +14,11 @@
 % inference.
 %
 % Basically what this module does is to traverse the HLDS, performing
-% mode-checking or mode inference on each predicate.  For each procedure, it
-% will reorder the procedure body if necessary, annotate each sub_goal with
-% its mode, and check that the procedure body is mode-correct,
-% This pass also determines whether or not unifications can fail.  It
-% also converts unifications with higher-order predicate terms into
+% mode-checking or mode inference on each predicate. For each procedure,
+% it will reorder the procedure body if necessary, annotate each subgoal
+% with its mode, and check that the procedure body is mode-correct,
+% This pass also determines whether or not unifications can fail,
+% and converts unifications with higher-order predicate terms into
 % unifications with lambda expressions.
 %
 % The input to this pass must be type-correct and in superhomogeneous form.
@@ -28,29 +28,30 @@
 % N.B. Changes here may also require changes to unique_modes.m!
 %
 % IMPLEMENTATION DOCUMENTATION
-% How does it all work?  Well, mode checking/inference is basically a
-% process of abstract interpretation.  To perform this abstract
-% interpretation on a procedure body, we need to know the initial insts of
-% the arguments; then we can abstractly interpret the goal to compute the
-% final insts.  For mode checking, we then just compare the inferred final
-% insts with the declared final insts, and that's about all there is to it.
+% How does it all work? Well, mode checking/inference is basically
+% a process of abstract interpretation. To perform this abstract interpretation
+% on a procedure body, we need to know the initial insts of the arguments;
+% then we can abstractly interpret the goal to compute the final insts.
+% For mode checking, we then just compare the inferred final insts
+% with the declared final insts, and that is about all there is to it.
 %
-% For mode inference, it's a little bit trickier.  When we see a call to a
-% predicate for which the modes weren't declared, we first check whether the
-% call matches any of the modes we've already inferred.  If not, we create a
-% new mode for the predicate, with the initial insts set to a "normalised"
-% version of the insts of the call arguments.  For a first approximation, we
-% set the final insts to `not_reached'.  What this means is that we don't
-% yet have any information about what the final insts will be.  We then keep
-% iterating mode inference passes until we reach a fixpoint.
+% For mode inference, it's a little bit trickier. When we see a call to
+% a predicate for which the modes weren't declared, we first check whether
+% the call matches any of the modes we've already inferred. If not,
+% we create a new mode for the predicate, with the initial insts
+% set to a "normalised" version of the insts of the call arguments.
+% For a first approximation, we set the final insts to `not_reached'.
+% What this means is that we don't yet have any information about
+% what the final insts will be. We then keep iterating mode inference passes
+% until we reach a fixpoint.
 %
 % To mode-analyse a procedure:
 %   1.  Initialize the insts of the head variables.
 %   2.  Mode-analyse the goal.
-%   3.  a.  If we're doing mode-checking:
+%   3.  a.  If we are doing mode-checking:
 %           Check that the final insts of the head variables
 %           matches that specified in the mode declaration
-%       b.  If we're doing mode-inference:
+%       b.  If we are doing mode-inference:
 %           Normalise the final insts of the head variables,
 %           record the newly inferred normalised final insts
 %           in the proc_info, and check whether they changed
