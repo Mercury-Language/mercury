@@ -1358,9 +1358,8 @@ reorder_indep_par_conj(PredProcId, VarTypes, InstMapBefore, Conjuncts0,
 reorder_indep_par_conj_2(_, _, _, [], [], !ModuleInfo).
 reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [Goal | Goals0],
         Goals, !ModuleInfo) :-
-    apply_instmap_delta(InstMapBefore,
-        goal_info_get_instmap_delta(Goal ^ hg_info),
-        InstMapBeforeGoals0),
+    apply_instmap_delta(goal_info_get_instmap_delta(Goal ^ hg_info),
+        InstMapBefore, InstMapBeforeGoals0),
     reorder_indep_par_conj_2(SCC, VarTypes, InstMapBeforeGoals0, Goals0,
         Goals1, !ModuleInfo),
     % These instmaps are equal since they both still apply Goal's instmap
@@ -1403,12 +1402,12 @@ push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
         % that it has already been swapped with PivotGoal, that is PivotGoal
         % occurs before Goal.
         PivotInstMapDelta = goal_info_get_instmap_delta(PivotGoal ^ hg_info),
-        apply_instmap_delta(InstMapBeforeGoal, PivotInstMapDelta,
-            InstMapBeforeGoalAfterPivot),
+        apply_instmap_delta(PivotInstMapDelta,
+            InstMapBeforeGoal, InstMapBeforeGoalAfterPivot),
 
         GoalInstMapDelta = goal_info_get_instmap_delta(Goal ^ hg_info),
-        apply_instmap_delta(InstMapBeforeGoalAfterPivot, GoalInstMapDelta,
-            InstMapAfterPivotAndGoal),
+        apply_instmap_delta(GoalInstMapDelta,
+            InstMapBeforeGoalAfterPivot, InstMapAfterPivotAndGoal),
 
         push_goal_into_conj(VarTypes, InstMapBeforeGoalAfterPivot, Goal,
             InstMapAfterPivotAndGoal, Goals0, MaybeGoals1, !ModuleInfo),

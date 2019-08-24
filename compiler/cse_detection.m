@@ -496,7 +496,7 @@ detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap) :-
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap).
 
 %---------------------------------------------------------------------------%
 

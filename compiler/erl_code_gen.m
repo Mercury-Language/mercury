@@ -1276,7 +1276,7 @@ erl_gen_conj(Goals, CodeModel, Detism, InstMap, Context, MaybeSuccessExpr,
         % complain about variables not being bound in all branches of a
         % conditional statement.
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
-        instmap_bound_vars(InstMap, ModuleInfo, BoundVars),
+        instmap_bound_vars(ModuleInfo, InstMap, BoundVars),
         erl_rename_vars_in_expr_except(BoundVars, Statement0, Statement, !Info)
     else
         Statement = Statement0

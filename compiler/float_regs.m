@@ -939,10 +939,10 @@ update_construct_goal_instmap_delta(ModuleInfo, CellVar, ConsId, Args,
             CellInst0, CellInst),
         instmap_delta_set_var(CellVar, CellInst, Delta0, Delta),
         goal_info_set_instmap_delta(Delta, GoalInfo0, GoalInfo),
-        apply_instmap_delta_sv(Delta, !InstMap)
+        apply_instmap_delta(Delta, !InstMap)
     else
         GoalInfo = GoalInfo0,
-        apply_instmap_delta_sv(Delta0, !InstMap)
+        apply_instmap_delta(Delta0, !InstMap)
     ).
 
 :- pred rebuild_cell_inst(module_info::in, instmap::in, cons_id::in,
@@ -1094,7 +1094,7 @@ insert_reg_wrappers_disj(Goals0, Goals, NonLocals, InstMap0, InstMap, !Info,
     else
         Goals = Goals1
     ),
-    apply_instmap_delta(InstMap0, CommonDelta, InstMap).
+    apply_instmap_delta(CommonDelta, InstMap0, InstMap).
 
 :- pred insert_reg_wrappers_disjunct(instmap::in,
     hlds_goal::in, hlds_goal::out, instmap::out,
@@ -1125,7 +1125,7 @@ insert_reg_wrappers_switch(Var, Cases0, Cases, NonLocals, InstMap0, InstMap,
     else
         Cases = Cases1
     ),
-    apply_instmap_delta(InstMap0, CommonDelta, InstMap).
+    apply_instmap_delta(CommonDelta, InstMap0, InstMap).
 
 :- pred insert_reg_wrappers_case(prog_var::in, mer_type::in, instmap::in,
     case::in, case::out, instmap::out, lambda_info::in, lambda_info::out,
@@ -1170,7 +1170,7 @@ insert_reg_wrappers_ite(NonLocals, GoalExpr0, GoalExpr, InstMap0, InstMap,
         Then = Then1,
         Else = Else1
     ),
-    apply_instmap_delta(InstMap0, CommonDelta, InstMap),
+    apply_instmap_delta(CommonDelta, InstMap0, InstMap),
     GoalExpr = if_then_else(Vars, Cond, Then, Else).
 
 %---------------------------------------------------------------------------%

@@ -523,16 +523,14 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap, Type,
             Rec = GoalAList,
 
             BaseInstMap = InitialInstMap,
-            instmap.apply_instmap_delta(InitialInstMap, CondInstMapDelta,
-                RecInstMap)
+            apply_instmap_delta(CondInstMapDelta, InitialInstMap, RecInstMap)
         else if is_recursive_case(GoalBList, proc(PredId, ProcId)) then
             Type = ite_base_rec,
             Base = GoalAList,
             Rec = GoalBList,
 
             RecInstMap = InitialInstMap,
-            instmap.apply_instmap_delta(InitialInstMap, CondInstMapDelta,
-                BaseInstMap)
+            apply_instmap_delta(CondInstMapDelta, InitialInstMap, BaseInstMap)
         else
             fail
         )
@@ -585,7 +583,7 @@ accu_store(Case, Goal, !N, !InstMap, !GoalStore) :-
     !:N = !.N + 1,
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(!.InstMap, InstMapDelta, !:InstMap).
+    apply_instmap_delta(InstMapDelta, !InstMap).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -634,15 +632,14 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
         FinalGoals = [hlds_goal(plain_call(_, _, Args, _, _, _), _) | Rest]
     then
         goal_list_instmap_delta(InitialGoals, InitInstMapDelta),
-        instmap.apply_instmap_delta(InitialInstMap,
-            InitInstMapDelta, InstMapBeforeRest),
+        apply_instmap_delta( InitInstMapDelta,
+            InitialInstMap, InstMapBeforeRest),
 
         goal_list_instmap_delta(Rest, InstMapDelta),
-        instmap.apply_instmap_delta(InstMapBeforeRest,
-            InstMapDelta, InstMapAfterRest),
+        apply_instmap_delta(InstMapDelta, InstMapBeforeRest, InstMapAfterRest),
 
-        instmap_changed_vars(InstMapBeforeRest, InstMapAfterRest,
-            VarTypes, ModuleInfo, ChangedVars),
+        instmap_changed_vars(ModuleInfo, VarTypes,
+            InstMapBeforeRest, InstMapAfterRest, ChangedVars),
 
         assoc_list.from_corresponding_lists(HeadVars, Args, HeadArg0),
 
@@ -1416,9 +1413,9 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
             Key = accu_goal_id(accu_base, _),
             Goal = hlds_goal(_GoalExpr, GoalInfo),
             InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-            apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-            instmap_changed_vars(InstMap0, InstMap, VarTypes,
-                ModuleInfo, ChangedVars),
+            apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
+            instmap_changed_vars(ModuleInfo, VarTypes,
+                InstMap0, InstMap, ChangedVars),
             set_of_var.is_singleton(ChangedVars, Var)
         ), Ids),
     (

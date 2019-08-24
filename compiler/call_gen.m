@@ -141,7 +141,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI, !CLD) :-
     % for use in the accurate garbage collector, and in the debugger.
     get_instmap(!.CLD, InstMap),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
+    apply_instmap_delta(InstMapDelta, InstMap, ReturnInstMap),
 
     % Update the code generator state to reflect the situation after the call.
     handle_return(ArgsInfos, GoalInfo, NonLiveOutputs,
@@ -279,7 +279,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes,
     % for use in the accurate garbage collector, and in the debugger.
     get_instmap(!.CLD, InstMap),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
+    apply_instmap_delta(InstMapDelta, InstMap, ReturnInstMap),
 
     % Update the code generator state to reflect the situation after the call.
     OutArgsInfos = OutArgsInfosR ++ OutArgsInfosF,

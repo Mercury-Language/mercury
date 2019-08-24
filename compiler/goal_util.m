@@ -481,7 +481,7 @@
 
 update_instmap(hlds_goal(_GoalExpr0, GoalInfo0), !InstMap) :-
     DeltaInstMap = goal_info_get_instmap_delta(GoalInfo0),
-    instmap.apply_instmap_delta(!.InstMap, DeltaInstMap, !:InstMap).
+    apply_instmap_delta(DeltaInstMap, !InstMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -1917,11 +1917,11 @@ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal,
     LaterGoal = hlds_goal(_, LaterGoalInfo),
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     EarlierInstMapDelta = goal_info_get_instmap_delta(EarlierGoalInfo),
-    instmap.apply_instmap_delta(InstMapBeforeEarlierGoal,
-        EarlierInstMapDelta, InstMapAfterEarlierGoal),
+    apply_instmap_delta(EarlierInstMapDelta,
+        InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal),
 
-    instmap_changed_vars(InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
-        VarTypes, ModuleInfo, EarlierChangedVars),
+    instmap_changed_vars(ModuleInfo, VarTypes,
+        InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal, EarlierChangedVars),
 
     LaterGoalNonLocals = goal_info_get_nonlocals(LaterGoalInfo),
     set_of_var.intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
@@ -2367,7 +2367,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                 HeadInstdeltas = map(
                     (func(G) = goal_info_get_instmap_delta(G ^ hg_info)),
                     HeadConjs),
-                list.foldl(apply_instmap_delta_sv, HeadInstdeltas,
+                list.foldl(apply_instmap_delta, HeadInstdeltas,
                     Instmap0, Instmap),
                 maybe_transform_goal_at_goal_path_with_instmap(TransformP,
                     LaterPath, Instmap, Conj0, MaybeConj),
@@ -2483,7 +2483,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeCond
                 )
             else if FirstStep = step_ite_then then
-                apply_instmap_delta_sv(
+                apply_instmap_delta(
                     goal_info_get_instmap_delta(Cond0 ^ hg_info),
                     Instmap0, Instmap),
                 maybe_transform_goal_at_goal_path_with_instmap(TransformP,

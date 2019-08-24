@@ -398,7 +398,7 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
             OrElseGoals = list.det_tail(GoalDisj),
 
             InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
-            apply_instmap_delta(Instmap, InstmapDelta, FinalInstmap),
+            apply_instmap_delta(InstmapDelta, Instmap, FinalInstmap),
 
             % Traverse the goal and if an inside goal is encountered:
             %   1. If goal is single, connect the outers and inners
@@ -431,7 +431,7 @@ stm_process_conj(Instmap0, GoalList0, GoalList, !Info) :-
         stm_process_goal(Instmap0, Goal0, Goal, !Info),
 
         Goal0 = hlds_goal(_, GoalInfo),
-        apply_instmap_delta(Instmap0, InstmapDelta, Instmap),
+        apply_instmap_delta(InstmapDelta, Instmap0, Instmap),
         stm_process_conj(Instmap, Goals0, Goals, !Info),
         GoalList = [Goal | Goals]
     ).
@@ -467,7 +467,7 @@ stm_process_if_then_else(Instmap0, Cond0, Then0, Else0, Cond, Then, Else,
 
     Cond0 = hlds_goal(_, CondInfo),
     CondInstmapDelta = goal_info_get_instmap_delta(CondInfo),
-    apply_instmap_delta(Instmap0, CondInstmapDelta, InstmapAfterCond),
+    apply_instmap_delta(CondInstmapDelta, Instmap0, InstmapAfterCond),
     stm_process_goal(InstmapAfterCond, Then0, Then, !Info),
     stm_process_goal(Instmap0, Else0, Else, !Info).
 

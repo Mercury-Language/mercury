@@ -205,7 +205,7 @@ pd_info_set_useless_versions(Versions, !PDInfo) :-
 pd_info_update_goal(hlds_goal(_, GoalInfo), !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     Delta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap0, Delta, InstMap),
+    apply_instmap_delta(Delta, InstMap0, InstMap),
     pd_info_set_instmap(InstMap, !PDInfo).
 
 pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-

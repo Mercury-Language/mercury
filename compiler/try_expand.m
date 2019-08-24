@@ -289,10 +289,10 @@ expand_try_goals_in_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             !:PredInfo, !:ProcInfo),
         proc_info_get_goal(!.ProcInfo, Goal0),
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstmap),
+        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
 
         Info0 = trys_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, no),
-        expand_try_goals_in_goal(InitInstmap, Goal0, Goal, Info0, Info),
+        expand_try_goals_in_goal(InitInstMap, Goal0, Goal, Info0, Info),
         Info = trys_info(!:ModuleInfo, !:PredInfo, !:ProcInfo, Changed),
 
         (
@@ -348,29 +348,29 @@ update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
 :- pred expand_try_goals_in_goal(instmap::in, hlds_goal::in, hlds_goal::out,
     trys_info::in, trys_info::out) is det.
 
-expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
+expand_try_goals_in_goal(InstMap, Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(_, _, _, _, _),
         Goal = Goal0
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
-        expand_try_goals_in_conj(Instmap, Conjuncts0, Conjuncts, !Info),
+        expand_try_goals_in_conj(InstMap, Conjuncts0, Conjuncts, !Info),
         GoalExpr = conj(ConjType, Conjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
-        expand_try_goals_in_disj(Instmap, Disjuncts0, Disjuncts, !Info),
+        expand_try_goals_in_disj(InstMap, Disjuncts0, Disjuncts, !Info),
         GoalExpr = disj(Disjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
-        expand_try_goals_in_goal(Instmap, SubGoal0, SubGoal, !Info),
+        expand_try_goals_in_goal(InstMap, SubGoal0, SubGoal, !Info),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        expand_try_goals_in_cases(Instmap, Cases0, Cases, !Info),
+        expand_try_goals_in_cases(InstMap, Cases0, Cases, !Info),
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -394,7 +394,7 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             ; Reason = trace_goal(_, _, _, _, _)
             ; Reason = loop_control(_, _, _)
             ),
-            expand_try_goals_in_goal(Instmap, InnerGoal0, InnerGoal, !Info),
+            expand_try_goals_in_goal(InstMap, InnerGoal0, InnerGoal, !Info),
             GoalExpr = scope(Reason, InnerGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
@@ -403,7 +403,7 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
         )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        expand_try_goals_in_if_then_else(Instmap, Cond0, Cond, Then0, Then,
+        expand_try_goals_in_if_then_else(InstMap, Cond0, Cond, Then0, Then,
             Else0, Else, !Info),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -418,12 +418,12 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = try_goal(_, _, _),
-            expand_try_goal(Instmap, ShortHand0, Goal, !Info)
+            expand_try_goal(InstMap, ShortHand0, Goal, !Info)
         ;
             ShortHand0 = atomic_goal(AtomicGoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
-            expand_try_goals_in_goal(Instmap, MainGoal0, MainGoal, !Info),
-            expand_try_goals_in_disj(Instmap, OrElseGoals0, OrElseGoals,
+            expand_try_goals_in_goal(InstMap, MainGoal0, MainGoal, !Info),
+            expand_try_goals_in_disj(InstMap, OrElseGoals0, OrElseGoals,
                 !Info),
             GoalExpr = atomic_goal(AtomicGoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
@@ -438,29 +438,29 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
     list(hlds_goal)::in, list(hlds_goal)::out,
     trys_info::in, trys_info::out) is det.
 
-expand_try_goals_in_conj(_Instmap0, [], [], !Info).
-expand_try_goals_in_conj(Instmap0, [Goal0 | Goals0], [Goal | Goals], !Info) :-
-    expand_try_goals_in_goal(Instmap0, Goal0, Goal, !Info),
+expand_try_goals_in_conj(_InstMap0, [], [], !Info).
+expand_try_goals_in_conj(InstMap0, [Goal0 | Goals0], [Goal | Goals], !Info) :-
+    expand_try_goals_in_goal(InstMap0, Goal0, Goal, !Info),
     Goal0 = hlds_goal(_, GoalInfo),
-    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    apply_instmap_delta(Instmap0, InstmapDelta, Instmap),
-    expand_try_goals_in_conj(Instmap, Goals0, Goals, !Info).
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
+    expand_try_goals_in_conj(InstMap, Goals0, Goals, !Info).
 
 :- pred expand_try_goals_in_disj(instmap::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     trys_info::in, trys_info::out) is det.
 
-expand_try_goals_in_disj(Instmap0, Goals0, Goals, !Info) :-
-    list.map_foldl(expand_try_goals_in_goal(Instmap0), Goals0, Goals, !Info).
+expand_try_goals_in_disj(InstMap0, Goals0, Goals, !Info) :-
+    list.map_foldl(expand_try_goals_in_goal(InstMap0), Goals0, Goals, !Info).
 
 :- pred expand_try_goals_in_cases(instmap::in, list(case)::in, list(case)::out,
     trys_info::in, trys_info::out) is det.
 
-expand_try_goals_in_cases(_Instmap0, [], [], !Info).
-expand_try_goals_in_cases(Instmap0, [Case0 | Cases0], [Case | Cases], !Info) :-
+expand_try_goals_in_cases(_InstMap0, [], [], !Info).
+expand_try_goals_in_cases(InstMap0, [Case0 | Cases0], [Case | Cases], !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    expand_try_goals_in_goal(Instmap0, Goal0, Goal, !Info),
-    expand_try_goals_in_cases(Instmap0, Cases0, Cases, !Info),
+    expand_try_goals_in_goal(InstMap0, Goal0, Goal, !Info),
+    expand_try_goals_in_cases(InstMap0, Cases0, Cases, !Info),
     Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred expand_try_goals_in_if_then_else(instmap::in,
@@ -468,16 +468,16 @@ expand_try_goals_in_cases(Instmap0, [Case0 | Cases0], [Case | Cases], !Info) :-
     hlds_goal::out, hlds_goal::in, hlds_goal::out,
     trys_info::in, trys_info::out) is det.
 
-expand_try_goals_in_if_then_else(Instmap0, Cond0, Cond, Then0, Then,
+expand_try_goals_in_if_then_else(InstMap0, Cond0, Cond, Then0, Then,
         Else0, Else, !Info) :-
-    expand_try_goals_in_goal(Instmap0, Cond0, Cond, !Info),
+    expand_try_goals_in_goal(InstMap0, Cond0, Cond, !Info),
 
     Cond0 = hlds_goal(_, CondInfo),
-    CondInstmapDelta = goal_info_get_instmap_delta(CondInfo),
-    apply_instmap_delta(Instmap0, CondInstmapDelta, InstmapAfterCond),
-    expand_try_goals_in_goal(InstmapAfterCond, Then0, Then, !Info),
+    CondInstMapDelta = goal_info_get_instmap_delta(CondInfo),
+    apply_instmap_delta(CondInstMapDelta, InstMap0, InstMapAfterCond),
+    expand_try_goals_in_goal(InstMapAfterCond, Then0, Then, !Info),
 
-    expand_try_goals_in_goal(Instmap0, Else0, Else, !Info).
+    expand_try_goals_in_goal(InstMap0, Else0, Else, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -487,28 +487,28 @@ expand_try_goals_in_if_then_else(Instmap0, Cond0, Cond, Then0, Then,
 :- pred expand_try_goal(instmap::in, shorthand_goal_expr::in(try_goal),
     hlds_goal::out, trys_info::in, trys_info::out) is det.
 
-expand_try_goal(Instmap, TryGoal, FinalGoal, !Info) :-
+expand_try_goal(InstMap, TryGoal, FinalGoal, !Info) :-
     TryGoal = try_goal(MaybeIO, ResultVar, IntermediateGoal),
     extract_intermediate_goal_parts(!.Info ^ ti_module_info, ResultVar,
         IntermediateGoal, Goal0, Then0, MaybeElse0, ExcpHandling0),
 
     % Handle nested try goals.
-    expand_try_goals_in_goal(Instmap, Goal0, Goal1, !Info),
-    update_instmap(Goal0, Instmap, InstmapAfterGoal),
-    expand_try_goals_in_goal(InstmapAfterGoal, Then0, Then1, !Info),
+    expand_try_goals_in_goal(InstMap, Goal0, Goal1, !Info),
+    update_instmap(Goal0, InstMap, InstMapAfterGoal),
+    expand_try_goals_in_goal(InstMapAfterGoal, Then0, Then1, !Info),
     (
         MaybeElse0 = yes(Else0),
-        expand_try_goals_in_goal(Instmap, Else0, Else1, !Info),
+        expand_try_goals_in_goal(InstMap, Else0, Else1, !Info),
         MaybeElse1 = yes(Else1)
     ;
         MaybeElse0 = no,
         MaybeElse1 = no
     ),
-    expand_try_goals_in_goal(Instmap, ExcpHandling0, ExcpHandling1, !Info),
+    expand_try_goals_in_goal(InstMap, ExcpHandling0, ExcpHandling1, !Info),
 
     % Find the output variables.  Note we use Goal0, not Goal1, as any nested
     % tries would have been transformed will mess up the calculation.
-    bound_nonlocals_in_goal(!.Info ^ ti_module_info, Instmap, Goal0,
+    bound_nonlocals_in_goal(!.Info ^ ti_module_info, InstMap, Goal0,
         GoalOutputVarsSet0),
     (
         MaybeIO = yes(try_io_state_vars(_IOStateVarInitial, IOStateVarFinal)),
@@ -522,7 +522,7 @@ expand_try_goal(Instmap, TryGoal, FinalGoal, !Info) :-
     some [!ModuleInfo, !PredInfo, !ProcInfo, !VarTypes] (
         !.Info = trys_info(!:ModuleInfo, !:PredInfo, !:ProcInfo, _),
         expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1,
-            ExcpHandling1, InstmapAfterGoal, GoalOutputVarsSet, FinalGoal,
+            ExcpHandling1, InstMapAfterGoal, GoalOutputVarsSet, FinalGoal,
             !PredInfo, !ProcInfo, !ModuleInfo),
         !:Info = trys_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, yes)
     ).
@@ -534,7 +534,7 @@ expand_try_goal(Instmap, TryGoal, FinalGoal, !Info) :-
     module_info::in, module_info::out) is det.
 
 expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
-        Instmap, GoalOutputVarsSet, FinalGoal,
+        InstMap, GoalOutputVarsSet, FinalGoal,
         !PredInfo, !ProcInfo, !ModuleInfo) :-
     some [!VarTypes] (
         % Get the type of the output tuple.
@@ -614,7 +614,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         TupleVar, !ProcInfo),
     deconstruct_functor(ResultVar, exception_succeeded_functor, [TmpTupleVar],
         DeconstructSucceeded),
-    instmap_lookup_vars(Instmap, GoalOutputVars, TupleArgInsts),
+    instmap_lookup_vars(InstMap, GoalOutputVars, TupleArgInsts),
     make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
         CastOutputTuple),
     deconstruct_tuple(TupleVar, GoalOutputVars, DeconstructOutputs),
@@ -800,9 +800,9 @@ lookup_case_goal([Case | Cases], ConsId, Goal) :-
 bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
     Goal = hlds_goal(_, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     BoundNonLocals = set_of_var.filter(
-        var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstmapDelta),
+        var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta),
         NonLocals).
 
 :- pred make_try_lambda(hlds_goal::in, set_of_progvar::in, mer_type::in,

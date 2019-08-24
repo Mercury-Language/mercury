@@ -545,7 +545,7 @@ get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], !.FoundBranch,
         VarTypes, InstMap0, !LeftVars, !Vars) :-
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
     ( if get_branch_instmap_deltas(Goal, InstMapDeltas) then
         % Only look for goals with one top-level branched goal,
         % since deforestation of goals with more than one is
@@ -669,7 +669,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         GoalExpr = if_then_else(_, Cond, Then, Else),
         Cond = hlds_goal(_, CondInfo),
         CondDelta = goal_info_get_instmap_delta(CondInfo),
-        instmap.apply_instmap_delta(InstMap0, CondDelta, InstMap1),
+        apply_instmap_delta(CondDelta, InstMap0, InstMap1),
         goal_to_conj_list(Then, ThenList),
         examine_branch(!.ModuleInfo, ProcArgInfo, 1, ThenList,
             VarTypes, InstMap1, !Vars),
@@ -698,7 +698,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         unexpected($pred, "shorthand")
     ),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
     get_sub_branch_vars_goal(ProcArgInfo, GoalList,
         VarTypes, InstMap, !.Vars, SubVars, !ModuleInfo).
 
@@ -768,7 +768,7 @@ examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
     ),
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap, InstMapDelta, InstMap1),
+    apply_instmap_delta(InstMapDelta, InstMap, InstMap1),
     examine_branch(ModuleInfo, ProcArgInfo, BranchNo,
         Goals, VarTypes, InstMap1, !Vars).
 

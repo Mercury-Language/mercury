@@ -294,7 +294,7 @@ compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, InstMap,
         ),
         GoalExpr = shorthand(Shorthand)
     ),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
     compute_goal_mode(ModuleInfo, VarTypes, InstMapDelta, InstMap0, InstMap,
         GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).

@@ -351,7 +351,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
     assoc_list.from_corresponding_lists(Vars, VarInitialInsts, VarInstAL),
     VarInstMapDelta = instmap_delta_from_assoc_list(VarInstAL),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    instmap.apply_instmap_delta(InstMap0, VarInstMapDelta, InstMap1),
+    apply_instmap_delta(VarInstMapDelta, InstMap0, InstMap1),
     mode_info_set_instmap(InstMap1, !ModeInfo),
 
     % Mark the non-clobbered lambda variables as live.

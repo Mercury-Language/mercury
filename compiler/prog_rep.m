@@ -468,7 +468,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
         GoalExpr = if_then_else(_, Cond, Then, Else),
         Cond = hlds_goal(_, CondGoalInfo),
         InstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
-        instmap.apply_instmap_delta(Instmap0, InstmapDelta, InstmapAfterCond),
+        apply_instmap_delta(InstmapDelta, Instmap0, InstmapAfterCond),
         goal_to_goal_rep(Info, Instmap0, Cond, CondRep),
         goal_to_goal_rep(Info, InstmapAfterCond, Then, ThenRep),
         goal_to_goal_rep(Info, Instmap0, Else, ElseRep),
@@ -610,7 +610,7 @@ conj_to_conj_rep(Info, Instmap0, [Conj | Conjs], [ConjRep | ConjReps]) :-
     goal_to_goal_rep(Info, Instmap0, Conj, ConjRep),
     GoalInfo = Conj ^ hg_info,
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(Instmap0, InstmapDelta, Instmap1),
+    apply_instmap_delta(InstmapDelta, Instmap0, Instmap1),
     conj_to_conj_rep(Info, Instmap1, Conjs, ConjReps).
 
 :- pred case_to_case_rep(prog_rep_info::in, instmap::in,

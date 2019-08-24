@@ -71,7 +71,7 @@ reschedule_conj([Goal0 | Goals0], Goals, !ModeInfo) :-
         WokenGoals = [],
         Goal0 = hlds_goal(_Goal0Goal, Goal0Info),
         InstMapDelta = goal_info_get_instmap_delta(Goal0Info),
-        instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
+        apply_instmap_delta(InstMapDelta, InstMap0, InstMap1),
         mode_info_set_instmap(InstMap1, !ModeInfo),
         reschedule_conj(Goals0, Goals1, !ModeInfo),
         Goals = [Goal0 | Goals1]

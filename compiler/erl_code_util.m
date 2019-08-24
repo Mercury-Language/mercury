@@ -389,7 +389,7 @@ erl_fix_success_expr(InstMap0, Goal, MaybeExpr0, MaybeExpr, !Info) :-
         MaybeExpr0 = yes(Expr0),
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
         update_instmap(Goal, InstMap0, InstMap),
-        instmap_bound_vars(InstMap, ModuleInfo, BoundVars),
+        instmap_bound_vars(ModuleInfo, InstMap, BoundVars),
         erl_rename_vars_in_expr_except(BoundVars, Expr0, Expr, !Info),
         MaybeExpr = yes(Expr)
     ;

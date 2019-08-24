@@ -320,7 +320,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
     Goal0 = hlds_goal(_, GoalInfo0),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
-    instmap.apply_instmap_delta(InitInstMap, InstMapDelta, FinalInstMap),
+    apply_instmap_delta(InstMapDelta, InitInstMap, FinalInstMap),
     proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo, NeededVarsList),
     map.init(WhereNeededMap0),
     NeededEverywhere =
@@ -484,7 +484,7 @@ can_eliminate_or_move(UnneededInfo, Goal, InitInstMap, FinalInstMap,
         WhereNeededMap, !:WhereInfo) :-
     ModuleInfo = UnneededInfo ^ uci_module_info,
     VarTypes = UnneededInfo ^ uci_vartypes,
-    instmap_changed_vars(InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
+    instmap_changed_vars(ModuleInfo, VarTypes, InitInstMap, FinalInstMap,
         ChangedVarSet),
     set_of_var.to_sorted_list(ChangedVarSet, ChangedVars),
     map.init(Empty),
@@ -790,7 +790,7 @@ build_bracketed_conj([Goal | Goals], InitInstMap, BracketedGoals) :-
     else
         Goal = hlds_goal(_, GoalInfo),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-        instmap.apply_instmap_delta(InitInstMap, InstMapDelta, FinalInstMap),
+        apply_instmap_delta(InstMapDelta, InitInstMap, FinalInstMap),
         build_bracketed_conj(Goals, FinalInstMap, BracketedTail),
         BracketedGoal = bracketed_goal(Goal, InitInstMap, FinalInstMap),
         BracketedGoals = [BracketedGoal | BracketedTail]
@@ -880,7 +880,7 @@ unneeded_process_ite(UnneededInfo, Cond0, Cond, Then0, Then, Else0, Else,
         !WhereNeededMap, !RefinedGoals, !Changed) :-
     Cond0 = hlds_goal(_, CondInfo0),
     InstMapDelta = goal_info_get_instmap_delta(CondInfo0),
-    instmap.apply_instmap_delta(InitInstMap, InstMapDelta, InstMapCond),
+    apply_instmap_delta(InstMapDelta, InitInstMap, InstMapCond),
 
     unneeded_process_goal(UnneededInfo, Else0, Else, InitInstMap, FinalInstMap,
         !.WhereNeededMap, WhereNeededMapElse, !RefinedGoals, !Changed),

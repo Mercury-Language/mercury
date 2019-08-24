@@ -728,7 +728,7 @@ compute_initial_aux_instmap(Gs, IM) = list.foldl(ApplyGoalInstMap, Gs, IM) :-
     ApplyGoalInstMap =
         ( func(hlds_goal(_GoalExpr, GoalInfo), IM0) = IM1 :-
             IMD = goal_info_get_instmap_delta(GoalInfo),
-            apply_instmap_delta(IM0, IMD, IM1)
+            apply_instmap_delta(IMD, IM0, IM1)
         ).
 
 %-----------------------------------------------------------------------------%

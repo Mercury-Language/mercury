@@ -107,8 +107,7 @@ figure_out_output_vars(CI, CLD, GoalInfo, OutVars) :-
         get_instmap(CLD, CurrentInstMap),
         get_module_info(CI, ModuleInfo),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-        instmap.apply_instmap_delta(CurrentInstMap, InstMapDelta,
-            InstMapAfter),
+        apply_instmap_delta(InstMapDelta, CurrentInstMap, InstMapAfter),
         list.filter(is_output_var(ModuleInfo, CurrentInstMap, InstMapAfter),
             set_of_var.to_sorted_list(ChangedVars), OutVars)
     ).

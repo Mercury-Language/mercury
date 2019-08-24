@@ -143,7 +143,7 @@ delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         Cond0 = hlds_goal(_, CondInfo0),
         CondInstMapDelta = goal_info_get_instmap_delta(CondInfo0),
-        instmap.apply_instmap_delta(InstMap0, CondInstMapDelta, InstMapThen),
+        apply_instmap_delta(CondInstMapDelta, InstMap0, InstMapThen),
         delay_construct_in_goal(Cond0, InstMap0, DelayInfo, Cond),
         delay_construct_in_goal(Then0, InstMapThen, DelayInfo, Then),
         delay_construct_in_goal(Else0, InstMap0, DelayInfo, Else),
@@ -211,7 +211,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         ConstructedVars0, RevDelayedGoals0, Goals) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1),
+    apply_instmap_delta(InstMapDelta0, InstMap0, InstMap1),
     ( if
         GoalExpr0 = unify(_, _, _, Unif, _),
         Unif = construct(Var, _, Args, _, _, _, _),

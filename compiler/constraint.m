@@ -327,9 +327,9 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
 
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-    instmap_changed_vars(InstMap0, InstMap, VarTypes,
-        ModuleInfo, ChangedVars0),
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
+    instmap_changed_vars(ModuleInfo, VarTypes, InstMap0, InstMap,
+        ChangedVars0),
 
     instmap_vars_list(InstMap, InstMapVars),
 
@@ -799,7 +799,7 @@ constraint_info_deconstruct(ConstraintInfo, ModuleInfo,
 constraint_info_update_goal(hlds_goal(_, GoalInfo), !Info) :-
     InstMap0 = !.Info ^ constr_instmap,
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
     !Info ^ constr_instmap := InstMap.
 
 :- pred constraint_info_bind_var_to_functors(prog_var::in, cons_id::in,

@@ -207,9 +207,10 @@ generate_par_conj(Conjuncts, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     set_of_var.to_sorted_list(Nonlocals, Variables),
     get_instmap(!.CLD, InitialInstMap),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InitialInstMap, InstMapDelta, Final),
+    apply_instmap_delta(InstMapDelta, InitialInstMap, FinalInstMap),
     get_module_info(!.CI, ModuleInfo),
-    find_outputs(Variables, InitialInstMap, Final, ModuleInfo, [], Outputs),
+    find_outputs(Variables, InitialInstMap, FinalInstMap, ModuleInfo,
+        [], Outputs),
 
     % Reserve a contiguous block on the stack to hold the synchronisation term.
     Contents = list.duplicate(STSize, slot_sync_term),

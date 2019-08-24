@@ -363,7 +363,7 @@ post_goal_update(GoalInfo, CI, !CLD) :-
     make_vars_forward_live(PostBirths, CI, !CLD),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     get_instmap(!.CLD, InstMap0),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
     set_instmap(InstMap, !CLD).
 
 %---------------------------------------------------------------------------%

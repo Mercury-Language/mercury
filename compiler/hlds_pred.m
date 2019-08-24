@@ -1187,7 +1187,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         VarNameRemap, ModuleInfo0, ModuleInfo, PredProcId) :-
     Goal0 = hlds_goal(_GoalExpr, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
 
     % XXX The set of existentially quantified type variables
     % here might not be correct.

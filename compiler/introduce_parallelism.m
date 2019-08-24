@@ -380,7 +380,7 @@ maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC, Instmap0,
         GoalsBeforeInstDeltas = list.map(
             (func(G) = goal_info_get_instmap_delta(G ^ hg_info)),
             GoalsBefore),
-        list.foldl(apply_instmap_delta_sv, GoalsBeforeInstDeltas,
+        list.foldl(apply_instmap_delta, GoalsBeforeInstDeltas,
             Instmap0, Instmap),
         build_par_conjunction(ProgRepInfo, VarNameTable, Instmap,
             [FirstGoal | OtherGoals], CPC, MaybeParConjunction),
@@ -442,7 +442,7 @@ find_first_goal(GoalRep, [Goal | Goals], ProcRepInfo, VarNameTable, !.Instmap,
         Result = found_first_goal([], Goal, Goals)
     else
         InstmapDelta = goal_info_get_instmap_delta(Goal ^ hg_info),
-        apply_instmap_delta_sv(InstmapDelta, !Instmap),
+        apply_instmap_delta(InstmapDelta, !Instmap),
         find_first_goal(GoalRep, Goals, ProcRepInfo, VarNameTable, !.Instmap,
             Result0),
         (
@@ -550,7 +550,7 @@ build_seq_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
                 GoalRep, Goal)
         then
             InstmapDelta = goal_info_get_instmap_delta(Goal ^ hg_info),
-            apply_instmap_delta_sv(InstmapDelta, !Instmap),
+            apply_instmap_delta(InstmapDelta, !Instmap),
             build_seq_conjuncts(ProcRepInfo, VarNameTable, GoalReps,
                 MaybeConjs0, !Goals, !Instmap),
             (

@@ -10,12 +10,13 @@
 % File: instmap.m.
 % Main author: bromage.
 %
-% This module contains code which implements the instmap and instmap_delta
-% ADTs.
+% This module contains the instmap and instmap_delta ADTs.
 %
-% An instmap stores information on what instantiation states a set of
-% variables have. An instmap_delta stores information on how these
-% instantiation states change across a goal.
+% An instmap maps variables to their instantiation states (if the relevant
+% program point is reachable).
+%
+% An instmap_delta stores how variables' instantiation states
+% change across a goal.
 %
 %-----------------------------------------------------------------------------%
 
@@ -114,10 +115,10 @@
     % Return the set of variables which has an instantiatedness for which
     % inst_is_bound succeeds.
     %
-:- pred instmap_bound_vars(instmap::in, module_info::in, set_of_progvar::out)
+:- pred instmap_bound_vars(module_info::in, instmap::in, set_of_progvar::out)
     is det.
 
-    % instmap_changed_vars(IMA, IMB, MI, CV)
+    % instmap_changed_vars(ModuleInfo, VarTypes, IMA, IMB, CV)
     %
     % Given an earlier instmap, IMA, and a later instmap, IMB, determine
     % what variables, CV, have had their instantiatedness information changed.
@@ -125,8 +126,8 @@
     % This predicate is meant to be equivalent to instmap_delta_changed_vars,
     % where the instmap_delta is simply the one to take IMA to IMB.
     %
-:- pred instmap_changed_vars(instmap::in, instmap::in, vartypes::in,
-    module_info::in, set_of_progvar::out) is det.
+:- pred instmap_changed_vars(module_info::in, vartypes::in,
+    instmap::in, instmap::in, set_of_progvar::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -220,13 +221,7 @@
     % Given an instmap and an instmap_delta, overlay the entries in the
     % instmap_delta on top of those in the instmap to produce a new instmap.
     %
-:- pred apply_instmap_delta(instmap::in, instmap_delta::in,
-    instmap::out) is det.
-
-    % A version of apply_instmap_delta that can be conveniently used with foldl
-    % or in state variable notation.
-    %
-:- pred apply_instmap_delta_sv(instmap_delta::in, instmap::in, instmap::out)
+:- pred apply_instmap_delta(instmap_delta::in, instmap::in, instmap::out)
     is det.
 
     % Given two instmap_deltas, overlay the entries in the second instmap_delta
@@ -340,8 +335,8 @@
     % Apply the specified procedure to all insts in an instmap_delta.
     %
 :- pred instmap_delta_map_foldl(
-    pred(prog_var, mer_inst, mer_inst, T, T)::in(pred(in, in, out, in, out)
-        is det),
+    pred(prog_var, mer_inst, mer_inst, T, T)::
+        in(pred(in, in, out, in, out) is det),
     instmap_delta::in, instmap_delta::out, T::in, T::out) is det.
 
 :- pred var_is_ground_in_instmap(module_info::in, instmap::in, prog_var::in)
@@ -382,17 +377,15 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type instmap_delta   ==  instmap.
+:- type instmap_delta == instmap.
 
 :- type instmap
     --->    reachable(instmapping)
     ;       unreachable.
 
-:- type instmapping ==  map(prog_var, mer_inst).
+:- type instmapping == map(prog_var, mer_inst).
 
 %-----------------------------------------------------------------------------%
-
-    % Initialize an empty instmap and instmap_delta.
 
 init_reachable(reachable(InstMapping)) :-
     map.init(InstMapping).
@@ -476,8 +469,8 @@ instmap_delta_from_from_to_insts_list_2(ModuleInfo, [Var | Vars],
     else
         instmap_delta_set_var(Var, FinalInst, !InstMapDelta)
     ),
-    instmap_delta_from_from_to_insts_list_2(ModuleInfo, Vars, FromToInsts,
-        !InstMapDelta).
+    instmap_delta_from_from_to_insts_list_2(ModuleInfo, Vars,
+        FromToInsts, !InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 
@@ -510,8 +503,8 @@ instmap_vars_list(unreachable, []).
 instmap_vars_list(reachable(InstMapping), VarsList) :-
     map.keys(InstMapping, VarsList).
 
-instmap_bound_vars(unreachable, _ModuleInfo, set_of_var.init).
-instmap_bound_vars(reachable(InstMapping), ModuleInfo, BoundVars) :-
+instmap_bound_vars(_ModuleInfo, unreachable, set_of_var.init).
+instmap_bound_vars(ModuleInfo, reachable(InstMapping), BoundVars) :-
     map.foldl(instmap_bound_vars_2(ModuleInfo), InstMapping,
         set_of_var.init, BoundVars).
 
@@ -525,29 +518,29 @@ instmap_bound_vars_2(ModuleInfo, Var, Inst, !BoundVars) :-
         true
     ).
 
-instmap_delta_changed_vars(unreachable, EmptySet) :-
-    set_of_var.init(EmptySet).
+instmap_delta_changed_vars(unreachable, ChangedVars) :-
+    set_of_var.init(ChangedVars).
 instmap_delta_changed_vars(reachable(InstMapping), ChangedVars) :-
     map.keys(InstMapping, ChangedVarsList),
     set_of_var.sorted_list_to_set(ChangedVarsList, ChangedVars).
 
 %-----------------------------------------------------------------------------%
 
-instmap_changed_vars(InstMapA, InstMapB, VarTypes, ModuleInfo, ChangedVars) :-
+instmap_changed_vars(ModuleInfo, VarTypes, InstMapA, InstMapB, ChangedVars) :-
     instmap_vars_list(InstMapB, VarsB),
-    instmap_changed_vars_2(VarsB, InstMapA, InstMapB, VarTypes, ModuleInfo,
+    instmap_changed_vars_2(ModuleInfo, VarTypes, VarsB, InstMapA, InstMapB,
         ChangedVars).
 
-:- pred instmap_changed_vars_2(prog_vars::in, instmap::in, instmap::in,
-    vartypes::in, module_info::in, set_of_progvar::out) is det.
+:- pred instmap_changed_vars_2(module_info::in, vartypes::in,
+    prog_vars::in, instmap::in, instmap::in, set_of_progvar::out) is det.
 
-instmap_changed_vars_2([], _InstMapA, _InstMapB, _Types,
-        _ModuleInfo, ChangedVars) :-
+instmap_changed_vars_2(_ModuleInfo, _VarTypes, [],
+        _InstMapA, _InstMapB, ChangedVars) :-
     set_of_var.init(ChangedVars).
-instmap_changed_vars_2([VarB | VarBs], InstMapA, InstMapB, VarTypes,
-        ModuleInfo, ChangedVars) :-
-    instmap_changed_vars_2(VarBs, InstMapA, InstMapB, VarTypes,
-        ModuleInfo, ChangedVars0),
+instmap_changed_vars_2(ModuleInfo, VarTypes, [VarB | VarBs],
+        InstMapA, InstMapB, ChangedVars) :-
+    instmap_changed_vars_2(ModuleInfo, VarTypes, VarBs,
+        InstMapA, InstMapB, ChangedVars0),
 
     instmap_lookup_var(InstMapA, VarB, InitialInst),
     instmap_lookup_var(InstMapB, VarB, FinalInst),
@@ -612,7 +605,7 @@ instmap_set_vars(VarsInsts, !InstMap) :-
 
 instmapping_set_vars([], !InstMapping).
 instmapping_set_vars([Var - Inst | VarsInsts], !InstMapping) :-
-    expect(negate(unify(Inst, not_reached)), $pred, "not_reached"),
+    expect_not(unify(Inst, not_reached), $pred, "not_reached"),
     map.set(Var, Inst, !InstMapping),
     instmapping_set_vars(VarsInsts, !InstMapping).
 
@@ -820,14 +813,11 @@ pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap) :-
 
 %-----------------------------------------------------------------------------%
 
-apply_instmap_delta(unreachable, _, unreachable).
-apply_instmap_delta(reachable(_), unreachable, unreachable).
-apply_instmap_delta(reachable(InstMapping0),
-        reachable(InstMappingDelta), reachable(InstMapping)) :-
+apply_instmap_delta(_, unreachable, unreachable).
+apply_instmap_delta(unreachable, reachable(_), unreachable).
+apply_instmap_delta(reachable(InstMappingDelta),
+        reachable(InstMapping0), reachable(InstMapping)) :-
     map.overlay(InstMapping0, InstMappingDelta, InstMapping).
-
-apply_instmap_delta_sv(Delta, !Instmap) :-
-    apply_instmap_delta(!.Instmap, Delta, !:Instmap).
 
 instmap_delta_apply_instmap_delta(InstMap1, InstMap2, How, InstMap) :-
     (
