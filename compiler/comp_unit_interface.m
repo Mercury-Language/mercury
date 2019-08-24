@@ -2133,11 +2133,9 @@ generate_interface_int2(Globals, AugCompUnit,
             !UnqualSymNames, !UsedModuleNames,
             cord.init, ShortIntTypeDefnsCord, !ShortIntImplicitFIMLangs),
         get_int2_items_from_int1_int_inst_defn(IntInstDefns,
-            !UnqualSymNames, !UsedModuleNames,
-            cord.init, ShortIntInstDefnsCord),
+            !UnqualSymNames, !UsedModuleNames),
         get_int2_items_from_int1_int_mode_defn(IntModeDefns,
-            !UnqualSymNames, !UsedModuleNames,
-            cord.init, ShortIntModeDefnsCord),
+            !UnqualSymNames, !UsedModuleNames),
         get_int2_items_from_int1_int_typeclass(IntTypeClasses,
             !UnqualSymNames, !UsedModuleNames,
             cord.init, ShortIntTypeClassesCord),
@@ -2146,8 +2144,8 @@ generate_interface_int2(Globals, AugCompUnit,
             cord.init, ShortIntInstancesCord),
 
         ShortIntTypeDefns = cord.list(ShortIntTypeDefnsCord),
-        ShortIntInstDefns = cord.list(ShortIntInstDefnsCord),
-        ShortIntModeDefns = cord.list(ShortIntModeDefnsCord),
+        ShortIntInstDefns = IntInstDefns,
+        ShortIntModeDefns = IntModeDefns,
         ShortIntTypeClasses = cord.list(ShortIntTypeClassesCord),
         ShortIntInstances = cord.list(ShortIntInstancesCord),
 
@@ -2299,13 +2297,12 @@ get_int2_items_from_int1_int_type_defn([TypeDefnInfo | TypeDefnInfos],
 
 :- pred get_int2_items_from_int1_int_inst_defn(list(item_inst_defn_info)::in,
     maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out,
-    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out) is det.
+    set(module_name)::in, set(module_name)::out) is det.
 
 get_int2_items_from_int1_int_inst_defn([],
-        !MaybeUnqual, !ModuleNames, !IntInstDefnsCord).
+        !MaybeUnqual, !ModuleNames).
 get_int2_items_from_int1_int_inst_defn([InstDefnInfo | InstDefnInfos],
-        !MaybeUnqual, !ModuleNames, !IntInstDefnsCord) :-
+        !MaybeUnqual, !ModuleNames) :-
     InstDefnInfo = item_inst_defn_info(_SymName, _InstArgVars,
         MaybeForTypeCtor, MaybeAbstractInstDefn, _InstVarSet,
         _Context, _SeqNum),
@@ -2323,21 +2320,17 @@ get_int2_items_from_int1_int_inst_defn([InstDefnInfo | InstDefnInfos],
         InstDefn = eqv_inst(Inst),
         accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames)
     ),
-    % XXX ITEM_LIST Consider making the inst definition abstract
-    % if it does not refer to any other non-builtin modules.
-    cord.snoc(InstDefnInfo, !IntInstDefnsCord),
     get_int2_items_from_int1_int_inst_defn(InstDefnInfos,
-        !MaybeUnqual, !ModuleNames, !IntInstDefnsCord).
+        !MaybeUnqual, !ModuleNames).
 
 :- pred get_int2_items_from_int1_int_mode_defn(list(item_mode_defn_info)::in,
     maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out,
-    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out) is det.
+    set(module_name)::in, set(module_name)::out) is det.
 
 get_int2_items_from_int1_int_mode_defn([],
-        !MaybeUnqual, !ModuleNames, !IntModeDefnsCord).
+        !MaybeUnqual, !ModuleNames).
 get_int2_items_from_int1_int_mode_defn([ModeDefnInfo | ModeDefnInfos],
-        !MaybeUnqual, !ModuleNames, !IntModeDefnsCord) :-
+        !MaybeUnqual, !ModuleNames) :-
     ModeDefnInfo = item_mode_defn_info(_SymName, _InstArgVars,
         MaybeAbstractModeDefn, _InstVarSet, _Context, _SeqNum),
     (
@@ -2347,11 +2340,8 @@ get_int2_items_from_int1_int_mode_defn([ModeDefnInfo | ModeDefnInfos],
         ModeDefn = eqv_mode(Mode),
         accumulate_modules_in_mode(Mode, !MaybeUnqual, !ModuleNames)
     ),
-    % XXX ITEM_LIST Consider making the mode definition abstract
-    % if it does not refer to any other non-builtin modules.
-    cord.snoc(ModeDefnInfo, !IntModeDefnsCord),
     get_int2_items_from_int1_int_mode_defn(ModeDefnInfos,
-        !MaybeUnqual, !ModuleNames, !IntModeDefnsCord).
+        !MaybeUnqual, !ModuleNames).
 
 :- pred get_int2_items_from_int1_int_typeclass(list(item_typeclass_info)::in,
     maybe_unqual_symnames::in, maybe_unqual_symnames::out,
