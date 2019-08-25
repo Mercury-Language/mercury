@@ -51,8 +51,12 @@
 % is read_parse_tree_opt, read_parse_tree_int, and then read_parse_tree_src.
 %
 % Our parsing process has four stages instead of the usual two.
-% Our stages are:
 %
+% The usual stages are:
+%   lexical analysis: chars -> tokens
+%   parsing:          tokens -> structured parse tree
+%
+% Our stages are:
 %   lexical analysis: chars -> tokens
 %   parsing stage 1:  tokens -> terms
 %   parsing stage 2:  terms -> items and markers
