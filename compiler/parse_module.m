@@ -505,43 +505,17 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
         FileString, MaxOffset, !.LineContext, !.LinePosn,
         Globals, DefaultModuleName, DefaultExpectationContexts,
         ParseTree, !:Specs, !:Errors) :-
-    !:Specs = [],
-    set.init(!:Errors),
-    counter.init(1, SeqNumCounter0),
-
-    % We handle the first module declaration specially. Read the documentation
-    % on read_first_module_decl for the reason.
-    read_first_module_decl(FileString, MaxOffset, require_module_decl,
-        DefaultModuleName, DefaultExpectationContexts,
-        ModuleDeclPresent, SourceFileName0, SourceFileName1,
-        SeqNumCounter0, SeqNumCounter1, !Specs, !Errors,
-        !LineContext, !LinePosn),
+    read_module_header(FileString, MaxOffset,
+        DefaultModuleName, DefaultExpectationContexts, MaybeModuleHeader,
+        SourceFileName0, SourceFileName1, SeqNumCounter1,
+        !:Specs, !:Errors, !LineContext, !LinePosn),
     (
-        ModuleDeclPresent = no_module_decl_present(LookAhead),
-        (
-            LookAhead = no_lookahead,
-            LookAheadContext = term.context(SourceFileName0, 1)
-        ;
-            LookAhead = lookahead(_, LookAheadTerm),
-            LookAheadContext = get_term_context(LookAheadTerm)
-        ),
-        report_missing_module_start(LookAheadContext, !Specs, !Errors),
+        MaybeModuleHeader = no_valid_module_header(ModuleNameContext),
         ModuleName = DefaultModuleName,
-        ModuleNameContext = term.context_init,
-        Uses = [],
-        FIMs = [],
-        Items = []
+        ParseTree = parse_tree_opt(ModuleName, OptFileKind, ModuleNameContext,
+            [], [], [])
     ;
-        ModuleDeclPresent =
-            wrong_module_decl_present(ModuleName, ModuleNameContext),
-        report_wrong_module_start(ModuleNameContext,
-            DefaultModuleName, ModuleName, !Specs, !Errors),
-        Uses = [],
-        FIMs = [],
-        Items = []
-    ;
-        ModuleDeclPresent =
-            right_module_decl_present(ModuleName, ModuleNameContext),
+        MaybeModuleHeader = valid_module_header(ModuleName, ModuleNameContext),
         read_item_sequence(FileString, MaxOffset, Globals, ModuleName,
             no_lookahead, FinalLookAhead, dont_allow_version_numbers, _,
             cord.init, InclsCord, cord.init, AvailsCord,
@@ -557,10 +531,10 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
         avail_imports_uses(Avails, Imports, Uses),
         expect(unify(Imports, []), $pred, "Imports != []"),
         FIMs = cord.list(FIMsCord),
-        Items = cord.list(ItemsCord)
-    ),
-    ParseTree = parse_tree_opt(ModuleName, OptFileKind, ModuleNameContext,
-        Uses, FIMs, Items).
+        Items = cord.list(ItemsCord),
+        ParseTree = parse_tree_opt(ModuleName, OptFileKind, ModuleNameContext,
+            Uses, FIMs, Items)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -589,55 +563,18 @@ read_parse_tree_int(IntFileKind, SourceFileName0,
         FileString, MaxOffset, !.LineContext, !.LinePosn,
         Globals, DefaultModuleName, DefaultExpectationContexts,
         ParseTree, !:Specs, !:Errors) :-
-    !:Specs = [],
-    set.init(!:Errors),
-    counter.init(1, SeqNumCounter0),
-
-    % We handle the first module declaration specially. Read the documentation
-    % on read_first_module_decl for the reason.
-    read_first_module_decl(FileString, MaxOffset, require_module_decl,
-        DefaultModuleName, DefaultExpectationContexts,
-        ModuleDeclPresent, SourceFileName0, SourceFileName1,
-        SeqNumCounter0, SeqNumCounter1, !Specs, !Errors,
-        !LineContext, !LinePosn),
+    read_module_header(FileString, MaxOffset,
+        DefaultModuleName, DefaultExpectationContexts, MaybeModuleHeader,
+        SourceFileName0, SourceFileName1, SeqNumCounter1,
+        !:Specs, !:Errors, !LineContext, !LinePosn),
     (
-        ModuleDeclPresent = no_module_decl_present(LookAhead),
-        (
-            LookAhead = no_lookahead,
-            LookAheadContext = term.context(SourceFileName0, 1)
-        ;
-            LookAhead = lookahead(_, LookAheadTerm),
-            LookAheadContext = get_term_context(LookAheadTerm)
-        ),
-        report_missing_module_start(LookAheadContext, !Specs, !Errors),
+        MaybeModuleHeader = no_valid_module_header(ModuleNameContext),
         ModuleName = DefaultModuleName,
-        ModuleNameContext = term.context_init,
         MaybeVersionNumbers = no_version_numbers,
-        IntIncls = [],
-        ImpIncls = [],
-        IntAvails = [],
-        ImpAvails = [],
-        IntFIMs = [],
-        ImpFIMs = [],
-        IntItems = [],
-        ImpItems = []
+        ParseTree = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+            MaybeVersionNumbers, [], [], [], [], [], [], [], [])
     ;
-        ModuleDeclPresent =
-            wrong_module_decl_present(ModuleName, ModuleNameContext),
-        report_wrong_module_start(ModuleNameContext,
-            DefaultModuleName, ModuleName, !Specs, !Errors),
-        MaybeVersionNumbers = no_version_numbers,
-        IntIncls = [],
-        ImpIncls = [],
-        IntAvails = [],
-        ImpAvails = [],
-        IntFIMs = [],
-        ImpFIMs = [],
-        IntItems = [],
-        ImpItems = []
-    ;
-        ModuleDeclPresent =
-            right_module_decl_present(ModuleName, ModuleNameContext),
+        MaybeModuleHeader = valid_module_header(ModuleName, ModuleNameContext),
         read_parse_tree_int_sections(FileString, MaxOffset,
             Globals, ModuleName, no_lookahead, FinalLookAhead,
             allow_version_numbers_not_seen, VNInfo, RawItemBlocks,
@@ -660,11 +597,11 @@ read_parse_tree_int(IntFileKind, SourceFileName0,
             !Specs, !Errors,
             !.LineContext, _LineContext, !.LinePosn, _LinePosn),
         separate_int_imp_items(RawItemBlocks, IntIncls, ImpIncls,
-            IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems)
-    ),
-    ParseTree = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntFIMs, ImpFIMs, IntItems, ImpItems).
+            IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems),
+        ParseTree = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+            MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+            IntFIMs, ImpFIMs, IntItems, ImpItems)
+    ).
 
 :- pred separate_int_imp_items(list(raw_item_block)::in,
     list(item_include)::out, list(item_include)::out,
@@ -1376,6 +1313,52 @@ handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
 % This part of the module contains utility predicates.
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+:- type maybe_module_header
+    --->    no_valid_module_header(prog_context)
+    ;       valid_module_header(module_name, prog_context).
+
+:- pred read_module_header(string::in, int::in,
+    module_name::in, list(prog_context)::in, maybe_module_header::out,
+    file_name::in, file_name::out, counter::out,
+    list(error_spec)::out, read_module_errors::out,
+    line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
+
+read_module_header(FileString, MaxOffset,
+        DefaultModuleName, DefaultExpectationContexts, MaybeModuleHeader,
+        SourceFileName0, SourceFileName, SeqNumCounter,
+        !:Specs, !:Errors, !LineContext, !LinePosn) :-
+    !:Specs = [],
+    set.init(!:Errors),
+    counter.init(1, SeqNumCounter0),
+
+    read_first_module_decl(FileString, MaxOffset, require_module_decl,
+        DefaultModuleName, DefaultExpectationContexts,
+        ModuleDeclPresent, SourceFileName0, SourceFileName,
+        SeqNumCounter0, SeqNumCounter, !Specs, !Errors,
+        !LineContext, !LinePosn),
+    (
+        ModuleDeclPresent = no_module_decl_present(LookAhead),
+        (
+            LookAhead = no_lookahead,
+            LookAheadContext = term.context(SourceFileName0, 1)
+        ;
+            LookAhead = lookahead(_, LookAheadTerm),
+            LookAheadContext = get_term_context(LookAheadTerm)
+        ),
+        report_missing_module_start(LookAheadContext, !Specs, !Errors),
+        MaybeModuleHeader = no_valid_module_header(term.context_init)
+    ;
+        ModuleDeclPresent =
+            wrong_module_decl_present(ModuleName, ModuleNameContext),
+        report_wrong_module_start(ModuleNameContext,
+            DefaultModuleName, ModuleName, !Specs, !Errors),
+        MaybeModuleHeader = no_valid_module_header(ModuleNameContext)
+    ;
+        ModuleDeclPresent =
+            right_module_decl_present(ModuleName, ModuleNameContext),
+        MaybeModuleHeader = valid_module_header(ModuleName, ModuleNameContext)
+    ).
 
 :- type maybe_module_decl_present
     --->    no_module_decl_present(maybe_lookahead)
