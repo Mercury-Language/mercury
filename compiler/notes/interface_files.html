@@ -520,7 +520,7 @@ keep everything else unchanged.
 <p>
 <em>XXX</em>
 pre-qual in the implementation:
-keep type_defns after calling maybe_make_abstract_type_defn_for_int2;
+keep type_defns after calling make_canon_make_du_and_solver_types_abstract;
 keep class defns after deleting the class's methods;
 keep foreign enum pragmas;
 keep foreign_import_modules;
@@ -575,7 +575,7 @@ There is an <em>XXX</em> by rafe on the relevant code,
 saying this may be the wrong thing to do.
 </ul>
 <p>
-<em>XXX</em> This is done by maybe_make_abstract_type_defn_for_int2,
+<em>XXX</em> This is done by make_canon_make_du_and_solver_types_abstract,
 which is relevant for the .int2 section below.
 <p>
 In the second, post-qualification stage,
@@ -762,10 +762,12 @@ that occurs on the right hand side of a type definition
 in the implementation section of the .int file.
 </ul>
 <p>
-The reason why we need to mention the implementation of these modules
+The reason why we need to use_module declarations for these modules
 is that the compiler creates entries
 for e.g. the types we are imported from them
 only when it sees them defined, not when it sees them used.
+<em>XXX</em>
+XXX We should consider fixing that.
 <p>
 The reason why we can turn what were originally import_module declarations
 into use_module declarations
@@ -773,12 +775,224 @@ is that we generate the .int file at all
 only if we can successfully module qualify everything in it
 (actually, everything in the augmented compilation unit
 from which we derive the .int file's contents).
+<em>XXX</em>
+This is not quite true.
+A compiler invocation that cannot fully module qualify
+the augmented compilation unit
+when trying to generate an interface file
+will exit with a nonzero exit status,
+so technically it fails,
+but it will still generate the interface file.
+<em>XXX</em>
+XXX We should consider fixing that.
+In fact, if we cannot generate an interface file correctly,
+we should delete the file we would have overwritten (if it exists)
+as well as its timestamp file (again, if it exists).
 </ul>
 
 <h2>The contents of .int2 files</h2>
 
 <p>
-TODO
+The contents of the .int2 file of a module are derived
+from the contents of the module's .int file.
+This means that indirectly, it is derived from
+both the interface sections and the implementation sections of that module,
+<em>after</em> they are fully module qualified,
+which (in the general case) requires reading in
+various interface files of various other modules
+(see the section on .int files above for details).
+
+<p>
+<ul>
+
+<li>
+<p>
+Type definitions in the interface section
+are copied <em>from the .int2 file</em> (not the source file)
+with two changes:
+<ul>
+<li>
+discriminated and solver types are made abstract
+(though solver type definitions in interface sections
+ought to be abstract in the first place), and
+<li>
+if the type has user-specified unification and/or comparison predicates,
+the part of the type definition naming those predicates is deleted.
+</ul>
+<p>
+We keep a type definition in the implementation section
+if the type constructor being defined
+satisfies any of the following conditions:
+<ul>
+<li>
+Type definitions in the implementation section
+are copied <em>from the .int2 file</em> (not the source file) unchanged.
+These should only be used when making decisions
+about the representations of the types defined in the interface.
+We already compute exactly which nonexported types
+we need definitions for in the implementation section, and what form,
+for the .int2 file;
+we need exactly the same info for the same purpose in .int2 files.
+In both cases, we should need these
+only until we switch to using type_repn items instead.
+
+<p>
+<li>
+Inst and mode definitions in the interface
+are always included in the .int2 file
+in exactly the same form as in the .int file.
+<p>
+<em>XXX</em>
+It should eventually be possible to make abstract
+any inst and mode definitions that do not refer to any other modules
+(other than the public or private builtin modules,
+though the private one does not define any insts or modes).
+This is because the only thing that
+code using such an inst or mode can do with it
+is pass it to a predicate or function defined in the same module.
+However, until recently the compiler
+did not handle abstract insts and modes at all, and even now,
+the only thing they can be used for reliably is module qualification;
+pretty much all operations on abstract insts and modes
+will cause a compiler abort.
+
+<p>
+<li>
+Class definitions in the interface
+are always included in the .int2 file with the methods deleted.
+Class definitions in the implementation
+are never included in the .int2 file.
+<em>XXX Why?</em>
+
+<p>
+<li>
+Instance definitions in the interface
+are always included in the .int2 file with the methods deleted.
+Instance definitions in the implementation
+are never included in the .int2 file.
+
+<p>
+<li>
+The type and mode declarations of predicates and functions
+are never included in the .int2 file,
+whether they occur in the interface or the implementation.
+
+<p>
+<li>
+Clauses are never included in .int2 files.
+
+<p>
+<li>
+Pragmas are never included in .int2 files.
+
+<p>
+<li>
+Promises are never included in .int2 files.
+
+<p>
+<li>
+Mutables are never included in .int2 files.
+
+<p>
+<li>
+Initialize and finalize declarations are never included in .int2 files.
+
+<p>
+<li>
+Declarations of submodules in the interface section
+are always included in the .int2 file.
+Declarations of submodules in the implementation section
+are never included in the .int2 file.
+<em>XXX Why?</em>
+Until we switch to using type_repn items, the second part may be a bug.
+If an abstract-exported type is defined to be equivalent
+to a type that is defined in a submodule in the interface,
+then the equivalence type_defn we will include
+in the .int2 file's implementation section
+will refer to the submodule
+<em>without</em> seeing the include_module declaration.
+
+<p>
+<li>
+We copy explicit an foreign_import_module item
+from the interface of the source file
+to the interface of the .int2 file
+if we include in the interface of the .int2 file
+a foreign type definition
+for the target language mentioned in that foreign_import_module item.
+We put an implicit foreign_import_module item for the current module
+into the interface of the .int2 file
+for every target language mentioned in such a foreign_type definition.
+<p>
+We copy explicit an foreign_import_module item
+from the interface <em>or</em> the implementation section of the source file
+to the implementation section of the .int2 file
+if we include in the implementation section of the .int2 file
+a foreign type definition
+for the target language mentioned in that foreign_import_module item.
+Likewise,
+we put an implicit foreign_import_module item for the current module
+into the implementation section of the .int2 file
+for every target language mentioned in a foreign_type definition
+in the implementation section of the .int2 file.
+<p>
+As with .int files,
+there is one exception from the above.
+If the interface section of the .int2 file contains
+a foreign_import_module for a given module in a given target language,
+then the compiler won't include
+a copy of the same foreign_import_module item in the implementation section,
+either explicitly or implicitly.
+
+<p>
+<li>
+We never put any import_module declarations
+in the interface section of the .int2 file,
+nor do we ever put any import_module or use_module declarations
+in the implementation section of the .int2 file,
+We <em>do</em> put a use_module declaration
+into the interface section of the .int2 file
+for all of the modules that have an import_module and/or use_module declaration
+in the module's interface section,
+<em>and</em>
+which are referred to by one of the
+type, inst, mode, typeclass or instance definitions in the interface,
+in one of the following ways:
+<p>
+<ul>
+<li>
+if the module defines a type that occurs
+on the right hand side of the definition of an equivalence type;
+<li>
+if the module defines a type constructor
+that is mentioned as being the type an inst is for;
+<li>
+if the module defines an inst or a mode
+that occurs in the right hand side of the definition of an inst or a mode;
+<li>
+if the module defines a typeclass or a type constructor
+that occurs in a superclass constraint on a typeclass definition; or
+<li>
+if the module defines a typeclass or a type constructor
+that an instance definition is for,
+or a typeclass or a type constructor
+that occurs in a class constraint on an instance definition.
+</ul>
+<p>
+As mentioned above in .int file section,
+the reason why we need use_module declarations for these modules
+is that the compiler creates entries
+for e.g. the types we are imported from them
+only when it sees them defined, not when it sees them used.
+<p>
+And as was also mentioned above in .int file section,
+the reason why we can turn what were originally import_module declarations
+into use_module declarations
+is that we generate the .int2 file at all
+only if we can successfully module qualify everything in it
+(actually, everything in the augmented compilation unit
+from which we derive the .int2 file's contents).
+</ul>
 
 <h2>Inclusion</h2>
 
