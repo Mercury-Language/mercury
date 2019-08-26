@@ -263,7 +263,7 @@ dump_livemap(MaybeProcLabel, Livemap) =
 
 dump_livemaplist(_, []) = "".
 dump_livemaplist(MaybeProcLabel, [Label - Lvalset | Livemaplist]) =
-    dump_label(MaybeProcLabel, Label) ++ " ->" ++
+    dump_label(MaybeProcLabel, Label) ++ " -> " ++
         dump_livevals(MaybeProcLabel, Lvalset) ++ "\n" ++
         dump_livemaplist(MaybeProcLabel, Livemaplist).
 
