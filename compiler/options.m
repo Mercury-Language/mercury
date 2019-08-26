@@ -502,6 +502,7 @@
     ;       unboxed_int64s
     ;       unboxed_no_tag_types
     ;       arg_pack_bits
+    ;       allow_direct_args
     ;       allow_double_word_fields
     ;       allow_double_word_ints          % XXX bootstrapping option
     ;       allow_packing_dummies           % XXX bootstrapping option
@@ -1486,6 +1487,7 @@ option_defaults_2(compilation_model_option, [
     arg_pack_bits                       -   int(-1),
                                         % -1 is a special value which means use
                                         % all word bits for argument packing.
+    allow_direct_args                   -   bool(yes),
     allow_double_word_fields            -   bool(yes),
     allow_double_word_ints              -   bool(no),
     allow_packing_dummies               -   bool(no),
@@ -2459,6 +2461,7 @@ long_option("unboxed-float",        unboxed_float).
 long_option("unboxed-int64s",       unboxed_int64s).
 long_option("unboxed-no-tag-types", unboxed_no_tag_types).
 long_option("arg-pack-bits",        arg_pack_bits).
+long_option("allow-direct-args",    allow_direct_args).
 long_option("allow-double-word-fields", allow_double_word_fields).
 long_option("allow-double-word-ints", allow_double_word_ints).
 long_option("allow-packing-dummies", allow_packing_dummies).
@@ -5060,6 +5063,11 @@ options_help_compilation_model -->
 %       "(This option is not for general use.)",
 %       "\tThe number of bits in a word in which to pack constructor"
 %       "arguments.",
+
+        % This is a developer only option.
+%       "--allow-direct-args",
+%       "(This option is not for general use.)",
+%       "\tAllow the direct arg optimization.",
 
         % This is a developer only option.
 %       "--no-allow-double-word-fields",
