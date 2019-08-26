@@ -1,0 +1,40 @@
+bad_item_in_interface.m:027: Error: clause for predicate `hello'/1 in module
+bad_item_in_interface.m:027:   interface.
+bad_item_in_interface.m:030: Error: `:- pragma foreign_decl' declaration in
+bad_item_in_interface.m:030:   module interface.
+bad_item_in_interface.m:035: Error: `:- pragma foreign_code' declaration in
+bad_item_in_interface.m:035:   module interface.
+bad_item_in_interface.m:040: Error: `:- pragma foreign_export' declaration in
+bad_item_in_interface.m:040:   module interface.
+bad_item_in_interface.m:048: Error: `:- pragma inline' declaration in module
+bad_item_in_interface.m:048:   interface.
+bad_item_in_interface.m:049: Error: `:- pragma no_inline' declaration in module
+bad_item_in_interface.m:049:   interface.
+bad_item_in_interface.m:050: Error: `:- pragma consider_used' declaration in
+bad_item_in_interface.m:050:   module interface.
+bad_item_in_interface.m:051: Error: `:- pragma no_determinism_warning'
+bad_item_in_interface.m:051:   declaration in module interface.
+bad_item_in_interface.m:054: Error: `:- pragma fact_table' declaration in
+bad_item_in_interface.m:054:   module interface.
+bad_item_in_interface.m:055: Error: `:- pragma memo' declaration in module
+bad_item_in_interface.m:055:   interface.
+bad_item_in_interface.m:058: Error: `:- pragma external_pred' declaration in
+bad_item_in_interface.m:058:   module interface.
+bad_item_in_interface.m:059: Error: `:- pragma external_pred' declaration in
+bad_item_in_interface.m:059:   module interface.
+bad_item_in_interface.m:060: Error: `:- pragma promise_pure' declaration in
+bad_item_in_interface.m:060:   module interface.
+bad_item_in_interface.m:061: Error: `:- pragma promise_semipure' declaration in
+bad_item_in_interface.m:061:   module interface.
+bad_item_in_interface.m:062: Error: `:- pragma promise_equivalent_clauses'
+bad_item_in_interface.m:062:   declaration in module interface.
+bad_item_in_interface.m:063: Error: `:- pragma require_feature_set' declaration
+bad_item_in_interface.m:063:   in module interface.
+bad_item_in_interface.m:065: Error: `:- pragma foreign_proc' declaration in
+bad_item_in_interface.m:065:   module interface.
+bad_item_in_interface.m:072: Error: `:- mutable' declaration in module
+bad_item_in_interface.m:072:   interface.
+bad_item_in_interface.m:073: Error: `:- initialise' declaration in module
+bad_item_in_interface.m:073:   interface.
+bad_item_in_interface.m:074: Error: `:- finalise' declaration in module
+bad_item_in_interface.m:074:   interface.

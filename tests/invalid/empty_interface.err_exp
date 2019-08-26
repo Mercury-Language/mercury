@@ -1,0 +1,7 @@
+empty_interface.m:005: Warning: interface for module `empty_interface' does not
+empty_interface.m:005:   export anything.
+empty_interface.m:005:   To be useful, a module should export something. A file
+empty_interface.m:005:   should contain at least one declaration other than
+empty_interface.m:005:   `:- import_module' in its interface section(s). This
+empty_interface.m:005:   would normally be a `:- pred', `:- func', `:- type',
+empty_interface.m:005:   `:- inst' or `:- mode' declaration.

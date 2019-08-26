@@ -21,6 +21,7 @@ MCFLAGS-bug238                  = --constraint-propagation
 MCFLAGS-children                = --no-intermodule-optimization
 MCFLAGS-duplicate_modes         = --verbose-error-messages
 MCFLAGS-ee_invalid              = --verbose-error-messages
+MCFLAGS-empty_interface         = --halt-at-warn -E
 MCFLAGS-exported_mode           = --infer-all --no-intermodule-optimization
 MCFLAGS-exported_unify          = --no-intermodule-optimization
 MCFLAGS-fe_unmapped_verbose     = --verbose-error-messages

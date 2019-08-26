@@ -140,12 +140,8 @@
 write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
-
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
-    generate_short_interface_int3(Globals, RawCompUnit,
-        _, ParseTreeInt3, Specs),
-    write_error_specs_ignore(Specs, Globals, !IO),
-    % XXX Why do we do this even if there are some errors?
+    generate_short_interface_int3(Globals, RawCompUnit, _, ParseTreeInt3),
     actually_write_interface_file(Globals, ParseTreeInt3, "", no, !IO),
     touch_interface_datestamp(Globals, ModuleName, ".date3", !IO).
 
@@ -229,8 +225,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
         else
             % Construct and write out the `.int' and `.int2' files.
             generate_interfaces_int1_int2(Globals, AugCompUnit,
-                ParseTreeInt1, ParseTreeInt2, InterfaceSpecs),
-            write_error_specs_ignore(InterfaceSpecs, Globals, !IO),
+                ParseTreeInt1, ParseTreeInt2),
             actually_write_interface_file(Globals, ParseTreeInt1, "",
                 MaybeTimestamp, !IO),
             actually_write_interface_file(Globals, ParseTreeInt2, "",
@@ -241,8 +236,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
             ;
                 Experiment2 = yes,
                 generate_interface_int2_via_int3(Globals, AugCompUnit,
-                    ParseTreeInt23, [], Int23Specs),
-                write_error_specs_ignore(Int23Specs, NoHaltAtWarnGlobals, !IO),
+                    ParseTreeInt23),
                 actually_write_interface_file(Globals, ParseTreeInt23, ".via3",
                     MaybeTimestamp, !IO)
             ),

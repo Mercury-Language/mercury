@@ -990,6 +990,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
 
 add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
     SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+    report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
+        !Specs),
     ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, SeqNum),
     (
         Pragma = pragma_foreign_proc(FPInfo),
