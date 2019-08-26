@@ -5,7 +5,7 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: rng.tausworthe.m
+% File: tausworthe.m
 % Main author: Mark Brown
 %
 % Combined Tausworthe-type generators. See:
@@ -21,63 +21,60 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module rng.tausworthe.
+:- module tausworthe.
 :- interface.
 
 :- import_module maybe.
+:- import_module random.
 
 %---------------------------------------------------------------------------%
 
 :- type params.
-:- type state.
+:- type ustate.
 
-:- instance urng(params, state).
-:- instance urng_dup(state).
+:- instance urandom(params, ustate).
+:- instance urandom_dup(ustate).
 
-    % Initialise a 3-combo tausworthe RNG with the default seed
+    % Initialise a 3-combo tausworthe generator with the default seed
     % and parameters.
     %
-:- pred init_t3(params, state).
-:- mode init_t3(out, uo) is det.
+:- pred init_t3(params::out, ustate::uo) is det.
 
-    % Initialise a 4-combo tausworthe RNG with the default seed
+    % Initialise a 4-combo tausworthe generator with the default seed
     % and parameters.
     %
-:- pred init_t4(params, state).
-:- mode init_t4(out, uo) is det.
+:- pred init_t4(params::out, ustate::uo) is det.
 
-    % Initialise a 3-combo tausworthe RNG with the given seed.
+    % Initialise a 3-combo tausworthe generator with the given seed.
     % If given, the first argument selects from one of two sets of
     % parameters, depending on its value modulo 2.
     %
-:- pred seed_t3(maybe(int), uint32, uint32, uint32, params, state).
-:- mode seed_t3(in, in, in, in, out, uo) is det.
+:- pred seed_t3(maybe(int)::in, uint32::in, uint32::in, uint32::in,
+    params::out, ustate::uo) is det.
 
-    % Initialise a 4-combo tausworthe RNG with the given seed.
+    % Initialise a 4-combo tausworthe generator with the given seed.
     % If given, the first argument selects from one of 62 sets of
     % parameters, depending on its value modulo 62.
     %
-:- pred seed_t4(maybe(int), uint32, uint32, uint32, uint32, params, state).
-:- mode seed_t4(in, in, in, in, in, out, uo) is det.
+:- pred seed_t4(maybe(int)::in, uint32::in, uint32::in, uint32::in, uint32::in,
+    params::out, ustate::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-    % Generate a random number between 0 and max_uint32. Throws an
-    % exception if the params and state are not the same size (i.e.,
-    % both 3-combo or both 4-combo).
+    % Generate a uniformly distributed pseudo-random unsigned integer
+    % of 8, 16, 32 or 64 bits, respectively.
     %
-:- pred rand(params, uint32, state, state).
-:- mode rand(in, out, di, uo) is det.
-
-    % Return max_uint32, the maximum number that can be returned by this
-    % generator.
+    % Throws an exception if the params and ustate are not the same size
+    % (i.e., both 3-combo or both 4-combo).
     %
-:- func rand_max(params) = uint32.
+:- pred gen_uint8(params::in, uint8::out, ustate::di, ustate::uo) is det.
+:- pred gen_uint16(params::in, uint16::out, ustate::di, ustate::uo) is det.
+:- pred gen_uint32(params::in, uint32::out, ustate::di, ustate::uo) is det.
+:- pred gen_uint64(params::in, uint64::out, ustate::di, ustate::uo) is det.
 
     % Duplicate a tausworthe RNG state.
     %
-:- pred dup(state, state, state).
-:- mode dup(di, uo, uo) is det.
+:- pred urandom_dup(ustate::di, ustate::uo, ustate::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -87,7 +84,10 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
+:- import_module uint8.
+:- import_module uint16.
 :- import_module uint32.
+:- import_module uint64.
 
 %---------------------------------------------------------------------------%
 
@@ -99,32 +99,79 @@
                 mask :: array(uint32)
             ).
 
-:- type state
-    --->    state(
+:- type ustate
+    --->    ustate(
                 seed :: array(uint32)
             ).
 
-:- instance urng(params, state) where [
-    ( urandom(RP, N, !RS) :-
-        rand(RP, N0, !RS),
-        N = uint32.cast_to_uint64(N0)
-    ),
-    ( urandom_max(RP) = uint32.cast_to_uint64(rand_max(RP)) )
+:- instance urandom(params, ustate) where [
+    pred(gen_uint8/4) is tausworthe.gen_uint8,
+    pred(gen_uint16/4) is tausworthe.gen_uint16,
+    pred(gen_uint32/4) is tausworthe.gen_uint32,
+    pred(gen_uint64/4) is tausworthe.gen_uint64
 ].
 
-:- instance urng_dup(state) where [
-    pred(urandom_dup/3) is dup
+:- instance urandom_dup(ustate) where [
+    pred(urandom_dup/3) is tausworthe.urandom_dup
 ].
 
-dup(S, S1, S2) :-
-    S = state(A),
+urandom_dup(S, S1, S2) :-
+    S = ustate(A),
+    Sc = ustate(array.copy(A)),
     S1 = unsafe_promise_unique(S),
-    S2 = unsafe_promise_unique(state(array.copy(A))).
+    S2 = unsafe_promise_unique(Sc).
 
 %---------------------------------------------------------------------------%
 
-:- pred seed(array(int), array(int), array(uint32), params, state).
-:- mode seed(in, in, array_di, out, uo) is det.
+gen_uint8(RP, N, !RS) :-
+    tausworthe.gen_uint32(RP, N0, !RS),
+    N1 = uint32.cast_to_int(N0 >> 24),
+    N = uint8.cast_from_int(N1).
+
+gen_uint16(RP, N, !RS) :-
+    tausworthe.gen_uint32(RP, N0, !RS),
+    N1 = uint32.cast_to_int(N0 >> 16),
+    N = uint16.cast_from_int(N1).
+
+gen_uint64(RP, N, !RS) :-
+    tausworthe.gen_uint32(RP, A0, !RS),
+    tausworthe.gen_uint32(RP, B0, !RS),
+    A = uint32.cast_to_uint64(A0),
+    B = uint32.cast_to_uint64(B0),
+    N = A + (B << 32).
+
+%---------------------------------------------------------------------------%
+
+gen_uint32(RP, N, RS0, RS) :-
+    RS0 = ustate(Seed0),
+    Size = array.size(Seed0),
+    rand(RP, 0, Size, 0u32, N, Seed0, Seed),
+    RS = unsafe_promise_unique(ustate(Seed)).
+
+:- pred rand(params::in, int::in, int::in, uint32::in, uint32::out,
+    array(uint32)::array_di, array(uint32)::array_uo) is det.
+
+rand(RP, I, Size, N0, N, !Seed) :-
+    ( if I < Size then
+        array.lookup(RP ^ qs, I, Q),
+        array.lookup(RP ^ ps, I, P),
+        array.lookup(RP ^ shft, I, Shft),
+        array.lookup(RP ^ mask, I, Mask),
+        array.lookup(!.Seed, I, S0),
+        B = ((S0 << Q) `xor` S0) >> Shft,
+        S = ((S0 /\ Mask) << P) `xor` B,
+        array.set(I, S, !Seed),
+        N1 = N0 `xor` S,
+        rand(RP, I + 1, Size, N1, N, !Seed)
+    else
+        N = N0
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred seed(array(int)::in, array(int)::in, array(uint32)::array_di,
+    params::out, ustate::uo) is det.
 
 seed(Qs, Ps, Seed0, RP, RS) :-
     Size = array.size(Seed0),
@@ -134,27 +181,26 @@ seed(Qs, Ps, Seed0, RP, RS) :-
     Mask0 = array.init(Size, 0u32),
     seed_2(0, Size, Ks, Ps, Ds, Shft0, Shft, Mask0, Mask, Seed0, Seed),
     RP = params(Qs, Ps, Shft, Mask),
-    RS0 = unsafe_promise_unique(state(Seed)),
-    rand(RP, _, RS0, RS).
+    RS0 = unsafe_promise_unique(ustate(Seed)),
+    tausworthe.gen_uint32(RP, _, RS0, RS).
 
-:- pred seed_2(int, int, array(int), array(int), array(uint32),
-    array(int), array(int), array(uint32), array(uint32),
-    array(uint32), array(uint32)).
-:- mode seed_2(in, in, in, in, in,
-    array_di, array_uo, array_di, array_uo, array_di, array_uo) is det.
+:- pred seed_2(int::in, int::in, array(int)::in, array(int)::in,
+    array(uint32)::in, array(int)::array_di, array(int)::array_uo,
+    array(uint32)::array_di, array(uint32)::array_uo,
+    array(uint32)::array_di, array(uint32)::array_uo) is det.
 
 seed_2(I, Size, Ks, Ps, Ds, !Shft, !Mask, !Seed) :-
     ( if I < Size then
-        K = array.lookup(Ks, I),
-        P = array.lookup(Ps, I),
-        S = array.lookup(!.Seed, I),
+        array.lookup(Ks, I, K),
+        array.lookup(Ps, I, P),
+        array.lookup(!.Seed, I, S),
         J = 32 - K,
         array.set(I, K - P, !Shft),
         array.set(I, uint32.max_uint32 << J, !Mask),
         ( if S > (1u32 << J) then
             true
         else
-            D = array.lookup(Ds, I),
+            array.lookup(Ds, I, D),
             array.set(I, D, !Seed)
         ),
         seed_2(I + 1, Size, Ks, Ps, Ds, !Shft, !Mask, !Seed)
@@ -162,36 +208,6 @@ seed_2(I, Size, Ks, Ps, Ds, !Shft, !Mask, !Seed) :-
         true
     ).
 
-%---------------------------------------------------------------------------%
-
-rand(RP, N, RS0, RS) :-
-    RS0 = state(Seed0),
-    Size = array.size(Seed0),
-    rand_2(RP, 0, Size, 0u32, N, Seed0, Seed),
-    RS = unsafe_promise_unique(state(Seed)).
-
-:- pred rand_2(params, int, int, uint32, uint32, array(uint32), array(uint32)).
-:- mode rand_2(in, in, in, in, out, array_di, array_uo) is det.
-
-rand_2(RP, I, Size, N0, N, !Seed) :-
-    ( if I < Size then
-        Q = array.lookup(RP ^ qs, I),
-        P = array.lookup(RP ^ ps, I),
-        Shft = array.lookup(RP ^ shft, I),
-        Mask = array.lookup(RP ^ mask, I),
-        S0 = array.lookup(!.Seed, I),
-        B = ((S0 << Q) `xor` S0) >> Shft,
-        S = ((S0 /\ Mask) << P) `xor` B,
-        array.set(I, S, !Seed),
-        N1 = N0 `xor` S,
-        rand_2(RP, I + 1, Size, N1, N, !Seed)
-    else
-        N = N0
-    ).
-
-rand_max(_) = uint32.max_uint32.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 init_t3(RP, RS) :-
@@ -213,8 +229,8 @@ seed_t3(MZ, A, B, C, RP, RS) :-
     Seed = array([A, B, C]),
     seed(Qs, Ps, Seed, RP, RS).
 
-:- pred params_t3(int, int, int, int, int, int, int).
-:- mode params_t3(in, out, out, out, out, out, out) is semidet.
+:- pred params_t3(int::in, int::out, int::out, int::out, int::out, int::out,
+    int::out) is semidet.
 
 params_t3(0, 13, 2, 3, 12, 4, 17).
 params_t3(1, 3, 2, 13, 20, 16, 7).
@@ -240,8 +256,7 @@ seed_t4(MZ, A, B, C, D, RP, RS) :-
     Seed = array([A, B, C, D]),
     seed(Qs, Ps, Seed, RP, RS).
 
-:- pred params_t4(int, int, int, int, int).
-:- mode params_t4(in, out, out, out, out) is semidet.
+:- pred params_t4(int::in, int::out, int::out, int::out, int::out) is semidet.
 
 params_t4(0,  18, 2,  7,  13).
 params_t4(1,  13, 3,  4,  9).

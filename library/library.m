@@ -120,15 +120,13 @@
 :- import_module psqueue.
 :- import_module queue.
 :- import_module random.
+:- import_module random.sfc16.
+:- import_module random.sfc32.
+:- import_module random.sfc64.
 :- import_module ranges.
 :- import_module rational.
 :- import_module rbtree.
 :- import_module require.
-:- import_module rng.
-:- import_module rng.binfile.
-:- import_module rng.marsaglia.
-:- import_module rng.sfc.
-:- import_module rng.tausworthe.
 :- import_module robdd.
 :- import_module rtree.
 :- import_module set.
@@ -309,16 +307,14 @@ mercury_std_library_module("prolog").
 mercury_std_library_module("psqueue").
 mercury_std_library_module("queue").
 mercury_std_library_module("random").
+mercury_std_library_module("random.sfc16").
+mercury_std_library_module("random.sfc32").
+mercury_std_library_module("random.sfc64").
 mercury_std_library_module("ranges").
 mercury_std_library_module("rational").
 mercury_std_library_module("rbtree").
 mercury_std_library_module("region_builtin").
 mercury_std_library_module("require").
-mercury_std_library_module("rng").
-mercury_std_library_module("rng.binfile").
-mercury_std_library_module("rng.marsaglia").
-mercury_std_library_module("rng.sfc").
-mercury_std_library_module("rng.tausworthe").
 mercury_std_library_module("robdd").
 mercury_std_library_module("rtree").
 mercury_std_library_module("rtti_implementation").
