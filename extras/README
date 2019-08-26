@@ -80,6 +80,9 @@ old_term_parser	A library containing versions of the the standard library's
 posix		A Mercury interface to some of the POSIX
 		(Portable Operating System Interface) APIs.
 
+random		Some additional instances of the random typeclasses from
+		the standard library.
+
 references	A library package containing modules for manipulating
 		ML-style references (mutable state).
 

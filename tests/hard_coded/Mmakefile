@@ -303,6 +303,9 @@ ORDINARY_PROGS = \
 	quantifier \
 	quantifier2 \
 	quoting_bug_test \
+	random1 \
+	random2 \
+	random3 \
 	random_permutation \
 	random_simple \
 	rational_test \
@@ -321,9 +324,6 @@ ORDINARY_PROGS = \
 	rev_arith \
 	reverse_arith \
 	rnd \
-	rng1 \
-	rng2 \
-	rng3 \
 	rtree_test \
 	rtti_strings \
 	sectag_bits \
