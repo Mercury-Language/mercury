@@ -210,7 +210,7 @@ write_hlds(Indent, ModuleInfo, !IO) :-
 
 write_header(Indent, Module, !IO) :-
     write_indent(Indent, !IO),
-    io.write_string("% vim: ts=2 sw=2\n\n", !IO),
+    io.write_string("% vim: ts=2 sw=2 ft=mercury\n\n", !IO),
     module_info_get_name(Module, Name),
     write_indent(Indent, !IO),
     io.write_string(":- module ", !IO),
