@@ -17,4 +17,4 @@ main(!IO) :- do_fmain(hello, !IO).
 
 :- func hello : fmain `with_inst` fmain.
 
-hello(FIO) = printLine("Hello World!", FIO).
+hello(FIO) = print_fio_line("Hello World!", FIO).
