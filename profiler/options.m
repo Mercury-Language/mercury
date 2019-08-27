@@ -75,33 +75,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Verbosity Options
-option_default(verbose,                 bool(no)).
-option_default(very_verbose,            bool(no)).
-
-    % General profiler options
-option_default(dynamic_cg,              bool(no)).
-option_default(call_graph,              bool(no)).
-option_default(profile,                 string_special).
-option_default(profile_time,            special).
-option_default(profile_memory_words,    special).
-option_default(profile_memory_cells,    special).
-option_default(countfile,               string("Prof.Counts")).
-option_default(pairfile,                string("Prof.CallPair")).
-option_default(declfile,                string("Prof.Decl")).
-option_default(libraryfile,             string("")).
-option_default(demangle,                bool(yes)).
-option_default(snapshots,               bool(no)).
-option_default(snapshots_file,          string("Prof.Snapshots")).
-option_default(snapshots_by_type,       bool(no)).
-option_default(snapshots_brief,         bool(no)).
-option_default(snapshots_include_runtime, bool(no)).
-option_default(snapshots_recalc_size,   bool(yes)).
-
-    % Miscellaneous Options
-option_default(help,                    bool(no)).
-
-
     % please keep this in alphabetic order
 short_option('b', snapshots_brief).
 short_option('C', countfile).
@@ -142,6 +115,32 @@ long_option("snapshots-recalc-size", snapshots_recalc_size).
 long_option("use-dynamic",          dynamic_cg).
 long_option("verbose",              verbose).
 long_option("very-verbose",         very_verbose).
+
+    % Verbosity Options
+option_default(verbose,                 bool(no)).
+option_default(very_verbose,            bool(no)).
+
+    % General profiler options
+option_default(dynamic_cg,              bool(no)).
+option_default(call_graph,              bool(no)).
+option_default(profile,                 string_special).
+option_default(profile_time,            special).
+option_default(profile_memory_words,    special).
+option_default(profile_memory_cells,    special).
+option_default(countfile,               string("Prof.Counts")).
+option_default(pairfile,                string("Prof.CallPair")).
+option_default(declfile,                string("Prof.Decl")).
+option_default(libraryfile,             string("")).
+option_default(demangle,                bool(yes)).
+option_default(snapshots,               bool(no)).
+option_default(snapshots_file,          string("Prof.Snapshots")).
+option_default(snapshots_by_type,       bool(no)).
+option_default(snapshots_brief,         bool(no)).
+option_default(snapshots_include_runtime, bool(no)).
+option_default(snapshots_recalc_size,   bool(yes)).
+
+    % Miscellaneous Options
+option_default(help,                    bool(no)).
 
 special_handler(profile, string(WhatToProfile), !.OptionTable, Result) :-
     ( if valid_profile_option(WhatToProfile, CountFile) then

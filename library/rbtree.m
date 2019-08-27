@@ -55,13 +55,13 @@
 :- func init = rbtree(K, V).
 :- pred init(rbtree(K, V)::uo) is det.
 
-    % Initialise an rbtree containing the given key-value pair.
-    %
-:- func singleton(K, V) = rbtree(K, V).
-
     % Check whether a tree is empty.
     %
 :- pred is_empty(rbtree(K, V)::in) is semidet.
+
+    % Initialise an rbtree containing the given key-value pair.
+    %
+:- func singleton(K, V) = rbtree(K, V).
 
     % Inserts a new key-value pair into the tree.
     % Fails if key already in the tree.
@@ -937,39 +937,6 @@ delete_2(black(K0, V0, L, R), K, MustRemove, MaybeV, Tree) :-
 remove(K, V, !Tree) :-
     rbtree.delete_2(!.Tree, K, yes, yes(V), !:Tree).
 
-remove_largest(_K, _V, empty, _Tree) :-
-    fail.
-remove_largest(NewK, NewV, red(K0, V0, L, R), Tree) :-
-    (
-        R = empty,
-        NewK = K0,
-        NewV = V0,
-        Tree = L
-    ;
-        ( R = red(_, _, _, _)
-        ; R = black(_, _, _, _)
-        ),
-        rbtree.remove_largest(NewK, NewV, R, NewR),
-        Tree = red(K0, V0, L, NewR)
-    ).
-remove_largest(NewK, NewV, black(K0, V0, L, R), Tree) :-
-    (
-        R = empty,
-        NewK = K0,
-        NewV = V0,
-        Tree = L
-    ;
-        ( R = red(_, _, _, _)
-        ; R = black(_, _, _, _)
-        ),
-        rbtree.remove_largest(NewK, NewV, R, NewR),
-        Tree = black(K0, V0, L, NewR)
-    ).
-
-% rbtree.remove_smallest:
-%   Deletes the node with the minimum K from the tree, and returns the
-%   key and value fields.
-
 remove_smallest(_K, _V, empty, _Tree) :-
     fail.
 remove_smallest(NewK, NewV, red(K0, V0, L, R), Tree) :-
@@ -997,6 +964,35 @@ remove_smallest(NewK, NewV, black(K0, V0, L, R), Tree) :-
         ),
         rbtree.remove_smallest(NewK, NewV, L, NewL),
         Tree = black(K0, V0, NewL, R)
+    ).
+
+remove_largest(_K, _V, empty, _Tree) :-
+    fail.
+remove_largest(NewK, NewV, red(K0, V0, L, R), Tree) :-
+    (
+        R = empty,
+        NewK = K0,
+        NewV = V0,
+        Tree = L
+    ;
+        ( R = red(_, _, _, _)
+        ; R = black(_, _, _, _)
+        ),
+        rbtree.remove_largest(NewK, NewV, R, NewR),
+        Tree = red(K0, V0, L, NewR)
+    ).
+remove_largest(NewK, NewV, black(K0, V0, L, R), Tree) :-
+    (
+        R = empty,
+        NewK = K0,
+        NewV = V0,
+        Tree = L
+    ;
+        ( R = red(_, _, _, _)
+        ; R = black(_, _, _, _)
+        ),
+        rbtree.remove_largest(NewK, NewV, R, NewR),
+        Tree = black(K0, V0, L, NewR)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1046,8 +1042,6 @@ count(black(_K, _V, L, R), N) :-
 
 %---------------------------------------------------------------------------%
 
-from_assoc_list(AList) = rbtree.assoc_list_to_rbtree(AList).
-
 assoc_list_to_rbtree(AL) = RBT :-
     rbtree.assoc_list_to_rbtree(AL, RBT).
 
@@ -1056,9 +1050,9 @@ assoc_list_to_rbtree([K - V | T], Tree) :-
     rbtree.assoc_list_to_rbtree(T, Tree0),
     rbtree.set(K, V, Tree0, Tree).
 
-%---------------------------------------------------------------------------%
+from_assoc_list(AList) = rbtree.assoc_list_to_rbtree(AList).
 
-to_assoc_list(T) = rbtree.rbtree_to_assoc_list(T).
+%---------------------------------------------------------------------------%
 
 rbtree_to_assoc_list(RBT) = AL :-
     rbtree.rbtree_to_assoc_list(RBT, AL).
@@ -1072,6 +1066,8 @@ rbtree_to_assoc_list(black(K0, V0, Left, Right), L) :-
     rbtree.rbtree_to_assoc_list(Left, L0),
     rbtree.rbtree_to_assoc_list(Right, L1),
     list.append(L0, [K0 - V0|L1], L).
+
+to_assoc_list(T) = rbtree.rbtree_to_assoc_list(T).
 
 %---------------------------------------------------------------------------%
 

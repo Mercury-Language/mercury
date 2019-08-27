@@ -756,18 +756,6 @@
     pred(in, out, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out, in, out) is semidet.
 
-    % intersect_list(Pred, M, Ms, ResultM):
-    %
-    % Take the non-empty list of maps [M | Ms], and intersect pairs of
-    % those maps (using map.intersect above) until there is only one map left.
-    % Return this map as ResultM. The order of in which those intersect
-    % operations are performed is not defined, so the caller should choose
-    % a Pred for which the order does not matter.
-    %
-:- pred intersect_list(pred(V, V, V), map(K, V), list(map(K, V)), map(K, V)).
-:- mode intersect_list(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode intersect_list(pred(in, in, out) is det, in, in, out) is det.
-
     % Given two maps M1 and M2, create a third map M3 that has only the
     % keys that occur in both M1 and M2. For keys that occur in both M1
     % and M2, compute the value in the final map by applying the supplied
@@ -788,6 +776,18 @@
 
 :- pred det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
 :- mode det_intersect(pred(in, in, out) is semidet, in, in, out) is det.
+
+    % intersect_list(Pred, M, Ms, ResultM):
+    %
+    % Take the non-empty list of maps [M | Ms], and intersect pairs of
+    % those maps (using map.intersect above) until there is only one map left.
+    % Return this map as ResultM. The order of in which those intersect
+    % operations are performed is not defined, so the caller should choose
+    % a Pred for which the order does not matter.
+    %
+:- pred intersect_list(pred(V, V, V), map(K, V), list(map(K, V)), map(K, V)).
+:- mode intersect_list(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode intersect_list(pred(in, in, out) is det, in, in, out) is det.
 
     % Given two maps M1 and M2, create a third map M3 that has only the
     % keys that occur in both M1 and M2. For keys that occur in both M1
@@ -1571,6 +1571,78 @@ det_intersect(CommonPred, Map1, Map2, Common) :-
         unexpected($pred, "map.intersect failed")
     ).
 
+intersect_list(CommonPred, HeadMap, TailMaps, Common) :-
+    map.to_sorted_assoc_list(HeadMap, HeadAssocList),
+    list.map(map.to_sorted_assoc_list, TailMaps, TailAssocLists),
+    map.intersect_list_passes(HeadAssocList, TailAssocLists, CommonPred,
+        CommonAssocList),
+    map.from_sorted_assoc_list(CommonAssocList, Common).
+
+:- pred intersect_list_passes(assoc_list(K, V), list(assoc_list(K, V)),
+    pred(V, V, V), assoc_list(K, V)).
+:- mode intersect_list_passes(in, in, pred(in, in, out) is semidet, out)
+    is semidet.
+:- mode intersect_list_passes(in, in, pred(in, in, out) is det, out)
+    is det.
+
+intersect_list_passes(HeadAssocList, TailAssocLists, CommonPred,
+        CommonAssocList) :-
+    (
+        TailAssocLists = [],
+        CommonAssocList = HeadAssocList
+    ;
+        TailAssocLists = [_ | _],
+        map.intersect_list_pass(HeadAssocList, TailAssocLists, CommonPred,
+            FirstAssocList, LaterAssocLists),
+        map.intersect_list_passes(FirstAssocList, LaterAssocLists, CommonPred,
+            CommonAssocList)
+    ).
+
+    % If the list [HeadAssocList | TailAssocLists] has 2k sorted association
+    % lists (representing 2k maps), then reduce these to k sorted association
+    % lists by intersecting assoclist 2i with assoc list 2i+1 for all i
+    % in 0..(k-1). If it has 2k+1 sorted association lists, intersect
+    % the first 2k as above, and add the last to the end of the list as is,
+    % without intersecting it with anything.
+    %
+    % If the input has N assoc lists, the output will have ceil(N/2) assoc
+    % lists. If invoked with two or more lists, the output will always have
+    % fewer assoc lists than the input. This will always be the case, since
+    % our caller does not call us when N<2.
+    %
+:- pred intersect_list_pass(assoc_list(K, V), list(assoc_list(K, V)),
+    pred(V, V, V), assoc_list(K, V), list(assoc_list(K, V))).
+:- mode intersect_list_pass(in, in, pred(in, in, out) is semidet, out, out)
+    is semidet.
+:- mode intersect_list_pass(in, in, pred(in, in, out) is det, out, out)
+    is det.
+
+intersect_list_pass(HeadAssocList, TailAssocLists, CommonPred,
+        FirstAssocList, LaterAssocLists) :-
+    (
+        TailAssocLists = [],
+        FirstAssocList = HeadAssocList,
+        LaterAssocLists = []
+    ;
+        TailAssocLists = [HeadTailAssocList | TailTailAssocLists],
+        map.intersect_loop(HeadAssocList, HeadTailAssocList, CommonPred,
+            [], RevFirstAssocList),
+        list.reverse(RevFirstAssocList, FirstAssocList),
+        (
+            TailTailAssocLists = [],
+            LaterAssocLists = []
+        ;
+            TailTailAssocLists =
+                [HeadTailTailAssocList | TailTailTailAssocLists],
+            map.intersect_list_pass(HeadTailTailAssocList,
+                TailTailTailAssocLists, CommonPred,
+                HeadLaterAssocList, TailLaterAssocLists),
+            LaterAssocLists = [HeadLaterAssocList | TailLaterAssocLists]
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
 %---------------------------------------------------------------------------%
 
 common_subset(Map1, Map2) = Common :-
@@ -1691,78 +1763,6 @@ det_union(CommonPred, Map1, Map2, Union) :-
         Union = UnionPrime
     else
         unexpected($pred, "map.union failed")
-    ).
-
-%---------------------------------------------------------------------------%
-
-intersect_list(CommonPred, HeadMap, TailMaps, Common) :-
-    map.to_sorted_assoc_list(HeadMap, HeadAssocList),
-    list.map(map.to_sorted_assoc_list, TailMaps, TailAssocLists),
-    map.intersect_list_passes(HeadAssocList, TailAssocLists, CommonPred,
-        CommonAssocList),
-    map.from_sorted_assoc_list(CommonAssocList, Common).
-
-:- pred intersect_list_passes(assoc_list(K, V), list(assoc_list(K, V)),
-    pred(V, V, V), assoc_list(K, V)).
-:- mode intersect_list_passes(in, in, pred(in, in, out) is semidet, out)
-    is semidet.
-:- mode intersect_list_passes(in, in, pred(in, in, out) is det, out)
-    is det.
-
-intersect_list_passes(HeadAssocList, TailAssocLists, CommonPred,
-        CommonAssocList) :-
-    (
-        TailAssocLists = [],
-        CommonAssocList = HeadAssocList
-    ;
-        TailAssocLists = [_ | _],
-        map.intersect_list_pass(HeadAssocList, TailAssocLists, CommonPred,
-            FirstAssocList, LaterAssocLists),
-        map.intersect_list_passes(FirstAssocList, LaterAssocLists, CommonPred,
-            CommonAssocList)
-    ).
-
-    % If the list [HeadAssocList | TailAssocLists] has 2k sorted association
-    % lists (representing 2k maps), then reduce these to k sorted association
-    % lists by intersecting assoclist 2i with assoc list 2i+1 for all i
-    % in 0..(k-1). If it has 2k+1 sorted association lists, intersect
-    % the first 2k as above, and add the last to the end of the list as is,
-    % without intersecting it with anything.
-    %
-    % If the input has N assoc lists, the output will have ceil(N/2) assoc
-    % lists. If invoked with two or more lists, the output will always have
-    % fewer assoc lists than the input. This will always be the case, since
-    % our caller does not call us when N<2.
-    %
-:- pred intersect_list_pass(assoc_list(K, V), list(assoc_list(K, V)),
-    pred(V, V, V), assoc_list(K, V), list(assoc_list(K, V))).
-:- mode intersect_list_pass(in, in, pred(in, in, out) is semidet, out, out)
-    is semidet.
-:- mode intersect_list_pass(in, in, pred(in, in, out) is det, out, out)
-    is det.
-
-intersect_list_pass(HeadAssocList, TailAssocLists, CommonPred,
-        FirstAssocList, LaterAssocLists) :-
-    (
-        TailAssocLists = [],
-        FirstAssocList = HeadAssocList,
-        LaterAssocLists = []
-    ;
-        TailAssocLists = [HeadTailAssocList | TailTailAssocLists],
-        map.intersect_loop(HeadAssocList, HeadTailAssocList, CommonPred,
-            [], RevFirstAssocList),
-        list.reverse(RevFirstAssocList, FirstAssocList),
-        (
-            TailTailAssocLists = [],
-            LaterAssocLists = []
-        ;
-            TailTailAssocLists =
-                [HeadTailTailAssocList | TailTailTailAssocLists],
-            map.intersect_list_pass(HeadTailTailAssocList,
-                TailTailTailAssocLists, CommonPred,
-                HeadLaterAssocList, TailLaterAssocLists),
-            LaterAssocLists = [HeadLaterAssocList | TailLaterAssocLists]
-        )
     ).
 
 %---------------------------------------------------------------------------%

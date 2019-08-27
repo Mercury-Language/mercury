@@ -775,44 +775,6 @@ _ ^ unsafe_byte(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
-get_uint8(BM, N) = U8 :-
-    ( if byte_in_range(BM, N) then
-        U8 = unsafe_get_uint8(BM, N)
-    else
-        throw_byte_bounds_error(BM, "bitmap.get_uint8", N)
-    ).
-
-:- pragma foreign_proc("C",
-    unsafe_get_uint8(BM::in, N::in) = (U8::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    U8 = (uint8_t) BM->elements[N];
-").
-
-:- pragma foreign_proc("Java",
-    unsafe_get_uint8(BM::in, N::in) = (U8::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    U8 = BM.elements[N];
-").
-
-:- pragma foreign_proc("C#",
-    unsafe_get_uint8(BM::in, N::in) = (U8::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    U8 = BM.elements[N];
-").
-
-:- pragma foreign_proc("Erlang",
-    unsafe_get_uint8(BM::in, N::in) = (U8::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    {Bin, _} = BM,
-    <<_:N/binary, U8/integer, _/binary>> = Bin
-").
-
-%---------------------------------------------------------------------------%
-
 (!.BM ^ byte(N) := Byte) = !:BM :-
     ( if byte_in_range(!.BM, N) then
         !BM ^ unsafe_byte(N) := Byte
@@ -855,6 +817,44 @@ get_uint8(BM, N) = U8 :-
     <<Left:N/binary, _/integer, Right/binary>> = Bin0,
     Bin = <<Left/binary, Byte/integer, Right/binary>>,
     BM = {Bin, NumBits}
+").
+
+%---------------------------------------------------------------------------%
+
+get_uint8(BM, N) = U8 :-
+    ( if byte_in_range(BM, N) then
+        U8 = unsafe_get_uint8(BM, N)
+    else
+        throw_byte_bounds_error(BM, "bitmap.get_uint8", N)
+    ).
+
+:- pragma foreign_proc("C",
+    unsafe_get_uint8(BM::in, N::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    U8 = (uint8_t) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_uint8(BM::in, N::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = BM.elements[N];
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_uint8(BM::in, N::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = BM.elements[N];
+").
+
+:- pragma foreign_proc("Erlang",
+    unsafe_get_uint8(BM::in, N::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Bin, _} = BM,
+    <<_:N/binary, U8/integer, _/binary>> = Bin
 ").
 
 %---------------------------------------------------------------------------%

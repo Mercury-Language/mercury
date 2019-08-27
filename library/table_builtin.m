@@ -846,17 +846,6 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 :- pragma external_pred(table_mm_return_all_multi/2).
 
 :- pragma foreign_proc("C",
-    table_mm_return_all_shortcut(AnswerBlock::in),
-    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
-"
-    MR_tbl_mm_return_all_shortcut(AnswerBlock);
-").
-
-table_mm_return_all_shortcut(_) :-
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_mm_return_all_shortcut").
-
-:- pragma foreign_proc("C",
     table_mm_get_answer_table(Subgoal::in, AnswerTable::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
@@ -917,6 +906,17 @@ table_mm_create_answer_block(_, _, _) :-
 table_mm_fill_answer_block_shortcut(_) :-
     impure private_builtin.imp,
     private_builtin.sorry("table_mm_fill_answer_block_shortcut").
+
+:- pragma foreign_proc("C",
+    table_mm_return_all_shortcut(AnswerBlock::in),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_mm_return_all_shortcut(AnswerBlock);
+").
+
+table_mm_return_all_shortcut(_) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_mm_return_all_shortcut").
 
 %---------------------------------------------------------------------------%
 
@@ -1501,18 +1501,6 @@ table_lookup_insert_uint(_, _, _) :-
     private_builtin.sorry("table_lookup_insert_uint").
 
 :- pragma foreign_proc("C",
-    table_lookup_insert_start_int(T0::in, S::in, V::in, T::out),
-    [will_not_call_mercury, does_not_affect_liveness],
-"
-    MR_tbl_lookup_insert_start_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE,
-        T0, S, V, T);
-").
-
-table_lookup_insert_start_int(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_start_int").
-
-:- pragma foreign_proc("C",
     table_lookup_insert_int8(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
@@ -1599,6 +1587,18 @@ table_lookup_insert_int64(_, _, _) :-
 table_lookup_insert_uint64(_, _, _) :-
     impure private_builtin.imp,
     private_builtin.sorry("table_lookup_insert_uint64").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_start_int(T0::in, S::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_start_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE,
+        T0, S, V, T);
+").
+
+table_lookup_insert_start_int(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_start_int").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_char(T0::in, V::in, T::out),

@@ -114,15 +114,6 @@ usage(OutStream, !IO) :-
 :- type option_table == option_table(option).
 
 :- pred short_option(character::in, option::out) is semidet.
-:- pred long_option(string::in, option::out) is semidet.
-:- pred option_default(option::out, option_data::out) is multi.
-
-option_default(sort,            string("S")).
-option_default(max_row,         int(100)).
-option_default(max_pred_column, int(35)).
-option_default(max_path_column, int(12)).
-option_default(max_file_column, int(20)).
-option_default(modulename,      string("")).
 
 short_option('s',               sort).
 short_option('l',               max_row).
@@ -131,11 +122,22 @@ short_option('p',               max_path_column).
 short_option('f',               max_file_column).
 short_option('m',               modulename).
 
+:- pred long_option(string::in, option::out) is semidet.
+
 long_option("sort",             sort).
 long_option("limit",            max_row).
 long_option("max-name-column",  max_pred_column).
 long_option("max-path-column",  max_path_column).
 long_option("max-file-column",  max_file_column).
 long_option("module",           modulename).
+
+:- pred option_default(option::out, option_data::out) is multi.
+
+option_default(sort,            string("S")).
+option_default(max_row,         int(100)).
+option_default(max_pred_column, int(35)).
+option_default(max_path_column, int(12)).
+option_default(max_file_column, int(20)).
+option_default(modulename,      string("")).
 
 %-----------------------------------------------------------------------------%

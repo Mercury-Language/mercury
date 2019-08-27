@@ -142,20 +142,20 @@ globals.lookup_bool_option(Globals, Option, Value) :-
         error("globals.lookup_bool_option: invalid bool option")
     ).
 
-globals.lookup_string_option(Globals, Option, Value) :-
-    globals.lookup_option(Globals, Option, OptionData),
-    ( if OptionData = string(String) then
-        Value = String
-    else
-        error("globals.lookup_string_option: invalid string option")
-    ).
-
 globals.lookup_int_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
     ( if OptionData = int(Int) then
         Value = Int
     else
         error("globals.lookup_int_option: invalid int option")
+    ).
+
+globals.lookup_string_option(Globals, Option, Value) :-
+    globals.lookup_option(Globals, Option, OptionData),
+    ( if OptionData = string(String) then
+        Value = String
+    else
+        error("globals.lookup_string_option: invalid string option")
     ).
 
 globals.lookup_accumulating_option(Globals, Option, Value) :-

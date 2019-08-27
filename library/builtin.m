@@ -412,22 +412,6 @@
 
 :- interface.
 
-    % `get_one_solution' and `get_one_solution_io' are impure alternatives
-    % to `promise_one_solution' and `promise_one_solution_io', respectively.
-    % They get a solution to the procedure, without requiring any promise
-    % that there is only one solution. However, they can only be used in
-    % impure code.
-    %
-:- pragma obsolete(get_one_solution/1).
-:- impure func get_one_solution(pred(T)) = T.
-:-        mode get_one_solution(pred(out) is cc_multi) = out is det.
-:-        mode get_one_solution(pred(out) is cc_nondet) = out is semidet.
-
-:- pragma obsolete(get_one_solution_io/4).
-:- impure pred get_one_solution_io(pred(T, IO, IO), T, IO, IO).
-:-        mode get_one_solution_io(pred(out, di, uo) is cc_multi,
-        out, di, uo) is det.
-
     % compare_representation(Result, X, Y):
     %
     % compare_representation is similar to the builtin predicate compare/3,
@@ -447,6 +431,22 @@
     %
 :- pred compare_representation(comparison_result, T, T).
 :- mode compare_representation(uo, in, in) is cc_multi.
+
+    % `get_one_solution' and `get_one_solution_io' are impure alternatives
+    % to `promise_one_solution' and `promise_one_solution_io', respectively.
+    % They get a solution to the procedure, without requiring any promise
+    % that there is only one solution. However, they can only be used in
+    % impure code.
+    %
+:- pragma obsolete(get_one_solution/1).
+:- impure func get_one_solution(pred(T)) = T.
+:-        mode get_one_solution(pred(out) is cc_multi) = out is det.
+:-        mode get_one_solution(pred(out) is cc_nondet) = out is semidet.
+
+:- pragma obsolete(get_one_solution_io/4).
+:- impure pred get_one_solution_io(pred(T, IO, IO), T, IO, IO).
+:-        mode get_one_solution_io(pred(out, di, uo) is cc_multi,
+        out, di, uo) is det.
 
     % Set up Mercury runtime to call special predicates implemented in this
     % module.
@@ -484,21 +484,9 @@ promise_only_solution(CCPred::(pred(uo) is cc_nondet)) = (OutVal::uo) :-
     impure OutVal0 = get_one_solution(CCPred),
     OutVal = unsafe_promise_unique(OutVal0).
 
-get_one_solution(CCPred) = OutVal :-
-    promise_equivalent_solutions [OutVal] (
-        CCPred(OutVal),
-        impure impure_true
-    ).
-
 :- pragma promise_pure(promise_only_solution_io/4).
 promise_only_solution_io(Pred, X, !IO) :-
     impure get_one_solution_io(Pred, X, !IO).
-
-get_one_solution_io(Pred, X, !IO) :-
-    promise_equivalent_solutions [!:IO, X] (
-        Pred(X, !IO),
-        impure impure_true
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -560,26 +548,6 @@ X @>= Y :-
 % references into the library when it is built.
 
 :- pragma foreign_decl("C", "#include ""mercury_ho_call.h""").
-
-init_runtime_hooks.
-
-:- pragma foreign_proc("C",
-    init_runtime_hooks,
-    [will_not_call_mercury, thread_safe, may_not_duplicate],
-"
-#ifdef MR_HIGHLEVEL_CODE
-    MR_special_pred_hooks.MR_unify_tuple_pred = ML_unify_tuple;
-    MR_special_pred_hooks.MR_compare_tuple_pred = ML_compare_tuple;
-    MR_special_pred_hooks.MR_compare_rep_tuple_pred = ML_compare_rep_tuple;
-#else
-    MR_special_pred_hooks.MR_unify_tuple_pred =
-        MR_ENTRY(mercury__builtin__unify_tuple_2_0);
-    MR_special_pred_hooks.MR_compare_tuple_pred =
-        MR_ENTRY(mercury__builtin__compare_tuple_3_0);
-    MR_special_pred_hooks.MR_compare_rep_tuple_pred =
-        MR_ENTRY(mercury__builtin__compare_rep_tuple_3_0);
-#endif
-").
 
 :- pred unify_tuple(T::in, T::in) is semidet.
 
@@ -1414,6 +1382,42 @@ dynamic_cast(X, Y) :-
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
     Y = X
+").
+
+%---------------------------------------------------------------------------%
+
+get_one_solution(CCPred) = OutVal :-
+    promise_equivalent_solutions [OutVal] (
+        CCPred(OutVal),
+        impure impure_true
+    ).
+
+get_one_solution_io(Pred, X, !IO) :-
+    promise_equivalent_solutions [!:IO, X] (
+        Pred(X, !IO),
+        impure impure_true
+    ).
+
+%---------------------------------------------------------------------------%
+
+init_runtime_hooks.
+
+:- pragma foreign_proc("C",
+    init_runtime_hooks,
+    [will_not_call_mercury, thread_safe, may_not_duplicate],
+"
+#ifdef MR_HIGHLEVEL_CODE
+    MR_special_pred_hooks.MR_unify_tuple_pred = ML_unify_tuple;
+    MR_special_pred_hooks.MR_compare_tuple_pred = ML_compare_tuple;
+    MR_special_pred_hooks.MR_compare_rep_tuple_pred = ML_compare_rep_tuple;
+#else
+    MR_special_pred_hooks.MR_unify_tuple_pred =
+        MR_ENTRY(mercury__builtin__unify_tuple_2_0);
+    MR_special_pred_hooks.MR_compare_tuple_pred =
+        MR_ENTRY(mercury__builtin__compare_tuple_3_0);
+    MR_special_pred_hooks.MR_compare_rep_tuple_pred =
+        MR_ENTRY(mercury__builtin__compare_rep_tuple_3_0);
+#endif
 ").
 
 %---------------------------------------------------------------------------%

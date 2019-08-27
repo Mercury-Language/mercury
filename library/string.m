@@ -125,6 +125,18 @@
 :- mode to_char_list(in, out) is det.
 :- mode to_char_list(uo, in) is det.
 
+    % Convert the string to a list of characters (code points) in reverse order.
+    % The reverse mode of the predicate throws an exception if
+    % the list of characters contains a null character.
+    %
+    % NOTE: In the future we may also throw an exception if the list contains
+    % a surrogate code point.
+    %
+:- func to_rev_char_list(string) = list(char).
+:- pred to_rev_char_list(string, list(char)).
+:- mode to_rev_char_list(in, out) is det.
+:- mode to_rev_char_list(uo, in) is det.
+
     % Convert a list of characters (code points) to a string.
     % Throws an exception if the list of characters contains a null character.
     %
@@ -143,18 +155,6 @@
     % a surrogate code point.
     %
 :- pred semidet_from_char_list(list(char)::in, string::uo) is semidet.
-
-    % Convert the string to a list of characters (code points) in reverse order.
-    % The reverse mode of the predicate throws an exception if
-    % the list of characters contains a null character.
-    %
-    % NOTE: In the future we may also throw an exception if the list contains
-    % a surrogate code point.
-    %
-:- func to_rev_char_list(string) = list(char).
-:- pred to_rev_char_list(string, list(char)).
-:- mode to_rev_char_list(in, out) is det.
-:- mode to_rev_char_list(uo, in) is det.
 
     % Same as from_char_list, except that it reverses the order
     % of the characters.
@@ -1408,16 +1408,6 @@
 :- interface.
 :- include_module format.
 :- include_module parse_util.
-
-    % Exported for use by lexer.m (XXX perhaps it ought to be defined in
-    % that module instead?)
-    %
-    % Like base_string_to_int/3, but allow for an arbitrary number of
-    % underscores between the other characters. Leading and trailing
-    % underscores are allowed.
-    %
-:- pred base_string_to_int_underscore(int::in, string::in, int::out)
-    is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -5526,7 +5516,13 @@ accumulate_negative_int(Base, Char, N0, N) :-
 
 %---------------------%
 
+:- pred base_string_to_int_underscore(int::in, string::in, int::out)
+    is semidet.
+
 base_string_to_int_underscore(Base, String, Int) :-
+    % This predicate and much of its calltree is currently unused.
+    % (It used to be exported for use by lexer.m, but lexer.m does not
+    % need it anymore.)
     index(String, 0, Char),
     End = count_code_units(String),
     ( if Char = ('-') then

@@ -103,16 +103,18 @@ usage(OutStream, !IO) :-
 :- type option_table == option_table(option).
 
 :- pred short_option(character::in, option::out) is semidet.
-:- pred long_option(string::in, option::out) is semidet.
-:- pred option_default(option::out, option_data::out) is multi.
-
-option_default(output_filename, string("")).
-option_default(verbose,         bool(no)).
 
 short_option('o',               output_filename).
 short_option('v',               verbose).
 
+:- pred long_option(string::in, option::out) is semidet.
+
 long_option("out",              output_filename).
 long_option("verbose",          verbose).
+
+:- pred option_default(option::out, option_data::out) is multi.
+
+option_default(output_filename, string("")).
+option_default(verbose,         bool(no)).
 
 %-----------------------------------------------------------------------------%

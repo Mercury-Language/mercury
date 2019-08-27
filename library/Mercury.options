@@ -94,11 +94,19 @@ MCFLAGS-lazy += --no-warn-non-term-special-preds
 # erlang_rtti_implementation, which is needed in some grades.
 MCFLAGS-type_desc += --no-warn-unused-imports
 
-MCFLAGS-int8   += --warn-inconsistent-pred-order-clauses
-MCFLAGS-int16  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-int32  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-int64  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-uint8  += --warn-inconsistent-pred-order-clauses
-MCFLAGS-uint16 += --warn-inconsistent-pred-order-clauses
-MCFLAGS-uint32 += --warn-inconsistent-pred-order-clauses
-MCFLAGS-uint64 += --warn-inconsistent-pred-order-clauses
+# Keep all modules' contents in a consistent order, except these (for now).
+MCFLAGS-array           += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-bt_array        += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-exception       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-getopt          += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-getopt_io       += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-io              += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-pprint          += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-robdd           += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-set             += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-set             += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-set_bbbtree     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-set_ctree234    += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-set_ordlist     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-set_tree234     += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-set_unordlist   += --no-warn-inconsistent-pred-order-clauses

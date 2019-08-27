@@ -50,6 +50,14 @@
     %
 :- pred (uint::in) >= (uint::in) is semidet.
 
+    % Maximum.
+    %
+:- func max(uint, uint) = uint.
+
+    % Minimum.
+    %
+:- func min(uint, uint) = uint.
+
     % Addition.
     %
 :- func uint + uint = uint.
@@ -72,14 +80,6 @@
     %
 :- func (uint::in) * (uint::in) = (uint::uo) is det.
 :- func times(uint, uint) = uint.
-
-    % Maximum.
-    %
-:- func max(uint, uint) = uint.
-
-    % Minimum.
-    %
-:- func min(uint, uint) = uint.
 
     % Truncating integer division.
     %
@@ -289,6 +289,14 @@ cast_to_int(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
+max(X, Y) =
+    ( if X > Y then X else Y ).
+
+min(X, Y) =
+    ( if X < Y then X else Y ).
+
+%---------------------------------------------------------------------------%
+
 X div Y = X // Y.
 
 :- pragma inline('//'/2).
@@ -329,14 +337,6 @@ X >> Y = Result :-
         Msg = "uint.(>>): second operand is out of range",
         throw(math.domain_error(Msg))
     ).
-
-%---------------------------------------------------------------------------%
-
-max(X, Y) =
-    ( if X > Y then X else Y ).
-
-min(X, Y) =
-    ( if X < Y then X else Y ).
 
 %---------------------------------------------------------------------------%
 

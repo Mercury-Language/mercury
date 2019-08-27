@@ -49,6 +49,13 @@
 
 %---------------------------------------------------------------------------%
 
+    % Initialise prof predicates.
+    %
+:- func prof_node_init(string) = prof_node.
+
+:- func prof_node_init_cycle(string, int, int, float, list(pred_info), int,
+    int) = prof_node.
+
     % Get prof_node from via predicate name.
     %
 :- pred get_prof_node(string::in, addrdecl::in, prof_node_map::in,
@@ -56,13 +63,6 @@
 
 :- pred update_prof_node(string::in, prof_node::in, addrdecl::in,
     prof_node_map::in, prof_node_map::out) is det.
-
-    % Initialise prof predicates.
-    %
-:- func prof_node_init(string) = prof_node.
-
-:- func prof_node_init_cycle(string, int, int, float, list(pred_info), int,
-    int) = prof_node.
 
 %---------------------------------------------------------------------------%
 %
@@ -88,14 +88,14 @@
 
 %---------------------------------------------------------------------------%
 %
-% *** Special prof_node predicates ***
+% Special prof_node predicates.
 %
 
 :- pred prof_node_type(prof_node::in, prof_node_type::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% *** Access Predicate for prof_node ***
+% Access Predicate for prof_node.
 %
 
 :- pred prof_node_get_entire_pred(prof_node::in, string::out, int::out,
@@ -116,7 +116,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% *** Update prof_node predicates ***
+% Update prof_node predicates.
 %
 
 :- pred prof_node_set_cycle_num(int::in, prof_node::in, prof_node::out) is det.
@@ -147,14 +147,14 @@
 
 %---------------------------------------------------------------------------%
 %
-% *** Init  predicates for pred_info ***
+% Init predicates for pred_info.
 %
 
 :- pred pred_info_init(string::in, int::in, pred_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% *** Access predicates for pred_info ***
+% Access predicates for pred_info.
 %
 
 :- pred pred_info_get_entire(pred_info::in, string::out, int::out) is det.
@@ -170,28 +170,25 @@
 
 :- type prof
     --->    prof(
+                % Scaling factor.
                 scaling_factor      :: float,
-                                    % Scaling factor.
 
+                % Units (Each profiling count is equivalent to Scale Units).
                 units               :: string,
-                                    % Units (Each profiling count is
-                                    % equivalent to Scale Units)
 
+                % Total counts of the profile run.
                 total_count         :: int,
-                                    % Total counts of the profile run.
 
+                % Map between label name and label addr used to find key
+                % to look up prof_node_map.
                 addr_decl_map       :: addrdecl,
-                                    % Map between label name and label addr
-                                    % used to find key to look up
-                                    % prof_node_map.
 
+                % Map between label addresses and all the relevant data
+                % about that predicate.
                 prof_node_map       :: prof_node_map,
-                                    % Map between label addresses and all the
-                                    % relevant data about that predicate.
 
+                % Map between predicate name and its cycle number.
                 cycle_map           :: cycle_map
-                                    % Map between predicate name
-                                    % and its cycle number.
             ).
 
 :- type prof_node
@@ -203,30 +200,23 @@
                 pred_self_counts        :: int,
                 pred_propagated_counts  :: float,
 
+                % Parent pred and the number of times it calls this predicate.
+                % XXX
                 pred_parent_list        :: list(pred_info),
-                                        % Parent pred and the number
-                                        % of times it calls this
-                                        % predicate.
-                                        % XXX
 
+                % Child pred and the number of times they are called
+                % from this predicate.
                 pred_child_list         :: list(pred_info),
-                                        % Child pred and the number of
-                                        % times they are called from
-                                        % this predicate.
 
+                % Total count of times this predicate called.
                 pred_total_calls        :: int,
-                                        % Total count of times this
-                                        % predicate called.
 
+                % Number of self recursive calls of this routine.
                 pred_self_calls         :: int,
-                                        % Number of self recursive
-                                        % calls of this routine.
 
+                % Alternative names for this predicate, e.g. labels with
+                % different names but the same address.
                 prd_name_list           :: list(string)
-                                        % Alternative names for this
-                                        % predicate, e.g. labels with
-                                        % different names but the same
-                                        % address.
             )
     ;       cycle_node(
                 % A node which is built up with more than one predicate
@@ -237,19 +227,16 @@
                 cycle_self_counts       :: int,
                 cycle_propagated_counts :: float,
 
+                % Cycle members plus total calls to that predicate.
+                % XXX
                 cycle_members           :: list(pred_info),
-                                        % Cycle members plus total
-                                        % calls to that predicated
-                                        % XXX
 
+                % Total count of times this predicate called.
+                % XXX
                 cycle_total_calls       :: int,
-                                        % total count of times this
-                                        % predicate called.
-                                        % XXX
 
+                % Number of calls to fellow cycle members.
                 cycle_self_calls        :: int
-                                        % Number of calls to fellow
-                                        % cycle members.
         ).
 
 :- type pred_info
@@ -259,40 +246,9 @@
             ).
 
 %---------------------------------------------------------------------------%
-
-    % get_prof_node:
-    %
-    % Gets the prof_node given a label name.
-    %
-get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode) :-
-    map.lookup(AddrMap, Pred, Key),
-    map.lookup(ProfNodeMap, Key, ProfNode).
-
-update_prof_node(Pred, ProfNode, AddrMap, !ProfNodeMap) :-
-    map.lookup(AddrMap, Pred, Key),
-    map.det_update(Key, ProfNode, !ProfNodeMap).
-
-%---------------------------------------------------------------------------%
-
-% *** Access prof predicates *** %
-
-prof_get_entire(prof(A, B, C, D, E, F), A, B, C, D, E, F).
-
-prof_get_addrdeclmap(Prof, Prof ^ addr_decl_map).
-prof_get_profnodemap(Prof, Prof ^ prof_node_map).
-
-%---------------------------------------------------------------------------%
-
-% *** Update prof predicates *** %
-
-prof_set_entire(A, B, C, D, E, F, prof(A, B, C, D, E, F)).
-
-prof_set_profnodemap(ProfNodeMap, Prof, Prof ^ prof_node_map := ProfNodeMap).
-prof_set_cyclemap(CycleMap, Prof, Prof ^ cycle_map := CycleMap).
-
-%---------------------------------------------------------------------------%
-
-% *** Initialise predicates *** %
+%
+% Initialise predicates.
+%
 
 prof_node_init(PredName) =
     pred_node(PredName, 0, 0, 0.0, [], [], 0, 0, []).
@@ -302,14 +258,50 @@ prof_node_init_cycle(A, B, C, D, E, F, G) =
 
 %---------------------------------------------------------------------------%
 
-% *** Special prof_node predicates *** %
+get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode) :-
+    map.lookup(AddrMap, Pred, Key),
+    map.lookup(ProfNodeMap, Key, ProfNode).
+
+update_prof_node(Pred, ProfNode, AddrMap, !ProfNodeMap) :-
+    map.lookup(AddrMap, Pred, Key),
+    map.det_update(Key, ProfNode, !ProfNodeMap).
+
+%---------------------------------------------------------------------------%
+%
+% Access prof predicates.
+%
+
+prof_get_entire(prof(A, B, C, D, E, F), A, B, C, D, E, F).
+
+prof_get_addrdeclmap(Prof, X) :-
+    X = Prof ^ addr_decl_map.
+prof_get_profnodemap(Prof, X) :-
+    X = Prof ^ prof_node_map.
+
+%---------------------------------------------------------------------------%
+%
+% Update prof predicates.
+%
+
+prof_set_entire(A, B, C, D, E, F, prof(A, B, C, D, E, F)).
+
+prof_set_profnodemap(X, !Prof) :-
+    !Prof ^ prof_node_map := X.
+prof_set_cyclemap(X, !Prof) :-
+    !Prof ^ cycle_map := X.
+
+%---------------------------------------------------------------------------%
+%
+% Special prof_node predicates.
+%
 
 prof_node_type(pred_node(_, _, _, _, _, _, _, _, _), predicate).
 prof_node_type(cycle_node(_, _, _, _, _, _, _), cycle).
 
 %---------------------------------------------------------------------------%
-
-% *** Access prof_node predicates *** %
+%
+% Access prof_node predicates.
+%
 
 prof_node_get_entire_pred(pred_node(A,B,C,D,E,F,G,H,I),A,B,C,D,E,F,G,H,I).
 prof_node_get_entire_pred(cycle_node(_,_,_,_,_,_,_),_,_,_,_,_,_,_,_,_) :-
@@ -346,8 +338,9 @@ prof_node_get_self_calls(pred_node(_, _, _, _, _, _, _, Calls, _), Calls).
 prof_node_get_self_calls(cycle_node(_, _, _, _, _, _, Calls), Calls).
 
 %---------------------------------------------------------------------------%
-
-% *** Update prof_node predicates *** %
+%
+% Update prof_node predicates.
+%
 
 prof_node_set_cycle_num(Cycle, pred_node(A, _, C, D, E, F, G, H, I),
     pred_node(A, Cycle, C, D, E, F, G, H, I)).
@@ -395,19 +388,22 @@ prof_node_concat_to_member(_, _, pred_node(_, _, _, _, _, _, _, _, _), _) :-
     error("prof_node_concat_to_member: pred_node has no members\n").
 
 %---------------------------------------------------------------------------%
-
-% *** Init predicates for pred_info *** %
+%
+% Init predicates for pred_info.
 
 pred_info_init(Name, Count, pred_info(Name, Count)).
 
 %---------------------------------------------------------------------------%
-
-% *** Access predicates for pred_info *** %
+%
+% Access predicates for pred_info.
+%
 
 pred_info_get_entire(pred_info(A, B), A, B).
 
-pred_info_get_pred_name(Pred, Pred ^ pred_info_name).
-pred_info_get_counts(Pred, Pred ^ pred_info_count).
+pred_info_get_pred_name(Pred, X) :-
+    X = Pred ^ pred_info_name.
+pred_info_get_counts(Pred, X) :-
+    X = Pred ^ pred_info_count.
 
 %---------------------------------------------------------------------------%
 :- end_module prof_info.

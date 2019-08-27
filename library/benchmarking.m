@@ -229,12 +229,6 @@ extern void ML_report_full_memory_stats(void);
 
 %---------------------------------------------------------------------------%
 
-report_memory_attribution(Label, Collect) :-
-    trace [io(!IO)] (
-        report_memory_attribution(Label, Collect, !IO)
-    ),
-    impure impure_true.
-
 :- pragma foreign_proc("C",
     report_memory_attribution(Label::in, Collect::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
@@ -249,6 +243,12 @@ report_memory_attribution(Label, Collect) :-
 ").
 
 report_memory_attribution(_, _, !IO).
+
+report_memory_attribution(Label, Collect) :-
+    trace [io(!IO)] (
+        report_memory_attribution(Label, Collect, !IO)
+    ),
+    impure impure_true.
 
 report_memory_attribution(Label, !IO) :-
     report_memory_attribution(Label, yes, !IO).

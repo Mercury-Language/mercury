@@ -541,28 +541,6 @@ step_next_stop(!IO) :-
 
 %-----------------------------------------------------------------------------%
 
-pause_debugging(Paused, !IO) :-
-    get_debugger_state_safer(Paused, !IO),
-    (
-        Paused = debugger_off
-    ;
-        Paused = debugger_on,
-        set_debugger_state(debugger_off, !IO)
-    ).
-
-resume_debugging(Paused, !IO) :-
-    (
-        Paused = debugger_on,
-        set_debugger_state(debugger_on, !IO)
-    ;
-        Paused = debugger_off
-    ).
-
-enable_debugging(!IO) :-
-    set_debugger_state(debugger_on, !IO).
-
-%-----------------------------------------------------------------------------%
-
 set_context(FileName, Line) :-
     impure set_cur_filename(FileName),
     impure set_cur_line_number(Line).
@@ -3514,6 +3492,28 @@ restore_streams(!IO) :-
 nonnegative_int(S, N) :-
     string.to_int(S, N),
     N >= 0.
+
+%-----------------------------------------------------------------------------%
+
+pause_debugging(Paused, !IO) :-
+    get_debugger_state_safer(Paused, !IO),
+    (
+        Paused = debugger_off
+    ;
+        Paused = debugger_on,
+        set_debugger_state(debugger_off, !IO)
+    ).
+
+resume_debugging(Paused, !IO) :-
+    (
+        Paused = debugger_on,
+        set_debugger_state(debugger_on, !IO)
+    ;
+        Paused = debugger_off
+    ).
+
+enable_debugging(!IO) :-
+    set_debugger_state(debugger_on, !IO).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%

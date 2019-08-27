@@ -6,6 +6,7 @@
 --warn-unknown-format-calls
 --warn-non-contiguous-clauses
 --warn-non-contiguous-foreign-procs
+--warn-inconsistent-pred-order-clauses
 --warn-unused-imports
 --warn-insts-with-functors-without-type
 --warn-suspicious-foreign-code
