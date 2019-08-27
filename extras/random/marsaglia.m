@@ -39,10 +39,10 @@
     % Generate a uniformly distributed pseudo-random unsigned integer
     % of 8, 16, 32 or 64 bytes, respectively.
     %
-:- pred gen_uint8(uint8::out, random::in, random::out) is det.
-:- pred gen_uint16(uint16::out, random::in, random::out) is det.
-:- pred gen_uint32(uint32::out, random::in, random::out) is det.
-:- pred gen_uint64(uint64::out, random::in, random::out) is det.
+:- pred generate_uint8(uint8::out, random::in, random::out) is det.
+:- pred generate_uint16(uint16::out, random::in, random::out) is det.
+:- pred generate_uint32(uint32::out, random::in, random::out) is det.
+:- pred generate_uint64(uint64::out, random::in, random::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -59,10 +59,10 @@
     --->    random(uint64).
 
 :- instance random(random) where [
-    pred(gen_uint8/3) is marsaglia.gen_uint8,
-    pred(gen_uint16/3) is marsaglia.gen_uint16,
-    pred(gen_uint32/3) is marsaglia.gen_uint32,
-    pred(gen_uint64/3) is marsaglia.gen_uint64
+    pred(generate_uint8/3) is marsaglia.generate_uint8,
+    pred(generate_uint16/3) is marsaglia.generate_uint16,
+    pred(generate_uint32/3) is marsaglia.generate_uint32,
+    pred(generate_uint64/3) is marsaglia.generate_uint64
 ].
 
 init = seed(0u32, 0u32).
@@ -74,26 +74,26 @@ seed(SX0, SY0) = R :-
 
 %---------------------------------------------------------------------------%
 
-gen_uint8(N, !R) :-
-    marsaglia.gen_uint32(N0, !R),
+generate_uint8(N, !R) :-
+    marsaglia.generate_uint32(N0, !R),
     N1 = uint32.cast_to_int(N0 >> 24),
     N = uint8.cast_from_int(N1).
 
-gen_uint16(N, !R) :-
-    marsaglia.gen_uint32(N0, !R),
+generate_uint16(N, !R) :-
+    marsaglia.generate_uint32(N0, !R),
     N1 = uint32.cast_to_int(N0 >> 16),
     N = uint16.cast_from_int(N1).
 
-gen_uint64(N, !R) :-
-    marsaglia.gen_uint32(A0, !R),
-    marsaglia.gen_uint32(B0, !R),
+generate_uint64(N, !R) :-
+    marsaglia.generate_uint32(A0, !R),
+    marsaglia.generate_uint32(B0, !R),
     A = uint32.cast_to_uint64(A0),
     B = uint32.cast_to_uint64(B0),
     N = A + (B << 32).
 
 %---------------------------------------------------------------------------%
 
-gen_uint32(N, R0, R) :-
+generate_uint32(N, R0, R) :-
     R0 = random(S0),
     unpack_uint64(S0, SX0, SY0),
     A = 18000u32,

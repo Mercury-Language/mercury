@@ -107,10 +107,10 @@
         % Generate a uniformly distributed pseudo-random unsigned integer
         % of 8, 16, 32 or 64 bits, respectively.
         %
-    pred gen_uint8(uint8::out, R::in, R::out) is det,
-    pred gen_uint16(uint16::out, R::in, R::out) is det,
-    pred gen_uint32(uint32::out, R::in, R::out) is det,
-    pred gen_uint64(uint64::out, R::in, R::out) is det
+    pred generate_uint8(uint8::out, R::in, R::out) is det,
+    pred generate_uint16(uint16::out, R::in, R::out) is det,
+    pred generate_uint32(uint32::out, R::in, R::out) is det,
+    pred generate_uint64(uint64::out, R::in, R::out) is det
 
 ].
 
@@ -192,10 +192,10 @@
         % Generate a uniformly distributed pseudo-random unsigned integer
         % of 8, 16, 32 or 64 bits, respectively.
         %
-    pred gen_uint8(P::in, uint8::out, S::di, S::uo) is det,
-    pred gen_uint16(P::in, uint16::out, S::di, S::uo) is det,
-    pred gen_uint32(P::in, uint32::out, S::di, S::uo) is det,
-    pred gen_uint64(P::in, uint64::out, S::di, S::uo) is det
+    pred generate_uint8(P::in, uint8::out, S::di, S::uo) is det,
+    pred generate_uint16(P::in, uint16::out, S::di, S::uo) is det,
+    pred generate_uint32(P::in, uint32::out, S::di, S::uo) is det,
+    pred generate_uint64(P::in, uint64::out, S::di, S::uo) is det
 
 ].
 
@@ -460,7 +460,7 @@
 uniform_int_in_range(Start, Range0, N, !R) :-
     Range = uint32.det_from_int(Range0),
     Max = uint32.max_uint32,
-    gen_uint32(N0, !R),
+    generate_uint32(N0, !R),
     N1 = N0 // (Max // Range),
     ( if N1 < Range then
         N = Start + uint32.cast_to_int(N1)
@@ -471,7 +471,7 @@ uniform_int_in_range(Start, Range0, N, !R) :-
 uniform_uint_in_range(Start, Range0, N, !R) :-
     Range = uint32.cast_from_uint(Range0),
     Max = uint32.max_uint32,
-    gen_uint32(N0, !R),
+    generate_uint32(N0, !R),
     N1 = N0 // (Max // Range),
     ( if N1 < Range then
         N = Start + uint32.cast_to_uint(N1)
@@ -492,7 +492,7 @@ uniform_float_around_mid(Mid, Delta, N, !R) :-
     ).
 
 uniform_float_in_01(N, !R) :-
-    gen_uint64(N0, !R),
+    generate_uint64(N0, !R),
     D = 18_446_744_073_709_551_616.0,       % 2^64
     N = float.cast_from_uint64(N0) / D.
 
@@ -516,7 +516,7 @@ normal_floats(U, V, !R) :-
 uniform_int_in_range(P, Start, Range0, N, !S) :-
     Range = uint32.det_from_int(Range0),
     Max = uint32.max_uint32,
-    gen_uint32(P, N0, !S),
+    generate_uint32(P, N0, !S),
     N1 = N0 // (Max // Range),
     ( if N1 < Range then
         N = Start + uint32.cast_to_int(N1)
@@ -527,7 +527,7 @@ uniform_int_in_range(P, Start, Range0, N, !S) :-
 uniform_uint_in_range(P, Start, Range0, N, !S) :-
     Range = uint32.cast_from_uint(Range0),
     Max = uint32.max_uint32,
-    gen_uint32(P, N0, !S),
+    generate_uint32(P, N0, !S),
     N1 = N0 // (Max // Range),
     ( if N1 < Range then
         N = Start + uint32.cast_to_uint(N1)
@@ -548,7 +548,7 @@ uniform_float_around_mid(P, Mid, Delta, N, !S) :-
     ).
 
 uniform_float_in_01(P, N, !S) :-
-    gen_uint64(P, N0, !S),
+    generate_uint64(P, N0, !S),
     D = 18_446_744_073_709_551_616.0,       % 2^64
     N = float.cast_from_uint64(N0) / D.
 
@@ -590,24 +590,24 @@ uniform_to_normal(X, Y, U, V) :-
     --->    urandom_state(R).
 
 :- instance urandom(urandom_params(R), urandom_state(R)) <= random(R) where [
-    ( gen_uint8(_, N, S0, S) :-
+    ( generate_uint8(_, N, S0, S) :-
         S0 = urandom_state(R0),
-        gen_uint8(N, R0, R),
+        generate_uint8(N, R0, R),
         S = unsafe_promise_unique(urandom_state(R))
     ),
-    ( gen_uint16(_, N, S0, S) :-
+    ( generate_uint16(_, N, S0, S) :-
         S0 = urandom_state(R0),
-        gen_uint16(N, R0, R),
+        generate_uint16(N, R0, R),
         S = unsafe_promise_unique(urandom_state(R))
     ),
-    ( gen_uint32(_, N, S0, S) :-
+    ( generate_uint32(_, N, S0, S) :-
         S0 = urandom_state(R0),
-        gen_uint32(N, R0, R),
+        generate_uint32(N, R0, R),
         S = unsafe_promise_unique(urandom_state(R))
     ),
-    ( gen_uint64(_, N, S0, S) :-
+    ( generate_uint64(_, N, S0, S) :-
         S0 = urandom_state(R0),
-        gen_uint64(N, R0, R),
+        generate_uint64(N, R0, R),
         S = unsafe_promise_unique(urandom_state(R))
     )
 ].
@@ -633,32 +633,32 @@ make_urandom(R, P, S) :-
 
 :- instance random(shared_random(P, S)) <= (urandom(P, S), urandom_dup(S))
         where [
-    ( gen_uint8(N, R0, R) :-
+    ( generate_uint8(N, R0, R) :-
         R0 = shared_random(P, S0),
         S1 = unsafe_promise_unique(S0),
         urandom_dup(S1, _, S2),
-        gen_uint8(P, N, S2, S),
+        generate_uint8(P, N, S2, S),
         R = shared_random(P, S)
     ),
-    ( gen_uint16(N, R0, R) :-
+    ( generate_uint16(N, R0, R) :-
         R0 = shared_random(P, S0),
         S1 = unsafe_promise_unique(S0),
         urandom_dup(S1, _, S2),
-        gen_uint16(P, N, S2, S),
+        generate_uint16(P, N, S2, S),
         R = shared_random(P, S)
     ),
-    ( gen_uint32(N, R0, R) :-
+    ( generate_uint32(N, R0, R) :-
         R0 = shared_random(P, S0),
         S1 = unsafe_promise_unique(S0),
         urandom_dup(S1, _, S2),
-        gen_uint32(P, N, S2, S),
+        generate_uint32(P, N, S2, S),
         R = shared_random(P, S)
     ),
-    ( gen_uint64(N, R0, R) :-
+    ( generate_uint64(N, R0, R) :-
         R0 = shared_random(P, S0),
         S1 = unsafe_promise_unique(S0),
         urandom_dup(S1, _, S2),
-        gen_uint64(P, N, S2, S),
+        generate_uint64(P, N, S2, S),
         R = shared_random(P, S)
     )
 ].
@@ -671,10 +671,10 @@ make_shared_random(P, S) = shared_random(P, S).
     --->    io_random(mutvar(R)).
 
 :- instance urandom(io_random(R), io) <= random(R) where [
-    pred(gen_uint8/4) is io_random_gen_uint8,
-    pred(gen_uint16/4) is io_random_gen_uint16,
-    pred(gen_uint32/4) is io_random_gen_uint32,
-    pred(gen_uint64/4) is io_random_gen_uint64
+    pred(generate_uint8/4) is io_random_gen_uint8,
+    pred(generate_uint16/4) is io_random_gen_uint16,
+    pred(generate_uint32/4) is io_random_gen_uint32,
+    pred(generate_uint64/4) is io_random_gen_uint64
 ].
 
 :- pred io_random_gen_uint8(io_random(R)::in, uint8::out, io::di, io::uo)
@@ -683,7 +683,7 @@ make_shared_random(P, S) = shared_random(P, S).
 
 io_random_gen_uint8(io_random(V), N, !IO) :-
     impure get_mutvar(V, R0),
-    gen_uint8(N, R0, R),
+    generate_uint8(N, R0, R),
     impure set_mutvar(V, R).
 
 :- pred io_random_gen_uint16(io_random(R)::in, uint16::out, io::di, io::uo)
@@ -692,7 +692,7 @@ io_random_gen_uint8(io_random(V), N, !IO) :-
 
 io_random_gen_uint16(io_random(V), N, !IO) :-
     impure get_mutvar(V, R0),
-    gen_uint16(N, R0, R),
+    generate_uint16(N, R0, R),
     impure set_mutvar(V, R).
 
 :- pred io_random_gen_uint32(io_random(R)::in, uint32::out, io::di, io::uo)
@@ -701,7 +701,7 @@ io_random_gen_uint16(io_random(V), N, !IO) :-
 
 io_random_gen_uint32(io_random(V), N, !IO) :-
     impure get_mutvar(V, R0),
-    gen_uint32(N, R0, R),
+    generate_uint32(N, R0, R),
     impure set_mutvar(V, R).
 
 :- pred io_random_gen_uint64(io_random(R)::in, uint64::out, io::di, io::uo)
@@ -710,7 +710,7 @@ io_random_gen_uint32(io_random(V), N, !IO) :-
 
 io_random_gen_uint64(io_random(V), N, !IO) :-
     impure get_mutvar(V, R0),
-    gen_uint64(N, R0, R),
+    generate_uint64(N, R0, R),
     impure set_mutvar(V, R).
 
 :- pragma promise_pure(make_io_random/4).
@@ -725,10 +725,10 @@ make_io_random(R, Pio, !IO) :-
     --->    io_urandom(P, mutvar(S)).
 
 :- instance urandom(io_urandom(P, S), io) <= urandom(P, S) where [
-    pred(gen_uint8/4) is io_urandom_gen_uint8,
-    pred(gen_uint16/4) is io_urandom_gen_uint16,
-    pred(gen_uint32/4) is io_urandom_gen_uint32,
-    pred(gen_uint64/4) is io_urandom_gen_uint64
+    pred(generate_uint8/4) is io_urandom_gen_uint8,
+    pred(generate_uint16/4) is io_urandom_gen_uint16,
+    pred(generate_uint32/4) is io_urandom_gen_uint32,
+    pred(generate_uint64/4) is io_urandom_gen_uint64
 ].
 
 :- pred io_urandom_gen_uint8(io_urandom(P, S)::in, uint8::out, io::di, io::uo)
@@ -738,7 +738,7 @@ make_io_random(R, Pio, !IO) :-
 io_urandom_gen_uint8(io_urandom(P, V), N, !IO) :-
     impure get_mutvar(V, S0),
     S1 = unsafe_promise_unique(S0),
-    gen_uint8(P, N, S1, S),
+    generate_uint8(P, N, S1, S),
     impure set_mutvar(V, S).
 
 :- pred io_urandom_gen_uint16(io_urandom(P, S)::in, uint16::out, io::di, io::uo)
@@ -748,7 +748,7 @@ io_urandom_gen_uint8(io_urandom(P, V), N, !IO) :-
 io_urandom_gen_uint16(io_urandom(P, V), N, !IO) :-
     impure get_mutvar(V, S0),
     S1 = unsafe_promise_unique(S0),
-    gen_uint16(P, N, S1, S),
+    generate_uint16(P, N, S1, S),
     impure set_mutvar(V, S).
 
 :- pred io_urandom_gen_uint32(io_urandom(P, S)::in, uint32::out, io::di, io::uo)
@@ -758,7 +758,7 @@ io_urandom_gen_uint16(io_urandom(P, V), N, !IO) :-
 io_urandom_gen_uint32(io_urandom(P, V), N, !IO) :-
     impure get_mutvar(V, S0),
     S1 = unsafe_promise_unique(S0),
-    gen_uint32(P, N, S1, S),
+    generate_uint32(P, N, S1, S),
     impure set_mutvar(V, S).
 
 :- pred io_urandom_gen_uint64(io_urandom(P, S)::in, uint64::out, io::di, io::uo)
@@ -768,7 +768,7 @@ io_urandom_gen_uint32(io_urandom(P, V), N, !IO) :-
 io_urandom_gen_uint64(io_urandom(P, V), N, !IO) :-
     impure get_mutvar(V, S0),
     S1 = unsafe_promise_unique(S0),
-    gen_uint64(P, N, S1, S),
+    generate_uint64(P, N, S1, S),
     impure set_mutvar(V, S).
 
 :- pragma promise_pure(make_io_urandom/5).
