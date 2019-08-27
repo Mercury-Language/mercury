@@ -37,7 +37,7 @@ main(!IO) :-
 
 test(Count, RP, !RS, !IO) :-
     ( if Count > 0 then
-        random.gen_uint64(RP, N, !RS),
+        random.generate_uint64(RP, N, !RS),
         A = cast_to_int(N >> 32),
         B = cast_to_int(N /\ 0xffffffffu64),
         io.format("%08x%08x\n", [i(A), i(B)], !IO),

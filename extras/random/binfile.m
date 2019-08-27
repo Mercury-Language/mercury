@@ -43,10 +43,10 @@
     %
     % Throws an exception if the end-of-file is reached.
     %
-:- pred gen_uint8(binfile::in, uint8::out, io::di, io::uo) is det.
-:- pred gen_uint16(binfile::in, uint16::out, io::di, io::uo) is det.
-:- pred gen_uint32(binfile::in, uint32::out, io::di, io::uo) is det.
-:- pred gen_uint64(binfile::in, uint64::out, io::di, io::uo) is det.
+:- pred generate_uint8(binfile::in, uint8::out, io::di, io::uo) is det.
+:- pred generate_uint16(binfile::in, uint16::out, io::di, io::uo) is det.
+:- pred generate_uint32(binfile::in, uint32::out, io::di, io::uo) is det.
+:- pred generate_uint64(binfile::in, uint64::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -61,10 +61,10 @@
     --->    binfile(binary_input_stream).
 
 :- instance urandom(binfile, io) where [
-    pred(gen_uint8/4) is binfile.gen_uint8,
-    pred(gen_uint16/4) is binfile.gen_uint16,
-    pred(gen_uint32/4) is binfile.gen_uint32,
-    pred(gen_uint64/4) is binfile.gen_uint64
+    pred(generate_uint8/4) is binfile.generate_uint8,
+    pred(generate_uint16/4) is binfile.generate_uint16,
+    pred(generate_uint32/4) is binfile.generate_uint32,
+    pred(generate_uint64/4) is binfile.generate_uint64
 ].
 
 %---------------------------------------------------------------------------%
@@ -84,7 +84,7 @@ close(binfile(Stream), !IO) :-
 
 %---------------------------------------------------------------------------%
 
-gen_uint8(binfile(Stream), N, !IO) :-
+generate_uint8(binfile(Stream), N, !IO) :-
     io.read_binary_uint8(Stream, Res, !IO),
     (
         Res = ok(N)
@@ -96,15 +96,15 @@ gen_uint8(binfile(Stream), N, !IO) :-
         unexpected($pred, io.error_message(E))
     ).
 
-gen_uint16(binfile(Stream), N, !IO) :-
+generate_uint16(binfile(Stream), N, !IO) :-
     io.read_binary_uint16_be(Stream, Res, !IO),
     handle_res(Res, N).
 
-gen_uint32(binfile(Stream), N, !IO) :-
+generate_uint32(binfile(Stream), N, !IO) :-
     io.read_binary_uint32_be(Stream, Res, !IO),
     handle_res(Res, N).
 
-gen_uint64(binfile(Stream), N, !IO) :-
+generate_uint64(binfile(Stream), N, !IO) :-
     io.read_binary_uint64_be(Stream, Res, !IO),
     handle_res(Res, N).
 

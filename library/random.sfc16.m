@@ -42,10 +42,10 @@
     % Generate a uniformly distributed pseudo-random unsigned integer
     % of 8, 16, 32 or 64 bits, respectively.
     %
-:- pred gen_uint8(uint8::out, random::in, random::out) is det.
-:- pred gen_uint16(uint16::out, random::in, random::out) is det.
-:- pred gen_uint32(uint32::out, random::in, random::out) is det.
-:- pred gen_uint64(uint64::out, random::in, random::out) is det.
+:- pred generate_uint8(uint8::out, random::in, random::out) is det.
+:- pred generate_uint16(uint16::out, random::in, random::out) is det.
+:- pred generate_uint32(uint32::out, random::in, random::out) is det.
+:- pred generate_uint64(uint64::out, random::in, random::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -65,10 +65,10 @@
     --->    random(uint64).
 
 :- instance random(random) where [
-    pred(gen_uint8/3) is sfc16.gen_uint8,
-    pred(gen_uint16/3) is sfc16.gen_uint16,
-    pred(gen_uint32/3) is sfc16.gen_uint32,
-    pred(gen_uint64/3) is sfc16.gen_uint64
+    pred(generate_uint8/3) is sfc16.generate_uint8,
+    pred(generate_uint16/3) is sfc16.generate_uint16,
+    pred(generate_uint32/3) is sfc16.generate_uint32,
+    pred(generate_uint64/3) is sfc16.generate_uint64
 ].
 
 init = seed(0x6048_5623_5e79_371e_u64).
@@ -80,7 +80,7 @@ seed(Seed) = R :-
 
 skip(N, !R) :-
     ( if N > 0 then
-        sfc16.gen_uint16(_, !R),
+        sfc16.generate_uint16(_, !R),
         skip(N - 1, !R)
     else
         true
@@ -88,28 +88,28 @@ skip(N, !R) :-
 
 %---------------------------------------------------------------------------%
 
-gen_uint8(N, !R) :-
-    sfc16.gen_uint16(N0, !R),
+generate_uint8(N, !R) :-
+    sfc16.generate_uint16(N0, !R),
     N1 = uint16.to_int(N0 >> 8),
     N = uint8.cast_from_int(N1).
 
-gen_uint32(N, !R) :-
-    sfc16.gen_uint16(A0, !R),
-    sfc16.gen_uint16(B0, !R),
+generate_uint32(N, !R) :-
+    sfc16.generate_uint16(A0, !R),
+    sfc16.generate_uint16(B0, !R),
     A = uint16.cast_to_uint(A0),
     B = uint16.cast_to_uint(B0),
     N = uint32.cast_from_uint(A + (B << 16)).
 
-gen_uint64(N, !R) :-
-    sfc16.gen_uint16(A, !R),
-    sfc16.gen_uint16(B, !R),
-    sfc16.gen_uint16(C, !R),
-    sfc16.gen_uint16(D, !R),
+generate_uint64(N, !R) :-
+    sfc16.generate_uint16(A, !R),
+    sfc16.generate_uint16(B, !R),
+    sfc16.generate_uint16(C, !R),
+    sfc16.generate_uint16(D, !R),
     N = pack_uint64(A, B, C, D).
 
 %---------------------------------------------------------------------------%
 
-gen_uint16(N, random(S0), random(S)) :-
+generate_uint16(N, random(S0), random(S)) :-
     unpack_uint64(S0, A0, B0, C0, Counter0),
     N = A0 + B0 + Counter0,
     A = B0 `xor` (B0 >> 5),

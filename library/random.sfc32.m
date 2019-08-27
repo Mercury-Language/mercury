@@ -48,10 +48,10 @@
     % Generate a uniformly distributed pseudo-random unsigned integer
     % of 8, 16, 32 or 64 bits, respectively.
     %
-:- pred gen_uint8(params::in, uint8::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint16(params::in, uint16::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint32(params::in, uint32::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint64(params::in, uint64::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint8(params::in, uint8::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint16(params::in, uint16::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint32(params::in, uint32::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint64(params::in, uint64::out, ustate::di, ustate::uo) is det.
 
     % Duplicate a 32-bit SFC state.
     %
@@ -65,10 +65,10 @@
     % As above, but does not require the params argument (which is a dummy
     % type only needed to satisfy the typeclass interface).
     %
-:- pred gen_uint8(uint8::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint16(uint16::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint32(uint32::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint64(uint64::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint8(uint8::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint16(uint16::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint32(uint32::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint64(uint64::out, ustate::di, ustate::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -92,10 +92,10 @@
     --->    ustate(array(uint32)).
 
 :- instance urandom(params, ustate) where [
-    pred(gen_uint8/4) is sfc32.gen_uint8,
-    pred(gen_uint16/4) is sfc32.gen_uint16,
-    pred(gen_uint32/4) is sfc32.gen_uint32,
-    pred(gen_uint64/4) is sfc32.gen_uint64
+    pred(generate_uint8/4) is sfc32.generate_uint8,
+    pred(generate_uint16/4) is sfc32.generate_uint16,
+    pred(generate_uint32/4) is sfc32.generate_uint32,
+    pred(generate_uint64/4) is sfc32.generate_uint64
 ].
 
 :- instance urandom_dup(ustate) where [
@@ -123,7 +123,7 @@ seed(A, B, C, params, S) :-
 
 skip(N, !S) :-
     ( if N > 0 then
-        sfc32.gen_uint32(_, !S),
+        sfc32.generate_uint32(_, !S),
         skip(N - 1, !S)
     else
         true
@@ -131,40 +131,40 @@ skip(N, !S) :-
 
 %---------------------------------------------------------------------------%
 
-gen_uint8(_, N, !S) :-
-    sfc32.gen_uint8(N, !S).
+generate_uint8(_, N, !S) :-
+    sfc32.generate_uint8(N, !S).
 
-gen_uint16(_, N, !S) :-
-    sfc32.gen_uint16(N, !S).
+generate_uint16(_, N, !S) :-
+    sfc32.generate_uint16(N, !S).
 
-gen_uint32(_, N, !S) :-
-    sfc32.gen_uint32(N, !S).
+generate_uint32(_, N, !S) :-
+    sfc32.generate_uint32(N, !S).
 
-gen_uint64(_, N, !S) :-
-    sfc32.gen_uint64(N, !S).
+generate_uint64(_, N, !S) :-
+    sfc32.generate_uint64(N, !S).
 
 %---------------------------------------------------------------------------%
 
-gen_uint8(N, !S) :-
-    sfc32.gen_uint32(N0, !S),
+generate_uint8(N, !S) :-
+    sfc32.generate_uint32(N0, !S),
     N1 = uint32.cast_to_int(N0 >> 24),
     N = uint8.cast_from_int(N1).
 
-gen_uint16(N, !S) :-
-    sfc32.gen_uint32(N0, !S),
+generate_uint16(N, !S) :-
+    sfc32.generate_uint32(N0, !S),
     N1 = uint32.cast_to_int(N0 >> 16),
     N = uint16.cast_from_int(N1).
 
-gen_uint64(N, !S) :-
-    sfc32.gen_uint32(A0, !S),
-    sfc32.gen_uint32(B0, !S),
+generate_uint64(N, !S) :-
+    sfc32.generate_uint32(A0, !S),
+    sfc32.generate_uint32(B0, !S),
     A = uint32.cast_to_uint64(A0),
     B = uint32.cast_to_uint64(B0),
     N = A + (B << 32).
 
 %---------------------------------------------------------------------------%
 
-gen_uint32(N, RS0, RS) :-
+generate_uint32(N, RS0, RS) :-
     RS0 = ustate(S0),
     array.unsafe_lookup(S0, 0, A0),
     array.unsafe_lookup(S0, 1, B0),

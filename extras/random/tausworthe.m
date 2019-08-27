@@ -67,10 +67,10 @@
     % Throws an exception if the params and ustate are not the same size
     % (i.e., both 3-combo or both 4-combo).
     %
-:- pred gen_uint8(params::in, uint8::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint16(params::in, uint16::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint32(params::in, uint32::out, ustate::di, ustate::uo) is det.
-:- pred gen_uint64(params::in, uint64::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint8(params::in, uint8::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint16(params::in, uint16::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint32(params::in, uint32::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint64(params::in, uint64::out, ustate::di, ustate::uo) is det.
 
     % Duplicate a tausworthe RNG state.
     %
@@ -105,10 +105,10 @@
             ).
 
 :- instance urandom(params, ustate) where [
-    pred(gen_uint8/4) is tausworthe.gen_uint8,
-    pred(gen_uint16/4) is tausworthe.gen_uint16,
-    pred(gen_uint32/4) is tausworthe.gen_uint32,
-    pred(gen_uint64/4) is tausworthe.gen_uint64
+    pred(generate_uint8/4) is tausworthe.generate_uint8,
+    pred(generate_uint16/4) is tausworthe.generate_uint16,
+    pred(generate_uint32/4) is tausworthe.generate_uint32,
+    pred(generate_uint64/4) is tausworthe.generate_uint64
 ].
 
 :- instance urandom_dup(ustate) where [
@@ -123,26 +123,26 @@ urandom_dup(S, S1, S2) :-
 
 %---------------------------------------------------------------------------%
 
-gen_uint8(RP, N, !RS) :-
-    tausworthe.gen_uint32(RP, N0, !RS),
+generate_uint8(RP, N, !RS) :-
+    tausworthe.generate_uint32(RP, N0, !RS),
     N1 = uint32.cast_to_int(N0 >> 24),
     N = uint8.cast_from_int(N1).
 
-gen_uint16(RP, N, !RS) :-
-    tausworthe.gen_uint32(RP, N0, !RS),
+generate_uint16(RP, N, !RS) :-
+    tausworthe.generate_uint32(RP, N0, !RS),
     N1 = uint32.cast_to_int(N0 >> 16),
     N = uint16.cast_from_int(N1).
 
-gen_uint64(RP, N, !RS) :-
-    tausworthe.gen_uint32(RP, A0, !RS),
-    tausworthe.gen_uint32(RP, B0, !RS),
+generate_uint64(RP, N, !RS) :-
+    tausworthe.generate_uint32(RP, A0, !RS),
+    tausworthe.generate_uint32(RP, B0, !RS),
     A = uint32.cast_to_uint64(A0),
     B = uint32.cast_to_uint64(B0),
     N = A + (B << 32).
 
 %---------------------------------------------------------------------------%
 
-gen_uint32(RP, N, RS0, RS) :-
+generate_uint32(RP, N, RS0, RS) :-
     RS0 = ustate(Seed0),
     Size = array.size(Seed0),
     rand(RP, 0, Size, 0u32, N, Seed0, Seed),
@@ -182,7 +182,7 @@ seed(Qs, Ps, Seed0, RP, RS) :-
     seed_2(0, Size, Ks, Ps, Ds, Shft0, Shft, Mask0, Mask, Seed0, Seed),
     RP = params(Qs, Ps, Shft, Mask),
     RS0 = unsafe_promise_unique(ustate(Seed)),
-    tausworthe.gen_uint32(RP, _, RS0, RS).
+    tausworthe.generate_uint32(RP, _, RS0, RS).
 
 :- pred seed_2(int::in, int::in, array(int)::in, array(int)::in,
     array(uint32)::in, array(int)::array_di, array(int)::array_uo,
