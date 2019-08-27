@@ -303,9 +303,6 @@ ORDINARY_PROGS = \
 	quantifier \
 	quantifier2 \
 	quoting_bug_test \
-	random1 \
-	random2 \
-	random3 \
 	random_permutation \
 	random_simple \
 	rational_test \
@@ -493,6 +490,16 @@ ifeq "$(filter java% erlang%,$(GRADE))" ""
 		foreign_enum_mod1
 else
 	FOREIGN_ENUM_PROGS =
+endif
+
+# Tests of the random module currently only work in C and Java grades.
+ifeq "$(filter csharp% erlang%,$(GRADE))" ""
+	RANDOM_PROGS = \
+		random1 \
+		random2 \
+		random3
+else
+	RANDOM_PROGS =
 endif
 
 # Some tests only link in trailing grades.
@@ -858,6 +865,7 @@ PROGS = \
 	$(CSHARP_PROGS) \
 	$(SOLVER_PROGS) \
 	$(FOREIGN_ENUM_PROGS) \
+	$(RANDOM_PROGS) \
 	$(TRAILED_PROGS) \
 	$(STACK_SEGMENT_PROGS) \
 	$(MUTABLE_PROGS) \
