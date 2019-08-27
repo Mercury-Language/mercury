@@ -809,16 +809,14 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_interfaces_int1_int2(Globals, AugCompUnit,
+generate_interfaces_int1_int2(_Globals, AugCompUnit,
         ParseTreeInt1, ParseTreeInt2) :-
-    generate_interface_int1(AugCompUnit,
-        IntInclModuleNames, IntImportsUses,
-        IntExplicitFIMSpecs, ImpExplicitFIMSpecs, IntFIMSpecs, ImpFIMSpecs,
+    generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
+        IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt1A),
-    generate_interface_int2(Globals, AugCompUnit,
-        IntInclModuleNames, IntImportsUses,
-        IntExplicitFIMSpecs, ImpExplicitFIMSpecs, IntFIMSpecs, ImpFIMSpecs,
+    generate_interface_int2(AugCompUnit, IntInclModuleNames, IntImportsUses,
+        IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt2A),
     ParseTreeInt1 = convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1A),
@@ -827,16 +825,14 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
 :- pred generate_interface_int1(aug_compilation_unit::in,
     set(module_name)::out, set(module_name)::out,
     set(fim_spec)::out, set(fim_spec)::out,
-    set(fim_spec)::out, set(fim_spec)::out,
     list(item_type_defn_info)::out,
     list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::out, list(item_instance_info)::out,
     list(item_type_defn_info)::out,
     parse_tree_int1::out) is det.
 
-generate_interface_int1(AugCompUnit,
-        IntInclModuleNames, IntImportsUses,
-        IntExplicitFIMSpecs, ImpExplicitFIMSpecs, IntFIMSpecs, ImpFIMSpecs,
+generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
+        IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt1) :-
     % We return some of our intermediate results to our caller, for use
@@ -2061,17 +2057,16 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     % The input arguments should be the relevant parts of the .int1 file
     % computed by our parent.
     %
-:- pred generate_interface_int2(globals::in, aug_compilation_unit::in,
+:- pred generate_interface_int2(aug_compilation_unit::in,
     set(module_name)::in, set(module_name)::in,
-    set(fim_spec)::in, set(fim_spec)::in, set(fim_spec)::in, set(fim_spec)::in,
+    set(fim_spec)::in, set(fim_spec)::in,
     list(item_type_defn_info)::in,
     list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
     list(item_typeclass_info)::in, list(item_instance_info)::in,
     list(item_type_defn_info)::in, parse_tree_int2::out) is det.
 
-generate_interface_int2(Globals, AugCompUnit,
-        IntInclModuleNames, IntImportsUses,
-        IntExplicitFIMSpecs, ImpExplicitFIMSpecs, IntFIMSpecs, ImpFIMSpecs,
+generate_interface_int2(AugCompUnit, IntInclModuleNames, IntImportsUses,
+        IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt2) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
@@ -2126,43 +2121,29 @@ generate_interface_int2(Globals, AugCompUnit,
         % rather than at the contents of the .m file we were given.
         ShortIntUsedModuleNames = IntImportsUses
     ),
-    globals.lookup_bool_option(Globals, experiment3, Experiment3),
-    (
-        Experiment3 = no,
-        ( if set.is_non_empty(ShortIntImplicitFIMLangs) then
-            ShortIntFIMSpecs = IntFIMSpecs
-        else
-            set.init(ShortIntFIMSpecs)
-        ),
-        ( if set.is_non_empty(ShortImpImplicitFIMLangs) then
-            ShortImpFIMSpecs = ImpFIMSpecs
-        else
-            set.init(ShortImpFIMSpecs)
-        )
-    ;
-        Experiment3 = yes,
-        % If there is nothing involving a foreign language in the interface,
-        % then we do not need either explicit or implicit FIMs for that
-        % language in the interface.
-        set.filter(fim_spec_is_for_needed_language(ShortIntImplicitFIMLangs),
-            IntExplicitFIMSpecs, ShortIntExplicitFIMSpecs),
-        set.foldl(add_self_fim(ModuleName), ShortIntImplicitFIMLangs,
-            ShortIntExplicitFIMSpecs, ShortIntFIMSpecs),
 
-        % The same is true for the implementation section, with two
-        % differences. One is that the implementation section may need
-        % a language that the interface does not, and there is an
-        % explicit FIM for this language that we did not include
-        % in the interface, we must include it in the implementation.
-        % Second, we don't want to include a FIM in *both* the interface
-        % and the implementation.
-        set.union(IntExplicitFIMSpecs, ImpExplicitFIMSpecs, ExplicitFIMSpecs),
-        set.filter(fim_spec_is_for_needed_language(ShortImpImplicitFIMLangs),
-            ExplicitFIMSpecs, ShortImpExplicitFIMSpecs),
-        set.foldl(add_self_fim(ModuleName), ShortImpImplicitFIMLangs,
-            ShortImpExplicitFIMSpecs, ShortImpFIMSpecs0),
-        set.difference(ShortImpFIMSpecs0, ShortIntFIMSpecs, ShortImpFIMSpecs)
-    ),
+    % If there is nothing involving a foreign language in the interface,
+    % then we do not need either explicit or implicit FIMs for that
+    % language in the interface.
+    set.filter(fim_spec_is_for_needed_language(ShortIntImplicitFIMLangs),
+        IntExplicitFIMSpecs, ShortIntExplicitFIMSpecs),
+    set.foldl(add_self_fim(ModuleName), ShortIntImplicitFIMLangs,
+        ShortIntExplicitFIMSpecs, ShortIntFIMSpecs),
+
+    % The same is true for the implementation section, with two
+    % differences. One is that the implementation section may need
+    % a language that the interface does not, and there is an
+    % explicit FIM for this language that we did not include
+    % in the interface, we must include it in the implementation.
+    % Second, we don't want to include a FIM in *both* the interface
+    % and the implementation.
+    set.union(IntExplicitFIMSpecs, ImpExplicitFIMSpecs, ExplicitFIMSpecs),
+    set.filter(fim_spec_is_for_needed_language(ShortImpImplicitFIMLangs),
+        ExplicitFIMSpecs, ShortImpExplicitFIMSpecs),
+    set.foldl(add_self_fim(ModuleName), ShortImpImplicitFIMLangs,
+        ShortImpExplicitFIMSpecs, ShortImpFIMSpecs0),
+    set.difference(ShortImpFIMSpecs0, ShortIntFIMSpecs, ShortImpFIMSpecs),
+
     DummyMaybeVersionNumbers = no_version_numbers,
 
     % For now, we need the implementation sections of .int2 files to contain
