@@ -88,6 +88,22 @@
 
 %---------------------------------------------------------------------------%
 
+    % assign_var_in_map(WhyNot, VarId, ValueId, !SolverVarMap):
+    %
+    % Impose the constraint VarId = ValueId on !:SolverVarMap.
+    % Record WhyNot as the reason why VarId cannot have any value
+    % other than ValueId.
+    %
+    % Abort if ValueId was never a possible value of VarId, or if the
+    % constraint this call is trying to impose is inconsistent with
+    % a constraint that was imposed earlier, on !.SolverVarMap.
+    %
+:- pred assign_var_in_map(not_possible_why::in,
+    solver_var_id::in, solver_var_value_id::in,
+    solver_var_map::in, solver_var_map::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- type solver_var_set_to
     --->    set_to_false
     ;       set_to_true.
@@ -117,27 +133,10 @@
 
 %---------------------------------------------------------------------------%
 
-    % assign_var_in_map(WhyNot, VarId, ValueId, !SolverVarMap):
-    %
-    % Impose the constraint VarId = ValueId on !:SolverVarMap.
-    % Record WhyNot as the reason why VarId cannot have any value
-    % other than ValueId.
-    %
-    % Abort if ValueId was never a possible value of VarId, or if the
-    % constraint this call is trying to impose is inconsistent with
-    % a constraint that was imposed earlier, on !.SolverVarMap.
-    %
-:- pred assign_var_in_map(not_possible_why::in,
-    solver_var_id::in, solver_var_value_id::in,
-    solver_var_map::in, solver_var_map::out) is det.
-
-%---------------------------------------------------------------------------%
-
 :- implementation.
 
 :- import_module var_value_names.
 
-:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module list.

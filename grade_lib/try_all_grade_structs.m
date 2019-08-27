@@ -43,7 +43,6 @@
 :- import_module grade_lib.grade_structure.
 :- import_module grade_lib.grade_vars.
 
-:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -267,6 +266,7 @@ generate_grade_var_target_debug(grade_var_target_debug_yes).
 
 :- pred generate_grade_var_low_tag_bits_use(grade_var_low_tag_bits_use::out)
     is multi.
+:- pragma no_determinism_warning(generate_grade_var_low_tag_bits_use/1).
 
 generate_grade_var_low_tag_bits_use(LowTagBitsUse) :-
     % ( LowTagBitsUse = grade_var_low_tag_bits_use_0

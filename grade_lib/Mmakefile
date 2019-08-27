@@ -6,8 +6,14 @@
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# MERCURY_DIR=..
-# include $(MERCURY_DIR)/Mmake.common
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+-include Mmake.grade_lib.params
+
+# Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
+# create a missing optional params file.
+Mmake.grade_lib.params:
 
 # Module-specific options should go in Mercury.options so they can be found
 # by `mmc --make'.
@@ -15,15 +21,19 @@
 
 -include ../Mmake.params
 
+MCFLAGS += --flags GRADE_LIB_FLAGS $(CONFIG_OVERRIDE)
+
 MAIN_TARGET = all
 MERCURY_MAIN_MODULES = choose_grade test_grades try_all_grade_structs
 # EXTRA_MCFLAGS = --trace-flag debug_solver
+
+DEPENDS = $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
 
 .PHONY: all
 all:	$(MERCURY_MAIN_MODULES)
 
 .PHONY: depend
-depend:	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+depend:	GRADE_LIB_FLAGS $(DEPENDS)
 
 .PHONY: ints
 ints:	$(patsubst %,%.int,$(MERCURY_MAIN_MODULES))
@@ -34,6 +44,6 @@ tags:	$(wildcard *.m)
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f tags
+	rm -f Mercury.modules tags GRADE_LIB_FLAGS
 
 #-----------------------------------------------------------------------------#

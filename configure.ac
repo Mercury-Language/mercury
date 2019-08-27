@@ -5591,6 +5591,7 @@ java/runtime/Constants.java
 java/runtime/Native.java
 library/erlang_conf.hrl
 compiler/COMP_FLAGS
+grade_lib/GRADE_LIB_FLAGS
 library/LIB_FLAGS
 mdbcomp/MDBCOMP_FLAGS
 browser/MDB_FLAGS

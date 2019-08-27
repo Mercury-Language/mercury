@@ -42,7 +42,6 @@
 :- import_module grade_lib.grade_vars.
 :- import_module var_value_names.
 
-:- import_module bool.
 :- import_module cord.
 :- import_module float.
 :- import_module int.

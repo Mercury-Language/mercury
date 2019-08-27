@@ -218,7 +218,6 @@
 :- implementation.
 
 :- import_module require.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
