@@ -99,12 +99,6 @@
     pred(urandom_dup/3) is sfc64.urandom_dup
 ].
 
-urandom_dup(S, S1, S2) :-
-    S = ustate(A),
-    Sc = ustate(array.copy(A)),
-    S1 = unsafe_promise_unique(S),
-    S2 = unsafe_promise_unique(Sc).
-
 %---------------------------------------------------------------------------%
 
 init(P, S) :-
@@ -144,6 +138,12 @@ generate_uint32(_, N, !S) :-
 generate_uint64(_, N, !S) :-
     sfc64.generate_uint64(N, !S).
 
+urandom_dup(S, S1, S2) :-
+    S = ustate(A),
+    Sc = ustate(array.copy(A)),
+    S1 = unsafe_promise_unique(S),
+    S2 = unsafe_promise_unique(Sc).
+
 %---------------------------------------------------------------------------%
 
 generate_uint8(N, !S) :-
@@ -159,8 +159,6 @@ generate_uint16(N, !S) :-
 generate_uint32(N, !S) :-
     sfc64.generate_uint64(N0, !S),
     N = uint32.cast_from_uint64(N0 >> 32).
-
-%---------------------------------------------------------------------------%
 
 generate_uint64(N, RS0, RS) :-
     RS0 = ustate(S0),
