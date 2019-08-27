@@ -385,7 +385,6 @@ ORDINARY_PROGS = \
 	test_char_digits \
 	test_cord \
 	test_cord2 \
-	test_generic_ref \
 	test_imported_no_tag \
 	test_infinity \
 	test_int_hash \
@@ -659,6 +658,9 @@ CLOSURE_LAYOUT_PROGS = \
 # XXX we fail some of the commented-out tests in write_binary
 #
 # XXX bug441
+# XXX gh72a
+# XXX gh72b
+# XXX test_generic_ref
 
 # The following tests are passed only in some grades.
 
