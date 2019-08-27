@@ -93,6 +93,15 @@ generate_uint8(N, !R) :-
     N1 = uint16.to_int(N0 >> 8),
     N = uint8.cast_from_int(N1).
 
+generate_uint16(N, random(S0), random(S)) :-
+    unpack_uint64(S0, A0, B0, C0, Counter0),
+    N = A0 + B0 + Counter0,
+    A = B0 `xor` (B0 >> 5),
+    B = C0 + (C0 << 3),
+    C = ((C0 << 6) \/ (C0 >> 10)) + N,
+    Counter = Counter0 + 1u16,
+    S = pack_uint64(A, B, C, Counter).
+
 generate_uint32(N, !R) :-
     sfc16.generate_uint16(A0, !R),
     sfc16.generate_uint16(B0, !R),
@@ -106,17 +115,6 @@ generate_uint64(N, !R) :-
     sfc16.generate_uint16(C, !R),
     sfc16.generate_uint16(D, !R),
     N = pack_uint64(A, B, C, D).
-
-%---------------------------------------------------------------------------%
-
-generate_uint16(N, random(S0), random(S)) :-
-    unpack_uint64(S0, A0, B0, C0, Counter0),
-    N = A0 + B0 + Counter0,
-    A = B0 `xor` (B0 >> 5),
-    B = C0 + (C0 << 3),
-    C = ((C0 << 6) \/ (C0 >> 10)) + N,
-    Counter = Counter0 + 1u16,
-    S = pack_uint64(A, B, C, Counter).
 
 %---------------------------------------------------------------------------%
 
