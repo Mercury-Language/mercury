@@ -40,6 +40,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
@@ -139,6 +140,55 @@
                 % Items in the interface and in the implementation.
                 pti_int_items               :: list(item),
                 pti_imp_items               :: list(item)
+            ).
+
+:- type parse_tree_int0
+    --->    parse_tree_int0(
+                pti0_module_name            :: module_name,
+
+                % The context of the `:- module' declaration.
+                pti0_module_name_context    :: prog_context,
+
+                pti0_maybe_version_numbers  :: maybe_version_numbers,
+
+                % The set of modules mentioned in `:- include_module'
+                % declarations in the interface and implementation.
+                pti0_int_included_modules   :: set(module_name),
+                pti0_imp_included_modules   :: set(module_name),
+
+                % The set of modules mentioned in `:- import_module'
+                % declarations in the interface and implementation.
+                pti0_int_avail_modules      :: map(module_name, import_or_use),
+                pti0_imp_avail_modules      :: map(module_name, import_or_use),
+
+                % `:- pragma foreign_import_module' declarations
+                % in the interface and in the implementation.
+                pti0_int_fims               :: set(fim_spec),
+                pti0_imp_fims               :: set(fim_spec),
+
+                % Items of various kinds in the interface.
+                pti0_int_type_defns         :: list(item_type_defn_info),
+                pti0_int_inst_defns         :: list(item_inst_defn_info),
+                pti0_int_mode_defns         :: list(item_mode_defn_info),
+                pti0_int_typeclasses        :: list(item_typeclass_info),
+                pti0_int_instances          :: list(item_instance_info),
+                pti0_int_pred_decls         :: list(item_pred_decl_info),
+                pti0_int_mode_decls         :: list(item_mode_decl_info),
+                pti0_int_pragmas            :: list(item_pragma_info),
+                pti0_int_promises           :: list(item_promise_info),
+                % XXX We will probably need a list of item_type_repn_infos.
+
+                % Items of various kinds in the implementation section.
+                pti0_imp_type_defns         :: list(item_type_defn_info),
+                pti0_imp_inst_defns         :: list(item_inst_defn_info),
+                pti0_imp_mode_defns         :: list(item_mode_defn_info),
+                pti0_imp_typeclasses        :: list(item_typeclass_info),
+                pti0_imp_instances          :: list(item_instance_info),
+                pti0_imp_pred_decls         :: list(item_pred_decl_info),
+                pti0_imp_mode_decls         :: list(item_mode_decl_info),
+                pti0_imp_pragmas            :: list(item_pragma_info),
+                pti0_imp_promises           :: list(item_promise_info)
+                % XXX We will probably need a list of item_type_repn_infos.
             ).
 
     % A version of parse_tree_int specialized to hold the contents of
@@ -269,6 +319,8 @@
                 pto_items                   :: list(item)
             ).
 
+:- func convert_parse_tree_int0_to_parse_tree_int(parse_tree_int0)
+    = parse_tree_int.
 :- func convert_parse_tree_int1_to_parse_tree_int(parse_tree_int1)
     = parse_tree_int.
 :- func convert_parse_tree_int2_to_parse_tree_int(parse_tree_int2)
@@ -1816,11 +1868,70 @@
 
 :- import_module parse_tree.prog_foreign.
 
-:- import_module map.
 :- import_module require.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
+
+convert_parse_tree_int0_to_parse_tree_int(ParseTreeInt0) = ParseTreeInt :-
+    ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
+        MaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
+        IntAvailMap, ImpAvailMap, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        IntPredDecls, IntModeDecls, IntPragmas, IntPromises,
+        ImpTypeDefns, ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
+        ImpPredDecls, ImpModeDecls, ImpPragmas, ImpPromises),
+    IntIncls = list.map(wrap_include,
+        set.to_sorted_list(IntInclModuleNames)),
+    ImpIncls = list.map(wrap_include,
+        set.to_sorted_list(ImpInclModuleNames)),
+    map.foldl(add_avail_to_rev_list, IntAvailMap, [], RevIntAvails),
+    map.foldl(add_avail_to_rev_list, ImpAvailMap, [], RevImpAvails),
+    list.reverse(RevIntAvails, IntAvails),
+    list.reverse(RevImpAvails, ImpAvails),
+    set.map(fim_spec_to_item, IntFIMSpecs, IntFIMsSet),
+    set.map(fim_spec_to_item, ImpFIMSpecs, ImpFIMsSet),
+    set.to_sorted_list(IntFIMsSet, IntFIMs),
+    set.to_sorted_list(ImpFIMsSet, ImpFIMs),
+    IntItems =
+        list.map(wrap_type_defn_item, IntTypeDefns) ++
+        list.map(wrap_inst_defn_item, IntInstDefns) ++
+        list.map(wrap_mode_defn_item, IntModeDefns) ++
+        list.map(wrap_typeclass_item, IntTypeClasses) ++
+        list.map(wrap_instance_item, IntInstances) ++
+        list.map(wrap_pred_decl_item, IntPredDecls) ++
+        list.map(wrap_mode_decl_item, IntModeDecls) ++
+        list.map(wrap_pragma_item, IntPragmas) ++
+        list.map(wrap_promise_item, IntPromises),
+    ImpItems =
+        list.map(wrap_type_defn_item, ImpTypeDefns) ++
+        list.map(wrap_inst_defn_item, ImpInstDefns) ++
+        list.map(wrap_mode_defn_item, ImpModeDefns) ++
+        list.map(wrap_typeclass_item, ImpTypeClasses) ++
+        list.map(wrap_instance_item, ImpInstances) ++
+        list.map(wrap_pred_decl_item, ImpPredDecls) ++
+        list.map(wrap_mode_decl_item, ImpModeDecls) ++
+        list.map(wrap_pragma_item, ImpPragmas) ++
+        list.map(wrap_promise_item, ImpPromises),
+
+    ParseTreeInt = parse_tree_int(ModuleName, ifk_int0, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntFIMs, ImpFIMs, IntItems, ImpItems).
+
+:- pred add_avail_to_rev_list(module_name::in, import_or_use::in,
+    list(item_avail)::in, list(item_avail)::out) is det.
+
+add_avail_to_rev_list(ModuleName, ImportOrUse, !RevAvails) :-
+    Context = term.context_init,
+    SeqNum = -1,
+    (
+        ImportOrUse = import_decl,
+        Avail = avail_import(avail_import_info(ModuleName, Context, SeqNum))
+    ;
+        ImportOrUse = use_decl,
+        Avail = avail_use(avail_use_info(ModuleName, Context, SeqNum))
+    ),
+    !:RevAvails = [Avail | !.RevAvails].
 
 convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1) = ParseTreeInt :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,

@@ -220,14 +220,10 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
     RawItemBlock = item_block(_, Section, Incls, Avails, _FIMs, Items),
     (
         Section = ms_interface,
-
-        IncludeModuleNames = list.map(item_include_module_name, Incls),
-        set.insert_list(IncludeModuleNames, !IntIncls),
-
+        list.foldl(add_included_module_name, Incls, !IntIncls),
         list.filter_map(avail_is_import, Avails, Imports),
         ImportModuleNames = list.map(avail_import_info_module_name, Imports),
         set.insert_list(ImportModuleNames, !IntImports),
-
         get_short_interface_int3_from_items_int(Items,
             !IntTypeDefns, !IntInstDefns, !IntModeDefns,
             !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
@@ -476,32 +472,62 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_private_interface_int0(AugCompUnit, ParseTreeInt) :-
+generate_private_interface_int0(AugCompUnit, ParseTreeInt0) :-
     AugCompUnit = aug_compilation_unit(ModuleName,
         ModuleNameContext, ModuleVersionNumbers, SrcItemBlocks,
         _DirectIntItemBlocks, _IndirectIntItemBlocks,
         _OptItemBlocks, _IntForOptItemBlocks),
+    set.init(IntIncls0),
+    set.init(ImpIncls0),
+    map.init(IntAvailMap0),
+    map.init(ImpAvailMap0),
+    set.init(IntFIMSpecs0),
+    set.init(ImpFIMSpecs0),
     get_private_interface_int0_from_item_blocks(ModuleName, SrcItemBlocks,
-        cord.init, IntInclsCord, cord.init, ImpInclsCord,
-        cord.init, IntAvailsCord, cord.init, ImpAvailsCord,
-        cord.init, IntFIMsCord, cord.init, ImpFIMsCord,
-        cord.init, IntItemsCord, cord.init, ImpItemsCord),
+        IntIncls0, IntIncls, ImpIncls0, ImpIncls,
+        IntAvailMap0, IntAvailMap, ImpAvailMap0, ImpAvailMap,
+        IntFIMSpecs0, IntFIMSpecs, ImpFIMSpecs0, ImpFIMSpecs,
+        cord.init, IntTypeDefnsCord, cord.init, ImpTypeDefnsCord,
+        cord.init, IntInstDefnsCord, cord.init, ImpInstDefnsCord,
+        cord.init, IntModeDefnsCord, cord.init, ImpModeDefnsCord,
+        cord.init, IntTypeClassesCord, cord.init, ImpTypeClassesCord,
+        cord.init, IntInstancesCord, cord.init, ImpInstancesCord,
+        cord.init, IntPredDeclsCord, cord.init, ImpPredDeclsCord,
+        cord.init, IntModeDeclsCord, cord.init, ImpModeDeclsCord,
+        cord.init, IntPragmasCord, cord.init, ImpPragmasCord,
+        cord.init, IntPromisesCord, cord.init, ImpPromisesCord),
     ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
         MaybeVersionNumbers = version_numbers(VersionNumbers)
     else
         MaybeVersionNumbers = no_version_numbers
     ),
-    IntIncls = cord.list(IntInclsCord),
-    ImpIncls = cord.list(ImpInclsCord),
-    IntAvails = cord.list(IntAvailsCord),
-    ImpAvails = cord.list(ImpAvailsCord),
-    IntFIMs = cord.list(IntFIMsCord),
-    ImpFIMs = cord.list(ImpFIMsCord),
-    IntItems = cord.list(IntItemsCord),
-    ImpItems = cord.list(ImpItemsCord),
-    ParseTreeInt = parse_tree_int(ModuleName, ifk_int0,
-        ModuleNameContext, MaybeVersionNumbers, IntIncls, ImpIncls,
-        IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems).
+    IntTypeDefns = cord.list(IntTypeDefnsCord),
+    ImpTypeDefns = cord.list(ImpTypeDefnsCord),
+    IntInstDefns = cord.list(IntInstDefnsCord),
+    ImpInstDefns = cord.list(ImpInstDefnsCord),
+    IntModeDefns = cord.list(IntModeDefnsCord),
+    ImpModeDefns = cord.list(ImpModeDefnsCord),
+    IntTypeClasses = cord.list(IntTypeClassesCord),
+    ImpTypeClasses = cord.list(ImpTypeClassesCord),
+    IntInstances = cord.list(IntInstancesCord),
+    ImpInstances = cord.list(ImpInstancesCord),
+    IntPredDecls = cord.list(IntPredDeclsCord),
+    ImpPredDecls = cord.list(ImpPredDeclsCord),
+    IntModeDecls = cord.list(IntModeDeclsCord),
+    ImpModeDecls = cord.list(ImpModeDeclsCord),
+    IntPragmas = cord.list(IntPragmasCord),
+    ImpPragmas = cord.list(ImpPragmasCord),
+    IntPromises = cord.list(IntPromisesCord),
+    ImpPromises = cord.list(ImpPromisesCord),
+    ParseTreeInt0Prime = parse_tree_int0(ModuleName, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, ImpIncls,
+        IntAvailMap, ImpAvailMap, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        IntPredDecls, IntModeDecls, IntPragmas, IntPromises,
+        ImpTypeDefns, ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
+        ImpPredDecls, ImpModeDecls, ImpPragmas, ImpPromises),
+    ParseTreeInt0 =
+        convert_parse_tree_int0_to_parse_tree_int(ParseTreeInt0Prime).
 
     % get_private_interface_int0_from_item_blocks processes each item
     % in the item blocks of a module, as part of the process of creating
@@ -538,30 +564,56 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt) :-
     %
 :- pred get_private_interface_int0_from_item_blocks(module_name::in,
     list(src_item_block)::in,
-    cord(item_include)::in, cord(item_include)::out,
-    cord(item_include)::in, cord(item_include)::out,
-    cord(item_avail)::in, cord(item_avail)::out,
-    cord(item_avail)::in, cord(item_avail)::out,
-    cord(item_fim)::in, cord(item_fim)::out,
-    cord(item_fim)::in, cord(item_fim)::out,
-    cord(item)::in, cord(item)::out,
-    cord(item)::in, cord(item)::out) is det.
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    map(module_name, import_or_use)::in, map(module_name, import_or_use)::out,
+    map(module_name, import_or_use)::in, map(module_name, import_or_use)::out,
+    set(fim_spec)::in, set(fim_spec)::out,
+    set(fim_spec)::in, set(fim_spec)::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(item_instance_info)::in, cord(item_instance_info)::out,
+    cord(item_instance_info)::in, cord(item_instance_info)::out,
+    cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
+    cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
+    cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(item_pragma_info)::in, cord(item_pragma_info)::out,
+    cord(item_pragma_info)::in, cord(item_pragma_info)::out,
+    cord(item_promise_info)::in, cord(item_promise_info)::out,
+    cord(item_promise_info)::in, cord(item_promise_info)::out) is det.
 
 get_private_interface_int0_from_item_blocks(_ModuleName, [],
-        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
-        !IntFIMsCord, !ImpFIMsCord, !IntItemsCord, !ImpItemsCord).
+        !IntIncls, !ImpIncls, !IntAvailMap, !ImpAvailMap,
+        !IntFIMSpecs, !ImpFIMSpecs, !IntTypeDefns, !ImpTypeDefns,
+        !IntInstDefns, !ImpInstDefns, !IntModeDefns, !ImpModeDefns,
+        !IntTypeClasses, !ImpTypeClasses, !IntInstances,!ImpInstances,
+        !IntPredDecls, !ImpPredDecls, !IntModeDecls, !ImpModeDecls,
+        !IntPragmas, !ImpPragmas, !IntPromises, !ImpPromises).
 get_private_interface_int0_from_item_blocks(ModuleName,
         [ItemBlock | ItemBlocks],
-        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
-        !IntFIMsCord, !ImpFIMsCord, !IntItemsCord, !ImpItemsCord) :-
+        !IntIncls, !ImpIncls, !IntAvailMap, !ImpAvailMap,
+        !IntFIMSpecs, !ImpFIMSpecs, !IntTypeDefns, !ImpTypeDefns,
+        !IntInstDefns, !ImpInstDefns, !IntModeDefns, !ImpModeDefns,
+        !IntTypeClasses, !ImpTypeClasses, !IntInstances,!ImpInstances,
+        !IntPredDecls, !ImpPredDecls, !IntModeDecls, !ImpModeDecls,
+        !IntPragmas, !ImpPragmas, !IntPromises, !ImpPromises) :-
     ItemBlock = item_block(_, SrcSection, Incls, Avails, FIMs, Items),
     (
         SrcSection = sms_interface,
-        !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
-        !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
-        !:IntFIMsCord = !.IntFIMsCord ++ cord.from_list(FIMs),
+        list.foldl(add_included_module_name, Incls, !IntIncls),
+        list.foldl(record_avail_in_module_map, Avails, !IntAvailMap),
+        list.foldl(add_fim_to_specs, FIMs, !IntFIMSpecs),
         get_private_interface_int0_from_items(ModuleName, Items,
-            !IntItemsCord)
+            !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+            !IntTypeClasses, !IntInstances, !IntPredDecls, !IntModeDecls,
+            !IntPragmas, !IntPromises)
     ;
         ( SrcSection = sms_implementation
         ; SrcSection = sms_impl_but_exported_to_submodules
@@ -571,32 +623,66 @@ get_private_interface_int0_from_item_blocks(ModuleName,
         % to sms_impl_but_exported_to_submodules even in the presence
         % of submodules, but future factorizations of common code
         % may change that.
-        !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
-        !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(Avails),
-        !:ImpFIMsCord = !.ImpFIMsCord ++ cord.from_list(FIMs),
+        list.foldl(add_included_module_name, Incls, !ImpIncls),
+        list.foldl(record_avail_in_module_map, Avails, !ImpAvailMap),
+        list.foldl(add_fim_to_specs, FIMs, !ImpFIMSpecs),
         get_private_interface_int0_from_items(ModuleName, Items,
-            !ImpItemsCord)
+            !ImpTypeDefns, !ImpInstDefns, !ImpModeDefns,
+            !ImpTypeClasses, !ImpInstances, !ImpPredDecls, !ImpModeDecls,
+            !ImpPragmas, !ImpPromises)
     ),
     get_private_interface_int0_from_item_blocks(ModuleName, ItemBlocks,
-        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
-        !IntFIMsCord, !ImpFIMsCord, !IntItemsCord, !ImpItemsCord).
+        !IntIncls, !ImpIncls, !IntAvailMap, !ImpAvailMap,
+        !IntFIMSpecs, !ImpFIMSpecs, !IntTypeDefns, !ImpTypeDefns,
+        !IntInstDefns, !ImpInstDefns, !IntModeDefns, !ImpModeDefns,
+        !IntTypeClasses, !ImpTypeClasses, !IntInstances,!ImpInstances,
+        !IntPredDecls, !ImpPredDecls, !IntModeDecls, !ImpModeDecls,
+        !IntPragmas, !ImpPragmas, !IntPromises, !ImpPromises).
 
-:- pred get_private_interface_int0_from_items(module_name::in,
-    list(item)::in, cord(item)::in, cord(item)::out) is det.
+:- pred record_avail_in_module_map(item_avail::in,
+    map(module_name, import_or_use)::in, map(module_name, import_or_use)::out)
+    is det.
+
+record_avail_in_module_map(Avail, !AvailMap) :-
+    (
+        Avail = avail_import(avail_import_info(ModuleName, _Ctxt, _SeqNum)),
+        Kind = import_decl
+    ;
+        Avail = avail_use(avail_use_info(ModuleName, _Ctxt, _SeqNum)),
+        Kind = use_decl
+    ),
+    map.search_insert(ModuleName, Kind, MaybeOldKind, !AvailMap),
+    (
+        MaybeOldKind = no
+    ;
+        MaybeOldKind = yes(OldKind),
+        ( if OldKind = use_decl, Kind = import_decl then
+            map.det_update(ModuleName, Kind, !AvailMap)
+        else
+            true
+        )
+    ).
+
+:- pred get_private_interface_int0_from_items(module_name::in, list(item)::in,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
+    cord(item_instance_info)::in, cord(item_instance_info)::out,
+    cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
+    cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(item_pragma_info)::in, cord(item_pragma_info)::out,
+    cord(item_promise_info)::in, cord(item_promise_info)::out) is det.
 
 get_private_interface_int0_from_items(_ModuleName, [],
-        !SectionItemsCord).
+        !TypeDefns, !InstDefns, !ModeDefns, !TypeClasses, !Instances,
+        !PredDecls, !ModeDecls, !Pragmas, !Promises).
 get_private_interface_int0_from_items(ModuleName, [Item | Items],
-        !SectionItemsCord) :-
-    get_private_interface_int0_from_item(ModuleName, Item,
-        !SectionItemsCord),
-    get_private_interface_int0_from_items(ModuleName, Items,
-        !SectionItemsCord).
-
-:- pred get_private_interface_int0_from_item(module_name::in,
-    item::in, cord(item)::in, cord(item)::out) is det.
-
-get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
+        !TypeDefns, !InstDefns, !ModeDefns, !TypeClasses, !Instances,
+        !PredDecls, !ModeDecls, !Pragmas, !Promises) :-
+    % XXX ITEM_LIST The action here for types, insts, modes, pred decls,
+    % mode decls, typeclasses and promises follows what this predicate
+    % used to do before the item list change.
     (
         ( Item = item_clause(_)
         ; Item = item_initialise(_)
@@ -619,26 +705,34 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
             AllowedInInterface = no
         ;
             AllowedInInterface = yes,
-            cord.snoc(Item, !SectionItemsCord)
+            cord.snoc(ItemPragma, !Pragmas)
         )
     ;
-        % XXX ITEM_LIST The action here follows what this predicate used
-        % to do before the item list change.
-        ( Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
-        ),
-        cord.snoc(Item, !SectionItemsCord)
+        Item = item_type_defn(TypeDefn),
+        cord.snoc(TypeDefn, !TypeDefns)
     ;
-        Item = item_instance(InstanceInfo),
-        AbstractInstanceInfo =
-            InstanceInfo ^ ci_method_instances := instance_body_abstract,
-        AbstractItem = item_instance(AbstractInstanceInfo),
-        cord.snoc(AbstractItem, !SectionItemsCord)
+        Item = item_inst_defn(InstDefn),
+        cord.snoc(InstDefn, !InstDefns)
+    ;
+        Item = item_mode_defn(ModeDefn),
+        cord.snoc(ModeDefn, !ModeDefns)
+    ;
+        Item = item_pred_decl(PredDecl),
+        cord.snoc(PredDecl, !PredDecls)
+    ;
+        Item = item_mode_decl(ModeDecl),
+        cord.snoc(ModeDecl, !ModeDecls)
+    ;
+        Item = item_typeclass(TypeClass),
+        cord.snoc(TypeClass, !TypeClasses)
+    ;
+        Item = item_promise(Promise),
+        cord.snoc(Promise, !Promises)
+    ;
+        Item = item_instance(Instance),
+        AbstractInstance =
+            Instance ^ ci_method_instances := instance_body_abstract,
+        cord.snoc(AbstractInstance, !Instances)
     ;
         Item = item_mutable(ItemMutable),
         ItemMutable = item_mutable_info(MutableName,
@@ -651,20 +745,16 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
                 MutableName, Type, Inst, Context),
             ConstantSetPredDecl = constant_set_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
-            ConstantGetPredDeclItem = item_pred_decl(ConstantGetPredDecl),
-            ConstantSetPredDeclItem = item_pred_decl(ConstantSetPredDecl),
-            cord.snoc(ConstantGetPredDeclItem, !SectionItemsCord),
-            cord.snoc(ConstantSetPredDeclItem, !SectionItemsCord)
+            cord.snoc(ConstantGetPredDecl, !PredDecls),
+            cord.snoc(ConstantSetPredDecl, !PredDecls)
         ;
             ConstantInterface = mutable_not_constant,
             StdGetPredDecl = std_get_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
             StdSetPredDecl = std_set_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
-            StdGetPredDeclItem = item_pred_decl(StdGetPredDecl),
-            StdSetPredDeclItem = item_pred_decl(StdSetPredDecl),
-            cord.snoc(StdGetPredDeclItem, !SectionItemsCord),
-            cord.snoc(StdSetPredDeclItem, !SectionItemsCord),
+            cord.snoc(StdGetPredDecl, !PredDecls),
+            cord.snoc(StdSetPredDecl, !PredDecls),
 
             IOStateInterface = mutable_var_attach_to_io_state(Attrs),
             (
@@ -673,15 +763,16 @@ get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
                     MutableName, Type, Inst, Context),
                 IOSetPredDecl = io_set_pred_decl(ModuleName,
                     MutableName, Type, Inst, Context),
-                IOGetPredDeclItem = item_pred_decl(IOGetPredDecl),
-                IOSetPredDeclItem = item_pred_decl(IOSetPredDecl),
-                cord.snoc(IOGetPredDeclItem, !SectionItemsCord),
-                cord.snoc(IOSetPredDeclItem, !SectionItemsCord)
+                cord.snoc(IOGetPredDecl, !PredDecls),
+                cord.snoc(IOSetPredDecl, !PredDecls)
             ;
                 IOStateInterface = mutable_dont_attach_to_io_state
             )
         )
-    ).
+    ),
+    get_private_interface_int0_from_items(ModuleName, Items,
+        !TypeDefns, !InstDefns, !ModeDefns, !TypeClasses, !Instances,
+        !PredDecls, !ModeDecls, !Pragmas, !Promises).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -831,7 +922,7 @@ generate_interfaces_int1_int2(_Globals, AugCompUnit,
     list(item_type_defn_info)::out,
     parse_tree_int1::out) is det.
 
-generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
+generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt1) :-
@@ -862,7 +953,7 @@ generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
 
     % XXX Why are we ignoring _IntModulesNeededByTypeClassDefns?
     get_interface_int1_item_blocks_loop(SrcItemBlocks,
-        [], IntIncls, [], ImpIncls,
+        set.init, IntIncls, set.init, ImpIncls,
         IntImportsUses0, IntImportsUses, ImpImportsUses0, ImpImportsUses1,
         IntExplicitFIMSpecs0, IntExplicitFIMSpecs,
         ImpExplicitFIMSpecs0, ImpExplicitFIMSpecs,
@@ -877,9 +968,6 @@ generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
         ImpTypesMap0, ImpTypesMap,
         cord.init, ImpTypeClassesCord, cord.init, ImpForeignEnumsCord,
         set.init, ImpModulesNeededByTypeClassDefns),
-
-    IntInclModuleNames = set.list_to_set(IntIncls),
-    ImpInclModuleNames = set.list_to_set(ImpIncls),
 
     IntTypeDefns = cord.list(IntTypeDefnsCord),
     IntInstDefns = cord.list(IntInstDefnsCord),
@@ -953,7 +1041,7 @@ generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
     % XXX TODO
     IntTypeRepns = [],
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
-        DummyMaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
+        DummyMaybeVersionNumbers, IntIncls, ImpIncls,
         IntImportsUses, ImpImportsUses, IntFIMSpecs, ImpFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances,
@@ -1047,8 +1135,8 @@ add_self_fim(ModuleName, Lang, !FIMSpecs) :-
     % in the superclass constraint.
     %
 :- pred get_interface_int1_item_blocks_loop(list(src_item_block)::in,
-    list(module_name)::in, list(module_name)::out,
-    list(module_name)::in, list(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     set(fim_spec)::in, set(fim_spec)::out,
@@ -1096,7 +1184,7 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
     SrcItemBlock = item_block(_, SrcSection, Incls, Avails, FIMs, Items),
     (
         SrcSection = sms_interface,
-        !:IntIncls = list.map(item_include_module_name, Incls) ++ !.IntIncls,
+        list.foldl(add_included_module_name, Incls, !IntIncls),
         get_interface_int1_avails_loop(Avails, !IntImportsUses),
         list.foldl(add_fim_to_specs, FIMs, !IntExplicitFIMSpecs),
         get_interface_int1_items_loop_int(Items, !IntImplicitFIMLangs,
@@ -1108,7 +1196,7 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
             !IntModulesNeededByTypeClassDefns)
     ;
         SrcSection = sms_implementation,
-        !:ImpIncls = list.map(item_include_module_name, Incls) ++ !.ImpIncls,
+        list.foldl(add_included_module_name, Incls, !ImpIncls),
         get_interface_int1_avails_loop(Avails, !ImpImportsUses),
         list.foldl(add_fim_to_specs, FIMs, !ImpExplicitFIMSpecs),
         get_interface_int1_items_loop_imp(Items, !ImpImplicitFIMLangs,
@@ -1330,6 +1418,12 @@ get_interface_int1_items_loop_imp([Item | Items], !ImpImplicitFIMLangs,
     get_interface_int1_items_loop_imp(Items, !ImpImplicitFIMLangs,
         !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
         !ImpModulesNeededByTypeClassDefns).
+
+:- pred add_included_module_name(item_include::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+add_included_module_name(Incl, !ModuleNames) :-
+    set.insert(item_include_module_name(Incl), !ModuleNames).
 
 :- pred add_fim_to_specs(item_fim::in, 
     set(fim_spec)::in, set(fim_spec)::out) is det.
