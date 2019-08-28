@@ -2396,9 +2396,6 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ),
         Allowed = no
     ;
-        % Note that `direct_arg' must be in the interface iff
-        % the corresponding type definition is in the interface.
-        % This is checked in make_hlds.
         ( Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_obsolete(_)
         ; Pragma = pragma_type_spec(_)
