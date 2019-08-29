@@ -445,9 +445,11 @@ replace_in_item(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         Item = Item0,
         Specs = []
     ;
-        Item0 = item_type_repn(_),
-        % XXX TYPE_REPN Implement this.
-        unexpected($pred, "item_type_repn nyi")
+        Item0 = item_type_repn(ItemTypeRepn0),
+        replace_in_type_repn_info(ModuleName, MaybeRecord,
+            TypeEqvMap, InstEqvMap,
+            ItemTypeRepn0, ItemTypeRepn, !RecompInfo, !UsedModules, Specs),
+        Item = item_type_repn(ItemTypeRepn)
     ).
 
 :- pred replace_in_type_defn_info(module_name::in,
@@ -487,6 +489,45 @@ replace_in_type_defn_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     ItemId = item_id(type_body_item, item_name(SymName, Arity)),
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
     Info = item_type_defn_info(SymName, ArgTypeVars, TypeDefn, VarSet,
+        Context, SeqNum).
+
+:- pred replace_in_type_repn_info(module_name::in,
+    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
+    item_type_repn_info::in, item_type_repn_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        Info0, Info, !RecompInfo, !UsedModules, Specs) :-
+    Info0 = item_type_repn_info(SymName, ArgTypeVars, TypeRepn0, VarSet0,
+        Context, SeqNum),
+    list.length(ArgTypeVars, Arity),
+    maybe_start_recording_expanded_items(ModuleName, SymName, !.RecompInfo,
+        UsedTypeCtors0),
+    replace_in_type_repn(MaybeRecord, TypeEqvMap, InstEqvMap,
+        type_ctor(SymName, Arity), TypeRepn0, TypeRepn, ContainsCirc,
+        VarSet0, VarSet, UsedTypeCtors0, UsedTypeCtors, !UsedModules),
+    (
+        ContainsCirc = yes,
+        ( if TypeRepn0 = tcrepn_is_eqv_to(_) then
+            list.length(ArgTypeVars, NumArgTypeVars),
+            Pieces = [words("Error: circular equivalence type"),
+                qual_sym_name_and_arity(
+                    sym_name_arity(SymName, NumArgTypeVars)),
+                suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_expand_types, [Msg]),
+            Specs = [Spec]
+        else
+            unexpected($pred, "invalid item")
+        )
+    ;
+        ContainsCirc = no,
+        Specs = []
+    ),
+    ItemId = item_id(type_body_item, item_name(SymName, Arity)),
+    finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
+    Info = item_type_repn_info(SymName, ArgTypeVars, TypeRepn, VarSet,
         Context, SeqNum).
 
 :- pred replace_in_pred_decl_info(module_name::in,
@@ -869,6 +910,34 @@ replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
         ; TypeDefn0 = parse_tree_foreign_type(_)
         ),
         TypeDefn = TypeDefn0,
+        ContainsCirc = no
+    ).
+
+:- pred replace_in_type_repn(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, type_ctor::in,
+    type_ctor_repn_info::in, type_ctor_repn_info::out, bool::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_type_repn(MaybeRecord, TypeEqvMap, _InstEqvMap, TypeCtor,
+        TypeRepn0, TypeRepn, ContainsCirc, !VarSet,
+        !EquivTypeInfo, !UsedModules) :-
+    (
+        TypeRepn0 = tcrepn_is_eqv_to(Type0),
+        replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap, [TypeCtor],
+            Type0, Type, _, ContainsCirc, !VarSet, !EquivTypeInfo,
+            !UsedModules),
+        TypeRepn = tcrepn_is_eqv_to(Type)
+    ;
+        ( TypeRepn0 = tcrepn_is_direct_dummy        % XXX should not generate
+        ; TypeRepn0 = tcrepn_is_notag               % XXX should not generate
+        ; TypeRepn0 = tcrepn_fits_in_n_bits(_, _)   % XXX should not generate
+        ; TypeRepn0 = tcrepn_is_word_aligned_ptr    % XXX should not generate
+        ; TypeRepn0 = tcrepn_has_direct_arg_functors(_)
+        ; TypeRepn0 = tcrepn_du(_)
+        ; TypeRepn0 = tcrepn_maybe_foreign(_, _)
+        ),
+        TypeRepn = TypeRepn0,
         ContainsCirc = no
     ).
 

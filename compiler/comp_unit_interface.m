@@ -230,7 +230,8 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
             !ForeignEnumTypeCtors, !NeedImports)
     ;
         Section = ms_implementation,
-        gather_imp_type_defns(Items, !OrigImpTypeDefns, !ForeignEnumTypeCtors)
+        get_short_interface_int3_from_items_imp(Items,
+            !OrigImpTypeDefns, !ForeignEnumTypeCtors)
     ),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
         !IntIncls, !IntImports, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
@@ -289,8 +290,7 @@ get_short_interface_int3_from_items_int([Item | Items],
         cord.snoc(AbstractItemModeInfo, !IntModeDefns)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        maybe_record_foreign_enum(Pragma, !ForeignEnumTypeCtors)
+        maybe_record_foreign_enum(ItemPragma, !ForeignEnumTypeCtors)
     ;
         ( Item = item_clause(_)
         ; Item = item_mutable(_)
@@ -370,19 +370,20 @@ make_type_defn_abstract_type_for_int3(ItemTypeDefn,
         )
     ).
 
-:- pred gather_imp_type_defns(list(item)::in,
+:- pred get_short_interface_int3_from_items_imp(list(item)::in,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     foreign_enum_map::in, foreign_enum_map::out) is det.
 
-gather_imp_type_defns([], !ImpTypeDefns, !ForeignEnumTypeCtors).
-gather_imp_type_defns([Item | Items], !ImpTypeDefns, !ForeignEnumTypeCtors) :-
+get_short_interface_int3_from_items_imp([],
+        !ImpTypeDefns, !ForeignEnumTypeCtors).
+get_short_interface_int3_from_items_imp([Item | Items],
+        !ImpTypeDefns, !ForeignEnumTypeCtors) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
         cord.snoc(ItemTypeDefnInfo, !ImpTypeDefns)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        maybe_record_foreign_enum(Pragma, !ForeignEnumTypeCtors)
+        maybe_record_foreign_enum(ItemPragma, !ForeignEnumTypeCtors)
     ;
         ( Item = item_typeclass(_)
         ; Item = item_instance(_)
@@ -398,27 +399,53 @@ gather_imp_type_defns([Item | Items], !ImpTypeDefns, !ForeignEnumTypeCtors) :-
         ; Item = item_type_repn(_)
         )
     ),
-    gather_imp_type_defns(Items, !ImpTypeDefns, !ForeignEnumTypeCtors).
+    get_short_interface_int3_from_items_imp(Items,
+        !ImpTypeDefns, !ForeignEnumTypeCtors).
 
-:- pred maybe_record_foreign_enum(pragma_type::in,
+:- pred maybe_record_foreign_enum(item_pragma_info::in,
     foreign_enum_map::in, foreign_enum_map::out) is det.
 
-maybe_record_foreign_enum(Pragma, !ForeignEnumTypeCtors) :-
+maybe_record_foreign_enum(ItemPragma, !ForeignEnumTypeCtors) :-
+    ItemPragma = item_pragma_info(Pragma, _, _, _),
     ( if Pragma = pragma_foreign_enum(PragmaInfoForeignEnum) then
-        PragmaInfoForeignEnum =
-            pragma_info_foreign_enum(Lang, TypeCtor, OoMValues),
-        TypeCtor = type_ctor(TypeSymName, TypeArity),
-        TypeName = unqualify_name(TypeSymName),
-        UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
-        ( if map.search(!.ForeignEnumTypeCtors, UnqualTypeCtor, LVs0) then
-            map.det_update(UnqualTypeCtor, [Lang - OoMValues | LVs0],
-                !ForeignEnumTypeCtors)
-        else
-            map.det_insert(UnqualTypeCtor, [Lang - OoMValues],
-                !ForeignEnumTypeCtors)
-        )
+        record_foreign_enum(PragmaInfoForeignEnum, !ForeignEnumTypeCtors)
     else
         true
+    ).
+
+:- pred record_foreign_enum(pragma_info_foreign_enum::in,
+    foreign_enum_map::in, foreign_enum_map::out) is det.
+
+record_foreign_enum(PragmaInfoForeignEnum, !ForeignEnumTypeCtors) :-
+    PragmaInfoForeignEnum =
+        pragma_info_foreign_enum(Lang, TypeCtor, OoMValues),
+    TypeCtor = type_ctor(TypeSymName, TypeArity),
+    TypeName = unqualify_name(TypeSymName),
+    UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
+    ( if map.search(!.ForeignEnumTypeCtors, UnqualTypeCtor, LVs0) then
+        map.det_update(UnqualTypeCtor, [Lang - OoMValues | LVs0],
+            !ForeignEnumTypeCtors)
+    else
+        map.det_insert(UnqualTypeCtor, [Lang - OoMValues],
+            !ForeignEnumTypeCtors)
+    ).
+
+:- pred record_foreign_enum_spec(foreign_enum_spec::in,
+    foreign_enum_map::in, foreign_enum_map::out) is det.
+
+record_foreign_enum_spec(ForeignEnumSpec, !ForeignEnumTypeCtors) :-
+    ForeignEnumSpec = foreign_enum_spec(PragmaInfoForeignEnum, _MaybeAttrs),
+    PragmaInfoForeignEnum =
+        pragma_info_foreign_enum(Lang, TypeCtor, OoMValues),
+    TypeCtor = type_ctor(TypeSymName, TypeArity),
+    TypeName = unqualify_name(TypeSymName),
+    UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
+    ( if map.search(!.ForeignEnumTypeCtors, UnqualTypeCtor, LVs0) then
+        map.det_update(UnqualTypeCtor, [Lang - OoMValues | LVs0],
+            !ForeignEnumTypeCtors)
+    else
+        map.det_insert(UnqualTypeCtor, [Lang - OoMValues],
+            !ForeignEnumTypeCtors)
     ).
 
 %---------------------------------------------------------------------------%
@@ -900,16 +927,19 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_interfaces_int1_int2(_Globals, AugCompUnit,
+generate_interfaces_int1_int2(Globals, AugCompUnit,
         ParseTreeInt1, ParseTreeInt2) :-
     generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
-        IntTypeDefns, IntInstDefns, IntModeDefns,
-        IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt1A),
-    generate_interface_int2(AugCompUnit, IntInclModuleNames, IntImportsUses,
+        IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntPragmas, ImpForeignEnums,
+        ParseTreeInt1A),
+    generate_interface_int2(Globals, AugCompUnit,
+        IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
-        IntTypeDefns, IntInstDefns, IntModeDefns,
-        IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt2A),
+        IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntPragmas, ImpForeignEnums,
+        ParseTreeInt2A),
     ParseTreeInt1 = convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1A),
     ParseTreeInt2 = convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2A).
 
@@ -919,13 +949,16 @@ generate_interfaces_int1_int2(_Globals, AugCompUnit,
     list(item_type_defn_info)::out,
     list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::out, list(item_instance_info)::out,
-    list(item_type_defn_info)::out,
+    list(item_type_defn_info)::out, type_defn_map::out, type_defn_map::out,
+    list(item_pragma_info)::out, list(foreign_enum_spec)::out,
     parse_tree_int1::out) is det.
 
 generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
-        IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt1) :-
+        IntTypeClasses, IntInstances,
+        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntPragmas, ImpForeignEnums0,
+        ParseTreeInt1) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
@@ -2145,24 +2178,30 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
 %---------------------------------------------------------------------------%
 
     % generate_interface_int2(AugCompUnit,
-    %   IntInclModuleNames, IntAvailModuleNames,
-    %   IntFIMSpecs, ImpFIMSpecs, IntItems, ImpItems, ParseTreeInt2):
+    %   IntInclModuleNames, IntImportsUses,
+    %   IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
+    %   IntTypeDefnItems, IntInstDefns, IntModeDefns,
+    %   IntTypeClasses, IntInstances, ImpTypeDefnItems, ParseTreeInt2):
     %
     % The input arguments should be the relevant parts of the .int1 file
     % computed by our parent.
     %
-:- pred generate_interface_int2(aug_compilation_unit::in,
+:- pred generate_interface_int2(globals::in, aug_compilation_unit::in,
     set(module_name)::in, set(module_name)::in,
     set(fim_spec)::in, set(fim_spec)::in,
     list(item_type_defn_info)::in,
     list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
     list(item_typeclass_info)::in, list(item_instance_info)::in,
-    list(item_type_defn_info)::in, parse_tree_int2::out) is det.
+    list(item_type_defn_info)::in, type_defn_map::in, type_defn_map::in,
+    list(item_pragma_info)::in, list(foreign_enum_spec)::in,
+    parse_tree_int2::out) is det.
 
-generate_interface_int2(AugCompUnit, IntInclModuleNames, IntImportsUses,
+generate_interface_int2(Globals, AugCompUnit,
+        IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
-        IntTypeDefns, IntInstDefns, IntModeDefns,
-        IntTypeClasses, IntInstances, ImpTypeDefns, ParseTreeInt2) :-
+        IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntPragmas, ImpForeignEnums,
+        ParseTreeInt2) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _ModuleVersionNumbers, _SrcItemBlocks,
         _DirectIntItemBlocks, _IndirectIntItemBlocks,
@@ -2199,6 +2238,25 @@ generate_interface_int2(AugCompUnit, IntInclModuleNames, IntImportsUses,
 
     get_int2_items_from_int1_imp_types(ImpTypeDefns,
         set.init, ShortImpImplicitFIMLangs),
+
+    globals.lookup_bool_option(Globals, experiment1, Experiment1),
+    (
+        Experiment1 = no,
+        ShortIntTypeRepns = []
+    ;
+        Experiment1 = yes,
+        map.foldl_values(gather_type_defn_items, IntTypesMap,
+            [], OrigIntTypeDefns),
+        map.foldl_values(gather_type_defn_items, ImpTypesMap,
+            [], OrigImpTypeDefns),
+        list.foldl(maybe_record_foreign_enum, IntPragmas,
+            map.init, ForeignEnumTypeCtors0),
+        list.foldl(record_foreign_enum_spec, ImpForeignEnums,
+            ForeignEnumTypeCtors0, ForeignEnumTypeCtors),
+        decide_repns_for_simple_types(ModuleName,
+            OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
+            ShortIntTypeRepns, _ShortImpTypeRepns)
+    ),
 
     (
         UnqualSymNames = no_unqual_symnames,
@@ -2262,7 +2320,6 @@ generate_interface_int2(AugCompUnit, IntInclModuleNames, IntImportsUses,
     % should be empty (as are the implementation sections of .int3 files).
     %
     ShortImpTypeDefns = ImpTypeDefns,
-    ShortIntTypeRepns = [],
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
         DummyMaybeVersionNumbers,
         IntInclModuleNames, ShortIntUsedModuleNames,
@@ -2270,6 +2327,14 @@ generate_interface_int2(AugCompUnit, IntInclModuleNames, IntImportsUses,
         ShortIntTypeDefns, ShortIntInstDefns, ShortIntModeDefns,
         ShortIntTypeClasses, ShortIntInstances, ShortIntTypeRepns,
         ShortImpTypeDefns).
+
+%---------------------%
+
+:- pred gather_type_defn_items(list(item_type_defn_info)::in,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
+
+gather_type_defn_items(TypeDefns, !TypeDefns) :-
+    !:TypeDefns = TypeDefns ++ !.TypeDefns.
 
 %---------------------%
 
