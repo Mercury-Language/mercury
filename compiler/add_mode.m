@@ -212,7 +212,7 @@ should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
     ;
         InstModeStatus = instmode_defined_in_other_module(InstModeImport),
         (
-            ( InstModeImport = instmode_import_plain(_)
+            ( InstModeImport = instmode_import_plain
             ; InstModeImport = instmode_import_abstract
             ),
             ReportDup = yes

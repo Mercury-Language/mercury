@@ -1036,18 +1036,8 @@ instmode_status_to_string(InstModeStatus) = Str :-
     ;
         InstModeStatus = instmode_defined_in_other_module(InstModeImport),
         (
-            InstModeImport = instmode_import_plain(InstModeImportLocn),
-            (
-                InstModeImportLocn = instmode_import_plain_imp,
-                Str = "other_module(import_plain(imp))"
-            ;
-                InstModeImportLocn = instmode_import_plain_int,
-                Str = "other_module(import_plain(int))"
-            ;
-                InstModeImportLocn =
-                    instmode_import_plain_ancestors_priv_int_file,
-                Str = "other_module(import_plain(ancestors_priv_int_file))"
-            )
+            InstModeImport = instmode_import_plain,
+            Str = "other_module(import_plain)"
         ;
             InstModeImport = instmode_import_abstract,
             Str = "other_module(import_abstract)"

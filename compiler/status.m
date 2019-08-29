@@ -75,10 +75,9 @@
     ;       instmode_export_anywhere.
 
 :- type instmode_import
-    --->    instmode_import_plain(instmode_import_plain_locn)
+    --->    instmode_import_plain
             % This inst or mode is defined in a module that was imported
             % by either the current module, or one of its ancestors.
-            % The argument gives the location of the import.
     ;       instmode_import_abstract
             % This inst or mode is defined in a module (say module C)
             % that was imported in the implementation section of another
@@ -94,11 +93,6 @@
             % (a) the .opt or .trans_opt file of another module, or
             % (b) an interface file that was read to make sense
             % of a .opt or .trans_opt file.
-
-:- type instmode_import_plain_locn
-    --->    instmode_import_plain_imp
-    ;       instmode_import_plain_int
-    ;       instmode_import_plain_ancestors_priv_int_file.
 
 %-----------------------------------------------------------------------------%
 
@@ -739,27 +733,8 @@ item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus) :-
     ;
         ItemMercuryStatus = item_defined_in_other_module(ItemImport),
         (
-            ItemImport = item_import_int_concrete(ImportLocn),
-            (
-                ImportLocn = import_locn_implementation,
-                InstImportLocn = instmode_import_plain_imp
-            ;
-                ImportLocn = import_locn_interface,
-                InstImportLocn = instmode_import_plain_int
-            ;
-                ImportLocn = import_locn_import_by_ancestor,
-                unexpected($pred, "import_locn_import_by_ancestor")
-            ;
-                ImportLocn = import_locn_ancestor_int0_interface,
-                % XXX Maybe we should have an equivalent to
-                % this value of ImportLocn in the type of InstImportLocn
-                % as well.
-                InstImportLocn = instmode_import_plain_int
-            ;
-                ImportLocn = import_locn_ancestor_int0_implementation,
-                InstImportLocn = instmode_import_plain_ancestors_priv_int_file
-            ),
-            InstImport = instmode_import_plain(InstImportLocn)
+            ItemImport = item_import_int_concrete(_ImportLocn),
+            InstImport = instmode_import_plain
         ;
             ItemImport = item_import_int_abstract,
             InstImport = instmode_import_abstract
