@@ -24,6 +24,34 @@
 % must be grade-independent.
 %
 %---------------------------------------------------------------------------%
+%
+% Overall description of the task of this module when creating the different
+% kinds of interface files, in terms of inputs and outputs:
+%
+% .int3 now:
+%   output: type_repns for simple types in interface and all? eqv types
+%   input:  type_defns in source module
+%
+% .int2 now:
+%   output: type_repns for simple types in interface and all? eqv types
+%   input:  type_defns in source module
+%
+% .int2 later:
+%   output: type_repns for simple types in interface and all? eqv types
+%   input:  type_defns in source module
+%   input:  type_repns for simple/eqv types in direct/indirect imported .int3s
+%
+% .int1 later:
+%   output: type_repns for all types that appear in interface
+%   input:  type_defns in source module
+%   input:  type_repns for simple/eqv types in direct/indirect imported .int3s
+%
+% .int0 later:
+%   output: type_repns for all types
+%   input:  type_defns in source module
+%   input:  type_repns for simple/eqv types in direct/indirect imported .int3s
+%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.decide_type_repn.
 :- interface.
