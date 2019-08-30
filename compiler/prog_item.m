@@ -111,6 +111,8 @@
     --->    no_version_numbers
     ;       version_numbers(version_numbers).
 
+    % The generic representation of all the different kinds of interface files.
+    % XXX It should be replaced by the kind-specific representations below.
 :- type parse_tree_int
     --->    parse_tree_int(
                 pti_module_name             :: module_name,
@@ -142,6 +144,14 @@
                 pti_imp_items               :: list(item)
             ).
 
+% The representations specific to .int0, .int, .int2 and .int3 files.
+% XXX We should replace the lists of items of various kinds with data
+% structures that encode uniqueness properties, such as "each type constructor
+% may be defined only once". Maps from primary keys such as type_ctors,
+% or symnames/arity pairs in general, would work for this.
+
+    % A version of parse_tree_int specialized to hold the contents of
+    % .int0 files.
 :- type parse_tree_int0
     --->    parse_tree_int0(
                 pti0_module_name            :: module_name,
@@ -167,6 +177,10 @@
                 pti0_imp_fims               :: set(fim_spec),
 
                 % Items of various kinds in the interface.
+                % XXX For the consumers of the .int0 file, in most cases
+                % it makes no difference whether an item was in the parent's
+                % interface or implementation section. We should make that
+                % distinction here ONLY when we have to.
                 pti0_int_type_defns         :: list(item_type_defn_info),
                 pti0_int_inst_defns         :: list(item_inst_defn_info),
                 pti0_int_mode_defns         :: list(item_mode_defn_info),
@@ -1320,6 +1334,13 @@
 % Pragmas.
 %
 
+    % XXX We should consider splitting this type into several types, based on
+    %
+    % - whether a pragma may appear in the interface section of a source file;
+    % - whether a pragma may appear in a source file at all,
+    %   or whether it is only used to record the results of analyses
+    %   in automatically generated .int* and/or .*opt files.
+    %
 :- type pragma_type
     --->    pragma_foreign_decl(pragma_info_foreign_decl)
     ;       pragma_foreign_code(pragma_info_foreign_code)

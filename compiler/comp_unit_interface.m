@@ -2245,6 +2245,15 @@ generate_interface_int2(Globals, AugCompUnit,
         ShortIntTypeRepns = []
     ;
         Experiment1 = yes,
+        % XXX We should pass to decide_repns_for_simple_types not just
+        % the type definitions in this module, but also all the type_REPNs
+        % we have read in from the .int3 files of the imported modules.
+        % That would allow decide_repns_for_simple_types to take into
+        % account that an imported type (such as bool) is subword sized,
+        % and that therefore some types that have fields of that type
+        % may themselves be subword sized, if all their arguments are subword
+        % sized and there are few enough of them. (Note that will in general
+        % require fully expanding the relevant type equivalence chains.)
         map.foldl_values(gather_type_defn_items, IntTypesMap,
             [], OrigIntTypeDefns),
         map.foldl_values(gather_type_defn_items, ImpTypesMap,
