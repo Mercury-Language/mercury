@@ -27,16 +27,16 @@
 %---------------------------------------------------------------------------%
 
     % do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
-    %   TypeEqvMapMap, UsedModules, QualInfo, InvalidTypes, InvalidModes, HLDS,
-    %   Specs):
+    %   TypeEqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes,
+    %   HLDS, Specs):
     %
-    % Given MQInfo (returned by module_qual.m) and TypeEqvMapMap and
-    % UsedModules (both returned by equiv_type.m), convert AugCompUnit
-    % to HLDS. Return any errors found in Specs.
+    % Given MQInfo (returned by module_qual.m) and TypeEqvMap and UsedModules
+    % (both returned by equiv_type.m), convert AugCompUnit to HLDS.
+    % Return any errors found in Specs.
     % Return InvalidTypes = yes if we found undefined types.
     % Return InvalidModes = yes if we found undefined or cyclic insts or modes.
-    % QualInfo is an abstract type that is then passed back to
-    % produce_instance_method_clauses (see below).
+    % QualInfo is an abstract type that check_typeclass.m will later pass
+    % to produce_instance_method_clauses.
     %
 :- pred do_parse_tree_to_hlds(aug_compilation_unit::in, globals::in,
     string::in, mq_info::in, type_eqv_map::in, used_modules::in,
