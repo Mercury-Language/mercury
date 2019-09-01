@@ -279,7 +279,7 @@ module_add_class_interface(ClassName, ClassParamVars, TypeClassStatus,
     ItemNumber = -1,
     list.foldl3(
         add_class_pred_or_func_decl(ClassName, ClassParamVars,
-            ItemNumber, MaybeItemMercuryStatus, PredStatus, NeedQual),
+            ItemNumber, PredStatus, NeedQual),
         ClassPredOrFuncInfos, !PredProcIds, !ModuleInfo, !Specs),
 
     % Add the mode declarations. Since we have already added the
@@ -308,41 +308,33 @@ classify_class_decls([Decl | Decls], !:PredOrFuncInfos, !:ModeInfos) :-
     ).
 
 :- pred add_class_pred_or_func_decl(sym_name::in, list(tvar)::in,
-    int::in, maybe(item_mercury_status)::in, pred_status::in,
-    need_qualifier::in, class_pred_or_func_info::in,
+    int::in, pred_status::in, need_qualifier::in, class_pred_or_func_info::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_class_pred_or_func_decl(ClassName, ClassParamVars, ItemNumber,
-        MaybeItemMercuryStatus, PredStatus, NeedQual,
+        PredStatus, NeedQual,
         PredOrFuncInfo, !PredProcIds, !ModuleInfo, !Specs) :-
     PredOrFuncInfo = class_pred_or_func_info(PredName, PredOrFunc,
-        TypesAndModes, WithType, WithInst, MaybeDetism,
+        ArgTypesAndModes, WithType, WithInst, MaybeDetism,
         TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints0, Context),
-    % Any WithType and WithInst annotations should have been expanded
-    % and the type and/or inst put into TypesAndModes by equiv_type.m.
-    expect(unify(WithType, no), $pred, "WithType != no"),
-    expect(unify(WithInst, no), $pred, "WithInst != no"),
-    % XXX This setting of Origin looks suspicious.
-    Origin = origin_user(PredName),
     % XXX kind inference:
     % We set the kinds to `star' at the moment. This will be different
     % when we have a kind system.
-    prog_type.var_list_to_type_list(map.init,
-        ClassParamVars, ClassParamTypes),
+    var_list_to_type_list(map.init, ClassParamVars, ClassParamTypes),
     ImplicitConstraint = constraint(ClassName, ClassParamTypes),
     Constraints0 = constraints(UnivConstraints0, ExistConstraints),
     UnivConstraints = [ImplicitConstraint | UnivConstraints0],
     Constraints = constraints(UnivConstraints, ExistConstraints),
-
-    init_markers(Markers0),
-    add_marker(marker_class_method, Markers0, Markers),
-    module_add_pred_or_func(Origin, Context, ItemNumber,
-        MaybeItemMercuryStatus, PredStatus, NeedQual,
-        PredOrFunc, PredName, TypeVarSet, InstVarSet, ExistQVars,
-        TypesAndModes, Constraints, MaybeDetism, Purity, Markers,
-        MaybePredProcId, !ModuleInfo, !Specs),
+    Attrs = item_compiler_attributes( compiler_origin_class_method),
+    MaybeAttrs = item_origin_compiler(Attrs),
+    PredDecl = item_pred_decl_info(PredName, PredOrFunc,
+        ArgTypesAndModes, WithType, WithInst, MaybeDetism, MaybeAttrs,
+        TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
+        Context, ItemNumber),
+    module_add_pred_decl(PredStatus, NeedQual, PredDecl, MaybePredProcId,
+        !ModuleInfo, !Specs),
     (
         MaybePredProcId = no
     ;

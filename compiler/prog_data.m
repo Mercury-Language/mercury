@@ -1510,6 +1510,16 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     ;       mutable_pred_pre_init
     ;       mutable_pred_init.
 
+:- type tabling_aux_pred_kind
+    --->    tabling_aux_pred_stats
+    ;       tabling_aux_pred_reset.
+
+:- type solver_type_pred_kind
+    --->    solver_type_to_ground_pred
+    ;       solver_type_to_any_pred
+    ;       solver_type_from_ground_pred
+    ;       solver_type_from_any_pred.
+
 %---------------------------------------------------------------------------%
 %
 % Goals.

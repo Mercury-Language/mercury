@@ -296,6 +296,9 @@ pred_info_id_to_string(PredInfo) = Str :-
             " for `", ClassStr, "(", TypeStrs, ")'"
         ])
     ;
+        Origin = origin_class_method,
+        Str = "class method"
+    ;
         Origin = origin_assertion(FileName, LineNumber),
         ( if pred_info_is_promise(PredInfo, PromiseType) then
             Str = string.format("`%s' declaration (%s:%d)",
@@ -338,6 +341,8 @@ pred_info_id_to_string(PredInfo) = Str :-
         ; Origin = origin_created(_)
         ; Origin = origin_mutable(_, _, _)
         ; Origin = origin_lambda(_, _, _)
+        ; Origin = origin_initialise
+        ; Origin = origin_finalise
         ; Origin = origin_user(_)
         ),
         SymName = qualified(Module, Name),

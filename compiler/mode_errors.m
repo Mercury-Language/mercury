@@ -1697,6 +1697,7 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
 
 should_report_mode_warning_for_pred_origin(origin_special_pred(_, _)) = no.
 should_report_mode_warning_for_pred_origin(origin_instance_method(_, _)) = no.
+should_report_mode_warning_for_pred_origin(origin_class_method) = no.
 should_report_mode_warning_for_pred_origin(origin_transformed(_, _, _)) = no.
 should_report_mode_warning_for_pred_origin(origin_created(_)) = no.
 should_report_mode_warning_for_pred_origin(origin_assertion(_, _)) = no.
@@ -1704,6 +1705,8 @@ should_report_mode_warning_for_pred_origin(origin_lambda(_, _, _)) = yes.
 should_report_mode_warning_for_pred_origin(origin_solver_type(_, _, _)) = no.
 should_report_mode_warning_for_pred_origin(origin_tabling(_, _)) = no.
 should_report_mode_warning_for_pred_origin(origin_mutable(_, _, _)) = no.
+should_report_mode_warning_for_pred_origin(origin_initialise) = no.
+should_report_mode_warning_for_pred_origin(origin_finalise) = no.
 should_report_mode_warning_for_pred_origin(origin_user(_)) = yes.
 
 %---------------------------------------------------------------------------%

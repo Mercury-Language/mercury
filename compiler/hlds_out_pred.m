@@ -279,6 +279,9 @@ write_pred_proc_var_name_remap(Indent, VarSet, VarNameRemap, !IO) :-
 
 write_origin(ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
     (
+        Origin = origin_special_pred(_, _),
+        io.write_string("% special pred\n", !IO)
+    ;
         Origin = origin_instance_method(_, MethodConstraints),
         MethodConstraints = instance_method_constraints(ClassId,
             InstanceTypes, InstanceConstraints, ClassMethodConstraints),
@@ -303,8 +306,8 @@ write_origin(ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
             mercury_output_constraint(TVarSet, VarNamePrint), !IO),
         io.nl(!IO)
     ;
-        Origin = origin_special_pred(_, _),
-        io.write_string("% special pred\n", !IO)
+        Origin = origin_class_method,
+        io.write_string("%% class method\n", !IO)
     ;
         Origin = origin_transformed(Transformation, _, OrigPredId),
         OrigPredIdNum = pred_id_to_int(OrigPredId),
@@ -400,6 +403,12 @@ write_origin(ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
         io.format("%% %s for mutable %s in module %s\n",
             [s(MutablePredKindStr), s(MutableName),
             s(MutableModuleNameStr)], !IO)
+    ;
+        Origin = origin_initialise,
+        io.write_string("%% initialise\n", !IO)
+    ;
+        Origin = origin_finalise,
+        io.write_string("%% finalise\n", !IO)
     ;
         ( Origin = origin_lambda(_, _, _)
         ; Origin = origin_user(_)

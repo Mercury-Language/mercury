@@ -646,8 +646,9 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
         !:Specs = [Spec | !.Specs]
     else
         SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
-        module_add_pred_decl(ItemMercuryStatus, NeedQual, ItemPredDecl,
-            !ModuleInfo, !Specs)
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl,
+            _MaybePredProcId, !ModuleInfo, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -759,15 +760,7 @@ add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
                     error_is_exported(Context,
                         [words("clause for " ++ ClauseId)], !Specs)
                 ;
-                    Origin = item_origin_compiler(CompilerAttrs),
-                    CompilerAttrs = item_compiler_attributes(AllowExport,
-                        _IsMutable),
-                    (
-                        AllowExport = do_allow_export
-                    ;
-                        AllowExport = do_not_allow_export,
-                        unexpected($pred, "bad introduced clause")
-                    )
+                    Origin = item_origin_compiler(_CompilerAttrs)
                 )
             ;
                 ( ItemExport = item_export_nowhere
@@ -955,7 +948,8 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         ( if is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) then
             module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
             make_and_add_pragma_foreign_proc_export(SymName, ExpectedHeadModes,
-                CName, Context, !ModuleInfo, !Specs)
+                CName, compiler_origin_initialise, Context,
+                !ModuleInfo, !Specs)
         else
             Pieces = [words("Error:"),
                 qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
@@ -1015,7 +1009,7 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
             module_info_new_user_final_pred(SymName, Arity, CName,
                 !ModuleInfo),
             make_and_add_pragma_foreign_proc_export(SymName, ExpectedHeadModes,
-                CName, Context, !ModuleInfo, !Specs)
+                CName, compiler_origin_finalise, Context, !ModuleInfo, !Specs)
         else
             Pieces = [words("Error:"),
                 qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
@@ -1067,22 +1061,19 @@ is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) :-
     Purity = ExpectedPurity.
 
 :- pred make_and_add_pragma_foreign_proc_export(sym_name::in,
-    list(mer_mode)::in, string::in, prog_context::in,
+    list(mer_mode)::in, string::in, compiler_origin::in, prog_context::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-make_and_add_pragma_foreign_proc_export(SymName, HeadModes, CName, Context,
-        !ModuleInfo, !Specs) :-
+make_and_add_pragma_foreign_proc_export(SymName, HeadModes, CName,
+        Origin, Context, !ModuleInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, CompilationTarget),
     ExportLang = target_lang_to_foreign_export_lang(CompilationTarget),
     PredNameModesPF = pred_name_modes_pf(SymName, HeadModes, pf_predicate),
     FPEInfo =
         pragma_info_foreign_proc_export(ExportLang, PredNameModesPF, CName),
-    % XXX Why is the foreign_proc_export pragma *itself* allowed to be
-    % exported? Why does add_pragma_foreign_proc_export abort in some cases
-    % if it finds do_not_allow_export?
-    Attrs = item_compiler_attributes(do_allow_export, is_not_mutable),
+    Attrs = item_compiler_attributes(Origin),
     PEOrigin = item_origin_compiler(Attrs),
     add_pragma_foreign_proc_export(PEOrigin, FPEInfo, Context,
         !ModuleInfo, !Specs).

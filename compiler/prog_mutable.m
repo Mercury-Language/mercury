@@ -618,81 +618,69 @@ make_mutable_aux_pred_decl(ModuleName, Name, Type, Inst, Context, Kind,
         Kind = mutable_pred_pre_init,
         PredSymName = mutable_pre_init_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [],
-        AllowExport = do_not_allow_export,
         Purity = purity_impure
     ;
         Kind = mutable_pred_init,
         PredSymName = mutable_init_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [],
-        AllowExport = do_not_allow_export,
         Purity = purity_impure
     ;
         Kind = mutable_pred_lock,
         PredSymName = mutable_lock_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [],
-        AllowExport = do_not_allow_export,
         Purity = purity_impure
     ;
         Kind = mutable_pred_unlock,
         PredSymName = mutable_unlock_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [],
-        AllowExport = do_not_allow_export,
         Purity = purity_impure
     ;
         Kind = mutable_pred_unsafe_get,
         PredSymName = mutable_unsafe_get_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
-        AllowExport = do_not_allow_export,
         Purity = purity_semipure
     ;
         Kind = mutable_pred_unsafe_set,
         PredSymName = mutable_unsafe_set_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
-        AllowExport = do_not_allow_export,
         Purity = purity_impure
     ;
         Kind = mutable_pred_std_get,
         PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
-        AllowExport = do_allow_export,
         Purity = purity_semipure
     ;
         Kind = mutable_pred_std_set,
         PredSymName = mutable_set_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
-        AllowExport = do_allow_export,
         Purity = purity_impure
     ;
         Kind = mutable_pred_constant_get,
         PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
-        AllowExport = do_allow_export,
         Purity = purity_pure
     ;
         Kind = mutable_pred_constant_secret_set,
         PredSymName = mutable_secret_set_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
-        AllowExport = do_allow_export,
         Purity = purity_impure
     ;
         Kind = mutable_pred_io_get,
         PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))]
             ++ io_state_pair,
-        AllowExport = do_allow_export,
         Purity = purity_pure
     ;
         Kind = mutable_pred_io_set,
         PredSymName = mutable_set_pred_sym_name(ModuleName, Name),
         ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))]
             ++ io_state_pair,
-        AllowExport = do_allow_export,
         Purity = purity_pure
     ),
     WithType = maybe.no,
     WithMode = maybe.no,
-    MaybeIsMutable = is_mutable(ModuleName, Name, Kind),
-    CompilerAttrs = item_compiler_attributes(AllowExport, MaybeIsMutable),
+    Origin = compiler_origin_mutable(ModuleName, Name, Kind),
+    CompilerAttrs = item_compiler_attributes(Origin),
     MaybeAttrs = item_origin_compiler(CompilerAttrs),
     varset.init(TypeVarSet),
     varset.init(InstVarSet),

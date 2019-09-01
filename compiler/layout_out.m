@@ -2527,9 +2527,6 @@ origin_name(Origin, Name0) = Name :-
 %       ;
 %           SpecialPredId = index,
 %           SpecialName = "index"
-%       ;
-%           SpecialPredId = initialise,
-%           SpecialName = "init"
 %       ),
 %       TypeCtor = TypeSymName - TypeArity,
 %       TypeName = sym_name_to_string(TypeSymName),
@@ -2545,11 +2542,14 @@ origin_name(Origin, Name0) = Name :-
         )
     ;
         ( Origin = origin_instance_method(_, _)
+        ; Origin = origin_class_method
         ; Origin = origin_created(_)
         ; Origin = origin_assertion(_, _)
         ; Origin = origin_solver_type(_, _, _)
         ; Origin = origin_tabling(_, _)
         ; Origin = origin_mutable(_, _, _)
+        ; Origin = origin_initialise
+        ; Origin = origin_finalise
         ; Origin = origin_user(_)
         ),
         Name = Name0

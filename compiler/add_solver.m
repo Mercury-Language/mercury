@@ -91,10 +91,6 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
         SolverTypeDetails, Context, ItemMercuryStatus, NeedQual),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
 
-    ItemNumber = -1,
-    MaybeItemMercuryStatus = maybe.no,
-    NoConstraints = constraints([], []),
-
     % XXX kind inference:
     % We set the kinds to `star'. This will be different when we have
     % a kind system.
@@ -104,33 +100,33 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
 
     RepnType = SolverTypeDetails ^ std_representation_type,
     AnyInst = SolverTypeDetails ^ std_any_inst,
-    GroundInst = SolverTypeDetails ^ std_ground_inst,
+    GndInst = SolverTypeDetails ^ std_ground_inst,
 
     InAnyMode = in_mode(AnyInst),
-    InGroundMode = in_mode(GroundInst),
+    InGndMode = in_mode(GndInst),
     OutAnyMode = out_mode(AnyInst),
-    OutGroundMode = out_mode(GroundInst),
+    OutGndMode = out_mode(GndInst),
 
     InstVarSet = varset.init,
     ExistQTVars = [],
-
-    init_markers(NoMarkers),
+    NoConstraints = constraints([], []),
 
     % The `:- impure
     %   func 'representation of ground st'(st::in(gi)) =
     %           (rt::out) is det' declaration.
     %
-    ToGroundRepnSymName = solver_to_ground_repn_symname(TypeSymName, Arity),
-    ToGroundRepnArgTypesModes =
+    ToGndRepnSymName = solver_to_ground_repn_symname(TypeSymName, Arity),
+    ToGndRepnArgTypesModes =
         [type_and_mode(SolverType, in_mode),
-         type_and_mode(RepnType,   OutGroundMode)],
-    ToGroundOrigin = origin_solver_type(TypeSymName, Arity,
-        solver_type_to_ground_pred),
-    module_add_pred_or_func(ToGroundOrigin, Context, ItemNumber,
-        MaybeItemMercuryStatus, PredStatus, NeedQual,
-        pf_function, ToGroundRepnSymName, TVarSet, InstVarSet, ExistQTVars,
-        ToGroundRepnArgTypesModes, NoConstraints, yes(detism_det),
-        purity_impure, NoMarkers, _, !ModuleInfo, !Specs),
+         type_and_mode(RepnType,   OutGndMode)],
+    ToGndAttrs = item_compiler_attributes(
+        compiler_origin_solver_type(TypeSymName, Arity,
+            solver_type_to_ground_pred)),
+    ToGndMaybeAttrs = item_origin_compiler(ToGndAttrs),
+    ToGndPredDecl = item_pred_decl_info(ToGndRepnSymName, pf_function,
+        ToGndRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
+        ToGndMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
+        NoConstraints, Context, -1),
 
     % The `:- impure
     %   func 'representation of any st'(st::in(ai)) =
@@ -140,29 +136,31 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     ToAnyRepnArgTypesModes =
         [type_and_mode(SolverType, in_any_mode),
          type_and_mode(RepnType,   OutAnyMode)],
-    ToAnyOrigin = origin_solver_type(TypeSymName, Arity,
-        solver_type_to_any_pred),
-    module_add_pred_or_func(ToAnyOrigin, Context, ItemNumber,
-        MaybeItemMercuryStatus, PredStatus, NeedQual,
-        pf_function, ToAnyRepnSymName, TVarSet, InstVarSet, ExistQTVars,
-        ToAnyRepnArgTypesModes, NoConstraints, yes(detism_det),
-        purity_impure, NoMarkers, _, !ModuleInfo, !Specs),
+    ToAnyAttrs = item_compiler_attributes(
+        compiler_origin_solver_type(TypeSymName, Arity,
+            solver_type_to_any_pred)),
+    ToAnyMaybeAttrs = item_origin_compiler(ToAnyAttrs),
+    ToAnyPredDecl = item_pred_decl_info(ToAnyRepnSymName, pf_function,
+        ToAnyRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
+        ToAnyMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
+        NoConstraints, Context, -1),
 
     % The `:- impure
     %   func 'representation to ground st'(rt::in(gi)) =
     %           (st::out) is det' declaration.
     %
-    FromGroundRepnSymName = repn_to_ground_solver_symname(TypeSymName, Arity),
-    FromGroundRepnArgTypesModes =
-        [type_and_mode(RepnType,   InGroundMode),
+    FromGndRepnSymName = repn_to_ground_solver_symname(TypeSymName, Arity),
+    FromGndRepnArgTypesModes =
+        [type_and_mode(RepnType,   InGndMode),
          type_and_mode(SolverType, out_mode)],
-    FromGroundOrigin = origin_solver_type(TypeSymName, Arity,
-        solver_type_from_ground_pred),
-    module_add_pred_or_func(FromGroundOrigin, Context, ItemNumber,
-        MaybeItemMercuryStatus, PredStatus, NeedQual,
-        pf_function, FromGroundRepnSymName, TVarSet, InstVarSet, ExistQTVars,
-        FromGroundRepnArgTypesModes, NoConstraints, yes(detism_det),
-        purity_impure, NoMarkers, _, !ModuleInfo, !Specs),
+    FromGndAttrs = item_compiler_attributes(
+        compiler_origin_solver_type(TypeSymName, Arity,
+            solver_type_from_ground_pred)),
+    FromGndMaybeAttrs = item_origin_compiler(FromGndAttrs),
+    FromGndPredDecl = item_pred_decl_info(FromGndRepnSymName, pf_function,
+        FromGndRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
+        FromGndMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
+        NoConstraints, Context, -1),
 
     % The `:- impure
     %   func 'representation to any st'(rt::in(ai)) =
@@ -172,13 +170,23 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     FromAnyRepnArgTypesModes =
         [type_and_mode(RepnType,   InAnyMode),
          type_and_mode(SolverType, out_any_mode)],
-    FromAnyOrigin = origin_solver_type(TypeSymName, Arity,
-        solver_type_from_any_pred),
-    module_add_pred_or_func(FromAnyOrigin, Context, ItemNumber,
-        MaybeItemMercuryStatus, PredStatus, NeedQual,
-        pf_function, FromAnyRepnSymName, TVarSet, InstVarSet, ExistQTVars,
-        FromAnyRepnArgTypesModes, NoConstraints, yes(detism_det),
-        purity_impure, NoMarkers, _, !ModuleInfo, !Specs).
+    FromAnyAttrs = item_compiler_attributes(
+        compiler_origin_solver_type(TypeSymName, Arity,
+            solver_type_from_any_pred)),
+    FromAnyMaybeAttrs = item_origin_compiler(FromAnyAttrs),
+    FromAnyPredDecl = item_pred_decl_info(FromAnyRepnSymName, pf_function,
+        FromAnyRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
+        FromAnyMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
+        NoConstraints, Context, -1),
+
+    module_add_pred_decl(PredStatus, NeedQual, ToGndPredDecl,
+        _MaybeToGndPredProcId, !ModuleInfo, !Specs),
+    module_add_pred_decl(PredStatus, NeedQual, ToAnyPredDecl,
+        _MaybeToAnyPredProcId, !ModuleInfo, !Specs),
+    module_add_pred_decl(PredStatus, NeedQual, FromGndPredDecl,
+        _MaybeFromGndPredProcId, !ModuleInfo, !Specs),
+    module_add_pred_decl(PredStatus, NeedQual, FromAnyPredDecl,
+        _MaybeFromAnyPredProcId, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 

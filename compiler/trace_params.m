@@ -326,12 +326,15 @@ eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
             )
         ;
             ( Origin = origin_instance_method(_, _)
+            ; Origin = origin_class_method
             ; Origin = origin_transformed(_, _, _)
             ; Origin = origin_assertion(_, _)
             ; Origin = origin_lambda(_, _, _)
             ; Origin = origin_solver_type(_, _, _)
             ; Origin = origin_tabling(_, _)
             ; Origin = origin_mutable(_, _, _)
+            ; Origin = origin_initialise
+            ; Origin = origin_finalise
             ; Origin = origin_user(_)
             ),
             EffTraceLevel = usual_eff_trace_level(ModuleInfo,

@@ -89,16 +89,9 @@ add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
             report_undefined_pred_or_func_error(PredSymName, Arity,
                 OtherArities, Context, DescPieces, !Specs)
         ;
-            MaybeAttrs = item_origin_compiler(CompilerAttrs),
+            MaybeAttrs = item_origin_compiler(_CompilerAttrs)
             % We do not warn about errors in export pragmas created by
             % the compiler as part of a source-to-source transformation.
-            CompilerAttrs = item_compiler_attributes(AllowExport, _IsMutable),
-            (
-                AllowExport = do_allow_export
-            ;
-                AllowExport = do_not_allow_export,
-                unexpected($pred, "bad introduced foreign_export pragma")
-            )
         )
     ;
         PredIds = [PredId],
@@ -199,16 +192,9 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang,
                 [pragma_decl("foreign_export"), words("declaration")],
                 !Specs)
         ;
-            MaybeAttrs = item_origin_compiler(CompilerAttrs),
+            MaybeAttrs = item_origin_compiler(_CompilerAttrs)
             % We do not warn about errors in export pragmas created by
             % the compiler as part of a source-to-source transformation.
-            CompilerAttrs = item_compiler_attributes(AllowExport, _IsMutable),
-            (
-                AllowExport = do_allow_export
-            ;
-                AllowExport = do_not_allow_export,
-                unexpected($pred, "bad introduced foreign_export pragma")
-            )
         )
     ).
 

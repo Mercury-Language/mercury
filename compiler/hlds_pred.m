@@ -476,6 +476,9 @@
             % context to allow polymorphism.m to correctly set up the
             % extra type_info and typeclass_info arguments.
 
+    ;       origin_class_method
+            % The predicate is a class method implementation.
+
     ;       origin_transformed(pred_transformation, pred_origin, pred_id)
             % The predicate is a transformed version of another predicate,
             % whose origin and identity are given by the second and third
@@ -510,19 +513,17 @@
             % says whether the predicate is an init, pre_init, get, set,
             % lock, or unlock predicate on that mutable.
 
+    ;       origin_initialise
+            % The predicate implements a standalone initialise declaration
+            % (standalone means that it is NOT created to initialise
+            % a mutable).
+
+    ;       origin_finalise
+            % The predicate implements a standalone finalise declaration.
+
     ;       origin_user(sym_name).
             % The predicate is a normal user-written predicate;
             % the string is its name.
-
-:- type tabling_aux_pred_kind
-    --->    tabling_aux_pred_stats
-    ;       tabling_aux_pred_reset.
-
-:- type solver_type_pred_kind
-    --->    solver_type_to_ground_pred
-    ;       solver_type_to_any_pred
-    ;       solver_type_from_ground_pred
-    ;       solver_type_from_any_pred.
 
 :- type need_to_requantify
     --->    need_to_requantify

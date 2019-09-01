@@ -613,20 +613,26 @@
 
 :- type item_compiler_attributes
     --->    item_compiler_attributes(
-                maybe_allow_export,
-                maybe_is_mutable
+                compiler_origin
             ).
 
-:- type maybe_allow_export
-    --->    do_not_allow_export
-    ;       do_allow_export.
-
-:- type maybe_is_mutable
-    --->    is_not_mutable
-    ;       is_mutable(
-                is_mutable_module_name          :: module_name,
-                is_mutable_name                 :: string,
-                is_mutable_pred_kind            :: mutable_pred_kind
+:- type compiler_origin
+    --->    compiler_origin_initialise
+    ;       compiler_origin_finalise
+    ;       compiler_origin_class_method
+    ;       compiler_origin_solver_type(
+                cost_type_ctor_name             :: sym_name,
+                cost_type_ctor_arity            :: arity,
+                cost_aux_pred_kind              :: solver_type_pred_kind
+            )
+    ;       compiler_origin_mutable(
+                com_module_name                 :: module_name,
+                com_mutable_name                :: string,
+                com_aux_pred_kind               :: mutable_pred_kind
+            )
+    ;       compiler_origin_tabling(
+                cot_pred_spec                   :: simple_call_id,
+                cot_aux_pred_kind               :: tabling_aux_pred_kind
             ).
 
 :- type item

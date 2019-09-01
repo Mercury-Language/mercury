@@ -87,7 +87,8 @@ add_aux_pred_decls_for_mutable_if_local(SectionItem, !ModuleInfo, !Specs) :-
     (
         ItemMercuryStatus = item_defined_in_this_module(ItemExport),
         check_mutable(ItemMutable, ItemExport, !.ModuleInfo, !Specs),
-        add_aux_pred_decls_for_mutable(ItemMercuryStatus, NeedQual,
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        add_aux_pred_decls_for_mutable(PredStatus, NeedQual,
             ItemMutable, !ModuleInfo, !Specs)
     ;
         ItemMercuryStatus = item_defined_in_other_module(_)
@@ -406,12 +407,11 @@ named_parent_to_pieces(InstId, Pieces) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_aux_pred_decls_for_mutable(item_mercury_status::in,
-    need_qualifier::in, item_mutable_info::in,
-    module_info::in, module_info::out,
+:- pred add_aux_pred_decls_for_mutable(pred_status::in, need_qualifier::in,
+    item_mutable_info::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_aux_pred_decls_for_mutable(ItemMercuryStatus, NeedQual, ItemMutable,
+add_aux_pred_decls_for_mutable(PredStatus, NeedQual, ItemMutable,
         !ModuleInfo, !Specs) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, Inst,
@@ -426,9 +426,9 @@ add_aux_pred_decls_for_mutable(ItemMercuryStatus, NeedQual, ItemMutable,
         make_mutable_aux_pred_decl(ModuleName, MutableName, Type, Inst,
             Context),
         NeededPredKinds, NeededPredDecls),
-    list.foldl2(
-        module_add_pred_decl(ItemMercuryStatus, NeedQual),
-        NeededPredDecls, !ModuleInfo, !Specs).
+    list.map_foldl2(
+        module_add_pred_decl(PredStatus, NeedQual),
+        NeededPredDecls, _MaybePredProcIds, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1319,8 +1319,8 @@ add_initialise_for_mutable(ModuleName, MutableName, SymName, Arity,
     module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
     PredNameModesPF = pred_name_modes_pf(SymName, [], pf_predicate),
     FPEInfo = pragma_info_foreign_proc_export(Lang, PredNameModesPF, CName),
-    Attrs = item_compiler_attributes(do_allow_export,
-        is_mutable(ModuleName, MutableName, mutable_pred_init)),
+    Attrs = item_compiler_attributes(compiler_origin_mutable(ModuleName,
+        MutableName, mutable_pred_init)),
     Origin = item_origin_compiler(Attrs),
     add_pragma_foreign_proc_export(Origin, FPEInfo, Context,
         !ModuleInfo, !Specs).
