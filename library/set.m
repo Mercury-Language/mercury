@@ -487,8 +487,7 @@
     % InPart consists of those elements of Set which are also in DivideBySet;
     % OutPart consists of those elements of which are not in DivideBySet.
     %
-:- pred divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out)
-    is det.
+:- pred divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out) is det.
 
     % intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB):
     % Given SetA and SetB, return the elements that occur in both sets,
