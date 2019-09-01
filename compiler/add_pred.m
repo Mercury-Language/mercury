@@ -36,12 +36,20 @@
 
     % Add a pred or predmode declaration for a predicate.
     %
+:- pred module_add_pred_decl(item_mercury_status::in, need_qualifier::in,
+    item_pred_decl_info::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+    % Add a pred or predmode declaration for a predicate.
+    %
     % We return MaybePredProcId = yes(...) if and only if the declaration
     % is a predmode declaration, and we could add both parts (the pred part
     % and the mode part) to the HLDS.
     %
     % If there is no mode part, we could return the pred_id, but we would
     % not be able to return a proc_id.
+    %
+    % XXX If possible, new code should call module_add_pred_decl above.
     %
 :- pred module_add_pred_or_func(pred_origin::in, prog_context::in, int::in,
     maybe(item_mercury_status)::in, pred_status::in, need_qualifier::in,
@@ -116,6 +124,50 @@
 :- import_module require.
 :- import_module term.
 :- import_module varset.
+
+module_add_pred_decl(ItemMercuryStatus, NeedQual, ItemPredDecl,
+        !ModuleInfo, !Specs) :-
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
+        WithType, WithInst, MaybeDetism, Origin, TypeVarSet, InstVarSet,
+        ExistQVars, Purity, ClassContext, Context, SeqNum),
+    % Any WithType and WithInst annotations should have been expanded
+    % and the type and/or inst put into TypesAndModes by equiv_type.m.
+    expect(unify(WithType, no), $pred, "WithType != no"),
+    expect(unify(WithInst, no), $pred, "WithInst != no"),
+
+    % If this predicate was added as a result of the mutable
+    % transformation, then mark this predicate as a mutable access pred.
+    % We do this so that we can tell optimizations, like inlining,
+    % to treat it specially.
+    init_markers(Markers0),
+    (
+        Origin = item_origin_compiler(CompilerAttrs),
+        CompilerAttrs = item_compiler_attributes(_AllowExport, IsMutable),
+        (
+            IsMutable = is_mutable(ModuleName, MutableName,
+                MutablePredKind),
+            PredOrigin = origin_mutable(ModuleName, MutableName,
+                MutablePredKind),
+            add_marker(marker_mutable_access_pred, Markers0, Markers)
+        ;
+            IsMutable = is_not_mutable,
+            % For now, the only kind of predicate declaration item
+            % that the compiler creates by itself are the auxiliary
+            % predicates implementing mutables.
+            PredOrigin = origin_user(PredSymName),
+            Markers = Markers0
+        )
+    ;
+        Origin = item_origin_user,
+        PredOrigin = origin_user(PredSymName),
+        Markers = Markers0
+    ),
+    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+    module_add_pred_or_func(PredOrigin, Context, SeqNum,
+        yes(ItemMercuryStatus), PredStatus, NeedQual,
+        PredOrFunc, PredSymName, TypeVarSet, InstVarSet, ExistQVars,
+        TypesAndModes, ClassContext, MaybeDetism, Purity, Markers, _,
+        !ModuleInfo, !Specs).
 
 module_add_pred_or_func(Origin, Context, ItemNumber,
         MaybeItemMercuryStatus, PredStatus, NeedQual, PredOrFunc, PredName,

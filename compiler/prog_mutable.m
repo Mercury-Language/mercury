@@ -492,100 +492,56 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
-%-----------------------------------------------------------------------------%
+:- import_module list.
 
-    % Names of the primitive operations.
-    %
+%-----------------------------------------------------------------------------%
+%
+% The names we construct for the auxiliary predicates of a mutable.
+%
+
 :- func mutable_lock_pred_sym_name(sym_name, string) = sym_name.
 :- func mutable_unlock_pred_sym_name(sym_name, string) = sym_name.
 :- func mutable_unsafe_get_pred_sym_name(sym_name, string) = sym_name.
 :- func mutable_unsafe_set_pred_sym_name(sym_name, string) = sym_name.
-
 :- func mutable_get_pred_sym_name(sym_name, string) = sym_name.
-
 :- func mutable_set_pred_sym_name(sym_name, string) = sym_name.
-
-    % We need a set predicate even for constant mutables. The reason is that
-    % the init predicate needs to do two things: execute arbitrary Mercury code
-    % (call functions etc) to generate the initial (and for constant mutables,
-    % also final) value of the mutable, and then store this value in persistent
-    % storage. However, even if we could create an item that contains both
-    % Mercury code and backend (e.g. C) code (which is currently not possible),
-    % this would require the second part to be a foreign_proc goal. Such goals
-    % include a reference to the predicate they implement. That predicate
-    % would be equivalent to the set predicate.
-    %
-    % Avoiding the need for a set predicate would require significant changes
-    % to the structures of items. It is much simpler to use a predicate and
-    % give it a name that makes it clear people shouldn't use it.
-    %
 :- func mutable_secret_set_pred_sym_name(module_name, string) = sym_name.
-
 :- func mutable_init_pred_sym_name(module_name, string) = sym_name.
-
 :- func mutable_pre_init_pred_sym_name(module_name, string) = sym_name.
-
-:- func mutable_c_var_name(module_name, string) = string.
-
-    % Returns the name of the mutex associated a given mutable. The input
-    % to this function is the name of the mutable in the target language,
-    % i.e. it is the result of a call to mutable_c_var_name/2 or one of the
-    % specified foreign names for the mutable.
-    %
-:- func mutable_mutex_var_name(string) = string.
 
 %-----------------------------------------------------------------------------%
 
-    % Create a predmode declaration for the semipure mutable get predicate.
-    % (This is the default get predicate.)
+    % This predicate decides which of the publicly visible auxiliary predicates
+    % we should generate for a mutable.
     %
-:- func std_get_pred_decl(module_name, string, mer_type, mer_inst,
-    prog_context) = item_pred_decl_info.
+    % This same decisions for the private aux predicates are made by
+    % compute_needed_private_mutable_aux_preds in add_mutable_aux_preds.m.
+    %
+:- pred compute_needed_public_mutable_aux_preds(mutable_var_attributes::in,
+    list(mutable_pred_kind)::out) is det.
 
-    % Create a predmode declaration for a get predicate for a constant mutable.
-    % (This is only created if the `constant' attribute is given.)
+    % make_mutable_aux_pred_decl(ModuleName, MutableName, Type, Inst, Context,
+    %   Kind, PredDecl):
     %
-:- func constant_get_pred_decl(module_name, string, mer_type, mer_inst,
-    prog_context) = item_pred_decl_info.
-
-    % Create a predmode declaration for a get predicate using the I/O state.
-    % (This is created only if the `attach_to_io_state' attribute is given.)
+    % Create the predicate declaration for the given Kind of mutable auxiliry
+    % predicate for a mutable with the given MutableName, which has the
+    % given Type, Inst and Context.
     %
-:- func io_get_pred_decl(module_name, string, mer_type, mer_inst,
-    prog_context) = item_pred_decl_info.
-
-    % Create a predmode declaration for the impure mutable set predicate.
-    % (This is the default set predicate.)
-    %
-:- func std_set_pred_decl(module_name, string, mer_type, mer_inst,
-    prog_context) = item_pred_decl_info.
-
-    % Create a predmode declaration for a set predicate for a constant mutable;
-    % this predicate is designed to be used only from the mutable's
-    % initialization predicate.
-    % (This is created only if the `constant' attribute is given.)
-    %
-:- func constant_set_pred_decl(module_name, string, mer_type, mer_inst,
-    prog_context) = item_pred_decl_info.
-
-    % Create a predmode declaration for a set predicate using the I/O state.
-    % (This is created only if the `attach_to_io_state' attribute is given.)
-    %
-:- func io_set_pred_decl(module_name, string, mer_type, mer_inst,
-    prog_context) = item_pred_decl_info.
+:- pred make_mutable_aux_pred_decl(module_name::in, string::in,
+    mer_type::in, mer_inst::in, prog_context::in, mutable_pred_kind::in,
+    item_pred_decl_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+%-----------------------------------------------------------------------------%
+
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.file_names.
-:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 
-:- import_module list.
 :- import_module maybe.
 :- import_module string.
 :- import_module varset.
@@ -619,129 +575,134 @@ mutable_init_pred_sym_name(ModuleName, Name) =
 mutable_pre_init_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "pre_initialise_mutable_" ++ Name).
 
-mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
-    RawCVarName = "mutable_variable_" ++ Name,
-    QualifiedCVarName0 = qualified(ModuleName, RawCVarName),
-    ( if mercury_std_library_module_name(ModuleName) then
-        QualifiedCVarName =
-            add_outermost_qualifier("mercury", QualifiedCVarName0)
-    else
-        QualifiedCVarName = QualifiedCVarName0
-    ),
-    MangledCVarName = sym_name_mangle(QualifiedCVarName).
-
-mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
-    MutexVarName = TargetMutableVarName ++ "_lock".
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-std_get_pred_decl(ModuleName, Name, Type, Inst, Context) =
-    make_mutable_get_pred_decl(ModuleName, Name, Type, Inst,
-        get_set_pred_std, Context).
-
-constant_get_pred_decl(ModuleName, Name, Type, Inst, Context) =
-    make_mutable_get_pred_decl(ModuleName, Name, Type, Inst,
-        get_set_pred_constant, Context).
-
-io_get_pred_decl(ModuleName, Name, Type, Inst, Context) =
-    make_mutable_get_pred_decl(ModuleName, Name, Type, Inst,
-        get_set_pred_io, Context).
-
-%-----------------------------------------------------------------------------%
-
-std_set_pred_decl(ModuleName, Name, Type, Inst, Context) =
-    make_mutable_set_pred_decl(ModuleName, Name, Type, Inst,
-        get_set_pred_std, Context).
-
-constant_set_pred_decl(ModuleName, Name, Type, Inst, Context) =
-    make_mutable_set_pred_decl(ModuleName, Name, Type, Inst,
-        get_set_pred_constant, Context).
-
-io_set_pred_decl(ModuleName, Name, Type, Inst, Context) =
-    make_mutable_set_pred_decl(ModuleName, Name, Type, Inst,
-        get_set_pred_io, Context).
-
-%-----------------------------------------------------------------------------%
-
-:- type get_set_pred_kind
-    --->    get_set_pred_std
-    ;       get_set_pred_constant
-    ;       get_set_pred_io.
-
-:- func make_mutable_get_pred_decl(module_name, string, mer_type, mer_inst,
-    get_set_pred_kind, prog_context) = item_pred_decl_info.
-
-make_mutable_get_pred_decl(ModuleName, Name, Type, Inst, GetSetPredKind,
-        Context) = GetPredDecl :-
-    TypeVarSet = varset.init,
-    InstVarSet = varset.init,
-    ExistQVars = [],
-    SymName = mutable_get_pred_sym_name(ModuleName, Name),
-    MainArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
+compute_needed_public_mutable_aux_preds(MutAttrs, PublicAuxPreds) :-
+    % The logic we use here is duplicated in define_main_get_set_preds
+    % in add_mutable_aux_preds.m. The comment there explains why.
+    IsConstant = mutable_var_constant(MutAttrs),
+    AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
     (
-        GetSetPredKind = get_set_pred_std,
-        PredKind = mutable_pred_std_get,
-        ArgTypesAndModes = MainArgTypesAndModes,
+        IsConstant = mutable_constant,
+        % We create the "get" access predicate, which is pure since
+        % it always returns the same value, but we must also create
+        % a secret "set" predicate for use by the initialization code.
+        GetSetPreds =
+            [mutable_pred_constant_get, mutable_pred_constant_secret_set]
+    ;
+        IsConstant = mutable_not_constant,
+        % Create the standard, non-pure access predicates. These are
+        % always created for non-constant mutables, even if the
+        % `attach_to_io_state' attribute has been specified.
+        StdGetSetPreds = [mutable_pred_std_get, mutable_pred_std_set],
+
+        % If requested, create pure access predicates using
+        % the I/O state as well.
+        (
+            AttachToIO = mutable_dont_attach_to_io_state,
+            GetSetPreds = StdGetSetPreds
+        ;
+            AttachToIO = mutable_attach_to_io_state,
+            IOGetSetPreds = [mutable_pred_io_get, mutable_pred_io_set],
+            GetSetPreds = StdGetSetPreds ++ IOGetSetPreds
+        )
+    ),
+    PublicAuxPreds = GetSetPreds.
+
+%-----------------------------------------------------------------------------%
+
+make_mutable_aux_pred_decl(ModuleName, Name, Type, Inst, Context, Kind,
+        PredDecl) :-
+    (
+        Kind = mutable_pred_pre_init,
+        PredSymName = mutable_pre_init_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [],
+        AllowExport = do_not_allow_export,
+        Purity = purity_impure
+    ;
+        Kind = mutable_pred_init,
+        PredSymName = mutable_init_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [],
+        AllowExport = do_not_allow_export,
+        Purity = purity_impure
+    ;
+        Kind = mutable_pred_lock,
+        PredSymName = mutable_lock_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [],
+        AllowExport = do_not_allow_export,
+        Purity = purity_impure
+    ;
+        Kind = mutable_pred_unlock,
+        PredSymName = mutable_unlock_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [],
+        AllowExport = do_not_allow_export,
+        Purity = purity_impure
+    ;
+        Kind = mutable_pred_unsafe_get,
+        PredSymName = mutable_unsafe_get_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
+        AllowExport = do_not_allow_export,
         Purity = purity_semipure
     ;
-        GetSetPredKind = get_set_pred_constant,
-        PredKind = mutable_pred_constant_get,
-        ArgTypesAndModes = MainArgTypesAndModes,
+        Kind = mutable_pred_unsafe_set,
+        PredSymName = mutable_unsafe_set_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
+        AllowExport = do_not_allow_export,
+        Purity = purity_impure
+    ;
+        Kind = mutable_pred_std_get,
+        PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
+        AllowExport = do_allow_export,
+        Purity = purity_semipure
+    ;
+        Kind = mutable_pred_std_set,
+        PredSymName = mutable_set_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
+        AllowExport = do_allow_export,
+        Purity = purity_impure
+    ;
+        Kind = mutable_pred_constant_get,
+        PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
+        AllowExport = do_allow_export,
         Purity = purity_pure
     ;
-        GetSetPredKind = get_set_pred_io,
-        PredKind = mutable_pred_io_get,
-        ArgTypesAndModes = MainArgTypesAndModes ++ io_state_pair,
+        Kind = mutable_pred_constant_secret_set,
+        PredSymName = mutable_secret_set_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
+        AllowExport = do_allow_export,
+        Purity = purity_impure
+    ;
+        Kind = mutable_pred_io_get,
+        PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))]
+            ++ io_state_pair,
+        AllowExport = do_allow_export,
+        Purity = purity_pure
+    ;
+        Kind = mutable_pred_io_set,
+        PredSymName = mutable_set_pred_sym_name(ModuleName, Name),
+        ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))]
+            ++ io_state_pair,
+        AllowExport = do_allow_export,
         Purity = purity_pure
     ),
-    Attrs = item_compiler_attributes(do_allow_export,
-        is_mutable(ModuleName, Name, PredKind)),
-    Origin = item_origin_compiler(Attrs),
-    WithType = no,
-    WithInst = no,
-    Constraints = constraints([], []),
-    GetPredDecl = item_pred_decl_info(SymName, pf_predicate, ArgTypesAndModes,
-        WithType, WithInst, yes(detism_det), Origin, TypeVarSet, InstVarSet,
-        ExistQVars, Purity, Constraints, Context, -1).
-
-:- func make_mutable_set_pred_decl(module_name, string, mer_type, mer_inst,
-    get_set_pred_kind, prog_context) = item_pred_decl_info.
-
-make_mutable_set_pred_decl(ModuleName, Name, Type, Inst, GetSetPredKind,
-        Context) = SetPredDecl :-
-    TypeVarSet = varset.init,
-    InstVarSet = varset.init,
+    WithType = maybe.no,
+    WithMode = maybe.no,
+    MaybeIsMutable = is_mutable(ModuleName, Name, Kind),
+    CompilerAttrs = item_compiler_attributes(AllowExport, MaybeIsMutable),
+    MaybeAttrs = item_origin_compiler(CompilerAttrs),
+    varset.init(TypeVarSet),
+    varset.init(InstVarSet),
     ExistQVars = [],
-    MainArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
-    (
-        GetSetPredKind = get_set_pred_std,
-        PredKind = mutable_pred_std_set,
-        SymName = mutable_set_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = MainArgTypesAndModes,
-        Purity = purity_impure
-    ;
-        GetSetPredKind = get_set_pred_constant,
-        PredKind = mutable_pred_constant_secret_set,
-        SymName = mutable_secret_set_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = MainArgTypesAndModes,
-        Purity = purity_impure
-    ;
-        GetSetPredKind = get_set_pred_io,
-        PredKind = mutable_pred_io_set,
-        SymName = mutable_set_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = MainArgTypesAndModes ++ io_state_pair,
-        Purity = purity_pure
-    ),
-    Attrs = item_compiler_attributes(do_allow_export,
-        is_mutable(ModuleName, Name, PredKind)),
-    Origin = item_origin_compiler(Attrs),
     Constraints = constraints([], []),
-    WithType = no,
-    WithInst = no,
-    SetPredDecl = item_pred_decl_info(SymName, pf_predicate, ArgTypesAndModes,
-        WithType, WithInst, yes(detism_det), Origin, TypeVarSet, InstVarSet,
-        ExistQVars, Purity, Constraints, Context, -1).
+    SeqNum = -1,
+    PredDecl = item_pred_decl_info(PredSymName, pf_predicate, ArgTypesAndModes,
+        WithType, WithMode, yes(detism_det), MaybeAttrs,
+        TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
+        Context, SeqNum).
 
 :- func io_state_pair = list(type_and_mode).
 

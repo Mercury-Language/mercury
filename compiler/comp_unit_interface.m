@@ -763,39 +763,14 @@ get_private_interface_int0_from_items(ModuleName, [Item | Items],
     ;
         Item = item_mutable(ItemMutable),
         ItemMutable = item_mutable_info(MutableName,
-            _OrigType, Type, _OrigInst, Inst, _Value, _Varset, Attrs,
+            _OrigType, Type, _OrigInst, Inst, _Value, _Varset, MutAttrs,
             Context, _SeqNum),
-        ConstantInterface = mutable_var_constant(Attrs),
-        (
-            ConstantInterface = mutable_constant,
-            ConstantGetPredDecl = constant_get_pred_decl(ModuleName,
-                MutableName, Type, Inst, Context),
-            ConstantSetPredDecl = constant_set_pred_decl(ModuleName,
-                MutableName, Type, Inst, Context),
-            cord.snoc(ConstantGetPredDecl, !PredDecls),
-            cord.snoc(ConstantSetPredDecl, !PredDecls)
-        ;
-            ConstantInterface = mutable_not_constant,
-            StdGetPredDecl = std_get_pred_decl(ModuleName,
-                MutableName, Type, Inst, Context),
-            StdSetPredDecl = std_set_pred_decl(ModuleName,
-                MutableName, Type, Inst, Context),
-            cord.snoc(StdGetPredDecl, !PredDecls),
-            cord.snoc(StdSetPredDecl, !PredDecls),
-
-            IOStateInterface = mutable_var_attach_to_io_state(Attrs),
-            (
-                IOStateInterface = mutable_attach_to_io_state,
-                IOGetPredDecl = io_get_pred_decl(ModuleName,
-                    MutableName, Type, Inst, Context),
-                IOSetPredDecl = io_set_pred_decl(ModuleName,
-                    MutableName, Type, Inst, Context),
-                cord.snoc(IOGetPredDecl, !PredDecls),
-                cord.snoc(IOSetPredDecl, !PredDecls)
-            ;
-                IOStateInterface = mutable_dont_attach_to_io_state
-            )
-        )
+        compute_needed_public_mutable_aux_preds(MutAttrs, PublicAuxPreds),
+        list.map(
+            make_mutable_aux_pred_decl(ModuleName, MutableName, Type, Inst,
+                Context),
+            PublicAuxPreds, PublicAuxPredDecls),
+        !:PredDecls = !.PredDecls ++ cord.from_list(PublicAuxPredDecls)
     ),
     get_private_interface_int0_from_items(ModuleName, Items,
         !TypeDefns, !InstDefns, !ModeDefns, !TypeClasses, !Instances,

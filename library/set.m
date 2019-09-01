@@ -150,14 +150,20 @@
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
+    % The det_remove version aborts if the removal fails.
+    %
 :- pred remove(T::in, set(T)::in, set(T)::out) is semidet.
+:- pred det_remove(T::in, set(T)::in, set(T)::out) is det.
 
     % `remove_list(Xs, Set0, Set)' is true iff `Xs' does not
     % contain any duplicates, `Set0' contains every member of `Xs',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
     %
+    % The det_remove_list version aborts if any removal fails.
+    %
 :- pred remove_list(list(T)::in, set(T)::in, set(T)::out) is semidet.
+:- pred det_remove_list(list(T)::in, set(T)::in, set(T)::out) is det.
 
     % `remove_least(Elem, Set0, Set)' is true iff
     % `Set0' is not empty, `Elem' is the smallest element in `Set0'
@@ -537,6 +543,8 @@
 
 :- implementation.
 
+:- import_module require.
+
 init = S :-
     set.init(S).
 
@@ -625,26 +633,40 @@ is_member(X, Set, Result) :-
 contains(Set, X) :-
     set_ordlist.contains(Set, X).
 
+delete(X, !Set) :-
+    set_ordlist.delete(X, !Set).
+
+remove(X, !Set) :-
+    set_ordlist.remove(X, !Set).
+
+det_remove(X, !Set) :-
+    ( if set_ordlist.remove(X, !Set) then
+        true
+    else
+        unexpected($pred, "remove failed")
+    ).
+
+remove_list(List, !Set) :-
+    set_ordlist.remove_list(List, !Set).
+
+det_remove_list(List, !Set) :-
+    ( if set_ordlist.remove_list(List, !Set) then
+        true
+    else
+        unexpected($pred, "remove_list failed")
+    ).
+
+remove_least(X, !Set) :-
+    set_ordlist.remove_least(X, !Set).
+
+delete(S1, T) = S2 :-
+    set.delete(T, S1, S2).
+
 delete_list(S1, Xs) = S2 :-
     set.delete_list(Xs, S1, S2).
 
 delete_list(List, !Set) :-
     set_ordlist.delete_list(List, !Set).
-
-delete(S1, T) = S2 :-
-    set.delete(T, S1, S2).
-
-delete(X, !Set) :-
-    set_ordlist.delete(X, !Set).
-
-remove_list(List, !Set) :-
-    set_ordlist.remove_list(List, !Set).
-
-remove(X, !Set) :-
-    set_ordlist.remove(X, !Set).
-
-remove_least(X, !Set) :-
-    set_ordlist.remove_least(X, !Set).
 
 union(S1, S2) = S3 :-
     set.union(S1, S2, S3).
