@@ -1,0 +1,72 @@
+*** Testing with element type: int8 ****
+init = array([2i8, 2i8, 2i8, 2i8, 2i8])
+generate = array([2i8, 2i8, 2i8, 2i8, 2i8])
+resize = array([2i8, 2i8, 2i8, 2i8, 2i8, 3i8, 3i8])
+shrink = array([2i8, 2i8])
+
+*** Testing with element type: uint8 ****
+init = array([2u8, 2u8, 2u8, 2u8, 2u8])
+generate = array([2u8, 2u8, 2u8, 2u8, 2u8])
+resize = array([2u8, 2u8, 2u8, 2u8, 2u8, 3u8, 3u8])
+shrink = array([2u8, 2u8])
+
+*** Testing with element type: int16 ****
+init = array([2i16, 2i16, 2i16, 2i16, 2i16])
+generate = array([2i16, 2i16, 2i16, 2i16, 2i16])
+resize = array([2i16, 2i16, 2i16, 2i16, 2i16, 3i16, 3i16])
+shrink = array([2i16, 2i16])
+
+*** Testing with element type: uint16 ****
+init = array([2u16, 2u16, 2u16, 2u16, 2u16])
+generate = array([2u16, 2u16, 2u16, 2u16, 2u16])
+resize = array([2u16, 2u16, 2u16, 2u16, 2u16, 3u16, 3u16])
+shrink = array([2u16, 2u16])
+
+*** Testing with element type: int32 ****
+init = array([2i32, 2i32, 2i32, 2i32, 2i32])
+generate = array([2i32, 2i32, 2i32, 2i32, 2i32])
+resize = array([2i32, 2i32, 2i32, 2i32, 2i32, 3i32, 3i32])
+shrink = array([2i32, 2i32])
+
+*** Testing with element type: uint32 ****
+init = array([2u32, 2u32, 2u32, 2u32, 2u32])
+generate = array([2u32, 2u32, 2u32, 2u32, 2u32])
+resize = array([2u32, 2u32, 2u32, 2u32, 2u32, 3u32, 3u32])
+shrink = array([2u32, 2u32])
+
+*** Testing with element type: int64 ****
+init = array([2i64, 2i64, 2i64, 2i64, 2i64])
+generate = array([2i64, 2i64, 2i64, 2i64, 2i64])
+resize = array([2i64, 2i64, 2i64, 2i64, 2i64, 3i64, 3i64])
+shrink = array([2i64, 2i64])
+
+*** Testing with element type: uint64 ****
+init = array([2u64, 2u64, 2u64, 2u64, 2u64])
+generate = array([2u64, 2u64, 2u64, 2u64, 2u64])
+resize = array([2u64, 2u64, 2u64, 2u64, 2u64, 3u64, 3u64])
+shrink = array([2u64, 2u64])
+
+*** Testing with element type: int ****
+init = array([2, 2, 2, 2, 2])
+generate = array([2, 2, 2, 2, 2])
+resize = array([2, 2, 2, 2, 2, 3, 3])
+shrink = array([2, 2])
+
+*** Testing with element type: uint ****
+init = array([2u, 2u, 2u, 2u, 2u])
+generate = array([2u, 2u, 2u, 2u, 2u])
+resize = array([2u, 2u, 2u, 2u, 2u, 3u, 3u])
+shrink = array([2u, 2u])
+
+*** Testing with element type: float ****
+init = array([2.0, 2.0, 2.0, 2.0, 2.0])
+generate = array([2.0, 2.0, 2.0, 2.0, 2.0])
+resize = array([2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0])
+shrink = array([2.0, 2.0])
+
+*** Testing with element type: string ****
+init = array(["foo", "foo", "foo", "foo", "foo"])
+generate = array(["foo", "foo", "foo", "foo", "foo"])
+resize = array(["foo", "foo", "foo", "foo", "foo", "bar", "bar"])
+shrink = array(["foo", "foo"])
+

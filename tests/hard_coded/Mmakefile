@@ -16,6 +16,7 @@ ORDINARY_PROGS = \
 	array_all_tf \
 	array_copy \
 	array_gen \
+	array_primitives \
 	array_sort \
 	array_test \
 	array_test2 \
