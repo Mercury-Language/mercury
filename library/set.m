@@ -150,7 +150,7 @@
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
-    % The det_remove version aborts if the removal fails.
+    % The det_remove version throws an exception instead of failing.
     %
 :- pred remove(T::in, set(T)::in, set(T)::out) is semidet.
 :- pred det_remove(T::in, set(T)::in, set(T)::out) is det.
@@ -160,7 +160,7 @@
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
     %
-    % The det_remove_list version aborts if any removal fails.
+    % The det_remove_list version throws an exception instead of failing.
     %
 :- pred remove_list(list(T)::in, set(T)::in, set(T)::out) is semidet.
 :- pred det_remove_list(list(T)::in, set(T)::in, set(T)::out) is det.

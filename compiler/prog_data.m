@@ -1471,7 +1471,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     % Constant mutables will have the constant get and set predicates instead
     % (see below).
     %
-    % The first group represent the private predicates, the predicates
+    % The second group represent the private predicates, the predicates
     % that user programs should not call (and which are not documented).
     % The unsafe get and set predicates may be needed to implement the other,
     % user-visible get and set predicates, and the lock and unlock predicates
