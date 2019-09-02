@@ -113,7 +113,6 @@ MCFLAGS-check_hlds.mode_util    += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-check_hlds.polymorphism += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.goal_util          += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.inst_graph         += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-hlds.instmap            += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-libs.globals            += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-libs.handle_options     += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-libs.options            += --no-warn-inconsistent-pred-order-clauses
