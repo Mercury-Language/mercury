@@ -40,6 +40,7 @@ MCFLAGS-bug180			= --profile-optimized --allow-stubs --no-warn-stubs
 MCFLAGS-bug271			= --allow-stubs --no-warn-stubs
 MCFLAGS-bug300			= --optimize-constructor-last-call
 MCFLAGS-bug457			= --loop-invariants --intermodule-optimization
+MCFLAGS-bug483			= --warn-unused-imports --halt-at-warn
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-constraint_prop_bug	= -O0 --common-struct --local-constraint-propagation
 MCFLAGS-csharp_hello		= --no-intermodule-optimization

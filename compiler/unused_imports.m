@@ -375,19 +375,19 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
         ImplicitImports, !UsedModules),
     UsedModulesBuiltin = !.UsedModules,
 
-    UsedModulesHistory = [
-        "initial" - UsedModulesInit,
-        "type_ctor_defns" - UsedModulesTypeCtor,
-        "user_insts" - UsedModulesUserInst,
-        "modes" - UsedModulesMode,
-        "pred_infos" - UsedModulesPredInfo,
-        "const_structs" - UsedModulesConstStruct,
-        "classes" - UsedModulesClass,
-        "instances" - UsedModulesInstance,
-        "builtin" - UsedModulesBuiltin
-    ],
-
     trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+        UsedModulesHistory = [
+            "initial" - UsedModulesInit,
+            "type_ctor_defns" - UsedModulesTypeCtor,
+            "user_insts" - UsedModulesUserInst,
+            "modes" - UsedModulesMode,
+            "pred_infos" - UsedModulesPredInfo,
+            "const_structs" - UsedModulesConstStruct,
+            "classes" - UsedModulesClass,
+            "instances" - UsedModulesInstance,
+            "builtin" - UsedModulesBuiltin
+        ],
+
         dump_used_modules_history(set.init, set.init, UsedModulesHistory, !IO)
     ).
 
@@ -485,16 +485,37 @@ prog_constraint_used_modules(Visibility, Constraint, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 user_inst_used_modules(_InstId, InstDefn, !UsedModules) :-
-    InstStatus = InstDefn ^ inst_status,
+    InstDefn = hlds_inst_defn(_InstVarSet, _InstParams, InstBody,
+        InstForTypeCtor, _Context, InstStatus),
     DefinedInThisModule = inst_status_defined_in_this_module(InstStatus),
     (
         DefinedInThisModule = yes,
         Visibility = inst_visibility(InstStatus),
-        InstDefn ^ inst_body = eqv_inst(Inst),
-        mer_inst_used_modules(Visibility, Inst, !UsedModules)
+        InstBody = eqv_inst(Inst),
+        mer_inst_used_modules(Visibility, Inst, !UsedModules),
+        (
+            ( InstForTypeCtor = iftc_not_applicable
+            ; InstForTypeCtor = iftc_applicable_error
+            ; InstForTypeCtor = iftc_applicable_not_known
+            )
+        ;
+            InstForTypeCtor = iftc_applicable_declared(TypeCtor),
+            type_ctor_used_modules(Visibility, TypeCtor, !UsedModules)
+        ;
+            InstForTypeCtor = iftc_applicable_known(TypeCtors),
+            list.foldl(type_ctor_used_modules(Visibility), TypeCtors,
+                !UsedModules)
+        )
     ;
         DefinedInThisModule = no
     ).
+
+:- pred type_ctor_used_modules(item_visibility::in, type_ctor::in,
+    used_modules::in, used_modules::out) is det.
+
+type_ctor_used_modules(Visibility, TypeCtor, !UsedModules) :-
+    TypeCtor = type_ctor(SymName, _Arity),
+    record_sym_name_module_as_used(Visibility, SymName, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
