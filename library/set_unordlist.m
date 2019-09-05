@@ -26,36 +26,15 @@
 
 :- type set_unordlist(_T).
 
+%---------------------------------------------------------------------------%
+%
+% Initial creation of sets.
+%
+
     % `init(Set)' is true iff `Set' is an empty set.
     %
 :- func init = set_unordlist(T).
 :- pred init(set_unordlist(_T)::uo) is det.
-
-    % `list_to_set(List, Set)' is true iff `Set' is the set
-    % containing only the members of `List'.
-    %
-:- func list_to_set(list(T)) = set_unordlist(T).
-:- pred list_to_set(list(T)::in, set_unordlist(T)::out) is det.
-
-    % A synonym for list_to_set/1.
-    %
-:- func from_list(list(T)) = set_unordlist(T).
-
-    % `sorted_list_to_set(List, Set)' is true iff `Set' is the set containing
-    % only the members of `List'.  `List' must be sorted.
-    %
-:- pred sorted_list_to_set(list(T)::in, set_unordlist(T)::out) is det.
-:- func sorted_list_to_set(list(T)) = set_unordlist(T).
-
-    % A synonym for sorted_list_to_set/1.
-    %
-:- func from_sorted_list(list(T)) = set_unordlist(T).
-
-    % `to_sorted_list(Set, List)' is true iff `List' is the list of all the
-    % members of `Set', in sorted order.
-    %
-:- pred to_sorted_list(set_unordlist(T)::in, list(T)::out) is det.
-:- func to_sorted_list(set_unordlist(T)) = list(T).
 
     % `singleton_set(Elem, Set)' is true iff `Set' is the set
     % containing just the single element `Elem'.
@@ -67,12 +46,10 @@
 
 :- func make_singleton_set(T) = set_unordlist(T).
 
-:- pred is_singleton(set_unordlist(T)::in, T::out) is semidet.
-
-    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
-    % elements.
-    %
-:- pred equal(set_unordlist(T)::in, set_unordlist(T)::in) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Emptiness and singleton-ness tests.
+%
 
     % `empty(Set)' is true iff `Set' is an empty set.
     % `is_empty' is a synonym of `empty'.
@@ -86,13 +63,12 @@
 :- pred non_empty(set_unordlist(_T)::in) is semidet.
 :- pred is_non_empty(set_unordlist(_T)::in) is semidet.
 
-    % `subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
-    %
-:- pred subset(set_unordlist(T)::in, set_unordlist(T)::in) is semidet.
+:- pred is_singleton(set_unordlist(T)::in, T::out) is semidet.
 
-    % `superset(SetA, SetB)' is true iff `SetA' is a superset of `SetB'.
-    %
-:- pred superset(set_unordlist(T)::in, set_unordlist(T)::in) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Membership tests.
+%
 
     % `member(X, Set)' is true iff `X' is a member of `Set'.
     %
@@ -109,14 +85,18 @@
     %
 :- pred contains(set_unordlist(T)::in, T::in) is semidet.
 
+%---------------------------------------------------------------------------%
+%
+% Insertions and deletions.
+%
+
     % `insert(X, Set0, Set)' is true iff `Set' is the union of `Set0' and the
     % set containing only `X'.
     %
+:- func insert(set_unordlist(T), T) = set_unordlist(T).
 :- pred insert(T, set_unordlist(T), set_unordlist(T)).
 :- mode insert(di, di, uo) is det.
 :- mode insert(in, in, out) is det.
-
-:- func insert(set_unordlist(T), T) = set_unordlist(T).
 
     % `insert_new(X, Set0, Set)' is true iff `Set0' does not contain `X', and
     % `Set' is the union of `Set0' and the set containing only `X'.
@@ -127,29 +107,26 @@
     % `insert_list(Xs, Set0, Set)' is true iff `Set' is the
     % union of `Set0' and the set containing only the members of `Xs'.
     %
-:- pred insert_list(list(T)::in,
-    set_unordlist(T)::in, set_unordlist(T)::out) is det.
-
 :- func insert_list(set_unordlist(T), list(T))
     = set_unordlist(T).
+:- pred insert_list(list(T)::in,
+    set_unordlist(T)::in, set_unordlist(T)::out) is det.
 
     % `delete(X, Set0, Set)' is true iff `Set' is the relative complement of
     % `Set0' and the set containing only `X', i.e.  if `Set' is the set which
     % contains all the elements of `Set0' except `X'.
     %
+:- func delete(set_unordlist(T), T) = set_unordlist(T).
 :- pred delete(T, set_unordlist(T), set_unordlist(T)).
 :- mode delete(in, di, uo) is det.
 :- mode delete(in, in, out) is det.
 
-:- func delete(set_unordlist(T), T) = set_unordlist(T).
-
     % `delete_list(Xs, Set0, Set)' is true iff `Set' is the relative complement
     % of `Set0' and the set containing only the members of `Xs'.
     %
+:- func delete_list(set_unordlist(T), list(T)) = set_unordlist(T).
 :- pred delete_list(list(T)::in, set_unordlist(T)::in, set_unordlist(T)::out)
     is det.
-
-:- func delete_list(set_unordlist(T), list(T)) = set_unordlist(T).
 
     % `remove(X, Set0, Set)' is true iff `Set0' contains `X',
     % and `Set' is the relative complement of `Set0' and the set
@@ -174,14 +151,36 @@
 :- pred remove_least(T::out,
     set_unordlist(T)::in, set_unordlist(T)::out) is semidet.
 
+%---------------------------------------------------------------------------%
+%
+% Comparisons between sets.
+%
+
+    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
+    % elements.
+    %
+:- pred equal(set_unordlist(T)::in, set_unordlist(T)::in) is semidet.
+
+    % `subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
+    %
+:- pred subset(set_unordlist(T)::in, set_unordlist(T)::in) is semidet.
+
+    % `superset(SetA, SetB)' is true iff `SetA' is a superset of `SetB'.
+    %
+:- pred superset(set_unordlist(T)::in, set_unordlist(T)::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Operations on two or more sets.
+%
+
     % `union(SetA, SetB, Set)' is true iff `Set' is the union of `SetA' and
     % `SetB'.  If the sets are known to be of different sizes, then for
     % efficiency make `SetA' the larger of the two.
     %
+:- func union(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
 :- pred union(set_unordlist(T)::in, set_unordlist(T)::in,
     set_unordlist(T)::out) is det.
-
-:- func union(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
 
     % `union_list(A) = B' is true iff `B' is the union of all the sets in `A'
     %
@@ -189,47 +188,119 @@
 
     % `power_union(A, B)' is true iff `B' is the union of all the sets in `A'
     %
+:- func power_union(set_unordlist(set_unordlist(T))) = set_unordlist(T).
 :- pred power_union(set_unordlist(set_unordlist(T))::in,
     set_unordlist(T)::out) is det.
-
-:- func power_union(set_unordlist(set_unordlist(T))) = set_unordlist(T).
 
     % `intersect(SetA, SetB, Set)' is true iff `Set' is the intersection of
     % `SetA' and `SetB'.
     %
+:- func intersect(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
 :- pred intersect(set_unordlist(T)::in, set_unordlist(T)::in,
     set_unordlist(T)::out) is det.
-
-:- func intersect(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
-
-    % `power_intersect(A, B)' is true iff `B' is the intersection of all the
-    % sets in `A'
-    %
-:- pred power_intersect(set_unordlist(set_unordlist(T))::in,
-    set_unordlist(T)::out) is det.
-
-:- func power_intersect(set_unordlist(set_unordlist(T))) = set_unordlist(T).
 
     % `intersect_list(A, B)' is true iff `B' is the intersection of all the
     % sets in `A'
     %
 :- func intersect_list(list(set_unordlist(T))) = set_unordlist(T).
 
+    % `power_intersect(A, B)' is true iff `B' is the intersection of all the
+    % sets in `A'
+    %
+:- func power_intersect(set_unordlist(set_unordlist(T))) = set_unordlist(T).
+:- pred power_intersect(set_unordlist(set_unordlist(T))::in,
+    set_unordlist(T)::out) is det.
+
     % `difference(SetA, SetB, Set)' is true iff `Set' is the set containing all
     % the elements of `SetA' except those that occur in `SetB'
     %
+:- func difference(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
 :- pred difference(set_unordlist(T)::in, set_unordlist(T)::in,
     set_unordlist(T)::out) is det.
 
-:- func difference(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
+%---------------------------------------------------------------------------%
+%
+% Operations that divide a set into two parts.
+%
+
+    % divide(Pred, Set, TruePart, FalsePart):
+    % TruePart consists of those elements of Set for which Pred succeeds;
+    % FalsePart consists of those elements of Set for which Pred fails.
+    % NOTE: this is the same as filter/4.
+    %
+:- pred divide(pred(T)::in(pred(in) is semidet),
+    set_unordlist(T)::in, set_unordlist(T)::out, set_unordlist(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Converting lists to sets.
+%
+
+    % `list_to_set(List, Set)' is true iff `Set' is the set
+    % containing only the members of `List'.
+    %
+:- func list_to_set(list(T)) = set_unordlist(T).
+:- pred list_to_set(list(T)::in, set_unordlist(T)::out) is det.
+
+    % A synonym for list_to_set/1.
+    %
+:- func from_list(list(T)) = set_unordlist(T).
+
+    % `sorted_list_to_set(List, Set)' is true iff `Set' is the set containing
+    % only the members of `List'.  `List' must be sorted.
+    %
+:- func sorted_list_to_set(list(T)) = set_unordlist(T).
+:- pred sorted_list_to_set(list(T)::in, set_unordlist(T)::out) is det.
+
+    % A synonym for sorted_list_to_set/1.
+    %
+:- func from_sorted_list(list(T)) = set_unordlist(T).
+
+%---------------------------------------------------------------------------%
+%
+% Converting sets to lists.
+%
+
+    % `to_sorted_list(Set, List)' is true iff `List' is the list of all the
+    % members of `Set', in sorted order.
+    %
+:- func to_sorted_list(set_unordlist(T)) = list(T).
+:- pred to_sorted_list(set_unordlist(T)::in, list(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Counting.
+%
 
 :- func count(set_unordlist(T)) = int.
 :- pred count(set_unordlist(T)::in, int::out) is det.
 
-:- func map(func(T1) = T2, set_unordlist(T1)) = set_unordlist(T2).
+%---------------------------------------------------------------------------%
+%
+% Standard higher order functions on collections.
+%
+
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds for all the
+    % elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet),
+    set_unordlist(T)::in) is semidet.
+
+    % Return the set of items for which the predicate succeeds.
+    %
+:- pred filter(pred(T)::in(pred(in) is semidet),
+    set_unordlist(T)::in, set_unordlist(T)::out) is det.
+
+    % Return the set of items for which the predicate succeeds,
+    % and the set for which it fails.
+    %
+:- pred filter(pred(T)::in(pred(in) is semidet),
+    set_unordlist(T)::in, set_unordlist(T)::out, set_unordlist(T)::out) is det.
 
 :- func filter_map(func(T1) = T2, set_unordlist(T1)) = set_unordlist(T2).
 :- mode filter_map(func(in) = out is semidet, in) = out is det.
+
+:- func map(func(T1) = T2, set_unordlist(T1)) = set_unordlist(T2).
 
 :- func fold(func(T1, T2) = T2, set_unordlist(T1), T2) = T2.
 :- pred fold(pred(T1, T2, T2), set_unordlist(T1), T2, T2).
@@ -335,31 +406,6 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds for all the
-    % elements of Set.
-    %
-:- pred all_true(pred(T)::in(pred(in) is semidet),
-    set_unordlist(T)::in) is semidet.
-
-    % Return the set of items for which the predicate succeeds.
-    %
-:- pred filter(pred(T)::in(pred(in) is semidet),
-    set_unordlist(T)::in, set_unordlist(T)::out) is det.
-
-    % Return the set of items for which the predicate succeeds,
-    % and the set for which it fails.
-    %
-:- pred filter(pred(T)::in(pred(in) is semidet),
-    set_unordlist(T)::in, set_unordlist(T)::out, set_unordlist(T)::out) is det.
-
-    % divide(Pred, Set, TruePart, FalsePart):
-    % TruePart consists of those elements of Set for which Pred succeeds;
-    % FalsePart consists of those elements of Set for which Pred fails.
-    % NOTE: this is the same as filter/4.
-    %
-:- pred divide(pred(T)::in(pred(in) is semidet),
-    set_unordlist(T)::in, set_unordlist(T)::out, set_unordlist(T)::out) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -370,106 +416,133 @@
 :- type set_unordlist(T)
     --->    sul(list(T)).
 
-set_unordlist.list_to_set(List, sul(List)).
+%---------------------------------------------------------------------------%
 
-set_unordlist.from_list(List) = sul(List).
+init = S :-
+    set_unordlist.init(S).
 
-set_unordlist.sorted_list_to_set(List, sul(List)).
-
-set_unordlist.from_sorted_list(List) = sul(List).
-
-set_unordlist.to_sorted_list(sul(Set), List) :-
-    list.sort_and_remove_dups(Set, List).
-
-set_unordlist.insert_list(List, sul(!.Set), sul(!:Set)) :-
-    list.append(List, !Set).
-
-set_unordlist.insert(E, sul(S0), sul([E | S0])).
-
-set_unordlist.insert_new(E, sul(S0), sul(S)) :-
-    ( if list.member(E, S0) then
-        fail
-    else
-        S = [E | S0]
-    ).
-
-set_unordlist.init(sul([])).
+init(sul([])).
 
 :- pragma promise_equivalent_clauses(set_unordlist.singleton_set/2).
 
-set_unordlist.singleton_set(X::in, Set::out) :-
+singleton_set(X::in, Set::out) :-
     Set = sul([X]).
-
-set_unordlist.singleton_set(X::in, Set::in) :-
+singleton_set(X::in, Set::in) :-
+    Set = sul(Xs),
+    list.sort_and_remove_dups(Xs, [X]).
+singleton_set(X::out, Set::in) :-
     Set = sul(Xs),
     list.sort_and_remove_dups(Xs, [X]).
 
-set_unordlist.singleton_set(X::out, Set::in) :-
-    Set = sul(Xs),
+make_singleton_set(T) = S :-
+    set_unordlist.singleton_set(T, S).
+
+%---------------------------------------------------------------------------%
+
+empty(sul([])).
+is_empty(sul([])).
+
+non_empty(sul([_ | _])).
+is_non_empty(sul([_ | _])).
+
+is_singleton(sul(Xs), X) :-
     list.sort_and_remove_dups(Xs, [X]).
 
-set_unordlist.is_singleton(sul(Xs), X) :-
-    list.sort_and_remove_dups(Xs, [X]).
+%---------------------------------------------------------------------------%
 
-set_unordlist.equal(SetA, SetB) :-
-    set_unordlist.subset(SetA, SetB),
-    set_unordlist.subset(SetB, SetA).
-
-set_unordlist.empty(sul([])).
-set_unordlist.is_empty(sul([])).
-
-set_unordlist.non_empty(sul([_ | _])).
-set_unordlist.is_non_empty(sul([_ | _])).
-
-set_unordlist.subset(sul([]), _).
-set_unordlist.subset(sul([E | S0]), S1) :-
-    set_unordlist.member(E, S1),
-    set_unordlist.subset(sul(S0), S1).
-
-set_unordlist.superset(S0, S1) :-
-    set_unordlist.subset(S1, S0).
-
-set_unordlist.member(E, sul(S)) :-
+member(E, sul(S)) :-
     list.member(E, S).
 
-set_unordlist.is_member(E, S, R) :-
+is_member(E, S, R) :-
     ( if set_unordlist.member(E, S) then
         R = yes
     else
         R = no
     ).
 
-set_unordlist.contains(S, E) :-
+contains(S, E) :-
     set_unordlist.member(E, S).
 
-set_unordlist.delete_list([], !S).
-set_unordlist.delete_list([X | Xs], !S) :-
+%---------------------------------------------------------------------------%
+
+insert(!.S, T) = !:S :-
+    set_unordlist.insert(T, !S).
+
+insert(E, sul(S0), sul([E | S0])).
+
+insert_new(E, sul(S0), sul(S)) :-
+    ( if list.member(E, S0) then
+        fail
+    else
+        S = [E | S0]
+    ).
+
+insert_list(!.S, Xs) = !:S :-
+    set_unordlist.insert_list(Xs, !S).
+
+insert_list(List, sul(!.Set), sul(!:Set)) :-
+    list.append(List, !Set).
+
+%---------%
+
+delete(!.S, T) = !:S :-
+    set_unordlist.delete(T, !S).
+
+delete(E, sul(!.S), sul(!:S)) :-
+    list.delete_all(!.S, E, !:S).
+
+delete_list(!.S, Xs) = !:S :-
+    set_unordlist.delete_list(Xs, !S).
+
+delete_list([], !S).
+delete_list([X | Xs], !S) :-
     set_unordlist.delete(X, !S),
     set_unordlist.delete_list(Xs, !S).
 
-set_unordlist.delete(E, sul(!.S), sul(!:S)) :-
-    list.delete_all(!.S, E, !:S).
+%---------%
 
-set_unordlist.remove_list([], !S).
-set_unordlist.remove_list([X | Xs], !S) :-
-    set_unordlist.remove(X, !S),
-    set_unordlist.remove_list(Xs, !S).
-
-set_unordlist.remove(E, sul(S0), sul(S)) :-
+remove(E, sul(S0), sul(S)) :-
     list.member(E, S0),
     set_unordlist.delete(E, sul(S0), sul(S)).
 
-set_unordlist.remove_least(E, Set0, sul(Set)) :-
+remove_list([], !S).
+remove_list([X | Xs], !S) :-
+    set_unordlist.remove(X, !S),
+    set_unordlist.remove_list(Xs, !S).
+
+remove_least(E, Set0, sul(Set)) :-
     Set0 = sul([_ | _]),   % Fail early on an empty set.
     set_unordlist.to_sorted_list(Set0, [E | Set]).
 
-set_unordlist.union(sul(Set0), sul(Set1), sul(Set)) :-
+%---------------------------------------------------------------------------%
+
+equal(SetA, SetB) :-
+    set_unordlist.subset(SetA, SetB),
+    set_unordlist.subset(SetB, SetA).
+
+subset(sul([]), _).
+subset(sul([E | S0]), S1) :-
+    set_unordlist.member(E, S1),
+    set_unordlist.subset(sul(S0), S1).
+
+superset(S0, S1) :-
+    set_unordlist.subset(S1, S0).
+
+%---------------------------------------------------------------------------%
+
+union(S1, S2) = S3 :-
+    set_unordlist.union(S1, S2, S3).
+
+union(sul(Set0), sul(Set1), sul(Set)) :-
     list.append(Set1, Set0, Set).
 
-set_unordlist.union_list(LS) = S :-
+union_list(LS) = S :-
     set_unordlist.power_union(sul(LS), S).
 
-set_unordlist.power_union(sul(PS), sul(S)) :-
+power_union(SS) = S :-
+    set_unordlist.power_union(SS, S).
+
+power_union(sul(PS), sul(S)) :-
     set_unordlist.init(S0),
     set_unordlist.power_union_2(PS, S0, sul(S1)),
     list.sort_and_remove_dups(S1, S).
@@ -477,19 +550,24 @@ set_unordlist.power_union(sul(PS), sul(S)) :-
 :- pred set_unordlist.power_union_2(list(set_unordlist(T))::in,
     set_unordlist(T)::in, set_unordlist(T)::out) is det.
 
-set_unordlist.power_union_2([], !S).
-set_unordlist.power_union_2([T | Ts], !S) :-
+power_union_2([], !S).
+power_union_2([T | Ts], !S) :-
     set_unordlist.union(!.S, T, !:S),
     set_unordlist.power_union_2(Ts, !S).
 
-set_unordlist.intersect(sul(S0), sul(S1), sul(S)) :-
+%---------%
+
+intersect(S1, S2) = S3 :-
+    set_unordlist.intersect(S1, S2, S3).
+
+intersect(sul(S0), sul(S1), sul(S)) :-
     set_unordlist.intersect_2(S0, S1, [], S).
 
 :- pred set_unordlist.intersect_2(list(T)::in, list(T)::in,
     list(T)::in, list(T)::out) is det.
 
-set_unordlist.intersect_2([], _, S, S).
-set_unordlist.intersect_2([E | S0], S1, S2, S) :-
+intersect_2([], _, S, S).
+intersect_2([E | S0], S1, S2, S) :-
     ( if list.member(E, S1) then
         S3 = [E | S2]
     else
@@ -497,8 +575,14 @@ set_unordlist.intersect_2([E | S0], S1, S2, S) :-
     ),
     set_unordlist.intersect_2(S0, S1, S3, S).
 
-set_unordlist.power_intersect(sul([]), sul([])).
-set_unordlist.power_intersect(sul([S0 | Ss]), S) :-
+intersect_list(Sets) =
+    set_unordlist.power_intersect(sul(Sets)).
+
+power_intersect(SS) = S :-
+    set_unordlist.power_intersect(SS, S).
+
+power_intersect(sul([]), sul([])).
+power_intersect(sul([S0 | Ss]), S) :-
     (
         Ss = [],
         S = S0
@@ -508,124 +592,25 @@ set_unordlist.power_intersect(sul([S0 | Ss]), S) :-
         set_unordlist.intersect(S1, S0, S)
     ).
 
-set_unordlist.intersect_list(Sets) =
-    set_unordlist.power_intersect(sul(Sets)).
+%---------%
 
-%---------------------------------------------------------------------------%
+difference(S1, S2) = S3 :-
+    set_unordlist.difference(S1, S2, S3).
 
-set_unordlist.difference(A, B, C) :-
+difference(A, B, C) :-
     set_unordlist.difference_2(B, A, C).
 
 :- pred set_unordlist.difference_2(set_unordlist(T)::in, set_unordlist(T)::in,
     set_unordlist(T)::out) is det.
 
-set_unordlist.difference_2(sul([]), C, C).
-set_unordlist.difference_2(sul([E | Es]), A, C) :-
+difference_2(sul([]), C, C).
+difference_2(sul([E | Es]), A, C) :-
     set_unordlist.delete(E, A, B),
     set_unordlist.difference_2(sul(Es), B, C).
 
 %---------------------------------------------------------------------------%
 
-set_unordlist.count(Set) = Count :-
-    set_unordlist.count(Set, Count).
-
-set_unordlist.count(sul(Set), Count) :-
-    list.remove_dups(Set, Elems),
-    list.length(Elems, Count).
-
-%---------------------------------------------------------------------------%
-
-set_unordlist.fold(F, S, A) = B :-
-    B = list.foldl(F, set_unordlist.to_sorted_list(S), A).
-
-set_unordlist.fold(P, S, !A) :-
-    list.foldl(P, set_unordlist.to_sorted_list(S), !A).
-
-set_unordlist.fold2(P, S, !A, !B) :-
-    list.foldl2(P, set_unordlist.to_sorted_list(S), !A, !B).
-
-set_unordlist.fold3(P, S, !A, !B, !C) :-
-    list.foldl3(P, set_unordlist.to_sorted_list(S), !A, !B, !C).
-
-set_unordlist.fold4(P, S, !A, !B, !C, !D) :-
-    list.foldl4(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D).
-
-set_unordlist.fold5(P, S, !A, !B, !C, !D, !E) :-
-    list.foldl5(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D, !E).
-
-set_unordlist.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
-    list.foldl6(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
-
-%---------------------------------------------------------------------------%
-
-set_unordlist.all_true(P, sul(L)) :-
-    list.all_true(P, L).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%   Function forms added.
-
-set_unordlist.list_to_set(Xs) = S :-
-    set_unordlist.list_to_set(Xs, S).
-
-set_unordlist.sorted_list_to_set(Xs) = S :-
-    set_unordlist.sorted_list_to_set(Xs, S).
-
-set_unordlist.to_sorted_list(S) = Xs :-
-    set_unordlist.to_sorted_list(S, Xs).
-
-set_unordlist.init = S :-
-    set_unordlist.init(S).
-
-set_unordlist.make_singleton_set(T) = S :-
-    set_unordlist.singleton_set(T, S).
-
-set_unordlist.insert(!.S, T) = !:S :-
-    set_unordlist.insert(T, !S).
-
-set_unordlist.insert_list(!.S, Xs) = !:S :-
-    set_unordlist.insert_list(Xs, !S).
-
-set_unordlist.delete(!.S, T) = !:S :-
-    set_unordlist.delete(T, !S).
-
-set_unordlist.delete_list(!.S, Xs) = !:S :-
-    set_unordlist.delete_list(Xs, !S).
-
-set_unordlist.union(S1, S2) = S3 :-
-    set_unordlist.union(S1, S2, S3).
-
-set_unordlist.power_union(SS) = S :-
-    set_unordlist.power_union(SS, S).
-
-set_unordlist.intersect(S1, S2) = S3 :-
-    set_unordlist.intersect(S1, S2, S3).
-
-set_unordlist.power_intersect(SS) = S :-
-    set_unordlist.power_intersect(SS, S).
-
-set_unordlist.difference(S1, S2) = S3 :-
-    set_unordlist.difference(S1, S2, S3).
-
-set_unordlist.map(F, S1) = S2 :-
-    S2 = set_unordlist.list_to_set(list.map(F,
-        set_unordlist.to_sorted_list(S1))).
-
-set_unordlist.filter_map(PF, S1) = S2 :-
-    S2 = set_unordlist.list_to_set(list.filter_map(PF,
-        set_unordlist.to_sorted_list(S1))).
-
-%---------------------------------------------------------------------------%
-
-set_unordlist.filter(Pred, Set, TrueSet) :-
-    % XXX This should be more efficient.
-    set_unordlist.divide(Pred, Set, TrueSet, _FalseSet).
-
-set_unordlist.filter(Pred, Set, TrueSet, FalseSet) :-
-    set_unordlist.divide(Pred, Set, TrueSet, FalseSet).
-
-set_unordlist.divide(Pred, sul(Set), sul(RevTruePart), sul(RevFalsePart)) :-
+divide(Pred, sul(Set), sul(RevTruePart), sul(RevFalsePart)) :-
     set_unordlist.divide_2(Pred, Set, [], RevTruePart, [], RevFalsePart).
 
 :- pred set_unordlist.divide_2(pred(T1)::in(pred(in) is semidet),
@@ -633,14 +618,88 @@ set_unordlist.divide(Pred, sul(Set), sul(RevTruePart), sul(RevFalsePart)) :-
     list(T1)::in, list(T1)::out,
     list(T1)::in, list(T1)::out) is det.
 
-set_unordlist.divide_2(_Pred, [], !RevTrue, !RevFalse).
-set_unordlist.divide_2(Pred, [H | T], !RevTrue, !RevFalse) :-
+divide_2(_Pred, [], !RevTrue, !RevFalse).
+divide_2(Pred, [H | T], !RevTrue, !RevFalse) :-
     ( if Pred(H) then
         !:RevTrue = [H | !.RevTrue]
     else
         !:RevFalse = [H | !.RevFalse]
     ),
     set_unordlist.divide_2(Pred, T, !RevTrue, !RevFalse).
+
+%---------------------------------------------------------------------------%
+
+list_to_set(Xs) = S :-
+    set_unordlist.list_to_set(Xs, S).
+
+list_to_set(List, sul(List)).
+
+from_list(List) = sul(List).
+
+sorted_list_to_set(Xs) = S :-
+    set_unordlist.sorted_list_to_set(Xs, S).
+
+sorted_list_to_set(List, sul(List)).
+
+from_sorted_list(List) = sul(List).
+
+%---------------------------------------------------------------------------%
+
+to_sorted_list(S) = Xs :-
+    set_unordlist.to_sorted_list(S, Xs).
+
+to_sorted_list(sul(Set), List) :-
+    list.sort_and_remove_dups(Set, List).
+
+%---------------------------------------------------------------------------%
+
+count(Set) = Count :-
+    set_unordlist.count(Set, Count).
+
+count(sul(Set), Count) :-
+    list.remove_dups(Set, Elems),
+    list.length(Elems, Count).
+
+%---------------------------------------------------------------------------%
+
+all_true(P, sul(L)) :-
+    list.all_true(P, L).
+
+filter(Pred, Set, TrueSet) :-
+    % XXX This should be more efficient.
+    set_unordlist.divide(Pred, Set, TrueSet, _FalseSet).
+
+filter(Pred, Set, TrueSet, FalseSet) :-
+    set_unordlist.divide(Pred, Set, TrueSet, FalseSet).
+
+filter_map(PF, S1) = S2 :-
+    S2 = set_unordlist.list_to_set(list.filter_map(PF,
+        set_unordlist.to_sorted_list(S1))).
+
+map(F, S1) = S2 :-
+    S2 = set_unordlist.list_to_set(list.map(F,
+        set_unordlist.to_sorted_list(S1))).
+
+fold(F, S, A) = B :-
+    B = list.foldl(F, set_unordlist.to_sorted_list(S), A).
+
+fold(P, S, !A) :-
+    list.foldl(P, set_unordlist.to_sorted_list(S), !A).
+
+fold2(P, S, !A, !B) :-
+    list.foldl2(P, set_unordlist.to_sorted_list(S), !A, !B).
+
+fold3(P, S, !A, !B, !C) :-
+    list.foldl3(P, set_unordlist.to_sorted_list(S), !A, !B, !C).
+
+fold4(P, S, !A, !B, !C, !D) :-
+    list.foldl4(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D).
+
+fold5(P, S, !A, !B, !C, !D, !E) :-
+    list.foldl5(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D, !E).
+
+fold6(P, S, !A, !B, !C, !D, !E, !F) :-
+    list.foldl6(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
 
 %---------------------------------------------------------------------------%
 :- end_module set_unordlist.

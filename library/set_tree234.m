@@ -26,6 +26,11 @@
 
 :- type set_tree234(_T).
 
+%---------------------------------------------------------------------------%
+%
+% Initial creation of sets.
+%
+
     % `init = Set' is true iff `Set' is an empty set.
     %
 :- func init = set_tree234(T).
@@ -39,7 +44,10 @@
 
 :- func make_singleton_set(T) = set_tree234(T).
 
-:- pred is_singleton(set_tree234(T)::in, T::out) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Emptiness and singleton-ness tests.
+%
 
     % `empty(Set)' is true iff `Set' is an empty set.
     % `is_empty' is a synonym for `empty'.
@@ -52,6 +60,13 @@
     %
 :- pred non_empty(set_tree234(T)::in) is semidet.
 :- pred is_non_empty(set_tree234(T)::in) is semidet.
+
+:- pred is_singleton(set_tree234(T)::in, T::out) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Membership tests.
+%
 
     % `member(X, Set)' is true iff `X' is a member of `Set'.
     %
@@ -69,57 +84,10 @@
     %
 :- pred contains(set_tree234(T)::in, T::in) is semidet.
 
-    % `list_to_set(List) = Set' is true iff `Set' is the set containing
-    % only the members of `List'.
-    %
-:- func list_to_set(list(T)) = set_tree234(T).
-:- pred list_to_set(list(T)::in, set_tree234(T)::out) is det.
-
-:- func from_list(list(T)) = set_tree234(T).
-:- pred from_list(list(T)::in, set_tree234(T)::out) is det.
-
-    % `from_set(Set)' returns a set_tree234 containing only
-    % the members of `Set'. Takes O(card(Set)) time and space.
-    %
-:- func from_set(set.set(T)) = set_tree234(T).
-
-    % `sorted_list_to_set(List) = Set' is true iff `Set' is the set
-    % containing only the members of `List'. `List' must be sorted
-    % in ascending order.
-    %
-:- func sorted_list_to_set(list(T)) = set_tree234(T).
-:- pred sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
-
-    % `rev_sorted_list_to_set(List) = Set' is true iff `Set' is the set
-    % containing only the members of `List'. `List' must be sorted
-    % in descending order.
-    %
-:- func rev_sorted_list_to_set(list(T)) = set_tree234(T).
-:- pred rev_sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
-
-    % `to_sorted_list(Set) = List' is true iff `List' is the list of all the
-    % members of `Set', in sorted order.
-    %
-:- func to_sorted_list(set_tree234(T)) = list(T).
-:- pred to_sorted_list(set_tree234(T)::in, list(T)::out) is det.
-
-    % `to_sorted_list(Set)' returns a set.set containing all the members of
-    % `Set', in sorted order. Takes O(card(Set)) time and space.
-    %
-:- func to_set(set_tree234(T)) = set.set(T).
-
-    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
-    % elements.
-    %
-:- pred equal(set_tree234(T)::in, set_tree234(T)::in) is semidet.
-
-    % `subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
-    %
-:- pred subset(set_tree234(T)::in, set_tree234(T)::in) is semidet.
-
-    % `superset(SetA, SetB)' is true iff `SetA' is a superset of `SetB'.
-    %
-:- pred superset(set_tree234(T)::in, set_tree234(T)::in) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Insertions and deletions.
+%
 
     % `insert(X, Set0, Set)' is true iff `Set' is the union of `Set0' and the
     % set containing only `X'.
@@ -158,8 +126,7 @@
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
-:- pred remove(T::in, set_tree234(T)::in, set_tree234(T)::out)
-    is semidet.
+:- pred remove(T::in, set_tree234(T)::in, set_tree234(T)::out) is semidet.
 
     % `remove_list(Xs, Set0, Set)' is true iff Xs does not contain any
     % duplicates, `Set0' contains every member of `Xs', and `Set' is the
@@ -176,6 +143,29 @@
 :- pred remove_least(T::out, set_tree234(T)::in, set_tree234(T)::out)
     is semidet.
 
+%---------------------------------------------------------------------------%
+%
+% Comparisons between sets.
+%
+
+    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
+    % elements.
+    %
+:- pred equal(set_tree234(T)::in, set_tree234(T)::in) is semidet.
+
+    % `subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
+    %
+:- pred subset(set_tree234(T)::in, set_tree234(T)::in) is semidet.
+
+    % `superset(SetA, SetB)' is true iff `SetA' is a superset of `SetB'.
+    %
+:- pred superset(set_tree234(T)::in, set_tree234(T)::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Operations on two or more sets.
+%
+
     % `union(SetA, SetB) = Set' is true iff `Set' is the union of `SetA' and
     % `SetB'.
     %
@@ -186,58 +176,164 @@
     % `union_list(A, B)' is true iff `B' is the union of all the sets in `A'
     %
 :- func union_list(list(set_tree234(T))) = set_tree234(T).
-:- pred union_list(list(set_tree234(T))::in, set_tree234(T)::out)
-    is det.
+:- pred union_list(list(set_tree234(T))::in, set_tree234(T)::out) is det.
 
     % `power_union(A) = B' is true iff `B' is the union of
     % all the sets in `A'
     %
 :- func power_union(set_tree234(set_tree234(T))) = set_tree234(T).
-:- pred power_union(set_tree234(set_tree234(T))::in,
-    set_tree234(T)::out) is det.
+:- pred power_union(set_tree234(set_tree234(T))::in, set_tree234(T)::out)
+    is det.
 
     % `intersect(SetA, SetB) = Set' is true iff `Set' is the intersection of
     % `SetA' and `SetB'.
     %
 :- func intersect(set_tree234(T), set_tree234(T)) = set_tree234(T).
-:- pred intersect(set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::out) is det.
-
-    % `power_intersect(A, B)' is true iff `B' is the intersection of all the
-    % sets in `A'.
-    %
-:- func power_intersect(set_tree234(set_tree234(T))) = set_tree234(T).
-:- pred power_intersect(set_tree234(set_tree234(T))::in,
-    set_tree234(T)::out) is det.
+:- pred intersect(set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::out)
+    is det.
 
     % `intersect_list(A, B)' is true iff `B' is the intersection of all the
     % sets in `A'.
     %
 :- func intersect_list(list(set_tree234(T))) = set_tree234(T).
-:- pred intersect_list(list(set_tree234(T))::in,
-    set_tree234(T)::out) is det.
+:- pred intersect_list(list(set_tree234(T))::in, set_tree234(T)::out) is det.
+
+    % `power_intersect(A, B)' is true iff `B' is the intersection of all the
+    % sets in `A'.
+    %
+:- func power_intersect(set_tree234(set_tree234(T))) = set_tree234(T).
+:- pred power_intersect(set_tree234(set_tree234(T))::in, set_tree234(T)::out)
+    is det.
 
     % `difference(SetA, SetB, Set)' is true iff `Set' is the set containing all
     % the elements of `SetA' except those that occur in `SetB'.
     %
 :- func difference(set_tree234(T), set_tree234(T)) = set_tree234(T).
-:- pred difference(set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::out) is det.
+:- pred difference(set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::out)
+    is det.
+
+    % intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB):
+    % Given SetA and SetB, return the elements that occur in both sets,
+    % and those that occur only in one or the other.
+    %
+:- pred intersection_and_differences(set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::out, set_tree234(T)::out, set_tree234(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Operations that divide a set into two parts.
+%
+
+    % divide(Pred, Set, TruePart, FalsePart):
+    % TruePart consists of those elements of Set for which Pred succeeds;
+    % FalsePart consists of those elements of Set for which Pred fails.
+    %
+:- pred divide(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in, set_tree234(T)::out, set_tree234(T)::out) is det.
+
+    % divide_by_set(DivideBySet, Set, InPart, OutPart):
+    % InPart consists of those elements of Set which are also in
+    % DivideBySet; OutPart consists of those elements of which are
+    % not in DivideBySet.
+    %
+:- pred divide_by_set(set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::out, set_tree234(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Converting lists to sets.
+%
+
+    % `list_to_set(List) = Set' is true iff `Set' is the set containing
+    % only the members of `List'.
+    %
+:- func list_to_set(list(T)) = set_tree234(T).
+:- pred list_to_set(list(T)::in, set_tree234(T)::out) is det.
+
+:- func from_list(list(T)) = set_tree234(T).
+:- pred from_list(list(T)::in, set_tree234(T)::out) is det.
+
+    % `sorted_list_to_set(List) = Set' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in ascending order.
+    %
+:- func sorted_list_to_set(list(T)) = set_tree234(T).
+:- pred sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
+
+    % `rev_sorted_list_to_set(List) = Set' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in descending order.
+    %
+:- func rev_sorted_list_to_set(list(T)) = set_tree234(T).
+:- pred rev_sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Converting sets to lists.
+%
+
+    % `to_sorted_list(Set) = List' is true iff `List' is the list of all the
+    % members of `Set', in sorted order.
+    %
+:- func to_sorted_list(set_tree234(T)) = list(T).
+:- pred to_sorted_list(set_tree234(T)::in, list(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Converting between different kinds of sets.
+%
+
+    % `from_set(Set)' returns a set_tree234 containing only
+    % the members of `Set'. Takes O(card(Set)) time and space.
+    %
+:- func from_set(set.set(T)) = set_tree234(T).
+
+    % `to_sorted_list(Set)' returns a set.set containing all the members of
+    % `Set', in sorted order. Takes O(card(Set)) time and space.
+    %
+:- func to_set(set_tree234(T)) = set.set(T).
+
+%---------------------------------------------------------------------------%
+%
+% Counting.
+%
 
     % `count(Set, Count)' is true iff `Set' has `Count' elements.
     %
 :- func count(set_tree234(T)) = int.
 
-:- func map(func(T1) = T2, set_tree234(T1)) = set_tree234(T2).
-:- pred map(pred(T1, T2)::in(pred(in, out) is det),
-    set_tree234(T1)::in, set_tree234(T2)::out) is det.
+%---------------------------------------------------------------------------%
+%
+% Standard higher order functions on collections.
+%
 
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds for all the
+    % elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in) is semidet.
+
+    % Return the set of items for which the predicate succeeds.
+    %
+:- func filter(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in) = (set_tree234(T)::out) is det.
+:- pred filter(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in, set_tree234(T)::out) is det.
+
+    % Return the set of items for which the predicate succeeds,
+    % and the set for which it fails.
+    %
+:- pred filter(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in, set_tree234(T)::out, set_tree234(T)::out) is det.
+
+:- func filter_map(func(T1) = T2, set_tree234(T1)) = set_tree234(T2).
+:- mode filter_map(func(in) = out is semidet, in) = out is det.
 :- pred filter_map(pred(T1, T2)::in(pred(in, out) is semidet),
     set_tree234(T1)::in, set_tree234(T2)::out) is det.
 
-:- func filter_map(func(T1) = T2, set_tree234(T1))
-    = set_tree234(T2).
-:- mode filter_map(func(in) = out is semidet, in) = out is det.
+:- func map(func(T1) = T2, set_tree234(T1)) = set_tree234(T2).
+:- pred map(pred(T1, T2)::in(pred(in, out) is det),
+    set_tree234(T1)::in, set_tree234(T2)::out) is det.
 
 :- func fold(func(T1, T2) = T2, set_tree234(T1), T2) = T2.
 :- pred fold(pred(T1, T2, T2), set_tree234(T1), T2, T2).
@@ -448,48 +544,6 @@
     pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds for all the
-    % elements of Set.
-    %
-:- pred all_true(pred(T)::in(pred(in) is semidet),
-    set_tree234(T)::in) is semidet.
-
-    % Return the set of items for which the predicate succeeds.
-    %
-:- func filter(pred(T)::in(pred(in) is semidet),
-    set_tree234(T)::in) = (set_tree234(T)::out) is det.
-:- pred filter(pred(T)::in(pred(in) is semidet),
-    set_tree234(T)::in, set_tree234(T)::out) is det.
-
-    % Return the set of items for which the predicate succeeds,
-    % and the set for which it fails.
-    %
-:- pred filter(pred(T)::in(pred(in) is semidet),
-    set_tree234(T)::in, set_tree234(T)::out, set_tree234(T)::out) is det.
-
-    % divide(Pred, Set, TruePart, FalsePart):
-    % TruePart consists of those elements of Set for which Pred succeeds;
-    % FalsePart consists of those elements of Set for which Pred fails.
-    %
-:- pred divide(pred(T)::in(pred(in) is semidet),
-    set_tree234(T)::in, set_tree234(T)::out, set_tree234(T)::out) is det.
-
-    % divide_by_set(DivideBySet, Set, InPart, OutPart):
-    % InPart consists of those elements of Set which are also in
-    % DivideBySet; OutPart consists of those elements of which are
-    % not in DivideBySet.
-    %
-:- pred divide_by_set(set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::out, set_tree234(T)::out) is det.
-
-    % intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB):
-    % Given SetA and SetB, return the elements that occur in both sets,
-    % and those that occur only in one or the other.
-    %
-:- pred intersection_and_differences(set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::out, set_tree234(T)::out, set_tree234(T)::out) is det.
-
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -524,6 +578,31 @@
     ;       three(T, T, set_tree234(T), set_tree234(T), set_tree234(T))
     ;       four(T, T, T, set_tree234(T), set_tree234(T),
                 set_tree234(T), set_tree234(T)).
+
+:- inst two(E, T) for set_tree234/1
+    --->    two(E, T, T).
+:- inst three(E, T) for set_tree234/1
+    --->    three(E, E, T, T, T).
+:- inst four(E, T) for set_tree234/1
+    --->    four(E, E, E, T, T, T, T).
+
+:- mode out_two == out(two(ground, ground)).
+:- mode in_two  == in(two(ground, ground)).
+:- mode in_three  == in(three(ground, ground)).
+:- mode in_four  == in(four(ground, ground)).
+
+% XXX
+% :- mode uo_two  == out(uniq_two(unique, unique)).
+% :- mode suo_two == out(uniq_two(ground, uniq_tree234_gg)).
+%
+% :- mode di_two  == di(uniq_two(unique, unique)).
+% :- mode sdi_two == di(uniq_two(ground, uniq_tree234_gg)).
+%
+% :- mode di_three  == di(uniq_three(unique, unique)).
+% :- mode sdi_three == di(uniq_three(ground, uniq_tree234_gg)).
+%
+% :- mode di_four  == di(uniq_four(unique, unique)).
+% :- mode sdi_four == di(uniq_four(ground, uniq_tree234_gg)).
 
 % :- inst uniq_set_tree234(T) == unique(
 %     (
@@ -566,7 +645,7 @@ singleton_set(X, two(X, empty, empty)).
 
 make_singleton_set(X) = two(X, empty, empty).
 
-is_singleton(two(X, empty, empty), X).
+%---------------------------------------------------------------------------%
 
 empty(empty).
 
@@ -579,6 +658,10 @@ non_empty(four(_, _, _, _, _, _, _)).
 is_non_empty(two(_, _, _)).
 is_non_empty(three(_, _, _, _, _)).
 is_non_empty(four(_, _, _, _, _, _, _)).
+
+is_singleton(two(X, empty, empty), X).
+
+%---------------------------------------------------------------------------%
 
 :- pragma promise_equivalent_clauses(member/2).
 
@@ -626,6 +709,9 @@ all_members(four(E0, E1, E2, T0, T1, T2, T3), E) :-
     ;
         all_members(T3, E)
     ).
+
+is_member(T, E) = R :-
+    is_member(T, E, R).
 
 is_member(T, E, R) :-
     (
@@ -702,444 +788,8 @@ is_member(T, E, R) :-
         )
     ).
 
-is_member(T, E) = R :-
-    is_member(T, E, R).
-
 contains(T, E) :-
     is_member(T, E, yes).
-
-%---------------------------------------------------------------------------%
-
-list_to_set(List) = Tree :-
-    list_to_set(List, Tree).
-
-list_to_set(List, Tree) :-
-    list.sort_and_remove_dups(List, SortedList),
-    sorted_list_to_set(SortedList, Tree).
-
-% We used to use this loop to implement list_to_set, but sorting the list
-% and then building the tree directly from the result is faster.
-%
-% :- pred list_to_set_loop(list(E)::in,
-%     set_tree234(E)::in, set_tree234(E)::out) is det.
-% 
-% list_to_set_loop([], !Tree).
-% list_to_set_loop([E | Es], !Tree) :-
-%     insert(E, !Tree),
-%     list_to_set_loop(Es, !Tree).
-
-from_list(List) = list_to_set(List).
-
-from_list(List, Tree) :-
-    Tree = list_to_set(List).
-
-from_set(Set) =
-    sorted_list_to_set(set.to_sorted_list(Set)).
-
-%---------------------------------------------------------------------------%
-
-sorted_list_to_set(List) = Tree :-
-    sorted_list_to_set(List, Tree).
-
-sorted_list_to_set(List, Tree) :-
-    list.length(List, Len),
-    ( if Len = 0 then
-        % We can handle the Len = 0 case here just once, or we can handle it
-        % lots of times in do_from_sorted_list. The former is more efficient.
-        Tree = empty
-    else
-        find_num_234_levels(Len, Level, AllThrees),
-        do_from_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
-        trace [compiletime(flag("set_tree234_sanity_checks"))] (
-            expect(unify(LeftOver, []), $pred, "leftovers")
-        )
-    ).
-
-:- pred do_from_sorted_list(int::in, list(E)::in, list(E)::out,
-    int::in, int::in, set_tree234(E)::out) is det.
-
-do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
-    ( if Level0 = 1 then
-        ( if Len = 1 then
-            (
-                !.List = [E1 | !:List],
-                Tree = two(E1, empty, empty)
-            ;
-                !.List = [],
-                unexpected($pred, "len 1 nil")
-            )
-        else if Len = 2 then
-            trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                expect(unify(Level0, 1), $pred, "Len = 2 but Level != 1")
-            ),
-            (
-                !.List = [E1, E2 | !:List],
-                Tree = three(E1, E2, empty, empty, empty)
-            ;
-                !.List = [_],
-                unexpected($pred, "len 2 one")
-            ;
-                !.List = [],
-                unexpected($pred, "len 2 nil")
-            )
-        else
-            unexpected($pred, "level 1, but len not 1 or 2")
-        )
-    else
-        Level = Level0 - 1,
-        AllThrees = (AllThrees0 - 2) / 3,
-        ( if Len > 2 * AllThrees then
-            BaseSubLen = (Len / 3),
-            Diff = Len - (BaseSubLen * 3),
-            ( if Diff = 0 then
-                % Len = BaseSubLen * 3:
-                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen - 1,
-                SubLen3 = BaseSubLen - 1
-            else if Diff = 1 then
-                % Len = BaseSubLen * 3 + 1:
-                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen,
-                SubLen3 = BaseSubLen - 1
-            else
-                trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                    expect(unify(Diff, 2), $pred, "Diff != 2")
-                ),
-                % Len = BaseSubLen * 3 + 2:
-                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen,
-                SubLen3 = BaseSubLen
-            ),
-
-            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
-                io.output_stream(SplitStream, !IO),
-                io.format(SplitStream,
-                    "splitting %d into three: %d, %d, %d\n",
-                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
-            ),
-
-            do_from_sorted_list(SubLen1, !List, Level, AllThrees, SubTree1),
-            (
-                !.List = [E1 | !:List]
-            ;
-                !.List = [],
-                unexpected($pred, "tree E1 nil")
-            ),
-            do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
-            (
-                !.List = [E2 | !:List]
-            ;
-                !.List = [],
-                unexpected($pred, "tree E2 nil")
-            ),
-            do_from_sorted_list(SubLen3, !List, Level, AllThrees, SubTree3),
-            Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
-            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
-                io.output_stream(TreeStream, !IO),
-                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
-                io.write(TreeStream, Tree, !IO),
-                io.nl(TreeStream, !IO)
-            )
-        else
-            BaseSubLen = (Len) / 2,
-            Diff = Len - (BaseSubLen * 2),
-            ( if Diff = 0 then
-                % Len = BaseSubLen * 2:
-                % (BaseSubLen) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen - 1
-            else
-                trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                    expect(unify(Diff, 1), $pred, "Diff != 1")
-                ),
-                % Len = BaseSubLen * 2 + 1:
-                % (BaseSubLen) + 1 + (BaseSubLen)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen
-            ),
-
-            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
-                io.output_stream(SplitStream, !IO),
-                io.format(SplitStream,
-                    "splitting %d into two: %d, %d\n",
-                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
-            ),
-
-            do_from_sorted_list(SubLen1, !List, Level, AllThrees, SubTree1),
-            (
-                !.List = [E1 | !:List]
-            ;
-                !.List = [],
-                unexpected($pred, "two E1 nil")
-            ),
-            do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
-            Tree = two(E1, SubTree1, SubTree2),
-            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
-                io.output_stream(TreeStream, !IO),
-                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
-                io.write(TreeStream, Tree, !IO),
-                io.nl(TreeStream, !IO)
-            )
-        )
-    ).
-
-rev_sorted_list_to_set(List) = Tree :-
-    rev_sorted_list_to_set(List, Tree).
-
-rev_sorted_list_to_set(List, Tree) :-
-    list.length(List, Len),
-    ( if Len = 0 then
-        % We can handle the Len = 0 case here just once, or we can handle it
-        % lots of times in do_from_sorted_list. The former is more efficient.
-        Tree = empty
-    else
-        find_num_234_levels(Len, Level, AllThrees),
-        do_from_rev_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
-        trace [compiletime(flag("set_tree234_sanity_checks"))] (
-            expect(unify(LeftOver, []), $pred, "leftovers")
-        )
-    ).
-
-:- pred do_from_rev_sorted_list(int::in, list(E)::in, list(E)::out,
-    int::in, int::in, set_tree234(E)::out) is det.
-
-do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
-    ( if Level0 = 1 then
-        ( if Len = 1 then
-            (
-                !.List = [E1 | !:List],
-                Tree = two(E1, empty, empty)
-            ;
-                !.List = [],
-                unexpected($pred, "len 1 nil")
-            )
-        else if Len = 2 then
-            trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                expect(unify(Level0, 1), $pred, "Len = 2 but Level != 1")
-            ),
-            (
-                !.List = [E2, E1 | !:List],
-                Tree = three(E1, E2, empty, empty, empty)
-            ;
-                !.List = [_],
-                unexpected($pred, "len 2 one")
-            ;
-                !.List = [],
-                unexpected($pred, "len 2 nil")
-            )
-        else
-            unexpected($pred, "level 1, but len not 1 or 2")
-        )
-    else
-        Level = Level0 - 1,
-        AllThrees = (AllThrees0 - 2) / 3,
-        ( if Len > 2 * AllThrees then
-            BaseSubLen = (Len / 3),
-            Diff = Len - (BaseSubLen * 3),
-            ( if Diff = 0 then
-                % Len = BaseSubLen * 3:
-                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen - 1,
-                SubLen3 = BaseSubLen - 1
-            else if Diff = 1 then
-                % Len = BaseSubLen * 3 + 1:
-                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen,
-                SubLen3 = BaseSubLen - 1
-            else
-                trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                    expect(unify(Diff, 2), $pred, "Diff != 2")
-                ),
-                % Len = BaseSubLen * 3 + 2:
-                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen,
-                SubLen3 = BaseSubLen
-            ),
-
-            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
-                io.output_stream(SplitStream, !IO),
-                io.format(SplitStream,
-                    "splitting %d into three: %d, %d, %d\n",
-                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
-            ),
-
-            do_from_rev_sorted_list(SubLen3, !List, Level, AllThrees,
-                SubTree3),
-            (
-                !.List = [E2 | !:List]
-            ;
-                !.List = [],
-                unexpected($pred, "tree E2 nil")
-            ),
-            do_from_rev_sorted_list(SubLen2, !List, Level, AllThrees,
-                SubTree2),
-            (
-                !.List = [E1 | !:List]
-            ;
-                !.List = [],
-                unexpected($pred, "tree E1 nil")
-            ),
-            do_from_rev_sorted_list(SubLen1, !List, Level, AllThrees,
-                SubTree1),
-            Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
-            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
-                io.output_stream(TreeStream, !IO),
-                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
-                io.write(TreeStream, Tree, !IO),
-                io.nl(TreeStream, !IO)
-            )
-        else
-            BaseSubLen = (Len) / 2,
-            Diff = Len - (BaseSubLen * 2),
-            ( if Diff = 0 then
-                % Len = BaseSubLen * 2:
-                % (BaseSubLen) + 1 + (BaseSubLen - 1)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen - 1
-            else
-                trace [compiletime(flag("set_tree234_sanity_checks"))] (
-                    expect(unify(Diff, 1), $pred, "Diff != 1")
-                ),
-                % Len = BaseSubLen * 2 + 1:
-                % (BaseSubLen) + 1 + (BaseSubLen)
-                SubLen1 = BaseSubLen,
-                SubLen2 = BaseSubLen
-            ),
-
-            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
-                io.output_stream(SplitStream, !IO),
-                io.format(SplitStream,
-                    "splitting %d into two: %d, %d\n",
-                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
-            ),
-
-            do_from_rev_sorted_list(SubLen2, !List, Level, AllThrees,
-                SubTree2),
-            (
-                !.List = [E1 | !:List]
-            ;
-                !.List = [],
-                unexpected($pred, "two E1 nil")
-            ),
-            do_from_rev_sorted_list(SubLen1, !List, Level, AllThrees,
-                SubTree1),
-            Tree = two(E1, SubTree1, SubTree2),
-            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
-                io.output_stream(TreeStream, !IO),
-                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
-                io.write(TreeStream, Tree, !IO),
-                io.nl(TreeStream, !IO)
-            )
-        )
-    ).
-
-:- pred find_num_234_levels(int::in, int::out, int::out) is det.
-
-find_num_234_levels(Len, Level, AllThrees) :-
-    find_num_234_levels_loop(Len, 0, Level, 0, AllThrees).
-
-:- pred find_num_234_levels_loop(int::in,
-    int::in, int::out, int::in, int::out) is det.
-
-find_num_234_levels_loop(Len, Level0, Level, !AllThrees) :-
-    ( if Len =< !.AllThrees then
-        Level = Level0
-    else
-        Level1 = Level0 + 1,
-        !:AllThrees = !.AllThrees * 3 + 2,
-        find_num_234_levels_loop(Len, Level1, Level, !AllThrees)
-    ).
-
-%---------------------------------------------------------------------------%
-
-to_sorted_list(Tree) = List :-
-    to_sorted_list_2(Tree, [], List).
-
-to_sorted_list(Tree, List) :-
-    to_sorted_list_2(Tree, [], List).
-
-:- pred to_sorted_list_2(set_tree234(T)::in,
-    list(T)::in, list(T)::out) is det.
-
-to_sorted_list_2(empty, L, L).
-to_sorted_list_2(two(E0, T0, T1), L0, L) :-
-    to_sorted_list_2(T1, L0, L1),
-    to_sorted_list_2(T0, [E0 | L1], L).
-to_sorted_list_2(three(E0, E1, T0, T1, T2), L0, L) :-
-    to_sorted_list_2(T2, L0, L1),
-    to_sorted_list_2(T1, [E1 | L1], L2),
-    to_sorted_list_2(T0, [E0 | L2], L).
-to_sorted_list_2(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
-    to_sorted_list_2(T3, L0, L1),
-    to_sorted_list_2(T2, [E2 | L1], L2),
-    to_sorted_list_2(T1, [E1 | L2], L3),
-    to_sorted_list_2(T0, [E0 | L3], L).
-
-to_set(Tree) =
-    set.sorted_list_to_set(to_sorted_list(Tree)).
-
-%---------------------------------------------------------------------------%
-
-equal(SetA, SetB) :-
-    to_sorted_list(SetA, ListA),
-    to_sorted_list(SetB, ListB),
-    ListA = ListB.
-
-subset(empty, _Set).
-subset(two(E, T0, T1), Set) :-
-    subset(T0, Set),
-    contains(Set, E),
-    subset(T1, Set).
-subset(three(E0, E1, T0, T1, T2), Set) :-
-    subset(T0, Set),
-    contains(Set, E0),
-    subset(T1, Set),
-    contains(Set, E1),
-    subset(T2, Set).
-subset(four(E0, E1, E2, T0, T1, T2, T3), Set) :-
-    subset(T0, Set),
-    contains(Set, E0),
-    subset(T1, Set),
-    contains(Set, E1),
-    subset(T2, Set),
-    contains(Set, E2),
-    subset(T3, Set).
-
-superset(SuperSet, Set) :-
-    subset(Set, SuperSet).
-
-%---------------------------------------------------------------------------%
-
-:- inst two(E, T) for set_tree234/1
-    --->    two(E, T, T).
-:- inst three(E, T) for set_tree234/1
-    --->    three(E, E, T, T, T).
-:- inst four(E, T) for set_tree234/1
-    --->    four(E, E, E, T, T, T, T).
-
-:- mode out_two == out(two(ground, ground)).
-:- mode in_two  == in(two(ground, ground)).
-:- mode in_three  == in(three(ground, ground)).
-:- mode in_four  == in(four(ground, ground)).
-
-% XXX
-% :- mode uo_two  == out(uniq_two(unique, unique)).
-% :- mode suo_two == out(uniq_two(ground, uniq_tree234_gg)).
-%
-% :- mode di_two  == di(uniq_two(unique, unique)).
-% :- mode sdi_two == di(uniq_two(ground, uniq_tree234_gg)).
-%
-% :- mode di_three  == di(uniq_three(unique, unique)).
-% :- mode sdi_three == di(uniq_three(ground, uniq_tree234_gg)).
-%
-% :- mode di_four  == di(uniq_four(unique, unique)).
-% :- mode sdi_four == di(uniq_four(ground, uniq_tree234_gg)).
 
 %---------------------------------------------------------------------------%
 
@@ -1177,8 +827,7 @@ insert(E, Tin, Tout) :-
         )
     ).
 
-:- pred insert2(T::in,
-    set_tree234(T)::in_two, set_tree234(T)::out) is det.
+:- pred insert2(T::in, set_tree234(T)::in_two, set_tree234(T)::out) is det.
 :- pragma type_spec(insert2(in, in_two, out), T = var(_)).
 
 insert2(E, Tin, Tout) :-
@@ -1272,8 +921,7 @@ insert2(E, Tin, Tout) :-
         )
     ).
 
-:- pred insert3(T::in,
-    set_tree234(T)::in_three, set_tree234(T)::out) is det.
+:- pred insert3(T::in, set_tree234(T)::in_three, set_tree234(T)::out) is det.
 :- pragma type_spec(insert3(in, in_three, out), T = var(_)).
 
 insert3(E, Tin, Tout) :-
@@ -1418,7 +1066,7 @@ insert3(E, Tin, Tout) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 insert_new(E, Tin, Tout) :-
     (
@@ -1682,18 +1330,6 @@ insert_new3(E, Tin, Tout) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
-
-insert_list(Es, Set0) = Set :-
-    insert_list(Es, Set0, Set).
-
-insert_list([], !Set).
-insert_list([E | Es], !Set) :-
-    insert(E, !Set),
-    insert_list(Es, !Set).
-
-%---------------------------------------------------------------------------%
-
 :- pred split_four(set_tree234(E)::in_four, E::out,
     set_tree234(E)::out_two, set_tree234(E)::out_two) is det.
 
@@ -1703,7 +1339,17 @@ split_four(Tin, MidE, Sub0, Sub1) :-
     MidE = E1,
     Sub1 = two(E2, T2, T3).
 
-%---------------------------------------------------------------------------%
+%---------------------%
+
+insert_list(Es, Set0) = Set :-
+    insert_list(Es, Set0, Set).
+
+insert_list([], !Set).
+insert_list([E | Es], !Set) :-
+    insert(E, !Set),
+    insert_list(Es, !Set).
+
+%---------------------%
 
 delete(E, Tin) = Tout :-
     delete(E, Tin, Tout).
@@ -1943,6 +1589,8 @@ delete_2(E, Tin, Tout, RH) :-
         )
     ).
 
+%---------------------%
+
 delete_list(SetA, SetB) = Set:-
     delete_list(SetA, SetB, Set).
 
@@ -1951,7 +1599,7 @@ delete_list([E | Es], !Set) :-
     delete(E, !Set),
     delete_list(Es, !Set).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove(E, Tin, Tout) :-
     % We use the same algorithm as delete.
@@ -2190,7 +1838,7 @@ remove_list([E | Es], !Set) :-
     remove(E, !Set),
     remove_list(Es, !Set).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove_least(E, Tin, Tout) :-
     % The algorithm we use similar to delete, except that we
@@ -2257,15 +1905,16 @@ do_remove_least(Tin, E, Tout, RH) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
-
-    % The input to the following group of predicates are the components
-    % of a two-, three- or four-node in which the height of the indicated
-    % subtree is one less that it should be. If it is possible to increase
-    % the height of that subtree by moving into it elements from its
-    % neighboring subtrees, do so, and return the resulting tree with RH
-    % set to no. Otherwise, return a balanced tree whose height is reduced
-    % by one, with RH set to yes to indicate the reduced height.
+%---------------------%
+%
+% The input to the following group of predicates are the components
+% of a two-, three- or four-node in which the height of the indicated
+% subtree is one less that it should be. If it is possible to increase
+% the height of that subtree by moving into it elements from its
+% neighboring subtrees, do so, and return the resulting tree with RH
+% set to no. Otherwise, return a balanced tree whose height is reduced
+% by one, with RH set to yes to indicate the reduced height.
+%
 
 :- pred fix_2node_t0(E::in, set_tree234(E)::in, set_tree234(E)::in,
     set_tree234(E)::out, bool::out) is det.
@@ -2559,6 +2208,36 @@ fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
 
 %---------------------------------------------------------------------------%
 
+equal(SetA, SetB) :-
+    to_sorted_list(SetA, ListA),
+    to_sorted_list(SetB, ListB),
+    ListA = ListB.
+
+subset(empty, _Set).
+subset(two(E, T0, T1), Set) :-
+    subset(T0, Set),
+    contains(Set, E),
+    subset(T1, Set).
+subset(three(E0, E1, T0, T1, T2), Set) :-
+    subset(T0, Set),
+    contains(Set, E0),
+    subset(T1, Set),
+    contains(Set, E1),
+    subset(T2, Set).
+subset(four(E0, E1, E2, T0, T1, T2, T3), Set) :-
+    subset(T0, Set),
+    contains(Set, E0),
+    subset(T1, Set),
+    contains(Set, E1),
+    subset(T2, Set),
+    contains(Set, E2),
+    subset(T3, Set).
+
+superset(SuperSet, Set) :-
+    subset(Set, SuperSet).
+
+%---------------------------------------------------------------------------%
+
 union(SetA, SetB) = Set :-
     union(SetA, SetB, Set).
 
@@ -2637,7 +2316,7 @@ power_union_2(four(E0, E1, E2, T0, T1, T2, T3), !Union) :-
     union(E2, !Union),
     power_union_2(T3, !Union).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 intersect(SetA, SetB) = Set :-
     intersect(SetA, SetB, Set).
@@ -2728,7 +2407,7 @@ power_intersect(Sets) = Intersect :-
 power_intersect(Sets, Intersect) :-
     Intersect = intersect_list(to_sorted_list(Sets)).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 difference(SetA, SetB) = Diff :-
     difference(SetA, SetB, Diff).
@@ -2759,6 +2438,505 @@ difference_2(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
     delete(E2, !Set),
     difference_2(T3, !Set).
 
+%---------------------%
+
+intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB) :-
+    ListA = to_sorted_list(SetA),
+    ListB = to_sorted_list(SetB),
+    intersection_and_differences_loop(ListA, ListB,
+        cord.init, CordInAandB,
+        cord.init, CordOnlyInA,
+        cord.init, CordOnlyInB),
+    InAandB = sorted_list_to_set(cord.list(CordInAandB)),
+    OnlyInA = sorted_list_to_set(cord.list(CordOnlyInA)),
+    OnlyInB = sorted_list_to_set(cord.list(CordOnlyInB)).
+
+:- pred intersection_and_differences_loop(list(T)::in, list(T)::in,
+    cord(T)::in, cord(T)::out,
+    cord(T)::in, cord(T)::out,
+    cord(T)::in, cord(T)::out) is det.
+
+intersection_and_differences_loop(As, Bs, !InAandB, !OnlyInA, !OnlyInB) :-
+    (
+        As = [],
+        Bs = []
+    ;
+        As = [],
+        Bs = [_ | _],
+        !:OnlyInB = !.OnlyInB ++ cord.from_list(Bs)
+    ;
+        As = [_ | _],
+        Bs = [],
+        !:OnlyInA = !.OnlyInA ++ cord.from_list(As)
+    ;
+        As = [HeadA | TailAs],
+        Bs = [HeadB | TailBs],
+        compare(Cmp, HeadA, HeadB),
+        (
+            Cmp = (=),
+            !:InAandB = cord.snoc(!.InAandB, HeadA),
+            intersection_and_differences_loop(TailAs, TailBs,
+                !InAandB, !OnlyInA, !OnlyInB)
+        ;
+            Cmp = (<),
+            !:OnlyInA = cord.snoc(!.OnlyInA, HeadA),
+            intersection_and_differences_loop(TailAs, Bs,
+                !InAandB, !OnlyInA, !OnlyInB)
+        ;
+            Cmp = (>),
+            !:OnlyInB = cord.snoc(!.OnlyInB, HeadB),
+            intersection_and_differences_loop(As, TailBs,
+                !InAandB, !OnlyInA, !OnlyInB)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+divide(Pred, Set, TrueSet, FalseSet) :-
+    do_divide(Pred, Set, [], RevTrues, [], RevFalses),
+    TrueSet = rev_sorted_list_to_set(RevTrues),
+    FalseSet = rev_sorted_list_to_set(RevFalses).
+
+:- pred do_divide(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in,
+    list(T)::in, list(T)::out, list(T)::in, list(T)::out) is det.
+
+do_divide(Pred, Tin, !RevTrues, !RevFalses) :-
+    (
+        Tin = empty
+    ;
+        Tin = two(E0, T0, T1),
+        do_divide(Pred, T0, !RevTrues, !RevFalses),
+        ( if Pred(E0) then
+            !:RevTrues = [E0 | !.RevTrues]
+        else
+            !:RevFalses = [E0 | !.RevFalses]
+        ),
+        do_divide(Pred, T1, !RevTrues, !RevFalses)
+    ;
+        Tin = three(E0, E1, T0, T1, T2),
+        do_divide(Pred, T0, !RevTrues, !RevFalses),
+        ( if Pred(E0) then
+            !:RevTrues = [E0 | !.RevTrues]
+        else
+            !:RevFalses = [E0 | !.RevFalses]
+        ),
+        do_divide(Pred, T1, !RevTrues, !RevFalses),
+        ( if Pred(E1) then
+            !:RevTrues = [E1 | !.RevTrues]
+        else
+            !:RevFalses = [E1 | !.RevFalses]
+        ),
+        do_divide(Pred, T2, !RevTrues, !RevFalses)
+    ;
+        Tin = four(E0, E1, E2, T0, T1, T2, T3),
+        do_divide(Pred, T0, !RevTrues, !RevFalses),
+        ( if Pred(E0) then
+            !:RevTrues = [E0 | !.RevTrues]
+        else
+            !:RevFalses = [E0 | !.RevFalses]
+        ),
+        do_divide(Pred, T1, !RevTrues, !RevFalses),
+        ( if Pred(E1) then
+            !:RevTrues = [E1 | !.RevTrues]
+        else
+            !:RevFalses = [E1 | !.RevFalses]
+        ),
+        do_divide(Pred, T2, !RevTrues, !RevFalses),
+        ( if Pred(E2) then
+            !:RevTrues = [E2 | !.RevTrues]
+        else
+            !:RevFalses = [E2 | !.RevFalses]
+        ),
+        do_divide(Pred, T3, !RevTrues, !RevFalses)
+    ).
+
+divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
+    % XXX This should be more efficient.
+    divide(contains(DivideBySet), Set, TrueSet, FalseSet).
+
+%---------------------------------------------------------------------------%
+
+list_to_set(List) = Tree :-
+    list_to_set(List, Tree).
+
+list_to_set(List, Tree) :-
+    list.sort_and_remove_dups(List, SortedList),
+    sorted_list_to_set(SortedList, Tree).
+
+% We used to use this loop to implement list_to_set, but sorting the list
+% and then building the tree directly from the result is faster.
+%
+% :- pred list_to_set_loop(list(E)::in,
+%     set_tree234(E)::in, set_tree234(E)::out) is det.
+%
+% list_to_set_loop([], !Tree).
+% list_to_set_loop([E | Es], !Tree) :-
+%     insert(E, !Tree),
+%     list_to_set_loop(Es, !Tree).
+
+from_list(List) = list_to_set(List).
+
+from_list(List, Tree) :-
+    Tree = list_to_set(List).
+
+%---------------------%
+
+sorted_list_to_set(List) = Tree :-
+    sorted_list_to_set(List, Tree).
+
+sorted_list_to_set(List, Tree) :-
+    list.length(List, Len),
+    ( if Len = 0 then
+        % We can handle the Len = 0 case here just once, or we can handle it
+        % lots of times in do_from_sorted_list. The former is more efficient.
+        Tree = empty
+    else
+        find_num_234_levels(Len, Level, AllThrees),
+        do_from_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
+        trace [compiletime(flag("set_tree234_sanity_checks"))] (
+            expect(unify(LeftOver, []), $pred, "leftovers")
+        )
+    ).
+
+:- pred do_from_sorted_list(int::in, list(E)::in, list(E)::out,
+    int::in, int::in, set_tree234(E)::out) is det.
+
+do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
+    ( if Level0 = 1 then
+        ( if Len = 1 then
+            (
+                !.List = [E1 | !:List],
+                Tree = two(E1, empty, empty)
+            ;
+                !.List = [],
+                unexpected($pred, "len 1 nil")
+            )
+        else if Len = 2 then
+            trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                expect(unify(Level0, 1), $pred, "Len = 2 but Level != 1")
+            ),
+            (
+                !.List = [E1, E2 | !:List],
+                Tree = three(E1, E2, empty, empty, empty)
+            ;
+                !.List = [_],
+                unexpected($pred, "len 2 one")
+            ;
+                !.List = [],
+                unexpected($pred, "len 2 nil")
+            )
+        else
+            unexpected($pred, "level 1, but len not 1 or 2")
+        )
+    else
+        Level = Level0 - 1,
+        AllThrees = (AllThrees0 - 2) / 3,
+        ( if Len > 2 * AllThrees then
+            BaseSubLen = (Len / 3),
+            Diff = Len - (BaseSubLen * 3),
+            ( if Diff = 0 then
+                % Len = BaseSubLen * 3:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1,
+                SubLen3 = BaseSubLen - 1
+            else if Diff = 1 then
+                % Len = BaseSubLen * 3 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen - 1
+            else
+                trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                    expect(unify(Diff, 2), $pred, "Diff != 2")
+                ),
+                % Len = BaseSubLen * 3 + 2:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
+                io.output_stream(SplitStream, !IO),
+                io.format(SplitStream,
+                    "splitting %d into three: %d, %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
+            ),
+
+            do_from_sorted_list(SubLen1, !List, Level, AllThrees, SubTree1),
+            (
+                !.List = [E1 | !:List]
+            ;
+                !.List = [],
+                unexpected($pred, "tree E1 nil")
+            ),
+            do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
+            (
+                !.List = [E2 | !:List]
+            ;
+                !.List = [],
+                unexpected($pred, "tree E2 nil")
+            ),
+            do_from_sorted_list(SubLen3, !List, Level, AllThrees, SubTree3),
+            Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
+            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
+                io.output_stream(TreeStream, !IO),
+                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
+                io.write(TreeStream, Tree, !IO),
+                io.nl(TreeStream, !IO)
+            )
+        else
+            BaseSubLen = (Len) / 2,
+            Diff = Len - (BaseSubLen * 2),
+            ( if Diff = 0 then
+                % Len = BaseSubLen * 2:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1
+            else
+                trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                    expect(unify(Diff, 1), $pred, "Diff != 1")
+                ),
+                % Len = BaseSubLen * 2 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
+                io.output_stream(SplitStream, !IO),
+                io.format(SplitStream,
+                    "splitting %d into two: %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
+            ),
+
+            do_from_sorted_list(SubLen1, !List, Level, AllThrees, SubTree1),
+            (
+                !.List = [E1 | !:List]
+            ;
+                !.List = [],
+                unexpected($pred, "two E1 nil")
+            ),
+            do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
+            Tree = two(E1, SubTree1, SubTree2),
+            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
+                io.output_stream(TreeStream, !IO),
+                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
+                io.write(TreeStream, Tree, !IO),
+                io.nl(TreeStream, !IO)
+            )
+        )
+    ).
+
+%---------------------%
+
+rev_sorted_list_to_set(List) = Tree :-
+    rev_sorted_list_to_set(List, Tree).
+
+rev_sorted_list_to_set(List, Tree) :-
+    list.length(List, Len),
+    ( if Len = 0 then
+        % We can handle the Len = 0 case here just once, or we can handle it
+        % lots of times in do_from_sorted_list. The former is more efficient.
+        Tree = empty
+    else
+        find_num_234_levels(Len, Level, AllThrees),
+        do_from_rev_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
+        trace [compiletime(flag("set_tree234_sanity_checks"))] (
+            expect(unify(LeftOver, []), $pred, "leftovers")
+        )
+    ).
+
+:- pred do_from_rev_sorted_list(int::in, list(E)::in, list(E)::out,
+    int::in, int::in, set_tree234(E)::out) is det.
+
+do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
+    ( if Level0 = 1 then
+        ( if Len = 1 then
+            (
+                !.List = [E1 | !:List],
+                Tree = two(E1, empty, empty)
+            ;
+                !.List = [],
+                unexpected($pred, "len 1 nil")
+            )
+        else if Len = 2 then
+            trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                expect(unify(Level0, 1), $pred, "Len = 2 but Level != 1")
+            ),
+            (
+                !.List = [E2, E1 | !:List],
+                Tree = three(E1, E2, empty, empty, empty)
+            ;
+                !.List = [_],
+                unexpected($pred, "len 2 one")
+            ;
+                !.List = [],
+                unexpected($pred, "len 2 nil")
+            )
+        else
+            unexpected($pred, "level 1, but len not 1 or 2")
+        )
+    else
+        Level = Level0 - 1,
+        AllThrees = (AllThrees0 - 2) / 3,
+        ( if Len > 2 * AllThrees then
+            BaseSubLen = (Len / 3),
+            Diff = Len - (BaseSubLen * 3),
+            ( if Diff = 0 then
+                % Len = BaseSubLen * 3:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1,
+                SubLen3 = BaseSubLen - 1
+            else if Diff = 1 then
+                % Len = BaseSubLen * 3 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen - 1
+            else
+                trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                    expect(unify(Diff, 2), $pred, "Diff != 2")
+                ),
+                % Len = BaseSubLen * 3 + 2:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
+                io.output_stream(SplitStream, !IO),
+                io.format(SplitStream,
+                    "splitting %d into three: %d, %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
+            ),
+
+            do_from_rev_sorted_list(SubLen3, !List, Level, AllThrees,
+                SubTree3),
+            (
+                !.List = [E2 | !:List]
+            ;
+                !.List = [],
+                unexpected($pred, "tree E2 nil")
+            ),
+            do_from_rev_sorted_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [E1 | !:List]
+            ;
+                !.List = [],
+                unexpected($pred, "tree E1 nil")
+            ),
+            do_from_rev_sorted_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
+            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
+                io.output_stream(TreeStream, !IO),
+                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
+                io.write(TreeStream, Tree, !IO),
+                io.nl(TreeStream, !IO)
+            )
+        else
+            BaseSubLen = (Len) / 2,
+            Diff = Len - (BaseSubLen * 2),
+            ( if Diff = 0 then
+                % Len = BaseSubLen * 2:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1
+            else
+                trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                    expect(unify(Diff, 1), $pred, "Diff != 1")
+                ),
+                % Len = BaseSubLen * 2 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
+                io.output_stream(SplitStream, !IO),
+                io.format(SplitStream,
+                    "splitting %d into two: %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
+            ),
+
+            do_from_rev_sorted_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [E1 | !:List]
+            ;
+                !.List = [],
+                unexpected($pred, "two E1 nil")
+            ),
+            do_from_rev_sorted_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            Tree = two(E1, SubTree1, SubTree2),
+            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
+                io.output_stream(TreeStream, !IO),
+                io.format(TreeStream, "tree for %d\n", [i(Len)], !IO),
+                io.write(TreeStream, Tree, !IO),
+                io.nl(TreeStream, !IO)
+            )
+        )
+    ).
+
+%---------------------%
+
+:- pred find_num_234_levels(int::in, int::out, int::out) is det.
+
+find_num_234_levels(Len, Level, AllThrees) :-
+    find_num_234_levels_loop(Len, 0, Level, 0, AllThrees).
+
+:- pred find_num_234_levels_loop(int::in,
+    int::in, int::out, int::in, int::out) is det.
+
+find_num_234_levels_loop(Len, Level0, Level, !AllThrees) :-
+    ( if Len =< !.AllThrees then
+        Level = Level0
+    else
+        Level1 = Level0 + 1,
+        !:AllThrees = !.AllThrees * 3 + 2,
+        find_num_234_levels_loop(Len, Level1, Level, !AllThrees)
+    ).
+
+%---------------------------------------------------------------------------%
+
+to_sorted_list(Tree) = List :-
+    to_sorted_list_2(Tree, [], List).
+
+to_sorted_list(Tree, List) :-
+    to_sorted_list_2(Tree, [], List).
+
+:- pred to_sorted_list_2(set_tree234(T)::in,
+    list(T)::in, list(T)::out) is det.
+
+to_sorted_list_2(empty, L, L).
+to_sorted_list_2(two(E0, T0, T1), L0, L) :-
+    to_sorted_list_2(T1, L0, L1),
+    to_sorted_list_2(T0, [E0 | L1], L).
+to_sorted_list_2(three(E0, E1, T0, T1, T2), L0, L) :-
+    to_sorted_list_2(T2, L0, L1),
+    to_sorted_list_2(T1, [E1 | L1], L2),
+    to_sorted_list_2(T0, [E0 | L2], L).
+to_sorted_list_2(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
+    to_sorted_list_2(T3, L0, L1),
+    to_sorted_list_2(T2, [E2 | L1], L2),
+    to_sorted_list_2(T1, [E1 | L2], L3),
+    to_sorted_list_2(T0, [E0 | L3], L).
+
+%---------------------------------------------------------------------------%
+
+from_set(Set) =
+    sorted_list_to_set(set.to_sorted_list(Set)).
+
+to_set(Tree) =
+    set.sorted_list_to_set(to_sorted_list(Tree)).
+
 %---------------------------------------------------------------------------%
 
 count(empty) = 0.
@@ -2778,48 +2956,239 @@ count(four(_, _, _, T0, T1, T2, T3)) = N :-
     N3 = count(T3),
     N = 3 + N0 + N1 + N2 + N3.
 
-:- pred height(set_tree234(T)::in, int::out) is det.
-
-height(Tree, Height) :-
-    (
-        Tree = empty,
-        Height = 0
-    ;
-        ( Tree = two(_, T0, _)
-        ; Tree = three(_, _, T0, _, _)
-        ; Tree = four(_, _, _, T0, _, _, _)
-        ),
-        height(T0, T0Height),
-        Height = T0Height + 1
-    ).
-
 %---------------------------------------------------------------------------%
 
-fold(Pred, Tree, !A) :-
-    foldl(Pred, Tree, !A).
+all_true(Pred, T) :-
+    (
+        T = empty
+    ;
+        T = two(E0, T0, T1),
+        all_true(Pred, T0),
+        Pred(E0),
+        all_true(Pred, T1)
+    ;
+        T = three(E0, E1, T0, T1, T2),
+        all_true(Pred, T0),
+        Pred(E0),
+        all_true(Pred, T1),
+        Pred(E1),
+        all_true(Pred, T2)
+    ;
+        T = four(E0, E1, E2, T0, T1, T2, T3),
+        all_true(Pred, T0),
+        Pred(E0),
+        all_true(Pred, T1),
+        Pred(E1),
+        all_true(Pred, T2),
+        Pred(E2),
+        all_true(Pred, T3)
+    ).
 
-foldl(_Pred, empty, !A).
-foldl(Pred, two(E, T0, T1), !A) :-
-    foldl(Pred, T0, !A),
-    Pred(E, !A),
-    foldl(Pred, T1, !A).
-foldl(Pred, three(E0, E1, T0, T1, T2), !A) :-
-    foldl(Pred, T0, !A),
-    Pred(E0, !A),
-    foldl(Pred, T1, !A),
-    Pred(E1, !A),
-    foldl(Pred, T2, !A).
-foldl(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
-    foldl(Pred, T0, !A),
-    Pred(E0, !A),
-    foldl(Pred, T1, !A),
-    Pred(E1, !A),
-    foldl(Pred, T2, !A),
-    Pred(E2, !A),
-    foldl(Pred, T3, !A).
+%---------------------%
+
+filter(Pred, Set) = TrueSet :-
+    filter(Pred, Set, TrueSet).
+
+filter(Pred, Set, TrueSet) :-
+    % XXX This should be more efficient.
+    divide(Pred, Set, TrueSet, _FalseSet).
+
+filter(Pred, Set, TrueSet, FalseSet) :-
+    divide(Pred, Set, TrueSet, FalseSet).
+
+%---------------------%
+
+filter_map(Func, SetA) = SetB :-
+    filter_map_func(Func, SetA, [], ListB),
+    SetB = list_to_set(ListB).
+
+:- pred filter_map_func(func(T1) = T2, set_tree234(T1), list(T2), list(T2)).
+:- mode filter_map_func(in(func(in) = out is semidet), in, in, out) is det.
+
+filter_map_func(_Func, empty, !List).
+filter_map_func(Func, Tin, !List) :-
+    Tin = two(E0, T0, T1),
+    filter_map_func(Func, T0, !List),
+    ( if N0 = Func(E0) then
+        !:List = [N0 | !.List]
+    else
+        true
+    ),
+    filter_map_func(Func, T1, !List).
+filter_map_func(Func, Tin, !List) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    filter_map_func(Func, T0, !List),
+    ( if N0 = Func(E0) then
+        !:List = [N0 | !.List]
+    else
+        true
+    ),
+    filter_map_func(Func, T1, !List),
+    ( if N1 = Func(E1) then
+        !:List = [N1 | !.List]
+    else
+        true
+    ),
+    filter_map_func(Func, T2, !List).
+filter_map_func(Func, Tin, !List) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    filter_map_func(Func, T0, !List),
+    ( if N0 = Func(E0) then
+        !:List = [N0 | !.List]
+    else
+        true
+    ),
+    filter_map_func(Func, T1, !List),
+    ( if N1 = Func(E1) then
+        !:List = [N1 | !.List]
+    else
+        true
+    ),
+    filter_map_func(Func, T2, !List),
+    ( if N2 = Func(E2) then
+        !:List = [N2 | !.List]
+    else
+        true
+    ),
+    filter_map_func(Func, T3, !List).
+
+filter_map(Pred, SetA, SetB) :-
+    filter_map_pred(Pred, SetA, [], ListB),
+    SetB = list_to_set(ListB).
+
+:- pred filter_map_pred(
+    pred(T1, T2)::in(pred(in, out) is semidet), set_tree234(T1)::in,
+    list(T2)::in, list(T2)::out) is det.
+
+filter_map_pred(_Pred, empty, !List).
+filter_map_pred(Pred, Tin, !List) :-
+    Tin = two(E0, T0, T1),
+    filter_map_pred(Pred, T0, !List),
+    ( if Pred(E0, N0) then
+        !:List = [N0 | !.List]
+    else
+        true
+    ),
+    filter_map_pred(Pred, T1, !List).
+filter_map_pred(Pred, Tin, !List) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    filter_map_pred(Pred, T0, !List),
+    ( if Pred(E0, N0) then
+        !:List = [N0 | !.List]
+    else
+        true
+    ),
+    filter_map_pred(Pred, T1, !List),
+    ( if Pred(E1, N1) then
+        !:List = [N1 | !.List]
+    else
+        true
+    ),
+    filter_map_pred(Pred, T2, !List).
+filter_map_pred(Pred, Tin, !List) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    filter_map_pred(Pred, T0, !List),
+    ( if Pred(E0, N0) then
+        !:List = [N0 | !.List]
+    else
+        true
+    ),
+    filter_map_pred(Pred, T1, !List),
+    ( if Pred(E1, N1) then
+        !:List = [N1 | !.List]
+    else
+        true
+    ),
+    filter_map_pred(Pred, T2, !List),
+    ( if Pred(E2, N2) then
+        !:List = [N2 | !.List]
+    else
+        true
+    ),
+    filter_map_pred(Pred, T3, !List).
+
+%---------------------%
+
+map(Func, SetA) = SetB :-
+    map_func(Func, SetA, [], ListB),
+    SetB = list_to_set(ListB).
+
+:- pred map_func(func(T1) = T2, set_tree234(T1),
+    list(T2), list(T2)).
+:- mode map_func(in(func(in) = out is det), in, in, out) is det.
+
+map_func(_Func, empty, !List).
+map_func(Func, Tin, !List) :-
+    Tin = two(E0, T0, T1),
+    map_func(Func, T0, !List),
+    N0 = Func(E0),
+    !:List = [N0 | !.List],
+    map_func(Func, T1, !List).
+map_func(Func, Tin, !List) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    map_func(Func, T0, !List),
+    N0 = Func(E0),
+    !:List = [N0 | !.List],
+    map_func(Func, T1, !List),
+    N1 = Func(E1),
+    !:List = [N1 | !.List],
+    map_func(Func, T2, !List).
+map_func(Func, Tin, !List) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    map_func(Func, T0, !List),
+    N0 = Func(E0),
+    !:List = [N0 | !.List],
+    map_func(Func, T1, !List),
+    N1 = Func(E1),
+    !:List = [N1 | !.List],
+    map_func(Func, T2, !List),
+    N2 = Func(E2),
+    !:List = [N2 | !.List],
+    map_func(Func, T3, !List).
+
+map(Pred, SetA, SetB) :-
+    map_pred(Pred, SetA, [], ListB),
+    SetB = list_to_set(ListB).
+
+:- pred map_pred(pred(T1, T2)::in(pred(in, out) is det),
+    set_tree234(T1)::in, list(T2)::in, list(T2)::out) is det.
+
+map_pred(_Pred, empty, !List).
+map_pred(Pred, Tin, !List) :-
+    Tin = two(E0, T0, T1),
+    map_pred(Pred, T0, !List),
+    Pred(E0, N0),
+    !:List = [N0 | !.List],
+    map_pred(Pred, T1, !List).
+map_pred(Pred, Tin, !List) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    map_pred(Pred, T0, !List),
+    Pred(E0, N0),
+    !:List = [N0 | !.List],
+    map_pred(Pred, T1, !List),
+    Pred(E1, N1),
+    !:List = [N1 | !.List],
+    map_pred(Pred, T2, !List).
+map_pred(Pred, Tin, !List) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    map_pred(Pred, T0, !List),
+    Pred(E0, N0),
+    !:List = [N0 | !.List],
+    map_pred(Pred, T1, !List),
+    Pred(E1, N1),
+    !:List = [N1 | !.List],
+    map_pred(Pred, T2, !List),
+    Pred(E2, N2),
+    !:List = [N2 | !.List],
+    map_pred(Pred, T3, !List).
+
+%---------------------%
 
 fold(Func, Tree, A0) =
     foldl(Func, Tree, A0).
+
+fold(Pred, Tree, !A) :-
+    foldl(Pred, Tree, !A).
 
 foldl(_Func, empty, A) = A.
 foldl(Func, two(E, T0, T1), !.A) = !:A :-
@@ -2840,6 +3209,26 @@ foldl(Func, four(E0, E1, E2, T0, T1, T2, T3), !.A) = !:A :-
     foldl(Func, T2, !.A) = !:A,
     !:A = Func(E2, !.A),
     foldl(Func, T3, !.A) = !:A.
+
+foldl(_Pred, empty, !A).
+foldl(Pred, two(E, T0, T1), !A) :-
+    foldl(Pred, T0, !A),
+    Pred(E, !A),
+    foldl(Pred, T1, !A).
+foldl(Pred, three(E0, E1, T0, T1, T2), !A) :-
+    foldl(Pred, T0, !A),
+    Pred(E0, !A),
+    foldl(Pred, T1, !A),
+    Pred(E1, !A),
+    foldl(Pred, T2, !A).
+foldl(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
+    foldl(Pred, T0, !A),
+    Pred(E0, !A),
+    foldl(Pred, T1, !A),
+    Pred(E1, !A),
+    foldl(Pred, T2, !A),
+    Pred(E2, !A),
+    foldl(Pred, T3, !A).
 
 fold2(Pred, Tree, !A, !B) :-
     foldl2(Pred, Tree, !A, !B).
@@ -2958,344 +3347,19 @@ foldl6(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D, !E, !F) :-
 
 %---------------------------------------------------------------------------%
 
-all_true(Pred, T) :-
+:- pred height(set_tree234(T)::in, int::out) is det.
+
+height(Tree, Height) :-
     (
-        T = empty
+        Tree = empty,
+        Height = 0
     ;
-        T = two(E0, T0, T1),
-        all_true(Pred, T0),
-        Pred(E0),
-        all_true(Pred, T1)
-    ;
-        T = three(E0, E1, T0, T1, T2),
-        all_true(Pred, T0),
-        Pred(E0),
-        all_true(Pred, T1),
-        Pred(E1),
-        all_true(Pred, T2)
-    ;
-        T = four(E0, E1, E2, T0, T1, T2, T3),
-        all_true(Pred, T0),
-        Pred(E0),
-        all_true(Pred, T1),
-        Pred(E1),
-        all_true(Pred, T2),
-        Pred(E2),
-        all_true(Pred, T3)
+        ( Tree = two(_, T0, _)
+        ; Tree = three(_, _, T0, _, _)
+        ; Tree = four(_, _, _, T0, _, _, _)
+        ),
+        height(T0, T0Height),
+        Height = T0Height + 1
     ).
-
-%---------------------------------------------------------------------------%
-
-map(Pred, SetA, SetB) :-
-    map_pred(Pred, SetA, [], ListB),
-    SetB = list_to_set(ListB).
-
-:- pred map_pred(pred(T1, T2)::in(pred(in, out) is det),
-    set_tree234(T1)::in, list(T2)::in, list(T2)::out) is det.
-
-map_pred(_Pred, empty, !List).
-map_pred(Pred, Tin, !List) :-
-    Tin = two(E0, T0, T1),
-    map_pred(Pred, T0, !List),
-    Pred(E0, N0),
-    !:List = [N0 | !.List],
-    map_pred(Pred, T1, !List).
-map_pred(Pred, Tin, !List) :-
-    Tin = three(E0, E1, T0, T1, T2),
-    map_pred(Pred, T0, !List),
-    Pred(E0, N0),
-    !:List = [N0 | !.List],
-    map_pred(Pred, T1, !List),
-    Pred(E1, N1),
-    !:List = [N1 | !.List],
-    map_pred(Pred, T2, !List).
-map_pred(Pred, Tin, !List) :-
-    Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    map_pred(Pred, T0, !List),
-    Pred(E0, N0),
-    !:List = [N0 | !.List],
-    map_pred(Pred, T1, !List),
-    Pred(E1, N1),
-    !:List = [N1 | !.List],
-    map_pred(Pred, T2, !List),
-    Pred(E2, N2),
-    !:List = [N2 | !.List],
-    map_pred(Pred, T3, !List).
-
-map(Func, SetA) = SetB :-
-    map_func(Func, SetA, [], ListB),
-    SetB = list_to_set(ListB).
-
-:- pred map_func(func(T1) = T2, set_tree234(T1),
-    list(T2), list(T2)).
-:- mode map_func(in(func(in) = out is det), in, in, out) is det.
-
-map_func(_Func, empty, !List).
-map_func(Func, Tin, !List) :-
-    Tin = two(E0, T0, T1),
-    map_func(Func, T0, !List),
-    N0 = Func(E0),
-    !:List = [N0 | !.List],
-    map_func(Func, T1, !List).
-map_func(Func, Tin, !List) :-
-    Tin = three(E0, E1, T0, T1, T2),
-    map_func(Func, T0, !List),
-    N0 = Func(E0),
-    !:List = [N0 | !.List],
-    map_func(Func, T1, !List),
-    N1 = Func(E1),
-    !:List = [N1 | !.List],
-    map_func(Func, T2, !List).
-map_func(Func, Tin, !List) :-
-    Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    map_func(Func, T0, !List),
-    N0 = Func(E0),
-    !:List = [N0 | !.List],
-    map_func(Func, T1, !List),
-    N1 = Func(E1),
-    !:List = [N1 | !.List],
-    map_func(Func, T2, !List),
-    N2 = Func(E2),
-    !:List = [N2 | !.List],
-    map_func(Func, T3, !List).
-
-%---------------------------------------------------------------------------%
-
-filter_map(Pred, SetA, SetB) :-
-    filter_map_pred(Pred, SetA, [], ListB),
-    SetB = list_to_set(ListB).
-
-:- pred filter_map_pred(
-    pred(T1, T2)::in(pred(in, out) is semidet), set_tree234(T1)::in,
-    list(T2)::in, list(T2)::out) is det.
-
-filter_map_pred(_Pred, empty, !List).
-filter_map_pred(Pred, Tin, !List) :-
-    Tin = two(E0, T0, T1),
-    filter_map_pred(Pred, T0, !List),
-    ( if Pred(E0, N0) then
-        !:List = [N0 | !.List]
-    else
-        true
-    ),
-    filter_map_pred(Pred, T1, !List).
-filter_map_pred(Pred, Tin, !List) :-
-    Tin = three(E0, E1, T0, T1, T2),
-    filter_map_pred(Pred, T0, !List),
-    ( if Pred(E0, N0) then
-        !:List = [N0 | !.List]
-    else
-        true
-    ),
-    filter_map_pred(Pred, T1, !List),
-    ( if Pred(E1, N1) then
-        !:List = [N1 | !.List]
-    else
-        true
-    ),
-    filter_map_pred(Pred, T2, !List).
-filter_map_pred(Pred, Tin, !List) :-
-    Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    filter_map_pred(Pred, T0, !List),
-    ( if Pred(E0, N0) then
-        !:List = [N0 | !.List]
-    else
-        true
-    ),
-    filter_map_pred(Pred, T1, !List),
-    ( if Pred(E1, N1) then
-        !:List = [N1 | !.List]
-    else
-        true
-    ),
-    filter_map_pred(Pred, T2, !List),
-    ( if Pred(E2, N2) then
-        !:List = [N2 | !.List]
-    else
-        true
-    ),
-    filter_map_pred(Pred, T3, !List).
-
-filter_map(Func, SetA) = SetB :-
-    filter_map_func(Func, SetA, [], ListB),
-    SetB = list_to_set(ListB).
-
-:- pred filter_map_func(func(T1) = T2, set_tree234(T1), list(T2), list(T2)).
-:- mode filter_map_func(in(func(in) = out is semidet), in, in, out) is det.
-
-filter_map_func(_Func, empty, !List).
-filter_map_func(Func, Tin, !List) :-
-    Tin = two(E0, T0, T1),
-    filter_map_func(Func, T0, !List),
-    ( if N0 = Func(E0) then
-        !:List = [N0 | !.List]
-    else
-        true
-    ),
-    filter_map_func(Func, T1, !List).
-filter_map_func(Func, Tin, !List) :-
-    Tin = three(E0, E1, T0, T1, T2),
-    filter_map_func(Func, T0, !List),
-    ( if N0 = Func(E0) then
-        !:List = [N0 | !.List]
-    else
-        true
-    ),
-    filter_map_func(Func, T1, !List),
-    ( if N1 = Func(E1) then
-        !:List = [N1 | !.List]
-    else
-        true
-    ),
-    filter_map_func(Func, T2, !List).
-filter_map_func(Func, Tin, !List) :-
-    Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    filter_map_func(Func, T0, !List),
-    ( if N0 = Func(E0) then
-        !:List = [N0 | !.List]
-    else
-        true
-    ),
-    filter_map_func(Func, T1, !List),
-    ( if N1 = Func(E1) then
-        !:List = [N1 | !.List]
-    else
-        true
-    ),
-    filter_map_func(Func, T2, !List),
-    ( if N2 = Func(E2) then
-        !:List = [N2 | !.List]
-    else
-        true
-    ),
-    filter_map_func(Func, T3, !List).
-
-%---------------------------------------------------------------------------%
-
-filter(Pred, Set) = TrueSet :-
-    filter(Pred, Set, TrueSet).
-
-filter(Pred, Set, TrueSet) :-
-    % XXX This should be more efficient.
-    divide(Pred, Set, TrueSet, _FalseSet).
-
-filter(Pred, Set, TrueSet, FalseSet) :-
-    divide(Pred, Set, TrueSet, FalseSet).
-
-divide(Pred, Set, TrueSet, FalseSet) :-
-    do_divide(Pred, Set, [], RevTrues, [], RevFalses),
-    TrueSet = rev_sorted_list_to_set(RevTrues),
-    FalseSet = rev_sorted_list_to_set(RevFalses).
-
-:- pred do_divide(pred(T)::in(pred(in) is semidet),
-    set_tree234(T)::in,
-    list(T)::in, list(T)::out, list(T)::in, list(T)::out) is det.
-
-do_divide(Pred, Tin, !RevTrues, !RevFalses) :-
-    (
-        Tin = empty
-    ;
-        Tin = two(E0, T0, T1),
-        do_divide(Pred, T0, !RevTrues, !RevFalses),
-        ( if Pred(E0) then
-            !:RevTrues = [E0 | !.RevTrues]
-        else
-            !:RevFalses = [E0 | !.RevFalses]
-        ),
-        do_divide(Pred, T1, !RevTrues, !RevFalses)
-    ;
-        Tin = three(E0, E1, T0, T1, T2),
-        do_divide(Pred, T0, !RevTrues, !RevFalses),
-        ( if Pred(E0) then
-            !:RevTrues = [E0 | !.RevTrues]
-        else
-            !:RevFalses = [E0 | !.RevFalses]
-        ),
-        do_divide(Pred, T1, !RevTrues, !RevFalses),
-        ( if Pred(E1) then
-            !:RevTrues = [E1 | !.RevTrues]
-        else
-            !:RevFalses = [E1 | !.RevFalses]
-        ),
-        do_divide(Pred, T2, !RevTrues, !RevFalses)
-    ;
-        Tin = four(E0, E1, E2, T0, T1, T2, T3),
-        do_divide(Pred, T0, !RevTrues, !RevFalses),
-        ( if Pred(E0) then
-            !:RevTrues = [E0 | !.RevTrues]
-        else
-            !:RevFalses = [E0 | !.RevFalses]
-        ),
-        do_divide(Pred, T1, !RevTrues, !RevFalses),
-        ( if Pred(E1) then
-            !:RevTrues = [E1 | !.RevTrues]
-        else
-            !:RevFalses = [E1 | !.RevFalses]
-        ),
-        do_divide(Pred, T2, !RevTrues, !RevFalses),
-        ( if Pred(E2) then
-            !:RevTrues = [E2 | !.RevTrues]
-        else
-            !:RevFalses = [E2 | !.RevFalses]
-        ),
-        do_divide(Pred, T3, !RevTrues, !RevFalses)
-    ).
-
-divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
-    % XXX This should be more efficient.
-    divide(contains(DivideBySet), Set, TrueSet, FalseSet).
-
-%---------------------------------------------------------------------------%
-
-intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB) :-
-    ListA = to_sorted_list(SetA),
-    ListB = to_sorted_list(SetB),
-    intersection_and_differences_loop(ListA, ListB,
-        cord.init, CordInAandB,
-        cord.init, CordOnlyInA,
-        cord.init, CordOnlyInB),
-    InAandB = sorted_list_to_set(cord.list(CordInAandB)),
-    OnlyInA = sorted_list_to_set(cord.list(CordOnlyInA)),
-    OnlyInB = sorted_list_to_set(cord.list(CordOnlyInB)).
-
-:- pred intersection_and_differences_loop(list(T)::in, list(T)::in,
-    cord(T)::in, cord(T)::out,
-    cord(T)::in, cord(T)::out,
-    cord(T)::in, cord(T)::out) is det.
-
-intersection_and_differences_loop(As, Bs, !InAandB, !OnlyInA, !OnlyInB) :-
-    (
-        As = [],
-        Bs = []
-    ;
-        As = [],
-        Bs = [_ | _],
-        !:OnlyInB = !.OnlyInB ++ cord.from_list(Bs)
-    ;
-        As = [_ | _],
-        Bs = [],
-        !:OnlyInA = !.OnlyInA ++ cord.from_list(As)
-    ;
-        As = [HeadA | TailAs],
-        Bs = [HeadB | TailBs],
-        compare(Cmp, HeadA, HeadB),
-        (
-            Cmp = (=),
-            !:InAandB = cord.snoc(!.InAandB, HeadA),
-            intersection_and_differences_loop(TailAs, TailBs,
-                !InAandB, !OnlyInA, !OnlyInB)
-        ;
-            Cmp = (<),
-            !:OnlyInA = cord.snoc(!.OnlyInA, HeadA),
-            intersection_and_differences_loop(TailAs, Bs,
-                !InAandB, !OnlyInA, !OnlyInB)
-        ;
-            Cmp = (>),
-            !:OnlyInB = cord.snoc(!.OnlyInB, HeadB),
-            intersection_and_differences_loop(As, TailBs,
-                !InAandB, !OnlyInA, !OnlyInB)
-        )
-    ).
-
 
 %---------------------------------------------------------------------------%
