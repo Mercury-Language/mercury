@@ -493,8 +493,9 @@ else
 	FOREIGN_ENUM_PROGS =
 endif
 
-# Tests of the random module currently only work in C and Java grades.
-ifeq "$(filter csharp% erlang%,$(GRADE))" ""
+# Tests of the random module do not work in the Erlang grade due to support for
+# fixed size integer types in that grade being incomplete.
+ifeq "$(filter erlang%,$(GRADE))" ""
 	RANDOM_PROGS = \
 		random1 \
 		random2 \
