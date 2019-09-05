@@ -70,3 +70,9 @@ generate = array(["foo", "foo", "foo", "foo", "foo"])
 resize = array(["foo", "foo", "foo", "foo", "foo", "bar", "bar"])
 shrink = array(["foo", "foo"])
 
+*** Testing with element type: list.list(int) ****
+init = array([[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]])
+generate = array([[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]])
+resize = array([[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [4], [4]])
+shrink = array([[1, 2, 3], [1, 2, 3]])
+

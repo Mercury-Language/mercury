@@ -19,6 +19,10 @@ Array0 = array([1, 2, 3, 4])
 Size = 5
 EXCEPTION: "predicate `array.shrink\'/3: Unexpected: cannot shrink to a larger size"
 ================
+Array0 = array([])
+Size = 0
+Array = array([])
+================
 Array0 = array([1i8, 2i8, 3i8, 4i8])
 Size = 3
 Array = array([1i8, 2i8, 3i8])

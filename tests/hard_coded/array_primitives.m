@@ -45,7 +45,8 @@ main(!IO) :-
     do_test(2u, 3u, !IO),
     do_test(2.0, 3.0, !IO),
 
-    do_test("foo", "bar", !IO).
+    do_test("foo", "bar", !IO),
+    do_test([1, 2, 3], [4], !IO).
 
 :- pred do_test(T::in, T::in, io::di, io::uo) is det.
 

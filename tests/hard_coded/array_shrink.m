@@ -37,6 +37,7 @@ main(!IO) :-
     test_shrink([1, 2, 3, 4], 3, !IO),
     test_shrink([1, 2, 3, 4], 4, !IO),
     test_shrink([1, 2, 3, 4], 5, !IO),  % Should raise exception.
+    test_shrink([] : list(int), 0, !IO),
     test_shrink([1i8, 2i8, 3i8, 4i8], 3, !IO),
     test_shrink([1u8, 2u8, 3u8, 4u8], 3, !IO),
     test_shrink([1i16, 2i16, 3i16, 4i16], 3, !IO),
