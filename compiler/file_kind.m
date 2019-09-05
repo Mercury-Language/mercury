@@ -38,9 +38,9 @@
 
 :- type int_file_kind
     --->    ifk_int0
-    ;       ifk_int3
+    ;       ifk_int1
     ;       ifk_int2
-    ;       ifk_int.
+    ;       ifk_int3.
 
 :- type opt_file_kind
     --->    ofk_opt
@@ -65,7 +65,7 @@ file_kind_to_extension(fk_opt(OptFileKind)) =
 int_file_kind_to_extension(ifk_int0) = ".int0".
 int_file_kind_to_extension(ifk_int2) = ".int2".
 int_file_kind_to_extension(ifk_int3) = ".int3".
-int_file_kind_to_extension(ifk_int) = ".int".
+int_file_kind_to_extension(ifk_int1) = ".int".
 
 opt_file_kind_to_extension(ofk_opt) = ".opt".
 opt_file_kind_to_extension(ofk_trans_opt) = ".trans_opt".
@@ -85,7 +85,7 @@ extension_to_file_kind(Extension, FileKind) :-
         FileKind = fk_int(ifk_int2)
     ;
         Extension = ".int",
-        FileKind = fk_int(ifk_int)
+        FileKind = fk_int(ifk_int1)
     ;
         Extension = ".opt",
         FileKind = fk_opt(ofk_opt)

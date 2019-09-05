@@ -40,7 +40,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
@@ -168,8 +167,10 @@
 
                 % The set of modules mentioned in `:- import_module'
                 % declarations in the interface and implementation.
-                pti0_int_avail_modules      :: map(module_name, import_or_use),
-                pti0_imp_avail_modules      :: map(module_name, import_or_use),
+                pti0_int_imported_modules   :: set(module_name),
+                pti0_int_used_modules       :: set(module_name),
+                pti0_imp_imported_modules   :: set(module_name),
+                pti0_imp_used_modules       :: set(module_name),
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.
@@ -341,6 +342,19 @@
     = parse_tree_int.
 :- func convert_parse_tree_int3_to_parse_tree_int(parse_tree_int3)
     = parse_tree_int.
+
+:- pred convert_parse_tree_int_parse_tree_int0(
+    parse_tree_int::in, parse_tree_int0::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred convert_parse_tree_int_parse_tree_int1(
+    parse_tree_int::in, parse_tree_int1::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred convert_parse_tree_int_parse_tree_int2(
+    parse_tree_int::in, parse_tree_int2::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred convert_parse_tree_int_parse_tree_int3(
+    parse_tree_int::in, parse_tree_int3::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -855,6 +869,8 @@
 
 :- func get_item_context(item) = prog_context.
 
+:- func item_desc_pieces(item) = list(format_component).
+
 %-----------------------------------------------------------------------------%
 %
 % Declarations of relationships between modules.
@@ -882,8 +898,12 @@
                 incl_seq_num                    :: int
             ).
 
-    % An accumulator version of the above predicate restricted to operate
-    % only on item_includes.
+    % Add the name of the included module to the given set.
+    %
+:- pred add_included_module_name(item_include::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+    % Add the name of the included module to the given map.
     %
 :- pred get_included_modules_in_item_include_acc(item_include::in,
     module_names_contexts::in, module_names_contexts::out) is det.
@@ -917,11 +937,23 @@
     % values of a type that makes it clear that they contain information
     % ONLY about use_module declarations, not import_module declarations.
 :- type avail_import_info
-    --->    avail_import_info(module_name, prog_context, int).
+    --->    avail_import_info(
+                aii_module_name     :: module_name,
+                aii_context         :: prog_context,
+                aii_seq_num         :: int
+            ).
 :- type avail_use_info
-    --->    avail_use_info(module_name, prog_context, int).
+    --->    avail_use_info(
+                aui_module_name     :: module_name,
+                aui_context         :: prog_context,
+                aui_seq_num         :: int
+            ).
 
 :- func item_include_module_name(item_include) = module_name.
+
+:- func get_avail_context(item_avail) = prog_context.
+:- func get_import_context(avail_import_info) = prog_context.
+:- func get_use_context(avail_use_info) = prog_context.
 
 :- pred avail_is_import(item_avail::in, avail_import_info::out) is semidet.
 :- pred avail_is_use(item_avail::in, avail_use_info::out) is semidet.
@@ -932,9 +964,9 @@
 :- pred avail_imports_uses(list(item_avail)::in,
     list(avail_import_info)::out, list(avail_use_info)::out) is det.
 
-:- func item_avail_module_name(item_avail) = module_name.
-:- func avail_import_info_module_name(avail_import_info) = module_name.
-:- func avail_use_info_module_name(avail_use_info) = module_name.
+:- func get_avail_module_name(item_avail) = module_name.
+:- func get_import_module_name(avail_import_info) = module_name.
+:- func get_use_module_name(avail_use_info) = module_name.
 
 :- type item_fim
     --->    item_fim(
@@ -969,7 +1001,8 @@
                 fimspec_module_name             :: module_name
             ).
 
-:- pred fim_spec_to_item(fim_spec::in, item_fim::out) is det.
+:- func fim_item_to_spec(item_fim) = fim_spec.
+:- func fim_spec_to_item(fim_spec) = item_fim.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1387,7 +1420,7 @@
     %
 :- func pragma_allowed_in_interface(pragma_type) = bool.
 
-:- func pragma_context_pieces(pragma_type) = list(format_component).
+:- func pragma_desc_pieces(pragma_type) = list(format_component).
 
     % Foreign language interfacing pragmas.
 
@@ -1895,6 +1928,7 @@
 
 :- import_module parse_tree.prog_foreign.
 
+:- import_module map.
 :- import_module require.
 :- import_module term.
 
@@ -1903,23 +1937,28 @@
 convert_parse_tree_int0_to_parse_tree_int(ParseTreeInt0) = ParseTreeInt :-
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
-        IntAvailMap, ImpAvailMap, IntFIMSpecs, ImpFIMSpecs,
+        IntImportedModuleNames, IntUsedModuleNames,
+        ImpImportedModuleNames, ImpUsedModuleNames,
+        IntFIMSpecs, ImpFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         IntPredDecls, IntModeDecls, IntPragmas, IntPromises,
         ImpTypeDefns, ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
         ImpPredDecls, ImpModeDecls, ImpPragmas, ImpPromises),
-    IntIncls = list.map(wrap_include,
-        set.to_sorted_list(IntInclModuleNames)),
-    ImpIncls = list.map(wrap_include,
-        set.to_sorted_list(ImpInclModuleNames)),
-    map.foldl(add_avail_to_rev_list, IntAvailMap, [], RevIntAvails),
-    map.foldl(add_avail_to_rev_list, ImpAvailMap, [], RevImpAvails),
-    list.reverse(RevIntAvails, IntAvails),
-    list.reverse(RevImpAvails, ImpAvails),
-    set.map(fim_spec_to_item, IntFIMSpecs, IntFIMsSet),
-    set.map(fim_spec_to_item, ImpFIMSpecs, ImpFIMsSet),
-    set.to_sorted_list(IntFIMsSet, IntFIMs),
-    set.to_sorted_list(ImpFIMsSet, ImpFIMs),
+    IntIncls = list.map(wrap_include, set.to_sorted_list(IntInclModuleNames)),
+    ImpIncls = list.map(wrap_include, set.to_sorted_list(ImpInclModuleNames)),
+    IntImportAvails = list.map(wrap_import_avail,
+        set.to_sorted_list(IntImportedModuleNames)),
+    IntUseAvails = list.map(wrap_use_avail,
+        set.to_sorted_list(IntUsedModuleNames)),
+    ImpImportAvails = list.map(wrap_import_avail,
+        set.to_sorted_list(ImpImportedModuleNames)),
+    ImpUseAvails = list.map(wrap_use_avail,
+        set.to_sorted_list(ImpUsedModuleNames)),
+    IntAvails = IntImportAvails ++ IntUseAvails,
+    ImpAvails = ImpImportAvails ++ ImpUseAvails,
+
+    set.to_sorted_list(set.map(fim_spec_to_item, IntFIMSpecs), IntFIMs),
+    set.to_sorted_list(set.map(fim_spec_to_item, ImpFIMSpecs), ImpFIMs),
     IntItems =
         list.map(wrap_type_defn_item, IntTypeDefns) ++
         list.map(wrap_inst_defn_item, IntInstDefns) ++
@@ -1977,10 +2016,8 @@ convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1) = ParseTreeInt :-
         set.to_sorted_list(IntUsedModuleNames)),
     ImpAvails = list.map(wrap_use_avail,
         set.to_sorted_list(ImpUsedModuleNames)),
-    set.map(fim_spec_to_item, IntFIMSpecs, IntFIMsSet),
-    set.map(fim_spec_to_item, ImpFIMSpecs, ImpFIMsSet),
-    set.to_sorted_list(IntFIMsSet, IntFIMs),
-    set.to_sorted_list(ImpFIMsSet, ImpFIMs),
+    set.to_sorted_list(set.map(fim_spec_to_item, IntFIMSpecs), IntFIMs),
+    set.to_sorted_list(set.map(fim_spec_to_item, ImpFIMSpecs), ImpFIMs),
 
     IntItems =
         list.map(wrap_type_defn_item, IntTypeDefns) ++
@@ -1998,7 +2035,7 @@ convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1) = ParseTreeInt :-
         list.map(make_foreign_enum_item, ImpForeignEnums) ++
         list.map(wrap_typeclass_item, ImpTypeClasses),
 
-    ParseTreeInt = parse_tree_int(ModuleName, ifk_int, ModuleNameContext,
+    ParseTreeInt = parse_tree_int(ModuleName, ifk_int1, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems).
 
@@ -2014,10 +2051,8 @@ convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2) = ParseTreeInt :-
         set.to_sorted_list(IntInclModuleNames)),
     IntAvails = list.map(wrap_use_avail,
         set.to_sorted_list(IntUsedModuleNames)),
-    set.map(fim_spec_to_item, IntFIMSpecs, IntFIMsSet),
-    set.map(fim_spec_to_item, ImpFIMSpecs, ImpFIMsSet),
-    set.to_sorted_list(IntFIMsSet, IntFIMs),
-    set.to_sorted_list(ImpFIMsSet, ImpFIMs),
+    set.to_sorted_list(set.map(fim_spec_to_item, IntFIMSpecs), IntFIMs),
+    set.to_sorted_list(set.map(fim_spec_to_item, ImpFIMSpecs), ImpFIMs),
 
     IntItems =
         list.map(wrap_type_defn_item, IntTypeDefns) ++
@@ -2101,6 +2136,665 @@ make_foreign_enum_item(ForeignEnumSpec) = Item :-
     ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs,
         term.context_init, -1),
     Item = item_pragma(ItemPragmaInfo).
+
+%-----------------------------------------------------------------------------%
+
+convert_parse_tree_int_parse_tree_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
+    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntFIMs, ImpFIMs, IntItems, ImpItems),
+
+    expect(unify(IntFileKind, ifk_int0), $pred,
+        "trying to convert non-ifk_int0 parse_tree_int to parse_tree_int0"),
+
+    list.foldl(add_included_module_name, IntIncls,
+        set.init, IntInclModuleNames),
+    list.foldl(add_included_module_name, ImpIncls,
+        set.init, ImpInclModuleNames),
+
+    avail_imports_uses(IntAvails, IntImports, IntUses),
+    avail_imports_uses(ImpAvails, ImpImports, ImpUses),
+    IntImportedModules = list.map(get_import_module_name, IntImports),
+    ImpImportedModules = list.map(get_import_module_name, ImpImports),
+    IntUsedModules = list.map(get_use_module_name, IntUses),
+    ImpUsedModules = list.map(get_use_module_name, ImpUses),
+    set.list_to_set(IntImportedModules, IntImportedModuleNames),
+    set.list_to_set(ImpImportedModules, ImpImportedModuleNames),
+    set.list_to_set(IntUsedModules, IntUsedModuleNames),
+    set.list_to_set(ImpUsedModules, ImpUsedModuleNames),
+
+    set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
+    set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
+
+    classify_int0_items_int_or_imp(IntItems, [], IntTypeDefns0,
+        [], IntInstDefns0, [], IntModeDefns0,
+        [], IntTypeClasses0, [], IntInstances0,
+        [], IntPredDecls0, [], RevIntModeDecls,
+        [], IntPragmas0, [], IntPromises0, !Specs),
+    list.sort(IntTypeDefns0, IntTypeDefns),
+    list.sort(IntInstDefns0, IntInstDefns),
+    list.sort(IntModeDefns0, IntModeDefns),
+    list.sort(IntTypeClasses0, IntTypeClasses),
+    list.sort(IntInstances0, IntInstances),
+    list.sort(IntPredDecls0, IntPredDecls),
+    list.reverse(RevIntModeDecls, IntModeDecls),
+    list.sort(IntPragmas0, IntPragmas),
+    list.sort(IntPromises0, IntPromises),
+
+    classify_int0_items_int_or_imp(ImpItems, [], ImpTypeDefns0,
+        [], ImpInstDefns0, [], ImpModeDefns0,
+        [], ImpTypeClasses0, [], ImpInstances0,
+        [], ImpPredDecls0, [], RevImpModeDecls,
+        [], ImpPragmas0, [], ImpPromises0, !Specs),
+    list.sort(ImpTypeDefns0, ImpTypeDefns),
+    list.sort(ImpInstDefns0, ImpInstDefns),
+    list.sort(ImpModeDefns0, ImpModeDefns),
+    list.sort(ImpTypeClasses0, ImpTypeClasses),
+    list.sort(ImpInstances0, ImpInstances),
+    list.sort(ImpPredDecls0, ImpPredDecls),
+    list.reverse(RevImpModeDecls, ImpModeDecls),
+    list.sort(ImpPragmas0, ImpPragmas),
+    list.sort(ImpPromises0, ImpPromises),
+
+    ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
+        MaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
+        IntImportedModuleNames, IntUsedModuleNames,
+        ImpImportedModuleNames, ImpUsedModuleNames,
+        IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        IntPredDecls, IntModeDecls, IntPragmas, IntPromises,
+        ImpTypeDefns, ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
+        ImpPredDecls, ImpModeDecls, ImpPragmas, ImpPromises).
+
+:- pred classify_int0_items_int_or_imp(list(item)::in,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
+    list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
+    list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
+    list(item_typeclass_info)::in, list(item_typeclass_info)::out,
+    list(item_instance_info)::in, list(item_instance_info)::out,
+    list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
+    list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
+    list(item_pragma_info)::in, list(item_pragma_info)::out,
+    list(item_promise_info)::in, list(item_promise_info)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+classify_int0_items_int_or_imp([], !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
+        !Pragmas, !Promises, !Specs).
+classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
+        !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
+        !Pragmas, !Promises, !Specs) :-
+    (
+        Item = item_type_defn(ItemTypeDefn),
+        !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
+    ;
+        Item = item_inst_defn(ItemInstDefn),
+        !:InstDefns = [ItemInstDefn | !.InstDefns]
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        !:ModeDefns = [ItemModeDefn | !.ModeDefns]
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        !:TypeClasses = [ItemTypeClass | !.TypeClasses]
+    ;
+        Item = item_instance(ItemInstance),
+        !:Instances = [ItemInstance | !.Instances]
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        !:PredDecls = [ItemPredDecl | !.PredDecls]
+    ;
+        Item = item_mode_decl(ItemModeDecl),
+        !:RevModeDecls = [ItemModeDecl | !.RevModeDecls]
+    ;
+        Item = item_pragma(ItemPragma),
+        !:Pragmas = [ItemPragma | !.Pragmas]
+    ;
+        Item = item_promise(ItemPromise),
+        ItemPromise = item_promise_info(PromiseType, _, _, _, Context, _),
+        (
+            ( PromiseType = promise_type_exclusive
+            ; PromiseType = promise_type_exhaustive
+            ; PromiseType = promise_type_exclusive_exhaustive
+            ),
+            !:Promises = [ItemPromise | !.Promises]
+        ;
+            PromiseType = promise_type_true,
+            Pieces = [words("A .int0 file may not contain")] ++
+                item_desc_pieces(Item) ++ [suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            !:Specs = [Spec | !.Specs]
+        )
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
+        ),
+        Pieces = [words("A .int0 file may not contain")] ++
+            item_desc_pieces(Item) ++ [suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_item_context(Item), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
+    ),
+    classify_int0_items_int_or_imp(Items, !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
+        !Pragmas, !Promises, !Specs).
+
+%-----------------------------------------------------------------------------%
+
+convert_parse_tree_int_parse_tree_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
+    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntFIMs, ImpFIMs, IntItems, ImpItems),
+
+    expect(unify(IntFileKind, ifk_int1), $pred,
+        "trying to convert non-ifk_int1 parse_tree_int to parse_tree_int1"),
+
+    list.foldl(add_included_module_name, IntIncls,
+        set.init, IntInclModuleNames),
+    list.foldl(add_included_module_name, ImpIncls,
+        set.init, ImpInclModuleNames),
+
+    avail_imports_uses(IntAvails, IntImports, IntUses),
+    avail_imports_uses(ImpAvails, ImpImports, ImpUses),
+    IntIntImportContexts = list.map(get_import_context,
+        IntImports ++ ImpImports),
+    (
+        IntIntImportContexts = []
+    ;
+        IntIntImportContexts = [FirstImportContext | _],
+        IntImportPieces = [words("A .int2 file may not contain a"),
+            decl("import_module"), words("declaration."), nl],
+        IntImportSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(FirstImportContext, [always(IntImportPieces)])]),
+        !:Specs = [IntImportSpec | !.Specs]
+    ),
+    IntUsedModules = list.map(get_use_module_name, IntUses),
+    ImpUsedModules = list.map(get_use_module_name, ImpUses),
+    set.list_to_set(IntUsedModules, IntUsedModuleNames),
+    set.list_to_set(ImpUsedModules, ImpUsedModuleNames),
+
+    set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
+    set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
+
+    classify_int1_items_int(IntItems, [], IntTypeDefns0,
+        [], IntInstDefns0, [], IntModeDefns0,
+        [], IntTypeClasses0, [], IntInstances0,
+        [], IntPredDecls0, [], RevIntModeDecls,
+        [], IntPragmas0, [], IntPromises0, [], IntTypeRepns0, !Specs),
+    list.sort(IntTypeDefns0, IntTypeDefns),
+    list.sort(IntInstDefns0, IntInstDefns),
+    list.sort(IntModeDefns0, IntModeDefns),
+    list.sort(IntTypeClasses0, IntTypeClasses),
+    list.sort(IntInstances0, IntInstances),
+    list.sort(IntPredDecls0, IntPredDecls),
+    list.reverse(RevIntModeDecls, IntModeDecls),
+    list.sort(IntPragmas0, IntPragmas),
+    list.sort(IntPromises0, IntPromises),
+    list.sort(IntTypeRepns0, IntTypeRepns),
+
+    classify_int1_items_imp(ImpItems, [], ImpTypeDefns0,
+        [], ImpForeignEnums0, [], ImpTypeClasses0, !Specs),
+    list.sort(ImpTypeDefns0, ImpTypeDefns),
+    list.sort(ImpForeignEnums0, ImpForeignEnums),
+    list.sort(ImpTypeClasses0, ImpTypeClasses),
+
+    ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
+        MaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
+        IntUsedModuleNames, ImpUsedModuleNames, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntPragmas, IntPromises, IntTypeRepns,
+        ImpTypeDefns, ImpForeignEnums, ImpTypeClasses).
+
+:- pred classify_int1_items_int(list(item)::in,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
+    list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
+    list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
+    list(item_typeclass_info)::in, list(item_typeclass_info)::out,
+    list(item_instance_info)::in, list(item_instance_info)::out,
+    list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
+    list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
+    list(item_pragma_info)::in, list(item_pragma_info)::out,
+    list(item_promise_info)::in, list(item_promise_info)::out,
+    list(item_type_repn_info)::in, list(item_type_repn_info)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+classify_int1_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !PredDecls, !ModeDecls,
+        !Pragmas, !Promises, !TypeRepns, !Specs).
+classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !PredDecls, !ModeDecls,
+        !Pragmas, !Promises, !TypeRepns, !Specs) :-
+    (
+        Item = item_type_defn(ItemTypeDefn),
+        !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
+    ;
+        Item = item_inst_defn(ItemInstDefn),
+        !:InstDefns = [ItemInstDefn | !.InstDefns]
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        !:ModeDefns = [ItemModeDefn | !.ModeDefns]
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        !:TypeClasses = [ItemTypeClass | !.TypeClasses]
+    ;
+        Item = item_instance(ItemInstance),
+        !:Instances = [ItemInstance | !.Instances]
+    ;
+        Item = item_type_repn(ItemTypeRepn),
+        !:TypeRepns = [ItemTypeRepn | !.TypeRepns]
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        !:PredDecls = [ItemPredDecl | !.PredDecls]
+    ;
+        Item = item_mode_decl(ItemModeDecl),
+        !:ModeDecls = [ItemModeDecl | !.ModeDecls]
+    ;
+        Item = item_pragma(ItemPragma),
+        !:Pragmas = [ItemPragma | !.Pragmas]
+    ;
+        Item = item_promise(ItemPromise),
+        ItemPromise = item_promise_info(PromiseType, _, _, _, Context, _),
+        (
+            ( PromiseType = promise_type_exclusive
+            ; PromiseType = promise_type_exhaustive
+            ; PromiseType = promise_type_exclusive_exhaustive
+            ),
+            !:Promises = [ItemPromise | !.Promises]
+        ;
+            PromiseType = promise_type_true,
+            Pieces = [words("A .int1 file may not contain")] ++
+                item_desc_pieces(Item) ++
+                [words("in its interface section."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            !:Specs = [Spec | !.Specs]
+        )
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ),
+        Pieces = [words("A .int1 file may not contain")] ++
+            item_desc_pieces(Item) ++
+            [words("in its interface section."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_item_context(Item), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
+    ),
+    classify_int1_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !PredDecls, !ModeDecls,
+        !Pragmas, !Promises, !TypeRepns, !Specs).
+
+:- pred classify_int1_items_imp(list(item)::in,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
+    list(foreign_enum_spec)::in, list(foreign_enum_spec)::out,
+    list(item_typeclass_info)::in, list(item_typeclass_info)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+classify_int1_items_imp([], !TypeDefns, !ForeignEnums, !TypeClasses, !Specs).
+classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
+        !TypeClasses, !Specs) :-
+    (
+        Item = item_type_defn(ItemTypeDefn),
+        !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        !:TypeClasses = [ItemTypeClass | !.TypeClasses]
+    ;
+        Item = item_pragma(ItemPragmaInfo),
+        ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, _),
+        ( if Pragma = pragma_foreign_enum(FEInfo) then
+            FESpec = foreign_enum_spec(FEInfo, MaybeAttrs),
+            !:ForeignEnums = [FESpec | !.ForeignEnums]
+        else
+            Pieces = [words("A .int file may not contain")] ++
+                item_desc_pieces(Item) ++
+                [words("in its implementation section."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            !:Specs = [Spec | !.Specs]
+        )
+    ;
+        ( Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_instance(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_clause(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
+        ),
+        Pieces = [words("A .int file may not contain")] ++
+            item_desc_pieces(Item) ++
+            [words("in its implementation section."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_item_context(Item), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
+    ),
+    classify_int1_items_imp(Items, !TypeDefns, !ForeignEnums,
+        !TypeClasses, !Specs).
+
+%-----------------------------------------------------------------------------%
+
+convert_parse_tree_int_parse_tree_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
+    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntFIMs, ImpFIMs, IntItems, ImpItems),
+
+    expect(unify(IntFileKind, ifk_int2), $pred,
+        "trying to convert non-ifk_int2 parse_tree_int to parse_tree_int2"),
+
+    list.foldl(add_included_module_name, IntIncls,
+        set.init, IntInclModuleNames),
+    (
+        ImpIncls = []
+    ;
+        ImpIncls = [FirstImpIncl | _],
+        ImpInclPieces = [words("A .int2 file may not contain any"),
+            decl("include_module"), words("declarations"),
+            words("in its implementation section."), nl],
+        ImpInclSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(FirstImpIncl ^ incl_context,
+                [always(ImpInclPieces)])]),
+        !:Specs = [ImpInclSpec | !.Specs]
+    ),
+
+    avail_imports_uses(IntAvails, IntImports, IntUses),
+    (
+        IntImports = []
+    ;
+        IntImports = [FirstIntImport | _],
+        IntImportPieces = [words("A .int2 file may not contain a"),
+            decl("import_module"), words("declaration."), nl],
+        IntImportSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(FirstIntImport ^ aii_context,
+                [always(IntImportPieces)])]),
+        !:Specs = [IntImportSpec | !.Specs]
+    ),
+    IntUsedModules = list.map(get_use_module_name, IntUses),
+    set.list_to_set(IntUsedModules, IntUsedModuleNames),
+    (
+        ImpAvails = []
+    ;
+        ImpAvails = [FirstImpAvail | _],
+        ImpAvailPieces = [words("A .int2 file may not contain any"),
+            decl("import_module"), words("or"), decl("use_module"),
+            words("declarations in its implementation section."), nl],
+        ImpAvailSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_avail_context(FirstImpAvail),
+                [always(ImpAvailPieces)])]),
+        !:Specs = [ImpAvailSpec | !.Specs]
+    ),
+
+    set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
+    set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
+
+    classify_int2_items_int(IntItems, [], IntTypeDefns0,
+        [], IntInstDefns0, [], IntModeDefns0,
+        [], IntTypeClasses0, [], IntInstances0, [], IntTypeRepns0, !Specs),
+    list.sort(IntTypeDefns0, IntTypeDefns),
+    list.sort(IntInstDefns0, IntInstDefns),
+    list.sort(IntModeDefns0, IntModeDefns),
+    list.sort(IntTypeClasses0, IntTypeClasses),
+    list.sort(IntInstances0, IntInstances),
+    list.sort(IntTypeRepns0, IntTypeRepns),
+
+    classify_int2_items_imp(ImpItems, [], ImpTypeDefns0, !Specs),
+    list.sort(ImpTypeDefns0, ImpTypeDefns),
+
+    ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
+        MaybeVersionNumbers,
+        IntInclModuleNames, IntUsedModuleNames, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, IntTypeRepns,
+        ImpTypeDefns).
+
+:- pred classify_int2_items_int(list(item)::in,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
+    list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
+    list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
+    list(item_typeclass_info)::in, list(item_typeclass_info)::out,
+    list(item_instance_info)::in, list(item_instance_info)::out,
+    list(item_type_repn_info)::in, list(item_type_repn_info)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+classify_int2_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !TypeRepns, !Specs).
+classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !TypeRepns, !Specs) :-
+    (
+        Item = item_type_defn(ItemTypeDefn),
+        !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
+    ;
+        Item = item_inst_defn(ItemInstDefn),
+        !:InstDefns = [ItemInstDefn | !.InstDefns]
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        !:ModeDefns = [ItemModeDefn | !.ModeDefns]
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        !:TypeClasses = [ItemTypeClass | !.TypeClasses]
+    ;
+        Item = item_instance(ItemInstance),
+        !:Instances = [ItemInstance | !.Instances]
+    ;
+        Item = item_type_repn(ItemTypeRepn),
+        !:TypeRepns = [ItemTypeRepn | !.TypeRepns]
+    ;
+        ( Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_clause(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ),
+        Pieces = [words("A .int2 file may not contain")] ++
+            item_desc_pieces(Item) ++
+            [words("in its interface section."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_item_context(Item), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
+    ),
+    classify_int2_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !TypeRepns, !Specs).
+
+:- pred classify_int2_items_imp(list(item)::in,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+classify_int2_items_imp([], !TypeDefns, !Specs).
+classify_int2_items_imp([Item | Items], !TypeDefns, !Specs) :-
+    (
+        Item = item_type_defn(ItemTypeDefn),
+        !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
+    ;
+        ( Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_clause(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
+        ),
+        Pieces = [words("A .int2 file may not contain")] ++
+            item_desc_pieces(Item) ++
+            [words("in its implementation section."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_item_context(Item), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
+    ),
+    classify_int2_items_imp(Items, !TypeDefns, !Specs).
+
+%-----------------------------------------------------------------------------%
+
+convert_parse_tree_int_parse_tree_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
+    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntFIMs, ImpFIMs, IntItems, ImpItems),
+
+    expect(unify(IntFileKind, ifk_int3), $pred,
+        "trying to convert non-ifk_int3 parse_tree_int to parse_tree_int3"),
+
+    (
+        MaybeVersionNumbers = no_version_numbers
+    ;
+        MaybeVersionNumbers = version_numbers(_),
+        VNPieces = [words("A .int3 file may not contain"),
+            words("version number information."), nl],
+        % MaybeVersionNumbers itself contains no context information.
+        VNSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(ModuleNameContext, [always(VNPieces)])]),
+        !:Specs = [VNSpec | !.Specs]
+    ),
+
+    list.foldl(add_included_module_name, IntIncls,
+        set.init, IntInclModuleNames),
+    avail_imports_uses(IntAvails, IntImports, IntUses),
+    IntImportModules = list.map(get_import_module_name, IntImports),
+    set.list_to_set(IntImportModules, IntImportModuleNames),
+    (
+        IntUses = []
+    ;
+        IntUses = [FirstIntUse | _],
+        IntUsePieces = [words("A .int3 file may not contain a"),
+            decl("use_module"), suffix("."), nl],
+        IntUseSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(FirstIntUse ^ aui_context, [always(IntUsePieces)])]),
+        !:Specs = [IntUseSpec | !.Specs]
+    ),
+
+    (
+        IntFIMs = []
+    ;
+        IntFIMs = [FirstIntFIM | _],
+        IntFIMPieces = [words("A .int3 file may not contain a"),
+            pragma_decl("foreign_import_module"), suffix("."), nl],
+        IntFIMSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(FirstIntFIM ^ fim_context, [always(IntFIMPieces)])]),
+        !:Specs = [IntFIMSpec | !.Specs]
+    ),
+
+    classify_int3_items_int(IntItems, [], IntTypeDefns0,
+        [], IntInstDefns0, [], IntModeDefns0,
+        [], IntTypeClasses0, [], IntInstances0, [], IntTypeRepns0, !Specs),
+    list.sort(IntTypeDefns0, IntTypeDefns),
+    list.sort(IntInstDefns0, IntInstDefns),
+    list.sort(IntModeDefns0, IntModeDefns),
+    list.sort(IntTypeClasses0, IntTypeClasses),
+    list.sort(IntInstances0, IntInstances),
+    list.sort(IntTypeRepns0, IntTypeRepns),
+
+    some [!ImpContexts]
+    (
+        !:ImpContexts = [],
+        (
+            ImpIncls = []
+        ;
+            ImpIncls = [HeadIncl | _],
+            !:ImpContexts = [HeadIncl ^ incl_context | !.ImpContexts]
+        ),
+        (
+            ImpAvails = []
+        ;
+            ImpAvails = [HeadAvail | _],
+            !:ImpContexts = [get_avail_context(HeadAvail) | !.ImpContexts]
+        ),
+        (
+            ImpFIMs = []
+        ;
+            ImpFIMs = [HeadFIM | _],
+            !:ImpContexts = [HeadFIM ^ fim_context | !.ImpContexts]
+        ),
+        (
+            ImpItems = []
+        ;
+            ImpItems = [HeadImpItem | _],
+            !:ImpContexts = [get_item_context(HeadImpItem) | !.ImpContexts]
+        ),
+        list.sort(!ImpContexts),
+        (
+            !.ImpContexts = []
+        ;
+            !.ImpContexts = [FirstImpContext | _],
+            ImpItemPieces = [words("An .int3 file must not have"),
+                words("an implementation section."), nl],
+            ImpItemSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(FirstImpContext, [always(ImpItemPieces)])]),
+            !:Specs = [ImpItemSpec | !.Specs]
+        )
+    ),
+    ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
+        IntInclModuleNames, IntImportModuleNames,
+        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeClasses, IntInstances, IntTypeRepns).
+
+:- pred classify_int3_items_int(list(item)::in,
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
+    list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
+    list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
+    list(item_typeclass_info)::in, list(item_typeclass_info)::out,
+    list(item_instance_info)::in, list(item_instance_info)::out,
+    list(item_type_repn_info)::in, list(item_type_repn_info)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+classify_int3_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !TypeRepns, !Specs).
+classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !TypeRepns, !Specs) :-
+    (
+        Item = item_type_defn(ItemTypeDefn),
+        !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
+    ;
+        Item = item_inst_defn(ItemInstDefn),
+        !:InstDefns = [ItemInstDefn | !.InstDefns]
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        !:ModeDefns = [ItemModeDefn | !.ModeDefns]
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        !:TypeClasses = [ItemTypeClass | !.TypeClasses]
+    ;
+        Item = item_instance(ItemInstance),
+        !:Instances = [ItemInstance | !.Instances]
+    ;
+        Item = item_type_repn(ItemTypeRepn),
+        !:TypeRepns = [ItemTypeRepn | !.TypeRepns]
+    ;
+        ( Item = item_pred_decl(_)
+        ; Item = item_clause(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ),
+        Pieces = [words("A .int3 file may not contain")] ++
+            item_desc_pieces(Item) ++
+            [words("in its interface section."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_item_context(Item), [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
+    ),
+    classify_int3_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
+        !TypeClasses, !Instances, !TypeRepns, !Specs).
 
 %-----------------------------------------------------------------------------%
 
@@ -2272,7 +2966,75 @@ get_item_context(Item) = Context :-
         Context = ItemTypeRepn ^ tr_context
     ).
 
+item_desc_pieces(Item) = Pieces :-
+    (
+        Item = item_clause(_),
+        Pieces = [words("a clause")]
+    ;
+        Item = item_type_defn(_),
+        Pieces = [words("a type definition")]
+    ;
+        Item = item_inst_defn(_),
+        Pieces = [words("an inst definition")]
+    ;
+        Item = item_mode_defn(_),
+        Pieces = [words("a mode definition")]
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        PorF = ItemPredDecl ^ pf_p_or_f,
+        (
+            PorF = pf_predicate,
+            Pieces = [words("a predicate declaration")]
+        ;
+            PorF = pf_function,
+            Pieces = [words("a function declaration")]
+        )
+    ;
+        Item = item_mode_decl(_),
+        Pieces = [words("a mode declaration")]
+    ;
+        Item = item_pragma(ItemPragma),
+        Pieces = pragma_desc_pieces(ItemPragma ^ prag_type)
+    ;
+        Item = item_promise(ItemPromise),
+        PromiseType = ItemPromise ^ prom_type,
+        (
+            PromiseType = promise_type_exclusive,
+            Pieces = [words("an exclusivity promise")]
+        ;
+            PromiseType = promise_type_exhaustive,
+            Pieces = [words("an exhaustivity promise")]
+        ;
+            PromiseType = promise_type_exclusive_exhaustive,
+            Pieces = [words("an exclusivity and exhaustivity promise")]
+        ;
+            PromiseType = promise_type_true,
+            Pieces = [words("an assertion")]
+        )
+    ;
+        Item = item_typeclass(_),
+        Pieces = [words("a typeclass declaration")]
+    ;
+        Item = item_instance(_),
+        Pieces = [words("an instance declaration")]
+    ;
+        Item = item_initialise(_),
+        Pieces = [words("an initialise declaration")]
+    ;
+        Item = item_finalise(_),
+        Pieces = [words("a finalise declaration")]
+    ;
+        Item = item_mutable(_),
+        Pieces = [words("the declaration of a mutable")]
+    ;
+        Item = item_type_repn(_),
+        Pieces = [words("a type representation description")]
+    ).
+
 %-----------------------------------------------------------------------------%
+
+add_included_module_name(Incl, !ModuleNames) :-
+    set.insert(item_include_module_name(Incl), !ModuleNames).
 
 get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
     Incl = item_include(ModuleName, Context, _SeqNum),
@@ -2283,6 +3045,13 @@ import_or_use_decl_name(use_decl) = "use_module".
 
 item_include_module_name(Incl) = ModuleName :-
     Incl = item_include(ModuleName, _Context, _SeqNum).
+
+get_avail_context(avail_import(avail_import_info(_, Context, _))) = Context.
+get_avail_context(avail_use(avail_use_info(_, Context, _))) = Context.
+
+get_import_context(avail_import_info(_, Context, _)) = Context.
+
+get_use_context(avail_use_info(_, Context, _)) = Context.
 
 avail_is_import(Avail, ImportInfo) :-
     require_complete_switch [Avail]
@@ -2317,7 +3086,7 @@ avail_imports_uses([Avail | Avails], !:Imports, !:Uses) :-
         !:Uses = [AvailUseInfo | !.Uses]
     ).
 
-item_avail_module_name(ItemAvail) = ModuleName :-
+get_avail_module_name(ItemAvail) = ModuleName :-
     (
         ItemAvail = avail_import(AvailImportInfo),
         AvailImportInfo = avail_import_info(ModuleName, _, _)
@@ -2326,13 +3095,17 @@ item_avail_module_name(ItemAvail) = ModuleName :-
         AvailUseInfo = avail_use_info(ModuleName, _, _)
     ).
 
-avail_import_info_module_name(AvailImportInfo) = ModuleName :-
+get_import_module_name(AvailImportInfo) = ModuleName :-
     AvailImportInfo = avail_import_info(ModuleName, _, _).
 
-avail_use_info_module_name(AvailUseInfo) = ModuleName :-
+get_use_module_name(AvailUseInfo) = ModuleName :-
     AvailUseInfo = avail_use_info(ModuleName, _, _).
 
-fim_spec_to_item(FIMSpec, FIM) :-
+fim_item_to_spec(FIM) = FIMSpec :-
+    FIM = item_fim(Lang, ModuleName, _, _),
+    FIMSpec = fim_spec(Lang, ModuleName).
+
+fim_spec_to_item(FIMSpec) = FIM :-
     FIMSpec = fim_spec(Lang, ModuleName),
     FIM = item_fim(Lang, ModuleName, term.context_init, -1).
 
@@ -2439,68 +3212,63 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         Allowed = yes
     ).
 
-pragma_context_pieces(Pragma) = ContextPieces :-
+
+pragma_desc_pieces(Pragma) = Pieces :-
     (
         Pragma = pragma_foreign_code(_),
-        ContextPieces = [pragma_decl("foreign_code"), words("declaration")]
+        Pieces = [pragma_decl("foreign_code"), words("declaration")]
     ;
         Pragma = pragma_foreign_decl(_),
-        ContextPieces = [pragma_decl("foreign_decl"), words("declaration")]
+        Pieces = [pragma_decl("foreign_decl"), words("declaration")]
     ;
         Pragma = pragma_foreign_proc_export(_),
-        ContextPieces = [pragma_decl("foreign_export"), words("declaration")]
+        Pieces = [pragma_decl("foreign_export"), words("declaration")]
     ;
         Pragma = pragma_foreign_export_enum(_),
-        ContextPieces = [pragma_decl("foreign_export_enum"),
-            words("declaration")]
+        Pieces = [pragma_decl("foreign_export_enum"), words("declaration")]
     ;
         Pragma = pragma_foreign_proc(_),
-        ContextPieces = [pragma_decl("foreign_proc"), words("declaration")]
+        Pieces = [pragma_decl("foreign_proc"), words("declaration")]
     ;
         Pragma = pragma_external_proc(External),
         External = pragma_info_external_proc(_, _, PorF, _),
         (
             PorF = pf_predicate,
-            ContextPieces = [pragma_decl("external_pred"),
-                words("declaration")]
+            Pieces = [pragma_decl("external_pred"), words("declaration")]
         ;
             PorF = pf_function,
-            ContextPieces = [pragma_decl("external_func"),
-                words("declaration")]
+            Pieces = [pragma_decl("external_func"), words("declaration")]
         )
     ;
         Pragma = pragma_inline(_),
-        ContextPieces = [pragma_decl("inline"), words("declaration")]
+        Pieces = [pragma_decl("inline"), words("declaration")]
     ;
         Pragma = pragma_no_inline(_),
-        ContextPieces = [pragma_decl("no_inline"), words("declaration")]
+        Pieces = [pragma_decl("no_inline"), words("declaration")]
     ;
         Pragma = pragma_consider_used(_),
-        ContextPieces = [pragma_decl("consider_used"), words("declaration")]
+        Pieces = [pragma_decl("consider_used"), words("declaration")]
     ;
         Pragma = pragma_no_detism_warning(_),
-        ContextPieces = [pragma_decl("no_determinism_warning"),
-            words("declaration")]
+        Pieces = [pragma_decl("no_determinism_warning"), words("declaration")]
     ;
         Pragma = pragma_require_tail_recursion(_),
-        ContextPieces = [pragma_decl("require_tail_recursion"),
-            words("declaration")]
+        Pieces = [pragma_decl("require_tail_recursion"), words("declaration")]
     ;
         Pragma = pragma_fact_table(_),
-        ContextPieces = [pragma_decl("fact_table"), words("declaration")]
+        Pieces = [pragma_decl("fact_table"), words("declaration")]
     ;
         Pragma = pragma_tabled(Tabled),
         Tabled = pragma_info_tabled(EvalMethod, _, _, _),
         (
             EvalMethod = eval_memo,
-            ContextPieces = [pragma_decl("memo"), words("declaration")]
+            Pieces = [pragma_decl("memo"), words("declaration")]
         ;
             EvalMethod = eval_loop_check,
-            ContextPieces = [pragma_decl("loop_check"), words("declaration")]
+            Pieces = [pragma_decl("loop_check"), words("declaration")]
         ;
             EvalMethod = eval_minimal(_),
-            ContextPieces = [pragma_decl("minimal_model"),
-                words("declaration")]
+            Pieces = [pragma_decl("minimal_model"), words("declaration")]
         ;
             EvalMethod = eval_table_io(_, _),
             unexpected($pred, "eval_table_io")
@@ -2510,72 +3278,65 @@ pragma_context_pieces(Pragma) = ContextPieces :-
         )
     ;
         Pragma = pragma_promise_pure(_),
-        ContextPieces = [pragma_decl("promise_pure"), words("declaration")]
+        Pieces = [pragma_decl("promise_pure"), words("declaration")]
     ;
         Pragma = pragma_promise_semipure(_),
-        ContextPieces = [pragma_decl("promise_semipure"), words("declaration")]
+        Pieces = [pragma_decl("promise_semipure"), words("declaration")]
     ;
         Pragma = pragma_promise_eqv_clauses(_),
-        ContextPieces = [pragma_decl("promise_equivalent_clauses"),
+        Pieces = [pragma_decl("promise_equivalent_clauses"),
             words("declaration")]
     ;
         Pragma = pragma_unused_args(_),
-        ContextPieces = [pragma_decl("unused_args"), words("declaration")]
+        Pieces = [pragma_decl("unused_args"), words("declaration")]
     ;
         Pragma = pragma_exceptions(_),
-        ContextPieces = [pragma_decl("exceptions"), words("declaration")]
+        Pieces = [pragma_decl("exceptions"), words("declaration")]
     ;
         Pragma = pragma_trailing_info(_),
-        ContextPieces = [pragma_decl("trailing_info"), words("declaration")]
+        Pieces = [pragma_decl("trailing_info"), words("declaration")]
     ;
         Pragma = pragma_mm_tabling_info(_),
-        ContextPieces = [pragma_decl("mm_tabling_info"), words("declaration")]
+        Pieces = [pragma_decl("mm_tabling_info"), words("declaration")]
     ;
         Pragma = pragma_require_feature_set(_),
-        ContextPieces = [pragma_decl("require_feature_set"),
-            words("declaration")]
+        Pieces = [pragma_decl("require_feature_set"), words("declaration")]
     ;
         Pragma = pragma_foreign_enum(_),
-        ContextPieces = [pragma_decl("foreign_enum"), words("declaration")]
+        Pieces = [pragma_decl("foreign_enum"), words("declaration")]
     ;
         Pragma = pragma_obsolete(_),
-        ContextPieces = [pragma_decl("obsolete"), words("declaration")]
+        Pieces = [pragma_decl("obsolete"), words("declaration")]
     ;
         Pragma = pragma_type_spec(_),
-        ContextPieces = [pragma_decl("type_spec"), words("declaration")]
+        Pieces = [pragma_decl("type_spec"), words("declaration")]
     ;
         Pragma = pragma_termination_info(_),
-        ContextPieces = [pragma_decl("termination_info"),
-            words("declaration")]
+        Pieces = [pragma_decl("termination_info"), words("declaration")]
     ;
         Pragma = pragma_termination2_info(_),
-        ContextPieces = [pragma_decl("termination2_info"),
-            words("declaration")]
+        Pieces = [pragma_decl("termination2_info"), words("declaration")]
     ;
         Pragma = pragma_terminates(_),
-        ContextPieces = [pragma_decl("terminates"), words("declaration")]
+        Pieces = [pragma_decl("terminates"), words("declaration")]
     ;
         Pragma = pragma_does_not_terminate(_),
-        ContextPieces = [pragma_decl("does_not_terminate"),
-            words("declaration")]
+        Pieces = [pragma_decl("does_not_terminate"), words("declaration")]
     ;
         Pragma = pragma_check_termination(_),
-        ContextPieces = [pragma_decl("check_termination"),
-            words("declaration")]
+        Pieces = [pragma_decl("check_termination"), words("declaration")]
     ;
         Pragma = pragma_structure_sharing(_),
-        ContextPieces = [pragma_decl("structure_sharing"),
-            words("declaration")]
+        Pieces = [pragma_decl("structure_sharing"), words("declaration")]
     ;
         Pragma = pragma_structure_reuse(_),
-        ContextPieces = [pragma_decl("structure_reuse"), words("declaration")]
+        Pieces = [pragma_decl("structure_reuse"), words("declaration")]
     ;
         Pragma = pragma_mode_check_clauses(_),
-        ContextPieces = [pragma_decl("mode_check_clauses"),
-            words("declaration")]
+        Pieces = [pragma_decl("mode_check_clauses"), words("declaration")]
     ;
         Pragma = pragma_oisu(_),
-        ContextPieces = [pragma_decl("oisu"), words("declaration")]
+        Pieces = [pragma_decl("oisu"), words("declaration")]
     ).
 
 %-----------------------------------------------------------------------------%

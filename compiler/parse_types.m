@@ -74,6 +74,60 @@
             % pragmas that don't require any features, and for version_number
             % items recorded by old compiler versions in a now-obsolete format.
 
+:- func iom_desc_pieces(item_or_marker) = list(format_component).
+
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
+iom_desc_pieces(IOM) = Pieces :-
+    (
+        IOM = iom_item(Item),
+        Pieces = item_desc_pieces(Item)
+    ;
+        IOM = iom_marker_include(_),
+        Pieces = [words("an"), decl("include_module"), words("declaration")]
+    ;
+        IOM = iom_marker_avail(one_or_more(HeadAvail, _TailAvails)),
+        (
+            HeadAvail = avail_import(_),
+            Pieces = [words("an"), decl("import_module"),
+                words("declaration")]
+        ;
+            HeadAvail = avail_use(_),
+            Pieces = [words("a"), decl("use_module"), words("declaration")]
+        )
+    ;
+        IOM = iom_marker_fim(_),
+        Pieces = [words("a"), pragma_decl("foreign_import_module"),
+            words("declaration")]
+    ;
+        IOM = iom_marker_version_numbers(_),
+        Pieces = [words("a version number map")]
+    ;
+        IOM = iom_marker_src_file(_),
+        Pieces = [words("a"), pragma_decl("source_file"), words("declaration")]
+    ;
+        IOM = iom_marker_module_start(_, _, _),
+        Pieces = [words("a"), decl("module"), words("declaration")]
+    ;
+        IOM = iom_marker_module_end(_, _, _),
+        Pieces = [words("an"), decl("end_module"), words("declaration")]
+    ;
+        IOM = iom_marker_section(SectionKind, _, _),
+        (
+            SectionKind = ms_interface,
+            Pieces = [words("an"), decl("interface"), words("declaration")]
+        ;
+            SectionKind = ms_implementation,
+            Pieces = [words("an"), decl("implementation"),
+                words("declaration")]
+        )
+    ;
+        IOM = iom_handled(_Specs),
+        Pieces = []
+    ).
+
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_types.
 %---------------------------------------------------------------------------%

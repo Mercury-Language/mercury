@@ -265,7 +265,7 @@ read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
         set.is_non_empty(FatalErrors)
     then
         read_module_int(Globals, "Getting dependencies for module interface",
-            ignore_errors, Search, ModuleName, ifk_int, IntFileName,
+            ignore_errors, Search, ModuleName, ifk_int1, IntFileName,
             always_read_module(dont_return_timestamp), _,
             ParseTreeInt, _IntSpecs, _IntReadModuleErrors, !IO),
         % XXX Shouldn't we pass *Int*ReadModuleErrors?

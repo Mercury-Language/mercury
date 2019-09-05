@@ -1080,7 +1080,7 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
         ( PIKind = pik_direct(Int123, _)
         ; PIKind = pik_indirect(Int123)
         ),
-        ( Int123 = int123_1, IntFileKind = ifk_int
+        ( Int123 = int123_1, IntFileKind = ifk_int1
         ; Int123 = int123_2, IntFileKind = ifk_int2
         ; Int123 = int123_3, IntFileKind = ifk_int3
         )
@@ -2090,8 +2090,7 @@ read_optimization_interfaces(Globals, Transitive,
 
     (
         Transitive = yes,
-        NewUseDeps0 = set.list_to_set(
-            list.map(avail_use_info_module_name, OptUses)),
+        NewUseDeps0 = set.list_to_set(list.map(get_use_module_name, OptUses)),
         get_implicit_dependencies_in_items(Globals, OptItems,
             NewImplicitImportDeps0, NewImplicitUseDeps0),
         NewDepsSet0 = set.union_list([NewUseDeps0,

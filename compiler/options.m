@@ -156,6 +156,7 @@
     ;       halt_at_warn
     ;       halt_at_syntax_errors
     ;       halt_at_auto_parallel_failure
+    ;       halt_at_invalid_interface
     ;       warn_singleton_vars
     ;       warn_overlapping_scopes
     ;       warn_det_decls_too_lax
@@ -1177,6 +1178,7 @@ option_defaults_2(warning_option, [
     halt_at_warn                        -   bool(no),
     halt_at_syntax_errors               -   bool(no),
     halt_at_auto_parallel_failure       -   bool(no),
+    halt_at_invalid_interface           -   bool(yes),
 
     % IMPORTANT NOTE:
     % if you add any new warning options, or if you change the default
@@ -2094,6 +2096,7 @@ long_option("warn-accumulator-swaps",   warn_accumulator_swaps).
 long_option("halt-at-warn",             halt_at_warn).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
 long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
+long_option("halt-at-invalid-interface",    halt_at_invalid_interface).
 long_option("warn-singleton-variables", warn_singleton_vars).
 long_option("warn-singleton-vars",      warn_singleton_vars).
 long_option("warn-overlapping-scopes",  warn_overlapping_scopes).
@@ -3829,6 +3832,11 @@ options_help_warning -->
         "\tThis option causes the compiler to halt immediately",
         "\tafter syntax checking and not do any semantic checking",
         "\tif it finds any syntax errors in the program.",
+% --halt-at-invalid-interface is a temporary developer-only option.
+%       "--halt-at-invalid-interface",
+%       "\tThis option causes the compiler to halt immediately",
+%       "\tif it finds that an automatically generated interface file",
+%       "\thas invalid contents.",
 %       "--halt-at-auto-parallel-failure",
 %       "\tThis option causes the compiler to halt if it cannot perform",
 %       "\tan auto-parallelization requested by a feedback file.",

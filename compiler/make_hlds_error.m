@@ -294,7 +294,7 @@ report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
         % and the user cannot do anything about that bug.
         MaybeAttrs = item_origin_user
     then
-        ContextPieces = pragma_context_pieces(Pragma),
+        ContextPieces = pragma_desc_pieces(Pragma),
         error_is_exported(Context, ContextPieces, !Specs)
     else
         true

@@ -492,7 +492,7 @@ mq_error_context_to_pieces(ErrorContext, Context, Pieces) :-
         Pieces = [words("clause mode annotation")]
     ;
         ErrorContext = mqec_pragma(Context, Pragma),
-        Pieces = pragma_context_pieces(Pragma)
+        Pieces = pragma_desc_pieces(Pragma)
     ;
         ErrorContext = mqec_type_qual(Context),
         Pieces = [words("explicit type qualification")]
