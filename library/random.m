@@ -555,7 +555,7 @@ shuffle_2(I, Lo, Hi, Sz, !A, !R) :-
         true
     else
         uniform_int_in_range(Lo, Sz, J, !R),
-        swap_elems(I, J, !A),
+        array.unsafe_swap(I, J, !A),
         shuffle_2(I + 1, Lo, Hi, Sz, !A, !R)
     ).
 
@@ -635,7 +635,7 @@ shuffle_2(P, I, Lo, Hi, Sz, !A, !S) :-
         true
     else
         uniform_int_in_range(P, Lo, Sz, J, !S),
-        swap_elems(I, J, !A),
+        array.unsafe_swap(I, J, !A),
         shuffle_2(P, I + 1, Lo, Hi, Sz, !A, !S)
     ).
 
@@ -651,15 +651,6 @@ uniform_to_normal(X, Y, U, V) :-
     Fac = math.sqrt(-2.0 * math.ln(S) / S),
     U = X * Fac,
     V = Y * Fac.
-
-:- pred swap_elems(int::in, int::in, array(T)::array_di, array(T)::array_uo)
-    is det.
-
-swap_elems(I, J, !A) :-
-    array.lookup(!.A, I, XI),
-    array.lookup(!.A, J, XJ),
-    array.unsafe_set(I, XJ, !A),
-    array.unsafe_set(J, XI, !A).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
