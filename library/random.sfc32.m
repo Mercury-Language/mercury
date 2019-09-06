@@ -36,7 +36,8 @@
 :- instance urandom(params, ustate).
 :- instance urandom_dup(ustate).
 
-    % Initialise a 32-bit SFC generator with the default seed.
+    % Initialise a 32-bit SFC generator with the default seed. The
+    % resulting generator produces the same sequence every time.
     %
 :- pred init(params::out, ustate::uo) is det.
 

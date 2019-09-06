@@ -499,7 +499,9 @@ ifeq "$(filter erlang%,$(GRADE))" ""
 	RANDOM_PROGS = \
 		random1 \
 		random2 \
-		random3
+		random3 \
+		random_shuffle \
+		random_shuffle2
 else
 	RANDOM_PROGS =
 endif

@@ -95,6 +95,7 @@
 :- include_module sfc32.
 :- include_module sfc64.
 
+:- import_module array.
 :- import_module io.
 :- import_module list.
 
@@ -180,6 +181,16 @@
     %
 :- pred normal_floats(float::out, float::out, R::in, R::out) is det
     <= random(R).
+
+    % Generate a random permutation of a list.
+    %
+:- pred shuffle_list(list(T)::in, list(T)::out, R::in, R::out) is det
+    <= random(R).
+
+    % Generate a random permutation of an array.
+    %
+:- pred shuffle_array(array(T)::array_di, array(T)::array_uo, R::in, R::out)
+    is det <= random(R).
 
 %---------------------------------------------------------------------------%
 
@@ -270,13 +281,23 @@
     %
     % Generate two pseudo-random floats from a normal (i.e., Gaussian)
     % distribution with mean 0.0 and standard deviation 1.0, using the
-    % Nox-Muller method.
+    % Box-Muller method.
     %
     % We generate two at a time for efficiency; they are independent of
     % each other.
     %
 :- pred normal_floats(P::in, float::out, float::out, S::di, S::uo) is det
     <= urandom(P, S).
+
+    % Generate a random permutation of a list.
+    %
+:- pred shuffle_list(P::in, list(T)::in, list(T)::out, S::di, S::uo) is det
+    <= urandom(P, S).
+
+    % Generate a random permutation of an array.
+    %
+:- pred shuffle_array(P::in, array(T)::array_di, array(T)::array_uo,
+    S::di, S::uo) is det <= urandom(P, S).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -381,6 +402,10 @@
     %
     % Creates a supply of random numbers RS using the specified Seed.
     %
+    % This predicate has been declared obsolete because all of the
+    % interface from here on is deprecated. All code using this part
+    % of the interface will need to be updated.
+    %
 :- pragma obsolete(init/2).
 :- pred init(int::in, supply::uo) is det.
 
@@ -447,7 +472,6 @@
 
 :- implementation.
 
-:- import_module array.
 :- import_module float.
 :- import_module int.
 :- import_module math.
@@ -511,6 +535,30 @@ normal_floats(U, V, !R) :-
         normal_floats(U, V, !R)
     ).
 
+shuffle_list(L0, L, !R) :-
+    A0 = array(L0),
+    shuffle_array(A0, A, !R),
+    L = array.to_list(A).
+
+shuffle_array(A0, A, !R) :-
+    Lo = array.min(A0),
+    Hi = array.max(A0),
+    Sz = array.size(A0),
+    shuffle_2(Lo, Lo, Hi, Sz, A0, A, !R).
+
+:- pred shuffle_2(int::in, int::in, int::in, int::in,
+    array(T)::array_di, array(T)::array_uo, R::in, R::out) is det
+    <= random(R).
+
+shuffle_2(I, Lo, Hi, Sz, !A, !R) :-
+    ( if I > Hi then
+        true
+    else
+        uniform_int_in_range(Lo, Sz, J, !R),
+        swap_elems(I, J, !A),
+        shuffle_2(I + 1, Lo, Hi, Sz, !A, !R)
+    ).
+
 %---------------------------------------------------------------------------%
 
 uniform_int_in_range(P, Start, Range0, N, !S) :-
@@ -567,6 +615,30 @@ normal_floats(P, U, V, !S) :-
         normal_floats(P, U, V, !S)
     ).
 
+shuffle_list(P, L0, L, !S) :-
+    A0 = array(L0),
+    shuffle_array(P, A0, A, !S),
+    L = array.to_list(A).
+
+shuffle_array(P, A0, A, !S) :-
+    Lo = array.min(A0),
+    Hi = array.max(A0),
+    Sz = array.size(A0),
+    shuffle_2(P, Lo, Lo, Hi, Sz, A0, A, !S).
+
+:- pred shuffle_2(P::in, int::in, int::in, int::in, int::in,
+    array(T)::array_di, array(T)::array_uo, S::di, S::uo) is det
+    <= urandom(P, S).
+
+shuffle_2(P, I, Lo, Hi, Sz, !A, !S) :-
+    ( if I > Hi then
+        true
+    else
+        uniform_int_in_range(P, Lo, Sz, J, !S),
+        swap_elems(I, J, !A),
+        shuffle_2(P, I + 1, Lo, Hi, Sz, !A, !S)
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pred uniform_to_normal(float::in, float::in, float::out, float::out)
@@ -579,6 +651,15 @@ uniform_to_normal(X, Y, U, V) :-
     Fac = math.sqrt(-2.0 * math.ln(S) / S),
     U = X * Fac,
     V = Y * Fac.
+
+:- pred swap_elems(int::in, int::in, array(T)::array_di, array(T)::array_uo)
+    is det.
+
+swap_elems(I, J, !A) :-
+    array.lookup(!.A, I, XI),
+    array.lookup(!.A, J, XJ),
+    array.unsafe_set(I, XJ, !A),
+    array.unsafe_set(J, XI, !A).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -31,7 +31,8 @@
 
 :- instance random(random).
 
-    % Initialise a 16-bit SFC generator with the default seed.
+    % Initialise a 16-bit SFC generator with the default seed. The
+    % resulting generator produces the same sequence every time.
     %
 :- func init = random.
 
