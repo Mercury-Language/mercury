@@ -2306,8 +2306,8 @@ convert_parse_tree_int_parse_tree_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         IntIntImportContexts = []
     ;
         IntIntImportContexts = [FirstImportContext | _],
-        IntImportPieces = [words("A .int2 file may not contain a"),
-            decl("import_module"), words("declaration."), nl],
+        IntImportPieces = [words("A .int2 file may not contain any"),
+            decl("import_module"), words("declarations."), nl],
         IntImportSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(FirstImportContext, [always(IntImportPieces)])]),
         !:Specs = [IntImportSpec | !.Specs]
@@ -2513,8 +2513,8 @@ convert_parse_tree_int_parse_tree_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
         IntImports = []
     ;
         IntImports = [FirstIntImport | _],
-        IntImportPieces = [words("A .int2 file may not contain a"),
-            decl("import_module"), words("declaration."), nl],
+        IntImportPieces = [words("A .int2 file may not contain any"),
+            decl("import_module"), words("declarations."), nl],
         IntImportSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(FirstIntImport ^ aii_context,
                 [always(IntImportPieces)])]),
@@ -2673,8 +2673,8 @@ convert_parse_tree_int_parse_tree_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
         IntUses = []
     ;
         IntUses = [FirstIntUse | _],
-        IntUsePieces = [words("A .int3 file may not contain a"),
-            decl("use_module"), suffix("."), nl],
+        IntUsePieces = [words("A .int3 file may not contain any"),
+            decl("use_module"), words("declarations."), nl],
         IntUseSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(FirstIntUse ^ aui_context, [always(IntUsePieces)])]),
         !:Specs = [IntUseSpec | !.Specs]
@@ -2684,8 +2684,8 @@ convert_parse_tree_int_parse_tree_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
         IntFIMs = []
     ;
         IntFIMs = [FirstIntFIM | _],
-        IntFIMPieces = [words("A .int3 file may not contain a"),
-            pragma_decl("foreign_import_module"), suffix("."), nl],
+        IntFIMPieces = [words("A .int3 file may not contain any"),
+            pragma_decl("foreign_import_module"), words("declarations."), nl],
         IntFIMSpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(FirstIntFIM ^ fim_context, [always(IntFIMPieces)])]),
         !:Specs = [IntFIMSpec | !.Specs]
@@ -2733,7 +2733,7 @@ convert_parse_tree_int_parse_tree_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
             !.ImpContexts = []
         ;
             !.ImpContexts = [FirstImpContext | _],
-            ImpItemPieces = [words("An .int3 file must not have"),
+            ImpItemPieces = [words("A .int3 file must not have"),
                 words("an implementation section."), nl],
             ImpItemSpec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(FirstImpContext, [always(ImpItemPieces)])]),
@@ -3211,7 +3211,6 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ),
         Allowed = yes
     ).
-
 
 pragma_desc_pieces(Pragma) = Pieces :-
     (
