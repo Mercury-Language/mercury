@@ -424,9 +424,12 @@ Changes to the Mercury standard library:
    - select_unselect/4
    - select_unselect_sorted_list/4
 
-* The following predicate has been added to the set modules:
+* The following predicates and/or functions have been added to the set modules:
 
    - intersection_and_differences
+   - det_remove
+   - det_remove_list
+   - rev_sorted_list_to_set
 
 * We have a added a new type, maybe_errors, to the maybe module.
 

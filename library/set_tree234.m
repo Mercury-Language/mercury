@@ -126,15 +126,22 @@
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
+    % The det_remove version throws an exception instead of failing.
+    %
 :- pred remove(T::in, set_tree234(T)::in, set_tree234(T)::out) is semidet.
+:- pred det_remove(T::in, set_tree234(T)::in, set_tree234(T)::out) is det.
 
     % `remove_list(Xs, Set0, Set)' is true iff Xs does not contain any
     % duplicates, `Set0' contains every member of `Xs', and `Set' is the
     % relative complement of `Set0' and the set containing only the members of
     % `Xs'.
     %
+    % The det_remove_list version throws an exception instead of failing.
+    %
 :- pred remove_list(list(T)::in, set_tree234(T)::in, set_tree234(T)::out)
     is semidet.
+:- pred det_remove_list(list(T)::in, set_tree234(T)::in, set_tree234(T)::out)
+    is det.
 
     % `remove_least(X, Set0, Set)' is true iff `X' is the least element in
     % `Set0', and `Set' is the set which contains all the elements of `Set0'
@@ -255,14 +262,14 @@
 
     % `sorted_list_to_set(List) = Set' is true iff `Set' is the set
     % containing only the members of `List'. `List' must be sorted
-    % in ascending order.
+    % in ascending order and must not contain duplicates.
     %
 :- func sorted_list_to_set(list(T)) = set_tree234(T).
 :- pred sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
 
     % `rev_sorted_list_to_set(List) = Set' is true iff `Set' is the set
     % containing only the members of `List'. `List' must be sorted
-    % in descending order.
+    % in descending order and must not contain duplicates.
     %
 :- func rev_sorted_list_to_set(list(T)) = set_tree234(T).
 :- pred rev_sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
@@ -1833,10 +1840,24 @@ remove_2(E, Tin, Tout, RH) :-
         )
     ).
 
+det_remove(X, !Set) :-
+    ( if set_tree234.remove(X, !Set) then
+        true
+    else
+        unexpected($pred, "remove failed")
+    ).
+
 remove_list([], !Set).
 remove_list([E | Es], !Set) :-
     remove(E, !Set),
     remove_list(Es, !Set).
+
+det_remove_list(List, !Set) :-
+    ( if set_tree234.remove_list(List, !Set) then
+        true
+    else
+        unexpected($pred, "remove_list failed")
+    ).
 
 %---------------------%
 

@@ -150,15 +150,22 @@
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
+    % The det_remove version throws an exception instead of failing.
+    %
 :- pred remove(T::in, set_bbbtree(T)::in, set_bbbtree(T)::out) is semidet.
+:- pred det_remove(T::in, set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
 
     % `remove_list(Xs, Set0, Set)' is true iff Xs does not
     % contain any duplicates, `Set0' contains every member of `Xs',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
     %
+    % The det_remove_list version throws an exception instead of failing.
+    %
 :- pred remove_list(list(T)::in,
     set_bbbtree(T)::in, set_bbbtree(T)::out) is semidet.
+:- pred det_remove_list(list(T)::in,
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
 
     % `remove_least(X, Set0, Set)' is true iff the union if
     % `X' and `Set' is `Set0' and `X' is smaller than all the elements of
@@ -262,20 +269,25 @@
 
     % `sorted_list_to_set(List, Set)' is true iff `Set' is the
     % set containing only the members of `List'.
-    % `List' must be sorted. O(n).
+    % `List' must be sorted in ascending order, and must not contain
+    % any duplicates. O(n).
+    %
+    % The sorted_list_to_set_len version allows the caller to provide
+    % the length of List, which avoids the cost of computing it again.
+    % This version will throw an exception if the length is incorrect.
     %
 :- func sorted_list_to_set(list(T)) = set_bbbtree(T).
 :- pred sorted_list_to_set(list(T)::in, set_bbbtree(T)::out) is det.
-
-    % `sorted_list_to_set_len(List, Set, N)' is true iff
-    % `Set' is the set containing only the members of `List' and `N'
-    % is the length of the list. If the length of the list is already known
-    % then a noticeable speed improvement can be expected over
-    % `sorted_list_to_set' as a significant cost involved
-    % with `sorted_list_to_set' is the call to list.length.
-    % `List' must be sorted. O(n).
-    %
 :- pred sorted_list_to_set_len(list(T)::in, set_bbbtree(T)::out,
+    int::in) is det.
+
+    % `rev_sorted_list_to_set(List) = Set' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in descending order.
+    %
+:- func rev_sorted_list_to_set(list(T)) = set_bbbtree(T).
+:- pred rev_sorted_list_to_set(list(T)::in, set_bbbtree(T)::out) is det.
+:- pred rev_sorted_list_to_set_len(list(T)::in, set_bbbtree(T)::out,
     int::in) is det.
 
     % A synonym for sorted_list_to_set/1.
@@ -714,12 +726,26 @@ remove(X, tree(V, N, L, R), Set) :-
         concat3(L, R, Set)
     ).
 
+det_remove(X, !Set) :-
+    ( if set_bbbtree.remove(X, !Set) then
+        true
+    else
+        unexpected($pred, "remove failed")
+    ).
+
 %---------------------%
 
 remove_list([], !Set).
 remove_list([X | Xs], !Set) :-
     remove(X, !Set),
     remove_list(Xs, !Set).
+
+det_remove_list(List, !Set) :-
+    ( if set_bbbtree.remove_list(List, !Set) then
+        true
+    else
+        unexpected($pred, "remove_list failed")
+    ).
 
 %---------------------%
 
@@ -1258,7 +1284,7 @@ sorted_list_to_set_len([X | Xs], Set, N) :-
     ;
         RestOfList = [_ | _],
         % Should never happen. Here only to satisfy det checker.
-        error($pred, "sorted_list_to_set_r")
+        error($pred, "impossible")
     ).
 
 :- pred sorted_list_to_set_len2(list(T)::in, list(T)::out,
@@ -1276,7 +1302,7 @@ sorted_list_to_set_len2(List, RestOfList, N, Set) :-
         ;
             % Should never occur. Here only to satisfy det checker.
             RestOfList0 = [],
-            error($pred, "sorted_list_to_set_len2.1")
+            error($pred, "impossible 1")
         )
     else if N = 3 then
         ( if List = [X, Y, Z | RestOfList0] then
@@ -1285,30 +1311,43 @@ sorted_list_to_set_len2(List, RestOfList, N, Set) :-
                 tree(X, 1, empty, empty),
                 tree(Z, 1, empty, empty))
         else
-            % Should never occur. Here only to satisfy det checker
-            error($pred, "sorted_list_to_set_len2.2")
+            % Should never occur. Here only to satisfy det checker.
+            error($pred, "impossible 2")
         )
     else if N = 2 then
         ( if List = [X, Y | RestOfList0] then
             RestOfList = RestOfList0,
             Set = tree(Y, N, tree(X, 1, empty, empty), empty)
         else
-            % Should never occur. Here only to satisfy det checker
-            error($pred, "sorted_list_to_set_len2.3")
+            % Should never occur. Here only to satisfy det checker.
+            error($pred, "impossible 3")
         )
     else if N = 1 then
         ( if List = [X | RestOfList0] then
             RestOfList = RestOfList0,
             Set = tree(X, N, empty, empty)
         else
-            % Should never occur. Here only to satisfy det checker
-            error($pred, "sorted_list_to_set_len2.4")
+            % Should never occur. Here only to satisfy det checker.
+            error($pred, "impossible 4")
         )
     else
             % N = 0.
         RestOfList = List,
         Set = empty
     ).
+
+rev_sorted_list_to_set(RevList) = Set :-
+    rev_sorted_list_to_set(RevList, Set).
+
+rev_sorted_list_to_set(RevList, Set) :-
+    % It should be possible to do better than this.
+    list.reverse(RevList, List),
+    sorted_list_to_set(List, Set).
+
+rev_sorted_list_to_set_len(RevList, Set, N) :-
+    % It should be possible to do better than this.
+    list.reverse(RevList, List),
+    sorted_list_to_set_len(List, Set, N).
 
 from_sorted_list(List) = Set :-
     sorted_list_to_set(List, Set).

@@ -276,6 +276,13 @@
 :- func sorted_list_to_set(list(T)) = set(T).
 :- pred sorted_list_to_set(list(T)::in, set(T)::out) is det.
 
+    % `rev_sorted_list_to_set(List) = Set' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in descending order and must not contain any duplicates.
+    %
+:- func rev_sorted_list_to_set(list(T)) = set(T).
+:- pred rev_sorted_list_to_set(list(T)::in, set(T)::out) is det.
+
     % A synonym for sorted_list_to_set/1.
     %
 :- func from_sorted_list(list(T)) = set(T).
@@ -757,8 +764,8 @@ divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
 
 %---------------------------------------------------------------------------%
 
-list_to_set(Xs) = S :-
-    set.list_to_set(Xs, S).
+list_to_set(List) = S :-
+    set.list_to_set(List, S).
 
 list_to_set(List, Set) :-
     set_ordlist.list_to_set(List, Set).
@@ -767,18 +774,24 @@ from_list(List) = set_ordlist.from_list(List).
 
 set(List) = set_ordlist.from_list(List).
 
-sorted_list_to_set(Xs) = S :-
-    set.sorted_list_to_set(Xs, S).
+sorted_list_to_set(List) = Set :-
+    set.sorted_list_to_set(List, Set).
 
 sorted_list_to_set(List, Set) :-
     set_ordlist.sorted_list_to_set(List, Set).
+
+rev_sorted_list_to_set(List) = Set :-
+    set_ordlist.rev_sorted_list_to_set(List, Set).
+
+rev_sorted_list_to_set(List, Set) :-
+    set_ordlist.rev_sorted_list_to_set(List, Set).
 
 from_sorted_list(List) = set_ordlist.from_sorted_list(List).
 
 %---------------------------------------------------------------------------%
 
-to_sorted_list(S) = Xs :-
-    set.to_sorted_list(S, Xs).
+to_sorted_list(Set) = List :-
+    set.to_sorted_list(Set, List).
 
 to_sorted_list(Set, List) :-
     set_ordlist.to_sorted_list(Set, List).

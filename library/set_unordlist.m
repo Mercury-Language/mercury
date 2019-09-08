@@ -113,7 +113,7 @@
     set_unordlist(T)::in, set_unordlist(T)::out) is det.
 
     % `delete(X, Set0, Set)' is true iff `Set' is the relative complement of
-    % `Set0' and the set containing only `X', i.e.  if `Set' is the set which
+    % `Set0' and the set containing only `X', i.e. if `Set' is the set which
     % contains all the elements of `Set0' except `X'.
     %
 :- func delete(set_unordlist(T), T) = set_unordlist(T).
@@ -130,19 +130,25 @@
 
     % `remove(X, Set0, Set)' is true iff `Set0' contains `X',
     % and `Set' is the relative complement of `Set0' and the set
-    % containing only `X', i.e.  if `Set' is the set which contains
+    % containing only `X', i.e. if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
-:- pred remove(T::in,
-    set_unordlist(T)::in, set_unordlist(T)::out) is semidet.
+    % The det_remove version throws an exception instead of failing.
+    %
+:- pred remove(T::in, set_unordlist(T)::in, set_unordlist(T)::out) is semidet.
+:- pred det_remove(T::in, set_unordlist(T)::in, set_unordlist(T)::out) is det.
 
     % `remove_list(Xs, Set0, Set)' is true iff Xs does not contain any
     % duplicates, `Set0' contains every member of `Xs', and `Set' is the
     % relative complement of `Set0' and the set containing only the members of
     % `Xs'.
     %
+    % The det_remove_list version throws an exception instead of failing.
+    %
 :- pred remove_list(list(T)::in,
     set_unordlist(T)::in, set_unordlist(T)::out) is semidet.
+:- pred det_remove_list(list(T)::in,
+    set_unordlist(T)::in, set_unordlist(T)::out) is det.
 
     % `remove_least(X, Set0, Set)' is true iff `X' is the least element in
     % `Set0', and `Set' is the set which contains all the elements of `Set0'
@@ -175,7 +181,7 @@
 %
 
     % `union(SetA, SetB, Set)' is true iff `Set' is the union of `SetA' and
-    % `SetB'.  If the sets are known to be of different sizes, then for
+    % `SetB'. If the sets are known to be of different sizes, then for
     % efficiency make `SetA' the larger of the two.
     %
 :- func union(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
@@ -246,8 +252,9 @@
     %
 :- func from_list(list(T)) = set_unordlist(T).
 
-    % `sorted_list_to_set(List, Set)' is true iff `Set' is the set containing
-    % only the members of `List'.  `List' must be sorted.
+    % `sorted_list_to_set(List, Set)' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in ascending order.
     %
 :- func sorted_list_to_set(list(T)) = set_unordlist(T).
 :- pred sorted_list_to_set(list(T)::in, set_unordlist(T)::out) is det.
@@ -255,6 +262,13 @@
     % A synonym for sorted_list_to_set/1.
     %
 :- func from_sorted_list(list(T)) = set_unordlist(T).
+
+    % `rev_sorted_list_to_set(List, Set)' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in descending order.
+    %
+:- func rev_sorted_list_to_set(list(T)) = set_unordlist(T).
+:- pred rev_sorted_list_to_set(list(T)::in, set_unordlist(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -411,6 +425,8 @@
 
 :- implementation.
 
+:- import_module require.
+
 %---------------------------------------------------------------------------%
 
 :- type set_unordlist(T)
@@ -505,10 +521,24 @@ remove(E, sul(S0), sul(S)) :-
     list.member(E, S0),
     set_unordlist.delete(E, sul(S0), sul(S)).
 
+det_remove(X, !Set) :-
+    ( if set_unordlist.remove(X, !Set) then
+        true
+    else
+        unexpected($pred, "remove failed")
+    ).
+
 remove_list([], !S).
 remove_list([X | Xs], !S) :-
     set_unordlist.remove(X, !S),
     set_unordlist.remove_list(Xs, !S).
+
+det_remove_list(List, !Set) :-
+    ( if set_unordlist.remove_list(List, !Set) then
+        true
+    else
+        unexpected($pred, "remove_list failed")
+    ).
 
 remove_least(E, Set0, sul(Set)) :-
     Set0 = sul([_ | _]),   % Fail early on an empty set.
@@ -636,20 +666,25 @@ list_to_set(List, sul(List)).
 
 from_list(List) = sul(List).
 
-sorted_list_to_set(Xs) = S :-
-    set_unordlist.sorted_list_to_set(Xs, S).
+sorted_list_to_set(List) = Set :-
+    sorted_list_to_set(List, Set).
 
 sorted_list_to_set(List, sul(List)).
 
 from_sorted_list(List) = sul(List).
 
+rev_sorted_list_to_set(List) = Set :-
+    rev_sorted_list_to_set(List, Set).
+
+rev_sorted_list_to_set(List, sul(List)).
+
 %---------------------------------------------------------------------------%
 
-to_sorted_list(S) = Xs :-
-    set_unordlist.to_sorted_list(S, Xs).
+to_sorted_list(Set) = SortedList :-
+    to_sorted_list(Set, SortedList).
 
-to_sorted_list(sul(Set), List) :-
-    list.sort_and_remove_dups(Set, List).
+to_sorted_list(sul(Set), SortedList) :-
+    list.sort_and_remove_dups(Set, SortedList).
 
 %---------------------------------------------------------------------------%
 

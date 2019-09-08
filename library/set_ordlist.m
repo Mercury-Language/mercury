@@ -128,16 +128,22 @@
     % containing only `X', i.e. if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
-:- pred remove(T::in, set_ordlist(T)::in, set_ordlist(T)::out)
-    is semidet.
+    % The det_remove version throws an exception instead of failing.
+    %
+:- pred remove(T::in, set_ordlist(T)::in, set_ordlist(T)::out) is semidet.
+:- pred det_remove(T::in, set_ordlist(T)::in, set_ordlist(T)::out) is det.
 
     % `remove_list(Xs, Set0, Set)' is true iff Xs does not contain any
     % duplicates, `Set0' contains every member of `Xs', and `Set' is the
     % relative complement of `Set0' and the set containing only the members of
     % `Xs'.
     %
+    % The det_remove_list version throws an exception instead of failing.
+    %
 :- pred remove_list(list(T)::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is semidet.
+:- pred det_remove_list(list(T)::in, set_ordlist(T)::in, set_ordlist(T)::out)
+    is det.
 
     % `remove_least(X, Set0, Set)' is true iff `X' is the least element in
     % `Set0', and `Set' is the set which contains all the elements of `Set0'
@@ -262,8 +268,11 @@
     %
 :- func from_list(list(T)) = set_ordlist(T).
 
-    % `sorted_list_to_set(List, Set)' is true iff `Set' is the set containing
-    % only the members of `List'. `List' must be sorted.
+    % `sorted_list_to_set(List, Set)' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in ascending order.
+    % NOTE_TO_IMPLEMENTORS We do *not* say "must not contain any duplicates",
+    % NOTE_TO_IMPLEMENTORS since the implementation does remove duplicates.
     %
 :- func sorted_list_to_set(list(T)) = set_ordlist(T).
 :- pred sorted_list_to_set(list(T)::in, set_ordlist(T)::out) is det.
@@ -271,6 +280,15 @@
     % A synonym for sorted_list_to_set/1.
     %
 :- func from_sorted_list(list(T)) = set_ordlist(T).
+
+    % `rev_sorted_list_to_set(List, Set)' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in descending order and must not contain any duplicates.
+    % NOTE_TO_IMPLEMENTORS Unlike sorted_list_to_set, this predicate has
+    % NOTE_TO_IMPLEMENTORS never existed without requiring "no duplicates".
+    %
+:- func rev_sorted_list_to_set(list(T)) = set_ordlist(T).
+:- pred rev_sorted_list_to_set(list(T)::in, set_ordlist(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -562,6 +580,7 @@
 :- implementation.
 
 :- import_module cord.
+:- import_module require.
 
 %---------------------------------------------------------------------------%
 
@@ -723,10 +742,24 @@ no_dups(Elem, [Elem0 | Elems]) :-
 remove(Elem, sol(Set0), sol(Set)) :-
     list.delete_first(Set0, Elem, Set).
 
+det_remove(X, !Set) :-
+    ( if set_ordlist.remove(X, !Set) then
+        true
+    else
+        unexpected($pred, "remove failed")
+    ).
+
 remove_list(Elems, !Set) :-
     sort_no_dups(Elems, ElemSet),
     subset(ElemSet, !.Set),
     difference(!.Set, ElemSet, !:Set).
+
+det_remove_list(List, !Set) :-
+    ( if set_ordlist.remove_list(List, !Set) then
+        true
+    else
+        unexpected($pred, "remove_list failed")
+    ).
 
 remove_least(Elem, sol([Elem | Set]), sol(Set)).
 
@@ -950,23 +983,29 @@ divide_by_set_loop([Div | Divs], [H | T], !RevTrue, !RevFalse) :-
 
 %---------------------------------------------------------------------------%
 
-list_to_set(Xs) = S :-
-    list_to_set(Xs, S).
+list_to_set(List) = Set :-
+    list_to_set(List, Set).
 
-list_to_set(List0, sol(List)) :-
-    list.sort_and_remove_dups(List0, List).
+list_to_set(List, sol(SortedList)) :-
+    list.sort_and_remove_dups(List, SortedList).
 
 from_list(List) = Set :-
     list_to_set(List, Set).
 
-sorted_list_to_set(Xs) = S :-
-    sorted_list_to_set(Xs, S).
+sorted_list_to_set(List) = Set :-
+    sorted_list_to_set(List, Set).
 
-sorted_list_to_set(List0, sol(List)) :-
-    list.remove_adjacent_dups(List0, List).
+sorted_list_to_set(SortedList0, sol(SortedList)) :-
+    list.remove_adjacent_dups(SortedList0, SortedList).
 
 from_sorted_list(List) = Set :-
     sorted_list_to_set(List, Set).
+
+rev_sorted_list_to_set(RevSortedList) = Set :-
+    rev_sorted_list_to_set(RevSortedList, Set).
+
+rev_sorted_list_to_set(RevSortedList, sol(SortedList)) :-
+    list.reverse(RevSortedList, SortedList).
 
 %---------------------------------------------------------------------------%
 
