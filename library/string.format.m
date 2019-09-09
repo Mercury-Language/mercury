@@ -110,6 +110,9 @@ string.format.format_impl(FormatString, PolyList, String) :-
     %
     % XXX The repeated string appends performed in the call tree
     % do still allocate nontrivial amounts of memory for temporaries.
+    %
+    % XXX ILSEQ to_char_list cannot handle ill-formed sequences in the format
+    % string. Ideally they would be treated like constant strings.
     Chars = to_char_list(FormatString),
     parse_format_string(Chars, PolyList, 1, Specs, Errors),
     (

@@ -754,6 +754,7 @@ string_is_escaped_char(Char::in, String::out) :-
         String = mercury_escape_char(Char)
     ).
 string_is_escaped_char(Char::out, String::in) :-
+    % XXX ILSEQ Decide what to do with ill-formed sequences.
     string.to_char_list(String, Chars),
     (
         Chars = [Char],
@@ -811,9 +812,11 @@ write_escaped_string(String, !IO) :-
     term_io.write_escaped_string(Stream, String, !IO).
 
 write_escaped_string(Stream, String, !State) :-
+    % XXX ILSEQ Decide what to do with ill-formed sequences.
     string.foldl(term_io.write_escaped_char(Stream), String, !State).
 
 escaped_string(String) =
+    % XXX ILSEQ Decide what to do with ill-formed sequences.
     string.append_list(
         list.reverse(string.foldl(add_escaped_char, String, []))).
 
@@ -994,6 +997,7 @@ encode_escaped_char(Char::in, Str::out) :-
         fail
     ).
 encode_escaped_char(Char::out, Str::in) :-
+    % XXX ILSEQ Decide what to do with ill-formed sequences.
     string.to_char_list(Str, Chars),
     (
         Chars = [Char]

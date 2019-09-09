@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -12,24 +12,34 @@
 %
 % This modules provides basic string handling facilities.
 %
-% Unexpected null characters embedded in the middle of strings can be a source
-% of security vulnerabilities, so the Mercury library predicates and functions
-% which create strings from (lists of) characters throw an exception if a null
-% character is detected. Programmers must not create strings that might
-% contain null characters using the foreign language interface.
+% Mercury strings are Unicode strings in either UTF-8 or UTF-16 encoding
+% depending on the target language.
 %
-% When Mercury is compiled to C, strings are UTF-8 encoded, using a null
+% When Mercury is compiled to C, strings are UTF-8 encoded, with a null
 % character as the string terminator. A single code point requires one to four
 % bytes (code units) to encode.
 %
-% When Mercury is compiled to Java, strings are represented as Java `String's.
-% When Mercury is compiled to C# code, strings are represented as
-% `System.String's. In both cases, strings are UTF-16 encoded.
+% When Mercury is compiled to Java or C#, strings are represented using the
+% Java `String' or C# `System.String' types, both using UTF-16 encoding.
 % A single code point requires one or two 16-bit integers (code units)
 % to encode.
 %
 % When Mercury is compiled to Erlang, strings are represented as Erlang
 % binaries using UTF-8 encoding.
+%
+% The Mercury compiler will only allow well-formed UTF-8 or UTF-16 string
+% constants. However, it is possible to produce strings containing invalid
+% UTF-8 or UTF-16 via I/O, foreign code, and substring operations.
+% Predicates or functions that inspect strings may fail, throw an exception,
+% or else behave in some special way when an ill-formed code unit sequence is
+% encountered. Handling ill-formed sequences consistently in this module is
+% ongoing work.
+%
+% Unexpected null characters embedded in the middle of strings can be a source
+% of security vulnerabilities, so the Mercury library predicates and functions
+% which create strings from (lists of) characters throw an exception if a null
+% character is detected. Programmers must not create strings that might
+% contain null characters using the foreign language interface.
 %
 % The builtin comparison operation on strings is also implementation
 % dependent. The current implementation performs string comparison using
@@ -1476,6 +1486,26 @@
 % Conversions between strings and lists of characters.
 %
 
+% XXX ILSEQ Behaviour on ill-formed sequences differs by target language.
+%   - C: stops at first ill-formed sequence from the right
+%   - C#: unpaired surrogates are replaced by U+FFFD
+%   - Java: unpaired surrogates are returned as-is
+%
+% Perhaps we need versions of to_char_list/to_rev_char_list with choice of
+% action on ill-formed sequences:
+%   - throw an exception
+%   - ignore
+%   - replace with U+FFFD
+%
+% Replacing with U+FFFD is only necessary for UTF-8. Unpaired surrogates in
+% UTF-16 can represent themselves since they are just code points.
+%
+% For users that want round-trip conversion of potentially invalid UTF-8,
+% one possibility would be to map bytes in ill-formed sequences to chars
+% in the low surrogate range U+DC80..U+DCFF, see
+% https://hyperreal.org/~est/utf-8b/releases/utf-8b-20060413043934/kuhn-utf-8b.html
+% A simpler possibility is to introduce a char_or_code_unit type.
+
 to_char_list(S) = Cs :-
     to_char_list(S, Cs).
 
@@ -1563,6 +1593,8 @@ do_to_char_list(Str, CharList) :-
     foldr(list.cons, Str, [], CharList).
 
 %---------------------%
+
+% XXX ILSEQ unsafe_index_next causes truncation at first ill-formed sequence.
 
 to_rev_char_list(S) = Cs :-
     to_rev_char_list(S, Cs).
@@ -1845,6 +1877,10 @@ to_code_unit_list_loop(String, Index, End, List) :-
 
 %---------------------%
 
+% XXX ILSEQ Behaviour differs according to target language.
+%   - java: throws exception on unpaired surrogate (correct as written)
+%   - csharp: infinite loop on string containing unpaired surrogate
+
 to_utf8_code_unit_list(String, CodeList) :-
     ( if internal_encoding_is_utf8 then
         to_code_unit_list(String, CodeList)
@@ -1863,6 +1899,10 @@ encode_utf8(Char, CodeList0, CodeList) :-
 
 %---------------------%
 
+% XXX ILSEQ On C backend, to_utf16_code_unit_list stops at the first
+% ill-formed sequence from the end of the string (except that the C version of
+% unsafe_prev_index currently may skip extraneous trailing bytes).
+
 to_utf16_code_unit_list(String, CodeList) :-
     ( if internal_encoding_is_utf8 then
         foldr(encode_utf16, String, [], CodeList)
@@ -1880,6 +1920,10 @@ encode_utf16(Char, CodeList0, CodeList) :-
     ).
 
 %---------------------%
+
+% XXX ILSEQ to_code_unit_list(S0, L), from_code_unit_list(L, S) may fail
+% because the original string contained an ill-formed sequence.
+% Perhaps we should provide a predicate that can produce the original string.
 
 :- pragma foreign_proc("C",
     from_code_unit_list(CodeList::in, Str::uo),
@@ -2109,6 +2153,17 @@ duplicate_char(Char, Count, String) :-
 % so that the compiler can do loop invariant hoisting on calls to them
 % that occur in loops.
 
+% XXX ILSEQ index/3 and unsafe_index/3 throw an exception if an ill-formed
+% sequence is detected. The index_next family fails instead. Both families
+% should be made consistent.
+%
+% We should allow the possibility of working with strings containing ill-formed
+% sequences. That would require predicates that can return either a code point
+% when possible, or else code units from ill-formed sequences.
+%
+% It might have been overzealous to throw an exception for unpaired surrogate
+% code points in UTF-16.
+
 :- pragma inline(index/3).
 :- pragma inline(det_index/3).
 :- pragma inline(index_next/4).
@@ -2200,6 +2255,11 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 
 %---------------------%
 
+% XXX ILSEQ index_next/4 and unsafe_index_next/4 fail when an ill-formed
+% sequence is detected, unlike the index family. Most programs will probably
+% work as intended if we just replace code units in ill-formed sequences with
+% replacement char (for UTF-8) or return the unpaired surrogate code point
+% (for UTF-16).
 index_next(Str, Index, NextIndex, Char) :-
     Len = length(Str),
     ( if index_check(Index, Len) then
@@ -2208,6 +2268,10 @@ index_next(Str, Index, NextIndex, Char) :-
         fail
     ).
 
+% XXX ILSEQ Behaviour of unsafe_index_next depends on target language.
+%   - c: fails at ill-formed sequence
+%   - java: fails at unpaired surrogate
+%   - csharp: System.Char.ConvertToUtf32 throws exception for unpaired surrogate
 :- pragma foreign_proc("C",
     unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -2297,6 +2361,10 @@ prev_index(Str, Index, CharIndex, Char) :-
         fail
     ).
 
+% XXX ILSEQ Behaviour of unsafe_prev_index depends on target language.
+%   - c: fails on ill-formed sequence
+%   - java: returns unpaired surrogate
+%   - csharp: fails on unpaired surrogate (excepting for the bug)
 :- pragma foreign_proc("C",
     unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -2309,6 +2377,9 @@ prev_index(Str, Index, CharIndex, Char) :-
             SUCCESS_INDICATOR = (Ch != 0);
         } else {
             Ch = MR_utf8_prev_get(Str, &PrevIndex);
+            // XXX ILSEQ
+            // SUCCESS_INDICATOR should be false if there are any extra bytes
+            // after the encoding of Ch, but before Index.
             SUCCESS_INDICATOR = (Ch > 0);
         }
     } else {
@@ -2341,6 +2412,7 @@ prev_index(Str, Index, CharIndex, Char) :-
             Ch = (int) c2;
             PrevIndex = Index - 1;
         }
+        // XXX ILSEQ bug, check (Ch >= 0)
         SUCCESS_INDICATOR = true;
     } else {
         Ch = -1;
@@ -2453,6 +2525,10 @@ index_check(Index, Length) :-
 %
 % Writing characters to strings.
 %
+
+% XXX ILSEQ If Index does not point to the start of a well-formed sequence,
+% consider making set_char/unsafe_set_char replace the code unit at Index with
+% the encoding of Char, i.e. treat the code unit as its own pseudo code point.
 
 set_char(Char, Index, !Str) :-
     ( if char.to_int(Char, 0) then
@@ -2725,6 +2801,16 @@ count_code_units(Str, Length) :-
 
 %---------------------%
 
+% XXX ILSEQ Behaviour depends on target language.
+%   - c: counts lead bytes without checking trailing bytes
+%   - java: unpaired surrogates count as one code point each
+%   - csharp: counts non-surrogates and high surrogates
+%   - generic: unsafe_index_next stops at the first ill-formed sequence
+%
+% The Java behaviour seems best: count well-formed code points plus each code
+% unit in an ill-formed sequence. index_next and other iteration predicates
+% should be made consistent with however count_codepoints ends up counting.
+
 count_codepoints(String) = Count :-
     count_codepoints(String, Count).
 
@@ -2778,6 +2864,10 @@ count_codepoints_loop(String, I, Count0, Count) :-
 
 %---------------------%
 
+% XXX ILSEQ Behaviour depends on target language.
+% In UTF-16 grades, count_utf8_code_units uses string.foldl which (currently)
+% stops at the first ill-formed sequence.
+
 :- pragma foreign_proc("C",
     count_utf8_code_units(Str::in) = (Length::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2807,6 +2897,10 @@ count_utf8_code_units_2(Char, !Length) :-
     ).
 
 %---------------------%
+
+% XXX ILSEQ Behaviour depends on target language.
+% Should be made consistent so that each code unit in an ill-formed sequence
+% counts as one (pseudo) code point.
 
 :- pragma foreign_proc("C",
     codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
@@ -2874,6 +2968,7 @@ codepoint_offset_loop(String, Offset, Length, N, Index) :-
 %---------------------------------------------------------------------------%
 
 codepoint_offset(String, N, Index) :-
+    % XXX ILSEQ
     % Note: we do not define what happens with unpaired surrogates.
     %
     codepoint_offset(String, 0, N, Index).
@@ -3010,6 +3105,10 @@ hash6_loop(String, Index, Length, !HashVal) :-
 % Mercury versions. XXX why not all?
 
 is_empty("").
+
+% XXX ILSEQ Behaviour depends on target language.
+% The generic versions use all_match which currently uses unsafe_index_next and
+% ignores the first ill-formed sequence and everything thereafter.
 
 :- pragma foreign_proc("C",
     is_all_alpha(S::in),
@@ -3153,6 +3252,9 @@ is_all_digits(S) :-
 
 %---------------------%
 
+% XXX ILSEQ all_match should fail if it encounters an ill-formed sequence;
+% instead it acts as if the String ends there.
+
 all_match(P, String) :-
     all_match_loop(P, String, 0).
 
@@ -3169,6 +3271,10 @@ all_match_loop(P, String, Cur) :-
 
 %---------------------%
 
+% XXX ILSEQ Behaviour depends on target language.
+%  - C/C#/Java: ill-formed sequences don't prevent matching of later chars
+%  - generic: unsafe_index_next stops at first ill-formed sequence
+
     % strchr always returns true when searching for '\0',
     % but the '\0' is an implementation detail which really
     % shouldn't be considered to be part of the string itself.
@@ -3183,6 +3289,7 @@ all_match_loop(P, String, Cur) :-
         // Fast path.
         SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
     } else {
+        // XXX ILSEQ Handle Ch being surrogate or invalid valid.
         len = MR_utf8_encode(buf, Ch);
         buf[len] = '\\0';
         SUCCESS_INDICATOR = (strstr(Str, buf) != NULL);
@@ -3225,6 +3332,9 @@ contains_char(Str, Char, I) :-
 
 %---------------------%
 
+% XXX ILSEQ unsafe_index_next effectively truncates either or both strings
+% at the first ill-formed sequence.
+
 compare_ignore_case_ascii(Res, X, Y) :-
     compare_ignore_case_ascii_loop(X, Y, 0, Res).
 
@@ -3261,6 +3371,9 @@ compare_ignore_case_ascii_loop(X, Y, I, Res) :-
 
 %---------------------%
 
+    % XXX ILSEQ unsafe_index_next effectively truncates the string at the first
+    % ill-formed sequence.
+    %
 prefix_length(P, S) = Index :-
     prefix_length_loop(P, S, 0, Index).
 
@@ -3277,6 +3390,9 @@ prefix_length_loop(P, S, I, Index) :-
         Index = I
     ).
 
+    % XXX ILSEQ unsafe_index_next effectively truncates the string at the first
+    % ill-formed sequence.
+    %
 suffix_length(P, S) = End - Index :-
     End = length(S),
     suffix_length_loop(P, S, End, Index).
@@ -3295,6 +3411,11 @@ suffix_length_loop(P, S, I, Index) :-
     ).
 
 %---------------------%
+
+% XXX ILSEQ Behaviour depends on target language.
+%   - C: works at code unit level so ill-formed sequences are no problem
+%   - Java: works
+%   - C#: searching for low/high surrogate returns same index
 
 sub_string_search(WholeString, Pattern, Index) :-
     sub_string_search_start(WholeString, Pattern, 0, Index).
@@ -3597,6 +3718,8 @@ append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 append_ooi_3(S1Len, _S3Len, S1, S2, S3) :-
     split(S3, S1Len, S1, S2).
 
+    % XXX ILSEQ to_char_list cannot handle ill-formed sequences.
+    %
 :- pred mercury_append(string, string, string).
 :- mode mercury_append(in, in, in) is semidet.  % implied
 :- mode mercury_append(in, uo, in) is semidet.
@@ -3795,6 +3918,10 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 %
 % Splitting up strings.
 %
+
+% XXX ILSEQ Behaviour depends on target language.
+%  - C: fails if the string begins with ill-formed sequence
+%  - Java/C#: succeeds if the string begins with an unpaired surrogate
 
 :- pragma foreign_proc("C",
     first_char(Str::in, First::in, Rest::in),
@@ -4170,6 +4297,9 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
     end
 ").
 
+    % XXX ILSEQ from_code_unit_list refuses to create strings containing
+    % ill-formed sequences.
+    %
 split(Str, Count, Left, Right) :-
     ( if Count =< 0 then
         Left = "",
@@ -4434,6 +4564,8 @@ unsafe_substring(Str, Start, Count, SubString) :-
 
 %---------------------%
 
+% XXX ILSEQ unsafe_index_next causes truncation at first ill-formed sequence.
+
 words_separator(SepP, String) = Words :-
     skip_to_next_word_start(SepP, String, 0, WordStart),
     words_loop(SepP, String, WordStart, Words).
@@ -4510,6 +4642,10 @@ split_at_separator_loop(DelimP, Str, CurPos, PastSegEnd, !Segments) :-
     % Invariant: 0 =< CurPos =< length(Str).
     % PastSegEnd is one past the last index of the current segment.
     %
+    % XXX ILSEQ unsafe_prev_index fails at an ill-formed sequence.
+    % Ideally code units in an ill-form sequence are skipped over
+    % since they cannot be delimiters.
+    %
     ( if unsafe_prev_index(Str, CurPos, PrevPos, Char) then
         ( if DelimP(Char) then
             % Chop here.
@@ -4539,6 +4675,8 @@ split_at_string(Needle, Total) =
 :- func split_at_string_loop(int, int, string, string) = list(string).
 
 split_at_string_loop(StartAt, NeedleLen, Needle, Total) = Out :-
+    % XXX ILSEQ Behaviour of sub_string_search_start currently differs
+    % across targets.
     ( if sub_string_search_start(Total, Needle, StartAt, NeedlePos) then
         BeforeNeedle = between(Total, StartAt, NeedlePos),
         Tail = split_at_string_loop(NeedlePos+NeedleLen, NeedleLen,
@@ -4581,6 +4719,7 @@ prefix_2_ioi(String, Prefix, Cur) :-
     (
         Prefix = unsafe_between(String, 0, Cur)
     ;
+        % XXX ILSEQ unsafe_index_next stops at ill-formed sequence
         unsafe_index_next(String, Cur, Next, _),
         prefix_2_ioi(String, Prefix, Next)
     ).
@@ -4614,6 +4753,7 @@ suffix_2_ioii(String, Suffix, Cur, Len) :-
     (
         unsafe_between(String, Cur, Len, Suffix)
     ;
+        % XXX ILSEQ unsafe_prev_index stops at ill-formed sequence
         unsafe_prev_index(String, Cur, Prev, _),
         suffix_2_ioii(String, Suffix, Prev, Len)
     ).
@@ -4692,6 +4832,8 @@ to_upper(S1) = S2 :-
 :- pragma promise_equivalent_clauses(to_upper/2).
 
 to_upper(StrIn::in, StrOut::uo) :-
+    % XXX ILSEQ to_char_list and from_char_list cannot handle ill-formed
+    % sequences.
     to_char_list(StrIn, List),
     char_list_to_upper(List, ListUpp),
     from_char_list(ListUpp, StrOut).
@@ -4786,6 +4928,8 @@ to_lower(S1) = S2 :-
 :- pragma promise_equivalent_clauses(to_lower/2).
 
 to_lower(StrIn::in, StrOut::uo) :-
+    % XXX ILSEQ to_char_list and from_char_list cannot handle ill-formed
+    % sequences.
     to_char_list(StrIn, List),
     char_list_to_lower(List, ListLow),
     from_char_list(ListLow, StrOut).
@@ -4907,6 +5051,9 @@ chomp(S) = Chomp :-
         Chomp = S
     ).
 
+% XXX ILSEQ Once the problems with prefix_length, suffix_length are fixed,
+% there should be no problem stripping strings containing ill-formed sequences.
+
 strip(S0) = S :-
     L = prefix_length(char.is_whitespace, S0),
     R = suffix_length(char.is_whitespace, S0),
@@ -4938,6 +5085,7 @@ replace_all(S1, S2, S3) = S4 :-
 
 replace_all(Str, Pat, Subst, Result) :-
     ( if Pat = "" then
+        % XXX ILSEQ foldl cannot handle ill-formed sequences.
         F = (func(C, L) = [char_to_string(C) ++ Subst | L]),
         Foldl = foldl(F, Str, []),
         Result = append_list([Subst | list.reverse(Foldl)])
@@ -5094,6 +5242,20 @@ break_up_string_reverse(Str, N, Prev) = Strs :-
 % Folds over the characters in strings.
 %
 
+% XXX ILSEQ The behaviour of foldl depends on unsafe_index_next.
+% For UTF-16, we can call Closure for unpaired surrogate code points like any
+% other code point. For UTF-8, bytes in ill-formed sequences cannot be passed
+% as `char's since they are not code points. Perhaps foldl should throw an
+% exception, or just should pass replacement char.
+%
+% We may want to introduce fold predicates with an accumulator of type:
+%       pred(char_or_code_unit, A, A)
+% or
+%       pred(char, maybe(int), A, A)
+% For the latter, the second argument would be set to `yes(CodeUnit)' for each
+% code unit in an ill-formed sequence, and the first argument could be set to
+% U+FFFD (replacement char).
+
 foldl(F, S, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     foldl(P, S, A, B).
@@ -5185,6 +5347,8 @@ foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2) :-
         !Acc1, !Acc2).
 
 %---------------------%
+
+% XXX ILSEQ Behaviour depends on unsafe_prev_index.
 
 foldr(F, String, Acc0) = Acc :-
     Closure = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y)),
@@ -5430,6 +5594,9 @@ string_to_doc(S) = docs([str(term_io.quoted_string(S))]).
 %
 % Converting strings to values of builtin types.
 %
+
+% XXX ILSEQ Behaviour on ill-formed sequences depends on foldl_between.
+% Strings containing ill-formed sequences should fail to convert.
 
 to_int(String, Int) :-
     base_string_to_int(10, String, Int).

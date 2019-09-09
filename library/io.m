@@ -178,6 +178,9 @@
     %
     % See the documentation for `string.line' for the definition of a line.
     %
+    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
+    % or UTF-16.
+    %
 :- pred read_line_as_string(io.result(string)::out, io::di, io::uo) is det.
 :- pred read_line_as_string(io.text_input_stream::in, io.result(string)::out,
     io::di, io::uo) is det.
@@ -197,6 +200,9 @@
     % Returns an error if the file contains a null character, because
     % null characters are not allowed in Mercury strings.
     %
+    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
+    % or UTF-16.
+    %
 :- pred read_file_as_string(io.maybe_partial_res(string)::out,
     io::di, io::uo) is det.
 :- pred read_file_as_string(io.text_input_stream::in,
@@ -204,6 +210,9 @@
 
     % The same as read_file_as_string, but returns not only a string,
     % but also the number of code units in that string.
+    %
+    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
+    % or UTF-16.
     %
 :- pred read_file_as_string_and_num_code_units(
     io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.

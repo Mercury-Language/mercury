@@ -483,6 +483,7 @@ extern size_t           MR_utf8_width(MR_Char c);
 
 // Encode the code point `c' into the buffer `s'.
 // Return the number of bytes used.
+// Returns 0 if `c' is a surrogate or not a valid code point.
 
 extern size_t           MR_utf8_encode(char s[], MR_Char c);
 
