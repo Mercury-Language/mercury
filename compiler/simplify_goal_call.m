@@ -470,8 +470,8 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         GoalInfo, !Info) :-
     ( if
         simplify_do_warn_obsolete(!.Info),
-        pred_info_get_markers(PredInfo, Markers),
-        check_marker(Markers, marker_obsolete),
+        pred_info_get_obsolete_in_favour_of(PredInfo, MaybeObsolete),
+        MaybeObsolete = yes(InFavourOf),
 
         % Don't warn about directly recursive calls to obsolete predicates.
         % That would cause spurious warnings, particularly with builtin
@@ -481,18 +481,34 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         PredId \= ThisPredId,
 
         % Don't warn about calls to obsolete predicates from other predicates
-        % that also have a `pragma obsolete' declaration. Doing so
-        % would also just result in spurious warnings.
+        % that also have a `pragma obsolete' declaration. Doing so would also
+        % just result in spurious warnings.
         simplify_info_get_module_info(!.Info, ModuleInfo),
         module_info_pred_info(ModuleInfo, ThisPredId, ThisPredInfo),
-        pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
-        not check_marker(ThisPredMarkers, marker_obsolete)
+        pred_info_get_obsolete_in_favour_of(ThisPredInfo, ThisMaybeObsolete),
+        ThisMaybeObsolete = no
     then
         GoalContext = goal_info_get_context(GoalInfo),
         PredPieces = describe_one_pred_name(ModuleInfo,
             should_module_qualify, PredId),
-        Pieces = [words("Warning: call to obsolete")] ++
+        MainPieces = [words("Warning: call to obsolete")] ++
             PredPieces ++ [suffix("."), nl],
+        (
+            InFavourOf = [],
+            Pieces = MainPieces
+        ;
+            InFavourOf = [OnlyInFavourOf],
+            Pieces = MainPieces ++
+                [words("The suggested replacement is"),
+                qual_sym_name_and_arity(OnlyInFavourOf), suffix("."), nl]
+        ;
+            InFavourOf = [_, _ | _],
+            InFavourOfPieces = component_list_to_pieces("and",
+                list.map(wrap_sym_name_and_arity, InFavourOf)),
+            Pieces = MainPieces ++
+                [words("The possible suggested replacements are")] ++
+                InFavourOfPieces ++ [suffix("."), nl]
+        ),
         Msg = simple_msg(GoalContext,
             [option_is_set(warn_obsolete, yes, [always(Pieces)])]),
         Severity = severity_conditional(warn_obsolete, yes,
@@ -503,6 +519,11 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
     else
         true
     ).
+
+:- func wrap_sym_name_and_arity(sym_name_and_arity) = format_component.
+
+wrap_sym_name_and_arity(SymNameAndArity) =
+    qual_sym_name_and_arity(SymNameAndArity).
 
 %---------------------%
 

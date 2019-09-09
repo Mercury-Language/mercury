@@ -81,6 +81,8 @@
 :- mode simple_foreign_language_string(out, in) is semidet.
 :- func simple_foreign_language_string(foreign_language) = string.
 
+:- func all_foreign_language_strings = list(string).
+
     % The GC method specifies how we do garbage collection.
     % The last five alternatives are for the C back-ends;
     % the first alternative is for compiling to C#, Java, Il or Erlang
@@ -668,6 +670,9 @@ simple_foreign_language_string(lang_erlang, "erlang").
 
 simple_foreign_language_string(Lang) = Str :-
     simple_foreign_language_string(Lang, Str).
+
+all_foreign_language_strings =
+    ["c", "C", "csharp", "C#", "erlang", "Erlang", "java", "Java"].
 
 gc_is_conservative(gc_boehm) = yes.
 gc_is_conservative(gc_boehm_debug) = yes.

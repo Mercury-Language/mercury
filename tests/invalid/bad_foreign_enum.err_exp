@@ -1,5 +1,5 @@
-bad_foreign_enum.m:044: Error: wrong number of arguments in
-bad_foreign_enum.m:044:   `:- pragma foreign_enum' declaration.
+bad_foreign_enum.m:044: Error: a `:- pragma foreign_enum' declaration must have
+bad_foreign_enum.m:044:   exactly three arguments.
 bad_foreign_enum.m:048: Error: expected a non-empty list mapping constructors
 bad_foreign_enum.m:048:   to foreign values in `:- pragma foreign_enum'
 bad_foreign_enum.m:048:   declaration.

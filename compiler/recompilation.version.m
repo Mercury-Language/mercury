@@ -647,7 +647,7 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         ( PragmaType = pragma_inline(PredNameArity)
         ; PragmaType = pragma_no_inline(PredNameArity)
         ; PragmaType = pragma_consider_used(PredNameArity)
-        ; PragmaType = pragma_obsolete(PredNameArity)
+        ; PragmaType = pragma_obsolete(PredNameArity, _)
         ; PragmaType = pragma_no_detism_warning(PredNameArity)
         ; PragmaType = pragma_promise_pure(PredNameArity)
         ; PragmaType = pragma_promise_semipure(PredNameArity)

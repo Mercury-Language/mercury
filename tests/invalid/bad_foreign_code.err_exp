@@ -1,14 +1,21 @@
-bad_foreign_code.m:017: Error: invalid `:- pragma foreign_code' declaration:
-bad_foreign_code.m:017:   wrong number of arguments.
-bad_foreign_code.m:021: Error: invalid `:- pragma foreign_code' declaration:
-bad_foreign_code.m:021:   wrong number of arguments.
-bad_foreign_code.m:025: Error: invalid `:- pragma foreign_code' declaration:
-bad_foreign_code.m:025:   invalid language parameter.
-bad_foreign_code.m:029: Error: invalid `:- pragma foreign_code' declaration:
-bad_foreign_code.m:029:   expected string for foreign code.
-bad_foreign_code.m:033: Error: invalid `:- pragma foreign_code' declaration:
-bad_foreign_code.m:033:   expected string for foreign code.
-bad_foreign_code.m:043: Error: invalid `:- pragma foreign_code' declaration:
-bad_foreign_code.m:043:   invalid language parameter.
-bad_foreign_code.m:044: Error: invalid `:- pragma foreign_code' declaration:
-bad_foreign_code.m:044:   expected string for foreign code.
+bad_foreign_code.m:017: Error: a `:- pragma foreign_code' declaration must have
+bad_foreign_code.m:017:   exactly two arguments.
+bad_foreign_code.m:021: Error: a `:- pragma foreign_code' declaration must have
+bad_foreign_code.m:021:   exactly two arguments.
+bad_foreign_code.m:025: Error: in the first argument of
+bad_foreign_code.m:025:   `:- pragma foreign_code' declaration: invalid
+bad_foreign_code.m:025:   language parameter. The valid language parameters are
+bad_foreign_code.m:025:   c, C, csharp, C#, erlang, Erlang, java and Java.
+bad_foreign_code.m:029: Error: in the second argument of
+bad_foreign_code.m:029:   `:- pragma foreign_code' declaration: expected string
+bad_foreign_code.m:029:   for foreign code.
+bad_foreign_code.m:033: Error: in the second argument of
+bad_foreign_code.m:033:   `:- pragma foreign_code' declaration: expected string
+bad_foreign_code.m:033:   for foreign code.
+bad_foreign_code.m:043: Error: in the first argument of
+bad_foreign_code.m:043:   `:- pragma foreign_code' declaration: invalid
+bad_foreign_code.m:043:   language parameter. The valid language parameters are
+bad_foreign_code.m:043:   c, C, csharp, C#, erlang, Erlang, java and Java.
+bad_foreign_code.m:044: Error: in the second argument of
+bad_foreign_code.m:044:   `:- pragma foreign_code' declaration: expected string
+bad_foreign_code.m:044:   for foreign code.

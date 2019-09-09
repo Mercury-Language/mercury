@@ -33,7 +33,7 @@
     ;       pragma_exceptions(ground)
     ;       pragma_trailing_info(ground)
     ;       pragma_mm_tabling_info(ground)
-    ;       pragma_obsolete(ground)
+    ;       pragma_obsolete(ground, ground)
     ;       pragma_no_detism_warning(ground)
     ;       pragma_require_tail_recursion(ground)
     ;       pragma_promise_eqv_clauses(ground)
@@ -287,10 +287,10 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
             !:Specs = [Spec | !.Specs]
         )
     ;
-        Pragma = pragma_obsolete(PredNameArity),
+        Pragma = pragma_obsolete(PredNameArity, ObsoleteInFavourOf),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("obsolete", PredNameArity, PredStatus,
-            Context, marker_obsolete, [], !ModuleInfo, !Specs)
+        mark_pred_as_obsolete(PredNameArity, ObsoleteInFavourOf, PredStatus,
+            Context, !ModuleInfo, !Specs)
     ;
         Pragma = pragma_no_detism_warning(PredNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
@@ -690,7 +690,6 @@ do_add_pred_marker(PragmaName, PredSymNameArity, Status, MustBeExported,
         PredIds = [_ | _],
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         predicate_table_get_preds(PredTable0, Preds0),
-
         pragma_add_marker(PredIds, UpdatePredInfo, Status,
             MustBeExported, Preds0, Preds, WrongStatus),
         (
@@ -699,7 +698,6 @@ do_add_pred_marker(PragmaName, PredSymNameArity, Status, MustBeExported,
         ;
             WrongStatus = no
         ),
-
         predicate_table_set_preds(Preds, PredTable0, PredTable),
         module_info_set_predicate_table(PredTable, !ModuleInfo)
     ;
@@ -820,6 +818,69 @@ pragma_conflict_error(PredSymNameArity, Context, PragmaName, ConflictMarkers,
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+%----------------------------------------------------------------------------%
+
+:- pred mark_pred_as_obsolete(pred_name_arity::in,
+    list(sym_name_and_arity)::in, pred_status::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+mark_pred_as_obsolete(PredNameArity, ObsoleteInFavourOf, PragmaStatus, Context,
+        !ModuleInfo, !Specs) :-
+    PredNameArity = pred_name_arity(PredSymName, Arity),
+    get_matching_pred_ids(!.ModuleInfo, PredSymName, Arity, PredIds,
+        OtherArities),
+    (
+        PredIds = [_ | _],
+        module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+        predicate_table_get_preds(PredTable0, Preds0),
+        mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, PredIds,
+            no, WrongStatus, Preds0, Preds),
+        (
+            WrongStatus = yes,
+            pragma_status_error(PredNameArity, Context, "obsolete", !Specs)
+        ;
+            WrongStatus = no
+        ),
+        predicate_table_set_preds(Preds, PredTable0, PredTable),
+        module_info_set_predicate_table(PredTable, !ModuleInfo)
+    ;
+        PredIds = [],
+        DescPieces = [pragma_decl("obsolete"), words("declaration")],
+        report_undefined_pred_or_func_error(PredSymName, Arity, OtherArities,
+            Context, DescPieces, !Specs)
+    ).
+
+:- pred mark_pred_ids_as_obsolete(list(sym_name_and_arity)::in,
+    pred_status::in, list(pred_id)::in, bool::in, bool::out,
+    pred_table::in, pred_table::out) is det.
+
+mark_pred_ids_as_obsolete(_, _, [], !WrongStatus, !PredTable).
+mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, [PredId | PredIds],
+        !WrongStatus, !PredTable) :-
+    map.lookup(!.PredTable, PredId, PredInfo0),
+    ( if
+        pred_info_is_exported(PredInfo0),
+        pred_status_is_exported(PragmaStatus) = no
+    then
+        !:WrongStatus = yes
+    else
+        true
+    ),
+    pred_info_get_obsolete_in_favour_of(PredInfo0, MaybeObsoleteInFavourOf0),
+    (
+        MaybeObsoleteInFavourOf0 = no,
+        MaybeObsoleteInFavourOf = yes(ObsoleteInFavourOf)
+    ;
+        MaybeObsoleteInFavourOf0 = yes(ObsoleteInFavourOf0),
+        MaybeObsoleteInFavourOf = yes(ObsoleteInFavourOf0 ++ ObsoleteInFavourOf)
+    ),
+    pred_info_set_obsolete_in_favour_of(MaybeObsoleteInFavourOf,
+        PredInfo0, PredInfo),
+    map.det_update(PredId, PredInfo, !PredTable),
+    mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, PredIds,
+        !WrongStatus, !PredTable).
 
 %----------------------------------------------------------------------------%
 

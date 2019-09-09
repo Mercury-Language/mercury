@@ -2055,9 +2055,6 @@ should_output_marker(marker_is_semipure, no).
 should_output_marker(marker_class_method, no).
 should_output_marker(marker_class_instance_method, no).
 should_output_marker(marker_named_class_instance_method, no).
-    % The warning for calls to local obsolete predicates should appear
-    % once in the defining module, not in importing modules.
-should_output_marker(marker_obsolete, no).
 should_output_marker(marker_no_detism_warning, no).
 should_output_marker(marker_user_marked_inline, yes).
 should_output_marker(marker_user_marked_no_inline, yes).

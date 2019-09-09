@@ -433,7 +433,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
             ; Pragma = pragma_exceptions(_)
             ; Pragma = pragma_trailing_info(_)
             ; Pragma = pragma_mm_tabling_info(_)
-            ; Pragma = pragma_obsolete(_)
+            ; Pragma = pragma_obsolete(_, _)
             ; Pragma = pragma_no_detism_warning(_)
             ; Pragma = pragma_tabled(_)
             ; Pragma = pragma_fact_table(_)

@@ -267,10 +267,6 @@
             % declarations, since the missing (or invalid) declaration
             % could have been a combined predmode declaration.
 
-    ;       marker_obsolete
-            % Requests warnings if this predicate is used.
-            % Used for pragma(obsolete).
-
     ;       marker_no_detism_warning
             % Requests no warnings about the determinism of this predicate
             % being too loose.
@@ -666,6 +662,8 @@
     map(prog_var, string)::out) is det.
 :- pred pred_info_get_assertions(pred_info::in,
     set(assert_id)::out) is det.
+:- pred pred_info_get_obsolete_in_favour_of(pred_info::in,
+    maybe(list(sym_name_and_arity))::out) is det.
 :- pred pred_info_get_instance_method_arg_types(pred_info::in,
     list(mer_type)::out) is det.
 :- pred pred_info_get_clauses_info(pred_info::in,
@@ -716,6 +714,9 @@
 :- pred pred_info_set_var_name_remap(map(prog_var, string)::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_assertions(set(assert_id)::in,
+    pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_obsolete_in_favour_of(
+    maybe(list(sym_name_and_arity))::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_instance_method_arg_types(list(mer_type)::in,
     pred_info::in, pred_info::out) is det.
@@ -933,6 +934,39 @@ calls_are_fully_qualified(Markers) =
 
 %-----------------------------------------------------------------------------%
 
+% Access stats for the pred_info structure, derived on 2014 dec 13:
+%
+%  i      read      same      diff   same%
+%  1 124287827    348040  31892426   1.08%    procedures
+%  2  72037616     96336   1082541   8.17%    status
+%  3  43651895         0         0            module_name
+%  4  32003757         0       795   0.00%    name
+%  5  25261836         0         0            orig_arity
+%  6  24876447    905599   1098352  45.19%    markers
+%  7  22294552     19444  12496762   0.16%    clauses_info
+%  8  20415273         0         0            arg_types
+%  9  15356498       727        68  91.45%    is_pred_or_func
+% 10  12075408    382680     89618  81.03%    origin
+% 11  11783136   9736724    752983  92.82%    typevarset
+% 12  11128685   4600914   1642568  73.69%    three fields: decl_typevarset,
+%                                             exist_quant_vars and arg_types
+% 13   7871038         0   2700797   0.00%    class_context
+% 14   6629313    100630   1054197   8.71%    goal_type
+% 15   5892199      6544      6726  49.31%    var_name_remap
+% 16   3820195     85054         0 100.00%    tvar_kind_map
+% 17   2752537    404771     23921  94.42%    constraint_map
+% 18   2591016    425209      3483  99.19%    constraint_proof_map
+% 19   1667832         0         0            context
+% 20   1374911         0         0            exist_quant_vars
+% 21    476703    276426    152903  64.39%    external_type_params
+% 22    285538    428650         4 100.00%    unproven_body_constraints
+% 23     22563         0        80   0.00%    existq_tvar_binding
+% 24      3834         0      3797   0.00%    assertions
+% 25        10         0         0            attributes
+% 26         0         0     19439   0.00%    instance_method_arg_types
+% 27         0         0         0            arg_modes_maps
+% 28         0         0         0            inst_graph_info
+
     % The information specific to a predicate, as opposed to a procedure.
     % (Functions count as predicates.)
     %
@@ -1074,6 +1108,15 @@ calls_are_fully_qualified(Markers) =
                 % List of assertions which mention this predicate.
                 psi_assertions                  :: set(assert_id),
 
+                % If this predicate is marked as obsolete, this will be a
+                % "yes(_)" wrapped around a list of the predicate names that
+                % the compiler should suggest as possible replacements.
+                % (Note that the list of possible replacements may be empty.)
+                % In the usual case where this predicate is NOT marked
+                % as obsolete, this will be "no".
+                psi_obsolete_in_favour_of       :: maybe(list(
+                                                    sym_name_and_arity)),
+
                 % If this predicate is a class method implementation, this
                 % list records the argument types before substituting the type
                 % variables for the instance.
@@ -1100,12 +1143,13 @@ pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
     ArgModesMaps = [],
     % argument VarNameRemap
     set.init(Assertions),
+    ObsoleteInFavourOf = maybe.no,
     InstanceMethodArgTypes = [],
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
         Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
-        VarNameRemap, Assertions, InstanceMethodArgTypes),
+        VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
 
     sym_name_get_module_name_default(PredSymName, ModuleName, PredModuleName),
     PredName = unqualify_name(PredSymName),
@@ -1143,13 +1187,14 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     ArgModesMaps = [],
     % argument VarNameRemap
     % argument Assertions
+    ObsoleteInFavourOf = maybe.no,
     InstanceMethodArgTypes = [],
 
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
         Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
-        VarNameRemap, Assertions, InstanceMethodArgTypes),
+        VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
 
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -1336,6 +1381,8 @@ pred_info_get_var_name_remap(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_var_name_remap.
 pred_info_get_assertions(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_assertions.
+pred_info_get_obsolete_in_favour_of(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_obsolete_in_favour_of.
 pred_info_get_instance_method_arg_types(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types.
 pred_info_get_clauses_info(!.PI, X) :-
@@ -1435,45 +1482,14 @@ pred_info_set_var_name_remap(X, !PI) :-
     ).
 pred_info_set_assertions(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_assertions := X.
+pred_info_set_obsolete_in_favour_of(X, !PI) :-
+    !PI ^ pi_pred_sub_info ^ psi_obsolete_in_favour_of := X.
 pred_info_set_instance_method_arg_types(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types := X.
 pred_info_set_clauses_info(X, !PI) :-
     !PI ^ pi_clauses_info := X.
 pred_info_set_proc_table(X, !PI) :-
     !PI ^ pi_proc_table := X.
-
-% Access stats for the pred_info structure, derived on 2014 dec 13:
-%
-%  i      read      same      diff   same%
-%  0  43651895         0         0            module_name
-%  1  32003757         0       795   0.00%    name
-%  2  25261836         0         0            orig_arity
-%  3  15356498       727        68  91.45%    is_pred_or_func
-%  4   1667832         0         0            context
-%  5  12075408    382680     89618  81.03%    origin
-%  6  72037616     96336   1082541   8.17%    status
-%  7   6629313    100630   1054197   8.71%    goal_type
-%  8  24876447    905599   1098352  45.19%    markers
-%  9        10         0         0            attributes
-% 10  20415273         0         0            arg_types
-% 11  11783136   9736724    752983  92.82%    typevarset
-% 12   3820195     85054         0 100.00%    tvar_kind_map
-% 13   1374911         0         0            exist_quant_vars
-% 14     22563         0        80   0.00%    existq_tvar_binding
-% 15    476703    276426    152903  64.39%    external_type_params
-% 16   7871038         0   2700797   0.00%    class_context
-% 17   2591016    425209      3483  99.19%    constraint_proof_map
-% 18   2752537    404771     23921  94.42%    constraint_map
-% 19    285538    428650         4 100.00%    unproven_body_constraints
-% 20         0         0         0            inst_graph_info
-% 21         0         0         0            arg_modes_maps
-% 22   5892199      6544      6726  49.31%    var_name_remap
-% 23      3834         0      3797   0.00%    assertions
-% 24         0         0     19439   0.00%    instance_method_arg_types
-% 25  22294552     19444  12496762   0.16%    clauses_info
-% 26 124287827    348040  31892426   1.08%    procedures
-% 27  11128685   4600914   1642568  73.69%    three fields: decl_typevarset,
-%                                             exist_quant_vars and arg_types
 
 %-----------------------------------------------------------------------------%
 

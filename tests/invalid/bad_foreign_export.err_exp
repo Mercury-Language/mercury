@@ -1,5 +1,5 @@
-bad_foreign_export.m:020: Error: wrong number of arguments in
-bad_foreign_export.m:020:   `:- pragma foreign_export' declaration.
+bad_foreign_export.m:020: Error: a `:- pragma foreign_export' declaration must
+bad_foreign_export.m:020:   have exactly three arguments.
 bad_foreign_export.m:024: In second argument of `:- pragma foreign_export'
 bad_foreign_export.m:024:   declaration: error: atom expected at 11111.
 bad_foreign_export.m:028: In third argument of `:- pragma foreign_export'

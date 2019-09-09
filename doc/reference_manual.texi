@@ -10779,17 +10779,21 @@ user-requested type specializations are ignored.
 @node Obsolescence
 @section Obsolescence
 
-A declaration of the form
+Declarations of the forms
 
 @example
 :- pragma obsolete(@var{Name}/@var{Arity}).
+:- pragma obsolete(@var{Name}/@var{Arity},
+    [@var{ReplName1}/@var{ReplArity1}, ..., @var{ReplNameN}/@var{ReplArityN}]).
 @end example
 
 @noindent
-declares that the predicate(s) or function(s)
+declare that the predicate(s) or function(s)
 with name @var{Name} and arity @var{Arity} are ``obsolete'':
-it instructs the compiler to issue a warning
+they instruct the compiler to issue a warning
 whenever the named predicate(s) or function(s) are used.
+The second form tells the compiler to suggest the use
+of one of the listed possible replacements.
 
 @samp{pragma obsolete} declarations are intended for use by library developers,
 to allow gradual (rather than abrupt) evolution of library interfaces.

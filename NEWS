@@ -226,6 +226,11 @@ Changes to the Mercury language:
   any of its procedures, or for any of the procedures they call,
   directly or indirectly.
 
+* We have added an optional second field to the `obsolete' pragma.
+  When present, it may contain a list of the names and arities of
+  predicates and/or functions that programmers should consider using
+  instead of the obsolete predicate or function.
+
 * The Java backend now supports defining foreign types as primitive Java
   types.
 

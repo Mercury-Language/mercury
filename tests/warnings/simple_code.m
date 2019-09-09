@@ -40,7 +40,9 @@ p -->
         []
     ),
     { \+ fail },
-    { obsolete },
+    { obsolete1 },
+    { obsolete2 },
+    { obsolete3 },
     ( { error("blah") } ->
         []
     ;
@@ -55,10 +57,20 @@ det_pred.
 
 fail_pred :- fail.
 
-:- pred obsolete is det.
-:- pragma obsolete(obsolete/0).
+:- pred obsolete1 is det.
+:- pragma obsolete(obsolete1/0).
 
-obsolete.
+obsolete1.
+
+:- pred obsolete2 is det.
+:- pragma obsolete(obsolete2/0, [pred42/0]).
+
+obsolete2.
+
+:- pred obsolete3 is det.
+:- pragma obsolete(obsolete3/0, [pred42/0, wonderful.pred43/0]).
+
+obsolete3.
 
 % This should give a warning about the second disjunct never succeeding.
 :- pred r(int, int).

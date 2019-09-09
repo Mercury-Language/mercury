@@ -182,10 +182,8 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
         Pragma = pragma_mm_tabling_info(TablingInfo),
         mercury_output_pragma_mm_tabling_info(TablingInfo, !IO)
     ;
-        Pragma = pragma_obsolete(PredNameArity),
-        PredNameArity = pred_name_arity(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
-            "obsolete", no, !IO)
+        Pragma = pragma_obsolete(PredNameArity, ObsoleteInFavourOf),
+        mercury_output_pragma_obsolete(PredNameArity, ObsoleteInFavourOf, !IO)
     ;
         Pragma = pragma_no_detism_warning(PredNameArity),
         PredNameArity = pred_name_arity(Pred, Arity),
@@ -1112,6 +1110,31 @@ mercury_output_pragma_mm_tabling_info(TablingInfo, !IO) :-
         io.write_string("mm_tabled_conditional", !IO)
     ),
     io.write_string(").\n", !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Output an obsolete pragma.
+%
+
+:- pred mercury_output_pragma_obsolete(pred_name_arity::in,
+    list(sym_name_and_arity)::in, io::di, io::uo) is det.
+
+mercury_output_pragma_obsolete(PredNameArity, ObsoleteInFavourOf, !IO) :-
+    PredNameArity = pred_name_arity(SymName, Arity),
+    PredSymNameArity = sym_name_arity(SymName, Arity),
+    ObsoleteStrs = list.map(wrapped_sym_name_and_arity_to_string,
+        ObsoleteInFavourOf),
+    ObsoleteStr = string.join_list(", ", ObsoleteStrs),
+    io.format(":- pragma obsolete(%s, [%s]).\n",
+        [s(wrapped_sym_name_and_arity_to_string(PredSymNameArity)),
+        s(ObsoleteStr)], !IO).
+
+:- func wrapped_sym_name_and_arity_to_string(sym_name_and_arity) = string.
+
+wrapped_sym_name_and_arity_to_string(SNA) = Str :-
+    SNA = sym_name_arity(SymName, Arity),
+    Str = mercury_bracketed_sym_name_to_string(SymName) ++
+        "/" ++ string.int_to_string(Arity).
 
 %---------------------------------------------------------------------------%
 %

@@ -166,6 +166,16 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
         io.write_string("\n", !IO),
 
         write_pred_markers(Markers, !IO),
+        pred_info_get_obsolete_in_favour_of(PredInfo, MaybeObsoleteInFavourOf),
+        (
+            MaybeObsoleteInFavourOf = no
+        ;
+            MaybeObsoleteInFavourOf = yes(ObsoleteInFavourOf),
+            write_indent(Indent, !IO),
+            io.write_string("% obsolete in favour of one of\n", !IO),
+            list.foldl(write_obsolete_in_favour_of(Indent),
+                ObsoleteInFavourOf, !IO)
+        ),
         write_pred_types(Indent, VarSet, TVarSet, VarNamePrint, RttiVarMaps,
             ProofMap, ConstraintMap, ExternalTypeParams, VarTypes, !IO),
         write_pred_proc_var_name_remap(Indent, VarSet, VarNameRemap, !IO),
@@ -226,6 +236,14 @@ write_pred_markers(Markers, !IO) :-
         write_marker_list(MarkerList, !IO),
         io.write_string("\n", !IO)
     ).
+
+:- pred write_obsolete_in_favour_of(int::in, sym_name_and_arity::in,
+    io::di, io::uo) is det.
+
+write_obsolete_in_favour_of(Indent, ObsoleteInFavourOf, !IO) :-
+    ObsoleteInFavourOf = sym_name_arity(SymName, Arity),
+    write_indent(Indent, !IO),
+    io.format("%%    %s/%d\n", [s(sym_name_to_string(SymName)), i(Arity)], !IO).
 
 :- pred write_pred_types(int::in, prog_varset::in, tvarset::in,
     var_name_print::in, rtti_varmaps::in,
@@ -1466,7 +1484,6 @@ marker_name(marker_no_pred_decl, "no_pred_decl").
 marker_name(marker_user_marked_no_inline, "no_inline").
 marker_name(marker_heuristic_inline, "heuristic_inline").
 marker_name(marker_consider_used, "consider_used").
-marker_name(marker_obsolete, "obsolete").
 marker_name(marker_no_detism_warning, "no_determinism_warning").
 marker_name(marker_class_method, "class_method").
 marker_name(marker_class_instance_method, "class_instance_method").
