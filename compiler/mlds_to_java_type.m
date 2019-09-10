@@ -71,7 +71,7 @@
 :- pred java_builtin_type(mlds_type::in, string::out, string::out, string::out)
     is semidet.
 
-:- pred java_primitive_foreign_language_type(foreign_language_type::in,
+:- pred java_primitive_foreign_language_type(generic_language_foreign_type::in,
     string::out, string::out, string::out, string::out) is semidet.
 
 %---------------------------------------------------------------------------%

@@ -2060,7 +2060,7 @@ term_to_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
 
 :- pred parse_foreign_language_type(cord(format_component)::in, term::in,
     varset::in, maybe1(foreign_language)::in,
-    maybe1(foreign_language_type)::out) is det.
+    maybe1(generic_language_foreign_type)::out) is det.
 
 parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
         MaybeForeignLangType) :-

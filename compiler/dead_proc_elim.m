@@ -1406,7 +1406,7 @@ dead_pred_initialize_forein_type_lang_body(ModuleInfo, ForeignTypeLangBody,
     (
         ForeignTypeLangBody = no
     ;
-        ForeignTypeLangBody = yes(foreign_type_lang_data(_, MaybeCanon, _)),
+        ForeignTypeLangBody = yes(type_details_foreign(_, MaybeCanon, _)),
         dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon,
             !NeededPreds)
     ).

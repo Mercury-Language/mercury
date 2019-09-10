@@ -468,22 +468,22 @@ convert_type_defn_to_hlds(TypeDefn, TypeCtor, HLDSBody, !ModuleInfo) :-
             Assertions),
         (
             ForeignType = c(CForeignType),
-            Data = foreign_type_lang_data(CForeignType, MaybeUserEqComp,
+            Data = type_details_foreign(CForeignType, MaybeUserEqComp,
                 Assertions),
             Body = foreign_type_body(yes(Data), no, no, no)
         ;
             ForeignType = java(JavaForeignType),
-            Data = foreign_type_lang_data(JavaForeignType, MaybeUserEqComp,
+            Data = type_details_foreign(JavaForeignType, MaybeUserEqComp,
                 Assertions),
             Body = foreign_type_body(no, yes(Data), no, no)
         ;
             ForeignType = csharp(CSharpForeignType),
-            Data = foreign_type_lang_data(CSharpForeignType, MaybeUserEqComp,
+            Data = type_details_foreign(CSharpForeignType, MaybeUserEqComp,
                 Assertions),
             Body = foreign_type_body(no, no, yes(Data), no)
         ;
             ForeignType = erlang(ErlangForeignType),
-            Data = foreign_type_lang_data(ErlangForeignType, MaybeUserEqComp,
+            Data = type_details_foreign(ErlangForeignType, MaybeUserEqComp,
                 Assertions),
             Body = foreign_type_body(no, no, no, yes(Data))
         ),

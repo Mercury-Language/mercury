@@ -1040,7 +1040,7 @@ get_maybe_foreign_type_info(ModuleInfo, Type) = MaybeForeignTypeInfo :-
     then
         (
             MaybeC = yes(Data),
-            Data = foreign_type_lang_data(c_type(Name), _, Assertions),
+            Data = type_details_foreign(c_type(Name), _, Assertions),
             MaybeForeignTypeInfo = yes(foreign_proc_type(Name, Assertions))
         ;
             MaybeC = no,

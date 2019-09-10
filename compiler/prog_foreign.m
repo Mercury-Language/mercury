@@ -150,7 +150,8 @@
     %
 :- func all_foreign_languages = list(foreign_language).
 
-:- func foreign_type_language(foreign_language_type) = foreign_language.
+:- func foreign_type_language(generic_language_foreign_type)
+    = foreign_language.
 
 %-----------------------------------------------------------------------------%
 %

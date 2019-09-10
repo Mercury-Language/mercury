@@ -272,7 +272,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       parse_tree_eqv_type(type_details_eqv)
     ;       parse_tree_solver_type(type_details_solver)
     ;       parse_tree_abstract_type(type_details_abstract)
-    ;       parse_tree_foreign_type(type_details_foreign).
+    ;       parse_tree_foreign_type(type_details_foreign_generic).
 
 :- type type_details_du
     --->    type_details_du(
@@ -326,13 +326,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 solver_canonical    :: maybe_canonical
             ).
 
-:- type type_details_foreign
-    --->    type_details_foreign(
-                foreign_lang_type   :: foreign_language_type,
-                foreign_canonical   :: maybe_canonical,
-                foreign_assertions  :: foreign_type_assertions
-            ).
-
     % The `is_solver_type' type specifies whether a type is a "solver" type,
     % for which `any' insts are interpreted as "don't know", or a non-solver
     % type for which `any' is the same as `bound(...)'.
@@ -345,11 +338,35 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % The inst `any' is not always `bound' for this type
             % (i.e. the type was declared with `:- solver type ...').
 
-    % A foreign_language_type represents a type that is defined in a
-    % foreign language and accessed in Mercury (most likely through
-    % `pragma foreign_type').
+    % The reason why we make LangType a parameter of type_details_foreign
+    % is the fact that we need information about type names defined in
+    % foreign languages in two kinds of circumstances.
     %
-:- type foreign_language_type
+    % The first kind is when we are handling a single specific
+    % `pragma foreign_type' item. In this case, we need to use a single type
+    % to represent a declaration that could be for any foreign language.
+    % In this case, we use type_details_foreign(generic_language_foreign_type),
+    % which can represent a type name for any foreign language.
+    %
+    % The other kind is when we want to gather all the definitions for
+    % a given type constructor in a given foreign language, such as C.
+    % In this case, we use type_details_foreign(c_foreign_type), which
+    % which can represent a type name only for the chosen foreign language.
+    %
+:- type type_details_foreign(LangType)
+    --->    type_details_foreign(
+                foreign_lang_type   :: LangType,
+                foreign_canonical   :: maybe_canonical,
+                foreign_assertions  :: foreign_type_assertions
+            ).
+
+:- type type_details_foreign_generic ==
+    type_details_foreign(generic_language_foreign_type).
+
+    % A generic_language_foreign_type represents a type that is
+    % defined in a given foreign language using `pragma foreign_type'.
+    %
+:- type generic_language_foreign_type
     --->    c(c_foreign_type)
     ;       java(java_foreign_type)
     ;       csharp(csharp_foreign_type)

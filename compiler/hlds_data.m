@@ -1108,17 +1108,7 @@ gather_constructor_cons_ids(TypeCtor, [Ctor | Ctors], !ConsIds) :-
                 erlang  :: foreign_type_lang_body(erlang_foreign_type)
             ).
 
-:- type foreign_type_lang_body(T) == maybe(foreign_type_lang_data(T)).
-
-    % Foreign types may have user-defined equality and comparison predicates
-    % but not solver_type_details.
-    %
-:- type foreign_type_lang_data(T)
-    --->    foreign_type_lang_data(
-                T,
-                maybe_canonical,
-                foreign_type_assertions
-            ).
+:- type foreign_type_lang_body(T) == maybe(type_details_foreign(T)).
 
     % Check asserted properties of a foreign type.
     %

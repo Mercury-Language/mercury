@@ -452,7 +452,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         Target = target_c,
         (
             MaybeC = yes(Data),
-            Data = foreign_type_lang_data(c_type(NameStr), MaybeUserEqComp,
+            Data = type_details_foreign(c_type(NameStr), MaybeUserEqComp,
                 Assertions),
             Name = unqualified(NameStr)
         ;
@@ -463,7 +463,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         Target = target_csharp,
         (
             MaybeCSharp = yes(Data),
-            Data = foreign_type_lang_data(csharp_type(NameStr),
+            Data = type_details_foreign(csharp_type(NameStr),
                 MaybeUserEqComp, Assertions),
             Name = unqualified(NameStr)
         ;
@@ -474,7 +474,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         Target = target_java,
         (
             MaybeJava = yes(Data),
-            Data = foreign_type_lang_data(java_type(NameStr), MaybeUserEqComp,
+            Data = type_details_foreign(java_type(NameStr), MaybeUserEqComp,
                 Assertions),
             Name = unqualified(NameStr)
         ;
@@ -485,7 +485,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         Target = target_erlang,
         (
             MaybeErlang = yes(Data),
-            Data = foreign_type_lang_data(erlang_type, MaybeUserEqComp,
+            Data = type_details_foreign(erlang_type, MaybeUserEqComp,
                 Assertions),
             Name = unqualified("")
         ;

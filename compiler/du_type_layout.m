@@ -2150,16 +2150,16 @@ module_visibilities_allow_direct_arg(TypeStatus, ArgCond) = AllowDirectArg :-
 is_foreign_type_body_for_target(ForeignType, Target, Assertions) :-
     (
         Target = target_c,
-        ForeignType ^ c = yes(foreign_type_lang_data(_, _, Assertions))
+        ForeignType ^ c = yes(type_details_foreign(_, _, Assertions))
     ;
         Target = target_java,
-        ForeignType ^ java = yes(foreign_type_lang_data(_, _, Assertions))
+        ForeignType ^ java = yes(type_details_foreign(_, _, Assertions))
     ;
         Target = target_csharp,
-        ForeignType ^ csharp = yes(foreign_type_lang_data(_, _, Assertions))
+        ForeignType ^ csharp = yes(type_details_foreign(_, _, Assertions))
     ;
         Target = target_erlang,
-        ForeignType ^ erlang = yes(foreign_type_lang_data(_, _, Assertions))
+        ForeignType ^ erlang = yes(type_details_foreign(_, _, Assertions))
     ).
 
 %---------------------------------------------------------------------------%

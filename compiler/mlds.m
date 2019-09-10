@@ -1010,7 +1010,7 @@
 
     ;       mlds_foreign_type(
                 % This is a type of the target language.
-                foreign_language_type
+                generic_language_foreign_type
             )
 
     ;       mlds_class_type(
@@ -2618,7 +2618,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         Target = target_c,
         (
             MaybeC = yes(Data),
-            Data = foreign_type_lang_data(CForeignType, _, _),
+            Data = type_details_foreign(CForeignType, _, _),
             ForeignType = c(CForeignType)
         ;
             MaybeC = no,
@@ -2629,7 +2629,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         Target = target_csharp,
         (
             MaybeCSharp = yes(Data),
-            Data = foreign_type_lang_data(CSharpForeignType, _, _),
+            Data = type_details_foreign(CSharpForeignType, _, _),
             ForeignType = csharp(CSharpForeignType)
         ;
             MaybeCSharp = no,
@@ -2640,7 +2640,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         Target = target_java,
         (
             MaybeJava = yes(Data),
-            Data = foreign_type_lang_data(JavaForeignType, _, _),
+            Data = type_details_foreign(JavaForeignType, _, _),
             ForeignType = java(JavaForeignType)
         ;
             MaybeJava = no,

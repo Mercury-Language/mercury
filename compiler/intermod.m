@@ -1318,11 +1318,11 @@ resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
         MaybeForeignTypeLangData = no
     ;
         MaybeForeignTypeLangData0 =
-            yes(foreign_type_lang_data(Body, MaybeUserEqComp0, Assertions)),
+            yes(type_details_foreign(Body, MaybeUserEqComp0, Assertions)),
         resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
             MaybeUserEqComp0, MaybeUserEqComp, !IntermodInfo),
         MaybeForeignTypeLangData =
-            yes(foreign_type_lang_data(Body, MaybeUserEqComp, Assertions))
+            yes(type_details_foreign(Body, MaybeUserEqComp, Assertions))
     ).
 
 :- pred resolve_unify_compare_overloading(module_info::in,
@@ -1592,7 +1592,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     then
         (
             MaybeC = yes(DataC),
-            DataC = foreign_type_lang_data(CForeignType,
+            DataC = type_details_foreign(CForeignType,
                 CMaybeUserEqComp, AssertionsC),
             CDetailsForeign = type_details_foreign(c(CForeignType),
                 CMaybeUserEqComp, AssertionsC),
@@ -1606,7 +1606,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         ),
         (
             MaybeJava = yes(DataJava),
-            DataJava = foreign_type_lang_data(JavaForeignType,
+            DataJava = type_details_foreign(JavaForeignType,
                 JavaMaybeUserEqComp, AssertionsJava),
             JavaDetailsForeign = type_details_foreign(java(JavaForeignType),
                 JavaMaybeUserEqComp, AssertionsJava),
@@ -1620,7 +1620,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         ),
         (
             MaybeCSharp = yes(DataCSharp),
-            DataCSharp = foreign_type_lang_data(CSharpForeignType,
+            DataCSharp = type_details_foreign(CSharpForeignType,
                 CSharpMaybeUserEqComp, AssertionsCSharp),
             CSharpDetailsForeign = type_details_foreign(
                 csharp(CSharpForeignType),
@@ -1635,7 +1635,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         ),
         (
             MaybeErlang = yes(DataErlang),
-            DataErlang = foreign_type_lang_data(ErlangForeignType,
+            DataErlang = type_details_foreign(ErlangForeignType,
                 ErlangMaybeUserEqComp, AssertionsErlang),
             ErlangDetailsForeign = type_details_foreign(
                 erlang(ErlangForeignType),
