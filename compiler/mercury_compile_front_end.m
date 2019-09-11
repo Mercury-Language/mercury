@@ -398,23 +398,6 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
-    globals.lookup_bool_option(Globals, intermod_unused_args, IntermodArgs),
-    globals.lookup_accumulating_option(Globals, intermod_directories,
-        IntermodDirs),
-    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-    globals.lookup_bool_option(Globals, termination, Termination),
-    globals.lookup_bool_option(Globals, termination2, Termination2),
-    globals.lookup_bool_option(Globals, structure_sharing_analysis,
-        SharingAnalysis),
-    globals.lookup_bool_option(Globals, structure_reuse_analysis,
-        ReuseAnalysis),
-    globals.lookup_bool_option(Globals, analyse_exceptions,
-        ExceptionAnalysis),
-    globals.lookup_bool_option(Globals, analyse_closures,
-        ClosureAnalysis),
-    globals.lookup_bool_option(Globals, analyse_trail_usage,
-        TrailingAnalysis),
-    globals.lookup_bool_option(Globals, analyse_mm_tabling, TablingAnalysis),
     (
         MakeOptInt = yes,
         write_initial_opt_file(!HLDS, !IO),
@@ -423,21 +406,15 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         % to append their results to the `.opt.tmp' file. For
         % `--intermodule-analysis', analysis results should be recorded
         % using the intermodule analysis framework instead.
+        % XXX So why is the test "IntermodAnalysis = no", instead of
+        % "IntermodOpt = yes"?
         %
         % If intermod_unused_args is being performed, run polymorphism,
         % mode analysis and determinism analysis before unused_args.
         ( if
             IntermodAnalysis = no,
-            ( IntermodArgs = yes
-            ; Termination = yes
-            ; Termination2 = yes
-            ; ExceptionAnalysis = yes
-            ; TrailingAnalysis = yes
-            ; TablingAnalysis = yes
-            ; ClosureAnalysis = yes
-            ; SharingAnalysis = yes
-            ; ReuseAnalysis = yes
-            )
+            need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
+            NeedMiddlePassForOptFile = yes
         then
             % XXX OPTFILE This should have been done by one of our ancestors.
             frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO),
@@ -467,11 +444,14 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         then
             UpdateStatus = yes
         else
+            globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
             (
                 UseOptFiles = yes,
                 module_info_get_name(!.HLDS, ModuleName),
                 module_name_to_search_file_name(Globals, ".opt",
                     ModuleName, OptName, !IO),
+                globals.lookup_accumulating_option(Globals,
+                    intermod_directories, IntermodDirs),
                 search_for_file_returning_dir(IntermodDirs, OptName, MaybeDir,
                     !IO),
                 (
@@ -492,6 +472,37 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         ;
             UpdateStatus = no
         )
+    ).
+
+:- pred need_middle_pass_for_opt_file(globals::in, bool::out) is det.
+
+need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile) :-
+    globals.lookup_bool_option(Globals, intermod_unused_args, IntermodArgs),
+    globals.lookup_bool_option(Globals, termination, Termination),
+    globals.lookup_bool_option(Globals, termination2, Termination2),
+    globals.lookup_bool_option(Globals, structure_sharing_analysis,
+        SharingAnalysis),
+    globals.lookup_bool_option(Globals, structure_reuse_analysis,
+        ReuseAnalysis),
+    globals.lookup_bool_option(Globals, analyse_exceptions, ExceptionAnalysis),
+    globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
+    globals.lookup_bool_option(Globals, analyse_trail_usage, TrailingAnalysis),
+    globals.lookup_bool_option(Globals, analyse_mm_tabling, TablingAnalysis),
+    ( if
+        ( IntermodArgs = yes
+        ; Termination = yes
+        ; Termination2 = yes
+        ; ExceptionAnalysis = yes
+        ; TrailingAnalysis = yes
+        ; TablingAnalysis = yes
+        ; ClosureAnalysis = yes
+        ; SharingAnalysis = yes
+        ; ReuseAnalysis = yes
+        )
+    then
+        NeedMiddlePassForOptFile = yes
+    else
+        NeedMiddlePassForOptFile = no
     ).
 
 %---------------------------------------------------------------------------%
