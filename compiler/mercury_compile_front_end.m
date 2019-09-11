@@ -462,78 +462,95 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         IntermodAnalysis),
     (
         MakeOptInt = yes,
-        write_initial_opt_file(!HLDS, !IO),
-
-        % The following passes are only run with `--intermodule-optimisation'
-        % to append their results to the `.opt.tmp' file. For
-        % `--intermodule-analysis', analysis results should be recorded
-        % using the intermodule analysis framework instead.
-        % XXX So why is the test "IntermodAnalysis = no", instead of
-        % "IntermodOpt = yes"?
-        %
-        % If intermod_unused_args is being performed, run polymorphism,
-        % mode analysis and determinism analysis before unused_args.
-        ( if
-            IntermodAnalysis = no,
-            need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
-            NeedMiddlePassForOptFile = yes
-        then
-            % XXX OPTFILE This should have been done by one of our ancestors.
-            frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO),
-            (
-                FoundError = no,
-                middle_pass_for_opt_file(!HLDS, !Specs, !IO)
-            ;
-                FoundError = yes,
-                io.set_exit_status(1, !IO)
-            )
-        else
-            true
-        ),
-        module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ".opt",
-            ModuleName, OptName, !IO),
-        update_interface(Globals, OptName, !IO),
-        touch_interface_datestamp(Globals, ModuleName, ".optdate", !IO)
+        create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
+            !Specs, !IO)
     ;
         MakeOptInt = no,
-        % If there is a `.opt' file for this module, the import status
-        % of items in the `.opt' file needs to be updated.
-        ( if
-            ( IntermodOpt = yes
-            ; IntermodAnalysis = yes
-            )
-        then
-            UpdateStatus = yes
-        else
-            globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+        maybe_update_status_of_items_in_opt_file(IntermodOpt, IntermodAnalysis,
+            Globals, !HLDS, !IO)
+    ).
+
+:- pred create_and_write_opt_file(bool::in, globals::in,
+    module_info::in, module_info::out, dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
+        !Specs, !IO) :-
+    write_initial_opt_file(!HLDS, !IO),
+
+    % The following passes are only run with `--intermodule-optimisation'
+    % to append their results to the `.opt.tmp' file. For
+    % `--intermodule-analysis', analysis results should be recorded
+    % using the intermodule analysis framework instead.
+    % XXX So why is the test "IntermodAnalysis = no", instead of
+    % "IntermodOpt = yes"?
+    %
+    % If intermod_unused_args is being performed, run polymorphism,
+    % mode analysis and determinism analysis before unused_args.
+    ( if
+        IntermodAnalysis = no,
+        need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
+        NeedMiddlePassForOptFile = yes
+    then
+        % XXX OPTFILE This should have been done by one of our ancestors.
+        frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO),
+        (
+            FoundError = no,
+            middle_pass_for_opt_file(!HLDS, !Specs, !IO)
+        ;
+            FoundError = yes,
+            io.set_exit_status(1, !IO)
+        )
+    else
+        true
+    ),
+    module_info_get_name(!.HLDS, ModuleName),
+    module_name_to_file_name(Globals, do_create_dirs, ".opt",
+        ModuleName, OptName, !IO),
+    update_interface(Globals, OptName, !IO),
+    touch_interface_datestamp(Globals, ModuleName, ".optdate", !IO).
+
+    % If there is a `.opt' file for this module, the import status of items
+    % in the `.opt' file needs to be updated.
+    %
+:- pred maybe_update_status_of_items_in_opt_file(bool::in, bool::in,
+    globals::in, module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_update_status_of_items_in_opt_file(IntermodOpt, IntermodAnalysis,
+        Globals, !HLDS, !IO) :-
+    ( if
+        ( IntermodOpt = yes
+        ; IntermodAnalysis = yes
+        )
+    then
+        UpdateStatus = yes
+    else
+        globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+        (
+            UseOptFiles = yes,
+            module_info_get_name(!.HLDS, ModuleName),
+            module_name_to_search_file_name(Globals, ".opt",
+                ModuleName, OptName, !IO),
+            globals.lookup_accumulating_option(Globals, intermod_directories,
+                IntermodDirs),
+            search_for_file_returning_dir(IntermodDirs, OptName, MaybeDir, !IO),
             (
-                UseOptFiles = yes,
-                module_info_get_name(!.HLDS, ModuleName),
-                module_name_to_search_file_name(Globals, ".opt",
-                    ModuleName, OptName, !IO),
-                globals.lookup_accumulating_option(Globals,
-                    intermod_directories, IntermodDirs),
-                search_for_file_returning_dir(IntermodDirs, OptName, MaybeDir,
-                    !IO),
-                (
-                    MaybeDir = ok(_),
-                    UpdateStatus = yes
-                ;
-                    MaybeDir = error(_),
-                    UpdateStatus = no
-                )
+                MaybeDir = ok(_),
+                UpdateStatus = yes
             ;
-                UseOptFiles = no,
+                MaybeDir = error(_),
                 UpdateStatus = no
             )
-        ),
-        (
-            UpdateStatus = yes,
-            intermod.maybe_opt_export_entities(!HLDS)
         ;
+            UseOptFiles = no,
             UpdateStatus = no
         )
+    ),
+    (
+        UpdateStatus = yes,
+        intermod.maybe_opt_export_entities(!HLDS)
+    ;
+        UpdateStatus = no
     ).
 
 :- pred need_middle_pass_for_opt_file(globals::in, bool::out) is det.
