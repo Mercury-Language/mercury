@@ -152,11 +152,11 @@ generate_short_interface_int3(Globals, RawCompUnit,
         raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
         set.init, IntInclModuleNames, set.init, IntImportModuleNames0,
-        cord.init, IntTypeDefnsCord,
+        cord.init, OrigIntTypeDefnsCord, cord.init, IntTypeDefnsCord,
         cord.init, IntInstDefnsCord, cord.init, IntModeDefnsCord,
         cord.init, IntTypeClassesCord, cord.init, IntInstancesCord,
-        cord.init, OrigIntTypeDefnsCord, cord.init, OrigImpTypeDefnsCord,
-        map.init, ForeignEnumTypeCtors, do_not_need_imports, NeedImports),
+        cord.init, OrigImpTypeDefnsCord, map.init, IntImpForeignEnumTypeCtors,
+        do_not_need_imports, NeedImports),
     (
         NeedImports = do_not_need_imports,
         IntImportModuleNames = set.init
@@ -181,7 +181,7 @@ generate_short_interface_int3(Globals, RawCompUnit,
         OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
         OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
         decide_repns_for_simple_types(ModuleName,
-            OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
+            OrigIntTypeDefns, OrigImpTypeDefns, IntImpForeignEnumTypeCtors,
             IntTypeRepnInfos, _NonIntTypeRepnInfos),
         IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
     ),
@@ -203,23 +203,23 @@ generate_short_interface_int3(Globals, RawCompUnit,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
     cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
     cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
     cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
-    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     foreign_enum_map::in, foreign_enum_map::out,
     need_imports::in, need_imports::out) is det.
 
 get_short_interface_int3_from_item_blocks([],
-        !IntIncls, !IntImports, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
-        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns, !OrigImpTypeDefns,
-        !ForeignEnumTypeCtors, !NeedImports).
+        !IntIncls, !IntImports,!OrigIntTypeDefns,  !IntTypeDefns,
+        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
+        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors, !NeedImports).
 get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
-        !IntIncls, !IntImports, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
-        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns, !OrigImpTypeDefns,
-        !ForeignEnumTypeCtors, !NeedImports) :-
+        !IntIncls, !IntImports,!OrigIntTypeDefns,  !IntTypeDefns,
+        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
+        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors, !NeedImports) :-
     RawItemBlock = item_block(_, Section, Incls, Avails, _FIMs, Items),
     (
         Section = ms_interface,
@@ -228,37 +228,37 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
         ImportModuleNames = list.map(get_import_module_name, Imports),
         set.insert_list(ImportModuleNames, !IntImports),
         get_short_interface_int3_from_items_int(Items,
-            !IntTypeDefns, !IntInstDefns, !IntModeDefns,
-            !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
-            !ForeignEnumTypeCtors, !NeedImports)
+            !OrigIntTypeDefns, !IntTypeDefns,
+            !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
+            !IntImpForeignEnumTypeCtors, !NeedImports)
     ;
         Section = ms_implementation,
         get_short_interface_int3_from_items_imp(Items,
-            !OrigImpTypeDefns, !ForeignEnumTypeCtors)
+            !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors)
     ),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
-        !IntIncls, !IntImports, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
-        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns, !OrigImpTypeDefns,
-        !ForeignEnumTypeCtors, !NeedImports).
+        !IntIncls, !IntImports, !OrigIntTypeDefns, !IntTypeDefns,
+        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
+        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors, !NeedImports).
 
 :- pred get_short_interface_int3_from_items_int(list(item)::in,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
     cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
     cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
     cord(item_instance_info)::in, cord(item_instance_info)::out,
-    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     foreign_enum_map::in, foreign_enum_map::out,
     need_imports::in, need_imports::out) is det.
 
 get_short_interface_int3_from_items_int([],
-        !IntTypeDefns, !IntInstDefns, !IntModeDefns,
-        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
-        !ForeignEnumTypeCtors, !NeedImports).
+        !OrigIntTypeDefns, !IntTypeDefns,
+        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
+        !IntImpForeignEnumTypeCtors, !NeedImports).
 get_short_interface_int3_from_items_int([Item | Items],
-        !IntTypeDefns, !IntInstDefns, !IntModeDefns,
-        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
-        !ForeignEnumTypeCtors, !NeedImports) :-
+        !OrigIntTypeDefns, !IntTypeDefns,
+        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
+        !IntImpForeignEnumTypeCtors, !NeedImports) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
         cord.snoc(ItemTypeDefnInfo, !OrigIntTypeDefns),
@@ -266,6 +266,16 @@ get_short_interface_int3_from_items_int([Item | Items],
         make_type_defn_abstract_type_for_int3(ItemTypeDefnInfo,
             AbstractOrForeignItemTypeDefnInfo),
         cord.snoc(AbstractOrForeignItemTypeDefnInfo, !IntTypeDefns)
+    ;
+        Item = item_inst_defn(ItemInstInfo),
+        AbstractItemInstInfo =
+            ItemInstInfo ^ id_inst_defn := abstract_inst_defn,
+        cord.snoc(AbstractItemInstInfo, !IntInstDefns)
+    ;
+        Item = item_mode_defn(ItemModeInfo),
+        AbstractItemModeInfo =
+            ItemModeInfo ^ md_mode_defn := abstract_mode_defn,
+        cord.snoc(AbstractItemModeInfo, !IntModeDefns)
     ;
         Item = item_typeclass(ItemTypeClassInfo),
         ItemTypeClassInfo = item_typeclass_info(ClassName, ParamsTVars,
@@ -282,18 +292,8 @@ get_short_interface_int3_from_items_int([Item | Items],
         % of the type constructors in the instance's member types.
         !:NeedImports = do_need_imports
     ;
-        Item = item_inst_defn(ItemInstInfo),
-        AbstractItemInstInfo =
-            ItemInstInfo ^ id_inst_defn := abstract_inst_defn,
-        cord.snoc(AbstractItemInstInfo, !IntInstDefns)
-    ;
-        Item = item_mode_defn(ItemModeInfo),
-        AbstractItemModeInfo =
-            ItemModeInfo ^ md_mode_defn := abstract_mode_defn,
-        cord.snoc(AbstractItemModeInfo, !IntModeDefns)
-    ;
         Item = item_foreign_enum(ItemForeignEnumInfo),
-        record_foreign_enum(ItemForeignEnumInfo, !ForeignEnumTypeCtors)
+        record_foreign_enum(ItemForeignEnumInfo, !IntImpForeignEnumTypeCtors)
     ;
         ( Item = item_clause(_)
         ; Item = item_mutable(_)
@@ -308,9 +308,9 @@ get_short_interface_int3_from_items_int([Item | Items],
         )
     ),
     get_short_interface_int3_from_items_int(Items,
-        !IntTypeDefns, !IntInstDefns, !IntModeDefns,
-        !IntTypeClasses, !IntInstances, !OrigIntTypeDefns,
-        !ForeignEnumTypeCtors, !NeedImports).
+        !OrigIntTypeDefns, !IntTypeDefns,
+        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
+        !IntImpForeignEnumTypeCtors, !NeedImports).
 
 :- pred make_type_defn_abstract_type_for_int3(item_type_defn_info::in,
     item_type_defn_info::out) is det.
@@ -380,15 +380,15 @@ make_type_defn_abstract_type_for_int3(ItemTypeDefn,
     foreign_enum_map::in, foreign_enum_map::out) is det.
 
 get_short_interface_int3_from_items_imp([],
-        !ImpTypeDefns, !ForeignEnumTypeCtors).
+        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors).
 get_short_interface_int3_from_items_imp([Item | Items],
-        !ImpTypeDefns, !ForeignEnumTypeCtors) :-
+        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        cord.snoc(ItemTypeDefnInfo, !ImpTypeDefns)
+        cord.snoc(ItemTypeDefnInfo, !OrigImpTypeDefns)
     ;
         Item = item_foreign_enum(ItemForeignEnumInfo),
-        record_foreign_enum(ItemForeignEnumInfo, !ForeignEnumTypeCtors)
+        record_foreign_enum(ItemForeignEnumInfo, !IntImpForeignEnumTypeCtors)
     ;
         ( Item = item_typeclass(_)
         ; Item = item_instance(_)
@@ -407,7 +407,7 @@ get_short_interface_int3_from_items_imp([Item | Items],
         )
     ),
     get_short_interface_int3_from_items_imp(Items,
-        !ImpTypeDefns, !ForeignEnumTypeCtors).
+        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors).
 
 :- pred record_foreign_enum(item_foreign_enum_info::in,
     foreign_enum_map::in, foreign_enum_map::out) is det.
@@ -452,11 +452,11 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
     list.map(src_to_raw_item_block, SrcItemBlocks, RawItemBlocks),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
         set.init, IntInclModuleNames, set.init, IntImportModuleNames0,
-        cord.init, IntTypeDefnsCord,
+        cord.init, OrigIntTypeDefnsCord, cord.init, IntTypeDefnsCord,
         cord.init, IntInstDefnsCord, cord.init, IntModeDefnsCord,
         cord.init, IntTypeClassesCord, cord.init, IntInstancesCord,
-        cord.init, OrigIntTypeDefnsCord, cord.init, OrigImpTypeDefnsCord,
-        map.init, ForeignEnumTypeCtors, do_not_need_imports, NeedImports),
+        cord.init, OrigImpTypeDefnsCord, map.init, IntImpForeignEnumTypeCtors,
+        do_not_need_imports, NeedImports),
     (
         NeedImports = do_not_need_imports,
         IntImportModuleNames = set.init
@@ -481,7 +481,7 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
         OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
         OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
         decide_repns_for_simple_types(ModuleName,
-            OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
+            OrigIntTypeDefns, OrigImpTypeDefns, IntImpForeignEnumTypeCtors,
             IntTypeRepnInfos, _NonIntTypeRepnInfos),
         IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
     ),
@@ -745,31 +745,6 @@ get_private_interface_int0_from_items(ModuleName, [Item | Items],
     % mode decls, typeclasses and promises follows what this predicate
     % used to do before the item list change.
     (
-        ( Item = item_clause(_)
-        ; Item = item_foreign_export_enum(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        )
-        % Don't include in either section of the private interface.
-    ;
-        Item = item_type_repn(_)
-        % process_item_for_private_interface should be invoked only on items
-        % from the *source file*, not on items read from any interface file.
-        % Any occurrence of item_type_repns in the source file should have been
-        % caught and reported by the parsing code. If through some bug
-        % they make it here, neither reporting them again nor aborting the
-        % compiler is likely to be helpful.
-    ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        AllowedInInterface = pragma_allowed_in_interface(Pragma),
-        (
-            AllowedInInterface = no
-        ;
-            AllowedInInterface = yes,
-            cord.snoc(ItemPragma, !Pragmas)
-        )
-    ;
         Item = item_type_defn(TypeDefn),
         cord.snoc(TypeDefn, !TypeDefns)
     ;
@@ -788,19 +763,29 @@ get_private_interface_int0_from_items(ModuleName, [Item | Items],
         Item = item_typeclass(TypeClass),
         cord.snoc(TypeClass, !TypeClasses)
     ;
+        Item = item_instance(Instance),
+        AbstractInstance =
+            Instance ^ ci_method_instances := instance_body_abstract,
+        cord.snoc(AbstractInstance, !Instances)
+    ;
         Item = item_foreign_enum(ItemForeignEnumInfo),
         ItemForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, Values,
             _Context, _SeqNum),
         ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, Values),
         cord.snoc(ForeignEnumSpec, !ForeignEnums)
     ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        AllowedInInterface = pragma_allowed_in_interface(Pragma),
+        (
+            AllowedInInterface = no
+        ;
+            AllowedInInterface = yes,
+            cord.snoc(ItemPragma, !Pragmas)
+        )
+    ;
         Item = item_promise(Promise),
         cord.snoc(Promise, !Promises)
-    ;
-        Item = item_instance(Instance),
-        AbstractInstance =
-            Instance ^ ci_method_instances := instance_body_abstract,
-        cord.snoc(AbstractInstance, !Instances)
     ;
         Item = item_mutable(ItemMutable),
         ItemMutable = item_mutable_info(MutableName,
@@ -812,6 +797,21 @@ get_private_interface_int0_from_items(ModuleName, [Item | Items],
                 Context),
             PublicAuxPreds, PublicAuxPredDecls),
         !:PredDecls = !.PredDecls ++ cord.from_list(PublicAuxPredDecls)
+    ;
+        Item = item_type_repn(_)
+        % process_item_for_private_interface should be invoked only on items
+        % from the *source file*, not on items read from any interface file.
+        % Any occurrence of item_type_repns in the source file should have been
+        % caught and reported by the parsing code. If through some bug
+        % they make it here, neither reporting them again nor aborting the
+        % compiler is likely to be helpful.
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_foreign_export_enum(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        )
+        % Don't include in either section of the private interface.
     ),
     get_private_interface_int0_from_items(ModuleName, Items,
         !TypeDefns, !InstDefns, !ModeDefns, !TypeClasses, !Instances,
@@ -1335,6 +1335,12 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
             true
         )
     ;
+        Item = item_inst_defn(ItemInstDefn),
+        cord.snoc(ItemInstDefn, !IntInstDefnsCord)
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        cord.snoc(ItemModeDefn, !IntModeDefnsCord)
+    ;
         Item = item_typeclass(ItemTypeClass),
         cord.snoc(ItemTypeClass, !IntTypeClassesCord),
         % The superclass constraints on the typeclass being declared
@@ -1343,9 +1349,14 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
         list.foldl(accumulate_modules_from_constraint, Constraints,
             !IntModulesNeededByTypeClassDefns)
     ;
-        Item = item_clause(_)
-        % A clause in the interface is a bug, but it should be reported
-        % when we try to generate code for the module.
+        Item = item_instance(ItemInstance),
+        cord.snoc(ItemInstance, !IntInstancesCord)
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        cord.snoc(ItemPredDecl, !IntPredDeclsCord)
+    ;
+        Item = item_mode_decl(ItemModeDecl),
+        cord.snoc(ItemModeDecl, !IntModeDeclsCord)
     ;
         Item = item_foreign_enum(ItemForeignEnum),
         ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values, _, _),
@@ -1382,22 +1393,8 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
             cord.snoc(ItemPromise, !IntPromisesCord)
         )
     ;
-        Item = item_inst_defn(ItemInstDefn),
-        cord.snoc(ItemInstDefn, !IntInstDefnsCord)
-    ;
-        Item = item_mode_defn(ItemModeDefn),
-        cord.snoc(ItemModeDefn, !IntModeDefnsCord)
-    ;
-        Item = item_pred_decl(ItemPredDecl),
-        cord.snoc(ItemPredDecl, !IntPredDeclsCord)
-    ;
-        Item = item_mode_decl(ItemModeDecl),
-        cord.snoc(ItemModeDecl, !IntModeDeclsCord)
-    ;
-        Item = item_instance(ItemInstance),
-        cord.snoc(ItemInstance, !IntInstancesCord)
-    ;
-        ( Item = item_foreign_export_enum(_)
+        ( Item = item_clause(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
