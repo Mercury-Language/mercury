@@ -52,7 +52,7 @@
     ims_list(item_finalise_info)::out,
     sec_list(item_mutable_info)::out,
     list(item_type_repn_info)::out,
-    list(item_foreign_enum_info)::out,
+    list({item_mercury_status, item_foreign_enum_info})::out,
     list(item_foreign_export_enum_info)::out,
     ims_list(item_pragma_info)::out(list_skel(ims_pragma_pass_2)),
     ims_list(item_pragma_info)::out(list_skel(ims_pragma_pass_3)),
@@ -285,7 +285,8 @@ int_for_opt_module_section_status(IntForOptSection, SectionInfo) :-
     ims_list(item_finalise_info)::in, ims_list(item_finalise_info)::out,
     sec_list(item_mutable_info)::in, sec_list(item_mutable_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
-    list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
+    list({item_mercury_status, item_foreign_enum_info})::in,
+        list({item_mercury_status, item_foreign_enum_info})::out,
     list(item_foreign_export_enum_info)::in,
         list(item_foreign_export_enum_info)::out,
     ims_list(item_pragma_info)::in(list_skel(ims_pragma_pass_2)),
@@ -356,7 +357,8 @@ separate_items_in_blocks([ItemBlock | ItemBlocks], MakeSectionInfo,
     ims_list(item_finalise_info)::in, ims_list(item_finalise_info)::out,
     sec_list(item_mutable_info)::in, sec_list(item_mutable_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
-    list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
+    list({item_mercury_status, item_foreign_enum_info})::in,
+        list({item_mercury_status, item_foreign_enum_info})::out,
     list(item_foreign_export_enum_info)::in,
         list(item_foreign_export_enum_info)::out,
     ims_list(item_pragma_info)::in(list_skel(ims_pragma_pass_2)),
@@ -461,6 +463,15 @@ separate_items([Item | Items], SectionInfo,
         Item = item_type_repn(ItemTypeRepnInfo),
         !:RevItemTypeRepns = [ItemTypeRepnInfo | !.RevItemTypeRepns]
     ;
+        Item = item_foreign_enum(ItemForeignEnumInfo),
+        SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
+        ForeignEnumStatusItem = {ItemMercuryStatus, ItemForeignEnumInfo},
+        !:RevItemForeignEnums = [ForeignEnumStatusItem | !.RevItemForeignEnums]
+    ;
+        Item = item_foreign_export_enum(ItemForeignExportEnumInfo),
+        !:RevItemForeignExportEnums =
+            [ItemForeignExportEnumInfo | !.RevItemForeignExportEnums]
+    ;
         Item = item_pragma(ItemPragmaInfo0),
         % Note that the distinction between ItemPragmaInfo0 and ItemPragmaInfo
         % is there only to make up for the lack of alias tracking in our
@@ -472,23 +483,6 @@ separate_items([Item | Items], SectionInfo,
             Context, SeqNum),
         SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
         (
-            PragmaType = pragma_foreign_enum(PragmaForeignEnum),
-            expect(unify(MaybeAttrs, item_origin_user), $pred,
-                "foreign_enum MaybeAttrs != item_origin_user"),
-            ItemForeignEnumInfo = item_foreign_enum_info(PragmaForeignEnum,
-                ItemMercuryStatus, Context, SeqNum),
-            !:RevItemForeignEnums =
-                [ItemForeignEnumInfo | !.RevItemForeignEnums]
-        ;
-            PragmaType = pragma_foreign_export_enum(PragmaForeignExportEnum),
-            expect(unify(MaybeAttrs, item_origin_user), $pred,
-                "foreign_export_enum MaybeAttrs != item_origin_user"),
-            ItemForeignExportEnumInfo =
-                item_foreign_export_enum_info(PragmaForeignExportEnum,
-                    ItemMercuryStatus, Context, SeqNum),
-            !:RevItemForeignExportEnums =
-                [ItemForeignExportEnumInfo | !.RevItemForeignExportEnums]
-        ;
             ( PragmaType = pragma_foreign_decl(_)
             ; PragmaType = pragma_foreign_code(_)
             ; PragmaType = pragma_external_proc(_)

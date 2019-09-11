@@ -54,7 +54,7 @@
 %-----------------------------------------------------------------------------%
 
 item_needs_imports(Item) = NeedsImports :-
-    % XXX This function is too crude;
+    % XXX This function is FAR too crude;
     % it should find out *what* imports we need.
     (
         Item = item_type_defn(ItemTypeDefn),
@@ -67,6 +67,8 @@ item_needs_imports(Item) = NeedsImports :-
         ( Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
+        ; Item = item_foreign_enum(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_pragma(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
@@ -101,6 +103,10 @@ item_needs_foreign_imports(Item) = Langs :-
             Langs = []
         )
     ;
+        Item = item_foreign_enum(FEInfo),
+        FEInfo = item_foreign_enum_info(Lang, _, _, _, _),
+        Langs = [Lang]
+    ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         Langs = pragma_needs_foreign_imports(Pragma)
@@ -110,6 +116,7 @@ item_needs_foreign_imports(Item) = Langs :-
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ; Item = item_promise(_)
@@ -132,9 +139,6 @@ pragma_needs_foreign_imports(Pragma) = Langs :-
             Pragma = pragma_foreign_code(FCInfo),
             FCInfo = pragma_info_foreign_code(Lang, _)
         ;
-            Pragma = pragma_foreign_enum(FEInfo),
-            FEInfo = pragma_info_foreign_enum(Lang, _, _)
-        ;
             Pragma = pragma_foreign_proc_export(FPEInfo),
             FPEInfo = pragma_info_foreign_proc_export(Lang, _, _)
         ),
@@ -144,8 +148,7 @@ pragma_needs_foreign_imports(Pragma) = Langs :-
         FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
         Langs = [get_foreign_language(Attrs)]
     ;
-        ( Pragma = pragma_foreign_export_enum(_)
-        ; Pragma = pragma_external_proc(_)
+        ( Pragma = pragma_external_proc(_)
         ; Pragma = pragma_type_spec(_)
         ; Pragma = pragma_inline(_)
         ; Pragma = pragma_no_inline(_)

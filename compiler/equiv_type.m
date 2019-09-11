@@ -437,7 +437,9 @@ replace_in_item(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         Item = Item0,
         Specs = []
     ;
-        ( Item0 = item_clause(_)
+        ( Item0 = item_foreign_enum(_)
+        ; Item0 = item_foreign_export_enum(_)
+        ; Item0 = item_clause(_)
         ; Item0 = item_promise(_)
         ; Item0 = item_initialise(_)
         ; Item0 = item_finalise(_)
@@ -737,9 +739,7 @@ replace_in_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         ; Pragma0 = pragma_fact_table(_)
         ; Pragma0 = pragma_foreign_code(_)
         ; Pragma0 = pragma_foreign_decl(_)
-        ; Pragma0 = pragma_foreign_enum(_)
         ; Pragma0 = pragma_foreign_proc_export(_)
-        ; Pragma0 = pragma_foreign_export_enum(_)
         ; Pragma0 = pragma_inline(_)
         ; Pragma0 = pragma_mm_tabling_info(_)
         ; Pragma0 = pragma_mode_check_clauses(_)

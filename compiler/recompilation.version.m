@@ -353,6 +353,11 @@ gather_in_item(Section, Item, !Info) :-
         ),
         !Info ^ gii_instances := Instances
     ;
+        ( Item = item_foreign_enum(_)
+        ; Item = item_foreign_export_enum(_)
+        )
+        % Do nothing.
+    ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(PragmaType, _, _, _),
         ( if is_pred_pragma(PragmaType, yes(PredOrFuncId)) then
@@ -636,8 +641,6 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
     (
         ( PragmaType = pragma_foreign_decl(_)
         ; PragmaType = pragma_foreign_code(_)
-        ; PragmaType = pragma_foreign_export_enum(_)
-        ; PragmaType = pragma_foreign_enum(_)
         ; PragmaType = pragma_oisu(_)               % XXX
         ; PragmaType = pragma_require_feature_set(_)
         ; PragmaType = pragma_require_tail_recursion(_)
@@ -930,6 +933,31 @@ is_item_changed(Item1, Item2, Changed) :-
                 WithInst2, Det, InstVarSet2, _, _),
             pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
                 InstVarSet2, Modes2, WithInst2)
+        then
+            Changed = unchanged
+        else
+            Changed = changed
+        )
+    ;
+        Item1 = item_foreign_enum(ItemForeignEnum1),
+        ItemForeignEnum1 = item_foreign_enum_info(Lang, TypeCtor, Values, _, _),
+        ( if
+            Item2 = item_foreign_enum(ItemForeignEnum2),
+            ItemForeignEnum2 = item_foreign_enum_info(Lang, TypeCtor, Values,
+                _, _)
+        then
+            Changed = unchanged
+        else
+            Changed = changed
+        )
+    ;
+        Item1 = item_foreign_export_enum(ItemForeignEnum1),
+        ItemForeignEnum1 = item_foreign_export_enum_info(Lang,
+            TypeCtor, Attrs, Overrides, _, _),
+        ( if
+            Item2 = item_foreign_export_enum(ItemForeignEnum2),
+            ItemForeignEnum2 = item_foreign_export_enum_info(Lang,
+                TypeCtor, Attrs, Overrides, _, _)
         then
             Changed = unchanged
         else

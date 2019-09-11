@@ -69,6 +69,8 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
                 item_num_pred_decl                  :: int,
                 item_num_mode_decl                  :: int,
                 item_num_fim                        :: int,
+                item_num_foreign_enum               :: int,
+                item_num_foreign_export_enum        :: int,
                 item_num_pragma_term                :: int,
                 item_num_pragma_term2               :: int,
                 item_num_pragma_exceptions          :: int,
@@ -130,7 +132,8 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
 :- func init_item_stats = item_stats.
 
 init_item_stats =
-    item_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).
+    item_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0).
 
     % Initialize a goal_stats structure.
     %
@@ -252,6 +255,14 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
         Item = item_mode_decl(_),
         !ItemStats ^ item_num_mode_decl := !.ItemStats ^ item_num_mode_decl + 1
     ;
+        Item = item_foreign_enum(_),
+        !ItemStats ^ item_num_foreign_enum :=
+            !.ItemStats ^ item_num_foreign_enum + 1
+    ;
+        Item = item_foreign_export_enum(_),
+        !ItemStats ^ item_num_foreign_export_enum :=
+            !.ItemStats ^ item_num_foreign_export_enum + 1
+    ;
         Item = item_pragma(ItemPragmaInfo),
         gather_stats_in_item_pragma(ItemPragmaInfo, !ItemStats)
     ;
@@ -306,8 +317,6 @@ gather_stats_in_item_pragma(ItemPragmaInfo, !ItemStats) :-
     ;
         ( PragmaType = pragma_foreign_decl(_)
         ; PragmaType = pragma_foreign_code(_)
-        ; PragmaType = pragma_foreign_export_enum(_)
-        ; PragmaType = pragma_foreign_enum(_)
         ; PragmaType = pragma_external_proc(_)
         ; PragmaType = pragma_inline(_)
         ; PragmaType = pragma_no_inline(_)
@@ -531,10 +540,10 @@ write_section_stats(Stream, SectionName - SectionStats, !IO) :-
 
 write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     ItemStats = item_stats(Clause, TypeDefn, InstDefn, ModeDefn,
-        PredDecl, ModeDecl, FIM, PragmaTerm, PragmaTerm2,
-        PragmaExcp, PragmaTrail, PragmaMM, PragmaPass2, PragmaPass3,
-        Promise, Typeclasse, Instance, Initialise, Finalise, Mutable,
-        TypeRepn),
+        PredDecl, ModeDecl, FIM, ForeignEnum, ForeignExportEnum,
+        PragmaTerm, PragmaTerm2, PragmaExcp, PragmaTrail, PragmaMM,
+        PragmaPass2, PragmaPass3, Promise, Typeclass, Instance,
+        Initialise, Finalise, Mutable, TypeRepn),
     write_one_stat(Stream, SectionName, "item_clause", Clause, !IO),
     write_one_stat(Stream, SectionName, "item_type_defn", TypeDefn, !IO),
     write_one_stat(Stream, SectionName, "item_inst_defn", InstDefn, !IO),
@@ -542,6 +551,9 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     write_one_stat(Stream, SectionName, "item_pred_decl", PredDecl, !IO),
     write_one_stat(Stream, SectionName, "item_mode_decl", ModeDecl, !IO),
     write_one_stat(Stream, SectionName, "item_fim", FIM, !IO),
+    write_one_stat(Stream, SectionName, "item_foreign_enum", ForeignEnum, !IO),
+    write_one_stat(Stream, SectionName, "item_foreign_export_enum",
+        ForeignExportEnum, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_term", PragmaTerm, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_term2", PragmaTerm2, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_excp", PragmaExcp, !IO),
@@ -550,7 +562,7 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     write_one_stat(Stream, SectionName, "item_pragma_pass2", PragmaPass2, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_pass3", PragmaPass3, !IO),
     write_one_stat(Stream, SectionName, "item_promise", Promise, !IO),
-    write_one_stat(Stream, SectionName, "item_typeclass", Typeclasse, !IO),
+    write_one_stat(Stream, SectionName, "item_typeclass", Typeclass, !IO),
     write_one_stat(Stream, SectionName, "item_instance", Instance, !IO),
     write_one_stat(Stream, SectionName, "item_promise", Promise, !IO),
     write_one_stat(Stream, SectionName, "item_initialise", Initialise, !IO),

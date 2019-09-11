@@ -318,6 +318,29 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
             Constraints, Body, VarSet, ModName, Context, SeqNum),
         Item = item_instance(ItemInstance)
     ;
+        Item0 = item_foreign_enum(ItemForeignEnum0),
+        ItemForeignEnum0 = item_foreign_enum_info(Lang, TypeCtor0, Values,
+            Context, SeqNum),
+        ErrorContext = mqec_foreign_enum(Context),
+        qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
+            !Info, !Specs),
+        ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values,
+            Context, SeqNum),
+        Item = item_foreign_enum(ItemForeignEnum)
+    ;
+        Item0 = item_foreign_export_enum(ItemForeignExportEnum0),
+        ItemForeignExportEnum0 = item_foreign_export_enum_info(Lang, TypeCtor0,
+            Attributes, Overrides, Context, SeqNum),
+        ErrorContext = mqec_foreign_export_enum(Context),
+        mq_info_get_suppress_found_undef(!.Info, OldSuppressUndef),
+        mq_info_set_suppress_found_undef(suppress_found_undef, !Info),
+        qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
+            !Info, !Specs),
+        mq_info_set_suppress_found_undef(OldSuppressUndef, !Info),
+        ItemForeignExportEnum = item_foreign_export_enum_info(Lang, TypeCtor,
+            Attributes, Overrides, Context, SeqNum),
+        Item = item_foreign_export_enum(ItemForeignExportEnum)
+    ;
         Item0 = item_mutable(ItemMutable0),
         qualify_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs),
         Item = item_mutable(ItemMutable)
@@ -1147,27 +1170,6 @@ qualify_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
         ; Pragma0 = pragma_require_feature_set(_)
         ),
         Pragma = Pragma0
-    ;
-        Pragma0 = pragma_foreign_export_enum(FEEInfo0),
-        FEEInfo0 = pragma_info_foreign_export_enum(Lang, TypeCtor0,
-            Attributes, Overrides),
-        ErrorContext = mqec_pragma(Context, Pragma0),
-        mq_info_get_suppress_found_undef(!.Info, OldSuppressUndef),
-        mq_info_set_suppress_found_undef(suppress_found_undef, !Info),
-        qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
-            !Info, !Specs),
-        mq_info_set_suppress_found_undef(OldSuppressUndef, !Info),
-        FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
-            Attributes, Overrides),
-        Pragma = pragma_foreign_export_enum(FEEInfo)
-    ;
-        Pragma0 = pragma_foreign_enum(FEInfo0),
-        FEInfo0 = pragma_info_foreign_enum(Lang, TypeCtor0, Values),
-        ErrorContext = mqec_pragma(Context, Pragma0),
-        qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
-            !Info, !Specs),
-        FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, Values),
-        Pragma = pragma_foreign_enum(FEInfo)
     ;
         Pragma0 = pragma_foreign_proc(FPInfo0),
         FPInfo0 = pragma_info_foreign_proc(Attrs0, Name, PredOrFunc,

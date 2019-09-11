@@ -108,6 +108,8 @@
                 maybe(pred_or_func),
                 mq_id
             )
+    ;       mqec_foreign_enum(prog_context)
+    ;       mqec_foreign_export_enum(prog_context)
     ;       mqec_pragma(prog_context,
                 pragma_type
             )
@@ -490,6 +492,12 @@ mq_error_context_to_pieces(ErrorContext, Context, Pieces) :-
     ;
         ErrorContext = mqec_clause_mode_annotation(Context),
         Pieces = [words("clause mode annotation")]
+    ;
+        ErrorContext = mqec_foreign_enum(Context),
+        Pieces = [pragma_decl("foreign_enum"), words("declaration")]
+    ;
+        ErrorContext = mqec_foreign_export_enum(Context),
+        Pieces = [pragma_decl("foreign_export_enum"), words("declaration")]
     ;
         ErrorContext = mqec_pragma(Context, Pragma),
         Pieces = pragma_desc_pieces(Pragma)

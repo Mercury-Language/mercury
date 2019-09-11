@@ -556,12 +556,9 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             MaybeAttributes = ok1(Attributes),
             MaybeOverrides = ok1(Overrides)
         then
-            FEEInfo = pragma_info_foreign_export_enum(ForeignLang, TypeCtor,
-                Attributes, Overrides),
-            Pragma = pragma_foreign_export_enum(FEEInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
-                SeqNum),
-            Item = item_pragma(ItemPragma),
+            ItemForeignExportEnum = item_foreign_export_enum_info(ForeignLang,
+                TypeCtor, Attributes, Overrides, Context, SeqNum),
+            Item = item_foreign_export_enum(ItemForeignExportEnum),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeForeignLang) ++
@@ -769,12 +766,9 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeTypeCtor = ok1(TypeCtor),
             MaybeOoMValues = ok1(OoMValues)
         then
-            FEInfo =
-                pragma_info_foreign_enum(ForeignLang, TypeCtor, OoMValues),
-            Pragma = pragma_foreign_enum(FEInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
-                SeqNum),
-            Item = item_pragma(ItemPragma),
+            ItemForeignEnumInfo = item_foreign_enum_info(ForeignLang,
+                TypeCtor, OoMValues, Context, SeqNum),
+            Item = item_foreign_enum(ItemForeignEnumInfo),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeForeignLang) ++

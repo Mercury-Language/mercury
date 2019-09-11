@@ -1668,14 +1668,9 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             ForeignEnumVals = [HeadForeignEnumVal | TailForeignEnumVals],
             OoMForeignEnumVals =
                 one_or_more(HeadForeignEnumVal, TailForeignEnumVals),
-            FEInfo = pragma_info_foreign_enum(Lang, TypeCtor,
-                OoMForeignEnumVals),
-            ForeignPragma = pragma_foreign_enum(FEInfo),
-            % The pragma's origin isn't printed, so what origin we pass here
-            % doesn't matter.
-            ForeignItemPragma = item_pragma_info(ForeignPragma,
-                item_origin_user, Context, -1),
-            ForeignItem = item_pragma(ForeignItemPragma),
+            ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor,
+                OoMForeignEnumVals, Context, -1),
+            ForeignItem = item_foreign_enum(ItemForeignEnum),
             mercury_output_item(MercInfo, ForeignItem, !IO)
         )
     else

@@ -27,6 +27,7 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -34,6 +35,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module assoc_list.
 :- import_module bimap.
@@ -62,7 +64,8 @@
     % with its information. If not, add the applicable error message(s)
     % to the list.
     %
-:- pred add_pragma_foreign_enum(module_info::in, item_foreign_enum_info::in,
+:- pred add_pragma_foreign_enum(module_info::in,
+    {item_mercury_status, item_foreign_enum_info}::in,
     type_ctor_to_foreign_enums_map::in, type_ctor_to_foreign_enums_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -103,11 +106,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
-:- import_module hlds.make_hlds_error.
-:- import_module hlds.status.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module pair.
@@ -120,23 +120,18 @@
 % Part 1: the implementation of foreign_enums.
 %
 
-add_pragma_foreign_enum(ModuleInfo, ItemForeignEnum,
-        !TypeCtorForeignEnumMap, Specs0, Specs) :-
-    ItemForeignEnum = item_foreign_enum_info(FEInfo, ItemMercuryStatus,
-        Context, SeqNum),
+add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
+        Specs0, Specs) :-
+    ImsItem = {ItemMercuryStatus, ItemForeignEnum},
+    ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor,
+        OoMMercuryForeignTagPairs, Context, _SeqNum),
     % Here we construct ItemPragmaInfo just to test whether this pragma
     % was in the interface. Unfortunately, while we *could* avoid this
     % (e.g. by making making report_if_pragma_is_wrongly_in_interface work
     % not on full pragmas but on pragma kinds, a flattened-to-an-enum
     % form of pragmas), the cost in increased code complexity is
     % not worth it.
-    ItemPragmaInfo = item_pragma_info(pragma_foreign_enum(FEInfo),
-        item_origin_user, Context, SeqNum),
-    report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
-        Specs0, Specs1),
     item_mercury_status_to_type_status(ItemMercuryStatus, PragmaStatus),
-    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor,
-        OoMMercuryForeignTagPairs),
     TypeCtor = type_ctor(TypeSymName, TypeArity),
     TypeSNA = sym_name_arity(TypeSymName, TypeArity),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
@@ -274,7 +269,7 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignEnum,
             % will have already done so.
             true
         ),
-        Specs = !.Specs ++ Specs1
+        Specs = !.Specs ++ Specs0
     ).
 
     % For a given target language work out which language's foreign_enum
@@ -306,10 +301,8 @@ map_cons_id_to_foreign_tag(TypeCtor, TypeModuleName, ForeignLanguage,
 
 add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
         Specs0, Specs) :-
-    ItemForeignExportEnum = item_foreign_export_enum_info(FEEInfo,
-        _ItemMercuryStatus, Context, _SeqNum),
-    FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
-        Attributes, Overrides),
+    ItemForeignExportEnum = item_foreign_export_enum_info(Lang, TypeCtor,
+        Attributes, Overrides, Context, _SeqNum),
     TypeCtor = type_ctor(TypeSymName, TypeArity),
     ContextPieces = [words("In"), pragma_decl("foreign_export_enum"),
         words("declaration for type"),

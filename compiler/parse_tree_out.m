@@ -588,6 +588,13 @@ mercury_output_item(Info, Item, !IO) :-
         Item = item_mode_decl(ItemModeDecl),
         mercury_output_item_mode_decl(Info, ItemModeDecl, !IO)
     ;
+        Item = item_foreign_enum(ItemForeignEnum),
+        mercury_output_item_foreign_enum(Info, ItemForeignEnum, !IO)
+    ;
+        Item = item_foreign_export_enum(ItemForeignExportEnum),
+        mercury_output_item_foreign_export_enum(Info, ItemForeignExportEnum,
+            !IO)
+    ;
         Item = item_pragma(ItemPragma),
         mercury_output_item_pragma(Info, ItemPragma, !IO)
     ;
@@ -1200,6 +1207,89 @@ mercury_output_item_mode_decl(Info, ItemModeDecl, !IO) :-
         mercury_output_pred_mode_decl(Lang, VarSet, PredName,
             Modes, WithInst, MaybeDet, !IO)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred mercury_output_item_foreign_enum(merc_out_info::in,
+    item_foreign_enum_info::in, U::di, U::uo) is det <= output(U).
+
+mercury_output_item_foreign_enum(_Info, ItemForeignEnum, !U) :-
+    ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, OoMValues,
+        _Context, _SeqNum),
+    add_string(":- pragma foreign_enum(", !U),
+    mercury_format_foreign_language_string(Lang, !U),
+    add_string(", ", !U),
+    TypeCtor = type_ctor(TypeName, TypeArity),
+    mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, TypeName, !U),
+    add_string("/", !U),
+    add_int(TypeArity, !U),
+    add_string(", ", !U),
+    Values = one_or_more_to_list(OoMValues),
+    mercury_format_sym_name_string_assoc_list(Values, !U),
+    add_string(").\n", !U).
+
+%---------------------------------------------------------------------------%
+
+:- pred mercury_output_item_foreign_export_enum(merc_out_info::in,
+    item_foreign_export_enum_info::in, U::di, U::uo) is det <= output(U).
+
+mercury_output_item_foreign_export_enum(_Info, ItemForeignExportEnum, !U) :-
+    ItemForeignExportEnum = item_foreign_export_enum_info(Lang, TypeCtor,
+        Attributes, Overrides, _Context, _SeqNum),
+    add_string(":- pragma foreign_export_enum(", !U),
+    mercury_format_foreign_language_string(Lang, !U),
+    add_string(", ", !U),
+    TypeCtor = type_ctor(TypeName, TypeArity),
+    mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, TypeName, !U),
+    add_string("/", !U),
+    add_int(TypeArity, !U),
+    add_string(", ", !U),
+    mercury_format_foreign_export_enum_attributes(Attributes, !U),
+    add_string(", ", !U),
+    mercury_format_sym_name_string_assoc_list(Overrides, !U),
+    add_string(").\n", !U).
+
+:- pred mercury_format_foreign_export_enum_attributes(
+    export_enum_attributes::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_foreign_export_enum_attributes(Attributes, !U) :-
+    MaybePrefix = Attributes ^ ee_attr_prefix,
+    add_string("[", !U),
+    (
+        MaybePrefix = no
+    ;
+        MaybePrefix = yes(Prefix),
+        add_string("prefix(", !U),
+        add_quoted_string(Prefix, !U),
+        add_char(')', !U)
+    ),
+    add_string("]", !U).
+
+%---------------------------------------------------------------------------%
+%
+% Predicates used to help print foreign_enum and foreign_export_enum items.
+%
+
+    % Output an association list of sym_names and strings, as used
+    % by both foreign_enum and foreign_export_enum pragmas.
+    % The strings will be quoted in the output.
+    %
+:- pred mercury_format_sym_name_string_assoc_list(
+    assoc_list(sym_name, string)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_sym_name_string_assoc_list(AssocList, !U) :-
+    add_char('[', !U),
+    add_list(AssocList, ",",
+        mercury_format_sym_name_string_pair, !U),
+    add_char(']', !U).
+
+:- pred mercury_format_sym_name_string_pair(
+    pair(sym_name, string)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_sym_name_string_pair(SymName - String, !U) :-
+    mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, SymName, !U),
+    add_string(" - ", !U),
+    add_quoted_string(String, !U).
 
 %---------------------------------------------------------------------------%
 

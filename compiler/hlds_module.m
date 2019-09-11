@@ -613,22 +613,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type item_foreign_enum_info
-    --->    item_foreign_enum_info(
-                fe_pragma       :: pragma_info_foreign_enum,
-                fe_status       :: item_mercury_status,
-                fe_context      :: prog_context,
-                fe_seq_num      :: int
-            ).
-
-:- type item_foreign_export_enum_info
-    --->    item_foreign_export_enum_info(
-                fee_pragma      :: pragma_info_foreign_export_enum,
-                fee_status      :: item_mercury_status,
-                fee_context     :: prog_context,
-                fee_seq_num     :: int
-            ).
-
     % The information needed by the pass that decides type representations.
     % The first three fields contain information that it uses make its
     % decisions; the fourth contains information that says what it should *do*
@@ -654,7 +638,8 @@
                 % from interface files of other modules, or the source file
                 % of the module being compiled, giving the foreign language
                 % definition of a type.
-                trdd_foreign_enums      :: list(item_foreign_enum_info),
+                trdd_foreign_enums      :: list({item_mercury_status,
+                                                item_foreign_enum_info}),
 
                 % The contents of foreign_export_enum pragmas read in
                 % from the source file of the module being compiled,

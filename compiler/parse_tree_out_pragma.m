@@ -112,7 +112,6 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module char.
 :- import_module int.
 :- import_module pair.
@@ -141,12 +140,6 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
     ;
         Pragma = pragma_foreign_proc_export(FPEInfo),
         mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, !IO)
-    ;
-        Pragma = pragma_foreign_export_enum(FEEInfo),
-        mercury_format_pragma_foreign_export_enum(FEEInfo, !IO)
-    ;
-        Pragma = pragma_foreign_enum(FEInfo),
-        mercury_format_pragma_foreign_enum(FEInfo, !IO)
     ;
         Pragma = pragma_external_proc(ExternalInfo),
         mercury_format_pragma_external_proc(ExternalInfo, !IO)
@@ -787,95 +780,6 @@ mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, !U) :-
     add_string(", ", !U),
     add_string(ExportName, !U),
     add_string(").\n", !U).
-
-%---------------------------------------------------------------------------%
-%
-% Output a foreign_export_enum pragma.
-%
-
-:- pred mercury_format_pragma_foreign_export_enum(
-    pragma_info_foreign_export_enum::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_pragma_foreign_export_enum(FEEInfo, !U) :-
-    FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
-        Attributes, Overrides),
-    add_string(":- pragma foreign_export_enum(", !U),
-    mercury_format_foreign_language_string(Lang, !U),
-    add_string(", ", !U),
-    TypeCtor = type_ctor(TypeName, TypeArity),
-    mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, TypeName, !U),
-    add_string("/", !U),
-    add_int(TypeArity, !U),
-    add_string(", ", !U),
-    mercury_format_pragma_foreign_export_enum_attributes(Attributes, !U),
-    add_string(", ", !U),
-    mercury_format_sym_name_string_assoc_list(Overrides, !U),
-    add_string(").\n", !U).
-
-:- pred mercury_format_pragma_foreign_export_enum_attributes(
-    export_enum_attributes::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_pragma_foreign_export_enum_attributes(Attributes, !U) :-
-    MaybePrefix = Attributes ^ ee_attr_prefix,
-    add_string("[", !U),
-    (
-        MaybePrefix = no
-    ;
-        MaybePrefix = yes(Prefix),
-        add_string("prefix(", !U),
-        add_quoted_string(Prefix, !U),
-        add_char(')', !U)
-    ),
-    add_string("]", !U).
-
-%---------------------------------------------------------------------------%
-%
-% Output a foreign_enum pragma.
-%
-
-:- pred mercury_format_pragma_foreign_enum(pragma_info_foreign_enum::in,
-    U::di, U::uo) is det <= output(U).
-
-mercury_format_pragma_foreign_enum(FEInfo, !U) :-
-    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, OoMValues),
-    add_string(":- pragma foreign_enum(", !U),
-    mercury_format_foreign_language_string(Lang, !U),
-    add_string(", ", !U),
-    TypeCtor = type_ctor(TypeName, TypeArity),
-    mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, TypeName, !U),
-    add_string("/", !U),
-    add_int(TypeArity, !U),
-    add_string(", ", !U),
-    Values = one_or_more_to_list(OoMValues),
-    mercury_format_sym_name_string_assoc_list(Values, !U),
-    add_string(").\n", !U).
-
-%---------------------------------------------------------------------------%
-%
-% Predicates used to help print both foreign_export_enum and foreign_enum
-% pragmas.
-%
-
-    % Output an association list of sym_names and strings, as used
-    % by both foreign_enum and foreign_export_enum pragmas.
-    % The strings will be quoted in the output.
-    %
-:- pred mercury_format_sym_name_string_assoc_list(
-    assoc_list(sym_name, string)::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_sym_name_string_assoc_list(AssocList, !U) :-
-    add_char('[', !U),
-    add_list(AssocList, ",",
-        mercury_format_sym_name_string_pair, !U),
-    add_char(']', !U).
-
-:- pred mercury_format_sym_name_string_pair(
-    pair(sym_name, string)::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_sym_name_string_pair(SymName - String, !U) :-
-    mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, SymName, !U),
-    add_string(" - ", !U),
-    add_quoted_string(String, !U).
 
 %---------------------------------------------------------------------------%
 %

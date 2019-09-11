@@ -327,6 +327,8 @@ collect_mq_info_in_item(MQSection, Permissions, Item, !Info) :-
         ( Item = item_clause(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
+        ; Item = item_foreign_enum(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_pragma(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)

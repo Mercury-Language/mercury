@@ -614,6 +614,7 @@ split_items_into_clauses_and_decls([Item | Items],
         !RevClauses, !RevImpDecls) :-
     (
         ( Item = item_clause(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ),
@@ -635,6 +636,7 @@ split_items_into_clauses_and_decls([Item | Items],
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
+        ; Item = item_foreign_enum(_)
         ; Item = item_promise(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)

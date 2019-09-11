@@ -169,10 +169,13 @@ generate_short_interface_int3(Globals, RawCompUnit,
     IntModeDefns = cord.list(IntModeDefnsCord),
     IntTypeClasses = cord.list(IntTypeClassesCord),
     IntInstances = cord.list(IntInstancesCord),
+    IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
+    IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
+    IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
-        TypeRepnInfos = []
+        map.init(IntTypeRepnMap)
     ;
         Experiment1 = yes,
         OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
@@ -180,12 +183,12 @@ generate_short_interface_int3(Globals, RawCompUnit,
         decide_repns_for_simple_types(ModuleName,
             OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
             IntTypeRepnInfos, _NonIntTypeRepnInfos),
-        TypeRepnInfos = IntTypeRepnInfos
+        IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
     ),
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         IntInclModuleNames, IntImportModuleNames,
-        IntTypeDefns, IntInstDefns, IntModeDefns,
-        IntTypeClasses, IntInstances, TypeRepnInfos),
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntTypeRepnMap),
     ParseTreeInt0 = convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3),
     % Any Specs this can generate would be better reported when the module
     % is being compiled to target language code.
@@ -289,13 +292,15 @@ get_short_interface_int3_from_items_int([Item | Items],
             ItemModeInfo ^ md_mode_defn := abstract_mode_defn,
         cord.snoc(AbstractItemModeInfo, !IntModeDefns)
     ;
-        Item = item_pragma(ItemPragma),
-        maybe_record_foreign_enum(ItemPragma, !ForeignEnumTypeCtors)
+        Item = item_foreign_enum(ItemForeignEnumInfo),
+        record_foreign_enum(ItemForeignEnumInfo, !ForeignEnumTypeCtors)
     ;
         ( Item = item_clause(_)
         ; Item = item_mutable(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
+        ; Item = item_foreign_export_enum(_)
+        ; Item = item_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -382,8 +387,8 @@ get_short_interface_int3_from_items_imp([Item | Items],
         Item = item_type_defn(ItemTypeDefnInfo),
         cord.snoc(ItemTypeDefnInfo, !ImpTypeDefns)
     ;
-        Item = item_pragma(ItemPragma),
-        maybe_record_foreign_enum(ItemPragma, !ForeignEnumTypeCtors)
+        Item = item_foreign_enum(ItemForeignEnumInfo),
+        record_foreign_enum(ItemForeignEnumInfo, !ForeignEnumTypeCtors)
     ;
         ( Item = item_typeclass(_)
         ; Item = item_instance(_)
@@ -393,6 +398,8 @@ get_short_interface_int3_from_items_imp([Item | Items],
         ; Item = item_mutable(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
+        ; Item = item_foreign_export_enum(_)
+        ; Item = item_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -402,23 +409,12 @@ get_short_interface_int3_from_items_imp([Item | Items],
     get_short_interface_int3_from_items_imp(Items,
         !ImpTypeDefns, !ForeignEnumTypeCtors).
 
-:- pred maybe_record_foreign_enum(item_pragma_info::in,
+:- pred record_foreign_enum(item_foreign_enum_info::in,
     foreign_enum_map::in, foreign_enum_map::out) is det.
 
-maybe_record_foreign_enum(ItemPragma, !ForeignEnumTypeCtors) :-
-    ItemPragma = item_pragma_info(Pragma, _, _, _),
-    ( if Pragma = pragma_foreign_enum(PragmaInfoForeignEnum) then
-        record_foreign_enum(PragmaInfoForeignEnum, !ForeignEnumTypeCtors)
-    else
-        true
-    ).
-
-:- pred record_foreign_enum(pragma_info_foreign_enum::in,
-    foreign_enum_map::in, foreign_enum_map::out) is det.
-
-record_foreign_enum(PragmaInfoForeignEnum, !ForeignEnumTypeCtors) :-
-    PragmaInfoForeignEnum =
-        pragma_info_foreign_enum(Lang, TypeCtor, OoMValues),
+record_foreign_enum(ForeignEnumInfo, !ForeignEnumTypeCtors) :-
+    ForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, OoMValues,
+        _Context, _SeqNum),
     TypeCtor = type_ctor(TypeSymName, TypeArity),
     TypeName = unqualify_name(TypeSymName),
     UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
@@ -434,9 +430,7 @@ record_foreign_enum(PragmaInfoForeignEnum, !ForeignEnumTypeCtors) :-
     foreign_enum_map::in, foreign_enum_map::out) is det.
 
 record_foreign_enum_spec(ForeignEnumSpec, !ForeignEnumTypeCtors) :-
-    ForeignEnumSpec = foreign_enum_spec(PragmaInfoForeignEnum, _MaybeAttrs),
-    PragmaInfoForeignEnum =
-        pragma_info_foreign_enum(Lang, TypeCtor, OoMValues),
+    ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, OoMValues),
     TypeCtor = type_ctor(TypeSymName, TypeArity),
     TypeName = unqualify_name(TypeSymName),
     UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
@@ -475,10 +469,13 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
     IntModeDefns = cord.list(IntModeDefnsCord),
     IntTypeClasses = cord.list(IntTypeClassesCord),
     IntInstances = cord.list(IntInstancesCord),
+    IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
+    IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
+    IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
-        TypeRepnInfos = []
+        map.init(IntTypeRepnMap)
     ;
         Experiment1 = yes,
         OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
@@ -486,12 +483,12 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
         decide_repns_for_simple_types(ModuleName,
             OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
             IntTypeRepnInfos, _NonIntTypeRepnInfos),
-        TypeRepnInfos = IntTypeRepnInfos
+        IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
     ),
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         IntInclModuleNames, IntImportModuleNames,
-        IntTypeDefns, IntInstDefns, IntModeDefns,
-        IntTypeClasses, IntInstances, TypeRepnInfos),
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntTypeRepnMap),
     ParseTreeInt23Prime =
         convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3),
     ParseTreeInt23 = ParseTreeInt23Prime ^ pti_int_file_kind := ifk_int2.
@@ -524,6 +521,7 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0) :-
         cord.init, IntInstancesCord, cord.init, ImpInstancesCord,
         cord.init, IntPredDeclsCord, cord.init, ImpPredDeclsCord,
         cord.init, IntModeDeclsCord, cord.init, ImpModeDeclsCord,
+        cord.init, IntForeignEnumsCord, cord.init, ImpForeignEnumsCord,
         cord.init, IntPragmasCord, cord.init, ImpPragmasCord,
         cord.init, IntPromisesCord, cord.init, ImpPromisesCord),
     ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
@@ -550,17 +548,29 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0) :-
     ImpPredDecls = cord.list(ImpPredDeclsCord),
     IntModeDecls = cord.list(IntModeDeclsCord),
     ImpModeDecls = cord.list(ImpModeDeclsCord),
+    IntForeignEnums = cord.list(IntForeignEnumsCord),
+    ImpForeignEnums = cord.list(ImpForeignEnumsCord),
     IntPragmas = cord.list(IntPragmasCord),
     ImpPragmas = cord.list(ImpPragmasCord),
     IntPromises = cord.list(IntPromisesCord),
     ImpPromises = cord.list(ImpPromisesCord),
+    IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
+    IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
+    IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
+    ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
+    ImpInstDefnMap = inst_ctor_defn_items_to_map(ImpInstDefns),
+    ImpModeDefnMap = mode_ctor_defn_items_to_map(ImpModeDefns),
+    IntForeignEnumMap = type_ctor_foreign_enum_specs_to_map(IntForeignEnums),
+    ImpForeignEnumMap = type_ctor_foreign_enum_specs_to_map(ImpForeignEnums),
     ParseTreeInt0Prime = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls,
         IntImports, IntUses, ImpImports, ImpUses, IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        IntPredDecls, IntModeDecls, IntPragmas, IntPromises,
-        ImpTypeDefns, ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
-        ImpPredDecls, ImpModeDecls, ImpPragmas, ImpPromises),
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntForeignEnumMap, IntPragmas, IntPromises,
+        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        ImpForeignEnumMap, ImpPragmas, ImpPromises),
     ParseTreeInt0 =
         convert_parse_tree_int0_to_parse_tree_int(ParseTreeInt0Prime).
 
@@ -621,6 +631,8 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0) :-
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
+    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_promise_info)::in, cord(item_promise_info)::out,
@@ -632,7 +644,8 @@ get_private_interface_int0_from_item_blocks(_ModuleName, [],
         !IntInstDefns, !ImpInstDefns, !IntModeDefns, !ImpModeDefns,
         !IntTypeClasses, !ImpTypeClasses, !IntInstances,!ImpInstances,
         !IntPredDecls, !ImpPredDecls, !IntModeDecls, !ImpModeDecls,
-        !IntPragmas, !ImpPragmas, !IntPromises, !ImpPromises).
+        !IntForeignEnums, !ImpForeignEnums, !IntPragmas, !ImpPragmas,
+        !IntPromises, !ImpPromises).
 get_private_interface_int0_from_item_blocks(ModuleName,
         [ItemBlock | ItemBlocks],
         !IntIncls, !ImpIncls, !IntImports, !IntUses, !ImpImports, !ImpUses,
@@ -640,7 +653,8 @@ get_private_interface_int0_from_item_blocks(ModuleName,
         !IntInstDefns, !ImpInstDefns, !IntModeDefns, !ImpModeDefns,
         !IntTypeClasses, !ImpTypeClasses, !IntInstances,!ImpInstances,
         !IntPredDecls, !ImpPredDecls, !IntModeDecls, !ImpModeDecls,
-        !IntPragmas, !ImpPragmas, !IntPromises, !ImpPromises) :-
+        !IntForeignEnums, !ImpForeignEnums, !IntPragmas, !ImpPragmas,
+        !IntPromises, !ImpPromises) :-
     ItemBlock = item_block(_, SrcSection, Incls, Avails, FIMs, Items),
     (
         SrcSection = sms_interface,
@@ -654,7 +668,7 @@ get_private_interface_int0_from_item_blocks(ModuleName,
         get_private_interface_int0_from_items(ModuleName, Items,
             !IntTypeDefns, !IntInstDefns, !IntModeDefns,
             !IntTypeClasses, !IntInstances, !IntPredDecls, !IntModeDecls,
-            !IntPragmas, !IntPromises)
+            !IntForeignEnums, !IntPragmas, !IntPromises)
     ;
         ( SrcSection = sms_implementation
         ; SrcSection = sms_impl_but_exported_to_submodules
@@ -674,7 +688,7 @@ get_private_interface_int0_from_item_blocks(ModuleName,
         get_private_interface_int0_from_items(ModuleName, Items,
             !ImpTypeDefns, !ImpInstDefns, !ImpModeDefns,
             !ImpTypeClasses, !ImpInstances, !ImpPredDecls, !ImpModeDecls,
-            !ImpPragmas, !ImpPromises)
+            !ImpForeignEnums, !ImpPragmas, !ImpPromises)
     ),
     get_private_interface_int0_from_item_blocks(ModuleName, ItemBlocks,
         !IntIncls, !ImpIncls, !IntImports, !IntUses, !ImpImports, !ImpUses,
@@ -682,7 +696,8 @@ get_private_interface_int0_from_item_blocks(ModuleName,
         !IntInstDefns, !ImpInstDefns, !IntModeDefns, !ImpModeDefns,
         !IntTypeClasses, !ImpTypeClasses, !IntInstances,!ImpInstances,
         !IntPredDecls, !ImpPredDecls, !IntModeDecls, !ImpModeDecls,
-        !IntPragmas, !ImpPragmas, !IntPromises, !ImpPromises).
+        !IntForeignEnums, !ImpForeignEnums, !IntPragmas, !ImpPragmas,
+        !IntPromises, !ImpPromises).
 
 :- pred record_avail_in_module_map(item_avail::in,
     map(module_name, import_or_use)::in, map(module_name, import_or_use)::out)
@@ -716,20 +731,22 @@ record_avail_in_module_map(Avail, !AvailMap) :-
     cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_promise_info)::in, cord(item_promise_info)::out) is det.
 
 get_private_interface_int0_from_items(_ModuleName, [],
         !TypeDefns, !InstDefns, !ModeDefns, !TypeClasses, !Instances,
-        !PredDecls, !ModeDecls, !Pragmas, !Promises).
+        !PredDecls, !ModeDecls, !ForeignEnums, !Pragmas, !Promises).
 get_private_interface_int0_from_items(ModuleName, [Item | Items],
         !TypeDefns, !InstDefns, !ModeDefns, !TypeClasses, !Instances,
-        !PredDecls, !ModeDecls, !Pragmas, !Promises) :-
+        !PredDecls, !ModeDecls, !ForeignEnums, !Pragmas, !Promises) :-
     % XXX ITEM_LIST The action here for types, insts, modes, pred decls,
     % mode decls, typeclasses and promises follows what this predicate
     % used to do before the item list change.
     (
         ( Item = item_clause(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         )
@@ -771,6 +788,12 @@ get_private_interface_int0_from_items(ModuleName, [Item | Items],
         Item = item_typeclass(TypeClass),
         cord.snoc(TypeClass, !TypeClasses)
     ;
+        Item = item_foreign_enum(ItemForeignEnumInfo),
+        ItemForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, Values,
+            _Context, _SeqNum),
+        ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, Values),
+        cord.snoc(ForeignEnumSpec, !ForeignEnums)
+    ;
         Item = item_promise(Promise),
         cord.snoc(Promise, !Promises)
     ;
@@ -792,7 +815,7 @@ get_private_interface_int0_from_items(ModuleName, [Item | Items],
     ),
     get_private_interface_int0_from_items(ModuleName, Items,
         !TypeDefns, !InstDefns, !ModeDefns, !TypeClasses, !Instances,
-        !PredDecls, !ModeDecls, !Pragmas, !Promises).
+        !PredDecls, !ModeDecls, !ForeignEnums, !Pragmas, !Promises).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -891,19 +914,16 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
         AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
         cord.snoc(AbstractItem, !ImpItemsCord)
     ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        ( if Pragma = pragma_foreign_enum(_) then
-            cord.snoc(Item, !ImpItemsCord)
-        else
-            true
-        )
+        Item = item_foreign_enum(_),
+        cord.snoc(Item, !ImpItemsCord)
     ;
         ( Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
+        ; Item = item_foreign_export_enum(_)
+        ; Item = item_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_instance(_)
         ; Item = item_initialise(_)
@@ -925,13 +945,13 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntPragmas, ImpForeignEnums,
+        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntForeignEnums, ImpForeignEnums,
         ParseTreeInt1A),
     generate_interface_int2(Globals, AugCompUnit,
         IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntPragmas, ImpForeignEnums,
+        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntForeignEnums, ImpForeignEnums,
         ParseTreeInt2A),
     ParseTreeInt1 = convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1A),
     ParseTreeInt2 = convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2A).
@@ -943,15 +963,15 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::out, list(item_instance_info)::out,
     list(item_type_defn_info)::out, type_defn_map::out, type_defn_map::out,
-    list(item_pragma_info)::out, list(foreign_enum_spec)::out,
+    list(foreign_enum_spec)::out, list(foreign_enum_spec)::out,
     parse_tree_int1::out) is det.
 
 generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntPragmas, ImpForeignEnums0,
-        ParseTreeInt1) :-
+        ImpTypeDefns, IntTypesMap, ImpTypesMap,
+        IntForeignEnums, ImpForeignEnums0, ParseTreeInt1) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
@@ -989,7 +1009,8 @@ generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
         cord.init, IntInstDefnsCord, cord.init, IntModeDefnsCord,
         cord.init, IntTypeClassesCord, cord.init, IntInstancesCord,
         cord.init, IntPredDeclsCord, cord.init, IntModeDeclsCord,
-        cord.init, IntPragmasCord, cord.init, IntPromisesCord,
+        cord.init, IntForeignEnumsCord, cord.init, IntPragmasCord,
+        cord.init, IntPromisesCord,
         set.init, _IntModulesNeededByTypeClassDefns,
         ImpTypesMap0, ImpTypesMap,
         cord.init, ImpTypeClassesCord, cord.init, ImpForeignEnumsCord,
@@ -1002,6 +1023,7 @@ generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
     IntInstances = cord.list(IntInstancesCord),
     IntPredDecls = cord.list(IntPredDeclsCord),
     IntModeDecls = cord.list(IntModeDeclsCord),
+    IntForeignEnums = cord.list(IntForeignEnumsCord),
     IntPragmas = cord.list(IntPragmasCord),
     IntPromises = cord.list(IntPromisesCord),
 
@@ -1063,18 +1085,26 @@ generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
         ImpExplicitFIMSpecs, ImpFIMSpecs0),
     set.difference(ImpFIMSpecs0, IntFIMSpecs, ImpFIMSpecs),
 
+    IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
+    IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
+    IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
+    IntForeignEnumMap = type_ctor_foreign_enum_specs_to_map(IntForeignEnums),
+    IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns),
+    ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
+    ImpForeignEnumMap = type_ctor_foreign_enum_specs_to_map(ImpForeignEnums),
+
     DummyMaybeVersionNumbers = no_version_numbers,
     % XXX TODO
     IntTypeRepns = [],
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
         DummyMaybeVersionNumbers, IntIncls, ImpIncls,
         IntImportsUses, ImpImportsUses, IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefns, IntInstDefns, IntModeDefns,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances,
         IntPredDecls, IntModeDecls,
-        IntPragmas, IntPromises,
-        IntTypeRepns,
-        ImpTypeDefns, ImpForeignEnums, ImpTypeClasses).
+        IntForeignEnumMap, IntPragmas, IntPromises,
+        IntTypeRepnMap,
+        ImpTypeDefnMap, ImpForeignEnumMap, ImpTypeClasses).
 
 %---------------------%
 
@@ -1177,6 +1207,7 @@ add_self_fim(ModuleName, Lang, !FIMSpecs) :-
     cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_promise_info)::in, cord(item_promise_info)::out,
     set(module_name)::in, set(module_name)::out,
@@ -1193,7 +1224,8 @@ get_interface_int1_item_blocks_loop([],
         !IntInstDefnsCord, !IntModeDefnsCord,
         !IntTypeClassesCord, !IntInstancesCord,
         !IntPredDeclsCord, !IntModeDeclsCord,
-        !IntPragmasCord, !IntPromisesCord, !IntModulesNeededByTypeClassDefns,
+        !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
+        !IntModulesNeededByTypeClassDefns,
         !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
         !ImpModulesNeededByTypeClassDefns).
 get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
@@ -1204,7 +1236,8 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntInstDefnsCord, !IntModeDefnsCord,
         !IntTypeClassesCord, !IntInstancesCord,
         !IntPredDeclsCord, !IntModeDeclsCord,
-        !IntPragmasCord, !IntPromisesCord, !IntModulesNeededByTypeClassDefns,
+        !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
+        !IntModulesNeededByTypeClassDefns,
         !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
         !ImpModulesNeededByTypeClassDefns) :-
     SrcItemBlock = item_block(_, SrcSection, Incls, Avails, FIMs, Items),
@@ -1218,7 +1251,7 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
             !IntInstDefnsCord, !IntModeDefnsCord,
             !IntTypeClassesCord, !IntInstancesCord,
             !IntPredDeclsCord, !IntModeDeclsCord,
-            !IntPragmasCord, !IntPromisesCord,
+            !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
             !IntModulesNeededByTypeClassDefns)
     ;
         SrcSection = sms_implementation,
@@ -1242,7 +1275,8 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntInstDefnsCord, !IntModeDefnsCord,
         !IntTypeClassesCord, !IntInstancesCord,
         !IntPredDeclsCord, !IntModeDeclsCord,
-        !IntPragmasCord, !IntPromisesCord, !IntModulesNeededByTypeClassDefns,
+        !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
+        !IntModulesNeededByTypeClassDefns,
         !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
         !ImpModulesNeededByTypeClassDefns).
 
@@ -1267,6 +1301,7 @@ get_interface_int1_avails_loop([Avail | Avails], !ImportsUses) :-
     cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
+    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_promise_info)::in, cord(item_promise_info)::out,
     set(module_name)::in, set(module_name)::out) is det.
@@ -1275,13 +1310,13 @@ get_interface_int1_items_loop_int([], !IntImplicitFIMLangs,
         !IntTypesMap, !IntTypeDefnsCord, !IntInstDefnsCord, !IntModeDefnsCord,
         !IntTypeClassesCord, !IntInstancesCord,
         !IntPredDeclsCord, !IntModeDeclsCord,
-        !IntPragmasCord, !IntPromisesCord,
+        !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
         !IntModulesNeededByTypeClassDefns).
 get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
         !IntTypesMap, !IntTypeDefnsCord, !IntInstDefnsCord, !IntModeDefnsCord,
         !IntTypeClassesCord, !IntInstancesCord,
         !IntPredDeclsCord, !IntModeDeclsCord,
-        !IntPragmasCord, !IntPromisesCord,
+        !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
         !IntModulesNeededByTypeClassDefns) :-
     (
         Item = item_type_defn(ItemTypeDefn),
@@ -1312,6 +1347,12 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
         % A clause in the interface is a bug, but it should be reported
         % when we try to generate code for the module.
     ;
+        Item = item_foreign_enum(ItemForeignEnum),
+        ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values, _, _),
+        ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, Values),
+        cord.snoc(ForeignEnumSpec, !IntForeignEnumsCord),
+        set.insert(Lang, !IntImplicitFIMLangs)
+    ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _MaybeAttrs, _Context, _SeqNum),
         AllowedInInterface = pragma_allowed_in_interface(Pragma),
@@ -1323,12 +1364,7 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
             AllowedInInterface = yes,
             cord.snoc(ItemPragma, !IntPragmasCord),
             Langs = pragma_needs_foreign_imports(Pragma),
-            ( if Pragma = pragma_foreign_enum(_) then
-                set.insert_list(Langs, !IntImplicitFIMLangs)
-            else
-                expect(unify(Langs, []), $pred,
-                    "interface pragma other than foreign_enum needs Langs")
-            )
+            expect(unify(Langs, []), $pred, "interface pragma needs Langs")
         )
     ;
         Item = item_promise(ItemPromise),
@@ -1361,7 +1397,8 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
         Item = item_instance(ItemInstance),
         cord.snoc(ItemInstance, !IntInstancesCord)
     ;
-        ( Item = item_initialise(_)
+        ( Item = item_foreign_export_enum(_)
+        ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
         )
@@ -1382,7 +1419,7 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
         !IntTypesMap, !IntTypeDefnsCord, !IntInstDefnsCord, !IntModeDefnsCord,
         !IntTypeClassesCord, !IntInstancesCord,
         !IntPredDeclsCord, !IntModeDeclsCord,
-        !IntPragmasCord, !IntPromisesCord,
+        !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
         !IntModulesNeededByTypeClassDefns).
 
 :- pred get_interface_int1_items_loop_imp(list(item)::in,
@@ -1415,22 +1452,20 @@ get_interface_int1_items_loop_imp([Item | Items], !ImpImplicitFIMLangs,
         list.foldl(accumulate_modules_from_constraint, Constraints,
             !ImpModulesNeededByTypeClassDefns)
     ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, MaybeAttrs, _Context, _SeqNum),
-        ( if Pragma = pragma_foreign_enum(FEInfo) then
-            FESpec = foreign_enum_spec(FEInfo, MaybeAttrs),
-            cord.snoc(FESpec, !ImpForeignEnumsCord),
-            FEInfo = pragma_info_foreign_enum(FELang, _, _),
-            set.insert(FELang, !ImpImplicitFIMLangs)
-        else
-            unexpected($pred, "non-foreign-enum pragma")
-        )
+        Item = item_foreign_enum(ItemForeignEnum),
+        ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values,
+            _Context, _SeqNum),
+        FESpec = foreign_enum_spec(Lang, TypeCtor, Values),
+        cord.snoc(FESpec, !ImpForeignEnumsCord),
+        set.insert(Lang, !ImpImplicitFIMLangs)
     ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_instance(_)
+        ; Item = item_foreign_export_enum(_)
+        ; Item = item_pragma(_)
         ; Item = item_clause(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
@@ -2138,8 +2173,7 @@ add_type_defn_items([ImpTypeDefn | ImpTypeDefns],
 
 add_foreign_enum_spec_if_needed(IntTypesMap, ForeignEnumSpec,
         !ImpForeignEnumSpecs, !ImpImplicitFIMLangs) :-
-    ForeignEnumSpec = foreign_enum_spec(FEInfo, _MaybeAttrs),
-    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, _Values),
+    ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, _Values),
     ( if
         map.search(IntTypesMap, TypeCtor, Defns),
         some_type_defn_is_non_abstract(Defns)
@@ -2180,14 +2214,14 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
     list(item_typeclass_info)::in, list(item_instance_info)::in,
     list(item_type_defn_info)::in, type_defn_map::in, type_defn_map::in,
-    list(item_pragma_info)::in, list(foreign_enum_spec)::in,
+    list(foreign_enum_spec)::in, list(foreign_enum_spec)::in,
     parse_tree_int2::out) is det.
 
 generate_interface_int2(Globals, AugCompUnit,
         IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntPragmas, ImpForeignEnums,
+        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntForeignEnums, ImpForeignEnums,
         ParseTreeInt2) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _ModuleVersionNumbers, _SrcItemBlocks,
@@ -2229,7 +2263,7 @@ generate_interface_int2(Globals, AugCompUnit,
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
-        ShortIntTypeRepns = []
+        map.init(ShortIntTypeRepnMap)
     ;
         Experiment1 = yes,
         % XXX We should pass to decide_repns_for_simple_types not just
@@ -2245,13 +2279,14 @@ generate_interface_int2(Globals, AugCompUnit,
             [], OrigIntTypeDefns),
         map.foldl_values(gather_type_defn_items, ImpTypesMap,
             [], OrigImpTypeDefns),
-        list.foldl(maybe_record_foreign_enum, IntPragmas,
+        list.foldl(record_foreign_enum_spec, IntForeignEnums,
             map.init, ForeignEnumTypeCtors0),
         list.foldl(record_foreign_enum_spec, ImpForeignEnums,
             ForeignEnumTypeCtors0, ForeignEnumTypeCtors),
         decide_repns_for_simple_types(ModuleName,
             OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
-            ShortIntTypeRepns, _ShortImpTypeRepns)
+            ShortIntTypeRepns, _ShortImpTypeRepns),
+        ShortIntTypeRepnMap = type_ctor_repn_items_to_map(ShortIntTypeRepns)
     ),
 
     (
@@ -2316,13 +2351,18 @@ generate_interface_int2(Globals, AugCompUnit,
     % should be empty (as are the implementation sections of .int3 files).
     %
     ShortImpTypeDefns = ImpTypeDefns,
+
+    ShortIntTypeDefnMap = type_ctor_defn_items_to_map(ShortIntTypeDefns),
+    ShortIntInstDefnMap = inst_ctor_defn_items_to_map(ShortIntInstDefns),
+    ShortIntModeDefnMap = mode_ctor_defn_items_to_map(ShortIntModeDefns),
+    ShortImpTypeDefnMap = type_ctor_defn_items_to_map(ShortImpTypeDefns),
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
         DummyMaybeVersionNumbers,
         IntInclModuleNames, ShortIntUsedModuleNames,
         ShortIntFIMSpecs, ShortImpFIMSpecs,
-        ShortIntTypeDefns, ShortIntInstDefns, ShortIntModeDefns,
-        ShortIntTypeClasses, ShortIntInstances, ShortIntTypeRepns,
-        ShortImpTypeDefns).
+        ShortIntTypeDefnMap, ShortIntInstDefnMap, ShortIntModeDefnMap,
+        ShortIntTypeClasses, ShortIntInstances, ShortIntTypeRepnMap,
+        ShortImpTypeDefnMap).
 
 %---------------------%
 

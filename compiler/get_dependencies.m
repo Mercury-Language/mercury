@@ -419,6 +419,12 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
             )
         )
     ;
+        Item = item_foreign_enum(ItemForeignEnum),
+        ItemForeignEnum = item_foreign_enum_info(Lang, _, _, _, _),
+        Langs0 = !.Contents ^ ic_langs,
+        set.insert(Lang, Langs0, Langs),
+        !Contents ^ ic_langs := Langs
+    ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         (
@@ -448,18 +454,13 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
             set.insert(get_foreign_language(Attrs), Langs0, Langs),
             !Contents ^ ic_langs := Langs
         ;
-            (
-                Pragma = pragma_foreign_proc_export(FPEInfo),
-                FPEInfo = pragma_info_foreign_proc_export(Lang, _, _),
-                FELangs0 = !.Contents ^ ic_foreign_export_langs,
-                set.insert(Lang, FELangs0, FELangs),
-                !Contents ^ ic_foreign_export_langs := FELangs
-            ;
-                Pragma = pragma_foreign_enum(FEInfo),
-                FEInfo = pragma_info_foreign_enum(Lang, _, _)
-            ),
+            Pragma = pragma_foreign_proc_export(FPEInfo),
+            FPEInfo = pragma_info_foreign_proc_export(Lang, _, _),
+            FELangs0 = !.Contents ^ ic_foreign_export_langs,
             Langs0 = !.Contents ^ ic_langs,
+            set.insert(Lang, FELangs0, FELangs),
             set.insert(Lang, Langs0, Langs),
+            !Contents ^ ic_foreign_export_langs := FELangs,
             !Contents ^ ic_langs := Langs
         ;
             Pragma = pragma_fact_table(FactTableInfo),
@@ -485,8 +486,7 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
                 )
             )
         ;
-            ( Pragma = pragma_foreign_export_enum(_)
-            ; Pragma = pragma_external_proc(_)
+            ( Pragma = pragma_external_proc(_)
             ; Pragma = pragma_type_spec(_)
             ; Pragma = pragma_inline(_)
             ; Pragma = pragma_no_inline(_)
@@ -583,6 +583,7 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
         ; Item = item_mode_defn(_)
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_type_repn(_)
         )
     ),
@@ -637,8 +638,6 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             ; Pragma = pragma_foreign_code(_)
             ; Pragma = pragma_foreign_proc(_)
             ; Pragma = pragma_foreign_proc_export(_)
-            ; Pragma = pragma_foreign_export_enum(_)
-            ; Pragma = pragma_foreign_enum(_)
             ; Pragma = pragma_external_proc(_)
             ; Pragma = pragma_type_spec(_)
             ; Pragma = pragma_inline(_)
@@ -713,6 +712,8 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
+        ; Item = item_foreign_enum(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_type_repn(_)

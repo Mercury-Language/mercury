@@ -992,6 +992,8 @@ check_item_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
             VersionNumbers, PredOrFunc, PredSymName, Args, WithType, !Info)
     ;
         ( Item = item_mode_decl(_)
+        ; Item = item_foreign_enum(_)
+        ; Item = item_foreign_export_enum(_)
         ; Item = item_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_instance(_)
