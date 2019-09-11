@@ -197,84 +197,13 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
-    globals.lookup_bool_option(Globals, intermodule_analysis,
-        IntermodAnalysis),
-    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-    globals.lookup_bool_option(Globals, type_check_constraints,
-        TypeCheckConstraints),
-    ( if
-        ( IntermodOpt = yes
-        ; IntermodAnalysis = yes
-        ; UseOptFiles = yes
-        ),
-        OpModeAugment \= opmau_make_opt_int
-    then
-        % Eliminate unnecessary clauses from `.opt' files,
-        % to speed up compilation. This must be done after
-        % typeclass instances have been checked, since that
-        % fills in which pred_ids are needed by instance decls.
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-        maybe_write_string(Verbose, "% Eliminating dead predicates... ", !IO),
-        dead_pred_elim(!HLDS),
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-        maybe_write_string(Verbose, "done.\n", !IO),
-        maybe_dump_hlds(!.HLDS, 10, "dead_pred_elim", !DumpInfo, !IO)
-    else
-        true
-    ),
 
-    globals.lookup_bool_option(Globals, warn_insts_without_matching_type,
-        WarnInstsWithNoMatchingType),
-    (
-        WarnInstsWithNoMatchingType = yes,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-        maybe_write_string(Verbose,
-            "% Checking that insts have matching types... ", !IO),
-        check_insts_have_matching_types(!HLDS, !Specs),
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-        maybe_write_string(Verbose, "done.\n", !IO),
-        maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
-            !DumpInfo, !IO)
-    ;
-        WarnInstsWithNoMatchingType = no
-    ),
-
-    % Next typecheck the clauses.
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-    maybe_write_string(Verbose, "% Type-checking...\n", !IO),
-    maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
-    (
-        TypeCheckConstraints = yes,
-        globals.lookup_string_option(Globals, experiment, Experiment),
-        ( if Experiment = "old_type_constraints" then
-            old_typecheck_constraints(!HLDS, TypeCheckSpecs)
-        else
-            typecheck_constraints(!HLDS, TypeCheckSpecs)
-        ),
-        % XXX We should teach typecheck_constraints to report syntax errors.
-        FoundSyntaxError = no,
-        ExceededTypeCheckIterationLimit = no
-    ;
-        TypeCheckConstraints = no,
-        prepare_for_typecheck_module(!HLDS),
-        typecheck_module(!HLDS, TypeCheckSpecs, FoundSyntaxError,
-            ExceededTypeCheckIterationLimit)
-    ),
-    !:Specs = TypeCheckSpecs ++ !.Specs,
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-    FoundTypeError = contains_errors(Globals, TypeCheckSpecs),
-    (
-        FoundTypeError = yes,
-        maybe_write_string(Verbose,
-            "% Program contains type error(s).\n", !IO)
-    ;
-        FoundTypeError = no,
-        maybe_write_string(Verbose,
-            "% Program is type-correct.\n", !IO)
-    ),
-    maybe_report_stats(Stats, !IO),
-    maybe_dump_hlds(!.HLDS, 15, "typecheck", !DumpInfo, !IO),
+    maybe_eliminate_dead_preds(OpModeAugment, Verbose, Stats, Globals,
+        !HLDS, !DumpInfo, !Specs, !IO),
+    maybe_warn_about_insts_without_matching_type(Verbose, Stats, Globals,
+        !HLDS, !DumpInfo, !Specs, !IO),
+    do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
+        ExceededTypeCheckIterationLimit, !HLDS, !DumpInfo, !Specs, !IO),
 
     % We can't continue after an undefined inst/mode error, since
     % propagate_types_into_proc_modes (in post_typecheck.m -- called by
@@ -332,58 +261,191 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
             % are not type-correct.
             !:FoundError = yes
         else
-            % We invoke purity check even if --typecheck-only was specified,
-            % because the resolution of predicate and function overloading
-            % is done during the purity pass, and errors in the resolution
-            % of such overloading are type errors. However, the code that
-            % does this resolution depends on the absence of the other type
-            % errors that post_typecheck.m is designed to discover.
-            % (See Mantis bug 113.)
+            frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats,
+                FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
+                !Specs, !IO)
+        )
+    ).
 
-            puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
-            maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
+:- pred maybe_eliminate_dead_preds(op_mode_augment::in, bool::in, bool::in,
+    globals::in, module_info::in, module_info::out,
+    dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-            check_promises(Verbose, Stats, !HLDS, !Specs, !IO),
-            maybe_dump_hlds(!.HLDS, 22, "check_promises", !DumpInfo, !IO),
+maybe_eliminate_dead_preds(OpModeAugment, Verbose, Stats, Globals,
+        !HLDS, !DumpInfo, !Specs, !IO) :-
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
+    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+    ( if
+        ( IntermodOpt = yes
+        ; IntermodAnalysis = yes
+        ; UseOptFiles = yes
+        ),
+        OpModeAugment \= opmau_make_opt_int
+    then
+        % Eliminate unnecessary clauses from `.opt' files,
+        % to speed up compilation. This must be done after
+        % typeclass instances have been checked, since that
+        % fills in which pred_ids are needed by instance decls.
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_string(Verbose, "% Eliminating dead predicates... ", !IO),
+        dead_pred_elim(!HLDS),
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_string(Verbose, "done.\n", !IO),
+        maybe_report_stats(Stats, !IO),
+        maybe_dump_hlds(!.HLDS, 10, "dead_pred_elim", !DumpInfo, !IO)
+    else
+        true
+    ).
 
-            ( if OpModeAugment = opmau_typecheck_only then
-                true
-            else
-                % Substitute implementation-defined literals before
-                % clauses are written out to `.opt' files.
-                subst_implementation_defined_literals(Verbose, Stats, !HLDS,
-                    !Specs, !IO),
-                maybe_dump_hlds(!.HLDS, 25, "implementation_defined_literals",
-                    !DumpInfo, !IO),
+:- pred maybe_warn_about_insts_without_matching_type(bool::in, bool::in,
+    globals::in, module_info::in, module_info::out,
+    dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-                ( if OpModeAugment = opmau_make_opt_int then
-                    MakeOptInt = yes
-                else
-                    MakeOptInt = no
-                ),
-                % Only write out the `.opt' file if there are no errors.
-                ( if
-                    !.FoundError = no,
-                    FoundUndefModeError = no
-                then
-                    maybe_write_initial_optfile(MakeOptInt,
-                        !HLDS, !DumpInfo, !Specs, !IO)
-                else
-                    true
-                ),
-                % If our job was to write out the `.opt' file, then
-                % we are done.
-                (
-                    MakeOptInt = yes
-                ;
-                    MakeOptInt = no,
-                    % Now go ahead and do the rest of mode checking
-                    % and determinism analysis.
-                    frontend_pass_by_phases(!HLDS,
-                        FoundModeOrDetError, !DumpInfo, !Specs, !IO),
-                    !:FoundError = !.FoundError `or` FoundModeOrDetError
-                )
-            )
+maybe_warn_about_insts_without_matching_type(Verbose, Stats, Globals,
+        !HLDS, !DumpInfo, !Specs, !IO) :-
+    globals.lookup_bool_option(Globals, warn_insts_without_matching_type,
+        WarnInstsWithNoMatchingType),
+    (
+        WarnInstsWithNoMatchingType = yes,
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_string(Verbose,
+            "% Checking that insts have matching types... ", !IO),
+        check_insts_have_matching_types(!HLDS, !Specs),
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_string(Verbose, "done.\n", !IO),
+        maybe_report_stats(Stats, !IO),
+        maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
+            !DumpInfo, !IO)
+    ;
+        WarnInstsWithNoMatchingType = no
+    ).
+
+:- pred do_typecheck(bool::in, bool::in, globals::in,
+    bool::out, bool::out, bool::out,
+    module_info::in, module_info::out, dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
+        ExceededTypeCheckIterationLimit, !HLDS, !DumpInfo, !Specs, !IO) :-
+    % Next typecheck the clauses.
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_string(Verbose, "% Type-checking...\n", !IO),
+    maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
+    globals.lookup_bool_option(Globals, type_check_constraints,
+        TypeCheckConstraints),
+    (
+        TypeCheckConstraints = yes,
+        globals.lookup_string_option(Globals, experiment, Experiment),
+        ( if Experiment = "old_type_constraints" then
+            old_typecheck_constraints(!HLDS, TypeCheckSpecs)
+        else
+            typecheck_constraints(!HLDS, TypeCheckSpecs)
+        ),
+        % XXX We should teach typecheck_constraints to report syntax errors.
+        FoundSyntaxError = no,
+        ExceededTypeCheckIterationLimit = no
+    ;
+        TypeCheckConstraints = no,
+        prepare_for_typecheck_module(!HLDS),
+        typecheck_module(!HLDS, TypeCheckSpecs, FoundSyntaxError,
+            ExceededTypeCheckIterationLimit)
+    ),
+    !:Specs = TypeCheckSpecs ++ !.Specs,
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    FoundTypeError = contains_errors(Globals, TypeCheckSpecs),
+    (
+        FoundTypeError = yes,
+        maybe_write_string(Verbose,
+            "% Program contains type error(s).\n", !IO)
+    ;
+        FoundTypeError = no,
+        maybe_write_string(Verbose,
+            "% Program is type-correct.\n", !IO)
+    ),
+    maybe_report_stats(Stats, !IO),
+    maybe_dump_hlds(!.HLDS, 15, "typecheck", !DumpInfo, !IO).
+
+:- pred frontend_pass_after_typecheck(op_mode_augment::in,
+    bool::in, bool::in, bool::in, bool::in, bool::out,
+    module_info::in, module_info::out, dump_info::in, dump_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats,
+        FoundUndefModeError, !FoundError, !HLDS, !DumpInfo, !Specs, !IO) :-
+    % We invoke purity check even if --typecheck-only was specified,
+    % because the resolution of predicate and function overloading
+    % is done during the purity pass, and errors in the resolution
+    % of such overloading are type errors. However, the code that
+    % does this resolution depends on the absence of the other type
+    % errors that post_typecheck.m is designed to discover.
+    % (See Mantis bug 113.)
+
+    puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
+
+    check_promises(Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_dump_hlds(!.HLDS, 22, "check_promises", !DumpInfo, !IO),
+
+    (
+        OpModeAugment = opmau_typecheck_only
+    ;
+        % Switch detection looks at only a maximum of two levels
+        % of disjunction, not three, so we need this block here;
+        % the block that sets MakeOptInt is not recognized as
+        % being a switch arm complementing the opmau_typecheck_only
+        % arm.
+        ( OpModeAugment = opmau_make_opt_int
+        ; OpModeAugment = opmau_make_trans_opt_int
+        ; OpModeAugment = opmau_make_analysis_registry
+        ; OpModeAugment = opmau_make_xml_documentation
+        ; OpModeAugment = opmau_errorcheck_only
+        ; OpModeAugment = opmau_generate_code(_)
+        ),
+        (
+            OpModeAugment = opmau_make_opt_int,
+            MakeOptInt = yes
+        ;
+            ( OpModeAugment = opmau_make_trans_opt_int
+            ; OpModeAugment = opmau_make_analysis_registry
+            ; OpModeAugment = opmau_make_xml_documentation
+            ; OpModeAugment = opmau_errorcheck_only
+            ; OpModeAugment = opmau_generate_code(_)
+            ),
+            MakeOptInt = no
+        ),
+
+        % Substitute implementation-defined literals before
+        % clauses are written out to `.opt' files.
+        subst_implementation_defined_literals(Verbose, Stats, !HLDS,
+            !Specs, !IO),
+        maybe_dump_hlds(!.HLDS, 25, "implementation_defined_literals",
+            !DumpInfo, !IO),
+
+        % Only write out the `.opt' file if there are no errors.
+        ( if
+            !.FoundError = no,
+            FoundUndefModeError = no
+        then
+            maybe_write_initial_optfile(MakeOptInt,
+                !HLDS, !DumpInfo, !Specs, !IO)
+        else
+            true
+        ),
+        % If our job was to write out the `.opt' file, then
+        % we are done.
+        (
+            MakeOptInt = yes
+        ;
+            MakeOptInt = no,
+            % Now go ahead and do the rest of mode checking
+            % and determinism analysis.
+            frontend_pass_by_phases(!HLDS,
+                FoundModeOrDetError, !DumpInfo, !Specs, !IO),
+            !:FoundError = !.FoundError `or` FoundModeOrDetError
         )
     ).
 
