@@ -41,6 +41,7 @@
 
 :- import_module analysis.
 :- import_module libs.
+:- import_module libs.check_libgrades.
 :- import_module libs.compute_grade.
 :- import_module libs.process_util.
 :- import_module parse_tree.
@@ -2064,131 +2065,6 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
         ".imdg", !Info, !IO),
     make_remove_module_file(Globals, very_verbose, ModuleName,
         ".request", !Info, !IO).
-
-%-----------------------------------------------------------------------------%
-%
-% Check that the Mercury libraries required to build a linked target
-% are installed in the selected grade.
-%
-
-    % Check that all Mercury libraries required by the linked target are
-    % installed in the selected grade.
-    %
-:- pred check_libraries_are_installed(globals::in, bool::out, io::di, io::uo)
-    is det.
-
-check_libraries_are_installed(Globals, Succeeded, !IO) :-
-    globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
-    grade_directory_component(Globals, Grade),
-    check_stdlib_is_installed(Globals, Grade, Succeeded0, !IO),
-    list.foldl2(check_library_is_installed(Globals, Grade), Libs,
-        Succeeded0, Succeeded, !IO).
-
-:- pred check_stdlib_is_installed(globals::in, string::in, bool::out,
-    io::di, io::uo) is det.
-
-check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
-    verbose_make_msg_option(Globals, debug_make,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("Checking that the Mercury standard library is " ++
-                "installed in grade `%s'.\n", [s(Grade)], !IO)
-        ), !IO),
-    globals.lookup_maybe_string_option(Globals,
-        mercury_standard_library_directory, MaybeStdLibDir),
-    (
-        MaybeStdLibDir = yes(StdLibDir),
-        globals.get_target(Globals, Target),
-        (
-            ( Target = target_c
-            ; Target = target_erlang
-            ),
-            % In C or Erlang grades, check for the presence of mer_std.init in
-            % the required grade.  Unless the installation is broken this
-            % implies the presence of the other standard library files in that
-            % grade.
-            StdLibCheckFile = StdLibDir / "modules" / Grade / "mer_std.init"
-        ;
-            % Java grades do not use .init files, so check for the presence of
-            % the standard library JAR.
-            Target = target_java,
-            StdLibCheckFile = StdLibDir / "lib" / Grade / "mer_std.jar"
-        ;
-            % C# grades do not use .init files, so check for the presence of
-            % the standard library DLL.
-            Target = target_csharp,
-            StdLibCheckFile = StdLibDir / "lib" / Grade / "mer_std.dll"
-        ),
-        io.see(StdLibCheckFile, Result, !IO),
-        (
-            Result = ok,
-            io.seen(!IO),
-            Succeeded = yes
-        ;
-            Result = error(_),
-            io.stderr_stream(Stderr, !IO),
-            io.progname_base("mercury_compile", ProgName, !IO),
-            io.format(Stderr,
-                "%s: error: the Mercury standard library "  ++
-                "cannot be found in grade %s.\n",
-                [s(ProgName), s(Grade)], !IO),
-            Succeeded = no
-        )
-    ;
-        MaybeStdLibDir = no,
-        Succeeded = yes
-    ).
-
-:- pred check_library_is_installed(globals::in, string::in,
-    string::in, bool::in, bool::out, io::di, io::uo) is det.
-
-check_library_is_installed(Globals, Grade, LibName, !Succeeded, !IO) :-
-    verbose_make_msg_option(Globals, debug_make,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("Checking that %s is installed in grade `%s'.\n",
-                [s(LibName), s(Grade)], !IO)
-        ), !IO),
-    globals.get_target(Globals, Target),
-    (
-        % In C and Erlang grades, check for the presence of a library by seeing
-        % if its .init files exists.
-        ( Target = target_c
-        ; Target = target_erlang
-        ),
-        CheckFileName = LibName ++ ".init",
-        % NOTE: we don't look up the value of the option init_files here
-        % because that may include .init files other than those associated with
-        % any libraries.
-        globals.lookup_accumulating_option(Globals, init_file_directories,
-            SearchDirs)
-    ;
-        (
-            % In Java grades, check for the presence of the JAR for library.
-            Target = target_java,
-            CheckFileName = LibName ++ ".jar"
-        ;
-            % In C# grades, check for the presence of the DLL for the library.
-            Target = target_csharp,
-            CheckFileName = LibName ++ ".dll"
-        ),
-        globals.lookup_accumulating_option(Globals,
-            mercury_library_directories, MercuryLibDirs),
-        grade_directory_component(Globals, GradeDir),
-        SearchDirs = list.map((func(LibDir) = LibDir / "lib" / GradeDir),
-            MercuryLibDirs)
-    ),
-    search_for_file_returning_dir(SearchDirs, CheckFileName, MaybeDirName,
-        !IO),
-    (
-        MaybeDirName = ok(_)
-    ;
-        MaybeDirName = error(_),
-        io.stderr_stream(Stderr, !IO),
-        io.progname_base("mercury_compile", ProgName, !IO),
-        io.format(Stderr,
-            "%s: error: the library `%s' cannot be found in grade `%s'.\n",
-            [s(ProgName), s(LibName), s(Grade)], !IO),
-        !:Succeeded = no
-    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module make.program_target.

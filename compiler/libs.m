@@ -26,6 +26,9 @@
 % Representation of mmakefile fragments.
 :- include_module mmakefiles.
 
+% Existence checks for required libraries.
+:- include_module check_libgrades.
+
 % Generic algorithms and data structures that are not quite useful enough
 % or otherwise aren't in the standard library.
 % :- include_module atsort.       % currently unused
