@@ -372,6 +372,8 @@ ORDINARY_PROGS = \
 	string_switch3 \
 	string_to_float_overflow \
 	string_various \
+	string_well_formed \
+	string_well_formed_utf8 \
 	sv_nested_closures \
 	sv_record_update \
 	switch_detect \

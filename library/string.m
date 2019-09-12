@@ -444,6 +444,14 @@
     %
 :- pred is_empty(string::in) is semidet.
 
+    % True if the string is a valid UTF-8 or UTF-16 string.
+    % In target languages that use UTF-8 string encoding, `is_well_formed(S)'
+    % is true iff S consists of a well-formed UTF-8 code unit sequence.
+    % In target languages that use UTF-16 string encoding, `is_well_formed(S)'
+    % is true iff S consists of a well-formed UTF-16 code unit sequence.
+    %
+:- pred is_well_formed(string::in) is semidet.
+
     % True if string contains only alphabetic characters [A-Za-z].
     %
 :- pred is_all_alpha(string::in) is semidet.
@@ -3101,10 +3109,68 @@ hash6_loop(String, Index, Length, !HashVal) :-
 %
 % Tests on strings.
 %
-% For speed, most of these predicates have C versions as well as
-% Mercury versions. XXX why not all?
 
 is_empty("").
+
+%---------------------%
+
+:- pragma foreign_proc("C",
+    is_well_formed(S::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    SUCCESS_INDICATOR = MR_utf8_verify(S);
+").
+:- pragma foreign_proc("Java",
+    is_well_formed(S::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    SUCCESS_INDICATOR = true;
+    for (int i = 0; i < S.length(); i++) {
+        if (java.lang.Character.isLowSurrogate(S.charAt(i))) {
+            SUCCESS_INDICATOR = false;
+            break;
+        }
+        if (java.lang.Character.isHighSurrogate(S.charAt(i))) {
+            i++;
+            if (i >= S.length() ||
+                !java.lang.Character.isLowSurrogate(S.charAt(i)))
+            {
+                SUCCESS_INDICATOR = false;
+                break;
+            }
+        }
+    }
+").
+:- pragma foreign_proc("C#",
+    is_well_formed(S::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    SUCCESS_INDICATOR = true;
+    for (int i = 0; i < S.Length; i++) {
+        if (System.Char.IsLowSurrogate(S[i])) {
+            SUCCESS_INDICATOR = false;
+            break;
+        }
+        if (System.Char.IsHighSurrogate(S[i])) {
+            i++;
+            if (i >= S.Length || !System.Char.IsLowSurrogate(S[i])) {
+                SUCCESS_INDICATOR = false;
+                break;
+            }
+        }
+    }
+").
+
+is_well_formed(_) :-
+    sorry($module, "string.is_well_formed/1").
+
+%---------------------%
+
+% For speed, most of these predicates have C versions as well as
+% Mercury versions. XXX why not all?
 
 % XXX ILSEQ Behaviour depends on target language.
 % The generic versions use all_match which currently uses unsafe_index_next and
