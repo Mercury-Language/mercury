@@ -435,6 +435,15 @@ frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats, Globals,
         ),
         globals.lookup_bool_option(Globals, intermodule_analysis,
             IntermodAnalysis),
+        % Whether we are creating a .opt file or not, we want to mark
+        % the entities that *would be* in the .opt file as opt_exported,
+        % so that e.g. we will set the storage class of the C code
+        % we generate for opt_exported predicates to "extern" instead of
+        % "static".
+        %
+        % However, if we found any errors so far that would prevent us
+        % from getting to the code generation stage, then such marking
+        % would have no effect, and so we don't bother.
         (
             MakeOptInt = yes,
             (
@@ -455,15 +464,13 @@ frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats, Globals,
                 MakeOptIntEnabled = no
             ;
                 MakeOptIntEnabled = yes,
-                globals.lookup_bool_option(Globals, intermodule_optimization,
-                    IntermodOpt),
-                maybe_update_status_of_items_in_opt_file(IntermodOpt,
-                    IntermodAnalysis, Globals, !HLDS, !IO)
+                mark_entities_in_opt_file_as_opt_exported(IntermodAnalysis,
+                    Globals, !HLDS, !IO)
             ),
             % Now go ahead and do the rest of the front end passes.
             frontend_pass_by_phases(!HLDS, FoundModeOrDetError,
                 !DumpInfo, !Specs, !IO),
-            !:FoundError = !.FoundError `or` FoundModeOrDetError
+            bool.or(FoundModeOrDetError, !FoundError)
         )
     ).
 
@@ -508,14 +515,17 @@ create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
     update_interface(Globals, OptName, !IO),
     touch_interface_datestamp(Globals, ModuleName, ".optdate", !IO).
 
-    % If there is a `.opt' file for this module, the import status of items
-    % in the `.opt' file needs to be updated.
+    % If there is a `.opt' file for this module, then we must mark
+    % the items that would be in the .opt file as opt_exported
+    % even if we are not writing to the .opt file now.
     %
-:- pred maybe_update_status_of_items_in_opt_file(bool::in, bool::in,
+:- pred mark_entities_in_opt_file_as_opt_exported(bool::in,
     globals::in, module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_update_status_of_items_in_opt_file(IntermodOpt, IntermodAnalysis,
+mark_entities_in_opt_file_as_opt_exported(IntermodAnalysis,
         Globals, !HLDS, !IO) :-
+    globals.lookup_bool_option(Globals, intermodule_optimization,
+        IntermodOpt),
     ( if
         ( IntermodOpt = yes
         ; IntermodAnalysis = yes
