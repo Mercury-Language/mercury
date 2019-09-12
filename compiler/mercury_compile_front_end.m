@@ -262,8 +262,8 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
             !:FoundError = yes
         else
             frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats,
-                FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
-                !Specs, !IO)
+                Globals, FoundUndefModeError, !FoundError,
+                !HLDS, !DumpInfo, !Specs, !IO)
         )
     ).
 
@@ -370,11 +370,11 @@ do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
     maybe_dump_hlds(!.HLDS, 15, "typecheck", !DumpInfo, !IO).
 
 :- pred frontend_pass_after_typecheck(op_mode_augment::in,
-    bool::in, bool::in, bool::in, bool::in, bool::out,
+    bool::in, bool::in, globals::in, bool::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats,
+frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats, Globals,
         FoundUndefModeError, !FoundError, !HLDS, !DumpInfo, !Specs, !IO) :-
     % We invoke purity check even if --typecheck-only was specified,
     % because the resolution of predicate and function overloading
@@ -425,50 +425,49 @@ frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats,
         maybe_dump_hlds(!.HLDS, 25, "implementation_defined_literals",
             !DumpInfo, !IO),
 
-        % Only write out the `.opt' file if there are no errors.
         ( if
             !.FoundError = no,
             FoundUndefModeError = no
         then
-            maybe_write_initial_optfile(MakeOptInt,
-                !HLDS, !DumpInfo, !Specs, !IO)
+            MakeOptIntEnabled = yes
         else
-            true
+            MakeOptIntEnabled = no
         ),
-        % If our job was to write out the `.opt' file, then
-        % we are done.
+        globals.lookup_bool_option(Globals, intermodule_analysis,
+            IntermodAnalysis),
         (
-            MakeOptInt = yes
+            MakeOptInt = yes,
+            (
+                MakeOptIntEnabled = no
+            ;
+                MakeOptIntEnabled = yes,
+                % Only write out the `.opt' file if there are no errors.
+                %
+                % This will invoke frontend_pass_by_phases *if and only if*
+                % some of the enabled optimizations need it.
+                create_and_write_opt_file(IntermodAnalysis, Globals,
+                    !HLDS, !DumpInfo, !Specs, !IO)
+            )
+            % If our job was to write out the `.opt' file, then we are done.
         ;
             MakeOptInt = no,
-            % Now go ahead and do the rest of mode checking
-            % and determinism analysis.
-            frontend_pass_by_phases(!HLDS,
-                FoundModeOrDetError, !DumpInfo, !Specs, !IO),
+            (
+                MakeOptIntEnabled = no
+            ;
+                MakeOptIntEnabled = yes,
+                globals.lookup_bool_option(Globals, intermodule_optimization,
+                    IntermodOpt),
+                maybe_update_status_of_items_in_opt_file(IntermodOpt,
+                    IntermodAnalysis, Globals, !HLDS, !IO)
+            ),
+            % Now go ahead and do the rest of the front end passes.
+            frontend_pass_by_phases(!HLDS, FoundModeOrDetError,
+                !DumpInfo, !Specs, !IO),
             !:FoundError = !.FoundError `or` FoundModeOrDetError
         )
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred maybe_write_initial_optfile(bool::in,
-    module_info::in, module_info::out, dump_info::in, dump_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
-
-maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
-    globals.lookup_bool_option(Globals, intermodule_analysis,
-        IntermodAnalysis),
-    (
-        MakeOptInt = yes,
-        create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
-            !Specs, !IO)
-    ;
-        MakeOptInt = no,
-        maybe_update_status_of_items_in_opt_file(IntermodOpt, IntermodAnalysis,
-            Globals, !HLDS, !IO)
-    ).
 
 :- pred create_and_write_opt_file(bool::in, globals::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
@@ -492,7 +491,6 @@ create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
         need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
         NeedMiddlePassForOptFile = yes
     then
-        % XXX OPTFILE This should have been done by one of our ancestors.
         frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO),
         (
             FoundError = no,
@@ -533,7 +531,8 @@ maybe_update_status_of_items_in_opt_file(IntermodOpt, IntermodAnalysis,
                 ModuleName, OptName, !IO),
             globals.lookup_accumulating_option(Globals, intermod_directories,
                 IntermodDirs),
-            search_for_file_returning_dir(IntermodDirs, OptName, MaybeDir, !IO),
+            search_for_file_returning_dir(IntermodDirs, OptName,
+                MaybeDir, !IO),
             (
                 MaybeDir = ok(_),
                 UpdateStatus = yes
