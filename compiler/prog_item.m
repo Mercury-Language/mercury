@@ -346,11 +346,11 @@
 % The second use is to canonicalize the parts of interface files
 % containing type definitions.
 %
-% The third use is to help deal with sets of definitions make sense.
-% There are many rules that a set of definitions for a given type
-% constructor must meet (such as "there may be at most one definition
-% for a type constructor that is a du, equivalence or solver definition),
-% and bugs may manifest themselves as violations of these rules.
+% The third use is to help deal with sets of definitions that
+% don't make sense. There are many rules that a set of definitions
+% for a given type constructor must meet (such as "there may be at most one
+% definition for a type constructor that is a du, equivalence or solver
+% definition), and bugs may manifest themselves as violations of these rules.
 %
 % We have a choice in when these violations are detected.
 %
