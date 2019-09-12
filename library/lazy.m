@@ -6,16 +6,17 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% lazy.m - provides support for optional explicit lazy evaluation.
-%
-% Author: fjh, pbone.
+% File: lazy.m.
+% Main authors: fjh, pbone.
 % Stability: medium.
+%
+% Provides support for optional explicit lazy evaluation.
 %
 % This module provides the data type `lazy(T)' and the functions `val',
 % `delay', and `force', which can be used to emulate lazy evaluation.
 %
 % A field within a data structure can be made lazy by wrapping it within a lazy
-% type.  Or a lazy data structure can be implemented, for example:
+% type. Or a lazy data structure can be implemented, for example:
 %
 % :- type lazy_list(T)
 %     --->    lazy_list(
@@ -41,32 +42,32 @@
 :- module lazy.
 :- interface.
 
-    % A lazy(T) is a value of type T which will only be evaluated on
+    % A `lazy(T)' is a value of type `T' which will only be evaluated on
     % demand.
     %
 :- type lazy(T).
 
-    % Convert a value from type T to lazy(T)
+    % Convert a value from type `T' to `lazy(T)'.
     %
 :- func val(T) = lazy(T).
 
-    % Construct a lazily-evaluated lazy(T) from a closure
+    % Construct a lazily-evaluated `lazy(T)' from a closure.
     %
 :- func delay((func) = T) = lazy(T).
 
-    % Force the evaluation of a lazy(T), and return the result as type T.
-    % Note that if the type T may itself contains subterms of type lazy(T),
-    % as is the case when T is a recursive type like the lazy_list(T) type
-    % defined in lazy_list.m, those subterms will not be evaluated --
-    % force/1 only forces evaluation of the lazy/1 term at the top level.
+    % Force the evaluation of a `lazy(T)', and return the result as type `T'.
+    % Note that if the type `T' may itself contain subterms of type `lazy(T)',
+    % as is the case when `T' is a recursive type, those subterms will not be
+    % evaluated -- `force/1' only forces evaluation of the `lazy/1' term at
+    % the top level.
     %
-    % A second call to force will not re-evaluate the lazy expression, it will
-    % simply return T.
+    % A second call to `force' will not re-evaluate the lazy expression, it
+    % will simply return `T'.
     %
 :- func force(lazy(T)) = T.
 
     % Get the value of a lazy expression if it has already been made available
-    % with force/1 This is useful as it can provide information without
+    % with `force/1'. This is useful as it can provide information without
     % incurring (much) cost.
     %
 :- impure pred read_if_val(lazy(T)::in, T::out) is semidet.
@@ -88,21 +89,21 @@
 %
 % The operational semantics satisfy the following:
 %
-% - val/1 and delay/1 both take O(1) time and use O(1) additional space.
-%   In particular, delay/1 does not evaluate its argument using apply/1.
+% - `val/1' and `delay/1' both take O(1) time and use O(1) additional space.
+%   In particular, `delay/1' does not evaluate its argument using `apply/1'.
 %
-% - When force/1 is first called for a given term, it uses apply/1 to
+% - When `force/1' is first called for a given term, it uses `apply/1' to
 %   evaluate the term, and then saves the result computed by destructively
-%   modifying its argument; subsequent calls to force/1 on the same term
-%   will return the same result.  So the time to evaluate force(X), where
-%   X = delay(F), is O(the time to evaluate apply(F)) for the first call,
+%   modifying its argument; subsequent calls to `force/1' on the same term
+%   will return the same result.  So the time to evaluate `force(X)', where
+%   `X = delay(F)', is O(the time to evaluate `apply(F)') for the first call,
 %   and O(1) time for subsequent calls.
 %
-% - Equality on values of type lazy(T) is implemented by calling force/1
-%   on both arguments and comparing the results.  So if X and Y have type
-%   lazy(T), and both X and Y are ground, then the time to evaluate X = Y
-%   is O(the time to evaluate (X1 = force(X)) + the time to evaluate
-%   (Y1 = force(Y)) + the time to unify X1 and Y1).
+% - Equality on values of type `lazy(T)' is implemented by calling `force/1'
+%   on both arguments and comparing the results.  So if `X' and `Y' have type
+%   `lazy(T)', and both `X' and `Y' are ground, then the time to evaluate
+%   `X = Y' is O(the time to evaluate `X1 = force(X)' + the time to evaluate
+%   `Y1 = force(Y)' + the time to unify `X1' and `Y1').
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -117,7 +118,7 @@
           comparison is compare_values.
 
     % Note that we use a user-defined equality predicate to ensure
-    % that unifying two lazy(T) values will do the right thing.
+    % that unifying two `lazy(T)' values will do the right thing.
     %
 :- type lazy_state(T)
     --->    value(T)
@@ -138,8 +139,8 @@ delay(F) = lazy(Mutvar) :-
 %---------------------------------------------------------------------------%
 
 force(Lazy) = Value :-
-    % The promise_equivalent_solutions scope is needed to tell the compiler
-    % that force will return equal answers given arguments that are equal
+    % The `promise_equivalent_solutions' scope is needed to tell the compiler
+    % that `force' will return equal answers given arguments that are equal
     % but that have different representations.
     promise_equivalent_solutions [Mutvar] (
         Lazy = lazy(Mutvar)
