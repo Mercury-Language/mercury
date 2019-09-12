@@ -365,15 +365,16 @@ gather_opt_export_preds_in_list([PredId | PredIds], ProcessLocalPreds,
         (
             DoWrite = yes,
             ( if pred_info_pragma_goal_type(PredInfo) then
-                % pragma foreign_decls must be written since their contents
-                % could be used by pragma foreign_procs.
-                intermod_info_set_write_header(!IntermodInfo)
+                % The foreign code of this predicate may refer to entities
+                % in the foreign language that defined in a foreign module
+                % that is imported by a foreign_import_module declaration.
+                intermod_info_set_need_foreign_import_modules(!IntermodInfo)
             else
                 true
             ),
-            intermod_info_get_preds(!.IntermodInfo, Preds0),
-            set.insert(PredId, Preds0, Preds),
-            intermod_info_set_preds(Preds, !IntermodInfo)
+            intermod_info_get_pred_clauses(!.IntermodInfo, PredClauses0),
+            set.insert(PredId, PredClauses0, PredClauses),
+            intermod_info_set_pred_clauses(PredClauses, !IntermodInfo)
         ;
             DoWrite = no,
             % Remove any items added for the clauses for this predicate.
@@ -652,6 +653,9 @@ gather_entities_to_opt_export_in_goal_expr(GoalExpr, DoWrite,
         % from_ground_term_construct scopes actually satisfy their invariants,
         % specifically the invariant that say they contain no calls or
         % higher-order constants. We therefore cannot special-case them here.
+        %
+        % XXX Actually it wouldn't be hard to arrange to get this code to run
+        % *after* mode analysis.
         gather_entities_to_opt_export_in_goal(SubGoal, DoWrite, !IntermodInfo)
     ;
         GoalExpr = shorthand(ShortHand),
@@ -751,14 +755,17 @@ intermod_do_add_proc(PredId, DoWrite, !IntermodInfo) :-
         DoWrite = yes
     else if
         % Don't write the caller to the `.opt' file if it calls a pred
-        % without mode or determinism decls, because we'd need to include
-        % the mode decls for the callee in the `.opt' file and (since
-        % writing the `.opt' file happens before mode inference) we can't
-        % do that because we don't know what the modes are.
+        % without mode or determinism decls, because then we would need
+        % to include the mode decls for the callee in the `.opt' file and
+        % (since writing the `.opt' file happens before mode inference)
+        % we can't do that because we don't know what the modes are.
         %
         % XXX This prevents intermodule optimizations in such cases,
         % which is a pity.
-
+        %
+        % XXX Actually it wouldn't be hard to arrange to get this code to run
+        % *after* mode analysis, so this restriction is likely to be
+        % unnecessary.
         (
             check_marker(Markers, marker_infer_modes)
         ;
@@ -870,7 +877,6 @@ gather_entities_to_opt_export_in_unify_rhs(RHS, DoWrite, !IntermodInfo) :-
         ( if Functor = closure_cons(ShroudedPredProcId, _) then
             % Yes, the unification creates a higher-order term.
             % Make sure that the predicate/function is exported.
-
             proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
             intermod_add_proc(PredId, DoWrite, !IntermodInfo)
         else
@@ -1155,9 +1161,9 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
                 MaybeForeign0 = yes(ForeignTypeBody0),
                 have_foreign_type_for_backend(Target, ForeignTypeBody0, yes)
             then
-                % The header code must be written since it could be used
-                % by the foreign type.
-                intermod_info_set_write_header(!IntermodInfo),
+                % The foreign type may be defined in one of the foreign
+                % modules we import.
+                intermod_info_set_need_foreign_import_modules(!IntermodInfo),
                 resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
                     ForeignTypeBody0, ForeignTypeBody, !IntermodInfo),
                 MaybeForeign = yes(ForeignTypeBody),
@@ -1172,9 +1178,9 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
             TypeBody0 = hlds_foreign_type(ForeignTypeBody0),
-            % The header code must be written since it could be used
-            % by the foreign type.
-            intermod_info_set_write_header(!IntermodInfo),
+            % The foreign type may be defined in one of the foreign
+            % modules we import.
+            intermod_info_set_need_foreign_import_modules(!IntermodInfo),
             resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
                 ForeignTypeBody0, ForeignTypeBody, !IntermodInfo),
             TypeBody = hlds_foreign_type(ForeignTypeBody),
@@ -1354,14 +1360,14 @@ write_intermod_info(IntermodInfo, !IO) :-
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
 
-    intermod_info_get_preds(IntermodInfo, Preds),
+    intermod_info_get_pred_clauses(IntermodInfo, PredClauses),
     intermod_info_get_pred_decls(IntermodInfo, PredDecls),
     intermod_info_get_instances(IntermodInfo, Instances),
     ( if
         % If none of these item types need writing, nothing else
         % needs to be written.
 
-        set.is_empty(Preds),
+        set.is_empty(PredClauses),
         set.is_empty(PredDecls),
         Instances = [],
         module_info_get_type_table(ModuleInfo, TypeTable),
@@ -1421,7 +1427,7 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     intermod_write_classes(OutInfo, ModuleInfo, !IO),
     intermod_write_instances(OutInfo, Instances, !IO),
     (
-        WriteHeader = yes,
+        WriteHeader = do_need_foreign_import_modules,
         module_info_get_foreign_import_modules(ModuleInfo,
             ForeignImportModules),
         ForeignImports =
@@ -1434,7 +1440,7 @@ write_intermod_info_body(IntermodInfo, !IO) :-
                 ForeignImports, !IO)
         )
     ;
-        WriteHeader = no
+        WriteHeader = do_not_need_foreign_import_modules
     ),
     generate_order_pred_infos(ModuleInfo, WriteDeclPredIds,
         DeclOrderPredInfos),
@@ -3063,6 +3069,10 @@ old_status_to_write(status_external(Status)) =
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_need_foreign_import_modules
+    --->    do_not_need_foreign_import_modules
+    ;       do_need_foreign_import_modules.
+
     % A collection of stuff to go in the .opt file.
     %
 :- type intermod_info
@@ -3070,44 +3080,58 @@ old_status_to_write(status_external(Status)) =
                 % The initial ModuleInfo. Readonly.
                 im_module_info          :: module_info,
 
-                % Modules to import.
+                % The modules that the .opt file will need to import.
+                % XXX Or use?
                 im_modules              :: set(module_name),
 
-                % Preds to output clauses for.
-                im_preds                :: set(pred_id),
+                % The ids of the predicates (and functions) whose
+                % definitions (i.e. clauses) we want to put into the
+                % .opt file.
+                im_pred_clauses         :: set(pred_id),
 
-                % Preds to output decls for.
+                % The ids of the predicates (and functions) whose
+                % type and mode declarations we want to put into the
+                % .opt file.
                 im_pred_decls           :: set(pred_id),
 
-                % Instances declarations to write.
-                im_instances            :: assoc_list(class_id,
+                % The instance definitions we want to put into the .opt file.
+                im_instance_defns       :: assoc_list(class_id,
                                             hlds_instance_defn),
 
-                % Type declarations to write.
-                im_types                :: assoc_list(type_ctor,
+                % The type definitions we want to put into the .opt file.
+                im_type_defns           :: assoc_list(type_ctor,
                                             hlds_type_defn),
 
-                % Do the pragma foreign_decls for the module need writing,
-                % yes if there are pragma foreign_procs being exported.
-                im_write_foreign_header :: bool
+                % Is there anything we want to put into the .opt file
+                % that may refer to foreign language entities that may need
+                % access to foreign_import_modules to resolve?
+                %
+                % If no, we don't need to include any of the
+                % foreign_import_modules declarations in the module
+                % in the .opt file.
+                %
+                % If yes, we need to include all of them in the .opt file,
+                % since we have no info about which fim defines what.
+                im_need_foreign_imports :: maybe_need_foreign_import_modules
             ).
 
 :- pred init_intermod_info(module_info::in, intermod_info::out) is det.
 
 init_intermod_info(ModuleInfo, IntermodInfo) :-
     set.init(Modules),
-    set.init(Preds),
+    set.init(PredClauses),
     set.init(PredDecls),
-    Instances = [],
-    Types = [],
-    IntermodInfo = intermod_info(ModuleInfo, Modules, Preds, PredDecls,
-        Instances, Types, no).
+    InstanceDefns = [],
+    TypeDefns = [],
+    IntermodInfo = intermod_info(ModuleInfo, Modules, PredClauses, PredDecls,
+        InstanceDefns, TypeDefns, do_not_need_foreign_import_modules).
 
 :- pred intermod_info_get_module_info(intermod_info::in, module_info::out)
     is det.
 :- pred intermod_info_get_modules(intermod_info::in, set(module_name)::out)
     is det.
-:- pred intermod_info_get_preds(intermod_info::in, set(pred_id)::out) is det.
+:- pred intermod_info_get_pred_clauses(intermod_info::in, set(pred_id)::out)
+    is det.
 :- pred intermod_info_get_pred_decls(intermod_info::in, set(pred_id)::out)
     is det.
 :- pred intermod_info_get_instances(intermod_info::in,
@@ -3117,7 +3141,7 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 
 :- pred intermod_info_set_modules(set(module_name)::in,
     intermod_info::in, intermod_info::out) is det.
-:- pred intermod_info_set_preds(set(pred_id)::in,
+:- pred intermod_info_set_pred_clauses(set(pred_id)::in,
     intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_pred_decls(set(pred_id)::in,
     intermod_info::in, intermod_info::out) is det.
@@ -3128,34 +3152,34 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
     intermod_info::in, intermod_info::out) is det.
 %:- pred intermod_info_set_insts(set(inst_id)::in,
 %   intermod_info::in, intermod_info::out) is det.
-:- pred intermod_info_set_write_header(intermod_info::in,
+:- pred intermod_info_set_need_foreign_import_modules(intermod_info::in,
     intermod_info::out) is det.
 
 intermod_info_get_module_info(IntermodInfo, X) :-
     X = IntermodInfo ^ im_module_info.
 intermod_info_get_modules(IntermodInfo, X) :-
     X = IntermodInfo ^ im_modules.
-intermod_info_get_preds(IntermodInfo, X) :-
-    X = IntermodInfo ^ im_preds.
+intermod_info_get_pred_clauses(IntermodInfo, X) :-
+    X = IntermodInfo ^ im_pred_clauses.
 intermod_info_get_pred_decls(IntermodInfo, X) :-
     X = IntermodInfo ^ im_pred_decls.
 intermod_info_get_instances(IntermodInfo, X) :-
-    X = IntermodInfo ^ im_instances.
+    X = IntermodInfo ^ im_instance_defns.
 intermod_info_get_types(IntermodInfo, X) :-
-    X = IntermodInfo ^ im_types.
+    X = IntermodInfo ^ im_type_defns.
 
-intermod_info_set_modules(Modules, !IntermodInfo) :-
-    !IntermodInfo ^ im_modules := Modules.
-intermod_info_set_preds(Procs, !IntermodInfo) :-
-    !IntermodInfo ^ im_preds := Procs.
-intermod_info_set_pred_decls(ProcDecls, !IntermodInfo) :-
-    !IntermodInfo ^ im_pred_decls := ProcDecls.
-intermod_info_set_instances(Instances, !IntermodInfo) :-
-    !IntermodInfo ^ im_instances := Instances.
-intermod_info_set_types(Types, !IntermodInfo) :-
-    !IntermodInfo ^ im_types := Types.
-intermod_info_set_write_header(!IntermodInfo) :-
-    !IntermodInfo ^ im_write_foreign_header := yes.
+intermod_info_set_modules(X, !IntermodInfo) :-
+    !IntermodInfo ^ im_modules := X.
+intermod_info_set_pred_clauses(X, !IntermodInfo) :-
+    !IntermodInfo ^ im_pred_clauses := X.
+intermod_info_set_pred_decls(X, !IntermodInfo) :-
+    !IntermodInfo ^ im_pred_decls := X.
+intermod_info_set_instances(X, !IntermodInfo) :-
+    !IntermodInfo ^ im_instance_defns := X.
+intermod_info_set_types(X, !IntermodInfo) :-
+    !IntermodInfo ^ im_type_defns := X.
+intermod_info_set_need_foreign_import_modules(!IntermodInfo) :-
+    !IntermodInfo ^ im_need_foreign_imports := do_need_foreign_import_modules.
 
 %---------------------------------------------------------------------------%
 
