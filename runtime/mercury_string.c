@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2000-2002, 2006, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018-2019 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_string.c - string handling
@@ -411,11 +411,13 @@ MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
             break;
     }
 
-    // Check for overlong forms, which could be used to bypass security
-    // validations. We could also check code points aren't above U+10FFFF
-    // or in the surrogate ranges, but we don't.
+    // Check for overlong forms or code point out of range.
+    if (c < minc || c > 0x10FFFF) {
+        return -2;
+    }
 
-    if (c < minc) {
+    // Check for surrogate code points.
+    if (MR_is_surrogate(c)) {
         return -2;
     }
 

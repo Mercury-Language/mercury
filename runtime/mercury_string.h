@@ -440,21 +440,28 @@ extern MR_bool MR_escape_string_quote(MR_String *ptr,
 #define MR_utf8_is_lead_byte(c)     (((unsigned) (c) - 0xC0) < 0x3E)
 #define MR_utf8_is_trail_byte(c)    (((unsigned) (c) & 0xC0) == 0x80)
 
+// XXX ILSEQ The following functions should be rethought to make dealing
+// with ill-formed code unit sequences easier.
+
 // Advance `*pos' to the beginning of the next code point in `s'.
 // If `*pos' is already at the end of the string, return MR_FALSE
 // without modifying `*pos'.
+// This function simply searches for a single or lead byte without decoding
+// so may skip over bytes in ill-formed sequences.
 
 extern MR_bool          MR_utf8_next(const MR_String s_, MR_Integer *pos);
 
 // Rewind `*pos' to the beginning of the previous code point in `s'.
 // If `*pos' is already at the beginning of the string, return MR_FALSE
 // without modifying `*pos'.
+// This function simply searches for a single or lead byte without decoding
+// so may skip over bytes in ill-formed sequences.
 
 extern MR_bool          MR_utf8_prev(const MR_String s_, MR_Integer *pos);
 
 // Decode and return the code point beginning at `pos' in `s'.
 // Return 0 if at the end of the string (i.e. the NUL terminator).
-// If an illegal code sequence exists at that offset, return -2.
+// Return -2 if the code unit sequence beginning at that offset is ill-formed.
 //
 // The _mb version requires s[pos] to be the lead byte of a multibyte code
 // point.
