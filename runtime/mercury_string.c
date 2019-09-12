@@ -133,7 +133,7 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
     MR_bool must_escape = MR_FALSE;
 
     // Check if we need to add character escapes to the string.
-    //
+    // XXX ILSEQ Check for surrogate code points.
     while ((ch = MR_utf8_get_next((MR_String) string, &pos)) > 0) {
         switch (ch) {
             case '\a':

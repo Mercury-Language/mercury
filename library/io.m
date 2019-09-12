@@ -8998,6 +8998,7 @@ putback_char(input_stream(Stream), Character, !IO) :-
         char        buf[5];
         ML_ssize_t  len;
         len = MR_utf8_encode(buf, Character);
+        // XXX ILSEQ Error if len==0
         for (; len > 0; len--) {
             if (MR_UNGETCH(*mf, buf[len - 1]) == EOF) {
                 Ok = MR_FALSE;
@@ -9569,6 +9570,7 @@ write_char(output_stream(Stream), Character, !IO) :-
         size_t  len;
         size_t  i;
         len = MR_utf8_encode(buf, Character);
+        // XXX ILSEQ Error if len==0
         for (i = 0; i < len; i++) {
             if (MR_PUTCH(*Stream, buf[i]) < 0) {
                 Error = errno;

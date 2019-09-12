@@ -1665,6 +1665,7 @@ from_char_list(Chars::in, Str::uo) :-
         if (MR_is_ascii(c)) {
             size++;
         } else {
+            // XXX ILSEQ Do something if c is a surrogate code point.
             size += MR_utf8_width(c);
         }
         char_list_ptr = MR_list_tail(char_list_ptr);
@@ -1793,6 +1794,7 @@ from_rev_char_list(Chars, Str) :-
         if (MR_is_ascii(c)) {
             size++;
         } else {
+            // XXX ILSEQ Do something if c is a surrogate code point.
             size += MR_utf8_width(c);
         }
         list_ptr = MR_list_tail(list_ptr);
@@ -2687,6 +2689,7 @@ unsafe_set_char(Char, Index, !Str) :-
         strcpy(Str, Str0);
         Str[Index] = Ch;
     } else {
+        // XXX ILSEQ Fail for surrogate code points.
         int oldc = MR_utf8_get(Str0, Index);
         size_t oldwidth = MR_utf8_width(oldc);
         size_t newwidth = MR_utf8_width(Ch);
