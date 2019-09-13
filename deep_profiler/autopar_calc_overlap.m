@@ -149,8 +149,7 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
         set.init, RightProducedVars0, set.init, RightConsumedVars0),
     RightProducedVars = set.intersect(RightProducedVars0, AllSharedVars),
     RightConsumedVars = set.intersect(RightConsumedVars0, AllSharedVars),
-    ProducedVars =
-        set.from_sorted_list(map.sorted_keys(!.ProductionsMap)),
+    ProducedVars = set.sorted_list_to_set(map.sorted_keys(!.ProductionsMap)),
     Vars = set.intersect(ProducedVars, RightConsumedVars),
 
     % This conjunct will actually start after it has been sparked by
@@ -360,7 +359,8 @@ calculate_dependent_parallel_cost_production(Info,
 
 graph_do_lookup(Lookup, Graph, GoalNum, Deps) :-
     Lookup(Graph, lookup_key(Graph, GoalNum), DepsKeys),
-    Deps = set(map(lookup_vertex(Graph), set.to_sorted_list(DepsKeys))).
+    Deps = set.list_to_set(map(lookup_vertex(Graph),
+        set.to_sorted_list(DepsKeys))).
 
     % foldl(get_productions_map(Goals, 0,0, _, Vars, _, map.init, Map).
     %

@@ -1788,7 +1788,7 @@ type_domain_union(DomainA, DomainB, Domain) :-
         ( if TypeA = TypeB then
             Domain = tdomain_singleton(TypeA)
         else
-            Domain = tdomain_nonfixed(set.from_list([TypeA, TypeB]))
+            Domain = tdomain_nonfixed(set.list_to_set([TypeA, TypeB]))
         )
     ;
         DomainA = tdomain_singleton(TypeA),

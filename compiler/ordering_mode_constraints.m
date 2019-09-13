@@ -605,7 +605,7 @@ minimum_reordering(OCI, Order) :-
 %    original_order_constraints(OCI ^ num_conjuncts, OriginalOrderConstraints),
 %    constrain_if_possible(OriginalOrderConstraints, OCI0, OCI1),
 
-    Conjuncts = set.from_sorted_list(1 `..` OCI ^ oci_num_conjuncts),
+    Conjuncts = set.sorted_list_to_set(1 `..` OCI ^ oci_num_conjuncts),
     topological_sort_min_reordering(OCI ^ oci_constraints, Conjuncts, Order).
 
     % original_order_constraints(N, MOCs) produces a list of constraints MOCs

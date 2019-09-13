@@ -281,7 +281,7 @@ find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes) = Zeros :-
 
     % Build zeros from corresponding size_vars.
     ZerosList = prog_vars_to_size_vars(SizeVarMap, ZeroProgVars),
-    Zeros = set.from_list(ZerosList).
+    Zeros = set.list_to_set(ZerosList).
 
 :- pred is_zero_size_prog_var(module_info::in, vartypes::in,
     prog_var::in) is semidet.

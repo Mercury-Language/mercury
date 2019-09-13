@@ -2214,7 +2214,7 @@ prepare_for_intermodule_analysis(Globals, Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_accumulating_option(Globals, local_module_id,
         LocalModulesList),
     SymNames = list.map(string_to_sym_name, LocalModulesList),
-    LocalModuleNames = set.from_list(SymNames),
+    LocalModuleNames = set.list_to_set(SymNames),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
     prepare_intermodule_analysis(Globals, ModuleNames, LocalModuleNames,

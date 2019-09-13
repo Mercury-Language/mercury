@@ -3785,7 +3785,7 @@ inconsequential_options(InconsequentialOptions) :-
     assoc_list.keys(InternalUseOptions, InternalUseKeys),
     assoc_list.keys(BuildSystemOptions, BuildSystemKeys),
     Keys = WarningKeys ++ VerbosityKeys ++ InternalUseKeys ++ BuildSystemKeys,
-    InconsequentialOptions = set.from_list(Keys).
+    InconsequentialOptions = set.list_to_set(Keys).
 
 %---------------------------------------------------------------------------%
 

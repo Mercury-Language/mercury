@@ -1994,7 +1994,7 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
                     MaybeIOM = ok1(iom_handled([]))
                 ;
                     FeatureList = [_ | _],
-                    FeatureSet = set.from_list(FeatureList),
+                    FeatureSet = set.list_to_set(FeatureList),
                     RFSInfo = pragma_info_require_feature_set(FeatureSet),
                     Pragma = pragma_require_feature_set(RFSInfo),
                     ItemPragma = item_pragma_info(Pragma, item_origin_user,

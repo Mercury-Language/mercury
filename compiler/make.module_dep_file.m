@@ -677,7 +677,7 @@ contains_foreign_export_term(Term, ContainsForeignExport) :-
 construct_contains_foreign_code([]) = contains_no_foreign_code.
 construct_contains_foreign_code(Langs) = contains_foreign_code(LangSet) :-
     Langs = [_ | _],
-    LangSet = set.from_list(Langs).
+    LangSet = set.list_to_set(Langs).
 
 :- pred has_main_term(term::in, has_main::out) is semidet.
 

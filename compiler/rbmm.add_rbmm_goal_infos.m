@@ -200,7 +200,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
             % XXX We safely approximate that RemovedRegions and CarriedRegions
             % are allocated into and read from in this call.
             AllocatedIntoAndReadFrom =
-                set.from_list(RemovedRegions ++ CarriedRegions),
+                set.list_to_set(RemovedRegions ++ CarriedRegions),
 
             module_info_get_globals(ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, use_alloc_regions,
@@ -214,7 +214,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
                 % Allocated regions are the above plus the carried ones.
                 % The carried here are those that are also allocated into.
                 AllocatedIntoRegions =
-                    set.from_list(RemovedAndAllocRegions ++ CarriedRegions)
+                    set.list_to_set(RemovedAndAllocRegions ++ CarriedRegions)
             ;
                 UseAllocRegions = no,
                 AllocatedIntoRegions = AllocatedIntoAndReadFrom
@@ -222,8 +222,9 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
 
             % The read-from set is not very important so we are not precise
             % in estimating it.
-            RbmmGoalInfo = rbmm_goal_info(set.from_list(CreatedRegions),
-                set.from_list(RemovedRegions), set.from_list(CarriedRegions),
+            RbmmGoalInfo = rbmm_goal_info(set.list_to_set(CreatedRegions),
+                set.list_to_set(RemovedRegions),
+                set.list_to_set(CarriedRegions),
                 AllocatedIntoRegions, AllocatedIntoAndReadFrom),
             goal_info_set_maybe_rbmm(yes(RbmmGoalInfo), !Info)
         )

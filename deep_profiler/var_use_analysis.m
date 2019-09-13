@@ -348,7 +348,8 @@ clique_var_use_info(CliquePtr, ArgNum, VarUseOptions, MaybeVarUseInfo) :-
                     % Add this PD to the proc dynamic pointer, we don't use a
                     % second recursion in this case.
                     proc_dynamic_recursive_var_use_info(CliquePtr, FirstPDPtr,
-                        ArgNum, RecursionType, Depth, Cost, set([FirstPDPtr]),
+                        ArgNum, RecursionType, Depth, Cost,
+                        set.make_singleton_set(FirstPDPtr),
                         VarUseOptions, MaybeVarUseInfo0)
                 ),
                 (
@@ -885,7 +886,7 @@ call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Times) :-
         HigherOrder = first_order_call,
         Callees = CostAndCallees ^ cac_callees,
         list.member_indexes0(Var, Args, ArgNums),
-        ( if set.empty(Callees) then
+        ( if set.is_empty(Callees) then
             % There are no callees; this code is never called.
             pessimistic_var_use_time(VarUseType, Cost, Time),
             Times = [Time]

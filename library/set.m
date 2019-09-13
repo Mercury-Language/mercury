@@ -56,12 +56,14 @@
     %
 :- pred empty(set(T)::in) is semidet.
 :- pred is_empty(set(T)::in) is semidet.
+:- pragma obsolete(empty/1, [is_empty/1]).
 
     % `non_empty(Set)' is true iff `Set' is not an empty set.
     % `is_non_empty' is a synonym for `non_empty'.
     %
 :- pred non_empty(set(T)::in) is semidet.
 :- pred is_non_empty(set(T)::in) is semidet.
+:- pragma obsolete(non_empty/1, [is_non_empty/1]).
 
 :- pred is_singleton(set(T)::in, T::out) is semidet.
 
@@ -268,6 +270,7 @@
     %
 :- func from_list(list(T)) = set(T).
 :- func set(list(T)) = set(T).
+:- pragma obsolete(set/1, [list_to_set/1]).
 
     % `sorted_list_to_set(List, Set)' is true iff `Set' is the set
     % containing only the members of `List'.  `List' must be sorted

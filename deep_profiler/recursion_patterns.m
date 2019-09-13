@@ -158,7 +158,7 @@ recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
         ),
         BaseLevel =
             recursion_level_report(0, BaseCount, BaseProb, BaseCost, 0.0),
-        ( if set.empty(Errors) then
+        ( if set.is_empty(Errors) then
             ( if Maximum < 0 then
                 unexpected($pred, "negative number of recursive calls")
             else if Maximum = 0 then
@@ -964,7 +964,7 @@ recursion_type_to_simple_type(rt_divide_and_conquer(_, _),
 recursion_type_to_simple_type(rt_mutual_recursion(NumProcs),
     [rts_mutual_recursion(NumProcs)]).
 recursion_type_to_simple_type(rt_other(Levels), [rts_other(SimpleLevels)]) :-
-    SimpleLevels = set.from_list(
+    SimpleLevels = set.list_to_set(
         map((func(Level) = Level ^ rlr_level), Levels)).
 recursion_type_to_simple_type(rt_errors(Errors), SimpleTypes) :-
     SimpleTypes =

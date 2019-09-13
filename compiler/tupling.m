@@ -1469,8 +1469,8 @@ cls_put_in_regs_via_deconstruct(CountInfo,
     ;
         TuplingProposal = tupling(_, TupleFieldVars, _),
         VarsToLoad = set.difference(
-            set.from_list(DeconstructFieldVars),
-            set.from_list(TupleFieldVars)),
+            set.list_to_set(DeconstructFieldVars),
+            set.list_to_set(TupleFieldVars)),
         ( if set.is_non_empty(VarsToLoad) then
             cls_require_var_in_reg_with_cost(CvLoadCost, DeconstructCellVar,
                 !State),

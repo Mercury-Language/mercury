@@ -196,7 +196,7 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
         % (See comments in term_constr_build.m).
         BugConstrs0 = polyhedron.constraints(!.Polyhedron),
         ConstrVarsSet = get_vars_from_constraints(BugConstrs0),
-        HeadVarSet = set.from_list(HeadVars),
+        HeadVarSet = set.list_to_set(HeadVars),
         BadVarsSet = set.difference(ConstrVarsSet, HeadVarSet),
         BadVars = set.to_sorted_list(BadVarsSet),
         !:Polyhedron = polyhedron.project(BadVars, SizeVarSet, !.Polyhedron),

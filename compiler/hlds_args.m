@@ -350,7 +350,7 @@ proc_arg_vector_to_list(ArgVec) = List :-
 
 proc_arg_vector_to_set(ArgVec) = Set :-
     List = proc_arg_vector_to_list(ArgVec),
-    Set  = set.from_list(List).
+    Set  = set.list_to_set(List).
 
 apply_renaming_to_proc_arg_vector(Renaming, ArgVec0, ArgVec) :-
     ArgVec0 = proc_arg_vector(InstanceTypeInfos0, InstanceTypeClassInfos0,

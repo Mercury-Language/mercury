@@ -298,8 +298,8 @@ Changes to the Mercury standard library:
   an explicitly specified input stream, not from the current input stream.
 
 * We have added a module for discrete interval encoding trees, which are a
-  highly efficient set implementation for fat sets. This module is a
-  contribution from Yes Logic Pty. Ltd.
+  highly efficient set implementation for fat sets. This module, diet.m,
+  is a contribution from Yes Logic Pty. Ltd.
 
 + We have added two new modules for concurrent programming: thread.barrier
   and thread.future. The barrier module provides a barrier type which can
@@ -436,6 +436,12 @@ Changes to the Mercury standard library:
    - det_remove
    - det_remove_list
    - rev_sorted_list_to_set
+
+   while the following predicates and/or functions have been marked as obsolete:
+
+   - empty
+   - non_empty
+   - set
 
 * We have a added a new type, maybe_errors, to the maybe module.
 

@@ -421,6 +421,7 @@ then
         p(b).
 
         :- pred q(t::in, int::out) is det.
+        :- pragma obsolete(q/2, [[p/1]]).
 
         q(T, N) :-
             (
@@ -558,7 +559,6 @@ EOF
         echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
         $BOOTSTRAP_MC \
             --verbose \
-            --halt-at-warn \
             $link_static_opt conftest \
             --fixed-contiguity-2018-10-19 \
             --no-ssdb \

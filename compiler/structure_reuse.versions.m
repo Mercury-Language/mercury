@@ -112,7 +112,7 @@ create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
 
     % Get the list of conditional reuse procedures already created.
     ExistingReusePPIds = bimap.coordinates(!.ReuseTable ^ reuse_version_map),
-    ExistingReusePPIdsSet = set.from_list(ExistingReusePPIds),
+    ExistingReusePPIdsSet = set.list_to_set(ExistingReusePPIds),
 
     map.foldl2(divide_reuse_procs(ExistingReusePPIdsSet),
         !.ReuseTable ^ reuse_info_map, [], CondOrigPPIds, [], UncondOrigPPIds),

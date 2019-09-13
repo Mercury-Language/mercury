@@ -352,7 +352,7 @@ parse_structure_reuse_condition(Term) = ReuseCondition :-
             Args = [DeadNodesTerm, InUseNodesTerm, SharingTerm]
         then
             DeadNodesList = parse_datastruct_list(DeadNodesTerm),
-            DeadNodes = set.from_list(DeadNodesList),
+            DeadNodes = set.list_to_set(DeadNodesList),
             InUseNodes = parse_datastruct_list(InUseNodesTerm),
             Sharing = parse_structure_sharing_domain(SharingTerm),
             ReuseCondition = structure_reuse_condition(DeadNodes,

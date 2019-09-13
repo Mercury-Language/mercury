@@ -658,7 +658,7 @@ reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo,
             AllHeadVarLocalSharing = sharing_as_project(HeadVars,
                 AllLocalSharing),
 
-            LocalCondition = condition(set.from_list(AllDeadHeadVarNodes),
+            LocalCondition = condition(set.list_to_set(AllDeadHeadVarNodes),
                 AllInUseHeadVarNodes, AllHeadVarLocalSharing)
         )
     ).

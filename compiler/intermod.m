@@ -3216,7 +3216,7 @@ write_trans_opt_file(ModuleInfo, !IO) :-
         % into the .trans_opt file.
 
         module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        PredIdsSet = set.from_list(PredIds),
+        PredIdsSet = set.list_to_set(PredIds),
         module_info_get_structure_reuse_preds(ModuleInfo, ReusePredsSet),
         PredIdsNoReusePredsSet = set.difference(PredIdsSet, ReusePredsSet),
         PredIdsNoReuseVersions = set.to_sorted_list(PredIdsNoReusePredsSet),

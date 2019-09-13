@@ -168,7 +168,7 @@ build_static_call_site_cost_and_callee_map(Deep, CSSPtr, !CallSitesMap) :-
     call_site_kind_to_maybe_callee(KindAndCallee, MaybeCallee),
     (
         MaybeCallee = yes(Callee),
-        Callees = set([Callee])
+        Callees = set.make_singleton_set(Callee)
     ;
         MaybeCallee = no,
         Callees = set.init
@@ -206,8 +206,8 @@ build_dynamic_call_site_cost_and_callee_map(Deep, CSSPtr - Slot,
             float(callseqs(Own) + inherit_callseqs(Inherit))),
         Exits = exits(Own)
     ),
-    CostAndCallees = cost_and_callees(CostCsq, Exits, set(Callees),
-        HigherOrder),
+    CostAndCallees = cost_and_callees(CostCsq, Exits,
+        set.list_to_set(Callees), HigherOrder),
     lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
     call_site_kind_to_higher_order(CSS ^ css_kind, HigherOrder),
     RevGoalPath = CSS ^ css_goal_path,

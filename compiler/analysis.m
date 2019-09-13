@@ -1022,15 +1022,13 @@ imdg_dependent_modules(ModuleMap, AnalysisName, FuncId, FuncInfo, Call) =
         map.search(ModuleMap, AnalysisName, FuncAnalysisMap),
         map.search(FuncAnalysisMap, FuncId, IMDGEntries)
     then
-        set.from_list(list.filter_map(arc_module_name(FuncInfo, Call),
+        set.list_to_set(list.filter_map(arc_module_name(FuncInfo, Call),
             IMDGEntries))
     else
         set.init
     ).
 
-    % XXX: compiler aborts if the modes are removed
-:- func arc_module_name(FuncInfo::in, Call::in, imdg_arc::in) =
-    (module_name::out) is semidet
+:- func arc_module_name(FuncInfo, Call, imdg_arc) = module_name is semidet
     <= call_pattern(FuncInfo, Call).
 
 arc_module_name(FuncInfo, CallA, imdg_arc(CallB0, ModuleName)) = ModuleName :-

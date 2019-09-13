@@ -960,7 +960,7 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
 
     list.filter_map(make_nested_class_prefix, MainClassFiles,
         NestedClassPrefixes),
-    NestedClassPrefixesSet = set.from_list(NestedClassPrefixes),
+    NestedClassPrefixesSet = set.list_to_set(NestedClassPrefixes),
 
     SearchDir = ClassSubDir / "jmercury",
     FollowSymLinks = yes,

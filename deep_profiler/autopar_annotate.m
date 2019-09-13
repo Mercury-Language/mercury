@@ -98,7 +98,7 @@ goal_annotate_with_instmap(Goal, SeenDuplicateInstantiation, ConsumedVars,
         % We may get away with this as our new system for determining
         % goal-dependence takes these into account.
         atomic_goal_get_vars(AtomicGoal, Vars),
-        BoundVars = set.from_list(BoundVarsList),
+        BoundVars = set.list_to_set(BoundVarsList),
         set.difference(Vars, BoundVars, ConsumedVars),
         inst_map_ground_vars(BoundVarsList, ConsumedVars, !InstMap,
             SeenDuplicateInstantiation)

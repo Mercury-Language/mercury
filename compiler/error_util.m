@@ -946,8 +946,8 @@ accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
             ModeReportControl = get_maybe_mode_report_control(Phase),
             ModeReportControl = yes(report_only_if_in_all_modes)
         ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
-    ProcAnyModeSpecSet = set.from_list(ProcAnyModeSpecs),
-    ProcAllModeSpecSet = set.from_list(ProcAllModeSpecs),
+    ProcAnyModeSpecSet = set.list_to_set(ProcAnyModeSpecs),
+    ProcAllModeSpecSet = set.list_to_set(ProcAllModeSpecs),
     (
         !.MaybeSpecs = yes(AnyModeSpecSet0 - AllModeSpecSet0),
         set.union(AnyModeSpecSet0, ProcAnyModeSpecSet, AnyModeSpecSet),

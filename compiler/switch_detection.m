@@ -1501,7 +1501,7 @@ cases_to_switch(Candidate, InstMap0, GoalExpr, !LocalInfo) :-
 compute_can_fail(Functors, Cases, SwitchCanFail, CasesMissing) :-
     UncoveredFunctors0 = set_tree234.list_to_set(Functors),
     delete_covered_functors(Cases, UncoveredFunctors0, UncoveredFunctors),
-    ( if set_tree234.empty(UncoveredFunctors) then
+    ( if set_tree234.is_empty(UncoveredFunctors) then
         SwitchCanFail = cannot_fail,
         CasesMissing = no_cases_missing
     else

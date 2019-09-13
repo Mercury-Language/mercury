@@ -312,7 +312,7 @@ index_to_dependency_file(Info, Index, DepFile) :-
 dependency_file_index_set_to_plain_set(Info, DepIndices, DepFiles) :-
     foldl(dependency_file_index_set_to_plain_set_2(Info), DepIndices,
         [], DepFilesList),
-    DepFiles = set.from_list(DepFilesList).
+    DepFiles = set.list_to_set(DepFilesList).
 
 :- pred dependency_file_index_set_to_plain_set_2(make_info::in,
     dependency_file_index::in,
@@ -1026,9 +1026,9 @@ foreign_include_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
             SourceFileName),
         module_and_imports_get_foreign_include_files(ModuleAndImports,
             ForeignIncludeFilesCord),
-        FilesList = get_foreign_include_files(set.from_list(Languages),
+        FilesList = get_foreign_include_files(set.list_to_set(Languages),
             SourceFileName, cord.list(ForeignIncludeFilesCord)),
-        Files = set.from_list(FilesList)
+        Files = set.list_to_set(FilesList)
     ;
         MaybeModuleAndImports = no,
         Success = no,

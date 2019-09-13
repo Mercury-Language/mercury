@@ -62,12 +62,14 @@
     %
 :- pred empty(set_ctree234(_T)::in) is semidet.
 :- pred is_empty(set_ctree234(_T)::in) is semidet.
+:- pragma obsolete(empty/1, [is_empty/1]).
 
     % `non_empty(Set)' is true iff `Set' is not an empty set.
     % `is_non_empty' is a synonym for `non_empty'.
     %
 :- pred non_empty(set_ctree234(T)::in) is semidet.
 :- pred is_non_empty(set_ctree234(T)::in) is semidet.
+:- pragma obsolete(non_empty/1, [is_non_empty/1]).
 
 :- pred is_singleton(set_ctree234(T)::in, T::out) is semidet.
 
