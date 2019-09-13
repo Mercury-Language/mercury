@@ -147,8 +147,8 @@ either(A, B, ImpVars) =
 normalise_true_false_implication_vars(Changed, TrueVars0, TrueVars,
         FalseVars0, FalseVars, ImpVars0, ImpVars) :-
     (
-        empty(TrueVars0),
-        empty(FalseVars0)
+        is_empty(TrueVars0),
+        is_empty(FalseVars0)
     ->
         TrueVars = TrueVars0,
         FalseVars = FalseVars0,
@@ -214,7 +214,7 @@ normalise_true_false_imp_map(IsDisImp, Changed, TrueVars0, TrueVars,
                 C = yes
             ;
                 FVs = Fs0 `intersect` Vs,
-                \+ empty(FVs)
+                is_non_empty(FVs)
             ->
                 Ts = ( IsDisImp = yes -> Ts0 `insert` V ; Ts0 ),
                 Fs = ( IsDisImp = yes -> Fs0 ; Fs0 `insert` V ),
@@ -222,12 +222,12 @@ normalise_true_false_imp_map(IsDisImp, Changed, TrueVars0, TrueVars,
                 C = yes
             ;
                 TVs = Ts0 `intersect` Vs,
-                \+ empty(TVs)
+                is_non_empty(TVs)
             ->
                 Ts = Ts0,
                 Fs = Fs0,
                 UTVs = Vs `difference` TVs,
-                ( empty(UTVs) ->
+                ( is_empty(UTVs) ->
                     IMs = IMs0 `delete` V
                 ;
                     IMs = IMs0 ^ elem(V) := UTVs
@@ -319,7 +319,7 @@ propagate_implications_into_equivalences(Changed, EQVars0, EQVars,
             (
                 RVs = R0 ^ elem(V),
                 EVs = IVs `intersect` RVs,
-                \+ empty(EVs)
+                is_non_empty(EVs)
             ->
                 C = yes,
                 E = add_equalities(EVs `insert` V, E0),
@@ -372,7 +372,7 @@ entry(V, M) =
 :- func 'entry :='(var(T), imp_map(T), vars(T)) = imp_map(T).
 
 'entry :='(V, M, Vs) =
-    ( empty(Vs) ->
+    ( is_empty(Vs) ->
         M `delete` V
     ;
         M ^ elem(V) := Vs
@@ -446,7 +446,7 @@ IMA `imp_map_difference` IMB =
 
 remove_empty_sets(IM) =
     map.foldl(func(V, Vs, M) =
-        ( empty(Vs) ->
+        ( is_empty(Vs) ->
             M `delete` V
         ;
             M

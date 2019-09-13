@@ -20,7 +20,6 @@
 % Journal of Functional Programming, volume 21, issue 02, pp. 135-157.
 %
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
 :- module diet.
 :- interface.
@@ -47,24 +46,14 @@
 :- instance diet_element(int).
 
 %---------------------------------------------------------------------------%
+%
+% Initial creation of sets.
+%
 
     % Return an empty set.
     %
 :- func init = diet(T).
 :- pred init(diet(T)::out) is det.
-
-:- pred empty(diet(T)).
-:- mode empty(in) is semidet.
-:- mode empty(out) is det.
-
-:- pred is_empty(diet(T)::in) is semidet.
-
-:- pred is_non_empty(diet(T)::in) is semidet.
-
-    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
-    % elements.
-    %
-:- pred equal(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
 
     % `make_singleton_set(Elem)' returns a set containing just the single
     % element `Elem'.
@@ -76,14 +65,29 @@
     %
 :- func make_interval_set(T, T) = diet(T) <= diet_element(T).
 
+%---------------------------------------------------------------------------%
+%
+% Emptiness and singleton-ness tests.
+%
+
+:- pred empty(diet(T)).
+:- mode empty(in) is semidet.
+:- mode empty(out) is det.
+:- pragma obsolete(empty/1, [init/0, init/1, is_empty/1]).
+
+:- pred is_empty(diet(T)::in) is semidet.
+
+:- pred is_non_empty(diet(T)::in) is semidet.
+
     % `is_singleton(Set, X)' is true iff `Set' is a singleton containing the
     % element `X'.
     %
 :- pred is_singleton(diet(T)::in, T::out) is semidet <= diet_element(T).
 
-    % `contains(Set, X)' is true iff `X' is a member of `Set'.
-    %
-:- pred contains(diet(T)::in, T::in) is semidet <= diet_element(T).
+%---------------------------------------------------------------------------%
+%
+% Membership tests.
+%
 
     % `member(X, Set)' is true iff `X' is a member of `Set'.
     %
@@ -91,19 +95,27 @@
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
+    % `contains(Set, X)' is true iff `X' is a member of `Set'.
     %
-:- pred subset(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
+:- pred contains(diet(T)::in, T::in) is semidet <= diet_element(T).
 
-    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
-    %
-:- pred superset(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
+%---------------------------------------------------------------------------%
+%
+% Insertions and deletions.
+%
 
     % `insert(X, Set0, Set)' is true iff `Set' is the union of
     % `Set0' and the set containing only `X'.
     %
 :- func insert(diet(T), T) = diet(T) <= diet_element(T).
 :- pred insert(T::in, diet(T)::in, diet(T)::out) is det <= diet_element(T).
+
+    % `insert_interval(X, Y, Set0, Set)' is true iff `Set' is the union of
+    % `Set0' and the set containing only the elements of the interval [X, Y].
+    % Throws an exception if Y < X.
+    %
+:- pred insert_interval(T::in, T::in, diet(T)::in, diet(T)::out) is det
+    <= diet_element(T).
 
     % `insert_new(X, Set0, Set)' is true iff `Set0' does not contain
     % `X', and `Set' is the union of `Set0' and the set containing only `X'.
@@ -116,13 +128,6 @@
     %
 :- func insert_list(diet(T), list(T)) = diet(T) <= diet_element(T).
 :- pred insert_list(list(T)::in, diet(T)::in, diet(T)::out) is det
-    <= diet_element(T).
-
-    % `insert_interval(X, Y, Set0, Set)' is true iff `Set' is the union of
-    % `Set0' and the set containing only the elements of the interval [X, Y].
-    % Throws an exception if Y < X.
-    %
-:- pred insert_interval(T::in, T::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
     % `delete(X, Set0, Set)' is true iff `Set' is the relative
@@ -163,13 +168,28 @@
 :- pred remove_least(T::out, diet(T)::in, diet(T)::out) is semidet
     <= diet_element(T).
 
-    % `split(X, Set, Lesser, IsPresent, Greater)' is true iff `Lesser' is the
-    % set of elements in `Set' which are less than `X' and `Greater' is the set
-    % of elements in `Set' which are greater than `X'.
-    % `IsPresent' is `yes' if `Set' contains `X', and `no' otherwise.
+%---------------------------------------------------------------------------%
+%
+% Comparisons between sets.
+%
+
+    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
+    % elements.
     %
-:- pred split(T::in, diet(T)::in, diet(T)::out, bool::out, diet(T)::out) is det
-    <= diet_element(T).
+:- pred equal(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
+
+    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
+    %
+:- pred subset(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
+
+    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
+    %
+:- pred superset(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
+
+%---------------------------------------------------------------------------%
+%
+% Operations on two or more sets.
+%
 
     % `union(SetA, SetB, Set)' is true iff `Set' is the union of
     % `SetA' and `SetB'.
@@ -204,6 +224,19 @@
 :- pred difference(diet(T)::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
+%---------------------------------------------------------------------------%
+%
+% Operations that divide a set into two parts.
+%
+
+    % `split(X, Set, Lesser, IsPresent, Greater)' is true iff
+    % `Lesser' is the set of elements in `Set' which are less than `X' and
+    % `Greater' is the set of elements in `Set' which are greater than `X'.
+    % `IsPresent' is `yes' if `Set' contains `X', and `no' otherwise.
+    %
+:- pred split(T::in, diet(T)::in, diet(T)::out, bool::out, diet(T)::out) is det
+    <= diet_element(T).
+
     % divide(Pred, Set, InPart, OutPart):
     % InPart consists of those elements of Set for which Pred succeeds;
     % OutPart consists of those elements of Set for which Pred fails.
@@ -218,9 +251,83 @@
 :- pred divide_by_set(diet(T)::in, diet(T)::in, diet(T)::out, diet(T)::out)
     is det <= diet_element(T).
 
+%---------------------------------------------------------------------------%
+%
+% Converting lists to sets.
+%
+
+    % `list_to_set(List)' returns a set containing only the members of `List'.
+    %
+:- func list_to_set(list(T)) = diet(T) <= diet_element(T).
+:- pred list_to_set(list(T)::in, diet(T)::out) is det <= diet_element(T).
+
+:- func from_list(list(T)) = diet(T) <= diet_element(T).
+:- pred from_list(list(T)::in, diet(T)::out) is det <= diet_element(T).
+
+    % `from_interval_list(Intervals, Set)' returns a Set containing the
+    % elements of all intervals [X, Y] in Intervals, where each interval is
+    % represented by a tuple. Throws an exception if any interval has Y < X.
+    % The intervals may overlap.
+    %
+:- pred from_interval_list(list({T, T})::in, diet(T)::out) is det
+    <= diet_element(T).
+
+    % `sorted_list_to_set(List)' returns a set containing only the members
+    % of `List'. `List' must be sorted.
+    %
+:- func sorted_list_to_set(list(T)) = diet(T) <= diet_element(T).
+:- pred sorted_list_to_set(list(T)::in, diet(T)::out) is det
+    <= diet_element(T).
+
+%---------------------------------------------------------------------------%
+%
+% Converting sets to lists.
+%
+
+    % `to_sorted_list(Set)' returns a list containing all the members of `Set',
+    % in sorted order.
+    %
+:- func to_sorted_list(diet(T)) = list(T) <= diet_element(T).
+:- pred to_sorted_list(diet(T)::in, list(T)::out) is det <= diet_element(T).
+
+    % `to_sorted_interval_list(Set)' returns a list of intervals in `Set'
+    % in sorted order, where each interval is represented by a tuple.
+    % The intervals do not overlap.
+    %
+:- pred to_sorted_interval_list(diet(T)::in, list({T, T})::out) is det
+    <= diet_element(T).
+
+%---------------------------------------------------------------------------%
+%
+% Counting.
+%
+
     % `count(Set)' returns the number of elements in Set.
     %
 :- func count(diet(T)) = int <= enum(T).
+
+%---------------------------------------------------------------------------%
+%
+% Standard higher order functions on collections.
+%
+
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), diet(T)::in) is semidet
+    <= diet_element(T).
+
+    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
+    % Pred succeeds.
+    %
+:- func filter(pred(T), diet(T)) = diet(T) <= diet_element(T).
+:- mode filter(pred(in) is semidet, in) = out is det.
+
+    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
+    % for which Pred succeeds, and those for which it fails.
+    %
+:- pred filter(pred(T), diet(T), diet(T), diet(T)) <= diet_element(T).
+:- mode filter(pred(in) is semidet, in, out, out) is det.
 
     % `foldl_intervals(Pred, Set, Start)' calls Pred with each interval of
     % `Set' (in sorted order) and an accumulator (with the initial value of
@@ -330,60 +437,6 @@
 :- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
 :- mode foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
-    % for all the elements of Set.
-    %
-:- pred all_true(pred(T)::in(pred(in) is semidet), diet(T)::in) is semidet
-    <= diet_element(T).
-
-    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
-    % Pred succeeds.
-    %
-:- func filter(pred(T), diet(T)) = diet(T) <= diet_element(T).
-:- mode filter(pred(in) is semidet, in) = out is det.
-
-    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
-    % for which Pred succeeds, and those for which it fails.
-    %
-:- pred filter(pred(T), diet(T), diet(T), diet(T)) <= diet_element(T).
-:- mode filter(pred(in) is semidet, in, out, out) is det.
-
-    % `list_to_set(List)' returns a set containing only the members of `List'.
-    %
-:- func list_to_set(list(T)) = diet(T) <= diet_element(T).
-:- pred list_to_set(list(T)::in, diet(T)::out) is det <= diet_element(T).
-
-:- func from_list(list(T)) = diet(T) <= diet_element(T).
-:- pred from_list(list(T)::in, diet(T)::out) is det <= diet_element(T).
-
-    % `sorted_list_to_set(List)' returns a set containing only the members
-    % of `List'. `List' must be sorted.
-    %
-:- func sorted_list_to_set(list(T)) = diet(T) <= diet_element(T).
-:- pred sorted_list_to_set(list(T)::in, diet(T)::out) is det
-    <= diet_element(T).
-
-    % `to_sorted_list(Set)' returns a list containing all the members of `Set',
-    % in sorted order.
-    %
-:- func to_sorted_list(diet(T)) = list(T) <= diet_element(T).
-:- pred to_sorted_list(diet(T)::in, list(T)::out) is det <= diet_element(T).
-
-    % `to_sorted_interval_list(Set)' returns a list of intervals in `Set'
-    % in sorted order, where each interval is represented by a tuple.
-    % The intervals do not overlap.
-    %
-:- pred to_sorted_interval_list(diet(T)::in, list({T, T})::out) is det
-    <= diet_element(T).
-
-    % `from_interval_list(Intervals, Set)' returns a Set containing the
-    % elements of all intervals [X, Y] in Intervals, where each interval is
-    % represented by a tuple. Throws an exception if any interval has Y < X.
-    % The intervals may overlap.
-    %
-:- pred from_interval_list(list({T, T})::in, diet(T)::out) is det
-    <= diet_element(T).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -693,28 +746,6 @@ init = empty.
 
 init(empty).
 
-empty(empty).
-
-is_empty(empty).
-
-is_non_empty(node(_, _, _, _)).
-
-%---------------------------------------------------------------------------%
-
-equal(T1, T2) :-
-    (
-        T1 = empty,
-        T2 = empty
-    ;
-        T1 = node(_, _, _, _),
-        T2 = node(_, _, _, _),
-        take_min_iter(T1, {X, Y}, R1),
-        take_min_iter(T2, {X, Y}, R2),
-        equal(R1, R2)
-    ).
-
-%---------------------------------------------------------------------------%
-
 make_singleton_set(X) = singleton({X, X}).
 
 make_interval_set(X, Y) = T :-
@@ -724,20 +755,16 @@ make_interval_set(X, Y) = T :-
         unexpected_interval($pred, X, Y)
     ).
 
-is_singleton(Set, X) :-
-    Set = node({X, X}, _, empty, empty).
-
 %---------------------------------------------------------------------------%
 
-contains(T, Z) :-
-    T = node({X, Y}, _, L, R),
-    ( if Z < X then
-        contains(L, Z)
-    else if Z > Y then
-        contains(R, Z)
-    else
-        true
-    ).
+empty(empty).
+
+is_empty(empty).
+
+is_non_empty(node(_, _, _, _)).
+
+is_singleton(Set, X) :-
+    Set = node({X, X}, _, empty, empty).
 
 %---------------------------------------------------------------------------%
 
@@ -770,72 +797,15 @@ member_in_range(Lo, Hi, Elem) :-
         Elem = Lo
     ).
 
-%---------------------------------------------------------------------------%
-
-subset(T1, T2) :-
-    (
-        T1 = empty
-    ;
-        T1 = node(_, _, _, _),
-        T2 = node(_, _, _, _),
-        take_min_iter(T1, XY1, R1),
-        take_min_iter(T2, XY2, R2),
-        subset_2(XY1, R1, XY2, R2, yes)
-    ).
-
-:- pred subset_2(interval(T)::in, diet(T)::in, interval(T)::in, diet(T)::in,
-    bool::out) is det <= diet_element(T).
-
-subset_2({X1, Y1}, R1, {X2, Y2}, R2, IsSubset) :-
-    ( if X1 < X2 then
-        IsSubset = no
-    else if X1 > Y2 then
-        (
-            R2 = empty,
-            IsSubset = no
-        ;
-            R2 = node(_, _, _, _),
-            take_min_iter(R2, Min2, MinR2),
-            subset_2({X1, Y1}, R1, Min2, MinR2, IsSubset)
-        )
+contains(T, Z) :-
+    T = node({X, Y}, _, L, R),
+    ( if Z < X then
+        contains(L, Z)
+    else if Z > Y then
+        contains(R, Z)
     else
-        compare(Upper, Y1, Y2),
-        (
-            Upper = (<),
-            (
-                R1 = empty,
-                IsSubset = yes
-            ;
-                R1 = node(_, _, _, _),
-                take_min_iter(R1, Min1, MinR1),
-                subset_2(Min1, MinR1, {X2, Y2}, R2, IsSubset)
-            )
-        ;
-            Upper = (=),
-            (
-                R1 = empty,
-                IsSubset = yes
-            ;
-                R1 = node(_, _, _, _),
-                R2 = empty,
-                IsSubset = no
-            ;
-                R1 = node(_, _, _, _),
-                R2 = node(_, _, _, _),
-                take_min_iter(R1, Min1, MinR1),
-                take_min_iter(R2, Min2, MinR2),
-                subset_2(Min1, MinR1, Min2, MinR2, IsSubset)
-            )
-        ;
-            Upper = (>),
-            IsSubset = no
-        )
+        true
     ).
-
-%---------------------------------------------------------------------------%
-
-superset(Superset, Set) :-
-    subset(Set, Superset).
 
 %---------------------------------------------------------------------------%
 
@@ -890,63 +860,7 @@ add(P, T0) = T :-
         )
     ).
 
-%---------------------------------------------------------------------------%
-
-insert_new(P, T0, T) :-
-    (
-        T0 = empty,
-        T = node({P, P}, 1, empty, empty)
-    ;
-        T0 = node({X, Y}, H, Left, Right),
-        ( if P >= X then
-            ( if P =< Y then
-                % Already exists.
-                fail
-            else if P > successor(Y) then
-                insert_new(P, Right, R),
-                T = join({X, Y}, Left, R)
-            else
-                (
-                    Right = empty,
-                    T = node({X, P}, H, Left, Right)
-                ;
-                    Right = node(_, _, _, _),
-                    take_min(Right, {U, V}, R),
-                    ( if predecessor(U) = P then
-                        T = join({X, V}, Left, R)
-                    else
-                        T = node({X, P}, H, Left, Right)
-                    )
-                )
-            )
-        else if P < predecessor(X) then
-            insert_new(P, Left, L),
-            T = join({X, Y}, L, Right)
-        else
-            (
-                Left = empty,
-                T = node({P, Y}, H, Left, Right)
-            ;
-                Left = node(_, _, _, _),
-                take_max(Left, {U, V}, L),
-                ( if successor(V) = P then
-                    T = join({U, V}, L, Right)
-                else
-                    T = node({P, Y}, H, Left, Right)
-                )
-            )
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-insert_list(Set0, Elems) = Set :-
-    insert_list(Elems, Set0, Set).
-
-insert_list(Elems, Set0, Set) :-
-    foldl(insert, Elems, Set0, Set).
-
-%---------------------------------------------------------------------------%
+%---------------------%
 
 insert_interval(X, Y, Set0, Set) :-
     ( if X =< Y then
@@ -1029,7 +943,63 @@ find_del_right(P0, T0, P, T) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
+
+insert_new(P, T0, T) :-
+    (
+        T0 = empty,
+        T = node({P, P}, 1, empty, empty)
+    ;
+        T0 = node({X, Y}, H, Left, Right),
+        ( if P >= X then
+            ( if P =< Y then
+                % Already exists.
+                fail
+            else if P > successor(Y) then
+                insert_new(P, Right, R),
+                T = join({X, Y}, Left, R)
+            else
+                (
+                    Right = empty,
+                    T = node({X, P}, H, Left, Right)
+                ;
+                    Right = node(_, _, _, _),
+                    take_min(Right, {U, V}, R),
+                    ( if predecessor(U) = P then
+                        T = join({X, V}, Left, R)
+                    else
+                        T = node({X, P}, H, Left, Right)
+                    )
+                )
+            )
+        else if P < predecessor(X) then
+            insert_new(P, Left, L),
+            T = join({X, Y}, L, Right)
+        else
+            (
+                Left = empty,
+                T = node({P, Y}, H, Left, Right)
+            ;
+                Left = node(_, _, _, _),
+                take_max(Left, {U, V}, L),
+                ( if successor(V) = P then
+                    T = join({U, V}, L, Right)
+                else
+                    T = node({P, Y}, H, Left, Right)
+                )
+            )
+        )
+    ).
+
+%---------------------%
+
+insert_list(Set0, Elems) = Set :-
+    insert_list(Elems, Set0, Set).
+
+insert_list(Elems, Set0, Set) :-
+    foldl(insert, Elems, Set0, Set).
+
+%---------------------%
 
 delete(Set0, Elem) = Set :-
     delete(Elem, Set0, Set).
@@ -1041,7 +1011,7 @@ delete(Elem, Set0, Set) :-
         Set = Set0
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 delete_list(Set0, List) = Set :-
     delete_list(List, Set0, Set).
@@ -1091,14 +1061,14 @@ remove(Z, T0, T) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove_list(X, Set0, Set) :-
     list_to_set(X, SetX),
     subset(SetX, Set0),
     difference(Set0, SetX, Set).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove_least(X, Set0, Set) :-
     (
@@ -1116,34 +1086,80 @@ remove_least(X, Set0, Set) :-
 
 %---------------------------------------------------------------------------%
 
-split(X, Set, Lesser, IsPresent, Greater) :-
+equal(T1, T2) :-
     (
-        Set = empty,
-        IsPresent = no,
-        Lesser = empty,
-        Greater = empty
+        T1 = empty,
+        T2 = empty
     ;
-        Set = node({A, B}, _, L, R),
-        ( if X < A then
-            split(X, L, Lesser, IsPresent, RL),
-            Greater = join({A, B}, RL, R)
-        else if B < X then
-            split(X, R, LR, IsPresent, Greater),
-            Lesser = join({A, B}, L, LR)
-        else
-            IsPresent = yes,
-            ( if X = A then
-                Lesser = L
-            else
-                Lesser = do_insert({A, predecessor(X)}, L)
-            ),
-            ( if X = B then
-                Greater = R
-            else
-                Greater = do_insert({successor(X), B}, R)
+        T1 = node(_, _, _, _),
+        T2 = node(_, _, _, _),
+        take_min_iter(T1, {X, Y}, R1),
+        take_min_iter(T2, {X, Y}, R2),
+        equal(R1, R2)
+    ).
+
+subset(T1, T2) :-
+    (
+        T1 = empty
+    ;
+        T1 = node(_, _, _, _),
+        T2 = node(_, _, _, _),
+        take_min_iter(T1, XY1, R1),
+        take_min_iter(T2, XY2, R2),
+        subset_2(XY1, R1, XY2, R2, yes)
+    ).
+
+:- pred subset_2(interval(T)::in, diet(T)::in, interval(T)::in, diet(T)::in,
+    bool::out) is det <= diet_element(T).
+
+subset_2({X1, Y1}, R1, {X2, Y2}, R2, IsSubset) :-
+    ( if X1 < X2 then
+        IsSubset = no
+    else if X1 > Y2 then
+        (
+            R2 = empty,
+            IsSubset = no
+        ;
+            R2 = node(_, _, _, _),
+            take_min_iter(R2, Min2, MinR2),
+            subset_2({X1, Y1}, R1, Min2, MinR2, IsSubset)
+        )
+    else
+        compare(Upper, Y1, Y2),
+        (
+            Upper = (<),
+            (
+                R1 = empty,
+                IsSubset = yes
+            ;
+                R1 = node(_, _, _, _),
+                take_min_iter(R1, Min1, MinR1),
+                subset_2(Min1, MinR1, {X2, Y2}, R2, IsSubset)
             )
+        ;
+            Upper = (=),
+            (
+                R1 = empty,
+                IsSubset = yes
+            ;
+                R1 = node(_, _, _, _),
+                R2 = empty,
+                IsSubset = no
+            ;
+                R1 = node(_, _, _, _),
+                R2 = node(_, _, _, _),
+                take_min_iter(R1, Min1, MinR1),
+                take_min_iter(R2, Min2, MinR2),
+                subset_2(Min1, MinR1, Min2, MinR2, IsSubset)
+            )
+        ;
+            Upper = (>),
+            IsSubset = no
         )
     ).
+
+superset(Superset, Set) :-
+    subset(Set, Superset).
 
 %---------------------------------------------------------------------------%
 
@@ -1249,7 +1265,7 @@ union_helper(Left0, {A, B}, Right0, Limit, Head0, Stream0,
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 union_list(Sets) = Set :-
     union_list(Sets, Set).
@@ -1263,7 +1279,7 @@ union_list(Sets, Set) :-
         foldl(union, SetBs, SetA, Set)
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 intersect(SetA, SetB) = inter(SetA, SetB).
 
@@ -1359,7 +1375,7 @@ inter_help({A, B}, Right0, Left0, Head0, Stream0,
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 intersect_list(Sets) = Set :-
     intersect_list(Sets, Set).
@@ -1368,7 +1384,7 @@ intersect_list([], init).
 intersect_list([Set0 | Sets], Set) :-
     foldl(intersect, Sets, Set0, Set).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 difference(SetA, SetB) = Set :-
     difference(SetA, SetB, Set).
@@ -1454,6 +1470,37 @@ diff_helper({A, B}, Right0, Left0, Head0, Stream0,
 
 %---------------------------------------------------------------------------%
 
+split(X, Set, Lesser, IsPresent, Greater) :-
+    (
+        Set = empty,
+        IsPresent = no,
+        Lesser = empty,
+        Greater = empty
+    ;
+        Set = node({A, B}, _, L, R),
+        ( if X < A then
+            split(X, L, Lesser, IsPresent, RL),
+            Greater = join({A, B}, RL, R)
+        else if B < X then
+            split(X, R, LR, IsPresent, Greater),
+            Lesser = join({A, B}, L, LR)
+        else
+            IsPresent = yes,
+            ( if X = A then
+                Lesser = L
+            else
+                Lesser = do_insert({A, predecessor(X)}, L)
+            ),
+            ( if X = B then
+                Greater = R
+            else
+                Greater = do_insert({successor(X), B}, R)
+            )
+        )
+    ).
+
+%---------------------%
+
 divide(Pred, Set, TrueSet, FalseSet) :-
     % Can do better.
     foldl2(divide_2(Pred), Set, init, TrueSet, init, FalseSet).
@@ -1469,11 +1516,50 @@ divide_2(Pred, Elem, !TrueSet, !FalseSet) :-
         insert(Elem, !FalseSet)
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 divide_by_set(DivideBySet, Set, InPart, OutPart) :-
     intersect(Set, DivideBySet, InPart),
     difference(Set, DivideBySet, OutPart).
+
+%---------------------------------------------------------------------------%
+
+list_to_set(List) = Set :-
+    list_to_set(List, Set).
+
+list_to_set(List, Set) :-
+    foldl(insert, List, init, Set).
+
+from_list(List) = Set :-
+    list_to_set(List, Set).
+
+from_list(List, Set) :-
+    list_to_set(List, Set).
+
+from_interval_list(List, Set) :-
+    list.foldl(insert_interval, List, init, Set).
+
+sorted_list_to_set(List) = Set :-
+    sorted_list_to_set(List, Set).
+
+sorted_list_to_set(List, Set) :-
+    list_to_set(List, Set).
+
+%---------------------------------------------------------------------------%
+
+to_sorted_list(T) = List :-
+    to_sorted_list(T, List).
+
+to_sorted_list(T, List) :-
+    foldr(list.cons, T, [], List).
+
+to_sorted_interval_list(Set, List) :-
+    foldr_intervals(cons_interval, Set, [], List).
+
+:- pred cons_interval(T::in, T::in, list({T, T})::in, list({T, T})::out)
+    is det.
+
+cons_interval(X, Y, L, [{X, Y} | L]).
 
 %---------------------------------------------------------------------------%
 
@@ -1496,6 +1582,37 @@ count(T, Acc0, Acc) :-
 
 %---------------------------------------------------------------------------%
 
+all_true(P, Set) :-
+    (
+        Set = empty
+    ;
+        Set = node({X, Y}, _, L, R),
+        all_true(P, L),
+        all_true_interval(P, X, Y),
+        all_true(P, R)
+    ).
+
+:- pred all_true_interval(pred(T)::in(pred(in) is semidet), T::in, T::in)
+    is semidet <= diet_element(T).
+
+all_true_interval(P, Lo, Hi) :-
+    ( if Lo =< Hi then
+        P(Lo),
+        all_true_interval(P, successor(Lo), Hi)
+    else
+        true
+    ).
+
+%---------------------%
+
+filter(Pred, Set) = TrueSet :-
+    divide(Pred, Set, TrueSet, _FalseSet).
+
+filter(Pred, Set, TrueSet, FalseSet) :-
+    divide(Pred, Set, TrueSet, FalseSet).
+
+%---------------------%
+
 foldl_intervals(P, T, !Acc) :-
     (
         T = empty
@@ -1506,7 +1623,7 @@ foldl_intervals(P, T, !Acc) :-
         foldl_intervals(P, R, !Acc)
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 foldr_intervals(P, T, !Acc) :-
     (
@@ -1518,7 +1635,7 @@ foldr_intervals(P, T, !Acc) :-
         foldr_intervals(P, L, !Acc)
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 foldl(F, Set, Acc0) = Acc :-
     P = (pred(E::in, PAcc0::in, PAcc::out) is det :-
@@ -1526,7 +1643,7 @@ foldl(F, Set, Acc0) = Acc :-
     ),
     foldl(P, Set, Acc0, Acc).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 foldl(P, T, !Acc) :-
     (
@@ -1554,7 +1671,7 @@ foldl_2(P, Lo, Hi, !Acc) :-
         true
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 foldl2(P, T, !Acc1, !Acc2) :-
     (
@@ -1589,7 +1706,7 @@ fold_up2(P, Lo, Hi, !A, !B) :-
         true
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 foldl3(P, T, !Acc1, !Acc2, !Acc3) :-
     (
@@ -1624,7 +1741,7 @@ fold_up3(P, Lo, Hi, !A, !B, !C) :-
         true
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 foldl4(P, T, !A, !B, !C, !D) :-
     (
@@ -1659,7 +1776,7 @@ fold_up4(P, Lo, Hi, !A, !B, !C, !D) :-
         true
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 foldl5(P, T, !A, !B, !C, !D, !E) :-
     (
@@ -1701,7 +1818,7 @@ fold_up5(P, Lo, Hi, !A, !B, !C, !D, !E) :-
         true
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 foldr(F, Set, Acc0) = Acc :-
     P = (pred(E::in, PAcc0::in, PAcc::out) is det :-
@@ -1736,69 +1853,5 @@ fold_down(P, Lo, Hi, !A) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-all_true(P, Set) :-
-    (
-        Set = empty
-    ;
-        Set = node({X, Y}, _, L, R),
-        all_true(P, L),
-        all_true_interval(P, X, Y),
-        all_true(P, R)
-    ).
-
-:- pred all_true_interval(pred(T)::in(pred(in) is semidet), T::in, T::in)
-    is semidet <= diet_element(T).
-
-all_true_interval(P, Lo, Hi) :-
-    ( if Lo =< Hi then
-        P(Lo),
-        all_true_interval(P, successor(Lo), Hi)
-    else
-        true
-    ).
-
+:- end_module diet.
 %---------------------------------------------------------------------------%
-
-filter(Pred, Set) = TrueSet :-
-    divide(Pred, Set, TrueSet, _FalseSet).
-
-filter(Pred, Set, TrueSet, FalseSet) :-
-    divide(Pred, Set, TrueSet, FalseSet).
-
-%---------------------------------------------------------------------------%
-
-list_to_set(List) = Set :-
-    list_to_set(List, Set).
-
-list_to_set(List, Set) :-
-    foldl(insert, List, init, Set).
-
-from_list(List) = Set :-
-    list_to_set(List, Set).
-
-from_list(List, Set) :-
-    list_to_set(List, Set).
-
-sorted_list_to_set(List) = Set :-
-    sorted_list_to_set(List, Set).
-
-sorted_list_to_set(List, Set) :-
-    list_to_set(List, Set).
-
-to_sorted_list(T) = List :-
-    to_sorted_list(T, List).
-
-to_sorted_list(T, List) :-
-    foldr(list.cons, T, [], List).
-
-to_sorted_interval_list(Set, List) :-
-    foldr_intervals(cons_interval, Set, [], List).
-
-:- pred cons_interval(T::in, T::in, list({T, T})::in, list({T, T})::out)
-    is det.
-
-cons_interval(X, Y, L, [{X, Y} | L]).
-
-from_interval_list(List, Set) :-
-    list.foldl(insert_interval, List, init, Set).

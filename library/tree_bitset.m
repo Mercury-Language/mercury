@@ -32,7 +32,6 @@
 % integers. This may change once unsigned integer operations are available.
 %
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
 :- module tree_bitset.
 :- interface.
@@ -47,42 +46,42 @@
 
 :- type tree_bitset(T). % <= enum(T).
 
-    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
-    % elements. Takes O(min(card(SetA), card(SetB))) time.
-    %
-:- pred equal(tree_bitset(T)::in, tree_bitset(T)::in) is semidet <= enum(T).
-
 %---------------------------------------------------------------------------%
+%
+% Initial creation of sets.
+%
 
     % Return an empty set.
     %
 :- func init = tree_bitset(T).
-
-:- pred empty(tree_bitset(T)).
-:- mode empty(in) is semidet.
-:- mode empty(out) is det.
-
-:- pred is_empty(tree_bitset(T)::in) is semidet.
-
-:- pred is_non_empty(tree_bitset(T)::in) is semidet.
-
-%---------------------%
 
     % `make_singleton_set(Elem)' returns a set containing just the single
     % element `Elem'.
     %
 :- func make_singleton_set(T) = tree_bitset(T) <= enum(T).
 
+%---------------------------------------------------------------------------%
+%
+% Emptiness and singleton-ness tests.
+%
+
+:- pred empty(tree_bitset(T)).
+:- mode empty(in) is semidet.
+:- mode empty(out) is det.
+:- pragma obsolete(empty/1, [init/0, is_empty/1]).
+
+:- pred is_empty(tree_bitset(T)::in) is semidet.
+
+:- pred is_non_empty(tree_bitset(T)::in) is semidet.
+
     % Is the given set a singleton, and if yes, what is the element?
     %
 :- pred is_singleton(tree_bitset(T)::in, T::out) is semidet <= enum(T).
 
 %---------------------------------------------------------------------------%
-
-    % `contains(Set, X)' is true iff `X' is a member of `Set'.
-    % Takes O(log(card(Set))) time.
-    %
-:- pred contains(tree_bitset(T)::in, T::in) is semidet <= enum(T).
+%
+% Membership tests.
+%
 
     % `member(X, Set)' is true iff `X' is a member of `Set'.
     % Takes O(card(Set)) time for the semidet mode.
@@ -91,7 +90,15 @@
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
+    % `contains(Set, X)' is true iff `X' is a member of `Set'.
+    % Takes O(log(card(Set))) time.
+    %
+:- pred contains(tree_bitset(T)::in, T::in) is semidet <= enum(T).
+
 %---------------------------------------------------------------------------%
+%
+% Insertions and deletions.
+%
 
     % `insert(Set, X)' returns the union of `Set' and the set containing
     % only `X'. Takes O(log(card(Set))) time and space.
@@ -169,6 +176,92 @@
     is semidet <= enum(T).
 
 %---------------------------------------------------------------------------%
+%
+% Comparisons between sets.
+%
+
+    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
+    % elements. Takes O(min(card(SetA), card(SetB))) time.
+    %
+:- pred equal(tree_bitset(T)::in, tree_bitset(T)::in) is semidet <= enum(T).
+
+    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
+    % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
+    %
+:- pred subset(tree_bitset(T)::in, tree_bitset(T)::in) is semidet.
+
+    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
+    % Same as `intersect(Superset, Set, Set)', but may be more efficient.
+    %
+:- pred superset(tree_bitset(T)::in, tree_bitset(T)::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Operations on two or more sets.
+%
+
+    % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
+    % efficiency of the union operation is not sensitive to the argument
+    % ordering. Takes somewhere between O(log(card(SetA)) + log(card(SetB)))
+    % and O(card(SetA) + card(SetB)) time and space.
+    %
+:- func union(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
+:- pred union(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
+    is det.
+
+    % `union_list(Sets, Set)' returns the union of all the sets in Sets.
+    %
+:- func union_list(list(tree_bitset(T))) = tree_bitset(T).
+:- pred union_list(list(tree_bitset(T))::in, tree_bitset(T)::out) is det.
+
+    % `intersect(SetA, SetB)' returns the intersection of `SetA' and `SetB'.
+    % The efficiency of the intersection operation is not sensitive to the
+    % argument ordering. Takes somewhere between
+    % O(log(card(SetA)) + log(card(SetB))) and O(card(SetA) + card(SetB)) time,
+    % and O(min(card(SetA)), card(SetB)) space.
+    %
+:- func intersect(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
+:- pred intersect(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
+    is det.
+
+    % `intersect_list(Sets, Set)' returns the intersection of all the sets
+    % in Sets.
+    %
+:- func intersect_list(list(tree_bitset(T))) = tree_bitset(T).
+:- pred intersect_list(list(tree_bitset(T))::in, tree_bitset(T)::out) is det.
+
+    % `difference(SetA, SetB)' returns the set containing all the elements
+    % of `SetA' except those that occur in `SetB'. Takes somewhere between
+    % O(log(card(SetA)) + log(card(SetB))) and O(card(SetA) + card(SetB)) time,
+    % and O(card(SetA)) space.
+    %
+:- func difference(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
+:- pred difference(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
+    is det.
+
+%---------------------------------------------------------------------------%
+%
+% Operations that divide a set into two parts.
+%
+
+    % divide(Pred, Set, InPart, OutPart):
+    % InPart consists of those elements of Set for which Pred succeeds;
+    % OutPart consists of those elements of Set for which Pred fails.
+    %
+:- pred divide(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in,
+    tree_bitset(T)::out, tree_bitset(T)::out) is det <= enum(T).
+
+    % divide_by_set(DivideBySet, Set, InPart, OutPart):
+    % InPart consists of those elements of Set which are also in DivideBySet;
+    % OutPart consists of those elements of Set which are not in DivideBySet.
+    %
+:- pred divide_by_set(tree_bitset(T)::in, tree_bitset(T)::in,
+    tree_bitset(T)::out, tree_bitset(T)::out) is det <= enum(T).
+
+%---------------------------------------------------------------------------%
+%
+% Converting lists to sets.
+%
 
     % `list_to_set(List)' returns a set containing only the members of `List'.
     % Takes O(length(List)) time and space.
@@ -182,13 +275,21 @@
 :- func sorted_list_to_set(list(T)) = tree_bitset(T) <= enum(T).
 :- pred sorted_list_to_set(list(T)::in, tree_bitset(T)::out) is det <= enum(T).
 
+%---------------------------------------------------------------------------%
+%
+% Converting sets to lists.
+%
+
     % `to_sorted_list(Set)' returns a list containing all the members of `Set',
     % in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_sorted_list(tree_bitset(T)) = list(T) <= enum(T).
 :- pred to_sorted_list(tree_bitset(T)::in, list(T)::out) is det <= enum(T).
 
-%---------------------%
+%---------------------------------------------------------------------------%
+%
+% Converting between different kinds of sets.
+%
 
     % `from_set(Set)' returns a bitset containing only the members of `Set'.
     % Takes O(card(Set)) time and space.
@@ -201,11 +302,38 @@
 :- func to_set(tree_bitset(T)) = set.set(T) <= enum(T).
 
 %---------------------------------------------------------------------------%
+%
+% Counting.
+%
 
     % `count(Set)' returns the number of elements in `Set'.
     % Takes O(card(Set)) time.
     %
 :- func count(tree_bitset(T)) = int <= enum(T).
+
+%---------------------------------------------------------------------------%
+%
+% Standard higher order functions on collections.
+%
+
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in)
+    is semidet <= enum(T).
+
+    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
+    % Pred succeeds.
+    %
+:- func filter(pred(T), tree_bitset(T)) = tree_bitset(T) <= enum(T).
+:- mode filter(pred(in) is semidet, in) = out is det.
+
+    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
+    % for which Pred succeeds, and those for which it fails.
+    %
+:- pred filter(pred(T), tree_bitset(T), tree_bitset(T), tree_bitset(T))
+    <= enum(T).
+:- mode filter(pred(in) is semidet, in, out, out) is det.
 
     % `foldl(Func, Set, Start)' calls Func with each element of `Set'
     % (in sorted order) and an accumulator (with the initial value of `Start'),
@@ -269,93 +397,6 @@
 :- mode foldr2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
     is cc_multi.
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
-    % for all the elements of Set.
-    %
-:- pred all_true(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in)
-    is semidet <= enum(T).
-
-    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
-    % Pred succeeds.
-    %
-:- func filter(pred(T), tree_bitset(T)) = tree_bitset(T) <= enum(T).
-:- mode filter(pred(in) is semidet, in) = out is det.
-
-    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
-    % for which Pred succeeds, and those for which it fails.
-    %
-:- pred filter(pred(T), tree_bitset(T), tree_bitset(T), tree_bitset(T))
-    <= enum(T).
-:- mode filter(pred(in) is semidet, in, out, out) is det.
-
-%---------------------------------------------------------------------------%
-
-    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
-    % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
-    %
-:- pred subset(tree_bitset(T)::in, tree_bitset(T)::in) is semidet.
-
-    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
-    % Same as `intersect(Superset, Set, Set)', but may be more efficient.
-    %
-:- pred superset(tree_bitset(T)::in, tree_bitset(T)::in) is semidet.
-
-%---------------------------------------------------------------------------%
-
-    % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
-    % efficiency of the union operation is not sensitive to the argument
-    % ordering. Takes somewhere between O(log(card(SetA)) + log(card(SetB)))
-    % and O(card(SetA) + card(SetB)) time and space.
-    %
-:- func union(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
-:- pred union(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
-    is det.
-
-    % `union_list(Sets, Set)' returns the union of all the sets in Sets.
-    %
-:- func union_list(list(tree_bitset(T))) = tree_bitset(T).
-:- pred union_list(list(tree_bitset(T))::in, tree_bitset(T)::out) is det.
-
-    % `intersect(SetA, SetB)' returns the intersection of `SetA' and `SetB'.
-    % The efficiency of the intersection operation is not sensitive to the
-    % argument ordering. Takes somewhere between
-    % O(log(card(SetA)) + log(card(SetB))) and O(card(SetA) + card(SetB)) time,
-    % and O(min(card(SetA)), card(SetB)) space.
-    %
-:- func intersect(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
-:- pred intersect(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
-    is det.
-
-    % `intersect_list(Sets, Set)' returns the intersection of all the sets
-    % in Sets.
-    %
-:- func intersect_list(list(tree_bitset(T))) = tree_bitset(T).
-:- pred intersect_list(list(tree_bitset(T))::in, tree_bitset(T)::out) is det.
-
-    % `difference(SetA, SetB)' returns the set containing all the elements
-    % of `SetA' except those that occur in `SetB'. Takes somewhere between
-    % O(log(card(SetA)) + log(card(SetB))) and O(card(SetA) + card(SetB)) time,
-    % and O(card(SetA)) space.
-    %
-:- func difference(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
-:- pred difference(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
-    is det.
-
-    % divide(Pred, Set, InPart, OutPart):
-    % InPart consists of those elements of Set for which Pred succeeds;
-    % OutPart consists of those elements of Set for which Pred fails.
-    %
-:- pred divide(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in,
-    tree_bitset(T)::out, tree_bitset(T)::out) is det <= enum(T).
-
-    % divide_by_set(DivideBySet, Set, InPart, OutPart):
-    % InPart consists of those elements of Set which are also in DivideBySet;
-    % OutPart consists of those elements of Set which are not in DivideBySet.
-    %
-:- pred divide_by_set(tree_bitset(T)::in, tree_bitset(T)::in,
-    tree_bitset(T)::out, tree_bitset(T)::out) is det <= enum(T).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -363,16 +404,50 @@
 % Everything below here is not intended to be part of the public interface,
 % and will not be included in the Mercury library reference manual.
 
+%---------------------------------------------------------------------------%
+
 :- interface.
 
 :- pragma type_spec(init/0, T = var(_)).
 :- pragma type_spec(init/0, T = int).
 
-:- pragma type_spec(empty/1, T = var(_)).
-:- pragma type_spec(empty/1, T = int).
+:- pragma type_spec(make_singleton_set/1, T = var(_)).
+:- pragma type_spec(make_singleton_set/1, T = int).
+
+:- pragma type_spec(member/2, T = var(_)).
+:- pragma type_spec(member/2, T = int).
+
+:- pragma type_spec(contains/2, T = var(_)).
+:- pragma type_spec(contains/2, T = int).
+
+:- pragma type_spec(insert/2, T = var(_)).
+:- pragma type_spec(insert/2, T = int).
+:- pragma type_spec(insert/3, T = var(_)).
+:- pragma type_spec(insert/3, T = int).
+
+:- pragma type_spec(insert_list/2, T = var(_)).
+:- pragma type_spec(insert_list/2, T = int).
+:- pragma type_spec(insert_list/3, T = var(_)).
+:- pragma type_spec(insert_list/3, T = int).
+
+:- pragma type_spec(delete/2, T = var(_)).
+:- pragma type_spec(delete/2, T = int).
+:- pragma type_spec(delete/3, T = var(_)).
+:- pragma type_spec(delete/3, T = int).
+
+:- pragma type_spec(delete_list/2, T = var(_)).
+:- pragma type_spec(delete_list/2, T = int).
+:- pragma type_spec(delete_list/3, T = var(_)).
+:- pragma type_spec(delete_list/3, T = int).
 
 :- pragma type_spec(equal/2, T = var(_)).
 :- pragma type_spec(equal/2, T = int).
+
+:- pragma type_spec(subset/2, T = var(_)).
+:- pragma type_spec(subset/2, T = int).
+
+:- pragma type_spec(superset/2, T = var(_)).
+:- pragma type_spec(superset/2, T = int).
 
 :- pragma type_spec(list_to_set/1, T = var(_)).
 :- pragma type_spec(list_to_set/1, T = int).
@@ -384,55 +459,19 @@
 :- pragma type_spec(sorted_list_to_set/2, T = var(_)).
 :- pragma type_spec(sorted_list_to_set/2, T = int).
 
-:- pragma type_spec(from_set/1, T = var(_)).
-:- pragma type_spec(from_set/1, T = int).
-
 :- pragma type_spec(to_sorted_list/1, T = var(_)).
 :- pragma type_spec(to_sorted_list/1, T = int).
 :- pragma type_spec(to_sorted_list/2, T = var(_)).
 :- pragma type_spec(to_sorted_list/2, T = int).
 
+:- pragma type_spec(from_set/1, T = var(_)).
+:- pragma type_spec(from_set/1, T = int).
+
 :- pragma type_spec(to_set/1, T = var(_)).
 :- pragma type_spec(to_set/1, T = int).
 
-:- pragma type_spec(make_singleton_set/1, T = var(_)).
-:- pragma type_spec(make_singleton_set/1, T = int).
-
-:- pragma type_spec(subset/2, T = var(_)).
-:- pragma type_spec(subset/2, T = int).
-
-:- pragma type_spec(superset/2, T = var(_)).
-:- pragma type_spec(superset/2, T = int).
-
-:- pragma type_spec(contains/2, T = var(_)).
-:- pragma type_spec(contains/2, T = int).
-
-:- pragma type_spec(member/2, T = var(_)).
-:- pragma type_spec(member/2, T = int).
-
-:- pragma type_spec(insert/2, T = var(_)).
-:- pragma type_spec(insert/2, T = int).
-
-:- pragma type_spec(insert/3, T = var(_)).
-:- pragma type_spec(insert/3, T = int).
-
-:- pragma type_spec(insert_list/2, T = var(_)).
-:- pragma type_spec(insert_list/2, T = int).
-
-:- pragma type_spec(insert_list/3, T = var(_)).
-:- pragma type_spec(insert_list/3, T = int).
-
-:- pragma type_spec(delete/2, T = var(_)).
-:- pragma type_spec(delete/2, T = int).
-
-:- pragma type_spec(delete/3, T = var(_)).
-:- pragma type_spec(delete/3, T = int).
-
-:- pragma type_spec(delete_list/2, T = var(_)).
-:- pragma type_spec(delete_list/2, T = int).
-
-:- pragma type_spec(delete_list/3, T = var(_)).
-:- pragma type_spec(delete_list/3, T = int).
+:- pragma type_spec(all_true/2, T = int).
+:- pragma type_spec(all_true/2, T = var(_)).
 
 :- pragma type_spec(foldl/3, T = int).
 :- pragma type_spec(foldl/3, T = var(_)).
@@ -446,10 +485,6 @@
 :- pragma type_spec(foldr/4, T = int).
 :- pragma type_spec(foldr/4, T = var(_)).
 
-:- pragma type_spec(all_true/2, T = int).
-:- pragma type_spec(all_true/2, T = var(_)).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -928,27 +963,11 @@ head_and_tail([Head | Tail], Head, Tail).
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-equal(SetA, SetB) :-
-    trace [compile_time(flag("tree-bitset-integrity"))] (
-        ( if
-            to_sorted_list(SetA, ListA),
-            to_sorted_list(SetB, ListB),
-            (
-                 SetA = SetB
-            <=>
-                 ListA = ListB
-            )
-         then
-             true
-        else
-             unexpected($pred, "set and list equality differ")
-        )
-    ),
-    SetA = SetB.
+init = wrap_tree_bitset(leaf_list([])).
+
+make_singleton_set(A) = insert(init, A).
 
 %---------------------------------------------------------------------------%
-
-init = wrap_tree_bitset(leaf_list([])).
 
 empty(init).
 
@@ -957,57 +976,12 @@ is_empty(init).
 is_non_empty(Set) :-
     not is_empty(Set).
 
-%---------------------------------------------------------------------------%
-
-make_singleton_set(A) = insert(init, A).
-
 is_singleton(Set, Elem) :-
     Set = tree_bitset(List0),
     List0 = leaf_list([Leaf]),
     fold_bits(high_to_low, cons, Leaf ^ leaf_offset, Leaf ^ leaf_bits,
         bits_per_int, [], List),
     List = [Elem].
-
-%---------------------------------------------------------------------------%
-
-contains(Set, Elem) :-
-    Set = tree_bitset(NodeList),
-    Index = enum_to_index(Elem),
-    (
-        NodeList = leaf_list(LeafNodes),
-        leaflist_contains(LeafNodes, Index)
-    ;
-        NodeList = interior_list(_, InteriorNodes),
-        interiorlist_contains(InteriorNodes, Index)
-    ).
-
-:- pred leaflist_contains(list(leaf_node)::in, int::in) is semidet.
-
-leaflist_contains([Head | Tail], Index) :-
-    Offset = Head ^ leaf_offset,
-    Index >= Offset,
-    ( if Index < Offset + bits_per_int then
-        get_bit(Head ^ leaf_bits, Index - Offset) \= 0u
-    else
-        leaflist_contains(Tail, Index)
-    ).
-
-:- pred interiorlist_contains(list(interior_node)::in, int::in) is semidet.
-
-interiorlist_contains([Head | Tail], Index) :-
-    Index >= Head ^ init_offset,
-    ( if Index < Head ^ limit_offset then
-        Components = Head ^ components,
-        (
-            Components = leaf_list(LeafNodes),
-            leaflist_contains(LeafNodes, Index)
-        ;
-            Components = interior_list(_, InteriorNodes),
-            interiorlist_contains(InteriorNodes, Index)
-        )
-    else
-        interiorlist_contains(Tail, Index)
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1072,6 +1046,47 @@ leafnode_member(Index, Offset, Size, Bits) :-
         ( leafnode_member(Index, Offset, HalfSize, LowBits)
         ; leafnode_member(Index, Offset + HalfSize, HalfSize, HighBits)
         )
+    ).
+
+%---------------------%
+
+contains(Set, Elem) :-
+    Set = tree_bitset(NodeList),
+    Index = enum_to_index(Elem),
+    (
+        NodeList = leaf_list(LeafNodes),
+        leaflist_contains(LeafNodes, Index)
+    ;
+        NodeList = interior_list(_, InteriorNodes),
+        interiorlist_contains(InteriorNodes, Index)
+    ).
+
+:- pred leaflist_contains(list(leaf_node)::in, int::in) is semidet.
+
+leaflist_contains([Head | Tail], Index) :-
+    Offset = Head ^ leaf_offset,
+    Index >= Offset,
+    ( if Index < Offset + bits_per_int then
+        get_bit(Head ^ leaf_bits, Index - Offset) \= 0u
+    else
+        leaflist_contains(Tail, Index)
+    ).
+
+:- pred interiorlist_contains(list(interior_node)::in, int::in) is semidet.
+
+interiorlist_contains([Head | Tail], Index) :-
+    Index >= Head ^ init_offset,
+    ( if Index < Head ^ limit_offset then
+        Components = Head ^ components,
+        (
+            Components = leaf_list(LeafNodes),
+            leaflist_contains(LeafNodes, Index)
+        ;
+            Components = interior_list(_, InteriorNodes),
+            interiorlist_contains(InteriorNodes, Index)
+        )
+    else
+        interiorlist_contains(Tail, Index)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1202,7 +1217,7 @@ interiorlist_insert(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         Nodes = [Head0 | Tail]
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 insert_new(Elem, Set0, Set) :-
     Set0 = tree_bitset(List0),
@@ -1327,14 +1342,14 @@ interiorlist_insert_new(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         Nodes = [Head0 | Tail]
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 insert_list(Set, List) = union(list_to_set(List), Set).
 
 insert_list(Elems, !Set) :-
     !:Set = insert_list(!.Set, Elems).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 delete(Set0, Elem) = Set :-
     Set0 = tree_bitset(List0),
@@ -1415,12 +1430,14 @@ leaflist_delete([Head0 | Tail0], Index, Result) :-
         Result = [Head0 | Tail0]
     ).
 
+%---------------------%
+
 delete_list(Set, List) = difference(Set, list_to_set(List)).
 
 delete_list(Elems, !Set) :-
     !:Set = delete_list(!.Set, Elems).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove(Elem, !Set) :-
     contains(!.Set, Elem),
@@ -1508,7 +1525,7 @@ remove_leq_leaf([Head0 | Tail0], Index, Result) :-
         Result = [Head0 | Tail0]
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove_gt(Set0, Elem) = Set :-
     Set0 = tree_bitset(List0),
@@ -1589,7 +1606,7 @@ remove_gt_leaf([Head0 | Tail0], Index, Result) :-
         Result = []
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove_least(Elem, Set0, Set) :-
     Set0 = tree_bitset(List0),
@@ -1707,671 +1724,23 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
 
 %---------------------------------------------------------------------------%
 
-list_to_set(List) = sorted_list_to_set(list.sort(List)).
-
-list_to_set(List, Set) :-
-    Set = list_to_set(List).
-
-%---------------------------------------------------------------------------%
-
-sorted_list_to_set(Elems) = Set :-
-    items_to_index(Elems, Indexes),
-    % XXX We SHOULD sort Indexes. The fact that Elems is sorted
-    % does not *necessarily* imply that Indexes is sorted.
-    LeafNodes = sorted_list_to_leaf_nodes(Indexes),
-    (
-        LeafNodes = [],
-        List = leaf_list([]),
-        Set = wrap_tree_bitset(List)
-    ;
-        LeafNodes = [LeafHead | LeafTail],
-        group_leaf_nodes(LeafHead, LeafTail, InteriorNodes0),
-        (
-            InteriorNodes0 = [],
-            unexpected($pred, "empty InteriorNodes0")
-        ;
-            InteriorNodes0 = [InteriorNode],
-            List = InteriorNode ^ components
-        ;
-            InteriorNodes0 = [_, _ | _],
-            recursively_group_interior_nodes(1, InteriorNodes0, List)
-        ),
-        Set = wrap_tree_bitset(List)
-    ).
-
-sorted_list_to_set(List, Set) :-
-    Set = sorted_list_to_set(List).
-
-:- pred items_to_index(list(T)::in, list(int)::out) is det <= enum(T).
-:- pragma type_spec(items_to_index/2, T = var(_)).
-:- pragma type_spec(items_to_index/2, T = int).
-
-items_to_index([], []).
-items_to_index([ElemHead | ElemTail], [IndexHead | IndexTail]) :-
-    IndexHead = enum_to_index(ElemHead),
-    items_to_index(ElemTail, IndexTail).
-
-:- func sorted_list_to_leaf_nodes(list(int)) = list(leaf_node).
-
-sorted_list_to_leaf_nodes([]) = [].
-sorted_list_to_leaf_nodes([Head | Tail]) = LeafNodes :-
-    bits_for_index(Head, Offset, HeadBits),
-    gather_bits_for_leaf(Tail, Offset, HeadBits, Bits, Remaining),
-    sorted_list_to_leaf_nodes(Remaining) = LeafNodesTail,
-    LeafNodes = [make_leaf_node(Offset, Bits) | LeafNodesTail].
-
-:- pred gather_bits_for_leaf(list(int)::in, int::in, uint::in, uint::out,
-    list(int)::out) is det.
-
-gather_bits_for_leaf([], _Offset, !Bits, []).
-gather_bits_for_leaf(List @ [Head | Tail], Offset, !Bits, Remaining) :-
-    bits_for_index(Head, HeadOffset, HeadBits),
-    ( if HeadOffset = Offset then
-        !:Bits = !.Bits \/ HeadBits,
-        gather_bits_for_leaf(Tail, Offset, !Bits, Remaining)
-    else
-        Remaining = List
-    ).
-
-:- pred group_leaf_nodes(leaf_node::in, list(leaf_node)::in,
-    list(interior_node)::out) is det.
-
-group_leaf_nodes(Head, Tail, ParentList) :-
-    range_of_parent_node(Head ^ leaf_offset, 0,
-        ParentInitOffset, ParentLimitOffset),
-    group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, [Head],
-        Tail, ParentHead, Remaining),
-    (
-        Remaining = [],
-        ParentTail = []
-    ;
-        Remaining = [RemainingHead | RemainingTail],
-        group_leaf_nodes(RemainingHead, RemainingTail, ParentTail)
-    ),
-    ParentList = [ParentHead | ParentTail].
-
-:- pred group_leaf_nodes_in_range(int::in, int::in,
-    list(leaf_node)::in, list(leaf_node)::in,
-    interior_node::out, list(leaf_node)::out) is det.
-
-group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
-        [], ParentNode, []) :-
-    ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
-        leaf_list(list.reverse(!.RevAcc))).
-group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
-        [Head | Tail], ParentNode, Remaining) :-
-    range_of_parent_node(Head ^ leaf_offset, 0,
-        HeadParentInitOffset, HeadParentLimitOffset),
-    ( if ParentInitOffset = HeadParentInitOffset then
-        trace [compile_time(flag("tree-bitset-checks"))] (
-            expect(unify(ParentLimitOffset, HeadParentLimitOffset),
-                $pred, "limit mismatch")
-        ),
-        !:RevAcc = [Head | !.RevAcc],
-        group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset,
-            !.RevAcc, Tail, ParentNode, Remaining)
-    else
-        ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
-            leaf_list(list.reverse(!.RevAcc))),
-        Remaining = [Head | Tail]
-    ).
-
-:- pred recursively_group_interior_nodes(int::in, list(interior_node)::in,
-    node_list::out) is det.
-
-recursively_group_interior_nodes(CurLevel, CurNodes, List) :-
-    (
-        CurNodes = [],
-        unexpected($pred, "empty CurNodes")
-    ;
-        CurNodes = [CurNodesHead | CurNodesTail],
-        (
-            CurNodesTail = [],
-            List = CurNodesHead ^ components
-        ;
-            CurNodesTail = [_ | _],
-            group_interior_nodes(CurLevel, CurNodesHead, CurNodesTail,
-                ParentNodes),
-            recursively_group_interior_nodes(CurLevel + 1, ParentNodes, List)
+equal(SetA, SetB) :-
+    trace [compile_time(flag("tree-bitset-integrity"))] (
+        ( if
+            to_sorted_list(SetA, ListA),
+            to_sorted_list(SetB, ListB),
+            (
+                 SetA = SetB
+            <=>
+                 ListA = ListB
+            )
+         then
+             true
+        else
+             unexpected($pred, "set and list equality differ")
         )
-    ).
-
-:- pred group_interior_nodes(int::in, interior_node::in,
-    list(interior_node)::in, list(interior_node)::out) is det.
-
-group_interior_nodes(Level, Head, Tail, ParentList) :-
-    range_of_parent_node(Head ^ init_offset, Level,
-        ParentInitOffset, ParentLimitOffset),
-    group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
-        [Head], Tail, ParentHead, Remaining),
-    (
-        Remaining = [],
-        ParentTail = []
-    ;
-        Remaining = [RemainingHead | RemainingTail],
-        group_interior_nodes(Level, RemainingHead, RemainingTail, ParentTail)
     ),
-    ParentList = [ParentHead | ParentTail].
-
-:- pred group_interior_nodes_in_range(int::in, int::in, int::in,
-    list(interior_node)::in, list(interior_node)::in,
-    interior_node::out, list(interior_node)::out) is det.
-
-group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
-        !.RevAcc, [], ParentNode, []) :-
-    ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
-        interior_list(Level, list.reverse(!.RevAcc))).
-group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
-        !.RevAcc, [Head | Tail], ParentNode, Remaining) :-
-    range_of_parent_node(Head ^ init_offset, Level,
-        HeadParentInitOffset, HeadParentLimitOffset),
-    ( if ParentInitOffset = HeadParentInitOffset then
-        trace [compile_time(flag("tree-bitset-checks"))] (
-            expect(unify(ParentLimitOffset, HeadParentLimitOffset),
-                $pred, "limit mismatch")
-        ),
-        !:RevAcc = [Head | !.RevAcc],
-        group_interior_nodes_in_range(Level,
-            ParentInitOffset, ParentLimitOffset,
-            !.RevAcc, Tail, ParentNode, Remaining)
-    else
-        ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
-            interior_list(Level, list.reverse(!.RevAcc))),
-        Remaining = [Head | Tail]
-    ).
-
-%---------------------------------------------------------------------------%
-
-to_sorted_list(Set) = foldr(list.cons, Set, []).
-
-to_sorted_list(Set, List) :-
-    List = to_sorted_list(Set).
-
-%---------------------------------------------------------------------------%
-
-from_set(Set) = sorted_list_to_set(set.to_sorted_list(Set)).
-
-to_set(Set) = set.sorted_list_to_set(to_sorted_list(Set)).
-
-%---------------------------------------------------------------------------%
-
-count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
-
-%---------------------------------------------------------------------------%
-
-:- type fold_direction
-    --->    low_to_high
-    ;       high_to_low.
-
-foldl(F, Set, Acc0) = Acc :-
-    P =
-        ( pred(E::in, PAcc0::in, PAcc::out) is det :-
-            PAcc = F(E, PAcc0)
-        ),
-    foldl(P, Set, Acc0, Acc).
-
-foldl(P, Set, !Acc) :-
-    Set = tree_bitset(List),
-    (
-        List = leaf_list(LeafNodes),
-        leaf_foldl_pred(P, LeafNodes, !Acc)
-    ;
-        List = interior_list(_, InteriorNodes),
-        do_foldl_pred(P, InteriorNodes, !Acc)
-    ).
-
-foldl2(P, Set, !AccA, !AccB) :-
-    Set = tree_bitset(List),
-    (
-        List = leaf_list(LeafNodes),
-        leaf_foldl2_pred(P, LeafNodes, !AccA, !AccB)
-    ;
-        List = interior_list(_, InteriorNodes),
-        do_foldl2_pred(P, InteriorNodes, !AccA, !AccB)
-    ).
-
-:- pred do_foldl_pred(pred(T, U, U), list(interior_node), U, U) <= enum(T).
-:- mode do_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode do_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode do_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode do_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode do_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode do_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode do_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode do_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode do_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode do_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-
-:- pragma type_spec(do_foldl_pred/4, T = int).
-:- pragma type_spec(do_foldl_pred/4, T = var(_)).
-
-do_foldl_pred(_, [], !Acc).
-do_foldl_pred(P, [H | T], !Acc) :-
-    Components = H ^ components,
-    (
-        Components = leaf_list(LeafNodes),
-        leaf_foldl_pred(P, LeafNodes, !Acc)
-    ;
-        Components = interior_list(_, InteriorNodes),
-        do_foldl_pred(P, InteriorNodes, !Acc)
-    ),
-    do_foldl_pred(P, T, !Acc).
-
-:- pred leaf_foldl_pred(pred(T, U, U), list(leaf_node), U, U) <= enum(T).
-:- mode leaf_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode leaf_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode leaf_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode leaf_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode leaf_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo)
-    is semidet.
-:- mode leaf_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode leaf_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode leaf_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode leaf_foldl_pred(pred(in, in, out) is cc_multi, in, in, out)
-    is cc_multi.
-:- mode leaf_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-
-:- pragma type_spec(leaf_foldl_pred/4, T = int).
-:- pragma type_spec(leaf_foldl_pred/4, T = var(_)).
-
-leaf_foldl_pred(_, [], !Acc).
-leaf_foldl_pred(P, [H | T], !Acc) :-
-    fold_bits(low_to_high, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
-        !Acc),
-    leaf_foldl_pred(P, T, !Acc).
-
-:- pred do_foldl2_pred(pred(T, U, U, V, V), list(interior_node), U, U, V, V)
-    <= enum(T).
-:- mode do_foldl2_pred(pred(in, di, uo, di, uo) is det,
-    in, di, uo, di, uo) is det.
-:- mode do_foldl2_pred(pred(in, in, out, di, uo) is det,
-    in, in, out, di, uo) is det.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is det,
-    in, in, out, in, out) is det.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is semidet,
-    in, in, out, in, out) is semidet.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is nondet,
-    in, in, out, in, out) is nondet.
-:- mode do_foldl2_pred(pred(in, di, uo, di, uo) is cc_multi,
-    in, di, uo, di, uo) is cc_multi.
-:- mode do_foldl2_pred(pred(in, in, out, di, uo) is cc_multi,
-    in, in, out, di, uo) is cc_multi.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
-    in, in, out, in, out) is cc_multi.
-
-:- pragma type_spec(do_foldl2_pred/6, T = int).
-:- pragma type_spec(do_foldl2_pred/6, T = var(_)).
-
-do_foldl2_pred(_, [], !AccA, !AccB).
-do_foldl2_pred(P, [H | T], !AccA, !AccB) :-
-    Components = H ^ components,
-    (
-        Components = leaf_list(LeafNodes),
-        leaf_foldl2_pred(P, LeafNodes, !AccA, !AccB)
-    ;
-        Components = interior_list(_, InteriorNodes),
-        do_foldl2_pred(P, InteriorNodes, !AccA, !AccB)
-    ),
-    do_foldl2_pred(P, T, !AccA, !AccB).
-
-:- pred leaf_foldl2_pred(pred(T, U, U, V, V), list(leaf_node), U, U, V, V)
-    <= enum(T).
-:- mode leaf_foldl2_pred(pred(in, di, uo, di, uo) is det,
-    in, di, uo, di, uo) is det.
-:- mode leaf_foldl2_pred(pred(in, in, out, di, uo) is det,
-    in, in, out, di, uo) is det.
-:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is det,
-    in, in, out, in, out) is det.
-:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is semidet,
-    in, in, out, in, out) is semidet.
-:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is nondet,
-    in, in, out, in, out) is nondet.
-:- mode leaf_foldl2_pred(pred(in, di, uo, di, uo) is cc_multi,
-    in, di, uo, di, uo) is cc_multi.
-:- mode leaf_foldl2_pred(pred(in, in, out, di, uo) is cc_multi,
-    in, in, out, di, uo) is cc_multi.
-:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
-    in, in, out, in, out) is cc_multi.
-
-:- pragma type_spec(leaf_foldl2_pred/6, T = int).
-:- pragma type_spec(leaf_foldl2_pred/6, T = var(_)).
-
-leaf_foldl2_pred(_, [], !AccA, !AccB).
-leaf_foldl2_pred(P, [H | T], !AccA, !AccB) :-
-    fold2_bits(low_to_high, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
-        !AccA, !AccB),
-    leaf_foldl2_pred(P, T, !AccA, !AccB).
-
-foldr(F, Set, Acc0) = Acc :-
-    P =
-        ( pred(E::in, PAcc0::in, PAcc::out) is det :-
-            PAcc = F(E, PAcc0)
-        ),
-    foldr(P, Set, Acc0, Acc).
-
-foldr(P, Set, !Acc) :-
-    Set = tree_bitset(List),
-    (
-        List = leaf_list(LeafNodes),
-        leaf_foldr_pred(P, LeafNodes, !Acc)
-    ;
-        List = interior_list(_, InteriorNodes),
-        do_foldr_pred(P, InteriorNodes, !Acc)
-    ).
-
-foldr2(P, Set, !AccA, !AccB) :-
-    Set = tree_bitset(List),
-    (
-        List = leaf_list(LeafNodes),
-        leaf_foldr2_pred(P, LeafNodes, !AccA, !AccB)
-    ;
-        List = interior_list(_, InteriorNodes),
-        do_foldr2_pred(P, InteriorNodes, !AccA, !AccB)
-    ).
-
-:- pred do_foldr_pred(pred(T, U, U), list(interior_node), U, U) <= enum(T).
-:- mode do_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode do_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode do_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode do_foldr_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode do_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode do_foldr_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-
-:- pragma type_spec(do_foldr_pred/4, T = int).
-:- pragma type_spec(do_foldr_pred/4, T = var(_)).
-
-do_foldr_pred(_, [], !Acc).
-do_foldr_pred(P, [H | T], !Acc) :-
-    % We don't just use list.foldr here because the overhead of allocating
-    % the closure for fold_bits is significant for the compiler's runtime,
-    % so it is best to avoid that even if `--optimize-higher-order' is not set.
-    do_foldr_pred(P, T, !Acc),
-    Components = H ^ components,
-    (
-        Components = leaf_list(LeafNodes),
-        leaf_foldr_pred(P, LeafNodes, !Acc)
-    ;
-        Components = interior_list(_, InteriorNodes),
-        do_foldr_pred(P, InteriorNodes, !Acc)
-    ).
-
-:- pred leaf_foldr_pred(pred(T, U, U), list(leaf_node), U, U) <= enum(T).
-:- mode leaf_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode leaf_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode leaf_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode leaf_foldr_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode leaf_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode leaf_foldr_pred(pred(in, in, out) is cc_multi, in, in, out)
-    is cc_multi.
-
-:- pragma type_spec(leaf_foldr_pred/4, T = int).
-:- pragma type_spec(leaf_foldr_pred/4, T = var(_)).
-
-leaf_foldr_pred(_, [], !Acc).
-leaf_foldr_pred(P, [H | T], !Acc) :-
-    % We don't just use list.foldr here because the overhead of allocating
-    % the closure for fold_bits is significant for the compiler's runtime,
-    % so it is best to avoid that even if `--optimize-higher-order' is not set.
-    leaf_foldr_pred(P, T, !Acc),
-    fold_bits(high_to_low, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
-        !Acc).
-
-:- pred do_foldr2_pred(pred(T, U, U, V, V), list(interior_node), U, U, V, V)
-    <= enum(T).
-:- mode do_foldr2_pred(pred(in, di, uo, di, uo) is det,
-    in, di, uo, di, uo) is det.
-:- mode do_foldr2_pred(pred(in, in, out, di, uo) is det,
-    in, in, out, di, uo) is det.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is det,
-    in, in, out, in, out) is det.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is semidet,
-    in, in, out, in, out) is semidet.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is nondet,
-    in, in, out, in, out) is nondet.
-:- mode do_foldr2_pred(pred(in, di, uo, di, uo) is cc_multi,
-    in, di, uo, di, uo) is cc_multi.
-:- mode do_foldr2_pred(pred(in, in, out, di, uo) is cc_multi,
-    in, in, out, di, uo) is cc_multi.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
-    in, in, out, in, out) is cc_multi.
-
-:- pragma type_spec(do_foldr2_pred/6, T = int).
-:- pragma type_spec(do_foldr2_pred/6, T = var(_)).
-
-do_foldr2_pred(_, [], !AccA, !AccB).
-do_foldr2_pred(P, [H | T], !AccA, !AccB) :-
-    % We don't just use list.foldr here because the overhead of allocating
-    % the closure for fold_bits is significant for the compiler's runtime,
-    % so it is best to avoid that even if `--optimize-higher-order' is not set.
-    do_foldr2_pred(P, T, !AccA, !AccB),
-    Components = H ^ components,
-    (
-        Components = leaf_list(LeafNodes),
-        leaf_foldr2_pred(P, LeafNodes, !AccA, !AccB)
-    ;
-        Components = interior_list(_, InteriorNodes),
-        do_foldr2_pred(P, InteriorNodes, !AccA, !AccB)
-    ).
-
-:- pred leaf_foldr2_pred(pred(T, U, U, V, V), list(leaf_node), U, U, V, V)
-    <= enum(T).
-:- mode leaf_foldr2_pred(pred(in, di, uo, di, uo) is det,
-    in, di, uo, di, uo) is det.
-:- mode leaf_foldr2_pred(pred(in, in, out, di, uo) is det,
-    in, in, out, di, uo) is det.
-:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is det,
-    in, in, out, in, out) is det.
-:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is semidet,
-    in, in, out, in, out) is semidet.
-:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is nondet,
-    in, in, out, in, out) is nondet.
-:- mode leaf_foldr2_pred(pred(in, di, uo, di, uo) is cc_multi,
-    in, di, uo, di, uo) is cc_multi.
-:- mode leaf_foldr2_pred(pred(in, in, out, di, uo) is cc_multi,
-    in, in, out, di, uo) is cc_multi.
-:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
-    in, in, out, in, out) is cc_multi.
-
-:- pragma type_spec(leaf_foldr2_pred/6, T = int).
-:- pragma type_spec(leaf_foldr2_pred/6, T = var(_)).
-
-leaf_foldr2_pred(_, [], !AccA, !AccB).
-leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
-    % We don't just use list.foldr here because the overhead of allocating
-    % the closure for fold_bits is significant for the compiler's runtime,
-    % so it is best to avoid that even if `--optimize-higher-order' is not set.
-    leaf_foldr2_pred(P, T, !AccA, !AccB),
-    fold2_bits(high_to_low, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
-        !AccA, !AccB).
-
-    % Do a binary search for the 1 bits in an int.
-    %
-:- pred fold_bits(fold_direction, pred(T, U, U),
-    int, uint, int, U, U) <= enum(T).
-:- mode fold_bits(in, pred(in, in, out) is det,
-    in, in, in, in, out) is det.
-:- mode fold_bits(in, pred(in, mdi, muo) is det,
-    in, in, in, mdi, muo) is det.
-:- mode fold_bits(in, pred(in, di, uo) is det,
-    in, in, in, di, uo) is det.
-:- mode fold_bits(in, pred(in, in, out) is semidet,
-    in, in, in, in, out) is semidet.
-:- mode fold_bits(in, pred(in, mdi, muo) is semidet,
-    in, in, in, mdi, muo) is semidet.
-:- mode fold_bits(in, pred(in, di, uo) is semidet,
-    in, in, in, di, uo) is semidet.
-:- mode fold_bits(in, pred(in, in, out) is nondet,
-    in, in, in, in, out) is nondet.
-:- mode fold_bits(in, pred(in, mdi, muo) is nondet,
-    in, in, in, mdi, muo) is nondet.
-:- mode fold_bits(in, pred(in, in, out) is cc_multi,
-    in, in, in, in, out) is cc_multi.
-:- mode fold_bits(in, pred(in, di, uo) is cc_multi,
-    in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(fold_bits/7, T = int).
-:- pragma type_spec(fold_bits/7, T = var(_)).
-
-fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
-    ( if Bits = 0u then
-        true
-    else if Size = 1 then
-        Elem = index_to_enum(Offset),
-        P(Elem, !Acc)
-    else
-        HalfSize = unchecked_right_shift(Size, 1),
-        Mask = mask(HalfSize),
-
-        % Extract the low-order half of the bits.
-        LowBits = Mask /\ Bits,
-
-        % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
-
-        (
-            Dir = low_to_high,
-            fold_bits(Dir, P, Offset, LowBits, HalfSize, !Acc),
-            fold_bits(Dir, P, Offset + HalfSize, HighBits, HalfSize, !Acc)
-        ;
-            Dir = high_to_low,
-            fold_bits(Dir, P, Offset + HalfSize, HighBits, HalfSize, !Acc),
-            fold_bits(Dir, P, Offset, LowBits, HalfSize, !Acc)
-        )
-    ).
-
-:- pred fold2_bits(fold_direction, pred(T, U, U, V, V),
-    int, uint, int, U, U, V, V) <= enum(T).
-:- mode fold2_bits(in, pred(in, di, uo, di, uo) is det,
-    in, in, in, di, uo, di, uo) is det.
-:- mode fold2_bits(in, pred(in, in, out, di, uo) is det,
-    in, in, in, in, out, di, uo) is det.
-:- mode fold2_bits(in, pred(in, in, out, in, out) is det,
-    in, in, in, in, out, in, out) is det.
-:- mode fold2_bits(in, pred(in, in, out, in, out) is semidet,
-    in, in, in, in, out, in, out) is semidet.
-:- mode fold2_bits(in, pred(in, in, out, in, out) is nondet,
-    in, in, in, in, out, in, out) is nondet.
-:- mode fold2_bits(in, pred(in, di, uo, di, uo) is cc_multi,
-    in, in, in, di, uo, di, uo) is cc_multi.
-:- mode fold2_bits(in, pred(in, in, out, di, uo) is cc_multi,
-    in, in, in, in, out, di, uo) is cc_multi.
-:- mode fold2_bits(in, pred(in, in, out, in, out) is cc_multi,
-    in, in, in, in, out, in, out) is cc_multi.
-:- pragma type_spec(fold2_bits/9, T = int).
-:- pragma type_spec(fold2_bits/9, T = var(_)).
-
-fold2_bits(Dir, P, Offset, Bits, Size, !AccA, !AccB) :-
-    ( if Bits = 0u then
-        true
-    else if Size = 1 then
-        Elem = index_to_enum(Offset),
-        P(Elem, !AccA, !AccB)
-    else
-        HalfSize = unchecked_right_shift(Size, 1),
-        Mask = mask(HalfSize),
-
-        % Extract the low-order half of the bits.
-        LowBits = Mask /\ Bits,
-
-        % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
-
-        (
-            Dir = low_to_high,
-            fold2_bits(Dir, P, Offset, LowBits, HalfSize, !AccA, !AccB),
-            fold2_bits(Dir, P, Offset + HalfSize, HighBits, HalfSize,
-                !AccA, !AccB)
-        ;
-            Dir = high_to_low,
-            fold2_bits(Dir, P, Offset + HalfSize, HighBits, HalfSize,
-                !AccA, !AccB),
-            fold2_bits(Dir, P, Offset, LowBits, HalfSize, !AccA, !AccB)
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-all_true(P, Set) :-
-    Set = tree_bitset(List),
-    (
-        List = leaf_list(LeafNodes),
-        leaf_all_true(P, LeafNodes)
-    ;
-        List = interior_list(_, InteriorNodes),
-        interior_all_true(P, InteriorNodes)
-    ).
-
-:- pred interior_all_true(pred(T)::in(pred(in) is semidet),
-    list(interior_node)::in) is semidet <= enum(T).
-:- pragma type_spec(interior_all_true/2, T = int).
-:- pragma type_spec(interior_all_true/2, T = var(_)).
-
-interior_all_true(_P, []).
-interior_all_true(P, [H | T]) :-
-    Components = H ^ components,
-    (
-        Components = leaf_list(LeafNodes),
-        leaf_all_true(P, LeafNodes)
-    ;
-        Components = interior_list(_, InteriorNodes),
-        interior_all_true(P, InteriorNodes)
-    ),
-    interior_all_true(P, T).
-
-:- pred leaf_all_true(pred(T)::in(pred(in) is semidet), list(leaf_node)::in)
-    is semidet <= enum(T).
-:- pragma type_spec(leaf_all_true/2, T = int).
-:- pragma type_spec(leaf_all_true/2, T = var(_)).
-
-leaf_all_true(_P, []).
-leaf_all_true(P, [H | T]) :-
-    all_true_bits(P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int),
-    leaf_all_true(P, T).
-
-    % Do a binary search for the 1 bits in an int.
-    %
-:- pred all_true_bits(pred(T)::in(pred(in) is semidet),
-    int::in, uint::in, int::in) is semidet <= enum(T).
-:- pragma type_spec(all_true_bits/4, T = int).
-:- pragma type_spec(all_true_bits/4, T = var(_)).
-
-all_true_bits(P, Offset, Bits, Size) :-
-    ( if Bits = 0u then
-        true
-    else if Size = 1 then
-        Elem = index_to_enum(Offset),
-        P(Elem)
-    else
-        HalfSize = unchecked_right_shift(Size, 1),
-        Mask = mask(HalfSize),
-
-        % Extract the low-order half of the bits.
-        LowBits = Mask /\ Bits,
-
-        % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
-
-        all_true_bits(P, Offset, LowBits, HalfSize),
-        all_true_bits(P, Offset + HalfSize, HighBits, HalfSize)
-    ).
-
-%---------------------------------------------------------------------------%
-
-% XXX We should make these more efficient. At least, we could filter the bits
-% in the leaf nodes, yielding a new list of leaf nodes, and we could put the
-% interior nodes on top, just as we do in sorted_list_to_set.
-
-filter(Pred, Set) = TrueSet :-
-    SortedList = to_sorted_list(Set),
-    SortedTrueList = list.filter(Pred, SortedList),
-    TrueSet = sorted_list_to_set(SortedTrueList).
-
-filter(Pred, Set, TrueSet, FalseSet) :-
-    SortedList = to_sorted_list(Set),
-    list.filter(Pred, SortedList, SortedTrueList, SortedFalseList),
-    TrueSet = sorted_list_to_set(SortedTrueList),
-    FalseSet = sorted_list_to_set(SortedFalseList).
-
-%---------------------------------------------------------------------------%
+    SetA = SetB.
 
 subset(Subset, Set) :-
     intersect(Set, Subset, Subset).
@@ -2551,7 +1920,7 @@ interiorlist_union(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
         List = [HeadB | Tail]
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 union_list(Sets) = Set :-
     union_list(Sets, Set).
@@ -2588,7 +1957,7 @@ union_list_pass([SetA, SetB | Sets0], !MergedSets) :-
     !:MergedSets = [SetAB | !.MergedSets],
     union_list_pass(Sets0, !MergedSets).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 intersect(SetA, SetB) = Set :-
     SetA = tree_bitset(ListA),
@@ -2838,7 +2207,7 @@ interiorlist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         interiorlist_intersect(ListA, TailB, List)
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 intersect_list(Sets) = Set :-
     intersect_list(Sets, Set).
@@ -2875,7 +2244,7 @@ intersect_list_pass([SetA, SetB | Sets0], !MergedSets) :-
     !:MergedSets = [SetAB | !.MergedSets],
     intersect_list_pass(Sets0, !MergedSets).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 difference(SetA, SetB) = Set :-
     SetA = tree_bitset(ListA),
@@ -3535,7 +2904,7 @@ interiornode_divide(Pred, [Head | Tail], InNodes, OutNodes) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 divide_by_set(DivideBySet, Set, InSet, OutSet) :-
     DivideBySet = tree_bitset(DivideByList),
@@ -4100,6 +3469,675 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %     ).
 
 %---------------------------------------------------------------------------%
+
+list_to_set(List) = sorted_list_to_set(list.sort(List)).
+
+list_to_set(List, Set) :-
+    Set = list_to_set(List).
+
+%---------------------%
+
+sorted_list_to_set(Elems) = Set :-
+    items_to_index(Elems, Indexes),
+    % XXX We SHOULD sort Indexes. The fact that Elems is sorted
+    % does not *necessarily* imply that Indexes is sorted.
+    LeafNodes = sorted_list_to_leaf_nodes(Indexes),
+    (
+        LeafNodes = [],
+        List = leaf_list([]),
+        Set = wrap_tree_bitset(List)
+    ;
+        LeafNodes = [LeafHead | LeafTail],
+        group_leaf_nodes(LeafHead, LeafTail, InteriorNodes0),
+        (
+            InteriorNodes0 = [],
+            unexpected($pred, "empty InteriorNodes0")
+        ;
+            InteriorNodes0 = [InteriorNode],
+            List = InteriorNode ^ components
+        ;
+            InteriorNodes0 = [_, _ | _],
+            recursively_group_interior_nodes(1, InteriorNodes0, List)
+        ),
+        Set = wrap_tree_bitset(List)
+    ).
+
+sorted_list_to_set(List, Set) :-
+    Set = sorted_list_to_set(List).
+
+:- pred items_to_index(list(T)::in, list(int)::out) is det <= enum(T).
+:- pragma type_spec(items_to_index/2, T = var(_)).
+:- pragma type_spec(items_to_index/2, T = int).
+
+items_to_index([], []).
+items_to_index([ElemHead | ElemTail], [IndexHead | IndexTail]) :-
+    IndexHead = enum_to_index(ElemHead),
+    items_to_index(ElemTail, IndexTail).
+
+:- func sorted_list_to_leaf_nodes(list(int)) = list(leaf_node).
+
+sorted_list_to_leaf_nodes([]) = [].
+sorted_list_to_leaf_nodes([Head | Tail]) = LeafNodes :-
+    bits_for_index(Head, Offset, HeadBits),
+    gather_bits_for_leaf(Tail, Offset, HeadBits, Bits, Remaining),
+    sorted_list_to_leaf_nodes(Remaining) = LeafNodesTail,
+    LeafNodes = [make_leaf_node(Offset, Bits) | LeafNodesTail].
+
+:- pred gather_bits_for_leaf(list(int)::in, int::in, uint::in, uint::out,
+    list(int)::out) is det.
+
+gather_bits_for_leaf([], _Offset, !Bits, []).
+gather_bits_for_leaf(List @ [Head | Tail], Offset, !Bits, Remaining) :-
+    bits_for_index(Head, HeadOffset, HeadBits),
+    ( if HeadOffset = Offset then
+        !:Bits = !.Bits \/ HeadBits,
+        gather_bits_for_leaf(Tail, Offset, !Bits, Remaining)
+    else
+        Remaining = List
+    ).
+
+:- pred group_leaf_nodes(leaf_node::in, list(leaf_node)::in,
+    list(interior_node)::out) is det.
+
+group_leaf_nodes(Head, Tail, ParentList) :-
+    range_of_parent_node(Head ^ leaf_offset, 0,
+        ParentInitOffset, ParentLimitOffset),
+    group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, [Head],
+        Tail, ParentHead, Remaining),
+    (
+        Remaining = [],
+        ParentTail = []
+    ;
+        Remaining = [RemainingHead | RemainingTail],
+        group_leaf_nodes(RemainingHead, RemainingTail, ParentTail)
+    ),
+    ParentList = [ParentHead | ParentTail].
+
+:- pred group_leaf_nodes_in_range(int::in, int::in,
+    list(leaf_node)::in, list(leaf_node)::in,
+    interior_node::out, list(leaf_node)::out) is det.
+
+group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
+        [], ParentNode, []) :-
+    ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
+        leaf_list(list.reverse(!.RevAcc))).
+group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
+        [Head | Tail], ParentNode, Remaining) :-
+    range_of_parent_node(Head ^ leaf_offset, 0,
+        HeadParentInitOffset, HeadParentLimitOffset),
+    ( if ParentInitOffset = HeadParentInitOffset then
+        trace [compile_time(flag("tree-bitset-checks"))] (
+            expect(unify(ParentLimitOffset, HeadParentLimitOffset),
+                $pred, "limit mismatch")
+        ),
+        !:RevAcc = [Head | !.RevAcc],
+        group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset,
+            !.RevAcc, Tail, ParentNode, Remaining)
+    else
+        ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
+            leaf_list(list.reverse(!.RevAcc))),
+        Remaining = [Head | Tail]
+    ).
+
+:- pred recursively_group_interior_nodes(int::in, list(interior_node)::in,
+    node_list::out) is det.
+
+recursively_group_interior_nodes(CurLevel, CurNodes, List) :-
+    (
+        CurNodes = [],
+        unexpected($pred, "empty CurNodes")
+    ;
+        CurNodes = [CurNodesHead | CurNodesTail],
+        (
+            CurNodesTail = [],
+            List = CurNodesHead ^ components
+        ;
+            CurNodesTail = [_ | _],
+            group_interior_nodes(CurLevel, CurNodesHead, CurNodesTail,
+                ParentNodes),
+            recursively_group_interior_nodes(CurLevel + 1, ParentNodes, List)
+        )
+    ).
+
+:- pred group_interior_nodes(int::in, interior_node::in,
+    list(interior_node)::in, list(interior_node)::out) is det.
+
+group_interior_nodes(Level, Head, Tail, ParentList) :-
+    range_of_parent_node(Head ^ init_offset, Level,
+        ParentInitOffset, ParentLimitOffset),
+    group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
+        [Head], Tail, ParentHead, Remaining),
+    (
+        Remaining = [],
+        ParentTail = []
+    ;
+        Remaining = [RemainingHead | RemainingTail],
+        group_interior_nodes(Level, RemainingHead, RemainingTail, ParentTail)
+    ),
+    ParentList = [ParentHead | ParentTail].
+
+:- pred group_interior_nodes_in_range(int::in, int::in, int::in,
+    list(interior_node)::in, list(interior_node)::in,
+    interior_node::out, list(interior_node)::out) is det.
+
+group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
+        !.RevAcc, [], ParentNode, []) :-
+    ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
+        interior_list(Level, list.reverse(!.RevAcc))).
+group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
+        !.RevAcc, [Head | Tail], ParentNode, Remaining) :-
+    range_of_parent_node(Head ^ init_offset, Level,
+        HeadParentInitOffset, HeadParentLimitOffset),
+    ( if ParentInitOffset = HeadParentInitOffset then
+        trace [compile_time(flag("tree-bitset-checks"))] (
+            expect(unify(ParentLimitOffset, HeadParentLimitOffset),
+                $pred, "limit mismatch")
+        ),
+        !:RevAcc = [Head | !.RevAcc],
+        group_interior_nodes_in_range(Level,
+            ParentInitOffset, ParentLimitOffset,
+            !.RevAcc, Tail, ParentNode, Remaining)
+    else
+        ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
+            interior_list(Level, list.reverse(!.RevAcc))),
+        Remaining = [Head | Tail]
+    ).
+
+%---------------------%
+
+to_sorted_list(Set) = foldr(list.cons, Set, []).
+
+to_sorted_list(Set, List) :-
+    List = to_sorted_list(Set).
+
+%---------------------------------------------------------------------------%
+
+from_set(Set) = sorted_list_to_set(set.to_sorted_list(Set)).
+
+to_set(Set) = set.sorted_list_to_set(to_sorted_list(Set)).
+
+%---------------------------------------------------------------------------%
+
+count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
+
+%---------------------------------------------------------------------------%
+
+all_true(P, Set) :-
+    Set = tree_bitset(List),
+    (
+        List = leaf_list(LeafNodes),
+        leaf_all_true(P, LeafNodes)
+    ;
+        List = interior_list(_, InteriorNodes),
+        interior_all_true(P, InteriorNodes)
+    ).
+
+:- pred interior_all_true(pred(T)::in(pred(in) is semidet),
+    list(interior_node)::in) is semidet <= enum(T).
+:- pragma type_spec(interior_all_true/2, T = int).
+:- pragma type_spec(interior_all_true/2, T = var(_)).
+
+interior_all_true(_P, []).
+interior_all_true(P, [H | T]) :-
+    Components = H ^ components,
+    (
+        Components = leaf_list(LeafNodes),
+        leaf_all_true(P, LeafNodes)
+    ;
+        Components = interior_list(_, InteriorNodes),
+        interior_all_true(P, InteriorNodes)
+    ),
+    interior_all_true(P, T).
+
+:- pred leaf_all_true(pred(T)::in(pred(in) is semidet), list(leaf_node)::in)
+    is semidet <= enum(T).
+:- pragma type_spec(leaf_all_true/2, T = int).
+:- pragma type_spec(leaf_all_true/2, T = var(_)).
+
+leaf_all_true(_P, []).
+leaf_all_true(P, [H | T]) :-
+    all_true_bits(P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int),
+    leaf_all_true(P, T).
+
+    % Do a binary search for the 1 bits in an int.
+    %
+:- pred all_true_bits(pred(T)::in(pred(in) is semidet),
+    int::in, uint::in, int::in) is semidet <= enum(T).
+:- pragma type_spec(all_true_bits/4, T = int).
+:- pragma type_spec(all_true_bits/4, T = var(_)).
+
+all_true_bits(P, Offset, Bits, Size) :-
+    ( if Bits = 0u then
+        true
+    else if Size = 1 then
+        Elem = index_to_enum(Offset),
+        P(Elem)
+    else
+        HalfSize = unchecked_right_shift(Size, 1),
+        Mask = mask(HalfSize),
+
+        % Extract the low-order half of the bits.
+        LowBits = Mask /\ Bits,
+
+        % Extract the high-order half of the bits.
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+
+        all_true_bits(P, Offset, LowBits, HalfSize),
+        all_true_bits(P, Offset + HalfSize, HighBits, HalfSize)
+    ).
+
+%---------------------%
+
+% XXX We should make these more efficient. At least, we could filter the bits
+% in the leaf nodes, yielding a new list of leaf nodes, and we could put the
+% interior nodes on top, just as we do in sorted_list_to_set.
+
+filter(Pred, Set) = TrueSet :-
+    SortedList = to_sorted_list(Set),
+    SortedTrueList = list.filter(Pred, SortedList),
+    TrueSet = sorted_list_to_set(SortedTrueList).
+
+filter(Pred, Set, TrueSet, FalseSet) :-
+    SortedList = to_sorted_list(Set),
+    list.filter(Pred, SortedList, SortedTrueList, SortedFalseList),
+    TrueSet = sorted_list_to_set(SortedTrueList),
+    FalseSet = sorted_list_to_set(SortedFalseList).
+
+%---------------------%
+
+foldl(F, Set, Acc0) = Acc :-
+    P =
+        ( pred(E::in, PAcc0::in, PAcc::out) is det :-
+            PAcc = F(E, PAcc0)
+        ),
+    foldl(P, Set, Acc0, Acc).
+
+foldl(P, Set, !Acc) :-
+    Set = tree_bitset(List),
+    (
+        List = leaf_list(LeafNodes),
+        leaf_foldl_pred(P, LeafNodes, !Acc)
+    ;
+        List = interior_list(_, InteriorNodes),
+        do_foldl_pred(P, InteriorNodes, !Acc)
+    ).
+
+:- pred do_foldl_pred(pred(T, U, U), list(interior_node), U, U) <= enum(T).
+:- mode do_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
+:- mode do_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode do_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode do_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode do_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode do_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode do_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode do_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
+:- mode do_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode do_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- pragma type_spec(do_foldl_pred/4, T = int).
+:- pragma type_spec(do_foldl_pred/4, T = var(_)).
+
+do_foldl_pred(_, [], !Acc).
+do_foldl_pred(P, [H | T], !Acc) :-
+    Components = H ^ components,
+    (
+        Components = leaf_list(LeafNodes),
+        leaf_foldl_pred(P, LeafNodes, !Acc)
+    ;
+        Components = interior_list(_, InteriorNodes),
+        do_foldl_pred(P, InteriorNodes, !Acc)
+    ),
+    do_foldl_pred(P, T, !Acc).
+
+:- pred leaf_foldl_pred(pred(T, U, U), list(leaf_node), U, U) <= enum(T).
+:- mode leaf_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
+:- mode leaf_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode leaf_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode leaf_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode leaf_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
+:- mode leaf_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode leaf_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode leaf_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
+:- mode leaf_foldl_pred(pred(in, in, out) is cc_multi, in, in, out)
+    is cc_multi.
+:- mode leaf_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- pragma type_spec(leaf_foldl_pred/4, T = int).
+:- pragma type_spec(leaf_foldl_pred/4, T = var(_)).
+
+leaf_foldl_pred(_, [], !Acc).
+leaf_foldl_pred(P, [H | T], !Acc) :-
+    fold_bits(low_to_high, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
+        !Acc),
+    leaf_foldl_pred(P, T, !Acc).
+
+%---------------------%
+
+foldl2(P, Set, !AccA, !AccB) :-
+    Set = tree_bitset(List),
+    (
+        List = leaf_list(LeafNodes),
+        leaf_foldl2_pred(P, LeafNodes, !AccA, !AccB)
+    ;
+        List = interior_list(_, InteriorNodes),
+        do_foldl2_pred(P, InteriorNodes, !AccA, !AccB)
+    ).
+
+:- pred do_foldl2_pred(pred(T, U, U, V, V), list(interior_node), U, U, V, V)
+    <= enum(T).
+:- mode do_foldl2_pred(pred(in, di, uo, di, uo) is det,
+    in, di, uo, di, uo) is det.
+:- mode do_foldl2_pred(pred(in, in, out, di, uo) is det,
+    in, in, out, di, uo) is det.
+:- mode do_foldl2_pred(pred(in, in, out, in, out) is det,
+    in, in, out, in, out) is det.
+:- mode do_foldl2_pred(pred(in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode do_foldl2_pred(pred(in, in, out, in, out) is nondet,
+    in, in, out, in, out) is nondet.
+:- mode do_foldl2_pred(pred(in, di, uo, di, uo) is cc_multi,
+    in, di, uo, di, uo) is cc_multi.
+:- mode do_foldl2_pred(pred(in, in, out, di, uo) is cc_multi,
+    in, in, out, di, uo) is cc_multi.
+:- mode do_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
+    in, in, out, in, out) is cc_multi.
+:- pragma type_spec(do_foldl2_pred/6, T = int).
+:- pragma type_spec(do_foldl2_pred/6, T = var(_)).
+
+do_foldl2_pred(_, [], !AccA, !AccB).
+do_foldl2_pred(P, [H | T], !AccA, !AccB) :-
+    Components = H ^ components,
+    (
+        Components = leaf_list(LeafNodes),
+        leaf_foldl2_pred(P, LeafNodes, !AccA, !AccB)
+    ;
+        Components = interior_list(_, InteriorNodes),
+        do_foldl2_pred(P, InteriorNodes, !AccA, !AccB)
+    ),
+    do_foldl2_pred(P, T, !AccA, !AccB).
+
+:- pred leaf_foldl2_pred(pred(T, U, U, V, V), list(leaf_node), U, U, V, V)
+    <= enum(T).
+:- mode leaf_foldl2_pred(pred(in, di, uo, di, uo) is det,
+    in, di, uo, di, uo) is det.
+:- mode leaf_foldl2_pred(pred(in, in, out, di, uo) is det,
+    in, in, out, di, uo) is det.
+:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is det,
+    in, in, out, in, out) is det.
+:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is nondet,
+    in, in, out, in, out) is nondet.
+:- mode leaf_foldl2_pred(pred(in, di, uo, di, uo) is cc_multi,
+    in, di, uo, di, uo) is cc_multi.
+:- mode leaf_foldl2_pred(pred(in, in, out, di, uo) is cc_multi,
+    in, in, out, di, uo) is cc_multi.
+:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
+    in, in, out, in, out) is cc_multi.
+:- pragma type_spec(leaf_foldl2_pred/6, T = int).
+:- pragma type_spec(leaf_foldl2_pred/6, T = var(_)).
+
+leaf_foldl2_pred(_, [], !AccA, !AccB).
+leaf_foldl2_pred(P, [H | T], !AccA, !AccB) :-
+    fold2_bits(low_to_high, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
+        !AccA, !AccB),
+    leaf_foldl2_pred(P, T, !AccA, !AccB).
+
+%---------------------%
+
+foldr(F, Set, Acc0) = Acc :-
+    P =
+        ( pred(E::in, PAcc0::in, PAcc::out) is det :-
+            PAcc = F(E, PAcc0)
+        ),
+    foldr(P, Set, Acc0, Acc).
+
+foldr(P, Set, !Acc) :-
+    Set = tree_bitset(List),
+    (
+        List = leaf_list(LeafNodes),
+        leaf_foldr_pred(P, LeafNodes, !Acc)
+    ;
+        List = interior_list(_, InteriorNodes),
+        do_foldr_pred(P, InteriorNodes, !Acc)
+    ).
+
+:- pred do_foldr_pred(pred(T, U, U), list(interior_node), U, U) <= enum(T).
+:- mode do_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode do_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
+:- mode do_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode do_foldr_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode do_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode do_foldr_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- pragma type_spec(do_foldr_pred/4, T = int).
+:- pragma type_spec(do_foldr_pred/4, T = var(_)).
+
+do_foldr_pred(_, [], !Acc).
+do_foldr_pred(P, [H | T], !Acc) :-
+    % We don't just use list.foldr here because the overhead of allocating
+    % the closure for fold_bits is significant for the compiler's runtime,
+    % so it is best to avoid that even if `--optimize-higher-order' is not set.
+    do_foldr_pred(P, T, !Acc),
+    Components = H ^ components,
+    (
+        Components = leaf_list(LeafNodes),
+        leaf_foldr_pred(P, LeafNodes, !Acc)
+    ;
+        Components = interior_list(_, InteriorNodes),
+        do_foldr_pred(P, InteriorNodes, !Acc)
+    ).
+
+:- pred leaf_foldr_pred(pred(T, U, U), list(leaf_node), U, U) <= enum(T).
+:- mode leaf_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode leaf_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
+:- mode leaf_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode leaf_foldr_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode leaf_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode leaf_foldr_pred(pred(in, in, out) is cc_multi, in, in, out)
+    is cc_multi.
+:- pragma type_spec(leaf_foldr_pred/4, T = int).
+:- pragma type_spec(leaf_foldr_pred/4, T = var(_)).
+
+leaf_foldr_pred(_, [], !Acc).
+leaf_foldr_pred(P, [H | T], !Acc) :-
+    % We don't just use list.foldr here because the overhead of allocating
+    % the closure for fold_bits is significant for the compiler's runtime,
+    % so it is best to avoid that even if `--optimize-higher-order' is not set.
+    leaf_foldr_pred(P, T, !Acc),
+    fold_bits(high_to_low, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
+        !Acc).
+
+%---------------------%
+
+foldr2(P, Set, !AccA, !AccB) :-
+    Set = tree_bitset(List),
+    (
+        List = leaf_list(LeafNodes),
+        leaf_foldr2_pred(P, LeafNodes, !AccA, !AccB)
+    ;
+        List = interior_list(_, InteriorNodes),
+        do_foldr2_pred(P, InteriorNodes, !AccA, !AccB)
+    ).
+
+:- pred do_foldr2_pred(pred(T, U, U, V, V), list(interior_node), U, U, V, V)
+    <= enum(T).
+:- mode do_foldr2_pred(pred(in, di, uo, di, uo) is det,
+    in, di, uo, di, uo) is det.
+:- mode do_foldr2_pred(pred(in, in, out, di, uo) is det,
+    in, in, out, di, uo) is det.
+:- mode do_foldr2_pred(pred(in, in, out, in, out) is det,
+    in, in, out, in, out) is det.
+:- mode do_foldr2_pred(pred(in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode do_foldr2_pred(pred(in, in, out, in, out) is nondet,
+    in, in, out, in, out) is nondet.
+:- mode do_foldr2_pred(pred(in, di, uo, di, uo) is cc_multi,
+    in, di, uo, di, uo) is cc_multi.
+:- mode do_foldr2_pred(pred(in, in, out, di, uo) is cc_multi,
+    in, in, out, di, uo) is cc_multi.
+:- mode do_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
+    in, in, out, in, out) is cc_multi.
+:- pragma type_spec(do_foldr2_pred/6, T = int).
+:- pragma type_spec(do_foldr2_pred/6, T = var(_)).
+
+do_foldr2_pred(_, [], !AccA, !AccB).
+do_foldr2_pred(P, [H | T], !AccA, !AccB) :-
+    % We don't just use list.foldr here because the overhead of allocating
+    % the closure for fold_bits is significant for the compiler's runtime,
+    % so it is best to avoid that even if `--optimize-higher-order' is not set.
+    do_foldr2_pred(P, T, !AccA, !AccB),
+    Components = H ^ components,
+    (
+        Components = leaf_list(LeafNodes),
+        leaf_foldr2_pred(P, LeafNodes, !AccA, !AccB)
+    ;
+        Components = interior_list(_, InteriorNodes),
+        do_foldr2_pred(P, InteriorNodes, !AccA, !AccB)
+    ).
+
+:- pred leaf_foldr2_pred(pred(T, U, U, V, V), list(leaf_node), U, U, V, V)
+    <= enum(T).
+:- mode leaf_foldr2_pred(pred(in, di, uo, di, uo) is det,
+    in, di, uo, di, uo) is det.
+:- mode leaf_foldr2_pred(pred(in, in, out, di, uo) is det,
+    in, in, out, di, uo) is det.
+:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is det,
+    in, in, out, in, out) is det.
+:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is nondet,
+    in, in, out, in, out) is nondet.
+:- mode leaf_foldr2_pred(pred(in, di, uo, di, uo) is cc_multi,
+    in, di, uo, di, uo) is cc_multi.
+:- mode leaf_foldr2_pred(pred(in, in, out, di, uo) is cc_multi,
+    in, in, out, di, uo) is cc_multi.
+:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
+    in, in, out, in, out) is cc_multi.
+:- pragma type_spec(leaf_foldr2_pred/6, T = int).
+:- pragma type_spec(leaf_foldr2_pred/6, T = var(_)).
+
+leaf_foldr2_pred(_, [], !AccA, !AccB).
+leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
+    % We don't just use list.foldr here because the overhead of allocating
+    % the closure for fold_bits is significant for the compiler's runtime,
+    % so it is best to avoid that even if `--optimize-higher-order' is not set.
+    leaf_foldr2_pred(P, T, !AccA, !AccB),
+    fold2_bits(high_to_low, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
+        !AccA, !AccB).
+
+%---------------------%
+
+:- type fold_direction
+    --->    low_to_high
+    ;       high_to_low.
+
+    % Do a binary search for the 1 bits in an int.
+    %
+:- pred fold_bits(fold_direction, pred(T, U, U),
+    int, uint, int, U, U) <= enum(T).
+:- mode fold_bits(in, pred(in, in, out) is det,
+    in, in, in, in, out) is det.
+:- mode fold_bits(in, pred(in, mdi, muo) is det,
+    in, in, in, mdi, muo) is det.
+:- mode fold_bits(in, pred(in, di, uo) is det,
+    in, in, in, di, uo) is det.
+:- mode fold_bits(in, pred(in, in, out) is semidet,
+    in, in, in, in, out) is semidet.
+:- mode fold_bits(in, pred(in, mdi, muo) is semidet,
+    in, in, in, mdi, muo) is semidet.
+:- mode fold_bits(in, pred(in, di, uo) is semidet,
+    in, in, in, di, uo) is semidet.
+:- mode fold_bits(in, pred(in, in, out) is nondet,
+    in, in, in, in, out) is nondet.
+:- mode fold_bits(in, pred(in, mdi, muo) is nondet,
+    in, in, in, mdi, muo) is nondet.
+:- mode fold_bits(in, pred(in, in, out) is cc_multi,
+    in, in, in, in, out) is cc_multi.
+:- mode fold_bits(in, pred(in, di, uo) is cc_multi,
+    in, in, in, di, uo) is cc_multi.
+:- pragma type_spec(fold_bits/7, T = int).
+:- pragma type_spec(fold_bits/7, T = var(_)).
+
+fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
+    ( if Bits = 0u then
+        true
+    else if Size = 1 then
+        Elem = index_to_enum(Offset),
+        P(Elem, !Acc)
+    else
+        HalfSize = unchecked_right_shift(Size, 1),
+        Mask = mask(HalfSize),
+
+        % Extract the low-order half of the bits.
+        LowBits = Mask /\ Bits,
+
+        % Extract the high-order half of the bits.
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+
+        (
+            Dir = low_to_high,
+            fold_bits(Dir, P, Offset, LowBits, HalfSize, !Acc),
+            fold_bits(Dir, P, Offset + HalfSize, HighBits, HalfSize, !Acc)
+        ;
+            Dir = high_to_low,
+            fold_bits(Dir, P, Offset + HalfSize, HighBits, HalfSize, !Acc),
+            fold_bits(Dir, P, Offset, LowBits, HalfSize, !Acc)
+        )
+    ).
+
+:- pred fold2_bits(fold_direction, pred(T, U, U, V, V),
+    int, uint, int, U, U, V, V) <= enum(T).
+:- mode fold2_bits(in, pred(in, di, uo, di, uo) is det,
+    in, in, in, di, uo, di, uo) is det.
+:- mode fold2_bits(in, pred(in, in, out, di, uo) is det,
+    in, in, in, in, out, di, uo) is det.
+:- mode fold2_bits(in, pred(in, in, out, in, out) is det,
+    in, in, in, in, out, in, out) is det.
+:- mode fold2_bits(in, pred(in, in, out, in, out) is semidet,
+    in, in, in, in, out, in, out) is semidet.
+:- mode fold2_bits(in, pred(in, in, out, in, out) is nondet,
+    in, in, in, in, out, in, out) is nondet.
+:- mode fold2_bits(in, pred(in, di, uo, di, uo) is cc_multi,
+    in, in, in, di, uo, di, uo) is cc_multi.
+:- mode fold2_bits(in, pred(in, in, out, di, uo) is cc_multi,
+    in, in, in, in, out, di, uo) is cc_multi.
+:- mode fold2_bits(in, pred(in, in, out, in, out) is cc_multi,
+    in, in, in, in, out, in, out) is cc_multi.
+:- pragma type_spec(fold2_bits/9, T = int).
+:- pragma type_spec(fold2_bits/9, T = var(_)).
+
+fold2_bits(Dir, P, Offset, Bits, Size, !AccA, !AccB) :-
+    ( if Bits = 0u then
+        true
+    else if Size = 1 then
+        Elem = index_to_enum(Offset),
+        P(Elem, !AccA, !AccB)
+    else
+        HalfSize = unchecked_right_shift(Size, 1),
+        Mask = mask(HalfSize),
+
+        % Extract the low-order half of the bits.
+        LowBits = Mask /\ Bits,
+
+        % Extract the high-order half of the bits.
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+
+        (
+            Dir = low_to_high,
+            fold2_bits(Dir, P, Offset, LowBits, HalfSize, !AccA, !AccB),
+            fold2_bits(Dir, P, Offset + HalfSize, HighBits, HalfSize,
+                !AccA, !AccB)
+        ;
+            Dir = high_to_low,
+            fold2_bits(Dir, P, Offset + HalfSize, HighBits, HalfSize,
+                !AccA, !AccB),
+            fold2_bits(Dir, P, Offset, LowBits, HalfSize, !AccA, !AccB)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Utility predicates and functions for the rest of the module above.
+%
 
     % Return the offset of the element of a set which should contain the given
     % element, and an int with the bit corresponding to that element set.

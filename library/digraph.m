@@ -978,7 +978,7 @@ check_tsort(G, Vis0, [X | Xs]) :-
     insert(X, Vis0, Vis),
     digraph.lookup_key_set_from(G, X, SuccXs),
     intersect(Vis, SuccXs, BackPointers),
-    empty(BackPointers),
+    is_empty(BackPointers),
     digraph.check_tsort(G, Vis, Xs).
 
 %---------------------------------------------------------------------------%
@@ -1062,7 +1062,7 @@ detect_fake_reflexives(G, Rtc, [X | Xs], !Fakes) :-
     digraph.lookup_key_set_from(G, X, SuccXs),
     digraph.lookup_key_set_to(Rtc, X, PreXs),
     intersect(SuccXs, PreXs, Ys),
-    ( if empty(Ys) then
+    ( if is_empty(Ys) then
         !:Fakes = [X - X | !.Fakes]
     else
         true

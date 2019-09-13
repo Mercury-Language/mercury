@@ -313,7 +313,7 @@ filter(P, equiv_vars(LM0)) = equiv_vars(LM) :-
 	LM = list.foldl(func(V, M) = delete(M, V), Vars, LM0).
 
 normalise_known_equivalent_vars(Changed, Vars0, Vars, EQVars0, EQVars) :-
-	( ( empty(Vars0) ; empty(EQVars0) ) ->
+	( ( is_empty(Vars0) ; empty(EQVars0) ) ->
 		Vars = Vars0,
 		EQVars = EQVars0,
 		Changed = no

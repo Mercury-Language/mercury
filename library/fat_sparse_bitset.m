@@ -13,7 +13,6 @@
 % This is a variant of the sparse_bitset module using fat lists.
 %
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
 :- module fat_sparse_bitset.
 :- interface.
@@ -28,32 +27,15 @@
 
 :- type fat_sparse_bitset(T). % <= enum(T).
 
-    % `equal(SetA, SetB' is true iff `SetA' and `SetB' contain the same
-    % elements. Takes O(min(rep_size(SetA), rep_size(SetB))) time.
-    %
-:- pred equal(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in) is semidet.
-
 %---------------------------------------------------------------------------%
+%
+% Initial creation of sets.
+%
 
     % Return an empty set.
     %
 :- func init = fat_sparse_bitset(T).
 :- pred init(fat_sparse_bitset(T)::out) is det.
-
-:- pred empty(fat_sparse_bitset(T)).
-:- mode empty(in) is semidet.
-:- mode empty(out) is det.
-
-:- pred is_empty(fat_sparse_bitset(T)::in) is semidet.
-
-:- pred is_non_empty(fat_sparse_bitset(T)::in) is semidet.
-
-%---------------------%
-
-    % `make_singleton_set(Elem)' returns a set containing just the single
-    % element `Elem'.
-    %
-:- func make_singleton_set(T) = fat_sparse_bitset(T) <= enum(T).
 
     % Note: set.m contains the reverse mode of this predicate, but it is
     % difficult to implement both modes using the representation in this
@@ -61,16 +43,33 @@
     %
 :- pred singleton_set(fat_sparse_bitset(T)::out, T::in) is det <= enum(T).
 
+    % `make_singleton_set(Elem)' returns a set containing just the single
+    % element `Elem'.
+    %
+:- func make_singleton_set(T) = fat_sparse_bitset(T) <= enum(T).
+
+%---------------------------------------------------------------------------%
+%
+% Emptiness and singleton-ness tests.
+%
+
+:- pred empty(fat_sparse_bitset(T)).
+:- mode empty(in) is semidet.
+:- mode empty(out) is det.
+:- pragma obsolete(empty/1, [init/0, is_empty/1]).
+
+:- pred is_empty(fat_sparse_bitset(T)::in) is semidet.
+
+:- pred is_non_empty(fat_sparse_bitset(T)::in) is semidet.
+
     % Is the given set a singleton, and if yes, what is the element?
     %
 :- pred is_singleton(fat_sparse_bitset(T)::in, T::out) is semidet <= enum(T).
 
 %---------------------------------------------------------------------------%
-
-    % `contains(Set, X)' is true iff `X' is a member of `Set'.
-    % Takes O(rep_size(Set)) time.
-    %
-:- pred contains(fat_sparse_bitset(T)::in, T::in) is semidet <= enum(T).
+%
+% Membership tests.
+%
 
     % `member(X, Set)' is true iff `X' is a member of `Set'.
     % Takes O(rep_size(Set)) time.
@@ -79,7 +78,15 @@
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
+    % `contains(Set, X)' is true iff `X' is a member of `Set'.
+    % Takes O(rep_size(Set)) time.
+    %
+:- pred contains(fat_sparse_bitset(T)::in, T::in) is semidet <= enum(T).
+
 %---------------------------------------------------------------------------%
+%
+% Insertions and deletions.
+%
 
     % `insert(Set, X)' returns the union of `Set' and the set containing
     % only `X'. Takes O(rep_size(Set)) time and space.
@@ -161,6 +168,95 @@
     fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
 
 %---------------------------------------------------------------------------%
+%
+% Comparisons between sets.
+%
+
+    % `equal(SetA, SetB' is true iff `SetA' and `SetB' contain the same
+    % elements. Takes O(min(rep_size(SetA), rep_size(SetB))) time.
+    %
+:- pred equal(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in) is semidet.
+
+    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
+    % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
+    %
+:- pred subset(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in) is semidet.
+
+    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
+    % Same as `intersect(Superset, Set, Set)', but may be more efficient.
+    %
+:- pred superset(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in)
+    is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Operations on two or more sets.
+%
+
+    % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
+    % efficiency of the union operation is not sensitive to the argument
+    % ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and space.
+    %
+:- func union(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
+    fat_sparse_bitset(T).
+:- pred union(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out) is det.
+
+    % `union_list(Sets, Set)' returns the union of all the sets in Sets.
+    %
+:- func union_list(list(fat_sparse_bitset(T))) = fat_sparse_bitset(T).
+:- pred union_list(list(fat_sparse_bitset(T))::in,
+    fat_sparse_bitset(T)::out) is det.
+
+    % `intersect(SetA, SetB)' returns the intersection of `SetA' and `SetB'.
+    % The efficiency of the intersection operation is not sensitive to the
+    % argument ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and
+    % O(min(rep_size(SetA)), rep_size(SetB)) space.
+    %
+:- func intersect(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
+    fat_sparse_bitset(T).
+:- pred intersect(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out) is det.
+
+    % `intersect_list(Sets, Set)' returns the intersection of all the sets
+    % in Sets.
+    %
+:- func intersect_list(list(fat_sparse_bitset(T))) = fat_sparse_bitset(T).
+:- pred intersect_list(list(fat_sparse_bitset(T))::in,
+    fat_sparse_bitset(T)::out) is det.
+
+    % `difference(SetA, SetB)' returns the set containing all the elements
+    % of `SetA' except those that occur in `SetB'. Takes
+    % O(rep_size(SetA) + rep_size(SetB)) time and O(rep_size(SetA)) space.
+    %
+:- func difference(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
+    fat_sparse_bitset(T).
+:- pred difference(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Operations that divide a set into two parts.
+%
+
+    % divide(Pred, Set, InPart, OutPart):
+    % InPart consists of those elements of Set for which Pred succeeds;
+    % OutPart consists of those elements of Set for which Pred fails.
+    %
+:- pred divide(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
+
+    % divide_by_set(DivideBySet, Set, InPart, OutPart):
+    % InPart consists of those elements of Set which are also in DivideBySet;
+    % OutPart consists of those elements of Set which are not in DivideBySet.
+    %
+:- pred divide_by_set(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
+    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
+
+%---------------------------------------------------------------------------%
+%
+% Converting lists to sets.
+%
 
     % `list_to_set(List)' returns a set containing only the members of `List'.
     % In the worst case this will take O(length(List)^2) time and space.
@@ -177,6 +273,11 @@
 :- pred sorted_list_to_set(list(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
+%---------------------------------------------------------------------------%
+%
+% Converting sets to lists.
+%
+
     % `to_sorted_list(Set)' returns a list containing all the members of `Set',
     % in sorted order. Takes O(card(Set)) time and space.
     %
@@ -184,7 +285,10 @@
 :- pred to_sorted_list(fat_sparse_bitset(T)::in, list(T)::out)
     is det <= enum(T).
 
-%---------------------%
+%---------------------------------------------------------------------------%
+%
+% Converting between different kinds of sets.
+%
 
     % `from_set(Set)' returns a bitset containing only the members of `Set'.
     % Takes O(card(Set)) time and space.
@@ -197,11 +301,39 @@
 :- func to_set(fat_sparse_bitset(T)) = set.set(T) <= enum(T).
 
 %---------------------------------------------------------------------------%
+%
+% Counting.
+%
 
     % `count(Set)' returns the number of elements in `Set'.
     % Takes O(card(Set)) time.
     %
 :- func count(fat_sparse_bitset(T)) = int <= enum(T).
+
+%---------------------------------------------------------------------------%
+%
+% Standard higher order functions on collections.
+%
+
+    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % for all the elements of Set.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in)
+    is semidet <= enum(T).
+
+    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
+    % Pred succeeds.
+    %
+:- func filter(pred(T), fat_sparse_bitset(T)) = fat_sparse_bitset(T)
+    <= enum(T).
+:- mode filter(pred(in) is semidet, in) = out is det.
+
+    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
+    % for which Pred succeeds, and those for which it fails.
+    %
+:- pred filter(pred(T), fat_sparse_bitset(T),
+    fat_sparse_bitset(T), fat_sparse_bitset(T)) <= enum(T).
+:- mode filter(pred(in) is semidet, in, out, out) is det.
 
     % `foldl(Func, Set, Start)' calls Func with each element of `Set'
     % (in sorted order) and an accumulator (with the initial value of `Start'),
@@ -281,96 +413,6 @@
 :- mode foldr2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
     is cc_multi.
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
-    % for all the elements of Set.
-    %
-:- pred all_true(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in)
-    is semidet <= enum(T).
-
-    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
-    % Pred succeeds.
-    %
-:- func filter(pred(T), fat_sparse_bitset(T)) = fat_sparse_bitset(T)
-    <= enum(T).
-:- mode filter(pred(in) is semidet, in) = out is det.
-
-    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
-    % for which Pred succeeds, and those for which it fails.
-    %
-:- pred filter(pred(T), fat_sparse_bitset(T),
-    fat_sparse_bitset(T), fat_sparse_bitset(T)) <= enum(T).
-:- mode filter(pred(in) is semidet, in, out, out) is det.
-
-%---------------------------------------------------------------------------%
-
-    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
-    % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
-    %
-:- pred subset(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in) is semidet.
-
-    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
-    % Same as `intersect(Superset, Set, Set)', but may be more efficient.
-    %
-:- pred superset(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in)
-    is semidet.
-
-%---------------------------------------------------------------------------%
-
-    % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
-    % efficiency of the union operation is not sensitive to the argument
-    % ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and space.
-    %
-:- func union(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
-    fat_sparse_bitset(T).
-:- pred union(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
-    fat_sparse_bitset(T)::out) is det.
-
-    % `union_list(Sets, Set)' returns the union of all the sets in Sets.
-    %
-:- func union_list(list(fat_sparse_bitset(T))) = fat_sparse_bitset(T).
-:- pred union_list(list(fat_sparse_bitset(T))::in,
-    fat_sparse_bitset(T)::out) is det.
-
-    % `intersect(SetA, SetB)' returns the intersection of `SetA' and `SetB'.
-    % The efficiency of the intersection operation is not sensitive to the
-    % argument ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and
-    % O(min(rep_size(SetA)), rep_size(SetB)) space.
-    %
-:- func intersect(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
-    fat_sparse_bitset(T).
-:- pred intersect(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
-    fat_sparse_bitset(T)::out) is det.
-
-    % `intersect_list(Sets, Set)' returns the intersection of all the sets
-    % in Sets.
-    %
-:- func intersect_list(list(fat_sparse_bitset(T))) = fat_sparse_bitset(T).
-:- pred intersect_list(list(fat_sparse_bitset(T))::in,
-    fat_sparse_bitset(T)::out) is det.
-
-    % `difference(SetA, SetB)' returns the set containing all the elements
-    % of `SetA' except those that occur in `SetB'. Takes
-    % O(rep_size(SetA) + rep_size(SetB)) time and O(rep_size(SetA)) space.
-    %
-:- func difference(fat_sparse_bitset(T), fat_sparse_bitset(T)) =
-    fat_sparse_bitset(T).
-:- pred difference(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
-    fat_sparse_bitset(T)::out) is det.
-
-    % divide(Pred, Set, InPart, OutPart):
-    % InPart consists of those elements of Set for which Pred succeeds;
-    % OutPart consists of those elements of Set for which Pred fails.
-    %
-:- pred divide(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in,
-    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
-
-    % divide_by_set(DivideBySet, Set, InPart, OutPart):
-    % InPart consists of those elements of Set which are also in DivideBySet;
-    % OutPart consists of those elements of Set which are not in DivideBySet.
-    %
-:- pred divide_by_set(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
-    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -381,20 +423,8 @@
 
 :- interface.
 
-:- pragma type_spec(list_to_set/1, T = var(_)).
-:- pragma type_spec(list_to_set/1, T = int).
-
-:- pragma type_spec(sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(sorted_list_to_set/1, T = int).
-
-:- pragma type_spec(to_sorted_list/1, T = var(_)).
-:- pragma type_spec(to_sorted_list/1, T = int).
-
-:- pragma type_spec(to_set/1, T = var(_)).
-:- pragma type_spec(to_set/1, T = int).
-
-:- pragma type_spec(from_set/1, T = var(_)).
-:- pragma type_spec(from_set/1, T = int).
+:- pragma type_spec(singleton_set/2, T = var(_)).
+:- pragma type_spec(singleton_set/2, T = int).
 
 :- pragma type_spec(make_singleton_set/1, T = var(_)).
 :- pragma type_spec(make_singleton_set/1, T = int).
@@ -404,21 +434,44 @@
 
 :- pragma type_spec(insert/2, T = var(_)).
 :- pragma type_spec(insert/2, T = int).
+:- pragma type_spec(insert/3, T = var(_)).
+:- pragma type_spec(insert/3, T = int).
 
 :- pragma type_spec(insert_list/2, T = var(_)).
 :- pragma type_spec(insert_list/2, T = int).
+:- pragma type_spec(insert_list/3, T = var(_)).
+:- pragma type_spec(insert_list/3, T = int).
 
 :- pragma type_spec(delete/2, T = var(_)).
 :- pragma type_spec(delete/2, T = int).
+:- pragma type_spec(delete/3, T = var(_)).
+:- pragma type_spec(delete/3, T = int).
 
 :- pragma type_spec(delete_list/2, T = var(_)).
 :- pragma type_spec(delete_list/2, T = int).
+:- pragma type_spec(delete_list/3, T = var(_)).
+:- pragma type_spec(delete_list/3, T = int).
 
-:- pragma type_spec(foldr/3, T = int).
-:- pragma type_spec(foldr/3, T = var(_)).
+:- pragma type_spec(list_to_set/1, T = var(_)).
+:- pragma type_spec(list_to_set/1, T = int).
+:- pragma type_spec(list_to_set/2, T = var(_)).
+:- pragma type_spec(list_to_set/2, T = int).
 
-:- pragma type_spec(foldr/4, T = int).
-:- pragma type_spec(foldr/4, T = var(_)).
+:- pragma type_spec(sorted_list_to_set/1, T = var(_)).
+:- pragma type_spec(sorted_list_to_set/1, T = int).
+:- pragma type_spec(sorted_list_to_set/2, T = var(_)).
+:- pragma type_spec(sorted_list_to_set/2, T = int).
+
+:- pragma type_spec(to_sorted_list/1, T = var(_)).
+:- pragma type_spec(to_sorted_list/1, T = int).
+:- pragma type_spec(to_sorted_list/2, T = var(_)).
+:- pragma type_spec(to_sorted_list/2, T = int).
+
+:- pragma type_spec(to_set/1, T = var(_)).
+:- pragma type_spec(to_set/1, T = int).
+
+:- pragma type_spec(from_set/1, T = var(_)).
+:- pragma type_spec(from_set/1, T = int).
 
 :- pragma type_spec(foldl/3, T = int).
 :- pragma type_spec(foldl/3, T = var(_)).
@@ -426,29 +479,11 @@
 :- pragma type_spec(foldl/4, T = int).
 :- pragma type_spec(foldl/4, T = var(_)).
 
-:- pragma type_spec(list_to_set/2, T = var(_)).
-:- pragma type_spec(list_to_set/2, T = int).
+:- pragma type_spec(foldr/3, T = int).
+:- pragma type_spec(foldr/3, T = var(_)).
 
-:- pragma type_spec(sorted_list_to_set/2, T = var(_)).
-:- pragma type_spec(sorted_list_to_set/2, T = int).
-
-:- pragma type_spec(to_sorted_list/2, T = var(_)).
-:- pragma type_spec(to_sorted_list/2, T = int).
-
-:- pragma type_spec(singleton_set/2, T = var(_)).
-:- pragma type_spec(singleton_set/2, T = int).
-
-:- pragma type_spec(insert/3, T = var(_)).
-:- pragma type_spec(insert/3, T = int).
-
-:- pragma type_spec(insert_list/3, T = var(_)).
-:- pragma type_spec(insert_list/3, T = int).
-
-:- pragma type_spec(delete/3, T = var(_)).
-:- pragma type_spec(delete/3, T = int).
-
-:- pragma type_spec(delete_list/3, T = var(_)).
-:- pragma type_spec(delete_list/3, T = int).
+:- pragma type_spec(foldr/4, T = int).
+:- pragma type_spec(foldr/4, T = var(_)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -484,25 +519,21 @@
 
 %---------------------------------------------------------------------------%
 
-equal(X, X).
-
-%---------------------------------------------------------------------------%
-
 init = fat_sparse_bitset(empty).
 
 init(fat_sparse_bitset(empty)).
+
+singleton_set(make_singleton_set(A), A).
+
+make_singleton_set(A) = insert(init, A).
+
+%---------------------------------------------------------------------------%
 
 empty(fat_sparse_bitset(empty)).
 
 is_empty(fat_sparse_bitset(empty)).
 
 is_non_empty(fat_sparse_bitset(node(_, _, _))).
-
-%---------------------------------------------------------------------------%
-
-make_singleton_set(A) = insert(init, A).
-
-singleton_set(make_singleton_set(A), A).
 
 is_singleton(fat_sparse_bitset(node(Offset, Bits, empty)), Elem) :-
     count_bits(Offset, bits_per_int, Bits, [], SetOffsets),
@@ -538,21 +569,6 @@ count_bits(BitOffset, Size, Bits, !SetOffsets) :-
 
         count_bits(BitOffset, HalfSize, LowBits, !SetOffsets),
         count_bits(BitOffset + HalfSize, HalfSize, HighBits, !SetOffsets)
-    ).
-
-%---------------------------------------------------------------------------%
-
-contains(fat_sparse_bitset(Set), Elem) :-
-    contains_search_nodes(Set, enum.to_int(Elem)).
-
-:- pred contains_search_nodes(fat_bitset_impl::in, int::in) is semidet.
-
-contains_search_nodes(node(Offset, Bits, Rest), Index) :-
-    Index >= Offset,
-    ( if Index < Offset + bits_per_int then
-        get_bit(Bits, Index - Offset) \= 0u
-    else
-        contains_search_nodes(Rest, Index)
     ).
 
 %---------------------------------------------------------------------------%
@@ -600,6 +616,21 @@ member_search_one_node(Index, Offset, Size, Bits) :-
         )
     ).
 
+%---------------------%
+
+contains(fat_sparse_bitset(Set), Elem) :-
+    contains_search_nodes(Set, enum.to_int(Elem)).
+
+:- pred contains_search_nodes(fat_bitset_impl::in, int::in) is semidet.
+
+contains_search_nodes(node(Offset, Bits, Rest), Index) :-
+    Index >= Offset,
+    ( if Index < Offset + bits_per_int then
+        get_bit(Bits, Index - Offset) \= 0u
+    else
+        contains_search_nodes(Rest, Index)
+    ).
+
 %---------------------------------------------------------------------------%
 
 insert(Set0, E) = Set :-
@@ -635,7 +666,7 @@ insert_loop(Index, Set0, Set) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 insert_new(E, !Set) :-
     !.Set = fat_sparse_bitset(Set0),
@@ -668,7 +699,7 @@ insert_new_loop(Index, Set0, Set) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 insert_list(Set0, List) = Set :-
     insert_list(List, Set0, Set).
@@ -676,19 +707,21 @@ insert_list(Set0, List) = Set :-
 insert_list(List, Set0, Set) :-
     union(list_to_set(List), Set0, Set).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 delete(Set, Elem) = difference(Set, insert(init, Elem)).
 
 delete(E, !Set) :-
     !:Set = delete(!.Set, E).
 
+%---------------------%
+
 delete_list(Set, List) = difference(Set, list_to_set(List)).
 
 delete_list(List, !Set) :-
     !:Set = delete_list(!.Set, List).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove(Elem, !Set) :-
     contains(!.Set, Elem),
@@ -699,7 +732,7 @@ remove_list(Elems, !Set) :-
     subset(ElemsSet, !.Set),
     !:Set = difference(!.Set, ElemsSet).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove_leq(fat_sparse_bitset(Set), Elem) =
     fat_sparse_bitset(remove_leq_2(Set, enum.to_int(Elem))).
@@ -724,7 +757,7 @@ remove_leq_2(node(Offset, Bits, Rest), Index) = Result :-
         Result = node(Offset, Bits, Rest)
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove_gt(fat_sparse_bitset(Set), Elem) =
     fat_sparse_bitset(remove_gt_2(Set, enum.to_int(Elem))).
@@ -749,7 +782,7 @@ remove_gt_2(node(Offset, Bits, Rest), Index) = Result :-
         Result = empty
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 remove_least(Elem, fat_sparse_bitset(Set0), fat_sparse_bitset(Set)) :-
     Set0 = node(Offset, Bits0, Rest),
@@ -792,6 +825,304 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
         else
             BitNum = find_least_bit_2(LowBits, HalfSize, BitNum0)
         )
+    ).
+
+%---------------------------------------------------------------------------%
+
+equal(X, X).
+
+subset(Subset, Set) :-
+    intersect(Set, Subset, Subset).
+
+superset(Superset, Set) :-
+    subset(Set, Superset).
+
+%---------------------------------------------------------------------------%
+
+union(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
+    fat_sparse_bitset(union_2(Set1, Set2)).
+
+union(A, B, union(A, B)).
+
+:- func union_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
+
+union_2(empty, B) = B.
+union_2(A@node(_, _, _), empty) = A.
+union_2(A, B) = Set :-
+    A = node(OffsetA, BitsA, RestA),
+    B = node(OffsetB, BitsB, RestB),
+    ( if OffsetA = OffsetB then
+        Bits = BitsA \/ BitsB,
+        Set = node(OffsetA, Bits, union_2(RestA, RestB))
+    else if OffsetA < OffsetB then
+        Set = node(OffsetA, BitsA, union_2(RestA, B))
+    else
+        Set = node(OffsetB, BitsB, union_2(A, RestB))
+    ).
+
+%---------------------%
+
+union_list(Sets) = Set :-
+    union_list(Sets, Set).
+
+union_list([], fat_sparse_bitset.init).
+union_list([Set], Set).
+union_list(Sets @ [_, _ | _], Set) :-
+    union_list_pass(Sets, [], MergedSets),
+    union_list(MergedSets, Set).
+
+    % Union adjacent pairs of sets, so that the resulting list has N sets
+    % if the input list has 2N or 2N-1 sets.
+    %
+    % We keep invoking union_list_pass until it yields a list of only one set.
+    %
+    % The point of this approach is that unioning a large set with a small set
+    % is often only slightly faster than unioning that large set with another
+    % large set, yet it gets significantly less work done. This is because
+    % the bitsets in a small set can be expected to be considerably sparser
+    % that bitsets in large sets.
+    %
+    % We expect that this approach should yield performance closer to NlogN
+    % than to N^2 when unioning a list of N sets.
+    %
+:- pred union_list_pass(list(fat_sparse_bitset(T))::in,
+    list(fat_sparse_bitset(T))::in, list(fat_sparse_bitset(T))::out)
+    is det.
+
+union_list_pass([], !MergedSets).
+union_list_pass([Set], !MergedSets) :-
+    !:MergedSets = [Set | !.MergedSets].
+union_list_pass([SetA, SetB | Sets0], !MergedSets) :-
+    union(SetA, SetB, SetAB),
+    !:MergedSets = [SetAB | !.MergedSets],
+    union_list_pass(Sets0, !MergedSets).
+
+%---------------------%
+
+intersect(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
+    fat_sparse_bitset(intersect_2(Set1, Set2)).
+
+intersect(A, B, intersect(A, B)).
+
+:- func intersect_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
+
+intersect_2(empty, empty) = empty.
+intersect_2(empty, node(_, _, _)) = empty.
+intersect_2(node(_, _, _), empty) = empty.
+intersect_2(A, B) = Set :-
+    A = node(OffsetA, BitsA, RestA),
+    B = node(OffsetB, BitsB, RestB),
+    ( if OffsetA = OffsetB then
+        Bits = BitsA /\ BitsB,
+        ( if Bits = 0u then
+            Set = intersect_2(RestA, RestB)
+        else
+            Set = node(OffsetA, Bits, intersect_2(RestA, RestB))
+        )
+    else if OffsetA < OffsetB then
+        Set = intersect_2(RestA, B)
+    else
+        Set = intersect_2(A, RestB)
+    ).
+
+%---------------------%
+
+intersect_list(Sets) = Set :-
+    intersect_list(Sets, Set).
+
+intersect_list([], fat_sparse_bitset.init).
+intersect_list([Set], Set).
+intersect_list(Sets @ [_, _ | _], Set) :-
+    intersect_list_pass(Sets, [], MergedSets),
+    intersect_list(MergedSets, Set).
+
+    % Intersect adjacent pairs of sets, so that the resulting list has N sets
+    % if the input list has 2N or 2N-1 sets.
+    %
+    % We keep invoking intersect_list_pass until it yields a list
+    % of only one set.
+    %
+    % The point of this approach is that intersecting a large set with a small
+    % set is often only slightly faster than intersecting that large set
+    % with another large set, yet it gets significantly less work done.
+    % This is because the bitsets in a small set can be expected to be
+    % considerably sparser that bitsets in large sets.
+    %
+    % We expect that this approach should yield performance closer to NlogN
+    % than to N^2 when intersecting a list of N sets.
+    %
+:- pred intersect_list_pass(list(fat_sparse_bitset(T))::in,
+    list(fat_sparse_bitset(T))::in, list(fat_sparse_bitset(T))::out) is det.
+
+intersect_list_pass([], !MergedSets).
+intersect_list_pass([Set], !MergedSets) :-
+    !:MergedSets = [Set | !.MergedSets].
+intersect_list_pass([SetA, SetB | Sets0], !MergedSets) :-
+    intersect(SetA, SetB, SetAB),
+    !:MergedSets = [SetAB | !.MergedSets],
+    intersect_list_pass(Sets0, !MergedSets).
+
+%---------------------%
+
+difference(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
+    fat_sparse_bitset(difference_2(Set1, Set2)).
+
+difference(A, B, difference(A, B)).
+
+:- func difference_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
+
+difference_2(empty, empty) = empty.
+difference_2(empty, node(_, _, _)) = empty.
+difference_2(A@node(_, _, _), empty) = A.
+difference_2(A, B) = Set :-
+    A = node(OffsetA, BitsA, RestA),
+    B = node(OffsetB, BitsB, RestB),
+    ( if OffsetA = OffsetB then
+        Bits = BitsA /\ \ BitsB,
+        ( if Bits = 0u then
+            Set = difference_2(RestA, RestB)
+        else
+            Set = node(OffsetA, Bits, difference_2(RestA, RestB))
+        )
+    else if OffsetA < OffsetB then
+        Set = node(OffsetA, BitsA, difference_2(RestA, B))
+    else
+        Set = difference_2(A, RestB)
+    ).
+
+%---------------------------------------------------------------------------%
+
+divide(Pred, Set, InSet, OutSet) :-
+    Set = fat_sparse_bitset(Nodes),
+    divide_nodes(Pred, Nodes, InNodes, OutNodes),
+    InSet = fat_sparse_bitset(InNodes),
+    OutSet = fat_sparse_bitset(OutNodes).
+
+:- pred divide_nodes(pred(T)::in(pred(in) is semidet),
+    fat_bitset_impl::in, fat_bitset_impl::out, fat_bitset_impl::out)
+    is det <= enum(T).
+
+divide_nodes(_Pred, empty, empty, empty).
+divide_nodes(Pred, node(Offset, Bits, Nodes), InNodes, OutNodes) :-
+    divide_nodes(Pred, Nodes, InNodesTail, OutNodesTail),
+    divide_bits(Pred, Offset, 0, Bits, bits_per_int, 0u, In, 0u, Out),
+    ( if In = 0u then
+        InNodes = InNodesTail
+    else
+        InNodes = node(Offset, In, InNodesTail)
+    ),
+    ( if Out = 0u then
+        OutNodes = OutNodesTail
+    else
+        OutNodes = node(Offset, Out, OutNodesTail)
+    ).
+
+    % Do a binary search for the 1 bits in an int.
+    %
+:- pred divide_bits(pred(T)::in(pred(in) is semidet),
+    int::in, int::in, uint::in, int::in,
+    uint::in, uint::out, uint::in, uint::out) is det <= enum(T).
+
+divide_bits(P, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
+    ( if Bits = 0u then
+        true
+    else if Size = 1 then
+        ( if Elem = from_int(BaseOffset + OffsetInWord) then
+            OffsetBit = unchecked_left_shift(1u, OffsetInWord),
+            ( if P(Elem) then
+                !:In = !.In \/ OffsetBit
+            else
+                !:Out = !.Out \/ OffsetBit
+            )
+        else
+            % We only apply `from_int/1' to integers returned
+            % by `to_int/1', so it should never fail.
+            unexpected($pred, "`enum.from_int/1' failed")
+        )
+    else
+        HalfSize = unchecked_right_shift(Size, 1),
+        Mask = mask(HalfSize),
+
+        % Extract the low-order half of the bits.
+        LowBits = Mask /\ Bits,
+
+        % Extract the high-order half of the bits.
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+
+        divide_bits(P, BaseOffset, OffsetInWord, LowBits, HalfSize,
+            !In, !Out),
+        divide_bits(P, BaseOffset, OffsetInWord + HalfSize, HighBits, HalfSize,
+            !In, !Out)
+    ).
+
+%---------------------%
+
+divide_by_set(DivideBySet, Set, InSet, OutSet) :-
+    DivideBySet = fat_sparse_bitset(DivideByNodes),
+    Set = fat_sparse_bitset(Nodes),
+    divide_nodes_by_set(DivideByNodes, Nodes, InNodes, OutNodes),
+    InSet = fat_sparse_bitset(InNodes),
+    OutSet = fat_sparse_bitset(OutNodes).
+
+:- pred divide_nodes_by_set(fat_bitset_impl::in, fat_bitset_impl::in,
+    fat_bitset_impl::out, fat_bitset_impl::out) is det.
+
+divide_nodes_by_set(_DivideByNodes, empty, empty, empty).
+divide_nodes_by_set(empty, Node @ node(_, _, _), empty, Node).
+divide_nodes_by_set(DivideByNode, Node, InNodes, OutNodes) :-
+    DivideByNode = node(DivideByOffset, DivideByBits, DivideByNodes),
+    Node = node(Offset, Bits, Nodes),
+    ( if DivideByOffset < Offset then
+        divide_nodes_by_set(DivideByNodes, Node, InNodes, OutNodes)
+    else if DivideByOffset > Offset then
+        divide_nodes_by_set(DivideByNode, Nodes, InNodes, OutNodesTail),
+        OutNodes = node(Offset, Bits, OutNodesTail)
+    else
+        divide_nodes_by_set(DivideByNodes, Nodes, InNodesTail, OutNodesTail),
+        divide_bits_by_set(DivideByBits, Offset, Bits, bits_per_int,
+            0u, In, 0u, Out),
+        ( if In = 0u then
+            InNodes = InNodesTail
+        else
+            InNodes = node(Offset, In, InNodesTail)
+        ),
+        ( if Out = 0u then
+            OutNodes = OutNodesTail
+        else
+            OutNodes = node(Offset, Out, OutNodesTail)
+        )
+    ).
+
+    % Do a binary search for the 1 bits in an int.
+    %
+:- pred divide_bits_by_set(uint::in,
+    int::in, uint::in, int::in, uint::in, uint::out, uint::in, uint::out)
+    is det.
+
+divide_bits_by_set(DivideByBits, Offset, Bits, Size, !In, !Out) :-
+    ( if Bits = 0u then
+        true
+    else if Size = 1 then
+        OffsetBit = unchecked_left_shift(1u, Offset),
+        ( if DivideByBits /\ OffsetBit = 0u then
+            !:Out = !.Out \/ OffsetBit
+        else
+            !:In = !.In \/ OffsetBit
+        )
+    else
+        HalfSize = unchecked_right_shift(Size, 1),
+        Mask = mask(HalfSize),
+
+        % Extract the low-order half of the bits.
+        LowBits = Mask /\ Bits,
+
+        % Extract the high-order half of the bits.
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+
+        divide_bits_by_set(DivideByBits, Offset, LowBits, HalfSize,
+            !In, !Out),
+        divide_bits_by_set(DivideByBits, Offset + HalfSize, HighBits, HalfSize,
+            !In, !Out)
     ).
 
 %---------------------------------------------------------------------------%
@@ -848,7 +1179,7 @@ insert_node(Offset, Bits, Old @ node(OldOffset, OldBits, OldRest)) = List :-
         List = node(OldOffset, OldBits, insert_node(Offset, Bits, OldRest))
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 sorted_list_to_set(L) = fat_sparse_bitset(sorted_list_to_set_2(L)).
 
@@ -887,7 +1218,7 @@ sorted_list_to_set_3(Elem1, [Elem2 | Elems], Offset, Bits, Rest) :-
         Bits = Bits1
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 to_sorted_list(Set) = foldr(func(Elem, Acc0) = [Elem | Acc0], Set, []).
 
@@ -905,9 +1236,65 @@ count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
 
 %---------------------------------------------------------------------------%
 
-:- type fold_direction
-    --->    low_to_high
-    ;       high_to_low.
+all_true(P, fat_sparse_bitset(Set)) :-
+    all_true_node(P, Set).
+
+:- pred all_true_node(pred(T)::in(pred(in) is semidet), fat_bitset_impl::in)
+    is semidet <= enum(T).
+:- pragma type_spec(all_true_node/2, T = int).
+:- pragma type_spec(all_true_node/2, T = var(_)).
+
+all_true_node(_, empty).
+all_true_node(P, node(Offset, Bits, Rest)) :-
+    all_true_bits(P, Offset, Bits, bits_per_int),
+    all_true_node(P, Rest).
+
+:- pred all_true_bits(pred(T)::in(pred(in) is semidet),
+    int::in, uint::in, int::in) is semidet <= enum(T).
+:- pragma type_spec(all_true_bits/4, T = int).
+:- pragma type_spec(all_true_bits/4, T = var(_)).
+
+all_true_bits(P, Offset, Bits, Size) :-
+    ( if Bits = 0u then
+        true
+    else if Size = 1 then
+        ( if Elem = from_int(Offset) then
+            P(Elem)
+        else
+            % We only apply `from_int/1' to integers returned
+            % by `to_int/1', so it should never fail.
+            unexpected($pred, "`enum.from_int/1' failed")
+        )
+    else
+        HalfSize = unchecked_right_shift(Size, 1),
+        Mask = mask(HalfSize),
+
+        % Extract the low-order half of the bits.
+        LowBits = Mask /\ Bits,
+
+        % Extract the high-order half of the bits.
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+
+        all_true_bits(P, Offset, LowBits, HalfSize),
+        all_true_bits(P, Offset + HalfSize, HighBits, HalfSize)
+    ).
+
+%---------------------%
+
+% XXX We should make these more efficient.
+
+filter(Pred, Set) = TrueSet :-
+    SortedList = to_sorted_list(Set),
+    SortedTrueList = list.filter(Pred, SortedList),
+    TrueSet = sorted_list_to_set(SortedTrueList).
+
+filter(Pred, Set, TrueSet, FalseSet) :-
+    SortedList = to_sorted_list(Set),
+    list.filter(Pred, SortedList, SortedTrueList, SortedFalseList),
+    TrueSet = sorted_list_to_set(SortedTrueList),
+    FalseSet = sorted_list_to_set(SortedFalseList).
+
+%---------------------%
 
 foldl(F, fat_sparse_bitset(Set), Acc0) = Acc :-
     do_foldl_pred(
@@ -917,9 +1304,6 @@ foldl(F, fat_sparse_bitset(Set), Acc0) = Acc :-
 
 foldl(P, fat_sparse_bitset(Set), !Acc) :-
     do_foldl_pred(P, Set, !Acc).
-
-foldl2(P, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
-    do_foldl2_pred(P, Set, !Acc1, !Acc2).
 
 :- pred do_foldl_pred(pred(T, U, U), fat_bitset_impl, U, U) <= enum(T).
 :- mode do_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
@@ -939,6 +1323,11 @@ do_foldl_pred(_, empty, !Acc).
 do_foldl_pred(P, node(Offset, Bits, Rest), !Acc) :-
     fold_bits(low_to_high, P, Offset, Bits, bits_per_int, !Acc),
     do_foldl_pred(P, Rest, !Acc).
+
+%---------------------%
+
+foldl2(P, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
+    do_foldl2_pred(P, Set, !Acc1, !Acc2).
 
 :- pred do_foldl2_pred(pred(T, U, U, V, V), fat_bitset_impl, U, U, V, V)
     <= enum(T).
@@ -973,6 +1362,8 @@ do_foldl2_pred(P, node(Offset, Bits, Rest), !Acc1, !Acc2) :-
     fold2_bits(low_to_high, P, Offset, Bits, bits_per_int, !Acc1, !Acc2),
     do_foldl2_pred(P, Rest, !Acc1, !Acc2).
 
+%---------------------%
+
 foldr(F, fat_sparse_bitset(Set), Acc0) = Acc :-
     do_foldr_pred(
         ( pred(E::in, Acc1::in, Acc2::out) is det :-
@@ -981,9 +1372,6 @@ foldr(F, fat_sparse_bitset(Set), Acc0) = Acc :-
 
 foldr(P, fat_sparse_bitset(Set), !Acc) :-
     do_foldr_pred(P, Set, !Acc).
-
-foldr2(P, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
-    do_foldr2_pred(P, Set, !Acc1, !Acc2).
 
 :- pred do_foldr_pred(pred(T, U, U), fat_bitset_impl, U, U) <= enum(T).
 :- mode do_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
@@ -1006,6 +1394,11 @@ do_foldr_pred(_, empty, !Acc).
 do_foldr_pred(P, node(Offset, Bits, Rest), !Acc) :-
     do_foldr_pred(P, Rest, !Acc),
     fold_bits(high_to_low, P, Offset, Bits, bits_per_int, !Acc).
+
+%---------------------%
+
+foldr2(P, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
+    do_foldr2_pred(P, Set, !Acc1, !Acc2).
 
 :- pred do_foldr2_pred(pred(T, U, U, V, V), fat_bitset_impl, U, U, V, V)
     <= enum(T).
@@ -1042,6 +1435,12 @@ do_foldr2_pred(_, empty, !Acc1, !Acc2).
 do_foldr2_pred(P, node(Offset, Bits, Rest), !Acc1, !Acc2) :-
     do_foldr2_pred(P, Rest, !Acc1, !Acc2),
     fold2_bits(high_to_low, P, Offset, Bits, bits_per_int, !Acc1, !Acc2).
+
+%---------------------%
+
+:- type fold_direction
+    --->    low_to_high
+    ;       high_to_low.
 
     % Do a binary search for the 1 bits in an int.
 :- pred fold_bits(fold_direction, pred(T, U, U),
@@ -1161,356 +1560,9 @@ fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-all_true(P, fat_sparse_bitset(Set)) :-
-    all_true_node(P, Set).
-
-:- pred all_true_node(pred(T)::in(pred(in) is semidet), fat_bitset_impl::in)
-    is semidet <= enum(T).
-:- pragma type_spec(all_true_node/2, T = int).
-:- pragma type_spec(all_true_node/2, T = var(_)).
-
-all_true_node(_, empty).
-all_true_node(P, node(Offset, Bits, Rest)) :-
-    all_true_bits(P, Offset, Bits, bits_per_int),
-    all_true_node(P, Rest).
-
-:- pred all_true_bits(pred(T)::in(pred(in) is semidet),
-    int::in, uint::in, int::in) is semidet <= enum(T).
-:- pragma type_spec(all_true_bits/4, T = int).
-:- pragma type_spec(all_true_bits/4, T = var(_)).
-
-all_true_bits(P, Offset, Bits, Size) :-
-    ( if Bits = 0u then
-        true
-    else if Size = 1 then
-        ( if Elem = from_int(Offset) then
-            P(Elem)
-        else
-            % We only apply `from_int/1' to integers returned
-            % by `to_int/1', so it should never fail.
-            unexpected($pred, "`enum.from_int/1' failed")
-        )
-    else
-        HalfSize = unchecked_right_shift(Size, 1),
-        Mask = mask(HalfSize),
-
-        % Extract the low-order half of the bits.
-        LowBits = Mask /\ Bits,
-
-        % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
-
-        all_true_bits(P, Offset, LowBits, HalfSize),
-        all_true_bits(P, Offset + HalfSize, HighBits, HalfSize)
-    ).
-
-%---------------------------------------------------------------------------%
-
-% XXX We should make these more efficient.
-
-filter(Pred, Set) = TrueSet :-
-    SortedList = to_sorted_list(Set),
-    SortedTrueList = list.filter(Pred, SortedList),
-    TrueSet = sorted_list_to_set(SortedTrueList).
-
-filter(Pred, Set, TrueSet, FalseSet) :-
-    SortedList = to_sorted_list(Set),
-    list.filter(Pred, SortedList, SortedTrueList, SortedFalseList),
-    TrueSet = sorted_list_to_set(SortedTrueList),
-    FalseSet = sorted_list_to_set(SortedFalseList).
-
-%---------------------------------------------------------------------------%
-
-subset(Subset, Set) :-
-    intersect(Set, Subset, Subset).
-
-superset(Superset, Set) :-
-    subset(Set, Superset).
-
-%---------------------------------------------------------------------------%
-
-union(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
-    fat_sparse_bitset(union_2(Set1, Set2)).
-
-union(A, B, union(A, B)).
-
-:- func union_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
-
-union_2(empty, B) = B.
-union_2(A@node(_, _, _), empty) = A.
-union_2(A, B) = Set :-
-    A = node(OffsetA, BitsA, RestA),
-    B = node(OffsetB, BitsB, RestB),
-    ( if OffsetA = OffsetB then
-        Bits = BitsA \/ BitsB,
-        Set = node(OffsetA, Bits, union_2(RestA, RestB))
-    else if OffsetA < OffsetB then
-        Set = node(OffsetA, BitsA, union_2(RestA, B))
-    else
-        Set = node(OffsetB, BitsB, union_2(A, RestB))
-    ).
-
-union_list(Sets) = Set :-
-    union_list(Sets, Set).
-
-union_list([], fat_sparse_bitset.init).
-union_list([Set], Set).
-union_list(Sets @ [_, _ | _], Set) :-
-    union_list_pass(Sets, [], MergedSets),
-    union_list(MergedSets, Set).
-
-    % Union adjacent pairs of sets, so that the resulting list has N sets
-    % if the input list has 2N or 2N-1 sets.
-    %
-    % We keep invoking union_list_pass until it yields a list of only one set.
-    %
-    % The point of this approach is that unioning a large set with a small set
-    % is often only slightly faster than unioning that large set with another
-    % large set, yet it gets significantly less work done. This is because
-    % the bitsets in a small set can be expected to be considerably sparser
-    % that bitsets in large sets.
-    %
-    % We expect that this approach should yield performance closer to NlogN
-    % than to N^2 when unioning a list of N sets.
-    %
-:- pred union_list_pass(list(fat_sparse_bitset(T))::in,
-    list(fat_sparse_bitset(T))::in, list(fat_sparse_bitset(T))::out)
-    is det.
-
-union_list_pass([], !MergedSets).
-union_list_pass([Set], !MergedSets) :-
-    !:MergedSets = [Set | !.MergedSets].
-union_list_pass([SetA, SetB | Sets0], !MergedSets) :-
-    union(SetA, SetB, SetAB),
-    !:MergedSets = [SetAB | !.MergedSets],
-    union_list_pass(Sets0, !MergedSets).
-
-%---------------------------------------------------------------------------%
-
-intersect(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
-    fat_sparse_bitset(intersect_2(Set1, Set2)).
-
-intersect(A, B, intersect(A, B)).
-
-:- func intersect_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
-
-intersect_2(empty, empty) = empty.
-intersect_2(empty, node(_, _, _)) = empty.
-intersect_2(node(_, _, _), empty) = empty.
-intersect_2(A, B) = Set :-
-    A = node(OffsetA, BitsA, RestA),
-    B = node(OffsetB, BitsB, RestB),
-    ( if OffsetA = OffsetB then
-        Bits = BitsA /\ BitsB,
-        ( if Bits = 0u then
-            Set = intersect_2(RestA, RestB)
-        else
-            Set = node(OffsetA, Bits, intersect_2(RestA, RestB))
-        )
-    else if OffsetA < OffsetB then
-        Set = intersect_2(RestA, B)
-    else
-        Set = intersect_2(A, RestB)
-    ).
-
-intersect_list(Sets) = Set :-
-    intersect_list(Sets, Set).
-
-intersect_list([], fat_sparse_bitset.init).
-intersect_list([Set], Set).
-intersect_list(Sets @ [_, _ | _], Set) :-
-    intersect_list_pass(Sets, [], MergedSets),
-    intersect_list(MergedSets, Set).
-
-    % Intersect adjacent pairs of sets, so that the resulting list has N sets
-    % if the input list has 2N or 2N-1 sets.
-    %
-    % We keep invoking intersect_list_pass until it yields a list
-    % of only one set.
-    %
-    % The point of this approach is that intersecting a large set with a small
-    % set is often only slightly faster than intersecting that large set
-    % with another large set, yet it gets significantly less work done.
-    % This is because the bitsets in a small set can be expected to be
-    % considerably sparser that bitsets in large sets.
-    %
-    % We expect that this approach should yield performance closer to NlogN
-    % than to N^2 when intersecting a list of N sets.
-    %
-:- pred intersect_list_pass(list(fat_sparse_bitset(T))::in,
-    list(fat_sparse_bitset(T))::in, list(fat_sparse_bitset(T))::out) is det.
-
-intersect_list_pass([], !MergedSets).
-intersect_list_pass([Set], !MergedSets) :-
-    !:MergedSets = [Set | !.MergedSets].
-intersect_list_pass([SetA, SetB | Sets0], !MergedSets) :-
-    intersect(SetA, SetB, SetAB),
-    !:MergedSets = [SetAB | !.MergedSets],
-    intersect_list_pass(Sets0, !MergedSets).
-
-%---------------------------------------------------------------------------%
-
-difference(fat_sparse_bitset(Set1), fat_sparse_bitset(Set2)) =
-    fat_sparse_bitset(difference_2(Set1, Set2)).
-
-difference(A, B, difference(A, B)).
-
-:- func difference_2(fat_bitset_impl, fat_bitset_impl) = fat_bitset_impl.
-
-difference_2(empty, empty) = empty.
-difference_2(empty, node(_, _, _)) = empty.
-difference_2(A@node(_, _, _), empty) = A.
-difference_2(A, B) = Set :-
-    A = node(OffsetA, BitsA, RestA),
-    B = node(OffsetB, BitsB, RestB),
-    ( if OffsetA = OffsetB then
-        Bits = BitsA /\ \ BitsB,
-        ( if Bits = 0u then
-            Set = difference_2(RestA, RestB)
-        else
-            Set = node(OffsetA, Bits, difference_2(RestA, RestB))
-        )
-    else if OffsetA < OffsetB then
-        Set = node(OffsetA, BitsA, difference_2(RestA, B))
-    else
-        Set = difference_2(A, RestB)
-    ).
-
-%---------------------------------------------------------------------------%
-
-divide(Pred, Set, InSet, OutSet) :-
-    Set = fat_sparse_bitset(Nodes),
-    divide_nodes(Pred, Nodes, InNodes, OutNodes),
-    InSet = fat_sparse_bitset(InNodes),
-    OutSet = fat_sparse_bitset(OutNodes).
-
-:- pred divide_nodes(pred(T)::in(pred(in) is semidet),
-    fat_bitset_impl::in, fat_bitset_impl::out, fat_bitset_impl::out)
-    is det <= enum(T).
-
-divide_nodes(_Pred, empty, empty, empty).
-divide_nodes(Pred, node(Offset, Bits, Nodes), InNodes, OutNodes) :-
-    divide_nodes(Pred, Nodes, InNodesTail, OutNodesTail),
-    divide_bits(Pred, Offset, 0, Bits, bits_per_int, 0u, In, 0u, Out),
-    ( if In = 0u then
-        InNodes = InNodesTail
-    else
-        InNodes = node(Offset, In, InNodesTail)
-    ),
-    ( if Out = 0u then
-        OutNodes = OutNodesTail
-    else
-        OutNodes = node(Offset, Out, OutNodesTail)
-    ).
-
-    % Do a binary search for the 1 bits in an int.
-    %
-:- pred divide_bits(pred(T)::in(pred(in) is semidet),
-    int::in, int::in, uint::in, int::in,
-    uint::in, uint::out, uint::in, uint::out) is det <= enum(T).
-
-divide_bits(P, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
-    ( if Bits = 0u then
-        true
-    else if Size = 1 then
-        ( if Elem = from_int(BaseOffset + OffsetInWord) then
-            OffsetBit = unchecked_left_shift(1u, OffsetInWord),
-            ( if P(Elem) then
-                !:In = !.In \/ OffsetBit
-            else
-                !:Out = !.Out \/ OffsetBit
-            )
-        else
-            % We only apply `from_int/1' to integers returned
-            % by `to_int/1', so it should never fail.
-            unexpected($pred, "`enum.from_int/1' failed")
-        )
-    else
-        HalfSize = unchecked_right_shift(Size, 1),
-        Mask = mask(HalfSize),
-
-        % Extract the low-order half of the bits.
-        LowBits = Mask /\ Bits,
-
-        % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
-
-        divide_bits(P, BaseOffset, OffsetInWord, LowBits, HalfSize,
-            !In, !Out),
-        divide_bits(P, BaseOffset, OffsetInWord + HalfSize, HighBits, HalfSize,
-            !In, !Out)
-    ).
-
-divide_by_set(DivideBySet, Set, InSet, OutSet) :-
-    DivideBySet = fat_sparse_bitset(DivideByNodes),
-    Set = fat_sparse_bitset(Nodes),
-    divide_nodes_by_set(DivideByNodes, Nodes, InNodes, OutNodes),
-    InSet = fat_sparse_bitset(InNodes),
-    OutSet = fat_sparse_bitset(OutNodes).
-
-:- pred divide_nodes_by_set(fat_bitset_impl::in, fat_bitset_impl::in,
-    fat_bitset_impl::out, fat_bitset_impl::out) is det.
-
-divide_nodes_by_set(_DivideByNodes, empty, empty, empty).
-divide_nodes_by_set(empty, Node @ node(_, _, _), empty, Node).
-divide_nodes_by_set(DivideByNode, Node, InNodes, OutNodes) :-
-    DivideByNode = node(DivideByOffset, DivideByBits, DivideByNodes),
-    Node = node(Offset, Bits, Nodes),
-    ( if DivideByOffset < Offset then
-        divide_nodes_by_set(DivideByNodes, Node, InNodes, OutNodes)
-    else if DivideByOffset > Offset then
-        divide_nodes_by_set(DivideByNode, Nodes, InNodes, OutNodesTail),
-        OutNodes = node(Offset, Bits, OutNodesTail)
-    else
-        divide_nodes_by_set(DivideByNodes, Nodes, InNodesTail, OutNodesTail),
-        divide_bits_by_set(DivideByBits, Offset, Bits, bits_per_int,
-            0u, In, 0u, Out),
-        ( if In = 0u then
-            InNodes = InNodesTail
-        else
-            InNodes = node(Offset, In, InNodesTail)
-        ),
-        ( if Out = 0u then
-            OutNodes = OutNodesTail
-        else
-            OutNodes = node(Offset, Out, OutNodesTail)
-        )
-    ).
-
-    % Do a binary search for the 1 bits in an int.
-    %
-:- pred divide_bits_by_set(uint::in,
-    int::in, uint::in, int::in, uint::in, uint::out, uint::in, uint::out)
-    is det.
-
-divide_bits_by_set(DivideByBits, Offset, Bits, Size, !In, !Out) :-
-    ( if Bits = 0u then
-        true
-    else if Size = 1 then
-        OffsetBit = unchecked_left_shift(1u, Offset),
-        ( if DivideByBits /\ OffsetBit = 0u then
-            !:Out = !.Out \/ OffsetBit
-        else
-            !:In = !.In \/ OffsetBit
-        )
-    else
-        HalfSize = unchecked_right_shift(Size, 1),
-        Mask = mask(HalfSize),
-
-        % Extract the low-order half of the bits.
-        LowBits = Mask /\ Bits,
-
-        % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
-
-        divide_bits_by_set(DivideByBits, Offset, LowBits, HalfSize,
-            !In, !Out),
-        divide_bits_by_set(DivideByBits, Offset + HalfSize, HighBits, HalfSize,
-            !In, !Out)
-    ).
-
-%---------------------------------------------------------------------------%
+%
+% Utility predicates and functions for the rest of the module above.
+%
 
     % Return the offset of the element of a set which should contain the given
     % element, and an int with the bit corresponding to that element set.

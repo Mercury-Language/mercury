@@ -647,7 +647,7 @@ equivalent_vars_2(R) = EQ :-
             % both branches of R must have been zero.
         ;
             EQVars = some_vars(Vars),
-            ( if empty(Vars) then
+            ( if is_empty(Vars) then
                 EQ = EQ0
             else
                 (
@@ -780,7 +780,7 @@ imp_res_to_imp_map(some_vars(imps(IRMap))) =
     map.foldl(func(V, MaybeVs, M) =
         ( if
             MaybeVs = some_vars(Vs),
-            not empty(Vs)
+            is_non_empty(Vs)
         then
             M ^ elem(V) := Vs
         else
@@ -846,7 +846,7 @@ get(K, IM) =
     ( leader_to_eqvclass(MapA) `intersection` leader_to_eqvclass(MapB) =
         leader_to_eqvclass(map.foldl((func(V, VsA, M) =
             ( if Vs = VsA `intersect` (MapB ^ elem(V)) then
-                ( if empty(Vs) then
+                ( if is_empty(Vs) then
                     M
                 else
                     M ^ elem(V) := Vs
@@ -1149,7 +1149,7 @@ restrict_true_false_vars_2(TrueVars0, FalseVars0, R0, R, Seen0, Seen) :-
     ( if is_terminal(R0) then
         R = R0,
         Seen = Seen0
-    else if empty(TrueVars0), empty(FalseVars0) then
+    else if is_empty(TrueVars0), is_empty(FalseVars0) then
         R = R0,
         Seen = Seen0
     else if search(Seen0, R0, R1) then
@@ -1558,7 +1558,7 @@ labelling_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
     labelling_2(Vs, R, TrueVars0 `insert` V, TrueVars, FalseVars0, FalseVars).
 
 minimal_model(Vars, R, TrueVars, FalseVars) :-
-    ( if empty(Vars) then
+    ( if is_empty(Vars) then
         TrueVars = empty_vars_set,
         FalseVars = empty_vars_set
     else

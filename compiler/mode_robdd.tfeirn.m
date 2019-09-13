@@ -412,7 +412,7 @@ imp_vars(VarA, VarB, X) =
 conj_vars(Vars, X) =
 	( Vars `subset` T ->
 		X
-	; \+ empty(Vars `intersect` F) ->
+	; is_non_empty(Vars `intersect` F) ->
 		zero
 	;
 		mode_robdd(T `union` Vars, F, E, I, R, no)
@@ -422,7 +422,7 @@ conj_vars(Vars, X) =
 conj_not_vars(Vars, X) =
 	( Vars `subset` F ->
 		X
-	; \+ empty(Vars `intersect` T) ->
+	; is_non_empty(Vars `intersect` T) ->
 		zero
 	;
 		mode_robdd(T, F `union` Vars, E, I, R, no)
@@ -431,7 +431,7 @@ conj_not_vars(Vars, X) =
 
 disj_vars(Vars, X0) = X :-
 	X0 = mode_robdd(T, F, E, I, R, _N),
-	( \+ empty(Vars `intersect` T) ->
+	( is_non_empty(Vars `intersect` T) ->
 		X = X0
 	; Vars `subset` F ->
 		X = zero
@@ -439,7 +439,7 @@ disj_vars(Vars, X0) = X :-
 		VarsNF = Vars `difference` F,
 		( remove_least(Var1, VarsNF, VarsNF1) ->
 			( remove_least(Var2, VarsNF1, VarsNF2) ->
-				( empty(VarsNF2) ->
+				( is_empty(VarsNF2) ->
 					X = mode_robdd(T, F, E,
 						I ^ either(Var1, Var2),
 						R, no)
@@ -495,12 +495,12 @@ disj_vars_eq(Vars, Var, X) =
 		;
 			X ^ disj_vars(Vars)
 		)
-	; \+ empty(Vars `intersect` T) ->
+	; is_non_empty(Vars `intersect` T) ->
 		X ^ var(Var)
 	; Vars `subset` F ->
 		X ^ not_var(Var)
 	; remove_least(Var1, Vars, Vars1) ->
-		( empty(Vars1) ->
+		( is_empty(Vars1) ->
 			X ^ eq_vars(Var, Var1)
 		;
 			(X ^ imp_vars_set(Vars, Var)) `x`
@@ -549,7 +549,7 @@ labelling(Vars0, mode_robdd(T, F, E, I, R, N), TrueVars, FalseVars) :-
 	FalseVars0 = F `intersect` Vars0,
 	Vars = Vars0 `difference` TrueVars0 `difference` FalseVars0,
 
-	( empty(Vars) ->
+	( is_empty(Vars) ->
 		TrueVars = TrueVars0,
 		FalseVars = FalseVars0
 	;
@@ -581,7 +581,7 @@ labelling_2(Vars0, X0, TrueVars, FalseVars) :-
 	).
 
 minimal_model(Vars, X0, TrueVars, FalseVars) :-
-	( empty(Vars) ->
+	( is_empty(Vars) ->
 		TrueVars = init,
 		FalseVars = init
 	;
@@ -628,7 +628,7 @@ normalise(X0) = X :-
 normalise(mode_robdd(TrueVars0, FalseVars0, EQVars0, ImpVars0, Robdd0, no))
 		= X :-
 	% T <-> F
-	( \+ empty(TrueVars0 `intersect` FalseVars0) ->
+	( is_non_empty(TrueVars0 `intersect` FalseVars0) ->
 		X = zero
 	;
 		% TF <-> E
@@ -653,8 +653,8 @@ normalise(mode_robdd(TrueVars0, FalseVars0, EQVars0, ImpVars0, Robdd0, no))
 				some_vars(NewTrueVars), some_vars(NewFalseVars))
 		->
 			(
-				empty(NewTrueVars),
-				empty(NewFalseVars)
+				is_empty(NewTrueVars),
+				is_empty(NewFalseVars)
 			->
 				Changed4 = Changed3,
 				TrueVars = TrueVars2,
