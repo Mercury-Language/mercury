@@ -1431,12 +1431,12 @@ write_intermod_info_body(IntermodInfo, !IO) :-
         module_info_get_foreign_import_modules(ModuleInfo,
             ForeignImportModules),
         ForeignImports =
-            get_all_foreign_import_module_infos(ForeignImportModules),
+            get_all_fim_specs(ForeignImportModules),
         ( if set.is_empty(ForeignImports) then
             true
         else
             io.nl(!IO),
-            set.fold(mercury_output_foreign_import_module_info,
+            set.fold(mercury_output_fim_spec,
                 ForeignImports, !IO)
         )
     ;

@@ -1978,7 +1978,7 @@
     --->    mlds_foreign_code(
                 list(foreign_decl_code),
                 list(foreign_body_code),
-                list(foreign_import_module_info),
+                list(fim_spec),
                 list(mlds_pragma_export)
             ).
 

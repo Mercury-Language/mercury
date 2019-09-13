@@ -1035,9 +1035,9 @@ compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
     module_and_imports_get_foreign_import_modules(ModuleAndImports,
         ForeignImportModules),
     ForeignDeps = list.map(
-        (func(FI) = foreign_import_module_name_from_module(FI, ModuleName)),
+        (func(FI) = fim_spec_module_name_from_module(FI, ModuleName)),
         set.to_sorted_list(
-            get_all_foreign_import_module_infos(ForeignImportModules))),
+            get_all_fim_specs(ForeignImportModules))),
     module_and_imports_get_int_deps_set(ModuleAndImports, IntDeps),
     module_and_imports_get_imp_deps_set(ModuleAndImports, ImpDeps),
     set.union(IntDeps, ImpDeps, IntImpDeps),

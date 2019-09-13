@@ -103,15 +103,14 @@
     % would return the module_name
     %   unqualified("module__csharp_code")
     %
-:- func foreign_import_module_name(foreign_import_module_info) = module_name.
+:- func fim_spec_module_name(fim_spec) = module_name.
 
     % foreign_import_module_name_from_module(ForeignImport, CurrentModule)
     %
     % returns the module name needed to refer to ForeignImport from the
     % CurrentModule.
     %
-:- func foreign_import_module_name_from_module(foreign_import_module_info,
-    module_name) = module_name.
+:- func fim_spec_module_name_from_module(fim_spec, module_name) = module_name.
 
     % Sub-type of foreign_language for languages for which
     % we generate external files for foreign code.
@@ -202,8 +201,8 @@ foreign_decl_code_is_for_lang(Lang, DeclCode) :-
 foreign_body_code_is_for_lang(Lang, BodyCode) :-
     Lang = BodyCode ^ fbody_lang.
 
-foreign_import_module_name(ImportModule) = ModuleName :-
-    ImportModule = foreign_import_module_info(Lang, ForeignImportModule),
+fim_spec_module_name(FIMSpec) = ModuleName :-
+    FIMSpec = fim_spec(Lang, ForeignImportModule),
     (
         Lang = lang_c,
         ModuleName = ForeignImportModule
@@ -218,11 +217,10 @@ foreign_import_module_name(ImportModule) = ModuleName :-
         ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
     ).
 
-foreign_import_module_name_from_module(ModuleForeignImported, CurrentModule) =
+fim_spec_module_name_from_module(ModuleFIMSpec, CurrentModule) =
         ImportedForeignCodeModuleName :-
-    ModuleForeignImported = foreign_import_module_info(Lang, _),
-    ImportedForeignCodeModuleName1 = ModuleForeignImported ^
-        foreign_import_module_name,
+    ModuleFIMSpec = fim_spec(Lang, _),
+    ImportedForeignCodeModuleName1 = fim_spec_module_name(ModuleFIMSpec),
     (
         Lang = lang_c,
         ImportedForeignCodeModuleName = ImportedForeignCodeModuleName1

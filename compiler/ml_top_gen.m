@@ -103,7 +103,7 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCodeMap) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
     WantedForeignImports = set.to_sorted_list(set.union_list(
-        list.map(get_lang_foreign_import_module_infos(ForeignImportModules),
+        list.map(get_lang_fim_specs(ForeignImportModules),
             BackendForeignLanguages))),
 
     list.foldl(
@@ -114,7 +114,7 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCodeMap) :-
 
 :- pred ml_gen_foreign_code_lang(module_info::in,
     list(foreign_decl_code)::in, list(foreign_body_code)::in,
-    list(foreign_import_module_info)::in, list(pragma_exported_proc)::in,
+    list(fim_spec)::in, list(pragma_exported_proc)::in,
     foreign_language::in,
     map(foreign_language, mlds_foreign_code)::in,
     map(foreign_language, mlds_foreign_code)::out) is det.

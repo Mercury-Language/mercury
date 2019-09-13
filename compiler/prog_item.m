@@ -1146,15 +1146,6 @@
                 fim_seq_num                     :: int
             ).
 
-:- type fim_spec
-    --->    fim_spec(
-                % The specification of a foreign_import_module declaration,
-                % without information about where it came from, used where
-                % it *does not matter* where it came from.
-                fimspec_lang                    :: foreign_language,
-                fimspec_module_name             :: module_name
-            ).
-
 :- func fim_item_to_spec(item_fim) = fim_spec.
 :- func fim_spec_to_item(fim_spec) = item_fim.
 

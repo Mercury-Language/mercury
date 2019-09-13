@@ -974,7 +974,7 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
         module_and_imports_get_foreign_import_modules(ModuleAndImports,
             ForeignModuleInfos),
         LangForeignModuleNameSets =
-            set.map(get_lang_foreign_import_modules(ForeignModuleInfos),
+            set.map(get_lang_fim_modules(ForeignModuleInfos),
                 Languages),
         set.power_union(LangForeignModuleNameSets, ForeignModuleNameSet),
         module_names_to_index_set(set.to_sorted_list(ForeignModuleNameSet),

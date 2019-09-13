@@ -367,10 +367,8 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     io.write_list(ForeignLanguages,
         ", ", mercury_output_foreign_language_string, !IO),
     io.write_string("},\n\t{", !IO),
-    ForeignImportModuleInfos =
-        get_all_foreign_import_module_infos(ForeignImportModules),
-    io.write_list(set.to_sorted_list(ForeignImportModuleInfos),
-        ", ", write_foreign_import_module_info, !IO),
+    FIMSpecs = get_all_fim_specs(ForeignImportModules),
+    io.write_list(set.to_sorted_list(FIMSpecs), ", ", write_fim_spec, !IO),
     io.write_string("},\n\t", !IO),
     contains_foreign_export_to_string(ContainsForeignExport,
         ContainsForeignExportStr),
@@ -389,11 +387,11 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     ),
     io.write_string("\n).\n", !IO).
 
-:- pred write_foreign_import_module_info(foreign_import_module_info::in,
+:- pred write_fim_spec(fim_spec::in,
     io::di, io::uo) is det.
 
-write_foreign_import_module_info(ForeignImportModule, !IO) :-
-    ForeignImportModule = foreign_import_module_info(Lang, ForeignImport),
+write_fim_spec(FIMSpec, !IO) :-
+    FIMSpec = fim_spec(Lang, ForeignImport),
     mercury_output_foreign_language_string(Lang, !IO),
     io.write_string(" - ", !IO),
     mercury_output_bracketed_sym_name(ForeignImport, !IO).
@@ -649,14 +647,13 @@ foreign_language_term(Term, Lang) :-
     string_term(Term, String),
     globals.convert_foreign_language(String, Lang).
 
-:- pred foreign_import_term(term::in, foreign_import_module_info::out)
-    is semidet.
+:- pred foreign_import_term(term::in, fim_spec::out) is semidet.
 
-foreign_import_term(Term, ForeignImport) :-
+foreign_import_term(Term, FIMSpec) :-
     atom_term(Term, "-", [LanguageTerm, ImportedModuleTerm]),
     foreign_language_term(LanguageTerm, Language),
     try_parse_sym_name_and_no_args(ImportedModuleTerm, ImportedModuleName),
-    ForeignImport = foreign_import_module_info(Language, ImportedModuleName).
+    FIMSpec = fim_spec(Language, ImportedModuleName).
 
 :- pred foreign_include_term(term::in, foreign_include_file_info::out)
     is semidet.

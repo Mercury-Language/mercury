@@ -161,7 +161,7 @@
     list(module_name)::in, list(module_name)::in,
     list(module_name)::in, list(module_name)::in,
     list(module_name)::in, list(string)::in,
-    list(foreign_import_module_info)::in, list(foreign_include_file_info)::in,
+    list(fim_spec)::in, list(foreign_include_file_info)::in,
     contains_foreign_code::in, contains_foreign_export::in,
     has_main::in, module_and_imports::out) is det.
 
@@ -818,7 +818,7 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
     % XXX We do not know which child modules are public, so saying
     % none of them are is likely to be a bug.
     multi_map.init(PublicChildrenContexts),
-    list.foldl(add_foreign_import_module_info, ForeignImports,
+    list.foldl(add_fim_spec, ForeignImports,
         init_foreign_import_modules, ForeignImportModules),
     SrcItemBlocks = [],
     DirectIntItemBlocksCord = cord.empty,

@@ -68,10 +68,13 @@
                 fim_erlang      :: set(module_name)
             ).
 
-:- type foreign_import_module_info
-    --->    foreign_import_module_info(
-                foreign_language,
-                module_name
+:- type fim_spec
+    --->    fim_spec(
+                % The specification of a foreign_import_module declaration,
+                % without information about where it came from, used where
+                % it *does not matter* where it came from.
+                fimspec_lang                    :: foreign_language,
+                fimspec_module_name             :: module_name
             ).
 
 :- func init_foreign_import_modules = foreign_import_modules.
@@ -79,19 +82,19 @@
 :- pred add_foreign_import_module(foreign_language::in, module_name::in,
     foreign_import_modules::in, foreign_import_modules::out) is det.
 
-:- pred add_foreign_import_module_info(foreign_import_module_info::in,
+:- pred add_fim_spec(fim_spec::in,
     foreign_import_modules::in, foreign_import_modules::out) is det.
 
-:- func get_all_foreign_import_module_infos(foreign_import_modules) =
-    set(foreign_import_module_info).
+:- func get_all_fim_specs(foreign_import_modules) =
+    set(fim_spec).
 
 :- func get_all_foreign_import_modules(foreign_import_modules) =
     set(module_name).
 
-:- func get_lang_foreign_import_module_infos(foreign_import_modules,
-    foreign_language) = set(foreign_import_module_info).
+:- func get_lang_fim_specs(foreign_import_modules,
+    foreign_language) = set(fim_spec).
 
-:- func get_lang_foreign_import_modules(foreign_import_modules,
+:- func get_lang_fim_modules(foreign_import_modules,
     foreign_language) = set(module_name).
 
 :- implementation.
@@ -134,22 +137,18 @@ add_foreign_import_module(Lang, ModuleName, !FIM) :-
         )
     ).
 
-add_foreign_import_module_info(FIMI, !FIM) :-
-    FIMI = foreign_import_module_info(Lang, ModuleName),
+add_fim_spec(FIMSpec, !FIM) :-
+    FIMSpec = fim_spec(Lang, ModuleName),
     add_foreign_import_module(Lang, ModuleName, !FIM).
 
-get_all_foreign_import_module_infos(FIM) = ImportInfos :-
+get_all_fim_specs(FIM) = FIMSpecs :-
     FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
         ModuleNamesJava, ModuleNamesErlang),
-    ImportInfos = set.union_list([
-        set.map(make_foreign_import_module_info(lang_c),
-            ModuleNamesC),
-        set.map(make_foreign_import_module_info(lang_csharp),
-            ModuleNamesCSharp),
-        set.map(make_foreign_import_module_info(lang_java),
-            ModuleNamesJava),
-        set.map(make_foreign_import_module_info(lang_erlang),
-            ModuleNamesErlang)
+    FIMSpecs = set.union_list([
+        set.map(make_fim_spec(lang_c), ModuleNamesC),
+        set.map(make_fim_spec(lang_csharp), ModuleNamesCSharp),
+        set.map(make_fim_spec(lang_java), ModuleNamesJava),
+        set.map(make_fim_spec(lang_erlang), ModuleNamesErlang)
         ]).
 
 get_all_foreign_import_modules(FIM) = ModuleNames :-
@@ -158,11 +157,11 @@ get_all_foreign_import_modules(FIM) = ModuleNames :-
     ModuleNames = set.union_list([ModuleNamesC, ModuleNamesCSharp,
         ModuleNamesJava, ModuleNamesErlang]).
 
-get_lang_foreign_import_module_infos(FIM, Lang) = ImportInfos :-
-    ModuleNames = get_lang_foreign_import_modules(FIM, Lang),
-    ImportInfos = set.map(make_foreign_import_module_info(Lang), ModuleNames).
+get_lang_fim_specs(FIM, Lang) = ImportInfos :-
+    ModuleNames = get_lang_fim_modules(FIM, Lang),
+    ImportInfos = set.map(make_fim_spec(Lang), ModuleNames).
 
-get_lang_foreign_import_modules(FIM, Lang) = ModuleNames :-
+get_lang_fim_modules(FIM, Lang) = ModuleNames :-
     (
         Lang = lang_c,
         ModuleNames = FIM ^ fim_c
@@ -177,11 +176,9 @@ get_lang_foreign_import_modules(FIM, Lang) = ModuleNames :-
         ModuleNames = FIM ^ fim_erlang
     ).
 
-:- func make_foreign_import_module_info(foreign_language, module_name)
-    = foreign_import_module_info.
+:- func make_fim_spec(foreign_language, module_name) = fim_spec.
 
-make_foreign_import_module_info(Lang, ModuleName) =
-    foreign_import_module_info(Lang, ModuleName).
+make_fim_spec(Lang, ModuleName) = fim_spec(Lang, ModuleName).
 
 %---------------------------------------------------------------------------%
 %

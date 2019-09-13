@@ -109,8 +109,8 @@
 % Output a foreign_import_module pragma.
 %
 
-:- pred mercury_output_foreign_import_module_info(
-    foreign_import_module_info::in, io::di, io::uo) is det.
+:- pred mercury_output_fim_spec(fim_spec::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1598,11 +1598,11 @@ mercury_output_item_mutable(Info, ItemMutable, !IO) :-
 
 mercury_output_item_foreign_import_module(ItemFIM, !IO) :-
     ItemFIM = item_fim(Lang, ModuleName, _Context, _SeqNum),
-    FIM = foreign_import_module_info(Lang, ModuleName),
-    mercury_output_foreign_import_module_info(FIM, !IO).
+    FIMSpec = fim_spec(Lang, ModuleName),
+    mercury_output_fim_spec(FIMSpec, !IO).
 
-mercury_output_foreign_import_module_info(FIM, !IO) :-
-    FIM = foreign_import_module_info(Lang, ModuleName),
+mercury_output_fim_spec(FIMSpec, !IO) :-
+    FIMSpec = fim_spec(Lang, ModuleName),
     io.write_string(":- pragma foreign_import_module(", !IO),
     mercury_format_foreign_language_string(Lang, !IO),
     io.write_string(", ", !IO),

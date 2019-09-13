@@ -761,7 +761,7 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
                 % Info about stuff imported from C:
                 list(foreign_decl_code),
                 list(foreign_body_code),
-                list(foreign_import_module_info),
+                list(fim_spec),
 
                 % Info about stuff exported to C:
                 foreign_export_decls,
@@ -781,14 +781,13 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
 
 llds_get_c_interface_info(HLDS, UseForeignLanguage, ForeignInterfaceInfo) :-
     module_info_get_name(HLDS, ModuleName),
-    ForeignSelfImport =
-        foreign_import_module_info(UseForeignLanguage, ModuleName),
+    ForeignSelfImport = fim_spec(UseForeignLanguage, ModuleName),
     module_info_get_foreign_decl_codes(HLDS, ForeignDeclCodeCord),
     module_info_get_foreign_body_codes(HLDS, ForeignBodyCodeCord),
     module_info_get_foreign_import_modules(HLDS, ForeignImportsModules0),
     ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
     ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
-    add_foreign_import_module_info(ForeignSelfImport,
+    add_fim_spec(ForeignSelfImport,
         ForeignImportsModules0, ForeignImportsModules),
 
     % Always include the module we are compiling amongst the foreign import
@@ -804,7 +803,7 @@ llds_get_c_interface_info(HLDS, UseForeignLanguage, ForeignInterfaceInfo) :-
     foreign.filter_bodys(UseForeignLanguage, ForeignBodyCodes,
         WantedForeignBodyCodes, _OtherBodyCodes),
     WantedForeignImports = set.to_sorted_list(
-        get_lang_foreign_import_module_infos(ForeignImportsModules,
+        get_lang_fim_specs(ForeignImportsModules,
             UseForeignLanguage)),
     export.get_foreign_export_decls(HLDS, ForeignExportDecls),
     export.get_foreign_export_defns(HLDS, ForeignExportDefns),
@@ -830,12 +829,11 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
     EndGuard = foreign_decl_code(lang_c, foreign_decl_is_exported,
         floi_literal(End), term.context_init).
 
-:- pred make_foreign_import_header_code(globals::in,
-    foreign_import_module_info::in, foreign_decl_code::out,
-    io::di, io::uo) is det.
+:- pred make_foreign_import_header_code(globals::in, fim_spec::in,
+    foreign_decl_code::out, io::di, io::uo) is det.
 
-make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
-    ForeignImportModule = foreign_import_module_info(Lang, ModuleName),
+make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
+    FIMSpec = fim_spec(Lang, ModuleName),
     (
         Lang = lang_c,
         module_name_to_search_file_name(Globals, ".mh",

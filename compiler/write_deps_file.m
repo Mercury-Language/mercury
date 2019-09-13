@@ -690,14 +690,14 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         )
     ),
 
-    ForeignImports = get_all_foreign_import_module_infos(ForeignImportModules),
+    ForeignImports = get_all_fim_specs(ForeignImportModules),
 
     % Handle dependencies introduced by
     % `:- pragma foreign_import_module' declarations.
 
     set.filter_map(
         ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
-            ImportModuleName = foreign_import_module_name_from_module(
+            ImportModuleName = fim_spec_module_name_from_module(
                 ForeignImportMod, SourceFileModuleName),
 
             % XXX We can't include mercury.dll as mmake can't find it,

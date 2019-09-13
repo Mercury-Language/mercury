@@ -997,10 +997,10 @@ mlds_output_c_defns(Opts, ModuleName, Indent, ForeignCode, Errors, !IO) :-
     list.filter_map(maybe_is_error, Results, Errors).
 
 :- pred mlds_output_c_foreign_import_module(mlds_to_c_opts::in, int::in,
-    foreign_import_module_info::in, io::di, io::uo) is det.
+    fim_spec::in, io::di, io::uo) is det.
 
-mlds_output_c_foreign_import_module(Opts, Indent, ForeignImport, !IO) :-
-    ForeignImport = foreign_import_module_info(Lang, Import),
+mlds_output_c_foreign_import_module(Opts, Indent, FIMSpec, !IO) :-
+    FIMSpec = fim_spec(Lang, Import),
     (
         Lang = lang_c,
         mlds_output_src_import(Opts, Indent,

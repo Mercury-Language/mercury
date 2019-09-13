@@ -128,6 +128,7 @@
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.
