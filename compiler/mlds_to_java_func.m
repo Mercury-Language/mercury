@@ -163,15 +163,21 @@ output_func_for_java(Info, Indent, FuncName, OutputAux, Context, Signature,
         % The signature above will be printed inside a comment.
     ;
         MaybeBody = body_defined_here(Body),
-        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
-            Context, Indent, !IO),
-        io.write_string("{\n", !IO),
         FuncInfo = func_info_csj(Signature),
-        output_statement_for_java(Info, Indent + 1, FuncInfo, Body,
-            _ExitMethods, !IO),
-        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
-            Context, Indent, !IO),
-        io.write_string("}\n", !IO)
+        % Do not place redundant brackets around a block.
+        ( if Body = ml_stmt_block(_, _, _, _) then
+            output_statement_for_java(Info, Indent, FuncInfo, Body,
+                _ExitMethods, !IO),
+            indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
+                Context, Indent, !IO)
+        else
+            io.write_string("{\n", !IO),
+            output_statement_for_java(Info, Indent + 1, FuncInfo, Body,
+                _ExitMethods, !IO),
+            indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
+                Context, Indent, !IO),
+            io.write_string("}\n", !IO)
+        )
     ).
 
 %---------------------------------------------------------------------------%

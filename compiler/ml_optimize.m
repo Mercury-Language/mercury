@@ -144,7 +144,15 @@ optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
         maybe_flatten_block(SubStmts2, SubStmts3),
         optimize_in_stmts(OptInfo, SubStmts3, SubStmts),
         % XXX We should also optimize in FuncDefns.
-        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
+        ( if
+            LocalVarDefns = [],
+            FuncDefns = [],
+            SubStmts = [SubStmt]
+        then
+            Stmt = SubStmt
+        else
+            Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
+        )
     ;
         Stmt0 = ml_stmt_while(Kind, Rval, SubStmts0, LocalLoopVars, Context),
         optimize_in_stmt(OptInfo, SubStmts0, SubStmts),
