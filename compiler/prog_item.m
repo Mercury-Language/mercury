@@ -2496,21 +2496,7 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         !:Pragmas = [ItemPragma | !.Pragmas]
     ;
         Item = item_promise(ItemPromise),
-        ItemPromise = item_promise_info(PromiseType, _, _, _, Context, _),
-        (
-            ( PromiseType = promise_type_exclusive
-            ; PromiseType = promise_type_exhaustive
-            ; PromiseType = promise_type_exclusive_exhaustive
-            ),
-            !:Promises = [ItemPromise | !.Promises]
-        ;
-            PromiseType = promise_type_true,
-            Pieces = [words("A .int0 file may not contain")] ++
-                item_desc_pieces(Item) ++ [suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
-            !:Specs = [Spec | !.Specs]
-        )
+        !:Promises = [ItemPromise | !.Promises]
     ;
         ( Item = item_clause(_)
         ; Item = item_foreign_export_enum(_)
