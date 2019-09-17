@@ -3601,13 +3601,15 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
     % size of 4k minus a bit (to give malloc some room).
     binary_input_stream_file_size(Stream, FileSize, !IO),
     ( if FileSize >= 0 then
+        binary_input_stream_offset(Stream, CurrentOffset, !IO),
+        RemainingSize = FileSize - CurrentOffset,
         some [!BM] (
-            !:BM = bitmap.init(FileSize * bits_per_byte),
-            read_bitmap(Stream, 0, FileSize,
+            !:BM = bitmap.init(RemainingSize * bits_per_byte),
+            read_bitmap(Stream, 0, RemainingSize,
                 !BM, BytesRead, ReadResult, !IO),
             (
                 ReadResult = ok,
-                ( if BytesRead = FileSize then
+                ( if BytesRead = RemainingSize then
                     Result = ok(!.BM)
                 else
                     Result = error(io_error(
