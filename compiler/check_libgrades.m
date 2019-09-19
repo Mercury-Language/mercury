@@ -23,10 +23,11 @@
 
 %---------------------------------------------------------------------------%
 
-    % Check that all Mercury libraries required by the target are installed
-    % in the selected grade.
+    % If --libgrade-install-check is enabled, then check that all Mercury
+    % libraries required by the target are installed in the selected grade.
+    % Always succeeds if --libgrade-install-check is *not* enabled.
     %
-:- pred check_libraries_are_installed(globals::in, bool::out,
+:- pred maybe_check_libraries_are_installed(globals::in, bool::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -45,17 +46,25 @@
 
 %---------------------------------------------------------------------------%
 
-check_libraries_are_installed(Globals, Succeeded, !IO) :-
-    globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
-    grade_directory_component(Globals, Grade),
-    check_stdlib_is_installed(Globals, Grade, Succeeded0, !IO),
-    list.foldl2(check_library_is_installed(Globals, Grade), Libs,
-        Succeeded0, Succeeded, !IO).
+maybe_check_libraries_are_installed(Globals, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, libgrade_install_check,
+        LibgradeCheck),
+    (
+        LibgradeCheck = yes,
+        globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
+        grade_directory_component(Globals, GradeDirName),
+        check_stdlib_is_installed(Globals, GradeDirName, Succeeded0, !IO),
+        list.foldl2(check_library_is_installed(Globals, GradeDirName), Libs,
+            Succeeded0, Succeeded, !IO)
+    ;
+        LibgradeCheck = no,
+        Succeeded = yes
+    ).
 
 :- pred check_stdlib_is_installed(globals::in, string::in, bool::out,
     io::di, io::uo) is det.
 
-check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
+check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
     (
@@ -69,17 +78,17 @@ check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
             % the required grade.  Unless the installation is broken this
             % implies the presence of the other standard library files in that
             % grade.
-            StdLibCheckFile = StdLibDir / "modules" / Grade / "mer_std.init"
+            StdLibCheckFile = StdLibDir / "modules" / GradeDirName / "mer_std.init"
         ;
             % Java grades do not use .init files, so check for the presence of
             % the standard library JAR.
             Target = target_java,
-            StdLibCheckFile = StdLibDir / "lib" / Grade / "mer_std.jar"
+            StdLibCheckFile = StdLibDir / "lib" / GradeDirName / "mer_std.jar"
         ;
             % C# grades do not use .init files, so check for the presence of
             % the standard library DLL.
             Target = target_csharp,
-            StdLibCheckFile = StdLibDir / "lib" / Grade / "mer_std.dll"
+            StdLibCheckFile = StdLibDir / "lib" / GradeDirName / "mer_std.dll"
         ),
         io.see(StdLibCheckFile, Result, !IO),
         (
@@ -93,7 +102,7 @@ check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
             io.format(Stderr,
                 "%s: error: the Mercury standard library "  ++
                 "cannot be found in grade %s.\n",
-                [s(ProgName), s(Grade)], !IO),
+                [s(ProgName), s(GradeDirName)], !IO),
             Succeeded = no
         )
     ;
@@ -104,7 +113,7 @@ check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
 :- pred check_library_is_installed(globals::in, string::in,
     string::in, bool::in, bool::out, io::di, io::uo) is det.
 
-check_library_is_installed(Globals, Grade, LibName, !Succeeded, !IO) :-
+check_library_is_installed(Globals, GradeDirName, LibName, !Succeeded, !IO) :-
     globals.get_target(Globals, Target),
     (
         % In C and Erlang grades, check for the presence of a library by seeing
@@ -130,8 +139,8 @@ check_library_is_installed(Globals, Grade, LibName, !Succeeded, !IO) :-
         ),
         globals.lookup_accumulating_option(Globals,
             mercury_library_directories, MercuryLibDirs),
-        grade_directory_component(Globals, GradeDir),
-        SearchDirs = list.map((func(LibDir) = LibDir / "lib" / GradeDir),
+        grade_directory_component(Globals, GradeDirNameDir),
+        SearchDirs = list.map((func(LibDir) = LibDir / "lib" / GradeDirNameDir),
             MercuryLibDirs)
     ),
     search_for_file_returning_dir(SearchDirs, CheckFileName, MaybeDirName,
@@ -144,7 +153,7 @@ check_library_is_installed(Globals, Grade, LibName, !Succeeded, !IO) :-
         io.progname_base("mercury_compile", ProgName, !IO),
         io.format(Stderr,
             "%s: error: the library `%s' cannot be found in grade `%s'.\n",
-            [s(ProgName), s(LibName), s(Grade)], !IO),
+            [s(ProgName), s(LibName), s(GradeDirName)], !IO),
         !:Succeeded = no
     ).
 

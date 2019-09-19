@@ -91,15 +91,8 @@ make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
     then
         LinkedTargetSucceeded = yes
     else
-        globals.lookup_bool_option(Globals, libgrade_install_check,
-            LibgradeCheck),
-        (
-            LibgradeCheck = yes,
-            check_libraries_are_installed(Globals, LibgradeCheckSucceeded, !IO)
-        ;
-            LibgradeCheck = no,
-            LibgradeCheckSucceeded = yes
-        ),
+        maybe_check_libraries_are_installed(Globals, LibgradeCheckSucceeded,
+            !IO),
         (
             LibgradeCheckSucceeded = yes,
             maybe_with_analysis_cache_dir(Globals,

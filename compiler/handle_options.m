@@ -1002,8 +1002,19 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     option_implies(invoked_by_mmc_make,
         generate_mmc_make_module_dependencies, bool(no), !Globals),
 
-    % --libgrade-install-check only works with --make.
-    ( if OpMode = opm_top_make then
+    % We only perform the library grade install check if we are
+    % building a linked target using mmc --make or if we are building
+    % a single source file linked target.  (The library grade install
+    % check is *not* compatible with the use of mmake.)
+    ( if
+        (
+            OpMode = opm_top_make
+        ;
+            OpMode = opm_top_args(OpModeArgs),
+            OpModeArgs = opma_augment(opmau_generate_code(
+                opmcg_target_object_and_executable))
+        )
+    then
         true
     else
         globals.set_option(libgrade_install_check, bool(no), !Globals)
