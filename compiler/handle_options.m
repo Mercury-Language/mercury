@@ -867,7 +867,6 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         %   - pretest-equality-cast-pointers
         %   - no structure reuse
         %     Because mlds_to_java_stmt.m does not handle assign_if_in_heap.
-        %   - no library grade installation check with `mmc --make'.
         %
         % C# should be the same as Java, except that:
         %   - C# supports pass-by-reference, but for reasons explained in
@@ -911,7 +910,6 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         %   - no-can-compare-constants-as-ints
         %   - can-compare-compound-values
         %   - lexically-compare-constructors
-        %   - no library grade installation check with `mmc --make'
         %   - --no-optimize-tailcalls because Erlang implementations perform
         %     LCO.
 
@@ -1967,7 +1965,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             DefaultRuntimeLibraryDirs = no
         )
     ;
-        MaybeStdLibDir = no
+        MaybeStdLibDir = no,
+        globals.set_option(libgrade_install_check, bool(no), !Globals)
     ),
 
     % Add the path to mercury_conf.h.
