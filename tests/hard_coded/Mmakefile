@@ -313,6 +313,7 @@ ORDINARY_PROGS = \
 	read_binary_uint16 \
 	read_binary_uint32 \
 	read_binary_uint64 \
+	read_bitmap_size \
 	read_min_int \
 	recursive_main \
 	redoip_clobber \
