@@ -12043,7 +12043,7 @@ restore_output_stream(_DummyPred, Stream, ok, !IO) :-
     % StreamId is a unique integer identifying the open.
     % StreamId and Stream are valid only if Error indicates an error occurred.
     %
-:- pred do_open_binary(string::in, string::in, int::out, stream::out,
+:- pred do_open_text(string::in, string::in, int::out, stream::out,
     system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -12132,7 +12132,7 @@ restore_output_stream(_DummyPred, Stream, ok, !IO) :-
 
 %---------------------%
 
-:- pred do_open_text(string::in, string::in, int::out, stream::out,
+:- pred do_open_binary(string::in, string::in, int::out, stream::out,
     system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
