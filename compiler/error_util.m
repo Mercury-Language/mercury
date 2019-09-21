@@ -67,13 +67,29 @@
 % For example, when reporting a duplicate declaration, we want to report
 % this fact in the duplicate declaration's context, while printing another
 % message giving the original declaration's context.
+%
+% simplest_spec(Severity, Phase, Context, Pieces) is a shorthand for
+% (and equivalent in every respect to) error_spec(Severity, Phase,
+% [simple_msg(Context, always(Pieces)])]).
 
 :- type error_spec
     --->    error_spec(
                 error_severity          :: error_severity,
                 error_phase             :: error_phase,
                 error_msgs              :: list(error_msg)
+            )
+    ;       simplest_spec(
+                simp_spec_severity      :: error_severity,
+                simp_spec_phase         :: error_phase,
+                simp_spec_context       :: prog_context,
+                simp_spec_pieces        :: list(format_component)
             ).
+
+:- inst full_spec for error_spec/0
+    --->    error_spec(ground, ground, ground).
+
+:- pred expand_simplest_spec(error_spec::in, error_spec::out(full_spec))
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -164,13 +180,20 @@
 % The term simple_msg(Context, Components) is a shorthand for (and equivalent
 % in every respect to) the term error_msg(yes(Context), do_not_treat_as_first,
 % 0, Components).
+%
+% The term simplest_msg(Context, Pieces) is a shorthand for (and equivalent
+% in every respect to) the term simple_msg(Context, [always(Pieces)]).
 
 :- type maybe_treat_as_first
     --->    treat_as_first
     ;       do_not_treat_as_first.
 
 :- type error_msg
-    --->    simple_msg(
+    --->    simplest_msg(
+                simplest_context        :: prog_context,
+                simple_pieces           :: list(format_component)
+            )
+    ;       simple_msg(
                 simple_context          :: prog_context,
                 simple_components       :: list(error_msg_component)
             )
@@ -612,6 +635,18 @@
 
 %---------------------------------------------------------------------------%
 
+expand_simplest_spec(Spec0, Spec) :-
+    (
+        Spec0 = error_spec(Severity, Phase, Msgs),
+        Spec = error_spec(Severity, Phase, Msgs)
+    ;
+        Spec0 = simplest_spec(Severity, Phase, Context, Pieces),
+        Spec = error_spec(Severity, Phase,
+            [simple_msg(Context, [always(Pieces)])])
+    ).
+
+%---------------------------------------------------------------------------%
+
 worst_severity(actual_severity_error, actual_severity_error) =
     actual_severity_error.
 worst_severity(actual_severity_error, actual_severity_warning) =
@@ -666,7 +701,9 @@ worst_severity_in_specs(Globals, Specs) = MaybeWorst :-
 
 worst_severity_in_specs_2(_Globals, [], !MaybeWorst).
 worst_severity_in_specs_2(Globals, [Spec | Specs], !MaybeWorst) :-
-    Spec = error_spec(Severity, _, _),
+    ( Spec = error_spec(Severity, _, _)
+    ; Spec = simplest_spec(Severity, _, _, _)
+    ),
     MaybeThis = actual_error_severity(Globals, Severity),
     (
         !.MaybeWorst = no,
@@ -780,6 +817,12 @@ remove_conditionals_in_spec(Globals, Spec0, Spec) :-
 remove_conditionals_in_msg(Globals, Msg0, Msg) :-
     require_det (
         (
+            Msg0 = simplest_msg(Context, Pieces0),
+            Components0 = [always(Pieces0)],
+            MaybeContext = yes(Context),
+            TreatAsFirst = do_not_treat_as_first,
+            ExtraIndent = 0
+        ;
             Msg0 = simple_msg(Context, Components0),
             MaybeContext = yes(Context),
             TreatAsFirst = do_not_treat_as_first,
@@ -836,7 +879,9 @@ remove_conditionals_in_msg_component(Globals, Component, !ComponentCord) :-
 :- pred compare_error_specs(error_spec::in, error_spec::in,
     comparison_result::out) is det.
 
-compare_error_specs(SpecA, SpecB, Result) :-
+compare_error_specs(SpecA0, SpecB0, Result) :-
+    expand_simplest_spec(SpecA0, SpecA),
+    expand_simplest_spec(SpecB0, SpecB),
     SpecA = error_spec(_, _, MsgsA),
     SpecB = error_spec(_, _, MsgsB),
     compare_error_msg_lists(MsgsA, MsgsB, MsgsResult),
@@ -916,6 +961,9 @@ compare_error_msgs(MsgA, MsgB, Result) :-
 
 project_msg_context(Msg) = MaybeContext :-
     (
+        Msg = simplest_msg(Context, _),
+        MaybeContext = yes(Context)
+    ;
         Msg = simple_msg(Context, _),
         MaybeContext = yes(Context)
     ;
@@ -930,6 +978,9 @@ project_msg_context(Msg) = MaybeContext :-
 
 project_msg_components(Msg) = Components :-
     (
+        Msg = simplest_msg(_, Pieces),
+        Components = [always(Pieces)]
+    ;
         Msg = simple_msg(_, Components)
     ;
         Msg = error_msg(_, _, _, Components)
@@ -942,7 +993,8 @@ project_msg_components(Msg) = Components :-
 init_error_spec_accumulator = no.
 
 accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
-    list.filter((pred(error_spec(_, Phase, _)::in) is semidet :-
+    list.filter(
+        ( pred(error_spec(_, Phase, _)::in) is semidet :-
             ModeReportControl = get_maybe_mode_report_control(Phase),
             ModeReportControl = yes(report_only_if_in_all_modes)
         ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
@@ -1058,8 +1110,9 @@ write_error_specs(Stream, Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
+do_write_error_spec(Stream, Globals, Spec0, !NumWarnings, !NumErrors,
         !AlreadyPrintedVerbose, !IO) :-
+    expand_simplest_spec(Spec0, Spec),
     Spec = error_spec(Severity, _, Msgs),
     do_write_error_msgs(Stream, Msgs, Globals, treat_as_first,
         have_not_printed_anything, PrintedSome, !AlreadyPrintedVerbose, !IO),
@@ -1115,6 +1168,12 @@ do_write_error_msgs(_Stream, [], _Globals, _First, !PrintedSome,
 do_write_error_msgs(Stream, [Msg | Msgs], Globals, !.First, !PrintedSome,
         !AlreadyPrintedVerbose, !IO) :-
     (
+        Msg = simplest_msg(SimpleContext, Pieces),
+        Components = [always(Pieces)],
+        MaybeContext = yes(SimpleContext),
+        TreatAsFirst = do_not_treat_as_first,
+        ExtraIndentLevel = 0
+    ;
         Msg = simple_msg(SimpleContext, Components),
         MaybeContext = yes(SimpleContext),
         TreatAsFirst = do_not_treat_as_first,

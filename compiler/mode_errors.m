@@ -738,7 +738,8 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     Error = mode_error_info(_, ModeError, ErrorContext, ModeContext),
     mode_info_set_context(ErrorContext, !ModeInfo),
     mode_info_set_mode_context(ModeContext, !ModeInfo),
-    SubSpec = mode_error_to_spec(!.ModeInfo, ModeError),
+    SubSpec0 = mode_error_to_spec(!.ModeInfo, ModeError),
+    expand_simplest_spec(SubSpec0, SubSpec),
     SubSpec = error_spec(_, _, SubMsgs),
     Msgs = [Msg1, Msg2] ++ SubMsgs.
 
@@ -1005,7 +1006,8 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         mode_info_set_proc_id(CalleeProcId, !ModeInfo),
         mode_info_set_context(CalleeContext, !ModeInfo),
         mode_info_set_mode_context(CalleeModeContext, !ModeInfo),
-        CalleeModeErrorSpec = mode_error_to_spec(!.ModeInfo, CalleeModeError),
+        CalleeModeErrorSpec0 = mode_error_to_spec(!.ModeInfo, CalleeModeError),
+        expand_simplest_spec(CalleeModeErrorSpec0, CalleeModeErrorSpec),
         CalleeModeErrorSpec = error_spec(_, _, LaterMsgs0),
         (
             LaterMsgs0 = [],
@@ -1013,6 +1015,10 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         ;
             LaterMsgs0 = [LaterHead0 | LaterTail],
             (
+                LaterHead0 = simplest_msg(LaterContext, Pieces),
+                LaterHead = error_msg(yes(LaterContext), treat_as_first,
+                    0, [always(Pieces)])
+            ;
                 LaterHead0 = simple_msg(LaterContext, Components),
                 LaterHead = error_msg(yes(LaterContext), treat_as_first,
                     0, Components)
@@ -1260,8 +1266,9 @@ mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst,
             words("the following error."), nl],
         ConnectMsgs = [simple_msg(Context, [always(ConnectPieces)])],
         MultiModeError = pred_var_multimode_pred_error(PredId, MultiMode),
-        SubSpec = mode_error_unify_var_multimode_pred_to_spec(ModeInfo,
+        SubSpec0 = mode_error_unify_var_multimode_pred_to_spec(ModeInfo,
             Var, PredId, MultiMode),
+        expand_simplest_spec(SubSpec0, SubSpec),
         SubSpec = error_spec(_SubSeverity, _SubPhase, SubMsgs),
         Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
             MainMsgs ++ ConnectMsgs ++ SubMsgs)

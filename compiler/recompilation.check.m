@@ -1578,7 +1578,8 @@ recompile_reason_message(PrefixPieces, Reason, Spec) :-
 
 :- func project_spec_to_msgs(error_spec) = list(error_msg).
 
-project_spec_to_msgs(Spec) = Msgs :-
+project_spec_to_msgs(Spec0) = Msgs :-
+    expand_simplest_spec(Spec0, Spec),
     Spec = error_spec(_Severity, _Phase, Msgs).
 
 :- func describe_item(item_id) = list(format_component).

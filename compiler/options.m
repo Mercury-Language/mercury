@@ -3105,6 +3105,8 @@ long_option("builtin-lt-gt-2018-10-08",
                                     compiler_sufficiently_recent).
 long_option("fixed-contiguity-2018-10-19",
                                     compiler_sufficiently_recent).
+long_option("simplest-msg-2019-09-22",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).
