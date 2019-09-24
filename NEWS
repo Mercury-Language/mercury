@@ -425,10 +425,15 @@ Changes to the Mercury standard library:
 
    - foldl5/12
    - foldr5/12
+   - map_foldl4/11
    - intersect_list/4
    - union_list/4
    - select_unselect/4
    - select_unselect_sorted_list/4
+
+* The following predicates have been added to the tree234 module:
+
+   - map_foldl4/11
 
 * The following predicates and/or functions have been added to the set modules:
 

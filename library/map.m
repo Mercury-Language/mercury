@@ -717,6 +717,32 @@
 :- mode map_foldl3(pred(in, in, out, in, out, in, out, di, uo) is semidet,
     in, out, in, out, in, out, di, uo) is semidet.
 
+    % As map_foldl, but with four accumulators.
+    %
+:- pred map_foldl4(pred(K, V, W, A, A, B, B, C, C, D, D), map(K, V), map(K, W),
+    A, A, B, B, C, C, D, D).
+:- mode map_foldl4(pred(in, in, out, in, out, in, out, in, out, in, out)
+    is det,
+    in, out, in, out, in, out, in, out, in, out) is det.
+:- mode map_foldl4(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+    is det,
+    in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode map_foldl4(pred(in, in, out, in, out, di, uo, di, uo, di, uo) is det,
+    in, out, in, out, di, uo, di, uo, di, uo) is det.
+:- mode map_foldl4(pred(in, in, out, in, out, in, out, in, out, di, uo) is det,
+    in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode map_foldl4(pred(in, in, out, in, out, in, out, di, uo, di, uo) is det,
+    in, out, in, out, in, out, di, uo, di, uo) is det.
+:- mode map_foldl4(pred(in, in, out, in, out, in, out, in, out, in, out)
+    is semidet,
+    in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode map_foldl4(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+    is semidet,
+    in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode map_foldl4(pred(in, in, out, in, out, in, out, in, out, di, uo)
+    is semidet,
+    in, out, in, out, in, out, in, out, di, uo) is semidet.
+
     % As map_foldl, but without passing the key to the predicate.
     %
 :- pred map_values_foldl(pred(V, W, A, A), map(K, V), map(K, W), A, A).
@@ -1499,6 +1525,9 @@ map_foldl2(Pred, !Map, !AccA, !AccB) :-
 
 map_foldl3(Pred, !Map, !AccA, !AccB, !AccC) :-
     tree234.map_foldl3(Pred, !Map, !AccA, !AccB, !AccC).
+
+map_foldl4(Pred, !Map, !AccA, !AccB, !AccC, !AccD) :-
+    tree234.map_foldl4(Pred, !Map, !AccA, !AccB, !AccC, !AccD).
 
 map_values_foldl(Pred, !Map, !AccA) :-
     tree234.map_values_foldl(Pred, !Map, !AccA).
