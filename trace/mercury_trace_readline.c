@@ -67,7 +67,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
         // are very sloppy about declaring the types of function pointers).
 
         rl_completion_entry_function = (void *) &MR_trace_line_completer;
-        rl_readline_name = "mdb";
+        rl_readline_name = (char *) "mdb";
 
         if (!in_isatty) {
             // This is necessary for tests/debugger/completion, otherwise
