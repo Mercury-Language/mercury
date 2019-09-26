@@ -58,7 +58,7 @@ fi
 
 # Test for C99 fp environment functions in the math library.
 # The second argument to this macro should be the flags required by the
-# C compiler to link against the math library.  This is needed because
+# C compiler to link against the math library. This is needed because
 # some OSs, e.g. Mac OS X, don't have a separate math library.
 
 AC_DEFUN([MERCURY_CHECK_FOR_FENV_FUNC],
@@ -121,8 +121,8 @@ fi
 ])
 #-----------------------------------------------------------------------------#
 #
-# Check whether we need to add any extra directories to the search path for
-# header files, and set ALL_LOCAL_C_INCL_DIRS to the -I option(s) needed
+# Check whether we need to add any extra directories to the search path
+# for header files, and set ALL_LOCAL_C_INCL_DIRS to the -I option(s) needed
 # for this, if any.
 #
 # GNU C normally searches /usr/local/include by default;
@@ -141,7 +141,7 @@ if test "$GCC" = yes -o "$USING_MICROSOFT_CL_COMPILER" = yes; then
 	# Microsoft compilers don't understand Unix pathnames.
 	AC_MSG_RESULT(no)
 else
-	# It's some other compiler.  We don't know if it searches
+	# It is some other compiler. We don't know if it searches
 	# /usr/local/include by default, so add it.
 	if test -d /usr/local/include/.; then
 		AC_MSG_RESULT(yes)
@@ -156,8 +156,8 @@ AC_SUBST(ALL_LOCAL_C_INCL_DIR_MMC_OPTS)
 ])
 #-----------------------------------------------------------------------------#
 #
-# Set ALL_LOCAL_C_LIB_DIRS to any extra directories we need to add to the
-# search path for libraries.
+# Set ALL_LOCAL_C_LIB_DIRS to any extra directories we need to add
+# to the search path for libraries.
 #
 AC_DEFUN([MERCURY_CHECK_LOCAL_C_LIB_DIRS],
 [
@@ -196,7 +196,7 @@ AC_DEFUN([MERCURY_TRY_STATIC_ASSERT], [
 
 #-----------------------------------------------------------------------------#
 #
-# Check for readline and related header files and libraries
+# Check for readline and related header files and libraries.
 #
 AC_DEFUN([MERCURY_CHECK_READLINE],
 [
@@ -310,8 +310,8 @@ AC_PATH_PROGS([CLI_INTERPRETER], [mono])
 # Check for the C# (C sharp) compiler.
 # csc is the Microsoft C# compiler.
 # mcs is the Mono C# compiler targetting all runtime versions.
-# (dmcs and gmcs are older aliases for the Mono C# compiler which we do
-#  not use.)
+# (dmcs and gmcs are older aliases for the Mono C# compiler
+# which we do not use.)
 
 AC_CACHE_SAVE
 case "$mercury_cv_with_csharp_compiler" in
@@ -338,7 +338,7 @@ for CANDIDATE_CSC0 in $CSC_COMPILERS; do
     unset ac_cv_path_CANDIDATE_CSC
     AC_CACHE_LOAD
     AC_PATH_PROG([CANDIDATE_CSC], [$CANDIDATE_CSC0])
-    
+
     if test -z "$CANDIDATE_CSC"; then
         continue;
     fi
@@ -347,12 +347,10 @@ for CANDIDATE_CSC0 in $CSC_COMPILERS; do
 # Check that the compiler is suitable.
     case "$CANDIDATE_CSC" in
          csc*)
-             #
              # The Microsoft C# compiler and the Chicken Scheme compiler share
-             # the same executable name so if we find an executable named csc
-             # above check that it is actually the Microsoft C# compiler and if
-             # it is not then try to use one of the other instead.
-             #
+             # the same executable name, so if we find an executable named csc
+             # above, check that it is actually the Microsoft C# compiler,
+             # and if it is not, then try to use one of the other instead.
              $CANDIDATE_CSC 2>&1 | grep "^Microsoft" >/dev/null
              if test $? -ne 0
              then
@@ -421,7 +419,7 @@ EOF
     esac
 done
 
-# If the user specified one or more compilers and we couldn't find any
+# If the user specified one or more compilers and we couldn't find any,
 # then abort configuration.
 if test "$mercury_cv_with_csharp_compiler" != "" -a "$CSC" = ""; then
     AC_MSG_ERROR([No suitable C sharp compiler could be found.])
@@ -442,7 +440,7 @@ case "$CSC" in
     ;;
 esac
 
-# We default to the Beta 2 version of the library
+# We default to the Beta 2 version of the library.
 mercury_cv_microsoft_dotnet_library_version=1.0.2411.0
 if	test $mercury_cv_microsoft_dotnet = "yes" &&
 	test "$CSC" != "";
@@ -495,15 +493,15 @@ AC_SUBST([CLI_INTERPRETER])
 
 #-----------------------------------------------------------------------------#
 #
-# Java configuration
+# Java configuration.
 #
 AC_DEFUN([MERCURY_CHECK_JAVA],
 [
 # jikes requires the usual Java SDK to run, so if we checked for javac first,
-# then that's what we'd get. If the user has jikes installed, then that
+# then that is what we would get. If the user has jikes installed, then that
 # probably means that they want to use it, so we check for jikes before javac.
 # On Windows, the Java SDK has a high chance of being installed in a path
-# containing spaces.  The simplest solution is to keep only the basename.
+# containing spaces. The simplest solution is to keep only the basename.
 # Everything will still work so long as the executables can be found on the
 # PATH later.
 AC_PATH_PROGS(JAVAC, jikes javac gcj)
@@ -597,22 +595,21 @@ AC_SUBST(JAR)
 
 AC_DEFUN([MERCURY_CHECK_JAVAC_HEAP_SIZE],
 [
-# The default maximum heap size is too small to build the standard library and
-# other programs so we need to increase it.  The option to do that is
-# non-standard so we have to check that it is accepted.
+# The default maximum heap size is too small to build the standard library
+# and other programs, so we need to increase it. The option to do that
+# is non-standard, so we have to check that it is accepted.
 AC_CACHE_VAL([mercury_cv_javac_flags_for_heap_size], [
 if test "$mercury_cv_java" = "yes"
 then
 	AC_MSG_CHECKING([if the Java compiler accepts the max heap size option])
-	# There are three versions of this.  The '_test' version is the one we
-	# test here; the '_mmake' version is the one that gets included in
-	# in the Mmake.vars file and the '_config' verison is the version that
-	# gets in included in the Mercury.config file.
+	# There are three versions of this. The '_test' version is the one
+	# we test here; the '_mmake' version is the one that gets included
+	# in the Mmake.vars file and the '_config' verison is the version
+	# that gets included in the Mercury.config file.
 	# The difference between the three versions is how much we need to
 	# escape the double quotes; in particular we need to ensure that they
 	# are *not* escaped in Mmake.vars and *are* escaped in Mercury.config.
-	# The latter is necessary in order for --restricted-command-line to
-	# work.
+	# The latter is necessary in order for --restricted-command-line to work.
 	mercury_cv_javac_flags_for_heap_size_test="-J-Xmx256m"
 	mercury_cv_javac_flags_for_heap_size_mmake="-J\"-Xmx1024m\""
 	mercury_cv_javac_flags_for_heap_size_config="-J\\\"-Xmx1024m\\\""
@@ -632,7 +629,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
-# Erlang configuration
+# Erlang configuration.
 #
 
 # copy of AC_ERLANG_PATH_ERLC from autoconf-2.60
@@ -670,16 +667,16 @@ else
 fi
 
 # On Windows, Erlang/OTP has a high chance of being installed in a path
-# containing spaces.  The simplest solution is to keep only the basename.
-# Everything will still work so long as the executables can be found on the
-# PATH later.
+# containing spaces. The simplest solution is to keep only the basename.
+# Everything will still work so long as the executables can be found
+# on the PATH later.
 case "$ERLC" in
     *" "*)
         ERLC=`basename "$ERLC"`
         ;;
 esac
 
-case "$ERL" in 
+case "$ERL" in
     *" "*)
         ERL=`basename "$ERL"`
         ;;
@@ -758,8 +755,8 @@ EOF
 
 echo "$CC $nologo_opt ${cc_out_opt}conftest conftest.c" >&AC_FD_CC 2>&1
 if
-    # We direct the output to /dev/null because it's appears to be the
-    # only way to shut some C compilers up.
+    # We direct the output to /dev/null because it appears to be
+    # the only way to shut some C compilers up.
     $CC $nologo_opt ${cc_out_opt}conftest conftest.c 2>&1 > /dev/null
 then
     AC_CACHE_VAL(mercury_cv_cc_type,
