@@ -959,7 +959,7 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
                 parse_where_inst_is(ModuleName, VarSet, AnyContextPieces)),
             MaybeAnyIs, !MaybeTerm),
         parse_where_attribute(parse_where_is("constraint_store",
-                parse_where_mutable_is(ModuleName)),
+                parse_where_mutable_is(ModuleName, VarSet)),
             MaybeCStoreIs, !MaybeTerm),
         parse_where_attribute(parse_where_is("equality",
                 parse_where_pred_is(ModuleName, VarSet)),
@@ -1183,12 +1183,12 @@ parse_where_type_is(_ModuleName, VarSet, Term) = MaybeType :-
     parse_type(no_allow_ho_inst_info(wnhii_solver_type_defn),
         VarSet, ContextPieces, Term, MaybeType).
 
-:- func parse_where_mutable_is(module_name, term) =
+:- func parse_where_mutable_is(module_name, varset, term) =
     maybe1(list(item_mutable_info)).
 
-parse_where_mutable_is(ModuleName, Term) = MaybeItems :-
+parse_where_mutable_is(ModuleName, VarSet, Term) = MaybeItems :-
     ( if Term = term.functor(term.atom("mutable"), _, _) then
-        parse_mutable_decl_term(ModuleName, Term, MaybeItem),
+        parse_mutable_decl_term(ModuleName, VarSet, Term, MaybeItem),
         (
             MaybeItem = ok1(Mutable),
             MaybeItems  = ok1([Mutable])
@@ -1197,28 +1197,32 @@ parse_where_mutable_is(ModuleName, Term) = MaybeItems :-
             MaybeItems  = error1(Specs)
         )
     else if list_term_to_term_list(Term, Terms) then
-        map_parser(parse_mutable_decl_term(ModuleName), Terms, MaybeItems)
+        map_parser(parse_mutable_decl_term(ModuleName, VarSet),
+            Terms, MaybeItems)
     else
+        TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a mutable declaration"),
-            words("or a list of mutable declarations."), nl],
+            words("or a list of mutable declarations, got"),
+            quote(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         MaybeItems = error1([Spec])
     ).
 
-:- pred parse_mutable_decl_term(module_name::in, term::in,
+:- pred parse_mutable_decl_term(module_name::in, varset::in, term::in,
     maybe1(item_mutable_info)::out) is det.
 
-parse_mutable_decl_term(ModuleName, Term, MaybeItemMutableInfo) :-
+parse_mutable_decl_term(ModuleName, VarSet, Term, MaybeItemMutableInfo) :-
     ( if
         Term = term.functor(term.atom("mutable"), ArgTerms, Context)
     then
-        varset.init(VarSet),
         SeqNum = -1,
         parse_mutable_decl_info(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             mutable_locn_in_solver_type, MaybeItemMutableInfo)
     else
-        Pieces = [words("Error: expected a mutable declaration."), nl],
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected a mutable declaration, got."),
+            quote(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         MaybeItemMutableInfo = error1([Spec])
