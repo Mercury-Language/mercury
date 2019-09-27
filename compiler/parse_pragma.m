@@ -147,7 +147,7 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "foreign_enum",
-        parse_pragma_foreign_enum(VarSet, ErrorTerm,
+        parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "foreign_export",
@@ -544,8 +544,8 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             MaybeForeignLang),
         TypeContextPieces = cord.from_list([words("In second argument of"),
             pragma_decl("foreign_export_enum"), words("declaration:")]),
-        parse_type_ctor_name_arity(TypeContextPieces, VarSet, MercuryTypeTerm,
-            MaybeTypeCtor),
+        parse_type_ctor_name_arity(no, TypeContextPieces, VarSet,
+            MercuryTypeTerm, MaybeTypeCtor),
         maybe_parse_export_enum_attributes(VarSet, MaybeAttributesTerm,
             MaybeAttributes),
         maybe_parse_export_enum_overrides(VarSet, MaybeOverridesTerm,
@@ -714,11 +714,12 @@ parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
 % Code for parsing foreign_enum pragmas.
 %
 
-:- pred parse_pragma_foreign_enum(varset::in, term::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+:- pred parse_pragma_foreign_enum(module_name::in, varset::in, term::in,
+    list(term)::in, prog_context::in, int::in,
+    maybe1(item_or_marker)::out) is det.
 
-parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
-        MaybeIOM) :-
+parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
+        Context, SeqNum, MaybeIOM) :-
     (
         PragmaTerms = [LangTerm, MercuryTypeTerm, ValuesTerm],
         LangContextPieces = cord.from_list([words("In first argument of"),
@@ -727,8 +728,8 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeForeignLang),
         TypeContextPieces = cord.from_list([words("In second argument of"),
             pragma_decl("foreign_enum"), words("declaration:")]),
-        parse_type_ctor_name_arity(TypeContextPieces, VarSet, MercuryTypeTerm,
-            MaybeTypeCtor),
+        parse_type_ctor_name_arity(yes(ModuleName), TypeContextPieces, VarSet,
+            MercuryTypeTerm, MaybeTypeCtor),
 
         UnrecognizedPieces =
             [words("Error: expected a valid mapping element")],
@@ -810,12 +811,27 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
             MaybeForeignLang = error1([LangSpec])
     ).
 
-:- pred parse_type_ctor_name_arity(cord(format_component)::in, varset::in,
-    term::in, maybe1(type_ctor)::out) is det.
+:- pred parse_type_ctor_name_arity(maybe(module_name)::in,
+    cord(format_component)::in, varset::in, term::in,
+    maybe1(type_ctor)::out) is det.
 
-parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
-    ( if parse_name_and_arity_unqualified(TypeTerm, Name, Arity) then
-        MaybeTypeCtor = ok1(type_ctor(Name, Arity))
+parse_type_ctor_name_arity(MaybeModuleName, ContextPieces, VarSet, TypeTerm,
+        MaybeTypeCtor) :-
+    ( if parse_name_and_arity_unqualified(TypeTerm, SymNameName0, Arity) then
+        (
+            MaybeModuleName = no,
+            SymNameName = SymNameName0
+        ;
+            MaybeModuleName = yes(ModuleName),
+            (
+                SymNameName0 = unqualified(Name),
+                SymNameName = qualified(ModuleName, Name)
+            ;
+                SymNameName0 = qualified(_, _),
+                SymNameName = SymNameName0
+            )
+        ),
+        MaybeTypeCtor = ok1(type_ctor(SymNameName, Arity))
     else
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
         Pieces = cord.list(ContextPieces) ++

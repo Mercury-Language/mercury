@@ -2255,7 +2255,6 @@ det_dynamic_cast(Term, Actual) :-
 
 :- import_module maybe.
 
-:- type erlang_atom.
 :- pragma foreign_type("Erlang", erlang_atom, "").
 :- type erlang_atom
     --->    erlang_atom.
@@ -2513,7 +2512,6 @@ create_var_arity_type_info(_, _, _) = type_info :-
     % a type with variable arity of size N
     %   { TypeCtorInfo, N, PseudoTypeInfo0, ..., PseudoTypeInfoN }
     %
-:- type pseudo_type_info.
 :- pragma foreign_type("Erlang", pseudo_type_info, "").
 :- type pseudo_type_info
     --->    pseudo_type_info.
@@ -2557,7 +2555,6 @@ unsafe_pseudo_type_info_index(_, _) = pseudo(pseudo_type_info_thunk) :-
 
 %---------------------------------------------------------------------------%
 
-:- type pseudo_type_info_thunk.
 :- pragma foreign_type("Erlang", pseudo_type_info_thunk, "").
 :- type pseudo_type_info_thunk
     --->    pseudo_type_info_thunk.
@@ -2599,9 +2596,9 @@ eval_pseudo_type_info_thunk(X) = erlang_rtti_implementation.unsafe_cast(X) :-
 
 %---------------------------------------------------------------------------%
 
-:- type type_info_thunk.
 :- pragma foreign_type("Erlang", type_info_thunk, "").
-:- type type_info_thunk ---> type_info_thunk.
+:- type type_info_thunk
+    --->    type_info_thunk.
 
 :- func eval_type_info_thunk_2(type_info_thunk) = type_info.
 :- pragma foreign_proc("Erlang",

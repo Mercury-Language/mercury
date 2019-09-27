@@ -104,6 +104,10 @@ MCFLAGS-libs.mmakefiles               = --warn-implicit-stream-calls
 MCFLAGS-parse_tree.write_deps_file    = --warn-implicit-stream-calls
 MCFLAGS-hlds.du_type_layout           = --warn-implicit-stream-calls
 
+MCFLAGS-parse_tree.prog_item                    = --warn-dead-preds
+MCFLAGS-parse_tree.comp_unit_interface          = --warn-dead-preds
+MCFLAGS-parse_tree.check_parse_tree_type_defns  = --warn-dead-preds
+
 # Keep all modules' contents in a consistent order, except these (for now).
 MCFLAGS-analysis                += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-analysis.file           += --no-warn-inconsistent-pred-order-clauses

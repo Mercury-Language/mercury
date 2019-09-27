@@ -310,8 +310,8 @@ actually_read_module_int(IntFileKind, Globals,
             make_dummy_parse_tree_int(IntFileKind),
             read_parse_tree_int(IntFileKind),
             InitParseTreeInt, Specs0, Errors, !IO),
-        convert_parse_tree_int_parse_tree_int0(InitParseTreeInt, ParseTreeInt0,
-            Specs0, Specs1),
+        convert_parse_tree_int_parse_tree_int0(
+            InitParseTreeInt, ParseTreeInt0, Specs0, Specs1),
         globals.lookup_bool_option(Globals, halt_at_invalid_interface,
             HaltAtInvalidInterface),
         (
@@ -332,8 +332,8 @@ actually_read_module_int(IntFileKind, Globals,
             make_dummy_parse_tree_int(IntFileKind),
             read_parse_tree_int(IntFileKind),
             InitParseTreeInt, Specs0, Errors, !IO),
-        convert_parse_tree_int_parse_tree_int1(InitParseTreeInt, ParseTreeInt1,
-            Specs0, Specs1),
+        convert_parse_tree_int_parse_tree_int1(
+            InitParseTreeInt, ParseTreeInt1, Specs0, Specs1),
         globals.lookup_bool_option(Globals, halt_at_invalid_interface,
             HaltAtInvalidInterface),
         (
@@ -353,8 +353,8 @@ actually_read_module_int(IntFileKind, Globals,
             make_dummy_parse_tree_int(IntFileKind),
             read_parse_tree_int(IntFileKind),
             InitParseTreeInt, Specs0, Errors, !IO),
-        convert_parse_tree_int_parse_tree_int2(InitParseTreeInt, ParseTreeInt2,
-            Specs0, Specs1),
+        convert_parse_tree_int_parse_tree_int2(
+            InitParseTreeInt, ParseTreeInt2, Specs0, Specs1),
         globals.lookup_bool_option(Globals, halt_at_invalid_interface,
             HaltAtInvalidInterface),
         (

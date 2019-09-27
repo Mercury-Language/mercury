@@ -21,7 +21,10 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
+
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -30,16 +33,15 @@
     % in the current module and writes out the .int3 file.
     % XXX document me better
     %
-    % XXX Why do we report errors NOW, as opposed to when we generate code?
-    %
 :- pred generate_short_interface_int3(globals::in, raw_compilation_unit::in,
-    parse_tree_int3::out, parse_tree_int::out) is det.
+    parse_tree_int3::out, parse_tree_int::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Generate the .int2 using the same approach as we use for .int3 files.
     % THIS PREDICATE IS ONLY FOR EXPERIMENTAL PURPOSES.
     %
 :- pred generate_interface_int2_via_int3(globals::in, aug_compilation_unit::in,
-    parse_tree_int::out) is det.
+    parse_tree_int::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -50,7 +52,7 @@
     % nested inside it.
     %
 :- pred generate_private_interface_int0(aug_compilation_unit::in,
-    parse_tree_int::out) is det.
+    parse_tree_int::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -100,7 +102,8 @@
     % Generate the contents for the .int and .int2 files.
     %
 :- pred generate_interfaces_int1_int2(globals::in, aug_compilation_unit::in,
-    parse_tree_int::out, parse_tree_int::out) is det.
+    parse_tree_int::out, parse_tree_int::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -123,6 +126,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module parse_tree.check_parse_tree_type_defns.
 :- import_module parse_tree.decide_type_repn.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.item_util.
@@ -135,7 +139,6 @@
 
 :- import_module bool.
 :- import_module cord.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -148,7 +151,7 @@
 %---------------------------------------------------------------------------%
 
 generate_short_interface_int3(Globals, RawCompUnit,
-        ParseTreeInt3, ParseTreeInt) :-
+        ParseTreeInt3, ParseTreeInt, !Specs) :-
     RawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
@@ -156,7 +159,8 @@ generate_short_interface_int3(Globals, RawCompUnit,
         cord.init, OrigIntTypeDefnsCord, cord.init, IntTypeDefnsCord,
         cord.init, IntInstDefnsCord, cord.init, IntModeDefnsCord,
         cord.init, IntTypeClassesCord, cord.init, IntInstancesCord,
-        cord.init, OrigImpTypeDefnsCord, map.init, IntImpForeignEnumTypeCtors,
+        cord.init, OrigIntForeignEnumsCord,
+        cord.init, OrigImpTypeDefnsCord, cord.init, OrigImpForeignEnumsCord,
         do_not_need_imports, NeedImports),
     (
         NeedImports = do_not_need_imports,
@@ -165,24 +169,43 @@ generate_short_interface_int3(Globals, RawCompUnit,
         NeedImports = do_need_imports,
         IntImportModuleNames = IntImportModuleNames0
     ),
+    OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
     IntTypeDefns = cord.list(IntTypeDefnsCord),
     IntInstDefns = cord.list(IntInstDefnsCord),
     IntModeDefns = cord.list(IntModeDefnsCord),
     IntTypeClasses = cord.list(IntTypeClassesCord),
     IntInstances = cord.list(IntInstancesCord),
+    OrigIntForeignEnums = cord.list(OrigIntForeignEnumsCord),
+    OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
+    OrigImpForeignEnums = cord.list(OrigImpForeignEnumsCord),
+
     IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
+
+    OrigIntTypeDefnMap = type_ctor_defn_items_to_map(OrigIntTypeDefns),
+    OrigIntForeignEnumMap =
+        type_ctor_foreign_enum_items_to_map(OrigIntForeignEnums),
+    OrigImpTypeDefnMap = type_ctor_defn_items_to_map(OrigImpTypeDefns),
+    OrigImpForeignEnumMap =
+        type_ctor_foreign_enum_items_to_map(OrigImpForeignEnums),
+    % For now, we want only the error messages.
+    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
+        OrigIntTypeDefnMap, OrigImpTypeDefnMap,
+        OrigIntForeignEnumMap, OrigImpForeignEnumMap,
+        _TypeCtorCheckedMap, !Specs),
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
         map.init(IntTypeRepnMap)
     ;
         Experiment1 = yes,
-        OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
-        OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
+        list.foldl(record_foreign_enum, OrigIntForeignEnums,
+            map.init, IntForeignEnumTypeMap),
+        list.foldl(record_foreign_enum, OrigImpForeignEnums,
+            IntForeignEnumTypeMap, IntImpForeignEnumTypeMap),
         decide_repns_for_simple_types(ModuleName,
-            OrigIntTypeDefns, OrigImpTypeDefns, IntImpForeignEnumTypeCtors,
+            OrigIntTypeDefns, OrigImpTypeDefns, IntImpForeignEnumTypeMap,
             IntTypeRepnInfos, _NonIntTypeRepnInfos),
         IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
     ),
@@ -209,18 +232,21 @@ generate_short_interface_int3(Globals, RawCompUnit,
     cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
     cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
     cord(item_instance_info)::in, cord(item_instance_info)::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
-    foreign_enum_map::in, foreign_enum_map::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     need_imports::in, need_imports::out) is det.
 
 get_short_interface_int3_from_item_blocks([],
-        !IntIncls, !IntImports,!OrigIntTypeDefns,  !IntTypeDefns,
-        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
-        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors, !NeedImports).
+        !IntIncls, !IntImports,
+        !OrigIntTypeDefns, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntForeignEnums,
+        !OrigImpTypeDefns, !OrigImpForeignEnums, !NeedImports).
 get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
-        !IntIncls, !IntImports,!OrigIntTypeDefns,  !IntTypeDefns,
-        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
-        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors, !NeedImports) :-
+        !IntIncls, !IntImports,
+        !OrigIntTypeDefns, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntForeignEnums,
+        !OrigImpTypeDefns, !OrigImpForeignEnums, !NeedImports) :-
     RawItemBlock = item_block(_, Section, Incls, Avails, _FIMs, Items),
     (
         Section = ms_interface,
@@ -229,18 +255,18 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
         ImportModuleNames = list.map(get_import_module_name, Imports),
         set.insert_list(ImportModuleNames, !IntImports),
         get_short_interface_int3_from_items_int(Items,
-            !OrigIntTypeDefns, !IntTypeDefns,
-            !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
-            !IntImpForeignEnumTypeCtors, !NeedImports)
+            !OrigIntTypeDefns, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+            !IntTypeClasses, !IntInstances, !OrigIntForeignEnums, !NeedImports)
     ;
         Section = ms_implementation,
         get_short_interface_int3_from_items_imp(Items,
-            !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors)
+            !OrigImpTypeDefns, !OrigImpForeignEnums)
     ),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
-        !IntIncls, !IntImports, !OrigIntTypeDefns, !IntTypeDefns,
-        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
-        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors, !NeedImports).
+        !IntIncls, !IntImports,
+        !OrigIntTypeDefns, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntForeignEnums,
+        !OrigImpTypeDefns, !OrigImpForeignEnums, !NeedImports).
 
 :- pred get_short_interface_int3_from_items_int(list(item)::in,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
@@ -249,17 +275,15 @@ get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
     cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
     cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
     cord(item_instance_info)::in, cord(item_instance_info)::out,
-    foreign_enum_map::in, foreign_enum_map::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     need_imports::in, need_imports::out) is det.
 
 get_short_interface_int3_from_items_int([],
-        !OrigIntTypeDefns, !IntTypeDefns,
-        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
-        !IntImpForeignEnumTypeCtors, !NeedImports).
+        !OrigIntTypeDefns, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntForeignEnums, !NeedImports).
 get_short_interface_int3_from_items_int([Item | Items],
-        !OrigIntTypeDefns, !IntTypeDefns,
-        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
-        !IntImpForeignEnumTypeCtors, !NeedImports) :-
+        !OrigIntTypeDefns, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntForeignEnums, !NeedImports) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
         cord.snoc(ItemTypeDefnInfo, !OrigIntTypeDefns),
@@ -294,7 +318,7 @@ get_short_interface_int3_from_items_int([Item | Items],
         !:NeedImports = do_need_imports
     ;
         Item = item_foreign_enum(ItemForeignEnumInfo),
-        record_foreign_enum(ItemForeignEnumInfo, !IntImpForeignEnumTypeCtors)
+        cord.snoc(ItemForeignEnumInfo, !OrigIntForeignEnums)
     ;
         ( Item = item_clause(_)
         ; Item = item_mutable(_)
@@ -309,87 +333,64 @@ get_short_interface_int3_from_items_int([Item | Items],
         )
     ),
     get_short_interface_int3_from_items_int(Items,
-        !OrigIntTypeDefns, !IntTypeDefns,
-        !IntInstDefns, !IntModeDefns, !IntTypeClasses, !IntInstances,
-        !IntImpForeignEnumTypeCtors, !NeedImports).
+        !OrigIntTypeDefns, !IntTypeDefns, !IntInstDefns, !IntModeDefns,
+        !IntTypeClasses, !IntInstances, !OrigIntForeignEnums, !NeedImports).
 
 :- pred make_type_defn_abstract_type_for_int3(item_type_defn_info::in,
     item_type_defn_info::out) is det.
 
-make_type_defn_abstract_type_for_int3(ItemTypeDefn,
-        AbstractOrForeignItemTypeDefnInfo) :-
-    TypeDefn = ItemTypeDefn ^ td_ctor_defn,
+make_type_defn_abstract_type_for_int3(ItemTypeDefn0, ItemTypeDefn) :-
+    TypeDefn0 = ItemTypeDefn0 ^ td_ctor_defn,
     (
-        TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu =
-            type_details_du(Ctors, MaybeCanonical, _MaybeDirectArgCtors),
-        ( if du_type_is_enum(DetailsDu, NumBits) then
-            AbstractDetails = abstract_type_fits_in_n_bits(NumBits)
-        else if du_type_is_notag(Ctors, MaybeCanonical) then
-            AbstractDetails = abstract_notag_type
-        else if du_type_is_dummy(DetailsDu) then
-            AbstractDetails = abstract_dummy_type
-        else
-            AbstractDetails = abstract_type_general
-        ),
-        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
+        TypeDefn0 = parse_tree_du_type(DetailsDu),
+        make_du_type_abstract(DetailsDu, DetailsAbstract),
+        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn
+            := parse_tree_abstract_type(DetailsAbstract)
     ;
-        TypeDefn = parse_tree_abstract_type(_AbstractDetails),
-        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn
+        TypeDefn0 = parse_tree_abstract_type(_),
+        ItemTypeDefn = ItemTypeDefn0
     ;
-        TypeDefn = parse_tree_solver_type(_),
+        TypeDefn0 = parse_tree_solver_type(_),
         % rafe: XXX we need to also export the details of the forwarding type
         % for the representation and the forwarding pred for initialization.
-        AbstractDetails = abstract_solver_type,
-        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
+        DetailsAbstract = abstract_solver_type,
+        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn
+            := parse_tree_abstract_type(DetailsAbstract)
     ;
-        TypeDefn = parse_tree_eqv_type(_),
+        TypeDefn0 = parse_tree_eqv_type(_),
         % XXX Is this right for solver types?
         % XXX TYPE_REPN Is this right for types that are eqv to enums,
         % or to known size ints/uints?
-        AbstractDetails = abstract_type_general,
-        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
+        DetailsAbstract = abstract_type_general,
+        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn
+            := parse_tree_abstract_type(DetailsAbstract)
     ;
-        TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
-            Assertions),
+        TypeDefn0 = parse_tree_foreign_type(DetailsForeign0),
         % We always need the definitions of foreign types
         % to handle inter-language interfacing correctly.
         % XXX Even in .int3 files?
         % However, we want to abstract away any unify and compare predicates.
-        (
-            MaybeCanonical = canon,
-            AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn
-        ;
-            MaybeCanonical = noncanon(_NonCanonical),
-            AbstractMaybeCanonical =
-                noncanon(noncanon_abstract(non_solver_type)),
-            AbstractDetailsForeign = type_details_foreign(ForeignType,
-                AbstractMaybeCanonical, Assertions),
-            AbstractForeignTypeDefn =
-                parse_tree_foreign_type(AbstractDetailsForeign),
-            AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
-                := AbstractForeignTypeDefn
-        )
+        delete_uc_preds_from_foreign_type(DetailsForeign0, DetailsForeign),
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := TypeDefn
     ).
 
 :- pred get_short_interface_int3_from_items_imp(list(item)::in,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
-    foreign_enum_map::in, foreign_enum_map::out) is det.
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out)
+    is det.
 
 get_short_interface_int3_from_items_imp([],
-        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors).
+        !ImpTypeDefns, !ImpForeignEnums).
 get_short_interface_int3_from_items_imp([Item | Items],
-        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors) :-
+        !ImpTypeDefns, !ImpForeignEnums) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        cord.snoc(ItemTypeDefnInfo, !OrigImpTypeDefns)
+        cord.snoc(ItemTypeDefnInfo, !ImpTypeDefns)
     ;
         Item = item_foreign_enum(ItemForeignEnumInfo),
-        record_foreign_enum(ItemForeignEnumInfo, !IntImpForeignEnumTypeCtors)
+        cord.snoc(ItemForeignEnumInfo, !ImpForeignEnums)
+        % record_foreign_enum(ItemForeignEnumInfo, !IntImpForeignEnumTypeCtors)
     ;
         ( Item = item_typeclass(_)
         ; Item = item_instance(_)
@@ -408,7 +409,7 @@ get_short_interface_int3_from_items_imp([Item | Items],
         )
     ),
     get_short_interface_int3_from_items_imp(Items,
-        !OrigImpTypeDefns, !IntImpForeignEnumTypeCtors).
+        !ImpTypeDefns, !ImpForeignEnums).
 
 :- pred record_foreign_enum(item_foreign_enum_info::in,
     foreign_enum_map::in, foreign_enum_map::out) is det.
@@ -427,25 +428,9 @@ record_foreign_enum(ForeignEnumInfo, !ForeignEnumTypeCtors) :-
             !ForeignEnumTypeCtors)
     ).
 
-:- pred record_foreign_enum_spec(foreign_enum_spec::in,
-    foreign_enum_map::in, foreign_enum_map::out) is det.
-
-record_foreign_enum_spec(ForeignEnumSpec, !ForeignEnumTypeCtors) :-
-    ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, OoMValues),
-    TypeCtor = type_ctor(TypeSymName, TypeArity),
-    TypeName = unqualify_name(TypeSymName),
-    UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
-    ( if map.search(!.ForeignEnumTypeCtors, UnqualTypeCtor, LVs0) then
-        map.det_update(UnqualTypeCtor, [Lang - OoMValues | LVs0],
-            !ForeignEnumTypeCtors)
-    else
-        map.det_insert(UnqualTypeCtor, [Lang - OoMValues],
-            !ForeignEnumTypeCtors)
-    ).
-
 %---------------------------------------------------------------------------%
 
-generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
+generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23, !Specs) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _ModuleVersionNumbers, SrcItemBlocks,
         _DirectIntItemBlocks, _IndirectIntItemBlocks,
@@ -456,7 +441,8 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
         cord.init, OrigIntTypeDefnsCord, cord.init, IntTypeDefnsCord,
         cord.init, IntInstDefnsCord, cord.init, IntModeDefnsCord,
         cord.init, IntTypeClassesCord, cord.init, IntInstancesCord,
-        cord.init, OrigImpTypeDefnsCord, map.init, IntImpForeignEnumTypeCtors,
+        cord.init, OrigIntForeignEnumsCord,
+        cord.init, OrigImpTypeDefnsCord, cord.init, OrigImpForeignEnumsCord,
         do_not_need_imports, NeedImports),
     (
         NeedImports = do_not_need_imports,
@@ -465,24 +451,43 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
         NeedImports = do_need_imports,
         IntImportModuleNames = IntImportModuleNames0
     ),
+    OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
     IntTypeDefns = cord.list(IntTypeDefnsCord),
     IntInstDefns = cord.list(IntInstDefnsCord),
     IntModeDefns = cord.list(IntModeDefnsCord),
     IntTypeClasses = cord.list(IntTypeClassesCord),
     IntInstances = cord.list(IntInstancesCord),
+    OrigIntForeignEnums = cord.list(OrigIntForeignEnumsCord),
+    OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
+    OrigImpForeignEnums = cord.list(OrigImpForeignEnumsCord),
+
     IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
+
+    OrigIntTypeDefnMap = type_ctor_defn_items_to_map(OrigIntTypeDefns),
+    OrigIntForeignEnumMap =
+        type_ctor_foreign_enum_items_to_map(OrigIntForeignEnums),
+    OrigImpTypeDefnMap = type_ctor_defn_items_to_map(OrigImpTypeDefns),
+    OrigImpForeignEnumMap =
+        type_ctor_foreign_enum_items_to_map(OrigImpForeignEnums),
+    % For now, we want only the error messages.
+    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
+        OrigIntTypeDefnMap, OrigImpTypeDefnMap,
+        OrigIntForeignEnumMap, OrigImpForeignEnumMap,
+        _TypeCtorCheckedMap, !Specs),
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
         map.init(IntTypeRepnMap)
     ;
         Experiment1 = yes,
-        OrigIntTypeDefns = cord.list(OrigIntTypeDefnsCord),
-        OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
+        list.foldl(record_foreign_enum, OrigIntForeignEnums,
+            map.init, IntForeignEnumTypeMap),
+        list.foldl(record_foreign_enum, OrigImpForeignEnums,
+            IntForeignEnumTypeMap, IntImpForeignEnumTypeMap),
         decide_repns_for_simple_types(ModuleName,
-            OrigIntTypeDefns, OrigImpTypeDefns, IntImpForeignEnumTypeCtors,
+            OrigIntTypeDefns, OrigImpTypeDefns, IntImpForeignEnumTypeMap,
             IntTypeRepnInfos, _NonIntTypeRepnInfos),
         IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
     ),
@@ -497,7 +502,7 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_private_interface_int0(AugCompUnit, ParseTreeInt0) :-
+generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
     AugCompUnit = aug_compilation_unit(ModuleName,
         ModuleNameContext, ModuleVersionNumbers, SrcItemBlocks,
         _DirectIntItemBlocks, _IndirectIntItemBlocks,
@@ -561,8 +566,12 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0) :-
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
     ImpInstDefnMap = inst_ctor_defn_items_to_map(ImpInstDefns),
     ImpModeDefnMap = mode_ctor_defn_items_to_map(ImpModeDefns),
-    IntForeignEnumMap = type_ctor_foreign_enum_specs_to_map(IntForeignEnums),
-    ImpForeignEnumMap = type_ctor_foreign_enum_specs_to_map(ImpForeignEnums),
+    IntForeignEnumMap = type_ctor_foreign_enum_items_to_map(IntForeignEnums),
+    ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums),
+    % For now, we want only the error messages.
+    create_type_ctor_checked_map(do_insist_on_defn, ModuleName,
+        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+        _TypeCtorCheckedMap, !Specs),
     ParseTreeInt0Prime = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls,
         IntImports, IntUses, ImpImports, ImpUses, IntFIMSpecs, ImpFIMSpecs,
@@ -632,8 +641,8 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0) :-
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
-    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
-    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_promise_info)::in, cord(item_promise_info)::out,
@@ -700,30 +709,6 @@ get_private_interface_int0_from_item_blocks(ModuleName,
         !IntForeignEnums, !ImpForeignEnums, !IntPragmas, !ImpPragmas,
         !IntPromises, !ImpPromises).
 
-:- pred record_avail_in_module_map(item_avail::in,
-    map(module_name, import_or_use)::in, map(module_name, import_or_use)::out)
-    is det.
-
-record_avail_in_module_map(Avail, !AvailMap) :-
-    (
-        Avail = avail_import(avail_import_info(ModuleName, _Ctxt, _SeqNum)),
-        Kind = import_decl
-    ;
-        Avail = avail_use(avail_use_info(ModuleName, _Ctxt, _SeqNum)),
-        Kind = use_decl
-    ),
-    map.search_insert(ModuleName, Kind, MaybeOldKind, !AvailMap),
-    (
-        MaybeOldKind = no
-    ;
-        MaybeOldKind = yes(OldKind),
-        ( if OldKind = use_decl, Kind = import_decl then
-            map.det_update(ModuleName, Kind, !AvailMap)
-        else
-            true
-        )
-    ).
-
 :- pred get_private_interface_int0_from_items(module_name::in, list(item)::in,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
@@ -732,7 +717,7 @@ record_avail_in_module_map(Avail, !AvailMap) :-
     cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
-    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_promise_info)::in, cord(item_promise_info)::out) is det.
 
@@ -770,10 +755,7 @@ get_private_interface_int0_from_items(ModuleName, [Item | Items],
         cord.snoc(AbstractInstance, !Instances)
     ;
         Item = item_foreign_enum(ItemForeignEnumInfo),
-        ItemForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, Values,
-            _Context, _SeqNum),
-        ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, Values),
-        cord.snoc(ForeignEnumSpec, !ForeignEnums)
+        cord.snoc(ItemForeignEnumInfo, !ForeignEnums)
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
@@ -899,17 +881,18 @@ generate_pre_grab_pre_qual_items_int([Item | Items], !IntItemsCord) :-
 
 generate_pre_grab_pre_qual_items_imp([], !ImpItemsCord).
 generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
-    % `:- typeclass' declarations may be referred to by the constructors
-    % in type declarations. Since these constructors are abstractly
-    % exported, we won't need the local instance declarations.
     (
-        Item = item_type_defn(ItemTypeDefnInfo),
-        make_canon_make_du_and_solver_types_abstract(ItemTypeDefnInfo,
-            MaybeAbstractItemTypeDefnInfo),
-        AbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
-        cord.snoc(AbstractItem, !ImpItemsCord)
+        Item = item_type_defn(TypeDefnInfo),
+        delete_uc_preds_make_solver_type_dummy(TypeDefnInfo, TypeDefnInfo1),
+        Item1 = item_type_defn(TypeDefnInfo1),
+        cord.snoc(Item1, !ImpItemsCord)
     ;
         Item = item_typeclass(ItemTypeClassInfo),
+        % `:- typeclass' declarations may be referred to by the constructors
+        % in type declarations. Since these constructors are abstractly
+        % exported, we won't need the local instance declarations.
+        % XXX I (zs) guess that should actually be "we won't need the
+        % *method* declarations".
         AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
             := class_interface_abstract,
         AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
@@ -942,18 +925,18 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
 %---------------------------------------------------------------------------%
 
 generate_interfaces_int1_int2(Globals, AugCompUnit,
-        ParseTreeInt1, ParseTreeInt2) :-
+        ParseTreeInt1, ParseTreeInt2, !Specs) :-
     generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntForeignEnums, ImpForeignEnums,
-        ParseTreeInt1A),
+        ImpTypeDefns, IntTypesMap, ImpTypesMap,
+        IntForeignEnums, ImpForeignEnums, ParseTreeInt1A, !Specs),
     generate_interface_int2(Globals, AugCompUnit,
         IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntForeignEnums, ImpForeignEnums,
-        ParseTreeInt2A),
+        ImpTypeDefns, IntTypesMap, ImpTypesMap,
+        IntForeignEnums, ImpForeignEnums, ParseTreeInt2A),
     ParseTreeInt1 = convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1A),
     ParseTreeInt2 = convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2A).
 
@@ -964,15 +947,15 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::out, list(item_instance_info)::out,
     list(item_type_defn_info)::out, type_defn_map::out, type_defn_map::out,
-    list(foreign_enum_spec)::out, list(foreign_enum_spec)::out,
-    parse_tree_int1::out) is det.
+    list(item_foreign_enum_info)::out, list(item_foreign_enum_info)::out,
+    parse_tree_int1::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances,
         ImpTypeDefns, IntTypesMap, ImpTypesMap,
-        IntForeignEnums, ImpForeignEnums0, ParseTreeInt1) :-
+        IntForeignEnums, ImpForeignEnums0, ParseTreeInt1, !Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
@@ -1013,7 +996,7 @@ generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
         cord.init, IntForeignEnumsCord, cord.init, IntPragmasCord,
         cord.init, IntPromisesCord,
         set.init, _IntModulesNeededByTypeClassDefns,
-        ImpTypesMap0, ImpTypesMap,
+        ImpTypesMap0, ImpTypesMap, cord.init, OrigImpTypeDefnsCord,
         cord.init, ImpTypeClassesCord, cord.init, ImpForeignEnumsCord,
         set.init, ImpModulesNeededByTypeClassDefns),
 
@@ -1028,6 +1011,7 @@ generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
     IntPragmas = cord.list(IntPragmasCord),
     IntPromises = cord.list(IntPromisesCord),
 
+    OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
     ImpTypeClasses = cord.list(ImpTypeClassesCord),
     ImpForeignEnums0 = cord.list(ImpForeignEnumsCord),
 
@@ -1076,7 +1060,7 @@ generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
     % we want to add back to the implementation section.
     % Record the needs of these foreign enum items for
     % foreign_import_module items.
-    list.foldl2(add_foreign_enum_spec_if_needed(IntTypesMap),
+    list.foldl2(add_foreign_enum_item_if_needed(IntTypesMap),
         ImpForeignEnums0, [], ImpForeignEnums,
         ImpImplicitFIMLangs2, ImpImplicitFIMLangs),
 
@@ -1089,10 +1073,15 @@ generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
     IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
-    IntForeignEnumMap = type_ctor_foreign_enum_specs_to_map(IntForeignEnums),
+    IntForeignEnumMap = type_ctor_foreign_enum_items_to_map(IntForeignEnums),
     IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns),
+    OrigImpTypeDefnMap = type_ctor_defn_items_to_map(OrigImpTypeDefns),
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
-    ImpForeignEnumMap = type_ctor_foreign_enum_specs_to_map(ImpForeignEnums),
+    ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums),
+    % For now, we want only the error messages.
+    create_type_ctor_checked_map(do_insist_on_defn, ModuleName,
+        IntTypeDefnMap, OrigImpTypeDefnMap,
+        IntForeignEnumMap, ImpForeignEnumMap, _TypeCtorCheckedMap, !Specs),
 
     DummyMaybeVersionNumbers = no_version_numbers,
     % XXX TODO
@@ -1125,13 +1114,14 @@ add_self_fim(ModuleName, Lang, !FIMSpecs) :-
     %   !IntIncls, !ImpIncls, !IntImportsUses, !ImpImportsUses,
     %   !IntExplicitFIMSpecs, !ImpExplicitFIMSpecs,
     %   !IntImplicitFIMLangs, !ImpImplicitFIMLangs,
-    %   !IntItemsCord, !IntTypesMap, !IntTypeDefnsCord,
+    %   !IntTypesMap, !IntTypeDefnsCord,
     %   !IntInstDefnsCord, !IntModeDefnsCord,
     %   !IntTypeClassesCord, !IntInstancesCord,
     %   !IntPredDeclsCord, !IntModeDeclsCord,
-    %   !IntPragmasCord, !IntPromisesCord, !IntModulesNeededByTypeClassDefns,
-    %   !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
-    %   !ImpModulesNeededByTypeClassDefns):
+    %   !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
+    %   !IntModulesNeededByTypeClassDefns,
+    %   !ImpTypesMap, !OrigImpTypeDefnsCord, !ImpTypeClassesCord,
+    %   !ImpForeignEnumsCord, !ImpModulesNeededByTypeClassDefns):
     %
     % Do the bulk of the work needed to generate a module's .int file
     % from the module's augmented compilation unit.
@@ -1161,10 +1151,6 @@ add_self_fim(ModuleName, Lang, !FIMSpecs) :-
     % for the current module, as needed by the interface and implementation
     % items we return in the following arguments.
     %
-    % !:IntItems is a list of all the items in the interface. Our caller
-    % should use it solely to check whether the interface is empty.
-    % XXX Why do we need that check when creating .int files?
-    %
     % The arguments from !:IntTypeDefnsCord to !:IntPromisesCord
     % contain the parts of the interface section of the source module
     % that we want to include in the .int file. Likewise,
@@ -1183,6 +1169,9 @@ add_self_fim(ModuleName, Lang, !FIMSpecs) :-
     % for two reasons: because a type may be defined both in Mercury and
     % in several target languages, and because of the potential presence
     % of erroneous double definitions.)
+    %
+    % We also return type definitions in !OrigImpTypeDefnsCord for use
+    % in computing the checked type definition map.
     %
     % !:{Int,Imp}ModulesNeededByTypeClassDefns are the sets of the modules
     % needed by any superclass constraints on any typeclass declaration
@@ -1208,13 +1197,14 @@ add_self_fim(ModuleName, Lang, !FIMSpecs) :-
     cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
-    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_promise_info)::in, cord(item_promise_info)::out,
     set(module_name)::in, set(module_name)::out,
     type_defn_map::in, type_defn_map::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
-    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
 get_interface_int1_item_blocks_loop([],
@@ -1227,8 +1217,8 @@ get_interface_int1_item_blocks_loop([],
         !IntPredDeclsCord, !IntModeDeclsCord,
         !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
         !IntModulesNeededByTypeClassDefns,
-        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
-        !ImpModulesNeededByTypeClassDefns).
+        !ImpTypesMap, !OrigImpTypeDefnsCord, !ImpTypeClassesCord,
+        !ImpForeignEnumsCord, !ImpModulesNeededByTypeClassDefns).
 get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntIncls, !ImpIncls, !IntImportsUses, !ImpImportsUses,
         !IntExplicitFIMSpecs, !ImpExplicitFIMSpecs,
@@ -1239,8 +1229,8 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntPredDeclsCord, !IntModeDeclsCord,
         !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
         !IntModulesNeededByTypeClassDefns,
-        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
-        !ImpModulesNeededByTypeClassDefns) :-
+        !ImpTypesMap, !OrigImpTypeDefnsCord, !ImpTypeClassesCord,
+        !ImpForeignEnumsCord, !ImpModulesNeededByTypeClassDefns) :-
     SrcItemBlock = item_block(_, SrcSection, Incls, Avails, FIMs, Items),
     (
         SrcSection = sms_interface,
@@ -1260,8 +1250,8 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         get_interface_int1_avails_loop(Avails, !ImpImportsUses),
         list.foldl(add_fim_to_specs, FIMs, !ImpExplicitFIMSpecs),
         get_interface_int1_items_loop_imp(Items, !ImpImplicitFIMLangs,
-            !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
-            !ImpModulesNeededByTypeClassDefns)
+            !ImpTypesMap, !OrigImpTypeDefnsCord, !ImpTypeClassesCord,
+            !ImpForeignEnumsCord, !ImpModulesNeededByTypeClassDefns)
     ;
         SrcSection = sms_impl_but_exported_to_submodules,
         % The code that transforms sms_implementation to this
@@ -1278,8 +1268,8 @@ get_interface_int1_item_blocks_loop([SrcItemBlock | SrcItemBlocks],
         !IntPredDeclsCord, !IntModeDeclsCord,
         !IntForeignEnumsCord, !IntPragmasCord, !IntPromisesCord,
         !IntModulesNeededByTypeClassDefns,
-        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
-        !ImpModulesNeededByTypeClassDefns).
+        !ImpTypesMap, !OrigImpTypeDefnsCord, !ImpTypeClassesCord,
+        !ImpForeignEnumsCord, !ImpModulesNeededByTypeClassDefns).
 
 :- pred get_interface_int1_avails_loop(list(item_avail)::in,
     set(module_name)::in, set(module_name)::out) is det.
@@ -1302,7 +1292,7 @@ get_interface_int1_avails_loop([Avail | Avails], !ImportsUses) :-
     cord(item_instance_info)::in, cord(item_instance_info)::out,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
-    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     cord(item_pragma_info)::in, cord(item_pragma_info)::out,
     cord(item_promise_info)::in, cord(item_promise_info)::out,
     set(module_name)::in, set(module_name)::out) is det.
@@ -1360,9 +1350,8 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
         cord.snoc(ItemModeDecl, !IntModeDeclsCord)
     ;
         Item = item_foreign_enum(ItemForeignEnum),
-        ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values, _, _),
-        ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, Values),
-        cord.snoc(ForeignEnumSpec, !IntForeignEnumsCord),
+        cord.snoc(ItemForeignEnum, !IntForeignEnumsCord),
+        ItemForeignEnum = item_foreign_enum_info(Lang, _, _, _, _),
         set.insert(Lang, !IntImplicitFIMLangs)
     ;
         Item = item_pragma(ItemPragma),
@@ -1423,24 +1412,49 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
 :- pred get_interface_int1_items_loop_imp(list(item)::in,
     set(foreign_language)::in, set(foreign_language)::out,
     type_defn_map::in, type_defn_map::out,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
-    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
 get_interface_int1_items_loop_imp([], !ImpImplicitFIMLangs,
-        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
-        !ImpModulesNeededByTypeClassDefns).
+        !ImpTypesMap, !OrigImpTypeDefnsCord, !ImpTypeClassesCord,
+        !ImpForeignEnumsCord, !ImpModulesNeededByTypeClassDefns).
 get_interface_int1_items_loop_imp([Item | Items], !ImpImplicitFIMLangs,
-        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
-        !ImpModulesNeededByTypeClassDefns) :-
+        !ImpTypesMap, !OrigImpTypeDefnsCord, !ImpTypeClassesCord,
+        !ImpForeignEnumsCord, !ImpModulesNeededByTypeClassDefns) :-
     (
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(Name, TypeParams, _, _, _, _),
-        TypeCtor = type_ctor(Name, list.length(TypeParams)),
-        multi_map.set(TypeCtor, ItemTypeDefn, !ImpTypesMap)
-        % We don't add this to an item cord yet -- we may be removing it.
+        % We don't add this to the final item cord we intend to put
+        % into the interface file yet -- we may be removing it.
         % If we *do* want the items for a given type_ctor, we will create
         % new copies of the items from the type_ctor's entry in ImpTypesMap.
+        % We do however gather it for use in checking the type definitions
+        % in the module.
+        ItemTypeDefn =
+            item_type_defn_info(Name, TypeParams, TypeDefn, _, _, _),
+        TypeCtor = type_ctor(Name, list.length(TypeParams)),
+        (
+            TypeDefn = parse_tree_solver_type(_),
+            % generate_pre_grab_pre_qual_items_imp has replace solver
+            % type definitions with a dummy definition, and we want
+            % to put that dummy definition into !OrigImpTypeDefnsCord
+            % so that we don't generate inappropriate error messages
+            % about the solver type being declared but not defined.
+            % On the other hand, we want to put just a declaration,
+            % not a definition, of the solver type into .int and .int2 files.
+            TypeDefn1 = parse_tree_abstract_type(abstract_solver_type),
+            ItemTypeDefn1 = ItemTypeDefn ^ td_ctor_defn := TypeDefn1
+        ;
+            ( TypeDefn = parse_tree_abstract_type(_)
+            ; TypeDefn = parse_tree_du_type(_)
+            ; TypeDefn = parse_tree_eqv_type(_)
+            ; TypeDefn = parse_tree_foreign_type(_)
+            ),
+            ItemTypeDefn1 = ItemTypeDefn
+        ),
+        multi_map.set(TypeCtor, ItemTypeDefn1, !ImpTypesMap),
+        cord.snoc(ItemTypeDefn, !OrigImpTypeDefnsCord)
     ;
         Item = item_typeclass(ItemTypeClass),
         cord.snoc(ItemTypeClass, !ImpTypeClassesCord),
@@ -1451,10 +1465,8 @@ get_interface_int1_items_loop_imp([Item | Items], !ImpImplicitFIMLangs,
             !ImpModulesNeededByTypeClassDefns)
     ;
         Item = item_foreign_enum(ItemForeignEnum),
-        ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values,
-            _Context, _SeqNum),
-        FESpec = foreign_enum_spec(Lang, TypeCtor, Values),
-        cord.snoc(FESpec, !ImpForeignEnumsCord),
+        cord.snoc(ItemForeignEnum, !ImpForeignEnumsCord),
+        ItemForeignEnum = item_foreign_enum_info(Lang, _, _, _, _),
         set.insert(Lang, !ImpImplicitFIMLangs)
     ;
         ( Item = item_inst_defn(_)
@@ -1475,10 +1487,10 @@ get_interface_int1_items_loop_imp([Item | Items], !ImpImplicitFIMLangs,
             "generate_pre_grab_pre_qual_items_imp should've deleted imp item")
     ),
     get_interface_int1_items_loop_imp(Items, !ImpImplicitFIMLangs,
-        !ImpTypesMap, !ImpTypeClassesCord, !ImpForeignEnumsCord,
-        !ImpModulesNeededByTypeClassDefns).
+        !ImpTypesMap, !OrigImpTypeDefnsCord, !ImpTypeClassesCord,
+        !ImpForeignEnumsCord, !ImpModulesNeededByTypeClassDefns).
 
-:- pred add_fim_to_specs(item_fim::in, 
+:- pred add_fim_to_specs(item_fim::in,
     set(fim_spec)::in, set(fim_spec)::out) is det.
 
 add_fim_to_specs(FIM, !FIMSpecs) :-
@@ -1751,8 +1763,8 @@ accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
             % defined in another module, we will NOT include TypeCtor in
             % !DirectDummyTypeCtors, since we won't know enough about
             % the contents of the other module.
-            constructor_list_represents_dummy_argument_type(BothTypesMap,
-                OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
+            constructor_list_represents_dummy_type(BothTypesMap, OoMCtors,
+                MaybeEqCmp, MaybeDirectArgCtors)
         then
             set.insert(TypeCtor, !DirectDummyTypeCtors)
         else
@@ -1916,20 +1928,20 @@ ctor_args_to_user_type_ctor_set([Arg | Args], !TypeCtors) :-
     %
     % NOTE: changes here may require changes to `type_util.check_dummy_type'.
     %
-:- pred constructor_list_represents_dummy_argument_type(type_defn_map::in,
+:- pred constructor_list_represents_dummy_type(type_defn_map::in,
     one_or_more(constructor)::in, maybe_canonical::in,
     maybe(list(sym_name_and_arity))::in) is semidet.
 
-constructor_list_represents_dummy_argument_type(TypeDefnMap,
+constructor_list_represents_dummy_type(TypeDefnMap,
         OoMCtors, MaybeCanonical, MaybeDirectArgCtors) :-
-    constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
+    constructor_list_represents_dummy_type_2(TypeDefnMap,
         OoMCtors, MaybeCanonical, MaybeDirectArgCtors, []).
 
-:- pred constructor_list_represents_dummy_argument_type_2(type_defn_map::in,
+:- pred constructor_list_represents_dummy_type_2(type_defn_map::in,
     one_or_more(constructor)::in, maybe_canonical::in,
     maybe(list(sym_name_and_arity))::in, list(mer_type)::in) is semidet.
 
-constructor_list_represents_dummy_argument_type_2(TypeDefnMap, OoMCtors,
+constructor_list_represents_dummy_type_2(TypeDefnMap, OoMCtors,
         canon, no, CoveredTypes) :-
     OoMCtors = one_or_more(Ctor, []),
     Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, CtorArgs, _Arity,
@@ -1968,8 +1980,8 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
                     TypeDefn = parse_tree_du_type(DetailsDu),
                     DetailsDu = type_details_du(OoMCtors, MaybeEqCmp,
                         MaybeDirectArgCtors),
-                    constructor_list_represents_dummy_argument_type_2(
-                        TypeDefnMap, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors,
+                    constructor_list_represents_dummy_type_2(TypeDefnMap,
+                        OoMCtors, MaybeEqCmp, MaybeDirectArgCtors,
                         [Type | CoveredTypes0])
                 )
             then
@@ -2039,6 +2051,11 @@ maybe_add_maybe_abstract_type_defns(BothTypesMap, IntTypesMap,
         set.member(TypeCtor, NeededTypeCtors),
         make_imp_types_abstract(BothTypesMap,
             ImpItemTypeDefnInfos, AbstractImpItemTypeDefnInfos),
+        % This negated piece of code succeeds iff
+        % EITHER the type is private,
+        % OR it is abstract exported, and
+        %   EITHER it has two or more definitions in the implementation
+        %   OR it has at least one definition that is not general du.
         not (
             multi_map.contains(IntTypesMap, TypeCtor),
             list.all_true(is_pure_abstract_type_defn,
@@ -2101,7 +2118,7 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfo) :-
         DetailsDu0 = type_details_du(OoMCtors, MaybeEqCmp,
             MaybeDirectArgCtors),
         ( if
-            constructor_list_represents_dummy_argument_type(BothTypesMap,
+            constructor_list_represents_dummy_type(BothTypesMap,
                 OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
         then
             % Leave dummy types alone.
@@ -2164,19 +2181,19 @@ add_type_defn_items([ImpTypeDefn | ImpTypeDefns],
 
 %---------------------%
 
-:- pred add_foreign_enum_spec_if_needed(type_defn_map::in,
-    foreign_enum_spec::in,
-    list(foreign_enum_spec)::in, list(foreign_enum_spec)::out,
+:- pred add_foreign_enum_item_if_needed(type_defn_map::in,
+    item_foreign_enum_info::in,
+    list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
-add_foreign_enum_spec_if_needed(IntTypesMap, ForeignEnumSpec,
-        !ImpForeignEnumSpecs, !ImpImplicitFIMLangs) :-
-    ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, _Values),
+add_foreign_enum_item_if_needed(IntTypesMap, ForeignEnumItem,
+        !ImpForeignEnumItems, !ImpImplicitFIMLangs) :-
+    ForeignEnumItem = item_foreign_enum_info(Lang, TypeCtor, _, _, _),
     ( if
         map.search(IntTypesMap, TypeCtor, Defns),
         some_type_defn_is_non_abstract(Defns)
     then
-        !:ImpForeignEnumSpecs = [ForeignEnumSpec | !.ImpForeignEnumSpecs],
+        !:ImpForeignEnumItems = [ForeignEnumItem | !.ImpForeignEnumItems],
         set.insert(Lang, !ImpImplicitFIMLangs)
     else
         true
@@ -2212,7 +2229,7 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
     list(item_typeclass_info)::in, list(item_instance_info)::in,
     list(item_type_defn_info)::in, type_defn_map::in, type_defn_map::in,
-    list(foreign_enum_spec)::in, list(foreign_enum_spec)::in,
+    list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::in,
     parse_tree_int2::out) is det.
 
 generate_interface_int2(Globals, AugCompUnit,
@@ -2354,6 +2371,7 @@ generate_interface_int2(Globals, AugCompUnit,
     ShortIntInstDefnMap = inst_ctor_defn_items_to_map(ShortIntInstDefns),
     ShortIntModeDefnMap = mode_ctor_defn_items_to_map(ShortIntModeDefns),
     ShortImpTypeDefnMap = type_ctor_defn_items_to_map(ShortImpTypeDefns),
+
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
         DummyMaybeVersionNumbers,
         IntInclModuleNames, ShortIntUsedModuleNames,
@@ -2389,38 +2407,54 @@ fim_spec_is_for_needed_language(NeededLangs, FIMSpec) :-
 
 get_int2_items_from_int1_int_type_defn([],
         !MaybeUnqual, !ModuleNames, !IntTypeDefnsCord, !IntImplicitFIMLangs).
-get_int2_items_from_int1_int_type_defn([TypeDefnInfo | TypeDefnInfos],
+get_int2_items_from_int1_int_type_defn([TypeDefnInfo0 | TypeDefnInfos0],
         !MaybeUnqual, !ModuleNames, !IntTypeDefnsCord, !IntImplicitFIMLangs) :-
     % generate_pre_grab_pre_qual_interface_for_int1_int2 had invoked
-    % make_canon_make_du_and_solver_types_abstract on type_defn items
-    % in the implementation section of the module. We now do the same
-    % for type_defn items in the interface section.
-    make_canon_make_du_and_solver_types_abstract(TypeDefnInfo,
-        MaybeAbstractTypeDefnInfo),
-    MaybeAbstractTypeDefnInfo = item_type_defn_info(_TypeSymName,
-        _TypeParams, TypeDefn, _TVarSet, _Context, _SeqNum),
+    % delete_uc_preds_make_solver_type_dummy on type_defn items
+    % in the implementation section of the module. We now do the same job
+    % on type_defn items in the interface section, but we also make any
+    % solver types abstract.
+    TypeDefn0 = TypeDefnInfo0 ^ td_ctor_defn,
     (
-        ( TypeDefn = parse_tree_du_type(_)
-        ; TypeDefn = parse_tree_solver_type(_)
-        ; TypeDefn = parse_tree_abstract_type(_)
-        )
-        % We just made du and solver types abstract, and abstract types
-        % were abstract already, so they cannot refer to other modules.
+        TypeDefn0 = parse_tree_du_type(DetailsDu0),
+        delete_uc_preds_from_du_type(DetailsDu0, DetailsDu),
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        TypeDefnInfo = TypeDefnInfo0 ^ td_ctor_defn := TypeDefn,
+        % XXX DetailsDu cannot refer to other modules in its MaybeCanon
+        % field, but it *can* refer to other modules in the argument types
+        % of its constructors.
+        % zs: This *should* be ok, in that the code consuming the .int2 file
+        % should not need to do anything with the types of those arguments,
+        % but I would like to see a correctness argument for that.
+        cord.snoc(TypeDefnInfo, !IntTypeDefnsCord)
     ;
+        TypeDefn0 = parse_tree_solver_type(_),
+        % TypeDefnInfo cannot refer to other modules.
+        TypeDefn = parse_tree_abstract_type(abstract_solver_type),
+        TypeDefnInfo = TypeDefnInfo0 ^ td_ctor_defn := TypeDefn,
+        cord.snoc(TypeDefnInfo, !IntTypeDefnsCord)
+    ;
+        TypeDefn0 = parse_tree_abstract_type(_),
+        % TypeDefnInfo0 cannot refer to other modules.
+        cord.snoc(TypeDefnInfo0, !IntTypeDefnsCord)
+    ;
+        TypeDefn0 = parse_tree_foreign_type(DetailsForeign0),
+        delete_uc_preds_from_foreign_type(DetailsForeign0, DetailsForeign),
         TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        % Foreign types can never refer to Mercury code in other
-        % modules (though they can refer to target language code
-        % in other modules).
+        TypeDefnInfo = TypeDefnInfo0 ^ td_ctor_defn := TypeDefn,
+        cord.snoc(TypeDefnInfo, !IntTypeDefnsCord),
+        % Foreign types can never refer to Mercury code in other modules,
+        % but they can refer to *target language* code in other modules.
         DetailsForeign = type_details_foreign(ForeignType, _, _),
         Lang = foreign_type_language(ForeignType),
         set.insert(Lang, !IntImplicitFIMLangs)
     ;
-        TypeDefn = parse_tree_eqv_type(DetailsEqv),
-        DetailsEqv = type_details_eqv(EqvType),
-        accumulate_modules_in_type(EqvType, !MaybeUnqual, !ModuleNames)
+        TypeDefn0 = parse_tree_eqv_type(DetailsEqv0),
+        cord.snoc(TypeDefnInfo0, !IntTypeDefnsCord),
+        DetailsEqv0 = type_details_eqv(EqvType0),
+        accumulate_modules_in_type(EqvType0, !MaybeUnqual, !ModuleNames)
     ),
-    cord.snoc(MaybeAbstractTypeDefnInfo, !IntTypeDefnsCord),
-    get_int2_items_from_int1_int_type_defn(TypeDefnInfos,
+    get_int2_items_from_int1_int_type_defn(TypeDefnInfos0,
         !MaybeUnqual, !ModuleNames, !IntTypeDefnsCord, !IntImplicitFIMLangs).
 
 :- pred get_int2_items_from_int1_int_inst_defn(list(item_inst_defn_info)::in,
@@ -2534,6 +2568,24 @@ get_int2_items_from_int1_imp_types([ImpTypeDefn | ImpTypeDefns],
     ),
     get_int2_items_from_int1_imp_types(ImpTypeDefns, !ImpImplicitFIMLangs).
 
+%---------------------%
+
+:- pred record_foreign_enum_spec(item_foreign_enum_info::in,
+    foreign_enum_map::in, foreign_enum_map::out) is det.
+
+record_foreign_enum_spec(ForeignEnumInfo, !ForeignEnumTypeCtors) :-
+    ForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, OoMValues, _, _),
+    TypeCtor = type_ctor(TypeSymName, TypeArity),
+    TypeName = unqualify_name(TypeSymName),
+    UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
+    ( if map.search(!.ForeignEnumTypeCtors, UnqualTypeCtor, LVs0) then
+        map.det_update(UnqualTypeCtor, [Lang - OoMValues | LVs0],
+            !ForeignEnumTypeCtors)
+    else
+        map.det_insert(UnqualTypeCtor, [Lang - OoMValues],
+            !ForeignEnumTypeCtors)
+    ).
+
 %---------------------------------------------------------------------------%
 
     % XXX TYPE_REPN Consider the relationship between this predicate and
@@ -2543,16 +2595,13 @@ get_int2_items_from_int1_imp_types([ImpTypeDefn | ImpTypeDefns],
     % makes the defined type equivalent to a type that needs special treatment
     % by the algorithm that decides data representations.
     %
-:- pred make_canon_make_du_and_solver_types_abstract(
+:- pred delete_uc_preds_make_solver_type_dummy(
     item_type_defn_info::in, item_type_defn_info::out) is det.
 
-make_canon_make_du_and_solver_types_abstract(ItemTypeDefn,
-        MaybeAbstractItemTypeDefn) :-
-    TypeDefn = ItemTypeDefn ^ td_ctor_defn,
+delete_uc_preds_make_solver_type_dummy(ItemTypeDefn0, ItemTypeDefn) :-
+    TypeDefn0 = ItemTypeDefn0 ^ td_ctor_defn,
     (
-        TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(_Ctors, MaybeCanonical,
-            _MaybeDirectArgCtors),
+        TypeDefn0 = parse_tree_du_type(DetailsDu0),
         % For the `.int2' files, we need the full definitions of
         % discriminated union types. Even if the functors for a type
         % are not used within a module, we may need to know them for
@@ -2567,30 +2616,21 @@ make_canon_make_du_and_solver_types_abstract(ItemTypeDefn,
         % function symbol/arity pairs that occur in bound insts, and then
         % make the type definition totally abstract unless the type constructor
         % either is in set (a) or a member of Ctors is in set (b).
-        (
-            MaybeCanonical = canon,
-            MaybeAbstractItemTypeDefn = ItemTypeDefn
-        ;
-            MaybeCanonical = noncanon(_NonCanonical),
-            AbstractDetailsDu = DetailsDu ^ du_canonical :=
-                noncanon(noncanon_abstract(non_solver_type)),
-            AbstractTypeDefn = parse_tree_du_type(AbstractDetailsDu),
-            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
-                AbstractTypeDefn
-        )
+        delete_uc_preds_from_du_type(DetailsDu0, DetailsDu),
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := TypeDefn
     ;
-        TypeDefn = parse_tree_abstract_type(_AbstractDetails),
-        MaybeAbstractItemTypeDefn = ItemTypeDefn
+        TypeDefn0 = parse_tree_abstract_type(_AbstractDetails),
+        ItemTypeDefn = ItemTypeDefn0
     ;
-        TypeDefn = parse_tree_solver_type(_),
+        TypeDefn0 = parse_tree_solver_type(_),
         % rafe: XXX we need to also export the details of the
         % forwarding type for the representation and the forwarding
         % pred for initialization.
-        AbstractDetails = abstract_solver_type,
-        MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
-            parse_tree_abstract_type(AbstractDetails)
+        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn :=
+            parse_tree_solver_type(dummy_solver_type)
     ;
-        TypeDefn = parse_tree_eqv_type(_),
+        TypeDefn0 = parse_tree_eqv_type(_),
         % For the `.int2' files, we need the full definitions of
         % equivalence types. They are needed to ensure that
         % non-abstract equivalence types always get fully expanded
@@ -2599,25 +2639,77 @@ make_canon_make_du_and_solver_types_abstract(ItemTypeDefn,
         % XXX TYPE_REPN: *After* we have generated a type_repn item
         % including this information, we should be able to make
         % MaybeAbstractItemTypeDefn actually abstract.
-        MaybeAbstractItemTypeDefn = ItemTypeDefn
+        ItemTypeDefn = ItemTypeDefn0
     ;
-        TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(_ForeignType, MaybeCanonical,
-            _Assertions),
+        TypeDefn0 = parse_tree_foreign_type(DetailsForeign0),
         % We always need the definitions of foreign types
         % to handle inter-language interfacing correctly.
         % However, we want to abstract away any unify and compare predicates.
-        (
-            MaybeCanonical = canon,
-            MaybeAbstractItemTypeDefn = ItemTypeDefn
-        ;
-            MaybeCanonical = noncanon(_NonCanonical),
-            AbstractDetailsForeign = DetailsForeign ^ foreign_canonical :=
-                noncanon(noncanon_abstract(non_solver_type)),
-            AbstractTypeDefn = parse_tree_foreign_type(AbstractDetailsForeign),
-            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
-                AbstractTypeDefn
-        )
+        delete_uc_preds_from_foreign_type(DetailsForeign0, DetailsForeign),
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := TypeDefn
+    ).
+
+    % Return a dummy solver type definition, one that does not refer
+    % to any other modules. We use this to replace actual solver type
+    % definitions that will be made abstract later (so we do not lose
+    % information we do not intend to lose), but for which we do want
+    % to remember the fact that they *do* have a definition, to avoid
+    % generating misleading error messages about missing definitions.
+    %
+:- func dummy_solver_type = type_details_solver.
+
+dummy_solver_type = DetailsSolver :-
+    RepnType = tuple_type([], kind_star),
+    GroundInst = not_reached,
+    AnyInst = not_reached,
+    MutableItems = [],
+    SolverDetails = solver_type_details(RepnType, GroundInst, AnyInst,
+        MutableItems),
+    MaybeCanon = canon,
+    DetailsSolver = type_details_solver(SolverDetails, MaybeCanon).
+
+:- pred make_du_type_abstract(type_details_du::in, type_details_abstract::out)
+    is det.
+
+make_du_type_abstract(DetailsDu, DetailsAbstract) :-
+    DetailsDu = type_details_du(Ctors, MaybeCanonical, _MaybeDirectArgCtors),
+    ( if du_type_is_enum(DetailsDu, NumBits) then
+        DetailsAbstract = abstract_type_fits_in_n_bits(NumBits)
+    else if du_type_is_notag(Ctors, MaybeCanonical) then
+        DetailsAbstract = abstract_notag_type
+    else if du_type_is_dummy(DetailsDu) then
+        DetailsAbstract = abstract_dummy_type
+    else
+        DetailsAbstract = abstract_type_general
+    ).
+
+:- pred delete_uc_preds_from_du_type(type_details_du::in,
+    type_details_du::out) is det.
+
+delete_uc_preds_from_du_type(DetailsDu0, DetailsDu) :-
+    MaybeCanonical = DetailsDu0 ^ du_canonical,
+    (
+        MaybeCanonical = canon,
+        DetailsDu = DetailsDu0
+    ;
+        MaybeCanonical = noncanon(_NonCanonical),
+        DetailsDu = DetailsDu0 ^ du_canonical
+            := noncanon(noncanon_abstract(non_solver_type))
+    ).
+
+:- pred delete_uc_preds_from_foreign_type(type_details_foreign(T)::in,
+    type_details_foreign(T)::out) is det.
+
+delete_uc_preds_from_foreign_type(DetailsForeign0, DetailsForeign) :-
+    MaybeCanonical0 = DetailsForeign0 ^ foreign_canonical,
+    (
+        MaybeCanonical0 = canon,
+        DetailsForeign = DetailsForeign0
+    ;
+        MaybeCanonical0 = noncanon(_NonCanonical),
+        DetailsForeign = DetailsForeign0 ^ foreign_canonical
+            := noncanon(noncanon_abstract(non_solver_type))
     ).
 
 %---------------------------------------------------------------------------%

@@ -125,7 +125,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module getopt_io.
-:- import_module int.
 :- import_module map.
 :- import_module require.
 :- import_module set.
@@ -141,9 +140,17 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
-    generate_short_interface_int3(Globals, RawCompUnit, _, ParseTreeInt3),
-    actually_write_interface_file(Globals, ParseTreeInt3, "", no, !IO),
-    touch_interface_datestamp(Globals, ModuleName, ".date3", !IO).
+    generate_short_interface_int3(Globals, RawCompUnit, _, ParseTreeInt3,
+        [], Specs),
+    (
+        Specs = [],
+        actually_write_interface_file(Globals, ParseTreeInt3, "", no, !IO),
+        touch_interface_datestamp(Globals, ModuleName, ".date3", !IO)
+    ;
+        Specs = [_ | _],
+        report_file_not_written(Globals, Specs, no, ModuleName, ".int3",
+            no, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -158,12 +165,11 @@ write_private_interface_file_int0(Globals, SourceFileName,
 
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
-        Specs0, Errors),
-    ( if set.is_non_empty(Errors) then
-        PrefixMsg = "Error reading interface files.\n",
-        report_file_not_written(Globals, Specs0, yes(PrefixMsg),
-            ModuleName, ".int0", no, !IO)
-    else
+        GetSpecs, GetErrors),
+    ( if
+        GetSpecs = [],
+        set.is_empty(GetErrors)
+    then
         % Module-qualify all items.
         % XXX ITEM_LIST We don't need grab_unqual_imported_modules
         % to include in ModuleAndImports and thus in AugCompUnit1
@@ -171,19 +177,32 @@ write_private_interface_file_int0(Globals, SourceFileName,
         % will throw away, and (b) which don't help the module qualification
         % of the items that it keeps.
         module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _EventSpecMap, "", _, _, _, _, _, Specs0, Specs),
+            map.init, _EventSpecMap, "", _, _, _, _, _, [], QualSpecs),
         (
-            Specs = [_ | _],
-            report_file_not_written(Globals, Specs, no,
-                ModuleName, ".int0", no, !IO)
+            QualSpecs = [],
+            % Construct the `.int0' file.
+            generate_private_interface_int0(AugCompUnit, ParseTreeInt0,
+                [], Specs),
+            (
+                Specs = [],
+                % Write out the `.int0' file.
+                actually_write_interface_file(Globals, ParseTreeInt0, "",
+                    MaybeTimestamp, !IO),
+                touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
+            ;
+                Specs = [_ | _],
+                report_file_not_written(Globals, Specs, no,
+                    ModuleName, ".int0", no, !IO)
+            )
         ;
-            Specs = [],
-            % Construct and write out the `.int0' file.
-            generate_private_interface_int0(AugCompUnit, ParseTreeInt0),
-            actually_write_interface_file(Globals, ParseTreeInt0, "",
-                MaybeTimestamp, !IO),
-            touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
+            QualSpecs = [_ | _],
+            report_file_not_written(Globals, QualSpecs, no,
+                ModuleName, ".int0", no, !IO)
         )
+    else
+        PrefixMsg = "Error reading interface files.\n",
+        report_file_not_written(Globals, GetSpecs, yes(PrefixMsg),
+            ModuleName, ".int0", no, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -203,45 +222,51 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
 
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
-        Specs0, Errors),
-    ( if set.is_non_empty(Errors) then
-        PrefixMsg = "Error reading short interface files.\n",
-        report_file_not_written(Globals, Specs0, yes(PrefixMsg),
-            ModuleName, ".int", yes(".int2"), !IO)
-    else
+        GetSpecs, GetErrors),
+    ( if
+        GetSpecs = [],
+        set.is_empty(GetErrors)
+    then
         % Module-qualify all items.
         module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _, "", _, _, _, _, _, Specs0, Specs),
-
-        % We want to finish writing the interface files (and keep
-        % the exit status at zero) if we found some warnings.
-        globals.set_option(halt_at_warn, bool(no),
-            Globals, NoHaltAtWarnGlobals),
-        write_error_specs(Specs, NoHaltAtWarnGlobals,
-            0, _NumWarnings, 0, NumErrors, !IO),
-        ( if NumErrors > 0 then
-            report_file_not_written(Globals, [], no,
-                ModuleName, ".int", yes(".int2"), !IO)
-        else
-            % Construct and write out the `.int' and `.int2' files.
+            map.init, _, "", _, _, _, _, _, [], QualSpecs),
+        (
+            QualSpecs = [],
+            % Construct the `.int' and `.int2' files.
             generate_interfaces_int1_int2(Globals, AugCompUnit,
-                ParseTreeInt1, ParseTreeInt2),
-            actually_write_interface_file(Globals, ParseTreeInt1, "",
-                MaybeTimestamp, !IO),
-            actually_write_interface_file(Globals, ParseTreeInt2, "",
-                MaybeTimestamp, !IO),
-            globals.lookup_bool_option(Globals, experiment2, Experiment2),
+                ParseTreeInt1, ParseTreeInt2, [], Specs),
             (
-                Experiment2 = no
+                Specs = [],
+                % Write out the `.int' and `.int2' files.
+                actually_write_interface_file(Globals, ParseTreeInt1, "",
+                    MaybeTimestamp, !IO),
+                actually_write_interface_file(Globals, ParseTreeInt2, "",
+                    MaybeTimestamp, !IO),
+                globals.lookup_bool_option(Globals, experiment2, Experiment2),
+                (
+                    Experiment2 = no
+                ;
+                    Experiment2 = yes,
+                    generate_interface_int2_via_int3(Globals, AugCompUnit,
+                        ParseTreeInt23, [], _Specs),
+                    actually_write_interface_file(Globals, ParseTreeInt23,
+                        ".via3", MaybeTimestamp, !IO)
+                ),
+                touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
             ;
-                Experiment2 = yes,
-                generate_interface_int2_via_int3(Globals, AugCompUnit,
-                    ParseTreeInt23),
-                actually_write_interface_file(Globals, ParseTreeInt23, ".via3",
-                    MaybeTimestamp, !IO)
-            ),
-            touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
+                Specs = [_ | _],
+                report_file_not_written(Globals, Specs, no,
+                    ModuleName, ".int", yes(".int2"), !IO)
+            )
+        ;
+            QualSpecs = [_ | _],
+            report_file_not_written(Globals, QualSpecs, no,
+                ModuleName, ".int", yes(".int2"), !IO)
         )
+    else
+        PrefixMsg = "Error reading short interface files.\n",
+        report_file_not_written(Globals, GetSpecs, yes(PrefixMsg),
+            ModuleName, ".int", yes(".int2"), !IO)
     ).
 
 %---------------------------------------------------------------------------%

@@ -5070,14 +5070,13 @@ file_id(FileName, Result, !IO) :-
 % For C backends, it is a C array of C chars.
 % For other backends, it is a Mercury array of Mercury chars.
 
-:- type buffer.
-:- pragma foreign_type(c, buffer, "char *", [can_pass_as_mercury_type]).
-
     % XXX It would be better to use a char_array type rather than array(char).
     % This is because on the Java and IL backends indexing into an array whose
     % element type is known statically requires less overhead.
 :- type buffer
     --->    buffer(array(char)).
+
+:- pragma foreign_type(c, buffer, "char *", [can_pass_as_mercury_type]).
 
     % XXX Extend the workaround for no `ui' modes in array.m.
 :- inst uniq_buffer for buffer/0

@@ -84,6 +84,7 @@
 :- include_module prog_util.
 
 % Type representation.
+:- include_module check_parse_tree_type_defns.
 :- include_module decide_type_repn.
 
 % Transformations that act on the parse tree,

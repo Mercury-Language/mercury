@@ -381,6 +381,10 @@
 %   If we cause the construction of the interface file to fail instead,
 %   those compilations won't have taken place.
 %
+% We implement the first choice by checking whether each entry in
+% a type_ctor_defn_map makes sense, and generating error messages
+% when they don't. This is done by code in check_parse_tree_type_defns.m.
+%
 % The fourth and most motivating use is that having all the definitions
 % of a type_ctor, *and* all the foreign_enum pragmas that apply to that
 % type_ctor, all together at once will make the code that decides
@@ -393,19 +397,43 @@
 %
 
 :- type type_ctor_defn_map == map(type_ctor, type_ctor_all_defns).
-:- type type_ctor_all_defns
-    --->    type_ctor_all_defns(
-                tcad_abstract_solver        :: list(item_type_defn_info),
-                tcad_solver                 :: list(item_type_defn_info),
+:- type type_ctor_all_defns == type_ctor_defns(list(item_type_defn_info)).
+:- type type_ctor_maybe_defn == type_ctor_defns(maybe(item_type_defn_info)).
 
-                tcad_abstract_nonsolver     :: list(item_type_defn_info),
-                tcad_eqv                    :: list(item_type_defn_info),
-                tcad_du                     :: list(item_type_defn_info),
-                tcad_foreign_c              :: list(item_type_defn_info),
-                tcad_foreign_java           :: list(item_type_defn_info),
-                tcad_foreign_csharp         :: list(item_type_defn_info),
-                tcad_foreign_erlang         :: list(item_type_defn_info)
+:- type type_ctor_defns(T)
+    --->    type_ctor_defns(
+                % Abstract and nonabstract solver type definitions.
+                tcad_abstract_solver        :: T,
+                tcad_solver                 :: T,
+
+                % Abstract and nonabstract nonsolver type definitions.
+                tcad_abstract_non_solver    :: T,
+                tcad_eqv                    :: T,
+                tcad_du                     :: T,
+                tcad_foreign                :: c_java_csharp_erlang(T)
             ).
+
+    % We support foreign type definitions in all four of our target languages,
+    % C, Java, C# and Erlang (though since Erlang is not statically typed,
+    % the only Erlang type name we allow is the empty string). Likewise,
+    % we allow foreign enum declarations in these four languages.
+    %
+    % There are several kinds of info that we may want to store for every
+    % one of these foreign languages. This can be done in instances
+    % of this type, whose fields always contain the info for C, Java, C#
+    % and Erlang (in that order).
+    %
+:- type c_java_csharp_erlang(T)
+    --->    c_java_csharp_erlang(T, T, T, T).
+
+:- type c_j_cs_e_defns ==
+    c_java_csharp_erlang(list(item_type_defn_info)).
+:- type c_j_cs_e_maybe_defn ==
+    c_java_csharp_erlang(maybe(item_type_defn_info)).
+:- type c_j_cs_e_enums ==
+    c_java_csharp_erlang(list(item_foreign_enum_info)).
+:- type c_j_cs_e_maybe_enum ==
+    c_java_csharp_erlang(maybe(item_foreign_enum_info)).
 
 % The map key is sym_name_and_arity because we don't have an inst_ctor type.
 :- type inst_ctor_defn_map == map(sym_name_and_arity, inst_ctor_all_defns).
@@ -423,16 +451,7 @@
                 mcad_eqv                    :: list(item_mode_defn_info)
             ).
 
-:- type type_ctor_foreign_enum_map ==
-    map(type_ctor, type_ctor_all_foreign_enums).
-
-:- type type_ctor_all_foreign_enums
-    --->    type_ctor_all_foreign_enums(
-                tcafe_foreign_enums_c       :: list(foreign_enum_spec),
-                tcafe_foreign_enums_java    :: list(foreign_enum_spec),
-                tcafe_foreign_enums_csharp  :: list(foreign_enum_spec),
-                tcafe_foreign_enums_erlang  :: list(foreign_enum_spec)
-            ).
+:- type type_ctor_foreign_enum_map == map(type_ctor, c_j_cs_e_enums).
 
 :- type type_ctor_repn_map == map(type_ctor, item_type_repn_info).
 
@@ -468,7 +487,7 @@
     = mode_ctor_defn_map.
 :- func type_ctor_repn_items_to_map(list(item_type_repn_info))
     = type_ctor_repn_map.
-:- func type_ctor_foreign_enum_specs_to_map(list(foreign_enum_spec))
+:- func type_ctor_foreign_enum_items_to_map(list(item_foreign_enum_info))
     = type_ctor_foreign_enum_map.
 
 %-----------------------------------------------------------------------------%
@@ -2055,10 +2074,12 @@
 
 :- implementation.
 
+:- import_module parse_tree.check_parse_tree_type_defns.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module require.
 :- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -2115,21 +2136,6 @@ convert_parse_tree_int0_to_parse_tree_int(ParseTreeInt0) = ParseTreeInt :-
     ParseTreeInt = parse_tree_int(ModuleName, ifk_int0, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems).
-
-:- pred add_avail_to_rev_list(module_name::in, import_or_use::in,
-    list(item_avail)::in, list(item_avail)::out) is det.
-
-add_avail_to_rev_list(ModuleName, ImportOrUse, !RevAvails) :-
-    Context = term.context_init,
-    SeqNum = -1,
-    (
-        ImportOrUse = import_decl,
-        Avail = avail_import(avail_import_info(ModuleName, Context, SeqNum))
-    ;
-        ImportOrUse = use_decl,
-        Avail = avail_use(avail_use_info(ModuleName, Context, SeqNum))
-    ),
-    !:RevAvails = [Avail | !.RevAvails].
 
 convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1) = ParseTreeInt :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
@@ -2236,20 +2242,25 @@ type_ctor_defn_map_to_items(TypeCtorDefnMap) = Items :-
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out) is det.
 
 accumulate_type_ctor_defns(CtorAllDefns, !TypeDefns) :-
-    CtorAllDefns = type_ctor_all_defns(AbstractSolverDefns, SolverDefns,
-        AbstractNonSolverDefns, EqvDefns, DuDefns,
-        ForeignDefnsC, ForeignDefnsJava,
+    CtorAllDefns = type_ctor_defns(AbstractSolverDefns, SolverDefns,
+        AbstractNonSolverDefns, EqvDefns, DuDefns, CJCsEDefns),
+    CJCsEDefns = c_java_csharp_erlang(ForeignDefnsC, ForeignDefnsJava,
         ForeignDefnsCsharp, ForeignDefnsErlang),
     !:TypeDefns = !.TypeDefns ++
-        cord.from_list(AbstractSolverDefns) ++
+        cord.from_list(at_most_one(AbstractSolverDefns)) ++
         cord.from_list(SolverDefns) ++
-        cord.from_list(AbstractNonSolverDefns) ++
+        cord.from_list(at_most_one(AbstractNonSolverDefns)) ++
         cord.from_list(EqvDefns) ++
         cord.from_list(DuDefns) ++
         cord.from_list(ForeignDefnsC) ++
         cord.from_list(ForeignDefnsJava) ++
         cord.from_list(ForeignDefnsCsharp) ++
         cord.from_list(ForeignDefnsErlang).
+
+:- func at_most_one(list(T)) = list(T).
+
+at_most_one([]) = [].
+at_most_one([X | _Xs]) = [X].
 
 :- func inst_ctor_defn_map_to_items(inst_ctor_defn_map) = list(item).
 
@@ -2303,18 +2314,19 @@ accumulate_type_ctor_repns(TypeRepn, !TypeRepns) :-
     = list(item).
 
 type_ctor_foreign_enum_map_to_items(ForeignEnumMap) = Items :-
-    map.foldl_values(accumulate_foreign_enum_specs, ForeignEnumMap,
-        cord.init, ForeignEnumSpecsCord),
-    ForeignEnumSpecs = cord.list(ForeignEnumSpecsCord),
-    Items = list.map(make_foreign_enum_item, ForeignEnumSpecs).
+    map.foldl_values(accumulate_foreign_enum_items, ForeignEnumMap,
+        cord.init, ForeignEnumItemsCord),
+    ForeignEnumItems = cord.list(ForeignEnumItemsCord),
+    Items = list.map(wrap_foreign_enum_item, ForeignEnumItems).
 
-:- pred accumulate_foreign_enum_specs(type_ctor_all_foreign_enums::in,
-    cord(foreign_enum_spec)::in, cord(foreign_enum_spec)::out) is det.
+:- pred accumulate_foreign_enum_items(c_j_cs_e_enums::in,
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out)
+    is det.
 
-accumulate_foreign_enum_specs(CtorAllDefns, !ForeignEnumSpecs) :-
-    CtorAllDefns = type_ctor_all_foreign_enums(ForeignEnumsC,
-        ForeignEnumsJava, ForeignEnumsCsharp, ForeignEnumsErlang),
-    !:ForeignEnumSpecs = !.ForeignEnumSpecs ++
+accumulate_foreign_enum_items(AllEnums, !ForeignEnums) :-
+    AllEnums = c_java_csharp_erlang(ForeignEnumsC, ForeignEnumsJava,
+        ForeignEnumsCsharp, ForeignEnumsErlang),
+    !:ForeignEnums = !.ForeignEnums ++
         cord.from_list(ForeignEnumsC) ++
         cord.from_list(ForeignEnumsJava) ++
         cord.from_list(ForeignEnumsCsharp) ++
@@ -2363,14 +2375,6 @@ wrap_pragma_item(X) = item_pragma(X).
 wrap_promise_item(X) = item_promise(X).
 wrap_type_repn_item(X) = item_type_repn(X).
 
-:- func make_foreign_enum_item(foreign_enum_spec) = item.
-
-make_foreign_enum_item(ForeignEnumSpec) = Item :-
-    ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, Values),
-    ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values,
-        term.context_init, -1),
-    Item = item_foreign_enum(ItemForeignEnum).
-
 %-----------------------------------------------------------------------------%
 
 convert_parse_tree_int_parse_tree_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
@@ -2412,7 +2416,7 @@ convert_parse_tree_int_parse_tree_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list.sort(IntInstances0, IntInstances),
     list.sort(IntPredDecls0, IntPredDecls),
     list.reverse(RevIntModeDecls, IntModeDecls),
-    IntForeignEnumMap = type_ctor_foreign_enum_specs_to_map(IntForeignEnums),
+    IntForeignEnumMap = type_ctor_foreign_enum_items_to_map(IntForeignEnums),
     list.sort(IntPragmas0, IntPragmas),
     list.sort(IntPromises0, IntPromises),
 
@@ -2428,9 +2432,14 @@ convert_parse_tree_int_parse_tree_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list.sort(ImpInstances0, ImpInstances),
     list.sort(ImpPredDecls0, ImpPredDecls),
     list.reverse(RevImpModeDecls, ImpModeDecls),
-    ImpForeignEnumMap = type_ctor_foreign_enum_specs_to_map(ImpForeignEnums),
+    ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums),
     list.sort(ImpPragmas0, ImpPragmas),
     list.sort(ImpPromises0, ImpPromises),
+
+    % We want only the error messages.
+    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
+        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+        _TypeDefnCheckedMap, !Specs),
 
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
@@ -2452,7 +2461,7 @@ convert_parse_tree_int_parse_tree_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list(item_instance_info)::in, list(item_instance_info)::out,
     list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
-    list(foreign_enum_spec)::in, list(foreign_enum_spec)::out,
+    list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
     list(item_pragma_info)::in, list(item_pragma_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -2487,10 +2496,7 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         !:RevModeDecls = [ItemModeDecl | !.RevModeDecls]
     ;
         Item = item_foreign_enum(ItemForeignEnum),
-        ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values,
-            _Context, _SeqNum),
-        ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, Values),
-        !:ForeignEnums = [ForeignEnumSpec | !.ForeignEnums]
+        !:ForeignEnums = [ItemForeignEnum | !.ForeignEnums]
     ;
         Item = item_pragma(ItemPragma),
         !:Pragmas = [ItemPragma | !.Pragmas]
@@ -2565,7 +2571,7 @@ convert_parse_tree_int_parse_tree_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     list.sort(IntInstances0, IntInstances),
     list.sort(IntPredDecls0, IntPredDecls),
     list.reverse(RevIntModeDecls, IntModeDecls),
-    IntForeignEnumMap = type_ctor_foreign_enum_specs_to_map(IntForeignEnums),
+    IntForeignEnumMap = type_ctor_foreign_enum_items_to_map(IntForeignEnums),
     list.sort(IntPragmas0, IntPragmas),
     list.sort(IntPromises0, IntPromises),
     IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns),
@@ -2573,8 +2579,13 @@ convert_parse_tree_int_parse_tree_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     classify_int1_items_imp(ImpItems, [], ImpTypeDefns0,
         [], ImpForeignEnums0, [], ImpTypeClasses0, !Specs),
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns0),
-    ImpForeignEnumMap = type_ctor_foreign_enum_specs_to_map(ImpForeignEnums0),
+    ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums0),
     list.sort(ImpTypeClasses0, ImpTypeClasses),
+
+    % We want only the error messages.
+    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
+        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+        _TypeDefnCheckedMap, !Specs),
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclModuleNames, ImpInclModuleNames,
@@ -2592,7 +2603,7 @@ convert_parse_tree_int_parse_tree_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     list(item_instance_info)::in, list(item_instance_info)::out,
     list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
-    list(foreign_enum_spec)::in, list(foreign_enum_spec)::out,
+    list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
     list(item_pragma_info)::in, list(item_pragma_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
@@ -2630,10 +2641,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         !:ModeDecls = [ItemModeDecl | !.ModeDecls]
     ;
         Item = item_foreign_enum(ItemForeignEnum),
-        ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values,
-            _Context, _SeqNum),
-        ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, Values),
-        !:ForeignEnums = [ForeignEnumSpec | !.ForeignEnums]
+        !:ForeignEnums = [ItemForeignEnum | !.ForeignEnums]
     ;
         Item = item_pragma(ItemPragma),
         !:Pragmas = [ItemPragma | !.Pragmas]
@@ -2675,7 +2683,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
 
 :- pred classify_int1_items_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(foreign_enum_spec)::in, list(foreign_enum_spec)::out,
+    list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
     list(item_typeclass_info)::in, list(item_typeclass_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -2690,10 +2698,7 @@ classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
         !:TypeClasses = [ItemTypeClass | !.TypeClasses]
     ;
         Item = item_foreign_enum(ItemForeignEnum),
-        ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values,
-            _Context, _SeqNum),
-        FESpec = foreign_enum_spec(Lang, TypeCtor, Values),
-        !:ForeignEnums = [FESpec | !.ForeignEnums]
+        !:ForeignEnums = [ItemForeignEnum | !.ForeignEnums]
     ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -2786,6 +2791,13 @@ convert_parse_tree_int_parse_tree_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
 
     classify_int2_items_imp(ImpItems, [], ImpTypeDefns0, !Specs),
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns0),
+
+    map.init(IntForeignEnumMap),
+    map.init(ImpForeignEnumMap),
+    % We want only the error messages.
+    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
+        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+        _TypeDefnCheckedMap, !Specs),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
         MaybeVersionNumbers,
@@ -2941,6 +2953,14 @@ convert_parse_tree_int_parse_tree_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     list.sort(IntInstances0, IntInstances),
     IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns0),
 
+    map.init(ImpTypeDefnMap),
+    map.init(IntForeignEnumMap),
+    map.init(ImpForeignEnumMap),
+    % We want only the error messages.
+    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
+        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+        _TypeDefnCheckedMap, !Specs),
+
     some [!ImpContexts]
     (
         !:ImpContexts = [],
@@ -3057,11 +3077,11 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
         !ForeignDefnsCsharp, !ForeignDefnsErlang]
     (
         ( if map.search(!.TypeDefnMap, TypeCtor, AllDefns0) then
-            AllDefns0 = type_ctor_all_defns(
+            AllDefns0 = type_ctor_defns(
                 !:AbstractSolverDefns, !:SolverDefns,
                 !:AbstractNonSolverDefns, !:EqvDefns, !:DuDefns,
-                !:ForeignDefnsC, !:ForeignDefnsJava,
-                !:ForeignDefnsCsharp, !:ForeignDefnsErlang)
+                c_java_csharp_erlang(!:ForeignDefnsC, !:ForeignDefnsJava,
+                    !:ForeignDefnsCsharp, !:ForeignDefnsErlang))
         else
             !:AbstractSolverDefns = [],
             !:SolverDefns = [],
@@ -3114,10 +3134,10 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
                 !:ForeignDefnsErlang = !.ForeignDefnsErlang ++ [TypeDefnInfo]
             )
         ),
-        AllDefns = type_ctor_all_defns(!.AbstractSolverDefns, !.SolverDefns,
+        AllDefns = type_ctor_defns(!.AbstractSolverDefns, !.SolverDefns,
             !.AbstractNonSolverDefns, !.EqvDefns, !.DuDefns,
-            !.ForeignDefnsC, !.ForeignDefnsJava,
-            !.ForeignDefnsCsharp, !.ForeignDefnsErlang)
+            c_java_csharp_erlang(!.ForeignDefnsC, !.ForeignDefnsJava,
+                !.ForeignDefnsCsharp, !.ForeignDefnsErlang))
     ),
     map.set(TypeCtor, AllDefns, !TypeDefnMap).
 
@@ -3213,20 +3233,20 @@ add_type_repn_to_map(TypeRepnInfo, !TypeRepnMap) :-
     % for now.
     map.set(TypeCtor, TypeRepnInfo, !TypeRepnMap).
 
-type_ctor_foreign_enum_specs_to_map(ForeignEnumSpecs) = ForeignEnumMap :-
-    list.foldl(add_foreign_enum_spec_to_map, ForeignEnumSpecs,
+type_ctor_foreign_enum_items_to_map(ForeignEnums) = ForeignEnumMap :-
+    list.foldl(add_foreign_enum_item_to_map, ForeignEnums,
         map.init, ForeignEnumMap).
 
-:- pred add_foreign_enum_spec_to_map(foreign_enum_spec::in,
+:- pred add_foreign_enum_item_to_map(item_foreign_enum_info::in,
     type_ctor_foreign_enum_map::in, type_ctor_foreign_enum_map::out) is det.
 
-add_foreign_enum_spec_to_map(ForeignEnumSpec, !ForeignEnumMap) :-
-    ForeignEnumSpec = foreign_enum_spec(Lang, TypeCtor, _Values),
+add_foreign_enum_item_to_map(ForeignEnumInfo, !ForeignEnumMap) :-
+    ForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, _Values, _, _),
     some [!ForeignEnumsC, !ForeignEnumsJava,
         !ForeignEnumsCsharp, !ForeignEnumsErlang]
     (
         ( if map.search(!.ForeignEnumMap, TypeCtor, AllEnums0) then
-            AllEnums0 = type_ctor_all_foreign_enums(!:ForeignEnumsC,
+            AllEnums0 = c_java_csharp_erlang(!:ForeignEnumsC,
                 !:ForeignEnumsJava, !:ForeignEnumsCsharp, !:ForeignEnumsErlang)
         else
             !:ForeignEnumsC = [],
@@ -3236,18 +3256,18 @@ add_foreign_enum_spec_to_map(ForeignEnumSpec, !ForeignEnumMap) :-
         ),
         (
             Lang = lang_c,
-            !:ForeignEnumsC = !.ForeignEnumsC ++ [ForeignEnumSpec]
+            !:ForeignEnumsC = !.ForeignEnumsC ++ [ForeignEnumInfo]
         ;
             Lang = lang_java,
-            !:ForeignEnumsJava = !.ForeignEnumsJava ++ [ForeignEnumSpec]
+            !:ForeignEnumsJava = !.ForeignEnumsJava ++ [ForeignEnumInfo]
         ;
             Lang = lang_csharp,
-            !:ForeignEnumsCsharp = !.ForeignEnumsCsharp ++ [ForeignEnumSpec]
+            !:ForeignEnumsCsharp = !.ForeignEnumsCsharp ++ [ForeignEnumInfo]
         ;
             Lang = lang_erlang,
-            !:ForeignEnumsErlang = !.ForeignEnumsErlang ++ [ForeignEnumSpec]
+            !:ForeignEnumsErlang = !.ForeignEnumsErlang ++ [ForeignEnumInfo]
         ),
-        AllEnums = type_ctor_all_foreign_enums(!.ForeignEnumsC,
+        AllEnums = c_java_csharp_erlang(!.ForeignEnumsC,
             !.ForeignEnumsJava, !.ForeignEnumsCsharp, !.ForeignEnumsErlang),
         map.set(TypeCtor, AllEnums, !ForeignEnumMap)
     ).

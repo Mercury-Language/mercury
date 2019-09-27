@@ -1178,7 +1178,10 @@ option_defaults_2(warning_option, [
     halt_at_warn                        -   bool(no),
     halt_at_syntax_errors               -   bool(no),
     halt_at_auto_parallel_failure       -   bool(no),
-    halt_at_invalid_interface           -   bool(yes),
+    % XXX TYPE_REPN We should set this to "yes" once we require
+    % the installed compiler to ensure that what it puts into
+    % interface files won't generate any errors.
+    halt_at_invalid_interface           -   bool(no),
 
     % IMPORTANT NOTE:
     % if you add any new warning options, or if you change the default

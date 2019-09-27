@@ -422,6 +422,11 @@
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes, followed by '/' and the arity.
 
+    ;       qual_type_ctor(type_ctor)
+    ;       unqual_type_ctor(type_ctor)
+            % The output should contain the string form of the type_ctor,
+            % surrounded by `' quotes, followed by '/' and the arity.
+
     ;       qual_cons_id_and_maybe_arity(cons_id)
     ;       unqual_cons_id_and_maybe_arity(cons_id)
             % If the cons_id is a cons_id for a builtin type, strip the
@@ -429,7 +434,7 @@
             % the result. If the cons_id is for a du type, output its name
             % in quotes, followed by '/' and its arity.
 
-    ;       top_ctor_of_type(mer_type)
+    ;       qual_top_ctor_of_type(mer_type)
             % The top level type constructor of the given type,
             % which must have one (i.e. must not be a variable).
 
@@ -1627,14 +1632,33 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Word = sym_name_and_arity_to_word(SymNameAndArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
-        Component = qual_cons_id_and_maybe_arity(ConsId0),
-        strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
+        (
+            Component = qual_cons_id_and_maybe_arity(ConsId0),
+            strip_builtin_qualifier_from_cons_id(ConsId0, ConsId)
+        ;
+            Component = unqual_cons_id_and_maybe_arity(ConsId0),
+            strip_module_qualifier_from_cons_id(ConsId0, ConsId)
+        ),
         Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
-        Component = unqual_cons_id_and_maybe_arity(ConsId0),
-        strip_module_qualifier_from_cons_id(ConsId0, ConsId),
-        Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
+        (
+            Component = qual_type_ctor(TypeCtor),
+            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity)
+        ;
+            Component = unqual_type_ctor(TypeCtor0),
+            TypeCtor0 = type_ctor(TypeCtorSymName0, TypeCtorArity),
+            TypeCtorSymName = unqualified(unqualify_name(TypeCtorSymName0))
+        ),
+        SymNameAndArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
+        Word = sym_name_and_arity_to_word(SymNameAndArity),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
+        Component = qual_top_ctor_of_type(Type),
+        type_to_ctor_det(Type, TypeCtor),
+        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+        SymNameArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
+        Word = sym_name_and_arity_to_word(SymNameArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = p_or_f(PredOrFunc),
@@ -1651,13 +1675,6 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
     ;
         Component = pragma_decl(PragmaName),
         Word = add_quotes(":- pragma " ++ PragmaName),
-        Str = join_string_and_tail(Word, Components, TailStr)
-    ;
-        Component = top_ctor_of_type(Type),
-        type_to_ctor_det(Type, TypeCtor),
-        TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
-        SymNameArity = sym_name_arity(TypeCtorName, TypeCtorArity),
-        Word = sym_name_and_arity_to_word(SymNameArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = nl,
@@ -1812,17 +1829,29 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Word = sym_name_and_arity_to_word(SymNameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = qual_cons_id_and_maybe_arity(ConsId0),
-        strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
+        (
+            Component = qual_cons_id_and_maybe_arity(ConsId0),
+            strip_builtin_qualifier_from_cons_id(ConsId0, ConsId)
+        ;
+            Component = unqual_cons_id_and_maybe_arity(ConsId0),
+            strip_module_qualifier_from_cons_id(ConsId0, ConsId)
+        ),
         Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = unqual_cons_id_and_maybe_arity(ConsId0),
-        strip_module_qualifier_from_cons_id(ConsId0, ConsId),
-        Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
+        (
+            Component = qual_type_ctor(TypeCtor),
+            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity)
+        ;
+            Component = unqual_type_ctor(TypeCtor0),
+            TypeCtor0 = type_ctor(TypeCtorSymName0, TypeCtorArity),
+            TypeCtorSymName = unqualified(unqualify_name(TypeCtorSymName0))
+        ),
+        SymNameAndArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
+        Word = sym_name_and_arity_to_word(SymNameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = top_ctor_of_type(Type),
+        Component = qual_top_ctor_of_type(Type),
         type_to_ctor_det(Type, TypeCtor),
         TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
         SymNameArity = sym_name_arity(TypeCtorName, TypeCtorArity),
