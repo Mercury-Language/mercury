@@ -227,6 +227,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module parse_tree.convert_interface.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_item.
 :- import_module parse_tree.parse_sym_name.

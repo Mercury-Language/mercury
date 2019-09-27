@@ -92,6 +92,7 @@
 :- include_module canonicalize_interface.
 :- include_module check_raw_comp_unit.
 :- include_module comp_unit_interface.
+:- include_module convert_interface.
 :- include_module deps_map.
 :- include_module equiv_type.
 :- include_module file_names.
@@ -103,8 +104,8 @@
 :- include_module module_imports.
 :- include_module module_qual.
 :- include_module read_modules.
-:- include_module split_parse_tree_src.
 :- include_module source_file_map.
+:- include_module split_parse_tree_src.
 :- include_module write_deps_file.
 :- include_module write_module_interface_files.
 
