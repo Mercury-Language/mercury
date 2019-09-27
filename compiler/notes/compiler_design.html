@@ -453,6 +453,19 @@ such as pretty-printing.
     belong in its .int3, .int0, .int and .int2 files.
 
     <p>
+    check_parse_tree_type_defns.m checks whether
+    the type definition related items in a raw compilation unit
+    are consistent with one another.
+
+    <p>
+    convert_interface.m does conversions in both directions
+    between the generic interface file parse tree on the one hand
+    and the parse tree kinds specific to each kind of interface file
+    on the other hand.
+    The specific parse trees enforce structural envariants
+    that the generic parse tree does not.
+
+    <p>
     decide_type_repn.m generates type_representation items
     that we put into interface files.
 
