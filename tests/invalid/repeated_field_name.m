@@ -10,4 +10,14 @@
                 f2 :: int,
                 f2 :: int,
                 f2 :: int
+            )
+    ;       t2(
+                f1 :: int
+            ).
+
+:- type u
+    --->    u1(
+                f1 :: int,
+                f1 :: int,
+                f2 :: int
             ).

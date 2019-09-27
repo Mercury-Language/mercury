@@ -35,20 +35,21 @@
 
     % create_type_ctor_checked_map(InsistOnDefn, ModuleName,
     %   IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
-    %   CheckedMap, !Specs):
+    %   TypeCtorCheckedMap, !Specs):
     %
     % Given the type and foreign enum definitions in both the interface
-    % and implementation sections of a module, and a type constructor
-    % TypeCtor that is defined in that module, check whether the
-    % definitions of that type constructor are consistent with one another.
+    % and implementation sections of a module, and the type constructors
+    % are is defined in that module, check for each type constructors
+    % whether the definitions of that type constructor are consistent
+    % with one another.
     %
-    % If yes, then add a representation of that consistent set
-    % of declarations for TypeCtor to !TypeCtorCheckedMap.
+    % If yes, then include a representation of that consistent set
+    % of declarations for that type constructor in TypeCtorCheckedMap.
     %
     % If not, generate one or more error messages.
     %
     % If InsistOnDefn is do_insist_on_defn, then also generate an error
-    % if TypeCtor is not actually defined. If our input comes from
+    % if a TypeCtor is not actually defined. If our input comes from
     % a source file InsistOnDefn *should* be do_insist_on_defn, since
     % declaring but not defining a type is an error. (With the very rare
     % exception of a few library types whose definitions are in the
@@ -56,6 +57,9 @@
     % However, InsistOnDefn should be do_not_insist_on_defn if the
     % input comes from interface files whose creation may have deleted
     % any such originally-present definitions.
+    %
+    % In addition, generate error messages for any duplicate field names
+    % on arguments of du types.
     %
 :- pred create_type_ctor_checked_map(maybe_insist_on_defn::in,
     module_name::in,
@@ -106,17 +110,42 @@
 :- type std_type_defn
     --->    std_mer_type_eqv(
                 std_eqv_type_status,
+
+                % The equivalence type definition.
                 item_type_defn_info
             )
     ;       std_mer_type_du(
                 std_du_type_status,
-                item_type_defn_info,        % a du definition
-                maybe(int),                 % only if no foreign_enum applies
+
+                % The discriminated union type definition.
+                item_type_defn_info,
+
+                % If the du type definition represents an enum, this field
+                % will give the number of bits needed to represent that
+                % Mercury enum definition. However, if there is an applicable
+                % foreign enum definition in the last field for a given
+                % target platform, then that foreign enum definition
+                % will specify the actual representation of the type.
+                % And since there is nothing that obliges foreign enum
+                % definitions to use the integers 0 to N-1 to represent
+                % the N different enum constants, the value in this field
+                % is irrelevant for such platforms.
+                maybe(int),
+
+                % For each of our target foreign languages, this field
+                % specifies whether we have either a foreign language
+                % definition for this type, or a foreign enum definition.
                 c_j_cs_e_maybe_defn_or_enum
             )
     ;       std_mer_type_abstract(
                 std_abs_type_status,
-                item_type_defn_info,        % an abstract declaration
+
+                % The abstract declaration of the type.
+                item_type_defn_info,
+
+                % For each of our target foreign languages, this field
+                % specifies whether we have a foreign language definition
+                % for this type.
                 c_j_cs_e_maybe_defn
             ).
 
@@ -199,7 +228,11 @@ create_type_ctor_checked_map(InsistOnDefn, ModuleName,
         check_type_ctor_defns(InsistOnDefn, ModuleName,
             IntTypeDefnMap, ImpTypeDefnMap,
             IntForeignEnumMap, ImpForeignEnumMap),
-        TypeCtors, map.init, CheckedMap, !Specs).
+        TypeCtors, map.init, CheckedMap, !Specs),
+
+    map.foldl(add_type_ctor_to_field_name_map, CheckedMap,
+        map.init, FieldNameMap),
+    map.foldl(report_any_duplicate_field_names, FieldNameMap, !Specs).
 
 :- pred check_type_ctor_defns(maybe_insist_on_defn::in, module_name::in,
     type_ctor_defn_map::in, type_ctor_defn_map::in,
@@ -783,7 +816,8 @@ non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, MaybeEnum, !Specs) :-
     item_type_defn_info::in, maybe(item_type_defn_info)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-du_imp_report_any_foreign_defn_in_int(TypeCtor, DuDefn, MaybeForeignDefn, !Specs) :-
+du_imp_report_any_foreign_defn_in_int(TypeCtor, DuDefn, MaybeForeignDefn,
+        !Specs) :-
     (
         MaybeForeignDefn = no
     ;
@@ -1097,8 +1131,8 @@ report_type_ctor_enum_in_int(ModuleName, TypeCtor, ForeignEnum, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred check_any_type_ctor_enums_for_duplicates(type_ctor_foreign_enum_map::in,
-    type_ctor::in, c_j_cs_e_maybe_enum::out,
+:- pred check_any_type_ctor_enums_for_duplicates(
+    type_ctor_foreign_enum_map::in, type_ctor::in, c_j_cs_e_maybe_enum::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_any_type_ctor_enums_for_duplicates(ForeignEnumMap, TypeCtor,
@@ -1279,6 +1313,142 @@ get_maybe_type_defn_contexts([MaybeTypeDefn | MaybeTypeDefns]) = Contexts :-
         MaybeTypeDefn = yes(TypeDefn),
         Contexts = [TypeDefn ^ td_context | TailContexts]
     ).
+
+%-----------------------------------------------------------------------------%
+
+    % This type maps a field name to the locations where it occurs.
+    %
+:- type field_name_map == map(string, one_or_more(field_name_locn)).
+
+    % The info we have about each location where a field name occurs:
+    %
+    % - the context where it occurs,
+    % - the type constructor in which it occurs, and
+    % - the data constructor in which it occurs.
+    %
+    % The context is first to make sorting easier. This is relevant
+    % because we want to consider the textually first occurrence of
+    % a field name to be the valid occurrence, and the later ones
+    % as the duplicates.
+    %
+:- type field_name_locn
+    --->    field_name_locn(prog_context, type_ctor, string).
+
+:- pred add_type_ctor_to_field_name_map(
+    type_ctor::in, type_ctor_checked_defn::in,
+    field_name_map::in, field_name_map::out) is det.
+
+add_type_ctor_to_field_name_map(TypeCtor, CheckedDefn, !FieldNameMap) :-
+    (
+        CheckedDefn = checked_defn_solver(_)
+    ;
+        CheckedDefn = checked_defn_std(CheckedStdDefn),
+        (
+            ( CheckedStdDefn = std_mer_type_eqv(_, _)
+            ; CheckedStdDefn = std_mer_type_abstract(_, _, _)
+            )
+        ;
+            CheckedStdDefn = std_mer_type_du(_Status, DuDefn,
+                _MaybeEnumNumBits, _MaybeDefnCJCsE),
+            TypeDefn = DuDefn ^ td_ctor_defn,
+            (
+                TypeDefn = parse_tree_du_type(DetailsDu),
+                DetailsDu = type_details_du(OoMCtors,
+                    _MaybeCanonical, _MaybeDirectArgs),
+                OoMCtors = one_or_more(HeadCtor, TailCtors),
+                list.foldl(add_data_ctor_to_field_name_map(TypeCtor),
+                    [HeadCtor | TailCtors], !FieldNameMap)
+            ;
+                ( TypeDefn = parse_tree_abstract_type(_)
+                ; TypeDefn = parse_tree_solver_type(_)
+                ; TypeDefn = parse_tree_eqv_type(_)
+                ; TypeDefn = parse_tree_foreign_type(_)
+                ),
+                unexpected($pred, "not du type")
+            )
+        )
+    ).
+
+:- pred add_data_ctor_to_field_name_map(type_ctor::in, constructor::in,
+    field_name_map::in, field_name_map::out) is det.
+
+add_data_ctor_to_field_name_map(TypeCtor, Ctor, !FieldNameMap) :-
+    Ctor = ctor(_Ordinal, _MaybeExist, CtorSymName, CtorArgs,
+        _NumArgs, _CtorContext),
+    CtorName = unqualify_name(CtorSymName),
+    list.foldl(add_data_ctor_arg_to_field_name_map(TypeCtor, CtorName),
+        CtorArgs, !FieldNameMap).
+
+:- pred add_data_ctor_arg_to_field_name_map(type_ctor::in, string::in,
+    constructor_arg::in, field_name_map::in, field_name_map::out) is det.
+
+add_data_ctor_arg_to_field_name_map(TypeCtor, CtorName, CtorArg,
+        !FieldNameMap) :-
+    CtorArg = ctor_arg(MaybeCtorFieldName, _Type, _ArgContext),
+    (
+        MaybeCtorFieldName = no
+    ;
+        MaybeCtorFieldName = yes(CtorFieldName),
+        CtorFieldName = ctor_field_name(FieldSymName, FieldNameContext),
+        FieldName = unqualify_name(FieldSymName),
+        FNLocn = field_name_locn(FieldNameContext, TypeCtor, CtorName),
+        ( if map.search(!.FieldNameMap, FieldName, OoMFNLocns0) then
+            OoMFNLocns0 = one_or_more(HeadFNLocn, TailFNLocns),
+            OoMFNLocns = one_or_more(FNLocn, [HeadFNLocn | TailFNLocns]),
+            map.det_update(FieldName, OoMFNLocns, !FieldNameMap)
+        else
+            OoMFNLocns = one_or_more(FNLocn, []),
+            map.det_insert(FieldName, OoMFNLocns, !FieldNameMap)
+        )
+    ).
+
+:- pred report_any_duplicate_field_names(string::in,
+    one_or_more(field_name_locn)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_any_duplicate_field_names(FieldName, OoMFNLocns, !Specs) :-
+    FNLocns = one_or_more_to_list(OoMFNLocns),
+    list.sort(FNLocns, SortedFNLocns),
+    (
+        SortedFNLocns = [],
+        unexpected($pred, "SortedFNLocns = []")
+    ;
+        SortedFNLocns = [_]
+        % The expected case; FieldName is defined exactly once.
+    ;
+        SortedFNLocns = [HeadFNLocn | TailFNLocns],
+        TailFNLocns = [_ | _],
+        % The case we are looking for; FieldName is defined *more* than once.
+        list.foldl(report_duplicate_field_name(FieldName, HeadFNLocn),
+            TailFNLocns, !Specs)
+    ).
+
+:- pred report_duplicate_field_name(string::in,
+    field_name_locn::in, field_name_locn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_duplicate_field_name(FieldName, FirstFNLocn, FNLocn, !Specs) :-
+    FirstFNLocn = field_name_locn(FirstContext, FirstTypeCtor, FirstCtorName),
+    FNLocn = field_name_locn(Context, TypeCtor, CtorName),
+    InitPieces = [words("Error: duplicate occurrence of the field name"),
+        quote(FieldName)],
+    ( if TypeCtor = FirstTypeCtor then
+        ( if CtorName = FirstCtorName then
+            MainPieces = InitPieces ++ [words("in the function symbol"),
+                quote(CtorName), suffix("."), nl]
+        else
+            MainPieces = InitPieces ++ [words("in the definition of"),
+                unqual_type_ctor(TypeCtor), suffix("."), nl]
+        )
+    else
+        MainPieces = InitPieces ++ [suffix("."), nl]
+    ),
+    FirstPieces = [words("The first occurrence of this field name"),
+        words("is here."), nl],
+    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
+        [simplest_msg(Context, MainPieces),
+        simplest_msg(FirstContext, FirstPieces)]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.check_parse_tree_type_defns.

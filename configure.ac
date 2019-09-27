@@ -564,19 +564,12 @@ EOF
             --no-ssdb \
             </dev/null >&AC_FD_CC 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
-        # Test for the --record-term-sizes-as-words option.
-        # Note that we need to set --grade to an LLDS grade
-        # when doing this test because term size profiling
-        # requires an LLDS grade.
-        # This also tests for the --shlib-linker-install-name-flag,
-        # --warn-known-bad-format-calls and
-        # --warn-insts-without-matching-type options.
         $BOOTSTRAP_MC \
             --grade none.gc \
             --warn-insts-without-matching-type \
             --warn-known-bad-format-calls \
+            --simplest-msg-2019-09-22 \
             --no-detect-libgrades \
-            --record-term-sizes-as-words \
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \
             --ranlib-flags "" \
