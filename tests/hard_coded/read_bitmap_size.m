@@ -40,7 +40,8 @@ main(!IO) :-
         do_test(1, !IO),
         do_test(2, !IO),
         do_test(4, !IO),
-        do_test(8, !IO)
+        do_test(8, !IO),
+        do_test(9, !IO)
     ;
         OpenResult = error(IOError),
         io.error_message(IOError, Msg),

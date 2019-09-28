@@ -3605,19 +3605,23 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
         RemainingSize = FileSize - CurrentOffset,
         some [!BM] (
             !:BM = bitmap.init(RemainingSize * bits_per_byte),
-            read_bitmap(Stream, 0, RemainingSize,
-                !BM, BytesRead, ReadResult, !IO),
-            (
-                ReadResult = ok,
-                ( if BytesRead = RemainingSize then
-                    Result = ok(!.BM)
-                else
-                    Result = error(io_error(
+            ( if RemainingSize = 0 then
+                Result = ok(!.BM)
+            else
+                read_bitmap(Stream, 0, RemainingSize, !BM, BytesRead,
+                    ReadResult, !IO),
+                (
+                    ReadResult = ok,
+                    ( if BytesRead = RemainingSize then
+                        Result = ok(!.BM)
+                    else
+                        Result = error(io_error(
                         "io.read_binary_file_as_bitmap: incorrect file size"))
+                    )
+                ;
+                    ReadResult = error(Msg),
+                    Result = error(Msg)
                 )
-            ;
-                ReadResult = error(Msg),
-                Result = error(Msg)
             )
         )
     else
