@@ -254,7 +254,7 @@
     cols(C::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    C = tigetnum(""cols"");
+    C = tigetnum((char *) ""cols"");
     IO = IO0;
 ").
 
@@ -264,7 +264,7 @@
     rows(R::out, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    R = tigetnum(""lines"");
+    R = tigetnum((char *) ""lines"");
     IO = IO0;
 ").
 
