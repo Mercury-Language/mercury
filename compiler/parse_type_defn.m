@@ -1221,7 +1221,7 @@ parse_mutable_decl_term(ModuleName, VarSet, Term, MaybeItemMutableInfo) :-
             mutable_locn_in_solver_type, MaybeItemMutableInfo)
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected a mutable declaration, got."),
+        Pieces = [words("Error: expected a mutable declaration, got"),
             quote(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
