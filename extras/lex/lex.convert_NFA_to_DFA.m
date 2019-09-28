@@ -111,7 +111,7 @@ convert_NFA_to_DFA(NFA) = DFA :-
 
 compute_DFA_state_sets_and_transitions(Ts, NewSs0, Ss0, Ss, STs0, STs) :-
 
-    ( if set.empty(NewSs0) then
+    ( if set.is_empty(NewSs0) then
 
         Ss   = Ss0,
         STs0 = STs
@@ -228,7 +228,7 @@ compute_DFA_stop_state_sets(StopStates, StateSets) =
 :- mode stop_state_set(in, in) = out is semidet.
 
 stop_state_set(StopStates, StateSet) = StateSet :-
-    not set.empty(StopStates `set.intersect` StateSet).
+    not set.is_empty(StopStates `set.intersect` StateSet).
 
 %-----------------------------------------------------------------------------%
 
