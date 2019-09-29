@@ -1,5 +1,6 @@
-Copyright (C) 2002 The University of Melbourne
+% vim: ts=4 sw=4 et ff=unix
 
+Copyright (C) 2002 The University of Melbourne
 
 Two library modules, lex and regex, provide facilities for the
 construction of lexical analyzers and for string matching and search

@@ -1,15 +1,16 @@
-Copyright (C) 2002 The University of Melbourne
+% vim: ts=4 sw=4 et ff=unix
 
+Copyright (C) 2002 The University of Melbourne
 
 THE REGEX MODULE
 
 The regex/1 function converts conventional string-type regular expression
-definitions into values of type regex.  These regex values can be used
+definitions into values of type regex. These regex values can be used
 for string matching and search-and-replace operations.
 
 EXAMPLE OF REGEXES
 
-regex(".")		matches any char except `\n'
+regex(".")		    matches any char except `\n'
 regex("abc")		matches `abc'
 regex("abc*")		matches zero or more contiguous occurrences of `abc'
 regex("abc+")		matches one or more contiguous occurrences of `abc'
@@ -71,4 +72,3 @@ change_first(regex("a+"), string__to_upper, "xyz") = "xyz"
 change_all(regex("a+"), string__to_upper, "faat cat") = "fAAt cAt"
 
 change_all(regex("a+"), string__to_upper, "xyz") = "xyz"
-

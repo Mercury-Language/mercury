@@ -1,6 +1,7 @@
 %-----------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
 %-----------------------------------------------------------------------------%
+%
 % lex.automata.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne
@@ -37,7 +38,7 @@
             ).
 
 :- inst null_transition_free_state_mc
-    ==      bound(state_mc(ground, ground, atom_transitions)).
+    ==  bound(state_mc(ground, ground, atom_transitions)).
 
 :- type transitions == list(transition).
 

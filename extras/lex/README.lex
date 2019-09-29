@@ -1,10 +1,11 @@
-Copyright (C) 2002 The University of Melbourne
+% vim: ts=4 sw=4 et ff=unix
 
+Copyright (C) 2002 The University of Melbourne
 
 THE LEX MODULE
 
-The lex module provides tools for writing lexical analyzers.  A
-lexical analyzer parses a stream of chars (e.g. from a string or the
+The lex module provides tools for writing lexical analyzers.
+A lexical analyzer parses a stream of chars (e.g. from a string or the
 standard input stream) against a list of regular expressions,
 returning the first, longest match along with an indication of which
 regular expression was matched.
@@ -31,47 +32,50 @@ A lexer may be created as in the following example (this lexer works
 over the standard input stream):
 
 :- type token
-	--->	id(string)
-	;	int(int)
-	;	float(float)
-	;	lpar
-	;	rpar
-	;	comment.
+    --->    id(string)
+    ;       int(int)
+    ;       float(float)
+    ;       lpar
+    ;       rpar
+    ;       comment.
 
 Lexer = lex.init([
-	(	identifier	->	func(Id)    = id(Id)		),
-	(	signed_int	->	func(Int)   = int(Int)		),
-	(	real		->	func(Float) = float(Float)	),
-	(	"("		->	return(lpar)			),
-	(	")"		->	return(rpar)			),
-	(	"%" ++ junk	->	return(comment)			)
-	], read_from_stdin).
+    ( identifier  ->  func(Id)    = id(Id)),
+    ( signed_int  ->  func(Int)   = int(Int)),
+    ( real        ->  func(Float) = float(Float)),
+    ( "("         ->  return(lpar)),
+    ( ")"         ->  return(rpar)),
+    ( "%" ++ junk ->  return(comment))
+    ], read_from_stdin).
 
-The combinator return/2 is defined s.t. return(X) = ( func(_) = X ),
+The combinator return/2 is defined s.t. return(X) = (func(_) = X),
 that is, it simply discards the matched string and returns X.
 
-(There is also lex.init/3 which takes an extra argument, namely a
-predicate which is used to silently ignore certain tokens such as
-whitespace, say.)
+(There is also lex.init/3 which takes an extra argument, namely a predicate
+which is used to silently ignore certain tokens such as whitespace, say.)
 
 A lexer is activated by calling lex.start/2, which returns a (unique)
 lexer state:
 
-	!:LexerState = lex.start(Lexer, !.IO)
+    !:LexerState = lex.start(Lexer, !.IO)
 
 The lex.read/3 predicate searches for the next, longest match in the
 input stream and returns the corresponding token (or an error message
 if there is no immediate match in the input stream):
 
-	lex.read(Result, !LexerState),
-	(	Result = eof,				...
-	;	Result = ok(Token),			...
-	;	Result = error(Message, Offset),	...
-	)
+    lex.read(Result, !LexerState),
+    (
+        Result = eof,
+        ...
+    ;
+        Result = ok(Token),
+        ...
+    ;
+        Result = error(Message, Offset),
+        ...
+    )
 
 When lexical analysis is complete, the input source may be obtained 
 by calling lex.stop/1:
 
-	!:IO = lex.stop(!.LexerState)
-
-
+    !:IO = lex.stop(!.LexerState)

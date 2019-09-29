@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
 %----------------------------------------------------------------------------
 %
 % lex.convert_NFA_to_DFA.m
@@ -21,7 +21,7 @@
 
 :- func convert_NFA_to_DFA(state_mc) = state_mc.
 :- mode convert_NFA_to_DFA(in(null_transition_free_state_mc)) =
-            out(null_transition_free_state_mc) is det.
+    out(null_transition_free_state_mc) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -55,45 +55,37 @@
 
 %-----------------------------------------------------------------------------%
 
-convert_NFA_to_DFA(NFA) = NFA :-
-
-        % An NFA with no transitions is probably a bug...
-
-    NFA ^ smc_state_transitions = [].
-
 convert_NFA_to_DFA(NFA) = DFA :-
-
-    NFA ^ smc_state_transitions = [_ | _],
+    (
+        NFA ^ smc_state_transitions = [],
+        % An NFA with no transitions is probably a bug...
+        DFA = NFA
+    ;
+        NFA ^ smc_state_transitions = [_ | _],
 
         % Do some unpacking of the NFA.
-        %
-    NFAStopStates    = NFA ^ smc_stop_states,
-    NFATransitions   = NFA ^ smc_state_transitions,
-    DFAStartStateSet = set.make_singleton_set(NFA ^ smc_start_state),
-    DFAStartStateSets = set.make_singleton_set(DFAStartStateSet),
+        NFAStopStates    = NFA ^ smc_stop_states,
+        NFATransitions   = NFA ^ smc_state_transitions,
+        DFAStartStateSet = set.make_singleton_set(NFA ^ smc_start_state),
+        DFAStartStateSets = set.make_singleton_set(DFAStartStateSet),
 
         % Calculate the powerset version of the DFA from the NFA.
-        %
-    compute_DFA_state_sets_and_transitions(
-        NFATransitions,     DFAStartStateSets,
-        DFAStartStateSets,  DFAStateSets,
-        [],                 DFAStateSetTransitions
-    ),
-    DFAStopStateSets = compute_DFA_stop_state_sets(NFAStopStates, DFAStateSets),
+        compute_DFA_state_sets_and_transitions(
+            NFATransitions, DFAStartStateSets,
+            DFAStartStateSets, DFAStateSets, [], DFAStateSetTransitions),
+        DFAStopStateSets =
+            compute_DFA_stop_state_sets(NFAStopStates, DFAStateSets),
 
         % Replace the powerset state_no identifiers with numbers.
-        %
-    DFAStateNos      = number_state_sets(DFAStateSets),
-    map.lookup(DFAStateNos, DFAStartStateSet, DFAStartState),
-    DFAStopStates = set.map(map.lookup(DFAStateNos), DFAStopStateSets),
-    DFATransitions   = map_state_set_transitions_to_numbers(
-                            DFAStateNos,
-                            DFAStateSetTransitions
-                       ),
+        DFAStateNos = number_state_sets(DFAStateSets),
+        map.lookup(DFAStateNos, DFAStartStateSet, DFAStartState),
+        DFAStopStates = set.map(map.lookup(DFAStateNos), DFAStopStateSets),
+        DFATransitions = map_state_set_transitions_to_numbers(
+            DFAStateNos, DFAStateSetTransitions),
 
         % Pack up the result.
-        %
-    DFA = state_mc(DFAStartState, DFAStopStates, DFATransitions).
+        DFA = state_mc(DFAStartState, DFAStopStates, DFATransitions)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -103,34 +95,26 @@ convert_NFA_to_DFA(NFA) = DFA :-
     % We iterate to the least fixed point starting with the start
     % state_no set.
     %
-:- pred compute_DFA_state_sets_and_transitions(
-            transitions, state_sets,
-            state_sets, state_sets,
-            state_set_transitions, state_set_transitions).
-:- mode compute_DFA_state_sets_and_transitions(in, in, in, out, in, out) is det.
+:- pred compute_DFA_state_sets_and_transitions(transitions::in, state_sets::in,
+    state_sets::in, state_sets::out,
+    state_set_transitions::in, state_set_transitions::out) is det.
 
 compute_DFA_state_sets_and_transitions(Ts, NewSs0, Ss0, Ss, STs0, STs) :-
-
     ( if set.is_empty(NewSs0) then
-
         Ss   = Ss0,
         STs0 = STs
-
       else
-
         NewSTs =
             list.condense(
                 list.map(state_set_transitions(Ts),set.to_sorted_list(NewSs0))
             ),
         STs1 = list.append(NewSTs, STs0),
-
         TargetSs =
             set.list_to_set(
                 list.map(( func(trans(_, _, S)) = S ), NewSTs)
             ),
         NewSs = TargetSs `set.difference` Ss0,
         Ss1   = NewSs `set.union` Ss0,
-
         compute_DFA_state_sets_and_transitions(Ts, NewSs, Ss1, Ss, STs1, STs)
     ).
 
@@ -163,7 +147,6 @@ transition_chars(Ts, S) = Charset :-
 %-----------------------------------------------------------------------------%
 
 :- func transition_chars_for_state(transitions, state_no) = charset.
-:- mode transition_chars_for_state(in, in) = out is det.
 
 transition_chars_for_state(Ts, X) =
     union_list(list.filter_map(transition_char_for_state(X), Ts)).
@@ -182,12 +165,12 @@ transition_char_for_state(X, trans(X, C, _Y)) = C.
     % state_set_transition(S, c) = S -c-> target_state_set(S, c)
     %
 :- func state_set_transition(transitions, state_set, char) =
-            state_set_transition.
+    state_set_transition.
 
-state_set_transition(Ts, FromStateSet, C) =
-        trans(FromStateSet, Charset, TargetStateSet) :-
+state_set_transition(Ts, FromStateSet, C) = Transition :-
     Charset = sparse_bitset.make_singleton_set(C),
-    TargetStateSet = target_state_set(Ts, FromStateSet, C).
+    TargetStateSet = target_state_set(Ts, FromStateSet, C),
+    Transition = trans(FromStateSet, Charset, TargetStateSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -228,7 +211,7 @@ compute_DFA_stop_state_sets(StopStates, StateSets) =
 :- mode stop_state_set(in, in) = out is semidet.
 
 stop_state_set(StopStates, StateSet) = StateSet :-
-    not set.is_empty(StopStates `set.intersect` StateSet).
+    set.is_non_empty(StopStates `set.intersect` StateSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -237,12 +220,10 @@ stop_state_set(StopStates, StateSet) = StateSet :-
 number_state_sets(Ss) = StateNos :-
     list.foldl2(
         ( pred(S::in, N::in, (N + 1)::out, Map0::in, Map::out) is det :-
-            Map = map.set(Map0, S, N)
+            map.set(S, N, Map0, Map)
         ),
         set.to_sorted_list(Ss),
-        0,          _,
-        map.init,  StateNos
-    ).
+        0, _, map.init, StateNos).
 
 %-----------------------------------------------------------------------------%
 

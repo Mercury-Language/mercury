@@ -1,5 +1,6 @@
 %----------------------------------------------------------------------------
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
+%----------------------------------------------------------------------------
 %
 % lex.lexeme.m
 % Sat Aug 19 08:22:32 BST 2000
@@ -12,9 +13,9 @@
 % Copyright (C) 2017-2018 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
-% A lexeme combines a token with a regexp.  The lexer compiles
-% lexemes and returns the longest successful parse in the input
-% stream or an error if no match occurs.
+% A lexeme combines a token with a regexp. The lexer compiles lexemes
+% and returns the longest successful parse in the input stream,
+% or an error if no match occurs.
 %
 %-----------------------------------------------------------------------------%
 
@@ -48,15 +49,13 @@
     %
 :- type row == array(packed_transition).
 
-    % A packed_transition combines a target state_no
-    % and the transition char codepoint for which the
-    % transition is valid.
+    % A packed_transition combines a target state_no and the transition char
+    % codepoint for which the transition is valid.
     %
 :- type packed_transition
-     ---> packed_transition(btr_state :: state_no, char :: char).
+     --->   packed_transition(btr_state :: state_no, char :: char).
 
-:- type packed_transitions
-    == list(packed_transition).
+:- type packed_transitions == list(packed_transition).
 
 :- func compile_lexeme(lexeme(T)) = compiled_lexeme(T).
 
@@ -65,13 +64,12 @@
     % to NextState via Char; IsAccepting is `yes' iff NextState is
     % an accepting state_no.
     %
-:- pred next_state(compiled_lexeme(T), state_no, char, state_no, bool).
-:- mode next_state(in(compiled_lexeme), in, in, out, out) is semidet.
+:- pred next_state(compiled_lexeme(T)::in(compiled_lexeme),
+    state_no::in, char::in, state_no::out, bool::out) is semidet.
 
     % Succeeds iff a compiled_lexeme is in an accepting state_no.
     %
-:- pred in_accepting_state(compiled_lexeme(T)).
-:- mode in_accepting_state(in(compiled_lexeme)) is semidet.
+:- pred in_accepting_state(compiled_lexeme(T)::in(compiled_lexeme)) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -105,7 +103,7 @@ compile_lexeme(Lexeme) = CompiledLexeme :-
 :- func find_top_state(transitions) = int.
 :- mode find_top_state(in(atom_transitions)) = out is det.
 
-find_top_state([])                    = 0.
+find_top_state([]) = 0.
 find_top_state([trans(X, _, Y) | Ts]) = max(X, max(Y, find_top_state(Ts))).
 
 %-----------------------------------------------------------------------------%
@@ -120,9 +118,8 @@ set_accepting_states(States, Bitmap0) =
 :- mode set_accepting_states_0(in, bitmap_di) = bitmap_uo is det.
 
 set_accepting_states_0([], Bitmap) = Bitmap.
-
-set_accepting_states_0([St | States], Bitmap) =
-    set_accepting_states_0(States, bitmap.set(Bitmap, St)).
+set_accepting_states_0([State | States], Bitmap) =
+    set_accepting_states_0(States, bitmap.set(Bitmap, State)).
 
 %-----------------------------------------------------------------------------%
 
@@ -130,30 +127,28 @@ set_accepting_states_0([St | States], Bitmap) =
 :- mode set_up_rows(in, in, in(atom_transitions)) = out is det.
 
 set_up_rows(I, N, Transitions) = Rows :-
-    ( if I >= N
-      then Rows = []
-      else Rows = [compile_transitions_for_state(I, [], Transitions) |
-                   set_up_rows(I + 1, N, Transitions)]
+    ( if I >= N then
+        Rows = []
+    else
+        Rows = [compile_transitions_for_state(I, [], Transitions) |
+           set_up_rows(I + 1, N, Transitions)]
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func compile_transitions_for_state(int, packed_transitions, transitions) =
-            row.
-:- mode compile_transitions_for_state(in, in, in(atom_transitions)) =
-            array_uo is det.
+:- func compile_transitions_for_state(int::in, packed_transitions::in,
+    transitions::in(atom_transitions)) = (row::array_uo) is det.
 
 compile_transitions_for_state(_, IBTs, []) = array(IBTs).
-
 compile_transitions_for_state(I, IBTs, [T | Ts]) =
     compile_transitions_for_state(
         I,
-        ( if T = trans(I, Charset, Y)
-          then sparse_bitset.foldl(
-             func(Char, Tx) = [packed_transition(Y, Char) | Tx],
-             Charset,
-             IBTs)
-          else IBTs
+        ( if T = trans(I, Charset, Y) then
+            sparse_bitset.foldl(
+                func(Char, Tx) = [packed_transition(Y, Char) | Tx],
+                Charset, IBTs)
+        else
+            IBTs
         ),
         Ts
     ).

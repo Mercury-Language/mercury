@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
 %-----------------------------------------------------------------------------%
 %
 % lex.regexp.m
@@ -15,8 +15,8 @@
 %
 % Thu Jul 26 07:45:47 UTC 2001
 %
-% Converts basic regular expressions into non-deterministic finite
-% automata (NFAs).
+% Converts basic regular expressions into non-deterministic finite automata
+% (NFAs).
 %
 %-----------------------------------------------------------------------------%
 
@@ -31,8 +31,8 @@
 
     % Turn an NFA into a null transition-free NFA.
     %
-:- func remove_null_transitions(state_mc) = state_mc.
-:- mode remove_null_transitions(in) = out(null_transition_free_state_mc) is det.
+:- func remove_null_transitions(state_mc::in)
+    = (state_mc::out(null_transition_free_state_mc)) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -59,41 +59,34 @@ regexp_to_NFA(R) = NFA :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred compile(state_no, regexp, state_no, transitions, counter, counter).
-:- mode compile(in, in, in, out, in, out) is det.
+:- pred compile(state_no::in, regexp::in, state_no::in, transitions::out,
+    counter::in, counter::out) is det.
 
     % The primitive regexps.
-
-compile(X, eps,        Y, [null(X, Y)]) --> [].
-
-compile(X, atom(C),    Y, [trans(X, make_singleton_set(C), Y)]) --> [].
-
-compile(X, charset(Charset), Y, [trans(X, Charset, Y)]) --> [].
-
-compile(X, conc(RA,RB), Y, TsA ++ TsB) -->
-    counter.allocate(Z),
-    compile(X, RA, Z, TsA),
-    compile(Z, RB, Y, TsB).
-
-compile(X, alt(RA, RB), Y, TsA ++ TsB) -->
-    compile(X, RA, Y, TsA),
-    compile(X, RB, Y, TsB).
-
-compile(X, star(R),    Y, TsA ++ TsB) -->
-    compile(X, null, Y, TsA),
-    compile(X, R,    X, TsB).
+compile(X, eps, Y, [null(X, Y)], !Counter).
+compile(X, atom(C), Y, [trans(X, make_singleton_set(C), Y)], !Counter).
+compile(X, charset(Charset), Y, [trans(X, Charset, Y)], !Counter).
+compile(X, conc(RA, RB), Y, TsA ++ TsB, !Counter) :-
+    counter.allocate(Z, !Counter),
+    compile(X, RA, Z, TsA, !Counter),
+    compile(Z, RB, Y, TsB, !Counter).
+compile(X, alt(RA, RB), Y, TsA ++ TsB, !Counter) :-
+    compile(X, RA, Y, TsA, !Counter),
+    compile(X, RB, Y, TsB, !Counter).
+compile(X, star(R), Y, TsA ++ TsB, !Counter) :-
+    compile(X, null, Y, TsA, !Counter),
+    compile(X, R, X, TsB, !Counter).
 
 %-----------------------------------------------------------------------------%
 
-    % If we have a non-looping null transition from X to Y then
-    % we need to add all the transitions from Y to X.
+    % If we have a non-looping null transition from X to Y,
+    % then we need to add all the transitions from Y to X.
     %
     % We do this by first finding the transitive closure of the
-    % null transition graph and then, for each edge X -> Y in that
-    % graph, adding X -C-> Z for all C and Z s.t. Y -C-> Z.
+    % null transition graph and then, for each edge X -> Y in that graph,
+    % adding X -C-> Z for all C and Z s.t. Y -C-> Z.
     %
 remove_null_transitions(NFA0) = NFA :-
-
     Ts = NFA0 ^ smc_state_transitions,
     split_transitions(Ts, NullTs, CharTs),
     trans_closure(NullTs, map.init, _Ins, map.init, Outs),
@@ -110,9 +103,8 @@ remove_null_transitions(NFA0) = NFA :-
     StopStates  = StopStates0 `set.union` StopStates1,
 
     NFA = (( NFA0
-                ^ smc_state_transitions := NullFreeTs )
-                ^ smc_stop_states       := StopStates).
-
+        ^ smc_state_transitions := NullFreeTs )
+        ^ smc_stop_states       := StopStates).
 
 %-----------------------------------------------------------------------------%
 
@@ -120,10 +112,8 @@ remove_null_transitions(NFA0) = NFA :-
 :- mode split_transitions(in, out(null_transitions), out(atom_transitions)).
 
 split_transitions([], [], []).
-
 split_transitions([null(X, Y) | Ts], [null(X, Y) | NTs], CTs) :-
     split_transitions(Ts, NTs, CTs).
-
 split_transitions([trans(X, C, Y) | Ts], NTs, [trans(X, C, Y) | CTs]) :-
     split_transitions(Ts, NTs, CTs).
 
@@ -131,8 +121,8 @@ split_transitions([trans(X, C, Y) | Ts], NTs, [trans(X, C, Y) | CTs]) :-
 
 :- type null_map == map(state_no, set(state_no)).
 
-:- pred trans_closure(transitions, null_map, null_map, null_map, null_map).
-:- mode trans_closure(in(null_transitions), in, out, in, out) is det.
+:- pred trans_closure(transitions::in(null_transitions),
+    null_map::in, null_map::out, null_map::in, null_map::out) is det.
 
 trans_closure([], !Ins, !Outs).
 trans_closure([T | Ts], !Ins, !Outs) :-
@@ -160,7 +150,7 @@ add_to_null_mapping(Xs, Y, Map) =
 %-----------------------------------------------------------------------------%
 
     % XXX add_atom_transitions (and its callees) originally used the inst-
-    % subtyping given in the commented out mode declarations.  Limitations in
+    % subtyping given in the commented out mode declarations. Limitations in
     % the compiler meant that this code compiled when it was originally written
     % but with more recent versions of the compiler it causes a compilation
     % error due to the aforementioned limitations having been lifted.
@@ -170,9 +160,9 @@ add_to_null_mapping(Xs, Y, Map) =
     % the subtype inst.  Doing so means that other code in this library that
     % uses the same inst-subtyping continues to work without modification.
     %
-    % If / when the standard library has versions of list.condense, list.map etc
-    % that preserve subtype insts then the original modes can be restored (and
-    % the workarounds deleted).
+    % If / when the standard library has versions of list.condense, list.map
+    % etc that preserve subtype insts then the original modes can be restored
+    % (and the workarounds deleted).
     %
 :- func add_atom_transitions(null_map, transitions) = transitions.
 :- mode add_atom_transitions(in, in(atom_transitions)) = out(atom_transitions).
@@ -224,9 +214,9 @@ add_atom_transitions(Outs, CTs) = NullFreeTs :-
 %-----------------------------------------------------------------------------%
 
 :- func add_atom_transitions_0(transitions, pair(state_no, set(state_no))) =
-            transitions.
+    transitions.
 %:- mode add_atom_transitions_0(in(atom_transitions), in) =
-%            out(atom_transitions) is det.
+%   out(atom_transitions) is det.
 
 add_atom_transitions_0(CTs, X - Ys) =
     list.condense(
@@ -237,7 +227,7 @@ add_atom_transitions_0(CTs, X - Ys) =
 
 :- func add_atom_transitions_1(transitions, state_no, state_no) = transitions.
 %:- mode add_atom_transitions_1(in(atom_transitions), in, in) =
-%            out(atom_transitions) is det.
+%   out(atom_transitions) is det.
 
 add_atom_transitions_1(CTs0, X, Y) = CTs :-
     list.filter_map(maybe_copy_transition(X, Y), CTs0, CTs).
@@ -246,7 +236,7 @@ add_atom_transitions_1(CTs0, X, Y) = CTs :-
 
 :- pred maybe_copy_transition(state_no, state_no, transition, transition).
 %:- mode maybe_copy_transition(in,in,in(atom_transition),out(atom_transition))
-%            is semidet.
+%   is semidet.
 :- mode maybe_copy_transition(in, in, in, out) is semidet.
 
 maybe_copy_transition(_, _, null(_, _) , _) :-
