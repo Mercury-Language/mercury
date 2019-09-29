@@ -350,7 +350,7 @@
     ;       luminance
     ;       luminance_alpha.
 
-:- inst pixel_format_non_stencil_or_depth
+:- inst pixel_format_non_stencil_or_depth for pixel_format/0
     --->    color_index
     ;       red
     ;       green
@@ -403,11 +403,21 @@
     ;       texture_2d
     ;       proxy_texture_2d.
 
-:- inst texture_1d ---> texture_1d ; proxy_texture_1d.
-:- inst texture_2d ---> texture_2d ; proxy_texture_2d.
-% :- inst texture_3d ---> texture_3d ; proxy_texture_3d.
+:- inst texture_1d for texture_target/0
+    --->    texture_1d
+    ;       proxy_texture_1d.
 
-:- inst non_proxy_texture_target ---> texture_1d ; texture_2d.
+:- inst texture_2d for texture_target/0
+    --->    texture_2d
+    ;       proxy_texture_2d.
+
+% :- inst texture_3d for texture_target/0
+%    --->    texture_3d
+%    ;       proxy_texture_3d.
+
+:- inst non_proxy_texture_target for texture_target/0
+    --->    texture_1d
+    ;       texture_2d.
 
 :- type texture_format
 
@@ -528,7 +538,7 @@
 :- pred tex_gen(texture_coord::in, texture_gen_parameter::in,
     io::di, io::uo) is det.
 
-:- inst border ---> 0 ; 1.
+:- inst border for int/0 ---> 0 ; 1.
 
 :- type pixel_data == bitmap.
 
@@ -777,7 +787,7 @@
     ;       line
     ;       fill.
 
-:- inst mesh_mode_1d
+:- inst mesh_mode_1d for mesh_mode/0
     --->    point
     ;       line.
 
