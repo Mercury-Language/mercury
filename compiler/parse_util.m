@@ -44,10 +44,10 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_name_and_arity(module_name::in, term(T)::in,
+:- pred parse_implicitly_qualified_name_and_arity(module_name::in, term(T)::in,
     sym_name::out, arity::out) is semidet.
 
-:- pred parse_name_and_arity_unqualified(term(T)::in,
+:- pred parse_unqualified_name_and_arity(term(T)::in,
     sym_name::out, arity::out) is semidet.
 
 :- pred parse_pred_or_func_name_and_arity(term(T)::in,
@@ -147,15 +147,17 @@
 
 %---------------------------------------------------------------------------%
 
-parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
+parse_implicitly_qualified_name_and_arity(ModuleName, PredAndArityTerm,
+        SymName, Arity) :-
     PredAndArityTerm = term.functor(term.atom("/"),
         [PredNameTerm, ArityTerm], _),
     try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
         PredNameTerm, SymName),
     decimal_term_to_int(ArityTerm, Arity).
 
-parse_name_and_arity_unqualified(PredAndArityTerm, SymName, Arity) :-
-    parse_name_and_arity(unqualified(""), PredAndArityTerm, SymName, Arity).
+parse_unqualified_name_and_arity(PredAndArityTerm, SymName, Arity) :-
+    parse_implicitly_qualified_name_and_arity(unqualified(""),
+        PredAndArityTerm, SymName, Arity).
 
 parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
         PredOrFunc, SymName, Arity) :-
@@ -165,7 +167,7 @@ parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
     ),
     Args = [Arg],
     ModuleName = unqualified(""),
-    parse_name_and_arity(ModuleName, Arg, SymName, Arity).
+    parse_implicitly_qualified_name_and_arity(ModuleName, Arg, SymName, Arity).
 
 %---------------------------------------------------------------------------%
 

@@ -178,6 +178,9 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                 add_foreign_enum_pragma_in_interface_error(Context,
                     TypeSymName, TypeArity, !Specs)
             else
+                % As of 2019 Sep 29, this should not happen anymore,
+                % since we now catch foreign_enum pragmas that refer
+                % to types in other modules when parsing them.
                 NotThisModulePieces = ContextPieces ++
                     [words("error: "), qual_sym_name_and_arity(TypeSNA),
                     words("is not defined in this module."), nl],

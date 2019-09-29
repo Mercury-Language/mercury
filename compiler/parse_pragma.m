@@ -544,7 +544,7 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             MaybeForeignLang),
         TypeContextPieces = cord.from_list([words("In second argument of"),
             pragma_decl("foreign_export_enum"), words("declaration:")]),
-        parse_type_ctor_name_arity(no, TypeContextPieces, VarSet,
+        parse_type_ctor_name_arity(TypeContextPieces, VarSet,
             MercuryTypeTerm, MaybeTypeCtor),
         maybe_parse_export_enum_attributes(VarSet, MaybeAttributesTerm,
             MaybeAttributes),
@@ -728,8 +728,33 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeForeignLang),
         TypeContextPieces = cord.from_list([words("In second argument of"),
             pragma_decl("foreign_enum"), words("declaration:")]),
-        parse_type_ctor_name_arity(yes(ModuleName), TypeContextPieces, VarSet,
-            MercuryTypeTerm, MaybeTypeCtor),
+        parse_type_ctor_name_arity(TypeContextPieces, VarSet,
+            MercuryTypeTerm, MaybeTypeCtor0),
+        (
+            MaybeTypeCtor0 = ok1(TypeCtor0),
+            TypeCtor0 = type_ctor(SymName0, Arity),
+            ( if
+                try_to_implicitly_qualify_sym_name(ModuleName,
+                    SymName0, SymName)
+            then
+                TypeCtor1 = type_ctor(SymName, Arity),
+                MaybeTypeCtor = ok1(TypeCtor1)
+            else
+                % Don't split "must be" across lines.
+                SymNamePieces =
+                    [words("Error: a"), pragma_decl("foreign_enum"),
+                    words("declaration"), fixed("must be"),
+                    words("for a type that is defined"),
+                    words("in the same module."), nl],
+                SymNameSpec = simplest_spec(severity_error,
+                    phase_term_to_parse_tree, get_term_context(ValuesTerm),
+                    SymNamePieces),
+                MaybeTypeCtor = error1([SymNameSpec])
+            )
+        ;
+            MaybeTypeCtor0 = error1(_),
+            MaybeTypeCtor = MaybeTypeCtor0
+        ),
 
         UnrecognizedPieces =
             [words("Error: expected a valid mapping element")],
@@ -811,27 +836,13 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
             MaybeForeignLang = error1([LangSpec])
     ).
 
-:- pred parse_type_ctor_name_arity(maybe(module_name)::in,
-    cord(format_component)::in, varset::in, term::in,
-    maybe1(type_ctor)::out) is det.
+:- pred parse_type_ctor_name_arity(cord(format_component)::in, varset::in,
+    term::in, maybe1(type_ctor)::out) is det.
 
-parse_type_ctor_name_arity(MaybeModuleName, ContextPieces, VarSet, TypeTerm,
+parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm,
         MaybeTypeCtor) :-
-    ( if parse_name_and_arity_unqualified(TypeTerm, SymNameName0, Arity) then
-        (
-            MaybeModuleName = no,
-            SymNameName = SymNameName0
-        ;
-            MaybeModuleName = yes(ModuleName),
-            (
-                SymNameName0 = unqualified(Name),
-                SymNameName = qualified(ModuleName, Name)
-            ;
-                SymNameName0 = qualified(_, _),
-                SymNameName = SymNameName0
-            )
-        ),
-        MaybeTypeCtor = ok1(type_ctor(SymNameName, Arity))
+    ( if parse_unqualified_name_and_arity(TypeTerm, SymName, Arity) then
+        MaybeTypeCtor = ok1(type_ctor(SymName, Arity))
     else
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
         Pieces = cord.list(ContextPieces) ++
@@ -1193,7 +1204,7 @@ parse_pragma_obsolete_in_favour_of(Term, VarSet, MaybeObsoleteInFavourOf) :-
 parse_pragma_obsolete_in_favour_of_snas(_ArgNum, [], _VarSet, ok1([])).
 parse_pragma_obsolete_in_favour_of_snas(ArgNum, [Term | Terms], VarSet,
         MaybeSNAs) :-
-    ( if parse_name_and_arity_unqualified(Term, SymName, Arity) then
+    ( if parse_unqualified_name_and_arity(Term, SymName, Arity) then
         MaybeHeadSNA = ok1(sym_name_arity(SymName, Arity))
     else
         Pieces = [words("Error: in the"), nth_fixed(ArgNum),
@@ -2484,7 +2495,10 @@ parse_pred_name_and_arity(ModuleName, PragmaName, NameAndArityTerm, ErrorTerm,
 
 parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
         NameAndArityTerm, ErrorTerm, VarSet, MaybeNameAndArity) :-
-    ( if parse_name_and_arity(ModuleName, NameAndArityTerm, Name, Arity) then
+    ( if
+        parse_implicitly_qualified_name_and_arity(ModuleName,
+            NameAndArityTerm, Name, Arity)
+    then
         MaybeNameAndArity = ok2(Name, Arity)
     else
         NameAndArityTermStr = describe_error_term(VarSet, NameAndArityTerm),
@@ -2995,7 +3009,10 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             OtherTerms = [DestructorsTerm],
             MaybeDestructorsTerm = yes(DestructorsTerm)
         ),
-        ( if parse_name_and_arity(ModuleName, TypeCtorTerm, Name, Arity) then
+        ( if
+            parse_implicitly_qualified_name_and_arity(ModuleName, TypeCtorTerm,
+                Name, Arity)
+        then
             MaybeTypeCtor = ok1(type_ctor(Name, Arity))
         else
             TypeCtorTermStr = describe_error_term(VarSet, TypeCtorTerm),
@@ -3092,7 +3109,8 @@ parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Term,
             Args = [Arg1, Arg2]
         then
             ( if
-                parse_name_and_arity(ModuleName, Arg1, Arg1Name, Arg1Arity)
+                parse_implicitly_qualified_name_and_arity(ModuleName,
+                    Arg1, Arg1Name, Arg1Arity)
             then
                 MaybeHeadNameArity = ok1(pred_name_arity(Arg1Name, Arg1Arity))
             else

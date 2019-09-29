@@ -96,10 +96,24 @@
 :- pred parse_implicitly_qualified_sym_name_and_args(module_name::in,
     term(T)::in, varset::in, cord(format_component)::in,
     maybe_functor(T)::out) is det.
+:- pred parse_implicitly_qualified_sym_name_and_no_args(module_name::in,
+    term(T)::in, varset::in, cord(format_component)::in,
+    maybe1(sym_name)::out) is det.
 :- pred try_parse_implicitly_qualified_sym_name_and_args(module_name::in,
     term(T)::in, sym_name::out, list(term(T))::out) is semidet.
 :- pred try_parse_implicitly_qualified_sym_name_and_no_args(module_name::in,
     term(T)::in, sym_name::out) is semidet.
+
+    % These predicates do just the "implicitly qualifying" part of the
+    % job of the predicates above.
+    %
+:- pred implicitly_qualify_sym_name_and_args(module_name::in, term(T)::in,
+    sym_name::in, list(term(T))::in, maybe2(sym_name, list(term(T)))::out)
+    is det.
+:- pred implicitly_qualify_sym_name(module_name::in, term(T)::in,
+    sym_name::in, maybe1(sym_name)::out) is det.
+:- pred try_to_implicitly_qualify_sym_name(module_name::in,
+    sym_name::in, sym_name::out) is semidet.
 
     % A SymbolName is one of
     %   Name
@@ -237,63 +251,102 @@ parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
         VarSet, ContextPieces, MaybeSymNameAndArgs) :-
     parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs0),
     (
-        MaybeSymNameAndArgs0 = ok2(SymName, Args),
-        ( if
-            DefaultModuleName = root_module_name
-        then
-            MaybeSymNameAndArgs = MaybeSymNameAndArgs0
-        else if
-            SymName = qualified(ModuleName, _),
-            not partial_sym_name_matches_full(ModuleName, DefaultModuleName)
-        then
-            Pieces = [words("Error: module qualifier in definition"),
-                words("does not match preceding"), decl("module"),
-                words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeSymNameAndArgs = error2([Spec])
-        else
-            UnqualName = unqualify_name(SymName),
-            QualSymName = qualified(DefaultModuleName, UnqualName),
-            MaybeSymNameAndArgs = ok2(QualSymName, Args)
-        )
+        MaybeSymNameAndArgs0 = ok2(SymName0, Args),
+        implicitly_qualify_sym_name_and_args(DefaultModuleName, Term,
+            SymName0, Args, MaybeSymNameAndArgs)
     ;
         MaybeSymNameAndArgs0 = error2(_),
         MaybeSymNameAndArgs = MaybeSymNameAndArgs0
     ).
 
+parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, Term,
+        VarSet, ContextPieces, MaybeSymName) :-
+    parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs0),
+    (
+        MaybeSymNameAndArgs0 = ok2(SymName0, Args0),
+        implicitly_qualify_sym_name(DefaultModuleName, Term,
+            SymName0, MaybeSymName1),
+        (
+            Args0 = [],
+            ArgSpecs = []
+        ;
+            Args0 = [_ | _],
+            ArgPieces = [words("Error: did not expect"),
+                qual_sym_name(SymName0), words(" to have any arguments."), nl],
+            ArgSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(Term), ArgPieces),
+            ArgSpecs = [ArgSpec]
+        ),
+        ( if
+            MaybeSymName1 = ok1(SymName),
+            ArgSpecs = []
+        then
+            MaybeSymName = ok1(SymName)
+        else
+            Specs = get_any_errors1(MaybeSymName1) ++ ArgSpecs,
+            MaybeSymName = error1(Specs)
+        )
+    ;
+        MaybeSymNameAndArgs0 = error2(Specs),
+        MaybeSymName = error1(Specs)
+    ).
+
 try_parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
         SymName, Args) :-
     try_parse_sym_name_and_args(Term, SymName0, Args),
-    ( if
-        DefaultModuleName = root_module_name
-    then
-        SymName = SymName0
-    else if
-        SymName0 = qualified(ModuleName, _),
-        not partial_sym_name_matches_full(ModuleName, DefaultModuleName)
-    then
-        fail
-    else
-        UnqualName = unqualify_name(SymName0),
-        SymName = qualified(DefaultModuleName, UnqualName)
-    ).
+    try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0, SymName).
 
 try_parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, Term,
         SymName) :-
     try_parse_sym_name_and_no_args(Term, SymName0),
+    try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0, SymName).
+
+%-----------------------------------------------------------------------------e
+
+implicitly_qualify_sym_name_and_args(DefaultModuleName, Term, SymName0, Args,
+        MaybeSymNameAndArgs) :-
     ( if
-        DefaultModuleName = root_module_name
+        try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0,
+            SymName)
     then
-        SymName = SymName0
-    else if
-        SymName0 = qualified(ModuleName, _),
-        not partial_sym_name_matches_full(ModuleName, DefaultModuleName)
-    then
-        fail
+        MaybeSymNameAndArgs = ok2(SymName, Args)
     else
-        UnqualName = unqualify_name(SymName0),
-        SymName = qualified(DefaultModuleName, UnqualName)
+        Pieces = [words("Error: module qualifier in definition"),
+            words("does not match preceding"), decl("module"),
+            words("declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeSymNameAndArgs = error2([Spec])
+    ).
+
+implicitly_qualify_sym_name(DefaultModuleName, Term, SymName0, MaybeSymName) :-
+    ( if
+        try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0,
+            SymName)
+    then
+        MaybeSymName = ok1(SymName)
+    else
+        Pieces = [words("Error: module qualifier in definition"),
+            words("does not match preceding"), decl("module"),
+            words("declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        MaybeSymName = error1([Spec])
+    ).
+
+try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0, SymName) :-
+    ( if DefaultModuleName = root_module_name then
+        SymName = SymName0
+    else
+        ( if
+            SymName0 = qualified(ModuleName, _),
+            not partial_sym_name_matches_full(ModuleName, DefaultModuleName)
+        then
+            fail
+        else
+            UnqualName = unqualify_name(SymName0),
+            SymName = qualified(DefaultModuleName, UnqualName)
+        )
     ).
 
 %-----------------------------------------------------------------------------e

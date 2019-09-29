@@ -324,7 +324,7 @@ parse_type_repn_has_direct_arg_functors(RepnStr, RepnArgs, RepnContext,
 
 parse_functor_with_arities(_, _, [], ok1([])).
 parse_functor_with_arities(RepnStr, Nth, [Term | Terms], MaybeFunctors) :-
-    ( if parse_name_and_arity_unqualified(Term, SymName, Arity) then
+    ( if parse_unqualified_name_and_arity(Term, SymName, Arity) then
         MaybeHeadFunctor = ok1(sym_name_arity(SymName, Arity))
     else
         Pieces = [words("Error: the"), nth_fixed(Nth), words("element"),

@@ -793,24 +793,33 @@ sort_error_specs(Globals, !Specs) :-
     error_spec::in, error_spec::out) is semidet.
 
 remove_conditionals_in_spec(Globals, Spec0, Spec) :-
-    Spec0 = error_spec(Severity0, Phase, Msgs0),
-    MaybeActualSeverity = actual_error_severity(Globals, Severity0),
-    list.filter_map(remove_conditionals_in_msg(Globals), Msgs0, Msgs),
+    require_det (
+        (
+            Spec0 = error_spec(Severity0, Phase, Msgs0)
+        ;
+            Spec0 = simplest_spec(Severity0, Phase, Context0, Pieces0),
+            Msgs0 = [simplest_msg(Context0, Pieces0)]
+        ),
+        MaybeActualSeverity = actual_error_severity(Globals, Severity0),
+        list.filter_map(remove_conditionals_in_msg(Globals), Msgs0, Msgs)
+    ),
     ( if
         MaybeActualSeverity = yes(ActualSeverity),
         Msgs = [_ | _]
     then
-        (
-            ActualSeverity = actual_severity_error,
-            Severity = severity_error
-        ;
-            ActualSeverity = actual_severity_warning,
-            Severity = severity_warning
-        ;
-            ActualSeverity = actual_severity_informational,
-            Severity = severity_informational
-        ),
-        Spec = error_spec(Severity, Phase, Msgs)
+        require_det (
+            (
+                ActualSeverity = actual_severity_error,
+                Severity = severity_error
+            ;
+                ActualSeverity = actual_severity_warning,
+                Severity = severity_warning
+            ;
+                ActualSeverity = actual_severity_informational,
+                Severity = severity_informational
+            ),
+            Spec = error_spec(Severity, Phase, Msgs)
+        )
     else
         % Spec0 would result in nothing being printed.
         fail

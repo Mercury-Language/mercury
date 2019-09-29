@@ -371,7 +371,7 @@ require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
 :- pred parse_name_and_arity_to_used(term::in, item_name::out) is semidet.
 
 parse_name_and_arity_to_used(Term, UsedClass) :-
-    parse_name_and_arity_unqualified(Term, ClassName, ClassArity),
+    parse_unqualified_name_and_arity(Term, ClassName, ClassArity),
     UsedClass = item_name(ClassName, ClassArity).
 
 %-----------------------------------------------------------------------------%
@@ -457,7 +457,7 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
 parse_simple_item(Info, Term, !Set) :-
     ( if
         Term = term.functor(term.atom("-"), [NameArityTerm, MatchesTerm], _),
-        parse_name_and_arity_unqualified(NameArityTerm, SymName, Arity)
+        parse_unqualified_name_and_arity(NameArityTerm, SymName, Arity)
     then
         Name = unqualify_name(SymName),
         conjunction_to_list(MatchesTerm, MatchTermList),
@@ -572,15 +572,15 @@ parse_resolved_functor(Info, Term, Ctor) :-
             Arity)
     else if
         Term = term.functor(term.atom("ctor"), [NameArityTerm], _),
-        parse_name_and_arity_unqualified(NameArityTerm, TypeName, TypeArity)
+        parse_unqualified_name_and_arity(NameArityTerm, TypeName, TypeArity)
     then
         Ctor = resolved_functor_constructor(item_name(TypeName, TypeArity))
     else if
         Term = term.functor(term.atom("field"),
             [TypeNameArityTerm, ConsNameArityTerm], _),
-        parse_name_and_arity_unqualified(TypeNameArityTerm,
+        parse_unqualified_name_and_arity(TypeNameArityTerm,
             TypeName, TypeArity),
-        parse_name_and_arity_unqualified(ConsNameArityTerm,
+        parse_unqualified_name_and_arity(ConsNameArityTerm,
             ConsName, ConsArity)
     then
         Ctor = resolved_functor_field(item_name(TypeName, TypeArity),

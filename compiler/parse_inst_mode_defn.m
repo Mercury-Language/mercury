@@ -112,7 +112,7 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     then
         NameTerm = NameTermPrime,
         ( if
-            parse_name_and_arity_unqualified(ForTypeTerm,
+            parse_unqualified_name_and_arity(ForTypeTerm,
                 TypeSymName, TypeArity)
         then
             MaybeForType = yes(type_ctor(TypeSymName, TypeArity)),

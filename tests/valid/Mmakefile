@@ -90,6 +90,7 @@ OTHER_PROGS = \
 	bug480a \
 	bug481 \
 	bug483 \
+	bug486 \
 	bug51 \
 	bug85 \
 	builtin_false \

@@ -1248,7 +1248,10 @@ parse_where_direct_arg_is(ModuleName, VarSet, Term) = MaybeDirectArgCtors :-
     maybe1(sym_name_and_arity)::out) is det.
 
 parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
-    ( if parse_name_and_arity(ModuleName, Term, Name, Arity) then
+    ( if
+        parse_implicitly_qualified_name_and_arity(ModuleName, Term,
+            Name, Arity)
+    then
         MaybeFunctor = ok1(sym_name_arity(Name, Arity))
     else
         TermStr = describe_error_term(VarSet, Term),
