@@ -23,4 +23,5 @@ Mercury.modules
 *.optdate
 *.trans_opt
 *.trans_opt_date
+GRADE_LIB_FLAGS
 tags
