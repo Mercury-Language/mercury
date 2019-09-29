@@ -121,16 +121,21 @@
                 item_type_defn_info,
 
                 % If the du type definition represents an enum, this field
-                % will give the number of bits needed to represent that
-                % Mercury enum definition. However, if there is an applicable
-                % foreign enum definition in the last field for a given
-                % target platform, then that foreign enum definition
-                % will specify the actual representation of the type.
+                % will give (a) the number of enum values in the enum, and
+                % (b) the number of bits needed to represent that many values.
+                % If the du type is a dummy type, then these two values
+                % will be 1 and 0 respectively.
+                %
+                % These values apply to the Mercury type definition. However,
+                % if there is an applicable foreign enum definition in the
+                % last field for a given target platform, then that foreign
+                % enum definition will specify the actual representation
+                % of the type (even if the Mercury definition is a dummy type).
                 % And since there is nothing that obliges foreign enum
                 % definitions to use the integers 0 to N-1 to represent
-                % the N different enum constants, the value in this field
-                % is irrelevant for such platforms.
-                maybe(int),
+                % the N different enum constants, the number of bits recorded
+                % in this field is irrelevant for such platforms.
+                maybe_only_constants,
 
                 % For each of our target foreign languages, this field
                 % specifies whether we have either a foreign language
@@ -147,6 +152,16 @@
                 % specifies whether we have a foreign language definition
                 % for this type.
                 c_j_cs_e_maybe_defn
+            ).
+
+:- type maybe_only_constants
+    --->    not_only_constants
+    ;       only_constants(
+                % The number of constants in the type.
+                oc_num_functors     :: int,
+
+                % The number of bits needed to represent that many constants.
+                oc_num_bits         :: int
             ).
 
 :- type std_du_type_status
@@ -426,21 +441,21 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
             ChosenMaybeDefnC, ChosenMaybeDefnJava,
             ChosenMaybeDefnCsharp, ChosenMaybeDefnErlang),
 
-        MaybeEnumNumBits = is_du_type_defn_an_enum(DuDefn),
+        MaybeOnlyConstants = is_du_type_defn_an_enum_or_dummy(DuDefn),
         decide_du_foreign_representation_for_lang(TypeCtor, DuDefn,
-            MaybeEnumNumBits, lang_c,
+            MaybeOnlyConstants, lang_c,
             ChosenMaybeDefnC, ImpMaybeEnumC,
             MaybeDefnOrEnumC, !Specs),
         decide_du_foreign_representation_for_lang(TypeCtor, DuDefn,
-            MaybeEnumNumBits, lang_java,
+            MaybeOnlyConstants, lang_java,
             ChosenMaybeDefnJava, ImpMaybeEnumJava,
             MaybeDefnOrEnumJava, !Specs),
         decide_du_foreign_representation_for_lang(TypeCtor, DuDefn,
-            MaybeEnumNumBits, lang_csharp,
+            MaybeOnlyConstants, lang_csharp,
             ChosenMaybeDefnCsharp, ImpMaybeEnumCsharp,
             MaybeDefnOrEnumCsharp, !Specs),
         decide_du_foreign_representation_for_lang(TypeCtor, DuDefn,
-            MaybeEnumNumBits, lang_erlang,
+            MaybeOnlyConstants, lang_erlang,
             ChosenMaybeDefnErlang, ImpMaybeEnumErlang,
             MaybeDefnOrEnumErlang, !Specs),
         MaybeDefnOrEnumCJCsE = c_java_csharp_erlang(
@@ -448,7 +463,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
             MaybeDefnOrEnumCsharp, MaybeDefnOrEnumErlang),
 
         CheckedStdDefn = std_mer_type_du(Status, DuDefn,
-            MaybeEnumNumBits, MaybeDefnOrEnumCJCsE),
+            MaybeOnlyConstants, MaybeDefnOrEnumCJCsE),
         CheckedDefn = checked_defn_std(CheckedStdDefn),
         map.det_insert(TypeCtor, CheckedDefn, !TypeCtorCheckedMap)
     else if
@@ -730,15 +745,15 @@ decide_only_foreign_type_section(TypeCtor,
     ).
 
 :- pred decide_du_foreign_representation_for_lang(type_ctor::in,
-    item_type_defn_info::in, maybe(int)::in, foreign_language::in,
+    item_type_defn_info::in, maybe_only_constants::in, foreign_language::in,
     maybe(item_type_defn_info)::in, maybe(item_foreign_enum_info)::in,
     maybe(foreign_type_or_enum)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_du_foreign_representation_for_lang(TypeCtor, DuDefn, MaybeEnumNumBits,
+decide_du_foreign_representation_for_lang(TypeCtor, DuDefn, MaybeOnlyConstants,
         Lang, MaybeDefnLang, MaybeEnumLang, MaybeDefnOrEnumLang, !Specs) :-
     (
-        MaybeEnumNumBits = no,
+        MaybeOnlyConstants = not_only_constants,
         non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, MaybeEnumLang,
             !Specs),
         (
@@ -749,7 +764,7 @@ decide_du_foreign_representation_for_lang(TypeCtor, DuDefn, MaybeEnumNumBits,
             MaybeDefnOrEnumLang = yes(foreign_type_or_enum_type(DefnLang))
         )
     ;
-        MaybeEnumNumBits = yes(_),
+        MaybeOnlyConstants = only_constants(_, _),
         (
             MaybeDefnLang = no,
             MaybeEnumLang = no,
@@ -1265,17 +1280,20 @@ report_duplicate_foreign_defn(TypeOrEnum, TypeCtor, Lang,
         simple_msg(LeastContext, [always(LeastPieces)])]),
     !:Specs = [Spec | !.Specs].
 
-:- func is_du_type_defn_an_enum(item_type_defn_info) = maybe(int).
+:- func is_du_type_defn_an_enum_or_dummy(item_type_defn_info) =
+    maybe_only_constants.
 
-is_du_type_defn_an_enum(TypeDefnInfo) = IsEnum :-
+is_du_type_defn_an_enum_or_dummy(TypeDefnInfo) = MaybeOnlyConstants :-
     TypeDefnInfo = item_type_defn_info(_TypeCtor, _TypeParams, TypeDefn,
         _TVarSet, _Context, _SeqNum),
     (
         TypeDefn = parse_tree_du_type(DetailsDu),
-        ( if du_type_is_enum(DetailsDu, NumBitsNeeded) then
-            IsEnum = yes(NumBitsNeeded)
+        ( if du_type_is_enum(DetailsDu, NumFunctors, NumBitsNeeded) then
+            MaybeOnlyConstants = only_constants(NumFunctors, NumBitsNeeded)
+        else if du_type_is_dummy(DetailsDu) then
+            MaybeOnlyConstants = only_constants(1, 0)
         else
-            IsEnum = no
+            MaybeOnlyConstants = not_only_constants
         )
     ;
         ( TypeDefn = parse_tree_abstract_type(_)
@@ -1349,7 +1367,7 @@ add_type_ctor_to_field_name_map(TypeCtor, CheckedDefn, !FieldNameMap) :-
             )
         ;
             CheckedStdDefn = std_mer_type_du(_Status, DuDefn,
-                _MaybeEnumNumBits, _MaybeDefnCJCsE),
+                _MaybeOnlyConstants, _MaybeDefnCJCsE),
             TypeDefn = DuDefn ^ td_ctor_defn,
             (
                 TypeDefn = parse_tree_du_type(DetailsDu),

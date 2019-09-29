@@ -1753,7 +1753,7 @@ accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
         DetailsDu = type_details_du(OoMCtors, MaybeEqCmp, MaybeDirectArgCtors),
         ( if
             map.search(IntTypesMap, TypeCtor, _),
-            du_type_is_enum(DetailsDu, _NumBits)
+            du_type_is_enum(DetailsDu, _NumFunctors, _NumBits)
         then
             set.insert(TypeCtor, !AbsExpEnumTypeCtors)
         else if
@@ -2125,7 +2125,7 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfo) :-
             % Leave dummy types alone.
             true
         else
-            ( if du_type_is_enum(DetailsDu0, NumBits) then
+            ( if du_type_is_enum(DetailsDu0, _NumFunctors, NumBits) then
                 DetailsAbs = abstract_type_fits_in_n_bits(NumBits)
             else
                 DetailsAbs = abstract_type_general
@@ -2675,7 +2675,7 @@ dummy_solver_type = DetailsSolver :-
 
 make_du_type_abstract(DetailsDu, DetailsAbstract) :-
     DetailsDu = type_details_du(Ctors, MaybeCanonical, _MaybeDirectArgCtors),
-    ( if du_type_is_enum(DetailsDu, NumBits) then
+    ( if du_type_is_enum(DetailsDu, _NumFunctors, NumBits) then
         DetailsAbstract = abstract_type_fits_in_n_bits(NumBits)
     else if du_type_is_notag(Ctors, MaybeCanonical) then
         DetailsAbstract = abstract_notag_type

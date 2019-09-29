@@ -63,7 +63,8 @@ NO_SPECIAL_PREDS_PROGS = \
 	unify_typeinfo_bug
 
 C_PROGS = \
-	bug109
+	bug109 \
+	bug485
 
 OTHER_PROGS = \
 	any_inst_merge \
