@@ -397,20 +397,33 @@
 %
 
 :- type type_ctor_defn_map == map(type_ctor, type_ctor_all_defns).
-:- type type_ctor_all_defns == type_ctor_defns(list(item_type_defn_info)).
-:- type type_ctor_maybe_defn == type_ctor_defns(maybe(item_type_defn_info)).
 
-:- type type_ctor_defns(T)
-    --->    type_ctor_defns(
+:- type type_ctor_all_defns
+    --->    type_ctor_all_defns(
                 % Abstract and nonabstract solver type definitions.
-                tcad_abstract_solver        :: T,
-                tcad_solver                 :: T,
+                tcad_abstract_solver    :: list(item_type_defn_info_abstract),
+                tcad_solver             :: list(item_type_defn_info_solver),
 
                 % Abstract and nonabstract nonsolver type definitions.
-                tcad_abstract_non_solver    :: T,
-                tcad_eqv                    :: T,
-                tcad_du                     :: T,
-                tcad_foreign                :: c_java_csharp_erlang(T)
+                tcad_abstract_std       :: list(item_type_defn_info_abstract),
+                tcad_eqv                :: list(item_type_defn_info_eqv),
+                tcad_du                 :: list(item_type_defn_info_du),
+                tcad_foreign            :: c_java_csharp_erlang(
+                                            list(item_type_defn_info_foreign))
+            ).
+
+:- type type_ctor_maybe_defn
+    --->    type_ctor_maybe_defn(
+                % Abstract and nonabstract solver type definitions.
+                tcmd_abstract_solver    :: maybe(item_type_defn_info_abstract),
+                tcmd_solver             :: maybe(item_type_defn_info_solver),
+
+                % Abstract and nonabstract nonsolver type definitions.
+                tcmd_abstract_std       :: maybe(item_type_defn_info_abstract),
+                tcmd_eqv                :: maybe(item_type_defn_info_eqv),
+                tcmd_du                 :: maybe(item_type_defn_info_du),
+                tcmd_foreign            :: c_java_csharp_erlang(
+                                            maybe(item_type_defn_info_foreign))
             ).
 
     % We support foreign type definitions in all four of our target languages,
@@ -427,9 +440,9 @@
     --->    c_java_csharp_erlang(T, T, T, T).
 
 :- type c_j_cs_e_defns ==
-    c_java_csharp_erlang(list(item_type_defn_info)).
+    c_java_csharp_erlang(list(item_type_defn_info_foreign)).
 :- type c_j_cs_e_maybe_defn ==
-    c_java_csharp_erlang(maybe(item_type_defn_info)).
+    c_java_csharp_erlang(maybe(item_type_defn_info_foreign)).
 :- type c_j_cs_e_enums ==
     c_java_csharp_erlang(list(item_foreign_enum_info)).
 :- type c_j_cs_e_maybe_enum ==
@@ -795,13 +808,26 @@
                 cl_seq_num                      :: int
             ).
 
-:- type item_type_defn_info
+:- type item_type_defn_info == item_type_defn_info_general(type_defn).
+
+:- type item_type_defn_info_abstract
+    == item_type_defn_info_general(type_details_abstract).
+:- type item_type_defn_info_solver
+    == item_type_defn_info_general(type_details_solver).
+:- type item_type_defn_info_eqv
+    == item_type_defn_info_general(type_details_eqv).
+:- type item_type_defn_info_du
+    == item_type_defn_info_general(type_details_du).
+:- type item_type_defn_info_foreign
+    == item_type_defn_info_general(type_details_foreign_generic).
+
+:- type item_type_defn_info_general(T)
     --->    item_type_defn_info(
                 % `:- type ...':
                 % a definition of a type, or a declaration of an abstract type.
                 td_ctor_name                    :: sym_name,
                 td_ctor_args                    :: list(type_param),
-                td_ctor_defn                    :: type_defn,
+                td_ctor_defn                    :: T,
                 td_tvarset                      :: tvarset,
                 td_context                      :: prog_context,
                 td_seq_num                      :: int

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2019 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: convert_interface.m.
 % Main author: zs.
@@ -16,7 +16,7 @@
 % encode the different structural invariants on each kind of interface file
 % in the type.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.convert_interface.
 :- interface.
@@ -26,7 +26,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Convert from the interface-file-kind specific parse trees
     % to the generic interface file parse tree. These conversions go
@@ -77,8 +77,8 @@
 :- func type_ctor_foreign_enum_items_to_map(list(item_foreign_enum_info))
     = type_ctor_foreign_enum_map.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -103,7 +103,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 convert_parse_tree_int0_to_parse_tree_int(ParseTreeInt0) = ParseTreeInt :-
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
@@ -250,7 +250,7 @@ convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3) = ParseTreeInt :-
         MaybeVersionNumbers, IntIncls, [], IntAvails, [],
         [], [], IntItems, []).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 convert_parse_tree_int_parse_tree_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
@@ -396,7 +396,7 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
         !ForeignEnums, !Pragmas, !Promises, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 convert_parse_tree_int_parse_tree_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
@@ -599,7 +599,7 @@ classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
     classify_int1_items_imp(Items, !TypeDefns, !ForeignEnums,
         !TypeClasses, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 convert_parse_tree_int_parse_tree_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
@@ -769,7 +769,7 @@ classify_int2_items_imp([Item | Items], !TypeDefns, !Specs) :-
     ),
     classify_int2_items_imp(Items, !TypeDefns, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 convert_parse_tree_int_parse_tree_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
@@ -933,7 +933,7 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
     classify_int3_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !TypeRepns, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_ctor_defn_items_to_map(TypeDefnInfos) = TypeDefnMap :-
     list.foldl(add_type_defn_to_map, TypeDefnInfos, map.init, TypeDefnMap).
@@ -947,21 +947,21 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
     list.length(Params, Arity),
     TypeCtor = type_ctor(SymName, Arity),
     some [!AbstractSolverDefns, !SolverDefns,
-        !AbstractNonSolverDefns, !EqvDefns, !DuDefns,
+        !AbstractStdDefns, !EqvDefns, !DuDefns,
         !ForeignDefnsC, !ForeignDefnsJava,
         !ForeignDefnsCsharp, !ForeignDefnsErlang]
     (
         ( if map.search(!.TypeDefnMap, TypeCtor, AllDefns0) then
-            AllDefns0 = type_ctor_defns(
+            AllDefns0 = type_ctor_all_defns(
                 !:AbstractSolverDefns, !:SolverDefns,
-                !:AbstractNonSolverDefns, !:EqvDefns, !:DuDefns,
+                !:AbstractStdDefns, !:EqvDefns, !:DuDefns,
                 c_java_csharp_erlang(!:ForeignDefnsC, !:ForeignDefnsJava,
                     !:ForeignDefnsCsharp, !:ForeignDefnsErlang))
         else
             !:AbstractSolverDefns = [],
             !:SolverDefns = [],
 
-            !:AbstractNonSolverDefns = [],
+            !:AbstractStdDefns = [],
             !:EqvDefns = [],
             !:DuDefns = [],
             !:ForeignDefnsC = [],
@@ -971,46 +971,53 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
         ),
         (
             TypeDefn = parse_tree_abstract_type(DetailsAbstract),
+            AbstractDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsAbstract,
             (
                 DetailsAbstract = abstract_solver_type,
-                !:AbstractSolverDefns = !.AbstractSolverDefns ++ [TypeDefnInfo]
+                !:AbstractSolverDefns = !.AbstractSolverDefns ++
+                    [AbstractDefnInfo]
             ;
                 ( DetailsAbstract = abstract_type_general
                 ; DetailsAbstract = abstract_type_fits_in_n_bits(_)
                 ; DetailsAbstract = abstract_dummy_type
                 ; DetailsAbstract = abstract_notag_type
                 ),
-                !:AbstractNonSolverDefns = !.AbstractNonSolverDefns ++
-                    [TypeDefnInfo]
+                !:AbstractStdDefns = !.AbstractStdDefns ++ [AbstractDefnInfo]
             )
         ;
-            TypeDefn = parse_tree_solver_type(_DetailsSolver),
-            !:SolverDefns = !.SolverDefns ++ [TypeDefnInfo]
+            TypeDefn = parse_tree_solver_type(DetailsSolver),
+            SolverDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsSolver,
+            !:SolverDefns = !.SolverDefns ++ [SolverDefnInfo]
         ;
-            TypeDefn = parse_tree_eqv_type(_DetailsEqv),
-            !:EqvDefns = !.EqvDefns ++ [TypeDefnInfo]
+            TypeDefn = parse_tree_eqv_type(DetailsEqv),
+            EqvDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsEqv,
+            !:EqvDefns = !.EqvDefns ++ [EqvDefnInfo]
         ;
-            TypeDefn = parse_tree_du_type(_DetailsDu),
-            !:DuDefns = !.DuDefns ++ [TypeDefnInfo]
+            TypeDefn = parse_tree_du_type(DetailsDu),
+            DuDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsDu,
+            !:DuDefns = !.DuDefns ++ [DuDefnInfo]
         ;
             TypeDefn = parse_tree_foreign_type(DetailsForeign),
+            ForeignDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsForeign,
             DetailsForeign = type_details_foreign(LangType, _, _),
             (
                 LangType = c(_),
-                !:ForeignDefnsC = !.ForeignDefnsC ++ [TypeDefnInfo]
+                !:ForeignDefnsC = !.ForeignDefnsC ++ [ForeignDefnInfo]
             ;
                 LangType = java(_),
-                !:ForeignDefnsJava = !.ForeignDefnsJava ++ [TypeDefnInfo]
+                !:ForeignDefnsJava = !.ForeignDefnsJava ++ [ForeignDefnInfo]
             ;
                 LangType = csharp(_),
-                !:ForeignDefnsCsharp = !.ForeignDefnsCsharp ++ [TypeDefnInfo]
+                !:ForeignDefnsCsharp = !.ForeignDefnsCsharp ++
+                    [ForeignDefnInfo]
             ;
                 LangType = erlang(_),
-                !:ForeignDefnsErlang = !.ForeignDefnsErlang ++ [TypeDefnInfo]
+                !:ForeignDefnsErlang = !.ForeignDefnsErlang ++
+                    [ForeignDefnInfo]
             )
         ),
-        AllDefns = type_ctor_defns(!.AbstractSolverDefns, !.SolverDefns,
-            !.AbstractNonSolverDefns, !.EqvDefns, !.DuDefns,
+        AllDefns = type_ctor_all_defns(!.AbstractSolverDefns, !.SolverDefns,
+            !.AbstractStdDefns, !.EqvDefns, !.DuDefns,
             c_java_csharp_erlang(!.ForeignDefnsC, !.ForeignDefnsJava,
                 !.ForeignDefnsCsharp, !.ForeignDefnsErlang))
     ),
@@ -1147,7 +1154,7 @@ add_foreign_enum_item_to_map(ForeignEnumInfo, !ForeignEnumMap) :-
         map.set(TypeCtor, AllEnums, !ForeignEnumMap)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func type_ctor_defn_map_to_items(type_ctor_defn_map) = list(item).
 
@@ -1161,25 +1168,67 @@ type_ctor_defn_map_to_items(TypeCtorDefnMap) = Items :-
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out) is det.
 
 accumulate_type_ctor_defns(CtorAllDefns, !TypeDefns) :-
-    CtorAllDefns = type_ctor_defns(AbstractSolverDefns, SolverDefns,
-        AbstractNonSolverDefns, EqvDefns, DuDefns, CJCsEDefns),
+    CtorAllDefns = type_ctor_all_defns(AbstractSolverDefns, SolverDefns,
+        AbstractStdDefns, EqvDefns, DuDefns, CJCsEDefns),
     CJCsEDefns = c_java_csharp_erlang(ForeignDefnsC, ForeignDefnsJava,
         ForeignDefnsCsharp, ForeignDefnsErlang),
-    !:TypeDefns = !.TypeDefns ++
-        cord.from_list(at_most_one(AbstractSolverDefns)) ++
-        cord.from_list(SolverDefns) ++
-        cord.from_list(at_most_one(AbstractNonSolverDefns)) ++
-        cord.from_list(EqvDefns) ++
-        cord.from_list(DuDefns) ++
-        cord.from_list(ForeignDefnsC) ++
-        cord.from_list(ForeignDefnsJava) ++
-        cord.from_list(ForeignDefnsCsharp) ++
-        cord.from_list(ForeignDefnsErlang).
+    !:TypeDefns = !.TypeDefns ++ cord.from_list(
+        list.map(wrap_abstract_type_defn, at_most_one(AbstractSolverDefns)) ++
+        list.map(wrap_solver_type_defn, SolverDefns) ++
+        list.map(wrap_abstract_type_defn, at_most_one(AbstractStdDefns)) ++
+        list.map(wrap_eqv_type_defn, EqvDefns) ++
+        list.map(wrap_du_type_defn, DuDefns) ++
+        list.map(wrap_foreign_type_defn, ForeignDefnsC) ++
+        list.map(wrap_foreign_type_defn, ForeignDefnsJava) ++
+        list.map(wrap_foreign_type_defn, ForeignDefnsCsharp) ++
+        list.map(wrap_foreign_type_defn, ForeignDefnsErlang)).
 
 :- func at_most_one(list(T)) = list(T).
 
 at_most_one([]) = [].
 at_most_one([X | _Xs]) = [X].
+
+:- func wrap_abstract_type_defn(item_type_defn_info_abstract)
+    = item_type_defn_info.
+
+wrap_abstract_type_defn(AbstractDefnInfo) = TypeDefnInfo :-
+    AbstractDefn = AbstractDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = AbstractDefnInfo ^ td_ctor_defn
+        := parse_tree_abstract_type(AbstractDefn).
+
+:- func wrap_solver_type_defn(item_type_defn_info_solver)
+    = item_type_defn_info.
+
+wrap_solver_type_defn(SolverDefnInfo) = TypeDefnInfo :-
+    SolverDefn = SolverDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = SolverDefnInfo ^ td_ctor_defn
+        := parse_tree_solver_type(SolverDefn).
+
+:- func wrap_eqv_type_defn(item_type_defn_info_eqv)
+    = item_type_defn_info.
+
+wrap_eqv_type_defn(EqvDefnInfo) = TypeDefnInfo :-
+    EqvDefn = EqvDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = EqvDefnInfo ^ td_ctor_defn
+        := parse_tree_eqv_type(EqvDefn).
+
+:- func wrap_du_type_defn(item_type_defn_info_du)
+    = item_type_defn_info.
+
+wrap_du_type_defn(DuDefnInfo) = TypeDefnInfo :-
+    DuDefn = DuDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = DuDefnInfo ^ td_ctor_defn
+        := parse_tree_du_type(DuDefn).
+
+:- func wrap_foreign_type_defn(item_type_defn_info_foreign)
+    = item_type_defn_info.
+
+wrap_foreign_type_defn(ForeignDefnInfo) = TypeDefnInfo :-
+    ForeignDefn = ForeignDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = ForeignDefnInfo ^ td_ctor_defn
+        := parse_tree_foreign_type(ForeignDefn).
+
+%---------------------%
 
 :- func inst_ctor_defn_map_to_items(inst_ctor_defn_map) = list(item).
 
@@ -1251,7 +1300,7 @@ accumulate_foreign_enum_items(AllEnums, !ForeignEnums) :-
         cord.from_list(ForeignEnumsCsharp) ++
         cord.from_list(ForeignEnumsErlang).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func wrap_include(module_name) = item_include.
 
@@ -1294,6 +1343,6 @@ wrap_pragma_item(X) = item_pragma(X).
 wrap_promise_item(X) = item_promise(X).
 wrap_type_repn_item(X) = item_type_repn(X).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.convert_interface.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

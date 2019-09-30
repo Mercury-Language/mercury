@@ -87,16 +87,16 @@
 
                 % The abstract definition. It may be in either section;
                 % the status specifies the section.
-                item_type_defn_info
+                item_type_defn_info_abstract
             )
     ;       solver_type_full(
                 % The abstract definition in the interface section,
                 % if one exists.
-                maybe(item_type_defn_info),
+                maybe(item_type_defn_info_abstract),
 
                 % The full solver type definition, which must in the
                 % implementation section.
-                item_type_defn_info
+                item_type_defn_info_solver
             ).
 
 :- type abstract_solver_type_status
@@ -112,13 +112,13 @@
                 std_eqv_type_status,
 
                 % The equivalence type definition.
-                item_type_defn_info
+                item_type_defn_info_eqv
             )
     ;       std_mer_type_du(
                 std_du_type_status,
 
                 % The discriminated union type definition.
-                item_type_defn_info,
+                item_type_defn_info_du,
 
                 % If the du type definition represents an enum, this field
                 % will give (a) the number of enum values in the enum, and
@@ -146,7 +146,7 @@
                 std_abs_type_status,
 
                 % The abstract declaration of the type.
-                item_type_defn_info,
+                item_type_defn_info_abstract,
 
                 % For each of our target foreign languages, this field
                 % specifies whether we have a foreign language definition
@@ -203,7 +203,7 @@
     c_java_csharp_erlang(maybe(foreign_type_or_enum)).
 
 :- type foreign_type_or_enum
-    --->    foreign_type_or_enum_type(item_type_defn_info)
+    --->    foreign_type_or_enum_type(item_type_defn_info_foreign)
     ;       foreign_type_or_enum_enum(item_foreign_enum_info).
 
 %-----------------------------------------------------------------------------%
@@ -283,11 +283,11 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
     check_type_ctor_enums_in_int(IntForeignEnumMap, ModuleName, TypeCtor,
         !Specs),
 
-    IntMaybeDefn = type_ctor_defns(
+    IntMaybeDefn = type_ctor_maybe_defn(
         IntAbstractSolverMaybeDefn, IntSolverMaybeDefn,
         IntAbstractStdMaybeDefn, IntEqvMaybeDefn, IntDuMaybeDefn,
         IntMaybeDefnCJCsE),
-    ImpMaybeDefn = type_ctor_defns(
+    ImpMaybeDefn = type_ctor_maybe_defn(
         ImpAbstractSolverMaybeDefn, ImpSolverMaybeDefn,
         ImpAbstractStdMaybeDefn, ImpEqvMaybeDefn, ImpDuMaybeDefn,
         ImpMaybeDefnCJCsE),
@@ -297,6 +297,26 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         ImpMaybeDefnCsharp, ImpMaybeDefnErlang),
     ImpMaybeEnumCJCsE = c_java_csharp_erlang(ImpMaybeEnumC, ImpMaybeEnumJava,
         ImpMaybeEnumCsharp, ImpMaybeEnumErlang),
+
+    IntContextAbstractSolver = get_maybe_context(IntAbstractSolverMaybeDefn),
+    % IntContextSolver = get_maybe_context(IntSolverMaybeDefn),
+    IntContextAbstractStd = get_maybe_context(IntAbstractStdMaybeDefn),
+    IntContextEqv = get_maybe_context(IntEqvMaybeDefn),
+    IntContextDu = get_maybe_context(IntDuMaybeDefn),
+    ImpContextAbstractSolver = get_maybe_context(ImpAbstractSolverMaybeDefn),
+    % ImpContextSolver = get_maybe_context(ImpSolverMaybeDefn),
+    ImpContextAbstractStd = get_maybe_context(ImpAbstractStdMaybeDefn),
+    ImpContextEqv = get_maybe_context(ImpEqvMaybeDefn),
+    ImpContextDu = get_maybe_context(ImpDuMaybeDefn),
+
+    IntContextC      = get_maybe_context(IntMaybeDefnC),
+    IntContextJava   = get_maybe_context(IntMaybeDefnJava),
+    IntContextCsharp = get_maybe_context(IntMaybeDefnCsharp),
+    IntContextErlang = get_maybe_context(IntMaybeDefnErlang),
+    ImpContextC      = get_maybe_context(ImpMaybeDefnC),
+    ImpContextJava   = get_maybe_context(ImpMaybeDefnJava),
+    ImpContextCsharp = get_maybe_context(ImpMaybeDefnCsharp),
+    ImpContextErlang = get_maybe_context(ImpMaybeDefnErlang),
 
     % Now we have at most one definition of each kind in each section,
     % and no definition in a section in which that kind is not allowed.
@@ -332,12 +352,12 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         list.foldl(
             report_any_incompatible_type_definition(TypeCtor,
                 ImpSolverDefn ^ td_context, "solver type", "implementation"),
-            [IntAbstractStdMaybeDefn, IntEqvMaybeDefn, IntDuMaybeDefn,
-                IntMaybeDefnC, IntMaybeDefnJava,
-                IntMaybeDefnCsharp, IntMaybeDefnErlang,
-            ImpAbstractStdMaybeDefn, ImpEqvMaybeDefn, ImpDuMaybeDefn,
-                ImpMaybeDefnC, ImpMaybeDefnJava,
-                ImpMaybeDefnCsharp, ImpMaybeDefnErlang],
+            [IntContextAbstractStd, IntContextEqv, IntContextDu,
+                IntContextC, IntContextJava,
+                IntContextCsharp, IntContextErlang,
+            ImpContextAbstractStd, ImpContextEqv, ImpContextDu,
+                ImpContextC, ImpContextJava,
+                ImpContextCsharp, ImpContextErlang],
             !Specs),
         list.foldl(
             report_any_incompatible_foreign_enum(TypeCtor,
@@ -382,12 +402,12 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         list.foldl(
             report_any_incompatible_type_definition(TypeCtor,
                 EqvDefn ^ td_context, "equivalence type", EqvWhere),
-            [IntAbstractSolverMaybeDefn, IntDuMaybeDefn,
-                IntMaybeDefnC, IntMaybeDefnJava,
-                IntMaybeDefnCsharp, IntMaybeDefnErlang,
-            ImpAbstractSolverMaybeDefn, ImpDuMaybeDefn,
-                ImpMaybeDefnC, ImpMaybeDefnJava,
-                ImpMaybeDefnCsharp, ImpMaybeDefnErlang],
+            [IntContextAbstractSolver, IntContextDu,
+                IntContextC, IntContextJava,
+                IntContextCsharp, IntContextErlang,
+            ImpContextAbstractSolver, ImpContextDu,
+                ImpContextC, ImpContextJava,
+                ImpContextCsharp, ImpContextErlang],
             !Specs),
         list.foldl(
             report_any_incompatible_foreign_enum(TypeCtor,
@@ -423,7 +443,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         list.foldl(
             report_any_incompatible_type_definition(TypeCtor,
                 DuDefn ^ td_context, "discriminated union type", DuWhere),
-            [IntAbstractSolverMaybeDefn, ImpAbstractSolverMaybeDefn],
+            [IntContextAbstractSolver, ImpContextAbstractSolver],
             !Specs),
 
         % The status of TypeCtor depends not just on which section
@@ -499,7 +519,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         list.foldl(
             report_any_incompatible_type_definition(TypeCtor,
                 FirstForeignContext, "foreign type", ForeignWhere),
-            [IntAbstractSolverMaybeDefn, ImpAbstractSolverMaybeDefn],
+            [IntContextAbstractSolver, ImpContextAbstractSolver],
             !Specs),
         list.foldl(
             report_any_incompatible_foreign_enum(TypeCtor,
@@ -543,7 +563,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
             report_any_incompatible_type_definition(TypeCtor,
                 AbstractSolverDefn ^ td_context, "solver type",
                 AbstractSolverWhere),
-            [IntAbstractStdMaybeDefn, ImpAbstractStdMaybeDefn],
+            [IntContextAbstractStd, ImpContextAbstractStd],
             !Specs),
         list.foldl(
             report_any_incompatible_foreign_enum(TypeCtor,
@@ -611,9 +631,15 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         % There is no actual definition to add to !TypeCtorCheckedMap.
     ).
 
+:- func get_maybe_context(maybe(item_type_defn_info_general(T)))
+    = maybe(prog_context).
+
+get_maybe_context(no) = no.
+get_maybe_context(yes(TypeDefnInfo)) = yes(TypeDefnInfo ^ td_context).
+
 :- pred decide_du_foreign_type_section(type_ctor::in,
-    item_type_defn_info::in, module_section::in,
-    maybe(item_type_defn_info)::in,
+    item_type_defn_info_du::in, module_section::in,
+    maybe(item_type_defn_info_abstract)::in,
     c_j_cs_e_maybe_defn::in, c_j_cs_e_maybe_defn::in,
     std_du_type_status::out, c_j_cs_e_maybe_defn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -662,10 +688,11 @@ decide_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
     ).
 
 :- pred decide_only_foreign_type_section(type_ctor::in,
-    maybe(item_type_defn_info)::in, maybe(item_type_defn_info)::in,
+    maybe(item_type_defn_info_abstract)::in,
+        maybe(item_type_defn_info_abstract)::in,
     c_j_cs_e_maybe_defn::in, c_j_cs_e_maybe_defn::in,
     std_abs_type_status::out,
-    item_type_defn_info::out, c_j_cs_e_maybe_defn::out,
+    item_type_defn_info_abstract::out, c_j_cs_e_maybe_defn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_only_foreign_type_section(TypeCtor,
@@ -738,15 +765,14 @@ decide_only_foreign_type_section(TypeCtor,
             % but they won't lead to any problems, since the presence of
             % the error means that we won't actually do anything with the
             % typr_ctor_checked_defn we are constructing.
-            AbstractStdDefn = FirstDefn ^ td_ctor_defn :=
-                parse_tree_abstract_type(abstract_type_general)
+            AbstractStdDefn = FirstDefn ^ td_ctor_defn := abstract_type_general
         ),
         ChosenMaybeDefnCJCsE = ImpMaybeDefnCJCsE
     ).
 
 :- pred decide_du_foreign_representation_for_lang(type_ctor::in,
-    item_type_defn_info::in, maybe_only_constants::in, foreign_language::in,
-    maybe(item_type_defn_info)::in, maybe(item_foreign_enum_info)::in,
+    item_type_defn_info_du::in, maybe_only_constants::in, foreign_language::in,
+    maybe(item_type_defn_info_foreign)::in, maybe(item_foreign_enum_info)::in,
     maybe(foreign_type_or_enum)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -782,7 +808,7 @@ decide_du_foreign_representation_for_lang(TypeCtor, DuDefn, MaybeOnlyConstants,
     ).
 
 :- pred foreign_type_report_any_foreign_enum(type_ctor::in,
-    foreign_language::in, item_type_defn_info::in,
+    foreign_language::in, item_type_defn_info_foreign::in,
     maybe(item_foreign_enum_info)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -808,7 +834,7 @@ foreign_type_report_any_foreign_enum(TypeCtor, Lang, Defn, MaybeEnum,
     ).
 
 :- pred non_enum_du_report_any_foreign_enum(type_ctor::in,
-    item_type_defn_info::in, maybe(item_foreign_enum_info)::in,
+    item_type_defn_info_du::in, maybe(item_foreign_enum_info)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, MaybeEnum, !Specs) :-
@@ -828,7 +854,7 @@ non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, MaybeEnum, !Specs) :-
     ).
 
 :- pred du_imp_report_any_foreign_defn_in_int(type_ctor::in,
-    item_type_defn_info::in, maybe(item_type_defn_info)::in,
+    item_type_defn_info_general(T)::in, maybe(item_type_defn_info_foreign)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 du_imp_report_any_foreign_defn_in_int(TypeCtor, DuDefn, MaybeForeignDefn,
@@ -850,7 +876,7 @@ du_imp_report_any_foreign_defn_in_int(TypeCtor, DuDefn, MaybeForeignDefn,
     ).
 
 :- pred report_any_foreign_type_without_declaration(type_ctor::in,
-    maybe(item_type_defn_info)::in,
+    maybe(item_type_defn_info_foreign)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_any_foreign_type_without_declaration(TypeCtor, MaybeForeignDefn,
@@ -870,7 +896,7 @@ report_any_foreign_type_without_declaration(TypeCtor, MaybeForeignDefn,
     ).
 
 :- pred foreign_int_report_any_foreign_defn_in_imp(type_ctor::in,
-    prog_context::in, maybe(item_type_defn_info)::in,
+    prog_context::in, maybe(item_type_defn_info_foreign)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
@@ -893,7 +919,7 @@ foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
     ).
 
 :- pred report_any_nonabstract_solver_type_in_int(type_ctor::in,
-    maybe(item_type_defn_info)::in,
+    maybe(item_type_defn_info_solver)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_any_nonabstract_solver_type_in_int(TypeCtor, MaybeDefn, !Specs) :-
@@ -911,7 +937,7 @@ report_any_nonabstract_solver_type_in_int(TypeCtor, MaybeDefn, !Specs) :-
     ).
 
 :- pred report_any_redundant_abstract_type_in_imp(type_ctor::in, string::in,
-    maybe(item_type_defn_info)::in,
+    maybe(item_type_defn_info_abstract)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
@@ -931,22 +957,22 @@ report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
 
 :- pred report_any_incompatible_type_definition(type_ctor::in,
     prog_context::in, string::in, string::in,
-    maybe(item_type_defn_info)::in,
+    maybe(prog_context)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_any_incompatible_type_definition(TypeCtor, UsedContext, Kind, Section,
-        MaybeDefn, !Specs) :-
+        MaybeDefnContext, !Specs) :-
     (
-        MaybeDefn = no
+        MaybeDefnContext = no
     ;
-        MaybeDefn = yes(Defn),
+        MaybeDefnContext = yes(DefnContext),
         MainPieces = [words("Error: this definition of"),
             unqual_type_ctor(TypeCtor), words("is incompatible"),
             words("with the"), words(Kind), words("definition"),
             words("in the"), words(Section), words("section."), nl],
         UsedPieces = [words("That definition is here."), nl],
         Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-            [simple_msg(Defn ^ td_context, [always(MainPieces)]),
+            [simple_msg(DefnContext, [always(MainPieces)]),
             simple_msg(UsedContext, [always(UsedPieces)])]),
         !:Specs = [Spec | !.Specs]
     ).
@@ -993,7 +1019,7 @@ report_any_foreign_enum_for_undefined_type(TypeCtor, UndefOrUndecl,
     ).
 
 :- pred maybe_report_declared_but_undefined_type(maybe_insist_on_defn::in,
-    type_ctor::in, item_type_defn_info::in,
+    type_ctor::in, item_type_defn_info_abstract::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
@@ -1037,7 +1063,7 @@ maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
 check_any_type_ctor_defns_for_duplicates(TypeDefnMap, TypeCtor,
         MaybeDefn, !Specs) :-
     ( if map.search(TypeDefnMap, TypeCtor, AllDefns) then
-        AllDefns = type_ctor_defns(AbstractSolverDefns, SolverDefns,
+        AllDefns = type_ctor_all_defns(AbstractSolverDefns, SolverDefns,
             AbstractNonSolverDefns, EqvDefns, DuDefns, ForeignDefns),
         at_most_one_type_defn("abstract solver type", TypeCtor,
             AbstractSolverDefns, AbstractSolverMaybeDefn, !Specs),
@@ -1051,16 +1077,18 @@ check_any_type_ctor_defns_for_duplicates(TypeDefnMap, TypeCtor,
             DuDefns, DuMaybeDefn, !Specs),
         at_most_one_foreign_type_for_all_langs(TypeCtor,
             ForeignDefns, ForeignMaybeDefn, !Specs),
-        MaybeDefn = type_ctor_defns(AbstractSolverMaybeDefn, SolverMaybeDefn,
+        MaybeDefn = type_ctor_maybe_defn(
+            AbstractSolverMaybeDefn, SolverMaybeDefn,
             AbstractNonSolverMaybeDefn, EqvMaybeDefn, DuMaybeDefn,
             ForeignMaybeDefn)
     else
-        MaybeDefn = type_ctor_defns(no, no, no, no, no,
+        MaybeDefn = type_ctor_maybe_defn(no, no, no, no, no,
             c_java_csharp_erlang(no, no, no, no))
     ).
 
 :- pred at_most_one_type_defn(string::in, type_ctor::in,
-    list(item_type_defn_info)::in, maybe(item_type_defn_info)::out,
+    list(item_type_defn_info_general(T))::in,
+        maybe(item_type_defn_info_general(T))::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 at_most_one_type_defn(Kind, TypeCtor, TypeDefns, MaybeTypeDefn, !Specs) :-
@@ -1192,7 +1220,8 @@ report_duplicate_type_defn(Kind, TypeCtor, LeastContext, Context, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred at_most_one_foreign_type_for_lang(type_ctor::in, foreign_language::in,
-    list(item_type_defn_info)::in, maybe(item_type_defn_info)::out,
+    list(item_type_defn_info_foreign)::in,
+        maybe(item_type_defn_info_foreign)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 at_most_one_foreign_type_for_lang(TypeCtor, Lang, TypeDefns,
@@ -1245,7 +1274,7 @@ at_most_one_foreign_enum_for_lang(TypeCtor, Lang, ForeignEnums,
         )
     ).
 
-:- pred accumulate_type_defn_contexts(item_type_defn_info::in,
+:- pred accumulate_type_defn_contexts(item_type_defn_info_general(T)::in,
     set(prog_context)::in, set(prog_context)::out) is det.
 
 accumulate_type_defn_contexts(TypeDefn, !Contexts) :-
@@ -1257,7 +1286,7 @@ accumulate_type_defn_contexts(TypeDefn, !Contexts) :-
 accumulate_foreign_enum_contexts(ForeignEnum, !Contexts) :-
     set.insert(get_foreign_enum_context(ForeignEnum), !Contexts).
 
-:- func get_type_defn_context(item_type_defn_info) = prog_context.
+:- func get_type_defn_context(item_type_defn_info_general(T)) = prog_context.
 
 get_type_defn_context(TypeDefn) = TypeDefn ^ td_context.
 
@@ -1280,32 +1309,22 @@ report_duplicate_foreign_defn(TypeOrEnum, TypeCtor, Lang,
         simple_msg(LeastContext, [always(LeastPieces)])]),
     !:Specs = [Spec | !.Specs].
 
-:- func is_du_type_defn_an_enum_or_dummy(item_type_defn_info) =
+:- func is_du_type_defn_an_enum_or_dummy(item_type_defn_info_du) =
     maybe_only_constants.
 
 is_du_type_defn_an_enum_or_dummy(TypeDefnInfo) = MaybeOnlyConstants :-
-    TypeDefnInfo = item_type_defn_info(_TypeCtor, _TypeParams, TypeDefn,
+    TypeDefnInfo = item_type_defn_info(_TypeCtor, _TypeParams, DetailsDu,
         _TVarSet, _Context, _SeqNum),
-    (
-        TypeDefn = parse_tree_du_type(DetailsDu),
-        ( if du_type_is_enum(DetailsDu, NumFunctors, NumBitsNeeded) then
-            MaybeOnlyConstants = only_constants(NumFunctors, NumBitsNeeded)
-        else if du_type_is_dummy(DetailsDu) then
-            MaybeOnlyConstants = only_constants(1, 0)
-        else
-            MaybeOnlyConstants = not_only_constants
-        )
-    ;
-        ( TypeDefn = parse_tree_abstract_type(_)
-        ; TypeDefn = parse_tree_eqv_type(_)
-        ; TypeDefn = parse_tree_solver_type(_)
-        ; TypeDefn = parse_tree_foreign_type(_)
-        ),
-        unexpected($pred, "not du type")
+    ( if du_type_is_enum(DetailsDu, NumFunctors, NumBitsNeeded) then
+        MaybeOnlyConstants = only_constants(NumFunctors, NumBitsNeeded)
+    else if du_type_is_dummy(DetailsDu) then
+        MaybeOnlyConstants = only_constants(1, 0)
+    else
+        MaybeOnlyConstants = not_only_constants
     ).
 
-:- func get_maybe_type_defns(list(maybe(item_type_defn_info)))
-    = list(item_type_defn_info).
+:- func get_maybe_type_defns(list(maybe(item_type_defn_info_general(T))))
+    = list(item_type_defn_info_general(T)).
 
 get_maybe_type_defns([]) = [].
 get_maybe_type_defns([MaybeTypeDefn | MaybeTypeDefns]) = Defns :-
@@ -1318,7 +1337,7 @@ get_maybe_type_defns([MaybeTypeDefn | MaybeTypeDefns]) = Defns :-
         Defns = [TypeDefn | TailDefns]
     ).
 
-:- func get_maybe_type_defn_contexts(list(maybe(item_type_defn_info)))
+:- func get_maybe_type_defn_contexts(list(maybe(item_type_defn_info_foreign)))
     = list(prog_context).
 
 get_maybe_type_defn_contexts([]) = [].
@@ -1368,22 +1387,12 @@ add_type_ctor_to_field_name_map(TypeCtor, CheckedDefn, !FieldNameMap) :-
         ;
             CheckedStdDefn = std_mer_type_du(_Status, DuDefn,
                 _MaybeOnlyConstants, _MaybeDefnCJCsE),
-            TypeDefn = DuDefn ^ td_ctor_defn,
-            (
-                TypeDefn = parse_tree_du_type(DetailsDu),
-                DetailsDu = type_details_du(OoMCtors,
-                    _MaybeCanonical, _MaybeDirectArgs),
-                OoMCtors = one_or_more(HeadCtor, TailCtors),
-                list.foldl(add_data_ctor_to_field_name_map(TypeCtor),
-                    [HeadCtor | TailCtors], !FieldNameMap)
-            ;
-                ( TypeDefn = parse_tree_abstract_type(_)
-                ; TypeDefn = parse_tree_solver_type(_)
-                ; TypeDefn = parse_tree_eqv_type(_)
-                ; TypeDefn = parse_tree_foreign_type(_)
-                ),
-                unexpected($pred, "not du type")
-            )
+            DetailsDu = DuDefn ^ td_ctor_defn,
+            DetailsDu = type_details_du(OoMCtors,
+                _MaybeCanonical, _MaybeDirectArgs),
+            OoMCtors = one_or_more(HeadCtor, TailCtors),
+            list.foldl(add_data_ctor_to_field_name_map(TypeCtor),
+                [HeadCtor | TailCtors], !FieldNameMap)
         )
     ).
 
