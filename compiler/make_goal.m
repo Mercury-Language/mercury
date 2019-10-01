@@ -191,8 +191,7 @@ create_atomic_complicated_unification(LHS, RHS, Context,
         from_to_insts(free, free)),
     Unification = complicated_unify(UnifyMode, can_fail, []),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
-    goal_info_init(Context, GoalInfo0),
-    goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
+    goal_info_init_context_purity(Context, Purity, GoalInfo),
     GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 

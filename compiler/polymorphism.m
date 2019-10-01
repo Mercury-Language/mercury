@@ -1675,11 +1675,12 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     set_of_var.list_to_set(Args, InsideVars),
     set_of_var.intersect(OutsideVars, InsideVars, LambdaNonLocals),
     GoalId = goal_info_get_goal_id(GoalInfo0),
-    goal_info_init(LambdaGoalInfo0),
-    goal_info_set_context(Context, LambdaGoalInfo0, LambdaGoalInfo1),
-    goal_info_set_nonlocals(LambdaNonLocals, LambdaGoalInfo1, LambdaGoalInfo2),
-    goal_info_set_purity(Purity, LambdaGoalInfo2, LambdaGoalInfo3),
-    goal_info_set_goal_id(GoalId, LambdaGoalInfo3, LambdaGoalInfo),
+
+    instmap_delta_init_unreachable(DummyInstMapDelta),
+    DummyDetism = detism_erroneous,
+    goal_info_init(LambdaNonLocals, DummyInstMapDelta, DummyDetism, Purity,
+        Context, LambdaGoalInfo0),
+    goal_info_set_goal_id(GoalId, LambdaGoalInfo0, LambdaGoalInfo),
     LambdaGoal = hlds_goal(LambdaGoalExpr, LambdaGoalInfo),
 
     % Work out the modes of the introduced lambda variables and the determinism

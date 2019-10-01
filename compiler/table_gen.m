@@ -2403,11 +2403,12 @@ generate_get_table_info_goal(PredId, ProcId, Context, !VarSet, !VarTypes,
 
 :- pred attach_call_table_tip(hlds_goal::in, hlds_goal::out) is det.
 
-attach_call_table_tip(hlds_goal(GoalExpr, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo)) :-
+attach_call_table_tip(Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     Features0 = goal_info_get_features(GoalInfo0),
     set.insert(feature_call_table_gen, Features0, Features),
-    goal_info_set_features(Features, GoalInfo0, GoalInfo).
+    goal_info_set_features(Features, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -50,6 +50,7 @@
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.instmap.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
@@ -664,17 +665,18 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         InstanceProcDefn = instance_proc_def_name(InstancePredName),
         % Add the body of the introduced pred.
         % First the goal info, ...
-        goal_info_init(GoalInfo0),
-        goal_info_set_context(Context, GoalInfo0, GoalInfo1),
         set_of_var.list_to_set(HeadVars, NonLocals),
-        goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
         ( if check_marker(Markers, marker_is_impure) then
-            goal_info_set_purity(purity_impure, GoalInfo2, GoalInfo)
+            Purity = purity_impure
         else if check_marker(Markers, marker_is_semipure) then
-            goal_info_set_purity(purity_semipure, GoalInfo2, GoalInfo)
+            Purity = purity_semipure
         else
-            GoalInfo = GoalInfo2
+            Purity = purity_pure
         ),
+        instmap_delta_init_unreachable(DummyInstMapDelta),
+        DummyDetism = detism_erroneous,
+        goal_info_init(NonLocals, DummyInstMapDelta, DummyDetism, Purity,
+            Context, GoalInfo),
         % ... and then the goal itself.
         varset.init(VarSet0),
         make_n_fresh_vars("HeadVar__", PredArity, HeadVars, VarSet0, VarSet),
