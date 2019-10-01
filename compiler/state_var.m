@@ -215,8 +215,9 @@
     % corresponding state variable mappings. Any !X should already have been
     % expanded into !.X, !:X via a call to expand_bang_state_pairs.
     %
-:- pred substitute_state_var_mappings(list(prog_term)::in,
-    list(prog_term)::out, prog_varset::in, prog_varset::out,
+:- pred substitute_state_var_mappings(
+    list(prog_term)::in, list(prog_term)::out,
+    prog_varset::in, prog_varset::out,
     svar_state::in, svar_state::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 

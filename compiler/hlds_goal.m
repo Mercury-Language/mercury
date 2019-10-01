@@ -1520,6 +1520,9 @@
 :- pred goal_info_init(set_of_progvar::in, instmap_delta::in, determinism::in,
     purity::in, prog_context::in, hlds_goal_info::out) is det.
 
+:- pred goal_info_init_context_purity(prog_context::in, purity::in,
+    hlds_goal_info::out) is det.
+
 :- func impure_init_goal_info(set_of_progvar, instmap_delta, determinism)
     = hlds_goal_info.
 :- func impure_reachable_init_goal_info(set_of_progvar, determinism)
@@ -2056,6 +2059,16 @@ goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
         hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
+    set.init(Features),
+    GoalId = goal_id(-1),
+    GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
+        Features, GoalId, no_code_gen_info,
+        hlds_goal_extra_info_init(Context)).
+
+goal_info_init_context_purity(Context, Purity, GoalInfo) :-
+    Detism = detism_erroneous,
+    instmap_delta_init_unreachable(InstMapDelta),
+    NonLocals = set_of_var.init,
     set.init(Features),
     GoalId = goal_id(-1),
     GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,

@@ -484,8 +484,8 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         expand_bang_state_pairs_in_terms(ArgTerms0, ArgTerms1),
         rename_vars_in_term_list(need_not_rename, Renaming,
             ArgTerms1, ArgTerms),
-        make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars, !VarSet,
-            !SVarState, !Specs),
+        make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars, HeadVarsArgTerms,
+            !VarSet, !SVarState, !Specs),
         list.length(HeadVars, Arity),
         list.duplicate(Arity, in_mode, Modes),
         Details = event_call(EventName),
@@ -494,7 +494,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         goal_info_init(Context, GoalInfo),
         HLDSGoal0 = hlds_goal(GoalExpr0, GoalInfo),
         CallId = generic_call_id(gcid_event_call(EventName)),
-        insert_arg_unifications(HeadVars, ArgTerms, Context, ac_call(CallId),
+        insert_arg_unifications(HeadVarsArgTerms, Context, ac_call(CallId),
             HLDSGoal0, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         svar_finish_atomic_goal(LocKind, !SVarState)
@@ -549,8 +549,8 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         else
             rename_vars_in_term_list(need_not_rename, Renaming,
                 ArgTerms1, ArgTerms),
-            make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars, !VarSet,
-                !SVarState, !Specs),
+            make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars,
+                HeadVarsArgTerms, !VarSet, !SVarState, !Specs),
             list.length(ArgTerms, Arity),
             ( if
                 % Check for a higher-order call,
@@ -567,7 +567,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
 
                 GenericCall = higher_order(PredVar, Purity, pf_predicate,
                     Arity),
-                Call = generic_call(GenericCall, RealHeadVars, Modes,
+                GoalExpr = generic_call(GenericCall, RealHeadVars, Modes,
                     MaybeArgRegs, Det),
 
                 hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
@@ -578,17 +578,16 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
                 ModeId = invalid_proc_id,
 
                 MaybeUnifyContext = no,
-                Call = plain_call(PredId, ModeId, HeadVars, not_builtin,
+                GoalExpr = plain_call(PredId, ModeId, HeadVars, not_builtin,
                     MaybeUnifyContext, Name),
-                CallId =
-                    plain_call_id(simple_call_id(pf_predicate, Name, Arity))
+                SimpleCallId = simple_call_id(pf_predicate, Name, Arity),
+                CallId = plain_call_id(SimpleCallId)
             ),
-            goal_info_init(Context, GoalInfo0),
-            goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-            HLDSGoal0 = hlds_goal(Call, GoalInfo),
+            goal_info_init_context_purity(Context, Purity, GoalInfo),
+            HLDSGoal0 = hlds_goal(GoalExpr, GoalInfo),
 
             record_called_pred_or_func(pf_predicate, Name, Arity, !QualInfo),
-            insert_arg_unifications(HeadVars, ArgTerms, Context,
+            insert_arg_unifications(HeadVarsArgTerms, Context,
                 ac_call(CallId), HLDSGoal0, HLDSGoal, !SVarState, !SVarStore,
                 !VarSet, !ModuleInfo, !QualInfo, !Specs)
         ),
@@ -776,81 +775,74 @@ transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
 transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         HLDSGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
-    make_fresh_arg_vars_subst_svars(ArgTerms, ArgVars, !VarSet,
-        !SVarState, !Specs),
-    ( if
-        ArgVars = [FieldValueVarPrime, TermInputVarPrime, TermOutputVarPrime]
-    then
-        FieldValueVar = FieldValueVarPrime,
-        TermInputVar = TermInputVarPrime,
-        TermOutputVar = TermOutputVarPrime
-    else
+    make_fresh_arg_vars_subst_svars(ArgTerms, _ArgVars, ArgVarsTerms,
+        !VarSet, !SVarState, !Specs),
+    (
+        ArgVarsTerms = [FieldValueVarTerm, TermInputVarTerm, TermOutputVarTerm]
+    ;
+        ( ArgVarsTerms = []
+        ; ArgVarsTerms = [_]
+        ; ArgVarsTerms = [_, _]
+        ; ArgVarsTerms = [_, _, _, _ | _]
+        ),
         unexpected($pred, "arity != 3")
     ),
+    FieldValueVarTerm = unify_var_term(FieldValueVar, FieldValueTerm),
+    TermInputVarTerm = unify_var_term(TermInputVar, TermInputTerm),
+    TermOutputVarTerm = unify_var_term(TermOutputVar, TermOutputTerm),
+    InputTermArgNumber = 1,
+    InputTermArgContext = ac_functor(Functor, umc_explicit, []),
     (
         AccessType = set,
         expand_set_field_function_call(Context, umc_explicit, [],
             FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
             Functor, InnermostFunctor - InnermostSubContext, HLDSGoal0,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-
         FieldArgNumber = 2,
         FieldArgContext = ac_functor(InnermostFunctor, umc_explicit,
             InnermostSubContext),
-        InputTermArgNumber = 1,
-        InputTermArgContext = ac_functor(Functor, umc_explicit, []),
         ( if Functor = cons(FuncNamePrime, FuncArityPrime, _TypeCtor) then
             FuncName = FuncNamePrime,
             FuncArity = FuncArityPrime
         else
             unexpected($pred, "not cons")
         ),
+        SimpleCallId = simple_call_id(pf_function, FuncName, FuncArity),
         % DCG arguments should always be distinct variables,
         % so this context should never be used.
         OutputTermArgNumber = 3,
-        SimpleCallId = simple_call_id(pf_function, FuncName, FuncArity),
-        OutputTermArgContext = ac_call(plain_call_id(SimpleCallId)),
-
-        ArgContexts = [
-            FieldArgNumber - FieldArgContext,
-            InputTermArgNumber - InputTermArgContext,
-            OutputTermArgNumber - OutputTermArgContext
-        ],
-        insert_arg_unifications_with_contexts(ArgVars, ArgTerms,
-            ArgContexts, Context, HLDSGoal0, HLDSGoal,
-            !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs)
+        OutputTermArgContext = ac_call(plain_call_id(SimpleCallId))
     ;
         AccessType = get,
         expand_dcg_field_extraction_goal(Context, umc_explicit, [],
             FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
-            Functor, InnermostFunctor - _InnerSubContext, HLDSGoal0,
+            Functor, InnermostFunctor - _InnermostSubContext, HLDSGoal0,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        InputTermArgNumber = 1,
-        InputTermArgContext = ac_functor(Functor, umc_explicit, []),
-
         ( if InnermostFunctor = cons(FuncNamePrime, FuncArityPrime, _TC) then
             FuncName = FuncNamePrime,
             FuncArity = FuncArityPrime
         else
             unexpected($pred, "not cons")
         ),
-        FieldArgNumber = 2,
         SimpleCallId = simple_call_id(pf_function, FuncName, FuncArity),
+        FieldArgNumber = 2,
         FieldArgContext = ac_call(plain_call_id(SimpleCallId)),
-
         % DCG arguments should always be distinct variables,
         % so this context should never be used.
-        OutputTermArgNumber = 1,
-        OutputTermArgContext = ac_functor(Functor, umc_explicit, []),
-        ArgContexts = [
-            FieldArgNumber - FieldArgContext,
-            InputTermArgNumber - InputTermArgContext,
-            OutputTermArgNumber - OutputTermArgContext
-        ],
-        insert_arg_unifications_with_contexts(ArgVars, ArgTerms,
-            ArgContexts, Context, HLDSGoal0, HLDSGoal,
-            !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs)
-    ).
+        OutputTermArgNumber = 3,
+        OutputTermArgContext = ac_functor(Functor, umc_explicit, [])
+    ),
+
+    FieldValueVTNC = unify_var_term_num_context(FieldValueVar,
+        FieldValueTerm, FieldArgNumber, FieldArgContext),
+    TermInputVTNC = unify_var_term_num_context(TermInputVar,
+        TermInputTerm, InputTermArgNumber, InputTermArgContext),
+    TermOutputVTNC = unify_var_term_num_context(TermOutputVar,
+        TermOutputTerm, OutputTermArgNumber, OutputTermArgContext),
+    ArgVarsTermsNumsContexts = [FieldValueVTNC, TermInputVTNC, TermOutputVTNC],
+    insert_arg_unifications_with_contexts(ArgVarsTermsNumsContexts,
+        Context, HLDSGoal0, HLDSGoal,
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
     % accumulate_plain_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
     %   ...):
@@ -1294,8 +1286,8 @@ dcg_field_error_context_pieces(AccessType) = ContextPieces :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet, !SVarState, !Specs) :-
-    make_fresh_arg_vars_subst_svars(Args0, HeadVars, !VarSet,
-        !SVarState, !Specs),
+    make_fresh_arg_vars_subst_svars(Args0, HeadVars, _HeadVarsArgs0,
+        !VarSet, !SVarState, !Specs),
     MaybeUnifyContext = no,
     GoalExpr = plain_call(invalid_pred_id, invalid_proc_id, HeadVars,
         not_builtin, MaybeUnifyContext, unqualified(UpdateStr)),
