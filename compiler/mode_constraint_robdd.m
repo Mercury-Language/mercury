@@ -154,9 +154,7 @@
 
 :- implementation.
 
-% :- import_module mode_robdd.tfeir.
 :- import_module mode_robdd.tfeirn.
-% :- import_module mode_robdd.check.
 
 :- import_module bimap.
 :- import_module list.

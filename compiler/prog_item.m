@@ -2099,6 +2099,7 @@ make_ims_used_and_imported(ImportLocn, ModuleName, IntFileKind) =
         iou_used_and_imported).
 make_ims_abstract_imported(ModuleName, IntFileKind) =
     ims_abstract_imported(ModuleName, IntFileKind).
+:- pragma no_determinism_warning(make_ims_int3_implementation/2).
 make_ims_int3_implementation(_ModuleName, _IntFileKind) = _ :-
     unexpected($pred,
         "An .int3 file should not have an implementation section").
