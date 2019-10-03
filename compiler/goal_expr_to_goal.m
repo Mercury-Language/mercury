@@ -57,6 +57,7 @@
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
@@ -69,6 +70,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
+:- import_module getopt_io.
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
@@ -187,12 +189,34 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         goal_info_init(Context, GoalInfo),
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        Goal = disable_warnings_expr(Context, HeadWarnings, TailWarnings,
+        Goal = disable_warnings_expr(Context, HeadWarning, TailWarnings,
             SubGoal),
-        transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
-            HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs),
-        GoalExpr = scope(disable_warnings(HeadWarnings, TailWarnings),
+        ( if
+            ( HeadWarning = goal_warning_occurs_check
+            ; list.member(goal_warning_occurs_check, TailWarnings)
+            )
+        then
+            module_info_get_globals(!.ModuleInfo, Globals0),
+            globals.lookup_bool_option(Globals0,
+                warn_suspected_occurs_check_failure, WarnOccursCheck0),
+            globals.set_option(warn_suspected_occurs_check_failure,
+                bool(no), Globals0, Globals1),
+            module_info_set_globals(Globals1, !ModuleInfo),
+
+            transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
+                HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+                !ModuleInfo, !QualInfo, !Specs),
+
+            module_info_get_globals(!.ModuleInfo, Globals2),
+            globals.set_option(warn_suspected_occurs_check_failure,
+                bool(WarnOccursCheck0), Globals2, Globals3),
+            module_info_set_globals(Globals3, !ModuleInfo)
+        else
+            transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
+                HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+                !ModuleInfo, !QualInfo, !Specs)
+        ),
+        GoalExpr = scope(disable_warnings(HeadWarning, TailWarnings),
             HLDSSubGoal),
         goal_info_init(Context, GoalInfo),
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)

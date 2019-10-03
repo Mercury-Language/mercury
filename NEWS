@@ -678,6 +678,9 @@ Changes to the Mercury compiler:
   to turn those mutually recursive procedures into procedures that each
   contain only *self* tail recursion.
 
+* We have significantly improved the compiler's ability to detect, and
+  to generate warnings about, code that violates the occurs check.
+
 * We have fixed a long-standing bug causing crashes in deep profiling
   grades, related to unify/compare for tuples. (Bug #3)
 

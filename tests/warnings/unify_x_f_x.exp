@@ -1,6 +1,3 @@
-unify_x_f_x.m:023: In clause for `get_percent(in, out, out)':
-unify_x_f_x.m:023:   warning: unification of `STATE_VARIABLE_Chars_0' and
-unify_x_f_x.m:023:   list.'[|]' cannot succeed, because
-unify_x_f_x.m:023:   `STATE_VARIABLE_Chars_0' cannot be equal to a term
-unify_x_f_x.m:023:   containing itself.
 unify_x_f_x.m:023: Warning: the condition of this if-then-else cannot succeed.
+unify_x_f_x.m:023: Warning: the variable `STATE_VARIABLE_Chars_0' is unified
+unify_x_f_x.m:023:   with a term containing itself.

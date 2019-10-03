@@ -6851,6 +6851,14 @@ some actual errors may not be detected at all.
 Do not warn about one state variable shadowing another.
 
 @sp 1
+@item --no-warn-suspected-occurs-check-failure
+@findex --no-warn-suspected-occurs-check-failure
+Do not warn about code that looks like it unifies a variable
+with a term that contains that same variable.
+Such code cannot succeed because
+it fails what is called the @samp{occurs check}.
+
+@sp 1
 @item --no-inform-inferred
 @findex --no-inform-inferred
 Do not generate messages about inferred types or modes.

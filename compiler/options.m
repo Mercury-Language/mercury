@@ -208,6 +208,7 @@
     ;       warn_suspicious_foreign_procs
     ;       warn_suspicious_foreign_code
     ;       warn_state_var_shadowing
+    ;       warn_suspected_occurs_check_failure
     ;       inform_inferred
     ;       inform_inferred_types
     ;       inform_inferred_modes
@@ -1245,6 +1246,7 @@ option_defaults_2(warning_option, [
     warn_suspicious_foreign_procs       -   bool(no),
     warn_suspicious_foreign_code        -   bool(no),
     warn_state_var_shadowing            -   bool(yes),
+    warn_suspected_occurs_check_failure -   bool(yes),
     inform_inferred                     -   bool_special,
     inform_inferred_types               -   bool(yes),
     inform_inferred_modes               -   bool(yes),
@@ -2171,6 +2173,10 @@ long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
 long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs).
 long_option("warn-suspicious-foreign-code", warn_suspicious_foreign_code).
 long_option("warn-state-var-shadowing", warn_state_var_shadowing).
+long_option("warn-suspected-occurs-failure",
+                                        warn_suspected_occurs_check_failure).
+long_option("warn-suspected-occurs-check-failure",
+                                        warn_suspected_occurs_check_failure).
 long_option("inform-inferred",          inform_inferred).
 long_option("inform-inferred-types",    inform_inferred_types).
 long_option("inform-inferred-modes",    inform_inferred_modes).
@@ -3462,6 +3468,7 @@ non_style_warning_options = [
     warn_stubs,
     warn_table_with_inline,
     warn_non_term_special_preds,
+    warn_suspected_occurs_check_failure,
     inform_inferred_types
 ].
 
@@ -4017,6 +4024,10 @@ options_help_warning -->
         "\tpragmas.",
         "--no-warn-state-var-shadowing",
         "\tDo not warn about one state variable shadowing another.",
+        "--no-warn-suspected-occurs-check-failure",
+        "\tDo not warn about code that looks like it unifies a variable",
+        "\twith a term that contains that same variable. Such code cannot",
+        "\tsucceed because it fails what is called the `occurs check'.",
         "--no-inform-inferred",
         "\tDo not generate messages about inferred types or modes.",
         "--no-inform-inferred-types",

@@ -12,6 +12,8 @@ ambiguous_overloading_error.m:057:     the builtin type constructor
 ambiguous_overloading_error.m:057:     `character'.
 ambiguous_overloading_error.m:058:   The function symbol `f'/0 is also
 ambiguous_overloading_error.m:058:   overloaded here.
+ambiguous_overloading_error.m:059: Warning: the variable `L' is unified with a
+ambiguous_overloading_error.m:059:   term containing itself.
 ambiguous_overloading_error.m:062: In clause for predicate `ambig_overload2'/1:
 ambiguous_overloading_error.m:062:   warning: highly ambiguous overloading.
 ambiguous_overloading_error.m:062:   The following symbols were overloaded in

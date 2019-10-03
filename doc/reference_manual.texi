@@ -1088,6 +1088,9 @@ the following warning categories:
 @table @asis
 @item @code{singleton_vars}
 Disable the generation of singleton variable warnings.
+@item @code{suspected_occurs_check_failure}
+Disable the generation of warnings about code that looks like
+it unifies a variable with a term that contains that same variable.
 @c @item @code{non_tail_recursive_calls}
 @c Disable the generation of warnings about recursive calls
 @c that are not @emph{tail}-recursive calls.

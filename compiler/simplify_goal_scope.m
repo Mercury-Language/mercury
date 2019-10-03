@@ -257,6 +257,10 @@ disable_simplify_warning(Warning, !Tasks) :-
         % Warning about singleton vars is done when clauses are added
         % to the HLDS, not during simplification.
     ;
+        Warning = goal_warning_occurs_check
+        % Warning about occurs check violations is done during the creation
+        % of the HLDS, not during simplification.
+    ;
         Warning = goal_warning_non_tail_recursive_calls
         % Warning about non-tail-recursive calls is done during
         % code generation, not during simplification. (What calls

@@ -681,8 +681,11 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             % will transform X = f(g(X)) into superhomogeneous form as
             % X = f(Y), Y = g(X), and neither of those unifications
             % will pass the list.member(X, ArgVars0) test above.
-            Warning = cannot_succeed_ground_occur_check(X, ConsId),
-            mode_info_warning(Warning, !ModeInfo),
+            %
+            % We disable this warning, because superhomogeneous.m
+            % should have generated a warning for this already.
+            % Warning = cannot_succeed_ground_occur_check(X, ConsId),
+            % mode_info_warning(Warning, !ModeInfo),
             modecheck_set_var_inst(X, not_reached, no, !ModeInfo),
             GoalExpr = disj([])
         else

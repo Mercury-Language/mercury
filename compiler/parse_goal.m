@@ -1368,6 +1368,9 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
             WarningFunctor = "non_tail_recursive_calls",
             Warning = goal_warning_non_tail_recursive_calls
         ;
+            WarningFunctor = "suspected_occurs_check_failure",
+            Warning = goal_warning_occurs_check
+        ;
             WarningFunctor = "singleton_vars",
             Warning = goal_warning_singleton_vars
         ;

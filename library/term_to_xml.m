@@ -782,7 +782,8 @@ mangle(Functor) = Element :-
     string.split(Functor, 1, Head, Tail),
     ( if
         string.is_all_alpha(Head),
-        string.to_lower(Head) = Head
+        LowerHead = string.to_lower(Head),
+        Head = LowerHead
     then
         First = Head,
         Rest = Tail

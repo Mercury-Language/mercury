@@ -1,0 +1,2 @@
+occurs.m:019: Warning: the variable `A' is unified with a term containing
+occurs.m:019:   itself.

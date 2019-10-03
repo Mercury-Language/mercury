@@ -57,7 +57,9 @@
 :- type unify_var_term
     --->    unify_var_term(prog_var, prog_term).
 
-    % A variable and a term it is to be unified with, and ZZZ
+    % A variable and a term it is to be unified with, and information
+    % about where the unificationis taking place: the argument number
+    % in a call, and the context of that argument.
 :- type unify_var_term_num_context
     --->    unify_var_term_num_context(prog_var, prog_term, int, arg_context).
 
@@ -140,6 +142,7 @@
 :- import_module hlds.make_hlds.goal_expr_to_goal.
 :- import_module libs.
 :- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
+:- import_module libs.options.  % for warn_suspected_occurs_check_failure
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_qual.
@@ -187,8 +190,9 @@ insert_arg_unifications(XVarsArgTerms0, Context, ArgContext, Goal0, Goal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     substitute_state_var_mappings_unify_var_term(XVarsArgTerms0, XVarsArgTerms,
         !VarSet, !SVarState, !Specs),
+    map.init(AncestorVarMap),
     do_arg_unifications(XVarsArgTerms, Context, ArgContext,
-        construct_bottom_up, 1, Expansions,
+        construct_bottom_up, 1, AncestorVarMap, Expansions,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     Goal0 = hlds_goal(_, GoalInfo0),
     insert_expansions_before_goal_top_not_fgti(GoalInfo0, Expansions,
@@ -200,8 +204,9 @@ insert_arg_unifications_with_contexts(XVarsArgTermsArgNumsContexts0,
     substitute_state_var_mappings_unify_var_term_num_context(
         XVarsArgTermsArgNumsContexts0, XVarsArgTermsArgNumsContexts,
         !VarSet, !SVarState, !Specs),
+    map.init(AncestorVarMap),
     do_arg_unifications_with_contexts(XVarsArgTermsArgNumsContexts,
-        Context, construct_bottom_up, Expansions,
+        Context, construct_bottom_up, AncestorVarMap, Expansions,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     Goal0 = hlds_goal(_, GoalInfo0),
     insert_expansions_before_goal_top_not_fgti(GoalInfo0, Expansions,
@@ -272,6 +277,8 @@ unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
                 maybe_fgti_var_size,
                 cord(hlds_goal)
             ).
+
+:- type ancestor_var_map == map(prog_var, prog_context).
 
 %-----------------------------------------------------------------------------%
 
@@ -428,86 +435,91 @@ project_expansion_goals(expansion(_, GoalCord), GoalCord).
 
 :- pred do_arg_unifications(list(unify_var_term)::in,
     prog_context::in, arg_context::in,
-    goal_order::in, int::in, list(expansion)::out,
+    goal_order::in, int::in, ancestor_var_map::in, list(expansion)::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-do_arg_unifications([], _Context, _ArgContext, _Order, _ArgNum, [],
+do_arg_unifications([], _Context, _ArgContext, _Order, _ArgNum,
+        _AncestorVarMap, [],
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 do_arg_unifications([unify_var_term(XVar, YTerm) | XVarsYTerms],
-        Context, ArgContext, Order, ArgNum, [Expansion | Expansions],
+        Context, ArgContext, Order, ArgNum,
+        AncestorVarMap, [Expansion | Expansions],
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     % ZZZ arg order
     do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
-        Expansion,
+        AncestorVarMap, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     do_arg_unifications(XVarsYTerms, Context, ArgContext, Order, ArgNum + 1,
-        Expansions,
+        AncestorVarMap, Expansions,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred do_arg_unifications_with_fresh_vars(list(prog_term)::in,
     prog_context::in, arg_context::in, goal_order::in, int::in,
-    list(prog_var)::in, list(prog_var)::out, list(expansion)::out,
+    list(prog_var)::in, ancestor_var_map::in,
+    list(prog_var)::out, list(expansion)::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 do_arg_unifications_with_fresh_vars([], _Context, _ArgContext,
-        _Order, _ArgNum, _, [], [], !SVarState, !SVarStore,
-        !VarSet, !ModuleInfo, !QualInfo, !Specs).
+        _Order, _ArgNum, _SeenXVars, _AncestorVarMap, [], [],
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 do_arg_unifications_with_fresh_vars([YTerm | YTerms], Context, ArgContext,
-        Order, ArgNum, !.SeenXVars, [XVar | XVars], [Expansion | Expansions],
+        Order, ArgNum, !.SeenXVars, AncestorVarMap,
+        [XVar | XVars], [Expansion | Expansions],
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     make_fresh_arg_var_no_svar(YTerm, XVar, !.SeenXVars, !VarSet),
     !:SeenXVars = [XVar | !.SeenXVars],
     do_arg_unification(XVar, YTerm, Context, ArgContext, Order,
-        ArgNum, Expansion, !SVarState, !SVarStore,
-        !VarSet, !ModuleInfo, !QualInfo, !Specs),
+        ArgNum, AncestorVarMap, Expansion,
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     do_arg_unifications_with_fresh_vars(YTerms, Context, ArgContext, Order,
-        ArgNum + 1, !.SeenXVars, XVars, Expansions, !SVarState, !SVarStore,
-        !VarSet, !ModuleInfo, !QualInfo, !Specs).
+        ArgNum + 1, !.SeenXVars, AncestorVarMap, XVars, Expansions,
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
-:- pred do_arg_unifications_with_contexts(
-    list(unify_var_term_num_context)::in,
-    prog_context::in, goal_order::in, list(expansion)::out,
+:- pred do_arg_unifications_with_contexts(list(unify_var_term_num_context)::in,
+    prog_context::in, goal_order::in, ancestor_var_map::in,
+    list(expansion)::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-do_arg_unifications_with_contexts([], _Context, _Order, [],
+do_arg_unifications_with_contexts([], _Context, _Order, _AncestorVarMap, [],
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 do_arg_unifications_with_contexts(
         [HeadXVarYTermArgContext | TailXVarsYTermsArgContexts],
-        Context, Order, Expansions,
+        Context, Order, AncestorVarMap, Expansions,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     HeadXVarYTermArgContext = unify_var_term_num_context(HeadXVar,
         HeadYTerm, HeadArgNumber, HeadArgContext),
     do_arg_unification(HeadXVar, HeadYTerm, Context, HeadArgContext, Order,
-        HeadArgNumber, HeadExpansion, !SVarState, !SVarStore,
+        HeadArgNumber, AncestorVarMap, HeadExpansion, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
     do_arg_unifications_with_contexts(TailXVarsYTermsArgContexts,
-        Context, Order, TailExpansions,
+        Context, Order, AncestorVarMap, TailExpansions,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     Expansions = [HeadExpansion | TailExpansions].
 
 :- pred do_arg_unification(prog_var::in, prog_term::in,
     prog_context::in, arg_context::in,
-    goal_order::in, int::in, expansion::out,
+    goal_order::in, int::in, ancestor_var_map::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
-        Expansion, !SVarState, !SVarStore,
+        !.AncestorVarMap, Expansion, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     % It is the caller's job to make sure that if needed, then both
     % XVar and the top level of YTerm have already been through
     % state var mapping expansion.
+    occurs_check(!.ModuleInfo, !.VarSet, !.AncestorVarMap, XVar, !Specs),
     (
         YTerm = term.variable(YVar, YVarContext),
         ( if XVar = YVar then
@@ -527,8 +539,8 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
             MainContext, SubContext),
         unravel_var_functor_unification(XVar, YFunctor, YArgTerms,
             YFunctorContext, Context, MainContext, SubContext, purity_pure,
-            Order, Expansion, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs)
+            Order, !.AncestorVarMap, Expansion, !SVarState, !SVarStore,
+            !VarSet, !ModuleInfo, !QualInfo, !Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -547,7 +559,7 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
     substitute_state_var_mapping(LHS0, LHS, !VarSet, !SVarState, !Specs),
     substitute_state_var_mapping(RHS0, RHS, !VarSet, !SVarState, !Specs),
     classify_unravel_unification(LHS, RHS,
-        Context, MainContext, SubContext, Purity, Order, Expansion,
+        Context, MainContext, SubContext, Purity, Order, map.init, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred do_unravel_var_unification(prog_var::in, prog_term::in,
@@ -563,20 +575,20 @@ do_unravel_var_unification(LHSVar, RHS0, Context, MainContext, SubContext,
         !ModuleInfo, !QualInfo, !Specs) :-
     substitute_state_var_mapping(RHS0, RHS, !VarSet, !SVarState, !Specs),
     classify_unravel_var_unification(LHSVar, RHS,
-        Context, MainContext, SubContext, Purity, Order, Expansion,
+        Context, MainContext, SubContext, Purity, Order, map.init, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred classify_unravel_unification(prog_term::in, prog_term::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
-    purity::in, goal_order::in, expansion::out,
+    purity::in, goal_order::in, ancestor_var_map::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
-        Purity, Order, Expansion, !SVarState, !SVarStore, !VarSet,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        Purity, Order, !.AncestorVarMap, Expansion, !SVarState, !SVarStore,
+        !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     (
         % `X = Y' needs no unravelling.
         XTerm = term.variable(XVar, _),
@@ -589,14 +601,14 @@ classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
         YTerm = term.functor(YFunctor, YArgTerms, YFunctorContext),
         unravel_var_functor_unification(XVar, YFunctor, YArgTerms,
             YFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, Expansion, !SVarState, !SVarStore,
+            Purity, Order, !.AncestorVarMap, Expansion, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs)
     ;
         XTerm = term.functor(XFunctor, XArgTerms, XFunctorContext),
         YTerm = term.variable(YVar, _),
         unravel_var_functor_unification(YVar, XFunctor, XArgTerms,
             XFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, Expansion, !SVarState, !SVarStore,
+            Purity, Order, !.AncestorVarMap, Expansion, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs)
     ;
         % If we find a unification of the form `f1(...) = f2(...)',
@@ -608,13 +620,16 @@ classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
         XTerm = term.functor(XFunctor, XArgTerms, XFunctorContext),
         YTerm = term.functor(YFunctor, YArgTerms, YFunctorContext),
         varset.new_var(TmpVar, !VarSet),
+        % TmpVar cannot occur in either XTerm or YTerm, so adding it
+        % to !AncestorVarMap would not result in any hits, and would only
+        % slow down lookups.
         unravel_var_functor_unification(TmpVar, XFunctor, XArgTerms,
             XFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, ExpansionX,
+            Purity, Order, !.AncestorVarMap, ExpansionX,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         unravel_var_functor_unification(TmpVar, YFunctor, YArgTerms,
             YFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, ExpansionY,
+            Purity, Order, !.AncestorVarMap, ExpansionY,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         goal_info_init(Context, GoalInfo),
         expansion_to_goal_cord_wrap_if_fgti(GoalInfo, ExpansionX,
@@ -627,18 +642,19 @@ classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
 
 :- pred classify_unravel_var_unification(prog_var::in, prog_term::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
-    purity::in, goal_order::in, expansion::out,
+    purity::in, goal_order::in, ancestor_var_map::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
-        Purity, Order, Expansion, !SVarState, !SVarStore, !VarSet,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        Purity, Order, AncestorVarMap, Expansion, !SVarState, !SVarStore,
+        !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     (
         % `X = Y' needs no unravelling.
         YTerm = term.variable(YVar, _),
+        occurs_check(!.ModuleInfo, !.VarSet, AncestorVarMap, YVar, !Specs),
         make_atomic_unification(XVar, rhs_var(YVar), Context, MainContext,
             SubContext, Purity, Goal, !QualInfo),
         Expansion = expansion(not_fgti, cord.singleton(Goal))
@@ -646,7 +662,7 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
         YTerm = term.functor(YFunctor, YArgTerms, YFunctorContext),
         unravel_var_functor_unification(XVar, YFunctor, YArgTerms,
             YFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, Expansion, !SVarState, !SVarStore,
+            Purity, Order, AncestorVarMap, Expansion, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs)
     ).
 
@@ -665,15 +681,17 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
 :- pred unravel_var_functor_unification(prog_var::in, term.const::in,
     list(prog_term)::in, term.context::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
-    purity::in, goal_order::in, expansion::out,
+    purity::in, goal_order::in, ancestor_var_map::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
-        Context, MainContext, SubContext, Purity, Order, Expansion,
+        Context, MainContext, SubContext,
+        Purity, Order, !.AncestorVarMap, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+    map.search_insert(XVar, Context, _OldContext, !AncestorVarMap),
     substitute_state_var_mappings(YArgTerms0, YArgTerms, !VarSet,
         !SVarState, !Specs),
     ( if
@@ -740,7 +758,8 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                 % type-checking.
                 do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
                     YFunctorContext, ArgContext, deconstruct_top_down, 1,
-                    [], YVars, ArgExpansions, !SVarState, !SVarStore, !VarSet,
+                    [], !.AncestorVarMap, YVars, ArgExpansions,
+                    !SVarState, !SVarStore, !VarSet,
                     !ModuleInfo, !QualInfo, !Specs),
                 make_atomic_unification(XVar,
                     rhs_functor(ConsId, is_not_exist_constr, YVars),
@@ -759,7 +778,8 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                 % code around that unification.
                 do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
                     YFunctorContext, ArgContext, construct_bottom_up, 1,
-                    [], YVars, ArgExpansions, !SVarState, !SVarStore, !VarSet,
+                    [], !.AncestorVarMap, YVars, ArgExpansions,
+                    !SVarState, !SVarStore, !VarSet,
                     !ModuleInfo, !QualInfo, !Specs),
                 make_atomic_unification(XVar,
                     rhs_functor(ConsId, is_not_exist_constr, YVars),
@@ -1038,9 +1058,10 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 substitute_state_var_mapping(ThenTerm0, ThenTerm, !VarSet,
                     AfterCondInsideSVarState, AfterThenInsideSVarState0,
                     !Specs),
+                map.init(AncestorVarMap),
                 classify_unravel_var_unification(XVar, ThenTerm,
                     Context, MainContext, SubContext,
-                    Purity, Order, ThenExpansion,
+                    Purity, Order, AncestorVarMap, ThenExpansion,
                     AfterThenInsideSVarState0, AfterThenInsideSVarState,
                     !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
                 goal_info_init(get_term_context(ThenTerm), ThenGoalInfo),
@@ -1054,7 +1075,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                     BeforeSVarState, AfterElseSVarState0, !Specs),
                 classify_unravel_var_unification(XVar, ElseTerm,
                     Context, MainContext, SubContext,
-                    Purity, Order, ElseExpansion,
+                    Purity, Order, AncestorVarMap, ElseExpansion,
                     AfterElseSVarState0, AfterElseSVarState,
                     !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
                 goal_info_init(get_term_context(ElseTerm), ElseGoalInfo),
@@ -1107,9 +1128,11 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                         !ModuleInfo, !QualInfo, !Specs),
 
                     ArgContext = ac_functor(Functor, MainContext, SubContext),
+                    map.init(AncestorVarMap),
                     do_arg_unification(InputTermVar, InputTerm,
                         YFunctorContext, ArgContext, Order,
-                        1, InputArgExpansion, !SVarState, !SVarStore, !VarSet,
+                        1, AncestorVarMap, InputArgExpansion,
+                        !SVarState, !SVarStore, !VarSet,
                         !ModuleInfo, !QualInfo, !Specs),
                     goal_info_init(Context, GoalInfo),
                     insert_expansion_before_goal_top_not_fgti(GoalInfo,
@@ -1185,8 +1208,10 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                     FieldVTNC = unify_var_term_num_context(FieldValueVar,
                         FieldValueTerm, FieldArgNumber, FieldArgContext),
 
+                    map.init(AncestorVarMap),
                     do_arg_unifications_with_contexts([InputVTNC, FieldVTNC],
-                        Context, Order, InputFieldArgExpansions,
+                        Context, Order, AncestorVarMap,
+                        InputFieldArgExpansions,
                         !SVarState, !SVarStore, !VarSet,
                         !ModuleInfo, !QualInfo, !Specs),
 
@@ -2274,6 +2299,31 @@ make_fresh_arg_var_no_svar(Arg, Var, Vars0, !VarSet) :-
         Var = ArgVar
     else
         varset.new_var(Var, !VarSet)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred occurs_check(module_info::in, prog_varset::in, ancestor_var_map::in,
+    prog_var::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+occurs_check(ModuleInfo, VarSet, AncestorVarMap, Var, !Specs) :-
+    ( if map.search(AncestorVarMap, Var, AncestorContext) then
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals,
+            warn_suspected_occurs_check_failure, WarnOccursCheck),
+        (
+            WarnOccursCheck = no
+        ;
+            WarnOccursCheck = yes,
+            varset.lookup_name(VarSet, Var, VarName),
+            Pieces = [words("Warning: the variable"), quote(VarName),
+                words("is unified with a term containing itself."), nl],
+            Spec = simplest_spec(severity_warning, phase_parse_tree_to_hlds,
+                AncestorContext, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
+    else
+        true
     ).
 
 %-----------------------------------------------------------------------------%

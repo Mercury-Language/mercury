@@ -35,6 +35,7 @@ ERRORCHECK_PROGS = \
 	missing_if \
 	non_contiguous_decls \
 	non_stratification \
+	occurs \
 	pragma_source_file \
 	purity_warnings \
 	save \

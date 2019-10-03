@@ -623,6 +623,9 @@ goal_warning_to_string(Warning) = Str :-
         Warning = goal_warning_non_tail_recursive_calls,
         Str = "non_tail_recursive_calls"
     ;
+        Warning = goal_warning_occurs_check,
+        Str = "suspected_occurs_check_failure"
+    ;
         Warning = goal_warning_singleton_vars,
         Str = "singleton_vars"
     ;

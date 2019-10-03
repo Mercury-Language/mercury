@@ -1441,7 +1441,8 @@ determinism_components(detism_failure,   can_fail,    at_most_zero).
 :- implementation.
 
 less_pure(P1, P2) :-
-    worst_purity(P1, P2) \= P2.
+    WP = worst_purity(P1, P2),
+    WP \= P2.
 
     % worst_purity/3 could be written more compactly, but this definition
     % guarantees us a determinism error if we add to type `purity'. We also
@@ -1630,6 +1631,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     % of the disable_warnings scope.
 :- type goal_warning
     --->    goal_warning_singleton_vars
+    ;       goal_warning_occurs_check
     ;       goal_warning_non_tail_recursive_calls
     ;       goal_warning_suspicious_recursion.
 
