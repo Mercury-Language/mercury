@@ -360,6 +360,7 @@ ORDINARY_PROGS = \
 	string_codepoint \
 	string_first_char \
 	string_index_ilseq \
+	string_index_next_ilseq \
 	string_loop \
 	string_presuffix \
 	string_set_char \

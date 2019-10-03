@@ -274,17 +274,26 @@
 
     % index_next(String, Index, NextIndex, Char):
     %
-    % Like `index'/3 but also returns the position of the code unit
-    % that follows the code point beginning at `Index',
-    % i.e. NextIndex = Index + num_code_units_to_encode(Char).
+    % If `Index' is the initial code unit offset of a well-formed code unit
+    % sequence in `String' then `Char' is the code point encoded by that
+    % sequence, and `NextIndex' is the offset immediately following that
+    % sequence.
+    %
+    % If the code unit in `String' at `Index' is part of an ill-formed sequence
+    % then `Char' is either a U+FFFD REPLACEMENT CHARACTER (when strings are
+    % UTF-8 encoded) or the unpaired surrogate code point at `Index' (when
+    % strings are UTF-16 encoded), and `NextIndex' is Index + 1.
+    %
+    % Fails if `Index' is out of range (negative, or greater than or equal to
+    % the length of `String').
     %
 :- pred index_next(string::in, int::in, int::out, char::uo) is semidet.
 
     % unsafe_index_next(String, Index, NextIndex, Char):
     %
-    % `Char' is the character (code point) in `String', beginning at the
-    % code unit `Index'. `NextIndex' is the offset following the encoding
-    % of `Char'. Fails if `Index' is equal to the length of `String'.
+    % Like index_next/4 but does not check that `Index' is in range.
+    % Fails if `Index' is equal to the length of `String'.
+    %
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than the length of `String').
     %
@@ -2166,9 +2175,7 @@ duplicate_char(Char, Count, String) :-
 % so that the compiler can do loop invariant hoisting on calls to them
 % that occur in loops.
 
-% XXX ILSEQ The index_next family fails if an ill-formed sequence is detected.
-% It needs to be updated to match the behaviour of the index family.
-%
+% XXX ILSEQ
 % We should allow the possibility of working with strings containing ill-formed
 % sequences. That would require predicates that can return either a code point
 % when possible, or else code units from ill-formed sequences.
@@ -2251,11 +2258,6 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 
 %---------------------%
 
-% XXX ILSEQ index_next/4 and unsafe_index_next/4 fail when an ill-formed
-% sequence is detected, unlike the index family. Most programs will probably
-% work as intended if we just replace code units in ill-formed sequences with
-% replacement char (for UTF-8) or return the unpaired surrogate code point
-% (for UTF-16).
 index_next(Str, Index, NextIndex, Char) :-
     Len = length(Str),
     ( if index_check(Index, Len) then
@@ -2264,10 +2266,6 @@ index_next(Str, Index, NextIndex, Char) :-
         fail
     ).
 
-% XXX ILSEQ Behaviour of unsafe_index_next depends on target language.
-%   - c: fails at ill-formed sequence
-%   - java: fails at unpaired surrogate
-%   - csharp: System.Char.ConvertToUtf32 throws exception for unpaired surrogate
 :- pragma foreign_proc("C",
     unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -2280,7 +2278,11 @@ index_next(Str, Index, NextIndex, Char) :-
     } else {
         NextIndex = Index;
         Ch = MR_utf8_get_next_mb(Str, &NextIndex);
-        SUCCESS_INDICATOR = (Ch > 0);
+        if (Ch < 0) {
+            Ch = 0xfffd;
+            NextIndex = Index + 1;
+        }
+        SUCCESS_INDICATOR = MR_TRUE;
     }
 ").
 :- pragma foreign_proc("C#",
@@ -2288,7 +2290,7 @@ index_next(Str, Index, NextIndex, Char) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    if (Index < Str.Length) {
+    try {
         Ch = System.Char.ConvertToUtf32(Str, Index);
         if (Ch <= 0xffff) {
             NextIndex = Index + 1;
@@ -2296,10 +2298,15 @@ index_next(Str, Index, NextIndex, Char) :-
             NextIndex = Index + 2;
         }
         SUCCESS_INDICATOR = true;
-    } else {
-        Ch = -1;
+    } catch (System.ArgumentOutOfRangeException) {
+        Ch = 0;
         NextIndex = Index;
         SUCCESS_INDICATOR = false;
+    } catch (System.ArgumentException) {
+        // Return unpaired surrogate code point.
+        Ch = Str[Index];
+        NextIndex = Index + 1;
+        SUCCESS_INDICATOR = true;
     }
 ").
 :- pragma foreign_proc("Java",
@@ -2307,19 +2314,12 @@ index_next(Str, Index, NextIndex, Char) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    if (Index < Str.length()) {
+    try {
         Ch = Str.codePointAt(Index);
-        SUCCESS_INDICATOR =
-            !java.lang.Character.isHighSurrogate((char) Ch) &&
-            !java.lang.Character.isLowSurrogate((char) Ch);
-        if (SUCCESS_INDICATOR) {
-            NextIndex = Index + java.lang.Character.charCount(Ch);
-        } else {
-            Ch = -1;
-            NextIndex = Index;
-        }
-    } else {
-        Ch = -1;
+        NextIndex = Index + java.lang.Character.charCount(Ch);
+        SUCCESS_INDICATOR = true;
+    } catch (IndexOutOfBoundsException e) {
+        Ch = 0;
         NextIndex = Index;
         SUCCESS_INDICATOR = false;
     }
@@ -2329,6 +2329,7 @@ index_next(Str, Index, NextIndex, Char) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
+    % XXX does not handle ill-formed sequences as described
     case Str of
         << _:Index/binary, Ch/utf8, _/binary >> ->
             if

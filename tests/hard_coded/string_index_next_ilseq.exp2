@@ -1,0 +1,5 @@
+string.index_next(S, 0, 2, 0x1f600)
+string.index_next(S, 2, 3, 0xde00)
+string.index_next(S, 3, 4, 0xd83d)
+string.index_next(S, 4, 6, 0x1f600)
+string.index_next(S, 6, _, _) failed
