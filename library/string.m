@@ -299,19 +299,28 @@
     %
 :- pred unsafe_index_next(string::in, int::in, int::out, char::uo) is semidet.
 
-    % prev_index(String, Index, CharIndex, Char):
+    % prev_index(String, Index, PrevIndex, Char):
     %
-    % `Char' is the character (code point) in `String' immediately _before_
-    % the code unit `Index'. Fails if `Index' is out of range (non-positive,
-    % or greater than the length of `String').
+    % If `Index - 1' is the final code unit offset of a well-formed sequence in
+    % `String' then `Char' is the code point encoded by that sequence, and
+    % `PrevIndex' is the initial code unit offset of that sequence.
+    %
+    % If the code unit in `String' at `Index - 1' is part of an ill-formed
+    % sequence then `Char' is either a U+FFFD REPLACEMENT CHARACTER (when
+    % strings are UTF-8 encoded) or the unpaired surrogate code point at
+    % `Index - 1' (when strings are UTF-16 encoded), and `PrevIndex' is
+    % `Index - 1'.
+    %
+    % Fails if `Index' is out of range (non-positive, or greater than the
+    % length of `String').
     %
 :- pred prev_index(string::in, int::in, int::out, char::uo) is semidet.
 
-    % unsafe_prev_index(String, Index, CharIndex, Char):
+    % unsafe_prev_index(String, Index, PrevIndex, Char):
     %
-    % `Char' is the character (code point) in `String' immediately _before_
-    % the code unit `Index'. `CharIndex' is the offset of the beginning of
-    % `Char'. Fails if `Index' is zero.
+    % Like prev_index/4 but does not check that `Index' is in range.
+    % Fails if `Index' is zero.
+    %
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than the length of `String').
     %
@@ -2350,37 +2359,37 @@ index_next(Str, Index, NextIndex, Char) :-
     end
 ").
 
-prev_index(Str, Index, CharIndex, Char) :-
+prev_index(Str, Index, PrevIndex, Char) :-
     Len = length(Str),
     ( if index_check(Index - 1, Len) then
-        unsafe_prev_index(Str, Index, CharIndex, Char)
+        unsafe_prev_index(Str, Index, PrevIndex, Char)
     else
         fail
     ).
 
-% XXX ILSEQ Behaviour of unsafe_prev_index depends on target language.
-%   - c: fails on ill-formed sequence
-%   - java: returns unpaired surrogate
-%   - csharp: fails on unpaired surrogate (excepting for the bug)
 :- pragma foreign_proc("C",
     unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    if (Index > 0) {
+    if (Index <= 0) {
+        PrevIndex = Index;
+        Ch = 0;
+        SUCCESS_INDICATOR = MR_FALSE;
+    } else {
         PrevIndex = Index - 1;
         Ch = Str[PrevIndex];
-        if (MR_is_ascii(Ch)) {
-            SUCCESS_INDICATOR = (Ch != 0);
-        } else {
+        if (! MR_is_ascii(Ch)) {
             Ch = MR_utf8_prev_get(Str, &PrevIndex);
-            // XXX ILSEQ
-            // SUCCESS_INDICATOR should be false if there are any extra bytes
-            // after the encoding of Ch, but before Index.
-            SUCCESS_INDICATOR = (Ch > 0);
+            // XXX MR_utf8_prev_get currently just scans backwards to find a
+            // lead byte, so we need a separate check to ensure no bytes are
+            // unaccounted for.
+            if (Ch < 0 || PrevIndex + MR_utf8_width(Ch) != Index) {
+                Ch = 0xfffd;
+                PrevIndex = Index - 1;
+            }
         }
-    } else {
-        SUCCESS_INDICATOR = MR_FALSE;
+        SUCCESS_INDICATOR = MR_TRUE;
     }
 ").
 :- pragma foreign_proc("C#",
@@ -2388,33 +2397,31 @@ prev_index(Str, Index, CharIndex, Char) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    if (Index > 0) {
+    if (Index <= 0) {
+        Ch = 0;
+        PrevIndex = Index;
+        SUCCESS_INDICATOR = false;
+    } else {
         char c2 = Str[Index - 1];
-        if (System.Char.IsSurrogate(c2)) {
+        if (System.Char.IsLowSurrogate(c2)) {
             try {
                 char c1 = Str[Index - 2];
                 Ch = System.Char.ConvertToUtf32(c1, c2);
                 PrevIndex = Index - 2;
-            } catch (System.IndexOutOfRangeException) {
-                Ch = -1;
-                PrevIndex = Index;
-                SUCCESS_INDICATOR = false;
             } catch (System.ArgumentOutOfRangeException) {
-                Ch = -1;
-                PrevIndex = Index;
-                SUCCESS_INDICATOR = false;
+                // Return unpaired surrogate code point.
+                Ch = (int) c2;
+                PrevIndex = Index - 1;
+            } catch (System.IndexOutOfRangeException) {
+                // Return unpaired surrogate code point.
+                Ch = (int) c2;
+                PrevIndex = Index - 1;
             }
         } else {
-            // Common case.
             Ch = (int) c2;
             PrevIndex = Index - 1;
         }
-        // XXX ILSEQ bug, check (Ch >= 0)
         SUCCESS_INDICATOR = true;
-    } else {
-        Ch = -1;
-        PrevIndex = Index;
-        SUCCESS_INDICATOR = false;
     }
 ").
 :- pragma foreign_proc("Java",
@@ -2422,12 +2429,12 @@ prev_index(Str, Index, CharIndex, Char) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    if (Index > 0) {
+    try {
         Ch = Str.codePointBefore(Index);
         PrevIndex = Index - java.lang.Character.charCount(Ch);
         SUCCESS_INDICATOR = true;
-    } else {
-        Ch = -1;
+    } catch (IndexOutOfBoundsException e) {
+        Ch = 0;
         PrevIndex = Index;
         SUCCESS_INDICATOR = false;
     }
@@ -2437,6 +2444,7 @@ prev_index(Str, Index, CharIndex, Char) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
+    % XXX does not handle ill-formed sequences as described
     {PrevIndex, Ch} = do_unsafe_prev_index(Str, Index - 1),
     SUCCESS_INDICATOR = (Ch =/= -1)
 ").

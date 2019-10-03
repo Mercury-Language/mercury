@@ -1,0 +1,5 @@
+string.prev_index(S, 10, 6, 0x1f600)
+string.prev_index(S, 6, 5, 0xfffd)
+string.prev_index(S, 5, 4, 0xfffd)
+string.prev_index(S, 4, 0, 0x1f600)
+string.prev_index(S, 0, _, _) failed
