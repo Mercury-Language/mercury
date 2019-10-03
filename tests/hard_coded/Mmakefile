@@ -359,6 +359,7 @@ ORDINARY_PROGS = \
 	string_code_unit \
 	string_codepoint \
 	string_first_char \
+	string_index_ilseq \
 	string_loop \
 	string_presuffix \
 	string_set_char \

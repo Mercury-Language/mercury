@@ -1,0 +1,10 @@
+string.index(S, 0, 0x1f600)
+string.index(S, 1, 0xfffd)
+string.index(S, 2, 0xfffd)
+string.index(S, 3, 0xfffd)
+string.index(S, 4, 0xfffd)
+string.index(S, 5, 0x1f600)
+string.index(S, 6, 0xfffd)
+string.index(S, 7, 0xfffd)
+string.index(S, 8, 0xfffd)
+string.index(S, 9, _) failed

@@ -1,0 +1,6 @@
+string.index(S, 0, 0x1f600)
+string.index(S, 1, 0xde00)
+string.index(S, 2, 0xd83d)
+string.index(S, 3, 0x1f600)
+string.index(S, 4, 0xde00)
+string.index(S, 5, _) failed

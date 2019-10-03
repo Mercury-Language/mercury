@@ -228,29 +228,32 @@
 
     % index(String, Index, Char):
     %
-    % `Char' is the character (code point) in `String', beginning at the
-    % code unit `Index'. Fails if `Index' is out of range (negative, or
-    % greater than or equal to the length of `String').
+    % If `Index' is the initial code unit offset of a well-formed code unit
+    % sequence in `String' then `Char' is the code point encoded by that
+    % sequence.
     %
-    % Calls error/1 if an illegal sequence is detected.
+    % If the code unit in `String' at `Index' is part of an ill-formed sequence
+    % then `Char' is either a U+FFFD REPLACEMENT CHARACTER (when strings are
+    % UTF-8 encoded) or the unpaired surrogate code point at `Index' (when
+    % strings are UTF-16 encoded).
+    %
+    % Fails if `Index' is out of range (negative, or greater than or equal to
+    % the length of `String').
     %
 :- pred index(string::in, int::in, char::uo) is semidet.
 
     % det_index(String, Index, Char):
     %
-    % `Char' is the character (code point) in `String', beginning at the
-    % code unit `Index'.
-    % Calls error/1 if `Index' is out of range (negative, or greater than
-    % or equal to the length of `String'), or if an illegal sequence is
-    % detected.
+    % Like index/3 but throws an exception if `Index' is out of range
+    % (negative, or greater than or equal to the length of `String').
     %
 :- func det_index(string, int) = char.
 :- pred det_index(string::in, int::in, char::uo) is det.
 
     % unsafe_index(String, Index, Char):
     %
-    % `Char' is the character (code point) in `String', beginning at the
-    % code unit `Index'.
+    % Like index/3 but does not check that `Index' is in range.
+    %
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String').
     % This version is constant time, whereas det_index
@@ -2163,16 +2166,12 @@ duplicate_char(Char, Count, String) :-
 % so that the compiler can do loop invariant hoisting on calls to them
 % that occur in loops.
 
-% XXX ILSEQ index/3 and unsafe_index/3 throw an exception if an ill-formed
-% sequence is detected. The index_next family fails instead. Both families
-% should be made consistent.
+% XXX ILSEQ The index_next family fails if an ill-formed sequence is detected.
+% It needs to be updated to match the behaviour of the index family.
 %
 % We should allow the possibility of working with strings containing ill-formed
 % sequences. That would require predicates that can return either a code point
 % when possible, or else code units from ill-formed sequences.
-%
-% It might have been overzealous to throw an exception for unpaired surrogate
-% code points in UTF-16.
 
 :- pragma inline(index/3).
 :- pragma inline(det_index/3).
@@ -2200,17 +2199,8 @@ det_index(String, Int, Char) :-
 unsafe_index(S, N) = C :-
     unsafe_index(S, N, C).
 
-unsafe_index(Str, Index, Char) :-
-    ( if unsafe_index_2(Str, Index, CharPrime) then
-        Char = CharPrime
-    else
-        unexpected($pred, "illegal sequence")
-    ).
-
-:- pred unsafe_index_2(string::in, int::in, char::uo) is semidet.
-
 :- pragma foreign_proc("C",
-    unsafe_index_2(Str::in, Index::in, Ch::uo),
+    unsafe_index(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2218,44 +2208,40 @@ unsafe_index(Str, Index, Char) :-
     if (!MR_is_ascii(Ch)) {
         int width;
         Ch = MR_utf8_get_mb(Str, Index, &width);
+        if (Ch < 0) {
+            Ch = 0xFFFD;
+        }
     }
-    SUCCESS_INDICATOR = (Ch > 0);
 ").
 :- pragma foreign_proc("C#",
-    unsafe_index_2(Str::in, Index::in, Ch::uo),
+    unsafe_index(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     char c1 = Str[Index];
+    Ch = c1;
     if (System.Char.IsSurrogate(c1)) {
         try {
             char c2 = Str[Index + 1];
             Ch = System.Char.ConvertToUtf32(c1, c2);
         } catch (System.ArgumentOutOfRangeException) {
-            Ch = -1;
+            // Return unpaired surrogate code point.
         } catch (System.IndexOutOfRangeException) {
-            Ch = -1;
+            // Return unpaired surrogate code point.
         }
-    } else {
-        // Common case.
-        Ch = c1;
     }
-    SUCCESS_INDICATOR = (Ch >= 0);
 ").
 :- pragma foreign_proc("Java",
-    unsafe_index_2(Str::in, Index::in, Ch::uo),
+    unsafe_index(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ch = Str.codePointAt(Index);
-    SUCCESS_INDICATOR =
-        !java.lang.Character.isHighSurrogate((char) Ch) &&
-        !java.lang.Character.isLowSurrogate((char) Ch);
 ").
 :- pragma foreign_proc("Erlang",
-    unsafe_index_2(Str::in, Index::in, Ch::uo),
+    unsafe_index(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    <<_:Index/binary, Ch/utf8, _/binary>> = Str,
-    SUCCESS_INDICATOR = true
+    % XXX does not handle ill-formed sequences as described
+    <<_:Index/binary, Ch/utf8, _/binary>> = Str
 ").
 
 %---------------------%
