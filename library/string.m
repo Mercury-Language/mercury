@@ -422,6 +422,11 @@
 
     % Determine the number of code points in a string.
     %
+    % Each valid code point, and each code unit that is part of an ill-formed
+    % sequence, contributes one to the result.
+    % (This matches the number of steps it would take to iterate over the
+    % string using string.index_next or string.prev_index.)
+    %
     % NOTE The names of this predicate and several other predicates
     % may be changed in the future to refer to code_points, not codepoints,
     % for consistency with predicate names that talk about code_units.
@@ -2738,48 +2743,9 @@ count_code_units(Str, Length) :-
 
 %---------------------%
 
-% XXX ILSEQ Behaviour depends on target language.
-%   - c: counts lead bytes without checking trailing bytes
-%   - java: unpaired surrogates count as one code point each
-%   - csharp: counts non-surrogates and high surrogates
-%   - generic: unsafe_index_next stops at the first ill-formed sequence
-%
-% The Java behaviour seems best: count well-formed code points plus each code
-% unit in an ill-formed sequence. index_next and other iteration predicates
-% should be made consistent with however count_codepoints ends up counting.
-
 count_codepoints(String) = Count :-
     count_codepoints(String, Count).
 
-:- pragma foreign_proc("C",
-    count_codepoints(String::in, Count::out),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
-"
-    unsigned char   b;
-    int             i;
-
-    Count = 0;
-    for (i = 0; ; i++) {
-        b = String[i];
-        if (b == '\\0') {
-            break;
-        }
-        if (MR_utf8_is_single_byte(b) || MR_utf8_is_lead_byte(b)) {
-            Count++;
-        }
-    }
-").
-:- pragma foreign_proc("C#",
-    count_codepoints(String::in, Count::out),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
-"
-    Count = 0;
-    foreach (char c in String) {
-        if (!System.Char.IsLowSurrogate(c)) {
-            Count++;
-        }
-    }
-").
 :- pragma foreign_proc("Java",
     count_codepoints(String::in, Count::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
