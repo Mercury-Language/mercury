@@ -1,0 +1,5 @@
+string.to_char_list
+[a, b, c, 😀, 0xd83d, x, y, z]
+
+string.to_rev_char_list
+[z, y, x, 0xd83d, 😀, c, b, a]

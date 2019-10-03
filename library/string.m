@@ -124,9 +124,15 @@
 %
 
     % Convert the string to a list of characters (code points).
+    %
+    % In the forward mode:
+    % If strings use UTF-8 encoding then each code unit in an ill-formed
+    % sequence is replaced by U+FFFD REPLACEMENT CHARACTER in the list.
+    % If strings use UTF-16 encoding then each unpaired surrogate code point
+    % is returned as a separate code point in the list.
+    %
     % The reverse mode of the predicate throws an exception if
     % the list of characters contains a null character.
-    %
     % NOTE: In the future we may also throw an exception if the list contains
     % a surrogate code point.
     %
@@ -135,10 +141,17 @@
 :- mode to_char_list(in, out) is det.
 :- mode to_char_list(uo, in) is det.
 
-    % Convert the string to a list of characters (code points) in reverse order.
+    % Convert the string to a list of characters (code points) in reverse
+    % order.
+    %
+    % In the forward mode:
+    % If strings use UTF-8 encoding then each code unit in an ill-formed
+    % sequence is replaced by U+FFFD REPLACEMENT CHARACTER in the list.
+    % If strings use UTF-16 encoding then each unpaired surrogate code point
+    % is returned as a separate code point in the list.
+    %
     % The reverse mode of the predicate throws an exception if
     % the list of characters contains a null character.
-    %
     % NOTE: In the future we may also throw an exception if the list contains
     % a surrogate code point.
     %
@@ -1515,26 +1528,6 @@
 % Conversions between strings and lists of characters.
 %
 
-% XXX ILSEQ Behaviour on ill-formed sequences differs by target language.
-%   - C: stops at first ill-formed sequence from the right
-%   - C#: unpaired surrogates are replaced by U+FFFD
-%   - Java: unpaired surrogates are returned as-is
-%
-% Perhaps we need versions of to_char_list/to_rev_char_list with choice of
-% action on ill-formed sequences:
-%   - throw an exception
-%   - ignore
-%   - replace with U+FFFD
-%
-% Replacing with U+FFFD is only necessary for UTF-8. Unpaired surrogates in
-% UTF-16 can represent themselves since they are just code points.
-%
-% For users that want round-trip conversion of potentially invalid UTF-8,
-% one possibility would be to map bytes in ill-formed sequences to chars
-% in the low surrogate range U+DC80..U+DCFF, see
-% https://hyperreal.org/~est/utf-8b/releases/utf-8b-20060413043934/kuhn-utf-8b.html
-% A simpler possibility is to introduce a char_or_code_unit type.
-
 to_char_list(S) = Cs :-
     to_char_list(S, Cs).
 
@@ -1547,83 +1540,21 @@ to_char_list(Str::uo, CharList::in) :-
 
 :- pred do_to_char_list(string::in, list(char)::out) is det.
 
-:- pragma foreign_proc("C",
-    do_to_char_list(Str::in, CharList::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"{
-    MR_Integer pos = strlen(Str);
-    int c;
-
-    CharList = MR_list_empty_msg(MR_ALLOC_ID);
-    for (;;) {
-        c = MR_utf8_prev_get(Str, &pos);
-        if (c <= 0) {
-            break;
-        }
-        CharList = MR_char_list_cons_msg((MR_UnsignedChar) c, CharList,
-            MR_ALLOC_ID);
-    }
-}").
-:- pragma foreign_proc("C#",
-    do_to_char_list(Str::in, CharList::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    list.List_1 lst = list.empty_list();
-    for (int i = Str.Length - 1; i >= 0; i--) {
-        int c;
-        char c2 = Str[i];
-        if (System.Char.IsLowSurrogate(c2)) {
-            try {
-                char c1 = Str[i - 1];
-                c = System.Char.ConvertToUtf32(c1, c2);
-                i--;
-            } catch (System.ArgumentOutOfRangeException) {
-                c = 0xfffd;
-            } catch (System.IndexOutOfRangeException) {
-                c = 0xfffd;
-            }
-        } else if (System.Char.IsHighSurrogate(c2)) {
-            c = 0xfffd;
-        } else {
-            c = c2;
-        }
-        lst = list.cons(c, lst);
-    }
-    CharList = lst;
-").
-:- pragma foreign_proc("Java",
-    do_to_char_list(Str::in, CharList::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    list.List_1<Integer> lst = list.empty_list();
-    for (int i = Str.length(); i > 0; ) {
-        int c = Str.codePointBefore(i);
-        lst = list.cons(c, lst);
-        i -= java.lang.Character.charCount(c);
-    }
-    CharList = lst;
-").
-:- pragma foreign_proc("Erlang",
-    do_to_char_list(Str::in, CharList::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    CharList = unicode:characters_to_list(Str)
-").
-
-    % It would be worth checking if this Mercury implementation (or another
-    % one) is as fast the foreign_proc implementations, the next time any
-    % changes are required.
-    %
 do_to_char_list(Str, CharList) :-
-    foldr(list.cons, Str, [], CharList).
+    do_to_char_list_loop(Str, length(Str), [], CharList).
+
+:- pred do_to_char_list_loop(string::in, int::in,
+    list(char)::in, list(char)::out) is det.
+
+do_to_char_list_loop(Str, Index0, !CharList) :-
+    ( if string.unsafe_prev_index(Str, Index0, Index1, C) then
+        !:CharList = [C | !.CharList],
+        do_to_char_list_loop(Str, Index1, !CharList)
+    else
+        true
+    ).
 
 %---------------------%
-
-% XXX ILSEQ unsafe_index_next causes truncation at first ill-formed sequence.
 
 to_rev_char_list(S) = Cs :-
     to_rev_char_list(S, Cs).

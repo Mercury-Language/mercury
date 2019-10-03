@@ -355,6 +355,7 @@ ORDINARY_PROGS = \
 	string_append_ooi \
 	string_builder_test \
 	string_case \
+	string_char_list_ilseq \
 	string_class \
 	string_code_unit \
 	string_codepoint \
