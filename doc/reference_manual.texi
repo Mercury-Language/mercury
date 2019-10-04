@@ -8290,6 +8290,8 @@ for each of the type's function symbols.
 
 A @samp{pragma foreign_enum} declaration must occur in the implementation
 section of the module that defines the type @var{MercuryType}.
+Because of this, the names of the constants
+need not and must not be module qualified.
 
 Note that the default comparison for types
 that are the subject of a @samp{pragma foreign_enum} declaration

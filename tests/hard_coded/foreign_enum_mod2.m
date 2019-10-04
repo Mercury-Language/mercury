@@ -32,10 +32,10 @@ my_instrument = piano.
     % This should end up in the .int file.
     %
 :- pragma foreign_enum("C", ingredient/0, [
-    foreign_enum_mod2.eggs  - "EGGS",
-    foreign_enum_mod2.sugar - "SUGAR",
-    foreign_enum_mod2.flour - "FLOUR",
-    foreign_enum_mod2.milk  - "MILK"
+    eggs  - "EGGS",
+    sugar - "SUGAR",
+    flour - "FLOUR",
+    milk  - "MILK"
 ]).
 
     % As should this.
@@ -58,8 +58,8 @@ my_instrument = piano.
     % This shouldn't since the type is abstract.
     %
 :- pragma foreign_enum("C", instrument/0, [
-    violin - "100",
-    piano  - "200",
+    violin    - "100",
+    piano     - "200",
     xylophone - "300"
 ]).
 
@@ -69,6 +69,4 @@ my_instrument = piano.
 #define SUGAR   20
 #define FLOUR   30
 #define MILK    40
-
 ").
-

@@ -3116,6 +3116,8 @@ long_option("fixed-contiguity-2018-10-19",
                                     compiler_sufficiently_recent).
 long_option("simplest-msg-2019-09-22",
                                     compiler_sufficiently_recent).
+long_option("unqual-foreign-enums-in-int-files-2019-10-04",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).

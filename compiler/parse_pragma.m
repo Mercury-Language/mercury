@@ -763,7 +763,8 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         % XXX the following doesn't check that foreign values are sensible
         % (e.g. it should reject the empty string).
         convert_maybe_list("mapping elements", yes(VarSet), ValuesTerm,
-            parse_sym_name_string_pair(VarSet, PairContextPieces),
+            parse_cur_module_sym_name_string_pair(ModuleName, VarSet,
+                PairContextPieces),
             UnrecognizedPieces, MaybeValues),
         (
             MaybeValues = ok1(Values),
@@ -813,6 +814,48 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
+    ).
+
+:- pred parse_cur_module_sym_name_string_pair(module_name::in, varset::in,
+    cord(format_component)::in, term::in,
+    maybe1(pair(sym_name, string))::out) is semidet.
+
+parse_cur_module_sym_name_string_pair(ModuleName, VarSet, ContextPieces,
+        PairTerm, MaybePair) :-
+    PairTerm = functor(Functor, ArgTerms, _),
+    Functor = term.atom("-"),
+    ArgTerms = [SymNameTerm, StringTerm],
+    StringTerm = functor(term.string(String), _, _),
+    parse_sym_name_and_args(VarSet, ContextPieces, SymNameTerm,
+        MaybeSymNameResult),
+    (
+        MaybeSymNameResult = ok2(SymName, SymNameArgs),
+        SymNameArgs = [],
+        % XXX Instead of quietly failing, we should generate
+        % a specific error message if SymNameArgs is not [].
+        (
+            SymName = qualified(SymNameModuleName, _),
+            ( if
+                partial_sym_name_is_part_of_full(SymNameModuleName, ModuleName)
+            then
+                MaybePair = ok1(SymName - String)
+            else
+                Pieces = [words("Error: a function symbol name in a"),
+                    pragma_decl("foreign_enum"), words("pragma"),
+                    words("cannot be qualified with any module name"),
+                    words("other than the name of the current module."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(SymNameTerm),
+                        [always(Pieces)])]),
+                MaybePair = error1([Spec])
+            )
+        ;
+            SymName = unqualified(_),
+            MaybePair = ok1(SymName - String)
+        )
+    ;
+        MaybeSymNameResult = error2(Specs),
+        MaybePair = error1(Specs)
     ).
 
 %---------------------------------------------------------------------------%

@@ -1225,8 +1225,29 @@ mercury_output_item_foreign_enum(_Info, ItemForeignEnum, !U) :-
     add_int(TypeArity, !U),
     add_string(", ", !U),
     Values = one_or_more_to_list(OoMValues),
-    mercury_format_sym_name_string_assoc_list(Values, !U),
+    mercury_format_unqual_sym_name_string_assoc_list(Values, !U),
     add_string(").\n", !U).
+
+    % Output an association list of to-be-unqualified sym_names and strings.
+    % The strings will be quoted in the output.
+    %
+:- pred mercury_format_unqual_sym_name_string_assoc_list(
+    assoc_list(sym_name, string)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_unqual_sym_name_string_assoc_list(AssocList, !U) :-
+    add_char('[', !U),
+    add_list(AssocList, ", ", mercury_format_unqual_sym_name_string_pair, !U),
+    add_char(']', !U).
+
+:- pred mercury_format_unqual_sym_name_string_pair(
+    pair(sym_name, string)::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_unqual_sym_name_string_pair(SymName0 - String, !U) :-
+    Name = unqualify_name(SymName0),
+    SymName = unqualified(Name),
+    mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, SymName, !U),
+    add_string(" - ", !U),
+    add_quoted_string(String, !U).
 
 %---------------------------------------------------------------------------%
 
@@ -1265,13 +1286,7 @@ mercury_format_foreign_export_enum_attributes(Attributes, !U) :-
     ),
     add_string("]", !U).
 
-%---------------------------------------------------------------------------%
-%
-% Predicates used to help print foreign_enum and foreign_export_enum items.
-%
-
-    % Output an association list of sym_names and strings, as used
-    % by both foreign_enum and foreign_export_enum pragmas.
+    % Output an association list of sym_names and strings.
     % The strings will be quoted in the output.
     %
 :- pred mercury_format_sym_name_string_assoc_list(
@@ -1279,8 +1294,7 @@ mercury_format_foreign_export_enum_attributes(Attributes, !U) :-
 
 mercury_format_sym_name_string_assoc_list(AssocList, !U) :-
     add_char('[', !U),
-    add_list(AssocList, ",",
-        mercury_format_sym_name_string_pair, !U),
+    add_list(AssocList, ", ", mercury_format_sym_name_string_pair, !U),
     add_char(']', !U).
 
 :- pred mercury_format_sym_name_string_pair(
