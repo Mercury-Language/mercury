@@ -234,6 +234,7 @@ static void mdfour_result(const struct mdfour *m, unsigned char *out)
 
 ").
 
+:- pragma no_determinism_warning(md4sum/1).
 :- pragma foreign_proc("C",
     md4sum(In::in) = (Digest::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
