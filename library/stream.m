@@ -260,7 +260,11 @@
     % Seek to an offset relative to whence on the specified stream.
     % The offset is measured in bytes.
     %
-    pred seek(Stream::in, whence::in, int::in, State::di, State::uo) is det
+    pred seek(Stream::in, whence::in, int::in, State::di, State::uo) is det,
+
+    % As above, but the offset is always a 64-bit value.
+    %
+    pred seek64(Stream::in, whence::in, int64::in, State::di, State::uo) is det
 ].
 
 %---------------------------------------------------------------------------%

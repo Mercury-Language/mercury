@@ -14085,6 +14085,10 @@ result_to_stream_result(error(Error)) = error(Error).
     ( seek(Stream, Whence0, OffSet, !IO) :-
         Whence = stream_whence_to_io_whence(Whence0),
         seek_binary_input(Stream, Whence, OffSet, !IO)
+    ),
+    ( seek64(Stream, Whence0, OffSet, !IO) :-
+        Whence = stream_whence_to_io_whence(Whence0),
+        seek64_binary_input(Stream, Whence, OffSet, !IO)
     )
 ].
 
@@ -14155,6 +14159,10 @@ res_to_stream_res(error(E)) = error(E).
     ( seek(Stream, Whence0, OffSet, !IO) :-
         Whence = stream_whence_to_io_whence(Whence0),
         seek_binary_output(Stream, Whence, OffSet, !IO)
+    ),
+    ( seek64(Stream, Whence0, Offset, !IO) :-
+        Whence = stream_whence_to_io_whence(Whence0),
+        seek64_binary_output(Stream, Whence, Offset, !IO)
     )
 ].
 
