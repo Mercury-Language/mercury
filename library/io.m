@@ -1355,29 +1355,25 @@
     io::di, io::uo) is det.
 
     % Seek to an offset relative to Whence (documented above)
-    % on a specified binary input stream. Attempting to seek on a pipe
-    % or tty results in implementation dependent behaviour.
-    %
-    % A successful seek undoes any effects of putback_byte on the stream.
-    %
-:- pred seek_binary_input(io.binary_input_stream::in, io.whence::in,
-    int::in, io::di, io::uo) is det.
-
-    % Seek to an offset relative to Whence (documented above)
     % on a specified binary output stream. Attempting to seek on a pipe
     % or tty results in implementation dependent behaviour.
     %
 :- pred seek_binary_output(io.binary_output_stream::in, io.whence::in,
     int::in, io::di, io::uo) is det.
 
-    % Returns the offset (in bytes) into the specified binary input stream.
+    % As above, but the offset is always a 64-bit value.
     %
-:- pred binary_input_stream_offset(io.binary_input_stream::in, int::out,
-    io::di, io::uo) is det.
+:- pred seek64_binary_output(io.binary_output_stream::in, io.whence::in,
+    int64::in, io::di, io::uo) is det.
 
     % Returns the offset (in bytes) into the specified binary output stream.
     %
 :- pred binary_output_stream_offset(io.binary_output_stream::in, int::out,
+    io::di, io::uo) is det.
+
+    % As above, but the offset is always a 64-bit value.
+    %
+:- pred binary_output_stream_offset64(io.binary_output_stream::in, int64::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -1436,6 +1432,30 @@
     % binary input stream. For file streams, this is the filename.
     %
 :- pred binary_input_stream_name(io.binary_input_stream::in, string::out,
+    io::di, io::uo) is det.
+
+    % Seek to an offset relative to Whence (documented above)
+    % on a specified binary input stream. Attempting to seek on a pipe
+    % or tty results in implementation dependent behaviour.
+    %
+    % A successful seek undoes any effects of putback_byte on the stream.
+    %
+:- pred seek_binary_input(io.binary_input_stream::in, io.whence::in,
+    int::in, io::di, io::uo) is det.
+
+    % As above, but the offset is always a 64-bit value.
+    %
+:- pred seek64_binary_input(io.binary_input_stream::in, io.whence::in,
+    int64::in, io::di, io::uo) is det.
+
+    % Returns the offset (in bytes) into the specified binary input stream.
+    %
+:- pred binary_input_stream_offset(io.binary_input_stream::in, int::out,
+    io::di, io::uo) is det.
+
+    % As above, but the offset is always a 64-bit value.
+    %
+:- pred binary_input_stream_offset64(io.binary_input_stream::in, int64::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -4142,23 +4162,27 @@ input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+    % XXX FIXME this should return an int64.
 :- pred input_stream_file_size(io.input_stream::in, int::out,
     io::di, io::uo) is det.
 
 input_stream_file_size(input_stream(Stream), Size, !IO) :-
-    stream_file_size(Stream, Size, !IO).
+    stream_file_size(Stream, Size64, !IO),
+    Size = int64.cast_to_int(Size64).
 
+    % XXX FIXME this should return an int64.
 :- pred binary_input_stream_file_size(io.binary_input_stream::in, int::out,
     io::di, io::uo) is det.
 
 binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
-    stream_file_size(Stream, Size, !IO).
+    stream_file_size(Stream, Size64, !IO),
+    Size = int64.cast_to_int(Size64).
 
     % stream_file_size(Stream, Size):
     % If Stream is a regular file, then Size is its size (in bytes),
     % otherwise Size is -1.
     %
-:- pred stream_file_size(stream::in, int::out, io::di, io::uo) is det.
+:- pred stream_file_size(stream::in, int64::out, io::di, io::uo) is det.
 
 :- pragma foreign_decl("C", "
 #ifdef MR_HAVE_UNISTD_H
@@ -4199,7 +4223,7 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     if (Stream.stream.CanSeek) {
-        Size = (int) Stream.stream.Length;
+        Size = Stream.stream.Length;
     } else {
         Size = -1;
     }
@@ -7075,22 +7099,22 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         // size(): [Java]
         //
         // Returns the length of a file.
-        public int size()
+        public long size()
             throws java.io.IOException
         {
-            return (int) channel.size();
+            return channel.size();
         }
 
         // getOffset():
         //
         // Returns the current position in a binary file.
-        abstract public int getOffset() throws java.io.IOException;
+        abstract public long getOffset() throws java.io.IOException;
 
         // seek(): [Java]
         //
         // Seek relative to start, current position or end depending on the
         // flag.
-        public void seek_binary(int flag, int offset)
+        public void seek_binary(int flag, long offset)
             throws java.io.IOException
         {
             long position;
@@ -7167,14 +7191,14 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         }
 
         @Override
-        public int getOffset()
+        public long getOffset()
             throws java.io.IOException
         {
-            return (int) channel.position() - pushback.size();
+            return channel.position() - pushback.size();
         }
 
         @Override
-        public void seek_binary(int flag, int offset)
+        public void seek_binary(int flag, long offset)
             throws java.io.IOException
         {
             super.seek_binary(flag, offset);
@@ -7229,7 +7253,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         }
 
         @Override
-        public int getOffset()
+        public long getOffset()
             throws java.io.IOException
         {
             return (int) channel.position();
@@ -9359,15 +9383,25 @@ whence_to_int(end, 2).
 
 seek_binary_input(binary_input_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
-    seek_binary_2(Stream, Flag, Offset, Error, !IO),
+    seek_binary_2(Stream, Flag, int64.from_int(Offset), Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
 
 seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
+    seek_binary_2(Stream, Flag, int64.from_int(Offset), Error, !IO),
+    throw_on_error(Error, "error seeking in file: ", !IO).
+
+seek64_binary_input(binary_input_stream(Stream), Whence, Offset, !IO) :-
+    whence_to_int(Whence, Flag),
     seek_binary_2(Stream, Flag, Offset, Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
 
-:- pred seek_binary_2(stream::in, int::in, int::in, system_error::out,
+seek64_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
+    whence_to_int(Whence, Flag),
+    seek_binary_2(Stream, Flag, Offset, Error, !IO),
+    throw_on_error(Error, "error seeking in file: ", !IO).
+
+:- pred seek_binary_2(stream::in, int::in, int64::in, system_error::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -9427,14 +9461,24 @@ seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
 %---------------------%
 
 binary_input_stream_offset(binary_input_stream(Stream), Offset, !IO) :-
-    binary_stream_offset_2(Stream, Offset, Error, !IO),
-    throw_on_error(Error, "error getting file offset: ", !IO).
+    binary_stream_offset_2(Stream, Offset64, Error, !IO),
+    throw_on_error(Error, "error getting file offset: ", !IO),
+    Offset = int64.cast_to_int(Offset64).
 
 binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
+    binary_stream_offset_2(Stream, Offset64, Error, !IO),
+    throw_on_error(Error, "error getting file offset: ", !IO),
+    Offset = int64.cast_to_int(Offset64).
+
+binary_input_stream_offset64(binary_input_stream(Stream), Offset, !IO) :-
     binary_stream_offset_2(Stream, Offset, Error, !IO),
     throw_on_error(Error, "error getting file offset: ", !IO).
 
-:- pred binary_stream_offset_2(stream::in, int::out, system_error::out,
+binary_output_stream_offset64(binary_output_stream(Stream), Offset, !IO) :-
+    binary_stream_offset_2(Stream, Offset, Error, !IO),
+    throw_on_error(Error, "error getting file offset: ", !IO).
+
+:- pred binary_stream_offset_2(stream::in, int64::out, system_error::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
