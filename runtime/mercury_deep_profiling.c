@@ -22,10 +22,12 @@
 #include "mercury_runtime_util.h"
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
+#include "mercury_file.h"
 
 #ifdef MR_DEEP_PROFILING
 
 #include <stdio.h>
+#include <stdint.h>
 #include <errno.h>
 
 #ifdef  MR_EXEC_TRACE
@@ -373,7 +375,7 @@ MR_write_out_profiling_tree(void)
     FILE                    *check_fp;
     int                     ticks_per_sec;
     unsigned                num_call_seqs;
-    long                    table_sizes_offset;
+    int64_t                 table_sizes_offset;
     char                    errbuf[MR_STRERROR_BUF_SIZE];
 
 #ifdef MR_DEEP_PROFILING_STATISTICS
@@ -409,7 +411,7 @@ MR_write_out_profiling_tree(void)
     MR_write_out_deep_flags(deep_fp, MR_FALSE);
 
     // We overwrite these zeros after seeking back to table_sizes_offset.
-    table_sizes_offset = ftell(deep_fp);
+    table_sizes_offset = MR_ftell(deep_fp);
     if (table_sizes_offset == -1) {
         MR_deep_data_output_error("ftell failed for ",
             MR_MDPROF_DATA_FILENAME);
@@ -464,7 +466,7 @@ MR_write_out_profiling_tree(void)
         MR_address_of_write_out_proc_statics != NULL);
     (*MR_address_of_write_out_proc_statics)(deep_fp, procrep_fp);
 
-    if (fseek(deep_fp, table_sizes_offset, SEEK_SET) != 0) {
+    if (MR_fseek(deep_fp, table_sizes_offset, SEEK_SET) != 0) {
         MR_deep_data_output_error("cannot seek to header of",
             MR_MDPROF_DATA_FILENAME);
     }

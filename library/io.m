@@ -9414,7 +9414,7 @@ seek64_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
 
     // XXX check if the stream is seekable.
     if (MR_IS_FILE_STREAM(*Stream)) {
-        if (fseek(MR_file(*Stream), Off, seek_flags[Flag]) < 0) {
+        if (MR_fseek(MR_file(*Stream), Off, seek_flags[Flag]) < 0) {
             Error = errno;
         } else {
             Error = 0;
@@ -9489,7 +9489,7 @@ binary_output_stream_offset64(binary_output_stream(Stream), Offset, !IO) :-
 "
     // XXX should check if the stream is tellable
     if (MR_IS_FILE_STREAM(*Stream)) {
-        Offset = ftell(MR_file(*Stream));
+        Offset = MR_ftell(MR_file(*Stream));
         if (Offset < 0) {
             Error = errno;
         } else {

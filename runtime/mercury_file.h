@@ -9,6 +9,22 @@
 
 #include "mercury_library_types.h"
 
+// MR_fseek and MR_ftell expand to the name of the versions of fseek()
+// and ftell() that use 64-bit offsets.
+//
+#if defined(MR_WIN32) && !defined(MR_CYGWIN)
+    #if defined(MR_MINGW)
+       #define MR_fseek fseeko64
+       #define MR_ftell ftello64
+    #else
+       #define MR_fseek _fseeki64
+       #define MR_ftell _ftelli64
+    #endif
+#else
+   #define MR_fseek fseek
+   #define MR_ftell ftell
+#endif
+
 // Initialise a MercuryFile structure to use the C stdlib FILE *type.
 
 void MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf);
