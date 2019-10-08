@@ -1306,7 +1306,7 @@ svar_finish_if_then_else(LocKind, Context, QuantStateVars,
     ;
         ElseMissingInits = [_ | _],
         ElseSpecs0 = !.Store ^ store_specs,
-        report_missing_inits_in_ite(Context, ThenMissingInits,
+        report_missing_inits_in_ite(Context, ElseMissingInits,
             "fails", "succeeds", ElseSpecs0, ElseSpecs),
         !Store ^ store_specs := ElseSpecs
     ),
@@ -1787,7 +1787,7 @@ lookup_dot_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
                 !Specs),
             % We make StateVar known to avoid duplicate reports.
             new_state_var_instance(StateVar, name_middle, Var, !VarSet),
-            map.det_update(StateVar, status_known_updated(Var, Var),
+            map.det_update(StateVar, status_known(Var),
                 StatusMap0, StatusMap),
             !State ^ state_status_map := StatusMap
         ;
