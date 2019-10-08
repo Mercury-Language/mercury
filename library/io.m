@@ -1363,7 +1363,7 @@
 
     % As above, but the offset is always a 64-bit value.
     %
-:- pred seek64_binary_output(io.binary_output_stream::in, io.whence::in,
+:- pred seek_binary_output64(io.binary_output_stream::in, io.whence::in,
     int64::in, io::di, io::uo) is det.
 
     % Returns the offset (in bytes) into the specified binary output stream.
@@ -1445,7 +1445,7 @@
 
     % As above, but the offset is always a 64-bit value.
     %
-:- pred seek64_binary_input(io.binary_input_stream::in, io.whence::in,
+:- pred seek_binary_input64(io.binary_input_stream::in, io.whence::in,
     int64::in, io::di, io::uo) is det.
 
     % Returns the offset (in bytes) into the specified binary input stream.
@@ -9391,12 +9391,12 @@ seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
     seek_binary_2(Stream, Flag, int64.from_int(Offset), Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
 
-seek64_binary_input(binary_input_stream(Stream), Whence, Offset, !IO) :-
+seek_binary_input64(binary_input_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
     seek_binary_2(Stream, Flag, Offset, Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
 
-seek64_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
+seek_binary_output64(binary_output_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
     seek_binary_2(Stream, Flag, Offset, Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
@@ -14088,7 +14088,7 @@ result_to_stream_result(error(Error)) = error(Error).
     ),
     ( seek64(Stream, Whence0, OffSet, !IO) :-
         Whence = stream_whence_to_io_whence(Whence0),
-        seek64_binary_input(Stream, Whence, OffSet, !IO)
+        seek_binary_input64(Stream, Whence, OffSet, !IO)
     )
 ].
 
@@ -14162,7 +14162,7 @@ res_to_stream_res(error(E)) = error(E).
     ),
     ( seek64(Stream, Whence0, Offset, !IO) :-
         Whence = stream_whence_to_io_whence(Whence0),
-        seek64_binary_output(Stream, Whence, Offset, !IO)
+        seek_binary_output64(Stream, Whence, Offset, !IO)
     )
 ].
 
