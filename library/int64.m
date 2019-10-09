@@ -51,6 +51,20 @@
 % Conversion to int.
 %
 
+    % to_int(I64, I):
+    %
+    % Convert an int64 into an int.
+    % Fails if I64 is not in [int.min_int, int.max_int].
+    %
+:- pred to_int(int64::in, int::out) is semidet.
+
+    % det_to_int(I64) = I:
+    %
+    % Convert an int64 into an int.
+    % Throws an exception if I64 is not in [int.min_int, int.max_int].
+    %
+:- func det_to_int(int64) = int.
+
     % cast_to_int(I64) = I:
     %
     % Convert an int64 to an int.
@@ -395,6 +409,20 @@ from_int(I) = cast_from_int(I).
 
 cast_from_int(_) = _ :-
     sorry($module, "NYI int64.cast_from_int for Erlang").
+
+%---------------------------------------------------------------------------%
+
+to_int(I64, I) :-
+    I64 =< cast_from_int(int.max_int),
+    I64 >= cast_from_int(int.min_int),
+    I = cast_to_int(I64).
+
+det_to_int(I64) = I :-
+    ( if to_int(I64, IPrime) then
+        I = IPrime
+    else
+        error("int64.det_to_int: cannot convert int64 to int")
+    ).
 
 %---------------------------------------------------------------------------%
 
