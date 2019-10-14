@@ -1367,6 +1367,9 @@
     int64::in, io::di, io::uo) is det.
 
     % Returns the offset (in bytes) into the specified binary output stream.
+    % Throws an exception if the offset is outside the range that can be
+    % represented by the int type. To avoid this possibility, you can use the
+    % 64-bit offset version of this predicate below.
     %
 :- pred binary_output_stream_offset(io.binary_output_stream::in, int::out,
     io::di, io::uo) is det.
@@ -1449,6 +1452,9 @@
     int64::in, io::di, io::uo) is det.
 
     % Returns the offset (in bytes) into the specified binary input stream.
+    % Throws an exception if the offset is outside the range that can be
+    % represented by the int type. To avoid this possibility, you can use the
+    % 64-bit offset version of this predicate below.
     %
 :- pred binary_input_stream_offset(io.binary_input_stream::in, int::out,
     io::di, io::uo) is det.
@@ -9463,12 +9469,20 @@ seek_binary_output64(binary_output_stream(Stream), Whence, Offset, !IO) :-
 binary_input_stream_offset(binary_input_stream(Stream), Offset, !IO) :-
     binary_stream_offset_2(Stream, Offset64, Error, !IO),
     throw_on_error(Error, "error getting file offset: ", !IO),
-    Offset = int64.cast_to_int(Offset64).
+    ( if int64.to_int(Offset64, OffsetPrime) then
+        Offset = OffsetPrime
+    else
+        error("io.binary_input_stream_offset: offset exceeds range of an int")
+    ).
 
 binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
     binary_stream_offset_2(Stream, Offset64, Error, !IO),
     throw_on_error(Error, "error getting file offset: ", !IO),
-    Offset = int64.cast_to_int(Offset64).
+    ( if int64.to_int(Offset64, OffsetPrime) then
+        Offset = OffsetPrime
+    else
+        error("io.binary_output_stream_offset: offset exceeds range of an int")
+    ).
 
 binary_input_stream_offset64(binary_input_stream(Stream), Offset, !IO) :-
     binary_stream_offset_2(Stream, Offset, Error, !IO),
