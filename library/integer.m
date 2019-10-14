@@ -403,6 +403,7 @@
 %    would be a little better but would require a slightly more complex
 %    case conversion on reading and printing.)
 %    (djh: this is done)
+%    (2019-10-14 update: increase base to 2^30)
 %
 % 3) Use an O(n^(3/2)) algorithm for multiplying large integers, rather than
 %    the current O(n^2) method. There is an obvious divide-and-conquer
@@ -442,26 +443,26 @@
 %    Base multiplication is then an increment to Length.
 
 :- type sign == int.    % sign of integer and length of digit list
-:- type digit == int.   % base 2^14 digit
+:- type digit == int.   % base 2^30 digit
 
 :- type integer
     --->    i(sign, list(digit)).
 
 :- func base = int.
 
-base = 16384. % 2^14
+base = 1073741824. % 2^30
 
 :- func basediv2 = int.
 
-basediv2 = 8192.
+basediv2 = 536870912.
 
 :- func log2base = int.
 
-log2base = 14.
+log2base = 30.
 
 :- func basemask = int.
 
-basemask = 16383.
+basemask = 1073741823.
 
 %---------------------------------------------------------------------------%
 
@@ -507,7 +508,7 @@ decap(i(L, [H | T])) = Result :-
 
 chop(N, Div, Mod) :-
     % The unchecked shifts here and in the uint case below
-    % are safe since log2base is 14.
+    % are safe since log2base is 30.
     Div = N `int.unchecked_right_shift` log2base,    % i.e. Div = N div base
     Mod = N /\ basemask.                             % i.e. Mod = N mod base
 
@@ -1541,7 +1542,7 @@ to_uint32(Integer, UInt32) :-
     %
 :- func integer_max_uint32 = integer.
 
-integer_max_uint32 = i(3, [15, 16383, 16383]).
+integer_max_uint32 = i(2, [3, 1073741823]).
 
 :- func uint32_list(list(int), uint32) = uint32.
 
@@ -1579,19 +1580,19 @@ to_int64(Integer, Int64) :-
     %
 :- func integer_min_int64 = integer.
 
-    %  128 * 2^(14*4) + 0 * 2^(14*3) + ... + 0 * 2^(14*0)
-    %  = 2^7 * 2^56 + 0 ... + 0
-    %  = 2^63.
-integer_min_int64 = i(-5, [-128, 0, 0, 0, 0]).
+    % 8 * 2^(30*2) + 0 * 2^(30*1) + 0 * 2^(30*0)
+    % = 2^3 * 2^60
+    % = 2^63.
+integer_min_int64 = i(-3, [-8, 0, 0]).
 
     % Return max_int64 as an integer.
     %
 :- func integer_max_int64 = integer.
 
-    % 127 * 2^(14*4) + 16383 * 2^(14*3) + ... + 16383 * 2^(14*0)
-    % = (2^7  - 1) * 2^56 + (2^14 - 1) * 2^42 + ... + (2^14 - 1) * 1
+    % 7 * 2^(30*2) + 1073741823 * 2^(30*1) + 1073741823 * 2^(30*0)
+    % = (2^3 - 1) * 2^60 + (2^30 - 1) * 2^30 + (2^30 - 1) * 2^0
     % = 2^63 - 1.
-integer_max_int64 = i(5, [127, 16383, 16383, 16383, 16383]).
+integer_max_int64 = i(3, [7, 1073741823, 1073741823]).
 
 :- func int64_list(list(int), int64) = int64.
 
@@ -1619,11 +1620,10 @@ to_uint64(Integer, UInt64) :-
     %
 :- func integer_max_uint64 = integer.
 
-    % 255 * 2^(14*4) + 16383 * 2^(14*3) + ... + 16383 * 2(14*0)
-    % = (2^8 - 1) * 2^56 + (2^14 - 1) * 2^42 + ... + (2^14 - 1) * 2^0
-    % = 2^64 - 2^56 + 2^56 - 2^42 + ... + 2^14 - 1
+    % 15 * 2^(30*2) + 1073741823 * 2^(30*1) + 1073741823 * 2^(30*0)
+    % = (2^4 - 1) * 2^60 + (2^30 - 1) * 2^30 + (2^30 - 1) * 2^0
     % = 2^64 - 1.
-integer_max_uint64 = i(5, [255, 16383, 16383, 16383, 16383]).
+integer_max_uint64 = i(3, [15, 1073741823, 1073741823]).
 
 :- func uint64_list(list(int), uint64) = uint64.
 

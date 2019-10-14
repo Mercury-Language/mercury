@@ -73,10 +73,13 @@ test_int64s = [
     32i64,
     64i64,
     127i64,
-    16383i64,  % i.e. integer.base - 1
-    16384i64,  % i.e. integer.base
-    16385i64,  % i.e. integer.base + 1,
+    16383i64,
+    16384i64,
+    16385i64,
     32767i64,
+    1073741823i64, % i.e. integer.base - 1
+    1073741824i64, % i.e. integer.base
+    1073741825i64, % i.e. integer.base + 1
     2147483647i64,
     9223372036854775807i64
 ].
@@ -98,7 +101,9 @@ test_integers = [
     det_from_string("16384"),
     det_from_string("16385"),
     det_from_string("32767"),
+    det_from_string("1073741823"),
     det_from_string("1073741824"),
+    det_from_string("1073741825"),
     det_from_string("2147483647"),
     det_from_string("2147483648"),
     det_from_string("4294967295"),

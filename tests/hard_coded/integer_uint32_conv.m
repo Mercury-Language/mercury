@@ -65,11 +65,14 @@ test_uint32s = [
     16u32,
     32u32,
     64u32,
-    16383u32,  % i.e. integer.base - 1
-    16384u32,  % i.e. integer.base
-    16385u32,  % i.e. integer.base + 1,
+    16383u32,
+    16384u32,
+    16385u32,
     32768u32,
     65536u32,
+    1073741823u32, % i.e. integer.base - 1
+    1073741824u32, % i.e. integer.base
+    1073741825u32, % i.e. integer.base + 1
     2147483647u32,
     4294967295u32
 ].
@@ -88,7 +91,9 @@ test_integers = [
     det_from_string("16383"),
     det_from_string("16384"),
     det_from_string("16385"),
+    det_from_string("1073741823"),
     det_from_string("1073741824"),
+    det_from_string("1073741825"),
     det_from_string("2147483648"),
     det_from_string("4294967295"),
     det_from_string("4294967296"),
