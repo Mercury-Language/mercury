@@ -1987,7 +1987,7 @@ find_matching_brace(Chars, Alternatives, Left) :-
     list(char)::in, int::in, list(list(char))::out, list(char)::out) is det.
 
 find_matching_brace_or_comma([], _, _, _, _, _) :-
-    throw("no matching brace").
+    error("dir.expand_braces: mismatched braces").
 find_matching_brace_or_comma([Char | Chars], Alternatives0, CurAlternative,
         BraceLevel, Alternatives, Left) :-
     ( if Char = '}' then

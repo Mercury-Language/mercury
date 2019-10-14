@@ -16,22 +16,22 @@
 :- import_module list.
 
 main(!IO) :-
-    list__foldl(expand_print, test_inputs, !IO).
+    list.foldl(expand_print, test_inputs, !IO).
 
 :- pred expand_print(string::in, io::di, io::uo) is det.
 
 expand_print(Arg, !IO) :-
-    io__write_string(Arg, !IO),
-    io__nl(!IO),
+    io.write_string(Arg, !IO),
+    io.nl(!IO),
     write_expansions(expand_braces(Arg), !IO).
 
 :- pred write_expansions(list(string)::in, io::di, io::uo) is det.
 
 write_expansions([], !IO).
 write_expansions([Str | Strs], !IO) :-
-    io__write_string("  ", !IO),
-    io__write_string(Str, !IO),
-    io__nl(!IO),
+    io.write_string("  ", !IO),
+    io.write_string(Str, !IO),
+    io.nl(!IO),
     write_expansions(Strs, !IO).
 
 :- func test_inputs = list(string).
