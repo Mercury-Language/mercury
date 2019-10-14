@@ -1064,6 +1064,7 @@ fma(_, _, _) = _ :-
     private_builtin.sorry("math.fma").
 
 % NOTE: Java 9 provides Math.fma.
+% NOTE: .NET core 3.0 provides System.Math.FusedMultiplyAdd.
 
 %---------------------------------------------------------------------------%
 :- end_module math.
