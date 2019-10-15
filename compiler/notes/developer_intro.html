@@ -1,3 +1,7 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
 
@@ -5,78 +9,90 @@
 </head>
 <body bgcolor="#ABCDEF" text="#000000">
 
+<h1>The Mercury Project: Developer Introduction </h1>
+
 <h2>An introduction to the Mercury source code and tools</h2>
 
 <p>
 
-The source code to Mercury is freely available and may be modified by
-anyone.  However, there's a bit of a difference between being legally
-allowed to modify the code, and actually being able to do it!  The
-Mercury system is quite large, and as the compiler for Mercury is
-written in Mercury itself, there are a few tricks worth learning if you
-are going to develop with Mercury.
+The source code to Mercury is freely available and may be modified by anyone.
+However, there is a bit of a difference between
+being legally allowed to modify the code, and actually being able to do it!
+The Mercury system is quite large,
+and as the compiler for Mercury is written in Mercury itself,
+there are a few tricks worth learning if you are going to develop with Mercury.
 <p>
-This document aims to help developers get started with the Mercury
-development environment, by explaining some of the special tools that
-are available for developers. 
+This document aims to help developers get started
+with the Mercury development environment,
+by explaining some of the special tools that are available for developers.
 <p>
-Other useful documents are in the 
+Other useful documents are in the
 <a href="http://www.mercurylang.org/development/developer.html">Developers
-Information</a> section
-of the web site.  In particular you may wish to see how to access the
-Mercury git repository and read about the design of the Mercury compiler. 
+Information</a> section of the web site.
+In particular you may wish to see how to access the Mercury git repository
+and read about the design of the Mercury compiler.
 <p>
-This document is a work-in-progress; if there is particular information
-you feel is useful, please let us know and we will write something about
-it.
+This document is a work-in-progress;
+if there is particular information you feel is useful,
+please let us know and we will write something about it.
 
 <h2>About grades</h2>
 
-The Mercury system uses the word "grade" to refer to a set of
-compilation options for the system.  Some of them are for benchmarking
-purposes, others enable debugging or profiling, and others enable
-research features.  Many grades are incompatible with each other.
+The Mercury system uses the word "grade"
+to refer to a set of compilation options for the system.
+Some of them are for benchmarking purposes,
+others enable debugging or profiling, and others enable research features.
+Many grades are incompatible with each other.
 <p>
-Mixing and matching grades can be the cause of headaches.  It's a good
-idea to `mmake realclean' build from scratch if you run into weird
-problems and have been changing grades.  The Mercury system makes a
-pretty good attempt to try to stop this kind of thing resulting in a
-crashing program, but you will often get linker errors if you try to
-build different parts of the compiler in incompatible grades.
+Mixing and matching grades can be the cause of headaches.
+It is a good idea to `mmake realclean' build from scratch
+if you run into weird problems and have been changing grades.
+The Mercury system makes a pretty good attempt
+to try to stop this kind of thing resulting in a crashing program,
+but you will often get linker errors if you try to build
+different parts of the compiler in incompatible grades.
 
 <h2>Setting the installation path</h2>
 
-If you want to install your own compiler, you will probably want to keep
-it separate from a working stable compiler (or else you might make a mistake
+If you want to install your own compiler,
+you will probably want to keep it separate from a working stable compiler
+(or else you might make a mistake
 that makes it impossible to compile the compiler anymore!).
 <p>
-When you run configure, you can set an installation path.  For example:
+When you run configure, you can set an installation path.
+For example:
 <pre>
 ./configure --prefix /tmp/mercury/install
 </pre>
-will set the installation path to /tmp/mercury/install.  Make sure you
-set your PATH so that it includes the `bin' subdirectory of your install
-path -- in this example it would be /tmp/mercury/install/bin.  And be
-sure that this is earlier in your path than any other Mercury
-installation (for example, one in /usr/bin or /usr/local/bin).
+will set the installation path to /tmp/mercury/install.
+Make sure you set your PATH so that
+it includes the `bin' subdirectory of your install path
+-- in this example it would be /tmp/mercury/install/bin.
+And be sure that this is earlier in your path
+than any other Mercury installation
+(for example, one in /usr/bin or /usr/local/bin).
 <p>
-See the files INSTALL and INSTALL_CVS for more information on
-installation of Mercury.
+See the files INSTALL and INSTALL_CVS
+for more information on installation of Mercury.
 
 <h2>Installing fewer grades</h2>
 
-If you make a lot of changes to the compiler, you will find it a bit time
-consuming to install the entire Mercury system to run a few tests.
+If you make a lot of changes to the compiler,
+you will find it a bit time consuming
+to install the entire Mercury system to run a few tests.
 <p>
-The first thing to realize is that when you install the compiler, you
-don't have to install all the grades.  You can set the make variable
-LIBGRADES to set the list of "extra" grades to install.  If you set it
-to empty, it will install only the default grade (probably asm_fast.gc).
+The first thing to realize is that when you install the compiler,
+you don't have to install all the grades.
+You can set the make variable LIBGRADES
+to set the list of "extra" grades to install.
+If you set it to empty, it will install
+only the default grade (probably asm_fast.gc).
 <p>
-A good way to do this is to create (or modify an existing) Mmake.params
-file in the top-level of the mercury distribution (in the same directory
-as README and NEWS).  Mmake.params is used to set local workspace
-options and is very useful for overriding default mmake settings.
+A good way to do this is to create (or modify an existing) Mmake.params file
+in the top-level of the mercury distribution
+(in the same directory as README and NEWS).
+Mmake.params is used to set local workspace options,
+and is very useful for overriding default mmake settings.
 Add the line
 <pre>
 LIBGRADES=
@@ -86,9 +102,9 @@ You can also set this variable on a once off basis on the command line.
 <pre>
 mmake install LIBGRADES=
 </pre>
-<p>	
-There are some good default settings for libgrades you can set at
-configuration time, for example
+<p>
+There are some good default settings for libgrades
+you can set at configuration time, for example
 <pre>
 ./configure --disable-most-grades
 ./configure --enable-libgrades=...
@@ -96,30 +112,33 @@ configuration time, for example
 Run configure with the --help option to see more options.
 
 <p>
-Again, the INSTALL file in the Mercury distribution has more detailed
-documentation on installing grades.
+Again, the INSTALL file in the Mercury distribution
+has more detailed documentation on installing grades.
 
 <h2>Using the local build directory</h2>
 
-If you only need to run your version of mmc (and don't need mmake), you
-don't need to install at all.  There is a script in the tools directory
-of the Mercury distribution called `lmc'.  You can use this script just
-like mmc, but it will use the Mercury compiler, library, runtime, etc that
-you have in an uninstalled workspace.
+If you only need to run your version of mmc (and don't need mmake),
+you don't need to install at all.
+There is a script in the tools directory of the Mercury distribution
+called `lmc'.
+You can use this script just like mmc,
+but it will use the Mercury compiler, library, runtime, etc
+that you have in an uninstalled workspace.
 <p>
-You need to set the environment variable WORKSPACE to point to the
-workspace you are using.  The easiest way to do this is to create a
+You need to set the environment variable WORKSPACE
+to point to the workspace you are using.
+The easiest way to do this is to create a
 small script which sets WORKSPACE and runs lmc.
 For example if you are using $HOME/mercury as your workspace:
 <pre>
-#!/bin/sh                                                                    
+#!/bin/sh
 WORKSPACE=$HOME/mercury
-export WORKSPACE                                   
-$WORKSPACE/tools/lmc "$@"       
+export WORKSPACE
+$WORKSPACE/tools/lmc "$@"
 </pre>
-See the tools/lmc file for further documentation on this tool -- it can
-also run the compiler under gdb or compile programs suitable for C level
-debugging.
+See the tools/lmc file for further documentation on this tool
+-- it can also run the compiler under gdb,
+or compile programs suitable for C level debugging.
 
 <p>
 There is also a script in the tools directory called `lml',
@@ -128,64 +147,73 @@ You can use these with mmake:
 <pre>
 mmake MC=lmc ML=lml ...
 </pre>
-However, this will still use the installed version of `mmake',
-`c2init'/`mkinit', `mgnuc', etc.  So it isn't entirely foolproof.
-If you've made changes to the scripts, it may be best to install
-rather than trying to use the local build directory.
+However, this will still use
+the installed version of `mmake', `c2init'/`mkinit', `mgnuc', etc.
+So it isn't entirely foolproof.
+If you have made changes to the scripts,
+it may be best to install rather than trying to use the local build directory.
 
-<h2>Bootchecking</h2>
+<h2>Bootstrap checking</h2>
 
-If you've made changes to the compiler or library that you think are
-working fine, you should make sure you haven't messed up some other
-part of the compiler.
+If you have made changes to the compiler or library
+that you think are working fine,
+you should make sure you haven't messed up some other part of the compiler.
 <p>
 The bootcheck script in the tools directory of the Mercury compiler
-is just what you need to do this.  It works in a number of
-<em>stages</em>, where each stage is the output of the compiler we built
-in the previous stage.
+is just what you need to do this.
+It works in a number of <em>stages</em>,
+where each stage is the output of the compiler we built in the previous stage.
 <p>
-Stage 1 is to build a working Mercury compiler (just like typing mmake
-at the top level of the mercury distribution).  We build this compiler
-using a known, trusted, stable Mercury compiler.
+Stage 1 is to build a working Mercury compiler
+(just like typing mmake at the top level of the mercury distribution).
+We build this compiler using a known, trusted, stable Mercury compiler.
 <p>
-Stage 2 uses the stage 1 Mercury compiler to build a stage 2 Mercury
-compiler.  This ensures that you can still build the compiler using your
-modifications.
+Stage 2 uses the stage 1 Mercury compiler to build a stage 2 Mercury compiler.
+This ensures that you can still build the compiler using your modifications.
 <p>
-Bootcheck then uses the stage 2 Mercury compiler to build the C files of
-another Mercury compiler, the stage 3 compiler, and compares them with
-the C files of the stage 2 compiler, which were built by the stage
-1 compiler.  If they differ, then the stage 2 compiler does not
-execute the same algorithm as the stage 1 compiler. Since the stage 1
-and 2 compilers were built from the same source, the difference must
-have been introduced by differences in the compilers used to compile
-that source. Since stage 1 was compiled with a trusted compiler,
-the compiler used to generate the stage 2 executable (i.e. the stage
-1 compiler) must be buggy. If this happens, the compiler doesn't
-"bootstrap" -- it cannot reliably compile itself.               
+Bootcheck then uses the stage 2 Mercury compiler
+to build the C files of another Mercury compiler, the stage 3 compiler,
+and compares them with the C files of the stage 2 compiler,
+which were built by the stage 1 compiler.
+If they differ, then the stage 2 compiler
+does not execute the same algorithm as the stage 1 compiler.
+Since the stage 1 and 2 compilers were built from the same source,
+the difference must have been introduced by differences
+in the compilers used to compile that source.
+Since stage 1 was compiled with a trusted compiler,
+the compiler used to generate the stage 2 executable
+(i.e. the stage 1 compiler) must be buggy.
+If this happens, the compiler doesn't "bootstrap"
+-- it cannot reliably compile itself.
 <p>
-Finally, if you have checked out the "tests" module from CVS, the
-bootcheck will use the stage 2 compiler, library and runtime to run all
-the tests in the testing hierarchy.
+Finally the bootcheck will use the stage 2 compiler, library and runtime
+to run all the tests in all the subdirectories of the test directory.
 <p>
-Check out the tools/bootcheck script to see further documentation on how
-it works.  You can build only specific stages, just run the tests, omit
-building certain parts of the compiler, and much much more.
+Check out the tools/bootcheck script
+to see further documentation on how it works.
+You can specify the grade to be tested,
+build only specific stages,
+run the tests only in certain subdirectories,
+and much, much more.
 <p>
-Bootchecking can take quite a while -- 1-3 hours is not uncommon.  It's
-a good idea to run the bootcheck in the background and log the results
-to a file.  For example:
+Bootchecking can take quite a while -- 1-3 hours is not uncommon.
+It is a good idea to run the bootcheck in the background
+and log the results to a file.
+For example:
 <pre>
 ./tools/bootcheck > bootchecklog.Jan21 2>&1 &
 tail -f bootchecklog.Jan21
 </pre>
 
-There is also a script tools/submit_patch, which can be used for
-testing and/or committing patches.  It takes as input a file containing
-a CVS log message and a patch file.  It checks out the Mercury sources,
-applies the patch file, and then tests the patch by running a couple of
-bootchecks in different grades.  If you specified the `--commit' option,
-and the tests pass, it then goes ahead and commits the patch.
+<!-- XXX Our move from CVS to git has obsoleted this.
+There is also a script tools/submit_patch,
+which can be used for testing and/or committing patches.
+It takes as input a file containing a CVS log message and a patch file.
+It checks out the Mercury sources, applies the patch file,
+and then tests the patch by running a couple of bootchecks in different grades.
+If you specified the `--commit' option, and the tests pass,
+it then goes ahead and commits the patch.
+-->
 
 <p>
 
@@ -194,26 +222,50 @@ and the tests pass, it then goes ahead and commits the patch.
 The browser directory contains the source code for the declarative debugger
 as well as the features of the procedural debugger implemented in Mercury.
 <p>
-By default this directory is compiled with no tracing enabled, even
-when a .debug or .decldebug grade is specified.  This allows the declarative
-debugger to take advantage of optimisations such as tail recursion and reduces
-the size of the installed libraries.
+By default this directory is compiled with no tracing enabled,
+even when a .debug or .decldebug grade is specified.
+This allows the declarative debugger to take advantage of optimisations
+such as tail recursion and reduces the size of the installed libraries.
 <p>
-In order to debug the code in the browser directory add the following line
-to your Mmake.browser.params file in the browser directory:
+In order to debug the code in the browser directory,
+add the following line to your Mmake.browser.params file
+in the browser directory:
 <pre>
 EXTRA_MCFLAGS=--no-force-disable-tracing
 </pre>
 <p>
-The `dd_dd' command can then be used from mdb to start the declarative debugger
-with interactive debugging turned on.
+The `dd_dd' command can then be used from mdb
+to start the declarative debugger with interactive debugging turned on.
 <p>
-Since tracing turns off the tail recursion optimisation, you may also need
-to increase the size of the stack by setting the --detstack-size runtime
-option:
+Since tracing turns off the tail recursion optimisation,
+you may also need to increase the size of the stack
+by setting the --detstack-size runtime option:
 <pre>
 export MERCURY_OPTIONS="--detstack-size 8128"
 </pre>
+
+<h2>Bug databases</h2>
+
+The Mercury project uses two bug databases.
+<p>
+The first bug database we have used is the Mantis bug database at
+<pre>
+https://bugs.mercurylang.org
+</pre>
+<p>
+The second bug database,
+which we started using later when the project moved to github,
+is the github issue tracker:
+<pre>
+https://github.com/Mercury-Language/mercury/issues
+</pre>
+
+<p>
+We accept bug reports and feature requests from both sources.
+<p>
+Our convention is to name test cases
+bugN.m for Mantis bug N, and ghN.m for Github issue N.
+
 <hr>
 <p>
 Comments? See our
@@ -221,4 +273,3 @@ Comments? See our
 
 </body>
 </html>
-
