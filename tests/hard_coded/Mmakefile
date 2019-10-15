@@ -361,6 +361,7 @@ ORDINARY_PROGS = \
 	string_codepoint \
 	string_count_codepoints_ilseq \
 	string_first_char \
+	string_fold_ilseq \
 	string_index_ilseq \
 	string_index_next_ilseq \
 	string_loop \

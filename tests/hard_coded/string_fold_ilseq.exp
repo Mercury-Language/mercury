@@ -1,0 +1,5 @@
+string.foldl:
+a b c 😀 0xfffd 0xfffd 0xfffd x y z 
+
+string.foldr:
+z y x 0xfffd 0xfffd 0xfffd 😀 c b a 

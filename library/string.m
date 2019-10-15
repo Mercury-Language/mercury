@@ -1007,8 +1007,15 @@
     % foldl(Closure, String, !Acc):
     %
     % `Closure' is an accumulator predicate which is to be called for each
-    % character (code point) of the string `String' in turn. The initial
-    % value of the accumulator is `!.Acc' and the final value is `!:Acc'.
+    % character (code point) of the string `String' in turn.
+    % If `String' contains ill-formed sequences, `Closure' is called for each
+    % code unit in an ill-formed sequence. If strings use UTF-8 encoding,
+    % U+FFFD is passed to `Closure' in place of each such code unit.
+    % If strings use UTF-16 encoding, each code unit in an ill-formed sequence
+    % is an unpaired surrogate code point, which will be passed to `Closure'.
+    %
+    % The initial value of the accumulator is `!.Acc' and the final value is
+    % `!:Acc'.
     % (foldl(Closure, String, !Acc)  is equivalent to
     %   to_char_list(String, Chars),
     %   list.foldl(Closure, Chars, !Acc)
@@ -5203,20 +5210,6 @@ break_up_string_reverse(Str, N, Prev) = Strs :-
 % Folds over the characters in strings.
 %
 
-% XXX ILSEQ The behaviour of foldl depends on unsafe_index_next.
-% For UTF-16, we can call Closure for unpaired surrogate code points like any
-% other code point. For UTF-8, bytes in ill-formed sequences cannot be passed
-% as `char's since they are not code points. Perhaps foldl should throw an
-% exception, or just should pass replacement char.
-%
-% We may want to introduce fold predicates with an accumulator of type:
-%       pred(char_or_code_unit, A, A)
-% or
-%       pred(char, maybe(int), A, A)
-% For the latter, the second argument would be set to `yes(CodeUnit)' for each
-% code unit in an ill-formed sequence, and the first argument could be set to
-% U+FFFD (replacement char).
-
 foldl(F, S, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     foldl(P, S, A, B).
@@ -5308,8 +5301,6 @@ foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2) :-
         !Acc1, !Acc2).
 
 %---------------------%
-
-% XXX ILSEQ Behaviour depends on unsafe_prev_index.
 
 foldr(F, String, Acc0) = Acc :-
     Closure = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y)),
