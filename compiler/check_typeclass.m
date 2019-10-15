@@ -530,8 +530,8 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
             ClassSNA = sym_name_arity(ClassName, ClassArity),
             Pieces = [words("Error: no definition for typeclass"),
                 unqual_sym_name_and_arity(ClassSNA), suffix("."), nl],
-            Msg = simple_msg(ClassContext, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_type_check, [Msg]),
+            Spec = simplest_spec(severity_error, phase_type_check,
+                ClassContext, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             MaybeBadDefn = has_bad_class_defn
@@ -598,8 +598,8 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         Pieces = [words("Error: instance declaration for abstract typeclass"),
             unqual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
             suffix("."), nl],
-        Msg = simple_msg(TermContext, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
+        Spec = simplest_spec(severity_error, phase_type_check,
+            TermContext, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
         ClassInterface = class_interface_concrete(_),
@@ -1134,8 +1134,8 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
             "constraint is", "constraints are")),
         words("not satisfied:"), nl,
         words(ConstraintsString), suffix("."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
+        Spec = simplest_spec(severity_error, phase_type_check,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs],
         InstanceDefn = InstanceDefn0
     ).
@@ -1267,8 +1267,8 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
             words("has no corresponding concrete"),
             words("instance in the implementation."), nl],
         AbstractInstanceContext = AbstractInstance ^ instdefn_context,
-        Msg = simple_msg(AbstractInstanceContext, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
+        Spec = simplest_spec(severity_error, phase_type_check,
+            AbstractInstanceContext, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
         MissingConcreteError = no
@@ -1408,8 +1408,8 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
             qual_sym_name_and_arity(sym_name_arity(Name, Arity)), nl],
         list.foldl(add_path_element, Tail, cord.init, LaterLinesCord),
         Pieces = StartPieces ++ cord.list(LaterLinesCord),
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg])
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces)
     ).
 
 :- pred add_path_element(class_id::in,
@@ -1622,8 +1622,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
         words("in the range of the functional dependency, but"),
         words(choose_number(Vars, "is", "are")),
         words("not determined by the domain."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
 
 :- func report_consistency_error(class_id, hlds_class_defn,
     hlds_instance_defn, hlds_instance_defn, hlds_class_fundep) = error_spec.
@@ -1957,8 +1956,8 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
     Pieces = InDeclaration ++ TypeVariables ++ TVarsPart ++
         [Are, BlahConstrained, suffix(","), words("but"), Are,
         BlahQuantified, suffix("."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = simplest_spec(severity_error, phase_type_check,
+        Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2157,8 +2156,8 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
         words("method"),
         unqual_sym_name_and_arity(sym_name_arity(MethodName, Arity)),
         suffix("."), nl],
-    Msg = simple_msg(InstanceContext, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    Spec = simplest_spec(severity_error, phase_type_check,
+        InstanceContext, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -2193,8 +2192,8 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
         Pieces = Pieces1 ++ Pieces2
     ),
 
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    Spec = simplest_spec(severity_error, phase_type_check,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred format_method_names(instance_method::in, list(instance_method)::in,

@@ -105,8 +105,8 @@ parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             words("optionally followed by"),
             quote("where [method_signature_1, ... method_signature_m]"),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -256,8 +256,8 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                         FunDepNotInParamsPieces ++ FunDepErrorContext
                 ),
                 Pieces = Prefix ++ Middle ++ Suffix ++ [nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    Context, Pieces),
                 MaybeItemTypeClass = error1([Spec])
             )
         )
@@ -292,9 +292,8 @@ parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
             Pieces = [words("Error: constraints on class declarations"),
                 words("may only constrain type variables and ground types."),
                 nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ConstraintsTerm),
-                    [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(ConstraintsTerm), Pieces),
             Result = error2([Spec])
         )
     ;
@@ -340,8 +339,8 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
             TermVars = [],
             Pieces = [words("Error: typeclass declarations require"),
                 words("at least one class parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(NameTerm), Pieces),
             MaybeTypeClassInfo = error1([Spec])
         ;
             TermVars = [_ | _],
@@ -361,9 +360,8 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
                 Pieces = [words("Error: expected distinct variables"),
                     words("as class parameters."), nl],
                 % XXX Would Context be better than get_term_context(NameTerm)?
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(NameTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(NameTerm), Pieces),
                 MaybeTypeClassInfo = error1([Spec])
             )
         )
@@ -381,8 +379,8 @@ parse_class_decls(ModuleName, VarSet, DeclsTerm, MaybeClassDecls) :-
         find_errors(MaybeDecls, MaybeClassDecls)
     else
         Pieces = [words("Error: expected a list of class methods."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(DeclsTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(DeclsTerm), Pieces),
         MaybeClassDecls = error1([Spec])
     ).
 
@@ -446,8 +444,8 @@ parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             words("optionally followed by"),
             quote("where [method_spec_1, ... method_spec_m]"),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -588,8 +586,8 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
         Pieces = Prefix ++ UnboundTVarPieces ++
             [words("in constraints on instance declaration."), nl],
         % XXX Would _Context be better than get_term_context(NameTerm)?
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(NameTerm), Pieces),
         MaybeSpec = yes(Spec)
     else
         MaybeSpec = no
@@ -605,8 +603,8 @@ parse_instance_methods(ModuleName, VarSet, MethodsTerm, Result) :-
         find_errors(Interface, Result)
     else
         Pieces = [words("Error: expected list of instance methods."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(MethodsTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(MethodsTerm), Pieces),
         Result = error1([Spec])
     ).
 
@@ -645,9 +643,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     quote("pred(<Name> / <Arity>) is <InstanceMethod>"),
                     suffix(","),
                     words("not"), words(MethodTermStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(MethodTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(MethodTerm), Pieces),
                 MaybeInstanceMethod = error1([Spec])
             )
         else if
@@ -671,9 +668,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     quote("func(<Name> / <Arity>) is <InstanceMethod>"),
                     suffix(","),
                     words("not"), words(MethodTermStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(MethodTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(MethodTerm), Pieces),
                 MaybeInstanceMethod = error1([Spec])
             )
         else
@@ -684,8 +680,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 quote("func(<Name> / <Arity>) is <InstanceName>"),
                 suffix(","),
                 words("not"), words(MethodTermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(MethodTerm), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(MethodTerm), Pieces),
             MaybeInstanceMethod = error1([Spec])
         )
     else
@@ -725,9 +721,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     quote("func(<Name> / <Arity>) is <InstanceName>"),
                     suffix(","),
                     words("not"), words(MethodTermStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(MethodTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(MethodTerm), Pieces),
                 MaybeInstanceMethod = error1([Spec])
             )
         )
@@ -763,9 +758,8 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
             % to list allows an empty list.
             Result = ok1([HeadConstraint | TailConstraints])
         else
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ConstraintsTerm),
-                    [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(ConstraintsTerm), Pieces),
             Result = error1([Spec])
         )
     ;
@@ -793,9 +787,8 @@ parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
             FunDeps = [_ | _],
             Pieces = [words("Error: functional dependencies are only allowed"),
                 words("in typeclass declarations."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ConstraintsTerm),
-                    [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(ConstraintsTerm), Pieces),
             Result = error2([Spec])
         )
     ;
@@ -899,8 +892,8 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
             LHSPieces = [words("Error: a non-variable inst such as"),
                 quote(LHSTermStr), words("may not be the subject"),
                 words("of an inst constraint."), nl],
-            LHSSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(LHSContext, [always(LHSPieces)])]),
+            LHSSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                LHSContext, LHSPieces),
             MaybeInstVar = error1([LHSSpec])
         ),
         ContextPieces = cord.from_list([words("In the constraining inst"),
@@ -943,8 +936,8 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
     else
         Pieces = [words("Error: expected atom"),
             words("as class name or inst constraint."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ConstraintTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ConstraintTerm), Pieces),
         Result = error1([Spec])
     ).
 
@@ -961,8 +954,8 @@ parse_fundep(Term, Result) :-
         Pieces = [words("Error: the domain and range"),
             words("of a functional dependency"),
             words("must be comma-separated lists of variables."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         Result = error1([Spec])
     ).
 

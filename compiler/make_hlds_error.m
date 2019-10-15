@@ -110,7 +110,7 @@ report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         words("multiply defined."), nl],
     FirstDeclPieces = [words("Here is the previous definition of"),
         fixed(DefType), SNA, suffix("."), nl],
-    SecondDeclMsg = simple_msg(SecondContext, [always(SecondDeclPieces)]),
+    SecondDeclMsg = simplest_msg(SecondContext, SecondDeclPieces),
     FirstDeclMsg = error_msg(yes(FirstContext), treat_as_first, 0,
         [always(FirstDeclPieces)]),
     (
@@ -118,7 +118,7 @@ report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         ExtraMsgs = []
     ;
         ExtraPieces = [_ | _],
-        ExtraMsgs = [simple_msg(SecondContext, [always(ExtraPieces)])]
+        ExtraMsgs = [simplest_msg(SecondContext, ExtraPieces)]
     ),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
         [SecondDeclMsg, FirstDeclMsg] ++ ExtraMsgs),
@@ -141,16 +141,16 @@ report_undefined_pred_or_func_error(Name, Arity, OtherArities, Context,
             list_to_pieces(OtherArityStrs) ++
             [suffix("."), nl]
     ),
-    Msg = simple_msg(Context, [always(MainPieces ++ OtherArityPieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, MainPieces ++ OtherArityPieces),
     !:Specs = [Spec | !.Specs].
 
 report_undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
         qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
         words("specifies non-existent mode.")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %----------------------------------------------------------------------------%
@@ -193,7 +193,7 @@ maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
             simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,
             words("without corresponding"),
             decl(PredOrFuncStr), words("declaration."), nl],
-        MainMsg = simple_msg(Context, [always(MainPieces)]),
+        MainMsg = simplest_msg(Context, MainPieces),
 
         module_info_get_predicate_table(ModuleInfo, PredicateTable),
         predicate_table_lookup_pf_sym(PredicateTable,
@@ -226,8 +226,7 @@ maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
                         list.map(wrap_int_fixed, OtherAritiesList))] ++
                     [suffix("."), nl]
             ),
-            OtherAritiesMsg = simple_msg(Context,
-                [always(OtherAritiesPieces)]),
+            OtherAritiesMsg = simplest_msg(Context, OtherAritiesPieces),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [MainMsg, OtherAritiesMsg])
         ),
@@ -271,8 +270,8 @@ wrap_int_fixed(N) = int_fixed(N).
 error_is_exported(Context, ItemPieces, !Specs) :-
     Pieces = [words("Error:")] ++ ItemPieces ++
         [words("in module interface."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %----------------------------------------------------------------------------%

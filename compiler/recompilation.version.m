@@ -1446,8 +1446,8 @@ parse_item_type_version_numbers(Term, Result) :-
     else
         % XXX This is an uninformative error message.
         Pieces = [words("Invalid item type version numbers."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         Result = error1([Spec])
     ).
 
@@ -1468,8 +1468,8 @@ parse_key_version_number(ParseName, Term, Result) :-
         Result = ok1((Name - Arity) - VersionNumber)
     else
         Pieces = [words("Error in item version number."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         Result = error1([Spec])
     ).
 
@@ -1490,8 +1490,8 @@ parse_item_version_number(ParseName, Term, Result) :-
         Result = ok1(item_name(SymName, Arity) - VersionNumber)
     else
         Pieces = [words("Error in item version number."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         Result = error1([Spec])
     ).
 

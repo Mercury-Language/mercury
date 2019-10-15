@@ -263,8 +263,7 @@ report_error_pred_num_args(ClauseContext, Context, SimpleCallId, Arities)
         error_num_args_to_pieces(yes(PredOrFunc), Arity, Arities) ++ [nl] ++
         [words("in call to"), p_or_f(PredOrFunc), qual_sym_name(SymName),
         suffix("."), nl],
-    Spec = error_spec(severity_error, phase_type_check,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
 
 :- func report_error_func_instead_of_pred(prog_context, pred_or_func)
     = error_msg.
@@ -396,16 +395,14 @@ report_apply_instead_of_pred = Components :-
 report_unknown_event_call_error(Context, EventName) = Spec :-
     Pieces = [words("Error: there is no event named"),
         quote(EventName), suffix(".")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
 
 report_event_args_mismatch(Context, EventName, EventArgTypes, Args) = Spec :-
     Pieces =
         [words("Error:")] ++
         error_num_args_to_pieces(no, length(Args), [length(EventArgTypes)]) ++
         [words("in event"), quote(EventName), suffix(".")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 
@@ -427,8 +424,7 @@ report_no_clauses(ModuleInfo, PredId, PredInfo) = Spec :-
     % predicate. Since we don't want to limit the number of predicates
     % without clauses we warn about in a single compiler invocation to one,
     % we choose (as the lesser of two evils) to always report the error.
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 
@@ -1746,13 +1742,11 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
     else
         Pieces1 = [words("unsatisfiable typeclass constraints:"), nl]
     ),
-    % XXX this won't be very pretty when there are multiple type_assigns.
+    % XXX This won't be very pretty when there are multiple type_assigns.
     Pieces2 = component_list_to_line_pieces(ConstraintPieceLists,
         [suffix(".")]),
-
-    Msg = simple_msg(Context,
-        [always(InClauseForPieces ++ Pieces1 ++ Pieces2)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = simplest_spec(severity_error, phase_type_check, Context,
+        InClauseForPieces ++ Pieces1 ++ Pieces2).
 
 :- pred constraints_to_pieces(type_assign::in, list(format_component)::out,
     int::in, int::out) is det.
@@ -1789,8 +1783,7 @@ report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
     Pieces = [words("The foreign language code for") |
         describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)] ++
         [words("should define the variable"), quote(VarName), suffix(".")],
-    Spec = error_spec(severity_error, phase_type_check,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 

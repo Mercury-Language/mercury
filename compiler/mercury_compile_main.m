@@ -2006,8 +2006,8 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
             MaybeTransOptDeps = yes(TransOptDeps),
             % When creating the trans_opt file, only import the
             % trans_opt files which are lower in the ordering.
-            grab_trans_opt_files(Globals, TransOptDeps, ModuleAndImports1, ModuleAndImports,
-                Error2, !IO)
+            grab_trans_opt_files(Globals, TransOptDeps, ModuleAndImports1,
+                ModuleAndImports, Error2, !IO)
         ;
             MaybeTransOptDeps = no,
             ModuleAndImports = ModuleAndImports1,

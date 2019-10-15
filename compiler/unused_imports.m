@@ -232,7 +232,7 @@ maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
         MainPieces = [words("This"), decl(DeclName), words("declaration"),
             words("for"), qual_sym_name(ModuleName),
             words("is redundant."), nl],
-        MainMsg = simple_msg(Context, [always(MainPieces)]),
+        MainMsg = simplest_msg(Context, MainPieces),
         Spec = error_spec(severity_informational, phase_code_gen,
             [MainMsg | PrevMsgs]),
         !:Specs = [Spec | !.Specs]
@@ -273,7 +273,7 @@ add_msg_if_avail_as_general(ModuleName, ThisAvail, PrevAvail, !Msgs) :-
             decl(DeclName), words("declaration"),
             words("for module"), qual_sym_name(ModuleName),
             words("that makes this one redundant."), nl],
-        Msg = simple_msg(PrevContext, [always(Pieces)]),
+        Msg = simplest_msg(PrevContext, Pieces),
         !:Msgs = [Msg | !.Msgs]
     ).
 
@@ -302,8 +302,7 @@ generate_unused_warning(TopModuleName, UnusedModuleName, ImportOrUse,
         words("has a"), decl(ImportOrUseDeclName),
         words("declaration"), words(DeclInTheLocn), suffix(","),
         words("but is not used"), words(NotUsedInTheLocn), suffix("."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_code_gen, [Msg]).
+    Spec = simplest_spec(severity_warning, phase_code_gen, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -317,8 +317,8 @@ make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
     Pieces = ContextPieces ++ [lower_case_next_if_not_first,
         words("Error: expected field name, found"),
         quote(TermStr), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.field_access.

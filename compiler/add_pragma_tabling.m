@@ -124,9 +124,8 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
                     suffix(","),
                     words("since the compiler-generated statistics predicate"),
                     words("would have an ambiguous name too."), nl],
-                StatsMsg = simple_msg(Context, [always(StatsPieces)]),
-                StatsSpec = error_spec(severity_error,
-                    phase_parse_tree_to_hlds, [StatsMsg]),
+                StatsSpec = simplest_spec(severity_error,
+                    phase_parse_tree_to_hlds, Context, StatsPieces),
                 !:Specs = [StatsSpec | !.Specs]
             ;
                 Statistics = table_dont_gather_statistics
@@ -139,9 +138,8 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
                     suffix(","),
                     words("since the compiler-generated reset predicate"),
                     words("would have an ambiguous name too."), nl],
-                ResetMsg = simple_msg(Context, [always(ResetPieces)]),
-                ResetSpec = error_spec(severity_error,
-                    phase_parse_tree_to_hlds, [ResetMsg]),
+                ResetSpec = simplest_spec(severity_error,
+                    phase_parse_tree_to_hlds, Context, ResetPieces),
                 !:Specs = [ResetSpec | !.Specs]
             ;
                 AllowReset = table_dont_allow_reset
@@ -226,9 +224,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
             words("since tabled predicates cannot be inlined."), nl,
             words("You can use the"), quote("--no-warn-table-with-inline"),
             words("option to suppress this warning."), nl],
-        InlineWarningMsg = simple_msg(Context, [always(InlineWarningPieces)]),
-        InlineWarningSpec = error_spec(severity_warning,
-            phase_parse_tree_to_hlds, [InlineWarningMsg]),
+        InlineWarningSpec = simplest_spec(severity_warning,
+            phase_parse_tree_to_hlds, Context, InlineWarningPieces),
         !:Specs = [InlineWarningSpec | !.Specs]
     else
         true
@@ -237,8 +234,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
         Pieces = [words("Error: "), pragma_decl(EvalMethodStr),
             words("declaration for imported"), simple_call(SimpleCallId),
             suffix("."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         % Do we have to make sure the tabled preds are stratified?
@@ -273,9 +270,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                     pragma_decl(EvalMethodStr),
                     words("declaration for undeclared mode of"),
                     simple_call(SimpleCallId), suffix("."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
+                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ;
@@ -286,9 +282,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                     pragma_decl(EvalMethodStr),
                     words("declaration for"), simple_call(SimpleCallId),
                     words("with no declared modes."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
+                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             ;
                 ExistingProcs = [_ | ExistingProcsTail],
@@ -350,8 +345,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             Pieces = [words("Error:"), pragma_decl(EvalMethodStr),
                 words("declaration for"), simple_call(SimpleCallId),
                 suffix(","), words("which has no declared modes."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             MaybeDeclaredArgModes = yes(DeclaredArgModes),
@@ -384,9 +379,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                     pragma_decl(EvalMethodStr),
                     words("declaration for"), simple_call(SimpleCallId),
                     suffix(":"), nl, fixed(ArgMsg), words(ErrorMsg), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
+                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             ;
                 MaybeError = no
@@ -435,8 +429,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 words("Only one kind of tabling pragma may be applied to it."),
                 nl]
         ),
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

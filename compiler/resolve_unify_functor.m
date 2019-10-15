@@ -215,8 +215,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
                 words("undeclared function or predicate"),
                 qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
                 suffix("."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_type_check, [Msg]),
+            Spec = simplest_spec(severity_error, phase_type_check,
+                Context, Pieces),
             IsPlainUnify = is_unknown_ref(Spec)
         )
     else if

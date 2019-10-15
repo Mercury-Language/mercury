@@ -1880,8 +1880,8 @@ report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
         words("module"), qual_sym_name(ParentModule),
         words("has a submodule named"), quote(SubModule), suffix(","),
         words("but it is visible only to its other submodules."), nl],
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-        [simple_msg(Context, [always(Pieces)])]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_missing_include(module_name::in, string::in, term.context::in,
@@ -1892,8 +1892,8 @@ report_missing_include(ParentModule, SubModule, Context, !Specs) :-
         words("module"), qual_sym_name(ParentModule),
         words("does not have a submodule named"), quote(SubModule),
         suffix("."), nl],
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-        [simple_msg(Context, [always(Pieces)])]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred is_non_abstract_include(include_context::in) is semidet.

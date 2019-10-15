@@ -271,8 +271,8 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
             SecondPieces = [words("The"), nth_fixed(FirstProcNum + 1),
                 words("mode declaration is here."), nl]
         ),
-        FirstMsg = simple_msg(FirstContext, [always(FirstPieces)]),
-        SecondMsg = simple_msg(SecondContext, [always(SecondPieces)]),
+        FirstMsg = simplest_msg(FirstContext, FirstPieces),
+        SecondMsg = simplest_msg(SecondContext, SecondPieces),
         Spec = error_spec(severity_warning, phase_style,
             [FirstMsg, SecondMsg]),
         !:Specs = [Spec | !.Specs]
@@ -355,8 +355,7 @@ chunks_to_spec(ModuleContext, ExportedOrNotStr, CHunks, Spec) :-
     list.map(change_hunk_to_pieces, CHunks, CHunkPieceLists),
     list.condense(CHunkPieceLists, CHunkPieces),
     Pieces = HeadPieces ++ CHunkPieces,
-    Msg = simple_msg(ModuleContext, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_style, [Msg]).
+    Spec = simplest_spec(severity_warning, phase_style, ModuleContext, Pieces).
 
 :- pred change_hunk_to_pieces(change_hunk(string)::in,
     list(format_component)::out) is det.

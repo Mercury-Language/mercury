@@ -406,8 +406,8 @@ check_determinism_of_main(PredInfo, ProcInfo, !Specs) :-
             unqual_sym_name_and_arity(sym_name_arity(unqualified("main"), 2)),
             words("must be"), quote("det"), words("or"), quote("cc_multi"),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_detism_check,
-            [simple_msg(ProcContext, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_detism_check,
+            ProcContext, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -1504,8 +1504,7 @@ generate_error_not_switch_on_required_var(RequiredVar, ScopeWord,
         words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
         words("is not a switch on"), quote(RequiredVarStr), suffix("."), nl],
     Context = goal_info_get_context(ScopeGoalInfo),
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_detism_check, [Msg]),
+    Spec = simplest_spec(severity_error, phase_detism_check, Context, Pieces),
     det_info_add_error_spec(Spec, !DetInfo).
 
 %-----------------------------------------------------------------------------%

@@ -204,9 +204,8 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
             words("(since they are at the same address)"),
             words("are in fact all the same"),
             words("when invoked on"), words(ProcStr), suffix("."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Severity = severity_warning,
-        Spec = error_spec(Severity, phase_simplify(report_in_any_mode), [Msg]),
+        Spec = simplest_spec(severity_warning,
+            phase_simplify(report_in_any_mode), Context, Pieces),
         simplify_info_add_message(Spec, !Info)
     ).
 

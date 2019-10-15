@@ -366,8 +366,8 @@ accumulate_conflict_specs(Context, ConflictingWhatInWhat, Specified,
     then
         Pieces = [words("Error:"), words(ConflictingWhatInWhat),
             suffix(":"), nl, words(Diagnosis), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true

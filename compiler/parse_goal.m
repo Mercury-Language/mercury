@@ -318,9 +318,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                             [lower_case_next_if_not_first, words("Error:"),
                             words("a"), fixed(Functor), words("scope"),
                             words("must list at least one warning."), nl],
-                        Spec = error_spec(severity_error,
-                            phase_term_to_parse_tree,
-                            [simple_msg(WarningsContext, [always(Pieces)])]),
+                        Spec = simplest_spec(severity_error,
+                            phase_term_to_parse_tree, WarningsContext, Pieces),
                         MaybeGoal = error1([Spec])
                     )
                 ;
@@ -546,8 +545,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 Pieces = [words("Error: malformed if-then-else;"),
                     words("replace the"), quote("->"),
                     words("with"), quote("then"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(ArrowContext, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    ArrowContext, Pieces),
                 MaybeGoal = error1([Spec])
             else if
                 CondThenTerm = term.functor(term.atom("->"),
@@ -558,8 +557,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                     words("with"), quote("then"), suffix(","),
                     words("and add an"), quote("if"),
                     words("before the condition."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(ArrowContext, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    ArrowContext, Pieces),
                 MaybeGoal = error1([Spec])
             else
                 % `else' can also be part of a `try' goal.
@@ -577,8 +576,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             Pieces = [words("Error: the "), quote("else"), words("operator"),
                 words("should occur in expressions of the form"),
                 quote("( if goal then goal else goal )"), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeGoal = error1([Spec])
         )
     ;
@@ -595,21 +594,21 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 Pieces = [words("Error: malformed if-then-else;"),
                     words("replace the"), quote(";"),
                     words("with"), quote("else"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(SemiColonContext, [always(Pieces)])])
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    SemiColonContext, Pieces)
             else
                 Pieces = [words("Error: malformed if-then-else;"),
                     words("this"), quote("then"),
                     words("has no"), quote("else"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(ThenContext, [always(Pieces)])])
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    ThenContext, Pieces)
             )
         else
             Pieces = [words("Error: malformed if-then-else;"),
                 words("this"), quote("if"),
                 words("has no"), quote("then"), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])])
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces)
         ),
         MaybeGoal = error1([Spec])
     ;
@@ -626,8 +625,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 Pieces = [words("Error: malformed if-then-else;"),
                     words("replace the"), quote(";"),
                     words("with"), quote("else"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(SemiColonContext, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    SemiColonContext, Pieces),
                 MaybeGoal = error1([Spec])
             else
                 parse_then_try_term(
@@ -650,8 +649,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 words("which in turn may be followed by zero or more"),
                 quote("catch"), words("clauses, and optionally by a single"),
                 quote("catch_any"), words("clause."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeGoal = error1([Spec])
         )
     ;
@@ -684,8 +683,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 words("optional else-clause and zero or more catch clauses,"),
                 words("and should be followed by an expression of the form"),
                 quote("variable -> goal"), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeGoal = error1([Spec])
         )
     ;
@@ -1007,10 +1006,9 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                                     [lower_case_next_if_not_first,
                                     words("Error: the event name"),
                                     words("must not be qualified."), nl],
-                                QualSpec = error_spec(severity_error,
-                                    phase_term_to_parse_tree,
-                                    [simple_msg(SubContext,
-                                        [always(QualPieces)])]),
+                                QualSpec = simplest_spec(severity_error,
+                                    phase_term_to_parse_tree, SubContext,
+                                    QualPieces),
                                 !:Specs = [QualSpec | !.Specs]
                             ),
                             (
@@ -1023,10 +1021,9 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                                     [lower_case_next_if_not_first,
                                     words("Error: an event cannot be"),
                                     words("impure or semipure."), nl],
-                                PuritySpec = error_spec(severity_error,
-                                    phase_term_to_parse_tree,
-                                    [simple_msg(SubContext,
-                                        [always(PurityPieces)])]),
+                                PuritySpec = simplest_spec(severity_error,
+                                    phase_term_to_parse_tree, SubContext,
+                                    PurityPieces),
                                 !:Specs = [PuritySpec | !.Specs]
                             ),
                             MaybeGoal = error1(!.Specs)
@@ -1086,40 +1083,40 @@ should_have_no_args(ContextPieces, Context, Functor) = Spec :-
     Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         quote(Functor), words("should have no arguments."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 should_have_one_goal_prefix(ContextPieces, Context, Functor) = Spec :-
     Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the prefix operator"), quote(Functor),
         words("should precede a single goal."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 should_have_two_terms_infix(ContextPieces, Context, Functor) = Spec :-
     Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the infix operator"), quote(Functor),
         words("should have two terms as arguments."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 should_have_two_goals_infix(ContextPieces, Context, Functor) = Spec :-
     Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the infix operator"), quote(Functor),
         words("should have two goals as arguments."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 should_have_one_x_one_goal_prefix(ContextPieces, Context, X, Functor) = Spec :-
     Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the binary prefix operator"), quote(Functor),
         words("should precede"), words(X), words("and a goal."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 :- func should_have_one_call_prefix(cord(format_component),
     term.context, string) = error_spec.
@@ -1129,8 +1126,8 @@ should_have_one_call_prefix(ContextPieces, Context, Functor) = Spec :-
         [lower_case_next_if_not_first, words("Error:"),
         words("the prefix operator"), quote(Functor),
         words("should precede a call."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -1227,8 +1224,8 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
         StatePieces = cord.list(ContextPieces) ++
             [words("Error: the first argument of"), words(ConstructName),
             words("may not contain a state variable pair."), nl],
-        StateSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(StatePieces)])]),
+        StateSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, StatePieces),
         MaybeStateVars = error1([StateSpec])
     ),
     (
@@ -1240,8 +1237,8 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
             [words("Error: the first argument of"), words(ConstructName),
             words("may not contain a reference to the next value"),
             words("of a state variable."), nl],
-        ColonSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(ColonPieces)])]),
+        ColonSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, ColonPieces),
         MaybeColonVars = error1([ColonSpec])
     ),
     (
@@ -1257,8 +1254,8 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
         PlainPieces = cord.list(ContextPieces) ++
             [words("Error: the first argument of"), words(ConstructName),
             words("may not contain more than one variable."), nl],
-        PlainSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(PlainPieces)])]),
+        PlainSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, PlainPieces),
         MaybeMaybePlainVar = error1([PlainSpec])
     ),
     (
@@ -1274,8 +1271,8 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
         DotPieces = cord.list(ContextPieces) ++
             [words("Error: the first argument of"), words(ConstructName),
             words("may not contain more than one variable."), nl],
-        DotSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(DotPieces)])]),
+        DotSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, DotPieces),
         MaybeMaybeDotVar = error1([DotSpec])
     ),
     ( if
@@ -1290,8 +1287,8 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
             Pieces = cord.list(ContextPieces) ++
                 [words("Error: the first argument of"), words(ConstructName),
                 words("must contain a variable."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybePODVar = error1([Spec])
         ;
             MaybePlainVar = yes(PlainVar),
@@ -1307,8 +1304,8 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
             Pieces = cord.list(ContextPieces) ++
                 [words("Error: the first argument of"), words(ConstructName),
                 words("may not contain more than one variable."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybePODVar = error1([Spec])
         )
     else
@@ -1352,8 +1349,8 @@ parse_warnings(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
             words("the"), quote(ScopeFunctor), words("keyword should be"),
             words("followed by a list of warnings to disable."),
             words("The term"), quote(TermStr), words("is not a list."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeWarnings = error1([Spec])
     ).
 
@@ -1388,8 +1385,8 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
             words("the name of a warning to disable."),
             words("The term"), quote(TermStr),
             words("is not the name of a warning."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeWarning = error1([Spec])
     ).
 
@@ -1415,8 +1412,8 @@ generate_warnings_for_duplicate_warnings(Context, ContextPieces,
             words("the warning"), fixed(WarningStr),
             words("is duplicated"), words(MoreThanOnce),
             words("in the list of warnings to disable."), nl],
-        Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_warning, phase_term_to_parse_tree,
+            Context, Pieces),
 
         NonDupWarnings = TailNonDupWarnings,
         DupSpecs = [Spec | TailDupSpecs]
@@ -1459,8 +1456,8 @@ parse_trace_params(VarSet, Context, Term, MaybeComponentsContexts) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid trace goal parameter"),
             quote(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeComponentsContexts = error1([Spec])
     ).
 
@@ -1493,8 +1490,8 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     words("takes exactly one argument,"),
                     words("which should be a boolean expression"),
                     words("of compile-time tests."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    Context, Pieces),
                 MaybeComponentContext = error1([Spec])
             )
         else if
@@ -1518,8 +1515,8 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     words("takes exactly one argument,"),
                     words("which should be a boolean expression"),
                     words("of run-time tests."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    Context, Pieces),
                 MaybeComponentContext = error1([Spec])
             )
         else if
@@ -1536,18 +1533,17 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                 else
                     Pieces = [words("Error: the argument of"), fixed(Atom),
                         words("should be a state variable."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(SubTerm),
-                            [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, get_term_context(SubTerm),
+                        Pieces),
                     MaybeComponentContext = error1([Spec])
                 )
             else
                 Pieces = [words("Error:"), fixed(Atom),
                     words("takes exactly one argument,"),
                     words("which should be a state variable name."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    Context, Pieces),
                 MaybeComponentContext = error1([Spec])
             )
         else if
@@ -1562,10 +1558,9 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     MutablePieces = [words("Error: the first argument of"),
                         fixed(Atom), words("should be"),
                         words("the name of a mutable variable."), nl],
-                    MutableSpec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(SubTermA),
-                            [always(MutablePieces)])]),
+                    MutableSpec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, get_term_context(SubTermA),
+                        MutablePieces),
                     MaybeMutable = error1([MutableSpec])
                 ),
                 ( if
@@ -1577,10 +1572,9 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     VarPieces = [words("Error: the second argument of"),
                         fixed(Atom), words("should be"),
                         words("a state variable name."), nl],
-                    VarSpec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(SubTermB),
-                            [always(VarPieces)])]),
+                    VarSpec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, get_term_context(SubTermB),
+                        VarPieces),
                     MaybeVar = error1([VarSpec])
                 ),
                 ( if
@@ -1602,24 +1596,24 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     words("which should be"),
                     words("the name of a mutable variable"),
                     words("and a state variable name."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    Context, Pieces),
                 MaybeComponentContext = error1([Spec])
             )
         else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid trace goal parameter"),
                 quote(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeComponentContext = error1([Spec])
         )
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid trace goal parameter"),
             quote(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeComponentContext = error1([Spec])
     ).
 
@@ -1689,16 +1683,15 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                     Pieces = [words("Error: compile_time parameter"),
                         quote("flag"),
                         words("takes a string as argument."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(TermContext, [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, TermContext, Pieces),
                     MaybeCompiletime = error1([Spec])
                 )
             else
                 Pieces = [words("Error: compile_time parameter"),
                     quote("flag"), words("takes just one argument."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(TermContext, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    TermContext, Pieces),
                 MaybeCompiletime = error1([Spec])
             )
         else if Atom = "grade" then
@@ -1715,16 +1708,15 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                         words("valid grade tests are")] ++
                         list_to_pieces(ValidGradeNames) ++
                         [suffix("."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(TermContext, [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, TermContext, Pieces),
                     MaybeCompiletime = error1([Spec])
                 )
             else
                 Pieces = [words("Error: compile_time parameter"),
                     quote("grade"), words("takes just one argument."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(TermContext, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    TermContext, Pieces),
                 MaybeCompiletime = error1([Spec])
             )
         else if ( Atom = "tracelevel" ; Atom = "trace_level" ) then
@@ -1746,17 +1738,16 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                         quote("tracelevel"), words("takes just"),
                         quote("shallow"), words("or"), quote("deep"),
                         words("as argument."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(TermContext, [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, TermContext, Pieces),
                     MaybeCompiletime = error1([Spec])
                 )
             else
                 Pieces = [words("Error: compile_time parameter"),
                     quote("tracelevel"),
                     words("takes just one argument."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(TermContext, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    TermContext, Pieces),
                 MaybeCompiletime = error1([Spec])
             )
         else
@@ -1769,8 +1760,8 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                 quote("grade(""grade name"")"), nl,
                 quote("tracelevel(shallow)"), nl,
                 quote("tracelevel(deep)"), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                TermContext, Pieces),
             MaybeCompiletime = error1([Spec])
         )
     else
@@ -1783,8 +1774,8 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
             quote("grade(""grade name"")"), nl,
             quote("tracelevel(shallow)"), nl,
             quote("tracelevel(deep)"), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeCompiletime = error1([Spec])
     ).
 
@@ -1812,17 +1803,16 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
                 else
                     Pieces = [words("Error: run_time parameter"), quote("env"),
                         words("takes an identifier as argument."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(SubTerm),
-                            [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, get_term_context(SubTerm),
+                        Pieces),
                     MaybeRuntime = error1([Spec])
                 )
             else
                 Pieces = [words("Error: run_time parameter"), quote("env"),
                     words("takes just one argument."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(TermContext, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    TermContext, Pieces),
                 MaybeRuntime = error1([Spec])
             )
         else
@@ -1831,16 +1821,16 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
                 quote(TermStr), suffix("."), nl,
                 words("The only acceptable run_time paramaters have the form"),
                 quote("env(""name of an environment variable"")"), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                TermContext, Pieces),
             MaybeRuntime = error1([Spec])
         )
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid run_time parameter"),
             quote(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeRuntime = error1([Spec])
     ).
 
@@ -1891,8 +1881,8 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
             !.MaybeCompileTime = yes(_),
             Pieces = [words("Error: duplicate compile_time trace parameter."),
                 nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -1903,8 +1893,8 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
         ;
             !.MaybeRunTime = yes(_),
             Pieces = [words("Error: duplicate run_time trace parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -1915,8 +1905,8 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
         ;
             !.MaybeIO = yes(_),
             Pieces = [words("Error: duplicate io trace parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -1951,16 +1941,16 @@ parse_catch_any_term(ArrowTerm, _Context, ContextPieces, MaybeCatchAny,
                 quote("->"), words("operator inside the scope"),
                 words("of a"), quote("catch_any"), words("operator"),
                 words("should be a variable."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ArrowTerm), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(ArrowTerm), Pieces),
             MaybeCatchAny = error1([Spec])
         )
     else
         Pieces = [words("Error: the "), quote("catch_any"), words("operator"),
             words("should be followed by an expression of the form"),
             quote("variable -> goal"), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ArrowTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ArrowTerm), Pieces),
         MaybeCatchAny = error1([Spec])
     ).
 
@@ -1987,8 +1977,8 @@ parse_catch_then_try_term_args(CatchTermArgs, MaybeCatchAnyExpr,
             quote("try [try_params] main_goal then else_goal"), suffix(","),
             words("and followed by an expression of the form"),
             quote("catch_pattern -> catch_goal"), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeGoal = error1([Spec])
     ).
 
@@ -2045,8 +2035,8 @@ parse_catch_arrow_term(ArrowTerm, _Context, ContextPieces, MaybeCatch,
         Pieces = [words("Error: the "), quote("catch"), words("operator"),
             words("should be followed by an expression of the form"),
             quote("catch_pattern -> catch_goal"), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ArrowTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ArrowTerm), Pieces),
         MaybeCatch = error1([Spec])
     ).
 
@@ -2071,8 +2061,8 @@ parse_else_then_try_term(Term, CatchExprs, MaybeCatchAnyExpr,
                 Pieces = [words("Error: malformed if-then-else;"),
                     words("this"), quote("then"),
                     words("is missing its"), quote("if"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(ThenContext, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    ThenContext, Pieces),
                 MaybeGoal = error1([Spec])
             else
                 MaybeGoal = MaybeTryGoal
@@ -2131,8 +2121,8 @@ parse_then_try_term(ThenTryTerm, MaybeElse, CatchExprs, MaybeCatchAnyExpr,
             words("which in turn may be followed by zero or more"),
             quote("catch"), words("clauses, and optionally by a single"),
             quote("catch_any"), words("clause."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ThenTryTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ThenTryTerm), Pieces),
         MaybeGoal = error1([Spec])
     ).
 
@@ -2166,8 +2156,8 @@ parse_try_params(VarSet, Context, Term, MaybeComponentsContexts) :-
         Pieces = [words("Error: the"), quote("try"), words("operator"),
             words("should be followed by a list of try parameters;"),
             quote(TermStr), words("is not a list."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeComponentsContexts = error1([Spec])
     ).
 
@@ -2191,34 +2181,33 @@ parse_try_param(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                 else
                     Pieces = [words("Error: the argument of"), fixed(Atom),
                         words("should be a state variable."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(SubTerm),
-                            [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, get_term_context(SubTerm),
+                        Pieces),
                     MaybeComponentContext = error1([Spec])
                 )
             else
                 Pieces = [words("Error:"), fixed(Atom),
                     words("takes exactly one argument,"),
                     words("which should be a state variable name."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    Context, Pieces),
                 MaybeComponentContext = error1([Spec])
             )
         else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid try goal parameter"),
                 quote(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeComponentContext = error1([Spec])
         )
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid try goal parameter"),
             quote(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeComponentContext = error1([Spec])
     ).
 
@@ -2249,8 +2238,8 @@ convert_try_params_2([Component - Context | ComponentsContexts],
     ;
         !.MaybeIO = yes(_),
         Pieces = [words("Error: duplicate io try parameter."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ),
     convert_try_params_2(ComponentsContexts, !.MaybeIO, !.Specs, MaybeParams).
@@ -2287,15 +2276,15 @@ parse_atomic_params(Context, Term, VarSet, MaybeComponentsContexts) :-
         (
             Term = term.functor(_, _, TermContext),
             Pieces = [words("Invalid atomic goal parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                TermContext, Pieces),
             MaybeComponentsContexts = error1([Spec])
         ;
             Term = term.variable(_, TermContext),
             Pieces = [words("Expected atomic goal parameter, found variable."),
                 nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                TermContext, Pieces),
             MaybeComponentsContexts = error1([Spec])
         )
     ).
@@ -2315,16 +2304,16 @@ parse_atomic_subterm(Name, ErrorTerm, Term, MaybeComponentState) :-
                 words("takes exactly one argument,"),
                 words("which should be a state variable"),
                 words("or a pair of variables."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                TermContext, Pieces),
             MaybeComponentState = error1([Spec])
         )
     ;
         Term = term.variable(_, _TermContext),
         Pieces = [words("Error: expected atomic goal parameter,"),
             words("found variable."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeComponentState = error1([Spec])
     ).
 
@@ -2377,28 +2366,28 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
                     Pieces = [words(Atom), words("takes exact one argument,"),
                         words("which should be a list of variable names."),
                         nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(Context, [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, Context, Pieces),
                     MaybeComponentContext = error1([Spec])
                 )
             else
                 Pieces = [words("Invalid atomic goal parameter."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    Context, Pieces),
                 MaybeComponentContext = error1([Spec])
             )
         else
             Pieces = [words("Invalid atomic goal parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeComponentContext = error1([Spec])
         )
     ;
         Term = term.variable(_, _Context),
         Pieces = [words("Expected atomic goal parameter, found variable."),
             nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeComponentContext = error1([Spec])
     ).
 
@@ -2456,16 +2445,16 @@ convert_atomic_params_2(Context, [], MaybeOuter, MaybeInner, MaybeVars,
             MaybeInner = no,
             Pieces = [words("Atomic goal is missing"),
                 words("a specification of the inner STM state."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeParams = error3([Spec])
         ;
             MaybeOuter = no,
             MaybeInner = yes(_),
             Pieces = [words("Atomic goal is missing"),
                 words("a specification of the outer STM state."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeParams = error3([Spec])
         ;
             MaybeOuter = no,
@@ -2473,8 +2462,8 @@ convert_atomic_params_2(Context, [], MaybeOuter, MaybeInner, MaybeVars,
             Pieces = [words("Atomic goal is missing"),
                 words("a specification of both"),
                 words("the outer and inner STM states."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeParams = error3([Spec])
         )
     ;
@@ -2493,8 +2482,8 @@ convert_atomic_params_2(Context,
             !.MaybeOuter = yes(_),
             % XXX We should specify the duplicate parameter.
             Pieces = [words("Error: duplicate outer atomic parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(CompContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                CompContext, Pieces),
             !:Specs = !.Specs ++ [Spec]
         )
     ;
@@ -2506,8 +2495,8 @@ convert_atomic_params_2(Context,
             !.MaybeInner = yes(_),
             % XXX We should specify the duplicate parameter.
             Pieces = [words("Error: duplicate inner atomic parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(CompContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                CompContext, Pieces),
             !:Specs = !.Specs ++ [Spec]
         )
     ;
@@ -2519,8 +2508,8 @@ convert_atomic_params_2(Context,
             !.MaybeVars = yes(_),
             % XXX We should specify the duplicate parameter.
             Pieces = [words("Error: duplicate atomic vars parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(CompContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                CompContext, Pieces),
             !:Specs = !.Specs ++ [Spec]
         )
     ),
@@ -2538,8 +2527,8 @@ parse_atomic_subexpr(Term, MaybeSubExpr, !VarSet) :-
             GoalList = [],
             Pieces = [words("Error: atomic scope must have a goal."), nl],
             Context = get_term_context(Term),
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeSubExpr = error2([Spec])
         ;
             GoalList = [MainSubGoalExpr | OrElseAlternativeSubExpr],

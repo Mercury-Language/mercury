@@ -331,8 +331,8 @@ generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
     Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
         words("Repeated variable"), words(TermStr), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(Term), [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        get_term_context(Term), Pieces).
 
 :- pred generate_repeated_state_var_msg(cord(format_component)::in,
     varset(T)::in, term(T)::in, error_spec::out) is det.
@@ -341,8 +341,8 @@ generate_repeated_state_var_msg(ContextPieces, VarSet, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
     Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
         words("Repeated state variable"), words(TermStr), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(Term), [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        get_term_context(Term), Pieces).
 
 :- pred generate_unexpected_term_message(cord(format_component)::in,
     varset(T)::in, string::in, term(T)::in, error_spec::out) is det.
@@ -353,8 +353,8 @@ generate_unexpected_term_message(ContextPieces, VarSet, Expected, Term,
     Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
         words("Expected"), words(Expected), suffix(","),
         words("got"), quote(TermStr), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(Term), [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        get_term_context(Term), Pieces).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_vars.

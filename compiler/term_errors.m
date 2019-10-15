@@ -214,7 +214,7 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
             cord.init, ReasonMsgsCord, !Specs)
     ),
     ReasonMsgs = cord.list(ReasonMsgsCord),
-    Msgs = [simple_msg(Context, [always(Pieces)]) | ReasonMsgs],
+    Msgs = [simplest_msg(Context, Pieces) | ReasonMsgs],
     Spec = error_spec(severity_warning, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
@@ -252,7 +252,7 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
             cord.init, ReasonMsgsCord, !Specs)
     ),
     ReasonMsgs = cord.list(ReasonMsgsCord),
-    Msgs = [simple_msg(Context, [always(Pieces)]) | ReasonMsgs],
+    Msgs = [simplest_msg(Context, Pieces) | ReasonMsgs],
     Spec = error_spec(severity_warning, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 

@@ -384,8 +384,8 @@ report_subst_existq_tvars(PredInfo, Context, SubExistQVars, !Specs) :-
         [words("error: the substitution includes"),
         words("the existentially quantified type")] ++
         report_variables(SubExistQVars, TVarSet) ++ [suffix(".")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
@@ -396,8 +396,8 @@ report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, !Specs) :-
         [words("error:")] ++ report_variables(RecursiveVars, TVarSet) ++
         [words(choose_number(RecursiveVars, "occurs", "occur")),
         words("on both sides of the substitution.")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
@@ -410,8 +410,8 @@ report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars,
         [words("error:")] ++ report_variables(MultiSubstVars, TVarSet) ++
         [words(choose_number(MultiSubstVars, "has", "have")),
         words("multiple replacement types.")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
@@ -432,8 +432,8 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars,
         [words("error:")] ++ report_variables(UnknownVars, TVarSet) ++
         [words(choose_number(UnknownVars, "does not", "do not")),
         words("occur in the"), decl(Decl), words("declaration.")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- func pragma_type_spec_to_pieces(pred_info) = list(format_component).

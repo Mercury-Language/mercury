@@ -641,8 +641,8 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
         Pieces = [words("Error: you cannot declare a"),
             words(pred_or_func_to_full_str(PredOrFunc)),
             words("whose name is a variable."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
@@ -666,8 +666,8 @@ add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
     ( if PredName = "" then
         Pieces = [words("Error: you cannot declare a mode"),
             words("for a predicate whose name is a variable."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         (
@@ -741,8 +741,8 @@ add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
         Pieces = [words("Error: you cannot define a clause for a"),
             words(pred_or_func_to_full_str(PredOrFunc)),
             words("whose name is a variable."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         (
@@ -939,8 +939,8 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
             words("used in"), decl("initialise"), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
         PredIds = [PredId],
@@ -956,8 +956,8 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 words("used in initialise declaration"),
                 words("has invalid signature."), nl],
             % TODO: provide verbose error information here.
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -966,8 +966,8 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
             qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("used in initialise declaration"),
             words("matches multiple pred declarations."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -999,8 +999,8 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
             words("used in"), decl("finalise"), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
         PredIds = [PredId],
@@ -1015,8 +1015,8 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 words("used in"), decl("finalise"),
                 words("declaration has invalid signature."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -1025,8 +1025,8 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
             qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("used in"), decl("finalise"), words("declaration"),
             words("has multiple"), decl("pred"), words("declarations."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

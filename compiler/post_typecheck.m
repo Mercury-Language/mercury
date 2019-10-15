@@ -209,7 +209,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         component_list_to_line_pieces(
             list.map(constraint_to_error_piece(TVarSet), Constraints), []) ++
         [nl_indent_delta(-1)],
-    Msg = simple_msg(Context, [always(Pieces)]),
+    Msg = simplest_msg(Context, Pieces),
 
     ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
     (
@@ -536,8 +536,8 @@ check_type_of_main(PredInfo, !Specs) :-
             pred_info_get_context(PredInfo, Context),
             Pieces = [words("Error: arguments of main/2"),
                 words("must have type"), quote("io.state"), suffix("."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_type_check, [Msg]),
+            Spec = simplest_spec(severity_error, phase_type_check,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     else
@@ -640,8 +640,7 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
         ++ [suffix(":"), nl,
         words("error: unbound inst variable(s)."), nl,
         words("(Sorry, polymorphic modes are not supported.)"), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs],
     % Delete this mode, to avoid internal errors.
     map.det_remove(ProcId, _, Procs0, Procs).

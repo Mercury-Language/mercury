@@ -251,8 +251,8 @@ create_split_compilation_units_depth_first(ModuleName,
             NestedInfo = split_nested_only_imp(Context),
             Pieces = [words("Submodule"), qual_sym_name(ModuleName),
                 words("is missing its interface section."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ),
         ( if map.remove(ModuleName, SubModulesCord, !SubModulesMap) then
@@ -336,8 +336,8 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                     words("should not have its name reused."), nl],
                 OldPieces = [words("This is the location of the reuse."), nl]
             ),
-            Msg = simple_msg(Context, [always(Pieces)]),
-            OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+            Msg = simplest_msg(Context, Pieces),
+            OldMsg = simplest_msg(OldContext, OldPieces),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [Msg, OldMsg]),
             !:Specs = [Spec | !.Specs]
@@ -458,8 +458,8 @@ warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
     Pieces = [words("Warning: submodule"), qual_sym_name(ModuleName),
         words("of"), words("module"), qual_sym_name(ParentModuleName),
         words("is empty."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_warning, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred warn_duplicate_of_empty_submodule(module_name::in, module_name::in,
@@ -471,9 +471,9 @@ warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
     Pieces1 = [words("Warning: submodule"), qual_sym_name(ModuleName),
         words("of"), words("module"), qual_sym_name(ParentModuleName),
         words("duplicates an empty submodule."), nl],
-    Msg1 = simple_msg(Context, [always(Pieces1)]),
+    Msg1 = simplest_msg(Context, Pieces1),
     Pieces2 = [words("This is the location of the empty submodule,"), nl],
-    Msg2 = simple_msg(EmptyContext, [always(Pieces2)]),
+    Msg2 = simplest_msg(EmptyContext, Pieces2),
     Spec = error_spec(severity_warning, phase_parse_tree_to_hlds,
         [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
@@ -499,8 +499,8 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             words("was previously declared to be a separate submodule."), nl],
         OldPieces = [words("This is the location"),
             words("of that previous declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+        Msg = simplest_msg(Context, Pieces),
+        OldMsg = simplest_msg(OldContext, OldPieces),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg, OldMsg])
     ;
@@ -514,8 +514,8 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
                 qual_sym_name(ModuleName), words("is a duplicate"),
                 words("of a previous declaration of that module."), nl],
             OldPieces = [words("That previous declaration was here."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+            Msg = simplest_msg(Context, Pieces),
+            OldMsg = simplest_msg(OldContext, OldPieces),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [Msg, OldMsg])
         ;
@@ -619,8 +619,8 @@ report_duplicate_submodule_vs_top(ModuleName, Context, ParentModuleName,
         suffix(":"), nl,
         words("error: nested submodule"), qual_sym_name(ModuleName),
         words("has the same name as its ancestor module."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]).
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces).
 
 :- pred report_duplicate_submodule_one_section_2(module_name::in,
     prog_context::in, string::in, module_name::in, prog_context::in,
@@ -634,8 +634,8 @@ report_duplicate_submodule_one_section_2(ModuleName, Context,
         words("has its"), fixed(SectionWord), words("declared here.")],
     OldPieces = [words("However, its"), fixed(SectionWord),
         words("was also declarated here."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+    Msg = simplest_msg(Context, Pieces),
+    OldMsg = simplest_msg(OldContext, OldPieces),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
         [Msg, OldMsg]).
 
@@ -653,8 +653,8 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
     ( if OldIntContext = OldImpContext then
         OldPieces = [words("However, its interface and implementation"),
             words("were also declarated here."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        OldMsg = simple_msg(OldIntContext, [always(OldPieces)]),
+        Msg = simplest_msg(Context, Pieces),
+        OldMsg = simplest_msg(OldIntContext, OldPieces),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg, OldMsg])
     else
@@ -662,9 +662,9 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
             words("was also declarated here,"), nl],
         OldImpPieces = [words("and its implementation"),
             words("was also declarated here."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        OldIntMsg = simple_msg(OldIntContext, [always(OldIntPieces)]),
-        OldImpMsg = simple_msg(OldImpContext, [always(OldImpPieces)]),
+        Msg = simplest_msg(Context, Pieces),
+        OldIntMsg = simplest_msg(OldIntContext, OldIntPieces),
+        OldImpMsg = simplest_msg(OldImpContext, OldImpPieces),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg, OldIntMsg, OldImpMsg])
     ).
@@ -756,9 +756,8 @@ split_component_discover_submodules(Component, SectionAncestors,
                     words("the interface section of"), words(PorA),
                     words("module"), qual_sym_name(ProblemAncestor),
                     suffix("."), nl],
-                Msg = simple_msg(SectionContext, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
+                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                    SectionContext, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         )
@@ -812,8 +811,8 @@ discover_included_submodules([Include | Includes], SectionAncestors,
 
         OldPieces = [words("This is the location"),
             words("of that previous declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
-        OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+        Msg = simplest_msg(Context, Pieces1 ++ Pieces2),
+        OldMsg = simplest_msg(OldContext, OldPieces),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg, OldMsg]),
         !:Specs = [Spec | !.Specs]
@@ -850,8 +849,8 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
         words("error:"), decl("implementation"),
         words("declaration for submodule"),
         words("occurs in interface section of parent module."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -862,8 +861,8 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
 report_non_abstract_instance_in_interface(Context, !Specs) :-
     Pieces = [words("Error: non-abstract instance declaration"),
         words("in module interface."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
