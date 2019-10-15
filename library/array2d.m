@@ -167,9 +167,10 @@
 %---------------------------------------------------------------------------%
 
 init(M, N, X) =
-    ( if    M >= 0, N >= 0
-      then  array2d(M, N, array.init(M * N, X))
-      else  func_error("array2d.init: bounds must be non-negative")
+    ( if M >= 0, N >= 0 then
+        array2d(M, N, array.init(M * N, X))
+    else
+        func_error($pred, "bounds must be non-negative")
     ).
 
 %---------------------------------------------------------------------------%
@@ -179,10 +180,11 @@ array2d(Xss @ [Xs | _]) = T :-
     M = length(Xss),
     N = length(Xs),
     A = array(condense(Xss)),
-    T = ( if    all [Ys] ( member(Ys, Xss) => length(Ys) = N )
-          then  array2d(M, N, A)
-          else  func_error("array2d.array2d/1: non-rectangular list of lists")
-        ).
+    ( if all [Ys] ( member(Ys, Xss) => length(Ys) = N ) then
+        T = array2d(M, N, A)
+    else
+        error($pred,  "non-rectangular list of lists")
+    ).
 
 from_lists(Xss) = array2d(Xss).
 
@@ -198,13 +200,13 @@ from_array(M, N, Array) = Array2d :-
             Array2d = array2d(M, N, Array)
         ;
             Result = (>),
-            error("array2d.from_array: too many elements")
+            error($pred, "too many elements")
         ;
             Result = (<),
-            error("array2d.from_array: too few elements")
+            error($pred, "too few elements")
         )
     else
-        error("array2d.from_array: bounds must be non-negative")
+        error($pred, " bounds must be non-negative")
     ).
 
 %---------------------------------------------------------------------------%
@@ -225,9 +227,10 @@ in_bounds(array2d(M, N, _A), I, J) :-
 %---------------------------------------------------------------------------%
 
 T ^ elem(I, J) =
-    ( if    in_bounds(T, I, J)
-      then  T ^ unsafe_elem(I, J)
-      else  func_error("array2d.elem: indices out of bounds")
+    ( if in_bounds(T, I, J) then
+        T ^ unsafe_elem(I, J)
+    else
+        func_error($pred, "indices out of bounds")
     ).
 
 %---------------------------------------------------------------------------%
@@ -237,9 +240,10 @@ array2d(_M, N, A) ^ unsafe_elem(I, J) = A ^ unsafe_elem(I * N + J).
 %---------------------------------------------------------------------------%
 
 ( T ^ elem(I, J) := X ) =
-    ( if    in_bounds(T, I, J)
-      then  T ^ unsafe_elem(I, J) := X
-      else  func_error("array2d.'elem :=': indices out of bounds")
+    ( if in_bounds(T, I, J) then
+        T ^ unsafe_elem(I, J) := X
+    else
+        func_error("array2d.'elem :=': indices out of bounds")
     ).
 
 set(I, J, X, A, A ^ elem(I, J) := X).

@@ -368,8 +368,8 @@
 
 :- implementation.
 
-:- import_module exception.
 :- import_module int.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
@@ -427,7 +427,7 @@ universe = range(min_int, max_int, nil).
 
 range(Min, Max) = Ranges :-
     ( if Min = min_int then
-        throw("ranges.range: cannot represent min_int")
+        error($pred, "cannot represent min_int")
     else if Min > Max then
         Ranges = nil
     else
@@ -465,7 +465,7 @@ median(As) = N :-
     ( if Size > 0 then
         MiddleIndex = (Size + 1) / 2
     else
-        throw("ranges.median: empty set")
+        error($pred, "empty set")
     ),
     N = element_index(As, MiddleIndex).
 
@@ -475,7 +475,7 @@ median(As) = N :-
 :- func element_index(ranges, int) = int.
 
 element_index(nil, _) =
-    throw("ranges.element_index: index out of range").
+    func_error($pred, "index out of range").
 element_index(range(L, U, Rest), I) = N :-
     N0 = L + I,
     ( if N0 =< U then

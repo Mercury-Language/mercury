@@ -330,7 +330,7 @@ det_from_int(I) = U8 :-
     ( if from_int(I, U8Prime) then
         U8 = U8Prime
     else
-        error("uint8.det_from_int: cannot convert int to uint8")
+        error($pred, "cannot convert int to uint8")
     ).
 
 :- pragma no_determinism_warning(cast_from_int/1).

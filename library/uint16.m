@@ -377,7 +377,7 @@ det_from_int(I) = U16 :-
     ( if from_int(I, U16Prime) then
         U16 = U16Prime
     else
-        error("uint16.det_from_int: cannot convert int to uint16")
+        error($pred, "cannot convert int to uint16")
     ).
 
 :- pragma no_determinism_warning(cast_from_int/1).

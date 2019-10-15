@@ -410,7 +410,7 @@ det_from_int(I) = I32 :-
     ( if from_int(I, I32Prime) then
         I32 = I32Prime
     else
-        error("int32.det_from_int: cannot convert int to int32")
+        error($pred, "cannot convert int to int32")
     ).
 
 :- pragma no_determinism_warning(cast_from_int/1).
@@ -581,7 +581,7 @@ min(X, Y) =
 
 abs(Num) =
     ( if Num = int32.min_int32 then
-        throw(software_error("int32.abs: abs(min_int32) would overflow"))
+        func_error($pred, "abs(min_int32) would overflow")
     else
         unchecked_abs(Num)
     ).

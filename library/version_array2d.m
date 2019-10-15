@@ -106,7 +106,6 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module string.
 :- import_module version_array.
 
 %---------------------------------------------------------------------------%
@@ -126,8 +125,7 @@ version_array2d(Xss @ [Xs | _]) = VA2D :-
     ( if all [Ys] ( member(Ys, Xss) => length(Ys) = N ) then
         VA2D = version_array2d(M, N, A)
     else
-        error("version_array2d.version_array2d/1: " ++
-            "non-rectangular list of lists")
+        error($pred, "non-rectangular list of lists")
     ).
 
 %---------------------------------------------------------------------------%
@@ -136,7 +134,7 @@ init(M, N, X) =
     ( if M >= 0, N >= 0 then
         version_array2d(M, N, version_array.init(M * N, X))
     else
-        func_error("version_array2d.new: bounds must be non-negative")
+        func_error($pred, "bounds must be non-negative")
     ).
 
 %---------------------------------------------------------------------------%

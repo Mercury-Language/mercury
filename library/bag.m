@@ -475,7 +475,7 @@ det_insert_duplicates(N, Item, !Bag) :-
     ( if insert_duplicates(N, Item, !Bag) then
         true
     else
-        error("bag.det_insert_duplicates: number of items is negative")
+        error($pred, "number of items is negative")
     ).
 
 insert_set(!.Bag, Xs) = !:Bag :-

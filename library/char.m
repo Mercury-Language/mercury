@@ -803,7 +803,7 @@ is_base_digit(Base, Digit) :-
     ( if 2 =< Base, Base =< 36 then
         base_digit_to_int(Base, Digit, _Int)
     else
-        error("char.is_base_digit: invalid base")
+        error($pred, "invalid base")
     ).
 
 %---------------------------------------------------------------------------%
@@ -818,7 +818,7 @@ det_binary_digit_to_int(Digit) = Int :-
     ( if binary_digit_to_int(Digit, IntPrime) then
         Int = IntPrime
     else
-        error("char.binary_digit_to_int failed")
+        error($pred, "char.binary_digit_to_int failed")
     ).
 
 octal_digit_to_int('0', 0).
@@ -834,7 +834,7 @@ det_octal_digit_to_int(Digit) = Int :-
     ( if octal_digit_to_int(Digit, IntPrime) then
         Int = IntPrime
     else
-        error("char.octal_digit_to_int failed")
+        error($pred, "char.octal_digit_to_int failed")
     ).
 
 decimal_digit_to_int('0', 0).
@@ -852,7 +852,7 @@ det_decimal_digit_to_int(Digit) = Int :-
     ( if decimal_digit_to_int(Digit, IntPrime) then
         Int = IntPrime
     else
-        error("char.decimal_digit_to_int failed")
+        error($pred, "char.decimal_digit_to_int failed")
     ).
 
 hex_digit_to_int('0', 0).
@@ -882,7 +882,7 @@ det_hex_digit_to_int(Digit) = Int :-
     ( if hex_digit_to_int(Digit, IntPrime) then
         Int = IntPrime
     else
-        error("char.hex_digit_to_int failed")
+        error($pred, "char.hex_digit_to_int failed")
     ).
 
 base_digit_to_int(Base, Digit, Int) :-
@@ -894,14 +894,14 @@ base_digit_to_int(Base, Digit, Int) :-
         ),
         Int < Base
     else
-        error("char.base_digit_to_int: invalid base")
+        error($pred, "invalid base")
     ).
 
 det_base_digit_to_int(Base, Digit) = Int :-
     ( if base_digit_to_int(Base, Digit, IntPrime) then
         Int = IntPrime
     else
-        error("char.base_digit_to_int failed")
+        error($pred, "char.base_digit_to_int failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -916,7 +916,7 @@ det_int_to_binary_digit(Int) = Digit :-
     ( if int_to_binary_digit(Int, DigitPrime) then
         Digit = DigitPrime
     else
-        error("char.int_to_binary_digit failed")
+        error($pred, "char.int_to_binary_digit failed")
     ).
 
 int_to_octal_digit(0, '0').
@@ -932,7 +932,7 @@ det_int_to_octal_digit(Int) = Digit :-
     ( if int_to_octal_digit(Int, DigitPrime) then
         Digit = DigitPrime
     else
-        error("char.int_to_octal_digit failed")
+        error($pred, "char.int_to_octal_digit failed")
     ).
 
 int_to_decimal_digit(0, '0').
@@ -950,7 +950,7 @@ det_int_to_decimal_digit(Int) = Digit :-
     ( if int_to_decimal_digit(Int, DigitPrime) then
         Digit = DigitPrime
     else
-        error("char.int_to_decimal_digit failed")
+        error($pred, "char.int_to_decimal_digit failed")
     ).
 
 int_to_hex_digit(0, '0').
@@ -974,7 +974,7 @@ det_int_to_hex_digit(Int) = Digit :-
     ( if int_to_hex_digit(Int, DigitPrime) then
         Digit = DigitPrime
     else
-        error("char.int_to_hex_digit failed")
+        error($pred, "char.int_to_hex_digit failed")
     ).
 
 base_int_to_digit(Base, Int, Digit) :-
@@ -982,14 +982,14 @@ base_int_to_digit(Base, Int, Digit) :-
         Int < Base,
         int_to_extended_digit(Int, Digit)
     else
-        error("char.base_int_to_digit: invalid base")
+        error($pred, "invalid base")
     ).
 
 det_base_int_to_digit(Base, Int) = Digit :-
     ( if base_int_to_digit(Base, Int, DigitPrime) then
         Digit = DigitPrime
     else
-        error("char.base_int_to_digit failed")
+        error($pred, "char.base_int_to_digit failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1117,7 +1117,7 @@ det_int_to_digit(Int, Digit) :-
     ( if int_to_extended_digit(Int, DigitPrime) then
         Digit = DigitPrime
     else
-        error("char.int_to_digit failed")
+        error($pred, "char.int_to_digit failed")
     ).
 
 :- pred int_to_extended_digit(int, char).

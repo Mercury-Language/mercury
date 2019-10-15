@@ -280,7 +280,7 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
     else if is_univ_pseudo_type_desc(PseudoTypeDesc, UnivNum) then
         PseudoTypeRep = univ_tvar(UnivNum)
     else
-        error("pseudo_type_desc_to_rep: internal error")
+        error($pred, "internal error")
     ).
 
 :- pred is_univ_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
@@ -405,7 +405,7 @@ det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     ( if pseudo_type_desc_is_ground(PseudoTypeDesc) then
         private_builtin.unsafe_type_cast(PseudoTypeDesc, TypeDesc)
     else
-        error("det_ground_pseudo_type_desc_to_type_desc: not ground")
+        error($pred, "not ground")
     ).
 
 %---------------------------------------------------------------------------%
@@ -992,7 +992,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
     ( if make_type(TypeCtor, ArgTypes) = NewType then
         Type = NewType
     else
-        error("det_make_type/2: make_type/2 failed (wrong arity)")
+        error($pred, "make_type/2 failed (wrong arity)")
     ).
 
 %---------------------------------------------------------------------------%

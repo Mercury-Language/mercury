@@ -596,7 +596,7 @@ delete(K, V, !Tree) :-
                             NextOrphanTree),
                         !:Tree = rtree(!.T)
                     else
-                        error("delete: unbalanced rtree")
+                        error($pred, "unbalanced rtree")
                     )
                 else
                     reinsert_deleted_subtrees(Orphans0, 1, OrphanTree, !:T),
@@ -604,7 +604,7 @@ delete(K, V, !Tree) :-
                 )
             ;
                 Orphans = [],
-                error("delete: expected delete info")
+                error($pred, "expected delete info")
             )
         )
     ).

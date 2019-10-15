@@ -496,9 +496,9 @@ det_insert_from_corresponding_lists(Ks, Vs, !.BM) = !:BM :-
 
 det_insert_from_corresponding_lists([], [], !BM).
 det_insert_from_corresponding_lists([], [_ | _], !BM) :-
-    error("bimap.det_insert_from_corresponding_lists: length mismatch").
+    error($pred, "length mismatch").
 det_insert_from_corresponding_lists([_ | _], [], !BM) :-
-    error("bimap.det_insert_from_corresponding_lists: length mismatch").
+    error($pred, "length mismatch").
 det_insert_from_corresponding_lists([Key | Keys], [Value | Values],
         !BM) :-
     bimap.det_insert(Key, Value, !BM),
@@ -517,9 +517,9 @@ set_from_corresponding_lists(Ks, Vs, BM0) = BM :-
 
 set_from_corresponding_lists([], [], !BM).
 set_from_corresponding_lists([], [_ | _], !BM) :-
-    error("bimap.set_from_corresponding_lists: length mismatch").
+    error($pred, "length mismatch").
 set_from_corresponding_lists([_ | _], [], !BM) :-
-    error("bimap.set_from_corresponding_lists: length mismatch").
+    error($pred, "length mismatch").
 set_from_corresponding_lists([Key | Keys], [Value | Values],
         !BM) :-
     bimap.set(Key, Value, !BM),

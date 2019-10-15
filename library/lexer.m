@@ -1305,7 +1305,7 @@ handle_special_token(Char, ScannedPastWhiteSpace, Token) :-
             Token = SpecialToken
         )
     else
-        error("lexer.m: handle_special_token: unknown special token")
+        error($pred, "unknown special token")
     ).
 
 :- pred special_token(char::in, token::out) is semidet.

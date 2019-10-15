@@ -253,7 +253,7 @@ put_int(Stream, Int, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_int: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.int_to_string(Int), !State)
@@ -270,7 +270,7 @@ put_uint(Stream, UInt, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_uint: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.uint_to_string(UInt), !State)
@@ -287,7 +287,7 @@ put_int8(Stream, Int8, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_int8: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.int8_to_string(Int8), !State)
@@ -304,7 +304,7 @@ put_uint8(Stream, UInt8, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_uint8: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.uint8_to_string(UInt8), !State)
@@ -321,7 +321,7 @@ put_int16(Stream, Int16, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_int16: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.int16_to_string(Int16), !State)
@@ -338,7 +338,7 @@ put_uint16(Stream, UInt16, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_uint16: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.uint16_to_string(UInt16), !State)
@@ -355,7 +355,7 @@ put_int32(Stream, Int32, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_int32: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.int32_to_string(Int32), !State)
@@ -372,7 +372,7 @@ put_uint32(Stream, UInt32, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_uint32: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.uint32_to_string(UInt32), !State)
@@ -389,7 +389,7 @@ put_int64(Stream, Int64, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_int64: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.int64_to_string(Int64), !State)
@@ -406,7 +406,7 @@ put_uint64(Stream, UInt64, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_uint64: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.uint64_to_string(UInt64), !State)
@@ -423,7 +423,7 @@ put_float(Stream, Float, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_float: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.float_to_string(Float), !State)
@@ -440,7 +440,7 @@ put_char(Stream, Char, !State) :-
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
-            error("stream.string_writer.put_char: unexpected type error")
+            error($pred, "unexpected type error")
         )
     else
         put(Stream, string.char_to_string(Char), !State)

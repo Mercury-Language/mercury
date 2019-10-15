@@ -379,7 +379,7 @@ det_from_int(I) = U64 :-
     ( if from_int(I, U64Prime) then
         U64 = U64Prime
     else
-        error("uint64.det_from_int: cannot convert int to uint64")
+        error($pred, "cannot convert int to uint64")
     ).
 
 %---------------------------------------------------------------------------%

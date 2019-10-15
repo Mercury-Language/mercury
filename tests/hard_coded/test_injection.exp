@@ -37,7 +37,7 @@ Test "set throw 1" threw exception: software_error("injection.det_set: value is 
 Test "set throw 2" threw exception: software_error("injection.det_set: value is already associated with another key")
 Test "delete_key" passed.
 Test "delete_value succ" passed.
-Test "delete_value throw" threw exception: software_error("injection.delete_value: value is associated with a key")
+Test "delete_value throw" threw exception: software_error("function `injection.delete_value\'/2: value is associated with a key")
 Test "merge no overlap" passed.
 Test "overlay no overlap" passed.
 Test "overlay key overlap" passed.

@@ -532,7 +532,7 @@ delete_value(injection(!.F, !.R), V) = injection(!:F, !:R) :-
         % Only K could possibly be associated with V.  If it is,
         % then we throw an exception.
         ( if map.lookup(!.F, K, V) then
-            error("injection.delete_value: value is associated with a key")
+            error($pred, "value is associated with a key")
         else
             true
         )

@@ -378,7 +378,7 @@ det_from_int(I) = I16 :-
     ( if from_int(I, I16Prime) then
         I16 = I16Prime
     else
-        error("int16.det_from_int: cannot convert int to int16")
+        error($pred, "cannot convert int to int16")
     ).
 
 :- pragma no_determinism_warning(cast_from_int/1).
@@ -541,7 +541,7 @@ min(X, Y) =
 
 abs(Num) =
     ( if Num = int16.min_int16 then
-        throw(software_error("int16.abs: abs(min_int16) would overflow"))
+        func_error($pred, "abs(min_int16) would overflow")
     else
         unchecked_abs(Num)
     ).

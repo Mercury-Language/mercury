@@ -30,10 +30,10 @@ Zeroes =
  [0, 0, 0]
  [0, 0, 0]]
 
-Empty ^ elem(0, 0) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
-Zeroes ^ elem(-1, 0) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
-Zeroes ^ elem(0, -1) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
-Zeroes ^ elem(-1, -1) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
-Zeroes ^ elem(3, 0) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
-Zeroes ^ elem(0, 3) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
-Zeroes ^ elem(3, 3) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
+Empty ^ elem(0, 0) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
+Zeroes ^ elem(-1, 0) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
+Zeroes ^ elem(0, -1) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
+Zeroes ^ elem(-1, -1) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
+Zeroes ^ elem(3, 0) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
+Zeroes ^ elem(0, 3) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
+Zeroes ^ elem(3, 3) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))

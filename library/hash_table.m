@@ -280,11 +280,11 @@
 
 :- import_module bool.
 :- import_module deconstruct.
-:- import_module exception.
 :- import_module float.
 :- import_module int.
 :- import_module list.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module uint.
 :- import_module univ.
@@ -334,13 +334,11 @@
 
 init(HashPred, N, MaxOccupancy) = HT :-
     ( if N =< 0 then
-        throw(software_error("hash_table.init: N =< 0"))
+        error($pred, "N =< 0")
     else if N >= int.bits_per_int then
-        throw(software_error(
-            "hash_table.init: N >= int.bits_per_int"))
+        error($pred, "N >= int.bits_per_int")
     else if MaxOccupancy =< 0.0 then
-        throw(software_error(
-            "hash_table.init: MaxOccupancy =< 0.0"))
+        error($pred, "MaxOccupancy =< 0.0")
     else
         NumBuckets = 1 << N,
         MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
@@ -470,8 +468,7 @@ det_insert(HT0, K, V) = HT :-
         ; AL0 = ht_cons(_, _, _)
         ),
         ( if alist_search(AL0, K, _) then
-            throw(software_error(
-                "hash_table.det_insert: key already present"))
+            error($pred, "key already present")
         else
             AL = ht_cons(K, V, AL0)
         )
@@ -495,7 +492,7 @@ det_update(!.HT, K, V) = !:HT :-
     ( if alist_replace(AL0, K, V, AL1) then
         AL = AL1
     else
-        throw(software_error("hash_table.det_update: key not found"))
+        error($pred, "key not found")
     ),
     array.unsafe_set(H, AL, Buckets0, Buckets),
     !HT ^ buckets := Buckets.
@@ -573,7 +570,7 @@ lookup(HT, K) =
     ( if V = search(HT, K) then
         V
     else
-        throw(software_error("hash_table.lookup: key not found"))
+        func_error($pred, "key not found")
     ).
 
 elem(K, HT) = lookup(HT, K).

@@ -421,7 +421,7 @@ det_to_int(I64) = I :-
     ( if to_int(I64, IPrime) then
         I = IPrime
     else
-        error("int64.det_to_int: cannot convert int64 to int")
+        error($pred, "cannot convert int64 to int")
     ).
 
 %---------------------------------------------------------------------------%
@@ -561,7 +561,7 @@ min(X, Y) =
 
 abs(Num) = Abs :-
     ( if Num = int64.min_int64 then
-        throw(software_error("int64.abs: abs(min_int64) would overflow"))
+        error($pred, "abs(min_int64) would overflow")
     else
         Abs = unchecked_abs(Num)
     ).

@@ -411,7 +411,7 @@ det_from_int(I) = U :-
     ( if from_int(I, U0) then
         U = U0
     else
-        error("uint32.det_from_int: cannot convert int to uint32")
+        error($pred, "cannot convert int to uint32")
     ).
 
 :- pragma no_determinism_warning(cast_from_int/1).

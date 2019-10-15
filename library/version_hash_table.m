@@ -256,13 +256,11 @@ unsafe_init(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, no).
 
 init_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
     ( if N =< 0 then
-        throw(software_error("version_hash_table.new_hash_table: N =< 0"))
+        error("version_hash_table.init: N =< 0")
     else if N >= int.bits_per_int then
-        throw(software_error(
-            "version_hash_table.new: N >= int.bits_per_int"))
+        error("version_hash_table.init: N >= int.bits_per_int")
     else if MaxOccupancy =< 0.0 then
-        throw(software_error(
-            "version_hash_table.new: MaxOccupancy =< 0.0"))
+        error("version_hash_table.init: MaxOccupancy =< 0.0")
     else
         NumBuckets = 1 << N,
         MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
@@ -465,10 +463,10 @@ alist_search(AL, K, V) :-
 %---------------------------------------------------------------------------%
 
 lookup(HT, K) =
-    ( if   V = search(HT, K) then
+    ( if V = search(HT, K) then
         V
     else
-        func_error("version_hash_table.lookup: key not found")
+        func_error($pred, "key not found")
     ).
 
 elem(K, HT) = lookup(HT, K).
@@ -589,7 +587,7 @@ det_update(HT0, K, V) = HT :-
     ( if alist_replace(AL0, K, V, AL1) then
         AL = AL1
     else
-        throw(software_error("version_hash_table.det_update: key not found"))
+        error($pred, "key not found")
     ),
     Buckets = Buckets0 ^ elem(H) := AL,
     promise_equivalent_solutions [HT] (

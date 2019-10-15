@@ -230,7 +230,7 @@ det_from_int(I) = U :-
     ( if from_int(I, UPrime) then
         U = UPrime
     else
-        error("uint.det_from_int: cannot convert int to uint")
+        error($pred, "cannot convert int to uint")
     ).
 
 %---------------------------------------------------------------------------%

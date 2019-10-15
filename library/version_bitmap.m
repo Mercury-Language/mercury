@@ -114,9 +114,9 @@
 
 :- implementation.
 
-:- import_module exception.
 :- import_module int.
 :- import_module version_array.
+:- import_module require.
 
     % A version_bitmap is represented as an array of ints where each int stores
     % int.bits_per_int bits. The first element of the array (index 0)
@@ -132,7 +132,7 @@
 
 init(N, B) = BM :-
     ( if N < 0 then
-        throw(software_error("version_bitmap.init: negative size"))
+        error($pred, "negative size")
     else
         X    = initializer(B),
         BM0  = (version_array.init(num_ints_required(N), X) ^ elem(0) := N),
@@ -208,7 +208,7 @@ set(BM, I) =
         BM ^ elem(int_offset(I)) :=
             BM ^ elem(int_offset(I)) \/ bitmask(I)
     else
-        throw(software_error("version_bitmap.set: out of range"))
+        func_error($pred, "out of range")
     ).
 
 set(I, BM, set(BM, I)).
@@ -218,7 +218,7 @@ clear(BM, I) =
         BM ^ elem(int_offset(I)) :=
             BM ^ elem(int_offset(I)) /\ \bitmask(I)
     else
-        throw(software_error("version_bitmap.clear: out of range"))
+        func_error($pred, "out of range")
     ).
 
 clear(I, BM, clear(BM, I)).
@@ -228,7 +228,7 @@ flip(BM, I) =
         BM ^ elem(int_offset(I)) :=
             BM ^ elem(int_offset(I)) `xor` bitmask(I)
     else
-        throw(software_error("version_bitmap.flip: out of range"))
+        func_error($pred, "out of range")
     ).
 
 flip(I, BM, flip(BM, I)).
@@ -239,14 +239,14 @@ is_set(BM, I) :-
     ( if in_range(BM, I) then
         BM ^ elem(int_offset(I)) /\ bitmask(I) \= 0
     else
-        throw(software_error("version_bitmap.is_set: out of range"))
+        error($pred, "out of range")
     ).
 
 is_clear(BM, I) :-
     ( if in_range(BM, I) then
         BM ^ elem(int_offset(I)) /\ bitmask(I) = 0
     else
-        throw(software_error("version_bitmap.is_clear: out of range"))
+        error($pred, "out of range")
     ).
 
 %---------------------------------------------------------------------------%
@@ -273,8 +273,7 @@ union(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
         zip(int_offset(num_bits(BMb) - 1), (\/), BMa, BMb)
     else
-        throw(software_error(
-            "version_bitmap.union: version_bitmaps not the same size"))
+        func_error($pred, "version_bitmaps not the same size")
     ).
 
 %---------------------------------------------------------------------------%
@@ -283,8 +282,7 @@ intersect(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
         zip(int_offset(num_bits(BMb) - 1), (/\), BMa, BMb)
     else
-        throw(software_error(
-            "version_bitmap.intersect: version_bitmaps not the same size"))
+        func_error($pred, "version_bitmaps not the same size")
     ).
 
 %---------------------------------------------------------------------------%
@@ -293,8 +291,7 @@ difference(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
         zip(int_offset(num_bits(BMb) - 1), (func(X, Y) = X /\ \Y), BMa, BMb)
     else
-        throw(software_error(
-            "version_bitmap.difference: version_bitmaps not the same size"))
+        func_error($pred, "version_bitmaps not the same size")
     ).
 
 %---------------------------------------------------------------------------%
@@ -303,8 +300,7 @@ xor(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
         zip(int_offset(num_bits(BMb) - 1), (func(X, Y) = X `xor` Y), BMa, BMb)
     else
-        throw(software_error(
-            "version_bitmap.xor: version_bitmaps not the same size"))
+        func_error($pred, "version_bitmaps not the same size")
     ).
 
 %---------------------------------------------------------------------------%

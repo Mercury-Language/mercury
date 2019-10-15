@@ -2,27 +2,27 @@
 Array = array([])
 M = -1
 N = -1
-EXCEPTION: "array2d.from_array: bounds must be non-negative"
+EXCEPTION: "function `array2d.from_array\'/3:  bounds must be non-negative"
 ------FROM ARRAY------
 Array = array([])
 M = 0
 N = -1
-EXCEPTION: "array2d.from_array: bounds must be non-negative"
+EXCEPTION: "function `array2d.from_array\'/3:  bounds must be non-negative"
 ------FROM ARRAY------
 Array = array([])
 M = -1
 N = 0
-EXCEPTION: "array2d.from_array: bounds must be non-negative"
+EXCEPTION: "function `array2d.from_array\'/3:  bounds must be non-negative"
 ------FROM ARRAY------
 Array = array([])
 M = 2
 N = 2
-EXCEPTION: "array2d.from_array: too few elements"
+EXCEPTION: "function `array2d.from_array\'/3: too few elements"
 ------FROM ARRAY------
 Array = array([1, 2, 3, 4, 5])
 M = 2
 N = 2
-EXCEPTION: "array2d.from_array: too many elements"
+EXCEPTION: "function `array2d.from_array\'/3: too many elements"
 ------FROM ARRAY------
 Array = array([])
 M = 0

@@ -154,7 +154,7 @@ R1 / R2 = R1 * reciprocal(R2).
 
 reciprocal(r(Num, Den)) =
     ( if Num = integer.zero then
-        func_error("rational.reciprocal: division by zero")
+        func_error($pred, "division by zero")
     else
         r(signum(Num) * Den, integer.abs(Num))
     ).

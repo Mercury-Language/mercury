@@ -56,6 +56,7 @@
 :- import_module exception.
 :- import_module int.
 :- import_module list.
+:- import_module require.
 
 :- instance stream.error(error_stream_error) where
 [
@@ -157,7 +158,7 @@ typedef ML_BitBuffer *ML_BitBufferPtr;
 
 new_buffer(BM, Pos, Size, UseStream, Stream, State) =
     ( if Size =< 0 then
-        throw("bit_buffer: invalid buffer size")
+        func_error($pred, "invalid buffer size")
       else
         new_buffer_2(BM, Pos, Size, UseStream, Stream, State, ok)
     ).

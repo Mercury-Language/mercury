@@ -3495,7 +3495,7 @@ read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO) :-
     ( if NumBytes = !.Bitmap ^ num_bytes then
         io.read_bitmap(Stream, 0, NumBytes, !Bitmap, BytesRead, Result, !IO)
     else
-        error("io.read_bitmap: bitmap contains partial final byte")
+        error($pred, "bitmap contains partial final byte")
     ).
 
 read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
@@ -10944,7 +10944,7 @@ write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
         do_write_bitmap(Stream, Bitmap, 0, NumBytes, Error, !IO),
         throw_on_output_error(Error, !IO)
     else
-        error("io.write_bitmap: bitmap contains partial final byte")
+        error($pred, "bitmap contains partial final byte")
     ).
 
 write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-

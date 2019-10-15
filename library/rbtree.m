@@ -287,7 +287,7 @@ singleton(K, V) = black(K, V, empty, empty).
 
 insert(K, V, empty, black(K, V, empty, empty)).
 insert(_K, _V, red(_, _, _, _), _Tree) :-
-    error("rbtree.insert: root node cannot be red!").
+    error($pred, "root node cannot be red!").
 insert(K, V, black(K0, V0, L0, R0), Tree) :-
     rbtree.insert_2(black(K0, V0, L0, R0), K, V, Tree0),
     % Ensure that the root of the tree is black.
@@ -299,7 +299,7 @@ insert(K, V, black(K0, V0, L0, R0), Tree) :-
         Tree = black(K1, V1, L1, R1)
     ;
         Tree0 = empty,
-        error("rbtree.insert: new tree is empty")
+        error($pred, "new tree is empty")
     ).
 
     % rbtree.insert_2:
@@ -477,7 +477,7 @@ set(!.RBT, K, V) = !:RBT :-
 
 set(K, V, empty, black(K, V, empty, empty)).
 set(_K, _V, red(_, _, _, _), _Tree) :-
-    error("rbtree.set: root node cannot be red!").
+    error($pred, "root node cannot be red!").
 set(K, V, black(K0, V0, L0, R0), Tree) :-
     rbtree.set_2(black(K0, V0, L0, R0), K, V, Tree0),
     % Ensure that the root of the tree is black.
@@ -489,7 +489,7 @@ set(K, V, black(K0, V0, L0, R0), Tree) :-
         Tree = black(K1, V1, L1, R1)
     ;
         Tree0 = empty,
-        error("rbtree.set: new tree is empty")
+        error($pred, "new tree is empty")
     ).
 
     % rbtree.set_2:
@@ -602,7 +602,7 @@ insert_duplicate(!.RBT, K, V) = !:RBT :-
 
 insert_duplicate(K, V, empty, black(K, V, empty, empty)).
 insert_duplicate(_K, _V, red(_, _, _, _), _Tree) :-
-    error("rbtree.insert_duplicate: root node cannot be red!").
+    error($pred, "root node cannot be red!").
 insert_duplicate(K, V, black(K0, V0, L0, R0), Tree) :-
     rbtree.insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree0),
     % Ensure that the root of the tree is black.
