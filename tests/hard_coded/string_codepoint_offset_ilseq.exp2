@@ -1,0 +1,22 @@
+start counting from offset 0
+string.codepoint_offset(S, 0, 0, 0); Char = a
+string.codepoint_offset(S, 0, 1, 1); Char = 😀
+string.codepoint_offset(S, 0, 2, 3); Char = b
+string.codepoint_offset(S, 0, 3, 4); Char = 0xd83d
+string.codepoint_offset(S, 0, 4, 5); Char = z
+string.codepoint_offset(S, 0, 5, _) failed
+
+start counting from offset 1
+string.codepoint_offset(S, 1, 0, 1); Char = 😀
+string.codepoint_offset(S, 1, 1, 3); Char = b
+string.codepoint_offset(S, 1, 2, 4); Char = 0xd83d
+string.codepoint_offset(S, 1, 3, 5); Char = z
+string.codepoint_offset(S, 1, 4, _) failed
+
+start counting from offset 2
+string.codepoint_offset(S, 2, 0, 2); Char = 0xde00
+string.codepoint_offset(S, 2, 1, 3); Char = b
+string.codepoint_offset(S, 2, 2, 4); Char = 0xd83d
+string.codepoint_offset(S, 2, 3, 5); Char = z
+string.codepoint_offset(S, 2, 4, _) failed
+

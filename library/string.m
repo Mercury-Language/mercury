@@ -439,17 +439,23 @@
     %
 :- func count_utf8_code_units(string) = int.
 
-    % codepoint_offset(String, StartOffset, CodePointCount, CodePointOffset):
+    % codepoint_offset(String, StartOffset, Count, Offset):
     %
-    % Return the offset into `String' where, starting from `StartOffset',
-    % `CodePointCount' code points are skipped. Fails if either `StartOffset'
-    % or `CodePointOffset' are out of range.
+    % Let `S' be the substring of `String' from code unit `StartOffset' to the
+    % end of the string. `Offset' is code unit offset after advancing `Count'
+    % steps in `S', where each step skips over either:
+    %  - one encoding of a Unicode code point, or
+    %  - one code unit that is part of an ill-formed sequence.
+    %
+    % Fails if `StartOffset' is out of range (negative, or greater than the
+    % length of `String'), or if there are fewer than `Count' steps possible
+    % in `S'.
     %
 :- pred codepoint_offset(string::in, int::in, int::in, int::out) is semidet.
 
-    % codepoint_offset(String, CodePointCount, CodePointOffset):
+    % codepoint_offset(String, Count, Offset):
     %
-    % Same as `codepoint_offset(String, 0, CodePointCount, CodePointOffset)'.
+    % Same as `codepoint_offset(String, 0, Count, Offset)'.
     %
 :- pred codepoint_offset(string::in, int::in, int::out) is semidet.
 
@@ -2808,43 +2814,6 @@ count_utf8_code_units_2(Char, !Length) :-
 
 %---------------------%
 
-% XXX ILSEQ Behaviour depends on target language.
-% Should be made consistent so that each code unit in an ill-formed sequence
-% counts as one (pseudo) code point.
-
-:- pragma foreign_proc("C",
-    codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
-"
-    size_t          len;
-    unsigned char   b;
-
-    SUCCESS_INDICATOR = MR_FALSE;
-    len = strlen(String);
-    for (Index = StartOffset; Index < len; Index++) {
-        b = String[Index];
-        if (MR_utf8_is_single_byte(b) || MR_utf8_is_lead_byte(b)) {
-            if (N-- == 0) {
-                SUCCESS_INDICATOR = MR_TRUE;
-                break;
-            }
-        }
-    }
-").
-:- pragma foreign_proc("C#",
-    codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
-"
-    SUCCESS_INDICATOR = false;
-    for (Index = StartOffset; Index < String.Length; Index++) {
-        if (!System.Char.IsLowSurrogate(String, Index)) {
-            if (N-- == 0) {
-                SUCCESS_INDICATOR = true;
-                break;
-            }
-        }
-    }
-").
 :- pragma foreign_proc("Java",
     codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
@@ -2878,9 +2847,6 @@ codepoint_offset_loop(String, Offset, Length, N, Index) :-
 %---------------------------------------------------------------------------%
 
 codepoint_offset(String, N, Index) :-
-    % XXX ILSEQ
-    % Note: we do not define what happens with unpaired surrogates.
-    %
     codepoint_offset(String, 0, N, Index).
 
 %---------------------------------------------------------------------------%
