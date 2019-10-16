@@ -1,129 +1,132 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-	C Coding Standard for the Mercury Project
-</title>
+<title>C Coding Standard for the Mercury Project</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-<hr>
-
-<h1>
-C Coding Standard for the Mercury Project</h1>
-<hr>
+<h1>C Coding Standard for the Mercury Project</h1>
 
 These coding guidelines are presented in the briefest manner possible
 and therefore do not include rationales.  <p>
 
 Because the coding standard has been kept deliberately brief, there are
-some items missing that would be included in a more comprehensive 
-standard. For more on commonsense C programming, 
+some items missing that would be included in a more comprehensive
+standard. For more on commonsense C programming,
 consult the <a href="ftp://ftp.cs.toronto.edu/doc/programming/ihstyle.ps">
-Indian Hill C coding standard </a> or the 
+Indian Hill C coding standard </a> or the
 <a href="http://www.eskimo.com/~scs/C-faq/top.html">
 comp.lang.c FAQ</a>. <p>
 
-<h2>
-1. File organization</h2>
+<h2>1. File organization</h2>
 
-<h3>
-1.1. Modules and interfaces</h3>
+<h3>1.1. Modules and interfaces</h3>
 
-We impose a discipline on C to allow us to emulate (poorly) the modules
-of languages such as Ada and Modula-3.
+We impose a discipline on C to allow us to emulate (poorly)
+the modules of languages such as Ada and Modula-3.
+
 <ul>
-<li>	Every .c file has a corresponding .h file with the
-	same basename. For example, list.c and list.h.
-
-<li>	We consider the .c file to be the module's implementation
-	and the .h file to be the module's interface. We'll
-	just use the terms `source file' and `header'.
-
-<li>	All items exported from a source file must be declared in
-	the header. These items include functions, variables, #defines,
-	typedefs, enums, structs, and so on. In short, an item is anything 
-	that doesn't allocate storage. 
-	Qualify function prototypes with the `extern' keyword.
-	Also, do qualify each variable declaration
-	with the `extern' keyword, otherwise storage for the
-	variable will be allocated in every source file that
-	includes the header containing the variable definition.
-
-<li>	We import a module by including its header.
-	Never give extern declarations for imported
-	functions in source files. Always include the header of the
-	module instead.
-
-<li>	Each header must #include any other headers on which it depends.
-	Hence it's imperative every header be protected against multiple
-	inclusion. Also, take care to avoid circular dependencies.
-
-<li>	Always include system headers using the angle brackets syntax, rather
-	than double quotes. That is 
-	<font color="#0000ff"><tt>#include &lt;stdio.h&gt;</tt>
-	<font color="#000000">.
-
-	Mercury-specific headers should be included using the double
-	quotes syntax. That is
-	<font color="#0000ff"><tt>#include "mercury_module.h"</tt>
-	<font color="#000000">
-	Do not put root-relative or `..'-relative directories in
-	#includes.
-
+<li>
+Every .c file has a corresponding .h file with the same basename.
+For example, list.c and list.h.
+<li>
+We consider the .c file to be the module's implementation
+and the .h file to be the module's interface.
+We will just use the terms `source file' and `header'.
+<li>
+All items exported from a source file must be declared in the header.
+These items include functions, variables, #defines, typedefs, enums, structs,
+and so on.
+In short, an item is anything that doesn't allocate storage.
+Qualify function prototypes with the `extern' keyword.
+Also, do qualify each variable declaration with the `extern' keyword,
+otherwise storage for the variable will be allocated in every source file
+that includes the header containing the variable definition.
+<li>
+We import a module by including its header.
+Never give extern declarations for imported functions in source files.
+Always include the header of the module instead.
+<li>
+Each header must #include any other headers on which it depends.
+Hence it is imperative every header be protected against multiple inclusion.
+Also, take care to avoid circular dependencies.
+<li>
+Always include system headers using the angle brackets syntax,
+rather than double quotes.
+That is
+<font color="#0000ff"><tt>#include &lt;stdio.h&gt;</tt></font>.
+<li>
+Mercury-specific headers should be included using the double quotes syntax.
+That is
+<font color="#0000ff"><tt>#include "mercury_module.h"</tt></font>.
+<li>
+Do not put root-relative or `..'-relative directories in #includes.
 </ul>
 
-<h3>
-1.2. Organization within a file</h3>
+<h3>1.2. Organization within a file</h3>
 
-<h4>
-1.2.1. Source files</h4>
+<h4>1.2.1. Source files</h4>
 
 Items in source files should in general be in this order:
 <ul>
-<li>	Prologue comment describing the module.
-<li>	#includes of system headers (such as stdio.h and unistd.h)
-<li>	#includes of headers specific to this project. But note that
-	for technical reasons,
-	<font color="#0000ff">mercury_imp.h<font color=#000000">
-	must be the first #include.
-<li>	Any local #defines.
-<li>	Definitions of any local (that is, file-static) global variables.
-<li>	Prototypes for any local (that is, file-static) functions.
-<li>	Definitions of functions.
+<li>
+Prologue comment describing the module.
+<li>
+#includes of system headers (such as stdio.h and unistd.h)
+<li>
+#includes of headers specific to this project.
+But note that for technical reasons,
+<font color="#0000ff">mercury_imp.h</font>
+must be the first #include.
+<li>
+Any local #defines.
+<li>
+Definitions of any local (that is, file-static) global variables.
+<li>
+Prototypes for any local (that is, file-static) functions.
+<li>
+Definitions of functions.
 </ul>
 
-Within each section, items should generally be listed in top-down order,
-not bottom-up.  That is, if foo() calls bar(), then the definition of
-foo() should precede the definition of bar().  (An exception to this rule
-is functions that are explicitly declared inline; in that case, the
-definition should precede the call, to make it easier for the C compiler
+Within each section,
+items should generally be listed in top-down order, not bottom-up.
+That is, if foo() calls bar(),
+then the definition of foo() should precede the definition of bar().
+(An exception to this rule is functions that are explicitly declared inline;
+in that case, the definition should precede the call,
+to make it easier for the C compiler
 to perform the desired inlining.)
 
-<h4>
-1.2.2. Header files</h4>
+<h4>1.2.2. Header files</h4>
 
 Items in headers should in general be in this order:
 <ul>
-<li>	typedefs, structs, unions, enums
-<li>	extern variable declarations
-<li>	function prototypes
-<li>	#defines 
+<li>
+typedefs, structs, unions, enums
+<li>
+extern variable declarations
+<li>
+function prototypes
+<li>
+#defines
 </ul>
 
-However, it is probably more important to group items
-which are conceptually related than to follow this
-order strictly.  Also note that #defines which define
-configuration macros used for conditional compilation
+However, it is probably more important
+to group items which are conceptually related
+than to strictly follow this order.
+Also note that #defines which define configuration macros
+used for conditional compilation
 or which define constants that are used for array sizes
 will need to come before the code that uses them.
-But in general configuration macros should be isolated
-in separate files (e.g. runtime/mercury_conf.h.in
-and runtime/mercury_conf_param.h) and fixed-length limits
-should be avoided, so those cases should not arise often.
+But in general configuration macros
+should be isolated in separate files
+(e.g. runtime/mercury_conf.h.in and runtime/mercury_conf_param.h)
+and fixed-length limits should be avoided,
+so those cases should not arise often.
 <p>
 
 Every header should be protected against multiple inclusion
@@ -137,74 +140,74 @@ using the following idiom:
 
 #endif // not MODULE_H
 </pre>
-<font color="#000000">
+</font>
 
+<h2>2. Comments</h2>
 
+<h3>2.1. What should be commented</h3>
 
-<h2>
-2. Comments</h2>
-
-<h3>
-2.1. What should be commented</h3>
-
-<h4>
-2.1.1. Functions</h4>
+<h4>2.1.1. Functions</h4>
 
 Each function should have a one-line description of what it does.
 Additionally, both the inputs and outputs (including pass-by-pointer)
-should be described. Any side-effects not passing through the explicit
-inputs and outputs should be described. If any memory is allocated,
-you should describe who is responsible for deallocation. 
-If memory can change upon successive invocations (such as function-static
-data), mention it. If memory should not be deallocated by anyone
+should be described.
+Any side-effects not passing through the explicit inputs and outputs
+should be described.
+If any memory is allocated, you should describe
+who is responsible for deallocation.
+If memory can change upon successive invocations
+(such as function-static data), mention it.
+If memory should not be deallocated by anyone
 (such as constant string literals), mention this.
 <p>
 Note: memory allocation for C code that must interface
-with Mercury code or the Mercury runtime should be
-done using the routines defined and documented in
+with Mercury code or the Mercury runtime should be done
+using the routines defined and documented in
 mercury/runtime/mercury_memory.h and/or mercury/runtime/mercury_heap.h,
 according to the documentation in those files,
-in mercury/trace/README, and in the Mercury Language Reference Manual.
+in mercury/trace/README,
+and in the Mercury Language Reference Manual.
 
-<h4>
-2.1.2. Macros</h4>
+<h4>2.1.2. Macros</h4>
 
 Each non-trivial macro should be documented just as for functions (see above).
-It is also a good idea to document the types of macro arguments and
-return values, e.g. by including a function declaration in a comment.
+It is also a good idea to document
+the types of macro arguments and return values,
+e.g. by including a function declaration in a comment.
 
-<h4>
-2.1.3. Headers</h4>
+<h4>2.1.3. Headers</h4>
 
-Such function comments should be present in header files for each function
-exported from a source file. Ideally, a client of the module should 
-not have to look at the implementation, only the interface. 
-In C terminology, the header should suffice for
-working out how an exported function works.
+Such function comments should be present in header files
+for each function exported from a source file.
+Ideally, a client of the module should not have to look at the implementation,
+only the interface.
+In C terminology, the header should suffice
+for working out how an exported function works.
 
-<h4>
-2.1.4. Source files</h4>
+<h4>2.1.4. Source files</h4>
 
 Every source file should have a prologue comment which includes:
 <ul>
-<li>	Vim tag line: "vim: ts=4 sw=4 expandtab ft=c"
-<li>	Copyright notice.
-<li>	Licence info (e.g. GPL or LGPL).
-<li>	Short description of the purpose of the module.
-<li>	Any design information or other details required to understand
-	and maintain the module.
+<li>
+Vim tag line: "vim: ts=4 sw=4 expandtab ft=c"
+<li>
+Copyright notice.
+<li>
+Licence info (e.g. GPL or LGPL).
+<li>
+Short description of the purpose of the module.
+<li>
+Any design information or other details required
+to understand and maintain the module.
 </ul>
 
-<h4>
-2.1.5. Global variables</h4>
+<h4>2.1.5. Global variables</h4>
 
-Any global variable should be excruciatingly documented. This is
-especially true when globals are exported from a module.
-In general, there are very few circumstances that justify use of 
-a global. 
+Any global variable should be excruciatingly documented.
+This is especially true when globals are exported from a module.
+In general, there are very few circumstances that justify use of a global.
 
-<h3>
-2.2. Comment style</h3>
+<h3>2.2. Comment style</h3>
 
 New comments should use this form:
 <font color="#0000ff">
@@ -212,7 +215,7 @@ New comments should use this form:
 	// Here is a comment.
 	// And here is some more comment.
 </pre>
-<font color="#000000">
+</font>
 Older comments had this form:
 <font color="#0000ff">
 <pre>
@@ -221,25 +224,23 @@ Older comments had this form:
 	** And here's some more comment.
 	*/
 </pre>
-<font color="#000000">
+</font>
 New annotations to a single line of code should use this form:
 <font color="#0000ff">
 <pre>
 	i += 3; // Here is a comment about this line of code.
 </pre>
-<font color="#000000">
+</font>
 Older annotations had this form:
 <font color="#0000ff">
 <pre>
 	i += 3; /* Here's a comment about this line of code. */
 </pre>
-<font color="#000000">
+</font>
 
-<h3>
-2.3. Guidelines for comments</h3>
+<h3>2.3. Guidelines for comments</h3>
 
-<h4>
-2.3.1. Revisits</h4>
+<h4>2.3.1. Revisits</h4>
 
 Any code that needs to be revisited because it is a temporary hack
 (or some other expediency) must have a comment of the form:
@@ -247,17 +248,16 @@ Any code that needs to be revisited because it is a temporary hack
 <pre>
 	// XXX: &lt;reason for revisit&gt;
 </pre>
-<font color="#000000">
+</font>
 
-The &lt;reason for revisit&gt; should explain the problem in a way
-that can be understood by developers other than the author of the
-comment.
+The &lt;reason for revisit&gt; should explain the problem
+in a way that can be understood by developers
+other than the author of the comment.
 
-<h4>
-2.3.2. Comments on preprocessor statements</h4>
+<h4>2.3.2. Comments on preprocessor statements</h4>
 
-The <tt>#ifdef</tt> constructs should 
-be commented like so if they extend for more than a few lines of code:
+The <tt>#ifdef</tt> constructs should be commented like so
+if they extend for more than a few lines of code:
 <font color="#0000ff">
 <pre>
 #ifdef SOME_VAR
@@ -266,13 +266,13 @@ be commented like so if they extend for more than a few lines of code:
 	...
 #endif	// not SOME_VAR
 </pre>
-<font color="#000000">
+</font>
 
-Similarly for 
-<font color="#0000ff"><tt>#ifndef</tt><font color="#000000">.
+Similarly for
+<font color="#0000ff"><tt>#ifndef</tt></font>.
 <p>
-Use the GNU convention of comments that indicate whether the variable
-is true in the #if and #else parts of an #ifdef or #ifndef.
+Use the GNU convention of comments that indicate whether
+the variable is true in the #if and #else parts of an #ifdef or #ifndef.
 For instance:
 <font color="#0000ff">
 <pre>
@@ -291,92 +291,88 @@ For instance:
 	...
 #endif	// SOME_VAR
 </pre>
-<font color="#000000">
+</font>
 
-<h2>
-3. Declarations</h2>
+<h2>3. Declarations</h2>
 
-<h3>
-3.1. Pointer declarations</h3>
+<h3>3.1. Pointer declarations</h3>
 
 Attach the pointer qualifier to the variable name.
 <font color="#0000ff">
 <pre>
 	char	*str1, *str2;
 </pre>
-<font color="#000000">
+</font>
 
-<h3>
-3.2. Static and extern declarations</h3>
+<h3>3.2. Static and extern declarations</h3>
 
-Limit module exports to the absolute essentials. Make as much static
-(that is, local) as possible since this keeps interfaces to modules simpler.
+Limit module exports to the absolute essentials.
+Make as much static (that is, local) as possible
+since this keeps interfaces to modules simpler.
 
-<h3>
-3.3. Typedefs</h3>
+<h3>3.3. Typedefs</h3>
 
-Use typedefs to make code self-documenting. They are especially
-useful on structs, unions, and enums.
+Use typedefs to make code self-documenting.
+They are especially useful on structs, unions, and enums.
 
-<h2>
-4. Naming conventions</h2>
+<h2>4. Naming conventions</h2>
 
-<h3>
-4.1. Functions, function-like macros, and variables</h3>
+<h3>4.1. Functions, function-like macros, and variables</h3>
 
 Use all lowercase with underscores to separate words.
 For instance, <tt>MR_soul_machine</tt>.
 
-<h3>
-4.2. Enumeration constants, #define constants, and non-function-like macros</h3>
+<h3>4.2. Enumeration constants, #define constants, and non-function-like macros</h3>
 
 Use all uppercase with underscores to separate words.
 For instance, <tt>ML_MAX_HEADROOM</tt>.
 
-<h3>
-4.3. Typedefs</h3>
+<h3>4.3. Typedefs</h3>
 
-Use first letter uppercase for each word, other letters lowercase and
-underscores to separate words.
-For instance, <tt>MR_Directory_Entry</tt>.
+Other than the MR_ prefix, we use CamelCase
+for type names composed of more than one word.
+This means that each word has uppercase only for its first letter,
+and that the boundaries between successive words
+are indicated only by the change in capitalization.
+For instance, <tt>MR_DirectoryEntry</tt>.
 
-<h3>
-4.4. Structs and unions</h3>
+<h3>4.4. Structs and unions</h3>
 
-If something is both a struct and a typedef, the
-name for the struct should be formed by appending `_Struct'
-to the typedef name:
+If something is both a struct and a typedef,
+the name for the struct should be formed
+by appending `_Struct' to the typedef name:
 <font color="#0000ff">
 <pre>
-	typedef struct MR_Directory_Entry_Struct {
+	typedef struct MR_DirectoryEntry_Struct {
 		...
 	} MR_DirectoryEntry;
 </pre>
-<font color="#000000">
+</font>
 
 For unions, append `_Union' to the typedef name.
 
-<h3>
-4.5. Mercury specifics </h3>
+<h3>4.5. Mercury specifics</h3>
 
-Every symbol that is externally visible (i.e. declared in a header
-file) should be prefixed with a prefix that is specific to the
-package that it comes from.
+Every symbol that is externally visible (i.e. declared in a header file)
+should be prefixed with a prefix
+that is specific to the package that it comes from.
 
 For anything exported from mercury/runtime, prefix it with MR_.
 For anything exported from mercury/library, prefix it with ML_.
 
-<h2>
-5. Syntax and layout</h2>
+<h2>5. Syntax and layout</h2>
 
-<h3>
-5.1. Minutiae</h3>
+<h3>5.1. Minutiae</h3>
 
-Use 8 spaces to a tab. No line should be longer than 79 characters.
-If a statement is too long, continue it on the next line <em>indented 
-two levels deeper</em>. If the statement extends over more than two
-lines, then make sure the subsequent lines are indented to the
-same depth as the second line. For example:
+Never use any tabs.
+Use four space indentation.
+No line should be longer than 79 characters.
+If a statement is too long,
+continue it on the next line <em>indented two levels deeper</em>.
+If the statement extends over more than two lines,
+then make sure the subsequent lines are indented to the same depth
+as the second line.
+For example:
 <font color="#0000ff">
 <pre>
 	here = is_a_really_long_statement_that_does_not_fit +
@@ -389,25 +385,23 @@ same depth as the second line. For example:
 	{
 		...
 	}
-		
-</pre>
-<font color="#000000">
 
-<h3>
-5.2. Statements</h3>
+</pre>
+</font>
+
+<h3>5.2. Statements</h3>
 
 Use one statement per line.
 
-Here are example layout styles for the various syntactic constructs:
+What follows are example layout styles for the various syntactic constructs.
 
-<h4> 
-5.2.1. If statement</h4>
+<h4>5.2.1. If statement</h4>
 
 Add an "// end if" comment if the if statement is larger than a page.
 
 <font color="#0000ff">
 <pre>
-// Curlies are placed according to the K&R one true brace style.
+// Curlies are placed according to the K&amp;R one true brace style.
 // And comments look like this.
 if (blah) {
 	// Always use curlies, even when there is only one statement
@@ -418,22 +412,21 @@ if (blah) {
 
 // If the condition is so long that the open curly doesn't fit
 // on the same line as the `if', put it on a line of its own.
-if (a_very_long_condition() &&
+if (a_very_long_condition() &amp;&amp;
 	another_long_condition_that_forces_a_line_wrap())
 {
 	...
 }
-
 </pre>
-<font color="#000000">
+</font>
 
-<h4>
-5.2.2. Functions</h4>
+<h4>5.2.2. Functions</h4>
 
-Function names are flush against the left margin. This makes it
-easier to grep for function definitions (as opposed to their invocations).
-In argument lists, put space after commas. And use the <tt>// func</tt>
-comment when the function is longer than a page.
+Function names are flush against the left margin.
+This makes it easier to grep for function definitions
+(as opposed to their invocations).
+In argument lists, put space after commas.
+And use the <tt>// func</tt> comment when the function is longer than a page.
 
 <font color="#0000ff">
 <pre>
@@ -442,11 +435,9 @@ rhododendron(int a, float b, double c) {
 	..
 } // end rhododendron()
 </pre>
-<font color="#000000">
+</font>
 
-
-<h4>
-5.2.3. Variables</h4>
+<h4>5.2.3. Variables</h4>
 
 Variable declarations shouldn't be flush left, however.
 <font color="#0000ff">
@@ -457,11 +448,9 @@ int a[] = {
 	1,2,3,4,5
 };
 </pre>
-<font color="#000000">
+</font>
 
-
-<h4>
-5.2.4. Switches </h4>
+<h4>5.2.4. Switches</h4>
 
 <font color="#0000ff">
 <pre>
@@ -480,11 +469,9 @@ switch (blah) {
 		break;
 } // switch
 </pre>
-<font color="#000000">
+</font>
 
-
-<h4>
-5.2.5. Structs, unions, and enums </h4>
+<h4>5.2.5. Structs, unions, and enums</h4>
 
 <font color="#0000ff">
 <pre>
@@ -499,10 +486,9 @@ enum Stuff {
 	STUFF_A, STUFF_B ...
 };
 </pre>
-<font color="#000000">
+</font>
 
-<h4>
-5.2.6. Loops </h4>
+<h4>5.2.6. Loops</h4>
 
 <font color="#0000ff">
 <pre>
@@ -527,16 +513,15 @@ for (this; that; those) {
 }
 
 </pre>
-<font color="#000000">
+</font>
 
-<h3>
-5.3. Preprocessing </h3>
+<h3>5.3. Preprocessing</h3>
 
-<h4>
-5.3.1. Nesting</h4>
+<h4>5.3.1. Nesting</h4>
 
-Nested #ifdefs, #ifndefs and #ifs should be indented by two spaces for
-each level of nesting. For example:
+Nested #ifdefs, #ifndefs and #ifs should be indented
+by two spaces for each level of nesting.
+For example:
 
 <font color="#0000ff">
 <pre>
@@ -549,94 +534,106 @@ each level of nesting. For example:
 #endif // not GUAVA
 
 </pre>
-<font color="#000000">
+</font>
 
-<h2>
-6. Portability</h2>
+<h2>6. Portability</h2>
 
-<h3>
-6.1. Architecture specifics</h3>
+<h3>6.1. Architecture specifics</h3>
 
-Avoid relying on properties of a specific machine architecture unless
-necessary, and if necessary localise such dependencies. One solution is
-to have architecture-specific macros to hide access to 
-machine-dependent code.
+Avoid relying on properties of a specific machine architecture
+unless necessary, and if necessary localise such dependencies.
+One solution is to have architecture-specific macros
+to hide access to machine-dependent code.
 
 Some machine-specific properties are:
 <ul>
-<li>	Size (in bits) of C builtin datatypes (short, int, long, float, 
-	double).
-<li>	Byte-order. Big- or little-endian (or other).
-<li>	Alignment requirements.
+<li>
+Size (in bits) of C builtin datatypes (short, int, long, float, double).
+<li>
+Byte-order. Big- or little-endian (or other).
+<li>
+Alignment requirements.
 </ul>
 
-<h3>
-6.2. Operating system specifics</h3>
+<h3>6.2. Operating system specifics</h3>
 
-Operating system APIs differ from platform to platform. Although 
-most support standard POSIX calls such as `read', `write'
-and `unlink', you cannot rely on the presence of, for instance, 
+Operating system APIs differ from platform to platform.
+Although most support standard POSIX calls
+such as `read', `write' and `unlink',
+you cannot rely on the presence of, for instance,
 System V shared memory, or BSD sockets.
 <p>
 Adhere to POSIX-supported operating system calls whenever possible
 since they are widely supported, even by Windows and VMS.
 <p>
-When POSIX doesn't provide the required functionality, ensure that
-the operating system specific calls are localised. 
+When POSIX doesn't provide the required functionality,
+ensure that the operating system specific calls are localised.
 
-<h3>
-6.3. Compiler and C library specifics</h3>
+<h3>6.3. Compiler and C library specifics</h3>
 
-ANSI C compilers are now widespread and hence we needn't pander to
-old K&R compilers. However compilers (in particular the GNU C compiler)
-often provide non-ANSI extensions. Ensure that any use of compiler
-extensions is localised and protected by #ifdefs.
+ANSI C compilers are now widespread
+and hence we needn't pander to old K&amp;R compilers.
+However compilers (in particular the GNU C compiler)
+often provide non-ANSI extensions.
+Ensure that any use of compiler extensions
+is localised and protected by #ifdefs.
 <p>
-Don't rely on features whose behaviour is undefined according to
-the ANSI C standard. For that matter, don't rely on C arcana 
-even if they <em>are</em> defined. For instance, 
-<tt>setjmp/longjmp</tt> and ANSI signals often have subtle differences
-in behaviour between platforms.
+Don't rely on features whose behaviour is undefined
+according to the ANSI C standard.
+For that matter, don't rely on C arcana even if they <em>are</em> defined.
+For instance, <tt>setjmp/longjmp</tt> and ANSI signals
+often have subtle differences in behaviour between platforms.
 <p>
-If you write threaded code, make sure any non-reentrant code is
-appropriately protected via mutual exclusion. The biggest cause
-of non-reentrant (non-threadsafe) code is function-static data.
-Note that some C library functions may be non-reentrant. This may
-or may not be documented in the man pages.
+If you write threaded code,
+make sure any non-reentrant code is appropriately protected
+via mutual exclusion.
+The biggest cause of non-reentrant (non-threadsafe) code
+is function-static data.
+Note that some C library functions may be non-reentrant.
+This may or may not be documented in the man pages.
 
-<h3>
-6.4. Environment specifics</h3>
+<h3>6.4. Environment specifics</h3>
 
 This is one of the most important sections in the coding standard.
 Here we mention what other tools Mercury depends on.
-Mercury <em>must</em> depend on some tools, however every tool that
-is needed to use Mercury reduces the potential user base.
+Mercury <em>must</em> depend on some tools,
+however every tool that is needed to use Mercury
+reduces the potential user base.
 <p>
 Bear this in mind when tempted to add YetAnotherTool<sup>TM</sup>.
 
-<h4>
-6.4.1. Tools required for Mercury</h4>
+<h4>6.4.1. Tools required for Mercury</h4>
 
-In order to run Mercury (given that you have the binary installation), you need:
+In order to run Mercury (given that you have the binary installation),
+you need:
 <ul>
-<li>	A shell compatible with Bourne shell (sh)
-<li>	GNU make
-<li>	One of:
-	<ul>
-	<li>	The GNU C compiler
-	<li>	Any ANSI C compiler
-	</ul>
+<li>
+A shell compatible with Bourne shell (sh)
+<li>
+GNU make
+<li>
+One of:
+<ul>
+<li>
+The GNU C compiler
+<li>
+Any ANSI C compiler
+</ul>
 </ul>
 
 In order to build the Mercury compiler, you need the above and also:
 <ul>
-<li>	gzip
-<li>	tar
-<li>	Various POSIX utilities: <br>
-	awk basename cat cp dirname echo egrep expr false fgrep grep head 
-	ln mkdir mv rmdir rm sed sort tail 
-<li>	Some Unix utilities: <br>
-		test true uniq xargs
+<li>
+gzip
+<li>
+tar
+<li>
+Various POSIX utilities: <br>
+awk basename cat cp dirname echo egrep expr false fgrep grep head
+ln mkdir mv rmdir rm sed sort tail
+<li>
+Some Unix utilities: <br>
+test true uniq xargs
 </ul>
 
 <p>
@@ -644,68 +641,80 @@ In order to build the Mercury compiler, you need the above and also:
 In order to modify and maintain the source code of the Mercury compiler,
 you need the above and also:
 <ul>
-<li>	Perl <font color="#ff0000">XXX: Which version?<font color="#000000">
-<li>	CVS
-<li>	autoconf
-<li>	texinfo
-<li>	TeX
+<li>
+Perl <font color="#ff0000">XXX: Which version?</font>
+<li>
+CVS
+<li>
+autoconf
+<li>
+texinfo
+<li>
+TeX
 </ul>
 
-<h4>
-6.4.2. Documenting the tools</h4>
+<h4>6.4.2. Documenting the tools</h4>
 
 If further tools are required, you should add them to the above list.
-And similarly, if you eliminate dependence on a tool, remove
-it from the above list.
+And similarly, if you eliminate dependence on a tool,
+remove it from the above list.
 
-<h2>
-7. Coding specifics</h2>
+<h2>7. Coding specifics</h2>
 
 <ul>
 
-<li>	Do not assume arbitrary limits in data structures. Don't
-	just allocate `lots' and hope that's enough. Either it's
-	too much or it will eventually hit the wall and have to be
-	debugged. 
-	Using highwater-marking is one possible solution for strings,
-	for instance.
+<li>
+Do not assume arbitrary limits in data structures.
+Don't just allocate `lots' and hope that's enough.
+Either it is too much,
+or it will eventually hit the wall and have to be debugged.
+Using highwater-marking is one possible solution for strings, for instance.
 
-<li>	Always check return values when they exist, even malloc
-	and realloc.
+<li>
+Always check return values when they exist, even malloc and realloc.
 
-<li>	Always give prototypes (function declarations) for functions.
-	When the prototype is in a header, import the header; do not
-	write the prototype for an extern function.
+<li>
+Always give prototypes (function declarations) for functions.
+When the prototype is in a header, import the header;
+do not write the prototype for an extern function.
 
-<li>	Stick to ANSI C whenever possible. Stick to POSIX when
-	ANSI doesn't provide what you need. 
-	Avoid platform specific code unless necessary.
+<li>
+Stick to ANSI C whenever possible.
+Stick to POSIX when ANSI doesn't provide what you need.
+Avoid platform specific code unless necessary.
 
-<li>	Use signals with extreme austerity. They are messy and subject
-	to platform idiosyncracies even within POSIX.
+<li>
+Use signals with extreme austerity.
+They are messy and subject to platform idiosyncracies even within POSIX.
 
-<li>	Don't assume the sizes of C data types. Don't assume the
-	byteorder of the platform. 
+<li>
+Don't assume the sizes of C data types.
+Don't assume the byteorder of the platform.
 
-<li>	Prefer enums to lists of #defines. Note that enums constants
-	are of type int, hence if you want an enumeration of
-	chars or shorts, then you must use lists of #defines.
+<li>
+Prefer enums to lists of #defines.
+Note that enums constants are of type int,
+hence if you want an enumeration of chars or shorts,
+then you must use lists of #defines.
 
-<li>	Parameters to macros should be in parentheses.
+<li>
+Parameters to macros should be in parentheses.
 <font color="#0000ff">
 <pre>
 	#define STREQ(s1,s2)	(strcmp((s1),(s2)) == 0)
 </pre>
-<font color="#000000">
+</font>
 
 </ul>
 
 <hr>
+<p>
+Note: This coding standard
+is an amalgam of suggestions from the entire Mercury team,
+not necessarily the opinion of any single author.
+<p>
+Comments?
+See our <a href="http://www.mercurylang.org/contact.html">contact</a> page.
 
-comments?  see our
-<a href="http://www.mercurylang.org/contact.html">contact</a> page.<br>
-
-Note: This coding standard is an amalgam of suggestions from the
-entire Mercury team, not necessarily the opinion of any single author.
 </body>
 </html>

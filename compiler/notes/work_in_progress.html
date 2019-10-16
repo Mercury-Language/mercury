@@ -7,12 +7,9 @@ vim: ts=4 sw=4 expandtab ft=html
 <title>Work not in progress</title>
 </head>
 
-<body bgcolor="#ffffff" text="#000000">
+<body>
 
 <h1>Work not in progress</h1>
-
-<hr>
-<!---------------------------------------------------------------------------->
 
 The compiler contains some code for the following features,
 which are not yet completed but work on which has stopped,
@@ -31,55 +28,41 @@ When complete, the new design
 would allow runtime tests of type class membership,
 it would allow the tabling of predicates with type class constraints,
 and it would allow the debugger to print type_class_infos.
-
 <li>
 We have added support for dynamic link libraries (DLLs) on Windows.
 This is not yet enabled by default because it has not yet been tested properly.
-
 <li>
 There is an accurate garbage collector (the hlc.agc grade).
 See the comments in compiler/ml_elim_nested.m
 and the paper on our web page for more details.
-
 <li>
 There is a `--generate-bytecode' option,
 for a back-end that generates bytecode.
 The bytecode generator is basically complete,
 but we don't have a bytecode interpreter.
-
 <li>
 A new implementation of the mode system using constraints.
-
 <!--
 <li>
 Support for aliasing in the mode system.
 This is on the "alias" branch of our CVS repository.
 -->
-
 <li>
 Support for automatic structure reuse
 (reusing old data structures that are no longer live,
 rather than allocating new memory on the heap)
 and compile time garbage collection.
-
 <li>
 A SOAP interface.
-
 <!--
 <li>
 Better support for inter-module analysis and optimization.
 -->
-
 <!--
 <li>
 Sequence quantification
 -->
-
 </ul>
-</html>
-
-<hr>
-<!-------------------------->
 
 </body>
 </html>

@@ -1,25 +1,27 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
 <title>Release Checklist for the Mercury Project</title>
 </head>
 
-<body bgcolor="#ffffff" text="#000000">
+<body>
 
-<hr>
-<!-------------------------->
+<h1>Release Checklist for the Mercury Project</h1>
 
 This file contains a checklist of the steps that must be
 taken when releasing a new version of Mercury.
-
-<hr>
-<!-------------------------->
+<p>
+XXX Warning: this file looks to be <em>very</em> out of date.
 
 <ol>
 <li> Items for the next version (1.0) only:
 	<ol>
 	<li>
 	Update w3/include/globals.inc as explained in the XXX comment there.
-        Don't commit your changes to the main branch yet, because
+    Don't commit your changes to the main branch yet, because
 	otherwise it would be installed on the WWW pages overnight.
 	<li>
 	Make sure that the runtime headers contain no symbols (function names,
@@ -62,7 +64,8 @@ taken when releasing a new version of Mercury.
 	  <dd> The contents of this distribution.
 	       This should be the same as in the RELEASE_NOTES file.
 
-          </dl>
+      </dl>
+
 	  You will need to add these new files to the list in the Makefile.
 	  You will also need to update release.html and
 	  current-release-bugs.html.
@@ -93,12 +96,12 @@ taken when releasing a new version of Mercury.
      This should have the effect of checking out a fresh copy, and doing
 
 	<pre>
-	touch Mmake.params &&
-	autoconf &&
+	touch Mmake.params &amp;&amp;
+	autoconf &amp;&amp;
 	mercury_cv_low_tag_bits=2 \
 	mercury_cv_bits_per_word=32 \
 	mercury_cv_unboxed_floats=no \
-	sh configure --prefix=$INSTALL_DIR &&
+	sh configure --prefix=$INSTALL_DIR &amp;&amp;
 	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space"' tar
 	</pre>
 	
@@ -172,10 +175,6 @@ taken when releasing a new version of Mercury.
      done this.
 
 </ol>
-
-
-<hr>
-<!-------------------------->
 
 </body>
 </html>

@@ -1,14 +1,13 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-Implementing tail recursion in the MLDS code generator
-</title>
+<title>Implementing tail recursion in the MLDS code generator</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
 <h1>Implementing tail recursion in the MLDS code generator</h1>
 
@@ -24,7 +23,6 @@ call a callee whose vector of return values is the same as
 the vector of return values of the caller,
 it deallocates the stack frame of the caller before the call,
 allowing its space to be used to store the stack frame of the callee.
-
 <p>
 In its general form, LCO does not require any knowledge of the callee;
 it works even when the identity of the callee is unknown at compile time,
@@ -68,15 +66,15 @@ so we describe that first.
 This is a general principle we use everywhere below:
 we introduce the simplest case first,
 and add the complications (and their solutions) later.
-
 <p>
+
 <h2>Self tail recursion</h2>
 
 <p>
 To explain how the Mercury compiler applies TRO to self-recursive calls,
 we will use this example predicate:
-
 <p>
+
 <pre>
 :- pred len(list(int)::in, int::in, int::out) is det.
 
@@ -123,8 +121,7 @@ x__len_3_p_0(
 
 <p>
 The last call is a tail recursive call.
-When this predicate is compiled with TRO,
-we get this C code:
+When this predicate is compiled with TRO, we get this C code:
 
 <p>
 <pre>
@@ -162,7 +159,6 @@ x__len_3_p_0(
 
 <p>
 This differs from the unoptimized code in two major aspects.
-
 <p>
 The first aspect affected by TRO
 is the translation of the self tail call
@@ -186,7 +182,6 @@ these must be the same in the caller and the callee.
 On every non-recursive path,
 we return the values of the output arguments
 using the exact same code as we would use without TRO.
-
 <p>
 Note that code that passes the input arguments does so in two stages:
 assignments of the actual parameter values
@@ -200,13 +195,14 @@ in (say) ascending order of argument number,
 then the translation of a call such as foo(In2, In1, <i>outputs</i>)
 in a predicate whose head looks like foo(In1, In2, <i>outputs</i>)
 would consist of the assignments
-
 <p>
+
 <pre>
 In1 = In2;
 In2 = In1;
 </pre>
 
+<p>
 and the first assignment would clobber the value to be assigned by the second.
 This is the standard problem of swapping two values,
 and its solution requires at least one temporary variable
@@ -224,16 +220,14 @@ how the assigned values end up in their target locations
 is not up to the Mercury compiler;
 it is up to the compiler that translates the generated C, C# or Java
 to machine code.
-
 <p>
 The second aspect affected by TRO is that
 the entire body of the target language (in this case C) code
 we generate for the procedure is wrapped up in a loop.
-
 <p>
 The usual way we wrap the procedure body is with a while loop:
-
 <p>
+
 <pre>
 ret_type func_name(args)
 {
@@ -247,8 +241,8 @@ ret_type func_name(args)
 
 <p>
 However, we can also use gotos:
-
 <p>
+
 <pre>
 ret_type func_name(args)
 {
@@ -278,7 +272,6 @@ This means that by definition, every procedure in a TSCC
 is reachable from every procedure in that TSCC using only tail calls.
 It then implements tail recursion optimization
 in each TSCC that contains tail calls.
-
 <p>
 Most TSCCs contain only one procedure,
 which means that we can implement TRO for them
@@ -286,7 +279,6 @@ using only the techniques above,
 without using any of the techniques below.
 The techniques below are needed only for TSCCs that contain
 two or more procedures.
-
 <p>
 Note that two (or more) mutually recursive procedures
 can end up in <em>different</em> TSCCs
@@ -297,7 +289,6 @@ but q calls p using only ordinary nontail calls.
 The LLDS backend can optimize the tail calls to q in p,
 but the MLDS backend cannot do so,
 because it cannot generate nonlocal gotos.
-
 <p>
 To implement mutual tail recursion between the procedures of a nontrivial TSCC,
 we need to generalize
@@ -319,8 +310,8 @@ consider a small TSCC containing two procedures, tscc_a and tscc_b.
 Since we need to translate tail calls into <em>local</em> transfers of control,
 we translate each TSCC together,
 either using labels and gotos like this:
-
 <p>
+
 <pre>
 ret_type_a tscc_a(args_a)
 {
@@ -363,8 +354,8 @@ tscc_end:
 
 <p>
 or using while loops and switches like this:
-
 <p>
+
 <pre>
 ret_type_a tscc_a(args_a)
 {
@@ -415,12 +406,12 @@ ret_type_b tscc_b(args_b)
 }
 </pre>
 
+<p>
 In both cases,
 each procedure in the TSCC has its own number in the TSCC
 (in this case, tscc_a is procedure 1 in the TSCC
 and tscc_b is procedure 2 in the TSCC).
 We call this number the procedure's in-TSCC id number.
-
 <p>
 We translate each procedure in the TSCC into MLDS code just once,
 yielding the code represented by "body of procedure ..." above.
@@ -472,7 +463,6 @@ since that would be semantically wrong.
 but the sharing of their storage would be a bug
 even if they had the same type.)
 We therefore need a mechanism to avoid this problem.
-
 <p>
 One possible solution would be to rename (or renumber) apart
 either the varsets of the procedures in the TSCC before code generation,
@@ -484,7 +474,6 @@ would be big (which would pose a program maintenance burden)
 and would turn over a lot of memory (a performance problem).
 And some compiler-generated MLDS variable names
 have fixed names and no changeable number.
-
 <p>
 Our chosen solution sidesteps such problems altogether
 by inventing a new set of compiler-generated MLDS variables
@@ -537,7 +526,6 @@ In each such pair of corresponding variables,
 we call the MLDS variable representing the argument
 the procedure's own variable,
 and we call the other the tscc variable.
-
 <p>
 Suppose both tscc_a and tscc_b are det functions
 whose argument vectors are tscc_a(AIn1, AIn2) = AOut1
@@ -547,8 +535,8 @@ is the name of the variable with a "Type" added to it.
 However, since AOutType1 must be the same as BOutType1,
 we will replace both with just "OutType1".
 Then the parameter passing code we generate will look like this:
-
 <p>
+
 <pre>
 OutType1
 tscc_a(
@@ -641,6 +629,7 @@ tscc_end:
 
 <p>
 The general principles of our parameter passing scheme are as follows.
+<p>
 
 <ul>
 <li>
@@ -688,6 +677,7 @@ For procedures whose outputs are all returned by value
 (which includes both tscc_a and tscc_b above),
 their container function consists of the following.
     <ul>
+    <li>
     The declaration of the function signature,
     giving the type (or in general, types)
     of the output argument(s) returned by value,
@@ -744,7 +734,6 @@ and the tscc_output_succeeded variable corresponding to it
 effectively function as an output argument returned by value.
 By its position in the vector of output arguments,
 it is effectively output argument 0.
-
 <p>
 The final detail is the treatment of output arguments
 that are passed by reference.
@@ -752,16 +741,15 @@ Our chosen approach is designed to work even in cases where
 the procedures of the TSCC,
 although they return the same vector of outputs,
 return different subsets of them by reference.
-
 <p>
 The basic idea is to generate the wrapped procedures
 as if all the output arguments were returned by value,
 exactly as shown in the example above,
 and to handle the difference at the container function level.
-
 <p>
 The parts of a container function
 corresponding to an output argument passed by value are the following.
+<p>
 
 <ul>
 <li>
@@ -785,6 +773,7 @@ we create a tscc_output_ptr_M_VarName variable for it
 as well as a tscc_output_M_VarName variable.
 The parts of a container function
 corresponding to such an output argument are the following.
+<p>
 
 <ul>
 <li>

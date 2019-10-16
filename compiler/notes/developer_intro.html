@@ -4,17 +4,16 @@ vim: ts=4 sw=4 expandtab ft=html
 
 <html>
 <head>
-
 <title>The Mercury Project: Developer Introduction </title>
 </head>
-<body bgcolor="#ABCDEF" text="#000000">
+
+<body>
 
 <h1>The Mercury Project: Developer Introduction </h1>
 
 <h2>An introduction to the Mercury source code and tools</h2>
 
 <p>
-
 The source code to Mercury is freely available and may be modified by anyone.
 However, there is a bit of a difference between
 being legally allowed to modify the code, and actually being able to do it!
@@ -201,7 +200,7 @@ It is a good idea to run the bootcheck in the background
 and log the results to a file.
 For example:
 <pre>
-./tools/bootcheck > bootchecklog.Jan21 2>&1 &
+./tools/bootcheck > bootchecklog.Jan21 2>&amp;1 &amp;
 tail -f bootchecklog.Jan21
 </pre>
 
@@ -268,8 +267,8 @@ bugN.m for Mantis bug N, and ghN.m for Github issue N.
 
 <hr>
 <p>
-Comments? See our
-<a href="http://www.mercurylang.org/contact.html">contact</a> page.<br>
+Comments?
+See our <a href="http://www.mercurylang.org/contact.html">contact</a> page.
 
 </body>
 </html>

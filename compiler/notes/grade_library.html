@@ -1,23 +1,23 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-The grade library
-</title>
+<title>The grade library</title>
 </head>
 
-<body bgcolor="#ffffff" text="#000000">
+<body>
 
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<h1>The grade library</h1>
 
 This documents work in progress.
 
-<h2> What grades are </h2>
+<h2>What grades are</h2>
 
 <p>
 This section is for users and novice implementors,
 as well as background for the next section.
-
 <p>
 Compiler options affect what code the compiler generates
 for the modules it is asked to generate code for.
@@ -40,7 +40,6 @@ but does not (due those bindings not having entries in the trail).
 If the user is lucky, the resulting data corruption will crash the program;
 if the user is unlucky, there will be no crash,
 and the program will just generate output that is effectively random.
-
 <p>
 To prevent such problems, the Mercury compiler requires
 that all modules in a program (including the ones embedded in libraries)
@@ -54,19 +53,14 @@ The above requirement can thus be restated both as
 with the same compilation model</em>
 and as <em>all modules in a program must be compiled in the same grade</em>.
 
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-<h2> The different representations of grades </h2>
+<h2>The different representations of grades</h2>
 
 <p>
 This section is for implementors,
 though some parts may be useful for users as well.
-
 <p>
 Traditionally, the Mercury compiler had two representations of grades:
 (a) grade strings, and (b) the values of the compilation model options.
-
 <p>
 Most compilation model options are boolean options (such as use_trail),
 some integer options (such as num_tag_bits),
@@ -82,11 +76,9 @@ to accept e.g. --target=java but reject e.g. --target=xyzzy
 can be done once, when the globals structure is set up,
 instead of having to be repeated in every part of the in the compiler
 that needs to know the identity of the target language.
-
 <p>
 A grade string is the only representation of grades
 that most Mercury users ever see.
-
 <p>
 A grade string consists of a sequence of grade components separated by dots;
 for example, "hlc.gc.tr" consists of the components "hlc", "gc" and "tr".
@@ -95,7 +87,6 @@ the value of one compiler option
 (for example, "tr" specifies use_trail=yes),
 or the values of two or more compiler options
 (for example, "hlc" specifies target=c and highlevel_data=no).
-
 <p>
 A typical grade string does <em>not</em> specify a value
 for <em>every</em> compilation model option.
@@ -104,7 +95,6 @@ a value for the thread_safe option.
 The values of such options are then set to a default value.
 That default may depend on the values of the compilation model options
 that <em>are</em> specified.
-
 <p>
 The different components of a grade string can be inconsistent.
 This can happen by having two grade components
@@ -122,7 +112,6 @@ of which "debug is implemented only for the LLDS backend" is only one.
 These constraints arise because not all combinations of options make sense,
 and of the combinations that do make sense,
 not all have been implemented, or are even worth implementing.
-
 <p>
 compiler/handle_options.m has traditionally been the place
 where we tried to implement these constraints.
@@ -133,7 +122,6 @@ If Bjs is a singleton set, then this constraint is effectively an implication.
 Such implications can be used in either direction:
 if we know that A=Ai, then we can set B=Bj,
 while if we know that B is not in Bjs, then we can rule out A=Ai.
-
 <p>
 The code in compiler/handle_options.m has several problems:
 
@@ -206,7 +194,6 @@ added it to the grade only <em>sometimes</em>.
 For example, since target=java implies thread_safe=yes,
 the grade library canonicalizes grade "java" to "java.par";
 before the grade library, we did not do that.
-
 <p>
 The grade var representation of a grade
 is very similar to the old representation of compilation model options,
@@ -256,7 +243,6 @@ However, the main reason
 for using this representation instead of compiler options
 is to allow the grade library to be usable
 by programs other than the compiler.
-
 <p>
 While having each grade variable being of a different type
 is good for type safety in code that deals with only a few grade variables,
@@ -268,7 +254,6 @@ one (solver_var_id) to represent the identities of all the grade variables,
 and another type (solver_var_value_id) 
 to represent all their possible values.
 Like this:
-
 <p>
 <pre>
 :- type solver_var_id
@@ -311,13 +296,12 @@ the initially posed set of constraints must have been inconsistent.
 On the other hand, a successful solution
 maps each grade variable to just a single value.
 Such a successful solution can be converted into a grade vars structure.
-
 <p>
 The fourth and last representation of grades in the grade library
 is the grade structure (the type name is "grade_structure").
 The purpose of the grade structure is to make it impossible to express grades
 that violate any of the constraints that we require grades to meet.
-
+<p>
 While the grade var representation can represent a grade
 which has both grade_var_target=grade_var_target_java and
 grade_var_deep_prof=grade_var_deep_prof_yes,
@@ -328,11 +312,10 @@ while it can record "the target language is Java"
 only in an argument of the grade_mlds function symbol,
 and a variable of type grade_structure cannot be bound
 to both function symbols at the same time.
-
 <p>
 The grade structure has two main uses.
-
 <p>
+
 <ul>
 <li>
 Converting a solver solution to a grade string
@@ -348,9 +331,6 @@ that can be instantiated to any valid grade, and to no invalid grade.
 This should make useful in documenting the set of valid grades
 in the user manual.
 </ul>
-
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
 </body>
 </html>

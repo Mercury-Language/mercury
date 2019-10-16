@@ -1,35 +1,29 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-	The Type Class Transformation
-</title>
+<title>The Type Class Transformation</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-<hr>
-<!-------------------------->
+<h1>The Type Class Transformation</h1>
 
 This document describes
 the transformation that the compiler does to implement type classes.
+<p>
+Note: the transformation described here should eventually be replaced
+by a design documented in runtime/mercury_typeclass_info.h.
 
-Note: the transformation described here will soon be replaced by a design
-documented in runtime/mercury_typeclass_info.h.
-
-<hr>
-<!-------------------------->
-
-<h2> Tranformation of code using type classes </h2>
+<h2>Tranformation of code using type classes</h2>
 
 Every predicate which has a typeclass constraint is given an extra
 argument for every constraint in the predicate's type declaration.
 The argument is the "dictionary", or "typeclass_info" for the typeclass.
 The dictionary contains pointers to each of the class methods.
 <p>
-
 Representation of a typeclass_info:
 The typeclass_info is represented in two parts (the typeclass_info
 itself, and a base_typeclass_info), in a similar fashion to the
@@ -38,47 +32,44 @@ type_ctor_info).
 <p>
 
 The base_typeclass_info contains:
-<UL>
-	  <LI> the sum of the number of constraints on the instance decl. 
-	  and the number of unconstrained type variables 
-	  from the head of the instance decl. (`n1')
-	  <LI> the number of constraints on the instance decl. (`n2')
-	  <LI> the number of constraints on the typeclass decl. (`n3')
-	  <LI> the number of parameters (type variables) from 
-	         the typeclass decl. (`n4')
-	  <LI> the number of methods from the typeclass decl. (`n5')
-	  <LI> pointer to method #1
-	  <LI> ...
-	  <LI> pointer to method #n5
-</UL>
+<ul>
+<li> the sum of the number of constraints on the instance declaration
+and the number of unconstrained type variables
+from the head of the instance decl. (`n1')
+<li> the number of constraints on the instance decl. (`n2')
+<li> the number of constraints on the typeclass decl. (`n3')
+<li> the number of parameters (type variables) from the typeclass decl. (`n4')
+<li> the number of methods from the typeclass decl. (`n5')
+<li> pointer to method #1
+<li> ...
+<li> pointer to method #n5
+</ul>
 <p>
 
 The typeclass_info contains:
-<UL>
-	  <LI> a pointer to the base typeclass info
-	  <LI> type info for unconstrained type var #1 from the instance decl
-	  <LI> ...
-	  <LI> type info for unconstrained type var #(n1-n2) from the 
-	  instance decl
-	  <LI> typeclass info #1 for constraint on instance decl
-	  <LI> ...
-	  <LI> typeclass info #n2 for constraint on instance decl
-	  <LI> typeclass info for superclass #1
-	  <LI> ...
-	  <LI> typeclass info for superclass #n3
-	  <LI> type info #1 
-	  <LI> ...
-	  <LI> type info #n4
-</UL>
+<ul>
+<li> a pointer to the base typeclass info
+<li> type info for unconstrained type var #1 from the instance decl
+<li> ...
+<li> type info for unconstrained type var #(n1-n2) from the instance decl
+<li> typeclass info #1 for constraint on instance decl
+<li> ...
+<li> typeclass info #n2 for constraint on instance decl
+<li> typeclass info for superclass #1
+<li> ...
+<li> typeclass info for superclass #n3
+<li> type info #1
+<li> ...
+<li> type info #n4
+</ul>
 <p>
 
-The base_typeclass_info is produced statically, and there is one for
-each instance declaration. For each constraint on the instance
-declaration, the corresponding typeclass_info is stored in the second
-part.
+The base_typeclass_info is produced statically,
+and there is one for each instance declaration.
+For each constraint on the instance declaration,
+the corresponding typeclass_info is stored in the second part.
 <p>
-
-eg. for the following program:
+For example for the following program:
 <p>
 
 <pre>
@@ -88,54 +79,55 @@ eg. for the following program:
 </pre>
 
 The typeclass_info for foo(int) is:
-<UL>
-	<LI>The base_typeclass_info:
-	<UL>
-	  <LI> 0 (there are no unconstrained type variables and no constraints)
-	  <LI> 0 (there are no constraints on the instance decl)
-	  <LI> 0 (there are no constraints on the typeclass decl)
-	  <LI> 1 (this is a single-parameter type class)
-	  <LI> n5 (the number of methods)
-	  <LI> pointer to method #1
-	  <LI> ...
-	  <LI> pointer to method #n5
-	</UL>
+<ul>
+<li>The base_typeclass_info:
+    <ul>
+    <li> 0 (there are no unconstrained type variables and no constraints)
+    <li> 0 (there are no constraints on the instance decl)
+    <li> 0 (there are no constraints on the typeclass decl)
+    <li> 1 (this is a single-parameter type class)
+    <li> n5 (the number of methods)
+    <li> pointer to method #1
+    <li> ...
+    <li> pointer to method #n5
+    </ul>
 
-	<LI>The typeclass_info:
-	<UL>
-	  <LI> a pointer to the base typeclass info
-	  <LI> type_info for int
-	</UL>
-</UL>
+<li>The typeclass_info:
+    <ul>
+    <li> a pointer to the base typeclass info
+    <li> type_info for int
+    </ul>
+</ul>
 
 The typeclass_info for foo(list(T)) is:
-<UL>
-	<LI>The base_typeclass_info:
-	<UL>
-	  <LI> 1 (no unconstrained tvars, 1 constraint on the instance decl)
-	  <LI> 1 (there is 1 constraint on the instance decl)
-	  <LI> 0 (there are no constraints on the typeclass decl)
-	  <LI> 1 (this is a single-parameter type class)
-	  <LI> n5 (the number of methods)
-	  <LI> pointer to method #1
-	  <LI> ...
-	  <LI> pointer to method #n5
-	</UL>
+<ul>
+<li>The base_typeclass_info:
+	<ul>
+	<li> 1 (no unconstrained tvars, 1 constraint on the instance decl)
+	<li> 1 (there is 1 constraint on the instance decl)
+	<li> 0 (there are no constraints on the typeclass decl)
+	<li> 1 (this is a single-parameter type class)
+	<li> n5 (the number of methods)
+	<li> pointer to method #1
+	<li> ...
+	<li> pointer to method #n5
+	</ul>
 
-	<LI>The typeclass_info contains:
-	<UL>
-	  <LI> a pointer to the base typeclass info
-	  <LI> typeclass info for foo(T)
-	  <LI> type_info for list(T)
-	</UL>
-</UL>
+<li>The typeclass_info contains:
+	<ul>
+	<li> a pointer to the base typeclass info
+	<li> typeclass info for foo(T)
+	<li> type_info for list(T)
+	</ul>
+</ul>
 
-If the "T" for the list is known, the whole typeclass_info will be static
-data. When we do not know until runtime, the typeclass_info is constructed
-dynamically.
+If the "T" for the list is known,
+the whole typeclass_info will be static data.
+When we do not know until runtime,
+the typeclass_info is constructed dynamically.
 <p>
 
-<H3> Example of transformation </H3>
+<h3>Example of transformation</H3>
 
 Take the following code as an example (assuming the declarations above),
 ignoring the requirement for super-homogeneous form for clarity:
@@ -149,8 +141,8 @@ ignoring the requirement for super-homogeneous form for clarity:
 p(X) :- q([X], 0), r(1, 0).
 </pre>
 
-We add an extra argument for each type class constraint, and one
-argument for each unconstrained type variable.
+We add an extra argument for each type class constraint,
+and one argument for each unconstrained type variable.
 <p>
 
 <pre>
@@ -208,7 +200,7 @@ p(TypeClassInfoT1, X) :-
 </pre>
 <p>
 
-<H3> Detecting duplicate instance declarations </H3>
+<h3>Detecting duplicate instance declarations</h3>
 
 We would like to catch duplicate instance declarations
 (those that declare the same vector of possibly unground types
@@ -220,7 +212,7 @@ We would therefore like to generate a name for the global variable
 that holds the base_typeclass_info of an instance declaration
 that depends only on the identity of the typeclass
 and on the instance declaration's vector of argument types.
-
+<p>
 For the C backends, this is what we actually do.
 As a result, duplicate instance declarations will result in a link error
 for a multiply defined symbol if linking is done statically.
@@ -234,8 +226,8 @@ but they are the names of the modules that declare the type class
 and that declare the type constructors occuring in the argument types.
 The name of the module that contains the instance declaration
 need not be among these names.
-
-For the IL and Java backends, the data structures we generate
+<p>
+For the Java backend, the data structures we generate
 must all be module qualified with the name of the module which generates them.
 If two modules contain duplicate instance declarations,
 we cannot catch that fact at link time.
@@ -245,10 +237,5 @@ at module initialization time,
 and detecting duplicate registrations.
 However, we currently have no such mechanism in place.
 
-<hr>
-<!-------------------------->
-<hr>
-<!-------------------------->
-Last update was $Date: 2004-03-01 04:24:15 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

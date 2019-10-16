@@ -1,35 +1,31 @@
 <!--
-  vim: et sw=2 sts=2
+vim: ts=4 sw=4 expandtab ft=html
 -->
+
 <html>
 <head>
 <title>
-    How to upgrade to a new version of Boehm Garbage Collector in Mercury.
+How to upgrade to a new version of Boehm Garbage Collector in Mercury.
 </title>
 </head>
 
-<body
-    bgcolor="#ffffff"
-    text="#000000"
->
-<H1>
-    How to upgrade to a new version of Boehm Garbage Collector in Mercury.
-</H1>
+<body>
 
-<P>
-<B>WARNING:</B> This process is difficult and should not be undertaken lightly.
-Before attempting to upgrade Boehm GC one should definitely discuss it on
-the reviews mailing list first.
-</P>
-
-<h2>
-The setup
-</h2>
+<h1>How to upgrade to a new version of Boehm Garbage Collector in Mercury.</h1>
 
 <p>
-This is the first attempt to update Boehm since Mercury switched from CVS to
-Git.
-Therefore, I've taken the opportunity to setup this process in a more
+<b>WARNING:</b>
+This process is difficult and should not be undertaken lightly.
+Before attempting to upgrade Boehm GC one should definitely discuss it
+on the reviews mailing list first.
+</P>
+
+<h2>The setup</h2>
+
+<p>
+This is the first attempt to update Boehm
+since Mercury switched from CVS to Git.
+Therefore, I have taken the opportunity to setup this process in a more
 git-ish way (Boehm GC also uses git).
 I set this up for version 7.4.2 of the collector and libatomic_ops.
 </p>
@@ -178,7 +174,7 @@ $ git push github-mercury release-7_4          # Optional
 $ git checkout release-7_4-mercury
 $ git pull github-mercury release-7_4-mercury
 $ git rebase release-7_4
-</code></pre>
+</pre></code>
 
 <p>
 There are only two Mercury-specific change so this went smoothly.
@@ -190,7 +186,7 @@ We need to regenerate those files.
 <code><pre>
 $ ./autogen.sh
 $ git commit --amend -a
-</code></pre>
+</pre></code>
 
 <p>
 Double check that you got everything:

@@ -1,38 +1,33 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
 
 <html>
 <head>
-<title>
-	Promise Ex Declarations
-</title>
+<title>Promise Ex Declarations</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-<hr>
-<!-------------------------->
-<h1> Promise Ex Declarations</h1>
+<h1>Promise Ex Declarations</h1>
 
 This document is a description of promise ex declarations,
 which are currently unfinished and as such are undocumented 
 in the reference manual.
-
 <p>
 
-<hr>
-<!-------------------------->
-<h2> Syntax </h2>
+<h2>Syntax</h2>
 
-There are currently three promise ex declarations: promise_exclusive, 
-promise_exhaustive, and promise_exclusive_exhaustive. They are used to 
-denote determinism properties of a disjunction, and denote either exclusivity
-exhaustiveness or both. The examples of each, given below, also show
-the different ways that existential quantification can be handled.
+There are currently three promise ex declarations:
+promise_exclusive, promise_exhaustive, and promise_exclusive_exhaustive.
+They are used to denote determinism properties of a disjunction,
+and denote either exclusivity exhaustiveness or both.
+The examples of each, given below,
+also show the different ways that existential quantification can be handled.
 
 <ul>
-<li>	Mutual exclusivity:
+<li>
+Mutual exclusivity:
 	<pre>
 	:- all [X, Y] promise_exclusive
 		some [Z] ( 
@@ -41,7 +36,8 @@ the different ways that existential quantification can be handled.
 			q(X, Y, Z) 
 		).
 	</pre>
-<li>	Exhaustiveness:
+<li>
+Exhaustiveness:
 	<pre>
 	:- all [X] promise_exhaustive 
 		( 
@@ -50,7 +46,8 @@ the different ways that existential quantification can be handled.
 			q(X, _) 
 		).  
 	</pre>
-<li>	Both together:
+<li>
+Both together:
 	<pre> 
 	:- all [X] promise_exclusive_exhaustive  
 		some [Y] ( 
@@ -62,67 +59,78 @@ the different ways that existential quantification can be handled.
 </ul>
 
 All three declarations are restricted in the following ways:
-<ol>
-<li>	Any variable that occurs in more than one disjunct must be
-	explicitly quantified.
-<li>	Any variable occurring in only one disjunct is existentially quantified.
-	This is similarly applicable when an underscore is used in place of a 
-	variable.
-</ol>
+<ul>
+<li>
+Any variable that occurs in more than one disjunct
+must be explicitly quantified.
+<li>
+Any variable occurring in only one disjunct is existentially quantified.
+This is similarly applicable when an underscore is used in place of a variable.
+</ul>
 <p>
 
-<hr>
-<!--------------------------> 
-<h2> Development </h2>
+<h2>Development</h2>
 
-This tracks the use of promise ex declarations through the compiler, and
-may be useful as a quick summary of the current state of development. Items
-marked with an asterisk (*) are not yet implemented. Places where data 
-structures etc. have been defined are in italics.
+This tracks the use of promise ex declarations through the compiler,
+and may be useful as a quick summary of the current state of development.
+Items marked with an asterisk (*) are not yet implemented.
+Places where data structures etc. have been defined are in italics.
 
 <ol>
-<li>	the declarations enter the parse tree
+<li>
+The declarations enter the parse tree.
 	<ul>
-	<li>	<i>the operators are defined</i> (library/ops.m)
-	<li>	<i>the structure for promise ex declarations in the parse tree 
-		is defined</i> (prog_data.m)
-	<li>	they are parsed and entered into the parse tree (prog_io.m)
+	<li>
+    <i>The operators are defined</i> (library/ops.m).
+	<li>
+    <i>The structure for promise ex declarations in the parse tree
+    is defined</i> (prog_data.m).
+	<li>
+    They are parsed and entered into the parse tree (parse_item.m).
 	</ul>
-<li>	they may be pretty printed (mercury_to_mercury.m, prog_out.m).
-<li> 	they are error checked, and entered in to the HLDS as 
-	dummy predicates
+<li>
+They may be pretty printed (mercury_to_mercury.m, parse_tree_out.m).
+<li>
+They are error checked, and entered in to the HLDS as dummy predicates.
 	<ul>
-	<li>	error checking (make_hlds.m)
-	<li>	entering of declarations into the HLDS as dummy predicates 
-		(make_hlds.m)
+	<li>
+    Error checking (make_hlds.m).
+	<li>
+    Entering of declarations into the HLDS as dummy predicates (make_hlds.m).
 	</ul>
-<li>	go through typechecking as predicates; after typechecking they 
-	are removed from processing as predicates and entered into the
-	appropriate table in the HLDS
+<li>
+They go through typechecking as predicates.
+After typechecking they are removed from processing as predicates
+and entered into the appropriate table in the HLDS.
 	<ul>
-	<li>	post typechecking processing initiated for promise ex 
-		declarations (purity.m)
-	<li>	promise_exclusive and promise_exhaustive declarations are
-		indexed by the predicate calls made in them in the exclusive 
-		table (post_typecheck.m)
-	<li>	<i>definition of exclusive table as part of HLDS, and
-		operations on the table </i> 
-		(hlds_module.m)
-	<li>	(*) where a promise_exhaustive declaration is paired with a
-		promise_exclusive declaration, they are merged into a
-		promise_exclusive_exhaustive declaration; otherwise the
-		promise_exhaustive declaration is entered in the exhaustive
-		table of the HLDS (post_typecheck.m)
-	<li>	(*) <i>definition of exhaustive table as part of HLDS, and
-		operations on the table </i> 
-		(hlds_module.m)
+	<li>
+    Post typechecking processing initiated for promise ex declarations
+    (purity.m).
+	<li>
+    promise_exclusive and promise_exhaustive declarations
+    are indexed by the predicate calls made in them
+    in the exclusive table (post_typecheck.m).
+	<li>
+    <i>Definition of exclusive table as part of HLDS,
+    and operations on the table</i> (hlds_module.m).
+	<li>
+    (*) Where a promise_exhaustive declaration
+    is paired with a promise_exclusive declaration,
+    they are merged into a promise_exclusive_exhaustive declaration;
+    otherwise the promise_exhaustive declaration
+    is entered in the exhaustive table of the HLDS (post_typecheck.m).
+	<li>
+    (*) <i>Definition of exhaustive table as part of HLDS, and
+    operations on the table</i> (hlds_module.m).
 	</ul>
-<li>	(*) exclusivity information is used during switch detection, and 
-	where it leads to a full switch being made, applicable exhaustiveness 
-	information is also used (switch_detection.m)
-<li>	(*) exhaustiveness information is used during determinism analysis
-	(det_analysis.m) or as an add-on to switch detection
-	(switch_detection.m)
+<li>
+(*) Exclusivity information is used during switch detection,
+and where it leads to a full switch being made,
+applicable exhaustiveness information is also used (switch_detection.m).
+<li>
+(*) Exhaustiveness information is used
+during determinism analysis (det_analysis.m)
+or as an add-on to switch detection (switch_detection.m).
 </ol>
 
 </body>

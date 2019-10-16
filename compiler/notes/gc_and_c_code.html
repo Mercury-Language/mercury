@@ -1,36 +1,32 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-	Information On LLDS Accurate Garbage Collection And C Code
-</title>
+<title>Information On LLDS Accurate Garbage Collection And C Code</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-<hr>
-<!-------------------------->
+<h1>Information On LLDS Accurate Garbage Collection And C Code</h1>
 
-When handwritten code is called from Mercury, the garbage collection 
-scheduler doesn't know anything about the code, so it cannot replace
-the succip on the stack (if there is one) with the collector's address.
-
+When handwritten code is called from Mercury,
+the garbage collection scheduler doesn't know anything about the code,
+so it cannot replace the succip on the stack (if there is one)
+with the collector's address.
 <p>
-
-If the handwritten code calls no other code, then this is fine, the
-scheduler knows it can replace the succip variable and when a
-proceed() occurs execution will return to mercury code which it 
-knows about.
-
+If the handwritten code calls no other code, then this is fine,
+the scheduler knows it can replace the succip variable
+and when a proceed() occurs,
+execution will return to mercury code which it knows about.
 <p>
-
-If handwritten code calls other handwritten code, we have a problem, 
-as succip will be saved on the stack and we don't know where on
-the stack it is stored. So we use a global variable 'saved_succip' which
-is succip is saved into. Care must be taken to save saved_succip on the 
-stack so it doesn't get clobbered. <br>
+If handwritten code calls other handwritten code, we have a problem,
+as succip will be saved on the stack
+and we don't know where on the stack it is stored.
+So we use a global variable 'saved_succip' which is succip is saved into.
+Care must be taken to save saved_succip on the stack
+so it doesn't get clobbered.
 So
 	<pre>
 	detstackvar(1) = (int) succip;
@@ -40,7 +36,6 @@ becomes
 	detstackvar(1) = (int) saved_succip;
 	saved_succip = (int) succip;
 	</pre>
-
 and, when restoring, 
 	<pre>
 	succip = (int) detstackvar(1);
@@ -51,24 +46,15 @@ becomes
 	saved_succip = detstackvar(1);
 	</pre>
 
+<p>
 (With appropriate LVALUE_CASTs).
-
 <p>
-
-In this way, garbage collection always knows where the succip is stored 
-in handwritten code. 
-
+In this way, garbage collection
+always knows where the succip is stored in handwritten code. 
 <p>
-
-The garbage collection code must check that the current execution is not 
-still in a handwritten predicate - if it is, it must re-schedule (essentially
-just the same as before).
-
-<p>
-
-
-<hr>
-<!-------------------------->
+The garbage collection code must check that
+the current execution is not still in a handwritten predicate --
+if it is, it must re-schedule (essentially just the same as before).
 
 </body>
 </html>

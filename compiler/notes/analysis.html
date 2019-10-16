@@ -1,3 +1,7 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
 <title>Mercury Analysis Framework</title>
@@ -5,13 +9,11 @@
 
 <body>
 
-<hr>
 <h1>Mercury Analysis Framework</h1>
-<hr>
 
 <p>
-This directory formerly contained an implementation of the inter-module
-analysis framework described in:
+This directory formerly contained
+an implementation of the inter-module analysis framework described in:
 
 <blockquote>
 	Nicholas Nethercote. <a href="http://njn.valgrind.org/pubs/masters2001.ps">The Analysis Framework of HAL</a>,<br>
@@ -20,231 +22,256 @@ analysis framework described in:
 </blockquote>
 
 <p>
-The code has now been moved into the compiler directory, in the package
-`analysis'. The files that remain (Mmakefile, etc.) are unused.
+The code has now been moved into the compiler directory,
+in the package `analysis'.
+The files that remain (Mmakefile, etc.) are unused.
 
 <p>
 This framework records call and answer patterns for arbitrary analyses,
 and performs dependency analysis to force recompilation where necessary
 when modules change.
 
-<h2>TODO</h2>
+<h2>Todo</h2>
 <ul>
-<li>dependency tracking and invalidation after source modifications
-  (partially done but requires testing with more analyses)
-<li>garbage collection of unused versions
-<li>least fixpoint analyses
+<li>
+dependency tracking and invalidation after source modifications
+(partially done but requires testing with more analyses)
+<li>
+garbage collection of unused versions
+<li>
+least fixpoint analyses
 </ul>
 
-<h2>DESIGN</h2>
+<h2>Design</h2>
 
 <p>
-The analysis framework is a library which links into the client
-compiler, allowing the class methods to examine compiler data
-structures. The interface is as compiler-independent as possible,
-so that compilers which can interface with Mercury code via .NET
-can use it.
+The analysis framework is a library which links into the client compiler,
+allowing the class methods to examine compiler data structures.
+The interface is as compiler-independent as possible,
+so that compilers which can interface with Mercury code via .NET could use it.
 
 <p>
-Clients of the library must define an instance of the typeclass
-`analysis__compiler', which describes the analyses the compiler
-wants to perform.
+Clients of the library must define
+an instance of the typeclass `analysis.compiler',
+which describes the analyses the compiler wants to perform.
 
 <p>
-Each analysis is described by a call pattern type and an
-answer pattern type. A call pattern describes the information
+Each analysis is described by a call pattern type and an answer pattern type.
+A call pattern describes the information
 known about the argument variables before analysing a call
 (by executing it in the abstract domain used by the analysis).
-An answer pattern describes the information known after analysing
-the call. Call and answer patterns must form a partial order, and
-must be convertible to strings.
+An answer pattern describes the information known after analysing the call.
+Call and answer patterns must form a partial order,
+and must be convertible to strings.
 
 <h2>Analysis database</h2>
 
 <p>
 Before analysing a module, the client should call
-`analysis__lookup_results' and `analysis__lookup_requests' to find the
-call patterns for which the module should be analysed, in addition to
-the "default" call pattern (top).  `lookup_results' will give the call
-patterns which we have encountered before whereas `lookup_requests'
-will give the call patterns which have been recently requested by
-other modules.
+`analysis.lookup_results' and `analysis.lookup_requests'
+to find the call patterns for which the module should be analysed,
+in addition to the "default" call pattern (top).
+`lookup_results' will give the call patterns
+which we have encountered before
+whereas `lookup_requests' will give the call patterns
+which have been recently requested by other modules.
 
 <p>
-When analysing a module, at each call to an imported function
-the client should call `analysis__lookup_results' or
-`analysis__lookup_best_result' to find the results which
-match the call pattern.
+When analysing a module,
+at each call to an imported function the client should call
+`analysis.lookup_results' or `analysis.lookup_best_result'
+to find the results which match the call pattern.
 
 <p>
-If no results exist, the client should call `analysis__record_request',
-to ask that a specialized version be created on the next compilation
-of the client module.  The client should also record the suboptimal
-result that was used in place of a more specialized result in the
-imported module's analysis registry.
+If no results exist,
+the client should call `analysis.record_request',
+to ask that a specialized version be created
+on the next compilation of the client module.
+The client should also record the suboptimal result
+that was used in place of a more specialized result
+in the imported module's analysis registry.
 
 <p>
-There is currently no way to analyse higher-order or class method
-calls. It might be possible to analyse such calls where the set of
-possibly called predicates is known, but it is better to optimize away
+There is currently no way to analyse higher-order or class method calls.
+It might be possible to analyse such calls
+where the set of possibly called predicates is known,
+but it is better to optimize away
 higher-order or class method calls where possible.
 
 <p>
-The client should call `analysis__record_dependency' for each external
-analysis result that is made use of by the module.
+The client should call `analysis.record_dependency'
+for each external analysis result that is made use of by the module.
 
 <p>
-When compilation of a module is complete, the client should
-call `analysis__write_analysis_files' to write out all
-information collected during the compilation.
+When compilation of a module is complete,
+the client should call `analysis.write_analysis_files'
+to write out all information collected during the compilation.
 
 <p>
 Called by analysis passes to record analysis requests and lookup
-answers for imported functions. The status of each answer recorded
-in the database is one of the following:
+answers for imported functions.
+The status of each answer recorded in the database is one of the following:
 
 <ul>
-<li>invalid - the answer was computed using information which has changed,
-  and must be recomputed. `invalid' entries may not be used in analysis
-  or in generating code.
-
-<li>fixpoint_invalid - the entry is for a least fixpoint analysis, and
-  depends on an answer which has changed so that the new answer
-  is strictly less precise than the old answer (moving towards to
-  correct answer). `fixpoint_invalid' entries may be used when analysing
-  a module, but code must not be generated which uses `fixpoint_invalid'
-  results (even indirectly). In addition, code must not be generated when
-  compiling a module in a strongly connected component of the analysis
-  dependency graph which contains `fixpoint_invalid' entries. (Note that
-  the method for handling least fixpoint analyses is not described in
-  Nicholas Nethercote's thesis).
-  This is not yet implemented.
-
-<li>suboptimal - the entry does not depend on any `invalid' or
-  `fixpoint_invalid' entries, but may be improved by further
-  recompilation. `suboptimal' entries do not need to be recompiled,
-  but efficiency may be improved if they are. `suboptimal' annotations
-  are only possible for greatest fixpoint analyses (least fixpoint
-  analyses start with a "super-optimal" answer and work towards the
-  correct answer).
-
-<li>optimal - the entry does not depend on any `invalid', `fixpoint_invalid'
-  or `suboptimal' results. Modules containing only `optimal' entries do
-  not need recompilation.
+<li>
+invalid -
+the answer was computed using information which has changed,
+and must be recomputed.
+`invalid' entries may not be used in analysis or in generating code.
+<li>
+fixpoint_invalid - the entry is for a least fixpoint analysis,
+and depends on an answer which has changed
+so that the new answer is strictly less precise than the old answer
+(moving towards to correct answer).
+`fixpoint_invalid' entries may be used when analysing a module,
+but code must not be generated which uses `fixpoint_invalid' results
+(even indirectly).
+In addition, code must not be generated when compiling a module
+in a strongly connected component of the analysis dependency graph
+which contains `fixpoint_invalid' entries.
+(Note that the method for handling least fixpoint analyses
+is not described in Nicholas Nethercote's thesis).
+This is not yet implemented.
+<li>
+suboptimal - the entry does not depend
+on any `invalid' or `fixpoint_invalid' entries,
+but may be improved by further recompilation.
+`suboptimal' entries do not need to be recompiled,
+but efficiency may be improved if they are.
+`suboptimal' annotations are only possible for greatest fixpoint analyses
+(least fixpoint analyses start with a "super-optimal" answer
+and work towards the correct answer).
+<li>
+optimal - the entry does not depend
+on any `invalid', `fixpoint_invalid' or `suboptimal' results.
+Modules containing only `optimal' entries do not need recompilation.
 </ul>
-
 
 <h2>Analysis dependency checker (NYI)</h2>
 
 <p>
-Examines the dependencies between analysis results and the state
-of the compilation, then orders recompilations so that there are no
-`invalid' or `fixpoint_invalid' entries (with an option to eliminate
-`suboptimal' entries).
+Examines the dependencies between analysis results
+and the state of the compilation,
+then orders recompilations so that
+there are no `invalid' or `fixpoint_invalid' entries
+(with an option to eliminate `suboptimal' entries).
 
 <p>
-Each client compiler should have an option which invokes the analysis
-dependency checker rather than compiling code. This adjusts the status
-of entries in the database, then invokes the compiler's build tools
-(through a typeclass method) to recompile modules in the correct order.
+Each client compiler should have an option
+which invokes the analysis dependency checker rather than compiling code.
+This adjusts the status of entries in the database,
+then invokes the compiler's build tools (through a typeclass method)
+to recompile modules in the correct order.
 
 <p>
-If the implementation of a function changes, all of its answers are
-marked as invalid, and the results of the functions it directly uses
-in the SCC of the analysis dependency graph containing it are reset
-to `top' (marked `suboptimal') for greatest fixpoint analyses, or
-`bottom' (marked `fixpoint_invalid') for least fixpoint analyses.
-This ensures that the new result for the function is not computed
-using potentially invalid information.
+If the implementation of a function changes,
+all of its answers are marked as invalid,
+and the results of the functions it directly uses
+in the SCC of the analysis dependency graph containing it
+are reset to `top' (marked `suboptimal') for greatest fixpoint analyses,
+or `bottom' (marked `fixpoint_invalid') for least fixpoint analyses.
+This ensures that the new result for the function
+is not computed using potentially invalid information.
 
 <p>
-After each compilation, the dependency checker examines the changes
-in the analysis results for each function.
+After each compilation, the dependency checker
+examines the changes in the analysis results for each function.
 
 <p>
 For greatest fixpoint analyses, if the new answer is
 <ul>
-<li>less precise than or incomparable with the old result,
-  all users of the call pattern are marked `invalid'.
-<li>equal to the old result, no entries need to be marked. 
-<li>more precise than the old result, callers are marked
-  as `suboptimal'.
+<li>
+less precise than or incomparable with the old result,
+all users of the call pattern are marked `invalid'.
+<li>
+equal to the old result, no entries need to be marked.
+<li>
+more precise than the old result, callers are marked as `suboptimal'.
 </ul>
 
 <p>
 For least fixpoint analyses, if the new answer is
 <ul>
-<li>less precise than or incomparable with the old result,
-  all users of the call pattern are marked `invalid'.
-<li>equal to the old result, no entries need to be marked. 
-<li>more precise than the old result, callers are marked
-  as `fixpoint_invalid'.
+<li>
+less precise than or incomparable with the old result,
+all users of the call pattern are marked `invalid'.
+<li>
+equal to the old result, no entries need to be marked.
+<li>
+more precise than the old result, callers are marked as `fixpoint_invalid'.
 </ul>
 
 <p>
-The new answer itself will be marked as `optimal'. This isn't
-necessarily correct -- further recompilations may change its status
-to `fixpoint_invalid' or `suboptimal' (or `invalid' if there
-are source code changes).
+The new answer itself will be marked as `optimal'.
+This isn't necessarily correct --
+further recompilations may change its status
+to `fixpoint_invalid' or `suboptimal'
+(or `invalid' if there are source code changes).
 
 <p>
-Recompilation must proceed until there are no `invalid' or `fixpoint_invalid'
-entries. Optionally, optimization can proceed until there are no new requests
-or `suboptimal' answers.
+Recompilation must proceed
+until there are no `invalid' or `fixpoint_invalid' entries.
+Optionally, optimization can proceed
+until there are no new requests or `suboptimal' answers.
 
 <p>
-It the responsibility of the analysis implementor to ensure termination of
-the analysis process by not generating an infinite number of requests.
+It the responsibility of the analysis implementor
+to ensure termination of the analysis process
+by not generating an infinite number of requests.
 
 <p>
-Note: although `mmc' does not have an analysis dependency checker as
-described above, `mmc --make' now understands the intermodule analysis
-framework.  Before the pass to compile modules to target code, there
-is an analysis pass.  This is similar to the optimisation interface
-pass which generated `.opt' and `.trans_opt' files.  `mmc --make' will
-repeat the analysis pass as long as there are invalid analysis
-registries, with the option to repeat the analysis pass as many times
-as desired in order to bring `suboptimal' modules to `optimal'.
+Note: although `mmc' does not have
+an analysis dependency checker as described above,
+`mmc --make' now understands the intermodule analysis framework.
+Before the pass to compile modules to target code,
+there is an analysis pass.
+This is similar to the optimisation interface pass
+which generated `.opt' and `.trans_opt' files.
+`mmc --make' will repeat the analysis pass
+as long as there are invalid analysis registries,
+with the option to repeat the analysis pass as many times as desired
+in order to bring `suboptimal' modules to `optimal'.
 
 <h2>Granularity of dependencies</h2>
 
 <p>
-The description in Nicholas Nethercote's thesis uses fine-grained
-dependency tracking, where for each exported answer only the imported
-analysis results used to compute that answer are recorded.
+The description in Nicholas Nethercote's thesis
+uses fine-grained dependency tracking,
+where for each exported answer only the imported analysis results
+used to compute that answer are recorded.
 
 <p>
-For simplicity, the initial Mercury implementation will only record
-dependencies of entire modules on particular analysis results 
+For simplicity, the initial Mercury implementation
+will only record dependencies of entire modules on particular analysis results
 (effectively the exported results depend on all imported analysis
-results used in that compilation). This is worthwhile because none of
-the analyses in the Mercury compiler currently record the information
-required for the more precise approach, and I would expect that other
-compilers not designed for inter-module analysis would also not
-record that information.
+results used in that compilation).
+This is worthwhile because none of the analyses in the Mercury compiler
+currently record the information required for the more precise approach,
+and I would expect that other compilers not designed for inter-module analysis
+would also not record that information.
 
 <h2>Differences of the implementation from Nick's thesis</h2>
 
 <p>
-We do not store "version calling patterns" in the .analysis files
-However, we have .request files which contain calling patterns for
-which we had no answer, and the <i>lookup_best_result() </i>predicate
-automatically matches a calling pattern to the best possible result
-available.
+We do not store "version calling patterns" in the .analysis files.
+However, we have .request files
+which contain calling patterns for which we had no answer,
+and the <i>lookup_best_result()</i>predicate
+automatically matches a calling pattern to the best possible result available.
 
 <p>
-We do not support "perfect calls" any differently from any other
-calls.
+We do not support "perfect calls" any differently from any other calls.
 
 <p>
-Our IMDGs only record entire modules as being dependent on some
-analysis result so if an analysis result changes, we can only
-mark/invalidate an entire module which makes use of the result.
-This means having an analysis status associated with each individual
-analysis result is somewhat pointless at the moment, as individual
-statuses will never be marked/invalidated, and we also can't make
-use of them to reanalyse only the procedures that actually need
-analysing.
+Our IMDGs only record entire modules as being dependent on some analysis result
+so if an analysis result changes,
+we can only mark/invalidate an entire module which makes use of the result.
+This means having an analysis status
+associated with each individual analysis result
+is somewhat pointless at the moment,
+as individual statuses will never be marked/invalidated,
+and we also can't make use of them
+to reanalyse only the procedures that actually need analysing.
 
 <h2>Still to do</h2>
 
@@ -252,39 +279,42 @@ analysing.
 Page numbers are references to Nick's thesis.
 
 <p>
-We do not yet remove analysis results for procedures which no longer
-exist. (p. 107)
+We do not yet remove analysis results for procedures which no longer exist.
+(p. 107)
 
 <p>
-In the get_ext_answer procedure Nick uses a <i>glb </i>function in addition
-to a <i>is_more_precise(Ans', Ans_glb)</i> call.  I don't know if this is
-necessary. (p. 108)
+In the get_ext_answer procedure Nick uses a <i>glb</i>function
+in addition to a <i>is_more_precise(Ans', Ans_glb)</i> call.
+I don't know if this is necessary. (p. 108)
 
 <p>
-Garbage collection of calling patterns that are no longer used in the
-program.  Our IMDGs do not record exactly which calling patterns are
-in use so I'm not sure how this would be done.
+Garbage collection of calling patterns that are no longer used in the program.
+Our IMDGs do not record exactly which calling patterns are in use
+so I'm not sure how this would be done.
 
 <p>
-Removal of IMDG arcs for modules that used to import a module, but no
-longer do so.  This would not be hard if we remember which
-modules were imported by <i>M </i>previously in <i>M.imdg</i>. (p. 110)
+Removal of IMDG arcs for modules that used to import a module,
+but no longer do so.
+This would not be hard
+if we remember which modules were imported
+by <i>M</i>previously in <i>M.imdg</i>. (p. 110)
 
 <p>
 There is no special handling yet of procedure level cycles.
-We cannot follow the approach of p. 116 as we have not enough
-information in our IMDGs.
+We cannot follow the approach of p. 116
+as we have not enough information in our IMDGs.
 
 <p>
-Our treatment of library modules is fairly dumb.  We just assume that
-library modules have read-only analysis files, and that we cannot make
-requests to or reanalysis library modules. (p. 117)
+Our treatment of library modules is fairly dumb.
+We just assume that library modules have read-only analysis files,
+and that we cannot make requests to or reanalysis library modules. (p. 117)
 
 <p>
-Modules are currently always analysed from the bottom of the module
-dependency graph upwards.  When some analyses start making meaningful
-requests (unlike now where all call patterns are of the type
-`any_call'), the order that modules are analysed in should be changed
+Modules are currently always analysed
+from the bottom of the module dependency graph upwards.
+When some analyses start making meaningful requests
+(unlike now where all call patterns are of the type `any_call'),
+the order that modules are analysed in should be changed
 to reduce unnecessary reanalyses.
 
 </body>

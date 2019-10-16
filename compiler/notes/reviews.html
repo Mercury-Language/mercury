@@ -1,92 +1,90 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
 
 <html>
 <head>
-<title>
-	Reviews
-</title>
+<title>Reviews</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-
-<hr>
-<!----------------------->
-
-<h1> Reviews </h1> <p>
-
-This file outlines the policy on reviews for the Mercury system.
-
-<hr>
-<!----------------------->
-
-<h2> Reviewable material </h2>
+<h1>Reviews</h1>
 
 <p>
+This file outlines the policy on reviews for the Mercury system.
+<p>
 
+<h2>Reviewable material</h2>
+
+<p>
 All changes to the Mercury repository, including the compiler,
 documentation, www pages, library predicates, runtime system, and tools
 need to be reviewed.
-
 <p>
 
-<h2> Review process </h2>
+<h2>Review process</h2>
 
 <ol>
-<li>  Make sure you are working with an up-to-date copy of the
-	    module you are using.
-<li>  If the change is a code change, test change. See "Testing" section
-	    of coding standards. Testing may take time - don't forget
-	    that steps 3, 4 and 5 can be done in parallel.
-<li>  Write a log message for this change - use a template (see below).  How
-        you include this will depend on the next step.
-<li>  Create a diff:
-    <!--
-        There are two ways to do this, you can either use git and github to
-        create a pull request (see
-        <a href="https://help.github.com/articles/using-pull-requests">Github's
-        documentation</a>,
-        or create one or more commeits and mail them to us using either
-    -->
-        create one or more commits and mail them to us using either
-        <code>git diff</code> or by creating series of commits and using
-        <code>git format-patch</code> (see the git documentation for
-        details).
-        You will need to edit the files that format-patch generates to
-        modify the subject line (see below), and to duplicate this line
-        within the e-mail's body.
-        If you create a diff then new files should be
-	    appended verbatim to the end of the diff, with descriptions
-	    indicating the name of the file.
-<li>  Review diff and log message yourself. (see below)
-<li>  E-mail the changes to us at
-      <a href="mailto:Mercury Reviews <reviews@lists.mercurylang.org>">
-       Mercury Reviews &lt;reviews@lists.mercurylang.org&gt;</a>
-       The subject should be
-	    "for review: &lt;short description of change&gt;", the short
-        description is typically the first line of your git log message.
-	    Optionally nominate a reviewer at top of diff (see below).
-        Optionally describe which branches your change should be applied to.
-	    (If this change has been reviewed once before, it might
-	    fall into the "commit before review" category -- see the
-	    section on exceptions).
-      If you generated your diffs using <code>git format-patch</code> then
-      you can use <code>git send-email</code> to mail them, or attach them
-      to an e-mail normally.
-      It is also possible to use github pull-requests, however we prefer
-      e-mail.
-<li>  Wait for review (see below).
-<li>  Fix any changes suggested.
-<li>  Repeat above steps until approval.
-<li>  Push the change(s) (see below) if you have repository permissions, if
-      you do not the developer who reviewed your change will help you with
-      this.
+<li>
+Make sure you are working with an up-to-date workspace.
+<li>
+If the change is a code change, test the change.
+See "Testing" section of coding standards.
+Testing may take time - don't forget that
+steps 3, 4 and 5 can be done in parallel.
+<li>
+Write a log message for this change - use a template (see below).
+How you include this will depend on the next step.
+<li>
+Create a diff:
+<!--
+There are two ways to do this, you can either use git and github to
+create a pull request (see
+<a href="https://help.github.com/articles/using-pull-requests">Github's
+documentation</a>,
+or create one or more commeits and mail them to us using either
+-->
+create one or more commits and mail them to us
+using either <code>git diff</code>
+or by creating series of commits and using <code>git format-patch</code>
+(see the git documentation for details).
+You will need to edit the files that format-patch generates
+to modify the subject line (see below),
+and to duplicate this line within the e-mail's body.
+If you create a diff, then new files should be appended verbatim
+to the end of the diff, with descriptions indicating the name of the file.
+XXX why not git add -N?
+<li>
+Review the diff and log message yourself. (see below)
+<li>
+E-mail the changes to us at
+<a href="mailto:Mercury Reviews <reviews@lists.mercurylang.org>">
+Mercury Reviews &lt;reviews@lists.mercurylang.org&gt;</a>
+The subject should be
+"for review: &lt;short description of change&gt;",
+the short description is typically the first line of your git log message.
+Optionally nominate a reviewer at top of diff (see below).
+Optionally describe which branches your change should be applied to.
+(If this change has been reviewed once before,
+it might fall into the "commit before review" category --
+see the section on exceptions).
+If you generated your diffs using <code>git format-patch</code>
+then you can use <code>git send-email</code> to mail them,
+or attach them to an e-mail normally.
+It is also possible to use github pull-requests, however we prefer e-mail.
+<li>
+Wait for review (see below).
+<li>
+Fix any changes suggested.
+<li>
+Repeat the above steps until approval.
+<li>
+Push the change(s) (see below) if you have repository permissions.
+If you do not, the developer who reviewed your change will help you with this.
 </ol>
 
-
-<h2> Log Messages </h2>
+<h2>Log Messages</h2>
 
 Use this template for each change's log message.
 
@@ -102,207 +100,195 @@ Use this template for each change's log message.
 </code>
 
 <p>
-
-The description should state why the changes were made, not just what
-the changes were.  All file modifications related to the same change
+The description should state <em>why</em> the changes were made,
+not just <em>what</em> the changes were.
+All file modifications related to the same change
 should be committed together.
-
+<p>
+For very small changes,
+the &lt;overview or general description&gt; can be omitted,
+but the other descriptions should stay.
+<p>
+If adding a new feature, this is a good place
+to describe the feature, how it works, how to turn it on and off,
+and any present limitations of the feature
+(note that all this should also be documented within the change, as well).
+If fixing a bug, describe both the bug and the fix.
+If the bug is in a bug tracker, also include the bug's number for reference.
 <p>
 
-For very small changes, the &lt;overview or general description&gt; can be
-omitted, but the other descriptions should stay.
+<h2>Self-Review</h2>
 
 <p>
-
-If adding a new feature, this is a good place to describe the feature,
-how it works, how to turn it on and off, and any present limitations of
-the feature (note that all this should also be documented within the
-change, as well).  If fixing a bug, describe both the bug and the fix.  If
-the bug is in the bug tracker, also include the bug's number for reference.
-
+You should also review your own code first, and fix any obvious mistakes.
+if there was something you had to understand when making the change,
+and it was not documented before,
+then document it as part of the change.
+This makes it easier to review the change,
+and should make future similar changes easier as well.
 <p>
 
-<h2> Self-Review </h2>
+<h2>Review</h2>
 
 <p>
-
-You should also review your own code first, and fix any obvious
-mistakes.  Where possible add documentation - if there was something you
-had to understand when making the change, document it - it makes it
-easier to review the change if it is documented, as well as generally
-improving the state of documentation of the compiler.
-
-<p>
-
-<h2> Review </h2>
-
-<p>
-
 We post all diffs to reviews@lists.mercurylang.org.
-
 <p>
-
 The reasons for posting to reviews are:
+<p>
 
 <ul>
-<li>	 To increase everyone's awareness of what changes are taking
-	  place.
-<li>	 Give everyone interested a chance to review your code, not
-	  just the reviewer. Remember, your changes may impact upon
-	  the uncommitted work of others, so they may want to give
-	  input.
-<li>	 Allow other people to read the reviewer's comments - so the same
-	  problems don't have to be explained again and again.
-<li>	 People can try to see how your changes worked without having
-	  to figure out how to get git to generate the right set of
-	  diffs.
-<li>	 Important decisions are often made or justified in reviews, so
-	  these should be recorded.
+<li>
+To increase everyone's awareness of what changes are taking place.
+<li>
+Give everyone interested a chance to review your code, not just the reviewer.
+Remember, your changes may impact upon the uncommitted work of others,
+so they may want to give input.
+<li>
+Allow other people to read the reviewer's comments -
+so the same problems don't have to be explained again and again.
+<li>
+People can try to see how your changes worked
+without having to figure out how to get git to generate the right set of diffs.
+<li>
+Important decisions are often made or justified in reviews,
+so these should be recorded.
 </ul>
 
-You should try to match the reviewer to the code - someone familiar with
-a section of code can review faster and is more likely to catch errors.
-Put a preamble at the start of your diff to nominate who you would like
-to review the diff.
-
+<p>
+You should try to match the reviewer to the code -
+someone familiar with a section of code
+can review faster and is more likely to catch errors.
+Put a preamble at the start of your diff
+to nominate who you would like to review the diff.
 <p>
 
-<h2> Waiting and approval </h2>
+<h2>Waiting and approval</h2>
 
 <p>
-
-Waiting for approval need not be wasted time.  This is a good time to
-start working on something else, clean up unused workspaces, etc.  In
-particular, you might want to run long running tests that have not yet
-been run on the your change (different grades, different architectures,
-optimisation levels, etc).
-
+Waiting for approval need not be wasted time.
+This is a good time to start working on something else,
+clean up unused workspaces, etc.
+In particular, you might want to run long running tests
+that have not yet been run on the your change
+(different grades, different architectures, different optimisation levels,
+and so on).
 <p>
-
-The reviewer(s) should reply, indicate any problems that need to be
-corrected, and whether the change can be committed yet. Design issues
-may need to be fully justified before you commit. You may need to fix
-the problems, then go through another iteration of the review process,
+The reviewer(s) should reply, indicate any problems that need to be corrected,
+and whether the change can be committed yet.
+Design issues may need to be fully justified before you commit.
+You may need to fix the problems,
+then go through another iteration of the review process,
 or you may be able to just fix a few small problems, then commit.
-
 <p>
 
-<h2> Pushing changes </h2>
+<h2>Pushing changes</h2>
 
 <p>
-
-Use the log message you prepared for the review when committing and pushing
-changes.
-
+Use the log message you prepared for the review
+when committing and pushing changes,
+updated as necessary to reflect the changes you made as a result of the review.
 <p>
 
-<h2> Exceptions: Push before review </h2>
+<h2>Exceptions: Push before review</h2>
 
 <p>
-
-The only time changes should be pushed before being reviewed is when they
-satisfy all of the following conditions:
+The only time changes should be pushed before being reviewed
+is when they satisfy all of the following conditions:
+<p>
 
 <ul>
-<li>	(a) the change is simple
-	
-<li>	(b) you are absolutely sure the change will not introduce bugs
-
-<li>	(c) you are sure that the change will pass review with only
-	    trivial corrections (spelling errors in comments, etc.)
-
-<li>	(d) there are no new design decisions or changes to previous
-	    design decisions in your change (the status quo should
-	    be the default; you must convince the reviewer(s) of
-	    the validity of your design decisions before the code
-	    is committed).
-
-<li>	(e) you will be around the next day or two to fix the bugs
-	    that you were sure could never happen
-	
-<li>	(f) committing it now will make life significantly easier
-	    for you or someone else in the group
+<li>
+The change is simple.
+<li>
+You are absolutely sure the change will not introduce bugs.
+<li>
+You are sure that the change will pass review
+with only trivial corrections (spelling errors in comments, etc).
+<li>
+Your change contains no new design decisions
+or changes to previous design decisions.
+The status quo should be the default;
+you must convince the reviewer(s) of the validity of your design decisions
+before the code is committed.
+<li>
+You will be around the next day or two to fix the bugs
+that you were sure could never happen.
+<li>
+Committing it now will make life significantly easier
+for you or someone else in the group.
 </ul>
 
 <p>
-
-If the compiler is already broken (i.e. it doesn't pass it's nightly
-tests), and your change is a bug fix, then it's not so important to be
-absolutely sure that your change won't introduce bugs.  You should
-still be careful, though.  Make sure you review the diffs yourself.
-
+If the compiler is already broken (i.e. it doesn't pass it's nightly tests),
+and your change is a bug fix,
+then it is not so important to be absolutely sure
+that your change won't introduce bugs.
+You should still be careful, though.
+Make sure you review the diffs yourself.
 <p>
-
-Similarly, if the code you are modifying is a presently unused part of
-code - for example a new feature that nobody else is using, that is
-switchable, and is switched off by default, or a new tool, or an `under
-development' webpage that is not linked to by other webpages yet, the
-criteria are a bit looser.  Don't use this one too often - only for
-small changes.  You don't want to go a long way down the wrong track
-with your new feature, before finding there's a much better way.
-
+Similarly, if the code you are modifying is a presently unused part of code -
+for example a new feature that nobody else is using yet,
+that is switchable and is switched off by default,
+or a new tool,
+or an `under development' webpage that is not linked to by other webpages yet,
+the criteria are a bit looser.
+Don't use this one too often - only for small changes.
+You don't want to go a long way down the wrong track with your new feature,
+before finding that there is a much better way.
 <p>
-
-If these conditions are satisfied, then there shouldn't be any problem
-with mailing the diff, then committing, then fixing any problems that
-come up afterwards, provided you're pretty sure everything will be okay.
+If these conditions are satisfied,
+then there shouldn't be any problem with mailing the diff,
+then committing, then fixing any problems that come up afterwards,
+provided you are pretty sure everything will be okay.
 This is particularly true if others are waiting for your work.
-
 <p>
-
-Usually, a change that has already been reviewed falls into this
-category, provided you have addressed the reviewers comments, and
-there are no disputes over design decisions. If the reviewer has
-specifically asked for another review, or there were a large number of
-comments at the review, you should not commit before a second review.
-
+Usually, a change that has already been reviewed falls into this category,
+provided you have addressed the reviewers comments,
+and there are no disputes over design decisions.
+If the reviewer has specifically asked for another review,
+or there were a large number of comments at the review,
+you should not commit before a second review.
 <p>
-
 If you are going to commit before the review, use the subject line:<br>
-	    "diff: &lt;short description of change&gt;".
+"diff: &lt;short description of change&gt;".
 
-<h2> Exceptions: No review </h2>
+<h2>Exceptions: No review</h2>
 
 <p>
-
 The only time changes should be committed without review by a second
 person is when they satisfy all of the following conditions:
 
 <ul>
-<li>	(a) it is a very small diff that is obviously correct eg:
-
+<li>
+It is a very small diff that is obviously correct, such as
     <ul>
-      <li>fix typographic errors</li>
-      <li>fix syntax errors you accidentally introduced</li>
-      <li>fix spelling of people's names</li>
+    <li>fix typographic errors
+    <li>fix syntax errors you accidentally introduced
+    <li>fix spelling of people's names
     </ul>
 
-    <p>
-		These usually don't need to be reviewed by a second
-		person.  Make sure that you review your own changes,
-		though.  Also make sure your log message is more
-		informative than "fixed a typo", try "s/foo/bar" or
-		something so that if you did make a change that people
-		don't approve of, at least it's seen quickly.
-    </p>
-
-<li>	(b) it is not going to be publicly visible <br>
-	  eg: Web pages, documentation, library, man pages. <p>
-
-		Changes to publicly visible things should always be
-		reviewed. It's just too easy to make spelling errors,
-		write incorrect information, commit libel, etc. This
-		stuff reflects on the whole group, so it shouldn't be
-		ignored.
+<p>
+These usually don't need to be reviewed by a second person.
+Make sure that you review your own changes, though.
+Also make sure your log message is more informative than "fixed a typo";
+try "s/foo/bar" or something so that
+if you did make a change that people don't approve of,
+at least it's seen quickly.
+</p>
+<li>
+It does not change anything publicly visible
+such as Web pages, documentation, library, or man pages.
+<p>
+Changes to publicly visible things should always be reviewed.
+It is just too easy to make spelling errors,
+write incorrect information, etc.
+This stuff reflects on the whole group, so it shouldn't be ignored.
 </ul>
 
-If your change falls into this category, you should still send the
-diff and log message to the reviews mailing list, but use the subject line:<br>
+If your change falls into this category,
+you should still send the diff and log message to the reviews mailing list,
+but use the subject line:
 "trivial diff: &lt;short description of change&gt;".
-
-
-<hr>
-<!-------------------------->
 
 </body>
 </html>

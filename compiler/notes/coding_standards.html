@@ -1,129 +1,93 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
 
 <html>
 <head>
-<title>
-	Mercury Coding Standard for the Mercury Project
-</title>
+<title>Mercury Coding Standard for the Mercury Project</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-<hr>
-<!-------------------------->
+<h1>Mercury Coding Standard for the Mercury Project</h1>
 
-<h1>
-Mercury Coding Standard for the Mercury Project</h1>
-<hr>
-
-<!-------------------------->
-
-<h2> Documentation </h2>
+<h2>Documentation</h2>
 
 <p>
-
 Each module should contain header comments
 which state the module's name, main author(s), and purpose,
 and give an overview of what the module does,
 what are the major algorithms and data structures it uses, etc.
-
 <p>
-
-Everything that is exported from a module should have sufficient documentation
+Everything that is exported from a module
+should have sufficient documentation
 that it can be understood without reference
 to the module's implementation section.
-
 <p>
-
 Each procedure that is implemented using foreign code
 should have sufficient documentation about its interface
 that it can be implemented just by referring to that documentation,
 without reference to the module's implementation section.
-
 <p>
-
 Each predicate other than trivial access predicates
 should have a short comment describing what the predicate is supposed to do,
 and what the meaning of the arguments is.
 Ideally this description should also note any conditions
 under which the predicate can fail or throw an exception.
-
 <p>
-
-There should be a comment for each field of a structure saying
-what the field represents.
-
+There should be a comment for each field of a structure
+saying what the field represents.
 <p>
-
 Any user-visible changes such as new compiler options or new features
 should be documented in the appropriate section(s) of the Mercury documentation
 (usually the Mercury User's Guide and/or the Mercury Reference Manual).
 Any major new features should be documented in the NEWS file,
 as should even small changes to the library interface,
 or anything else that might cause anyone's existing code to break.
-
 <p>
-
 Any new compiler modules or other major design changes
 should be documented in <code>compiler/notes/compiler_design.html</code>.
-
 <p>
-
-Any feature which is incompletely implemented
+Any feature which is
+left in an incompletely implemented form for a nontrivial length of time
 should be mentioned in <code>compiler/notes/work_in_progress.html</code>.
 
-<h2> Naming </h2>
+<h2>Naming</h2>
 
 <p>
-
 Variables should always be given meaningful names,
 unless they are irrelevant to the code in question.
-
+<p>
 Different states or different versions of the same entity
 should be referred to using state variable notation,
 although if there are only a few versions,
 and their number is not likely to grow,
 they may be named Foo0, Foo1, Foo2, ..., Foo.
-
 <p>
-
 Predicates which get or set a field of a structure or ADT
-should be named bar_get_foo and bar_set_foo respectively,
-where bar is the name of the structure or ADT,
-and foo is the name of the field.
+should be named typename_get_fieldname and typename_set_fieldname respectively.
 
-<h2> Coding </h2>
+<h2>Coding</h2>
 
 <p>
-
-Your code should reuse existing code as much possible,
-generalizing if needed.
+Your code should reuse existing code as much possible, generalizing if needed.
 "cut-and-paste" style reuse is highly discouraged.
-
 <p>
-
 Your code should be efficient.
 Performance is a quite serious issue for the Mercury compiler.
-
 <p>
-
-No fixed limits please! 
+No fixed limits please!
 (If you really must have a fixed limit,
 include detailed documentation explaining why it was so hard to avoid.)
-
 <p>
-
 Don't use DCG notation for new code.
-
-Use state variables for threading the IO state etc.
+<p>
+Use state variables for threading state, such as the IO state.
 The conventional IO state variable name is <code>!IO</code>.
 
 <h2> Error handling </h2>
 
 <p>
-
 Code should check for both erroneous inputs from the user
 and also invalid data being passed from other parts of the Mercury compiler.
 You should also always check to make sure that
@@ -133,48 +97,38 @@ make sure you don't silently ignore failures.
 but is particularly important to bear in mind
 if you are writing any C code or shell scripts,
 or if you are interfacing with the OS.)
-
 <p>
-
-Calls to error/1 should always indicate an internal software error,
+Calls to error/1, directly or indirectly,
+should always indicate an internal software error,
 not merely incorrect inputs from the user,
 or failure of some library routine or system call.
-In the compiler, use unexpected/2 or sorry/2 from compiler_util.m
-rather than error/1.
-Use expect/3 from compiler_util rather than require/2.
-
+In the compiler, do not call error/1 directly;
+call it indirectly using unexpected/2 or sorry/2 from compiler_util.m.
+Likewise, use expect/3 from compiler_util.m rather than require/2.
 <p>
-
-Error messages should follow a consistent format.
-For compiler error messages, each line should start
-with the source file name and line number in "%s:%03d: " format.
+Error messages should be constructed using the facilities in error_util.m.
 Compiler error messages should be complete sentences;
 they should start with a capital letter and end in a full stop.
-For error messages that are spread over more than one line
-(as are most of them),
-the second and subsequent lines should be indented two spaces.
-If the `--verbose-errors' option was set,
-you should print out additional text explaining in detail
-what the error message means and what the likely causes are.
-The preferred method of printing error messages
-is via the predicates in error_util.m;
-use prog_out.write_context and io.write_strings
-only if there is no way to add the capability you require to error_util.m.
-
+If including a full explanation
+of the meaning of an error and/or of its likely causes
+would be too tedious for everyday use
+(probably because the error is frequent enough that
+most non-novice users of Mercury would be expected to be familiar with it)
+you should include that extra information
+in a verbose_only part of the error message,
+which causes it to be printed if the --verbose-errors option is set.
 <p>
-
-Error messages from the runtime system should begin with the text
-"Mercury Runtime:", preferably by using the MR_fatal_error() routine.
-
+Error messages from the runtime system
+should begin with the text "Mercury Runtime:",
+preferably by using the MR_fatal_error() routine.
 <p>
-
 If a system call or C library function that sets errno fails,
 the error message should be printed with perror()
 or should contain MR_strerror(errno, errbuf, sizeof(errbuf)).
 If it was a function manipulating some file,
 the error message should include the filename.
 
-<h2> Input / output </h2>
+<h2>Input / output</h2>
 
 All new code in the compiler that reads from a stream or writes to a stream
 should explicitly pass the stream being accessed
@@ -184,19 +138,16 @@ of what the current input and output streams are;
 do not read from the current input stream,
 or write to the current output stream.
 
-<h2> Layout </h2>
+<h2>Layout</h2>
 
 <p>
-
 Each module should be indented consistently,
 with 4 spaces per level of indentation.
 The indentation should be done using only spaces;
 there should be no tabs.
 The only exception should be Makefiles,
 which should use one tab per level of indentation.
-
 <p>
-
 All files other than Makefiles
 should have something like this at the top,
 even before the copyright line:
@@ -210,14 +161,11 @@ Makefiles should have something like this instead:
 </pre>
 
 <p>
-
 No line should extend beyond 79 characters.
 The reason we don't allow 80 character lines is that
 these lines wrap around in diffs,
 since diff adds an extra character at the start of each line.
-
 <p>
-
 Since "empty" lines that have spaces or tabs on them
 prevent the proper functioning of paragraph-oriented commands in vi,
 lines shouldn't have trailing white space.
@@ -229,17 +177,13 @@ They can be removed with a vi macro such as the following.
 </pre>
 
 <p>
-
 String literals that don't fit on a single line should be split
 by writing them as two or more strings concatenated using the "++" operator;
 the compiler will evaluate this at compile time,
 if --optimize-constant-propagation is enabled (i.e. at -O3 or higher).
-
 <p>
-
 Predicates that have only one mode should use predmode declarations
 rather than having a separate mode declaration.
-
 <p>
 If-then-elses should always be parenthesized,
 except when an if-then-else that occurs as the else part
@@ -248,10 +192,8 @@ We prefer the
 <code>( if <i>C</i> then <i>T</i> else <i>E</i> )</code> syntax
 over the
 <code>( <i>C</i> -&gt; <i>T</i> ; <i>E</i> )</code> syntax.
-
 <p>
-The condition can either be on the same line as the '<code>if</code>'
-keyword:
+The condition can either be on the same line as the '<code>if</code>' keyword:
 
 <pre>
     ( if test1 then
@@ -286,9 +228,11 @@ or, if the test is complicated, on separate line(s) between the
     ).
 </pre>
 
+<!--
 When using the
-<code>( <i>C</i> -&gt; <i>T</i> ; <i>E</i> )</code> syntax, the condition can
-either be on the same line as the opening parenthesis and the
+<code>( <i>C</i> -&gt; <i>T</i> ; <i>E</i> )</code> syntax,
+the condition can either be
+on the same line as the opening parenthesis and the
 `<code>-&gt;</code>',
 
 <pre>
@@ -322,17 +266,15 @@ or, if the test is complicated, it can be on a line of its own:
 		goal
 	).
 </pre>
+-->
 
 <p>
-
 Disjunctions should always be parenthesized.
-The semicolon of a disjunction should never be at the
-end of a line -- put it at the start of the next line instead.
-
+The semicolon of a disjunction should never be at the end of a line
+-- put it at the start of the next line instead.
 <p>
-
-Predicates and functions implemented via foreign code should be formatted
-like this:
+Predicates and functions implemented via foreign code
+should be formatted like this:
 
 <pre>
     :- pragma foreign_proc("C",
@@ -347,9 +289,7 @@ The predicate name and arguments should be on a line on their own,
 as should the list of annotations.
 The foreign code should also be on lines of its own;
 it shouldn't share lines with the double quote marks surrounding it.
-
 <p>
-
 Type definitions should be formatted in one of the following styles:
 
 <pre>
@@ -382,7 +322,6 @@ Type definitions should be formatted in one of the following styles:
 </pre>
 
 <p>
-
 If an individual clause is long, it should be broken into sections,
 and each section should have a "block comment" describing what it does;
 blank lines should be used to show the separation into sections.
@@ -414,21 +353,18 @@ or an "inline" comment
 
 should be used.
 
-<h2> Structuring </h2>
+<h2>Structuring</h2>
 
-Modules should generally be arranged so that their procedures (or types, etc.)
+Modules should generally be arranged so that
+their procedures, types, insts etc.
 are listed in top-down order, not bottom-up.
-
 <p>
-
 Code should be grouped into bunches of related predicates, functions, etc.,
 and sections of code that are conceptually separate
 should be separated with dashed lines:
 
 <pre>
-
 %---------------------------------------------------------------------------%
-
 </pre>
 
 Ideally such sections should be identified
@@ -437,7 +373,6 @@ optionally followed by a more detailed description.
 These should be laid out like this:
 
 <pre>
-
 %---------------------------------------------------------------------------%
 %
 % Section title.
@@ -450,13 +385,11 @@ These should be laid out like this:
 % It can even contain several paragraphs.
 
 The actual code starts here.
-
 </pre>
 
 For example
 
 <pre>
-
 %---------------------------------------------------------------------------%
 %
 % Exception handling.
@@ -469,16 +402,13 @@ For example
 % Note that we need to take care to ensure that this code is thread-safe!
 
 :- type foo ---&gt; ...
-
 </pre>
 
-Double-dashed lines, i.e.
+Double dashed lines, i.e.
 
 <pre>
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
 </pre>
 
 can also be used to indicate divisions into major sections.
@@ -487,7 +417,7 @@ Note that these dividing lines should not exceed the 79 character limit
 
 The tools/stdlines script will standardize the lengths of these dashed lines.
 
-<h2> Module imports </h2>
+<h2>Module imports</h2>
 
 Each group of :- import_module items should list only one module per line,
 since this makes it much easier to read diffs
@@ -498,9 +428,7 @@ there should be two groups of imports,
 the imports from the compiler first and then the ones from the library.
 For the purposes of this rule,
 consider the modules of mdbcomp to belong to the compiler.
-
 <p>
-
 Each group of import_module items should be sorted,
 since this makes it easier to detect duplicate imports and missing imports.
 It also groups together the imported modules from the same package.
@@ -509,96 +437,85 @@ the imports of modules from different packages,
 since they would make it harder
 to resort the group with a single editor command.
 
-<h2> Standard library predicates </h2>
+<h2>Standard library predicates</h2>
 
-The descriptive comment for any predicate or function that occurs in the
-interface of a standard library module must be positioned above the predicate
-or function declaration.
+The descriptive comment for any predicate or function
+that occurs in the interface of a standard library module
+must be positioned above the predicate or function declaration.
 It should be formatted as in the following example:
 
 <pre>
-
 		% Description of predicate foo.
 		%
 	:- pred foo(...
 	:- mode foo(...
 </pre>
 
-A group of related predicate, mode and function declarations may be grouped
-together under a single description provided that it is formatted as above.
-If there is a function declaration in such a grouping, then it should be listed
-before the others.
+A group of related predicate, mode and function declarations
+may be grouped together under a single description,
+provided that it is formatted as above.
+If there is a function declaration in such a grouping,
+then it should be listed before the others.
 
 For example:
 
 <pre>
-	
 		% Insert a new key and corresponding value into a map.
 		% Fail if the key already exists.
 		%
 	:- func insert(map(K, V), K, V) = map(K, V).
 	:- pred insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
-
 </pre>
 
-The reason for using this particular style is that the reference manual for the
-standard library is automatically generated from the module interfaces, and we
-want to maintain a uniform appearance as much as is possible.
-
+The reason for using this particular style is that
+the reference manual for the standard library
+is automatically generated from the module interfaces,
+and we want to maintain a uniform appearance as much as is possible.
 <p>
-
-Avoid module qualification in the interface sections of library modules except
-where necessary to resolve ambiguity.
-
+Avoid module qualification in the interface sections of library modules
+except where necessary to resolve ambiguity.
 <p>
-
 A predicate or function which throws exceptions under certain conditions
 should be described as such, using the phrase "throws an exception".
-A predicate or function that may cause a runtime abort should be described
-as such, using the phrase "runtime abort".
+A predicate or function that may cause a runtime abort
+should be described as such, using the phrase "runtime abort".
 
-<h2> Testing </h2>
+<h2>Testing</h2>
 
 <p>
-
 Every change should be tested before being committed.
 The level of testing required depends on the nature of the change.
-If this change fixes an existing bug,
-and is unlikely to introduce any new bugs,
+If the change does not touch the semantics of the code
+(e.g. it modifies comments, renames predicates or adds module qualifications),
+then checking whether recompilation succeeds is enough.
+If the change replaces an abort with nonaborting code,
 then just compiling it and running some tests by hand is sufficient.
-If the change might break the compiler,
+For pretty much everything else, where the change might break the compiler,
 you should run a bootstrap check (using the `bootcheck' script)
 before committing.
+<p>
 If the change means that old versions of the compiler
 will not be able to compile the new version of the compiler,
-you must notify all the other Mercury developers,
-giving them a heads up that they should install a sufficiently-recent
-compiler on their own machines,
-and then wait until there is at least one sufficiently-recent ROTD
-is available for download.
-
+you must follow the procedures described in
+<a href="bootstrapping.html">compiler/notes/bootstrapping.html</a>.
 <p>
-
 In addition to testing before a change is committed,
-you need to make sure that the code will not get broken in the future
-by adding tests to the test suite.
+you need to make sure that the code will not get broken in the future.
 Every time you add a new feature,
 you should add some test cases for that new feature to the test suite.
 Every time you fix a bug, you should add a regression test to the test suite.
 
-<h2> Committing changes </h2>
+<h2>Committing changes</h2>
 
 <p>
-
-Before committing a change, you should get someone else to review your changes. 
-
+When committing a nontrivial change,
+you should get someone else to review your changes.
+If the risk of breakage is low, you can ask for a review post commit.
+Otherwise, get a review, and act on its recommentations, before you commit.
 <p>
 
 The file <a href="reviews.html">compiler/notes/reviews.html</a>
 contains more information on review policy.
-
-<hr>
-<!-------------------------->
 
 </body>
 </html>

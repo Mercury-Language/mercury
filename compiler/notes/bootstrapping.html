@@ -1,47 +1,56 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
 
 <html>
 <head>
-<title>
-	Bootstrapping
-</title>
+<title>Changes that don't bootstrap</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-
-<hr>
-
-<h2> Changes that don't bootstrap </h2>
+<h2>Changes that don't bootstrap</h2>
 
 <p>
-
-Sometimes changes need to be made to the Mercury system that mean
-previous versions of the compiler will no longer successfully compile
-the new version.
+Sometimes changes need to be made to the Mercury system
+that mean previous versions of the compiler
+will no longer successfully compile the new version.
+Such changes must be split into two parts, where
+the first part adds to the compiler the capability needed by the second part.
 <p>
-
-Whenever anyone makes a change which prevents bootstrapping with a
-previous version of the compiler, they should add a cvs tag to all the
-files in the relevant directories <em>before committing</em>, and
-mention this tag in the log message.  The tag should be of the form
-bootstrap_YYYYMMDD_&lt;short_description_of_change&gt;.
+Beside the new capability,
+which may be a new feature or a fix for an old bug,
+the first part should include a new user-visible name
+for the compiler option named compiler_sufficiently_recent.
+This name should include both
+a brief description of the change
+and the date on which the change is committed.
+The option name --simplest-msg-2019-09-22 is an example.
 <p>
+When the first part is committed,
+you should send an email asking all members of the Mercury team
+to install the updated compiler version on the computers they use,
+if this hasn't been done earlier (such as when the diff was sent for review).
+Then you should wait until
+<ul>
+<li>
+a new rotd is publically available for download which has the first part, or
+<li>
+everyone on the team has reported installing a new compiler, or
+<li>
+both.
+</ul>
 
-The rationale for the cvs tag is that it allows machines to be
-bootstrapped (if they didn't manage to do it in a daily build)
-by doing `cvs update -r&lt;tag&gt;' on the relevant build directory.
-After that compiler has been installed, a `cvs update -A' will remove
-the cvs sticky tags.
 <p>
-
-Optionally, a test should be added to the configuration script so
-that people installing from CVS don't use an outdated compiler to
-bootstrap.  Practically this may be difficult to achieve in some cases.
-
-<hr>
+The second change should then include
+an update of the test in configure.ac
+for whether the compiler is sufficiently recent.
+Specifically, you should add
+the new name of the compiler_sufficiently_recent option added by the first part
+to the option list with which that test invokes the Mercury compiler.
+Since the presence of each such name in the compiler
+implies the presense of all earlier names of that option as well,
+you should delete those earlier synonyms from the option list at the same time.
 
 </body>
 </html>

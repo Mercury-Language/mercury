@@ -1,137 +1,147 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-	Glossary Of Terms Used In Mercury
-</title>
+<title>Glossary Of Terms Used In Mercury</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-<hr>
-<!-------------------------->
+<h1>Glossary Of Terms Used In Mercury</h1>
 
 <dl>
 
 <dt> assertion
-	<dd>
-	A particular form of promise which claims to the compiler 
-	that the specified goal will always hold. If useful, the 
-	compiler may use this information to perform optimisations.
+<dd>
+A particular form of promise which claims to the compiler 
+that the specified goal will always hold. If useful, the 
+compiler may use this information to perform optimisations.
 
 <dt> class context 
-	<dd>
-	The typeclass constraints on a predicate or function.
+<dd>
+The typeclass constraints on a predicate or function.
 
 <dt> codeinfo
-	<dd>
-	a structure used by codegen.m
+<dd>
+Originally, the data structure that holds the state of the LLDS code generator.
+Now, the data structure that holds the static part
+of the state of the LLDS code generator.
 
 <dt> HLDS 
-	<dd>
-	The "High Level Data Structure".  See hlds.m.
+<dd>
+The "High Level Data Structure".
 
 <dt> inst
-	<dd>
-	instantiatedness.  An inst holds three different sorts of
-      information.  It indicates whether a variable is free, partially
-      bound, or ground.  If a variable is bound, it may indicate
-      which functor(s) the variable can be bound to.  Also,
-      an inst records whether a value is unique, or whether
-      it may be aliased.
+<dd>
+Instantiatedness.
+An inst holds five different sorts of information.
+<ul>
+<li>
+It indicates whether the program point to which it applies
+is reachable or not.
+<li>
+It indicates whether a variable is free, partially bound, or ground.
+<li>
+It indicates whether a value is unique, or whether it may be aliased.
+<li>
+If a variable is bound, it may indicate
+which functor(s) the variable can be bound to.
+<li>
+For higher order values, it indicates the modes of its arguments.
+</ul>
 
 <dt> liveness
-	<dd>
-	this term is used to mean two quite different things!
-	<ol>
-	<li> There's a notion of liveness used in mode analysis:
-	a variable is live if either it or an alias might be
-	used later on in the computation.
-	<li> There's a different notion of liveness used for code generation:
-	a variable becomes live (is "born") when the register or stack
-	slot holding the variable first acquires a value, and dies when
-	that value will definitely not be needed again within this procedure.
-	This notion is low-level because it could depend on the low-level
-	representation details (in particular, `no_tag' representations
-	ought to affect liveness).
-	</ol>
+<dd>
+This term is used to mean two quite different things!
+<ul>
+<li>
+There is a notion of liveness used in mode analysis:
+a variable is live if either it or an alias
+might be used later on in the computation.
+<li>
+There is a different notion of liveness used for code generation:
+a variable becomes live (is "born")
+when the register or stack slot holding the variable first acquires a value,
+and dies when that value will definitely not be needed again
+within this procedure.
+This notion is low-level because
+it could depend on the low-level representation details
+(in particular, `no_tag' representations ought to affect liveness).
+</ul>
 
 <dt> LLDS
-	<dd>
-	The "Low Level Data Structure".  See llds.m.
+<dd>
+The "Low Level Data Structure".
 
 <dt> mode 
-	<dd>
-	this has two meanings:
-	<ol>
-	<li> a mapping from one instantiatedness to another
-		(the mode of a single variable)
-	<li> a mapping from an initial instantiatedness of a predicate's
-		arguments to their final instantiatedness
-		(the mode of a predicate)
-	</ol>
-	
-<dt> moduleinfo 
-	<dd>
-	Another name for the HLDS.
+<dd>
+This has two meanings:
+<ul>
+<li>
+The mode of a single variable:
+a mapping from one instantiatedness to another.
+<li>
+The mode of a predicate:
+a mapping from an initial instantiatedness of a predicate's arguments
+to their final instantiatedness.
+</ul>
+
+<dt> module_info 
+<dd>
+Another name for the HLDS.
 
 <dt> NYI 
-	<dd>
-	Not Yet Implemented.
+<dd>
+Not Yet Implemented.
 
-<dt> predinfo
-	<dd>
-	the structure in HLDS which contains information about
-	a predicate.
+<dt> pred_info
+<dd>
+The structure in the HLDS which contains information about a predicate.
 
 <dt> proc (procedure)
-	<dd>
-	a particular mode of a predicate.
+<dd>
+A particular mode of a predicate.
 
-<dt> procinfo 
-	<dd>
-	the structure in HLDS which contains
-	information about a procedure.
+<dt> proc_info 
+<dd>
+The structure in the HLDS which contains information about a procedure.
 
 <dt> promise
-	<dd>
-    	A declaration that specifies a law that holds for the 
-	predicates/functions in the declaration. Thus, examples of promises
-	are assertions and promise ex declarations.  More generally, the term 
-	promise is often used for a declaration where extra information is 
-	given to the compiler which it cannot check itself, for example in
-	purity pragmas.
+<dd>
+A declaration that specifies a law
+that holds for the predicates/functions in the declaration.
+Thus, examples of promises are assertions and promise ex declarations.
+More generally, the term promise is often used for a declaration
+where extra information is given to the compiler which it cannot check itself,
+for example in purity pragmas.
 
 <dt> promise ex
-	<dd>
-	A shorthand for promise_exclusive, promise_exhaustive, and
-	promise_exclusive_exhaustive declarations. These declarations 
-	are used to tell the compiler determinism properties of a 
-	disjunction.
+<dd>
+A shorthand for promise_exclusive, promise_exhaustive,
+and promise_exclusive_exhaustive declarations.
+These declarations are used to tell the compiler
+the determinism properties of a disjunction.
 
 <dt> RTTI
-	<dd>
-	The "RunTime Type Information". See rtti.m. A copy of a paper given
-	on this topic is available 
-	<a href="http://www.mercurylang.org/documentation/papers/rtti_ppdp.ps.gz">here</a> in zipped Postscript format.
+<dd>
+The "RunTime Type Information". See rtti.m.
+A copy of a paper given on this topic is available 
+<a href="http://www.mercurylang.org/documentation/papers/rtti_ppdp.ps.gz">here</a> in zipped Postscript format.
 
 <dt> super-homogenous form (SHF)
-	<dd>
-	 a simplified, flattened form of goals, where
-	each unification is split into its component pieces; in particular,
-	the arguments of each predicate call and functor must be distinct
-	variables.
+<dd>
+A simplified, flattened form of goals,
+where each unification is split into its component pieces;
+in particular, the arguments of each predicate call and functor
+must be distinct variables.
 
 <dt> switch
-	<dd>
-	a disjunction which does a case analysis on the toplevel
-	functor of some variable.
+<dd>
+A disjunction which does a case analysis
+on the toplevel functor of the term bound to some variable.
 </dl>
-
-<hr>
-<!-------------------------->
 
 </body>
 </html>

@@ -1,17 +1,15 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-Management of failure in the code generator
-</title>
+<title>Management of failure in the code generator</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-<hr>
-<!-------------------------->
+<h1>Management of failure in the code generator</h1>
 
 This document describes the arrangement
 for handling failure in the LLDS code generator.
@@ -20,22 +18,17 @@ which describes the mechanism we use
 to preserve the values of variables that may be needed on backtracking
 and the mechanism we use to set up resumption points.
 
-<hr>
-<!-------------------------->
-
 <p>
 
-<h2> RUNTIME DATA STRUCTURES </h2>
+<h2>Runtime data structures</h2>
 
 In the design of the nondet stack,
 two registers point to nondet stack frames.
-
 <p>
 
 <ul>
 <li>
 The maxfr register always points to the topmost nondet stack frame.
-<p>
 <li>
 While executing a model_non procedure,
 the curfr register points to the ordinary nondet stack frame of that procedure.
@@ -47,26 +40,26 @@ is effectively part of its nearest model_non caller.)
 </ul>
 
 <p>
-
 Each ordinary nondet stack frame contains five fixed slots:
-
 <p>
 
 <ul>
-<li>	prevfr, the address of the previous frame on the nondet stack
-<li>	redoip, the label to go to when backtracking reaches this frame
-<li>	redofr, the value to set curfr to when backtracking through redoip
-<li>	succip, the label to go to on success
-<li>	succfr, the value to reset curfr to on success (frame of our caller)
+<li>
+prevfr, the address of the previous frame on the nondet stack
+<li>
+redoip, the label to go to when backtracking reaches this frame
+<li>
+redofr, the value to set curfr to when backtracking through redoip
+<li>
+succip, the label to go to on success
+<li>
+succfr, the value to reset curfr to on success (frame of our caller)
 </ul>
 
 <p>
-
 Ordinary nondet stack frames may also contain the values of variables
 and/or temporary values such as saved trail pointers.
-
 <p>
-
 All temporary nondet stack frames
 contain the three fixed slots, prevfr, redoip and redofr.
 Temporary frames created by model_det and model_semi procedures
@@ -81,23 +74,17 @@ if this is four words,
 it is a temporary frame created by a model_det or model_semi procedure;
 if this is five words or more,
 it is an ordinary frame.
-
 <p>
-
 The fixed slots prevfr, redoip and redofr
 are present in all nondet stack frames, ordinary and temporary,
 at the same offset and with the same semantics.
 Therefore code that accesses only these fields of a nondet stack frame
 does not need to find out what kind of frame it is.
-
 <p>
-
 The detfr slot is for the accurate garbage collector;
 it is never used by the backtracking mechanism.
 Therefore in the following we can and will treat all temporary frames the same.
-
 <p>
-
 In grades that support stack segments,
 the runtime system puts a sentinel frame
 at the bottom of every segment after the first.
@@ -118,10 +105,9 @@ by the fact that their redoip slot contains
 the address of the label in the runtime
 that pops the segment off the nondet stack.
 
-<h2> RUNTIME ACTIONS </h2>
+<h2>Runtime actions</h2>
 
 The redo() macro is implemented as
-
 <p>
 
 <pre>
@@ -130,30 +116,23 @@ goto *redoip_slot(maxfr);
 </pre>
 
 <p>
-
-while the fail() macro discards the top nondet stack frame and then executes
-a redo().
-
+while the fail() macro discards the top nondet stack frame
+and then executes a redo().
 <p>
-
 It is an invariant that
 curfr will always point to an ordinary nondet stack frame;
 it will never point to a temporary frame.
-
 <p>
-
 It is an invariant that for any nondet stack frame whose address is frame_addr,
 redofr_slot(frame_addr) == frame_addr whenever curfr == frame_addr. However,
 it is possible that redofr_slot(frame_addr) != frame_addr at other times.
-
 <p>
-
 One implication of this possibility is that
 at a point in the code where execution may resume after a redo(),
 the code of a procedure can assume that curfr == maxfr at that point
 only if it did not hijack any frames anywhere to the left of that point.
 
-<h2> CODE GENERATOR DATA STRUCTURES </h2>
+<h2>Code generator data structures</h2>
 
 The proposed code generator uses two data structures for managing failure:
 the resume point stack and the left context.
@@ -161,53 +140,47 @@ It also consults the option --allow-hijacks
 that says whether hijacks (see below) of nondet stack frames are allowed.
 Grades that call for accurate garbage collection imply --no-allow-hijacks.
 
-<h3> The resume point stack </h3>
+<h3>The resume point stack</h3>
 
 Several kinds of goals want to get control on failure.
-
 <p>
 
 <ul>
-<li> disjunctions want control when
+<li>
+disjunctions want control when
 a nonlast disjunct or something executed to its right fails
-<li> if-then-elses want control when the condition fails
-<li> negations are a special case of if-then-elses
-<li> commits want control when the committed goal fails
+<li>
+if-then-elses want control when the condition fails
+<li>
+negations are a special case of if-then-elses
+<li>
+commits want control when the committed goal fails
 </ul>
 
 <p>
-
 These kinds of goals can be nested inside each other.
-
 <p>
-
-Whenever we are about to generate code for a goal after whose failure we
-want to get back control, we push an entry onto the resume point stack.
+Whenever we are about to generate code for a goal
+after whose failure we want to get back control,
+we push an entry onto the resume point stack.
 This entry gives the arrangements for the resumption point;
-the details of the arrangement are described in the "Resumption points"
-section of allocation.html.
-
+the details of the arrangement are described
+in the "Resumption points" section of allocation.html.
 <p>
-
 The depth of the resume point stack reflects the depth of nesting of
 goals that want to get control on failure.
-
 <p>
-
 It is an invariant that the resume point stack is the same before and
 after generating code for a goal.
 
-<h3> The left context </h3>
+<h3>The left context</h3>
 
 When the code generator looks at a goal,
 the left context field of code_info gives information about
 what happened to the left of this goal
 that may affect how we handle failures in this goal.
-
 <p>
-
 The left context has three subfields.
-
 <p>
 
 <ul>
@@ -218,36 +191,33 @@ saying whether the code generator knows what label to branch to on failure.
 The answer is yes if there is no nondet code between
 the establishment of the tightest enclosing resume point
 and the start of the current goal.
-
+<p>
 If the resume point is known,
 the compiler state also records whether
 the redoip slot of the top nondet stack frame
 is known to contain the address of this resume point.
 XXX The rest of this document has not been updated
 to reflect how we handle this extra component of the failure handling state.
-
 <p>
-
 <li>
 The curfr_maxfr subfield can take on
 one of the two values must_be_equal and may_be_different,
 saying whether the code generator knows that
 curfr is guaranteed to be equal to maxfr.
 The answer is yes if all of the following conditions hold:
-
-	<ul>
-	<li>
-	we are in a procedure that lives on the nondet stack
-	(maxfr and curfr are both set to the address of the procedure's
-	stack frame when it is created);
-	<li>
-	there are no calls to nondet procedures on the path between
-	the start of the procedure and the start of the current goal; and
-	<li>
-	the code generator itself hasn't pushed any temporary nondet
-	stack frames (see below).
-	</ul>
-
+    <ul>
+    <li>
+    we are in a procedure that lives on the nondet stack
+    (maxfr and curfr are both set to the address of the procedure's
+    stack frame when it is created);
+    <li>
+    there are no calls to nondet procedures on the path between
+    the start of the procedure and the start of the current goal; and
+    <li>
+    the code generator itself hasn't pushed any temporary nondet
+    stack frames (see below).
+    </ul>
+    <p>
 <li>
 The condition_environment subfield can take on
 one of the two values inside_non_condition and not_inside_non_condition,
@@ -256,21 +226,16 @@ that is the condition of an if-then-else.
 </ul>
 
 <p>
-
 The resume_point_known subfield is initialized to known in all procedures.
 The curfr_maxfr subfield is initialized to
 must_be_equal in model_non procedures,
 and to may_be_different in other procedures.
 The condition_environment subfield
 is always initialized to not_inside_non_condition.
-
 <p>
-
 When the code generator processes any nondet goal,
 it must set the resume_point_known subfield to unknown at the end of the goal.
-
 <p>
-
 When the code generator processes a model_non construct
 that leaves this procedure (i.e. a call, higher order call or method call),
 it must also set the curfr_maxfr subfield to may_be_different
@@ -279,49 +244,37 @@ at the end of the goal.
 just before it succeeds for the last time,
 we can't say that after a call to such a procedure
 maxfr *will* be different from curfr.
-
 <p>
-
 When the code generator processes branched structures (if-then-elses,
 switches or disjunctions), if resume_point_known is unknown at the end of
 any arm, it must be unknown after the branched structure, and if curfr_maxfr
 is may_be_different at the end of any arm, it must also be may_be_different
 after the branched structure.
-
 <p>
-
 When the code generator establishes a new resumption point,
 it will set the resume_point_known subfield to known,
 but it must not set the curfr_maxfr subfield to must_be_equal.
-
 <p>
-
 Note that in the absence of model_non code, the resume_point_known subfield
 will always have the value known.
 
-<h3> Generating failure </h3>
+<h3>Generating failure</h3>
 
 How we generate code for failure depends on the top entry on the resume
 point stack and the left context.
-
 <p>
-
 If resume_point_known is no, the code we generate for failure is redo().
 If resume_point_known is yes, the code we generate for failure is a branch
 to one of the labels in the resumption point; which one depends on the
 locations of the variables needed at the resumption point
 (see allocation.html).
-
 <p>
-
 To prepare for backtracking to a resumption point that takes place via
 a redo(), not via a direct branch, we must select one of the labels
 as the one whose address will be put in the redoip slot via which backtracking
 will take place. This label will be the stack label, the label whose
 resume map maps all the resume variables to their stack slots.
-
 <p>
-
 We have to make sure that this choice is always valid.
 We do this by enforcing three invariants:
 
@@ -329,34 +282,27 @@ We do this by enforcing three invariants:
 <li>
 We never generate redo() for failure if resume_point_known is known,
 and we always generate redo() for failure if resume_point_known is unknown.
-
 <p>
-
 <li>
 At all points when resume_point_known goes from known to unknown,
 we make sure that the resume variables are flushed to their stack slots.
-
 <p>
-
 <li>
 If, while a resumption point is active,
 control can reach a point where resume_point_known goes from known to unknown,
 liveness.m ensures that the resumption point includes a stack label.
 </ul>
 
-<h3> Classifying left contexts </h3>
+<h3>Classifying left contexts</h3>
 
 The code generator classifies left contexts
 into those in which hijacking is allowed,
 and those in which hijacking is not allowed.
 Hijacking is allowed only if the --allow-hijacks option is set,
 and the condition_environment subfield is not_inside_non_condition.
-
 <p>
-
 The code generator further classifies left contexts
 in which hijacking is allowed into the following three categories:
-
 <p>
 
 <ul>
@@ -369,21 +315,19 @@ curfr_maxfr is may_be_different
 </ul>
 
 <p>
-
 The code generator can treat any situation as a no-hijack case,
 it can treat best case as either middle case or worst case,
 and it can treat middle case as worst case.
 However, it should be able to generate better code
 if it exploits the available information.
-
 <p>
 
 It may be that no-hijack case yields better code than worst case;
 this should be investigated XXX.
 
-<h2> HANDLING DISJUNCTIONS </h2>
+<h2>Handling disjunctions</h2>
 
-<h3> Handling nondet disjunctions </h3>
+<h3>Handling nondet disjunctions</h3>
 
 <ul>
 <li> No-hijack case.
@@ -399,9 +343,7 @@ it does not push any entry on the resume point stack,
 and sets maxfr to the value
 in the prevfr slot of the top frame (which is the temporary frame),
 which pops the temporary frame off the stack.
-
 <p>
-
 <li> Best case.
 When the code generator enters a nonlast disjunct,
 it pushes a new entry on the resume point stack
@@ -417,9 +359,7 @@ In this case, the disjunction hijacks its own frame
 without having to save the value in the hijacked slot;
 we call this a quarter hijack,
 since it involves one restore.
-
 <p>
-
 <li> Middle case.
 Before entering the disjunction,
 the code generator saves in a stack slot
@@ -438,9 +378,7 @@ In this case, the disjunction hijacks its own frame
 while having to save the value in the hijacked slot;
 we call this a half hijack,
 since it involves one save and one restore.
-
 <p>
-
 <li> Worst case.
 Before entering the disjunction,
 the code generator saves in two stack slots
@@ -465,7 +403,6 @@ since it involves two saves and two restores.
 </ul>
 
 <p>
-
 For all the hijacking cases, the choices represented by the hijacked
 redoip and maybe redofr slots cannot be backtracked to until the disjunction
 that we are generating code for has failed. This cannot happen until the
@@ -474,7 +411,7 @@ This maintains the invariant that for any nondet stack frame whose address
 is frame_addr, redofr_slot(frame_addr) == frame_addr whenever curfr ==
 frame_addr.
 
-<h3> Handling semi or det disjunctions </h3>
+<h3>Handling semi or det disjunctions</h3>
 
 When the code generator enters a nonlast disjunct,
 it pushes a new entry on the resume point stack
@@ -482,9 +419,9 @@ indicating the resume point at the start of the next disjunct.
 When the code generator enters the last disjunct,
 it does not push any entry on the resume point stack.
 
-<h2> HANDLING IF-THEN-ELSES </h2>
+<h2>Handling if-then-elses</h2>
 
-<h3> Handling nondet if-then-elses with nondet conditions </h3>
+<h3>Handling nondet if-then-elses with nondet conditions</h3>
 
 <ul>
 <li> No-hijack case.
@@ -502,9 +439,7 @@ it assigns do_fail to the redoip slot of the temporary frame
 (pointed to by the stack slot), effectively removing the temporary frame.
 (We cannot generate code to pop the frame off the stack,
 since it may not be on top.)
-
 <p>
-
 <li> Best case.
 Before the code generator enters the condition,
 it pushes a new entry on the resume point stack
@@ -518,9 +453,7 @@ it resets the redoip slot of the frame it hijacked (pointed to by curfr)
 to the stack label of the exposed top entry of the resume point stack.
 If that entry has no stack label, then that resume point will never
 be reached via redo() and thus we do not need to reset the redoip slot.
-
 <p>
-
 <li> Middle case.
 Before entering the if-then-else,
 the code generator saves in a stack slot
@@ -535,9 +468,7 @@ it pops the new entry off the resume point stack.
 Before entry to the then part or to the else part,
 it resets the redoip slot of the frame it hijacked (pointed to by curfr)
 to its saved value.
-
 <p>
-
 <li> Worst case.
 Before entering the if-then-else,
 the code generator saves in three stack slots
@@ -565,7 +496,6 @@ on entry to the if-then-else, which may be different from curfr).
 </ul>
 
 <p>
-
 All these four manipulate the redoip slot of the nondet stack frame
 that is on top of the nondet stack when execution enters the condition.
 On entry to the condition, we set it to point the start of the else part;
@@ -579,9 +509,7 @@ Therefore before entering the condition,
 the code generator sets condition_environment to inside_non_condition; 
 on exit from the condition, it restores the original value.
 (These are the only times the value of condition_environment is ever changed.)
-
 <p>
-
 Before entering the condition, the code generator will set resume_point_known
 to known, since the resumption point to go to on failure of the condition is
 known (it is the start of the else part). However, this resumption point
@@ -590,9 +518,7 @@ then part, the code generator will reset resume_point_known to the value
 it had before entering the if-then-else, except if resume_point_known
 has become unknown during the generation of code for the condition, in which
 case it will continue to be unknown.
-
 <p>
-
 A failure inside the condition should cause
 a branch to the start of the else case
 only if the condition has not already succeeded.
@@ -625,14 +551,14 @@ The condition_environment subfield must, by construction,
 have the same value at the end of every branch,
 and this is the value it will have after the branched control structure.)
 
-<h3> Handling nondet if-then-elses with semi or det conditions </h3>
+<h3>Handling nondet if-then-elses with semi or det conditions</h3>
 
 We can handle these as we handle nondet if-then-elses with nondet conditions,
 or we can handle them as we handle semi or det if-then-elses, with the
 exception that we generate the then part and the else part as nondet goals.
 The latter is more efficient, so that is what we do.
 
-<h3> Handling semi or det if-then-elses </h3>
+<h3>Handling semi or det if-then-elses</h3>
 
 Before the code generator enters the condition,
 it pushes a new entry on the resume point stack
@@ -641,13 +567,13 @@ to the stack continuation in that resume point.
 After the code generator emerges from the condition,
 it pops the new entry off the resume point stack.
 
-<h2> HANDLING NEGATIONS </h2>
+<h2>Handling negations</h2>
 
-We handle not(G) as (G -> fail ; true).
+We handle not(G) as (if G then fail else true).
 
-<h2> HANDLING COMMITS </h2>
+<h2>Handling commits</h2>
 
-<h3> Handling commits across nondet goals </h3>
+<h3>Handling commits across nondet goals</h3>
 
 <ul>
 <li> No-hijack case.
@@ -662,7 +588,7 @@ The code at this resume point will perform a failure in the manner
 appropriate for whatever entry was originally on top of the resume point stack.
 Both continuations will reset maxfr
 to the value it had originally, which is in that stack slot.
-
+<p>
 <li> Best case.
 Before the code generator enters a goal that is being committed across,
 it pushes a new entry on the resume point stack indicating
@@ -677,9 +603,7 @@ Both continuations will reset the redoip slot of the current frame
 to its original value,
 which is the address of the stack label
 in the originally top failure continuation.
-
 <p>
-
 <li> Middle case.
 Before the code generator enters a goal that is being committed across,
 it pushes a new entry on the resume point stack indicating
@@ -698,9 +622,7 @@ appropriate for the values of the resume point stack and left context
 that were current before the commit.
 The order of actions in the success continuation is important,
 since resetting maxfr affects which frame is top.
-
 <p>
-
 <li> Worst case.
 Before the code generator enters a goal that is being committed across,
 it saves the value of maxfr,
@@ -725,14 +647,11 @@ since resetting maxfr affects which frame is top.
 </ul>
 
 <p>
-
 Since we are cutting away any frames created by the goal being committed
 across, and since any resumption points established in that goal cannot
 survive across the commit, at the end of processing the commit we can reset
 both curfr_maxfr and resume_point_known to their values before the commit.
-
 <p>
-
 We do not need to push a junk frame
 when entering the goal to be committed across
 even if this goal may perform a hijacking.
@@ -742,7 +661,7 @@ If the goal succeeds, it may have hijacked the top frame,
 but we since we do not need to preserve any further solutions inside the goal,
 we can simply restore that frame to its original contents anyway.
 
-<h3> Handling commits across multi goals </h3>
+<h3>Handling commits across multi goals</h3>
 
 <ul>
 <li>
@@ -756,15 +675,9 @@ The code after the goal will reset maxfr to the saved value.
 </ul>
 
 <p>
-
 This is the way the code generator handles commits across nondet goals except
 that we do not need to handle failure of the goal being committed across,
 and thus do not need to set any redoips or hijack anything.
 
-<p>
-
-<hr>
-<!-------------------------->
-Last update was $Date: 2003-10-23 06:06:30 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>

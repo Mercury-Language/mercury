@@ -1,77 +1,71 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-    Notes On The Design Of The Mercury Compiler
-</title>
+<title>Notes On The Design Of The Mercury Compiler</title>
 </head>
 
-<body bgcolor="#ffffff" text="#000000">
+<body>
 
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<h1>Notes On The Design Of The Mercury Compiler</h1>
 
 <p>
 This file contains an overview of the design of the compiler.
 
 <p>
-See also <a href="overall_design.html">overall_design.html</a>
-for an overview of how the different sub-systems (compiler,
-library, runtime, etc.) fit together.
+For an overview of how the compiler fits into the rest of the Mercury system
+(runtime, standard library, mdbcomp library, and so on),
+see <a href="overall_design.html">overall_design.html</a>.
 
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-<h2> OUTLINE </h2>
+<h2>Outline</h2>
 
 <p>
-
-The main job of the compiler is to translate Mercury into C, although it
-can also translate (subsets of) Mercury to some other languages:
-Mercury bytecode (for a planned bytecode interpreter), C#, Java and Erlang.
-
+The main job of the compiler is to translate Mercury into a target language,
+which can be C, Java, C# or Erlang,
+although it can also translate Mercury to Mercury bytecode,
+for a once-planned but never implemented bytecode interpreter,
+and once upon a time it could also translate a subset of it
+to Aditi and to .NET's IL.
 <p>
-
 The top-level of the compiler is in the file mercury_compiler.m.
-This forwards all of the work to the file mercury_compiler_main.m which is a
-sub-module of the top_level.m package.
-The basic design is that compilation is broken into the following
-stages:
+This forwards all of the work to the file mercury_compiler_main.m,
+which is a submodule of the top_level.m package.
+The basic design is that compilation is broken into the following stages:
 
 <ul>
 <li>
-    1. parsing (source files -&gt; HLDS)
+1. parsing (source files -&gt; HLDS)
 <li>
-    2. semantic analysis and error checking (HLDS -&gt; annotated HLDS)
+2. semantic analysis and error checking (HLDS -&gt; annotated HLDS)
 <li>
-    3. high-level transformations (annotated HLDS -&gt; annotated HLDS)
+3. high-level transformations (annotated HLDS -&gt; annotated HLDS)
 <li>
-    4. code generation (annotated HLDS -&gt; target representation)
+4. code generation (annotated HLDS -&gt; target representation)
 <li>
-    5. low-level optimizations
-    (target representation -&gt; target representation)
+5. low-level optimizations (target representation -&gt; target representation)
 <li>
-    6. output code (target representation -&gt; target code)
+6. output code (target representation -&gt; target code)
 </ul>
 
 <p>
 Note that in reality the separation is not quite as simple as that.
-Although parsing is listed as step 1 and semantic analysis is listed
-as step 2, the last stage of parsing actually includes some semantic checks.
-And although optimization is listed as steps 3 and 5, it also occurs in
-steps 2, 4, and 6. For example, elimination of assignments to dead
-variables is done in mode analysis; middle-recursion optimization and
-the use of static constants for ground terms is done during code generation;
-and a few low-level optimizations are done in llds_out.m
-as we are spitting out the C code.
-
+Although parsing is listed as step 1 and semantic analysis is listed as step 2,
+the last stage of parsing actually includes some semantic checks.
+And although optimization is listed as steps 3 and 5,
+it also occurs in steps 2, 4, and 6.
+For example, elimination of assignments to dead variables
+is done in mode analysis;
+middle-recursion optimization and the use of static constants for ground terms
+is done during code generation;
+and a few low-level optimizations are done
+in llds_out.m as we are spitting out the C code.
 <p>
-
 In addition, the compiler is actually a multi-targeted compiler
 with several different back-ends.
-
 <p>
-
-mercury_compile.m itself supervises the parsing  (step 1),
+mercury_compile.m itself supervises the parsing (step 1),
 but it subcontracts the supervision of the later steps to other modules.
 Semantic analysis (step 2) is looked after by mercury_compile_front_end.m;
 high level transformations (step 3) by mercury_compile_middle_passes.m;
@@ -79,139 +73,120 @@ and code generation, optimization and output (steps 4, 5 and 6)
 by mercury_compile_llds_backend.m, mercury_compile_mlds_backend.m
 and mercury_compile_erl_backend.m
 for the LLDS, MLDS and Erlang backends respectively.
-
 <p>
-
 The modules in the compiler are structured by being grouped into "packages".
 A "package" is just a meta-module,
-i.e. a module that contains other modules as sub-modules.
-(The sub-modules are almost always stored in separate files,
+i.e. a module that contains other modules as submodules.
+(The submodules are almost always stored in separate files,
 which are named only for their final module name.)
 We have a package for the top-level, a package for each main pass, and
 finally there are also some packages for library modules that are used
 by more than one pass.
 <p>
-
-Taking all this into account, the structure looks like this:
+Taking all this into account, the package structure looks like this:
 
 <ul type=disc>
 <li>
-    At the top of the dependency graph is the top_level.m package,
-    which currently contains only the mercury_compile*.m modules,
-    which invoke all the different passes in the compiler.
+At the top of the dependency graph is the top_level.m package,
+which currently contains only the mercury_compile*.m modules,
+which invoke all the different passes in the compiler.
 <li>
-    The next level down is all of the different passes of the compiler.
-    In general, we try to stick by the principle that later passes can
-    depend on data structures defined in earlier passes, but not vice versa.
+The next level down is all of the different passes of the compiler.
+In general, we try to stick by the principle that later passes can
+depend on data structures defined in earlier passes, but not vice versa.
+<ul type=disc>
+<li>
+    front-end
     <ul type=disc>
     <li>
-        front-end
-        <ul type=disc>
-        <li>
-            1. parsing (source files -&gt; HLDS)
-            <br>
-            Packages: parse_tree.m and hlds.m
-        <li>
-            2. semantic analysis and error checking (HLDS -&gt; annotated HLDS)
-            <br>
-            Package: check_hlds.m
-        <li>
-            3. high-level transformations (annotated HLDS -&gt; annotated HLDS)
-            <br>
-            Packages: transform_hlds.m and analysis.m
-        </ul>
+        1. parsing (source files -&gt; HLDS)
+        <br>
+        Packages: parse_tree.m and hlds.m
     <li>
-        back-ends
-        <ul type=disc>
-        <li>
-            a. LLDS back-end
-            <br>
-            Package: ll_backend.m
-            <ul type=disc>
-            <li>
-                3a. LLDS-back-end-specific HLDS-&gt;HLDS transformations
-            <li>
-                4a. code generation (annotated HLDS -&gt; LLDS)
-            <li>
-                5a. low-level optimizations (LLDS -&gt; LLDS)
-            <li>
-                6a. output code (LLDS -&gt; C)
-            </ul>
-        <li>
-            b. MLDS back-end
-            <br>
-            Package: ml_backend.m
-            <ul type=disc>
-            <li>
-                4b. code generation (annotated HLDS -&gt; MLDS)
-            <li>
-                5b. MLDS transformations (MLDS -&gt; MLDS)
-            <li>
-                6b. output code
-                (MLDS -&gt; C or MLDS -&gt; C# or MLDS -&gt; Java, etc.)
-            </ul>
-        <li>
-            c. bytecode back-end
-            <br>
-            Package: bytecode_backend.m
-            <ul type=disc>
-            <li>
-                4c. code generation (annotated HLDS -&gt; bytecode)
-            </ul>
-        <li>
-            d. Erlang back-end
-            <br>
-            Package: erl_backend.m
-            <ul type=disc>
-            <li>
-                4d. code generation (annotated HLDS -&gt; ELDS)
-            <li>
-                6d. output code (ELDS -&gt; Erlang)
-            </ul>
-        <li>
-            There is also a package backend_libs.m which contains modules
-            which are shared between several different back-ends.
-        </ul>
+        2. semantic analysis and error checking (HLDS -&gt; annotated HLDS)
+        <br>
+        Package: check_hlds.m
     </ul>
 <li>
-    Finally, at the bottom of the dependency graph there is the package libs.m.
-    libs.m contains the option handling code, and also library modules
-    which are not sufficiently general or sufficiently useful to go
-    in the Mercury standard library.
+    middle-end
+    <ul type=disc>
+    <li>
+        3. high-level transformations (annotated HLDS -&gt; annotated HLDS)
+        <br>
+        Packages: transform_hlds.m and analysis.m
+    </ul>
+<li>
+    back-ends
+    <ul type=disc>
+    <li>
+        a. LLDS back-end
+        <br>
+        Package: ll_backend.m
+        <ul type=disc>
+        <li>
+            3a. LLDS-back-end-specific HLDS-&gt;HLDS transformations
+        <li>
+            4a. code generation (annotated HLDS -&gt; LLDS)
+        <li>
+            5a. low-level optimizations (LLDS -&gt; LLDS)
+        <li>
+            6a. output code (LLDS -&gt; C)
+        </ul>
+    <li>
+        b. MLDS back-end
+        <br>
+        Package: ml_backend.m
+        <ul type=disc>
+        <li>
+            4b. code generation (annotated HLDS -&gt; MLDS)
+        <li>
+            5b. MLDS transformations (MLDS -&gt; MLDS)
+        <li>
+            6b. output code
+            (MLDS -&gt; C or MLDS -&gt; C# or MLDS -&gt; Java, etc.)
+        </ul>
+    <li>
+        c. bytecode back-end
+        <br>
+        Package: bytecode_backend.m
+        <ul type=disc>
+        <li>
+            4c. code generation (annotated HLDS -&gt; bytecode)
+        </ul>
+    <li>
+        d. Erlang back-end
+        <br>
+        Package: erl_backend.m
+        <ul type=disc>
+        <li>
+            4d. code generation (annotated HLDS -&gt; ELDS)
+        <li>
+            6d. output code (ELDS -&gt; Erlang)
+        </ul>
+    <li>
+        There is also the backend_libs.m package which contains modules
+        which are shared between several different back-ends.
+    </ul>
+</ul>
+<li>
+Finally, at the bottom of the dependency graph there is the package libs.m,
+which contains the option handling code,
+and many utility modules
+that are not sufficiently general or sufficiently useful
+to go in the Mercury standard library.
 </ul>
 
 <p>
+In addition to the packages mentioned above,
+there are also packages for the build system:
+make.m contains the support for the `--make' option,
+and recompilation.m contains the support
+for the `--smart-recompilation' option.
 
-In addition to the packages mentioned above, there are also packages
-for the build system: make.m contains the support for the `--make' option,
-and recompilation.m contains the support for the `--smart-recompilation'
-option.
-
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-<h2> DETAILED DESIGN </h2>
-
-<p>
-This section describes the role of each module in the compiler.
-For more information about the design of a particular module,
-see the documentation at the start of that module's source code.
-
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-<p>
-
-The action is co-ordinated from mercury_compile.m or make.m (if `--make'
-was specified on the command line).
-
-<h3> Option handling </h3>
-
-<p>
+<h2>Option handling</h2>
 
 Option handling is part of the libs.m package.
-
 <p>
-
 The command-line options are defined in the module options.m.
 mercury_compile.m calls library/getopt_io.m, passing the predicates
 defined in options.m as arguments, to parse them. It then invokes
@@ -219,570 +194,502 @@ handle_options.m (and indirectly, op_mode.m and compute_grade.m)
 to postprocess the option set.
 The results are represented using the type globals, defined in globals.m.
 The globals structure is available in the HLDS representation,
-but it is passed around as a separate argument both before the HLDS is built
-and after it is no longer needed.
+but it is passed around as a separate argument
+both before the HLDS is built and after it is no longer needed.
+<p>
+After we have processed the options,
+the rest of the action is co-ordinated
+either from mercury_compile.m or from make.m,
+depending on whether the `--make' option is in effect.
+<p>
+The rest of this document contains
+a brief introduction each module of the compiler.
+If you want more information about
+either the purpose or the design of a particular module,
+see the documentation at the start of that module's source code.
 
-<h3> Build system </h3>
+<h2>Build system</h2>
 
 <p>
-
 Support for `--make' is in the make.m package,
 which contains the following modules:
 
-<dl>
-
-<dt> make.m
-<dd>
-    Categorizes targets passed on the command line and passes
-    them to the appropriate module to be built.
-
-<dt> make.program_target.m
-<dd>
-    Handles whole program `mmc --make' targets, including
-    executables, libraries and cleanup.
-
-<dt> make.module_target.m
-<dd>
-    Handles targets built by a compilation action associated
-    with a single module, for example making interface files.
-
-<dt> make.dependencies.m
-<dd>
-    Compute dependencies between targets and between modules.
-
-<dt> make.module_dep_file.m
-<dd>
-    Record the dependency information for each module between compilations.
-
-<dt> make.util.m
-<dd>
-    Utility predicates.
-
-<dt> options_file.m
-<dd>
-    Read the options files specified by the `--options-file' option.
-    Also used by mercury_compile.m to collect the value of DEFAULT_MCFLAGS,
-    which contains the auto-configured flags passed to the compiler.
-
-</dl>
+<ul>
+<li>
+make.m categorizes targets passed on the command line
+and passes them to the appropriate module to be built.
+<li>
+make.program_target.m handles whole program `mmc --make' targets,
+including executables, libraries and cleanup.
+<li>
+make.module_target.m handles targets built by a compilation action
+associated with a single module, for example making interface files.
+<li>
+make.dependencies.m computes dependencies between targets and between modules.
+<li>
+make.module_dep_file.m records dependency information for each module
+between compilations.
+<li>
+make.util.m contains utility predicates.
+<li>
+options_file.m reads the options files specified by
+the `--options-file' option.
+Also used by mercury_compile.m to collect the value of DEFAULT_MCFLAGS,
+which contains the auto-configured flags passed to the compiler.
+</ul>
 
 The build process also invokes routines in compile_target_code.m,
 which is part of the backend_libs.m package (see below).
 
-<p>
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<h2>Front end</h2>
+<h3>1. Parsing</h3>
+<h4>The parse_tree.m package</h4>
 
-<h3> FRONT END </h3>
-<h4> 1. Parsing </h4>
-<h5> The parse_tree.m package </h5>
-
-<p>
 The first part of parsing is in the parse_tree.m package,
 which contains the modules listed below
-(except for the library/*.m modules,
-which are in the standard library).
+(except for the library/*.m modules, which are in the standard library).
 This part produces the parse_tree.m data structure,
-which is intended to match up as closely as possible
-with the source code, so that it is suitable for tasks
-such as pretty-printing.
-
+which is intended to match up as closely as possible with the source code,
+so that it is suitable for tasks such as pretty-printing.
 <p>
+We transform the results of lexical analysis (done by library/lexer.m)
+into the Mercury parse tree in two stages:
 
 <ul>
 <li>
-    <p>
-    lexical analysis (library/lexer.m)
-
+stage 1 parsing - converting token sequences to terms.
+<p>
+library/parser.m contains the code to do this,
+while library/term.m and library/varset.m
+define the term and varset data structures,
+and predicates for manipulating them.
 <li>
-    <p>
-    stage 1 parsing - convert strings to terms.
-    <p>
-
-    library/parser.m contains the code to do this, while
-    library/term.m and library/varset.m contain the term and varset
-    data structures that result, and predicates for manipulating them.
-
-<li>
-    <p>
-    stage 2 parsing - convert terms to `items' (declarations, clauses, etc.)
-    <p>
-    The result of this stage is a parse tree
-    that has a close correspondence with the source code.
-    The parse tree data structure definition is in prog_data.m,
-    prog_data_event.m, prog_data_foreign.m, prog_data_pragma.m,
-    prog_data_used_modules.m, prog_item.m and file_kind.m,
-    while the code to create it is in the following modules:
-    <ul>
-    <li>
-        find_module.m locates source files containing Mercury modules.
-    <li>
-        parse_module.m handles the top level tasks of reading in
-        whole Mercury source files, interface files, and optimization files.
-    <li>
-        parse_item.m parses in the top level parts of items,
-        particularly declarations.
-    <li>
-        parse_goal.m parses goals.
-    <li>
-        parse_dcg_goal.m parses goals (and clauses)
-        using Definite Clause Grammar notation.
-    <li>
-        parse_vars.m parses lists of variables.
-    <li>
-        parse_type_name.m parses type names, while
-        parse_inst_mode_name.m parses inst and mode names.
-    <li>
-        parse_type_defn.m parses type definitions, while
-        parse_inst_mode_defn.m parses inst and mode definitions.
-    <li>
-        parse_type_repn.m parses items that the compiler
-        automatically puts into interface files
-        to give modules that import a type
-        information about the representation of that type.
-    <li>
-        parse_class.m parses typeclass and instance declarations,
-        as well as typeclass and inst constraints on other declaration
-        (such as predicate declarations).
-    <li>
-        parse_pragma.m parses pragma declarations.
-    <li>
-        parse_mutable.m parses initialize, finalize and mutable declarations.
-    <li>
-        parse_sym_name.m parses symbol names.
-    <li>
-        parse_error.m defines the types that represents the possible outcomes
-        of parsing a source file.
-    <li>
-        parse_util.m and parse_types.m define some types and predicates
-        needed by the other modules above.
-    </ul>
-
-    <p>
-
-    There are several modules whose collective job it is
-    to print (parts of) the parse tree.
-    <ul>
-    <li>
-    The top levels of parse trees are output by parse_tree_out.m.
-    This module also outputs most kinds of items.
-    <li>
-    parse_tree_out_clause.m outputs clauses and goals.
-    <li>
-    parse_tree_out_pragma.m outputs pragmas.
-    <li>
-    parse_tree_out_pred_decl.m outputs (parts of) predicate, function
-    and mode declarations.
-    <li>
-    parse_tree_out_inst.m outputs insts and modes.
-    <li>
-    parse_tree_out_term.m outputs variables and terms.
-    <li>
-    parse_tree_out_info.m provides a common infrastructure
-    for the above modules, and for mercury_to_mercury.m.
-    <li>
-    The modules prog_out.m and mercury_to_mercury.m output
-    the lowest level, and smallest, parts of the parse tree.
-    </ul>
-
-    <p>
-
-    There are several modules that provide utility predicates
-    that operate on (parts of) the parse tree.
-    <ul>
-    <li>
-    builtin_lib_types.m contains definitions about types, type constructors
-    and function symbols that the Mercury implementation needs to know about.
-    <li>
-    prog_item_stats.m has facilities for gathering and printing statistics
-    about the parse tree.
-    <li>
-    prog_util.m contains some utility predicates
-    for manipulating the parse tree.
-    <li>
-    prog_detism.m contains utility predicates
-    for manipulating determinism and determinism components.
-    <li>
-    prog_mode.m contains utility predicates
-    for manipulating insts and modes.
-    <li>
-    prog_type.m contains utility predicates
-    for manipulating types.
-    <li>
-    prog_type_subst.m contains predicates
-    for performing type substitutions.
-    <li>
-    prog_rename.m contains predicates
-    for performing variable substitutions.
-    <li>
-    prog_foreign.m contains utility predicates
-    for manipulating foreign code.
-    <li>
-    prog_mutable.m contains utility predicates
-    for manipulating mutable variables.
-    <li>
-    prog_event.m contains utility predicates for working with events.
-    <li>
-    error_util.m contains predicates
-    for printing nicely formatted error messages.
-    <li>
-    maybe_error.m contains types that allow the representation
-    of computations that can either succeed or generate such error messages.
-    </ul>
-
-<li>
-    <p>
-    grab_modules.m figures out what interface files to read,
-    and also does a bunch of other semi-related things.
-
-    <p>
-    read_module.m has code to read in modules in the form of .m,
-    .int, .opt etc files.
-
-    <p>
-    split_parse_tree_src.m splits up the parse tree of a source file
-    into a sequence of raw compilation units, one unit per module
-    contained in the source file.
-
-    <p>
-    write_module_interface_files.m has the code to write out
-    `.int0', `.int', `.int2', and `.int3' files.
-
-    <p>
-    comp_unit_interface.m figures out which parts of a raw compilation unit
-    belong in its .int3, .int0, .int and .int2 files.
-
-    <p>
-    check_parse_tree_type_defns.m checks whether
-    the type definition related items in a raw compilation unit
-    are consistent with one another.
-
-    <p>
-    convert_interface.m does conversions in both directions
-    between the generic interface file parse tree on the one hand
-    and the parse tree kinds specific to each kind of interface file
-    on the other hand.
-    The specific parse trees enforce structural envariants
-    that the generic parse tree does not.
-
-    <p>
-    decide_type_repn.m generates type_representation items
-    that we put into interface files.
-
-    <p>
-    canonicalize_interface.m has code to put the contents of
-    `.int0', `.int', `.int2', and `.int3' files into a standard order,
-    to prevent the need to recompile the modules that import them
-    if the only change to a module is a reordering of some declarations
-    (which causes no change in the module's semantics).
-
-    <p>
-    check_raw_comp_unit.m checks whether a compilation unit
-    exports anything.
-
-    <p>
-    generate_dep_d_files.m generates the information from which
-    write_deps_file.m writes out Makefile fragments.
-
-    <p>
-    module_imports.m contains the module_imports type and its access
-    predicates.
-
-    <p>
-    get_dependencies.m contains predicates that compute various sorts of
-    direct dependencies (those caused by imports) between modules.
-
-    <p>
-    deps_map.m and module_deps_graph.m contain data structures
-    for recording indirect dependencies between modules,
-    and the predicates for creating and using them.
-
-    <p>
-    file_names.m does conversions between module names and file names.
-    It uses java_names.m, which contains predicates for dealing with names
-    of things in Java.
-
-    <p>
-    source_file_map.m contains code to read, write and search
-    the mapping between module names and file names.
-
-    <p>
-    module_cmds.m handles the commands for manipulating interface files of
-    various kinds.
-
-    <p>
-    item_util.m contains some utility predicates dealing with items.
-
-<li>
-    <p>
-    module qualification of types, insts and modes
-    <p>
-    module_qual.m
-    <br>
-    Adds module qualifiers to all types insts and modes,
-    checking that a given type, inst or mode exists and that
-    there is only possible match. This is done here because
-    it must be done before the `.int' and `.int2' interface files
-    are written. This also checks whether imports are really needed
-    in the interface.
-
-    module_qual.m does the above by coordinating the work of its four
-    submodules.
-    <dl>
-    <dt> module_qual.collect_mq_info.m
-    <dd>
-    collects information about what types, insts etc are defined
-    in which modules.
-    <dt> module_qual.qualify_items.m
-    <dd>
-    uses the collected information to module qualify items
-    and their components.
-    <dt> module_qual.id_set.m
-    <dd>
-    defines the data structure used by collect_mq_info and qualify_items
-    to do their job and communicate with each other
-    <dt> module_qual.qual_errors.m
-    <dd>
-    handles the errors that arise when an item refers to an entity
-    (type, or inst, or ...) that is either not defined anywhere,
-    or is defined in more than once module, and the reference
-    does not indicate which one is intended.
-    </dl>
-
-    <p>
-    Notes on module qualification:
-    <ul>
-    <li>
-        all types, typeclasses, insts and modes occurring in pred, func,
-        type, typeclass and mode declarations are module qualified by
-        module_qual.m and its submodules.
-    <li>
-        all types, insts and modes occurring in lambda expressions,
-        explicit type qualifications, and clause mode annotations
-        are module qualified in make_hlds.m.
-    <li>
-        constructors occurring in predicate and function mode declarations
-        are module qualified during type checking.
-    <li>
-        predicate and function calls and constructors within goals
-        are module qualified during mode analysis.
-    </ul>
-
-<li>
-    <p>
-    expansion of equivalence types (equiv_type.m)
-    <p>
-    `with_type` and `with_inst` annotations on predicate
-    and function type and mode declarations are also expanded.
-    <p>
-    Expansion of equivalence types is really part of type-checking,
-    but is done on the item_list rather than on the HLDS because it
-    turned out to be much easier to implement that way.
+stage 2 parsing - converting terms to `items' (declarations, clauses, etc.)
+<p>
+The result of this stage is a parse tree
+that has a close correspondence with the source code.
 </ul>
 
 <p>
-That is all the modules in the parse_tree.m package.
-
-<h5> The hlds.m package </h5>
+(There is also a parsing stage 3,
+which transforms the parse tree into the HLDS,
+but that is not part of the parse_tree.m package itself.)
 <p>
-Once the stages listed above are complete, we then convert from the parse_tree
-data structure to a simplified data structure, which no longer attempts
-to maintain a one-to-one correspondence with the source code.
-This simplified data structure is called the High Level Data Structure (HLDS),
-which is defined in the hlds.m package.
+The parse tree data structure definition is in prog_data.m,
+prog_data_event.m, prog_data_foreign.m, prog_data_pragma.m,
+prog_data_used_modules.m, prog_item.m and file_kind.m,
+while the code to create it is in the following modules.
 
+<ul>
+<li>
+find_module.m locates source files containing Mercury modules.
+<li>
+parse_module.m handles the top level tasks of reading in
+whole Mercury source files, interface files, and optimization files.
+<li>
+parse_item.m parses in the top level parts of items,
+particularly declarations.
+<li>
+parse_goal.m parses goals.
+<li>
+parse_dcg_goal.m parses goals (and clauses)
+using Definite Clause Grammar notation.
+<li>
+parse_vars.m parses lists of variables.
+<li>
+parse_type_name.m parses type names, while
+parse_inst_mode_name.m parses inst and mode names.
+<li>
+parse_type_defn.m parses type definitions, while
+parse_inst_mode_defn.m parses inst and mode definitions.
+<li>
+parse_type_repn.m parses items that the compiler
+automatically puts into interface files
+to give modules that import a type
+information about the representation of that type.
+<li>
+parse_class.m parses typeclass and instance declarations,
+as well as typeclass and inst constraints on other declaration
+(such as predicate declarations).
+<li>
+parse_pragma.m parses pragma declarations.
+<li>
+parse_mutable.m parses initialize, finalize and mutable declarations.
+<li>
+parse_sym_name.m parses symbol names.
+<li>
+parse_error.m defines the types that represents the possible outcomes
+of parsing a source file.
+<li>
+parse_util.m and parse_types.m define some types and predicates
+needed by the other modules above.
+</ul>
+
+<p>
+There are several modules whose collective job it is
+to print (parts of) the parse tree.
+<ul>
+<li>
+The top levels of parse trees are output by parse_tree_out.m.
+This module also outputs most kinds of items.
+<li>
+parse_tree_out_clause.m outputs clauses and goals.
+<li>
+parse_tree_out_pragma.m outputs pragmas.
+<li>
+parse_tree_out_pred_decl.m outputs (parts of) predicate, function
+and mode declarations.
+<li>
+parse_tree_out_inst.m outputs insts and modes.
+<li>
+parse_tree_out_term.m outputs variables and terms.
+<li>
+parse_tree_out_info.m provides a common infrastructure
+for the above modules, and for mercury_to_mercury.m.
+<li>
+The modules prog_out.m and mercury_to_mercury.m output
+the lowest level, and smallest, parts of the parse tree.
+</ul>
+
+<p>
+There are several modules that provide utility predicates
+that operate on (parts of) the parse tree.
+
+<ul>
+<li>
+builtin_lib_types.m contains definitions about types, type constructors
+and function symbols that the Mercury implementation needs to know about.
+<li>
+prog_item_stats.m has facilities for gathering and printing statistics
+about the parse tree.
+<li>
+prog_util.m contains some utility predicates
+for manipulating the parse tree.
+<li>
+prog_detism.m contains utility predicates
+for manipulating determinism and determinism components.
+<li>
+prog_mode.m contains utility predicates
+for manipulating insts and modes.
+<li>
+prog_type.m contains utility predicates
+for manipulating types.
+<li>
+prog_type_subst.m contains predicates
+for performing type substitutions.
+<li>
+prog_rename.m contains predicates
+for performing variable substitutions.
+<li>
+prog_foreign.m contains utility predicates
+for manipulating foreign code.
+<li>
+prog_mutable.m contains utility predicates
+for manipulating mutable variables.
+<li>
+prog_event.m contains utility predicates for working with events.
+<li>
+error_util.m contains predicates
+for printing nicely formatted error messages.
+<li>
+maybe_error.m contains types that allow the representation
+of computations that can either succeed or generate such error messages.
+</ul>
+
+<p>
+The second main use of the parse tree,
+because transformation into HLDS,
+is the generation and consumption of interface files.
+This is done by the following modules.
+
+<ul>
+<li>
+grab_modules.m figures out what interface files to read,
+and also does a bunch of other semi-related things.
+<li>
+read_module.m has code to read in modules in the form of .m,
+.int, .opt etc files.
+<li>
+split_parse_tree_src.m splits up the parse tree of a source file
+into a sequence of raw compilation units, one unit per module
+contained in the source file.
+<li>
+write_module_interface_files.m has the code to write out
+`.int0', `.int', `.int2', and `.int3' files.
+<li>
+comp_unit_interface.m figures out which parts of a raw compilation unit
+belong in its .int3, .int0, .int and .int2 files.
+<li>
+check_parse_tree_type_defns.m checks whether
+the type definition related items in a raw compilation unit
+are consistent with one another.
+<li>
+convert_interface.m does conversions in both directions
+between the generic interface file parse tree on the one hand
+and the parse tree kinds specific to each kind of interface file
+on the other hand.
+The specific parse trees enforce structural invariants
+that the generic parse tree does not.
+<li>
+decide_type_repn.m generates type_representation items
+that we put into interface files.
+<li>
+canonicalize_interface.m has code to put the contents of
+`.int0', `.int', `.int2', and `.int3' files into a standard order,
+to prevent the need to recompile the modules that import them
+if the only change to a module is a reordering of some declarations
+(which causes no change in the module's semantics).
+<li>
+check_raw_comp_unit.m checks whether a compilation unit
+exports anything.
+<li>
+generate_dep_d_files.m generates the information from which
+write_deps_file.m writes out Makefile fragments.
+<li>
+module_imports.m contains the module_imports type and its access
+predicates.
+<li>
+get_dependencies.m contains predicates that compute various sorts of
+direct dependencies (those caused by imports) between modules.
+<li>
+deps_map.m and module_deps_graph.m contain data structures
+for recording indirect dependencies between modules,
+and the predicates for creating and using them.
+<li>
+file_names.m does conversions between module names and file names.
+It uses java_names.m, which contains predicates for dealing with names
+of things in Java.
+<li>
+source_file_map.m contains code to read, write and search
+the mapping between module names and file names.
+<li>
+module_cmds.m handles the commands for manipulating interface files of
+various kinds.
+<li>
+item_util.m contains some utility predicates dealing with items.
+</ul>
+
+<p>
+We do most, though not all, forms of module qualification
+on programs when they are represented as parse trees.
+This mans that we add module qualifiers to all types, insts and modes,
+check that every referred-to type, inst and mode actually exists,
+and that there is only possible match.
+This is done here because it must be done
+before the `.int' and `.int2' interface files are written.
+This code also checks whether imports are really needed in the interface.
+<p>
+This work is done by the modules of the module_qual.m package.
+
+<ul>
+<li>
+module_qual.collect_mq_info.m collects information
+about what types, insts etc are defined in which modules.
+<li>
+module_qual.qualify_items.m uses the collected information
+to module qualify items and their components.
+<li>
+module_qual.id_set.m defines the data structure
+used by collect_mq_info and qualify_items
+to do their job and communicate with each other.
+<li>
+module_qual.qual_errors.m handles the errors that arise
+when an item refers to an entity (type, or inst, or ...)
+that is either not defined anywhere,
+or is defined in more than once module,
+and the reference does not indicate which one is intended.
+</ul>
+
+<p>
+As to what is module qualified when:
+
+<ul>
+<li>
+All types, typeclasses, insts and modes occurring in pred, func,
+type, typeclass and mode declarations are module qualified by
+module_qual.m and its submodules.
+<li>
+All types, insts and modes occurring in lambda expressions,
+explicit type qualifications, and clause mode annotations
+are module qualified in make_hlds.m.
+<li>
+Constructors occurring in predicate and function mode declarations
+are module qualified during type checking.
+<li>
+Predicate and function calls and constructors within goals
+are module qualified during mode analysis.
+</ul>
+
+<p>
+The parse tree module also contains equiv_type.m,
+which does expansion of equivalence types,
+and of `with_type` and `with_inst` annotations
+on predicate and function type and mode declarations.
+<p>
+Expansion of equivalence types is really part of type-checking,
+but is done on the parse tree rather than on the HLDS
+because it turned out to be much easier to implement that way.
+(Though later we had to add a pass the expand equivalence types
+in the HLDS anyway.)
+
+<h4>The hlds.m package</h4>
+
+<p>
+Once the stages listed above are complete,
+we then convert from the parse_tree data structure
+to another data structure which no longer attempts
+to maintain a one-to-one correspondence with the source code.
+This data structure is called the High Level Data Structure (HLDS),
+and it is defined in the hlds.m package.
 <p>
 The last stage of parsing is this conversion to HLDS,
 which is done mostly by the following submodules
 of the make_hlds module in the hlds package.
-<dl>
 
-<dt> make_hlds_passes.m
-<dd>
-    This submodule calls the others to perform the conversion.
-
-<dt> make_hlds_separate_items.m
-<dd>
-    This submodule separates out the different kinds of items,
-    so that when make_hlds_passes.m adds one kind of item (e.g. clauses)
-    to the HLDS, it can rely on the fact that all items of another kind
-    (e.g. predicate declarations) have already been processed.
-
-<dt> superhomogeneous.m
-<dd>
-    Performs the conversion of unifications into superhomogeneous form.
-
-<dt> state_var.m
-<dd>
-    Expands away state variable syntax.
-
-<dt> field_access.m
-<dd>
-    Expands away field access syntax.
-
-<dt> goal_expr_to_goal.m
-<dd>
-    Converts clauses from parse_tree format to hlds format.
-    Eliminates universal quantification
-    (using `all [Vs] G' ===&gt; `not (some [Vs] (not G))')
-    and implication (using `A =&gt; B' ===&gt; `not(A, not B)').
-
-<dt> add_clause.m
-<dd>
-    Oversees the conversion of clauses from parse_tree format to hlds format.
-    Handles their addition to procedures,
-    which is nontrivial in the presence of mode-specific clauses.
-
-<dt> add_pred.m
-<dd>
-    Handles type and mode declarations for predicates.
-    (Actually in the hlds package because it is called by add_special_pred.m,
-    but does most of its work for the other modules in the make_hlds package.)
-
-<dt> default_func_mode.m
-<dd>
-    If a function has no declared mode,
-    this module adds to it the standard default mode.
-
-<dt> add_type.m
-<dd>
-    Handles the declarations of types.
-
-<dt> add_mode.m
-<dd>
-    Handles the declarations of insts and modes,
-    including checking for circular insts and modes.
-
-<dt> add_solver.m
-<dd>
-    Adds to the HLDS the casting predicates needed by solver types.
-
-<dt> add_mutable_aux_preds.m
-<dd>
-    Adds to the HLDS
-    the auxiliary predicates (init, get, set, lock, unlock) needed by mutables.
-
-<dt> add_class.m
-<dd>
-    Handles typeclass and instance declarations.
-
-<dt> qual_info.m
-<dd>
-    Handles the abstract data types used for module qualification.
-
-<dt> make_hlds_warn.m
-<dd>
-    Looks for constructs that merit warnings,
-    such as singleton variables and variables with overlapping scopes.
-
-<dt> make_hlds_error.m
-<dd>
-    Error messages used by more than one submodule of make_hlds.m.
-    (Actually, make_hlds_error.m is in the hlds package,
-    because it is needed by some other modules that have been moved
-    from the make_hlds package to hlds.)
-
-<dt> add_foreign_proc.m
-<dd>
-    Adds foreign procs (Mercury predicates defined using foreign language code)
-    to the HLDS.
-
-<dt> add_foreign_enum.m
-<dd>
-    Adds foreign enums (Mercury enum types linked to foreign language
-    equivalents) to the HLDS.
-
-<dt> add_pragma_tabling.m
-<dd>
-    Adds everything needed to implement tabling pragmas to the HLDS.
-
-<dt> add_pragma_type_spec.m
-<dd>
-    Adds everything needed to implement type specialization pragmas to the HLDS.
-
-<dt> add_pragma.m
-<dd>
-    Adds the easiest-to-implement kinds of pragmas to the HLDS,
-    i.e. those that don't need their own module.
-
-</dl>
+<ul>
+<li>
+make_hlds_passes.m calls the other modules to perform the conversion.
+<li>
+make_hlds_separate_items.m separates out the different kinds of items,
+so that when make_hlds_passes.m adds one kind of item (e.g. clauses)
+to the HLDS, it can rely on the fact that all items of another kind
+(e.g. predicate declarations) have already been processed.
+<li>
+superhomogeneous.m performs the conversion of unifications
+into superhomogeneous form.
+<li>
+state_var.m expands away state variable syntax.
+<li>
+field_access.m expands away field access syntax.
+<li>
+goal_expr_to_goal.m converts clauses from parse_tree format to hlds format.
+It also implements universal quantification
+(via the transformation `all [Vs] G' ===&gt; `not (some [Vs] (not G))')
+and implication (using `A =&gt; B' ===&gt; `not(A, not B)').
+<li>
+add_clause.m oversees the conversion of clauses
+from parse_tree format to hlds format.
+It handles their addition to procedures,
+which is nontrivial in the presence of mode-specific clauses.
+<li>
+add_pred.m handles type and mode declarations for predicates.
+(Actually this is in the hlds package
+because it is called by add_special_pred.m,
+but does most of its work for the other modules in the make_hlds package.)
+<li>
+default_func_mode.m: if a function has no declared mode,
+this module adds to it the standard default mode.
+<li>
+add_type.m handles the declarations of types.
+<li>
+add_mode.m handles the declarations of insts and modes,
+including checking for circular insts and modes.
+<li>
+add_solver.m adds to the HLDS the casting predicates needed by solver types.
+<li>
+add_mutable_aux_preds.m adds to the HLDS
+the auxiliary predicates (init, get, set, lock, unlock) needed by mutables.
+<li>
+add_class.m handles typeclass and instance declarations.
+<li>
+qual_info.m handles the abstract data types used for module qualification.
+<li>
+make_hlds_warn.m looks for constructs that merit warnings,
+such as singleton variables and variables with overlapping scopes.
+<li>
+make_hlds_error.m defines any error messages
+that are used by more than one submodule of make_hlds.m.
+(Actually, make_hlds_error.m is in the hlds package,
+because it is needed by some other modules
+that have been moved from the make_hlds package to hlds.)
+<li>
+add_foreign_proc.m adds foreign procs
+(Mercury predicates defined using foreign language code) to the HLDS.
+<li>
+add_foreign_enum.m adds foreign enums
+(Mercury enum types linked to foreign language equivalents) to the HLDS.
+<li>
+add_pragma_tabling.m adds
+everything needed to implement tabling pragmas to the HLDS.
+<li>
+add_pragma_type_spec.m adds
+everything needed to implement type specialization pragmas to the HLDS.
+<li>
+add_pragma.m adds the easiest-to-implement kinds of pragmas to the HLDS,
+i.e. those that don't need their own module.
+</ul>
 
 Fact table pragmas are handled by fact_table.m
 (which is part of the ll_backend.m package).
 That module also reads the facts from the declared file
 and compiles them into a separate C file
 used by the foreign_proc body of the relevant predicate.
-
 <p>
 The HLDS data structure itself is spread over the following modules:
 
-<ol>
+<ul>
 <li>
-    hlds_args.m defines the parts of the HLDS concerned with predicate
-    and function argument lists.
+hlds_args.m defines the parts of the HLDS concerned with predicate
+and function argument lists.
 <li>
-    hlds_data.m defines the parts of the HLDS concerned with
-    data types, and the representation of values of various types;
+hlds_data.m defines the parts of the HLDS concerned with
+data types, and the representation of values of various types;
 <li>
-    hlds_cons.m defines the parts of the HLDS concerned with
-    function symbols.
+hlds_cons.m defines the parts of the HLDS concerned with
+function symbols.
 <li>
-    hlds_inst_mode.m defines the parts of the HLDS concerned with
-    instantiation states and modes.
+hlds_inst_mode.m defines the parts of the HLDS concerned with
+instantiation states and modes.
 <li>
-    hlds_class.m defines the parts of the HLDS concerned with
-    type classes and type class constraints.
+hlds_class.m defines the parts of the HLDS concerned with
+type classes and type class constraints.
 <li>
-    hlds_goal.m defines the part of the HLDS concerned with the
-    structure of goals, including the annotations on goals.
+hlds_goal.m defines the part of the HLDS concerned with the
+structure of goals, including the annotations on goals.
 <li>
-    hlds_clauses.m defines the part of the HLDS concerning clauses.
+hlds_clauses.m defines the part of the HLDS concerning clauses.
 <li>
-    hlds_rtti.m defines the part of the HLDS concerning RTTI.
+hlds_rtti.m defines the part of the HLDS concerning RTTI.
 <li>
-    const_struct.m defines the part of the HLDS concerning constant structures.
+const_struct.m defines the part of the HLDS concerning constant structures.
 <li>
-    hlds_pred.m defines the part of the HLDS concerning
-    predicates and procedures;
+hlds_pred.m defines the part of the HLDS concerning
+predicates and procedures;
 <li>
-    pred_table.m defines the tables that index predicates and functions
-    on various combinations of (qualified and unqualified) names and arity.
+pred_table.m defines the tables that index predicates and functions
+on various combinations of (qualified and unqualified) names and arity.
 <li>
-    hlds_promise.m defines the parts of the HLDS concerned with
-    recording promises made by the programmer
-    about the properties of predicates and functions.
+hlds_promise.m defines the parts of the HLDS concerned with
+recording promises made by the programmer
+about the properties of predicates and functions.
 <li>
-    hlds_module.m defines the top-level parts of the HLDS,
-    including the type module_info.
+hlds_module.m defines the top-level parts of the HLDS,
+including the type module_info.
 <li>
-    status.m defines the type that record the import/export status
-    of entities such as types, insts, modes, and predicates.
+status.m defines the type that record the import/export status
+of entities such as types, insts, modes, and predicates.
 <li>
-    vartypes.m defines the data structure that maps variables to their types.
-</ol>
+vartypes.m defines the data structure that maps variables to their types.
+</ul>
 
 Some modules implement a pass that decides
 the representation of every type used by the module being compiled:
 
-<dl>
-
-<dt> du_type_layout.m
-<dd>
-    Decides how values of discriminated union types are laid out in memory.
-    The two main issues it handles are floats (which can be a problem on
-    platforms where they don't fit in words) and the packing of data structures
-    as densely as possible.
-
-    Once the representations of all types are known, this module invokes
-    add_special_pred.m to declare, and if need be, define the unify and compare
-    predicate of each type.
-
-<dt> add_special_pred.m
-<dd>
-    Adds unify, compare, and (if the compare predicate needs it)
-    index predicates to the HLDS.
-
-</dl>
+<ul>
+<li>
+du_type_layout.m decides
+how values of discriminated union types are laid out in memory.
+The two main issues it handles are floats
+(which can be a problem on platforms where they don't fit in words)
+and the packing of data structures as densely as possible.
+<p>
+Once the representations of all types are known,
+this module invokes add_special_pred.m to declare,
+and if need be, define the unify and compare predicate of each type.
+<li>
+add_special_pred.m adds unify, compare,
+and (if the compare predicate needs it) index predicates to the HLDS.
+</ul>
 
 <p>
 The module hlds_out.m contains predicates to dump the HLDS to a file.
@@ -791,7 +698,6 @@ about each part of the HLDS.
 The module hlds_desc.m, by contrast contains predicates
 that describe some parts of the HLDS (e.g. goals) with brief strings,
 suitable for use in progress messages used for debugging.
-
 <p>
 The module hlds_defns.m contains code to print the set of definitions
 in the HLDS to a file.
@@ -803,768 +709,634 @@ in the original module exactly once.
 (The other sorts of definitions, e.g. typeclass definitions,
 are typically so few in number that
 one can keep track of them in one's head.)
-
 <p>
 The hlds.m package also contains some utility modules that contain
 various library routines which are used by other modules that manipulate
 the HLDS:
 
-<dl>
-<dt> mark_tail_calls.m
-<dd>
-    Marks directly tail recursive calls as such,
-    and marks procedures containing directly tail recursive calls as such.
+<ul>
+<li>
+mark_tail_calls.m marks directly tail recursive calls as such,
+and marks procedures containing directly tail recursive calls as such.
+<li>
+hlds_code_util.m contains utility routines for use during HLDS generation.
+<li>
+goal_form.m contains predicates for determining
+whether HLDS goals match various criteria.
+<li>
+goal_util.m contains various miscellaneous utility predicates
+for manipulating HLDS goals, such as attaching features to goals.
+<li>
+make_goal.m contains predicates for creating new HLDS goals.
+<li>
+passes_aux.m contains code to write progress messages,
+and higher-order code to traverse
+all the predicates defined in the current module
+and do something with each one.
+<li>
+hlds_error_util.m contains utility routines
+for printing nicely formatted error messages
+for symptoms involving HLDS data structures.
+For symptoms involving only structures defined in prog_data,
+use parse_tree.error_util.
+<li>
+error_msg_inst.m contains utility routines
+for printing insts and modes in nicely formatted error messages.
+<li>
+code_model.m defines a type for classifying determinisms
+in ways useful to the various backends, and utility predicates on that type.
+<li>
+arg_info.m contains Utility routines
+that the various backends use to analyze procedures' argument lists
+and decide on parameter passing conventions.
+<li>
+hhf.m contains facilities for
+translating the bodies of predicates to hyperhomogeneous form,
+for constraint based mode analysis.
+<li>
+inst_graph.m defines the inst_graph data type,
+which describes the structures of insts for constraint based mode analysis,
+as well as predicates operating on that type.
+<li>
+from_ground_term_util.m contains types and predicates
+for operating on from_ground_term scopes and their contents.
+</ul>
 
-<dt> hlds_code_util.m
-<dd>
-    Utility routines for use during HLDS generation.
-
-<dt> goal_form.m
-<dd>
-    Contains predicates for determining whether HLDS goals
-    match various criteria.
-
-<dt> goal_util.m
-<dd>
-    Contains various miscellaneous utility predicates for manipulating
-    HLDS goals, such as attaching features to goals.
-
-<dt> make_goal.m
-<dd>
-    Contains predicates for creating new HLDS goals.
-
-<dt> passes_aux.m
-<dd>
-    Contains code to write progress messages, and higher-order code
-    to traverse all the predicates defined in the current module
-    and do something with each one.
-
-<dt> hlds_error_util.m:
-<dd>
-    Utility routines for printing nicely formatted error messages
-    for symptoms involving HLDS data structures.
-    For symptoms involving only structures defined in prog_data,
-    use parse_tree.error_util.
-
-<dt> error_msg_inst.m:
-<dd>
-    Utility routines for printing insts and modes
-    in nicely formatted error messages.
-
-<dt> code_model.m:
-<dd>
-    Defines a type for classifying determinisms in ways useful
-    to the various backends, and utility predicates on that type.
-
-<dt> arg_info.m:
-<dd>
-    Utility routines that the various backends use to analyze
-    procedures' argument lists and decide on parameter passing conventions.
-
-<dt> hhf.m:
-<dd>
-    Facilities for translating the bodies of predicates
-    to hyperhomogeneous form, for constraint based mode analysis.
-
-<dt> inst_graph.m:
-<dd>
-    Defines the inst_graph data type, which describes the structures of insts
-    for constraint based mode analysis, as well as predicates
-    operating on that type.
-
-<dt> from_ground_term_util.m
-<dd>
-    Contains types and predicates for operating on
-    from_ground_term scopes and their contents.
-</dl>
-
-<h4> 2. Semantic analysis and error checking </h4>
+<h3>2. Semantic analysis and error checking</h3>
 
 <p>
 This is the check_hlds.m package,
 with support from the mode_robdd.m package for constraint based mode analysis.
-
 <p>
-
 Any pass which can report errors or warnings must be part of this stage,
-so that the compiler does the right thing for options such as
-`--halt-at-warn' (which turns warnings into errors) and
-`--error-check-only' (which makes the compiler only compile up to this stage).
+so that the compiler does the right thing
+for options such as `--halt-at-warn' (which turns warnings into errors)
+and `--error-check-only'
+(which makes the compiler only compile up to this stage).
 
-<dl>
-
-<dt> implicit quantification
-<dd>
-    quantification.m
-    handles implicit quantification and computes
-    the set of non-local variables for each sub-goal.
-    It also expands away bi-implication (unlike the expansion
-    of implication and universal quantification, this expansion
-    cannot be done until after quantification).
-    This module is part of the hlds.m package
-    rather than the check_hlds.m package,
-    partly because it is rerun by several passes after semantic analysis
-    to update nonlocal sets after changes to procedure bodies.
-    The first invocation of quantification may be preceded
-    by a pre-quantification pass (in pre_quantification.m),
-    which can insert implicit existential quantifiers into trace goals
-    to implement a scope rule about such goals
-    that people tend to intuitively expect.
-    <p>
-
-<dt> checking typeclass instances (check_typeclass.m)
-<dd>
-    check_typeclass.m both checks that instance declarations satisfy all
-    the appropriate superclass constraints
-    (including functional dependencies)
-    and performs a source-to-source transformation on the
-    methods from the instance declarations.
-    The transformed code is checked for type, mode, uniqueness, purity
-    and determinism correctness by the later passes, which has the effect
-    of checking the correctness of the instance methods themselves
-    (ie. that the instance methods match those expected by the typeclass
-    declaration).
-    During the transformation,
-    pred_ids and proc_ids are assigned to the methods for each instance.
-
-    <p>
-    While checking that the superclasses of a class are satisfied
-    by the instance declaration, a set of constraint_proofs are built up
-    for the superclass constraints. These are used by polymorphism.m when
-    generating the base_typeclass_info for the instance.
-
-    <p>
-    This module also checks that there are no ambiguous pred/func
-    declarations (that is, it checks that all type variables in constraints
-    are determined by type variables in arguments),
-    checks that there are no cycles in the typeclass hierarchy,
-    and checks that each abstract instance has a corresponding
-    typeclass instance.
-    <p>
-
-<dt> check user defined insts for consistency with types
-<dd>
-    inst_check.m checks that all user defined bound insts are consistent
-    with at least one type in scope
-    (i.e. that the set of function symbols
-    in the bound list for the inst are a subset of the allowed function
-    symbols for at least one type in scope).
-
-    <p>
-    The compiler generates a warning if it finds any user defined bound insts
-    that are not consistent with any types in scope.
-    <p>
-
-<dt> pretest user defined insts
-<dd>
-    inst_user.m performs on user defined bound insts
-    the tests whose results the compiler needs,
-    and records the results in the insts themselves.
-    This is faster than having the compiler perform those tests repeatedly
-    each time it needs the results of those tests.
-
-<dt> improving the names of head variables
-<dd>
-    headvar_names.m tries to replace names of the form HeadVar__n
-    with actual names given by the programmer.
-    <p>
-    For efficiency, this phase not a standalone pass,
-    but is instead invoked by pre_typecheck.m.
-
-<dt> type checking
-<dd>
+<ul>
+<li>
+quantification.m handles implicit quantification
+and computes the set of non-local variables for each sub-goal.
+It also expands away bi-implications
+(unlike the expansion of implication and universal quantification,
+this expansion cannot be done until after quantification).
+This module is part of the hlds.m package
+rather than the check_hlds.m package,
+partly because it is rerun by several passes after semantic analysis
+to update nonlocal sets after changes to procedure bodies.
+The first invocation of quantification may be preceded
+by a pre-quantification pass (in pre_quantification.m),
+which can insert implicit existential quantifiers into trace goals
+to implement a scope rule about such goals
+that people tend to intuitively expect.
+<li>
+check_typeclass.m both
+checks that instance declarations satisfy
+all the appropriate superclass constraints
+(including functional dependencies)
+and performs a source-to-source transformation
+on the methods from the instance declarations.
+The transformed code is checked for
+type, mode, uniqueness, purity and determinism correctness by the later passes,
+which has the effect of checking the correctness
+of the instance methods themselves
+(ie. that the instance methods
+match those expected by the typeclass declaration).
+During the transformation,
+pred_ids and proc_ids are assigned to the methods for each instance.
+<p>
+While checking that
+the superclasses of a class are satisfied by the instance declaration,
+a set of constraint_proofs are built up for the superclass constraints.
+These are used by polymorphism.m
+when generating the base_typeclass_info for the instance.
+<p>
+This module also checks that there are no ambiguous pred/func declarations
+(that is, it checks that all type variables in constraints
+are determined by type variables in arguments),
+checks that there are no cycles in the typeclass hierarchy,
+and checks that each abstract instance has a corresponding typeclass instance.
+<li>
+inst_check.m checks that all user defined bound insts are consistent
+with at least one type in scope
+(i.e. that the set of function symbols in the bound list for the inst
+are a subset of the allowed function symbols for at least one type in scope).
+<p>
+The compiler generates a warning if it finds any user defined bound insts
+that are not consistent with any types in scope.
+<li>
+inst_user.m performs on user defined bound insts
+the tests whose results the compiler needs,
+and records the results in the insts themselves.
+This is faster than having the compiler perform those tests repeatedly
+each time it needs the results of those tests.
+<li>
+headvar_names.m tries to replace names of the form HeadVar__n
+with actual names given by the programmer.
+<p>
+For efficiency, this phase not a standalone pass,
+but is instead invoked by pre_typecheck.m.
+<li>
+The type checker consists of several modules.
     <ul>
     <li>
-        pre_typecheck.m does some chores
-        that need to be done before typechecking
-        and which cannot be done earlier.
+    pre_typecheck.m does some chores
+    that need to be done before typechecking
+    and which cannot be done earlier.
     <li>
-        typecheck.m handles type checking, overloading resolution &amp;
-        module name resolution, and almost fully qualifies all predicate
-        and functor names. It sets the map(var, type) field in the
-        pred_info. However, typecheck.m doesn't figure out the pred_id
-        for function calls or calls to overloaded predicates. That can't
-        be done in a single pass of typechecking, and so it is done
-        later on (in purity.m for overloaded predicate calls, and in
-        resolve_unify_functor.m for function calls)
+    typecheck.m handles type checking, overloading resolution and
+    module name resolution,
+    and almost fully qualifies all predicate and functor names.
+    It sets the map(var, type) field in the pred_info.
+    However, typecheck.m doesn't figure out the pred_id for function calls
+    or calls to overloaded predicates.
+    That can't be done in a single pass of typechecking,
+    and so it is done later on
+    (in purity.m for overloaded predicate calls,
+    and in resolve_unify_functor.m for function calls).
     <li>
-        type_assign.m and typecheck_info.m define
-        the main data structures used by typechecking.
+    type_assign.m and typecheck_info.m define
+    the main data structures used by typechecking.
     <li>
-        typecheck_errors.m handles outputting of type errors.
+    typecheck_errors.m handles outputting of type errors.
     <li>
-        typeclasses.m checks typeclass constraints, and
-        any redundant constraints that are eliminated are recorded (as
-        constraint_proofs) in the pred_info for future reference.
+    typeclasses.m checks typeclass constraints,
+    and any redundant constraints that are eliminated are recorded
+    (as constraint_proofs) in the pred_info for future reference.
     <li>
-        type_util.m contains utility predicates dealing with types
-        that are used in a variety of different places within the compiler
+    type_util.m contains utility predicates dealing with types
+    that are used in a variety of different places within the compiler.
     <li>
-        post_typecheck.m may also be considered to logically be a part
-        of typechecking, although it also prepares for mode analysis.
-        It contains tests for errors such as unbound type and inst variables,
-        unsatisfied type class constraints, and indistinguishable predicate
-        or function modes. These tests can't be done in the main type
-        checking pass, because they depend on type analysis being
-        already complete.
+    post_typecheck.m may also be considered
+    to logically be a part of typechecking,
+    although it also prepares for mode analysis.
+    It contains tests for errors such as
+    unbound type and inst variables,
+    unsatisfied type class constraints,
+    and indistinguishable predicate or function modes.
+    These tests can't be done in the main type checking pass,
+    because they depend on type analysis being already complete.
     <li>
-        check_for_missing_type_defns.m checks for locally defined types
-        that have an abstract definition but no corresponding
-        concrete definition.
+    check_for_missing_type_defns.m checks for locally defined types
+    that have an abstract definition but no corresponding concrete definition.
     </ul>
-    <p>
-    old_type_constraints.m contains an old (2008-2009) attempt
-    by a summer student at a constraint based type analysis algorithm,
-    which covers only a subset of Mercury.
-    <p>
-    type_constraints.m contains a (start on)
-    another constraint based type analysis algorithm,
-    which is intended to cover all of Mercury.
-
-<dt> assertions
-<dd>
-    assertion.m (XXX in the hlds.m package)
-    is the abstract interface to the assertion table.
-    Currently all the compiler does is type check the assertions and
-    record for each predicate that is used in an assertion, which
-    assertion it is used in. The set up of the assertion table occurs
-    in post_typecheck.finish_assertion.
-    <p>
-
-<dt> purity analysis
-<dd>
-    purity.m is responsible for purity checking, as well as
-    defining the <CODE>purity</CODE> type and a few public
-    operations on it. It also does some tasks that are logically
-    part of typechecking but which cannot be done until after
-    the main part typechecking is complete.
-    (This is separate from the work done by post_typecheck.m.)
-    purity.m also does two other miscellaneous tasks.
-    The first is the elimination of double negations;
-    that needs to be done after quantification but before mode analysis.
-    The other is converting calls to `private_builtin.unsafe_type_cast/2'
-    into `generic_call(unsafe_cast, ...)' goals.
-    <p>
-
-<dt> promises
-<dd>
-    check_promise.m records each promise in the appropriate table
-    (the assertion table or the promise_ex table), and removes them
-    from further processing as predicates.
-
-<dt> implementation-defined literals
-<dd>
-    implementation_defined_literals.m replaces unifications
-    of the form <CODE>Var = $name</CODE> by unifications to string
-    or integer constants.
-    <p>
-
-<dt> polymorphism transformation
-<dd>
-    polymorphism.m handles introduction of type_info arguments for
-    polymorphic predicates and introduction of typeclass_info arguments
-    for typeclass-constrained predicates.
-    This phase needs to come before mode analysis so that mode analysis
-    can properly reorder code involving existential types.
-    (It also needs to come before simplification so that simplify.m's
-    optimization of goals with no output variables doesn't do the
-    wrong thing for goals whose only output is the type_info for
-    an existentially quantified type parameter.)
-    <p>
-    polymorphism.m subcontracts parts of its job to introduce_exists_casts.m,
-    which sometimes is also invoked from modes.m.
-    <p>
-    This phase also
-    converts higher-order predicate terms into lambda expressions,
-    and copies the clauses to the proc_infos in preparation for
-    mode analysis.
-    <p>
-    The polymorphism.m module also exports some utility routines that
-    are used by other modules. These include some routines for generating
-    code to create type_infos, which are used by simplify.m and magic.m
-    when those modules introduce new calls to polymorphic procedures.
-    <p>
-    When it has finished, polymorphism.m calls clause_to_proc.m to
-    make duplicate copies of the clauses for each different mode of
-    a predicate; all later stages work on procedures, not predicates.
-    <p>
-
-<dt> mode analysis
-<dd>
+<li>
+old_type_constraints.m contains an old (2008-2009) attempt
+by a summer student at a constraint based type analysis algorithm,
+which covers only a subset of Mercury.
+<li>
+type_constraints.m contains a (start on)
+another constraint based type analysis algorithm,
+which is intended to cover all of Mercury.
+<li>
+assertion.m (in the hlds.m package)
+is the abstract interface to the assertion table.
+Currently all the compiler does is type check the assertions and
+record for each predicate that is used in an assertion,
+which assertion it is used in.
+The set up of the assertion table occurs in post_typecheck.finish_assertion.
+<li>
+purity.m is responsible for purity checking,
+as well as defining the <code>purity</code> type
+and a few public operations on it.
+It also does some tasks that are logically part of typechecking
+but which cannot be done until after the main part typechecking is complete.
+(This is separate from the work done by post_typecheck.m.)
+purity.m also does two other miscellaneous tasks.
+The first is the elimination of double negations;
+that needs to be done after quantification but before mode analysis.
+The other is converting calls to `private_builtin.unsafe_type_cast/2'
+into `generic_call(unsafe_cast, ...)' goals.
+<li>
+check_promise.m records each promise in the appropriate table
+(the assertion table or the promise_ex table),
+and removes them from further processing as predicates.
+<li>
+implementation_defined_literals.m replaces unifications
+of the form <code>Var = $name</code>
+by unifications to string or integer constants.
+<li>
+polymorphism.m handles
+the introduction of type_info arguments for polymorphic predicates
+and introduction of typeclass_info arguments
+for typeclass-constrained predicates.
+This phase needs to come before mode analysis
+so that mode analysis can properly reorder code involving existential types.
+(It also needs to come before simplification so that
+simplify.m's optimization of goals with no output variables
+doesn't do the wrong thing
+for goals whose only output is the type_info
+for an existentially quantified type parameter.)
+<p>
+polymorphism.m subcontracts parts of its job to introduce_exists_casts.m,
+which sometimes is also invoked from modes.m.
+<p>
+This phase also converts higher-order predicate terms into lambda expressions,
+and copies the clauses to the proc_infos in preparation for mode analysis.
+<p>
+The polymorphism.m module also exports some utility routines that
+are used by other modules. These include some routines for generating
+code to create type_infos, which are used by simplify.m and magic.m
+when those modules introduce new calls to polymorphic procedures.
+<p>
+When it has done most of its work,
+polymorphism.m calls clause_to_proc.m
+to make duplicate copies of the clauses for each different mode of a predicate;
+all later stages work on procedures, not predicates.
+(Some part of the work of polymorphism.m
+is done after copying clauses to procedures,
+though it is not clear whether this is by design or by accident.)
+<li>
+The mode analyser consist of several analysis modules
+and a whole bunch of service modules
+<p>
+    These are the analysis modules.
     <ul>
     <li>
-        modes.m is the top analysis module.
-        It checks that procedures are mode-correct.
+    modes.m is the top module of the mode analyser.
+    It checks that procedures are mode-correct.
     <li>
-        modecheck_goal.m does most of the work.
-        It handles the tasks that are common to all kinds of goals,
-        including annotating each goal with a delta-instmap
-        that specifies the changes in instantiatedness of each
-        variable over that goal, and does the analysis of several
-        kinds of goals.
+    modecheck_goal.m does most of the work.
+    It handles the tasks that are common to all kinds of goals,
+    including annotating each goal with a delta-instmap that specifies
+    the changes in instantiatedness of each variable over that goal,
+    and does the analysis of several kinds of goals.
     <li>
-        modecheck_conj.m is the sub-module which analyses conjunctions
-        It reorders code as necessary.
+    modecheck_conj.m is the submodule which analyses conjunctions
+    It reorders code as necessary.
     <li>
-        modecheck_unify.m is the sub-module which analyses
-        unification goals.
-        It also module qualifies data constructors.
+    modecheck_unify.m is the submodule which analyses unifications.
+    It also module qualifies data constructors.
     <li>
-        modecheck_call.m is the sub-module which analyses calls.
-
-        <p>
-
-        The following sub-modules are used:
-        <dl>
-
-        <dt> mode_info.m
-        <dd>
-            The main data structure for mode analysis.
-
-        <dt> delay_info.m
-        <dd>
-            A sub-component of the mode_info data structure used for
-            storing the information for scheduling: which goals are currently
-            delayed, what variables they are delayed on, etc.
-
-        <dt> modecheck_util.m
-        <dd>
-            Utility predicates useful during mode analysis.
-
-        <dt> instmap.m (XXX in the hlds.m package)
-        <dd>
-            Defines the instmap and instmap_delta ADTs
-            which store information on what instantiations
-            a set of variables may be bound to.
-
-        <dt> inst_match.m
-        <dd>
-            This contains the code for examining insts and
-            checking whether they match.
-
-        <dt> inst_util.m
-        <dd>
-            This contains the code for creating new insts from
-            old ones: unifying them, merging them and so on.
-
-        <dt> mode_comparison.m
-        <dd>
-            This module compares different modes of a predicate.
-
-        <dt> mode_errors.m
-        <dd>
-            This module contains all the code to
-            generate error messages for mode errors.
-
-        <dt> proc_requests.m
-        <dd>
-            This module contains the queue of procedures that mode analysis has
-            discovered a need for, but which don't yet exist. This may be
-            a mode other than (in,in) for the automatically generated
-            unify predicate for a type,
-            a mode other than (out,in,in) for the automatically generated
-            compare predicate for a type,
-            or a new mode for a user-defined predicate or function
-            whose set of modes is being inferred.
-        </dl>
-    <li>
-        mode_util.m contains miscellaneous useful predicates dealing
-        with modes (many of these are used by lots of later stages
-        of the compiler)
-    <li>
-        mode_debug.m contains utility code for tracing the actions
-        of the mode checker.
-    <li>
-        delay_partial_inst.m adds a post-processing pass on mode-correct
-        procedures to avoid creating intermediate, partially instantiated
-        data structures.
+    modecheck_call.m is the submodule which analyses calls.
     </ul>
     <p>
-
-<dt> constraint based mode analysis
-<dd>
-    This was an experimental alternative to the usual mode analysis algorithm.
-    It worked by building a system of boolean constraints about where
-    (parts of) variables can be bound, and then solving those constraints
+    These are the service modules.
+    <p>
+    <ul>
+    <li>
+    mode_info.m
+    The main data structure for mode analysis.
+    <li>
+    delay_info.m defines the most important component of mode_info,
+    the data structure used for storing information for scheduling:
+    which goals are currently delayed, what variables they are delayed on, etc.
+    <li>
+    modecheck_util.m contains utility predicates useful during mode analysis.
+    <li>
+    instmap.m (XXX in the hlds.m package) defines
+    the instmap and instmap_delta ADTs,
+    which store information on what instantiations
+    a set of variables may be bound to.
+    <li>
+    inst_match.m contains the code for examining insts
+    and checking whether they match.
+    <li>
+    inst_util.m contains the code for creating new insts from old ones:
+    unifying them, merging them and so on.
+    <li>
+    mode_comparison.m module compares different modes of a predicate.
+    <li>
+    mode_errors.m contains all the code
+    to generate error messages for mode errors.
+    <li>
+    proc_requests.m contains the queue of procedures
+    that mode analysis has discovered a need for, but which don't yet exist.
+    This may be a mode other than (in,in)
+    for the automatically generated unify predicate for a type,
+    a mode other than (out,in,in)
+    for the automatically generated compare predicate for a type,
+    or a new mode for a user-defined predicate or function
+    whose set of modes is being inferred.
+    <li>
+    mode_util.m contains miscellaneous useful predicates dealing with modes.
+    Many of these are used by lots of later stages of the compiler.
+    <li>
+    mode_debug.m contains debugging code
+    for tracing the actions of the mode checker.
+    <li>
+    delay_partial_inst.m adds a post-processing pass on mode-correct procedures
+    to avoid creating intermediate, partially instantiated data structures.
+    </ul>
+<li>
+The constraint based mode analyser was
+an experimental alternative to the usual mode analysis algorithm.
+It worked by building a system of boolean constraints
+about where (parts of) variables can be bound,
+and then solving those constraints
+using reduced ordered binary decision diagrams (robdds).
+It has been abandoned in favor of the propagation based constraint solver,
+for two main reasons.
+First, its performance was far too dependent
+on finding a good ordering of variables for the robdds,
+and we found no heuristics that could ensure such an ordering.
+And second, even with the best orderings,
+the performance left a lot to be desired.
+    <ul>
+    <li>
+    mode_constraints.m finds the constraints
+    and adds them to the constraint store.
+    <li>
+    mode_ordering.m uses solutions of the constraint system
+    to find an ordering for the goals in conjunctions.
+    <li>
+    mode_constraint_robdd.m is the interface
+    to the modules that perform constraint solving
     using reduced ordered binary decision diagrams (robdds).
-    It has been abandoned in favor of the propagation based constraint
-    solver, for two main reasons. First, its performance was far too dependent
-    on finding a good ordering of variables for the robdds, and we found
-    no heuristics that could ensure such an ordering. And second, even with
-    the best orderings, the performance left a lot to be desired.
-
+    <li>
+    We had several implementations of solvers using robdds.
+    Each solver was in a module named mode_robdd.X.m,
+    and they all belonged to the top-level mode_robdd.m.
+    We have kept only one of these modules, mode_robdd.tfeirn.m.
+    </ul>
+<li>
+The new propagation based constraint based mode analyser
+is the proposed replacement for the constraint based mode analysis algorithm.
+It performs conjunct reordering for a subset of Mercury programs
+(it aborts if it encounters higher order code or a parallel conjunction,
+or is asked to infer modes).
     <ul>
     <li>
-        mode_constraints.m is the module that finds the constraints
-        and adds them to the constraint store.
+    prop_mode_constraints.m is the interface to the old mode_constraints.m.
+    It builds constraints for an SCC.
     <li>
-        mode_ordering.m is the module that uses solutions of the
-        constraint system to find an ordering for the goals in conjunctions.
+    build_mode_constraints.m is the module that traverses a predicate
+    to build constraints for it.
     <li>
-        mode_constraint_robdd.m is the interface to the modules
-        that perform constraint solving using reduced ordered binary decision
-        diagrams (robdds).
+    abstract_mode_constraints.m describes data structures for the
+    constraints themselves.
     <li>
-        We have several implementations of solvers using robdds.
-        Each solver is in a module named mode_robdd.X.m, and they all belong
-        to the top-level mode_robdd.m.
+    ordering_mode_constraints.m solves constraints to determine
+    the producing and consuming goals for program variables, and
+    performs conjunct reordering based on the result.
+    <li>
+    mcsolver.m contains the constraint solver used by
+    ordering_mode_constraints.m.
+    <li>
+    goal_mode.m is intended to help implement the transition
+    from the original mode analysis algorithm implemented by modes.m
+    and related modules to the propagation based constraint solver.
+    It is intended to represent an interface between mode analysis
+    on the one hand, and the rest of the compiler on the other hand,
+    that is sufficiently abstract that it could be implemented on top of
+    both mode analysis systems. Initially, it will be implemented
+    on top of the old mode analysis system. Once the rest of the compiler
+    is transitioned to use this interface, we will transition its
+    implementation to the propagation based constraint solver.
     </ul>
     <p>
-
-<dt> constraint based mode analysis propagation solver
-<dd>
-    This is a new alternative for the constraint based mode analysis algorithm.
-    It will perform conjunct reordering for mercury programs of a limited
-    syntax (it calls error if it encounters higher order code or a parallel
-    conjunction, or is asked to infer modes).
-
+<li>
+The indexing and determinism analysis system also consists of several modules.
     <ul>
     <li>
-        prop_mode_constraints.m is the interface to the old mode_constraints.m.
-        It builds constraints for an SCC.
+    switch_detection.m transforms into switches
+    those disjunctions in which several disjuncts
+    test the same variable against different function symbols.
     <li>
-        build_mode_constraints.m is the module that traverses a predicate
-        to build constraints for it.
+    cse_detection.m looks for disjunctions in which
+    each disjunct tests the same variable against the same function symbols,
+    and hoists any such unifications out of the disjunction.
+    If cse_detection.m modifies the code,
+    it will re-run mode analysis and switch detection.
     <li>
-        abstract_mode_constraints.m describes data structures for the
-        constraints themselves.
+    det_analysis.m annotates each goal with its determinism;
+    it inserts cuts in the form of "some" goals
+    wherever the determinisms and delta instantiations of the goals involved
+    make it necessary.
+    Any errors found during determinism analysis are reported by det_report.m.
     <li>
-        ordering_mode_constraints.m solves constraints to determine
-        the producing and consuming goals for program variables, and
-        performs conjunct reordering based on the result.
-    <li>
-        mcsolver.m contains the constraint solver used by
-        ordering_mode_constraints.m.
-    <li>
-        goal_mode.m is intended to help implement the transition
-        from the original mode analysis algorithm implemented by modes.m
-        and related modules to the propagation based constraint solver.
-        It is intended to represent an interface between mode analysis
-        on the one hand, and the rest of the compiler on the other hand,
-        that is sufficiently abstract that it could be implemented on top of
-        both mode analysis systems. Initially, it will be implemented
-        on top of the old mode analysis system. Once the rest of the compiler
-        is transitioned to use this interface, we will transition its
-        implementation to the propagation based constraint solver.
+    det_util.m contains utility predicates used in several modules.
     </ul>
-    <p>
-
-<dt> indexing and determinism analysis
-<dd>
+<li>
+unique_modes.m checks that non-backtrackable unique modes
+are not used in a context which might require backtracking.
+Note that what unique_modes.m does is quite similar to what modes.m does,
+and unique_modes calls lots of predicates defined in modes.m to do it.
+<li>
+The module stratify.m implements the `--warn-non-stratification' warning,
+which is an optional warning that checks for loops through negation.
+It was mainly used by the now-deleted Aditi backend.
+<li>
+oisu_check.m checks whether
+the predicates mentioned in any pragmas about order independent state update
+obey the requirements placed on them by those pragmas.
+<li>
+try_expand.m expands `try' goals
+into calls to predicates in the `exception' module instead.
+<li>
+Simplification finds and exploits opportunities
+for simplifying the internal form of the program,
+both to optimize the code
+and to massage the code into a form the code generator will accept.
+It also warns the programmer about any constructs that are so simple
+that they should not have been included in the program in the first place.
+(The fact that it can report warnings
+is why this pass needs to be part of the semantic analysis pass.)
+<p>
+simplify.m is a package of submodules.
     <ul>
     <li>
-        switch_detection.m transforms into switches those disjunctions
-        in which several disjuncts test the same variable against different
-        function symbols.
+    simplify_goal.m handles simplifications that involve
+    the interaction of a goal with its environment,
+    and then invokes one of the goal-type-specific submodules
+    for further processing.
     <li>
-        cse_detection.m looks for disjunctions in which each disjunct tests
-        the same variable against the same function symbols, and hoists any
-        such unifications out of the disjunction.
-        If cse_detection.m modifies the code,
-        it will re-run mode analysis and switch detection.
+    simplify_goal_call.m handles calls (plain, generic and foreign code).
+    Using const_prop.m in the transform_hlds.m package,
+    it attempts to partially evaluate calls to builtin procedures
+    if the inputs are all constants.
     <li>
-        det_analysis.m annotates each goal with its determinism;
-        it inserts cuts in the form of "some" goals wherever the determinisms
-        and delta instantiations of the goals involved make it necessary.
-        Any errors found during determinism analysis are reported by
-        det_report.m.
+    simplify_goal_unify.m handles unifications.
+    Amongst other things,
+    it converts complicated unifications into procedure calls.
     <li>
-        det_util.m contains utility predicates used in several modules.
+    simplify_goal_conj.m handles conjunctions.
+    It inlines nested conjunctions, eliminates unreachable code,
+    and eliminates assign unification conjuncts
+    (replacing the assigned-to variable with the assigned-from variable
+    in the rest of the conjunction) if this is possible.
+    <li>
+    simplify_goal_disj.m handles disjunctions (and atomic goals).
+    It eliminates unnecessary disjunction wrappers,
+    and transforms semidet disjunctions into if-then-elses if this possible.
+    <li>
+    simplify_goal_ite.m handles if-then-elses (and negations).
+    It warns about if-then-elses in which
+    either the then-part or the else-part is unreachable.
+    It also warns about if-then-elses that should be replaced by switches.
+    <li>
+    simplify_goal_switch.m handles switches.
+    It eliminates switch arms that cannot fail, and switches with no arms left.
+    <li>
+    simplify_goal_scope.m handles scope goals.
+    It eliminates unnecessary nested scopes,
+    replaces from_ground_term_construct scopes
+    with a single assignment unifications referencing
+    a constant structure in a constant structure database
+    (to eliminate the need for any later passes to traverse the scope),
+    and evaluates compile-time conditions on trace goals,
+    eliminating either the compile-time condition wrapper on the trace goal
+    (if the condition is true)
+    or the trace goal scope altogether
+    (if the condition is false).
+    <li>
+    common.m looks for (a) construction unifications
+    that construct a term that is the same as one that already exists,
+    or (b) repeated calls to a predicate with the same inputs.
+    It replaces both with assignment unifications.
+    It is invoked by the goal-type-specific submodules above.
+    <li>
+    format_call.m looks for calls to predicates
+    such as string.format and io.format.
+    It reports calls in which the types of the values to be printed
+    disagree with the format string,
+    and/or calls in which the agreement cannot be established.
+    It also attempts to partially evaluate the correct calls,
+    essentially interpreting the format string at compile time, not runtime.
+    <li>
+    simplify_proc.m handles the top-level processing of procedures
+    and their bodies.
+    <li>
+    simplify_info.m defines the data structure
+    that is threaded through the code of the submodules above,
+    containing the information those submodules need.
+    <li>
+    simplify_tasks.m defines the type that identifies the tasks
+    that the simplification package may be asked to do.
+    Simplification can be invoked at several different points
+    in the compilation process;
+    different invocations need to perform different subsets
+    of the tasks that simplification is capable of.
     </ul>
-    <p>
+<li>
+unused_imports.m determines which imports of the module
+are not required for the module to compile.
+It also identifies which imports of a module
+can be moved from the interface to the implementation.
+<li>
+style_checks.m generates warnings
+if a predicate or function declaration
+is not followed immediately by all the mode declarations
+of that predicate or function,
+and for module bodies in which either
+the exported or nonexported predicates and functions
+have one order for their declarations
+and a different order for their definitions.
+<li>
+xml_documentation.m outputs a XML representation
+of all the declarations in the module.
+This XML representation is designed to be transformed via XSL
+into more human readable documentation.
+</ul>
 
-<dt> checking of unique modes (unique_modes.m)
-<dd>
-    unique_modes.m checks that non-backtrackable unique modes were
-    not used in a context which might require backtracking.
-    Note that what unique_modes.m does is quite similar to
-    what modes.m does, and unique_modes calls lots of predicates
-    defined in modes.m to do it.
-    <p>
-
-<dt> stratification checking
-<dd>
-    The module stratify.m implements the `--warn-non-stratification' warning,
-    which is an optional warning that checks for loops through negation.
-    <p>
-
-<dt> oisu pragma checking
-<dd>
-    Check whether the predicates mentioned in any pragmas about
-    order independent state update obey the requirements placed on them
-    by those pragmas.
-    <p>
-
-<dt> try goal expansion
-<dd>
-    try_expand.m expands `try' goals into calls to predicates in the
-    `exception' module instead.
-    <p>
-
-<dt> simplification (simplify.m and its submodules)
-<dd>
-    Simplification finds and exploits opportunities for simplifying the
-    internal form of the program, both to optimize the code and to
-    massage the code into a form the code generator will accept.
-    It also warns the programmer about any constructs that are so simple
-    that they should not have been included in the program in the first
-    place. (That's why this pass needs to be part of semantic analysis:
-    because it can report warnings.)
-
-    <p>
-    simplify.m is a package of submodules.
-
-    <ol>
-    <li>
-        simplify_goal.m handles simplifications that involve
-        the interaction of a goal with its environment,
-        and then invokes one of the goal-type-specific submodules
-        for further processing.
-    <li>
-        simplify_goal_call.m handles calls (plain, generic and foreign code).
-        Using const_prop.m in the transform_hlds.m package,
-        it attempts to partially evaluate calls to builtin procedures
-        if the inputs are all constants.
-    <li>
-        simplify_goal_unify.m handles unifications.
-        Amongst other things, it converts complicated unifications
-        into procedure calls.
-    <li>
-        simplify_goal_conj.m handles conjunctions.
-        It inlines nested conjunctions, eliminates unreachable code,
-        and eliminates assign unification conjuncts
-        (replacing the assigned-to variable with the assigned-from variable
-        in the rest of the conjunction) if this is possible.
-    <li>
-        simplify_goal_disj.m handles disjunctions (and atomic goals).
-        It eliminates unnecessary disjunction wrappers,
-        and transforms semidet disjunctions into if-then-elses
-        if this possible.
-    <li>
-        simplify_goal_ite.m handles if-then-elses (and negations).
-        It warns about if-then-elses in which
-        either the then-part or the else-part is unreachable,
-        and about if-then-elses that should be replaced by switches.
-    <li>
-        simplify_goal_switch.m handles switches.
-        It eliminates switch arms that cannot fail, and switches
-        with no arms left.
-    <li>
-        simplify_goal_scope.m handles scope goals.
-        It eliminates unnecessary nested scopes,
-        replaces from_ground_term_construct scopes
-        with a single assignment unifications referencing
-        a constant structure in a constant structure database
-        (to eliminate the need for any later passes to traverse the scope),
-        and evaluates compile-time conditions on trace goals,
-        eliminating either the compile-time condition wrapper on the trace goal
-        (if the condition is true)
-        or the trace goal scope altogether
-        (if the condition is false).
-    <li>
-        common.m looks for (a) construction unifications
-        that construct a term that is the same as one that already exists,
-        or (b) repeated calls to a predicate with the same inputs.
-        It replaces both with assignment unifications.
-        It is invoked by the goal-type-specific submodules above.
-    <li>
-        format_call.m looks for calls to predicates such as
-        string.format and io.format.
-        It reports calls in which the types of the values to be printed
-        disagree with the format string,
-        and/or calls in which the agreement cannot be established.
-        It also attempts to partially evaluate the correct calls,
-        essentially interpreting the format string at compile time,
-        not runtime.
-    <li>
-        simplify_proc.m handles the top-level processing of procedures
-        and their bodies.
-    <li>
-        simplify_info.m defines the data structure
-        that is threaded through the code of the submodules above,
-        containing the information those submodules need.
-    <li>
-        simplify_tasks.m defines the type that identifies the tasks
-        that the simplification package may be asked to do.
-        Simplification can be invoked at several different points
-        in the compilation process;
-        different invocations need to perform different subsets
-        of the tasks that simplification is capable of.
-    </ol>
-    <p>
-
-<dt> unused imports (unused_imports.m)
-<dd>
-    unused_imports.m determines which imports of the module
-    are not required for the module to compile. It also identifies
-    which imports of a module can be moved from the interface to the
-    implementation.
-    <p>
-
-<dt> style checks (style_checks.m)
-<dd>
-    style_checks.m generates warnings if a predicate or function
-    declaration is not followed immediately by all the mode declarations
-    of that predicate or function, and for module bodies in which either
-    the exported or nonexported predicates and functions have one order
-    for their declarations and a different order for their definitions.
-    <p>
-
-<dt> xml documentation (xml_documentation.m)
-<dd>
-    xml_documentation.m outputs a XML representation of all the declarations
-    in the module. This XML representation is designed to be transformed
-    via XSL into more human readable documentation.
-    <p>
-
-</dl>
-
-<h4> 3. High-level transformations </h4>
+<h2>Middle end</h2>
+<h3>3. High-level transformations</h3>
 
 <p>
 This is the transform_hlds.m package.
-
-<p>
-
+<ul>
+<li>
 The first pass of this stage does tabling transformations (table_gen.m).
 This involves the insertion of several calls to tabling predicates
 defined in mercury_builtin.m and the addition of some scaffolding structure.
-Note that this pass can change the evaluation methods of some procedures to
-eval_table_io, so it should come before any passes that require definitive
-evaluation methods (e.g. inlining).
-
-<p>
-
-The next pass of this stage is a code simplification, namely
-removal of lambda expressions (lambda.m):
-
-<ul>
+Note that this pass
+can change the evaluation methods of some procedures to eval_table_io,
+so it should come before any passes
+that require definitive evaluation methods (e.g. inlining).
 <li>
-    lambda.m converts lambda expressions into higher-order predicate terms
-    referring to freshly introduced separate predicates.
-    This pass needs to come after unique_modes.m to ensure that
-    the modes we give to the introduced predicates are correct.
-    It also needs to come after polymorphism.m since polymorphism.m
-    doesn't handle higher-order predicate constants.
-</ul>
-
-(Is there any good reason why lambda.m comes after table_gen.m?)
-
+The next pass of this stage is a code simplification,
+namely removal of lambda expressions.
+lambda.m converts lambda expressions
+into higher-order predicate terms
+that refer to freshly introduced separate predicates.
+This pass needs to come after unique_modes.m
+to ensure that the modes we give to the introduced predicates are correct.
+It also needs to come after polymorphism.m
+since polymorphism.m doesn't handle higher-order predicate constants.
 <p>
-
+XXX Is there any good reason why lambda.m comes after table_gen.m?
+<li>
 The next pass also simplifies the HLDS by expanding out the atomic goals
 implementing Software Transactional Memory (stm_expand.m).
-
-<p>
-
-Expansion of equivalence types (equiv_type_hlds.m)
-
-<ul>
 <li>
-    This pass expands equivalences which are not meant to be visible
-    to the user of imported modules. This is necessary for the Java
-    and C# back-ends and in some cases for `:- pragma foreign_export'
-    involving foreign types on the C back-end.
-
-    <p>
-
-    It is also needed by the MLDS-&gt;C back-end, for --high-level-data,
-    and for cases involving abstract equivalence types which are defined
-    as "float".
-</ul>
-
-<p>
-
-Exception analysis. (exception_analysis.m)
-
-<ul>
+equiv_type_hlds.m expands type equivalences
+which are not meant to be visible to the user of imported modules.
+This is necessary for the Java and C# back-ends
+and in some cases for `:- pragma foreign_export'
+involving foreign types on the C back-end.
+It is also needed by the MLDS-&gt;C back-end, for --high-level-data,
+and for cases involving abstract equivalence types which are defined as "float".
 <li>
-    This pass annotates each module with information about whether
-    the procedures in the module may throw an exception or not.
-</ul>
-
-<p>
-
+exception_analysis.m annotates each module with information
+about whether the procedures in the module may throw an exception or not.
+<li>
 The next pass is termination analysis.
 The compiler contains <em>two</em> separate termination analysis systems,
 which are based on different principles.
-
+<p>
 The modules involved in the first system are:
-
-<ul>
-<li>
-    termination.m is the control module. It sets the argument size and
-    termination properties of builtin and compiler generated procedures,
-    invokes term_pass1.m and term_pass2.m
+    <ul>
+    <li>
+    termination.m is the control module.
+    It sets the argument size and termination properties
+    of builtin and compiler generated procedures,
+    invokes term_pass1.m and term_pass2.m,
     and writes .trans_opt files and error messages as appropriate.
-<li>
+    <li>
     term_pass1.m analyzes the argument size properties
     of user-defined procedures,
-<li>
+    <li>
     term_pass2.m analyzes the termination properties
     of user-defined procedures.
-<li>
+    <li>
     term_traversal.m contains code common to the two passes.
-<li>
+    <li>
     term_errors.m defines the various kinds of termination errors
     and prints the messages appropriate for each.
-<li>
+    <li>
     term_util.m defines the main types used in termination analysis
     and contains utility predicates.
-<li>
+    <li>
     post_term_analysis.m contains error checking routines and optimizations
     that depend upon the information obtained by termination analysis.
-</ul>
-
+    </ul>
+<p>
 The modules involved in the second system are:
-
-<ul>
-<li>
+<p>
+    <ul>
+    <li>
     term_constr_main.m is the control module; it invokes the others as needed.
-<li>
+    <li>
     term_constr_initial.m sets up the initial state of the analysis,
     based on things such as user-provided annotations.
-<li>
+    <li>
     term_constr_build.m builds an abstract representation
     of the procedures to be analyzed.
-<li>
+    <li>
     term_constr_fixpoint.m uses that abstract representation
     to derive information about the relationships
     among the sizes of the arguments of each analyzed procedure.
-<li>
+    <li>
     term_constr_pass2.m uses this information about argument size relationships
     to attempt to prove whether the analyzed procedures terminate.
-<li>
+    <li>
     term_constr_main_types.m defines the types that represent the result
     of the analysis.
-<li>
+    <li>
     term_constr_data.m defines types needed during the analysis.
-<li>
+    <li>
     term_constr_errors.m generates error messages for termination problems.
-</ul>
-
-<p>
-
-Trail usage analysis. (trailing_analysis.m)
-
-<ul>
+    </ul>
 <li>
-    This pass annotates each module with information about whether
-    the procedures in the module modify the trail or not. This
-    information can be used to avoid redundant trailing operations.
-</ul>
-
-<p>
-
-Minimal model tabling analysis. (tabling_analysis.m)
-
-<ul>
+trailing_analysis.m pass annotates each module with information
+about whether the procedures in the module modify the trail or not.
+This information can be used to avoid redundant trailing operations.
 <li>
-    This pass annotates each goal in a module with information about
-    whether the goal calls procedures that are evaluated using
-    minimal model tabling. This information can be used to reduce
-    the overhead of minimal model tabling.
-
+Minimal model tabling analysis (tabling_analysis.m)
+annotates each goal in a module with information about whether
+the goal calls procedures that are evaluated using minimal model tabling.
+This information can be used to reduce the overhead of minimal model tabling.
 </ul>
 
 <p>
@@ -1576,149 +1348,149 @@ Besides containing some analysis results,
 for predicates (exported or local),
 if these clauses are suitable for other optimizations
 such as inlining or higher-order specialization.
-
 <p>
-
 Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <ul>
 <li>
-    specialization of higher-order and polymorphic predicates where the value
-    of the higher-order/type_info/typeclass_info arguments are known
-    (higher_order.m)
+higher_order.m specializes of higher-order and polymorphic predicates
+in contexts where the value of the relevant
+higher-order, type_info, and/or typeclass_info arguments are known.
 
 <li>
-    attempt to introduce accumulators (accumulator.m). This optimizes
-    procedures whose tail consists of independent associative computations
-    or independent chains of commutative computations into a tail
-    recursive form by the introduction of accumulators. If lco is turned
-    on it can also transform some procedures so that only construction
-    unifications are after the recursive call. This pass must come before
-    lco, unused_args (eliminating arguments makes it hard to relate the
-    code back to the assertion) and inlining (can make the associative
-    call disappear).
-    <p>
-    This pass makes use of the goal_store.m module, which is a dictionary-like
-    data structure for storing HLDS goals.
+accumulator.m attempts to introduce accumulators.
+This optimizes procedures whose task consists of
+independent associative computations
+or independent chains of commutative computations
+by transforming them into a tail recursive form
+through the introduction of accumulators.
+If lco is turned on,
+it can also transform some procedures
+so that only construction unifications are after the recursive call.
+This pass must come before lco,
+unused_args (eliminating arguments makes it hard to relate the code
+back to the assertion)
+and inlining (can make the associative call disappear).
+<p>
+This pass makes use of the goal_store.m module,
+which is a dictionary-like data structure for storing HLDS goals.
+<li>
+inlining.m replaces calls with the bodies of the called procedures
+wherever that transformation looks likely to improve performance.
 
 <li>
-    inlining (i.e. unfolding) of simple procedures (inlining.m)
-
+loop_inv.m does loop invariant hoisting.
+This transformation moves computations within loops
+that are the same on every iteration
+to the outside of the loop,
+so that the invariant computations are only computed once.
+The transformation turns
+a single looping predicate containing invariant computations
+into two predicates:
+one that computes the invariants on the first iteration and then loops
+by calling the second predicate with extra arguments for the invariant values.
+This pass should come after inlining,
+since inlining can expose important opportunities for loop invariant hoisting.
+Such opportunities might not be visible before inlining
+because only *part* of the body of a called procedure is loop-invariant.
 <li>
-    loop_inv.m: loop invariant hoisting. This transformation moves computations
-    within loops that are the same on every iteration to the outside of the
-    loop so that the invariant computations are only computed once.
-    The transformation turns a single looping predicate containing invariant
-    computations into two: one that computes the invariants on the first
-    iteration and then loops by calling the second predicate with extra
-    arguments for the invariant values. This pass should come after inlining,
-    since inlining can expose important opportunities for loop invariant
-    hoisting. Such opportunities might not be visible before inlining
-    because only *part* of the body of a called procedure is loop-invariant.
-
-<li>
-    deforestation and partial evaluation (deforest.m). This optimizes
-    multiple traversals of data structures within a conjunction, and
-    avoids creating intermediate data structures. It also performs
-    loop unrolling where the clause used is known at compile time.
-    deforest.m makes use of the following sub-modules (`pd_' stands for
-    "partial deduction"):
-
+The deforestation and partial evaluation pass looks for code
+that does multiple traversals of data structures within a conjunction,
+and replaces it with code
+that avoids creating those intermediate data structures.
+It also performs loop unrolling where the clause used is known at compile time.
+Its main module is deforest.m,
+which makes use of the following submodules.
+(`pd_' stands for "partial deduction".)
     <ul>
     <li>
-        constraint.m transforms goals so that goals which can fail are
-        executed earlier.
+    constraint.m transforms goals so that goals which can fail are
+    executed earlier.
     <li>
-        pd_cost.m contains some predicates to estimate the improvement
-        caused by deforest.m.
+    pd_cost.m contains some predicates to estimate the improvement
+    caused by deforest.m.
     <li>
-        pd_debug.m produces debugging output.
+    pd_debug.m produces debugging output.
     <li>
-        pd_info.m contains a state type for deforestation.
+    pd_info.m contains a state type for deforestation.
     <li>
-        pd_term.m contains predicates to check that the deforestation
-        algorithm terminates.
+    pd_term.m contains predicates to check that the deforestation
+    algorithm terminates.
     <li>
-        pd_util.m contains various utility predicates.
+    pd_util.m contains various utility predicates.
+    </ul>
+<li>
+unused_args.m issues warnings about unused arguments from predicates,
+and create specialized versions without them.
+Typeinfos are often unused.
+<li>
+delay_construct.m pushes construction unifications
+to the right in semidet conjunctions,
+in an effort to reduce the probability that it will need to be executed.
+<li>
+unneeded_code.m looks for goals whose results are either not needed at all,
+or needed in some branches of computation but not others.
+Provided that the goal in question satisfies some requirements
+(e.g. it is pure, it cannot fail etc),
+it either deletes the goal,
+or moves it to the computation branches where its output is needed.
+<li>
+lco.m finds predicates whose implementations would benefit
+from last call optimization modulo constructor application.
+<li>
+dead_proc_elim.m eliminates dead procedures.
+Inlining, higher-order specialization and the elimination of unused args
+can make procedures dead even if the user doesn't,
+and automatically constructed unification and comparison predicates
+are often dead as well.
+<li>
+tupling.m looks for predicates that pass around several arguments,
+and modifies the code to pass around a single tuple of these arguments instead
+if this looks like reducing the cost of parameter passing.
+<li>
+untupling.m does the opposite of tupling.m:
+it replaces tuple arguments with their components.
+This can be useful both for finding out
+how much tupling has already been done manually in the source code,
+and to break up manual tupling in favor of
+possibly more profitable automatic tupling.
+<li>
+dep_par_conj.m transforms parallel conjunctions
+to add the wait and signal operations required by dependent AND parallelism.
+To maximize the amount of parallelism available,
+it tries to push the signals as early as possible in producers
+and the waits as late as possible in the consumers,
+creating specialized versions of predicates as needed.
+<li>
+parallel_to_plain_conj.m transforms
+parallel conjunctions to plain conjunctions,
+for use in grades that do not support AND-parallelism.
+<li>
+granularity.m tries to ensure that
+programs do not generate too much parallelism.
+Its goal is to minimize parallelism's overhead
+while still gaining all the parallelism the machine can actually exploit.
+<li>
+implicit_parallelism.m is a package whose task is
+to introduce parallelism into sequential code automatically.
+Its submodules are
+    <ul>
+    <li>
+    introduce_parallelism.m does the main task of the package.
+    <li>
+    push_goals_together.m performs a transformation
+    that allows introduce_parallelism.m to do a better job.
     </ul>
 
 <li>
-    issue warnings about unused arguments from predicates, and create
-    specialized versions without them (unused_args.m);
-    type_infos are often unused.
-
-<li>
-    delay_construct.m pushes construction unifications to the right in
-    semidet conjunctions, in an effort to reduce the probability that it will
-    need to be executed.
-
-<li>
-    unneeded_code.m looks for goals whose results are either not needed
-    at all, or needed in some branches of computation but not others. Provided
-    that the goal in question satisfies some requirements (e.g. it is pure,
-    it cannot fail etc), it either deletes the goal or moves it to the
-    computation branches where its output is needed.
-
-<li>
-    lco.m finds predicates whose implementations would benefit
-    from last call optimization modulo constructor application.
-
-<li>
-    elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
-    specialization and the elimination of unused args can make procedures dead
-    even if the user doesn't, and automatically constructed unification and
-    comparison predicates are often dead as well.
-
-<li>
-    tupling.m looks for predicates that pass around several arguments,
-    and modifies the code to pass around a single tuple of these arguments
-    instead if this looks like reducing the cost of parameter passing.
-
-<li>
-    untupling.m does the opposite of tupling.m: it replaces tuple arguments
-    with their components. This can be useful both for finding out how much
-    tupling has already been done manually in the source code, and to break up
-    manual tupling in favor of possibly more profitable automatic tupling.
-
-<li>
-    dep_par_conj.m transforms parallel conjunctions to add the wait and signal
-    operations required by dependent AND parallelism. To maximize the amount of
-    parallelism available, it tries to push the signals as early as possible
-    in producers and the waits as late as possible in the consumers, creating
-    specialized versions of predicates as needed.
-
-<li>
-    parallel_to_plain_conj.m transforms parallel conjunctions to plain
-    conjunctions, for use in grades that do not support AND-parallelism.
-
-<li>
-    granularity.m tries to ensure that programs do not generate too much
-    parallelism. Its goal is to minimize parallelism's overhead while still
-    gaining all the parallelism the machine can actually exploit.
-
-<li>
-    implicit_parallelism.m is a package whose task is to introduce parallelism
-    into sequential code automatically. Its submodules are
-    <ul>
-    <li>
-        introduce_parallelism.m does the main task of the package.
-    <li>
-        push_goals_together.m performs a transformation that allows
-        introduce_parallelism.m to do a better job.
-    </ul>
-
-<li>
-    float_regs.m wraps higher-order terms which use float registers
-    if passed in contexts where regular registers would be expected,
-    and vice versa.
-
+float_regs.m wraps higher-order terms which use float registers
+if passed in contexts where regular registers would be expected,
+and vice versa.
 </ul>
 
 <p>
-
 The module transform.m contains stuff that is supposed to be useful
 for high-level optimizations (but which is not yet used).
-
 <p>
 
 The last three HLDS-to-HLDS transformations implement
@@ -1728,519 +1500,500 @@ Both passes insert into procedure bodies, among other things,
 calls to procedures (some of which are impure)
 that record profiling information.
 
-<h4> 4. Intermodule analysis framework </h4>
+<h2>3-6 The LLDS, MLDS and ELDS backends</h2>
 
-<p>
-This is the analysis.m package.
-
-<p>
-
-The framework can be used by a few analyses in the transform_hlds.m package.
-It is documented in the analysis/README file.
-
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-<h3> a. LLDS BACK-END </h3>
+<h2>a. LLDS backend</h2>
 
 <p>
 This is the ll_backend.m package.
 
-<h4> 3a. LLDS-specific HLDS -&gt; HLDS transformations </h4>
+<h3>3a. LLDS-specific HLDS -&gt; HLDS transformations</h3>
 
 Before LLDS code generation, there are a few more passes which
 annotate the HLDS with information used for LLDS code generation,
 or perform LLDS-specific transformations on the HLDS:
 
-    <dl>
-        <dt>
-        reducing the number of variables that have to be
-        saved across procedure calls (saved_vars.m)
-        <dd>
-            We do this by putting the code that generates
-            the value of a variable just before the use of
-            that variable, duplicating the variable and the
-            code that produces it if necessary, provided
-            the cost of doing so is smaller than the cost
-            of saving and restoring the variable would be.
-
-        <dt>
-        transforming procedure definitions to reduce the number
-        of variables that need their own stack slots (stack_opt.m)
-        <dd>
-            The main algorithm in stack_opt.m figures out when
-            variable A can be reached from a cell pointed to by
-            variable B, so that storing variable B on the stack
-            obviates the need to store variable A on the stack as well.
-            This algorithm relies on an implementation of
-            the maximal matching algorithm in matching.m.
-        <dt>
-        migration of builtins following branched structures (follow_code.m)
-        <dd>
-            This transformation improves the results of
-            follow_vars.m (see below)
-        <dt>
-        simplification again (simplify.m, in the check_hlds.m package)
-        <dd>
-            We run this pass a second time in case the intervening
-            transformations have created new opportunities for
-            simplification. It needs to be run immediately
-            before code generation, because it enforces some
-            invariants that the LLDS code generator relies on.
-        <dt>
-        annotation of goals with liveness information (liveness.m)
-        <dd>
-            This records the birth and death of each variable
-            in the HLDS goal_info.
-        <dt>
-        allocation of stack slots
-        <dd>
-            This is done by stack_alloc.m, with the assistance of
-            the following modules:
-
-            <ul>
-            <li>
-                live_vars.m works out which variables need
-                to be saved on the stack when.
-            <li>
-                graph_colour.m (in the libs.m package) contains the algorithm
-                that stack_alloc.m calls to convert sets of variables
-                that must be saved on the stack at the same time
-                to an assignment of a stack slot to each such variable.
-            </ul>
-        <dt>
-        allocating the follow vars (follow_vars.m)
-        <dd>
-            Traverses backwards over the HLDS, annotating some
-            goals with information about what locations variables
-            will be needed in next. This allows us to generate
-            more efficient code by putting variables in the right
-            spot directly. This module is not called from
-            mercury_compile_llds_back_end.m; it is called from
-            store_alloc.m.
-        <dt>
-        allocating the store map (store_alloc.m)
-        <dd>
-            Annotates each branched goal with variable location
-            information so that we can generate correct code
-            by putting variables in the same spot at the end
-            of each branch.
-        <dt>
-        computing goal paths (goal_path.m in the check_hlds.m package)
-        <dd>
-            The goal path of a goal defines its position in
-            the procedure body. This transformation attaches
-            its goal path to every goal, for use by the debugger.
-    </dl>
-
-<h4> 4a. Code generation. </h4>
-
-<dl>
-
-<dt> code generation
-<dd>
-    Code generation converts HLDS into LLDS.
-    For the LLDS back-end, this is also the point at which we
-    insert code to handle debugging and trailing, and to do
-    heap reclamation on failure.
-    The top level code generation module is proc_gen.m,
-    which looks after the generation of code for procedures
-    (including prologues and epilogues).
-    The predicate for generating code for arbitrary goals is in code_gen.m,
-    but that module handles only sequential conjunctions; it calls
-    other modules to handle other kinds of goals:
-
+<ul>
+<li>
+saved_vars.m tries to reduce
+the number of variables that have to be saved across procedure calls.
+It does this by putting the code that generates the value of a variable
+just before the use of that variable,
+duplicating the variable and the code that produces it if necessary,
+provided the cost of doing so
+is smaller than the cost of saving and restoring the variable would be.
+<li>
+stack_opt.m tries to transform procedure definitions
+to reduce the number of variables that need their own stack slots.
+The main algorithm in stack_opt.m figures out
+when variable A can be reached from a cell pointed to by variable B,
+so that storing variable B on the stack
+obviates the need to store variable A on the stack as well.
+This code uses the maximal matching algorithm in matching.m.
+<li>
+follow_code.m migrates calls following branched structures into each branch,
+in an effort to improve the results of follow_vars.m (see below).
+<li>
+After follow_code.m, we invoke simplification again
+(simplify.m, in the check_hlds.m package).
+We run this pass a second time
+in case the intervening transformations
+have created new opportunities for simplification.
+It needs to be run immediately before code generation,
+because it enforces some invariants that the LLDS code generator relies on.
+<li>
+liveness.m annotates goals with liveness information,
+which records the birth and death of each variable in the HLDS goal_info.
+<li>
+stack_alloc.m allocates stack slots to variables
+with the assistance of the following modules:
     <ul>
     <li>
-        ite_gen.m (if-then-elses)
+    live_vars.m works out which variables need to be saved on the stack when.
     <li>
-        call_gen.m (predicate calls and also calls to out-of-line
-        unification procedures)
-    <li>
-        disj_gen.m (disjunctions)
-    <li>
-        par_conj_gen.m (parallel conjunctions)
-    <li>
-        unify_gen.m, unify_gen_construct.m, unify_gen_deconstruct.m,
-        unify_gen_test.m and unify_gen_util.m (unifications)
-    <li>
-        closure_gen.m (creating closures)
-    <li>
-        switch_gen.m (switches), which has sub-modules
-        <ul>
-        <li>
-            dense_switch.m
-        <li>
-            lookup_switch.m
-        <li>
-            string_switch.m
-        <li>
-            tag_switch.m
-        <li>
-            switch_case.m
-        <li>
-            switch_util.m -- this is in the backend_libs.m
-            package, since it is also used by MLDS back-end
-        </ul>
-    <li>
-        commit_gen.m (commits)
-    <li>
-        pragma_c_gen.m (embedded C code)
+    graph_colour.m (in the libs.m package) contains the algorithm
+    that stack_alloc.m calls to convert
+    sets of variables that must be saved on the stack at the same time
+    to an assignment of a stack slot to each such variable.
     </ul>
+<li>
+follow_vars.m traverses backwards over the HLDS,
+annotating some goals with information about
+what locations variables will be needed in next.
+This allows us to generate more efficient code
+by putting variables in the right spot directly.
+This module is not called from mercury_compile_llds_back_end.m;
+it is called from store_alloc.m.
+<li>
+store_alloc.m annotates each branched goal with a store map,
+a data structure that maps each variable to the location it should be in
+when execution reaches the end of that branch.
+Having all branches putting
+all variables that are live at the end of the branched control structure
+into the same location at the end of the branch
+provides a consistent picture of where things are
+at the code following the branched control structure.
+<li>
+goal_path.m (in the check_hlds.m package)
+optionally annotates every goal with its goal path,
+which specifies its position in the procedure body.
+This information is needed by the debugger.
+</ul>
 
-    <p>
+<h3>4a. LLDS code generation</h3>
 
-    The code generator also calls middle_rec.m to do middle recursion
-    optimization, which is implemented during code generation.
+Code generation converts HLDS into LLDS.
+For the LLDS back-end,
+this is also the point
+at which we insert code to handle debugging and trailing,
+and to do heap reclamation on failure.
 
-    <p>
-
-    The code generation modules make use of
-    <dl>
-
-    <dt> code_info.m
-    <dd>
-        The persistent part of the code generator state.
-
-    <dt> code_loc_dep.m
-    <dd>
-        The location-dependent part of the code generator state.
-
-    <dt> var_locn.m
-    <dd>
-        This defines the var_locn type, which is a
-        sub-component of the code_info data structure;
-        it keeps track of the values and locations of variables.
-        It implements eager code generation.
-
-    <dt> exprn_aux.m
-    <dd>
-        Various utility predicates.
-
-    <dt> code_util.m
-    <dd>
-        Some miscellaneous preds used for code generation.
-
-    <dt> lookup_util.m
-    <dd>
-        Some miscellaneous preds used for lookup switch
-        (and lookup disjunction) generation.
-
-    <dt> continuation_info.m
-    <dd>
-        For accurate garbage collection, collects
-        information about each live value after calls,
-        and saves information about procedures.
-
-    <dt> trace_gen.m
-    <dd>
-        Inserts calls to the runtime debugger.
-
-    <dt>
-    trace_params.m (in the libs.m package, since it is considered
-    part of option handling)
-    <dd>
-        Holds the parameter settings controlling the handling
-        of execution tracing.
-    </dl>
-
-<dt> code generation for `pragma export' declarations (export.m)
-<dd>
-    This is handled separately from the other parts of code generation.
-    mercury_compile*.m calls `export.produce_header_file' to produce
-    C code fragments which declare/define the C functions which are the
-    interface stubs for procedures exported to C.
-
-<dt> generation of constants for RTTI data structures
-<dd>
-    This could also be considered a part of code generation,
-    but for the LLDS back-end this is currently done as part
-    of the output phase (see below).
-
-</dl>
+<ul>
+<li>
+The top level code generation module is proc_gen.m,
+which looks after the generation of code for procedures
+(including prologues and epilogues).
+<li>
+The predicate for generating code for arbitrary goals is in code_gen.m,
+but that module handles only sequential conjunctions;
+it calls other modules to handle other kinds of goals.
+<li>
+ite_gen.m generates code for if-then-elses and negations.
+<li>
+call_gen.m generates code for both plain calls and generic calls,
+the latter including higher order calls, class method invocations,
+calls to events, and casts.
+<li>
+disj_gen.m generates code for disjunctions.
+<li>
+par_conj_gen.m generates code for parallel conjunctions.
+<li>
+unify_gen.m generates code for assign and simple test unifications,
+but invokes unify_gen_construct.m or unify_gen_deconstruct.m
+to generate code for construction and deconstruction unifications.
+All these modules also rely on
+the utility predicates in unify_gen_test.m and unify_gen_util.m.
+<li>
+closure_gen.m generate code for creating closures.
+<li>
+switch_gen.m is the main module for generates code for switches,
+but most special kinds of switches their own submodules for handling them.
+These include
+    <ul>
+    <li>
+    lookup_switch.m implements switches on integral atomic types
+    (such as integers and enum types) using tables
+    containing the output values of the switch.
+    <li>
+    dense_switch.m implements switches on integral atomic types
+    (such as integers and enum types) using tables
+    containing the address of the code for each switch arm.
+    <li>
+    string_switch.m implements switches on strings
+    using either hash tables or binary search.
+    <li>
+    tag_switch.m implements switches on discriminated union types
+    by switching on first the primary tag and then the secondary tag.
+    <li>
+    switch_case.m contains utility predicates
+    needed to implement all kinds of switches for the LLDS backend.
+    <li>
+    switch_util.m, which is in the backend_libs.m package,
+    also contains utility predicates,
+    but these are needed to implement switches
+    in both the LLDS and MLDS backends.
+    </ul>
+<li>
+commit_gen.m contains code for generating commits.
+<li>
+pragma_c_gen.m contains code for generating invocations of embedded C code.
+</ul>
 
 <p>
+The code generator also calls middle_rec.m
+to do middle recursion optimization,
+which is implemented during code generation.
+<p>
 
+The code generation modules above make use of many service modules.
+
+<ul>
+<li>
+code_info.m defines the persistent part of the code generator state.
+<li>
+code_loc_dep.m defines the location-dependent part of the code generator state.
+<li>
+var_locn.m defines the var_locn type,
+which is a component of the code_info data structure;
+it keeps track of the values and locations of variables.
+It implements eager code generation.
+<li>
+exprn_aux.m and code_util.m contain various utility predicates.
+<li>
+lookup_util.m contains some utility predicates
+that are used in the implementation
+of both lookup switches and lookup disjunctions.
+<li>
+continuation_info.m collects information
+about the live values after calls,
+for use by the debugger
+(and in the future, possibly by accurate garbage collection).
+<li>
+trace_gen.m inserts calls to the runtime debugger.
+<li>
+trace_params.m
+(in the libs.m package, since it is considered part of option handling)
+holds the parameter settings that control the handling of execution tracing.
+</ul>
+
+<p>
+The purpose of export.m is to allow
+non-Mercury-generated C code to call Mercury-generated C code.
+For each `pragma export' declaration,
+it generates C code fragments which declare and define
+the C functions which are the interface stubs for procedures exported to C.
+<p>
+The generation of constants for RTTI data structures
+could also be considered a part of code generation,
+but for the LLDS back-end this is currently done
+as part of the output phase (see below).
+<p>
 The result of code generation is the Low Level Data Structure (llds.m),
 which may also contains some data structures whose types are defined in rtti.m.
-The code for each procedure is generated as a tree of code fragments
-which is then flattened.
+The code for each procedure is generated
+as a tree of code fragments which is then flattened.
 
-<h4> 5a. Low-level optimization (LLDS). </h4>
-
-<p>
+<h3>5a. LLDS transformations</h3>
 
 Most of the various LLDS-to-LLDS optimizations are invoked from optimize.m.
 They are:
 
 <ul>
 <li>
-    optimization of jumps to jumps (jumpopt.m)
+optimization of jumps to jumps (jumpopt.m)
 <li>
-    elimination of duplicate code sequences within procedures (dupelim.m)
+elimination of duplicate code sequences within procedures (dupelim.m)
 <li>
-    elimination of duplicate procedure bodies (dupproc.m,
-    invoked directly from mercury_compile_llds_back_end.m)
+elimination of duplicate procedure bodies (dupproc.m,
+invoked directly from mercury_compile_llds_back_end.m)
 <li>
-    optimization of stack frame allocation/deallocation (frameopt.m)
+optimization of stack frame allocation/deallocation (frameopt.m)
 <li>
-    filling branch delay slots (delay_slot.m)
+filling branch delay slots (delay_slot.m)
 <li>
-    dead code and dead label removal (labelopt.m)
+dead code and dead label removal (labelopt.m)
 <li>
-    peephole optimization (peephole.m)
+peephole optimization (peephole.m)
 <li>
-    introduction of local C variables (use_local_vars.m)
+introduction of local C variables (use_local_vars.m)
 <li>
-    removal of redundant assignments, i.e. assignments that assign a value
-    that the target location already holds (reassign.m)
+removal of redundant assignments,
+i.e. assignments that assign a value
+that the target location already holds (reassign.m)
 </ul>
 
 In addition, stdlabel.m performs standardization of labels.
 This is not an optimization itself,
 but it allows other optimizations to be evaluated more easily.
-
 <p>
-
-The module opt_debug.m contains utility routines used for debugging
-these LLDS-to-LLDS optimizations.
-
+The module opt_debug.m contains utility routines
+used for debugging these LLDS-to-LLDS optimizations.
 <p>
-
-Several of these optimizations (frameopt and use_local_vars) also
-use livemap.m, a module that finds the set of locations live at each label.
-
+Several of these optimizations (frameopt and use_local_vars)
+also use livemap.m,
+a module that finds the set of locations live at each label.
 <p>
-
-Use_local_vars numbering also introduces
-references to temporary variables in extended basic blocks
-in the LLDS representation of the C code.
+Some of the low-level optimization passes use
+basic_block.m, which defines predicates for
+converting sequences of instructions to basic block format and back,
+as well as opt_util.m, which contains
+miscellaneous predicates for LLDS-to-LLDS optimization.
+<p>
+Use_local_vars numbering also introduces references to temporary variables
+in extended basic blocks in the LLDS representation of the C code.
 The transformation to insert the block scopes
 and declare the temporary variables is performed by wrap_blocks.m.
-
 <p>
-
 Depending on which optimization flags are enabled,
 optimize.m may invoke many of these passes multiple times.
 
-<p>
-
-Some of the low-level optimization passes use basic_block.m,
-which defines predicates for converting sequences of instructions to
-basic block format and back, as well as opt_util.m, which contains
-miscellaneous predicates for LLDS-to-LLDS optimization.
-
-<h4> 6a. Output C code </h4>
+<h3>6a. LLDS output</h3>
 
 <ul>
 <li>
-    type_ctor_info.m
-    (in the backend_libs.m package, since it is shared with the MLDS back-end)
-    generates the type_ctor_gen_info structures that list
-    items of information (including unification, index and compare predicates)
-    associated with each declared type constructor that go into the static
-    type_ctor_info data structure. If the type_ctor_gen_info structure is not
-    eliminated as inaccessible, this module adds the corresponding
-    type_ctor_info structure to the RTTI data structures defined in rtti.m,
-    which are part of the LLDS.
-
+type_ctor_info.m generates the type_ctor_gen_info structures
+that list items of information
+(including unification, index and compare predicates)
+associated with each declared type constructor
+that go into the static type_ctor_info data structure.
+(This module is in the backend_libs.m package,
+since it is shared with the MLDS back-end.)
+If the type_ctor_gen_info structure is not eliminated as inaccessible,
+this module adds the corresponding type_ctor_info structure
+to the RTTI data structures defined in rtti.m,
+which are part of the LLDS.
 <li>
-    base_typeclass_info.m
-    (in the backend_libs.m package, since it is shared with the MLDS back-end)
-    generates the base_typeclass_info structures that
-    list the methods of a class for each instance declaration.
-    These are added to the RTTI data structures, which are part of the LLDS.
-
+base_typeclass_info.m
+(which is also in the backend_libs.m package,
+since it is also shared with the MLDS back-end)
+generates the base_typeclass_info structures
+that list the methods of a class for each instance declaration.
+These are added to the RTTI data structures, which are part of the LLDS.
 <li>
-    stack_layout.m generates the stack_layout structures for
-    accurate garbage collection. Tables are created from the data
-    collected in continuation_info.m.
-    <p>
-    Stack_layout.m uses prog_rep.m to generate bytecode representations
-    of procedure bodies for use by the declarative debugger and the deep
-    profiler, and prog_rep_tables.m to generate the string tables and
-    type tables that these representations use.
-
-<li>
-    Type_ctor_info structures and stack_layout structures both contain
-    pseudo_type_infos, which are type_infos with holes for type variables;
-    these are generated by pseudo_type_info.m
-    (in the backend_libs.m package, since it is shared with the MLDS back-end).
-
-<li>
-    llds_common.m extracts static terms from the main body of the LLDS, and
-    puts them at the front. If a static term originally appeared several times,
-    it will now appear as a single static term with multiple references to it.
-    [XXX FIXME this module has now been replaced by global_data.m]
-
-<li>
-    transform_llds.m is responsible for doing any source to source
-    transformations on the llds which are required to make the C output
-    acceptable to various C compilers. Currently computed gotos can have
-    their maximum size limited to avoid a fixed limit in lcc.
-
-<li>
-    Final generation of C code is done by the llds_out package. The package
-    subcontracts the output of RTTI structures to rtti_out.m and of other static
-    compiler-generated data structures (such as those used by the debugger,
-    the deep profiler, and in the future by the garbage collector)
-    to layout_out.m.
-    The llds_out.m package itself consists of several modules:
-    llds_out_file.m for printing out LLDS modules;
-    llds_out_instr.m for printing out LLDS instructions;
-    llds_out_global.m for printing out C global variables;
-    llds_out_data.m for printing lvals and rvals;
-    llds_out_code_addr.m for printing labels and other code addresses.
-    llds_out_util.m defines some utility types and predicates.
-</ul>
-
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-<h3> b. MLDS BACK-END </h3>
-
+stack_layout.m generates the stack_layout structures
+that the debugger uses to walk the stack.
+(In the future, they may also be used for accurate garbage collection.)
+These structures are created from the data collected in continuation_info.m.
 <p>
-
-This is the ml_backend.m package.
-
+stack_layout.m uses prog_rep.m
+to generate bytecode representations of procedure bodies
+for use by the declarative debugger and the deep profiler,
+and prog_rep_tables.m to generate the string tables and type tables
+that these representations use.
+<li>
+Type_ctor_info structures and stack_layout structures
+both contain pseudo_type_infos,
+which are type_infos with holes for type variables.
+These are generated by pseudo_type_info.m,
+(which is also in the backend_libs.m package,
+since it is also shared with the MLDS back-end).
+<li>
+global_data.m contains a database of the LLDS versions of static terms.
+If a static term appears several times in the HLDS,
+it will appear in the LLDS as a single static term
+that has multiple references to it.
+<li>
+transform_llds.m is responsible for
+any source to source transformations on the LLDS
+which are required to make the C output acceptable to various C compilers.
+Currently computed gotos can have their maximum size limited
+to avoid a fixed limit in lcc.
+<li>
+Final generation of C code is done by the llds_out package.
+The package subcontracts
+the output of RTTI structures to rtti_out.m
+and of other static compiler-generated data structures
+(such as those used by the debugger, the deep profiler,
+and in the future by the garbage collector) to layout_out.m.
 <p>
-
-The original LLDS code generator generates very low-level code,
-since the LLDS was designed to map easily to RISC architectures.
-We have developed a new back-end that generates much higher-level
-code, suitable for generating Java, high-level C, etc.
-This back-end uses the Medium Level Data Structure (mlds.m) as its
-intermediate representation.
-
-<h4> 3b. pre-passes to annotate/transform the HLDS </h4>
-
-<p>
-Before code generation there is a pass which annotates the HLDS with
-information used for code generation:
-
-<ul>
-<li>
-    mark_static_terms.m (in the hlds.m package) marks
-    construction unifications which can be implemented using static constants
-    rather than heap allocation.
-</ul>
-
-<p>
-For the MLDS back-end, we have tried to keep the code generator simple.
-So we prefer to do things as HLDS to HLDS transformations where possible,
-rather than complicating the HLDS to MLDS code generator.
-Thus we have a pass which transforms the HLDS to handle trailing:
-
-<ul>
-<li>
-    add_trail_ops.m inserts code to manipulate the trail,
-    in particular ensuring that we apply the appropriate
-    trail operations before each choice point, when execution
-    resumes after backtracking, and whenever we do a commit.
-    The trail operations are represented as (and implemented as)
-    calls to impure procedures defined in library/private_builtin.m.
-<li>
-    add_heap_ops.m is very similar to add_trail_ops.m;
-    it inserts code to do heap reclamation on backtracking.
-</ul>
-
-<h4> 4b. MLDS code generation </h4>
-
-<ul>
-<li>
-    ml_top_gen.m is the top module of the package that converts HLDS code
-    to MLDS. Its main submodules are ml_proc_gen.m, which handles the
-    translation of predicates, and ml_code_gen.m, which handles the tasks
-    common to all kinds of goals, as well as the tasks specific to some
-    goals (conjunctions, if-then-elses, negations). For other kinds of goals,
-    ml_code_gen.m invokes some other submodules:
-
+The llds_out.m package itself consists of several modules:
     <ul>
     <li>
-        ml_unify_gen.m and its subcontractors ml_unify_gen_construct.m,
-        ml_unify_gen_deconstruct.m, ml_unify_gen_test.m, and
-        ml_unify_gen_util.m,
+    llds_out_file.m for printing out LLDS modules;
     <li>
-        ml_closure_gen.m
+    llds_out_instr.m for printing out LLDS instructions;
     <li>
-        ml_call_gen.m
+    llds_out_global.m for printing out C global variables;
     <li>
-        ml_foreign_proc_gen.m
+    llds_out_data.m for printing lvals and rvals;
     <li>
-        ml_commit_gen.m
+    llds_out_code_addr.m for printing labels and other code addresses.
     <li>
-        ml_disj_gen.m
-    <li>
-        ml_switch_gen.m, which calls upon:
-        <ul>
-        <li>
-            ml_lookup_switch.m
-        <li>
-            ml_string_switch.m
-        <li>
-            ml_tag_switch.m
-        <li>
-            ml_simplify_switch.m
-        <li>
-            switch_util.m (in the backend_libs.m package,
-            since it is also used by LLDS back-end)
-        </ul>
+    llds_out_util.m defines some utility types and predicates.
     </ul>
-
-    The main data structure used by the MLDS code generator is defined
-    in ml_gen_info.m, while global data structures (those created at
-    module scope) are handled in ml_global_data.m.
-    The module ml_accurate_gc.m handles provisions for accurate garbage
-    collection, while the modules ml_args_util.m, ml_code_util.m,
-    ml_target_util.m and ml_util.m provide some general utility routines.
-
-<li>
-    ml_type_gen.m converts HLDS types to MLDS.
-
-<li>
-    type_ctor_info.m and base_typeclass_info.m generate
-    the RTTI data structures defined in rtti.m and pseudo_type_info.m
-    (those four modules are in the backend_libs.m package, since they
-    are shared with the LLDS back-end)
-    and then rtti_to_mlds.m converts these to MLDS.
 </ul>
 
-<h4> 5b. MLDS transformations </h4>
+<h2>b. MLDS BACK-END</h2>
+
+This is the ml_backend.m package.
+<p>
+The original LLDS code generator generates very low-level code,
+since the LLDS was designed to map easily to RISC architectures.
+The MLDS backend generates much higher-level code,
+suitable for generating not just C, but also Java and C#
+(and once upon a time, the intermediate language or IL of the .NET platform).
+This back-end uses the Medium Level Data Structure (mlds.m)
+as its intermediate representation.
+While the LLDS is operates on the level of assembly languages
+(a second generation language, with the first generation being machine code),
+the MLDS operates on the level of
+a standard third generation imperative programming language.
+
+<h3>3b. MLDS-specific HLDS -&gt; HLDS transformations</h3>
+
+Before code generation,
+there is a pass which annotates the HLDS
+with information used for code generation:
 
 <ul>
 <li>
-    ml_optimize.m and ml_unused_assigns.m do MLDS-&gt;MLDS optimizations
-<li>
-    ml_elim_nested.m does two MLDS transformations that happen
-    to have a lot in common: (1) eliminating nested functions
-    and (2) adding code to handle accurate garbage collection.
-<li>
-    ml_rename_class.m does what its name suggests: renames classes in the MLDS.
-    It is used by mlds_to_java.m to replace long class names with shorter ones.
+mark_static_terms.m (in the hlds.m package)
+marks construction unifications which construct static terms.
+These can be implemented using static constants rather than heap allocation.
 </ul>
 
-<h4> 6b. MLDS output </h4>
+<p>
+When creating the MLDS back-end,
+we have tried to put into practice
+the lessons we have learned from writing the LLDS backend.
+One of these is that we prefer to do things
+as HLDS to HLDS transformations where possible,
+since this is much easier to debug initially and to modify later
+than the alternative approach of doing things
+inside the HLDS to MLDS code generator.
+Thus we have these two passes
+that use HLDS transformations to achieve effects for the MLDS backend
+that the LLDS backend achieves using code fragments
+that are scattered all over the LLDS code generator.
+
+<ul>
+<li>
+add_trail_ops.m inserts code to manipulate the trail,
+in particular ensuring that
+we apply the appropriate trail operations before each choice point,
+when execution resumes after backtracking,
+and whenever we do a commit.
+The trail operations are represented as (and implemented as)
+calls to impure procedures defined in library/private_builtin.m.
+<li>
+add_heap_ops.m is very similar to add_trail_ops.m;
+it inserts code to do heap reclamation on backtracking.
+</ul>
+
+<h3>4b. MLDS code generation</h3>
+
+<ul>
+<li>
+ml_top_gen.m is the top module of the package that converts HLDS code to MLDS.
+It invokes the other modules of the package as needed.
+<li>
+ml_proc_gen.m handles the translation of procedures to MLDS.
+<li>
+ml_code_gen.m handles the tasks common to all kinds of goals,
+as well as the tasks specific to conjunctions, if-then-elses and negations.
+For other kinds of goals, ml_code_gen.m invokes other modules.
+<li>
+ml_unify_gen.m and its subcontractors
+ml_unify_gen_construct.m and ml_unify_gen_deconstruct.m
+generate code for unifications
+with the help of the utility predicates in
+ml_unify_gen_test.m and ml_unify_gen_util.m.
+<li>
+ml_closure_gen.m generates code for closures.
+<li>
+ml_call_gen.m generates code for both plain and generic calls.
+<li>
+ml_foreign_proc_gen.m generates code that invokes foreign_procs.
+<li>
+ml_commit_gen.m generates code for commits.
+<li>
+ml_disj_gen.m generates code for disjunctions.
+<li>
+ml_switch_gen.m generates code for switches with the help of
+ml_lookup_switch.m, ml_string_switch.m, ml_tag_switch.m,
+and ml_simplify_switch.m
+(which do the same jobs as their LLDS equivalents)
+and switch_util.m in the backend_libs.m package
+(since it is also used by LLDS back-end).
+<li>
+ml_accurate_gc.m handles provisions for accurate garbage collection.
+</ul>
+
+The MLDS code generator also uses several auxiliary modules
+that do not themselves generate code.
+
+<ul>
+<li>
+The main data structure that holds the state of the MLDS code generator
+is defined in ml_gen_info.m.
+<li>
+ml_global_data.m looks after the database of global data structures
+(those created at module scope).
+<li>
+ml_type_gen.m converts descriptions of HLDS types to MLDS static data.
+<li>
+type_ctor_info.m and base_typeclass_info.m generate
+the RTTI data structures defined in rtti.m and pseudo_type_info.m
+(those four modules are in the backend_libs.m package,
+since they are shared with the LLDS back-end)
+and then rtti_to_mlds.m converts these to MLDS.
+<li>
+The modules ml_args_util.m, ml_code_util.m,
+ml_target_util.m and ml_util.m provide some general utility predicates.
+</ul>
+
+<h3>5b. MLDS transformations</h3>
+
+<ul>
+<li>
+ml_optimize.m and ml_unused_assigns.m do MLDS to MLDS optimizations.
+<li>
+ml_elim_nested.m does two MLDS transformations
+that happen to have a lot in common:
+(1) eliminating nested functions and
+(2) adding code to handle accurate garbage collection.
+<li>
+ml_rename_class.m does what its name suggests: renames classes in the MLDS.
+It is used by mlds_to_java.m to replace long class names with shorter ones.
+</ul>
+
+<h3>6b. MLDS output</h3>
 
 <p>
-There are currently three backends that generate code from MLDS:
-one generates C/C++ code,
-one generates Java,
-and one generates C#.
-There is also a module, mlds_dump.m,
-that dumps out the MLDS in format designed specifically for debugging.
-
-<p>
-The various mlds_to_c_*.m modules together convert MLDS to C/C++ code,
-the various mlds_to_cs_*.m modules together convert it to C# code, while
-the various mlds_to_java_*.m modules together convert it to Java code.
-
-<p>
-Generated C or C# code is intended to be given to a C or C# compiler
-to turn the .c file into a .o file, or the .cs file into a .dll or .exe.
+There are currently three target languages in which we can output MLDS code:
+C, Java, and C#.
+Generated C code is intended to be given to a C compiler
+to turn the .c file into a .o or .pic_o file.
 Generated Java code is intended to be given to a Java compiler (normally javac)
 to turn the .java file into a .class file containing Java bytecodes.
+Generated C# code is intended to be given to a C# compiler
+to turn the .cs file into a .dll or .exe.
+
+<ul>
+<li>
+The various mlds_to_c_*.m modules together write out the MLDS as C code.
+<li>
+The various mlds_to_java_*.m modules together write out the MLDS as Java code.
+<li>
+The various mlds_to_cs_*.m modules together write out the MLDS as C# code.
+<li>
+There is also a module, mlds_dump.m,
+that dumps out the MLDS in a format designed specifically for debugging.
+</ul>
 
 <p>
+In more detail:
+
 <ul>
 <li>
 The mlds_to_{c,cs,java}_file.m modules write out
@@ -2277,277 +2030,190 @@ used by the other modules above.
 </ul>
 
 <p>
-
 The mlds_to_target_util.m module contains types, functions and predicates
 that are needed by more than one of these MLDS backends.
 
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-<h3> c. BYTECODE BACK-END </h3>
+<h2>c. Bytecode backend</h2>
 
 <p>
 This is the bytecode_backend.m package.
-
 <p>
-
-The Mercury compiler can translate Mercury programs into bytecode for
-interpretation by a bytecode interpreter. The intent of this is to
-achieve faster turn-around time during development. However, the
-bytecode interpreter has not yet been written.
+The Mercury compiler can translate Mercury programs into bytecode
+for interpretation by a bytecode interpreter.
+The intent of this is to achieve faster turn-around time during development.
+However, the bytecode interpreter has not yet been written.
 
 <ul>
 <li>
-    bytecode.m defines the internal representation of bytecodes, and contains
-    the predicates to emit them in two forms. The raw bytecode form is emitted
-    into &lt;filename&gt;.bytecode for interpretation, while a human-readable
-    form is emitted into &lt;filename&gt;.bytedebug for visual inspection.
-
+bytecode.m defines the internal representation of bytecodes,
+and contains the predicates to emit them in two forms.
+The raw bytecode form is emitted into
+.bytecode files for interpretation,
+while a human-readable form is emitted into
+.bytedebug files for visual inspection.
 <li>
-    bytecode_gen.m contains the predicates that translate HLDS into bytecode.
-
+bytecode_gen.m contains the predicates that translate HLDS into bytecode.
 <li>
-    bytecode_data.m contains the predicates that translate ints, strings
-    and floats into bytecode.
+bytecode_data.m contains the predicates
+that translate ints, strings and floats into bytecode.
 </ul>
 
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-<h3> d. ERLANG BACK-END </h3>
+<h2>d. Erlang backend</h2>
 
 <p>
-This is the erl_backend.m package.
-
+The backend that generates Erlang code is in the erl_backend.m package.
 <p>
-
-The Mercury compiler can translate Mercury programs into Erlang.
-The intent of this is to take advantage of the features of the
-Erlang implementation (concurrency, fault tolerance, etc.)
+The intent of this backend is to take advantage
+of the main features of the Erlang implementation
+(the most important being concurrency and fault tolerance).
 However, the backend is still incomplete.
-This back-end uses the Erlang Data Structure (elds.m) as its
-intermediate representation.
+This backend uses the Erlang Data Structure (elds.m)
+as its intermediate representation.
 
-<h4> 4d. ELDS code generation </h4>
-
-<ul>
-<li>
-    erl_code_gen.m converts HLDS code to ELDS.
-    The following sub-modules are used to handle different constructs:
-    <ul>
-    <li>
-        erl_unify_gen.m
-    <li>
-        erl_call_gen.m
-    </ul>
-    The module erl_code_util.m provides utility routines
-    for ELDS code generation.
-<li>
-    erl_rtti.m converts RTTI data structures defined in rtti.m into
-    ELDS functions which return the same information when called.
-</ul>
-
-<h4> 6d. ELDS output </h4>
+<h3>4d. ELDS code generation</h3>
 
 <ul>
 <li>
-    elds_to_erlang.m converts ELDS to Erlang code.
+erl_code_gen.m converts HLDS code to ELDS.
+It handles most kinds goals itself.
+<li>
+erl_unify_gen.m translates unifications.
+<li>
+erl_call_gen.m translates calls.
+<li>
+The module erl_code_util.m provides utility routines.
+<li>
+erl_rtti.m converts RTTI data structures defined in rtti.m
+into ELDS functions which return the same information when called.
 </ul>
 
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<h3>6d. ELDS output</h3>
 
-<h3> SMART RECOMPILATION </h3>
+<ul>
+<li>
+elds_to_erlang.m converts ELDS to Erlang code.
+</ul>
 
-<p>
-This is the recompilation.m package.
-
-<p>
+<h2>Smart recompilation</h2>
 
 The Mercury compiler can record program dependency information
-to avoid unnecessary recompilations when an imported module's
-interface changes in a way which does not invalidate previously
-compiled code.
+to avoid unnecessary recompilations
+when an imported module's interface changes
+in a way which does not invalidate previously compiled code.
+<p>
+This functionality is implemented by the recompilation.m package.
 
 <ul>
 <li>
-    recompilation.m contains types used by the other smart
-    recompilation modules.
-
+recompilation.m contains types used by the other smart recompilation modules.
 <li>
-    recompilation_version.m generates version numbers for program items
-    in interface files.
-
+recompilation_version.m generates version numbers
+for program items in interface files.
 <li>
-    recompilation_usage.m works out which program items were used
-    during a compilation.
-
+recompilation_usage.m works out
+which program items were used during a compilation.
 <li>
-    recompilation_check.m is called before recompiling a module.
-    It uses the information written by recompilation_version.m and
-    recompilation_usage.m to work out whether the recompilation is
-    actually needed.
+recompilation_check.m is called before recompiling a module.
+It uses the information written
+by recompilation_version.m and recompilation_usage.m
+to work out whether the recompilation is actually needed.
 </ul>
 
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<h2>Miscellaneous</h2>
 
-<h3> MISCELLANEOUS </h3>
-
-The modules special_pred.m (in the hlds.m package) and unify_proc.m
-(in the check_hlds.m package) contain stuff for handling the special
-compiler-generated predicates which are generated for
-each type: unify/2, compare/3, and index/1 (used in the
-implementation of compare/3).
-
-<p>
-This module is part of the transform_hlds.m package.
-
-    <dl>
-
-    <dt> dependency_graph.m:
-    <dd>
-    This contains predicates to compute the call graph for a module,
-    and to print it out to a file.
-    (The call graph file is used by the profiler.)
-    The call graph may eventually also be used by det_analysis.m,
-    inlining.m, and other parts of the compiler which could benefit
-    from traversing the predicates in a module in a bottom-up or
-    top-down fashion with respect to the call graph.
-
-    </dl>
-
-<p>
-The following modules are part of the backend_libs.m package.
-
-<dl>
-<dt> builtin_ops:
-<dd>
-    This module defines the types unary_op and binary_op
-    which are used by several of the different back-ends:
-    bytecode.m, llds.m, and mlds.m.
-
-<dt> c_util:
-<dd>
-    This module defines utility routines useful for generating C code.
-    It is used by both llds_out.m and mlds_to_c.m.
-
-<dt> name_mangle:
-<dd>
-    This module defines utility routines useful for mangling
-    names to forms acceptable as identifiers in target languages.
-
-<dt> compile_target_code.m
-<dd>
-    Invoke C, C#, Java, etc. compilers and linkers to compile
-    and link the generated code.
-
-<dt> string_encoding.m:
-<dd>
-    This module defines utility routines to do with string encodings.
-
-</dl>
-
-<p>
-The following modules are part of the libs.m package.
-
-    <dl>
-
-    <dt> file_util.m:
-    <dd>
-        Predicates to deal with files, such as searching for a file
-        in a list of directories.
-
-    <dt> process_util.m:
-    <dd>
-        Predicates to deal with process creation and signal handling.
-        This module is mainly used by make.m and its sub-modules.
-
-    <dt> timestamp.m
-    <dd>
-        Contains an ADT representing timestamps used by smart
-        recompilation and `mmc --make'.
-
-    <dt> graph_color.m
-    <dd>
-        Graph colouring.
-        <br>
-        This is used by the LLDS back-end for register allocation
-
-    <dt> int_emu.m
-    <dd>
-        Emulate `int' operations for a given number of bits per int.
-
-    <dt> lp.m
-    <dd>
-        Implements the linear programming algorithm for optimizing
-        a set of linear constraints on floats
-        with respect to a linear cost function.
-        This is used by the first termination analyser,
-        whose top level is in termination.m.
-
-    <dt> lp_rational.m
-    <dd>
-        Implements the linear programming algorithm for optimizing
-        a set of linear constraints on rational numbers
-        with respect to a linear cost function.
-        This is used by the second, convex-constraint-based
-        termination analyser,
-        whose top level is in term_constr_main.m.
-
-    <dt> polyhedron.m
-    <dd>
-        Implements operations on convex polyhedra.
-        This is used by the second, convex-constraint-based
-        termination analyser,
-        whose top level is in term_constr_main.m.
-
-    <dt> rat.m
-    <dd>
-        Implements rational numbers.
-
-    <dt> compiler_util.m:
-    <dd>
-        Generic utility predicates, mainly for error handling.
-
-    <dt> mmakefiles.m:
-    <dd>
-        A representation for mmakefiles and mmakefile fragments,
-        and predicates for printing them.
-
-    <dt> check_libgrades.m:
-    <dd>
-       Implements the check that dependent libraries are installed in
-       the required grade.
-   
-    </dl>
-
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
-<h3> CURRENTLY UNDOCUMENTED </h3>
+The functionality of the above modules
+requires support from a significant number of utility predicates.
+Many of these are in modules that have been listed above,
+but some of them are not.
+Most of these are either in the backend_libs.m package
+(utility predicates used in more than one backend)
+or in the libs.m package
+(utility predicates used in many parts of the compiler,
+not just the various backends).
 
 <ul>
 <li>
-    mmc_analysis.m
+The modules
+special_pred.m (in the hlds.m package)
+and unify_proc.m (in the check_hlds.m package)
+contain stuff for handling the special compiler-generated predicates
+which we generate for each type:
+unify/2, compare/3, and index/1.
+(Index is used in the implementation of compare/3.)
+<li>
+dependency_graph.m computes the call graph for a module,
+and prints it out to a file.
+(The call graph file is used by the profiler.)
+The call graph may eventually also be used by det_analysis.m,
+inlining.m, and other parts of the compiler
+which could benefit from traversing the predicates in a module
+in a bottom-up or top-down fashion with respect to the call graph.
+<li>
+builtin_ops.m defines the types unary_op and binary_op,
+which are used by all the backends to implement builtin operations.
+<li>
+c_util.m defines utility routines for generating C code.
+It is used by both the LLDS and MLDS backends.
+<li>
+name_mangle.m defines predicates
+for mangling names to forms acceptable as identifiers in target languages.
+<li>
+compile_target_code.m invokes compilers and/or linkers
+for our various target languages
+to convert the generated code into executables.
+<li>
+string_encoding.m: defines utility predicates related to string encodings.
+<li>
+file_util.m contains utility predicates dealing with files,
+such as searching for a file in a list of directories.
+<li>
+process_util.m contains predicates
+that deal with process creation and signal handling.
+This module is mainly used by make.m and its submodules.
+<li>
+timestamp.m contains an ADT representing timestamps.
+It is used by smart recompilation and `mmc --make'.
+<li>
+graph_color.m does graph colouring.
+This is used by the LLDS back-end for register allocation.
+<li>
+int_emu.m emulates `int' operations for a given number of bits per int.
+<li>
+lp.m implements the linear programming algorithm
+for optimizing a set of linear constraints on floats
+with respect to a linear cost function.
+This is used by the first termination analyser,
+whose top level is in termination.m.
+<li>
+lp_rational.m implements the linear programming algorithm
+for optimizing a set of linear constraints on rational numbers
+with respect to a linear cost function.
+This is used by the second, convex-constraint-based termination analyser,
+whose top level is in term_constr_main.m.
+<li>
+polyhedron.m implements operations on convex polyhedra.
+This is used by the second, convex-constraint-based termination analyser,
+whose top level is in term_constr_main.m.
+<li>
+rat.m implements rational numbers.
+<li>
+compiler_util.m contains generic utility predicates, mainly for error handling.
+<li>
+mmakefiles.m defines a representation for mmakefiles and mmakefile fragments,
+and predicates for printing them.
+<li>
+check_libgrades.m checks whether libraries we want to use
+are installed in the required grade.
 </ul>
 
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<h2>Currently undocumented</h2>
 
-<h3> CURRENTLY USELESS </h3>
-
-<dl>
-
-<dt> atsort.m (in the libs.m package)
-<dd>
-    Approximate topological sort.
-    This was once used for traversing the call graph,
-    but nowadays we use digraph.atsort from library/digraph.m.
-
-</dl>
-
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<ul>
+<li>
+analysis.m
+<li>
+mmc_analysis.m
+</ul>
 
 </body>
 </html>

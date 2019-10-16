@@ -1,239 +1,244 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
 <html>
 <head>
-<title>
-	Trail Management
-</title>
+<title>Trail Management</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body>
 
-<hr>
-<!-------------------------->
-<h1> Trail Management </h1>
+<h1>Trail Management</h1>
 
-This document describes how the generated code and
-the runtime system manage the trail.
-
+This document describes how the generated code and the runtime system
+manage the trail.
 <p>
-
 It should be read in conjunction with the
 "Trailing" section of the language reference manual.
-
 <p>
 
-<hr>
-<!-------------------------->
-<h2> Purpose of the trail </h2>
+<h2>Purpose of the trail</h2>
 
 The trail is a data structure which in Mercury is used for three things.
 
 <ul>
-<li>	For code using backtrackable destructive update (i.e. code with modes
-	such as `mdi'/`muo' which use `mostly_unique' insts), the trail
-	is used to undo backtrackable destructive updates to arguments
-	when backtracking (or the like) occurs.
-
-<li>	For code using dynamic moding (`any' insts),
-	the trail is used to undo updates to the representation
-	of variable bindings or to the constraint store
-	when backtracking (or the like) occurs.
-
-<li>	For code using dynamic scheduling (where constraints
-	are not checked for satisfiability as soon as they are called,
-	but are instead delayed, with the variable bindings
-	or constraint store holding a representation of the delayed
-	constraints), the trail is also used to check for floundering
-	(attempting to commit to a solution which there are still
-	outstanding delayed constraints).
+<li>
+For code using backtrackable destructive update
+(i.e. code with modes such as `mdi'/`muo' which use `mostly_unique' insts),
+the trail is used to undo backtrackable destructive updates to arguments
+when backtracking (or the like) occurs.
+<li>
+For code using dynamic moding (`any' insts),
+the trail is used to undo updates to the representation of variable bindings
+or to the constraint store when backtracking (or the like) occurs.
+<li>
+For code using dynamic scheduling
+(where constraints are not checked for satisfiability
+as soon as they are called, but are instead delayed,
+with the variable bindings or constraint store
+holding a representation of the delayed constraints),
+the trail is also used to check for floundering
+(attempting to commit to a solution
+which there are still outstanding delayed constraints).
 </ul>
 
 <p>
 
-<hr>
-<!-------------------------->
-<h2> Nature of the trail </h2>
+<h2>Nature of the trail</h2>
 
 The trail is represented as a stack of trail entries.
-There are two kinds of trail entries, value trail entries
-and functions trail entries. 
-
+There are two kinds of trail entries:
+value trail entries and functions trail entries.
 <p>
-
-Value trail entries hold two words, an address and its corresponding 
-saved value.  C code can create a value trail entry before modifying
-some data, and then on backtracking the Mercury runtime will reset
-the modified word with the saved value.
-
+Value trail entries hold two words,
+an address and its corresponding saved value.
+C code can create a value trail entry before modifying some data,
+and then on backtracking the Mercury runtime
+will reset the modified word with the saved value.
 <p>
-
-Function trail entries hold a function pointer and an opaque (`void *')
-data pointer.  C code can register a function trail entry, and then in certain
-circumstances the Mercury runtime will call back the specified function with
-its correspoding data, also passing an MR_trail_reason, which specifies why
-the function was called.
-
+Function trail entries hold
+a function pointer and an opaque (`void *') data pointer.
+C code can register a function trail entry,
+and then in certain circumstances the Mercury runtime
+will call back the specified function with its correspoding data,
+also passing an MR_trail_reason, which specifies why the function was called.
 <p>
 
 These circumstances (and their corresponding reasons) are:
 <ul>
-<li> On backtracking, which is further subdivided into
+<li>
+On backtracking, which is further subdivided into
      <ul>
-     <li> ordinary backtracking on failure (MR_undo)
-     <li> when an exception is thrown (MR_exception)
-     <li> when executing a retry command in the debugger (MR_retry)
+     <li>
+     ordinary backtracking on failure (MR_undo)
+     <li>
+     when an exception is thrown (MR_exception)
+     <li>
+     when executing a retry command in the debugger (MR_retry)
      </ul>
-<li> At soft commits, e.g. for solutions/2 or if-then-elses with
-     nondet conditions (MR_solve)
-<li> At hard commits (MR_commit)
+<li>
+At soft commits, e.g. for solutions/2
+or if-then-elses with nondet conditions (MR_solve)
+<li>
+At hard commits (MR_commit)
 </ul>
 
 <p>
-
-In addition to the trail stack itself, which is implemented as an array of
-trail entries (stored in the memory zone MR_trail_zone) and a pointer to the
-first unused entry (MR_trail_ptr), the trail management code also maintains
-the value of two additional variables, MR_ticket_counter and
-MR_ticket_high_water, which are used to implement the "trail ticket"
-abstraction (see below) and the MR_current_choicepoint_id() macro
-(see the "avoiding redundant trailing" section of the language reference manual).
-
+In addition to the trail stack itself,
+which is implemented as an array of trail entries
+(stored in the memory zone MR_trail_zone)
+and a pointer to the first unused entry (MR_trail_ptr),
+the trail management code also maintains
+the value of two additional variables,
+MR_ticket_counter and MR_ticket_high_water,
+which are used to implement the "trail ticket" abstraction (see below)
+and the MR_current_choicepoint_id() macro
+(see the "avoiding redundant trailing" section
+of the language reference manual).
 <p>
 
-<hr>
-<!-------------------------->
-<h2> Trail operations </h2>
+<h2>Trail operations</h2>
 
-The trail is implemented as an ADT which is modified only via
-certain operations, which are mostly defined as macros in
-runtime/mercury_trail.h.
-There are two kinds of trail operations: public operations, which are
-available for use by the user in `pragma c_code', and private operations,
+The trail is implemented as an ADT
+which is modified only via certain operations,
+which are mostly defined as macros in runtime/mercury_trail.h.
+There are two kinds of trail operations:
+public operations,
+which are available for use by the user in foreign_procs,
+and private operations,
 which are intended for use only by the Mercury implementation itself.
-
 <p>
 
-<h3> Public trail operations </h3>
+<h3>Public trail operations</h3>
 
 The public operations include
 <ul>
-<li> operations to add entries to the trail: MR_trail_value(),
-     MR_trail_current_value(), and MR_trail_function().
-<li> operations to query the value of MR_ticket_counter:
-     MR_current_choicepoint_id().
+<li>
+operations to add entries to the trail:
+MR_trail_value(), MR_trail_current_value(), and MR_trail_function().
+<li>
+operations to query the value of MR_ticket_counter:
+MR_current_choicepoint_id().
 </ul>
-They are documented in the "Trailing" section of the Mercury language
-reference manual.
-
+They are documented in the "Trailing" section
+of the Mercury language reference manual.
 <p>
 
-<h3> Private trail operations </h3>
+<h3>Private trail operations</h3>
 
-The private operations are used (indirectly) by the code generator, which
-inserts calls to them in the generated code. 
-The private operations are also directly used by a few other parts of the
-Mercury implementation, e.g. the exception handling code (library/exception.m
-and the MR_create_exception_handler() macro in runtime/mercury_stacks.h) and
-the support for the debugger's retry command (MR_trace_retry() in
-trace/mercury_trace_internal.c).
+The private operations are used (indirectly) by the code generator,
+which inserts calls to them in the generated code.
+The private operations are also directly used
+by a few other parts of the Mercury implementation,
+e.g. the exception handling code
+(library/exception.m and
+the MR_create_exception_handler() macro in runtime/mercury_stacks.h)
+and the support for the debugger's retry command
+(MR_trace_retry() in trace/mercury_trace_internal.c).
 For each private operation that the code generator can generate,
 there is a corresponding LLDS or MLDS instruction.
 The private operations are documented in runtime/mercury_trail.h,
 and also in compiler/llds.m, and are also documented below.
-
 <p>
 
-<hr>
-<!-------------------------->
-<h2> Trail tickets </h2>
+<h2>Trail tickets</h2>
 
-At any point where we create a choice point, i.e. a point to which we may want
-to backtrack (including exception handlers, and if debugging is enabled,
-all procedure prologues [to handle the debugger retry command]), or where we
-are about to start a goal for which we may want to do a soft or hard commit,
+At any point where we create a choice point,
+i.e. a point to which we may want to backtrack
+(including exception handlers, and if debugging is enabled,
+all procedure prologues [to handle the debugger retry command]),
+or where we are about to start a goal
+for which we may want to do a soft or hard commit,
 the code must allocate a trail ticket, using the MR_store_ticket() macro.
-This saves the trail pointer, and allocates a new ticket id by incrementing
-MR_ticket_high_water and assigning that to MR_ticket_counter.  Note that the
-trail pointer is typically saved on the stack, but the ticket id is only
-stored in MR_ticket_counter.  If the code needs to save the ticket id too,
+This saves the trail pointer,
+and allocates a new ticket id
+by incrementing MR_ticket_high_water and assigning that to MR_ticket_counter.
+Note that the trail pointer is typically saved on the stack,
+but the ticket id is only stored in MR_ticket_counter.
+If the code needs to save the ticket id too,
 then it must call MR_mark_ticket_stack().
-
 <p>
-
 Whenever we backtrack, or whenever we do a hard or soft commit,
-the code must call MR_reset_ticket(), passing it the trail pointer
-value that was saved by MR_store_ticket(), together with the appropriate
-MR_trail_reason.  This will walk the trail, applying all the trail
-entries from the top of the trail down to the given pointer,
+the code must call MR_reset_ticket(),
+passing it the trail pointer value that was saved by MR_store_ticket(),
+together with the appropriate MR_trail_reason.
+This will walk the trail,
+applying all the trail entries
+from the top of the trail down to the given pointer,
 most recently added entries first.
 In addition, if the ticket will no longer be used,
 it should then be pruned or discarded (see below).
-
 <p>
-
 Whenever we do a hard or soft commit,
 the code must "prune" the trail tickets that we have allocated,
-using either MR_prune_ticket(), which prunes the most recently
-allocated ticket, or MR_prune_tickets_to(), which prunes all the
-tickets allocated since the corresponding call to MR_mark_ticket_stack().
-
+using either MR_prune_ticket(),
+which prunes the most recently allocated ticket,
+or MR_prune_tickets_to(),
+which prunes all the tickets allocated
+since the corresponding call to MR_mark_ticket_stack().
+<p>
+Whenever we backtrack, the code must "discard" the trail tickets
+that have been allocated since the choice point was created,
+using either MR_discard_ticket(),
+which discards the most recently allocated ticket,
+or MR_discard_tickets_to(),
+which discards all the tickets allocated
+since the corresponding call to MR_mark_ticket_stack().
 <p>
 
-Whenever we backtrack, the code must "discard" the trail tickets that have
-been allocated since the choice point was created,
-using either MR_discard_ticket(), which discards the most recently
-allocated ticket, or MR_discard_tickets_to(), which discards all the
-tickets allocated since the corresponding call to MR_mark_ticket_stack().
-
-<p>
-
-<hr>
-<!-------------------------->
-<h2> Invariants </h2>
+<h2>Invariants</h2>
 
 <ul>
-<li> MR_trail_ptr:
-     <ul>
-     <li> increases when trail entries are created
-     <li> gets reset to its previous value on backtracking
-     <li> does not decrease after commits
-     <li> is non-decreasing during forward execution
-     </ul> 
-<li> MR_ticket_high_water:
-     <ul>
-     <li> increases at each choice point
-     <li> gets reset to its previous value on backtracking
-     <li> does not decrease after commits
-     <li> is non-decreasing during forward execution
-     </ul>
-<li> MR_ticket_counter:
-     <ul>
-     <li> increases at each choice point
-     <li> gets reset to its previous value on backtracking or after commits
-     <li> is non-decreasing during commit-free forward execution
-     <li> values are not reused during forward execution
-     <li> any call to a model_det goal will leave it unchanged
-          (MR_ticket_counter may change during the execution of the goal,
-          but its value when the goal exits will be the same
-          as the value it had when the goal was entered,
-          because the goal must prune away any tickets that
-          it allocates)
-     <li> any call to a model_semi goal which succeeds will likewise
-          leave it unchanged
-     <li> any call to a goal which fails will leave it unchanged
-          (any tickets allocated must be discarded or at least pruned
-	  before failing)
-     </ul>
+<li>
+MR_trail_ptr:
+    <ul>
+    <li>
+    increases when trail entries are created
+    <li>
+    gets reset to its previous value on backtracking
+    <li>
+    does not decrease after commits
+    <li>
+    is non-decreasing during forward execution
+    </ul>
+<li>
+MR_ticket_high_water:
+    <ul>
+    <li>
+    increases at each choice point
+    <li>
+    gets reset to its previous value on backtracking
+    <li>
+    does not decrease after commits
+    <li>
+    is non-decreasing during forward execution
+    </ul>
+<li>
+MR_ticket_counter:
+    <ul>
+    <li>
+    increases at each choice point
+    <li>
+    gets reset to its previous value on backtracking or after commits
+    <li>
+    is non-decreasing during commit-free forward execution
+    <li>
+    values are not reused during forward execution
+    <li>
+    any call to a model_det goal will leave it unchanged
+    (MR_ticket_counter may change during the execution of the goal,
+    but its value when the goal exits will be the same
+    as the value it had when the goal was entered,
+    because the goal must prune away any tickets that it allocates)
+    <li>
+    any call to a model_semi goal which succeeds
+    will likewise leave it unchanged
+    <li>
+    any call to a goal which fails will leave it unchanged
+    (any tickets allocated must be discarded or at least pruned before failing)
+    </ul>
 </ul>
 
-<p>
-
-<hr>
-<!-------------------------->
-<hr>
-<!-------------------------->
-Last update was $Date: 2000-03-22 14:45:04 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
