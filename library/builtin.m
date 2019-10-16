@@ -26,7 +26,8 @@
 % Types.
 %
 
-% The types `character', `int', `float', and `string',
+% The types `character', `int', `int8', `int16', `int32', `int64',
+% `uint', `uint8', `uint16', `uint32', `uint64', `float', and `string',
 % and tuple types `{}', `{T}', `{T1, T2}', ...
 % and the types `pred', `pred(T)', `pred(T1, T2)', `pred(T1, T2, T3)', ...
 % and `func(T1) = T2', `func(T1, T2) = T3', `func(T1, T2, T3) = T4', ...
