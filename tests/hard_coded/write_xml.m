@@ -3,6 +3,11 @@
 %---------------------------------------------------------------------------%
 % The .exp file is for the low-level C grades.
 % The .exp2 file is for the high-level C grades.
+%
+% The difference between the .exp and .exp2 is due to deconstruct/5's handling
+% of predicate- and function-valued terms differing between the low- and
+% high-level C backends when using include_details_cc. That should be the only
+% point of difference between the two expected outputs.
 
 :- module write_xml.
 
@@ -46,8 +51,8 @@
     ;       pointer(c_pointer)
     ;       foreign(ftype)
     ;       primitives(
-                int, uint, int8, int16, int32, int64,
-                uint8, uint16, uint32, uint64).
+                int, int8, int16, int32, int64,
+                uint, uint8, uint16, uint32, uint64).
 
 :- type listPart
     --->    listPart(int)
@@ -172,7 +177,7 @@ main(!IO) :-
             ctor(type_ctor(type_of(!.M))),
             foreign(F),
             pointer(P),
-            primitives(1, 2u, 3i8, 4i16, 5i32, 6i64, 7u8, 8u16, 9u32, 10u64)
+            primitives(1, 2i8, 3i16, 4i32, 5i64, 6u, 7u8, 8u16, 9u32, 10u64)
         ],
         Map = !.M
     ),
