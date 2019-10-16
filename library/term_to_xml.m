@@ -213,15 +213,16 @@
     %   1. simple: The functors `[]', `[|]' and `{}' are mapped to the elements
     %   `List', `Nil' and `Tuple' respectively. Arrays are assigned the
     %   `Array' element. The builtin types are assigned the elements `Int',
-    %   `String', `Float' and `Char'. All other functors are assigned elements
-    %   with the same name as the functor provided the functor name is
-    %   well formed and does not start with a capital letter. Otherwise,
-    %   a mangled version of the functor name is used.
+    %   `Int8', `Int16', `Int32' `Int64', `UInt', `UInt8', `UInt16, `UInt32',
+    %   `UInt64', `String', `Float' and `Char'. All other functors are assigned
+    %   elements with the same name as the functor provided the functor name is
+    %   well formed and does not start with a capital letter. Otherwise, a
+    %   mangled version of the functor name is used.
     %
-    %   All elements except `Int', `String', `Float' and `Char' will have
+    %   All elements except those corresponding to builtin types will have
     %   their `functor', `arity', `type' and `field' (if there is a field name)
-    %   attributes set. `Int', `String', `Float' and `Char' elements will
-    %   just have their `type' and possibly their `field' attributes set.
+    %   attributes set. Elements corresponding to builtin types will just have
+    %   their `type' and possibly their `field' attributes set.
     %
     %   The `simple' mapping is designed to be easy to read and use, but
     %   may result in the same element being assigned to different functors.
@@ -746,14 +747,32 @@ array_element = "Array".
 :- pred is_primitive_type(type_desc::in, string::out) is semidet.
 
 is_primitive_type(TypeDesc, Element) :-
-    ( if TypeDesc = type_of("") then
+    ( if TypeDesc = type_of(_ : string) then
         Element = "String"
-    else if TypeDesc = type_of('c') then
+    else if TypeDesc = type_of(_ : character) then
         Element = "Char"
-    else if TypeDesc = type_of(1) then
+    else if TypeDesc = type_of(_ : int) then
         Element = "Int"
-    else if TypeDesc = type_of(1.0) then
+    else if TypeDesc = type_of(_ : float) then
         Element = "Float"
+    else if TypeDesc = type_of(_ : uint) then
+        Element = "UInt"
+    else if TypeDesc = type_of(_ : int8) then
+        Element = "Int8"
+    else if TypeDesc = type_of(_ : int16) then
+        Element = "Int16"
+    else if TypeDesc = type_of(_ : int32) then
+        Element = "Int32"
+    else if TypeDesc = type_of(_ : int64) then
+        Element = "Int64"
+    else if TypeDesc = type_of(_ : uint8) then
+        Element = "UInt8"
+    else if TypeDesc = type_of(_ : uint16) then
+        Element = "UInt16"
+    else if TypeDesc = type_of(_ : uint32) then
+        Element = "UInt32"
+    else if TypeDesc = type_of(_ : uint64) then
+        Element = "UInt64"
     else
         fail
     ).
@@ -857,14 +876,32 @@ make_du_functor(Functor, Arity) = du_functor(Functor, Arity).
 
 primitive_value(Univ, PrimValue) :-
     ( if univ_to_type(Univ, String) then
-        PrimValue = String`with_type`string
+        PrimValue = String : string
     else if univ_to_type(Univ, Char) then
         PrimValue = char_to_string(Char)
     else if univ_to_type(Univ, Int) then
         PrimValue = int_to_string(Int)
-    else
-        univ_to_type(Univ, Float),
+    else if univ_to_type(Univ, Float) then
         PrimValue = float_to_string(Float)
+    else if univ_to_type(Univ, UInt) then
+        PrimValue = uint_to_string(UInt)
+    else if univ_to_type(Univ, Int8) then
+        PrimValue = int8_to_string(Int8)
+    else if univ_to_type(Univ, Int16) then
+        PrimValue = int16_to_string(Int16)
+    else if univ_to_type(Univ, Int32) then
+        PrimValue = int32_to_string(Int32)
+    else if univ_to_type(Univ, Int64) then
+        PrimValue = int64_to_string(Int64)
+    else if univ_to_type(Univ, UInt8) then
+        PrimValue = uint8_to_string(UInt8)
+    else if univ_to_type(Univ, UInt16) then
+        PrimValue = uint16_to_string(UInt16)
+    else if univ_to_type(Univ, UInt32) then
+        PrimValue = uint32_to_string(UInt32)
+    else
+        univ_to_type(Univ, UInt64),
+        PrimValue = uint64_to_string(UInt64)
     ).
 
 %---------------------------------------------------------------------------%

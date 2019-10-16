@@ -3,7 +3,7 @@ unsupported_dtd_type(pred(int))
 
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/css" href="http://www.cs.mu.oz.au/a_css.css"?>
-<Array--array-46array-40write_xml-46mytype-41 functor="&lt;&lt;array&gt;&gt;" type="array.array(write_xml.mytype)" arity="12">
+<Array--array-46array-40write_xml-46mytype-41 functor="&lt;&lt;array&gt;&gt;" type="array.array(write_xml.mytype)" arity="13">
 	<Tag_Tag-45--1--write_xml-46mytype functor="Tag-" type="write_xml.mytype" arity="1">
 		<Int type="int">44</Int>
 	</Tag_Tag-45--1--write_xml-46mytype>
@@ -129,6 +129,18 @@ is a &lt;string&gt;&amp;</String>
 	<pointer--1--write_xml-46mytype functor="pointer" type="write_xml.mytype" arity="1">
 		<c_pointer functor="c_pointer(0x0)" type="c_pointer" arity="0" />
 	</pointer--1--write_xml-46mytype>
+	<primitives--10--write_xml-46mytype functor="primitives" type="write_xml.mytype" arity="10">
+		<Int type="int">1</Int>
+		<UInt type="uint">2</UInt>
+		<Int8 type="int8">3</Int8>
+		<Int16 type="int16">4</Int16>
+		<Int32 type="int32">5</Int32>
+		<Int64 type="int64">6</Int64>
+		<UInt8 type="uint8">7</UInt8>
+		<UInt16 type="uint16">8</UInt16>
+		<UInt32 type="uint32">9</UInt32>
+		<UInt64 type="uint64">10</UInt64>
+	</primitives--10--write_xml-46mytype>
 </Array--array-46array-40write_xml-46mytype-41>
 Result 2:
 ok
@@ -516,7 +528,21 @@ is a &lt;string&gt;&amp;</String>
 												<pointer functor="pointer" type="write_xml.mytype" arity="1">
 													<Unknown functor="c_pointer(0x0)" type="c_pointer" arity="0" />
 												</pointer>
-												<Nil functor="[]" type="list.list(write_xml.mytype)" arity="0" />
+												<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+													<primitives functor="primitives" type="write_xml.mytype" arity="10">
+														<Int type="int">1</Int>
+														<UInt type="uint">2</UInt>
+														<Int8 type="int8">3</Int8>
+														<Int16 type="int16">4</Int16>
+														<Int32 type="int32">5</Int32>
+														<Int64 type="int64">6</Int64>
+														<UInt8 type="uint8">7</UInt8>
+														<UInt16 type="uint16">8</UInt16>
+														<UInt32 type="uint32">9</UInt32>
+														<UInt64 type="uint64">10</UInt64>
+													</primitives>
+													<Nil functor="[]" type="list.list(write_xml.mytype)" arity="0" />
+												</List>
 											</List>
 										</List>
 									</List>

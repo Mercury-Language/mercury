@@ -1,6 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .exp file is for the low-level C grades.
+% The .exp2 file is for the high-level C grades.
 
 :- module write_xml.
 
@@ -42,7 +44,10 @@
     ;       t(type_desc)
     ;       ctor(type_ctor_desc)
     ;       pointer(c_pointer)
-    ;       foreign(ftype).
+    ;       foreign(ftype)
+    ;       primitives(
+                int, uint, int8, int16, int32, int64,
+                uint8, uint16, uint32, uint64).
 
 :- type listPart
     --->    listPart(int)
@@ -166,7 +171,8 @@ main(!IO) :-
             t(type_of(!.M)),
             ctor(type_ctor(type_of(!.M))),
             foreign(F),
-            pointer(P)
+            pointer(P),
+            primitives(1, 2u, 3i8, 4i16, 5i32, 6i64, 7u8, 8u16, 9u32, 10u64)
         ],
         Map = !.M
     ),
