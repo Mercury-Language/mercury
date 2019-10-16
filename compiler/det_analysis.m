@@ -154,6 +154,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_detism.
@@ -379,7 +380,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     then
         proc_info_get_context(ProcInfo0, ProcContext),
         IOStateProcPieces = describe_one_proc_name_mode(!.ModuleInfo,
-            should_not_module_qualify, proc(PredId, ProcId)),
+            output_mercury, should_not_module_qualify, proc(PredId, ProcId)),
         IOStatePieces = [words("In")] ++ IOStateProcPieces ++ [suffix(":"), nl,
             words("error: invalid determinism for a predicate"),
             words("with I/O state arguments.")],
@@ -1228,7 +1229,8 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         then
             proc_info_get_context(ProcInfo, ProcContext),
             WillNotThrowProcPieces = describe_one_proc_name_mode(ModuleInfo,
-                should_not_module_qualify, proc(PredId, ProcId)),
+                output_mercury, should_not_module_qualify,
+                proc(PredId, ProcId)),
             WillNotThrowPieces = WillNotThrowProcPieces ++
                 [words("has determinism erroneous but also has"),
                 words("foreign clauses that have a"),
@@ -1280,7 +1282,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         MaybeDetism = no,
         proc_info_get_context(ProcInfo, Context),
         ProcPieces = describe_one_proc_name_mode(ModuleInfo,
-            should_not_module_qualify, proc(PredId, ProcId)),
+            output_mercury, should_not_module_qualify, proc(PredId, ProcId)),
         Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
             words("error:"), quote(":- pragma foreign_proc(...)"),
             words("for a procedure without a determinism declaration.")],

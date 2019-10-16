@@ -63,6 +63,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
@@ -1014,7 +1015,7 @@ get_called_procs_cases([Case | Cases], !Calls) :-
 
 generate_stratify_error(ModuleInfo, PPId, Context, Message, ErrorOrWarning)
         = Spec :-
-    PPIdDescription = describe_one_proc_name_mode(ModuleInfo,
+    PPIdDescription = describe_one_proc_name_mode(ModuleInfo, output_mercury,
         should_not_module_qualify, PPId),
     Preamble = [words("In")] ++ PPIdDescription ++ [suffix(":"), nl],
     (

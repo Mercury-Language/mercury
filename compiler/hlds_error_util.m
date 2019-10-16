@@ -25,8 +25,9 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -49,8 +50,9 @@
 :- func describe_one_pred_info_name(should_module_qualify, pred_info)
     = list(format_component).
 
-:- func describe_one_pred_name_mode(module_info, should_module_qualify,
-    pred_id, inst_varset, list(mer_mode)) = list(format_component).
+:- func describe_one_pred_name_mode(module_info, output_lang,
+    should_module_qualify, pred_id, inst_varset, list(mer_mode))
+    = list(format_component).
 
 :- func describe_several_pred_names(module_info, should_module_qualify,
     list(pred_id)) = list(format_component).
@@ -58,8 +60,8 @@
 :- func describe_one_proc_name(module_info, should_module_qualify,
     pred_proc_id) = list(format_component).
 
-:- func describe_one_proc_name_mode(module_info, should_module_qualify,
-    pred_proc_id) = list(format_component).
+:- func describe_one_proc_name_mode(module_info, output_lang,
+    should_module_qualify, pred_proc_id) = list(format_component).
 
 :- func describe_several_proc_names(module_info, should_module_qualify,
     list(pred_proc_id)) = list(format_component).
@@ -134,7 +136,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -203,7 +204,7 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
         Pieces = Prefix ++ [PredSymNamePiece]
     ).
 
-describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify, PredId,
+describe_one_pred_name_mode(ModuleInfo, Lang, ShouldModuleQualify, PredId,
         InstVarSet, ArgModes0) = Pieces :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
@@ -220,12 +221,13 @@ describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify, PredId,
     ),
     (
         PredOrFunc = pf_predicate,
-        ArgModesPart = arg_modes_to_string(InstVarSet, StrippedArgModes)
+        ArgModesPart = arg_modes_to_string(Lang, InstVarSet, StrippedArgModes)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(StrippedArgModes, FuncArgModes, FuncRetMode),
-        ArgModesPart = arg_modes_to_string(InstVarSet, FuncArgModes) ++ " = "
-            ++ mercury_mode_to_string(output_debug, InstVarSet, FuncRetMode)
+        ArgModesPart =
+            arg_modes_to_string(Lang, InstVarSet, FuncArgModes) ++ " = " ++
+            mercury_mode_to_string(Lang, InstVarSet, FuncRetMode)
     ),
     string.append_list([
         "`",
@@ -242,20 +244,21 @@ describe_several_pred_names(ModuleInfo, ShouldModuleQualify, PredIds)
         PredIds),
     Pieces = component_lists_to_pieces("and", PiecesList).
 
-describe_one_proc_name(ModuleInfo, ShouldModuleQualify, proc(PredId, ProcId))
-        = Pieces :-
+describe_one_proc_name(ModuleInfo, ShouldModuleQualify, PredProcId) = Pieces :-
+    PredProcId = proc(PredId, ProcId),
     PredPieces = describe_one_pred_name(ModuleInfo, ShouldModuleQualify,
         PredId),
     proc_id_to_int(ProcId, ProcIdInt),
     string.int_to_string(ProcIdInt, ProcIdStr),
     Pieces = PredPieces ++ [words("mode"), words(ProcIdStr)].
 
-describe_one_proc_name_mode(ModuleInfo, ShouldModuleQualify,
-        proc(PredId, ProcId)) = Pieces :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+describe_one_proc_name_mode(ModuleInfo, Lang, ShouldModuleQualify, PredProcId)
+        = Pieces :-
+    module_info_pred_proc_info(ModuleInfo, PredProcId, _, ProcInfo),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    Pieces = describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify,
+    PredProcId = proc(PredId, _),
+    Pieces = describe_one_pred_name_mode(ModuleInfo, Lang, ShouldModuleQualify,
         PredId, InstVarSet, ArgModes).
 
 describe_several_proc_names(ModuleInfo, ShouldModuleQualify, PPIds) = Pieces :-
@@ -291,15 +294,15 @@ module_qualification(ModuleName, ShouldModuleQualify) = ModuleQualification :-
         ModuleQualification = ""
     ).
 
-:- func arg_modes_to_string(inst_varset, list(mer_mode)) = string.
+:- func arg_modes_to_string(output_lang, inst_varset, list(mer_mode)) = string.
 
-arg_modes_to_string(InstVarSet, ArgModes) = Str :-
+arg_modes_to_string(Lang, InstVarSet, ArgModes) = Str :-
     (
         ArgModes = [],
         Str = ""
     ;
         ArgModes = [_ | _],
-        ArgsStr = mercury_mode_list_to_string(output_debug, InstVarSet,
+        ArgsStr = mercury_mode_list_to_string(Lang, InstVarSet,
             ArgModes),
         Str = "(" ++ ArgsStr ++ ")"
     ).

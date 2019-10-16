@@ -139,6 +139,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_detism.
@@ -445,7 +446,8 @@ check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, ModuleInfo, !Specs) :-
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredProcId = proc(PredId, _ProcId),
         PredModePieces = describe_one_pred_name_mode(ModuleInfo,
-            should_not_module_qualify, PredId, InstVarSet, PredArgModes),
+            output_mercury, should_not_module_qualify, PredId,
+            InstVarSet, PredArgModes),
         MainPieces = [words("Error: invalid determinism for")]
             ++ PredModePieces ++ [suffix(":"), nl,
             words("the primary mode of a function cannot be"),
@@ -481,7 +483,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         det_info_get_pred_proc_id(!.DetInfo, PredProcId),
         Context = goal_info_get_context(GoalInfo),
         det_info_get_module_info(!.DetInfo, ModuleInfo),
-        PredPieces = describe_one_proc_name_mode(ModuleInfo,
+        PredPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
             should_not_module_qualify, PredProcId),
         Pieces = [words("In")] ++ PredPieces ++ [suffix(":"), nl,
             words("Determinism error in lambda expression."), nl,
@@ -511,7 +513,7 @@ report_determinism_problem(PredProcId, ModuleInfo, MessagePieces,
         DeclaredDetism, InferredDetism, Msgs) :-
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
-    ProcPieces = describe_one_proc_name_mode(ModuleInfo,
+    ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
         should_not_module_qualify, PredProcId),
     Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl] ++
         MessagePieces ++ [nl] ++
@@ -1873,7 +1875,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_declared_argmodes(ProcInfo, ArgModes),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
-        PredPieces = describe_one_pred_name_mode(ModuleInfo,
+        PredPieces = describe_one_pred_name_mode(ModuleInfo, output_mercury,
             should_module_qualify, PredId, InstVarSet, ArgModes),
         StartingPieces = [words("Call to") | PredPieces]
     ).
