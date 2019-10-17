@@ -346,6 +346,7 @@ ORDINARY_PROGS = \
 	stream_put_bug \
 	stream_putback \
 	stream_putback_binary \
+	stream_string_writer_types \
 	stream_test \
 	string_alignment \
 	string_alignment_bug \
