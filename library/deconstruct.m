@@ -81,7 +81,7 @@
     %     backslash escapes if necessary and backslash or octal escapes for
     %     all characters for which char.is_control/1 is true.
     %   - for characters, the character inside single quotation marks using
-    %     a backslash escape if necssary and a backslash or octal escape for
+    %     a backslash escape if necessary and a backslash or octal escape for
     %     for all characters for which char.is_control/1 is true.
     %   - for predicates, the string <<predicate>>, and for functions,
     %     the string <<function>>, except with include_details_cc,
