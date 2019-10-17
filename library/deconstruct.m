@@ -90,7 +90,7 @@
     %     predicate and function values created by lambda expressions.)
     %   - for tuples, the string {}.
     %   - for arrays, the string <<array>>.
-    %   - for c_pointers, the string ptr(0xXXXX) where XXXX is the
+    %   - for c_pointers, the string c_pointer(0xXXXX) where XXXX is the
     %     hexadecimal representation of the pointer.
     %   - for foreign types, a string of the form <<foreign(Name, Rep)>> where
     %     Name is the type's Mercury name and Rep is a target language specific
