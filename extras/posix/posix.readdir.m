@@ -17,7 +17,12 @@
 :- import_module io.
 :- import_module string.
 
-:- pred readdir(dir::in, posix.result(string)::out, io::di, io::uo) is det.
+:- type readdir_result
+    --->    ok(string)
+    ;       eof
+    ;       error(posix.error).
+
+:- pred readdir(dir::in, readdir_result::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -25,32 +30,52 @@
 :- implementation.
 
 :- pragma foreign_decl("C", "
+    #include ""mercury_string.h""
     #include <sys/types.h>
     #include <dirent.h>
 ").
 
 readdir(Dir, Result, !IO) :-
-    readdir0(Dir, Entry, Res, !IO),
-    ( if Res = 0 then
+    readdir0(Dir, Entry, RawResult, !IO),
+    (
+        RawResult = readdir_ok,
         Result = ok(Entry)
-    else
-        errno(Err, !IO),
-        Result = error(Err)
+    ;
+        RawResult = readdir_eof,
+        Result = eof
+    ;
+        RawResult = readdir_error,
+        errno(Error, !IO),
+        Result = error(Error)
     ).
 
-:- pred readdir0(dir::in, string::out, int::out, io::di, io::uo) is det.
+:- type raw_readdir_result
+    --->    readdir_ok
+    ;       readdir_eof
+    ;       readdir_error.
 
+:- pragma foreign_export_enum("C", raw_readdir_result/0,
+    [prefix("MPOSIX_"), uppercase]).
+
+:- pred readdir0(dir::in, string::out, raw_readdir_result::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     readdir0(Dir::in, Entry::out, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    struct dirent *ent = readdir(Dir);
+    struct dirent *ent;
+    errno = 0;
+    ent = readdir(Dir);
     if (ent != NULL) {
+        Result = MPOSIX_READDIR_OK;
         MR_make_aligned_string_copy(Entry, ent->d_name);
-        Result = 0;
     } else {
-        Entry = NULL;
-        Result = 1;
+        if (errno == 0) {
+            Result = MPOSIX_READDIR_EOF;
+        } else {
+            Result = MPOSIX_READDIR_ERROR;
+        }
+        Entry = MR_make_string_const("""");
     }
 ").
 
