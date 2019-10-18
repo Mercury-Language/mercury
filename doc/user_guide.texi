@@ -957,13 +957,14 @@ It may be as simple as this @file{mypackage.m} file:
 @example
 :- module mypackage.
 :- interface.
-:- include_module foo, bar, baz.
+:- include_module foo.
+:- include_module bar.
+:- include_module baz.
 @end example
 
 @noindent
-This defines a module @samp{mypackage} containing
-sub-modules @samp{mypackage.foo}, @samp{mypackage.bar},
-and @samp{mypackage.baz}.
+This defines a module @samp{mypackage} containing sub-modules
+@samp{mypackage.foo}, @samp{mypackage.bar}, and @samp{mypackage.baz}.
 
 It is also possible to build libraries of unrelated modules,
 so long as the top-level module imports all the necessary modules.
@@ -971,19 +972,28 @@ For example:
 
 @example
 :- module blah.
-:- import_module fee, fie, foe, fum.
+:- implementation.
+:- import_module fee.
+:- import_module fie.
+:- import_module foe.
+:- import_module fum.
 @end example
 
 @noindent
-This example defines a module @samp{blah}, which has
-no functionality of its own, and which is just used
-for grouping the unrelated modules @samp{fee},
-@samp{fie}, @samp{foe}, and @samp{fum}.
+This example defines a module @samp{blah},
+which has no functionality of its own,
+and which is just used for grouping the unrelated modules
+@samp{fee}, @samp{fie}, @samp{foe}, and @samp{fum}.
+To avoid a warning about the interface of this module being empty,
+this module would have to be compiled with @samp{--no-warn-nothing-exported}.
+Alternatively, the library could of course just export something,
+such as a predicate that returns its version number.
 
-Generally it is better style for each library to consist
-of a single module which encapsulates its sub-modules,
-as in the first example, rather than just a group of
-unrelated modules, as in the second example.
+Generally it is better style for each library
+to consist of a single module which encapsulates its sub-modules,
+as in the first example,
+rather than just a group of unrelated modules,
+as in the second example.
 
 @node Building with mmc --make
 @section Building with mmc --make
@@ -997,8 +1007,9 @@ unrelated modules, as in the second example.
 @node Building and installing libraries with mmc --make
 @subsection Building and installing libraries with mmc --make
 
-To build a library from the source @samp{mypackage.m} (and other included
-modules), run @samp{mmc} with the following arguments:
+To build a library from the source @samp{mypackage.m}
+(and other included modules),
+run @samp{mmc} with the following arguments:
 
 @example
 mmc --make libmypackage
