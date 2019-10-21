@@ -5335,8 +5335,8 @@ AC_PATH_PROGS(XUL_BROWSER, firefox mozilla, "")
 AC_PATH_PROGS(XSLTPROC, xsltproc, "")
 
 if test "$XUL_BROWSER" != "" && test "$XSLTPROC" != ""; then
-    DEFAULT_XML_BROWSER_CMD="$XSLTPROC $DEFAULT_MERCURY_DEBUGGER_INIT_DIR/xul_tree.xsl /tmp/mdbtmp.xml > /tmp/mdbtmp.xul && $XUL_BROWSER file:///tmp/mdbtmp.xul"
-    DEFAULT_XML_TMP_FILENAME="/tmp/mdbtmp.xml"
+    DEFAULT_XML_BROWSER_CMD="$XSLTPROC $DEFAULT_MERCURY_DEBUGGER_INIT_DIR/xul_tree.xsl $TMPDIR/mdbtmp.xml > $TMPDIR/mdbtmp.xul && $XUL_BROWSER file://$TMPDIR/mdbtmp.xul"
+    DEFAULT_XML_TMP_FILENAME="$TMPDIR/mdbtmp.xml"
 else
     DEFAULT_XML_BROWSER_CMD=""
     DEFAULT_XML_TMP_FILENAME=""
@@ -5533,7 +5533,7 @@ TESTS_MDB_DOC="`pwd`"/doc/mdb_doc
 AC_SUBST(TESTS_MDB_INIT_DIR)
 AC_SUBST(TESTS_MDB_DOC)
 
-conf_h_copy=/tmp/mercury_conf.h.$$
+conf_h_copy="$TMPDIR"/mercury_conf.h.$$
 trap "rm -f $conf_h_copy" 0 1 2 3 13 15
 if test -f runtime/mercury_conf.h
 then
