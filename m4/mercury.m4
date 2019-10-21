@@ -497,25 +497,17 @@ AC_SUBST([CLI_INTERPRETER])
 #
 AC_DEFUN([MERCURY_CHECK_JAVA],
 [
-# jikes requires the usual Java SDK to run, so if we checked for javac first,
-# then that is what we would get. If the user has jikes installed, then that
-# probably means that they want to use it, so we check for jikes before javac.
 # On Windows, the Java SDK has a high chance of being installed in a path
 # containing spaces. The simplest solution is to keep only the basename.
 # Everything will still work so long as the executables can be found on the
 # PATH later.
-AC_PATH_PROGS(JAVAC, jikes javac gcj)
+AC_PATH_PROGS(JAVAC, javac)
 case "$JAVAC" in
     *" "*)
         JAVAC=`basename "$JAVAC"`
         ;;
 esac
-case "$JAVAC" in
-    *gcj)
-        JAVAC="$JAVAC -C"
-        ;;
-esac
-AC_PATH_PROG(JAVA_INTERPRETER, java gij)
+AC_PATH_PROG(JAVA_INTERPRETER, java)
 case "$JAVA_INTERPRETER" in
     *" "*)
         JAVA_INTERPRETER=`basename "$JAVA_INTERPRETER"`
