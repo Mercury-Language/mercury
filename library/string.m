@@ -4490,23 +4490,9 @@ split_at_string_loop(StartAt, NeedleLen, Needle, Total) = Out :-
 :- pragma promise_equivalent_clauses(prefix/2).
 
 prefix(String::in, Prefix::in) :-
-    Len    = length(String),
-    PreLen = length(Prefix),
-    PreLen =< Len,
-    prefix_2_iii(String, Prefix, PreLen - 1).
+    compare_substrings((=), String, 0, Prefix, 0, length(Prefix)).
 prefix(String::in, Prefix::out) :-
     prefix_2_ioi(String, Prefix, 0).
-
-:- pred prefix_2_iii(string::in, string::in, int::in) is semidet.
-
-prefix_2_iii(String, Prefix, I) :-
-    ( if 0 =< I then
-        unsafe_index_code_unit(String, I, C),
-        unsafe_index_code_unit(Prefix, I, C),
-        prefix_2_iii(String, Prefix, I - 1)
-    else
-        true
-    ).
 
 :- pred prefix_2_ioi(string::in, string::out, int::in) is multi.
 
@@ -4522,25 +4508,13 @@ prefix_2_ioi(String, Prefix, Cur) :-
 :- pragma promise_equivalent_clauses(suffix/2).
 
 suffix(String::in, Suffix::in) :-
-    Len    = length(String),
-    PreLen = length(Suffix),
-    PreLen =< Len,
-    suffix_2_iiii(String, Suffix, 0, Len - PreLen, PreLen).
+    StringLength = length(String),
+    SuffixLength = length(Suffix),
+    StringStart = StringLength - SuffixLength,
+    compare_substrings((=), String, StringStart, Suffix, 0, SuffixLength).
 suffix(String::in, Suffix::out) :-
     Len = length(String),
     suffix_2_ioii(String, Suffix, Len, Len).
-
-:- pred suffix_2_iiii(string::in, string::in, int::in, int::in, int::in)
-    is semidet.
-
-suffix_2_iiii(String, Suffix, I, Offset, Len) :-
-    ( if I < Len then
-        unsafe_index_code_unit(String, I + Offset, C),
-        unsafe_index_code_unit(Suffix, I, C),
-        suffix_2_iiii(String, Suffix, I + 1, Offset, Len)
-    else
-        true
-    ).
 
 :- pred suffix_2_ioii(string::in, string::out, int::in, int::in) is multi.
 
