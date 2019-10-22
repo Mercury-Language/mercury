@@ -4205,108 +4205,23 @@ right_by_codepoint(String, RightCount, RightString) :-
 between(Str, Start, End) = SubString :-
     between(Str, Start, End, SubString).
 
-:- pragma foreign_proc("C",
-    between(Str::in, Start::in, End::in, SubString::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate, no_sharing],
-"{
-    MR_Integer  len;
-    MR_Integer  Count;
-
-    if (Start < 0) Start = 0;
-    if (End <= Start) {
-        MR_make_aligned_string(SubString, """");
-    } else {
-        len = strlen(Str);
-        if (Start > len) {
-            Start = len;
-        }
-        if (End > len) {
-            End = len;
-        }
-        Count = End - Start;
-        MR_allocate_aligned_string_msg(SubString, Count, MR_ALLOC_ID);
-        MR_memcpy(SubString, Str + Start, Count);
-        SubString[Count] = '\\0';
-    }
-}").
-:- pragma foreign_proc("C#",
-    between(Str::in, Start::in, End::in, SubString::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate, no_sharing],
-"
-    if (Start < 0) Start = 0;
-    if (End <= Start) {
-        SubString = """";
-    } else {
-        int len = Str.Length;
-        if (Start > len) {
-            Start = len;
-        }
-        if (End > len) {
-            End = len;
-        }
-        SubString = Str.Substring(Start, End - Start);
-    }
-").
-:- pragma foreign_proc("Java",
-    between(Str::in, Start::in, End::in, SubString::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate, no_sharing],
-"
-    if (Start < 0) Start = 0;
-    if (End <= Start) {
-        SubString = """";
-    } else {
-        int len = Str.length();
-        if (Start > len) {
-            Start = len;
-        }
-        if (End > len) {
-            End = len;
-        }
-        SubString = Str.substring(Start, End);
-    }
-").
-:- pragma foreign_proc("Erlang",
-    between(Str::in, Start0::in, End0::in, SubString::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Start = max(Start0, 0),
-    End = min(End0, size(Str)),
-    Count = End - Start,
-    if Count =< 0 ->
-        SubString = <<>>
-    ; true ->
-        <<_:Start/binary, SubString:Count/binary, _/binary>> = Str
-    end
-").
-
 between(Str, Start, End, SubStr) :-
-    ( if Start >= End then
-        SubStr = ""
+    Len = length(Str),
+    ( if Start =< 0 then
+        ClampStart = 0
+    else if Start >= Len then
+        ClampStart = Len
     else
-        Len = length(Str),
-        max(0, Start, ClampStart),
-        min(Len, End, ClampEnd),
-        CharList = between_loop(ClampStart, ClampEnd, Str),
-        SubStr = from_char_list(CharList)
-    ).
-
-:- func between_loop(int, int, string) = list(char).
-
-between_loop(I, End, Str) = Chars :-
-    ( if
-        I < End,
-        unsafe_index_next(Str, I, J, C),
-        J =< End
-    then
-        Cs = between_loop(J, End, Str),
-        Chars = [C | Cs]
+        ClampStart = Start
+    ),
+    ( if End =< ClampStart then
+        ClampEnd = ClampStart
+    else if End >= Len then
+        ClampEnd = Len
     else
-        Chars = []
-    ).
+        ClampEnd = End
+    ),
+    unsafe_between(Str, ClampStart, ClampEnd, SubStr).
 
 %---------------------%
 
