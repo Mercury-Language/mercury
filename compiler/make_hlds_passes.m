@@ -57,7 +57,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_class.
 :- import_module hlds.make_hlds.add_clause.
-:- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.make_hlds.add_mode.
 :- import_module hlds.make_hlds.add_mutable_aux_preds.
 :- import_module hlds.make_hlds.add_pragma.

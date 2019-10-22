@@ -918,6 +918,13 @@
                 fe_seq_num                      :: int
             ).
 
+:- type foreign_enum_spec
+    --->    foreign_enum_spec(
+                foreign_language,
+                type_ctor,
+                one_or_more(pair(sym_name, string))
+            ).
+
 :- type item_foreign_export_enum_info
     --->    item_foreign_export_enum_info(
                 fee_language                    :: foreign_language,
@@ -1549,7 +1556,6 @@
     ;       pragma_exceptions(pragma_info_exceptions)
     ;       pragma_trailing_info(pragma_info_trailing_info)
     ;       pragma_mm_tabling_info(pragma_info_mm_tabling_info)
-    ;       pragma_obsolete(pred_name_arity, list(sym_name_and_arity))
     ;       pragma_no_detism_warning(pred_name_arity)
     ;       pragma_require_tail_recursion(pragma_info_require_tail_recursion)
     ;       pragma_tabled(pragma_info_tabled)
@@ -1566,6 +1572,8 @@
     ;       pragma_mode_check_clauses(pred_name_arity)
     ;       pragma_structure_sharing(pragma_info_structure_sharing)
     ;       pragma_structure_reuse(pragma_info_structure_reuse)
+    ;       pragma_obsolete_pred(pragma_info_obsolete_pred)
+    ;       pragma_obsolete_proc(pragma_info_obsolete_proc)
     ;       pragma_require_feature_set(pragma_info_require_feature_set).
 
     % Check whether a particular `pragma' declaration is allowed
@@ -1779,16 +1787,21 @@
 
     % Misc pragmas.
 
+:- type pragma_info_obsolete_pred
+    --->    pragma_info_obsolete_pred(
+                pred_name_arity,
+                list(sym_name_and_arity)
+            ).
+
+:- type pragma_info_obsolete_proc
+    --->    pragma_info_obsolete_proc(
+                pred_name_modes_pf,
+                list(sym_name_and_arity)
+            ).
+
 :- type pragma_info_require_feature_set
     --->    pragma_info_require_feature_set(
                 rfs_feature_set         :: set(required_feature)
-            ).
-
-:- type foreign_enum_spec
-    --->    foreign_enum_spec(
-                foreign_language,
-                type_ctor,
-                one_or_more(pair(sym_name, string))
             ).
 
     % These types identify procedures in pragmas.
@@ -2483,7 +2496,8 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ),
         Allowed = no
     ;
-        ( Pragma = pragma_obsolete(_, _)
+        ( Pragma = pragma_obsolete_pred(_)
+        ; Pragma = pragma_obsolete_proc(_)
         ; Pragma = pragma_type_spec(_)
         ; Pragma = pragma_termination_info(_)
         ; Pragma = pragma_termination2_info(_)
@@ -2584,8 +2598,11 @@ pragma_desc_pieces(Pragma) = Pieces :-
         Pragma = pragma_require_feature_set(_),
         Pieces = [pragma_decl("require_feature_set"), words("declaration")]
     ;
-        Pragma = pragma_obsolete(_, _),
+        Pragma = pragma_obsolete_pred(_),
         Pieces = [pragma_decl("obsolete"), words("declaration")]
+    ;
+        Pragma = pragma_obsolete_proc(_),
+        Pieces = [pragma_decl("obsolete_proc"), words("declaration")]
     ;
         Pragma = pragma_type_spec(_),
         Pieces = [pragma_decl("type_spec"), words("declaration")]
@@ -2830,7 +2847,8 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
         ; Pragma = pragma_no_detism_warning(_)
         ; Pragma = pragma_no_inline(_)
         ; Pragma = pragma_consider_used(_)
-        ; Pragma = pragma_obsolete(_, _)
+        ; Pragma = pragma_obsolete_pred(_)
+        ; Pragma = pragma_obsolete_proc(_)
         ; Pragma = pragma_promise_eqv_clauses(_)
         ; Pragma = pragma_promise_pure(_)
         ; Pragma = pragma_promise_semipure(_)

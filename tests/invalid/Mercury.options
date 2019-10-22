@@ -61,6 +61,7 @@ MCFLAGS-mpj1                    = --infer-all --verbose-error-messages
 MCFLAGS-multisoln_func          = --infer-types --verbose-error-messages
 MCFLAGS-no_exports              = --halt-at-warn --verbose-error-messages
 MCFLAGS-nonexistent_import      = --no-verbose-make --make nonexistent_import
+MCFLAGS-obsolete_proc_pragma    = --halt-at-warn
 MCFLAGS-overloading             = --no-intermodule-optimization
 MCFLAGS-pragma_c_code_no_det    = --warn-inferred-erroneous
 MCFLAGS-record_syntax_errors    = --verbose-error-messages

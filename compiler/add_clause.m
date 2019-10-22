@@ -125,14 +125,14 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
             )
         else if unqualify_name(PredName) = ",", Arity = 2 then
             MaybePredId = no,
+            SNA = sym_name_arity(unqualified(","), 2),
             Pieces = [words("Attempt to define a clause for"),
-                unqual_sym_name_and_arity(sym_name_arity(unqualified(","), 2)),
-                suffix("."),
+                unqual_sym_name_and_arity(SNA), suffix("."),
                 words("This is usually caused by"),
                 words("inadvertently writing a period instead of a comma"),
                 words("at the end of the preceding line."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
             % A promise will not have a corresponding pred declaration.
@@ -180,28 +180,8 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
         map.lookup(PredMap0, PredId, !:PredInfo),
 
         trace [io(!IO)] (
-            some [Globals] (
-                module_info_get_globals(!.ModuleInfo, Globals),
-                globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-                (
-                    VeryVerbose = yes,
-                    pred_info_get_clauses_info(!.PredInfo, MsgClauses),
-                    NumClauses = num_clauses_in_clauses_rep(
-                        MsgClauses ^ cli_rep),
-                    io.format("%% Processing clause %d for ",
-                        [i(NumClauses + 1)], !IO),
-                    write_pred_or_func(PredOrFunc, !IO),
-                    io.write_string(" `", !IO),
-                    list.length(MaybeAnnotatedArgTerms, PredArity0),
-                    PredArity = PredArity0 + ArityAdjustment,
-                    adjust_func_arity(PredOrFunc, OrigArity, PredArity),
-                    prog_out.write_sym_name_and_arity(
-                        sym_name_arity(PredName, OrigArity), !IO),
-                    io.write_string("'...\n", !IO)
-                ;
-                    VeryVerbose = no
-                )
-            )
+            add_clause_progress_msg(!.ModuleInfo, !.PredInfo, PredOrFunc,
+                PredName, MaybeAnnotatedArgTerms, ArityAdjustment, !IO)
         ),
 
         % Opt_imported preds are initially tagged as imported, and are tagged
@@ -376,6 +356,32 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
         )
     ).
 
+:- pred add_clause_progress_msg(module_info::in, pred_info::in,
+    pred_or_func::in, sym_name::in, list(prog_term)::in, int::in,
+    io::di, io::uo) is det.
+
+add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
+        MaybeAnnotatedArgTerms, ArityAdjustment, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    (
+        VeryVerbose = yes,
+        pred_info_get_clauses_info(PredInfo, MsgClauses),
+        NumClauses = num_clauses_in_clauses_rep(MsgClauses ^ cli_rep),
+        io.format("%% Processing clause %d for ",
+            [i(NumClauses + 1)], !IO),
+        write_pred_or_func(PredOrFunc, !IO),
+        io.write_string(" `", !IO),
+        list.length(MaybeAnnotatedArgTerms, PredArity0),
+        PredArity = PredArity0 + ArityAdjustment,
+        adjust_func_arity(PredOrFunc, OrigArity, PredArity),
+        SNA = sym_name_arity(PredName, OrigArity),
+        prog_out.write_sym_name_and_arity(SNA, !IO),
+        io.write_string("'...\n", !IO)
+    ;
+        VeryVerbose = no
+    ).
+
     % Extract the mode annotations (if any) from the clause arguments,
     % and determine which mode(s) this clause should apply to.
     %
@@ -431,8 +437,8 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
             pred_info_get_proc_table(PredInfo, Procs),
             map.to_assoc_list(Procs, ExistingProcs),
             ( if
-                get_procedure_matching_declmodes_with_renaming(ExistingProcs,
-                    ModeList, !.ModuleInfo, ProcId)
+                get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
+                    ExistingProcs, ModeList, ProcId)
             then
                 ApplProcIds = selected_modes([ProcId])
             else

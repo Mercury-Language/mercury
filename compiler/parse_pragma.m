@@ -169,7 +169,11 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             PragmaName, PragmaTerms, Context, SeqNum, PorF, MaybeIOM)
     ;
         PragmaName = "obsolete",
-        parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
+        parse_pragma_obsolete_pred(ModuleName, PragmaTerms, ErrorTerm, VarSet,
+            Context, SeqNum, MaybeIOM)
+    ;
+        PragmaName = "obsolete_proc",
+        parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             Context, SeqNum, MaybeIOM)
     ;
         (
@@ -1177,13 +1181,14 @@ parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces,
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Parse the arguments of an "obsolete" or "obsolete_proc" pragma.
+%
 
-    % Parse the arguments of an "obsolete" pragma.
-    %
-:- pred parse_pragma_obsolete(module_name::in, list(term)::in, term::in,
+:- pred parse_pragma_obsolete_pred(module_name::in, list(term)::in, term::in,
     varset::in, prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
-parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
+parse_pragma_obsolete_pred(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         Context, SeqNum, MaybeIOM) :-
     (
         (
@@ -1198,19 +1203,21 @@ parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             "predicate or function", NameAndArityTerm, NameAndArityTerm,
             VarSet, MaybeNameAndArity),
         ( if
-            MaybeObsoleteInFavourOf = ok1(ObsoleteInFavourOf),
-            MaybeNameAndArity = ok2(PredName, PredArity)
+            MaybeNameAndArity = ok2(PredName, PredArity),
+            MaybeObsoleteInFavourOf = ok1(ObsoleteInFavourOf)
         then
             PredNameArity = pred_name_arity(PredName, PredArity),
-            Pragma = pragma_obsolete(PredNameArity, ObsoleteInFavourOf),
+            ObsoletePragma =
+                pragma_info_obsolete_pred(PredNameArity, ObsoleteInFavourOf),
+            Pragma = pragma_obsolete_pred(ObsoletePragma),
             ItemPragma = item_pragma_info(Pragma, item_origin_user,
                 Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs =
-                get_any_errors1(MaybeObsoleteInFavourOf) ++
-                get_any_errors2(MaybeNameAndArity),
+                get_any_errors2(MaybeNameAndArity) ++
+                get_any_errors1(MaybeObsoleteInFavourOf),
             MaybeIOM = error1(Specs)
         )
     ;
@@ -1219,8 +1226,56 @@ parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         ),
         Pieces = [words("Error: a"), pragma_decl("obsolete"),
             words("declaration should have one or two arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
+        MaybeIOM = error1([Spec])
+   ).
+
+:- pred parse_pragma_obsolete_proc(module_name::in, list(term)::in, term::in,
+    varset::in, prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+
+parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
+        Context, SeqNum, MaybeIOM) :-
+    (
+        (
+            PragmaTerms = [PredAndModesTerm],
+            MaybeObsoleteInFavourOf = ok1([])
+        ;
+            PragmaTerms = [PredAndModesTerm, ObsoleteInFavourOfTerm],
+            parse_pragma_obsolete_in_favour_of(ObsoleteInFavourOfTerm,
+                VarSet, MaybeObsoleteInFavourOf)
+        ),
+        PredAndModesContextPieces = cord.from_list(
+            [words("In first  arguments of"), pragma_decl("obsolete_proc"),
+            words("declaration:")]),
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
+            PredAndModesContextPieces, PredAndModesTerm, MaybePredAndModes),
+        ( if
+            MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
+            MaybeObsoleteInFavourOf = ok1(ObsoleteInFavourOf)
+        then
+            PredNameModesPF = pred_name_modes_pf(PredName, Modes, PredOrFunc),
+            ObsoletePragma =
+                pragma_info_obsolete_proc(PredNameModesPF, ObsoleteInFavourOf),
+            Pragma = pragma_obsolete_proc(ObsoletePragma),
+            ItemPragma = item_pragma_info(Pragma, item_origin_user,
+                Context, SeqNum),
+            Item = item_pragma(ItemPragma),
+            MaybeIOM = ok1(iom_item(Item))
+        else
+            Specs =
+                get_any_errors3(MaybePredAndModes) ++
+                get_any_errors1(MaybeObsoleteInFavourOf),
+            MaybeIOM = error1(Specs)
+        )
+    ;
+        ( PragmaTerms = []
+        ; PragmaTerms = [_, _, _ | _]
+        ),
+        Pieces = [words("Error: a"), pragma_decl("obsolete_proc"),
+            words("declaration should have one or two arguments."), nl],
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
 

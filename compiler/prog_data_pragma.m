@@ -196,10 +196,10 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
             % There is no finite integer for which the above equation is true.
 
 :- type generic_termination_info(TermInfo, ErrorInfo)
-    --->    cannot_loop(TermInfo)   % This procedure definitely terminates
-                                    % for all possible inputs.
+    --->    cannot_loop(TermInfo)
+            % This procedure definitely terminates for all possible inputs.
     ;       can_loop(ErrorInfo).
-                                    % This procedure might not terminate.
+            % This procedure might not terminate.
 
 :- type pragma_arg_size_info    == generic_arg_size_info(unit).
 :- type pragma_termination_info == generic_termination_info(unit, unit).

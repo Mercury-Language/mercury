@@ -10796,15 +10796,34 @@ Declarations of the forms
 declare that the predicate(s) or function(s)
 with name @var{Name} and arity @var{Arity} are ``obsolete'':
 they instruct the compiler to issue a warning
-whenever the named predicate(s) or function(s) are used.
+whenever the named predicate(s) and/or function(s) are used.
 The second form tells the compiler to suggest the use
 of one of the listed possible replacements.
 
-@samp{pragma obsolete} declarations are intended for use by library developers,
+Declarations of the forms
+
+@example
+:- pragma obsolete_proc(@var{PredName}(@var{ArgMode1}, ..., @var{ArgModeN})).
+:- pragma obsolete_proc(@var{PredName}(@var{ArgMode1}, ..., @var{ArgModeN}),
+    [@var{ReplName1}/@var{ReplArity1}, ..., @var{ReplNameN}/@var{ReplArityN}]).
+:- pragma obsolete_proc(@var{FuncName}(@var{ArgMode1}, ..., @var{ArgModeN}) = @var{RetMode}).
+:- pragma obsolete_proc(@var{FuncName}(@var{ArgMode1}, ..., @var{ArgModeN}) = @var{RetMode},
+    [@var{ReplName1}/@var{ReplArity1}, ..., @var{ReplNameN}/@var{ReplArityN}]).
+@end example
+
+@noindent
+similarly declare that the predicate named @var{PredName} with arity @var{N},
+or the function named @var{FuncName} with arity @var{N},
+is obsolete when called in the specified mode.
+These forms also allow the specification
+of an optional list of possible replacements.
+
+These declarations are intended for use by library developers,
 to allow gradual (rather than abrupt) evolution of library interfaces.
-If a library developer changes the interface of a library predicate,
-they should leave the old version of that predicate in the library,
-but mark it as obsolete using a @samp{pragma obsolete} declaration,
+If a library developer changes
+the interface of a library predicate or procedure,
+they should leave its old version in the library,
+but mark it as obsolete using one of these declarations,
 and document how library users should modify their code
 to suit the new interface.
 The users of the library will then get a warning if they use obsolete features,

@@ -17,11 +17,6 @@
 :- import_module list.
 :- import_module maybe.
 
-:- pred add_pragma_foreign_proc_export(item_maybe_attrs::in,
-    pragma_info_foreign_proc_export::in, prog_context::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
 :- pred add_pragma_foreign_proc(pragma_info_foreign_proc::in,
     pred_status::in, prog_context::in, maybe(int)::in,
     module_info::in, module_info::out,
@@ -36,11 +31,9 @@
 :- import_module hlds.add_pred.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_code_util.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_warn.
-:- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
@@ -57,146 +50,10 @@
 
 :- import_module bool.
 :- import_module bag.
-:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module string.
-
-%-----------------------------------------------------------------------------%
-
-add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
-        !ModuleInfo, !Specs) :-
-    FPEInfo = pragma_info_foreign_proc_export(Lang, PrednameModesPF,
-        ExportedName),
-    PrednameModesPF = pred_name_modes_pf(PredSymName, Modes, PredOrFunc),
-    module_info_get_predicate_table(!.ModuleInfo, PredTable),
-    list.length(Modes, Arity),
-    predicate_table_lookup_pf_sym_arity(PredTable, may_be_partially_qualified,
-        PredOrFunc, PredSymName, Arity, PredIds),
-    (
-        PredIds = [],
-        (
-            MaybeAttrs = item_origin_user,
-            predicate_table_lookup_pf_sym(PredTable,
-                may_be_partially_qualified, PredOrFunc, PredSymName,
-                AllArityPredIds),
-            module_info_get_preds(!.ModuleInfo, Preds),
-            find_pred_arities_other_than(Preds, AllArityPredIds, Arity,
-                OtherArities),
-            DescPieces = [pragma_decl("foreign_export"), words("declaration")],
-            report_undefined_pred_or_func_error(PredSymName, Arity,
-                OtherArities, Context, DescPieces, !Specs)
-        ;
-            MaybeAttrs = item_origin_compiler(_CompilerAttrs)
-            % We do not warn about errors in export pragmas created by
-            % the compiler as part of a source-to-source transformation.
-        )
-    ;
-        PredIds = [PredId],
-        add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs,
-            Lang, PredSymName, PredId, Modes, ExportedName, Context,
-            !ModuleInfo, !Specs)
-    ;
-        PredIds = [_, _ | _],
-        StartPieces = [words("Error: ambiguous"), p_or_f(PredOrFunc),
-            words("name in"), pragma_decl("foreign_export"),
-            words("declaration."), nl,
-            words("The possible matches are:"), nl_indent_delta(1)],
-        PredIdPiecesList = list.map(
-            describe_one_pred_name(!.ModuleInfo, should_module_qualify),
-            PredIds),
-        PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
-            [suffix(".")]),
-        MainPieces = StartPieces ++ PredIdPieces,
-        VerbosePieces = [words("An explicit module qualifier"),
-            words("may be necessary.")],
-        Msg = simple_msg(Context,
-            [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ).
-
-:- pred add_pragma_foreign_proc_export_2(arity::in, predicate_table::in,
-    item_maybe_attrs::in, foreign_language::in,
-    sym_name::in, pred_id::in, list(mer_mode)::in, string::in,
-    prog_context::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang,
-        PredSymName, PredId, Modes, ExportedName, Context,
-        !ModuleInfo, !Specs) :-
-    predicate_table_get_preds(PredTable, Preds),
-    map.lookup(Preds, PredId, PredInfo),
-    pred_info_get_proc_table(PredInfo, Procs),
-    map.to_assoc_list(Procs, ExistingProcs),
-    ( if
-        get_procedure_matching_declmodes_with_renaming(ExistingProcs,
-            Modes, !.ModuleInfo, ProcId)
-    then
-        map.lookup(Procs, ProcId, ProcInfo0),
-        proc_info_get_declared_determinism(ProcInfo0, MaybeDetism),
-        % We cannot catch those multi or nondet procedures that don't have
-        % a determinism declaration until after determinism analysis.
-        ( if
-            MaybeDetism = yes(Detism),
-            ( Detism = detism_non
-            ; Detism = detism_multi
-            )
-        then
-            Pieces = [words("Error:"),
-                pragma_decl("foreign_export"), words("declaration"),
-                words("for a procedure that has"),
-                words("a declared determinism of"),
-                fixed(determinism_to_string(Detism) ++ "."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
-            !:Specs = [Spec | !.Specs]
-        else
-            % Only add the foreign export if the specified language matches
-            % one of the foreign languages available for this backend.
-            %
-            module_info_get_globals(!.ModuleInfo, Globals),
-            globals.get_backend_foreign_languages(Globals, ForeignLanguages),
-            ( if list.member(Lang, ForeignLanguages) then
-                module_info_get_pragma_exported_procs(!.ModuleInfo,
-                    PragmaExportedProcs0),
-                NewExportedProc = pragma_exported_proc(Lang,
-                    PredId, ProcId, ExportedName, Context),
-                PragmaExportedProcs =
-                    cord.snoc(PragmaExportedProcs0, NewExportedProc),
-                module_info_set_pragma_exported_procs(PragmaExportedProcs,
-                    !ModuleInfo)
-            else
-                true
-            ),
-
-            % Record that there was a foreign_export pragma for this procedure,
-            % regardless of the specified language. We do this so that dead
-            % procedure elimination does not generate incorrect warnings about
-            % dead procedures (e.g. those that are foreign_exported to
-            % languages other than those languages that are supported by the
-            % current backend.)
-            %
-            proc_info_set_has_any_foreign_exports(has_foreign_exports,
-                ProcInfo0, ProcInfo),
-            module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-                !ModuleInfo)
-        )
-    else
-        (
-            MaybeAttrs = item_origin_user,
-            report_undefined_mode_error(PredSymName, Arity, Context,
-                [pragma_decl("foreign_export"), words("declaration")],
-                !Specs)
-        ;
-            MaybeAttrs = item_origin_compiler(_CompilerAttrs)
-            % We do not warn about errors in export pragmas created by
-            % the compiler as part of a source-to-source transformation.
-        )
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -204,46 +61,21 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         !ModuleInfo, !Specs) :-
     FPInfo = pragma_info_foreign_proc(Attributes0, PredName, PredOrFunc,
         PVars, ProgVarSet, _InstVarset, PragmaImpl),
-
-    % Begin by replacing any maybe_thread_safe foreign_proc attributes
-    % with the actual thread safety attributes which we get from the
-    % `--maybe-thread-safe' option.
+    list.length(PVars, Arity),
+    SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
 
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.get_maybe_thread_safe(Globals, MaybeThreadSafe),
-    ThreadSafe = get_thread_safe(Attributes0),
-    (
-        ThreadSafe = proc_maybe_thread_safe,
-        (
-            MaybeThreadSafe = yes,
-            set_thread_safe(proc_thread_safe, Attributes0, Attributes)
-        ;
-            MaybeThreadSafe = no,
-            set_thread_safe(proc_not_thread_safe, Attributes0, Attributes)
-        )
-    ;
-        ( ThreadSafe = proc_thread_safe
-        ; ThreadSafe = proc_not_thread_safe
-        ),
-        Attributes = Attributes0
-    ),
-    module_info_get_name(!.ModuleInfo, ModuleName),
-    PragmaForeignLanguage = get_foreign_language(Attributes),
-    list.length(PVars, Arity),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
             io.write_string("% Processing `:- pragma foreign_proc' for ", !IO),
-            write_simple_call_id(PredOrFunc, sym_name_arity(PredName, Arity),
-                !IO),
+            write_simple_call_id(SimpleCallId, !IO),
             io.write_string("...\n", !IO)
         )
     ;
         VeryVerbose = no
     ),
-
-    globals.get_backend_foreign_languages(Globals, BackendForeignLangs),
 
     % Lookup the pred declaration in the predicate table.
     % If it is not there, print an error message and insert
@@ -253,6 +85,7 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         PredOrFunc, PredName, Arity, PredIds),
     (
         PredIds = [],
+        module_info_get_name(!.ModuleInfo, ModuleName),
         preds_add_implicit_report_error(!ModuleInfo, ModuleName,
             PredName, Arity, PredOrFunc, PredStatus, is_not_a_class_method,
             Context, origin_user(PredName),
@@ -267,11 +100,10 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         % message generated. We continue so that we can try to find more
         % errors.
         AmbiPieces = [words("Error: ambiguous predicate name"),
-            simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-            words("in"), quote("pragma foreign_proc"), suffix("."), nl],
-        AmbiMsg = simple_msg(Context, [always(AmbiPieces)]),
-        AmbiSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
-            [AmbiMsg]),
+            simple_call(SimpleCallId), words("in"),
+            quote("pragma foreign_proc"), suffix("."), nl],
+        AmbiSpec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, AmbiPieces),
         !:Specs = [AmbiSpec | !.Specs]
     ),
 
@@ -302,7 +134,30 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
 
         PredInfo0 = !.PredInfo,
 
+        % Replace any maybe_thread_safe foreign_proc attributes with
+        % the actual thread safety attributes which we get from the
+        % `--maybe-thread-safe' option.
+        globals.get_maybe_thread_safe(Globals, MaybeThreadSafe),
+        ThreadSafe = get_thread_safe(Attributes0),
+        (
+            ThreadSafe = proc_maybe_thread_safe,
+            (
+                MaybeThreadSafe = yes,
+                set_thread_safe(proc_thread_safe, Attributes0, Attributes)
+            ;
+                MaybeThreadSafe = no,
+                set_thread_safe(proc_not_thread_safe, Attributes0, Attributes)
+            )
+        ;
+            ( ThreadSafe = proc_thread_safe
+            ; ThreadSafe = proc_not_thread_safe
+            ),
+            Attributes = Attributes0
+        ),
+
         CurrentBackend = lookup_current_backend(Globals),
+        globals.get_backend_foreign_languages(Globals, BackendForeignLangs),
+        PragmaForeignLanguage = get_foreign_language(Attributes),
         ExtraAttrs = get_extra_attributes(Attributes),
         ( if
             is_applicable_for_current_backend(CurrentBackend, ExtraAttrs) = no
@@ -314,10 +169,9 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         then
             Pieces = [words("Error:"), pragma_decl("foreign_proc"),
                 words("declaration for imported"),
-                simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-                suffix("."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+                simple_call(SimpleCallId), suffix("."), nl],
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else if
             % Don't add clauses for foreign languages other than the ones
@@ -332,7 +186,6 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
             pred_info_get_proc_table(!.PredInfo, Procs),
             map.to_assoc_list(Procs, ExistingProcs),
             pragma_get_modes(PVars, Modes),
-            SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
             ( if
                 % The inst variables for the foreign_proc declaration
                 % and predmode declarations are from different varsets.
@@ -344,8 +197,8 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
                 %
                 % XXX We should probably also check that each pair in
                 % the renaming has the same name.
-                get_procedure_matching_declmodes_with_renaming(ExistingProcs,
-                    Modes, !.ModuleInfo, ProcId)
+                get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
+                    ExistingProcs, Modes, ProcId)
             then
                 pred_info_get_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
@@ -371,9 +224,8 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
                     pragma_decl("foreign_proc"), words("declaration"),
                     words("for undeclared mode of"),
                     simple_call(SimpleCallId), suffix("."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
+                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         )
@@ -425,9 +277,9 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
             AllowDefnOfBuiltin),
         (
             AllowDefnOfBuiltin = no,
-            Msg = simple_msg(Context,
-                [always([words("Error: foreign_proc for builtin."), nl])]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Pieces = [words("Error: foreign_proc for builtin."), nl],
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             AllowDefnOfBuiltin = yes
@@ -513,8 +365,8 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                     MultiplyOccurringArgVars)),
                 words("occur multiple times in the argument list."), nl]
         ),
-        Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces1 ++ Pieces2),
         !:Specs = [Spec | !.Specs]
     ;
         MultiplyOccurringArgVars = [],
@@ -544,9 +396,8 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                     words("but that"), p_or_f(PredOrFunc),
                     words("has been declared"), words(PurityStr),
                     suffix("."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
+                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ),
@@ -740,7 +591,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                             suffix("."), nl],
                         PiecesB = [words("The first occurrence was here."),
                             nl],
-                        MsgA = simple_msg(NewContext, [always(PiecesA)]),
+                        MsgA = simplest_msg(NewContext, PiecesA),
                         MsgB = error_msg(yes(ClauseContext), treat_as_first, 0,
                             [always(PiecesB)]),
                         Spec = error_spec(severity_error,

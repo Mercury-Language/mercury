@@ -30,6 +30,7 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -37,8 +38,9 @@
     prog_context::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred report_undefined_pred_or_func_error(sym_name::in,
-    arity::in, list(arity)::in, prog_context::in, list(format_component)::in,
+:- pred report_undefined_pred_or_func_error(maybe(pred_or_func)::in,
+    sym_name::in, arity::in, list(arity)::in, prog_context::in,
+    list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Similar to report_undeclared_mode_error, but gives less information.
@@ -79,7 +81,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
-:- import_module maybe.
 :- import_module set.
 :- import_module string.
 
@@ -124,12 +125,22 @@ report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         [SecondDeclMsg, FirstDeclMsg] ++ ExtraMsgs),
     !:Specs = [Spec | !.Specs].
 
-report_undefined_pred_or_func_error(Name, Arity, OtherArities, Context,
-        DescPieces, !Specs) :-
+report_undefined_pred_or_func_error(MaybePorF, Name, Arity, OtherArities,
+        Context, DescPieces, !Specs) :-
+    (
+        MaybePorF = no,
+        PredOrFuncPieces = [decl("pred"), words("or"), decl("func")]
+    ;
+        MaybePorF = yes(pf_predicate),
+        PredOrFuncPieces = [decl("pred")]
+    ;
+        MaybePorF = yes(pf_function),
+        PredOrFuncPieces = [decl("func")]
+    ),
     MainPieces = [words("Error:") | DescPieces] ++ [words("for"),
         unqual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-        words("without corresponding"), decl("pred"), words("or"),
-        decl("func"), words("declaration."), nl],
+        words("without corresponding")] ++ PredOrFuncPieces ++
+        [words("declaration."), nl],
     (
         OtherArities = [],
         OtherArityPieces = []

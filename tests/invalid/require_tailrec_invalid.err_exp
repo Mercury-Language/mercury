@@ -6,15 +6,13 @@ require_tailrec_invalid.m:026:   corresponding `:- pred' or `:- func'
 require_tailrec_invalid.m:026:   declaration.
 require_tailrec_invalid.m:027: Error: `:- pragma require_tail_recursion' pragma
 require_tailrec_invalid.m:027:   for `non_existent_proc'/2 without
-require_tailrec_invalid.m:027:   corresponding `:- pred' or `:- func'
-require_tailrec_invalid.m:027:   declaration.
+require_tailrec_invalid.m:027:   corresponding `:- pred' declaration.
 require_tailrec_invalid.m:028: Error: `:- pragma require_tail_recursion' pragma
 require_tailrec_invalid.m:028:   for `non_existent_func_proc'/1 without
-require_tailrec_invalid.m:028:   corresponding `:- pred' or `:- func'
-require_tailrec_invalid.m:028:   declaration.
-require_tailrec_invalid.m:031: Error: no such mode for
-require_tailrec_invalid.m:031:   `require_tailrec_invalid.length'/2 in
-require_tailrec_invalid.m:031:   `:- pragma require_tail_recursion' pragma.
+require_tailrec_invalid.m:028:   corresponding `:- func' declaration.
+require_tailrec_invalid.m:031: Error: `:- pragma require_tail_recursion'
+require_tailrec_invalid.m:031:   declaration for undeclared mode of predicate
+require_tailrec_invalid.m:031:   `require_tailrec_invalid.length'/2.
 require_tailrec_invalid.m:034: Error: Conflicting
 require_tailrec_invalid.m:034:   `:- pragma require_tail_recursion' attributes:
 require_tailrec_invalid.m:034:   `error' conflicts with earlier attribute
@@ -44,7 +42,7 @@ require_tailrec_invalid.m:055:   `:- pragma require_tail_recursion' attribute:
 require_tailrec_invalid.m:055:   `blahblahblah'.
 require_tailrec_invalid.m:059: Error: `:- pragma require_tail_recursion' pragma
 require_tailrec_invalid.m:059:   for `blahblahblah'/0 without corresponding
-require_tailrec_invalid.m:059:   `:- pred' or `:- func' declaration.
+require_tailrec_invalid.m:059:   `:- pred' declaration.
 require_tailrec_invalid.m:061: Error: expected attribute list for
 require_tailrec_invalid.m:061:   `:- pragma require_tail_recursion'
 require_tailrec_invalid.m:061:   declaration, got `Woop'.

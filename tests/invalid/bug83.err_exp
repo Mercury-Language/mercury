@@ -3,4 +3,5 @@ bug83.m:027:   declaration.
 bug83.m:027:   The possible matches are:
 bug83.m:027:     function `io.make_io_error'/1,
 bug83.m:027:     function `bug83.make_io_error'/1.
-bug83.m:027:   An explicit module qualifier may be necessary.
+bug83.m:027:   An explicit module qualifier may be necessary to select the
+bug83.m:027:   right match.

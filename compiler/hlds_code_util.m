@@ -59,9 +59,9 @@
     % If there was no mode declaration, then use the inferred argmodes.
     % Allow for a renaming between the inst vars.
     %
-:- pred get_procedure_matching_declmodes_with_renaming(
-    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in,
-    module_info::in, proc_id::out) is semidet.
+:- pred get_procedure_matching_declmodes_with_renaming(module_info::in,
+    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in, proc_id::out)
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -267,25 +267,25 @@ mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
-get_procedure_matching_declmodes_with_renaming(Procs, Modes0,
-        ModuleInfo, ProcId) :-
+get_procedure_matching_declmodes_with_renaming(ModuleInfo, Procs, Modes0,
+        ProcId) :-
     list.map(constrain_inst_vars_in_mode, Modes0, Modes),
-    get_procedure_matching_declmodes_with_renaming_2(Procs, Modes,
-        ModuleInfo, ProcId).
+    get_procedure_matching_declmodes_with_renaming_2(ModuleInfo, Procs, Modes,
+        ProcId).
 
-:- pred get_procedure_matching_declmodes_with_renaming_2(
-    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in,
-    module_info::in, proc_id::out) is semidet.
+:- pred get_procedure_matching_declmodes_with_renaming_2(module_info::in,
+    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in, proc_id::out)
+    is semidet.
 
-get_procedure_matching_declmodes_with_renaming_2([P | Procs], Modes,
-        ModuleInfo, OurProcId) :-
-    P = ProcId - ProcInfo,
+get_procedure_matching_declmodes_with_renaming_2(ModuleInfo, [Proc | Procs],
+        Modes, MatchingProcId) :-
+    Proc = ProcId - ProcInfo,
     proc_info_declared_argmodes(ProcInfo, ArgModes),
     ( if mode_list_matches_with_renaming(Modes, ArgModes, ModuleInfo) then
-        OurProcId = ProcId
+        MatchingProcId = ProcId
     else
-        get_procedure_matching_declmodes_with_renaming_2(Procs, Modes,
-            ModuleInfo, OurProcId)
+        get_procedure_matching_declmodes_with_renaming_2(ModuleInfo, Procs,
+            Modes, MatchingProcId)
     ).
 
 :- type inst_var_renaming == map(inst_var, inst_var).

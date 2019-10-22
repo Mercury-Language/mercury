@@ -1,0 +1,7 @@
+obsolete_proc_pragma.m:024: Warning: call to obsolete
+obsolete_proc_pragma.m:024:   `obsolete_proc_pragma.bool_vs_int'(in, out).
+obsolete_proc_pragma.m:024:   The suggested replacement is `xyzzy'/2.
+obsolete_proc_pragma.m:037: Warning: call to obsolete
+obsolete_proc_pragma.m:037:   `obsolete_proc_pragma.bool_vs_int_func'(out) =
+obsolete_proc_pragma.m:037:   in.
+obsolete_proc_pragma.m:037:   The suggested replacement is `xyzzy_func'/1.

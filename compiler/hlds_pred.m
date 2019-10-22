@@ -2256,6 +2256,8 @@ marker_list_to_markers(Markers, MarkerSet) :-
     maybe(proc_table_io_info)::out) is det.
 :- pred proc_info_get_table_attributes(proc_info::in,
     maybe(table_attributes)::out) is det.
+:- pred proc_info_get_obsolete_in_favour_of(proc_info::in,
+    maybe(list(sym_name_and_arity))::out) is det.
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
     maybe(deep_profile_proc_info)::out) is det.
 :- pred proc_info_get_maybe_arg_size_info(proc_info::in,
@@ -2343,6 +2345,9 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_set_maybe_proc_table_io_info(maybe(proc_table_io_info)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_table_attributes(maybe(table_attributes)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_obsolete_in_favour_of(
+    maybe(list(sym_name_and_arity))::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_deep_profile_info(
     maybe(deep_profile_proc_info)::in,
@@ -2731,6 +2736,15 @@ marker_list_to_markers(Markers, MarkerSet) :-
 
                 psi_table_attributes            :: maybe(table_attributes),
 
+                % If this procedure is marked as obsolete, this will be a
+                % "yes(_)" wrapped around a list of the predicate names that
+                % the compiler should suggest as possible replacements.
+                % (Note that the list of possible replacements may be empty.)
+                % In the usual case where this predicate is NOT marked
+                % as obsolete, this will be "no".
+                psi_proc_obsolete_in_favour_of  :: maybe(list(
+                                                    sym_name_and_arity)),
+
                 %-----------------------------------------------------------%
                 % Information needed for deep profiling.
                 %-----------------------------------------------------------%
@@ -2915,6 +2929,7 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
+    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_and_arity)),
     MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
@@ -2950,6 +2965,7 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
         MaybeCallTableTip,
         MaybeTableIOInfo,
         MaybeTableAttrs,
+        MaybeObsoleteInFavourOf,
         MaybeDeepProfProcInfo,
         MaybeArgSizes,
         MaybeTermInfo,
@@ -3045,6 +3061,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
+    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_and_arity)),
     MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
@@ -3080,6 +3097,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         MaybeCallTableTip,
         MaybeTableIOInfo,
         MaybeTableAttrs,
+        MaybeObsoleteInFavourOf,
         MaybeDeepProfProcInfo,
         MaybeArgSizes,
         MaybeTermInfo,
@@ -3204,6 +3222,8 @@ proc_info_get_maybe_proc_table_io_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_table_io_info.
 proc_info_get_table_attributes(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_table_attributes.
+proc_info_get_obsolete_in_favour_of(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_proc_obsolete_in_favour_of.
 proc_info_get_maybe_deep_profile_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_deep_prof_info.
 proc_info_get_maybe_arg_size_info(PI, X) :-
@@ -3290,6 +3310,8 @@ proc_info_set_maybe_proc_table_io_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_table_io_info := X.
 proc_info_set_table_attributes(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_table_attributes := X.
+proc_info_set_obsolete_in_favour_of(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_proc_obsolete_in_favour_of := X.
 proc_info_set_maybe_deep_profile_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_deep_prof_info := X.
 proc_info_set_maybe_arg_size_info(X, !PI) :-

@@ -528,6 +528,7 @@
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
+:- import_module hlds.make_hlds.add_pragma.
 :- import_module hlds.make_hlds_error.
 :- import_module libs.
 :- import_module libs.globals.

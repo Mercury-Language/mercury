@@ -234,6 +234,7 @@ SINGLEMODULE= \
 	not_in_interface \
 	null_char \
 	nullary_ho_func_error \
+	obsolete_proc_pragma \
 	occurs \
 	oisu_check_add_pragma_errors \
 	oisu_check_semantic_errors \

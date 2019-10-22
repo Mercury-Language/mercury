@@ -231,6 +231,13 @@ Changes to the Mercury language:
   predicates and/or functions that programmers should consider using
   instead of the obsolete predicate or function.
 
+* We have added an `obsolete_proc' pragma. While the `obsolete' pragma
+  declares all modes of a predicate or function to be obsolete, the
+  `obsolete_proc' pragma declares only one mode of a predicate or function
+  to be obsolete. Like the updated version of the `obsolete' pragma,
+  the `obsolete_proc' pragma may have a second argument naming one or more
+  suggested replacements.
+
 * The Java backend now supports defining foreign types as primitive Java
   types.
 

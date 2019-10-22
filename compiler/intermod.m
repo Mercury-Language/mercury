@@ -194,8 +194,8 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
-:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_inst_mode.
@@ -233,6 +233,7 @@
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_constr_util.
+:- import_module transform_hlds.term_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -246,6 +247,7 @@
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
+:- import_module unit.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -2729,13 +2731,59 @@ maybe_write_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         ModuleName = pred_info_module(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
         proc_info_declared_argmodes(ProcInfo, ArgModes),
-        proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize),
-        proc_info_get_maybe_termination_info(ProcInfo, Termination),
+        proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
+        proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
         maybe_write_nl(!First, !IO),
-        write_pragma_termination_info_components(output_mercury, PredOrFunc,
-            PredSymName, ArgModes, ArgSize, Termination, !IO)
+        PredNameModesPF =
+            pred_name_modes_pf(PredSymName, ArgModes, PredOrFunc),
+        MaybeParseTreeArgSize =
+            maybe_arg_size_info_to_parse_tree(MaybeArgSize),
+        MaybeParseTreeTermination =
+            maybe_termination_info_to_parse_tree(MaybeTermination),
+        TermInfo = pragma_info_termination_info(PredNameModesPF,
+            MaybeParseTreeArgSize, MaybeParseTreeTermination),
+        write_pragma_termination_info(output_mercury, TermInfo, !IO)
     else
         true
+    ).
+
+:- func maybe_arg_size_info_to_parse_tree(maybe(arg_size_info)) =
+    maybe(pragma_arg_size_info).
+
+maybe_arg_size_info_to_parse_tree(MaybeArgSize) = MaybeParseTreeArgSize :-
+    (
+        MaybeArgSize = no,
+        MaybeParseTreeArgSize = no
+    ;
+        MaybeArgSize = yes(ArgSize),
+        (
+            ArgSize = finite(Size, UsedArgs),
+            ParseTreeArgSize = finite(Size, UsedArgs)
+        ;
+            ArgSize = infinite(_ErrorInfo),
+            ParseTreeArgSize = infinite(unit)
+        ),
+        MaybeParseTreeArgSize = yes(ParseTreeArgSize)
+    ).
+
+:- func maybe_termination_info_to_parse_tree(maybe(termination_info)) =
+    maybe(pragma_termination_info).
+
+maybe_termination_info_to_parse_tree(MaybeTermination)
+        = MaybeParseTreeTermination :-
+    (
+        MaybeTermination = no,
+        MaybeParseTreeTermination = no
+    ;
+        MaybeTermination = yes(Termination),
+        (
+            Termination = cannot_loop(TermInfo),
+            ParseTreeTermination = cannot_loop(TermInfo)
+        ;
+            Termination = can_loop(_ErrorInfo),
+            ParseTreeTermination = can_loop(unit)
+        ),
+        MaybeParseTreeTermination = yes(ParseTreeTermination)
     ).
 
 %---------------------------------------------------------------------------%

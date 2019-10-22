@@ -33,7 +33,8 @@
     ;       pragma_exceptions(ground)
     ;       pragma_trailing_info(ground)
     ;       pragma_mm_tabling_info(ground)
-    ;       pragma_obsolete(ground, ground)
+    ;       pragma_obsolete_pred(ground)
+    ;       pragma_obsolete_proc(ground)
     ;       pragma_no_detism_warning(ground)
     ;       pragma_require_tail_recursion(ground)
     ;       pragma_promise_eqv_clauses(ground)
@@ -75,6 +76,13 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- pred add_pragma_foreign_proc_export(item_maybe_attrs::in,
+    pragma_info_foreign_proc_export::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -101,6 +109,7 @@
 :- import_module ll_backend.fact_table.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
@@ -112,6 +121,7 @@
 :- import_module transform_hlds.term_util.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module io.
 :- import_module map.
@@ -199,8 +209,8 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
                 module_info_get_preds(!.ModuleInfo, PredTable0),
                 find_pred_arities_other_than(PredTable0, AllArityPredIds,
                     Arity, OtherArities),
-                report_undefined_pred_or_func_error(PredSymName, Arity,
-                    OtherArities, Context, MissingPieces, !Specs)
+                report_undefined_pred_or_func_error(yes(PorF), PredSymName,
+                    Arity, OtherArities, Context, MissingPieces, !Specs)
             )
         else
             true
@@ -236,10 +246,11 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
             add_pragma_unused_args(UnusedArgsInfo, Context,
                 !ModuleInfo, !Specs)
         else
-            Pieces = [words("Error: illegal use of pragma"),
-                quote("unused_args"), suffix(".")],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Pieces = [words("Error:"), pragma_decl("unused_args"),
+                words("declarations may appear only in"),
+                words("automatically generated optimization files."), nl],
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -250,10 +261,11 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
         then
             add_pragma_exceptions(ExceptionsInfo, Context, !ModuleInfo, !Specs)
         else
-            Pieces = [words("Error: illegal use of pragma"),
-                quote("exceptions"), suffix(".")],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Pieces = [words("Error:"), pragma_decl("exceptions"),
+                words("declarations may appear only in"),
+                words("automatically generated optimization files."), nl],
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -265,10 +277,11 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
             add_pragma_trailing_info(TrailingInfo, Context,
                 !ModuleInfo, !Specs)
         else
-            Pieces = [words("Error: illegal use of pragma"),
-                quote("trailing_info"), suffix(".")],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Pieces = [words("Error:"), pragma_decl("trailing_info"),
+                words("declarations may appear only in"),
+                words("automatically generated optimization files."), nl],
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -280,17 +293,23 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
             add_pragma_mm_tabling_info(MMTablingInfo, Context,
                 !ModuleInfo, !Specs)
         else
-            Pieces = [words("Error: illegal use of pragma"),
-                quote("mm_tabling_info"), suffix(".")],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Pieces = [words("Error:"), pragma_decl("mm_tabling_info"),
+                words("declarations may appear only in"),
+                words("automatically generated optimization files."), nl],
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
-        Pragma = pragma_obsolete(PredNameArity, ObsoleteInFavourOf),
+        Pragma = pragma_obsolete_pred(ObsoletePredInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        mark_pred_as_obsolete(PredNameArity, ObsoleteInFavourOf, PredStatus,
-            Context, !ModuleInfo, !Specs)
+        mark_pred_as_obsolete(ObsoletePredInfo, PredStatus, Context,
+            !ModuleInfo, !Specs)
+    ;
+        Pragma = pragma_obsolete_proc(ObsoleteProcInfo),
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        mark_proc_as_obsolete(ObsoleteProcInfo, PredStatus, Context,
+            !ModuleInfo, !Specs)
     ;
         Pragma = pragma_no_detism_warning(PredNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
@@ -379,19 +398,11 @@ add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
     UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn, UnusedArgs),
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
-    module_info_get_predicate_table(!.ModuleInfo, PredTable),
-    predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-        PredOrFunc, SymName, Arity, PredIds),
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+        lfh_internal_error, Context, "unused_args",
+        PredOrFunc, SymName, Arity, MaybePredId),
     (
-        PredIds = [],
-        Pieces = [words("Internal compiler error:"),
-            words("unknown predicate in"), pragma_decl("unused_args"),
-            words("declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ;
-        PredIds = [PredId],
+        MaybePredId = ok1(PredId),
         module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
         % Convert the mode number to a proc_id.
         proc_id_to_int(ProcId, ModeNum),
@@ -399,13 +410,8 @@ add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
             UnusedArgInfo0, UnusedArgInfo),
         module_info_set_unused_arg_info(UnusedArgInfo, !ModuleInfo)
     ;
-        PredIds = [_, _ | _],
-        Pieces = [words("Internal compiler error:"),
-            words("ambiguous predicate in"), pragma_decl("unused_args"),
-            words("declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
+        MaybePredId = error1(Specs),
+        !:Specs = Specs ++ !.Specs
     ).
 
 %-----------------------------------------------------------------------------%
@@ -414,15 +420,15 @@ add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_exceptions(ExceptionsInfo, _Context, !ModuleInfo, !Specs) :-
+add_pragma_exceptions(ExceptionsInfo, Context, !ModuleInfo, !Specs) :-
     ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn, ThrowStatus),
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
-    module_info_get_predicate_table(!.ModuleInfo, PredTable),
-    predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-        PredOrFunc, SymName, Arity, PredIds),
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+        lfh_ignore, Context, "exceptions",
+        PredOrFunc, SymName, Arity, MaybePredId),
     (
-        PredIds = [PredId],
+        MaybePredId = ok1(PredId),
         proc_id_to_int(ProcId, ModeNum),
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo0, ProcInfo0),
@@ -432,9 +438,7 @@ add_pragma_exceptions(ExceptionsInfo, _Context, !ModuleInfo, !Specs) :-
         module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
             !ModuleInfo)
     ;
-        ( PredIds = []
-        ; PredIds = [_, _ | _]
-        )
+        MaybePredId = error1(_Specs)
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
         % XXX What kinds of errors?
@@ -446,16 +450,16 @@ add_pragma_exceptions(ExceptionsInfo, _Context, !ModuleInfo, !Specs) :-
     prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_trailing_info(TrailingInfo, _Context, !ModuleInfo, !Specs) :-
+add_pragma_trailing_info(TrailingInfo, Context, !ModuleInfo, !Specs) :-
     TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn,
         TrailingStatus),
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
-    module_info_get_predicate_table(!.ModuleInfo, PredTable),
-    predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-        PredOrFunc, SymName, Arity, PredIds),
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+        lfh_ignore, Context, "trailing_info",
+        PredOrFunc, SymName, Arity, MaybePredId),
     (
-        PredIds = [PredId],
+        MaybePredId = ok1(PredId),
         proc_id_to_int(ProcId, ModeNum),
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo0, ProcInfo0),
@@ -465,9 +469,7 @@ add_pragma_trailing_info(TrailingInfo, _Context, !ModuleInfo, !Specs) :-
         module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
             !ModuleInfo)
     ;
-        ( PredIds = []
-        ; PredIds = [_, _ | _]
-        )
+        MaybePredId = error1(_Specs)
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
         % XXX What kinds of errors?
@@ -479,16 +481,16 @@ add_pragma_trailing_info(TrailingInfo, _Context, !ModuleInfo, !Specs) :-
     prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_mm_tabling_info(MMTablingInfo, _Context, !ModuleInfo, !Specs) :-
+add_pragma_mm_tabling_info(MMTablingInfo, Context, !ModuleInfo, !Specs) :-
     MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
         TablingStatus),
     PredNameArityPFMn = pred_name_arity_pf_mn(SymName, Arity, PredOrFunc,
         ModeNum),
-    module_info_get_predicate_table(!.ModuleInfo, PredTable),
-    predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-        PredOrFunc, SymName, Arity, PredIds),
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+        lfh_ignore, Context, "mm_tabling_info",
+        PredOrFunc, SymName, Arity, MaybePredId),
     (
-        PredIds = [PredId],
+        MaybePredId = ok1(PredId),
         proc_id_to_int(ProcId, ModeNum),
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo0, ProcInfo0),
@@ -498,9 +500,7 @@ add_pragma_mm_tabling_info(MMTablingInfo, _Context, !ModuleInfo, !Specs) :-
         module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
             !ModuleInfo)
     ;
-        ( PredIds = []
-        ; PredIds = [_, _ | _]
-        )
+        MaybePredId = error1(_Specs)
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
         % XXX What kinds of errors?
@@ -515,14 +515,14 @@ add_pragma_mm_tabling_info(MMTablingInfo, _Context, !ModuleInfo, !Specs) :-
 
 add_pragma_require_tail_recursion(Pragma, Context, !ModuleInfo, !Specs) :-
     Pragma ^ rtr_proc_id =
-        pred_name_arity_mpf_mmode(PredSymName, Arity, _MaybePF, MaybeMode),
+        pred_name_arity_mpf_mmode(PredSymName, Arity, MaybePF, MaybeMode),
     get_matching_pred_ids(!.ModuleInfo, PredSymName, Arity,
         PredIds, OtherArities),
     (
         PredIds = [],
         Pieces = [pragma_decl("require_tail_recursion"), words("pragma")],
-        report_undefined_pred_or_func_error(PredSymName, Arity, OtherArities,
-            Context, Pieces, !Specs)
+        report_undefined_pred_or_func_error(MaybePF, PredSymName, Arity,
+            OtherArities, Context, Pieces, !Specs)
     ;
         PredIds = [PredId],
         PredSymNameArity = sym_name_arity(PredSymName, Arity),
@@ -538,31 +538,32 @@ add_pragma_require_tail_recursion(Pragma, Context, !ModuleInfo, !Specs) :-
                 % variables need to be unified, not just compared) when
                 % searching for the matching procedure.
                 %
-                % I looked up how to do this and found an example in
-                % add_pragma_foreign_proc/8 in add_foreign_proc.m:342  It
-                % also contained thsi comment which may be relevant:
+                % pbone: I looked up how to do this and found an example in
+                % add_pragma_foreign_proc/8 in add_foreign_proc.m.
+                % It also contained this comment which may be relevant:
                 %
                 %   XXX We should probably also check that each pair in the
-                %   renaming has the same name.  See the comment in
+                %   renaming has the same name. See the comment in
                 %   add_foreign_proc.
                 %
-                get_procedure_matching_declmodes_with_renaming(Procs,
-                    Mode, !.ModuleInfo, ProcId)
+                get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
+                    Procs, Mode, ProcId)
             then
                 map.lookup(Procs0, ProcId, Proc),
-                add_pragma_require_tail_recursion_proc(
-                    Pragma ^ rtr_require_tailrec, Context,
+                RequireTailrec = Pragma ^ rtr_require_tailrec,
+                add_pragma_require_tail_recursion_proc(RequireTailrec, Context,
                     PredSymNameArity, ProcId - Proc,
                     PredInfo0, PredInfo, !Specs)
             else
-                Pieces = [words("Error: no such mode for"),
-                    qual_sym_name_and_arity(PredSymNameArity), words("in"),
-                    pragma_decl("require_tail_recursion"),
-                    words("pragma."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
                 PredInfo = PredInfo0,
+                PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
+                SimpleCallId = simple_call_id(PredOrFunc, PredSymName, Arity),
+                Pieces = [words("Error:"),
+                    pragma_decl("require_tail_recursion"),
+                    words("declaration for undeclared mode of"),
+                    simple_call(SimpleCallId), suffix("."), nl],
+                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ;
@@ -594,17 +595,17 @@ add_pragma_require_tail_recursion_proc(RequireTailrec, Context,
         MaybeRequireTailrecOrig),
     (
         MaybeRequireTailrecOrig = yes(RequireTailrecOrig),
-        Parts1 = [words("Error: conflicting"),
+        MainPieces = [words("Error: conflicting"),
             pragma_decl("require_tail_recursion"), words("pragmas for"),
             qual_sym_name_and_arity(SymNameAndArity),
             words("or one of its modes.")],
-        Parts2 = [words("Earlier pragma is here.")],
+        OrigPieces = [words("Earlier pragma is here.")],
         ( RequireTailrecOrig = suppress_tailrec_warnings(ContextOrig)
         ; RequireTailrecOrig = enable_tailrec_warnings(_, _, ContextOrig)
         ),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-            [simple_msg(Context, [always(Parts1)]),
-             simple_msg(ContextOrig, [always(Parts2)])]),
+            [simplest_msg(Context, MainPieces),
+             simplest_msg(ContextOrig, OrigPieces)]),
         !:Specs = [Spec | !.Specs]
     ;
         MaybeRequireTailrecOrig = no,
@@ -703,8 +704,8 @@ do_add_pred_marker(PragmaName, PredSymNameArity, Status, MustBeExported,
     ;
         PredIds = [],
         DescPieces = [pragma_decl(PragmaName), words("declaration")],
-        report_undefined_pred_or_func_error(PredSymName, Arity, OtherArities,
-            Context, DescPieces, !Specs)
+        report_undefined_pred_or_func_error(no, PredSymName, Arity,
+            OtherArities, Context, DescPieces, !Specs)
     ).
 
     % For each pred_id in the list, check whether markers present in the list
@@ -821,16 +822,16 @@ pragma_conflict_error(PredSymNameArity, Context, PragmaName, ConflictMarkers,
 
 %----------------------------------------------------------------------------%
 
-:- pred mark_pred_as_obsolete(pred_name_arity::in,
-    list(sym_name_and_arity)::in, pred_status::in, prog_context::in,
-    module_info::in, module_info::out,
+:- pred mark_pred_as_obsolete(pragma_info_obsolete_pred::in,
+    pred_status::in, prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-mark_pred_as_obsolete(PredNameArity, ObsoleteInFavourOf, PragmaStatus, Context,
+mark_pred_as_obsolete(ObsoletePredInfo, PragmaStatus, Context,
         !ModuleInfo, !Specs) :-
-    PredNameArity = pred_name_arity(PredSymName, Arity),
-    get_matching_pred_ids(!.ModuleInfo, PredSymName, Arity, PredIds,
-        OtherArities),
+    ObsoletePredInfo =
+        pragma_info_obsolete_pred(PredNameArity, ObsoleteInFavourOf),
+    PredNameArity = pred_name_arity(SymName, Arity),
+    get_matching_pred_ids(!.ModuleInfo, SymName, Arity, PredIds, OtherArities),
     (
         PredIds = [_ | _],
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -848,7 +849,7 @@ mark_pred_as_obsolete(PredNameArity, ObsoleteInFavourOf, PragmaStatus, Context,
     ;
         PredIds = [],
         DescPieces = [pragma_decl("obsolete"), words("declaration")],
-        report_undefined_pred_or_func_error(PredSymName, Arity, OtherArities,
+        report_undefined_pred_or_func_error(no, SymName, Arity, OtherArities,
             Context, DescPieces, !Specs)
     ).
 
@@ -881,6 +882,57 @@ mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, [PredId | PredIds],
     map.det_update(PredId, PredInfo, !PredTable),
     mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, PredIds,
         !WrongStatus, !PredTable).
+
+%----------------------------------------------------------------------------%
+
+:- pred mark_proc_as_obsolete(pragma_info_obsolete_proc::in,
+    pred_status::in, prog_context::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, Context,
+        !ModuleInfo, !Specs) :-
+    ObsoleteProcInfo =
+        pragma_info_obsolete_proc(PredNameModesPF, ObsoleteInFavourOf),
+    PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+    list.length(Modes, Arity),
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+        lfh_user_error, Context, "obsolete_proc",
+        PredOrFunc, SymName, Arity, MaybePredId),
+    (
+        MaybePredId = ok1(PredId),
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+        ( if
+            pred_info_is_exported(PredInfo0),
+            pred_status_is_exported(PragmaStatus) = no
+        then
+            PredNameArity = pred_name_arity(SymName, Arity),
+            pragma_status_error(PredNameArity, Context, "obsolete_proc",
+                !Specs)
+        else
+            true
+        ),
+        SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+        ProcTransform =
+            ( pred(ProcInfo0::in, ProcInfo::out) is det :-
+                proc_info_get_obsolete_in_favour_of(ProcInfo0,
+                    MaybeObsoleteInFavourOf0),
+                (
+                    MaybeObsoleteInFavourOf0 = no,
+                    MaybeObsoleteInFavourOf = yes(ObsoleteInFavourOf)
+                ;
+                    MaybeObsoleteInFavourOf0 = yes(ObsoleteInFavourOf0),
+                    MaybeObsoleteInFavourOf =
+                        yes(ObsoleteInFavourOf0 ++ ObsoleteInFavourOf)
+                ),
+                proc_info_set_obsolete_in_favour_of(MaybeObsoleteInFavourOf,
+                    ProcInfo0, ProcInfo)
+            ),
+        transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+            "obsolete_proc", Context, ProcTransform, !ModuleInfo, !Specs)
+    ;
+        MaybePredId = error1(Specs),
+        !:Specs = Specs ++ !.Specs
+    ).
 
 %----------------------------------------------------------------------------%
 
@@ -1111,6 +1163,98 @@ add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
+add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
+        !ModuleInfo, !Specs) :-
+    FPEInfo = pragma_info_foreign_proc_export(Lang, PrednameModesPF,
+        ExportedName),
+    PrednameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+    list.length(Modes, Arity),
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, may_be_partially_qualified,
+        lfh_user_error, Context, "foreign_export",
+        PredOrFunc, SymName, Arity, MaybePredId),
+    (
+        MaybePredId = ok1(PredId),
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        % predicate_table_get_preds(PredTable, Preds),
+        % map.lookup(Preds, PredId, PredInfo),
+        pred_info_get_proc_table(PredInfo, Procs),
+        map.to_assoc_list(Procs, ExistingProcs),
+        ( if
+            get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
+                ExistingProcs, Modes, ProcId)
+        then
+            map.lookup(Procs, ProcId, ProcInfo0),
+            proc_info_get_declared_determinism(ProcInfo0, MaybeDetism),
+            % We cannot catch those multi or nondet procedures that don't have
+            % a determinism declaration until after determinism analysis.
+            ( if
+                MaybeDetism = yes(Detism),
+                ( Detism = detism_non
+                ; Detism = detism_multi
+                )
+            then
+                Pieces = [words("Error:"),
+                    pragma_decl("foreign_export"), words("declaration"),
+                    words("for a procedure that has"),
+                    words("a declared determinism of"),
+                    fixed(determinism_to_string(Detism)), suffix("."), nl],
+                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                    Context, Pieces),
+                !:Specs = [Spec | !.Specs]
+            else
+                % Only add the foreign export if the specified language matches
+                % one of the foreign languages available for this backend.
+                module_info_get_globals(!.ModuleInfo, Globals),
+                globals.get_backend_foreign_languages(Globals, ForeignLangs),
+                ( if list.member(Lang, ForeignLangs) then
+                    module_info_get_pragma_exported_procs(!.ModuleInfo,
+                        PragmaExportedProcs0),
+                    NewExportedProc = pragma_exported_proc(Lang,
+                        PredId, ProcId, ExportedName, Context),
+                    PragmaExportedProcs =
+                        cord.snoc(PragmaExportedProcs0, NewExportedProc),
+                    module_info_set_pragma_exported_procs(PragmaExportedProcs,
+                        !ModuleInfo)
+                else
+                    true
+                ),
+                % Record that there was a foreign_export pragma for
+                % this procedure, regardless of the specified language.
+                % We do this so that dead procedure elimination does not
+                % generate incorrect warnings about dead procedures
+                % (e.g. those that are foreign_exported to languages other than
+                % those languages that are supported by the current backend.)
+                proc_info_set_has_any_foreign_exports(has_foreign_exports,
+                    ProcInfo0, ProcInfo),
+                module_info_set_pred_proc_info(PredId, ProcId,
+                    PredInfo, ProcInfo, !ModuleInfo)
+            )
+        else
+            (
+                MaybeAttrs = item_origin_user,
+                report_undefined_mode_error(SymName, Arity, Context,
+                    [pragma_decl("foreign_export"), words("declaration")],
+                    !Specs)
+            ;
+                MaybeAttrs = item_origin_compiler(_CompilerAttrs)
+                % We do not warn about errors in export pragmas created by
+                % the compiler as part of a source-to-source transformation.
+            )
+        )
+    ;
+        MaybePredId = error1(Specs),
+        (
+            MaybeAttrs = item_origin_user,
+            !:Specs = Specs ++ !.Specs
+        ;
+            MaybeAttrs = item_origin_compiler(_CompilerAttrs)
+            % We do not warn about errors in export pragmas created by
+            % the compiler as part of a source-to-source transformation.
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
     % add_pragma_fact_table(FTInfo, Status, Context,
     %   !ModuleInfo, !Info):
     %
@@ -1131,8 +1275,9 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
         OtherArities),
     (
         PredIds = [],
-        report_undefined_pred_or_func_error(PredSymName, Arity, OtherArities,
-            Context, [pragma_decl("fact_table"), words("declaration")], !Specs)
+        report_undefined_pred_or_func_error(no, PredSymName, Arity,
+            OtherArities, Context,
+            [pragma_decl("fact_table"), words("declaration")], !Specs)
     ;
         PredIds = [HeadPredId | TailPredIds],
         (
@@ -1471,63 +1616,33 @@ lookup_pred_orig_arity(ModuleInfo, PredId, Piece) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
-    TermInfo = pragma_info_termination_info(PredModesPF,
+    TermInfo = pragma_info_termination_info(PredNameModesPF,
         MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo),
-    PredModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
-    module_info_get_predicate_table(!.ModuleInfo, Preds),
-    list.length(ModeList, Arity),
-    predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
-        PredOrFunc, SymName, Arity, PredIds),
+    PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+    list.length(Modes, Arity),
+    % XXX lfh_ignore:
+    % This happens in `.trans_opt' files sometimes, so just ignore it.
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+        lfh_ignore, Context, "termination_info",
+        PredOrFunc, SymName, Arity, MaybePredId),
     (
-        PredIds = []
-        % XXX This happens in `.trans_opt' files sometimes --
-        % so just ignore it.
-        %   undefined_pred_or_func_error(SymName, Arity, Context,
-        %       "`:- pragma termination_info' declaration",
-        %       !Specs
+        MaybePredId = ok1(PredId),
+        SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+        add_context_to_arg_size_info(MaybePragmaArgSizeInfo, Context,
+            MaybeArgSizeInfo),
+        add_context_to_termination_info(MaybePragmaTerminationInfo, Context,
+            MaybeTerminationInfo),
+        ProcTransform =
+            ( pred(ProcInfo0::in, ProcInfo::out) is det :-
+                proc_info_set_maybe_arg_size_info(MaybeArgSizeInfo,
+                    ProcInfo0, ProcInfo1),
+                proc_info_set_maybe_termination_info(MaybeTerminationInfo,
+                    ProcInfo1, ProcInfo)
+            ),
+        transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+            "termination_info", Context, ProcTransform, !ModuleInfo, !Specs)
     ;
-        PredIds = [PredId],
-        module_info_get_preds(!.ModuleInfo, PredTable0),
-        map.lookup(PredTable0, PredId, PredInfo0),
-        pred_info_get_proc_table(PredInfo0, ProcTable0),
-        map.to_assoc_list(ProcTable0, ProcList),
-        ( if
-            get_procedure_matching_declmodes_with_renaming(ProcList,
-                ModeList, !.ModuleInfo, ProcId)
-        then
-            add_context_to_arg_size_info(MaybePragmaArgSizeInfo,
-                Context, MaybeArgSizeInfo),
-            add_context_to_termination_info(MaybePragmaTerminationInfo,
-                Context, MaybeTerminationInfo),
-            map.lookup(ProcTable0, ProcId, ProcInfo0),
-            proc_info_set_maybe_arg_size_info(MaybeArgSizeInfo,
-                ProcInfo0, ProcInfo1),
-            proc_info_set_maybe_termination_info(MaybeTerminationInfo,
-                ProcInfo1, ProcInfo),
-            map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-            map.det_update(PredId, PredInfo, PredTable0, PredTable),
-            module_info_set_preds(PredTable, !ModuleInfo)
-        else
-            module_info_incr_errors(!ModuleInfo),
-            Pieces = [words("Error:"), pragma_decl("termination_info"),
-                words("declaration for undeclared mode of"),
-                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                suffix("."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
-            !:Specs = [Spec | !.Specs]
-        )
-    ;
-        PredIds = [_, _ | _],
-        Pieces = [words("Error: ambiguous predicate name"),
-            simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-            words("in"), pragma_decl("termination_info"),
-            words("declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
+        MaybePredId = error1(_Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1537,68 +1652,39 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
-    Term2Info = pragma_info_termination2_info(PredModesPF,
+    Term2Info = pragma_info_termination2_info(PredNameModesPF,
         MaybePragmaSuccessArgSizeInfo, MaybePragmaFailureArgSizeInfo,
         MaybePragmaTerminationInfo),
-    PredModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
-    module_info_get_predicate_table(!.ModuleInfo, Preds),
-    list.length(ModeList, Arity),
-    predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
-        PredOrFunc, SymName, Arity, PredIds),
+    PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+    list.length(Modes, Arity),
+    % XXX lfh_ignore:
+    % This happens in `.trans_opt' files sometimes, so just ignore it.
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+        lfh_ignore, Context, "termination2_info",
+        PredOrFunc, SymName, Arity, MaybePredId),
     (
-        PredIds = []
-        % XXX This happens in `.trans_opt' files sometimes --
-        % so just ignore it.
-        %   undefined_pred_or_func_error(
-        %        SymName, Arity, Context,
-        %        "`:- pragma termination2_info' declaration", !Specs)
-    ;
-        PredIds = [PredId],
-        module_info_get_preds(!.ModuleInfo, PredTable0),
-        map.lookup(PredTable0, PredId, PredInfo0),
-        pred_info_get_proc_table(PredInfo0, ProcTable0),
-        map.to_assoc_list(ProcTable0, ProcList),
-        ( if
-            get_procedure_matching_declmodes_with_renaming(ProcList,
-                ModeList, !.ModuleInfo, ProcId)
-        then
-            map.lookup(ProcTable0, ProcId, ProcInfo0),
-            add_context_to_constr_termination_info(
-                MaybePragmaTerminationInfo, Context, MaybeTerminationInfo),
-
-            some [!TermInfo] (
-                proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
-                term2_info_set_import_success(MaybePragmaSuccessArgSizeInfo,
-                    !TermInfo),
-                term2_info_set_import_failure(MaybePragmaFailureArgSizeInfo,
-                    !TermInfo),
-                term2_info_set_term_status(MaybeTerminationInfo,
-                    !TermInfo),
-                proc_info_set_termination2_info(!.TermInfo,
-                    ProcInfo0, ProcInfo)
+        MaybePredId = ok1(PredId),
+        SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+        ProcTransform =
+            ( pred(ProcInfo0::in, ProcInfo::out) is det :-
+                add_context_to_constr_termination_info(
+                    MaybePragmaTerminationInfo, Context, MaybeTerminationInfo),
+                some [!TermInfo] (
+                    proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
+                    term2_info_set_import_success(MaybePragmaSuccessArgSizeInfo,
+                        !TermInfo),
+                    term2_info_set_import_failure(MaybePragmaFailureArgSizeInfo,
+                        !TermInfo),
+                    term2_info_set_term_status(MaybeTerminationInfo,
+                        !TermInfo),
+                    proc_info_set_termination2_info(!.TermInfo,
+                        ProcInfo0, ProcInfo)
+                )
             ),
-            map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-            map.det_update(PredId, PredInfo, PredTable0, PredTable),
-            module_info_set_preds(PredTable, !ModuleInfo)
-        else
-            Pieces = [words("Error:"), pragma_decl("termination2_info"),
-                words("declaration for undeclared mode of"),
-                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                suffix("."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        )
+        transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+            "termination2_info", Context, ProcTransform, !ModuleInfo, !Specs)
     ;
-        PredIds = [_, _ | _],
-        Pieces = [words("Error: ambiguous predicate name"),
-            simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-            words("in"), pragma_decl("termination2_info"),
-            words("declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
+        MaybePredId = error1(_Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1614,55 +1700,23 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
         MaybeSharingDomain = no
     ;
         MaybeSharingDomain = yes(SharingDomain),
-        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
-        module_info_get_predicate_table(!.ModuleInfo, Preds),
-        list.length(ModeList, Arity),
-        predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
-            PredOrFunc, SymName, Arity, PredIds),
+        PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+        list.length(Modes, Arity),
+        % XXX lfh_ignore:
+        % This happens in `.trans_opt' files sometimes, so just ignore it.
+        look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+            lfh_ignore, Context, "structure_sharing",
+            PredOrFunc, SymName, Arity, MaybePredId),
         (
-            PredIds = []
-            % XXX This happens in `.trans_opt' files sometimes --
-            % so just ignore it.
-            %   undefined_pred_or_func_error(SymName, Arity, Context,
-            %       "`:- pragma structure_sharing' declaration",
-            %       !Specs)
+            MaybePredId = ok1(PredId),
+            SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+            ProcTransform = proc_info_set_imported_structure_sharing(HeadVars,
+                Types, SharingDomain),
+            transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+                "structure_sharing", Context, ProcTransform,
+                !ModuleInfo, !Specs)
         ;
-            PredIds = [PredId],
-            module_info_get_preds(!.ModuleInfo, PredTable0),
-            map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_get_proc_table(PredInfo0, ProcTable0),
-            map.to_assoc_list(ProcTable0, ProcList),
-            ( if
-                get_procedure_matching_declmodes_with_renaming(ProcList,
-                    ModeList, !.ModuleInfo, ProcId)
-            then
-                map.lookup(ProcTable0, ProcId, ProcInfo0),
-                proc_info_set_imported_structure_sharing(HeadVars, Types,
-                    SharingDomain, ProcInfo0, ProcInfo),
-                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-                map.det_update(PredId, PredInfo, PredTable0, PredTable),
-                module_info_set_preds(PredTable, !ModuleInfo)
-            else
-                Pieces = [words("Error:"), pragma_decl("structure_sharing"),
-                    words("declaration for undeclared mode of"),
-                    simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    suffix("."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
-                !:Specs = [Spec | !.Specs]
-            )
-        ;
-            PredIds = [_ , _ | _],
-            Pieces = [words("Error: ambiguous predicate name"),
-                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                words("in"), pragma_decl("structure_sharing."),
-                words("declaration."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
-            !:Specs = [Spec | !.Specs]
+            MaybePredId = error1(_Specs)
         )
     ).
 
@@ -1679,55 +1733,140 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
         MaybeReuseDomain = no
     ;
         MaybeReuseDomain = yes(ReuseDomain),
-        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
-        module_info_get_predicate_table(!.ModuleInfo, Preds),
-        list.length(ModeList, Arity),
-        predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
-            PredOrFunc, SymName, Arity, PredIds),
+        PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+        list.length(Modes, Arity),
+        % XXX lfh_ignore:
+        % This happens in `.trans_opt' files sometimes, so just ignore it.
+        look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+            lfh_ignore, Context, "structure_reuse",
+            PredOrFunc, SymName, Arity, MaybePredId),
         (
-            PredIds = []
-            % XXX This happens in `.trans_opt' files sometimes --
-            % so just ignore it
-            %   undefined_pred_or_func_error(SymName, Arity, Context,
-            %       "`:- pragma structure_sharing' declaration",
-            %       !Specs)
+            MaybePredId = ok1(PredId),
+            SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+            ProcTransform = proc_info_set_imported_structure_reuse(HeadVars,
+                Types, ReuseDomain),
+            transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+                "structure_reuse", Context, ProcTransform, !ModuleInfo, !Specs)
         ;
-            PredIds = [PredId],
-            module_info_get_preds(!.ModuleInfo, PredTable0),
-            map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_get_proc_table(PredInfo0, ProcTable0),
-            map.to_assoc_list(ProcTable0, ProcList),
-            ( if
-                get_procedure_matching_declmodes_with_renaming(ProcList,
-                    ModeList, !.ModuleInfo, ProcId)
-            then
-                map.lookup(ProcTable0, ProcId, ProcInfo0),
-                proc_info_set_imported_structure_reuse(HeadVars, Types,
-                    ReuseDomain, ProcInfo0, ProcInfo),
-                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-                map.det_update(PredId, PredInfo, PredTable0, PredTable),
-                module_info_set_preds(PredTable, !ModuleInfo)
-            else
-                Pieces = [words("Error:"), pragma_decl("structure_reuse"),
-                    words("declaration for undeclared mode of"),
-                    simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                    suffix("."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
-                !:Specs = [Spec | !.Specs]
-            )
-        ;
-            PredIds = [_, _ | _],
-            Pieces = [words("Error: ambiguous predicate name"),
-                simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-                words("in"), pragma_decl("structure_reuse"),
-                words("declaration."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
+            MaybePredId = error1(_Specs)
         )
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- pred transform_selected_mode_of_pred(pred_id::in, simple_call_id::in,
+    list(mer_mode)::in, string::in, prog_context::in,
+    pred(proc_info, proc_info)::in(pred(in, out) is det),
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+        PragmaName, Context, ProcTransform, !ModuleInfo, !Specs) :-
+    module_info_get_preds(!.ModuleInfo, PredTable0),
+    map.lookup(PredTable0, PredId, PredInfo0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    map.to_assoc_list(ProcTable0, ProcList),
+    ( if
+        get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
+            ProcList, Modes, ProcId)
+    then
+        map.lookup(ProcTable0, ProcId, ProcInfo0),
+        ProcTransform(ProcInfo0, ProcInfo),
+        map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+        map.det_update(PredId, PredInfo, PredTable0, PredTable),
+        module_info_set_preds(PredTable, !ModuleInfo)
+    else
+        Pieces = [words("Error:"), pragma_decl(PragmaName),
+            words("declaration for undeclared mode of"),
+            simple_call(SimpleCallId), suffix("."), nl],
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- type lookup_failure_handling
+    --->    lfh_ignore
+    ;       lfh_user_error
+    ;       lfh_internal_error.
+
+:- pred look_up_pragma_pf_sym_arity(module_info::in, is_fully_qualified::in,
+    lookup_failure_handling::in, prog_context::in, string::in,
+    pred_or_func::in, sym_name::in, int::in, maybe1(pred_id)::out) is det.
+
+look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
+        Context, PragmaName, PredOrFunc, SymName, Arity, MaybePredId) :-
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    predicate_table_lookup_pf_sym_arity(PredTable, IsFullyQualified,
+        PredOrFunc, SymName, Arity, PredIds),
+    (
+        PredIds = [],
+        (
+            FailHandling = lfh_ignore,
+            Specs = []
+        ;
+            FailHandling = lfh_user_error,
+            predicate_table_lookup_pf_sym(PredTable,
+                may_be_partially_qualified,
+                PredOrFunc, SymName, AllArityPredIds),
+            module_info_get_preds(ModuleInfo, Preds),
+            find_pred_arities_other_than(Preds, AllArityPredIds, Arity,
+                OtherArities),
+            DescPieces = [pragma_decl(PragmaName), words("declaration")],
+            report_undefined_pred_or_func_error(yes(PredOrFunc), SymName,
+                Arity, OtherArities, Context, DescPieces, [], Specs)
+        ;
+            FailHandling = lfh_internal_error,
+            Pieces = [words("Internal compiler error:"),
+                words("unknown predicate name in"), pragma_decl(PragmaName),
+                words("declaration."), nl],
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
+            Specs = [Spec]
+        ),
+        MaybePredId = error1(Specs)
+    ;
+        PredIds = [PredId],
+        MaybePredId = ok1(PredId)
+    ;
+        PredIds = [_, _ | _],
+        % A fully qualified lookup should *never* yield more than one pred_id.
+        expect(unify(IsFullyQualified, may_be_partially_qualified), $pred,
+            "two or more PredIds but is_fully_qualified"),
+        (
+            FailHandling = lfh_ignore,
+            Specs = []
+        ;
+            FailHandling = lfh_user_error,
+            StartPieces = [words("Error: ambiguous"), p_or_f(PredOrFunc),
+                words("name in"), pragma_decl(PragmaName),
+                words("declaration."), nl,
+                words("The possible matches are:"), nl_indent_delta(1)],
+            PredIdPiecesList = list.map(
+                describe_one_pred_name(ModuleInfo, should_module_qualify),
+                PredIds),
+            PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
+                [suffix(".")]),
+            MainPieces = StartPieces ++ PredIdPieces,
+            VerbosePieces = [words("An explicit module qualifier"),
+                words("may be necessary to select the right match."), nl],
+            Msg = simple_msg(Context,
+                [always(MainPieces),
+                verbose_only(verbose_always, VerbosePieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Specs = [Spec]
+        ;
+            FailHandling = lfh_internal_error,
+            Pieces = [words("Internal compiler error:"),
+                words("ambiguous predicate name in"), pragma_decl(PragmaName),
+                words("declaration."), nl],
+            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+                Context, Pieces),
+            Specs = [Spec]
+        ),
+        MaybePredId = error1(Specs)
     ).
 
 %----------------------------------------------------------------------------%

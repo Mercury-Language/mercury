@@ -650,7 +650,6 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         ( PragmaType = pragma_inline(PredNameArity)
         ; PragmaType = pragma_no_inline(PredNameArity)
         ; PragmaType = pragma_consider_used(PredNameArity)
-        ; PragmaType = pragma_obsolete(PredNameArity, _)
         ; PragmaType = pragma_no_detism_warning(PredNameArity)
         ; PragmaType = pragma_promise_pure(PredNameArity)
         ; PragmaType = pragma_promise_semipure(PredNameArity)
@@ -663,8 +662,13 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         PredNameArity = pred_name_arity(Name, Arity),
         MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
     ;
-        PragmaType = pragma_fact_table(FTInfo),
-        FTInfo = pragma_info_fact_table(PredNameArity, _),
+        (
+            PragmaType = pragma_obsolete_pred(ObsoletePredInfo),
+            ObsoletePredInfo = pragma_info_obsolete_pred(PredNameArity, _)
+        ;
+            PragmaType = pragma_fact_table(FTInfo),
+            FTInfo = pragma_info_fact_table(PredNameArity, _)
+        ),
         PredNameArity = pred_name_arity(Name, Arity),
         MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
     ;
@@ -720,6 +724,9 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
             PragmaType = pragma_structure_reuse(ReuseInfo),
             ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
                 _, _, _)
+        ;
+            PragmaType = pragma_obsolete_proc(ObsoleteProcInfo),
+            ObsoleteProcInfo = pragma_info_obsolete_proc(PredNameModesPF, _)
         ),
         PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
