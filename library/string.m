@@ -3642,61 +3642,20 @@ append_ioi(S1, S2, S3) :-
 :- pred append_ooi(string::out, string::out, string::in) is multi.
 
 append_ooi(S1, S2, S3) :-
-    S3Len = length(S3),
-    append_ooi_2(0, S3Len, S1, S2, S3).
+    Len3 = length(S3),
+    append_ooi_2(0, Len3, S1, S2, S3).
 
 :- pred append_ooi_2(int::in, int::in, string::out, string::out,
     string::in) is multi.
 
-append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
-    ( if NextS1Len = S3Len then
-        append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
-    else
-        (
-            append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
-        ;
-            unsafe_index_next(S3, NextS1Len, AdvS1Len, _),
-            append_ooi_2(AdvS1Len, S3Len, S1, S2, S3)
-        )
+append_ooi_2(Start2, Len3, S1, S2, S3) :-
+    (
+        unsafe_between(S3, 0, Start2, S1),
+        unsafe_between(S3, Start2, Len3, S2)
+    ;
+        unsafe_index_next(S3, Start2, NextStart2, _Char),
+        append_ooi_2(NextStart2, Len3, S1, S2, S3)
     ).
-
-:- pred append_ooi_3(int::in, int::in, string::out,
-    string::out, string::in) is det.
-
-:- pragma foreign_proc("C",
-    append_ooi_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate, no_sharing],
-"{
-    MR_allocate_aligned_string_msg(S1, S1Len, MR_ALLOC_ID);
-    MR_memcpy(S1, S3, S1Len);
-    S1[S1Len] = '\\0';
-    MR_allocate_aligned_string_msg(S2, S3Len - S1Len, MR_ALLOC_ID);
-    strcpy(S2, S3 + S1Len);
-}").
-:- pragma foreign_proc("C#",
-    append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S1 = S3.Substring(0, S1Len);
-    S2 = S3.Substring(S1Len);
-").
-:- pragma foreign_proc("Java",
-    append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S1 = S3.substring(0, S1Len);
-    S2 = S3.substring(S1Len);
-").
-:- pragma foreign_proc("Erlang",
-    append_ooi_3(S1Len::in, _S3Len::in, S1::out, S2::out, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    << S1:S1Len/binary, S2/binary >> = S3
-").
-
-append_ooi_3(S1Len, _S3Len, S1, S2, S3) :-
-    split(S3, S1Len, S1, S2).
 
 S1 ++ S2 = append(S1, S2).
 
