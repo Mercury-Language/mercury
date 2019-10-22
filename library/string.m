@@ -3621,50 +3621,17 @@ append(S1::out, S2::out, S3::in) :-
 
 :- pred append_ioi(string::in, string::uo, string::in) is semidet.
 
-:- pragma foreign_proc("C",
-    append_ioi(S1::in, S2::uo, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"{
-    size_t len_1, len_2, len_3;
-
-    len_1 = strlen(S1);
-    if (strncmp(S1, S3, len_1) != 0) {
-        SUCCESS_INDICATOR = MR_FALSE;
-    } else {
-        len_3 = strlen(S3);
-        len_2 = len_3 - len_1;
-        // We need to make a copy to ensure that the pointer is word-aligned.
-        MR_allocate_aligned_string_msg(S2, len_2, MR_ALLOC_ID);
-        strcpy(S2, S3 + len_1);
-        SUCCESS_INDICATOR = MR_TRUE;
-    }
-}").
-:- pragma foreign_proc("C#",
-    append_ioi(S1::in, S2::uo, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    if (S3.StartsWith(S1)) {
-        // .Substring() better?
-        S2 = S3.Remove(0, S1.Length);
-        SUCCESS_INDICATOR = true;
-    } else {
-        S2 = null;
-        SUCCESS_INDICATOR = false;
-    }
-}").
-:- pragma foreign_proc("Java",
-    append_ioi(S1::in, S2::uo, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (S3.startsWith(S1)) {
-        S2 = S3.substring(S1.length());
-        SUCCESS_INDICATOR = true;
-    } else {
-        S2 = null;
-        SUCCESS_INDICATOR = false;
-    }
-").
+append_ioi(S1, S2, S3) :-
+    Len1 = length(S1),
+    Len3 = length(S3),
+    ( if
+        Len1 =< Len3,
+        unsafe_compare_substrings((=), S1, 0, S3, 0, Len1)
+    then
+        unsafe_between(S3, Len1, Len3, S2)
+    else
+        fail
+    ).
 
 :- pred append_iio(string::in, string::in, string::uo) is det.
 
