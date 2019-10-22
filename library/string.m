@@ -655,8 +655,8 @@
 
     % split(String, Index, LeftSubstring, RightSubstring):
     %
-    % Split a string into two substrings, at the code unit `Index'.
-    % (If `Count' is out of the range [0, length of `String'], it is treated
+    % Split a string into two substrings at the code unit offset `Index'.
+    % (If `Index' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
 :- pred split(string::in, int::in, string::out, string::out) is det.
@@ -4143,110 +4143,19 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 ").
 
 %---------------------%
-%
-% For some Str and Count inputs, we may return Str as either Left or Right.
-% Since Str has mode `in', both Left or Right must have mode 'out', not `uo'.
-%
 
-:- pragma foreign_proc("C",
-    split(Str::in, Count::in, Left::out, Right::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
-"{
-    MR_Integer  len;
-
-    if (Count <= 0) {
-        MR_make_aligned_string(Left, """");
-        Right = Str;
-    } else {
-        len = strlen(Str);
-
-        if (Count > len) {
-            Count = len;
-        }
-
-        MR_allocate_aligned_string_msg(Left, Count, MR_ALLOC_ID);
-        MR_memcpy(Left, Str, Count);
-        Left[Count] = '\\0';
-        // We need to make a copy to ensure that the pointer is word-aligned.
-        MR_allocate_aligned_string_msg(Right, len - Count, MR_ALLOC_ID);
-        strcpy(Right, Str + Count);
-    }
-}").
-:- pragma foreign_proc("C#",
-    split(Str::in, Count::in, Left::out, Right::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    int len;
-
-    if (Count <= 0) {
-        Left = """";
-        Right = Str;
-    } else {
-        len = Str.Length;
-        if (Count > len) {
-            Count = len;
-        }
-        Left = Str.Substring(0, Count);
-        Right = Str.Substring(Count);
-    }
-}").
-:- pragma foreign_proc("Java",
-    split(Str::in, Count::in, Left::out, Right::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (Count <= 0) {
-        Left = """";
-        Right = Str;
-    } else {
-        int len = Str.length();
-        if (Count > len) {
-            Count = len;
-        }
-        Left = Str.substring(0, Count);
-        Right = Str.substring(Count);
-    }
-").
-:- pragma foreign_proc("Erlang",
-    split(Str::in, Count::in, Left::out, Right::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if
-        Count =< 0 ->
-            Left = <<>>,
-            Right = Str;
-        Count > size(Str) ->
-            Left = Str,
-            Right = <<>>;
-        true ->
-            << Left:Count/binary, Right/binary >> = Str
-    end
-").
-
-    % XXX ILSEQ from_code_unit_list refuses to create strings containing
-    % ill-formed sequences.
-    %
-split(Str, Count, Left, Right) :-
-    ( if Count =< 0 then
+split(Str, Index, Left, Right) :-
+    ( if Index =< 0 then
         Left = "",
         Right = Str
     else
-        to_code_unit_list(Str, List),
         Len = length(Str),
-        ( if Count > Len then
-            Num = Len
+        ( if Index >= Len then
+            Left = Str,
+            Right = ""
         else
-            Num = Count
-        ),
-        ( if
-            list.split_list(Num, List, LeftList, RightList),
-            from_code_unit_list(LeftList, LeftPrime),
-            from_code_unit_list(RightList, RightPrime)
-        then
-            Left = LeftPrime,
-            Right = RightPrime
-        else
-            unexpected($pred, "split_list failed")
+            unsafe_between(Str, 0, Index, Left),
+            unsafe_between(Str, Index, Len, Right)
         )
     ).
 
