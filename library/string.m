@@ -4176,7 +4176,7 @@ left(S1, N) = S2 :-
     left(S1, N, S2).
 
 left(String, Count, LeftString) :-
-    split(String, Count, LeftString, _RightString).
+    between(String, 0, Count, LeftString).
 
 left_by_codepoint(String, Count) = LeftString :-
     left_by_codepoint(String, Count, LeftString).
@@ -4189,8 +4189,8 @@ right(S1, N) = S2 :-
 
 right(String, RightCount, RightString) :-
     length(String, Length),
-    LeftCount = Length - RightCount,
-    split(String, LeftCount, _LeftString, RightString).
+    Start = Length - RightCount,
+    between(String, Start, Length, RightString).
 
 right_by_codepoint(String, RightCount) = RightString :-
     right_by_codepoint(String, RightCount, RightString).
