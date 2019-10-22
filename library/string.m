@@ -732,11 +732,23 @@
     % between_codepoints(String, Start, End, Substring):
     %
     % `Substring' is the part of `String' between the code point positions
-    % `Start' and `End'.
-    % (If `Start' is out of the range [0, length of `String'], it is treated
-    % as if it were the nearest end-point of that range.
-    % If `End' is out of the range [`Start', length of `String'],
-    % it is treated as if it were the nearest end-point of that range.)
+    % `Start' and `End'. The result is equivalent to:
+    %
+    %   between(String, StartOffset, EndOffset, Substring)
+    %
+    % where:
+    %
+    %   StartOffset is from codepoint_offset(String, Start, StartOffset)
+    %     if Start is in [0, count_codepoints(String)],
+    %   StartOffset = 0 if Start < 0,
+    %   StartOffset = length(String) otherwise;
+    %
+    %   EndOffset is from codepoint_offset(String, End, EndOffset)
+    %     if End is in [0, count_codepoints(String)],
+    %   EndOffset = 0 if End < 0,
+    %   EndOffset = length(String) otherwise.
+    %
+    % between/4 will enforce StartOffset =< EndOffset.
     %
 :- func between_codepoints(string::in, int::in, int::in)
     = (string::uo) is det.
@@ -4260,13 +4272,14 @@ between_codepoints(Str, Start, End, SubString) :-
     else
         StartOffset = length(Str)
     ),
-    ( if End =< Start then
-        EndOffset = StartOffset
+    ( if End < 0 then
+        EndOffset = 0
     else if codepoint_offset(Str, End, EndOffset0) then
         EndOffset = EndOffset0
     else
         EndOffset = length(Str)
     ),
+    % between/4 will enforce StartOffset =< EndOffset.
     between(Str, StartOffset, EndOffset, SubString).
 
 %---------------------%

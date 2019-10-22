@@ -1,6 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% The .exp file is for backends using UTF-8 string encoding.
+% The .exp2 file is for backends using UTF-16 string encoding.
+%
+%---------------------------------------------------------------------------%
 
 :- module string_codepoint.
 :- interface.
@@ -102,7 +107,7 @@ main(!IO) :-
     io.nl(!IO),
 
     io.write_string("\nbetween_codepoints:\n", !IO),
-    Range = -1 .. (NumCodePoints + 1),
+    Range = -2 .. (NumCodePoints + 1),
     foldl(test_between_codepoints(Str, Range), Range, !IO),
     io.nl(!IO).
 
@@ -189,9 +194,9 @@ test_between_codepoints_2(Str, Start, End, !IO) :-
     ( SubString = SlowSubString ->
         true
     ;
-        io.write_string("slow_between_codepoints returned: ", !IO),
+        io.write_string("but slow_between_codepoints returned: \"", !IO),
         io.write_string(SlowSubString, !IO),
-        io.nl(!IO)
+        io.write_string("\"\n", !IO)
     ).
 
 :- pred slow_between_codepoints(string::in, int::in, int::in, string::out)
