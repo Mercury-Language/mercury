@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Test error message for misformed pragam declaration.
+% Test whether obsolete_proc pragma declarations work correctly.
 %
 %---------------------------------------------------------------------------%
 

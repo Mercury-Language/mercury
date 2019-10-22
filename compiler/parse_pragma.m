@@ -1246,7 +1246,7 @@ parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
                 VarSet, MaybeObsoleteInFavourOf)
         ),
         PredAndModesContextPieces = cord.from_list(
-            [words("In first  arguments of"), pragma_decl("obsolete_proc"),
+            [words("In first  argument of"), pragma_decl("obsolete_proc"),
             words("declaration:")]),
         parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
             PredAndModesContextPieces, PredAndModesTerm, MaybePredAndModes),
