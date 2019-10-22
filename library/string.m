@@ -548,6 +548,30 @@
     %
 :- pred contains_char(string::in, char::in) is semidet.
 
+    % compare_substrings(Res, X, StartX, Y, StartY, Length):
+    %
+    % Compare two substrings by code unit order. The two substrings are
+    % the substring of `X' between `StartX' and `StartX + Length', and
+    % the substring of `Y' between `StartY' and `StartY + Length'.
+    % `StartX', `StartY' and `Length' are all in terms of code units.
+    %
+    % Fails if `StartX' or `StartX + Length' are not within [0, length(X)],
+    % or if `StartY' or `StartY + Length' are not within [0, length(Y)],
+    % or if `Length' is negative.
+    %
+:- pred compare_substrings(comparison_result::uo, string::in, int::in,
+    string::in, int::in, int::in) is semidet.
+
+    % unsafe_compare_substrings(Res, X, StartX, Y, StartY, Length):
+    %
+    % Same as compare_between/4 but without range checks.
+    % WARNING: if any of `StartX', `StartY', `StartX + Length' or
+    % `StartY + Length' are out of range, or if `Length' is negative,
+    % then the behaviour is UNDEFINED. Use with care!
+    %
+:- pred unsafe_compare_substrings(comparison_result::uo, string::in, int::in,
+    string::in, int::in, int::in) is det.
+
     % compare_ignore_case_ascii(Res, X, Y):
     %
     % Compare two strings by code point order, ignoring the case of letters
@@ -3289,6 +3313,47 @@ contains_char(Str, Char, I) :-
         )
     else
         fail
+    ).
+
+%---------------------%
+
+compare_substrings(Res, X, StartX, Y, StartY, Length) :-
+    LengthX = length(X),
+    LengthY = length(Y),
+    ( if
+        Length >= 0,
+        StartX >= 0,
+        StartY >= 0,
+        StartX + Length =< LengthX,
+        StartY + Length =< LengthY
+    then
+        unsafe_compare_substrings(Res, X, StartX, Y, StartY, Length)
+    else
+        fail
+    ).
+
+unsafe_compare_substrings(Res, X, StartX, Y, StartY, Length) :-
+    unsafe_compare_substrings_loop(X, Y, StartX, StartY, Length, Res).
+
+:- pred unsafe_compare_substrings_loop(string::in, string::in,
+    int::in, int::in, int::in, comparison_result::uo) is det.
+
+unsafe_compare_substrings_loop(X, Y, IX, IY, Rem, Res) :-
+    ( if Rem = 0 then
+        Res = (=)
+    else
+        unsafe_index_code_unit(X, IX, CodeX),
+        unsafe_index_code_unit(Y, IY, CodeY),
+        compare(Res0, CodeX, CodeY),
+        (
+            Res0 = (=),
+            unsafe_compare_substrings_loop(X, Y, IX + 1, IY + 1, Rem - 1, Res)
+        ;
+            ( Res0 = (<)
+            ; Res0 = (>)
+            ),
+            Res = Res0
+        )
     ).
 
 %---------------------%

@@ -360,6 +360,7 @@ ORDINARY_PROGS = \
 	string_code_unit \
 	string_codepoint \
 	string_codepoint_offset_ilseq \
+	string_compare_substrings \
 	string_count_codepoints_ilseq \
 	string_first_char \
 	string_fold_ilseq \

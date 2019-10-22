@@ -427,6 +427,8 @@ Changes to the Mercury standard library:
    - det_remove_prefix/3
    - compare_ignore_case_ascii/3
    - to_rev_char_list/2
+   - compare_substrings/6
+   - unsafe_compare_substrings/6
 
   The following procedures in the string module have been deprecated:
 
