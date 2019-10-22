@@ -3332,6 +3332,29 @@ compare_substrings(Res, X, StartX, Y, StartY, Length) :-
         fail
     ).
 
+:- pragma foreign_proc("C",
+    unsafe_compare_substrings(Res::uo, X::in, StartX::in, Y::in, StartY::in,
+        Length::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    int res = memcmp(X + StartX, Y + StartY, Length);
+    Res = ((res < 0) ? MR_COMPARE_LESS
+        : (res == 0) ? MR_COMPARE_EQUAL
+        : MR_COMPARE_GREATER);
+").
+:- pragma foreign_proc("C#",
+    unsafe_compare_substrings(Res::uo, X::in, StartX::in, Y::in, StartY::in,
+        Length::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    int res = System.String.CompareOrdinal(X, StartX, Y, StartY, Length);
+    Res = ((res < 0) ? builtin.COMPARE_LESS
+        : (res == 0) ? builtin.COMPARE_EQUAL
+        : builtin.COMPARE_GREATER);
+").
+
 unsafe_compare_substrings(Res, X, StartX, Y, StartY, Length) :-
     unsafe_compare_substrings_loop(X, Y, StartX, StartY, Length, Res).
 
