@@ -136,6 +136,11 @@
     % NOTE: In the future we may also throw an exception if the list contains
     % a surrogate code point.
     %
+    % The reverse mode of to_char_list/2 is deprecated because the implied
+    % ability to round trip convert a string to a list then back to the same
+    % string does not hold in the presence of ill-formed code unit sequences.
+    %
+%:- pragma obsolete_proc(to_char_list(uo, in), [from_char_list/2]).
 :- func to_char_list(string) = list(char).
 :- pred to_char_list(string, list(char)).
 :- mode to_char_list(in, out) is det.
@@ -155,6 +160,11 @@
     % NOTE: In the future we may also throw an exception if the list contains
     % a surrogate code point.
     %
+    % The reverse mode of to_rev_char_list/2 is deprecated because the implied
+    % ability to round trip convert a string to a list then back to the same
+    % string does not hold in the presence of ill-formed code unit sequences.
+    %
+%:- pragma obsolete_proc(to_rev_char_list(uo, in), [from_rev_char_list/2]).
 :- func to_rev_char_list(string) = list(char).
 :- pred to_rev_char_list(string, list(char)).
 :- mode to_rev_char_list(in, out) is det.
@@ -166,6 +176,11 @@
     % NOTE: In the future we may also throw an exception if the list contains
     % a surrogate code point.
     %
+    % The forward mode of from_char_list/2 is deprecated because the implied
+    % ability to round trip convert a string to a list then back to the same
+    % string does not hold in the presence of ill-formed code unit sequences.
+    %
+%:- pragma obsolete_proc(from_char_list(out, in), [to_char_list/2]).
 :- func from_char_list(list(char)::in) = (string::uo) is det.
 :- pred from_char_list(list(char), string).
 :- mode from_char_list(in, uo) is det.
@@ -3504,9 +3519,6 @@ append(S1::out, S2::out, S3::in) :-
     end
 ").
 
-append_iii(X, Y, Z) :-
-    mercury_append(X, Y, Z).
-
 :- pred append_ioi(string::in, string::uo, string::in) is semidet.
 
 :- pragma foreign_proc("C",
@@ -3554,9 +3566,6 @@ append_iii(X, Y, Z) :-
     }
 ").
 
-append_ioi(X, Y, Z) :-
-    mercury_append(X, Y, Z).
-
 :- pred append_iio(string::in, string::in, string::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -3589,9 +3598,6 @@ append_ioi(X, Y, Z) :-
 "
     S3 = list_to_binary([S1, S2])
 ").
-
-append_iio(X, Y, Z) :-
-    mercury_append(X, Y, Z).
 
 :- pred append_ooi(string::out, string::out, string::in) is multi.
 
@@ -3651,20 +3657,6 @@ append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 
 append_ooi_3(S1Len, _S3Len, S1, S2, S3) :-
     split(S3, S1Len, S1, S2).
-
-    % XXX ILSEQ to_char_list cannot handle ill-formed sequences.
-    %
-:- pred mercury_append(string, string, string).
-:- mode mercury_append(in, in, in) is semidet.  % implied
-:- mode mercury_append(in, uo, in) is semidet.
-:- mode mercury_append(in, in, uo) is det.
-:- mode mercury_append(uo, uo, in) is multi.
-
-mercury_append(X, Y, Z) :-
-    to_char_list(X, XList),
-    to_char_list(Y, YList),
-    to_char_list(Z, ZList),
-    list.append(XList, YList, ZList).
 
 S1 ++ S2 = append(S1, S2).
 
@@ -5727,6 +5719,8 @@ char_to_string(C) = S1 :-
     char_to_string(C, S1).
 
 char_to_string(Char, String) :-
+    % XXX ILSEQ Should fail when String is not a well-formed encoding of a
+    % single code point.
     to_char_list(String, [Char]).
 
 from_char(Char) = char_to_string(Char).

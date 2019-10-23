@@ -428,6 +428,12 @@ Changes to the Mercury standard library:
    - compare_ignore_case_ascii/3
    - to_rev_char_list/2
 
+  The following procedures in the string module have been deprecated:
+
+   - to_char_list(uo, in)
+   - to_rev_char_list(uo, in)
+   - from_char_list(out, in)
+
 * The following predicates have been added to the map module:
 
    - foldl5/12
