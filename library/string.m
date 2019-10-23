@@ -3581,43 +3581,16 @@ append(S1::out, S2::out, S3::in) :-
 
 :- pred append_iii(string::in, string::in, string::in) is semidet.
 
-:- pragma foreign_proc("C",
-    append_iii(S1::in, S2::in, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"{
-    size_t len_1 = strlen(S1);
-    SUCCESS_INDICATOR = (
-        strncmp(S1, S3, len_1) == 0 &&
-        strcmp(S2, S3 + len_1) == 0
-    );
-}").
-:- pragma foreign_proc("C#",
-    append_iii(S1::in, S2::in, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    SUCCESS_INDICATOR = S3.Equals(System.String.Concat(S1, S2));
-}").
-:- pragma foreign_proc("Java",
-    append_iii(S1::in, S2::in, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = S3.equals(S1.concat(S2));
-").
-:- pragma foreign_proc("Erlang",
-    append_iii(S1::in, S2::in, S3::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S1_length = size(S1),
-    S2_length = size(S2),
-    case S1_length + S2_length =:= size(S3) of
-        true ->
-            <<Left:S1_length/binary, Right/binary>> = S3,
-            SUCCESS_INDICATOR = (Left =:= S1 andalso Right =:= S2);
-        false ->
-            SUCCESS_INDICATOR = false
-    end
-").
+append_iii(S1, S2, S3) :-
+    Len1 = length(S1),
+    Len2 = length(S2),
+    Len3 = length(S3),
+    ( if Len3 = Len1 + Len2 then
+        unsafe_compare_substrings((=), S1, 0, S3, 0, Len1),
+        unsafe_compare_substrings((=), S2, 0, S3, Len1, Len2)
+    else
+        fail
+    ).
 
 :- pred append_ioi(string::in, string::uo, string::in) is semidet.
 
