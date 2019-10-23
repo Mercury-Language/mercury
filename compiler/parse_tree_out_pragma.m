@@ -1027,7 +1027,7 @@ mercury_output_pragma_obsolete_pred(ObsoletePredInfo, !IO) :-
 mercury_output_pragma_obsolete_proc(Lang, ObsoleteProcInfo, !IO) :-
     ObsoleteProcInfo =
         pragma_info_obsolete_proc(PredNameModesPF, ObsoleteInFavourOf),
-    io.write_string(":- pragma obsolete(%s", !IO),
+    io.write_string(":- pragma obsolete_proc(", !IO),
     write_pred_name_modes_pf(Lang, PredNameModesPF, !IO),
     ObsoleteStrs = list.map(wrapped_sym_name_and_arity_to_string,
         ObsoleteInFavourOf),
