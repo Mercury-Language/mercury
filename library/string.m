@@ -624,6 +624,20 @@
     %
 :- func append(string::in, string::in) = (string::uo) is det.
 
+    % append(S1, S2, S3):
+    %
+    % Append two strings together. S3 consists of the code units of S1
+    % followed by the code units of S2, in order.
+    %
+    % An ill-formed code unit sequence at the end of S1 may join with an
+    % ill-formed code unit sequence at the start of S2 to produce a valid
+    % encoding of a code point in S3.
+    %
+    % The append(out, out, in) mode is deprecated because it does not match
+    % the semantics of the forwards modes in the presence of ill-formed code
+    % unit sequences. Use nondet_append/3 instead.
+    %
+%:- pragma obsolete_proc(append(out, out, in), [nondet_append/3]).
 :- pred append(string, string, string).
 :- mode append(in, in, in) is semidet.  % implied
 :- mode append(in, uo, in) is semidet.
@@ -634,6 +648,14 @@
 % compiler can't deduce that it is semidet. (It is also inefficient.)
 % Use remove_suffix instead.
 % :- mode append(out, in, in) is semidet.
+
+    % nondet_append(S1, S2, S3):
+    %
+    % Non-deterministically return S1 and S2, where S1 ++ S2 = S3.
+    % S3 is split after each code point or code unit in an ill-formed sequence.
+    %
+:- pred nondet_append(string, string, string).
+:- mode nondet_append(out, out, in) is multi.
 
     % S1 ++ S2 = S :- append(S1, S2, S).
     %
@@ -3577,7 +3599,7 @@ append(S1::in, S2::uo, S3::in) :-
 append(S1::in, S2::in, S3::uo) :-
     append_iio(S1, S2, S3).
 append(S1::out, S2::out, S3::in) :-
-    append_ooi(S1, S2, S3).
+    nondet_append(S1, S2, S3).
 
 :- pred append_iii(string::in, string::in, string::in) is semidet.
 
@@ -3639,22 +3661,20 @@ append_ioi(S1, S2, S3) :-
     S3 = list_to_binary([S1, S2])
 ").
 
-:- pred append_ooi(string::out, string::out, string::in) is multi.
-
-append_ooi(S1, S2, S3) :-
+nondet_append(S1, S2, S3) :-
     Len3 = length(S3),
-    append_ooi_2(0, Len3, S1, S2, S3).
+    nondet_append_2(0, Len3, S1, S2, S3).
 
-:- pred append_ooi_2(int::in, int::in, string::out, string::out,
+:- pred nondet_append_2(int::in, int::in, string::out, string::out,
     string::in) is multi.
 
-append_ooi_2(Start2, Len3, S1, S2, S3) :-
+nondet_append_2(Start2, Len3, S1, S2, S3) :-
     (
         unsafe_between(S3, 0, Start2, S1),
         unsafe_between(S3, Start2, Len3, S2)
     ;
         unsafe_index_next(S3, Start2, NextStart2, _Char),
-        append_ooi_2(NextStart2, Len3, S1, S2, S3)
+        nondet_append_2(NextStart2, Len3, S1, S2, S3)
     ).
 
 S1 ++ S2 = append(S1, S2).

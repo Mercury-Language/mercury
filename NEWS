@@ -429,12 +429,14 @@ Changes to the Mercury standard library:
    - to_rev_char_list/2
    - compare_substrings/6
    - unsafe_compare_substrings/6
+   - nondet_append/3
 
   The following procedures in the string module have been deprecated:
 
    - to_char_list(uo, in)
    - to_rev_char_list(uo, in)
    - from_char_list(out, in)
+   - append(out, out, in)
 
 * The following predicates have been added to the map module:
 
