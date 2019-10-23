@@ -642,12 +642,8 @@
 :- mode append(in, in, in) is semidet.  % implied
 :- mode append(in, uo, in) is semidet.
 :- mode append(in, in, uo) is det.
+:- mode append(uo, in, in) is semidet.
 :- mode append(out, out, in) is multi.
-% The following mode is semidet in the sense that it doesn't succeed more
-% than once - but it does create a choice-point, which means that the
-% compiler can't deduce that it is semidet. (It is also inefficient.)
-% Use remove_suffix instead.
-% :- mode append(out, in, in) is semidet.
 
     % nondet_append(S1, S2, S3):
     %
@@ -891,12 +887,16 @@
     % This is a synonym for append(Prefix, Suffix, String) but with the
     % arguments in a more convenient order for use with higher-order code.
     %
+    % WARNING: the argument order differs from remove_suffix.
+    %
 :- pred remove_prefix(string::in, string::in, string::out) is semidet.
 
     % det_remove_prefix(Prefix, String, Suffix):
     %
     % This is a synonym for append(Prefix, Suffix, String) but with the
     % arguments in a more convenient order for use with higher-order code.
+    %
+    % WARNING: the argument order differs from remove_suffix.
     %
 :- pred det_remove_prefix(string::in, string::in, string::out) is det.
 
@@ -907,8 +907,10 @@
 
     % remove_suffix(String, Suffix, Prefix):
     %
-    % The same as append(Prefix, Suffix, String) except that this is semidet
-    % whereas append(out, in, in) is nondet.
+    % The same as append(Prefix, Suffix, String).
+    %
+    % WARNING: the argument order differs from both remove_prefix and
+    % remove_suffix_if_present.
     %
 :- pred remove_suffix(string::in, string::in, string::out) is semidet.
 
@@ -916,10 +918,16 @@
     % remove_suffix, except it throws an exception if String does not end
     % with Suffix.
     %
+    % WARNING: the argument order differs from both remove_prefix and
+    % remove_suffix_if_present.
+    %
 :- func det_remove_suffix(string, string) = string.
 
     % remove_suffix_if_present(Suffix, String) returns `String' minus `Suffix'
     % if `String' ends with `Suffix', and `String' if it doesn't.
+    %
+    % WARNING: the argument order differs from remove_suffix and
+    % det_remove_suffix.
     %
 :- func remove_suffix_if_present(string, string) = string.
 
@@ -3598,6 +3606,8 @@ append(S1::in, S2::uo, S3::in) :-
     append_ioi(S1, S2, S3).
 append(S1::in, S2::in, S3::uo) :-
     append_iio(S1, S2, S3).
+append(S1::uo, S2::in, S3::in) :-
+    append_oii(S1, S2, S3).
 append(S1::out, S2::out, S3::in) :-
     nondet_append(S1, S2, S3).
 
@@ -3660,6 +3670,21 @@ append_ioi(S1, S2, S3) :-
 "
     S3 = list_to_binary([S1, S2])
 ").
+
+:- pred append_oii(string::uo, string::in, string::in) is semidet.
+
+append_oii(S1, S2, S3) :-
+    Len2 = length(S2),
+    Len3 = length(S3),
+    ( if
+        Len2 =< Len3,
+        Len1 = Len3 - Len2,
+        compare_substrings((=), S3, Len1, S2, 0, Len2)
+    then
+        unsafe_between(S3, 0, Len1, S1)
+    else
+        fail
+    ).
 
 nondet_append(S1, S2, S3) :-
     Len3 = length(S3),
@@ -4548,8 +4573,7 @@ remove_prefix_if_present(Prefix, String) = Out :-
     ).
 
 remove_suffix(String, Suffix, Prefix) :-
-    suffix(String, Suffix),
-    left(String, length(String) - length(Suffix), Prefix).
+    append(Prefix, Suffix, String).
 
 det_remove_suffix(String, Suffix) = Prefix :-
     ( if remove_suffix(String, Suffix, PrefixPrime) then
@@ -4559,10 +4583,8 @@ det_remove_suffix(String, Suffix) = Prefix :-
     ).
 
 remove_suffix_if_present(Suffix, String) = Out :-
-    LeftCount = length(String) - length(Suffix),
-    split(String, LeftCount, LeftString, RightString),
-    ( if RightString = Suffix then
-        Out = LeftString
+    ( if remove_suffix(String, Suffix, Prefix) then
+        Out = Prefix
     else
         Out = String
     ).
