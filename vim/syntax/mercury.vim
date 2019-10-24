@@ -94,6 +94,7 @@ syn keyword mercuryPragma       memo
 syn keyword mercuryPragma       minimal_model
 syn keyword mercuryPragma       no_inline
 syn keyword mercuryPragma       obsolete
+syn keyword mercuryPragma       obsolete_proc
 syn keyword mercuryPragma       promise_equivalent_clauses
 syn keyword mercuryPragma       source_file
 syn keyword mercuryPragma       terminates
