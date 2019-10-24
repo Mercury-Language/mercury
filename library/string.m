@@ -871,6 +871,7 @@
     % prefix(String, Prefix) is true iff Prefix is a prefix of String.
     % Same as append(Prefix, _, String).
     %
+%:- pragma obsolete_proc(prefix(in, out)).
 :- pred prefix(string, string).
 :- mode prefix(in, in) is semidet.
 :- mode prefix(in, out) is multi.
@@ -878,6 +879,7 @@
     % suffix(String, Suffix) is true iff Suffix is a suffix of String.
     % Same as append(_, Suffix, String).
     %
+%:- pragma obsolete_proc(suffix(in, out)).
 :- pred suffix(string, string).
 :- mode suffix(in, in) is semidet.
 :- mode suffix(in, out) is multi.
@@ -4500,7 +4502,6 @@ prefix_2_ioi(String, Prefix, Cur) :-
     (
         Prefix = unsafe_between(String, 0, Cur)
     ;
-        % XXX ILSEQ unsafe_index_next stops at ill-formed sequence
         unsafe_index_next(String, Cur, Next, _),
         prefix_2_ioi(String, Prefix, Next)
     ).
@@ -4522,7 +4523,6 @@ suffix_2_ioii(String, Suffix, Cur, Len) :-
     (
         unsafe_between(String, Cur, Len, Suffix)
     ;
-        % XXX ILSEQ unsafe_prev_index stops at ill-formed sequence
         unsafe_prev_index(String, Cur, Prev, _),
         suffix_2_ioii(String, Suffix, Prev, Len)
     ).

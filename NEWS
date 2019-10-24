@@ -437,6 +437,8 @@ Changes to the Mercury standard library:
    - to_rev_char_list(uo, in)
    - from_char_list(out, in)
    - append(out, out, in)
+   - prefix(in, out)
+   - suffix(in, out)
 
 * The following predicates have been added to the map module:
 
