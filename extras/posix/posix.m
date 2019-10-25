@@ -50,6 +50,7 @@
 :- include_module posix.pipe.
 :- include_module posix.read.
 :- include_module posix.readdir.
+:- include_module posix.realpath.
 :- include_module posix.rmdir.
 :- include_module posix.select.
 :- include_module posix.socket.
