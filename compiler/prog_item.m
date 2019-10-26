@@ -408,8 +408,7 @@
                 tcad_abstract_std       :: list(item_type_defn_info_abstract),
                 tcad_eqv                :: list(item_type_defn_info_eqv),
                 tcad_du                 :: list(item_type_defn_info_du),
-                tcad_foreign            :: c_java_csharp_erlang(
-                                            list(item_type_defn_info_foreign))
+                tcad_foreign            :: c_j_cs_e_defns
             ).
 
 :- type type_ctor_maybe_defn
@@ -422,8 +421,7 @@
                 tcmd_abstract_std       :: maybe(item_type_defn_info_abstract),
                 tcmd_eqv                :: maybe(item_type_defn_info_eqv),
                 tcmd_du                 :: maybe(item_type_defn_info_du),
-                tcmd_foreign            :: c_java_csharp_erlang(
-                                            maybe(item_type_defn_info_foreign))
+                tcmd_foreign            :: c_j_cs_e_maybe_defn
             ).
 
     % We support foreign type definitions in all four of our target languages,
@@ -447,6 +445,10 @@
     c_java_csharp_erlang(list(item_foreign_enum_info)).
 :- type c_j_cs_e_maybe_enum ==
     c_java_csharp_erlang(maybe(item_foreign_enum_info)).
+:- type c_j_cs_e_repn ==
+    c_java_csharp_erlang(maybe(foreign_type_repn)).
+:- type c_j_cs_e_enum_repn ==
+    c_java_csharp_erlang(maybe(enum_foreign_repn)).
 
 % The map key is sym_name_and_arity because we don't have an inst_ctor type.
 :- type inst_ctor_defn_map == map(sym_name_and_arity, inst_ctor_all_defns).
@@ -1326,58 +1328,106 @@
 % Information about the representations of types defined in other modules.
 %
 
+    % This type and type_ctor_checked_defn are closely related.
+    % The principal differences are the following.
+    %
+    % - type_ctor_checked_defn deals with solver types. Since solver types
+    %   have no representation information themselves (they are represented
+    %   by values of another type), this type does not deal with them.
+    %
+    % - One of the purposes of type_ctor_checked_defn is to decide
+    %   what items to include in interface files, for use by code using
+    %   the compiler's ancient approach to deciding type representation,
+    %   where each compiler invocation that generated code decided for itself
+    %   how every type it had access to was represented, including the types
+    %   imported from other modules. This means that it needs to contain
+    %   either whole items (of particular kinds), or information from which
+    %   whole items can be reconstructed.
+    %
+    % - The above consideration also requires a type_ctor_checked_defn
+    %   to specify the status of the type. On the other hand, values of
+    %   this type have no use for status information. Status information
+    %   is used only for checking whether an access to a type should be
+    %   allowed or not; the only use of values of this type is to help
+    %   compute type representations.
+    %
+    % - Only the last four of the function symbols of this type are
+    %   now intended to be the used. The others are part of a discarded
+    %   attempt to redesign that ancient system.
+    %   XXX TYPE_REPN Delete the others.
+    %
+    % - Only this type needs to contain representation information.
+    %   A value of the type_ctor_checked_defn type needs to contain *part*
+    %   of the information from which this representation information is
+    %   computed for its type, but not *all* of it; some of that information
+    %   comes from information about the representation of *other* types.
+    %
+    % One sort-of difference is while both contain information that has been
+    % checked by a compiler invocation, values of this type that have been
+    % read in from an interface file, while checked by another compiler
+    % invocation before being written out, may be corrupted in the filesystem.
+    % However, while this danger is always present, we need not take any
+    % special steps to guard against it, precisely because no perfect defense
+    % is possible.
+    %
 :- type type_ctor_repn_info
     --->    tcrepn_is_direct_dummy
     ;       tcrepn_is_notag
-    ;       tcrepn_is_eqv_to(
-                % XXX TYPE_REPN maybe nonword
-                % XXX TYPE_REPN maybe notag
-                mer_type
-            )
     ;       tcrepn_fits_in_n_bits(int, fill_kind)
-    ;       tcrepn_is_word_aligned_ptr
     ;       tcrepn_has_direct_arg_functors(list(sym_name_and_arity))
+    ;       tcrepn_is_word_aligned_ptr
+    ;       tcrepn_is_eqv_to(mer_type)
     ;       tcrepn_du(du_repn)
-    ;       tcrepn_maybe_foreign(
-                % If the foreign language of the current backend
-                % is the key of an entry in the list, then
-                % the representation of this type_ctor is given
-                % by the associated foreign_type_repn.
-                %
-                % The list may mention a language at most once.
-                % If it mentions *every* foreign language once,
-                % then the maybe may be "no", since in that case
-                % any Mercury definition of the type would never be used.
-                %
-                % If the foreign language of the current backend
-                % is not the key of any entry in the assoc_list, then
-                % the maybe must be a "yes" whose argument gives the
-                % representation of the Mercury version of the type.
-                one_or_more(pair(foreign_language, foreign_type_repn)),
-                maybe(du_repn)
-            ).
+    ;       tcrepn_foreign(c_j_cs_e_repn).
 
-:- type foreign_type_repn
-    --->    foreign_type_repn(
-                % The name of the foreign type that represents values
-                % of this Mercury type.
-                frd_foreign_type        :: string,
-
-                % The assertions about this foreign type.
-                frd_assertions          :: foreign_type_assertions
-            ).
-
-    % There should be exactly one applicable du_repn for any given type_ctor.
-    % That means that a non-foreign-enum
-    % du_repn for a type_ctor may coexist with one or
-    % more foreign enum du_repn for that same type_ctor,
-    % *provided* that the foreign enum du_repn are
-    % all for different types.
+    % A type that has a discriminated union definition in Mercury
+    % may also have a definition in each of our foreign languages,
+    % If it is an direct_dummy or enum type, that definition may be
+    % either a foreign type definition or a foreign enum definition;
+    % otherwise, it can only be a foreign type definition.
 :- type du_repn
-    --->    dur_notag(notag_repn)
-    ;       dur_direct_dummy(direct_dummy_repn)
+    --->    dur_direct_dummy(direct_dummy_repn)
     ;       dur_enum(enum_repn)
-    ;       dur_gen(gen_du_repn).
+    ;       dur_notag(notag_repn)
+    ;       dur_gen_only_functor(gen_du_repn_only_functor)
+    ;       dur_gen_more_functors(gen_du_repn_more_functors).
+
+:- type direct_dummy_repn
+    --->    direct_dummy_repn(
+                % The type is a direct dummy type that satisfies the
+                % requirements of du_type_is_dummy.
+
+                % The name of the one functor in the type, which must be
+                % arity 0. Its representation will be dummy_tag.
+                dummy_functor_name          :: string,
+
+                % Any foreign type or foreign enum definitions for the type.
+                dummy_foreign               :: c_j_cs_e_enum_repn
+            ).
+
+:- type enum_repn
+    --->    enum_repn(
+                % The type is an enum type that satisfies the requirements
+                % of du_type_is_enum.
+
+                % The list of the functor names (all arity 0). We store
+                % the first two separately to enforce the structural invariant
+                % that an enum must have at least two functors.
+                %
+                % The representation of functor #N in Mercury will be
+                % int_tag(int_tag_int(N)), with counting starting at 0.
+                %
+                % We do not care about the 32 vs 64 bit distinction here,
+                % because the definition of an enum type with more than 2^32
+                % function symbols will cause a compiler to run out of memory
+                % for a *very* long time to come.
+                enum_functor1               :: string,
+                enum_functor2               :: string,
+                enum_functors3plus          :: list(string),
+
+                % Any foreign type or foreign enum definitions for the type.
+                enum_foreign            :: c_j_cs_e_enum_repn
+            ).
 
 :- type notag_repn
     --->    notag_repn(
@@ -1387,51 +1437,28 @@
                 % as a full word at offset 0, but this should never be
                 % looked up, since the argument will actually be stored
                 % wherever the whole term is stored.
-                notag_functor_name      :: string
+                notag_functor_name          :: string,
+
+                notag_foreign               :: c_j_cs_e_repn
             ).
 
-:- type direct_dummy_repn
-    --->    direct_dummy_repn(
-                % The name of the one functor in the type, which must be
-                % arity 0. Its representation will be dummy_tag.
-                dummy_functor_name      :: string
-            ).
-
-:- type enum_repn
-    --->    enum_repn(
-                % The list of the functor names (all arity 0).
-                enum_functors           :: one_or_more(string),
-
-                % The representation of functor #N in Mercury will be
-                % int_tag(int_tag_int(N)), with counting starting at 0.
-                % However, if the enum_foreign field has an element
-                % whose key is the current backend's language, the
-                % representation of functor #N will be the Nth string
-                % in the associated value.
-                %
-                % We do not care about the 32 vs 64 bit distinction here,
-                % because the definition of an enum type with more than 2^32
-                % function symbols will cause a compiler to run out of memory
-                % for a *very* long time to come.
-                %
-                % The set of foreign languages mentioned here must be
-                % disjoint from the set of foreign languages mentioned
-                % in any tcrepn_conditional wrapped around this du_repn.
-                enum_foreign            :: assoc_list(foreign_language,
-                                                one_or_more(string))
-            ).
-
-:- type gen_du_repn
+:- type gen_du_repn_only_functor
     --->    gen_du_repn_only_functor(
                 % The name of the data constructor. The arity is implicit
                 % in the length of the argument list, which must be the same
                 % in the 64 and 32 bit versions.
-                gduofd_functor          :: string,
-                gduofd_args_64          :: gen_du_only_functor_args,
-                gduofd_args_32          :: gen_du_only_functor_args
-            )
-    ;       gen_du_repn_more_functors(
-                gdumfd_functors         :: one_or_more(gen_du_functor)
+                gdrof_functor           :: string,
+                gdrof_args64            :: gen_du_only_functor_args,
+                gdrof_args32            :: gen_du_only_functor_args,
+                gdrof_foreign           :: c_j_cs_e_repn
+            ).
+
+:- type gen_du_repn_more_functors
+    --->    gen_du_repn_more_functors(
+                gdrmf_functor_1         :: gen_du_functor,
+                gdrmf_functor_2         :: gen_du_functor,
+                gdrmf_other_functors    :: list(gen_du_functor),
+                gdrmf_foreign           :: c_j_cs_e_repn
             ).
 
 :- type gen_du_only_functor_args
@@ -1466,6 +1493,26 @@
                 gduncf_args_64          :: one_or_more(maybe_direct_arg),
                 gduncf_args_32          :: one_or_more(maybe_direct_arg)
             ).
+
+:- type foreign_type_lang_repn
+    --->    foreign_type_lang_repn(
+                ftlr_lang               :: foreign_language,
+                ftlr_foreign_type       :: foreign_type_repn
+            ).
+
+:- type foreign_type_repn
+    --->    foreign_type_repn(
+                % The name of the foreign type that represents values
+                % of this Mercury type.
+                ftr_foreign_type        :: string,
+
+                % The assertions about this foreign type.
+                ftr_assertions          :: foreign_type_assertions
+            ).
+
+:- type enum_foreign_repn
+    --->    enum_foreign_type(foreign_type_repn)
+    ;       enum_foreign_enum(one_or_more(string)).
 
 :- type ptag_sectag
     --->    ptag_sectag(

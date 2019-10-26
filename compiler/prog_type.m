@@ -342,10 +342,14 @@
     is semidet.
 
     % Is the discriminated union type with the given list of constructors
-    % an enum? Is yes, return (a) the number of enum values, and
-    % (b) the number of bits required to represent that many values.
+    % an enum? Is yes, return the number of enum values.
     %
-:- pred du_type_is_enum(type_details_du::in, int::out, int::out) is semidet.
+:- pred du_type_is_enum(type_details_du::in, int::out) is semidet.
+
+    % Return the number of bits required to represent
+    % the given number of values.
+    %
+:- pred num_bits_needed_for_n_values(int::in, int::out) is det.
 
     % Is the discriminated union type with the given list of constructors
     % a dummy type?
@@ -979,13 +983,15 @@ du_type_is_notag(OoMCtors, MaybeCanonical) :-
     MaybeExistConstraints = no_exist_constraints,
     MaybeCanonical = canon.
 
-du_type_is_enum(DuDetails, NumFunctors, NumBits) :-
+du_type_is_enum(DuDetails, NumFunctors) :-
     DuDetails = type_details_du(OoMCtors, _MaybeCanonical,
         _MaybeDirectArgCtors),
     Ctors = one_or_more_to_list(OoMCtors),
     Ctors = [_, _ | _],
-    all_functors_are_enum(Ctors, 0, NumFunctors),
-    int.log2(NumFunctors, NumBits).
+    all_functors_are_enum(Ctors, 0, NumFunctors).
+
+num_bits_needed_for_n_values(NumValues, NumBits) :-
+    int.log2(NumValues, NumBits).
 
 :- pred all_functors_are_enum(list(constructor)::in,
     int::in, int::out) is semidet.

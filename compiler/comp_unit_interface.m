@@ -194,20 +194,15 @@ generate_short_interface_int3(Globals, RawCompUnit,
     create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
         OrigIntTypeDefnMap, OrigImpTypeDefnMap,
         OrigIntForeignEnumMap, OrigImpForeignEnumMap,
-        _TypeCtorCheckedMap, !Specs),
+        TypeCtorCheckedMap, !Specs),
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
         map.init(IntTypeRepnMap)
     ;
         Experiment1 = yes,
-        list.foldl(record_foreign_enum, OrigIntForeignEnums,
-            map.init, IntForeignEnumTypeMap),
-        list.foldl(record_foreign_enum, OrigImpForeignEnums,
-            IntForeignEnumTypeMap, IntImpForeignEnumTypeMap),
-        decide_repns_for_simple_types(ModuleName,
-            OrigIntTypeDefns, OrigImpTypeDefns, IntImpForeignEnumTypeMap,
-            IntTypeRepnInfos, _NonIntTypeRepnInfos),
+        decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
+            IntTypeRepnInfos),
         IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
     ),
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
@@ -391,7 +386,6 @@ get_short_interface_int3_from_items_imp([Item | Items],
     ;
         Item = item_foreign_enum(ItemForeignEnumInfo),
         cord.snoc(ItemForeignEnumInfo, !ImpForeignEnums)
-        % record_foreign_enum(ItemForeignEnumInfo, !IntImpForeignEnumTypeCtors)
     ;
         ( Item = item_typeclass(_)
         ; Item = item_instance(_)
@@ -412,26 +406,10 @@ get_short_interface_int3_from_items_imp([Item | Items],
     get_short_interface_int3_from_items_imp(Items,
         !ImpTypeDefns, !ImpForeignEnums).
 
-:- pred record_foreign_enum(item_foreign_enum_info::in,
-    foreign_enum_map::in, foreign_enum_map::out) is det.
-
-record_foreign_enum(ForeignEnumInfo, !ForeignEnumTypeCtors) :-
-    ForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, OoMValues,
-        _Context, _SeqNum),
-    TypeCtor = type_ctor(TypeSymName, TypeArity),
-    TypeName = unqualify_name(TypeSymName),
-    UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
-    ( if map.search(!.ForeignEnumTypeCtors, UnqualTypeCtor, LVs0) then
-        map.det_update(UnqualTypeCtor, [Lang - OoMValues | LVs0],
-            !ForeignEnumTypeCtors)
-    else
-        map.det_insert(UnqualTypeCtor, [Lang - OoMValues],
-            !ForeignEnumTypeCtors)
-    ).
-
 %---------------------------------------------------------------------------%
 
-generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23, !Specs) :-
+generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23,
+        !Specs) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _ModuleVersionNumbers, SrcItemBlocks,
         _DirectIntItemBlocks, _IndirectIntItemBlocks,
@@ -476,20 +454,15 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23, !Specs) :
     create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
         OrigIntTypeDefnMap, OrigImpTypeDefnMap,
         OrigIntForeignEnumMap, OrigImpForeignEnumMap,
-        _TypeCtorCheckedMap, !Specs),
+        TypeCtorCheckedMap, !Specs),
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
         map.init(IntTypeRepnMap)
     ;
         Experiment1 = yes,
-        list.foldl(record_foreign_enum, OrigIntForeignEnums,
-            map.init, IntForeignEnumTypeMap),
-        list.foldl(record_foreign_enum, OrigImpForeignEnums,
-            IntForeignEnumTypeMap, IntImpForeignEnumTypeMap),
-        decide_repns_for_simple_types(ModuleName,
-            OrigIntTypeDefns, OrigImpTypeDefns, IntImpForeignEnumTypeMap,
-            IntTypeRepnInfos, _NonIntTypeRepnInfos),
+        decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
+            IntTypeRepnInfos),
         IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
     ),
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
@@ -930,14 +903,12 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     generate_interface_int1(AugCompUnit, IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap,
-        IntForeignEnums, ImpForeignEnums, ParseTreeInt1A, !Specs),
+        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1A, !Specs),
     generate_interface_int2(Globals, AugCompUnit,
         IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap,
-        IntForeignEnums, ImpForeignEnums, ParseTreeInt2A),
+        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2A),
     ParseTreeInt1 = convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1A),
     ParseTreeInt2 = convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2A).
 
@@ -947,16 +918,15 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     list(item_type_defn_info)::out,
     list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::out, list(item_instance_info)::out,
-    list(item_type_defn_info)::out, type_defn_map::out, type_defn_map::out,
-    list(item_foreign_enum_info)::out, list(item_foreign_enum_info)::out,
-    parse_tree_int1::out, list(error_spec)::in, list(error_spec)::out) is det.
+    list(item_type_defn_info)::out,
+    type_ctor_checked_map::out, parse_tree_int1::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns,
         IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap,
-        IntForeignEnums, ImpForeignEnums0, ParseTreeInt1, !Specs) :-
+        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1, !Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
@@ -1082,7 +1052,7 @@ generate_interface_int1(AugCompUnit, IntIncls, IntImportsUses,
     % For now, we want only the error messages.
     create_type_ctor_checked_map(do_insist_on_defn, ModuleName,
         IntTypeDefnMap, OrigImpTypeDefnMap,
-        IntForeignEnumMap, ImpForeignEnumMap, _TypeCtorCheckedMap, !Specs),
+        IntForeignEnumMap, ImpForeignEnumMap, TypeCtorCheckedMap, !Specs),
 
     DummyMaybeVersionNumbers = no_version_numbers,
     % XXX TODO
@@ -1753,7 +1723,7 @@ accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
         DetailsDu = type_details_du(OoMCtors, MaybeEqCmp, MaybeDirectArgCtors),
         ( if
             map.search(IntTypesMap, TypeCtor, _),
-            du_type_is_enum(DetailsDu, _NumFunctors, _NumBits)
+            du_type_is_enum(DetailsDu, _NumFunctors)
         then
             set.insert(TypeCtor, !AbsExpEnumTypeCtors)
         else if
@@ -2125,7 +2095,8 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfo) :-
             % Leave dummy types alone.
             true
         else
-            ( if du_type_is_enum(DetailsDu0, _NumFunctors, NumBits) then
+            ( if du_type_is_enum(DetailsDu0, NumFunctors) then
+                num_bits_needed_for_n_values(NumFunctors, NumBits),
                 DetailsAbs = abstract_type_fits_in_n_bits(NumBits)
             else
                 DetailsAbs = abstract_type_general
@@ -2214,11 +2185,12 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % generate_interface_int2(AugCompUnit,
+    % generate_interface_int2(Globals, AugCompUnit,
     %   IntInclModuleNames, IntImportsUses,
     %   IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
     %   IntTypeDefnItems, IntInstDefns, IntModeDefns,
-    %   IntTypeClasses, IntInstances, ImpTypeDefnItems, ParseTreeInt2):
+    %   IntTypeClasses, IntInstances, ImpTypeDefnItems, TypeCtorCheckedMap,
+    %   ParseTreeInt2):
     %
     % The input arguments should be the relevant parts of the .int1 file
     % computed by our parent.
@@ -2229,16 +2201,14 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     list(item_type_defn_info)::in,
     list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
     list(item_typeclass_info)::in, list(item_instance_info)::in,
-    list(item_type_defn_info)::in, type_defn_map::in, type_defn_map::in,
-    list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::in,
-    parse_tree_int2::out) is det.
+    list(item_type_defn_info)::in,
+    type_ctor_checked_map::in, parse_tree_int2::out) is det.
 
 generate_interface_int2(Globals, AugCompUnit,
         IntInclModuleNames, IntImportsUses,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, IntTypesMap, ImpTypesMap, IntForeignEnums, ImpForeignEnums,
-        ParseTreeInt2) :-
+        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _ModuleVersionNumbers, _SrcItemBlocks,
         _DirectIntItemBlocks, _IndirectIntItemBlocks,
@@ -2291,17 +2261,8 @@ generate_interface_int2(Globals, AugCompUnit,
         % may themselves be subword sized, if all their arguments are subword
         % sized and there are few enough of them. (Note that will in general
         % require fully expanding the relevant type equivalence chains.)
-        map.foldl_values(gather_type_defn_items, IntTypesMap,
-            [], OrigIntTypeDefns),
-        map.foldl_values(gather_type_defn_items, ImpTypesMap,
-            [], OrigImpTypeDefns),
-        list.foldl(record_foreign_enum_spec, IntForeignEnums,
-            map.init, ForeignEnumTypeCtors0),
-        list.foldl(record_foreign_enum_spec, ImpForeignEnums,
-            ForeignEnumTypeCtors0, ForeignEnumTypeCtors),
-        decide_repns_for_simple_types(ModuleName,
-            OrigIntTypeDefns, OrigImpTypeDefns, ForeignEnumTypeCtors,
-            ShortIntTypeRepns, _ShortImpTypeRepns),
+        decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
+            ShortIntTypeRepns),
         ShortIntTypeRepnMap = type_ctor_repn_items_to_map(ShortIntTypeRepns)
     ),
 
@@ -2380,14 +2341,6 @@ generate_interface_int2(Globals, AugCompUnit,
         ShortIntTypeDefnMap, ShortIntInstDefnMap, ShortIntModeDefnMap,
         ShortIntTypeClasses, ShortIntInstances, ShortIntTypeRepnMap,
         ShortImpTypeDefnMap).
-
-%---------------------%
-
-:- pred gather_type_defn_items(list(item_type_defn_info)::in,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
-
-gather_type_defn_items(TypeDefns, !TypeDefns) :-
-    !:TypeDefns = TypeDefns ++ !.TypeDefns.
 
 %---------------------%
 
@@ -2569,24 +2522,6 @@ get_int2_items_from_int1_imp_types([ImpTypeDefn | ImpTypeDefns],
     ),
     get_int2_items_from_int1_imp_types(ImpTypeDefns, !ImpImplicitFIMLangs).
 
-%---------------------%
-
-:- pred record_foreign_enum_spec(item_foreign_enum_info::in,
-    foreign_enum_map::in, foreign_enum_map::out) is det.
-
-record_foreign_enum_spec(ForeignEnumInfo, !ForeignEnumTypeCtors) :-
-    ForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, OoMValues, _, _),
-    TypeCtor = type_ctor(TypeSymName, TypeArity),
-    TypeName = unqualify_name(TypeSymName),
-    UnqualTypeCtor = unqual_type_ctor(TypeName, TypeArity),
-    ( if map.search(!.ForeignEnumTypeCtors, UnqualTypeCtor, LVs0) then
-        map.det_update(UnqualTypeCtor, [Lang - OoMValues | LVs0],
-            !ForeignEnumTypeCtors)
-    else
-        map.det_insert(UnqualTypeCtor, [Lang - OoMValues],
-            !ForeignEnumTypeCtors)
-    ).
-
 %---------------------------------------------------------------------------%
 
     % XXX TYPE_REPN Consider the relationship between this predicate and
@@ -2675,7 +2610,8 @@ dummy_solver_type = DetailsSolver :-
 
 make_du_type_abstract(DetailsDu, DetailsAbstract) :-
     DetailsDu = type_details_du(Ctors, MaybeCanonical, _MaybeDirectArgCtors),
-    ( if du_type_is_enum(DetailsDu, _NumFunctors, NumBits) then
+    ( if du_type_is_enum(DetailsDu, NumFunctors) then
+        num_bits_needed_for_n_values(NumFunctors, NumBits),
         DetailsAbstract = abstract_type_fits_in_n_bits(NumBits)
     else if du_type_is_notag(Ctors, MaybeCanonical) then
         DetailsAbstract = abstract_notag_type

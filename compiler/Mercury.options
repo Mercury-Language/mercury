@@ -104,9 +104,17 @@ MCFLAGS-libs.mmakefiles               = --warn-implicit-stream-calls
 MCFLAGS-parse_tree.write_deps_file    = --warn-implicit-stream-calls
 MCFLAGS-hlds.du_type_layout           = --warn-implicit-stream-calls
 
-MCFLAGS-parse_tree.prog_item                    = --warn-dead-preds
-MCFLAGS-parse_tree.comp_unit_interface          = --warn-dead-preds
-MCFLAGS-parse_tree.check_parse_tree_type_defns  = --warn-dead-preds
+MCFLAGS-hlds.add_foreign_enum                   += --warn-dead-preds
+MCFLAGS-parse_tree.check_parse_tree_type_defns  += --warn-dead-preds
+MCFLAGS-parse_tree.comp_unit_interface          += --warn-dead-preds
+MCFLAGS-parse_tree.decide_type_repn             += --warn-dead-preds
+MCFLAGS-parse_tree.equiv_type                   += --warn-dead-preds
+MCFLAGS-parse_tree.module_qual.qualify_items    += --warn-dead-preds
+MCFLAGS-parse_tree.parse_tree_out               += --warn-dead-preds
+MCFLAGS-parse_tree.parse_type_repn              += --warn-dead-preds
+MCFLAGS-parse_tree.prog_data                    += --warn-dead-preds
+MCFLAGS-parse_tree.prog_item                    += --warn-dead-preds
+MCFLAGS-parse_tree.prog_type                    += --warn-dead-preds
 
 # Keep all modules' contents in a consistent order, except these (for now).
 MCFLAGS-analysis                += --no-warn-inconsistent-pred-order-clauses

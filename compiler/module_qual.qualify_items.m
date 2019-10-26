@@ -354,8 +354,8 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
             ; RepInfo0 = tcrepn_fits_in_n_bits(_, _)
             ; RepInfo0 = tcrepn_is_word_aligned_ptr
             ; RepInfo0 = tcrepn_has_direct_arg_functors(_)
-            ; RepInfo0 = tcrepn_maybe_foreign(_, _)
             ; RepInfo0 = tcrepn_du(_)
+            ; RepInfo0 = tcrepn_foreign(_)
             ),
             RepInfo = RepInfo0
         ;

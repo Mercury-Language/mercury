@@ -936,7 +936,7 @@ replace_in_type_repn(MaybeRecord, TypeEqvMap, _InstEqvMap, TypeCtor,
         ; TypeRepn0 = tcrepn_is_word_aligned_ptr    % XXX should not generate
         ; TypeRepn0 = tcrepn_has_direct_arg_functors(_)
         ; TypeRepn0 = tcrepn_du(_)
-        ; TypeRepn0 = tcrepn_maybe_foreign(_, _)
+        ; TypeRepn0 = tcrepn_foreign(_)
         ),
         TypeRepn = TypeRepn0,
         ContainsCirc = no

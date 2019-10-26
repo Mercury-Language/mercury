@@ -423,6 +423,11 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 cons_context        :: prog_context
             ).
 
+:- pred ctor_is_constant(constructor::in, string::out) is semidet.
+
+:- pred ctors_are_all_constants(list(constructor)::in, list(string)::out)
+    is semidet.
+
 :- type maybe_cons_exist_constraints
     --->    no_exist_constraints
     ;       exist_constraints(cons_exist_constraints).
@@ -815,6 +820,19 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     tvarset::out, tvar_renaming::out) is det.
 
 :- implementation.
+
+ctor_is_constant(Ctor, Name) :-
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, Args, Arity,
+        _Context),
+    MaybeExistConstraints = no_exist_constraints,
+    Args = [],
+    Arity = 0,
+    Name = unqualify_name(SymName).
+
+ctors_are_all_constants([], []).
+ctors_are_all_constants([Ctor | Ctors], [Name | Names]) :-
+    ctor_is_constant(Ctor, Name),
+    ctors_are_all_constants(Ctors, Names).
 
 fill_kind_string(fill_enum, "fill_enum").
 fill_kind_string(fill_int8, "fill_int8").

@@ -284,7 +284,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
                 TypeCtor, TypeDefn0, Body0, OoMCtors, ForeignEnumTagMap,
                 TypeCtorTypeDefn, !Specs)
         else if
-            ctors_are_all_constants([HeadCtor | TailCtors])
+            ctors_are_all_constants([HeadCtor | TailCtors], _)
         then
             decide_simple_type_dummy_or_mercury_enum(ModuleInfo, Params,
                 TypeCtor, TypeDefn0, Body0, OoMCtors, TypeCtorTypeDefn,
@@ -362,7 +362,7 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
         true
     ),
     Ctors = one_or_more_to_list(OoMCtors),
-    ( if ctors_are_all_constants(Ctors) then
+    ( if ctors_are_all_constants(Ctors, _) then
         true
     else
         NonEnumArgPieces = [words("Error:"), type_ctor_sna(TypeCtor),
@@ -2447,16 +2447,6 @@ deref_eqv_types(ModuleInfo, Type0, Type) :-
 
 :- inst hlds_du_type for hlds_type_body/0
     --->    hlds_du_type(ground, ground, ground, ground).
-
-:- pred ctors_are_all_constants(list(constructor)::in) is semidet.
-
-ctors_are_all_constants([]).
-ctors_are_all_constants([Ctor | Ctors]) :-
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, Args, Arity, _Context),
-    MaybeExistConstraints = no_exist_constraints,
-    Args = [],
-    Arity = 0,
-    ctors_are_all_constants(Ctors).
 
 :- pred separate_out_constants(list(constructor)::in,
     list(constructor)::out, list(constructor)::out) is det.
