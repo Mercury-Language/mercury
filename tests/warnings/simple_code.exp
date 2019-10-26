@@ -26,3 +26,4 @@ simple_code.m:080:   warning: unification of `HeadVar__1' and 2 cannot succeed.
 simple_code.m:080:   `HeadVar__1' has instantiatedness `bound(1)'.
 simple_code.m:113: Warning: recursive call to predicate `anc'/2 will lead to
 simple_code.m:113:   infinite recursion.
+For more information, recompile with `-E'.

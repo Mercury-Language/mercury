@@ -62,3 +62,4 @@ ambiguous_overloading.m:083:   The function symbol `lookup_bool_option'/2 is
 ambiguous_overloading.m:083:   also overloaded here.
 ambiguous_overloading.m:084:   The function symbol `lookup_bool_option'/2 is
 ambiguous_overloading.m:084:   also overloaded here.
+For more information, recompile with `-E'.

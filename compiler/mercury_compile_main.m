@@ -781,46 +781,54 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
             true
         )
     else
-        % If we suppressed the printing of some errors, then tell the user
-        % about this fact, because the absence of any errors being printed
-        % during a failing compilation would otherwise be likely to be
-        % baffling.
-        globals.io_get_some_errors_were_context_limited(Limited, !IO),
-        (
-            Limited = no
-        ;
-            Limited = yes,
-            io.write_string("Some error messages were suppressed " ++
-                "by `--limit-error-contexts' options.\n", !IO),
-            io.write_string("You can see the suppressed messages " ++
-                "if you recompile without these options.\n", !IO)
-        ),
-
-        % If we found some errors, but the user didn't enable the `-E'
-        % (`--verbose-errors') option, give them a hint about it.
-        % Of course, we should only output the hint when we have further
-        % information to give the user.
-        globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
-        globals.io_get_extra_error_info(ExtraErrorInfo, !IO),
-        (
-            VerboseErrors = no,
-            (
-                ExtraErrorInfo = yes,
-                io.write_string("For more information, " ++
-                    "recompile with `-E'.\n", !IO)
-            ;
-                ExtraErrorInfo = no
-            )
-        ;
-            VerboseErrors = yes
-        )
+        true
     ),
+    maybe_print_delayed_error_messages(Globals, !IO),
     globals.lookup_bool_option(Globals, statistics, Statistics),
     (
         Statistics = yes,
         io.report_stats("full_memory_stats", !IO)
     ;
         Statistics = no
+    ).
+
+:- pred maybe_print_delayed_error_messages(globals::in, io::di, io::uo) is det.
+
+maybe_print_delayed_error_messages(Globals, !IO) :-
+    % Pick up the values of these flags, and then reset them
+    % for the next module.
+    globals.io_get_some_errors_were_context_limited(Limited, !IO),
+    globals.io_set_some_errors_were_context_limited(no, !IO),
+    globals.io_get_extra_error_info(ExtraErrorInfo, !IO),
+    globals.io_set_extra_error_info(no, !IO),
+
+    % If we suppressed the printing of some errors, then tell the user
+    % about this fact, because the absence of any errors being printed
+    % during a failing compilation would otherwise be likely to be baffling.
+    (
+        Limited = no
+    ;
+        Limited = yes,
+        io.write_string("Some error messages were suppressed " ++
+            "by `--limit-error-contexts' options.\n", !IO),
+        io.write_string("You can see the suppressed messages " ++
+            "if you recompile without these options.\n", !IO)
+    ),
+
+    % If we found some errors, but the user didn't enable the `-E'
+    % (`--verbose-errors') option, give them a hint about it.
+    (
+        ExtraErrorInfo = no
+    ;
+        ExtraErrorInfo = yes,
+        globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+        (
+            VerboseErrors = no,
+            io.write_string("For more information, recompile with `-E'.\n",
+                !IO)
+        ;
+            VerboseErrors = yes
+        )
     ).
 
 :- type compile == pred(globals, bool, io, io).
@@ -1082,6 +1090,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
             split_into_compilation_units_perform_checks(ParseTreeSrc,
                 RawCompUnits, Specs0, Specs),
             write_error_specs_ignore(Specs, Globals, !IO),
+            maybe_print_delayed_error_messages(Globals, !IO),
             (
                 InterfaceFile = omif_int0,
                 list.foldl(
@@ -1994,7 +2003,8 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
     then
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        grab_opt_files(Globals, ModuleAndImports0, ModuleAndImports1, Error1, !IO),
+        grab_opt_files(Globals, ModuleAndImports0, ModuleAndImports1, Error1,
+            !IO),
         maybe_write_string(Verbose, "% Done.\n", !IO)
     else
         ModuleAndImports1 = ModuleAndImports0,

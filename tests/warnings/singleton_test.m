@@ -1,11 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .exp files are for C, C#, Java and Erlang respectively.
 
 :- module singleton_test.
 :- interface.
-:- import_module io.
-:- import_module list.
+:- import_module io, list.
 
 :- pred my_append(list(int), list(int), list(int)).
 :- mode my_append(in, in, out) is det.

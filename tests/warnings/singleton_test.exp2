@@ -26,3 +26,4 @@ singleton_test.m:095:   scope.
 singleton_test.m:095: In clause for predicate `singleton_test.test_head'/6:
 singleton_test.m:095:   warning: variables `A, B' occur only once in this
 singleton_test.m:095:   scope.
+For more information, recompile with `-E'.

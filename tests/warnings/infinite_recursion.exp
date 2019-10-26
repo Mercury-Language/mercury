@@ -4,3 +4,4 @@ infinite_recursion.m:034: Warning: recursive call to predicate `loop'/0 will
 infinite_recursion.m:034:   lead to infinite recursion.
 infinite_recursion.m:046: Warning: recursive call to predicate `funny_append'/3
 infinite_recursion.m:046:   will lead to infinite recursion.
+For more information, recompile with `-E'.
