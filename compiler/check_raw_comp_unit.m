@@ -44,7 +44,6 @@
 :- import_module libs.options.
 
 :- import_module bool.
-:- import_module maybe.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -63,8 +62,8 @@ check_interface_item_blocks_for_no_exports(Globals, ModuleName, Context,
             ExportAnything = yes
         ;
             ExportAnything = no,
-            generate_no_exports_warning(ModuleName, Context, WarnSpec),
-            !:Specs = [WarnSpec | !.Specs]
+            maybe_generate_no_exports_warning(Globals, ModuleName, Context,
+                !Specs)
         )
     ).
 
@@ -89,28 +88,34 @@ do_ms_interface_item_blocks_export_anything([RawItemBlock | RawItemBlocks],
             ExportAnything)
     ).
 
-:- pred generate_no_exports_warning(module_name::in,
-    prog_context::in, error_spec::out) is det.
+:- pred maybe_generate_no_exports_warning(globals::in, module_name::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-generate_no_exports_warning(ModuleName, Context, Spec) :-
-    Severity = severity_conditional(warn_nothing_exported, yes,
-        severity_warning, no),
-    Component = option_is_set(warn_nothing_exported, yes,
-        [always([invis_order_default_start(2),
-            words("Warning: interface for module"), qual_sym_name(ModuleName),
-            words("does not export anything."), nl]),
-        verbose_only(verbose_always,
-            [words("To be useful, a module should export something."),
-            words("A file should contain at least one declaration"),
-            words("other than"), decl("import_module"),
-            words("in its interface section(s)."),
-            words("This would normally be a"),
-            decl("pred"), suffix(","), decl("func"), suffix(","),
-            decl("type"), suffix(","), decl("inst"), words("or"),
-            decl("mode"), words("declaration."), nl])
-        ]),
-    Msg = simple_msg(Context, [Component]),
-    Spec = error_spec(Severity, phase_term_to_parse_tree, [Msg]).
+maybe_generate_no_exports_warning(Globals, ModuleName, Context, !Specs) :-
+    globals.lookup_bool_option(Globals, warn_nothing_exported, Warn),
+    (
+        Warn = no
+        % It is a legitimate thing for libraries to export nothing.
+    ;
+        Warn =  yes,
+        Msg = simple_msg(Context,
+            [always([invis_order_default_start(2),
+                words("Warning: the interface of module"),
+                qual_sym_name(ModuleName),
+                words("does not export anything."), nl]),
+            verbose_only(verbose_always,
+                [words("To be useful, a module should export something."),
+                words("A file should contain at least one declaration"),
+                words("other than"), decl("import_module"),
+                words("in its interface section(s)."),
+                words("This would normally be a"),
+                decl("pred"), suffix(","), decl("func"), suffix(","),
+                decl("type"), suffix(","), decl("inst"), words("or"),
+                decl("mode"), words("declaration."), nl])
+            ]),
+        Spec = error_spec(severity_warning, phase_term_to_parse_tree, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.check_raw_comp_unit.

@@ -1,4 +1,4 @@
-unicode1.m:005: Warning: interface for module `unicode1' does not export
+unicode1.m:005: Warning: the interface of module `unicode1' does not export
 unicode1.m:005:   anything.
 unicode1.m:009: Syntax error at token 'int': operator or `.' expected.
 unicode1.m:009: Syntax error: invalid hex character in Unicode escape.

@@ -1,4 +1,4 @@
-typeclass_missing_det_3.m:008: Warning: interface for module
+typeclass_missing_det_3.m:008: Warning: the interface of module
 typeclass_missing_det_3.m:008:   `typeclass_missing_det_3' does not export
 typeclass_missing_det_3.m:008:   anything.
 typeclass_missing_det_3.m:008:   To be useful, a module should export

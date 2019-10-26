@@ -1,4 +1,4 @@
-types.m:005: Warning: interface for module `types' does not export anything.
+types.m:005: Warning: the interface of module `types' does not export anything.
 types.m:005:   To be useful, a module should export something. A file should
 types.m:005:   contain at least one declaration other than `:- import_module'
 types.m:005:   in its interface section(s). This would normally be a `:- pred',

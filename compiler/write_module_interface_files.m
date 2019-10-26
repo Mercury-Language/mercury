@@ -142,12 +142,14 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
     generate_short_interface_int3(Globals, RawCompUnit, _, ParseTreeInt3,
         [], Specs),
+    EffectivelyErrors =
+        contains_errors_or_warnings_treated_as_errors(Globals, Specs),
     (
-        Specs = [],
+        EffectivelyErrors = no,
         actually_write_interface_file(Globals, ParseTreeInt3, "", no, !IO),
         touch_interface_datestamp(Globals, ModuleName, ".date3", !IO)
     ;
-        Specs = [_ | _],
+        EffectivelyErrors = yes,
         report_file_not_written(Globals, Specs, no, ModuleName, ".int3",
             no, !IO)
     ).
@@ -166,8 +168,10 @@ write_private_interface_file_int0(Globals, SourceFileName,
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
         GetSpecs, GetErrors),
+    GetSpecsEffectivelyErrors =
+        contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
-        GetSpecs = [],
+        GetSpecsEffectivelyErrors = no,
         set.is_empty(GetErrors)
     then
         % Module-qualify all items.
@@ -223,8 +227,10 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
         GetSpecs, GetErrors),
+    GetSpecsEffectivelyErrors =
+        contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
-        GetSpecs = [],
+        GetSpecsEffectivelyErrors = no,
         set.is_empty(GetErrors)
     then
         % Module-qualify all items.

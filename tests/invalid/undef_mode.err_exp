@@ -1,4 +1,4 @@
-undef_mode.m:005: Warning: interface for module `undef_mode' does not export
+undef_mode.m:005: Warning: the interface of module `undef_mode' does not export
 undef_mode.m:005:   anything.
 undef_mode.m:007: Error: module `undef_mode' should start with either an
 undef_mode.m:007:   `:- interface' or an `:- implementation' declaration.

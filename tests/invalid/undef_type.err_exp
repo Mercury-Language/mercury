@@ -1,4 +1,4 @@
-undef_type.m:005: Warning: interface for module `undef_type' does not export
+undef_type.m:005: Warning: the interface of module `undef_type' does not export
 undef_type.m:005:   anything.
 undef_type.m:005:   To be useful, a module should export something. A file
 undef_type.m:005:   should contain at least one declaration other than

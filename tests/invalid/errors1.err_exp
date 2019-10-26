@@ -1,4 +1,4 @@
-errors1.m:008: Warning: interface for module `errors1' does not export
+errors1.m:008: Warning: the interface of module `errors1' does not export
 errors1.m:008:   anything.
 errors1.m:012: Error: module `errors1' should start with either an
 errors1.m:012:   `:- interface' or an `:- implementation' declaration.

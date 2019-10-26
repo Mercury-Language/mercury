@@ -1,4 +1,4 @@
-no_exports.m:008: Warning: interface for module `no_exports' does not export
+no_exports.m:008: Warning: the interface of module `no_exports' does not export
 no_exports.m:008:   anything.
 no_exports.m:008:   To be useful, a module should export something. A file
 no_exports.m:008:   should contain at least one declaration other than

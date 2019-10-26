@@ -2,7 +2,7 @@ Type inference iteration limit exceeded. This probably indicates that your
   program has a type error. You should declare the types explicitly. (The
   current limit is 60 iterations. You can use the
   `--type-inference-iteration-limit' option to increase the limit).
-type_inf_loop.m:005: Warning: interface for module `type_inf_loop' does not
+type_inf_loop.m:005: Warning: the interface of module `type_inf_loop' does not
 type_inf_loop.m:005:   export anything.
 type_inf_loop.m:009: Error: clause for predicate `type_inf_loop.loop'/1
 type_inf_loop.m:009:   without corresponding `:- pred' declaration.

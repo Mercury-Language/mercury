@@ -3,7 +3,7 @@ bigtest.m:005: Error: module `bigtest' should start with either an
 bigtest.m:005:   `:- interface' or an `:- implementation' declaration.
 bigtest.m:005:   The following assumes that the missing declaration is an
 bigtest.m:005:   `:- implementation' declaration.
-bigtest.m:005: Warning: interface for module `bigtest' does not export
+bigtest.m:005: Warning: the interface of module `bigtest' does not export
 bigtest.m:005:   anything.
 bigtest.m:005:   To be useful, a module should export something. A file should
 bigtest.m:005:   contain at least one declaration other than `:- import_module'

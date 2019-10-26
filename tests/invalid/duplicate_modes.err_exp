@@ -1,5 +1,5 @@
-duplicate_modes.m:005: Warning: interface for module `duplicate_modes' does not
-duplicate_modes.m:005:   export anything.
+duplicate_modes.m:005: Warning: the interface of module `duplicate_modes' does
+duplicate_modes.m:005:   not export anything.
 duplicate_modes.m:005:   To be useful, a module should export something. A file
 duplicate_modes.m:005:   should contain at least one declaration other than
 duplicate_modes.m:005:   `:- import_module' in its interface section(s). This

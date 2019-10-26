@@ -1,4 +1,5 @@
-occurs.m:005: Warning: interface for module `occurs' does not export anything.
+occurs.m:005: Warning: the interface of module `occurs' does not export
+occurs.m:005:   anything.
 occurs.m:007: Error: module `occurs' should start with either an `:- interface'
 occurs.m:007:   or an `:- implementation' declaration.
 occurs.m:007:   The following assumes that the missing declaration is an

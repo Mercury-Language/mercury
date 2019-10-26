@@ -1,4 +1,4 @@
-errors2.m:005: Warning: interface for module `errors2' does not export
+errors2.m:005: Warning: the interface of module `errors2' does not export
 errors2.m:005:   anything.
 errors2.m:005:   To be useful, a module should export something. A file should
 errors2.m:005:   contain at least one declaration other than `:- import_module'

@@ -273,6 +273,16 @@
     %
 :- func contains_errors_and_or_warnings(globals, list(error_spec)) = bool.
 
+    % If --halt-at-warn is not set, then return `yes' if the given list
+    % contains error_specs whose actual severity is actual_severity_error.
+    %
+    % If --halt-at-warn is set, then return `yes' if the given list
+    % contains error_specs whose actual severity is either
+    % actual_severity_error or actual_severity_warning.
+    %
+:- func contains_errors_or_warnings_treated_as_errors(globals,
+    list(error_spec)) = bool.
+
 %---------------------------------------------------------------------------%
 
 :- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
@@ -756,6 +766,32 @@ contains_errors_and_or_warnings(Globals, Specs) = ErrorsOrWarnings :-
         ;
             WorstActual = actual_severity_informational,
             ErrorsOrWarnings = no
+        )
+    ).
+
+contains_errors_or_warnings_treated_as_errors(Globals, Specs) = Halt :-
+    MaybeWorstActual = worst_severity_in_specs(Globals, Specs),
+    (
+        MaybeWorstActual = no,
+        Halt = no
+    ;
+        MaybeWorstActual = yes(WorstActual),
+        (
+            WorstActual = actual_severity_error,
+            Halt = yes
+        ;
+            WorstActual = actual_severity_warning,
+            globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
+            (
+                HaltAtWarn = yes,
+                Halt = yes
+            ;
+                HaltAtWarn = no,
+                Halt = no
+            )
+        ;
+            WorstActual = actual_severity_informational,
+            Halt = no
         )
     ).
 

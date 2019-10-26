@@ -1,4 +1,4 @@
-undef_inst.m:005: Warning: interface for module `undef_inst' does not export
+undef_inst.m:005: Warning: the interface of module `undef_inst' does not export
 undef_inst.m:005:   anything.
 undef_inst.m:007: Error: module `undef_inst' should start with either an
 undef_inst.m:007:   `:- interface' or an `:- implementation' declaration.

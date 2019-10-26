@@ -1,4 +1,4 @@
-inst_list_dup.m:005: Warning: interface for module `inst_list_dup' does not
+inst_list_dup.m:005: Warning: the interface of module `inst_list_dup' does not
 inst_list_dup.m:005:   export anything.
 inst_list_dup.m:008: In the definition of the inst `inst1': error: this bound
 inst_list_dup.m:008:   inst lists `-'/2 more than once.

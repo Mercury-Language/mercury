@@ -1,4 +1,4 @@
-vars_in_wrong_places.m:005: Warning: interface for module
+vars_in_wrong_places.m:005: Warning: the interface of module
 vars_in_wrong_places.m:005:   `vars_in_wrong_places' does not export anything.
 vars_in_wrong_places.m:005:   To be useful, a module should export something. A
 vars_in_wrong_places.m:005:   file should contain at least one declaration

@@ -1,5 +1,5 @@
-typeclass_test_11.m:005: Warning: interface for module `typeclass_test_11' does
-typeclass_test_11.m:005:   not export anything.
+typeclass_test_11.m:005: Warning: the interface of module `typeclass_test_11'
+typeclass_test_11.m:005:   does not export anything.
 typeclass_test_11.m:005:   To be useful, a module should export something. A
 typeclass_test_11.m:005:   file should contain at least one declaration other
 typeclass_test_11.m:005:   than `:- import_module' in its interface section(s).
