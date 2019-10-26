@@ -712,7 +712,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         % TypeCtor is NOT defined as a solver, equivalence, du or foreign type,
         % and it is NOT declared either as a solver or as a nonsolver type.
         % This means it has no type definition whatsoever. The only way
-        % we can get here is is it has any foreign enum definitions.
+        % we can get here is if it has any foreign enum definitions.
         list.foldl(
             report_foreign_enum_for_undefined_type(TypeCtor, "undeclared"),
             ImpEnums, !Specs)

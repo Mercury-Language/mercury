@@ -1635,7 +1635,7 @@ need_unify(ModuleInfo, UnusedVars, Unify, Changed) :-
         Unify = deconstruct(LVar, _, ArgVars, ArgModes, CanFail, _CanCGC),
         not list.member(LVar, UnusedVars),
         (
-            % Are any of the args unused? If so, we need to to fix up the
+            % Are any of the args unused? If so, we need to fix up the
             % goal_info.
             CanFail = cannot_fail,
             check_deconstruct_args(ModuleInfo, UnusedVars, ArgVars, ArgModes,

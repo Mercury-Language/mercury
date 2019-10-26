@@ -459,7 +459,7 @@ bad_instance_type_msg(ClassId, InstanceDefn, EndPieces, Kind) = Spec :-
         % would not make sense.
         InstanceTypes = InstanceDefn ^ instdefn_orig_types
     ),
-    % XXX Removing the module qualification from the type type constructors
+    % XXX Removing the module qualification from the type constructors
     % in InstanceTypes before converting them to strings would make
     % the error message less cluttered.
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,

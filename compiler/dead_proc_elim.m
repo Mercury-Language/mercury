@@ -903,7 +903,7 @@ do_dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo) :-
         TypeCtorGenInfos),
     module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo),
 
-    % We could also eliminate eliminate table structs, but we don't do that
+    % We could also eliminate table structs, but we don't do that
     % yet, because some references to such structs are currently visible
     % only in C code embedded in compiler-generated foreign_procs, and
     % therefore we might accidentally create dangling references.

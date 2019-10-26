@@ -136,7 +136,7 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
         OoMMercuryForeignTagPairs, Context, _SeqNum),
     % Here we construct ItemPragmaInfo just to test whether this pragma
     % was in the interface. Unfortunately, while we *could* avoid this
-    % (e.g. by making making report_if_pragma_is_wrongly_in_interface work
+    % (e.g. by making report_if_pragma_is_wrongly_in_interface work
     % not on full pragmas but on pragma kinds, a flattened-to-an-enum
     % form of pragmas), the cost in increased code complexity is
     % not worth it.

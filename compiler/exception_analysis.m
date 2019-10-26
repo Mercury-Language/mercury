@@ -382,7 +382,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
     ;
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
 
-        % NOTE: for --intermodule-analysis the results for for foreign_procs
+        % NOTE: for --intermodule-analysis the results for foreign_procs
         % will *always* be optimal (since we always rely on user annotation),
         % so there's nothing to do here.
         MayCallMercury = get_may_call_mercury(Attributes),
