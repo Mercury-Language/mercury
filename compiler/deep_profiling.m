@@ -1807,9 +1807,7 @@ generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
 
 generate_deep_const_unify(ConsId, Var, Goal) :-
     Ground = ground(shared, none_or_default_func),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free, Ground),
-        from_to_insts(Ground, Ground)),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
     Unification = construct(Var, ConsId, [], [], construct_statically,
         cell_is_shared, no_construct_sub_info),
     GoalExpr = unify(Var, rhs_functor(ConsId, is_not_exist_constr, []),
@@ -1826,9 +1824,7 @@ generate_deep_const_unify(ConsId, Var, Goal) :-
 
 generate_deep_cell_unify(Length, ConsId, Args, Var, Goal) :-
     Ground = ground(shared, none_or_default_func),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free, Ground),
-        from_to_insts(Ground, Ground)),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
     list.duplicate(Length, UnifyMode, ArgModes),
     Unification = construct(Var, ConsId, Args, ArgModes,
         construct_statically, cell_is_shared, no_construct_sub_info),

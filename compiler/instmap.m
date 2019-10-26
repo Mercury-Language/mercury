@@ -103,10 +103,17 @@
 
 %---------------------------------------------------------------------------%
 
+:- type var_init_final_insts
+    --->    var_init_final_insts(
+                vifi_var        :: prog_var,
+                vifi_init_inst  :: mer_inst,
+                vifi_final_inst :: mer_inst
+            ).
+
 :- pred instmap_delta_from_mode_list(module_info::in,
     list(prog_var)::in, list(mer_mode)::in, instmap_delta::out) is det.
-:- pred instmap_delta_from_from_to_insts_list(module_info::in,
-    list(prog_var)::in, list(from_to_insts)::in, instmap_delta::out) is det.
+:- pred instmap_delta_from_var_init_final_insts(module_info::in,
+    list(var_init_final_insts)::in, instmap_delta::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -488,31 +495,26 @@ instmap_delta_from_mode_list_loop(ModuleInfo, [Var | Vars], [Mode | Modes],
 
 %---------------------%
 
-instmap_delta_from_from_to_insts_list(ModuleInfo, Var, FromToInsts,
-        InstMapDelta) :-
+instmap_delta_from_var_init_final_insts(ModuleInfo, VarsInsts, InstMapDelta) :-
     instmap_delta_init_reachable(InstMapDelta0),
-    instmap_delta_from_from_to_insts_list_loop(ModuleInfo, Var, FromToInsts,
+    instmap_delta_from_var_init_final_insts_loop(ModuleInfo, VarsInsts,
         InstMapDelta0, InstMapDelta).
 
-:- pred instmap_delta_from_from_to_insts_list_loop(module_info::in,
-    list(prog_var)::in, list(from_to_insts)::in,
+:- pred instmap_delta_from_var_init_final_insts_loop(module_info::in,
+    list(var_init_final_insts)::in,
     instmap_delta::in, instmap_delta::out) is det.
 
-instmap_delta_from_from_to_insts_list_loop(_, [], [], !InstMapDelta).
-instmap_delta_from_from_to_insts_list_loop(_, [], [_ | _], !InstMapDelta) :-
-    unexpected($pred, "length mismatch").
-instmap_delta_from_from_to_insts_list_loop(_, [_ | _], [], !InstMapDelta) :-
-    unexpected($pred, "length mismatch").
-instmap_delta_from_from_to_insts_list_loop(ModuleInfo, [Var | Vars],
-        [FromToInst | FromToInsts], !InstMapDelta) :-
-    FromToInst = from_to_insts(InitInst, FinalInst),
+instmap_delta_from_var_init_final_insts_loop(_, [], !InstMapDelta).
+instmap_delta_from_var_init_final_insts_loop(ModuleInfo,
+        [VarInsts | VarsInsts], !InstMapDelta) :-
+    VarInsts = var_init_final_insts(Var, InitInst, FinalInst),
     ( if InitInst = FinalInst then
         true
     else
         instmap_delta_set_var(Var, FinalInst, !InstMapDelta)
     ),
-    instmap_delta_from_from_to_insts_list_loop(ModuleInfo, Vars,
-        FromToInsts, !InstMapDelta).
+    instmap_delta_from_var_init_final_insts_loop(ModuleInfo, VarsInsts,
+        !InstMapDelta).
 
 %---------------------------------------------------------------------------%
 

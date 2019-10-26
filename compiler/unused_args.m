@@ -802,9 +802,7 @@ partition_deconstruct_args(Info, Vars, ArgModes, InputVars, OutputVars) :-
         partition_deconstruct_args(Info, TailVars, TailArgModes,
             InputVarsTail, OutputVarsTail),
 
-        HeadArgMode = unify_modes_lhs_rhs(
-            from_to_insts(InitX, FinalX),
-            from_to_insts(InitY, FinalY)),
+        HeadArgMode = unify_modes_li_lf_ri_rf(InitX, FinalX, InitY, FinalY),
         lookup_var_type(Info ^ unarg_vartypes, HeadVar, HeadType),
         ModuleInfo = Info ^ unarg_module_info,
 
@@ -1679,9 +1677,7 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Vars, ArgModes, !.SomeUsed,
         ( if
             % XXX This test is seems wrong to me. Why does it look at a mode
             % that is made up of *two initial* insts?
-            HeadArgMode = unify_modes_lhs_rhs(
-                from_to_insts(InitX, _),
-                from_to_insts(InitY, _)),
+            HeadArgMode = unify_modes_li_lf_ri_rf(InitX, _, InitY, _),
             mode_is_output(ModuleInfo, from_to_mode(InitX, InitY)),
             list.member(HeadVar, UnusedVars)
         then

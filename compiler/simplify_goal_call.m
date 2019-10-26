@@ -1101,9 +1101,7 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
         qualified(mercury_public_builtin_module, "comparison_result"), 0),
     ConsId = cons(qualified(BuiltinModule, Inequality), 0, TypeCtor),
     Bound = bound(shared, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(Unique, Bound),
-        from_to_insts(Bound, Bound)),
+    UnifyMode = unify_modes_li_lf_ri_rf(Unique, Bound, Bound, Bound),
     RHS = rhs_functor(ConsId, is_not_exist_constr, []),
     UKind = deconstruct(CmpRes, ConsId, [], [], can_fail, cannot_cgc),
     UContext = unify_context(umc_implicit(
@@ -1335,9 +1333,7 @@ simplify_make_int_const(IntConst, ConstVar, Goal, !Info) :-
     % The context shouldn't matter.
     UnifyContext = unify_context(umc_explicit, []),
     Ground = ground_inst,
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free, Ground),
-        from_to_insts(Ground, Ground)),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
     GoalExpr = unify(ConstVar, RHS, UnifyMode, Unification, UnifyContext),
     NonLocals = set_of_var.make_singleton(ConstVar),
     InstMapDelta = instmap_delta_bind_var(ConstVar),

@@ -1034,9 +1034,7 @@ rebuild_cell_bound_inst_arg(InstMap, Var, ArgInst0, ArgInst) :-
     unify_mode::in, unify_mode::out) is det.
 
 unify_mode_set_rhs_final_inst(ModuleInfo, ArgInst, UnifyMode0, UnifyMode) :-
-    UnifyMode0 = unify_modes_lhs_rhs(
-        from_to_insts(LI, LF),
-        from_to_insts(RI, RF)),
+    UnifyMode0 = unify_modes_li_lf_ri_rf(LI, LF, RI, RF),
     % Only when deconstructing to produce the right variable.
     ( if
         inst_is_free(ModuleInfo, RI),
@@ -1053,9 +1051,7 @@ unify_mode_set_rhs_final_inst(ModuleInfo, ArgInst, UnifyMode0, UnifyMode) :-
         then
             UnifyMode = UnifyMode0
         else
-            UnifyMode = unify_modes_lhs_rhs(
-                from_to_insts(LI, LF),
-                from_to_insts(RI, ArgInst))
+            UnifyMode = unify_modes_li_lf_ri_rf(LI, LF, RI, ArgInst)
         )
     else
         UnifyMode = UnifyMode0
@@ -1666,9 +1662,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     DummyShroudedPPId = shroud_pred_proc_id(DummyPPId),
     ConsId = closure_cons(DummyShroudedPPId, EvalMethod),
     InInst = ground(shared, higher_order(OrigVarPredInstInfo)),
-    ArgUnifyModes0 = [unify_modes_lhs_rhs(
-        from_to_insts(InInst, InInst),
-        from_to_insts(InInst, InInst))],
+    ArgUnifyModes0 = [unify_modes_li_lf_ri_rf(InInst, InInst, InInst, InInst)],
     Unification0 = construct(Var, ConsId, LambdaNonLocals, ArgUnifyModes0,
         construct_dynamically, cell_is_shared, no_construct_sub_info),
     LambdaNonLocals = [CallVar],
@@ -1677,7 +1671,8 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
         LambdaNonLocals, CallGoal, Unification0, Functor, Unification, !Info),
 
     % Create the unification goal for Var.
-    UnifyMode = unify_modes_lhs_rhs(out_from_to_insts, in_from_to_insts),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, ground_inst,
+        ground_inst, ground_inst),
     MainContext = umc_implicit("reg_wrapper"),
     UnifyContext = unify_context(MainContext, []),
     UnifyGoalExpr = unify(Var, Functor, UnifyMode, Unification, UnifyContext),

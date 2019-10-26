@@ -506,9 +506,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     lookup_var_type(!.VarTypes, OrigVar, Type),
     add_var_type(NewVar, Type, !VarTypes),
     instmap_delta_lookup_var(InstMapDelta, OrigVar, NewInst),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(NewInst, NewInst),
-        from_to_insts(free, NewInst)),
+    UnifyMode = unify_modes_li_lf_ri_rf(NewInst, NewInst, free, NewInst),
     Unification = assign(OrigVar, NewVar),
     UnifyContext = unify_context(umc_explicit, []),
     GoalExpr = unify(OrigVar, rhs_var(NewVar), UnifyMode, Unification,
@@ -1660,14 +1658,11 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     ),
     InstToArgUnifyMode =
         ( pred(ArgInst::in, ArgUnfyiMode::out) is det :-
-            ArgUnfyiMode = unify_modes_lhs_rhs(
-                from_to_insts(ArgInst, ArgInst),
-                from_to_insts(free, ArgInst))
+            ArgUnfyiMode = unify_modes_li_lf_ri_rf(ArgInst, ArgInst,
+                free, ArgInst)
         ),
     list.map(InstToArgUnifyMode, ArgInsts, UniModes),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(Inst0, Inst0),
-        from_to_insts(Inst0, Inst0)),
+    UnifyMode = unify_modes_li_lf_ri_rf(Inst0, Inst0, Inst0, Inst0),
     UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
         cannot_cgc),

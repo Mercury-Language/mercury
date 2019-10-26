@@ -765,15 +765,15 @@ create_nested_goal(Context, InitInstmap, FinalInstmap, OuterDI, OuterUO,
         MainInnerDI, MainInnerUO),
     list.map5(strip_goal_calls, OrElseGoals0, OrElseGoals, _, _,
         OrElseInnerDIs, OrElseInnerUOs),
+    UnifyModeUoDi = unify_modes_li_lf_ri_rf(free, unique_inst,
+        unique_inst, clobbered_inst),
     (
         OrElseGoals = [],
 
         % If no or_else goals, simply connect up the outer and inner variables.
-        create_var_unify_stm(MainInnerDI, MainOuterDI,
-            unify_modes_lhs_rhs(uo_from_to_insts, di_from_to_insts),
+        create_var_unify_stm(MainInnerDI, MainOuterDI, UnifyModeUoDi,
             CopyDIVars, !StmInfo),
-        create_var_unify_stm(MainOuterUO, MainInnerUO,
-            unify_modes_lhs_rhs(uo_from_to_insts, di_from_to_insts),
+        create_var_unify_stm(MainOuterUO, MainInnerUO, UnifyModeUoDi,
             CopyUOVars, !StmInfo),
         create_plain_conj([CopyDIVars, AtomicGoal, CopyUOVars], Goal)
     ;
@@ -816,11 +816,9 @@ create_nested_goal(Context, InitInstmap, FinalInstmap, OuterDI, OuterUO,
 
         create_or_else_pred(Context, AtomicGoalVars, AtomicGoalVarList1,
             PPIDList, MainInnerDI, MainInnerUO, OrElseCall, !StmInfo),
-        create_var_unify_stm(MainInnerDI, MainOuterDI,
-            unify_modes_lhs_rhs(uo_from_to_insts, di_from_to_insts),
+        create_var_unify_stm(MainInnerDI, MainOuterDI, UnifyModeUoDi,
             CopyDIVars, !StmInfo),
-        create_var_unify_stm(MainOuterUO, MainInnerUO,
-            unify_modes_lhs_rhs(uo_from_to_insts, di_from_to_insts),
+        create_var_unify_stm(MainOuterUO, MainInnerUO, UnifyModeUoDi,
             CopyUOVars, !StmInfo),
         create_plain_conj([CopyDIVars, OrElseCall, CopyUOVars], Goal)
     ).
@@ -873,8 +871,9 @@ create_top_level_pred(Context, AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
         InputModes ++ OutputModes ++ [di_mode, uo_mode], "toplevel",
         AtomicGoal, no, NewPredInfo0, Goal, !StmInfo),
 
-    create_var_unify(OuterUO, OuterDI,
-        unify_modes_lhs_rhs(uo_from_to_insts, di_from_to_insts),
+    UnifyModeUoDi = unify_modes_li_lf_ri_rf(free, unique_inst,
+        unique_inst, clobbered_inst),
+    create_var_unify(OuterUO, OuterDI, UnifyModeUoDi,
         CopyIOAssign, NewPredInfo0, NewPredInfo1),
     create_plain_conj([WrapperCall, CopyIOAssign], TopLevelGoal),
 
@@ -926,7 +925,8 @@ template_if_exceptres_is_cons(Context, RttiVar, ExceptVar, RollbackExceptCons,
         [RttiVar, RollbackExceptVar, UnivPayloadVar], [],
         instmap_delta_bind_no_var, _UnifyCall, !NewPredInfo),
     create_var_test(UnivPayloadVar, RollbackExceptVar,
-        unify_modes_lhs_rhs(in_from_to_insts, in_from_to_insts),
+        unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
+            ground_inst, ground_inst),
         TestGoal, !NewPredInfo),
 %   XXX STM
 %   create_plain_conj([AssignGoal, UnivCall, TestGoal, UnifyCall], CondGoal),
@@ -1027,7 +1027,8 @@ template_lock_and_validate_many(Context, StmVars, UnlockAfterwards, ValidGoal,
     CreateValidTests =
         ( pred(ValidRes::in, ValidTest::out, NPI0::in, NPI::out) is det :-
             create_var_test(ValidRes, IsValidConstVar,
-                unify_modes_lhs_rhs(in_from_to_insts, in_from_to_insts),
+                unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
+                    ground_inst, ground_inst),
                 ValidTest, NPI0, NPI)
         ),
 
@@ -1542,7 +1543,8 @@ create_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType, ResultVar,
     (
         CopySTM = yes,
         create_var_unify(StmUO, StmDI,
-            unify_modes_lhs_rhs(uo_from_to_insts, di_from_to_insts),
+            unify_modes_li_lf_ri_rf(free, unique_inst,
+                unique_inst, clobbered_inst),
             CopySTMAssign, !NewPredInfo),
         TopLevelGoalList0 = [AtomicGoal] ++ AssignResult ++ [CopySTMAssign,
             PostAtomicGoal]
@@ -1645,7 +1647,8 @@ create_simple_post_wrapper_goal(Context, AtomicGoalVars, AtomicGoal,
     (
         CopySTM = yes,
         create_var_unify(StmUO, StmDI,
-            unify_modes_lhs_rhs(uo_from_to_insts, di_from_to_insts),
+            unify_modes_li_lf_ri_rf(free, unique_inst,
+                unique_inst, clobbered_inst),
             CopySTMAssign, !NewPredInfo),
         TopLevelGoalList0 = Call1 ++ [CopySTMAssign, AtomicGoal] ++ Call2 ++
             AssignResult
@@ -2110,7 +2113,8 @@ construct_output(Context, AtomicGoalVars, ResultType, ResultVar, StmInfo,
         % exception result and return.
         OutVar = list.det_head(OutputVars),
         create_var_unify(ResultVar, OutVar,
-            unify_modes_lhs_rhs(out_from_to_insts, in_from_to_insts),
+            unify_modes_li_lf_ri_rf(free, ground_inst,
+                ground_inst, ground_inst),
             Goal, !NewPredInfo),
         Goals = [Goal]
     ;
@@ -2231,10 +2235,12 @@ create_var_test(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
     UnifyType = simple_test(VarLHS, VarRHS),
     UnifyRHS = rhs_var(VarRHS),
     UnifyContext = unify_context(umc_explicit, []),
-    UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, RHSFromToInsts),
-
-    instmap_delta_from_from_to_insts_list(ModuleInfo,
-        [VarLHS, VarRHS], [LHSFromToInsts, RHSFromToInsts], InstmapDelta),
+    UnifyMode = unify_modes_li_lf_ri_rf(LHSInitInst, LHSFinalInst,
+        RHSInitInst, RHSFinalInst),
+    LHSTuple = var_init_final_insts(VarLHS, LHSInitInst, LHSFinalInst),
+    RHSTuple = var_init_final_insts(VarRHS, RHSInitInst, RHSFinalInst),
+    instmap_delta_from_var_init_final_insts(ModuleInfo, [LHSTuple, RHSTuple],
+        InstmapDelta),
     GoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
     set_of_var.list_to_set([VarLHS, VarRHS], NonLocals),
@@ -2257,10 +2263,12 @@ create_var_unify_stm(VarLHS, VarRHS, UnifyMode, Goal, !StmInfo) :-
     UnifyType = assign(VarLHS, VarRHS),
     UnifyRHS = rhs_var(VarRHS),
     UnifyContext = unify_context(umc_explicit, []),
-    UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, RHSFromToInsts),
-
-    instmap_delta_from_from_to_insts_list(ModuleInfo,
-        [VarLHS, VarRHS], [LHSFromToInsts, RHSFromToInsts], InstmapDelta),
+    UnifyMode = unify_modes_li_lf_ri_rf(LHSInitInst, LHSFinalInst,
+        RHSInitInst, RHSFinalInst),
+    LHSTuple = var_init_final_insts(VarLHS, LHSInitInst, LHSFinalInst),
+    RHSTuple = var_init_final_insts(VarRHS, RHSInitInst, RHSFinalInst),
+    instmap_delta_from_var_init_final_insts(ModuleInfo, [LHSTuple, RHSTuple],
+        InstmapDelta),
     GoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
     set_of_var.list_to_set([VarLHS, VarRHS], NonLocals),
@@ -2282,10 +2290,12 @@ create_var_unify(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
     UnifyType = assign(VarLHS, VarRHS),
     UnifyRHS = rhs_var(VarRHS),
     UnifyContext = unify_context(umc_explicit, []),
-    UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, RHSFromToInsts),
-
-    instmap_delta_from_from_to_insts_list(ModuleInfo,
-        [VarLHS, VarRHS], [LHSFromToInsts, RHSFromToInsts], InstmapDelta),
+    UnifyMode = unify_modes_li_lf_ri_rf(LHSInitInst, LHSFinalInst,
+        RHSInitInst, RHSFinalInst),
+    LHSTuple = var_init_final_insts(VarLHS, LHSInitInst, LHSFinalInst),
+    RHSTuple = var_init_final_insts(VarRHS, RHSInitInst, RHSFinalInst),
+    instmap_delta_from_var_init_final_insts(ModuleInfo, [LHSTuple, RHSTuple],
+        InstmapDelta),
     GoalExpr = unify(VarLHS, UnifyRHS, UnifyMode, UnifyType, UnifyContext),
 
     set_of_var.list_to_set([VarLHS, VarRHS], NonLocals),

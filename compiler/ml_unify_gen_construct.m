@@ -1045,10 +1045,10 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
 
 ml_maybe_box_unbox_or_null_lval(ModuleInfo, ConsArgType, RHSType, BoxedRHSType,
         RHS_MLDS_Type, ArgMode, RHSLval, RHSRval) :-
-    ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
+    ArgMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, RHSFinalInst),
     ( if
-        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, RHSType,
-            top_in),
+        init_final_insts_to_top_functor_mode(ModuleInfo,
+            RHSInitInst, RHSFinalInst, RHSType, top_in),
         is_either_type_a_dummy(ModuleInfo, RHSType, ConsArgType) =
             neither_is_dummy_type
     then
@@ -1062,12 +1062,12 @@ ml_maybe_box_unbox_or_null_lval(ModuleInfo, ConsArgType, RHSType, BoxedRHSType,
     unify_mode::in, bitfield_value::out) is det.
 
 ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, BitfieldValue) :-
-    ml_variable_type(Info, RHSVar, RHSType),
-    ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
     ml_gen_info_get_module_info(Info, ModuleInfo),
+    ArgMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, RHSFinalInst),
+    ml_variable_type(Info, RHSVar, RHSType),
     ( if
-        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, RHSType,
-            top_in),
+        init_final_insts_to_top_functor_mode(ModuleInfo,
+            RHSInitInst, RHSFinalInst, RHSType, top_in),
         is_either_type_a_dummy(ModuleInfo, RHSType, ConsArgType) =
             neither_is_dummy_type
     then

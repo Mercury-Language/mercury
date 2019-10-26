@@ -340,9 +340,8 @@ common_optimise_unification(Unification0, Mode, !GoalExpr, !GoalInfo,
 
 common_optimise_construct(Var, ConsId, ArgVars, UnifyMode, GoalExpr0, GoalExpr,
         GoalInfo0, GoalInfo, !Common, !Info) :-
-    UnifyMode = unify_modes_lhs_rhs(LVarMode, _RVarMode),
     simplify_info_get_module_info(!.Info, ModuleInfo),
-    LVarMode = from_to_insts(_, LVarFinalInst),
+    UnifyMode = unify_modes_li_lf_ri_rf(_, LVarFinalInst, _, _),
     % Don't optimise partially instantiated construction unifications,
     % because it would be tricky to work out how to mode the replacement
     % assignment unifications. In the vast majority of cases, the variable
@@ -411,8 +410,7 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, UnifyMode,
         % because it would be tricky to work out how to mode the replacement
         % assignment unifications. In the vast majority of cases, the variable
         % is ground.
-        UnifyMode = unify_modes_lhs_rhs(LVarMode, _RVarMode),
-        LVarMode = from_to_insts(LVarInitInst, _),
+        UnifyMode = unify_modes_li_lf_ri_rf(LVarInitInst, _, _, _),
         not inst_is_ground(ModuleInfo, LVarInitInst)
     then
         GoalExpr = GoalExpr0
@@ -842,9 +840,8 @@ generate_assign(ToVar, FromVar, ToVarMode, OldGoalInfo, GoalExpr, GoalInfo,
     set_of_var.list_to_set([ToVar, FromVar], NonLocals),
     ToVarMode = from_to_insts(ToVarInit, ToVarFinal),
     ( if types_match_exactly(ToVarType, FromVarType) then
-        UnifyMode = unify_modes_lhs_rhs(
-            from_to_insts(ToVarInit, ToVarFinal),
-            from_to_insts(ToVarFinal, ToVarFinal)),
+        UnifyMode = unify_modes_li_lf_ri_rf(ToVarInit, ToVarFinal,
+            ToVarFinal, ToVarFinal),
         UnifyContext = unify_context(umc_explicit, []),
         GoalExpr = unify(ToVar, rhs_var(FromVar), UnifyMode,
             assign(ToVar, FromVar), UnifyContext)

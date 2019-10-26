@@ -905,11 +905,12 @@ ml_compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir) :-
         % we return assign_nondummy_X instead of assign_X.
         %
         % Any change here will require a corresponding change there.
-        ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
-        from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts,
-            ArgType, LeftTopMode),
-        from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts,
-            ArgType, RightTopMode),
+        ArgMode = unify_modes_li_lf_ri_rf(LeftInitInst, LeftFinalInst,
+            RightInitInst, RightFinalInst),
+        init_final_insts_to_top_functor_mode(ModuleInfo,
+            LeftInitInst, LeftFinalInst, ArgType, LeftTopMode),
+        init_final_insts_to_top_functor_mode(ModuleInfo,
+            RightInitInst, RightFinalInst, ArgType, RightTopMode),
         (
             LeftTopMode = top_in,
             (

@@ -662,7 +662,7 @@ constraint_contains_vars(LambdaVars, ClassConstraint) :-
 
 unify_modes_to_modes([], []).
 unify_modes_to_modes([UnifyMode | UnifyModes], [Mode | Modes]) :-
-    UnifyMode = unify_modes_lhs_rhs(_, from_to_insts(RHSInit, _RHSFinal)),
+    UnifyMode = unify_modes_li_lf_ri_rf(_, _, RHSInit, _RHSFinal),
     Mode = from_to_mode(RHSInit, RHSInit),
     unify_modes_to_modes(UnifyModes, Modes).
 

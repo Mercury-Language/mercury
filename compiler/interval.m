@@ -428,13 +428,12 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
 
 shared_left_to_right_deconstruct(_, []).
 shared_left_to_right_deconstruct(ModuleInfo, [ArgMode | ArgsModes]) :-
-    ArgMode = unify_modes_lhs_rhs(CellFromToInsts, ArgFromToInsts),
-    from_to_insts_is_fully_input(ModuleInfo, CellFromToInsts),
-    from_to_insts_is_output(ModuleInfo, ArgFromToInsts),
-    CellFromToInsts = from_to_insts(_, FinalCellInst),
-    ArgFromToInsts = from_to_insts(_, FinalArgInst),
-    inst_is_not_partly_unique(ModuleInfo, FinalCellInst),
-    inst_is_not_partly_unique(ModuleInfo, FinalArgInst),
+    ArgMode = unify_modes_li_lf_ri_rf(CellInitInst, CellFinalInst,
+        ArgInitInst, ArgFinalInst),
+    init_inst_is_fully_input(ModuleInfo, CellInitInst),
+    init_final_insts_is_output(ModuleInfo, ArgInitInst, ArgFinalInst),
+    inst_is_not_partly_unique(ModuleInfo, CellFinalInst),
+    inst_is_not_partly_unique(ModuleInfo, ArgFinalInst),
     shared_left_to_right_deconstruct(ModuleInfo, ArgsModes).
 
 %-----------------------------------------------------------------------------%

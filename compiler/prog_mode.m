@@ -49,14 +49,6 @@
 :- func in_any_mode = mer_mode.
 :- func out_any_mode = mer_mode.
 
-:- func in_from_to_insts = from_to_insts.
-:- func out_from_to_insts = from_to_insts.
-:- func di_from_to_insts = from_to_insts.
-:- func mdi_from_to_insts = from_to_insts.
-:- func uo_from_to_insts = from_to_insts.
-:- func muo_from_to_insts = from_to_insts.
-:- func unused_from_to_insts = from_to_insts.
-
 :- func free_inst = mer_inst.
 :- func ground_inst = mer_inst.
 :- func unique_inst = mer_inst.
@@ -64,9 +56,6 @@
 :- func clobbered_inst = mer_inst.
 :- func mostly_clobbered_inst = mer_inst.
 :- func any_inst = mer_inst.
-
-:- func from_to_insts_in = from_to_insts.
-:- func from_to_insts_out = from_to_insts.
 
 :- pred make_std_mode(string::in, list(mer_inst)::in, mer_mode::out) is det.
 :- func make_std_mode(string, list(mer_inst)) = mer_mode.
@@ -252,14 +241,6 @@ unused_mode = make_std_mode("unused", []).
 in_any_mode = make_std_mode("in", [any_inst]).
 out_any_mode = make_std_mode("out", [any_inst]).
 
-in_from_to_insts = from_to_insts(ground_inst, ground_inst).
-out_from_to_insts = from_to_insts(free, ground_inst).
-di_from_to_insts = from_to_insts(unique_inst, clobbered_inst).
-mdi_from_to_insts = from_to_insts(mostly_unique_inst, mostly_clobbered_inst).
-uo_from_to_insts = from_to_insts(free, unique_inst).
-muo_from_to_insts = from_to_insts(free, mostly_unique_inst).
-unused_from_to_insts = from_to_insts(free, free).
-
 free_inst = free.
 ground_inst = ground(shared, none_or_default_func).
 unique_inst = ground(unique, none_or_default_func).
@@ -267,14 +248,6 @@ mostly_unique_inst = ground(mostly_unique, none_or_default_func).
 clobbered_inst = ground(clobbered, none_or_default_func).
 mostly_clobbered_inst = ground(mostly_clobbered, none_or_default_func).
 any_inst = any(shared, none_or_default_func).
-
-from_to_insts_in = Insts :-
-    Ground = ground(shared, none_or_default_func),
-    Insts = from_to_insts(Ground, Ground).
-
-from_to_insts_out = Insts :-
-    Ground = ground(shared, none_or_default_func),
-    Insts = from_to_insts(free, Ground).
 
 make_std_mode(Name, Args, make_std_mode(Name, Args)).
 

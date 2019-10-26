@@ -260,7 +260,7 @@ split_unification_vars(_, [_ | _], [], _, _) :-
 split_unification_vars(ModuleInfo, [Arg | Args], [ArgMode | ArgModes],
         InVars, OutVars):-
     split_unification_vars(ModuleInfo, Args, ArgModes, InVars0, OutVars0),
-    ArgMode = unify_modes_lhs_rhs(_, from_to_insts(ArgInit, ArgFinal)),
+    ArgMode = unify_modes_li_lf_ri_rf(_, _, ArgInit, ArgFinal),
     ( if
         inst_is_bound(ModuleInfo, ArgInit)
     then

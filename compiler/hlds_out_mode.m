@@ -359,9 +359,7 @@ mercury_structured_unify_mode_to_string(Inst, Indent, Lang, InclAddr,
 
 mercury_format_structured_unify_mode(UnifyMode, Indent, Lang, InclAddr,
         InstVarSet, !U) :-
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(LHSInit, LHSFinal),
-        from_to_insts(RHSInit, RHSFinal)),
+    UnifyMode = unify_modes_li_lf_ri_rf(LHSInit, LHSFinal, RHSInit, RHSFinal),
     get_inst_addr(LHSInit, LHSInitAddr),
     get_inst_addr(RHSInit, RHSInitAddr),
     get_inst_addr(LHSFinal, LHSFinalAddr),
@@ -551,9 +549,7 @@ mercury_unify_mode_to_string(UnifyMode, InstVarSet) = String :-
     U::di, U::uo) is det <= output(U).
 
 mercury_format_unify_mode(UnifyMode, InstVarSet, !IO) :-
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(LHSInit, LHSFinal),
-        from_to_insts(RHSInit, RHSFinal)),
+    UnifyMode = unify_modes_li_lf_ri_rf(LHSInit, LHSFinal, RHSInit, RHSFinal),
     mercury_format_mode(output_debug, InstVarSet,
         from_to_mode(LHSInit, LHSFinal), !IO),
     add_string(" = ", !IO),

@@ -1394,9 +1394,8 @@ bound_inst_with_free_arg(ConsId, FreeArg) = Inst :-
 :- pred acceptable_construct_mode(module_info::in, unify_mode::in) is semidet.
 
 acceptable_construct_mode(ModuleInfo, UnifyMode) :-
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(InitInstX, FinalInstX),
-        from_to_insts(InitInstY, FinalInstY)),
+    UnifyMode = unify_modes_li_lf_ri_rf(InitInstX, FinalInstX,
+        InitInstY, FinalInstY),
     inst_is_free(ModuleInfo, InitInstX),
     inst_is_ground(ModuleInfo, InitInstY),
     inst_is_ground(ModuleInfo, FinalInstX),
@@ -1810,9 +1809,8 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
 
         instmap_lookup_var(InstMap, AddrVar, AddrVarInst0),
         inst_expand(ModuleInfo, AddrVarInst0, AddrVarInst),
-        UnifyMode = unify_modes_lhs_rhs(
-            from_to_insts(AddrVarInst, ground_inst),
-            from_to_insts(ground_inst, ground_inst)),
+        UnifyMode = unify_modes_li_lf_ri_rf(AddrVarInst, ground_inst,
+            ground_inst, ground_inst),
 
         Unification = deconstruct(AddrVar, ConsId, ArgVars, ArgModes,
             cannot_fail, cannot_cgc),
@@ -1855,15 +1853,13 @@ make_unification_arg(GroundVar, TargetArgNum, CurArgNum, ArgType,
         Var, UnifyMode, !ProcInfo) :-
     ( if CurArgNum = TargetArgNum then
         Var = GroundVar,
-        UnifyMode = unify_modes_lhs_rhs(
-            from_to_insts(free_inst, ground_inst),
-            from_to_insts(ground_inst, ground_inst))
+        UnifyMode = unify_modes_li_lf_ri_rf(free_inst, ground_inst,
+            ground_inst, ground_inst)
     else
         % Bind other arguments to fresh variables.
         proc_info_create_var_from_type(ArgType, no, Var, !ProcInfo),
-        UnifyMode = unify_modes_lhs_rhs(
-            from_to_insts(ground_inst, ground_inst),
-            from_to_insts(free_inst, ground_inst))
+        UnifyMode = unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
+            free_inst, ground_inst)
     ).
 
 %-----------------------------------------------------------------------------%

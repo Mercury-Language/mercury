@@ -1308,8 +1308,7 @@ find_defined_args(Args, Modes, DefinedArgs, NonDefinedArgs, Info) :-
 
 binds_arg_in_cell(Info, UnifyMode) :-
     ModuleInfo = Info ^ spi_module_info,
-    UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, _),
-    LHSFromToInsts = from_to_insts(CellInitInst, CellFinalInst),
+    UnifyMode = unify_modes_li_lf_ri_rf(CellInitInst, CellFinalInst, _, _),
     inst_is_free(ModuleInfo, CellInitInst),
     inst_is_bound(ModuleInfo, CellFinalInst).
 

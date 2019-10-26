@@ -469,9 +469,8 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
         ConsId = int_const(0),
         LHS = ZeroVar,
         RHS = rhs_functor(ConsId, is_not_exist_constr, []),
-        UnifyMode = unify_modes_lhs_rhs(
-            from_to_insts(free, ground_inst),
-            from_to_insts(ground_inst, ground_inst)),
+        UnifyMode = unify_modes_li_lf_ri_rf(free, ground_inst,
+            ground_inst, ground_inst),
         Unification = construct(ZeroVar, ConsId, [], [UnifyMode],
             construct_dynamically, cell_is_shared, no_construct_sub_info),
         UnifyContext = unify_context(umc_explicit, []),

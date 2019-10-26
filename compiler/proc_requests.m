@@ -214,10 +214,8 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
             add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo)
         ),
 
-        % Convert from `uni_mode' to `list(mer_mode)'.
-        UnifyMode = unify_modes_lhs_rhs(LHSInsts, RHSInsts),
-        LHSInsts = from_to_insts(LHSInit, LHSFinal),
-        RHSInsts = from_to_insts(RHSInit, RHSFinal),
+        UnifyMode = unify_modes_li_lf_ri_rf(LHSInit, LHSFinal,
+            RHSInit, RHSFinal),
         LHSMode = from_to_mode(LHSInit, LHSFinal),
         RHSMode = from_to_mode(RHSInit, RHSFinal),
         ArgModes0 = [LHSMode, RHSMode],
@@ -325,9 +323,8 @@ lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num) :-
     determinism::in, proc_id::out) is semidet.
 
 search_mode_num(ModuleInfo, TypeCtor, UnifyMode, Determinism, ProcId) :-
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(InitInstX, _FinalInstX),
-        from_to_insts(InitInstY, _FinalInstY)),
+    UnifyMode = unify_modes_li_lf_ri_rf(InitInstX, _FinalInstX,
+        InitInstY, _FinalInstY),
     ( if
         Determinism = detism_semi,
         inst_is_ground_or_any(ModuleInfo, InitInstX),

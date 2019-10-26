@@ -287,14 +287,11 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
     ),
     InstToArgUnifyMode =
         ( pred(ArgInst::in, ArgUnifyMode::out) is det :-
-            ArgUnifyMode = unify_modes_lhs_rhs(
-                from_to_insts(ArgInst, ArgInst),
-                from_to_insts(free, ArgInst))
+            ArgUnifyMode = unify_modes_li_lf_ri_rf(ArgInst, ArgInst,
+                free, ArgInst)
         ),
     list.map(InstToArgUnifyMode, ArgInsts, ArgUnifyModes),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(Inst0, Inst0),
-        from_to_insts(Inst0, Inst0)),
+    UnifyMode = unify_modes_li_lf_ri_rf(Inst0, Inst0, Inst0, Inst0),
     UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, ArgVars, ArgUnifyModes, can_fail,
         cannot_cgc),

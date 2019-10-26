@@ -804,14 +804,14 @@ encode_case_rep(Info, Case, Bytes, !StringTable) :-
 :- pred lhs_final_is_ground(prog_rep_info::in, unify_mode::in) is semidet.
 
 lhs_final_is_ground(Info, UnifyMode) :-
-    UnifyMode = unify_modes_lhs_rhs(from_to_insts(_, LHSFinalInst), _),
+    UnifyMode = unify_modes_li_lf_ri_rf(_, LHSFinalInst, _, _),
     inst_is_ground(Info ^ pri_module_info, LHSFinalInst).
 
 :- pred rhs_is_input(prog_rep_info::in, unify_mode::in) is semidet.
 
 rhs_is_input(Info, UnifyMode) :-
-    UnifyMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
-    from_to_insts_is_input(Info ^ pri_module_info, RHSFromToInsts).
+    UnifyMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, _),
+    init_inst_is_input(Info ^ pri_module_info, RHSInitInst).
 
 :- pred filter_input_args(prog_rep_info::in, list(unify_mode)::in,
     list(prog_var)::in, list(maybe(prog_var))::out) is det.

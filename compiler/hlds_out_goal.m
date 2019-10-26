@@ -903,9 +903,7 @@ write_goal_unify(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
             % mode analysis yet.
             Unification = complicated_unify(ComplMode, CanFail, TypeInfoVars),
             CanFail = can_fail,
-            ComplMode = unify_modes_lhs_rhs(
-                from_to_insts(free, free),
-                from_to_insts(free, free)),
+            ComplMode = unify_modes_li_lf_ri_rf(free, free, free, free),
             TypeInfoVars = []
         then
             true

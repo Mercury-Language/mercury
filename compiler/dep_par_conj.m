@@ -3176,9 +3176,7 @@ make_future_name_var_and_goal(Name, FutureNameVar, Goal, !VarSet, !VarTypes,
     allocate_ts_string(Name, NameId, !TSStringTable),
     RHS = rhs_functor(int_const(NameId), is_not_exist_constr, []),
     Ground = ground(unique, none_or_default_func),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free(IntType), Ground),
-        from_to_insts(Ground, Ground)),
+    UnifyMode = unify_modes_li_lf_ri_rf(free(IntType), Ground, Ground, Ground),
     Unification = construct(FutureNameVar, int_const(NameId), [], [],
         construct_statically, cell_is_unique, no_construct_sub_info),
     UnifyContext =

@@ -687,11 +687,12 @@ map_arg_dirs([_|_], [], _, _) :-
 map_arg_dirs([UnifyMode | UnifyModes], [Arg | Args], ByteInfo, [Dir | Dirs]) :-
     get_module_info(ByteInfo, ModuleInfo),
     get_var_type(ByteInfo, Arg, Type),
-    UnifyMode = unify_modes_lhs_rhs(VarFromToInsts, ArgFromToInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, VarFromToInsts, Type,
-        VarTopFunctorMode),
-    from_to_insts_to_top_functor_mode(ModuleInfo, ArgFromToInsts, Type,
-        ArgTopFunctorMode),
+    UnifyMode = unify_modes_li_lf_ri_rf(VarInitInst, VarFinalInst,
+        ArgInitInst, ArgFinalInst),
+    init_final_insts_to_top_functor_mode(ModuleInfo, VarInitInst, VarFinalInst,
+        Type, VarTopFunctorMode),
+    init_final_insts_to_top_functor_mode(ModuleInfo, ArgInitInst, ArgFinalInst,
+        Type, ArgTopFunctorMode),
     ( if
         VarTopFunctorMode = top_in,
         ArgTopFunctorMode = top_out

@@ -40,8 +40,6 @@
 
 :- func from_to_insts_to_init_inst(from_to_insts) = mer_inst.
 :- func from_to_insts_to_final_inst(from_to_insts) = mer_inst.
-% :- pred from_to_insts_to_both_insts(from_to_insts::in,
-%     mer_inst::out, mer_inst::out) is det.
 
 :- pred unify_mode_to_lhs_rhs_from_to_insts(unify_mode::in,
     from_to_insts::out, from_to_insts::out) is det.
@@ -69,7 +67,7 @@
     % A mode is considered input if the initial inst is bound.
     %
 :- pred mode_is_input(module_info::in, mer_mode::in) is semidet.
-:- pred from_to_insts_is_input(module_info::in, from_to_insts::in) is semidet.
+:- pred init_inst_is_input(module_info::in, mer_inst::in) is semidet.
 
     % Succeed iff the mode is fully input.
     % Throw an exception if the mode is undefined.
@@ -77,8 +75,7 @@
     % A mode is considered fully input if the initial inst is ground.
     %
 :- pred mode_is_fully_input(module_info::in, mer_mode::in) is semidet.
-:- pred from_to_insts_is_fully_input(module_info::in, from_to_insts::in)
-    is semidet.
+:- pred init_inst_is_fully_input(module_info::in, mer_inst::in) is semidet.
 
     % Succeed iff the mode is output.
     % Throw an exception if the mode is undefined.
@@ -87,7 +84,8 @@
     % the final inst is bound.
     %
 :- pred mode_is_output(module_info::in, mer_mode::in) is semidet.
-:- pred from_to_insts_is_output(module_info::in, from_to_insts::in) is semidet.
+:- pred init_final_insts_is_output(module_info::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
     % Succeed iff the mode is fully output.
     % Throw an exception if the mode is undefined.
@@ -96,8 +94,8 @@
     % and the final inst is ground.
     %
 :- pred mode_is_fully_output(module_info::in, mer_mode::in) is semidet.
-:- pred from_to_insts_is_fully_output(module_info::in, from_to_insts::in)
-    is semidet.
+:- pred init_final_insts_is_fully_output(module_info::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
     % Succeed iff the mode is unused.
     % Throws an exception if the mode is undefined.
@@ -105,7 +103,8 @@
     % A mode is considered unused if both the initial and final insts are free.
     %
 :- pred mode_is_unused(module_info::in, mer_mode::in) is semidet.
-:- pred from_to_insts_is_unused(module_info::in, from_to_insts::in) is semidet.
+:- pred init_final_insts_is_unused(module_info::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
 %---------------------%
 
@@ -148,8 +147,8 @@
     %
 :- pred mode_to_top_functor_mode(module_info::in, mer_mode::in,
     mer_type::in, top_functor_mode::out) is det.
-:- pred from_to_insts_to_top_functor_mode(module_info::in, from_to_insts::in,
-    mer_type::in, top_functor_mode::out) is det.
+:- pred init_final_insts_to_top_functor_mode(module_info::in,
+    mer_inst::in, mer_inst::in, mer_type::in, top_functor_mode::out) is det.
 
 %---------------------%
 
@@ -318,7 +317,10 @@ from_to_insts_to_final_inst(FromToInsts) = Final :-
     FromToInsts = from_to_insts(_Init, Final).
 
 unify_mode_to_lhs_rhs_from_to_insts(UnifyMode, LHSInsts, RHSInsts) :-
-    UnifyMode = unify_modes_lhs_rhs(LHSInsts, RHSInsts).
+    LHSInsts = from_to_insts(LHSInitInst, LHSFinalInst),
+    RHSInsts = from_to_insts(RHSInitInst, RHSFinalInst),
+    UnifyMode = unify_modes_li_lf_ri_rf(LHSInitInst, LHSFinalInst,
+        RHSInitInst, RHSFinalInst).
 
 %---------------------------------------------------------------------------%
 
@@ -344,65 +346,68 @@ mode_is_input(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
     inst_is_bound(ModuleInfo, InitialInst).
 
-from_to_insts_is_input(ModuleInfo, FromToInsts) :-
-    FromToInsts = from_to_insts(InitialInst, _FinalInst),
+init_inst_is_input(ModuleInfo, InitialInst) :-
     inst_is_bound(ModuleInfo, InitialInst).
+
+%---------------------%
 
 mode_is_fully_input(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
     inst_is_ground(ModuleInfo, InitialInst).
 
-from_to_insts_is_fully_input(ModuleInfo, FromToInsts) :-
-    FromToInsts = from_to_insts(InitialInst, _FinalInst),
+init_inst_is_fully_input(ModuleInfo, InitialInst) :-
     inst_is_ground(ModuleInfo, InitialInst).
+
+%---------------------%
 
 mode_is_output(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_bound(ModuleInfo, FinalInst).
 
-from_to_insts_is_output(ModuleInfo, FromToInsts) :-
-    FromToInsts = from_to_insts(InitialInst, FinalInst),
+init_final_insts_is_output(ModuleInfo, InitialInst, FinalInst) :-
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_bound(ModuleInfo, FinalInst).
+
+%---------------------%
 
 mode_is_fully_output(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_ground(ModuleInfo, FinalInst).
 
-from_to_insts_is_fully_output(ModuleInfo, FromToInsts) :-
-    FromToInsts = from_to_insts(InitialInst, FinalInst),
+init_final_insts_is_fully_output(ModuleInfo, InitialInst, FinalInst) :-
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_ground(ModuleInfo, FinalInst).
+
+%---------------------%
 
 mode_is_unused(ModuleInfo, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_free(ModuleInfo, FinalInst).
 
-from_to_insts_is_unused(ModuleInfo, FromToInsts) :-
-    FromToInsts = from_to_insts(InitialInst, FinalInst),
+init_final_insts_is_unused(ModuleInfo, InitialInst, FinalInst) :-
     inst_is_free(ModuleInfo, InitialInst),
     inst_is_free(ModuleInfo, FinalInst).
 
 %---------------------------------------------------------------------------%
 
 unify_modes_to_lhs_mode(UnifyMode) = LHSMode :-
-    UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, _RHSFromToInsts),
-    LHSFromToInsts = from_to_insts(LHSInitInst, LHSFinalInst),
+    UnifyMode = unify_modes_li_lf_ri_rf(LHSInitInst, LHSFinalInst, _, _),
     LHSMode = from_to_mode(LHSInitInst, LHSFinalInst).
 
 unify_modes_to_rhs_mode(UnifyMode) = RHSMode :-
-    UnifyMode = unify_modes_lhs_rhs(_LHSFromToInsts, RHSFromToInsts),
-    RHSFromToInsts = from_to_insts(RHSInitInst, RHSFinalInst),
+    UnifyMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, RHSFinalInst),
     RHSMode = from_to_mode(RHSInitInst, RHSFinalInst).
 
 unify_modes_to_lhs_from_to_insts(UnifyMode) = LHSFromToInsts :-
-    UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, _RHSFromToInsts).
+    UnifyMode = unify_modes_li_lf_ri_rf(LHSInitInst, LHSFinalInst, _, _),
+    LHSFromToInsts = from_to_insts(LHSInitInst, LHSFinalInst).
 
 unify_modes_to_rhs_from_to_insts(UnifyMode) = RHSFromToInsts :-
-    UnifyMode = unify_modes_lhs_rhs(_LHSFromToInsts, RHSFromToInsts).
+    UnifyMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, RHSFinalInst),
+    RHSFromToInsts = from_to_insts(RHSInitInst, RHSFinalInst).
 
 %---------------------%
 
@@ -421,9 +426,8 @@ mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode) :-
     find_top_functor_mode_loop_over_notags(ModuleInfo, Type, [],
         InitialInst, FinalInst, TopFunctorMode).
 
-from_to_insts_to_top_functor_mode(ModuleInfo, FromToInsts, Type,
+init_final_insts_to_top_functor_mode(ModuleInfo, InitialInst, FinalInst, Type,
         TopFunctorMode) :-
-    FromToInsts = from_to_insts(InitialInst, FinalInst),
     find_top_functor_mode_loop_over_notags(ModuleInfo, Type, [],
         InitialInst, FinalInst, TopFunctorMode).
 
@@ -599,12 +603,13 @@ get_single_arg_inst_in_bound_insts([BoundInst | BoundInsts], ConsId,
 modes_to_unify_mode(ModuleInfo, ModeX, ModeY, UnifyMode) :-
     mode_get_insts(ModuleInfo, ModeX, InitialX, FinalX),
     mode_get_insts(ModuleInfo, ModeY, InitialY, FinalY),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(InitialX, FinalX),
-        from_to_insts(InitialY, FinalY)).
+    UnifyMode = unify_modes_li_lf_ri_rf(InitialX, FinalX, InitialY, FinalY).
 
 from_to_insts_to_unify_mode(FromToInstsX, FromToInstsY, UnifyMode) :-
-    UnifyMode = unify_modes_lhs_rhs(FromToInstsX, FromToInstsY).
+    FromToInstsX = from_to_insts(InitInstX, FinalInstX),
+    FromToInstsY = from_to_insts(InitInstY, FinalInstY),
+    UnifyMode = unify_modes_li_lf_ri_rf(InitInstX, FinalInstX,
+        InitInstY, FinalInstY).
 
 modes_to_unify_modes(_ModuleInfo, [], [], []).
 modes_to_unify_modes(_ModuleInfo, [], [_ | _], _) :-
@@ -1830,14 +1835,10 @@ recompute_instmap_delta_unify(Unification, UniMode0, UniMode, GoalInfo,
             LHSFinalInst = LHSInitialInst,
             ModuleInfo = ModuleInfo0
         ),
-        ArgModeToRHSFromToInsts =
-            ( pred(AMode::in, RHSInsts::out) is det :-
-                AMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts)
-            ),
-        list.map(ArgModeToRHSFromToInsts, ArgModes, RHSFromToInsts),
-        instmap_delta_from_from_to_insts_list(ModuleInfo, [LHSVar | RHSVars],
-            [from_to_insts(LHSInitialInst, LHSFinalInst) |  RHSFromToInsts],
-            InstMapDelta),
+        LHSTuple = var_init_final_insts(LHSVar, LHSInitialInst, LHSFinalInst),
+        pair_arg_vars_with_rhs_insts(RHSVars, ArgModes, RHSTuples),
+        instmap_delta_from_var_init_final_insts(ModuleInfo,
+            [LHSTuple | RHSTuples], InstMapDelta),
         UniMode = UniMode0
     ;
         Unification = construct(Var, ConsId, Args, _, _, _, _),
@@ -1865,6 +1866,20 @@ recompute_instmap_delta_unify(Unification, UniMode0, UniMode, GoalInfo,
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         UniMode = UniMode0
     ).
+
+:- pred pair_arg_vars_with_rhs_insts(list(prog_var)::in, list(unify_mode)::in,
+    list(var_init_final_insts)::out) is det.
+
+pair_arg_vars_with_rhs_insts([], [], []).
+pair_arg_vars_with_rhs_insts([], [_ | _], _) :-
+    unexpected($pred, "mismatched list lengths").
+pair_arg_vars_with_rhs_insts([_ | _], [], _) :-
+    unexpected($pred, "mismatched list lengths").
+pair_arg_vars_with_rhs_insts([RHSVar | RHSVars], [UnifyMode | UnifyModes],
+        [Tuple | Tuples]) :-
+    UnifyMode = unify_modes_li_lf_ri_rf(_, _, InitRHS, FinalRHS),
+    Tuple = var_init_final_insts(RHSVar, InitRHS, FinalRHS),
+    pair_arg_vars_with_rhs_insts(RHSVars, UnifyModes, Tuples).
 
     % For a builtin constructor, return the inst of the constructed term.
     % Handling user-defined constructors properly would require running

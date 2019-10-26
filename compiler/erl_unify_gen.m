@@ -218,10 +218,10 @@ erl_gen_construct(Var, ConsId, Args, ArgTypes, ArgModes, _Context, Statement,
     = elds_expr is semidet.
 
 assign_free_var(ModuleInfo, Var, ArgType, ArgMode) = var_eq_false(Var) :-
-    ArgMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
+    ArgMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, RHSFinalInst),
     not (
-        from_to_insts_to_top_functor_mode(ModuleInfo, RHSFromToInsts, ArgType,
-            top_in),
+        init_final_insts_to_top_functor_mode(ModuleInfo,
+            RHSInitInst, RHSFinalInst, ArgType, top_in),
         is_type_a_dummy(ModuleInfo, ArgType) = is_not_dummy_type
         % XXX ml_unify_gen also checks if ConsArgType is dummy type,
         % do we need to do the same?

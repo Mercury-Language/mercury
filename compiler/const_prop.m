@@ -1488,9 +1488,7 @@ make_assignment(OutputArg, InputArg, Goal) :-
     OutVar = OutputArg ^ arg_var,
     InVar = InputArg ^ arg_var,
     Inst = InputArg ^ arg_inst,
-    OutputArgMode = from_to_insts(free, Inst),
-    InputArgMode = from_to_insts(Inst, Inst),
-    UnifyMode = unify_modes_lhs_rhs(OutputArgMode, InputArgMode),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Inst, Inst, Inst),
     Context = unify_context(umc_explicit, []),
     Goal = unify(OutVar, rhs_var(InVar), UnifyMode, assign(OutVar, InVar),
         Context).

@@ -1057,8 +1057,20 @@
     --->    cell_is_unique
     ;       cell_is_shared.
 
+    % A unify mode specifies four instantation states:
+    %
+    % - the initial instantation state of the LHS (li),
+    % - the final instantation state of the LHS (lf),
+    % - the initial instantation state of the RHS (ri) and
+    % - the final instantation state of the RHS (rf).
+    %
+    % The most unifications, the two final instantiation states are the same
+    % (ground, either with or without further information), but in some cases
+    % they may be different: for example, one could be unique and the other
+    % clobbered.
+    %
 :- type unify_mode
-    --->    unify_modes_lhs_rhs(from_to_insts, from_to_insts).
+    --->    unify_modes_li_lf_ri_rf(mer_inst, mer_inst, mer_inst, mer_inst).
 
 %-----------------------------------------------------------------------------%
 %

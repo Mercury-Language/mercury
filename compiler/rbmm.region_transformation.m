@@ -986,13 +986,9 @@ ite_renaming_annotation_to_assignment(Annotation, !NameToVar,
 
 make_assignment_goal(LeftRegVar, RightRegVar, Context, AssignmentGoal) :-
     AssignmentExpr = unify(LeftRegVar, rhs_var(RightRegVar),
-        unify_modes_lhs_rhs(out_from_to_insts, in_from_to_insts),
+        unify_modes_li_lf_ri_rf(free, ground_inst, ground_inst, ground_inst),
         assign(LeftRegVar, RightRegVar),
-        unify_context(
-            umc_implicit(Context),
-            []
-        )
-    ),
+        unify_context(umc_implicit(Context), [])),
     % Nonlocals and instmap delta will be recomputed anyway, so just put
     % dummy values in.
     % XXX  We need to setup the instantiationess for LeftRegVar here.

@@ -1358,10 +1358,8 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
             else
                 unexpected($pred, "cannot get CurriedArgModes")
             ),
-            ArgModes = list.map(
-                ( func(M) = unify_modes_lhs_rhs(I, I) :-
-                    I = mode_to_from_to_insts(ModuleInfo, M)
-                ), CurriedArgModes),
+            ArgModes = list.map(mode_both_sides_to_unify_mode(ModuleInfo),
+                CurriedArgModes),
 
             % The dummy arguments can't be used anywhere.
             ProcInfo2 = !.Info ^ hoi_proc_info,
@@ -2087,8 +2085,8 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
             OtherArgs = tci_arg_vars(OtherVars),
             list.det_index1(OtherVars, Index, SelectedArg),
             maybe_add_alias(OutputVar, SelectedArg, !Info),
-            UnifyMode =
-                unify_modes_lhs_rhs(out_from_to_insts, in_from_to_insts),
+            UnifyMode = unify_modes_li_lf_ri_rf(free, ground_inst,
+                ground_inst, ground_inst),
             Unification = assign(OutputVar, SelectedArg),
             Goal = unify(OutputVar, rhs_var(SelectedArg), UnifyMode,
                 Unification, unify_context(umc_explicit, [])),
@@ -2145,9 +2143,8 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
 
             SelectedConsIdRHS =
                 rhs_functor(SelectedConsId, is_not_exist_constr, []),
-            UnifyMode = unify_modes_lhs_rhs(
-                from_to_insts(free, SelectedConstInst),
-                from_to_insts(SelectedConstInst, SelectedConstInst)),
+            UnifyMode = unify_modes_li_lf_ri_rf(free, SelectedConstInst,
+                SelectedConstInst, SelectedConstInst),
             Unification = construct(OutputVar, SelectedConsId, [], [],
                 construct_dynamically, cell_is_shared, no_construct_sub_info),
             Goal = unify(OutputVar, SelectedConsIdRHS, UnifyMode,
@@ -2365,8 +2362,9 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
     ProcInfo0 = !.Info ^ hoi_proc_info,
     (
         MaybeResult = no,
-        In = in_from_to_insts,
-        GoalExpr = unify(Arg1, rhs_var(Arg2), unify_modes_lhs_rhs(In, In),
+        UnifyMode = unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
+            ground_inst, ground_inst),
+        GoalExpr = unify(Arg1, rhs_var(Arg2), UnifyMode,
             simple_test(Arg1, Arg2), unify_context(umc_explicit, []))
     ;
         MaybeResult = yes(ComparisonResult),
@@ -2422,9 +2420,10 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         NonLocals = NonLocals0,
         instmap_delta_init_reachable(InstMapDelta),
         Detism = detism_semi,
+        UnifyMode = unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
+            ground_inst, ground_inst),
         SpecialGoal = unify(UnwrappedArg1, rhs_var(UnwrappedArg2),
-            unify_modes_lhs_rhs(in_from_to_insts, in_from_to_insts),
-            simple_test(UnwrappedArg1, UnwrappedArg2),
+            UnifyMode, simple_test(UnwrappedArg1, UnwrappedArg2),
             unify_context(umc_explicit, [])),
         goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
             Context, GoalInfo),
@@ -2562,19 +2561,18 @@ unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg,
     type_to_ctor_det(OuterType, OuterTypeCtor),
     ConsId = cons(Constructor, 1, OuterTypeCtor),
     Ground = ground(shared, none_or_default_func),
-    ArgModes = [unify_modes_lhs_rhs(
-        from_to_insts(Ground, Ground), from_to_insts(free, Ground))],
+    UnifyModeInOut = unify_modes_li_lf_ri_rf(Ground, Ground, free, Ground),
+    ArgModes = [UnifyModeInOut],
     set_of_var.list_to_set([Arg, UnwrappedArg], NonLocals),
     % This will be recomputed later.
     InstMapDelta = instmap_delta_bind_var(UnwrappedArg),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
         GoalInfo),
+    Unification = deconstruct(Arg, ConsId, [UnwrappedArg], ArgModes,
+        cannot_fail, cannot_cgc),
     GoalExpr = unify(Arg,
         rhs_functor(ConsId, is_not_exist_constr, [UnwrappedArg]),
-        unify_modes_lhs_rhs(in_from_to_insts, out_from_to_insts),
-        deconstruct(Arg, ConsId, [UnwrappedArg], ArgModes,
-            cannot_fail, cannot_cgc),
-        unify_context(umc_explicit, [])),
+        UnifyModeInOut, Unification, unify_context(umc_explicit, [])),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -3308,19 +3306,16 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         IsConst = yes,
         % Build the constant inside the specialized version, so that
         % other constants which include it will be recognized as constant.
-        ArgModes = list.map(
-            ( func(M) = unify_modes_lhs_rhs(I, I) :-
-                I = mode_to_from_to_insts(ModuleInfo, M)
-            ), CurriedArgModes1),
+        ArgModes = list.map(mode_both_sides_to_unify_mode(ModuleInfo),
+            CurriedArgModes1),
         set_of_var.list_to_set(CurriedHeadVars1, ConstNonLocals),
         ConstInst = ground(shared, GroundInstInfo),
         ConstInstMapDelta = instmap_delta_from_assoc_list([LVar - ConstInst]),
         goal_info_init(ConstNonLocals, ConstInstMapDelta, detism_det,
             purity_pure, ConstGoalInfo),
         RHS = rhs_functor(ConsId, is_not_exist_constr, CurriedHeadVars1),
-        UnifyMode = unify_modes_lhs_rhs(
-            from_to_insts(free, ConstInst),
-            from_to_insts(ConstInst, ConstInst)),
+        UnifyMode = unify_modes_li_lf_ri_rf(free, ConstInst,
+            ConstInst, ConstInst),
         ConstGoalExpr = unify(LVar, RHS, UnifyMode,
             construct(LVar, ConsId, CurriedHeadVars1, ArgModes,
                 construct_dynamically, cell_is_unique, no_construct_sub_info),
@@ -3527,6 +3522,15 @@ maybe_add_constraint(Constraint, !RevConstraints) :-
     else
         !:RevConstraints = [Constraint | !.RevConstraints]
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func mode_both_sides_to_unify_mode(module_info, mer_mode) = unify_mode.
+
+mode_both_sides_to_unify_mode(ModuleInfo, Mode) = UnifyMode :-
+    mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
+    UnifyMode = unify_modes_li_lf_ri_rf(InitInst, FinalInst,
+        InitInst, FinalInst).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.higher_order.

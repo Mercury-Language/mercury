@@ -333,8 +333,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 ModuleInfo = !.DelayInfo ^ dpi_module_info,
                 some [ArgMode] (
                     list.member(ArgMode, ArgModes),
-                    ArgMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
-                    RHSFromToInsts = from_to_insts(_, RHSFinalInst),
+                    ArgMode = unify_modes_li_lf_ri_rf(_, _, _, RHSFinalInst),
                     inst_is_free(ModuleInfo, RHSFinalInst)
                 )
             then
@@ -567,8 +566,7 @@ delay_partial_inst_in_deconstruct(Goal0, UnifyMode, Unify, Goal,
             CanonArgs, Args, ArgModes),
 
         % Construct Var if it should be ground now.
-        UnifyMode = unify_modes_lhs_rhs(LHSFromToInsts, _RHSFromToInsts),
-        LHSFromToInsts = from_to_insts(_, LHSFinalInst),
+        UnifyMode = unify_modes_li_lf_ri_rf(_, LHSFinalInst, _, _),
         ( if inst_is_ground(ModuleInfo, LHSFinalInst) then
             construct_functor(Var, ConsId, CanonArgs, ConstructGoal),
 
@@ -598,8 +596,7 @@ delay_partial_inst_in_deconstruct(Goal0, UnifyMode, Unify, Goal,
 
 maybe_unify_var_with_ground_var(ModuleInfo, Context, LHSVar, RHSVar, UnifyMode)
         = Goal :-
-    UnifyMode = unify_modes_lhs_rhs(_, RHSFromToInsts),
-    RHSFromToInsts = from_to_insts(RHSInitInst, _),
+    UnifyMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, _),
     inst_is_ground(ModuleInfo, RHSInitInst),
     create_pure_atomic_complicated_unification(LHSVar, rhs_var(RHSVar),
         Context, umc_implicit("delay_partial_inst"), [], Goal).

@@ -186,9 +186,7 @@ fail_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
 
 create_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, Purity, Goal) :-
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free, free),
-        from_to_insts(free, free)),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, free, free, free),
     Unification = complicated_unify(UnifyMode, can_fail, []),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init_context_purity(Context, Purity, GoalInfo),
@@ -204,9 +202,7 @@ create_pure_atomic_complicated_unification(LHS, RHS, Context,
 
 make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Ground = ground(shared, none_or_default_func),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free, Ground),
-        from_to_insts(Ground, Ground)),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
     Unification = assign(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_var(X),
@@ -216,9 +212,7 @@ make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
 
 make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Ground = ground(shared, none_or_default_func),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(Ground, Ground),
-        from_to_insts(Ground, Ground)),
+    UnifyMode = unify_modes_li_lf_ri_rf(Ground, Ground, Ground, Ground),
     Unification = simple_test(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_no_var,
@@ -243,9 +237,7 @@ make_char_const_construction(Context, Var, Char, Goal) :-
 make_const_construction(Context, Var, ConsId, Goal) :-
     RHS = rhs_functor(ConsId, is_not_exist_constr, []),
     Inst = bound(unique, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free, Inst),
-        from_to_insts(Inst, Inst)),
+    UnifyMode = unify_modes_li_lf_ri_rf(free, Inst, Inst, Inst),
     Unification = construct(Var, ConsId, [], [],
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     UnifyContext = unify_context(umc_explicit, []),
@@ -321,9 +313,8 @@ make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
 construct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
     RHS = rhs_functor(ConsId, is_not_exist_constr, Args),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(free_inst, ground_inst),
-        from_to_insts(ground_inst, ground_inst)),
+    UnifyMode = unify_modes_li_lf_ri_rf(free_inst, ground_inst,
+        ground_inst, ground_inst),
     list.duplicate(Arity, UnifyMode, ArgModes),
     Unification = construct(Var, ConsId, Args, ArgModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
@@ -337,9 +328,8 @@ construct_functor(Var, ConsId, Args, Goal) :-
 deconstruct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
     RHS = rhs_functor(ConsId, is_not_exist_constr, Args),
-    UnifyMode = unify_modes_lhs_rhs(
-        from_to_insts(ground_inst, ground_inst),
-        from_to_insts(free_inst, ground_inst)),
+    UnifyMode = unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
+        free_inst, ground_inst),
     list.duplicate(Arity, UnifyMode, ArgModes),
     UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, Args, ArgModes, cannot_fail,
