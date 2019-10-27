@@ -245,7 +245,8 @@
 :- func det_to_uint32(integer) = uint32.
 
     % Convert an integer to an int64.
-    % Fails if the integer is not in the range [-2147483648, 2147483647].
+    % Fails if the integer is not in the range
+    % [-9223372036854775808, 9223372036854775807].
     %
 :- pred to_int64(integer::in, int64::out) is semidet.
 
@@ -254,7 +255,7 @@
 :- func det_to_int64(integer) = int64.
 
     % Convert an integer to a uint64.
-    % Fails if the integer is not in range [0, 4294967295].
+    % Fails if the integer is not in range [0, 18446744073709551615].
     %
 :- pred to_uint64(integer::in, uint64::out) is semidet.
 
