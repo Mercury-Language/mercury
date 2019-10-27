@@ -211,14 +211,14 @@
             % just once.
 
 :- type error_msg_component
-    --->    always(format_components)
+    --->    always(list(format_component))
             % Print these components under all circumstances.
 
     ;       option_is_set(option, bool, list(error_msg_component))
             % Print the embedded components only if the specified boolean
             % option has the specified value.
 
-    ;       verbose_only(verbose_always_or_once, format_components)
+    ;       verbose_only(verbose_always_or_once, list(format_component))
             % Print these components only if --verbose-errors is specified.
             % If it is not specified, set the flag that triggers the printing
             % of the message reminding the user about --verbose-errors.
@@ -226,7 +226,8 @@
             % all but the first printing of the message even if
             % --verbose-errors is specified.
 
-    ;       verbose_and_nonverbose(format_components, format_components)
+    ;       verbose_and_nonverbose(list(format_component),
+                list(format_component))
             % If --verbose-errors is specified, print the first set of
             % components. If it is not specified, print the second set,
             % and set the flag that triggers the printing of the message
@@ -474,8 +475,6 @@
 
     ;       invis_order_default_end(int).
             % See the documentation of invis_order_default_start above.
-
-:- type format_components == list(format_component).
 
     % Wrap words() around a string.
     %

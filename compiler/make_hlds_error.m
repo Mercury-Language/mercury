@@ -59,7 +59,7 @@
     % Emit an error reporting that something should not have occurred in
     % a module interface.
     %
-:- pred error_is_exported(prog_context::in, format_components::in,
+:- pred error_is_exported(prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Check for invalid pragmas in interface sections.

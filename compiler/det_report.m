@@ -462,7 +462,7 @@ check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, ModuleInfo, !Specs) :-
         true
     ).
 
-:- func func_primary_mode_det_msg = format_components.
+:- func func_primary_mode_det_msg = list(format_component).
 
 func_primary_mode_det_msg = [words("In Mercury,"),
     words("a function is supposed to be a true mathematical function"),
@@ -506,7 +506,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
     ).
 
 :- pred report_determinism_problem(pred_proc_id::in, module_info::in,
-    format_components::in, determinism::in, determinism::in,
+    list(format_component)::in, determinism::in, determinism::in,
     list(error_msg)::out) is det.
 
 report_determinism_problem(PredProcId, ModuleInfo, MessagePieces,

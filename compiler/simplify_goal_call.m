@@ -866,7 +866,7 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
     ).
 
 :- pred is_useless_unsigned_comparison(string::in, string::in, mer_inst::in,
-    mer_inst::in, format_components::out) is semidet.
+    mer_inst::in, list(format_component)::out) is semidet.
 
 is_useless_unsigned_comparison(ModuleName, PredName, ArgA, ArgB, Pieces) :-
     (
