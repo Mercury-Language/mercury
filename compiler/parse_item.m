@@ -132,8 +132,8 @@ decl_is_not_an_atom(VarSet, Term) = Spec :-
     Context = get_term_context(Term),
     Pieces = [words("Error:"), quote(TermStr),
         words("is not a valid declaration."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 :- func decl_functor_is_not_valid(term, string) = error_spec.
 
@@ -141,8 +141,8 @@ decl_functor_is_not_valid(Term, Functor) = Spec :-
     Context = get_term_context(Term),
     Pieces = [words("Error:"), quote(Functor),
         words("is not a valid declaration type."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -309,8 +309,8 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         else
             Pieces = [words("Error: purity annotations"),
                 words("are not allowed on mode declarations."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             (
                 MaybeIOM0 = ok1(_),
                 MaybeIOM = error1([Spec])
@@ -421,8 +421,8 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
         else
             Pieces = [words("Error: only pred, func and mode declarations"),
                 words("are allowed in class interfaces."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                TermContext, Pieces),
             MaybeClassMethod = error1([Spec])
         )
     ).
@@ -457,8 +457,8 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
             words("may appear in declarations"),
             words("only to denote the quantification"),
             words("of a list of variables."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -479,8 +479,8 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
         Pieces = [words("Error: the symbol"), quote(Functor),
             words("may appear in declarations only to introduce"),
             words("a constraint or a conjunction of constraints."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -501,8 +501,8 @@ parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
         Pieces = [words("Error: the symbol"), quote(Functor),
             words("may appear only as an annotation"),
             words("in front of a predicate or function declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -545,8 +545,8 @@ parse_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
         Pieces = [words("Error: a"), decl("module"), words("declaration"),
             words("should have just one argument,"),
             words("which should be a module name."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -564,8 +564,8 @@ parse_end_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
         Pieces = [words("Error: an"), decl("end_module"), words("declaration"),
             words("should have just one argument,"),
             words("which should be a module name."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -584,8 +584,8 @@ parse_section_marker(Functor, ArgTerms, Context, SeqNum, Section, MaybeIOM) :-
         ArgTerms = [_ | _],
         Pieces = [words("Error: an"), decl(Functor), words("declaration"),
             words("should have no arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -656,8 +656,8 @@ parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context,
         Pieces = [words("Error:"), words(Article), decl(Functor),
             words("declaration"), words("should have just one argument,"),
             words("which should be a list of one or more module names."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -716,8 +716,8 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
             words("which should be either the definition of a mode,"),
             words("or the declaration of one mode"),
             words("of a predicate or function."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -748,9 +748,9 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                 else
                     Pieces = [words("Error: invalid module name in"),
                         decl("version_numbers"), suffix("."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(ModuleNameTerm),
-                            [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree,
+                        get_term_context(ModuleNameTerm), Pieces),
                     MaybeIOM = error1([Spec])
                 )
             else
@@ -769,8 +769,8 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
             Pieces = [words("Error: invalid version number in"),
                 decl("version_numbers"), suffix("."), nl],
             VersionNumberContext = get_term_context(VersionNumbersTerm),
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(VersionNumberContext, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                VersionNumberContext, Pieces),
             MaybeIOM = error1([Spec])
         )
     else
@@ -779,8 +779,8 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
             words("which should be a version number,"),
             words("a module name, and a tuple containing maps"),
             words("from item ids to timestamps."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -803,14 +803,27 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         FuncHeadTerm = desugar_field_access(FuncHeadTerm0)
     then
         MaybeFuncResultTerm = yes(FuncResultTerm0),
-        HeadContextPieces = cord.singleton(words("In equation head:")),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName,
-            FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor)
+        ( if
+            is_the_name_a_variable(VarSet0, vtk_clause_func, FuncHeadTerm,
+                Spec)
+        then
+            MaybeFunctor = error2([Spec])
+        else
+            HeadContextPieces = cord.singleton(words("In equation head:")),
+            parse_implicitly_qualified_sym_name_and_args(ModuleName,
+                FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor)
+        )
     else
         MaybeFuncResultTerm = no,
-        HeadContextPieces = cord.singleton(words("In clause head:")),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-            VarSet, HeadContextPieces, MaybeFunctor)
+        ( if
+            is_the_name_a_variable(VarSet0, vtk_clause_pred, HeadTerm, Spec)
+        then
+            MaybeFunctor = error2([Spec])
+        else
+            HeadContextPieces = cord.singleton(words("In clause head:")),
+            parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
+                VarSet, HeadContextPieces, MaybeFunctor)
+        )
     ),
 
     (
@@ -882,9 +895,8 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
             then
                 Pieces = [words("Error:"), quote("with_inst"),
                     words("and determinism both specified."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(BaseTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(BaseTerm), Pieces),
                 MaybeIOM = error1([Spec])
             else if
                 WithInst = yes(_),
@@ -893,9 +905,8 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
                 Pieces = [words("Error:"), quote("with_inst"),
                     words("specified"), words("without"),
                     quote("with_type"), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(BaseTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(BaseTerm), Pieces),
                 MaybeIOM = error1([Spec])
             else
                 ( if
@@ -929,8 +940,8 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
             words("should have just one argument,"),
             words("which should specify the types and maybe the modes"),
             words("of the arguments of a"), words(Functor), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -957,74 +968,84 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
             ok3(ExistQVars, Constraints, InstConstraints),
         MaybePurity = ok1(Purity)
     then
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, PredTypeTerm,
-            VarSet, ContextPieces, MaybePredNameAndArgs),
-        (
-            MaybePredNameAndArgs = error2(Specs),
-            MaybeIOM = error1(Specs)
-        ;
-            MaybePredNameAndArgs = ok2(Functor, ArgTerms),
-            ArgContextFunc = (func(ArgNum) = ContextPieces ++
-                    cord.from_list([words("in the"), nth_fixed(ArgNum),
-                    words("argument:"), nl])),
-            parse_type_and_modes(constrain_some_inst_vars(InstConstraints),
-                dont_require_tm_mode, wnhii_pred_arg, VarSet, ArgContextFunc,
-                ArgTerms, 1, TypesAndModes, [], TMSpecs),
-            check_type_and_mode_list_is_consistent(TypesAndModes, no,
-                get_term_context(PredTypeTerm), MaybeTypeModeListKind),
-            ( if
-                TMSpecs = [],
-                MaybeTypeModeListKind = ok1(_)
-            then
-                ( if
-                    WithInst = yes(_),
-                    TypesAndModes = [type_only(_) | _]
-                then
-                    Pieces = [words("Error:"), quote("with_inst"),
-                        words("specified without argument modes."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(PredTypeTerm),
-                            [always(Pieces)])]),
-                    MaybeIOM = error1([Spec])
-                else if
-                    WithInst = no,
-                    WithType = yes(_),
-                    TypesAndModes = [type_and_mode(_, _) | _]
-                then
-                    Pieces = [words("Error: arguments have modes but"),
-                        quote("with_inst"), words("not specified."), nl],
-                    Spec = error_spec(severity_error,
-                        phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(PredTypeTerm),
-                            [always(Pieces)])]),
-                    MaybeIOM = error1([Spec])
-                else
-                    varset.coerce(VarSet, TypeVarSet),
-                    varset.coerce(VarSet, InstVarSet),
-                    inconsistent_constrained_inst_vars_in_type_and_modes(
-                        TypesAndModes, InconsistentVars),
-                    report_inconsistent_constrained_inst_vars(
-                        in_pred_or_func_decl_desc(PredOrFunc),
-                        get_term_context(PredTypeTerm),
-                        InstVarSet, InconsistentVars, MaybeInconsistentSpec),
-                    (
-                        MaybeInconsistentSpec = no,
-                        Origin = item_origin_user,
-                        ItemPredDecl = item_pred_decl_info(Functor, PredOrFunc,
-                            TypesAndModes, WithType, WithInst, MaybeDet,
-                            Origin, TypeVarSet, InstVarSet, ExistQVars,
-                            Purity, Constraints, Context, SeqNum),
-                        Item = item_pred_decl(ItemPredDecl),
-                        MaybeIOM = ok1(iom_item(Item))
-                    ;
-                        MaybeInconsistentSpec = yes(Spec),
-                        MaybeIOM = error1([Spec])
-                    )
-                )
-            else
-                Specs = TMSpecs ++ get_any_errors1(MaybeTypeModeListKind),
+        % The term parser turns "X(a, b)" into "`'(X, a, b)".
+        ( if
+            is_the_name_a_variable(VarSet, vtk_type_decl_pred, PredTypeTerm,
+                Spec)
+        then
+            MaybeIOM = error1([Spec])
+        else
+            parse_implicitly_qualified_sym_name_and_args(ModuleName,
+                PredTypeTerm, VarSet, ContextPieces, MaybePredNameAndArgs),
+            (
+                MaybePredNameAndArgs = error2(Specs),
                 MaybeIOM = error1(Specs)
+            ;
+                MaybePredNameAndArgs = ok2(Functor, ArgTerms),
+                ArgContextFunc =
+                    ( func(ArgNum) = ContextPieces ++
+                        cord.from_list([words("in the"), nth_fixed(ArgNum),
+                        words("argument:"), nl])
+                    ),
+                parse_type_and_modes(constrain_some_inst_vars(InstConstraints),
+                    dont_require_tm_mode, wnhii_pred_arg, VarSet,
+                    ArgContextFunc, ArgTerms, 1, TypesAndModes, [], TMSpecs),
+                check_type_and_mode_list_is_consistent(TypesAndModes, no,
+                    get_term_context(PredTypeTerm), MaybeTypeModeListKind),
+                ( if
+                    TMSpecs = [],
+                    MaybeTypeModeListKind = ok1(_)
+                then
+                    ( if
+                        WithInst = yes(_),
+                        TypesAndModes = [type_only(_) | _]
+                    then
+                        Pieces = [words("Error:"), quote("with_inst"),
+                            words("specified without argument modes."), nl],
+                        Spec = simplest_spec(severity_error,
+                            phase_term_to_parse_tree,
+                            get_term_context(PredTypeTerm), Pieces),
+                        MaybeIOM = error1([Spec])
+                    else if
+                        WithInst = no,
+                        WithType = yes(_),
+                        TypesAndModes = [type_and_mode(_, _) | _]
+                    then
+                        Pieces = [words("Error: arguments have modes but"),
+                            quote("with_inst"), words("not specified."), nl],
+                        Spec = simplest_spec(severity_error,
+                            phase_term_to_parse_tree,
+                            get_term_context(PredTypeTerm), Pieces),
+                        MaybeIOM = error1([Spec])
+                    else
+                        varset.coerce(VarSet, TypeVarSet),
+                        varset.coerce(VarSet, InstVarSet),
+                        inconsistent_constrained_inst_vars_in_type_and_modes(
+                            TypesAndModes, InconsistentVars),
+                        report_inconsistent_constrained_inst_vars(
+                            in_pred_or_func_decl_desc(PredOrFunc),
+                            get_term_context(PredTypeTerm),
+                            InstVarSet, InconsistentVars,
+                            MaybeInconsistentSpec),
+                        (
+                            MaybeInconsistentSpec = no,
+                            Origin = item_origin_user,
+                            ItemPredDecl = item_pred_decl_info(Functor,
+                                PredOrFunc, TypesAndModes, WithType, WithInst,
+                                MaybeDet, Origin, TypeVarSet, InstVarSet,
+                                ExistQVars, Purity, Constraints,
+                                Context, SeqNum),
+                            Item = item_pred_decl(ItemPredDecl),
+                            MaybeIOM = ok1(iom_item(Item))
+                        ;
+                            MaybeInconsistentSpec = yes(Spec),
+                            MaybeIOM = error1([Spec])
+                        )
+                    )
+                else
+                    Specs = TMSpecs ++ get_any_errors1(MaybeTypeModeListKind),
+                    MaybeIOM = error1(Specs)
+                )
             )
         )
     else
@@ -1055,47 +1076,59 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Context, SeqNum,
             Term = term.functor(term.atom("="),
                 [MaybeSugaredFuncTerm, ReturnTerm], _)
         then
-            FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
-            parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
-                VarSet, ContextPieces, MaybeFuncNameAndArgs),
-            (
-                MaybeFuncNameAndArgs = error2(Specs),
-                MaybeIOM = error1(Specs)
-            ;
-                MaybeFuncNameAndArgs = ok2(FuncName, ArgTerms),
-                ArgContextFunc = (func(ArgNum) = ContextPieces ++
-                        cord.from_list([words("in the"), nth_fixed(ArgNum),
-                        words("argument:"), nl])),
-                parse_type_and_modes(constrain_some_inst_vars(InstConstraints),
-                    dont_require_tm_mode, wnhii_func_arg,
-                    VarSet, ArgContextFunc, ArgTerms, 1,
-                    ArgTypesAndModes, [], ArgTMSpecs),
-                RetContextPieces = ContextPieces ++
-                    cord.from_list([words("in the return value"), nl]),
-                parse_type_and_mode(constrain_some_inst_vars(InstConstraints),
-                    dont_require_tm_mode, wnhii_func_return_arg,
-                    VarSet, RetContextPieces, ReturnTerm, MaybeRetTypeAndMode),
-                ( if
-                    ArgTMSpecs = [],
-                    MaybeRetTypeAndMode = ok1(RetTypeAndMode)
-                then
-                    % We use an auxiliary predicate because the code is just
-                    % too deeply indented here.
-                    parse_func_decl_base_2(FuncName,
-                        ArgTypesAndModes, RetTypeAndMode,
-                        FuncTerm, Term, VarSet, MaybeDet,
-                        ExistQVars, Constraints, Context, SeqNum,
-                        PurityAttrs, MaybeIOM)
-                else
-                    Specs = ArgTMSpecs ++ get_any_errors1(MaybeRetTypeAndMode),
+            % The term parser turns "X(a, b)" into "`'(X, a, b)".
+            ( if
+                is_the_name_a_variable(VarSet, vtk_type_decl_func,
+                    MaybeSugaredFuncTerm, Spec)
+            then
+                MaybeIOM = error1([Spec])
+            else
+                FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
+                parse_implicitly_qualified_sym_name_and_args(ModuleName,
+                    FuncTerm, VarSet, ContextPieces, MaybeFuncNameAndArgs),
+                (
+                    MaybeFuncNameAndArgs = error2(Specs),
                     MaybeIOM = error1(Specs)
+                ;
+                    MaybeFuncNameAndArgs = ok2(FuncName, ArgTerms),
+                    ArgContextFunc = (func(ArgNum) = ContextPieces ++
+                            cord.from_list([words("in the"), nth_fixed(ArgNum),
+                            words("argument:"), nl])),
+                    parse_type_and_modes(
+                        constrain_some_inst_vars(InstConstraints),
+                        dont_require_tm_mode, wnhii_func_arg,
+                        VarSet, ArgContextFunc, ArgTerms, 1,
+                        ArgTypesAndModes, [], ArgTMSpecs),
+                    RetContextPieces = ContextPieces ++
+                        cord.from_list([words("in the return value"), nl]),
+                    parse_type_and_mode(
+                        constrain_some_inst_vars(InstConstraints),
+                        dont_require_tm_mode, wnhii_func_return_arg,
+                        VarSet, RetContextPieces, ReturnTerm,
+                        MaybeRetTypeAndMode),
+                    ( if
+                        ArgTMSpecs = [],
+                        MaybeRetTypeAndMode = ok1(RetTypeAndMode)
+                    then
+                        % We use an auxiliary predicate because the code is
+                        % just too deeply indented here.
+                        parse_func_decl_base_2(FuncName,
+                            ArgTypesAndModes, RetTypeAndMode,
+                            FuncTerm, Term, VarSet, MaybeDet,
+                            ExistQVars, Constraints, Context, SeqNum,
+                            PurityAttrs, MaybeIOM)
+                    else
+                        Specs =
+                            ArgTMSpecs ++ get_any_errors1(MaybeRetTypeAndMode),
+                        MaybeIOM = error1(Specs)
+                    )
                 )
             )
         else
             Pieces = [words("Error:"), quote("="), words("expected in"),
                 decl("func"), words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(Term), Pieces),
             MaybeIOM = error1([Spec])
         )
     ).
@@ -1221,8 +1254,8 @@ check_type_and_mode_list_is_consistent(TypesAndModes, MaybeRetTypeAndMode,
         ),
         Pieces = [words("Error: some but not all arguments have modes."), nl
             | IdPieces],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeKind = error1([Spec])
     ).
 
@@ -1303,8 +1336,8 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
         then
             Pieces = [words("Error:"), quote("with_inst"),
                 words("and determinism both specified."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(Term), Pieces),
             MaybeIOM = error1([Spec])
         else
             parse_mode_decl_base(ModuleName, VarSet, BaseTerm, Context, SeqNum,
@@ -1327,13 +1360,11 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Context, SeqNum,
         Term = term.functor(term.atom("="),
             [MaybeSugaredFuncTerm, ReturnTypeTerm], _)
     then
-        ( if MaybeSugaredFuncTerm = term.functor(term.atom(""), _, _) then
-            % The term parser turns "X(a, b)" into "`'(X, a, b)".
-            Pieces = [words("Error: you cannot declare a mode"),
-                words("for a function whose name is a variable."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(MaybeSugaredFuncTerm),
-                    [always(Pieces)])]),
+        % The term parser turns "X(a, b)" into "`'(X, a, b)".
+        ( if
+            is_the_name_a_variable(VarSet, vtk_mode_decl_func,
+                MaybeSugaredFuncTerm, Spec)
+        then
             MaybeIOM = error1([Spec])
         else
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
@@ -1352,11 +1383,10 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Context, SeqNum,
             )
         )
     else
-        ( if Term = term.functor(term.atom(""), _, _) then
-            Pieces = [words("Error: you cannot declare a mode"),
-                words("for a predicate whose name is a variable."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        % The term parser turns "X(a, b)" into "`'(X, a, b)".
+        ( if
+            is_the_name_a_variable(VarSet, vtk_mode_decl_pred, Term, Spec)
+        then
             MaybeIOM = error1([Spec])
         else
             ContextPieces = cord.from_list([words("In"), decl("mode"),
@@ -1499,8 +1529,8 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
         PurityAttrs = [_ | _],
         Pieces = [words("Error: duplicate purity annotations"),
             words("are not allowed."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybePurity = error1([Spec])
     ).
 
@@ -1695,8 +1725,8 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
         Pieces = [words("Error: a"), decl("promise"), words("declaration"),
             words("should have just one argument,"),
             words("which should be a goal."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1740,8 +1770,8 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
         Pieces = [words("Error: a"), decl(Functor), words("declaration"),
             words("should have just one argument,"),
             words("which should be a goal."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1777,8 +1807,8 @@ parse_determinism_suffix(VarSet, ContextPieces, Term, BeforeDetismTerm,
                 words("Error: invalid determinism category"),
                 quote(DetismTermStr), suffix("."), nl
             ],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(DetismTerm), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(DetismTerm), Pieces),
             MaybeMaybeDetism = error1([Spec])
         )
     else
@@ -1893,8 +1923,8 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
         Pieces = [words("Error: module names starting with capital letters"),
             words("must be quoted using single quotes"),
             words("(e.g. "":- module 'Foo'."")."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeModule = error1([Spec])
     ;
         Term = term.functor(_, _, _),
@@ -1904,6 +1934,63 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
 
 %---------------------------------------------------------------------------%
 
+:- type var_term_kind
+    --->    vtk_type_decl_pred
+    ;       vtk_type_decl_func
+    ;       vtk_mode_decl_pred
+    ;       vtk_mode_decl_func
+    ;       vtk_clause_pred
+    ;       vtk_clause_func.
+
+    % The term parser turns "X(a, b)" into "`'(X, a, b)".
+    %
+    % Check whether Term is the result of this transformation,
+    % and if yes, return an error message that reflects what
+    % the term was supposed to be.
+    %
+:- pred is_the_name_a_variable(varset::in, var_term_kind::in, term::in,
+    error_spec::out) is semidet.
+
+is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
+    ( if Term = term.functor(term.atom(""), ArgTerms, TermContext) then
+        ( if
+            ArgTerms = [ArgTerm1 | _],
+            ArgTerm1 = term.variable(_, _)
+        then
+            VarStr = describe_error_term(VarSet, ArgTerm1),
+            VarPieces = [words("such as"), quote(VarStr)]
+        else
+            VarPieces = []
+        ),
+        (
+            Kind = vtk_type_decl_pred,
+            WhatPieces = [words("a predicate")]
+        ;
+            Kind = vtk_type_decl_func,
+            WhatPieces = [words("a function")]
+        ;
+            Kind = vtk_mode_decl_pred,
+            WhatPieces = [words("a mode for a predicate")]
+        ;
+            Kind = vtk_mode_decl_func,
+            WhatPieces = [words("a mode for a function")]
+        ;
+            Kind = vtk_clause_pred,
+            WhatPieces = [words("a clause for a predicate")]
+        ;
+            Kind = vtk_clause_func,
+            WhatPieces = [words("a clause for a function")]
+        ),
+        Pieces = [words("Error: you cannot declare")] ++ WhatPieces ++
+            [words("whose name is a variable")] ++ VarPieces ++
+            [suffix("."), nl],
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            TermContext, Pieces)
+    else
+        fail
+    ).
+
+%---------------------------------------------------------------------------% 
 :- func in_pred_or_func_decl_desc(pred_or_func) = string.
 
 in_pred_or_func_decl_desc(pf_function) = "in function declaration".

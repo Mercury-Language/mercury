@@ -735,48 +735,39 @@ add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
     ItemClauseInfo = item_clause_info(PredSymName, PredOrFunc, Args, Origin,
         VarSet, MaybeBodyGoal, Context, SeqNum),
 
-    PredName = unqualify_name(PredSymName),
-    ( if PredName = "" then
-        Pieces = [words("Error: you cannot define a clause for a"),
-            words(pred_or_func_to_full_str(PredOrFunc)),
-            words("whose name is a variable."), nl],
-        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    else
+    (
+        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
         (
-            ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+            ItemExport = item_export_anywhere,
             (
-                ItemExport = item_export_anywhere,
-                (
-                    Origin = item_origin_user,
-                    list.length(Args, Arity),
+                Origin = item_origin_user,
+                list.length(Args, Arity),
 
-                    % There is no point printing out the qualified name
-                    % since that information is already in the context.
-                    ClauseId = simple_call_id_to_string(PredOrFunc,
-                        sym_name_arity(unqualified(PredName), Arity)),
-                    error_is_exported(Context,
-                        [words("clause for " ++ ClauseId)], !Specs)
-                ;
-                    Origin = item_origin_compiler(_CompilerAttrs)
-                )
+                % There is no point printing out the qualified name
+                % since that information is already in the context.
+                UnqualPredSymName = unqualified(unqualify_name(PredSymName)),
+                ClauseId = simple_call_id_to_string(PredOrFunc,
+                    sym_name_arity(UnqualPredSymName, Arity)),
+                error_is_exported(Context, [words("clause for " ++ ClauseId)],
+                    !Specs)
             ;
-                ( ItemExport = item_export_nowhere
-                ; ItemExport = item_export_only_submodules
-                )
+                Origin = item_origin_compiler(_CompilerAttrs)
             )
         ;
-            ItemMercuryStatus = item_defined_in_other_module(_)
-            % Clauses defined in other modules are NOT an error; they can be
-            % imported from optimization files.
-        ),
-        % At this stage we only need know that it is not a promise declaration.
-        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        module_add_clause(VarSet, PredOrFunc, PredSymName, Args, MaybeBodyGoal,
-            PredStatus, Context, yes(SeqNum), goal_type_none,
-            !ModuleInfo, !QualInfo, !Specs)
-    ).
+            ( ItemExport = item_export_nowhere
+            ; ItemExport = item_export_only_submodules
+            )
+        )
+    ;
+        ItemMercuryStatus = item_defined_in_other_module(_)
+        % Clauses defined in other modules are NOT an error; they can be
+        % imported from optimization files.
+    ),
+    % At this stage we only need know that it is not a promise declaration.
+    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+    module_add_clause(VarSet, PredOrFunc, PredSymName, Args, MaybeBodyGoal,
+        PredStatus, Context, yes(SeqNum), goal_type_none,
+        !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
