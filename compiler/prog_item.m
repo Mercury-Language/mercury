@@ -2778,7 +2778,7 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         ( Item = item_initialise(_)
         ; Item = item_finalise(_)
         ),
-        % Intialise/finalise declarations introduce export pragmas, but
+        % Initialise/finalise declarations introduce export pragmas, but
         % again they won't have been expanded by the time we get here.
         UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
         set.insert_list(all_foreign_languages,
