@@ -1987,7 +1987,8 @@ failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
     ;
         FailingGoal = generic_call_goal(GenericCall),
         hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-        Pieces = [words(capitalize(generic_call_id_to_string(GenericCallId))),
+        GenericCallIdString = generic_call_id_to_string(GenericCallId),
+        Pieces = [words(capitalize_first(GenericCallIdString)),
             words("can fail.")]
     ;
         FailingGoal = negated_goal,

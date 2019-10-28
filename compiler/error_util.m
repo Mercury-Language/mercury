@@ -605,11 +605,6 @@
     %
 :- func add_quotes(string) = string.
 
-    % Ensure that the first character of the input string is not a lower case
-    % letter.
-    %
-:- func capitalize(string) = string.
-
     % Report a warning, and set the exit status to error if the
     % --halt-at-warn option is set.
     %
@@ -1647,7 +1642,7 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
             Str = TailStr
         ;
             FirstInMsg = not_first_in_msg,
-            Str = lower_initial(TailStr)
+            Str = uncapitalize_first(TailStr)
         )
     ;
         Component = prefix(Prefix),
@@ -1980,7 +1975,7 @@ rev_words_to_rev_plain_or_prefix([Word | Words]) = PorPs :-
             % suffix after lowercasing the suffix (which will probably have
             % no effect, since the initial character of a suffix is usually
             % not a letter).
-            NewWords = [suffix_word(lower_initial(Suffix)) | Tail],
+            NewWords = [suffix_word(uncapitalize_first(Suffix)) | Tail],
             PorPs = rev_words_to_rev_plain_or_prefix(NewWords)
         ;
             Words = [prefix_word(Prefix) | Tail],
@@ -2021,21 +2016,8 @@ join_prefixes([Head | Tail]) = Strings :-
             Strings = TailStrings
         ;
             TailStrings = [FirstTailString | LaterTailStrings],
-            Strings = [lower_initial(FirstTailString) | LaterTailStrings]
+            Strings = [uncapitalize_first(FirstTailString) | LaterTailStrings]
         )
-    ).
-
-:- func lower_initial(string) = string.
-
-lower_initial(Str0) = Str :-
-    ( if
-        string.first_char(Str0, First, Rest),
-        char.is_upper(First)
-    then
-        char.to_lower(First, LoweredFirst),
-        string.first_char(Str, LoweredFirst, Rest)
-    else
-        Str = Str0
     ).
 
 :- func sym_name_to_word(sym_name) = string.
@@ -2209,19 +2191,6 @@ pred_or_func_to_string(pf_predicate) = "predicate".
 pred_or_func_to_string(pf_function) = "function".
 
 add_quotes(Str) = "`" ++ Str ++ "'".
-
-capitalize(Str0) = Str :-
-    Chars0 = string.to_char_list(Str0),
-    ( if
-        Chars0 = [Char0 | TailChars],
-        char.is_lower(Char0),
-        Char = char.to_upper(Char0)
-    then
-        Chars = [Char | TailChars],
-        Str = string.from_char_list(Chars)
-    else
-        Str = Str0
-    ).
 
 %---------------------------------------------------------------------------%
 
