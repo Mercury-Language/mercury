@@ -5135,9 +5135,6 @@ string_to_doc(S) = docs([str(term_io.quoted_string(S))]).
 % Converting strings to values of builtin types.
 %
 
-% XXX ILSEQ Behaviour on ill-formed sequences depends on foldl_between.
-% Strings containing ill-formed sequences should fail to convert.
-
 to_int(String, Int) :-
     base_string_to_int(10, String, Int).
 
