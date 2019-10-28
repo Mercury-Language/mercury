@@ -3626,27 +3626,36 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
     % according to the size of the file. Otherwise, just use a default buffer
     % size of 4k minus a bit (to give malloc some room).
     binary_input_stream_file_size(Stream, FileSize, !IO),
-    ( if FileSize >= 0 then
-        binary_input_stream_offset(Stream, CurrentOffset, !IO),
-        RemainingSize = FileSize - CurrentOffset,
-        some [!BM] (
-            !:BM = bitmap.init(RemainingSize * bits_per_byte),
-            ( if RemainingSize = 0 then
-                Result = ok(!.BM)
-            else
-                read_bitmap(Stream, 0, RemainingSize, !BM, BytesRead,
-                    ReadResult, !IO),
-                (
-                    ReadResult = ok,
-                    ( if BytesRead = RemainingSize then
-                        Result = ok(!.BM)
-                    else
-                        Result = error(io_error(
-                        "io.read_binary_file_as_bitmap: incorrect file size"))
+    ( if FileSize >= 0i64 then
+        binary_input_stream_offset64(Stream, CurrentOffset, !IO),
+        RemainingSizeInt64 = FileSize - CurrentOffset,
+        ( if
+            int.bits_per_int = 32,
+            RemainingSizeInt64 > from_int(int.max_int)
+        then
+            Result = error(io_error("io.read_binary_file_as_bitmap: " ++
+                "file size exceeds maximum buffer size"))
+        else
+            RemainingSize = cast_to_int(RemainingSizeInt64),
+            some [!BM] (
+                !:BM = bitmap.init(RemainingSize * bits_per_byte),
+                ( if RemainingSize = 0 then
+                    Result = ok(!.BM)
+                else
+                    read_bitmap(Stream, 0, RemainingSize, !BM, BytesRead,
+                        ReadResult, !IO),
+                    (
+                        ReadResult = ok,
+                        ( if BytesRead = RemainingSize then
+                            Result = ok(!.BM)
+                        else
+                            Result = error(io_error(
+                            "io.read_binary_file_as_bitmap: incorrect file size"))
+                        )
+                    ;
+                        ReadResult = error(Msg),
+                        Result = error(Msg)
                     )
-                ;
-                    ReadResult = error(Msg),
-                    Result = error(Msg)
                 )
             )
         )
@@ -4176,13 +4185,11 @@ input_stream_file_size(input_stream(Stream), Size, !IO) :-
     stream_file_size(Stream, Size64, !IO),
     Size = int64.cast_to_int(Size64).
 
-    % XXX FIXME this should return an int64.
-:- pred binary_input_stream_file_size(io.binary_input_stream::in, int::out,
+:- pred binary_input_stream_file_size(io.binary_input_stream::in, int64::out,
     io::di, io::uo) is det.
 
 binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
-    stream_file_size(Stream, Size64, !IO),
-    Size = int64.cast_to_int(Size64).
+    stream_file_size(Stream, Size, !IO).
 
     % stream_file_size(Stream, Size):
     % If Stream is a regular file, then Size is its size (in bytes),
