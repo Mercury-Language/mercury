@@ -1,6 +1,6 @@
 All tests should result in exceptions being thrown.
-exception(univ_cons(software_error("predicate `string.from_char_list\'/2: Unexpected: null character in list")))
-exception(univ_cons(software_error("predicate `string.from_rev_char_list\'/2: Unexpected: null character in list")))
+exception(univ_cons(software_error("predicate `string.from_char_list\'/2: Unexpected: null character or surrogate code point in list")))
+exception(univ_cons(software_error("predicate `string.from_rev_char_list\'/2: Unexpected: null character or surrogate code point in list")))
 exception(univ_cons(software_error("predicate `string.set_char\'/4: Unexpected: null character")))
 exception(univ_cons(software_error("predicate `string.unsafe_set_char\'/4: Unexpected: null character")))
 error("", io_error("null character in input"))

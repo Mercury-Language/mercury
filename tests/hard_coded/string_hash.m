@@ -93,7 +93,12 @@ rand_char(Char, !RS) :-
     random.random(Rand, !RS),
     % U+0001..U+10ffff (avoid null character).
     Int = 1 + (Rand `mod` char.max_char_value),
-    char.det_from_int(Int, Char).
+    char.det_from_int(Int, Char0),
+    ( if is_surrogate(Char0) then
+        rand_char(Char, !RS)
+    else
+        Char = Char0
+    ).
 
 :- pred test_hash(string::in, int::in, int::in, string::in,
     bool::in, bool::out, io::di, io::uo) is det.

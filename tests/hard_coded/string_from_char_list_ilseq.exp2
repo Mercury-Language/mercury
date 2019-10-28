@@ -1,0 +1,15 @@
+semidet_from_char_list:
+a b 
+semidet_from_char_list failed
+a 0xd83d b 
+a 0xde00 b 
+a 😀 b 
+a 0xde00 0xd83d b 
+
+semidet_from_rev_char_list:
+b a 
+semidet_from_rev_char_list failed
+b 0xd83d a 
+b 0xde00 a 
+b 0xde00 0xd83d a 
+b 😀 a 

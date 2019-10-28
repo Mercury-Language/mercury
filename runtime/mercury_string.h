@@ -485,6 +485,7 @@ extern MR_int_least32_t MR_utf8_get_next_mb(const MR_String s,
 extern MR_int_least32_t MR_utf8_prev_get(const MR_String s, MR_Integer *pos);
 
 // Return the number of bytes required to encode the code point `c' in UTF-8.
+// Returns 0 for surrogate code points or illegal values.
 
 extern size_t           MR_utf8_width(MR_Char c);
 

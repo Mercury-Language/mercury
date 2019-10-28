@@ -1,0 +1,15 @@
+semidet_from_char_list:
+a b 
+semidet_from_char_list failed
+semidet_from_char_list failed
+semidet_from_char_list failed
+semidet_from_char_list failed
+semidet_from_char_list failed
+
+semidet_from_rev_char_list:
+b a 
+semidet_from_rev_char_list failed
+semidet_from_rev_char_list failed
+semidet_from_rev_char_list failed
+semidet_from_rev_char_list failed
+semidet_from_rev_char_list failed

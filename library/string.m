@@ -131,10 +131,10 @@
     % If strings use UTF-16 encoding then each unpaired surrogate code point
     % is returned as a separate code point in the list.
     %
-    % The reverse mode of the predicate throws an exception if
-    % the list of characters contains a null character.
-    % NOTE: In the future we may also throw an exception if the list contains
-    % a surrogate code point.
+    % The reverse mode of the predicate throws an exception if the list
+    % contains a null character or code point that cannot be encoded in a
+    % string (namely, surrogate code points cannot be encoded in UTF-8
+    % strings).
     %
     % The reverse mode of to_char_list/2 is deprecated because the implied
     % ability to round trip convert a string to a list then back to the same
@@ -155,10 +155,10 @@
     % If strings use UTF-16 encoding then each unpaired surrogate code point
     % is returned as a separate code point in the list.
     %
-    % The reverse mode of the predicate throws an exception if
-    % the list of characters contains a null character.
-    % NOTE: In the future we may also throw an exception if the list contains
-    % a surrogate code point.
+    % The reverse mode of the predicate throws an exception if the list
+    % contains a null character or code point that cannot be encoded in a
+    % string (namely, surrogate code points cannot be encoded in UTF-8
+    % strings).
     %
     % The reverse mode of to_rev_char_list/2 is deprecated because the implied
     % ability to round trip convert a string to a list then back to the same
@@ -171,10 +171,9 @@
 :- mode to_rev_char_list(uo, in) is det.
 
     % Convert a list of characters (code points) to a string.
-    % Throws an exception if the list of characters contains a null character.
-    %
-    % NOTE: In the future we may also throw an exception if the list contains
-    % a surrogate code point.
+    % Throws an exception if the list contains a null character or code point
+    % that cannot be encoded in a string (namely, surrogate code points cannot
+    % be encoded in UTF-8 strings).
     %
     % The forward mode of from_char_list/2 is deprecated because the implied
     % ability to round trip convert a string to a list then back to the same
@@ -187,28 +186,21 @@
 :- mode from_char_list(out, in) is det.
 
     % As above, but fail instead of throwing an exception if the list contains
-    % a null character.
-    %
-    % NOTE: In the future we may also throw an exception if the list contains
-    % a surrogate code point.
+    % a null character or code point that cannot be encoded in a string.
     %
 :- pred semidet_from_char_list(list(char)::in, string::uo) is semidet.
 
     % Same as from_char_list, except that it reverses the order
     % of the characters.
-    % Throws an exception if the list of characters contains a null character.
-    %
-    % NOTE: In the future we may also throw an exception if the list contains
-    % a surrogate code point.
+    % Throws an exception if the list contains a null character or code point
+    % that cannot be encoded in a string (namely, surrogate code points cannot
+    % be encoded in UTF-8 strings).
     %
 :- func from_rev_char_list(list(char)::in) = (string::uo) is det.
 :- pred from_rev_char_list(list(char)::in, string::uo) is det.
 
     % As above, but fail instead of throwing an exception if the list contains
-    % a null character.
-    %
-    % NOTE: In the future we may also throw an exception if the list contains
-    % a surrogate code point.
+    % a null character or code point that cannot be encoded in a string.
     %
 :- pred semidet_from_rev_char_list(list(char)::in, string::uo) is semidet.
 
@@ -1696,7 +1688,7 @@ from_char_list(Chars::in, Str::uo) :-
     ( if semidet_from_char_list(Chars, Str0) then
         Str = Str0
     else
-        unexpected($pred, "null character in list")
+        unexpected($pred, "null character or surrogate code point in list")
     ).
 
 :- pragma foreign_proc("C",
@@ -1704,51 +1696,55 @@ from_char_list(Chars::in, Str::uo) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
-    // mode (uo, in) is det
     MR_Word char_list_ptr;
     size_t size;
-    MR_Char c;
 
     // Loop to calculate list length + sizeof(MR_Word) in `size'
     // using list in `char_list_ptr'.
-    size = 0;
-    char_list_ptr = CharList;
-    while (! MR_list_is_empty(char_list_ptr)) {
-        c = (MR_Char) MR_list_head(char_list_ptr);
-        if (MR_is_ascii(c)) {
-            size++;
-        } else {
-            // XXX ILSEQ Do something if c is a surrogate code point.
-            size += MR_utf8_width(c);
-        }
-        char_list_ptr = MR_list_tail(char_list_ptr);
-    }
-
-    // Allocate heap space for string.
-    MR_allocate_aligned_string_msg(Str, size, MR_ALLOC_ID);
-
-    // Loop to copy the characters from the char_list to the string.
     SUCCESS_INDICATOR = MR_TRUE;
     size = 0;
     char_list_ptr = CharList;
     while (! MR_list_is_empty(char_list_ptr)) {
-        c = (MR_Char) MR_list_head(char_list_ptr);
-        // It is an error to put a null character in a string
-        // (see the comments at the top of this file).
+        MR_Char c = (MR_Char) MR_list_head(char_list_ptr);
         if (c == '\\0') {
             SUCCESS_INDICATOR = MR_FALSE;
             break;
         }
         if (MR_is_ascii(c)) {
-            Str[size] = c;
             size++;
         } else {
-            size += MR_utf8_encode(Str + size, c);
+            size_t csize = MR_utf8_width(c);
+            if (csize == 0) {
+                // c is a surrogate code point (or even out of range,
+                // but that is not supposed to happen).
+                SUCCESS_INDICATOR = MR_FALSE;
+                break;
+            }
+            size += csize;
         }
         char_list_ptr = MR_list_tail(char_list_ptr);
     }
 
-    Str[size] = '\\0';
+    if (SUCCESS_INDICATOR) {
+        // Allocate heap space for string.
+        MR_allocate_aligned_string_msg(Str, size, MR_ALLOC_ID);
+
+        // Loop to copy the characters from the char_list to the string.
+        size = 0;
+        char_list_ptr = CharList;
+        while (! MR_list_is_empty(char_list_ptr)) {
+            MR_Char c = (MR_Char) MR_list_head(char_list_ptr);
+            if (MR_is_ascii(c)) {
+                Str[size] = c;
+                size++;
+            } else {
+                size += MR_utf8_encode(Str + size, c);
+            }
+            char_list_ptr = MR_list_tail(char_list_ptr);
+        }
+
+        Str[size] = '\\0';
+    }
 }").
 :- pragma foreign_proc("C#",
     semidet_from_char_list(CharList::in, Str::uo),
@@ -1808,6 +1804,7 @@ semidet_from_char_list(CharList, Str) :-
     ;
         CharList = [C | Cs],
         not char.to_int(C, 0),
+        internal_encoding_is_utf8 => not char.is_surrogate(C),
         semidet_from_char_list(Cs, Str0),
         first_char(Str, C, Str0)
     ).
@@ -1827,7 +1824,7 @@ from_rev_char_list(Chars, Str) :-
     ( if semidet_from_rev_char_list(Chars, Str0) then
         Str = Str0
     else
-        unexpected($pred, "null character in list")
+        unexpected($pred, "null character or surrogate code point in list")
     ).
 
 :- pragma foreign_proc("C",
@@ -1837,47 +1834,54 @@ from_rev_char_list(Chars, Str) :-
 "{
     MR_Word list_ptr;
     MR_Word size;
-    MR_Char c;
 
     // Loop to calculate list length in `size' using list in `list_ptr'.
+    SUCCESS_INDICATOR = MR_TRUE;
     size = 0;
     list_ptr = Chars;
     while (!MR_list_is_empty(list_ptr)) {
-        c = (MR_Char) MR_list_head(list_ptr);
-        if (MR_is_ascii(c)) {
-            size++;
-        } else {
-            // XXX ILSEQ Do something if c is a surrogate code point.
-            size += MR_utf8_width(c);
-        }
-        list_ptr = MR_list_tail(list_ptr);
-    }
-
-    // Allocate heap space for string.
-    MR_allocate_aligned_string_msg(Str, size, MR_ALLOC_ID);
-
-    // Set size to be the offset of the end of the string
-    // (ie the \\0) and null terminate the string.
-    Str[size] = '\\0';
-
-    // Loop to copy the characters from the list_ptr to the string
-    // in reverse order.
-    list_ptr = Chars;
-    SUCCESS_INDICATOR = MR_TRUE;
-    while (!MR_list_is_empty(list_ptr)) {
-        c = (MR_Char) MR_list_head(list_ptr);
+        MR_Char c = (MR_Char) MR_list_head(list_ptr);
         if (c == '\\0') {
             SUCCESS_INDICATOR = MR_FALSE;
             break;
         }
         if (MR_is_ascii(c)) {
-            size--;
-            Str[size] = c;
+            size++;
         } else {
-            size -= MR_utf8_width(c);
-            MR_utf8_encode(Str + size, c);
+            size_t csize = MR_utf8_width(c);
+            if (csize == 0) {
+                // c is a surrogate code point (or even out of range,
+                // but that is not supposed to happen).
+                SUCCESS_INDICATOR = MR_FALSE;
+                break;
+            }
+            size += csize;
         }
         list_ptr = MR_list_tail(list_ptr);
+    }
+
+    if (SUCCESS_INDICATOR) {
+        // Allocate heap space for string.
+        MR_allocate_aligned_string_msg(Str, size, MR_ALLOC_ID);
+
+        // Set size to be the offset of the end of the string
+        // (ie the \\0) and null terminate the string.
+        Str[size] = '\\0';
+
+        // Loop to copy the characters from the list_ptr to the string
+        // in reverse order.
+        list_ptr = Chars;
+        while (! MR_list_is_empty(list_ptr)) {
+            MR_Char c = (MR_Char) MR_list_head(list_ptr);
+            if (MR_is_ascii(c)) {
+                size--;
+                Str[size] = c;
+            } else {
+                size -= MR_utf8_width(c);
+                MR_utf8_encode(Str + size, c);
+            }
+            list_ptr = MR_list_tail(list_ptr);
+        }
     }
 }").
 :- pragma foreign_proc("C#",
