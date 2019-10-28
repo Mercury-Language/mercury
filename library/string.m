@@ -574,7 +574,7 @@
 
     % compare_ignore_case_ascii(Res, X, Y):
     %
-    % Compare two strings by code point order, ignoring the case of letters
+    % Compare two strings by code unit order, ignoring the case of letters
     % (A-Z, a-z) in the ASCII range.
     % Equivalent to `compare(Res, to_lower(X), to_lower(Y))'
     % but more efficient.
@@ -3413,41 +3413,42 @@ unsafe_compare_substrings_loop(X, Y, IX, IY, Rem, Res) :-
 
 %---------------------%
 
-% XXX ILSEQ unsafe_index_next effectively truncates either or both strings
-% at the first ill-formed sequence.
-
 compare_ignore_case_ascii(Res, X, Y) :-
-    compare_ignore_case_ascii_loop(X, Y, 0, Res).
+    LenX = length(X),
+    LenY = length(Y),
+    CommonLen = min(LenX, LenY),
+    compare_ignore_case_ascii_loop(X, Y, 0, CommonLen, Res0),
+    (
+        Res0 = (=),
+        compare(Res, LenX, LenY)
+    ;
+        ( Res0 = (<)
+        ; Res0 = (>)
+        ),
+        Res = Res0
+    ).
 
-:- pred compare_ignore_case_ascii_loop(string::in, string::in, int::in,
-    comparison_result::uo) is det.
+:- pred compare_ignore_case_ascii_loop(string::in, string::in,
+    int::in, int::in, comparison_result::uo) is det.
 
-compare_ignore_case_ascii_loop(X, Y, I, Res) :-
-    ( if unsafe_index_next(X, I, IX, CharX) then
-        ( if unsafe_index_next(Y, I, _IY, CharY) then
-            char.to_lower(CharX, LowerCharX),
-            char.to_lower(CharY, LowerCharY),
-            compare(CharRes, LowerCharX, LowerCharY),
-            (
-                CharRes = (=),
-                % CharX = CharY, or both are in the ASCII range.
-                % In either case, we must have IX = IY.
-                compare_ignore_case_ascii_loop(X, Y, IX, Res)
-            ;
-                ( CharRes = (<)
-                ; CharRes = (>)
-                ),
-                Res = CharRes
-            )
-        else
-            % X longer than Y.
-            Res = (>)
-        )
-    else if unsafe_index_next(Y, I, _IY, _CharY) then
-        % X shorter than Y.
-        Res = (<)
-    else
+compare_ignore_case_ascii_loop(X, Y, I, CommonLen, Res) :-
+    ( if I = CommonLen then
         Res = (=)
+    else
+        unsafe_index_code_unit(X, I, CodeX),
+        unsafe_index_code_unit(Y, I, CodeY),
+        to_lower_code_unit(CodeX, LowerCodeX),
+        to_lower_code_unit(CodeY, LowerCodeY),
+        compare(Res0, LowerCodeX, LowerCodeY),
+        (
+            Res0 = (=),
+            compare_ignore_case_ascii_loop(X, Y, I + 1, CommonLen, Res)
+        ;
+            ( Res0 = (<)
+            ; Res0 = (>)
+            ),
+            Res = Res0
+        )
     ).
 
 %---------------------%
