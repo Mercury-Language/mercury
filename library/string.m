@@ -1353,7 +1353,15 @@
 
     % char_to_string(Char, String):
     %
-    % Converts a character (code point) to a string, or vice versa.
+    % Converts a character to a string, or vice versa.
+    % True if `String' is the well-formed string that encodes the code point
+    % `Char'; or, if strings are UTF-16 encoded, `Char' is a surrogate code
+    % point and `String' is the string that contains only that surrogate code
+    % point. Otherwise, `char_to_string(Char, String)' is false.
+    %
+    % Throws an exception if `Char' is the null character or a code point that
+    % cannot be encoded in a string (namely, surrogate code points cannot be
+    % encoded in UTF-8 strings).
     %
 :- func char_to_string(char::in) = (string::uo) is det.
 :- pred char_to_string(char, string).
@@ -5340,10 +5348,13 @@ det_to_float(FloatString) = Float :-
 char_to_string(C) = S1 :-
     char_to_string(C, S1).
 
-char_to_string(Char, String) :-
-    % XXX ILSEQ Should fail when String is not a well-formed encoding of a
-    % single code point.
-    to_char_list(String, [Char]).
+:- pragma promise_equivalent_clauses(char_to_string/2).
+
+char_to_string(Char::in, String::uo) :-
+    from_char_list([Char], String).
+char_to_string(Char::out, String::in) :-
+    index_next_not_replaced(String, 0, NextIndex, Char),
+    length(String, NextIndex).
 
 from_char(Char) = char_to_string(Char).
 

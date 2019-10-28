@@ -54,6 +54,7 @@ ORDINARY_PROGS = \
 	cc_nondet_disj \
 	change_hunk_test \
 	char_signed \
+	char_to_string \
 	char_unicode \
 	checked_nondet_tailcall \
 	checked_nondet_tailcall_noinline \
