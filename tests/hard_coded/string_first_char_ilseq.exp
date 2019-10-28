@@ -1,0 +1,10 @@
+first_char(in, out, in) failed
+first_char(in, out, out) failed
+first_char(in, in, in) failed
+first_char(in, in, out) failed
+first_char(in, in, in) failed
+first_char(in, in, out) failed
+first_char(in, in, in) failed
+first_char(in, in, out) failed
+first_char(out, in, in) threw exception: software_error("predicate `string.first_char_str_out\'/3: Unexpected: surrogate code point")
+first_char(out, in, in) threw exception: software_error("predicate `string.first_char_str_out\'/3: Unexpected: surrogate code point")

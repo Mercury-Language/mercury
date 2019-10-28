@@ -364,6 +364,7 @@ ORDINARY_PROGS = \
 	string_compare_substrings \
 	string_count_codepoints_ilseq \
 	string_first_char \
+	string_first_char_ilseq \
 	string_fold_ilseq \
 	string_from_char_list_ilseq \
 	string_index_ilseq \

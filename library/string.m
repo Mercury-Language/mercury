@@ -670,8 +670,13 @@
 % Splitting up strings.
 %
 
-    % first_char(String, Char, Rest) is true iff Char is the first character
-    % (code point) of String, and Rest is the remainder.
+    % first_char(String, Char, Rest) is true iff `String' begins with a
+    % well-formed code unit sequence, `Char' is the code point encoded by
+    % that sequence, and `Rest' is the rest of `String' after that sequence.
+    %
+    % The (uo, in, in) mode throws an exception if `Char' cannot be encoded in
+    % a string, or if `Char' is a surrogate code point (for consistency with
+    % the other modes).
     %
     % WARNING: first_char makes a copy of Rest because the garbage collector
     % doesn't handle references into the middle of an object, at least not the
@@ -2395,6 +2400,28 @@ index_next(Str, Index, NextIndex, Char) :-
     end
 ").
 
+%---------------------%
+
+    % XXX ILSEQ Provide public interfaces to index into strings while
+    % signalling if we encountered an ill-formed sequence.
+    %
+:- pred index_next_not_replaced(string::in, int::in, int::out, char::uo)
+    is semidet.
+
+index_next_not_replaced(Str, Index, NextIndex, Char) :-
+    index_next(Str, Index, NextIndex, Char0),
+    ( if
+        internal_encoding_is_utf8,
+        Char0 = '\ufffd'
+    then
+        unsafe_between(Str, Index, NextIndex, "\ufffd")
+    else
+        true
+    ),
+    unsafe_promise_unique(Char0, Char).
+
+%---------------------%
+
 prev_index(Str, Index, PrevIndex, Char) :-
     Len = length(Str),
     ( if index_check(Index - 1, Len) then
@@ -2506,6 +2533,8 @@ do_unsafe_prev_index(Str, Index) ->
         {Index, -1}
     end.
 ").
+
+%---------------------%
 
     % XXX We should consider making this routine a compiler built-in.
     %
@@ -3896,302 +3925,50 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 % Splitting up strings.
 %
 
-% XXX ILSEQ Behaviour depends on target language.
-%  - C: fails if the string begins with ill-formed sequence
-%  - Java/C#: succeeds if the string begins with an unpaired surrogate
+:- pragma promise_equivalent_clauses(first_char/3).
 
-:- pragma foreign_proc("C",
-    first_char(Str::in, First::in, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    MR_Integer pos = 0;
-    int c = MR_utf8_get_next(Str, &pos);
-    SUCCESS_INDICATOR = (
-        c == First &&
-        First != '\\0' &&
-        strcmp(Str + pos, Rest) == 0
-    );
-").
-:- pragma foreign_proc("C#",
-    first_char(Str::in, First::in, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    int len = Str.Length;
-    if (First <= 0xffff) {
-        SUCCESS_INDICATOR = (
-            len > 0 &&
-            Str[0] == First &&
-            System.String.CompareOrdinal(Str, 1, Rest, 0, len) == 0
-        );
-    } else {
-        string firstchars = System.Char.ConvertFromUtf32(First);
-        SUCCESS_INDICATOR = (
-            len > 1 &&
-            Str[0] == firstchars[0] &&
-            Str[1] == firstchars[1] &&
-            System.String.CompareOrdinal(Str, 2, Rest, 0, len) == 0
-        );
-    }
-").
-:- pragma foreign_proc("Java",
-    first_char(Str::in, First::in, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    int toffset = java.lang.Character.charCount(First);
-    SUCCESS_INDICATOR = (
-        Str.length() > 0 &&
-        Str.codePointAt(0) == First &&
-        Str.regionMatches(toffset, Rest, 0, Rest.length())
-    );
-").
-:- pragma foreign_proc("Erlang",
-    first_char(Str::in, First::in, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    case Str of
-        <<First/utf8, Rest/binary>> ->
-            SUCCESS_INDICATOR = true;
-        _ ->
-            SUCCESS_INDICATOR = false
-    end
-").
+first_char(Str::in, First::in, Rest::in) :-
+    first_char_rest_in(Str, First, Rest).
+first_char(Str::in, First::uo, Rest::in) :-
+    first_char_rest_in(Str, First, Rest).
+first_char(Str::in, First::in, Rest::uo) :-
+    first_char_rest_out(Str, First, Rest).
+first_char(Str::in, First::uo, Rest::uo) :-
+    first_char_rest_out(Str, First, Rest).
+first_char(Str::uo, First::in, Rest::in) :-
+    first_char_str_out(Str, First, Rest).
 
-:- pragma foreign_proc("C",
-    first_char(Str::in, First::uo, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    MR_Integer pos = 0;
-    First = MR_utf8_get_next(Str, &pos);
-    SUCCESS_INDICATOR = (First > 0 && strcmp(Str + pos, Rest) == 0);
-").
-:- pragma foreign_proc("C#",
-    first_char(Str::in, First::uo, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    try {
-        int len = Str.Length;
-        char c1 = Str[0];
-        if (System.Char.IsHighSurrogate(c1)) {
-            char c2 = Str[1];
-            First = System.Char.ConvertToUtf32(c1, c2);
-            SUCCESS_INDICATOR =
-                (System.String.CompareOrdinal(Str, 2, Rest, 0, len) == 0);
-        } else {
-            First = c1;
-            SUCCESS_INDICATOR =
-                (System.String.CompareOrdinal(Str, 1, Rest, 0, len) == 0);
-        }
-    } catch (System.IndexOutOfRangeException) {
-        SUCCESS_INDICATOR = false;
-        First = (char) 0;
-    } catch (System.ArgumentOutOfRangeException) {
-        SUCCESS_INDICATOR = false;
-        First = (char) 0;
-    }
-").
-:- pragma foreign_proc("Java",
-    first_char(Str::in, First::uo, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    int toffset;
-    if (Str.length() > 0) {
-        First = Str.codePointAt(0);
-        toffset = java.lang.Character.charCount(First);
-        SUCCESS_INDICATOR =
-            Str.regionMatches(toffset, Rest, 0, Rest.length());
-    } else {
-        SUCCESS_INDICATOR = false;
-        // XXX to avoid uninitialized var warning
-        First = 0;
-    }
-").
-:- pragma foreign_proc("Erlang",
-    first_char(Str::in, First::uo, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    case Str of
-        <<First/utf8, Rest/binary>> ->
-            SUCCESS_INDICATOR = true;
-        _ ->
-            SUCCESS_INDICATOR = false,
-            First = 0
-    end
-").
+:- pred first_char_rest_in(string, char, string).
+:- mode first_char_rest_in(in, in, in) is semidet.
+:- mode first_char_rest_in(in, uo, in) is semidet.
 
-:- pragma foreign_proc("C",
-    first_char(Str::in, First::in, Rest::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"{
-    MR_Integer pos = 0;
-    int c = MR_utf8_get_next(Str, &pos);
-    if (c != First || First == '\\0') {
-        SUCCESS_INDICATOR = MR_FALSE;
-    } else {
-        Str += pos;
-        // We need to make a copy to ensure that the pointer is word-aligned.
-        MR_allocate_aligned_string_msg(Rest, strlen(Str), MR_ALLOC_ID);
-        strcpy(Rest, Str);
-        SUCCESS_INDICATOR = MR_TRUE;
-    }
-}").
-:- pragma foreign_proc("C#",
-    first_char(Str::in, First::in, Rest::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    int len = Str.Length;
+first_char_rest_in(Str, First, Rest) :-
+    index_next_not_replaced(Str, 0, NextIndex, First0),
+    not is_surrogate(First0),
+    unsafe_promise_unique(First0, First),
+    unsafe_compare_substrings((=), Str, NextIndex, Rest, 0, length(Rest)).
 
-    if (len > 0) {
-        if (First <= 0xffff) {
-            SUCCESS_INDICATOR = (First == Str[0]);
-            Rest = Str.Substring(1);
-        } else {
-            string firststr = System.Char.ConvertFromUtf32(First);
-            SUCCESS_INDICATOR =
-                (System.String.CompareOrdinal(Str, 0, firststr, 0, 2) == 0);
-            Rest = Str.Substring(2);
-        }
-    } else {
-        SUCCESS_INDICATOR = false;
-        Rest = null;
-    }
-}").
-:- pragma foreign_proc("Java",
-    first_char(Str::in, First::in, Rest::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    int len = Str.length();
+:- pred first_char_rest_out(string, char, string).
+:- mode first_char_rest_out(in, in, uo) is semidet.
+:- mode first_char_rest_out(in, uo, uo) is semidet.
 
-    if (len > 0) {
-        SUCCESS_INDICATOR = (First == Str.codePointAt(0));
-        Rest = Str.substring(java.lang.Character.charCount(First));
-    } else {
-        SUCCESS_INDICATOR = false;
-        // XXX to avoid uninitialized var warning
-        Rest = null;
-    }
-}").
-:- pragma foreign_proc("Erlang",
-    first_char(Str::in, First::in, Rest::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    case Str of
-        <<First/utf8, Rest/binary>> ->
-            SUCCESS_INDICATOR = true;
-        _ ->
-            SUCCESS_INDICATOR = false,
-            Rest = <<>>
-    end
-").
+first_char_rest_out(Str, First, Rest) :-
+    index_next_not_replaced(Str, 0, NextIndex, First0),
+    not is_surrogate(First0),
+    unsafe_promise_unique(First0, First),
+    unsafe_between(Str, NextIndex, length(Str), Rest).
 
-:- pragma foreign_proc("C",
-    first_char(Str::in, First::uo, Rest::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"{
-    MR_Integer pos = 0;
-    First = MR_utf8_get_next(Str, &pos);
-    if (First < 1) {
-        SUCCESS_INDICATOR = MR_FALSE;
-    } else {
-        Str += pos;
-        // We need to make a copy to ensure that the pointer is word-aligned.
-        MR_allocate_aligned_string_msg(Rest, strlen(Str), MR_ALLOC_ID);
-        strcpy(Rest, Str);
-        SUCCESS_INDICATOR = MR_TRUE;
-    }
-}").
-:- pragma foreign_proc("C#",
-    first_char(Str::in, First::uo, Rest::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    try {
-        char c1 = Str[0];
-        if (System.Char.IsHighSurrogate(c1)) {
-            char c2 = Str[1];
-            First = System.Char.ConvertToUtf32(c1, c2);
-            Rest = Str.Substring(2);
-        } else {
-            First = Str[0];
-            Rest = Str.Substring(1);
-        }
-        SUCCESS_INDICATOR = true;
-    } catch (System.IndexOutOfRangeException) {
-        SUCCESS_INDICATOR = false;
-        First = (char) 0;
-        Rest = null;
-    } catch (System.ArgumentOutOfRangeException) {
-        SUCCESS_INDICATOR = false;
-        First = (char) 0;
-        Rest = null;
-    }
-}").
-:- pragma foreign_proc("Java",
-    first_char(Str::in, First::uo, Rest::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    if (Str.length() == 0) {
-        SUCCESS_INDICATOR = false;
-        First = (char) 0;
-        Rest = null;
-    } else {
-        First = Str.codePointAt(0);
-        Rest = Str.substring(java.lang.Character.charCount(First));
-        SUCCESS_INDICATOR = true;
-    }
-}").
-:- pragma foreign_proc("Erlang",
-    first_char(Str::in, First::uo, Rest::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    case Str of
-        <<First/utf8, Rest/binary>> ->
-            SUCCESS_INDICATOR = true;
-        _ ->
-            SUCCESS_INDICATOR = false,
-            First = 0,
-            Rest = <<>>
-    end
-").
+:- pred first_char_str_out(string, char, string).
+:- mode first_char_str_out(uo, in, in) is det.
 
-:- pragma foreign_proc("C",
-    first_char(Str::uo, First::in, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"{
-    size_t firstw = MR_utf8_width(First);
-    size_t len = firstw + strlen(Rest);
-    MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
-    MR_utf8_encode(Str, First);
-    strcpy(Str + firstw, Rest);
-}").
-:- pragma foreign_proc("C#",
-    first_char(Str::uo, First::in, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    string FirstStr;
-    if (First <= 0xffff) {
-        FirstStr = new System.String((char) First, 1);
-    } else {
-        FirstStr = System.Char.ConvertFromUtf32(First);
-    }
-    Str = FirstStr + Rest;
-}").
-:- pragma foreign_proc("Java",
-    first_char(Str::uo, First::in, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    String FirstStr = new String(Character.toChars(First));
-    Str = FirstStr.concat(Rest);
-}").
-:- pragma foreign_proc("Erlang",
-    first_char(Str::uo, First::in, Rest::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Str = unicode:characters_to_binary([First, Rest])
-").
+first_char_str_out(Str, First, Rest) :-
+    ( if char.to_int(First, 0) then
+        unexpected($pred, "null character")
+    else if char.is_surrogate(First) then
+        unexpected($pred, "surrogate code point")
+    else
+        Str = char_to_string(First) ++ Rest
+    ).
 
 %---------------------%
 
