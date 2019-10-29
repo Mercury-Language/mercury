@@ -4174,8 +4174,6 @@ unsafe_substring(Str, Start, Count, SubString) :-
 
 %---------------------%
 
-% XXX ILSEQ unsafe_index_next causes truncation at first ill-formed sequence.
-
 words_separator(SepP, String) = Words :-
     skip_to_next_word_start(SepP, String, 0, WordStart),
     words_loop(SepP, String, WordStart, Words).
@@ -4209,7 +4207,8 @@ words_loop(SepP, String, WordStartPos, Words) :-
 
 skip_to_next_word_start(SepP, String, CurPos, NextWordStartPos) :-
     ( if
-        unsafe_index_next(String, CurPos, NextPos, Char),
+        unsafe_index_next_repl(String, CurPos, NextPos, Char, IsReplaced),
+        IsReplaced = no,
         SepP(Char)
     then
         skip_to_next_word_start(SepP, String, NextPos, NextWordStartPos)
@@ -4224,10 +4223,8 @@ skip_to_next_word_start(SepP, String, CurPos, NextWordStartPos) :-
     string::in, int::in, int::out) is det.
 
 skip_to_word_end(SepP, String, CurPos, PastWordEndPos) :-
-    ( if
-        unsafe_index_next(String, CurPos, NextPos, Char)
-    then
-        ( if SepP(Char) then
+    ( if unsafe_index_next_repl(String, CurPos, NextPos, Char, IsReplaced) then
+        ( if IsReplaced = no, SepP(Char) then
             PastWordEndPos = CurPos
         else
             skip_to_word_end(SepP, String, NextPos, PastWordEndPos)
