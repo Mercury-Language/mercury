@@ -487,6 +487,54 @@
                 pto_items                   :: list(item)
             ).
 
+:- type parse_tree_plain_opt
+    --->    parse_tree_plain_opt(
+                ptpo_module_name            :: module_name,
+
+                % The context of the `:- module' declaration.
+                ptpo_module_name_context    :: prog_context,
+
+                % `:- use_module' (not `:- import_module') declarations.
+                ptpo_uses                   :: list(avail_use_info),
+                ptpo_fims                   :: list(item_fim),
+                ptpo_type_defns             :: list(item_type_defn_info),
+                ptpo_foreign_enums          :: list(item_foreign_enum_info),
+                ptpo_inst_defns             :: list(item_inst_defn_info),
+                ptpo_mode_defns             :: list(item_mode_defn_info),
+                ptpo_typeclasses            :: list(item_typeclass_info),
+                ptpo_instances              :: list(item_instance_info),
+                ptpo_pred_decls             :: list(item_pred_decl_info),
+                ptpo_mode_decls             :: list(item_mode_decl_info),
+                ptpo_pred_marker_pragmas    :: list(item_pred_marker),
+                ptpo_type_spec_pragmas      :: list(item_type_spec),
+                ptpo_clauses                :: list(item_clause_info),
+
+                ptpo_unused_args            :: list(item_unused_args),
+                ptpo_termination            :: list(item_termination),
+                ptpo_termination2           :: list(item_termination2),
+                ptpo_exceptions             :: list(item_exceptions),
+                ptpo_trailing               :: list(item_trailing),
+                ptpo_mm_tabling             :: list(item_mm_tabling),
+                ptpo_struct_sharing         :: list(item_struct_sharing),
+                ptpo_struct_reuse           :: list(item_struct_reuse)
+            ).
+
+:- type parse_tree_trans_opt
+    --->    parse_tree_trans_opt(
+                ptto_module_name            :: module_name,
+
+                % The context of the `:- module' declaration.
+                ptto_module_name_context    :: prog_context,
+
+                ptto_termination            :: list(item_termination),
+                ptto_termination2           :: list(item_termination2),
+                ptto_exceptions             :: list(item_exceptions),
+                ptto_trailing               :: list(item_trailing),
+                ptto_mm_tabling             :: list(item_mm_tabling),
+                ptto_struct_sharing         :: list(item_struct_sharing),
+                ptto_struct_reuse           :: list(item_struct_reuse)
+            ).
+
 %-----------------------------------------------------------------------------%
 %
 % A raw compilation unit is one module to be compiled. A parse_tree_src
@@ -937,10 +985,10 @@
                 fee_seq_num                     :: int
             ).
 
-:- type item_pragma_info
+:- type item_pragma_info == item_pragma_info(pragma_type).
+:- type item_pragma_info(T)
     --->    item_pragma_info(
-                prag_type                       :: pragma_type,
-                prag_maybe_attrs                :: item_maybe_attrs,
+                prag_type                       :: T,
                 prag_context                    :: prog_context,
                 prag_seq_num                    :: int
             ).
@@ -1043,6 +1091,8 @@
 :- func get_item_context(item) = prog_context.
 
 :- func item_desc_pieces(item) = list(format_component).
+
+:- func project_pragma_type(item_pragma_info(T)) = T.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1623,6 +1673,33 @@
     ;       pragma_obsolete_proc(pragma_info_obsolete_proc)
     ;       pragma_require_feature_set(pragma_info_require_feature_set).
 
+:- type pred_marker_pragma_kind
+    --->    pmpk_inline
+    ;       pmpk_noinline
+    ;       pmpk_promise_pure
+    ;       pmpk_promise_semipure
+    ;       pmpk_promise_eqv_clauses
+    ;       pmpk_terminates
+    ;       pmpk_does_not_terminate
+    ;       pmpk_mode_check_clauses.
+
+:- type pragma_info_pred_marker
+    --->    pragma_info_pred_marker(
+                pred_name_arity,
+                pred_marker_pragma_kind
+            ).
+
+:- type item_pred_marker ==    item_pragma_info(pragma_info_pred_marker).
+:- type item_type_spec ==      item_pragma_info(pragma_info_type_spec).
+:- type item_unused_args ==    item_pragma_info(pragma_info_unused_args).
+:- type item_exceptions ==     item_pragma_info(pragma_info_exceptions).
+:- type item_trailing ==       item_pragma_info(pragma_info_trailing_info).
+:- type item_mm_tabling ==     item_pragma_info(pragma_info_mm_tabling_info).
+:- type item_termination ==    item_pragma_info(pragma_info_termination_info).
+:- type item_termination2 ==   item_pragma_info(pragma_info_termination2_info).
+:- type item_struct_sharing == item_pragma_info(pragma_info_structure_sharing).
+:- type item_struct_reuse ==   item_pragma_info(pragma_info_structure_reuse).
+
     % Check whether a particular `pragma' declaration is allowed
     % in the interface section of a module.
     %
@@ -1665,6 +1742,8 @@
 
 :- type pragma_info_foreign_proc_export
     --->    pragma_info_foreign_proc_export(
+                exp_maybe_attrs         :: item_maybe_attrs,
+
                 % Predname, Predicate/function, Modes, foreign function name.
                 exp_language            :: foreign_language,
                 exp_pred_id             :: pred_name_modes_pf,
@@ -1812,7 +1891,18 @@
                 % (or inferred argmodes if there are no declared ones).
                 sharing_pred_id         :: pred_name_modes_pf,
                 sharing_headvars        :: list(prog_var),
-                sharing_headvartypes    :: list(mer_type),
+                sharing_headvar_types   :: list(mer_type),
+
+                % The prog_varset and tvarset are meaningful only when
+                % writing out this pragma; add_pragma.m ignores both varsets.
+                sharing_varset          :: prog_varset,
+                sharing_tvarset         :: tvarset,
+
+                % As of 2019 10 29, and probably long before then,
+                % the compiler *always* fills this slot with `yes(...)'.
+                % A `no' would mean that the relevant information is not
+                % available, but in that case, we simply do not write out
+                % this pragma.
                 sharing_description     :: maybe(structure_sharing_domain)
             ).
 
@@ -1824,11 +1914,25 @@
                 %
                 % The list of modes consists of the declared argmodes
                 % (or inferred argmodes if there are no declared ones).
+                %
                 % The last sym_name (reuse_optimised_name) stores the name
                 % of the optimised version of the exported predicate.
+                % XXX As of 2019 10 29, the word "reuse_optimised_name"
+                % appears nowhere in the compiler apart from this comment.
                 reuse_pred_id           :: pred_name_modes_pf,
                 reuse_headvars          :: list(prog_var),
-                reuse_headvartypes      :: list(mer_type),
+                reuse_headvar_types     :: list(mer_type),
+
+                % The prog_varset and tvarset are meaningful only when
+                % writing out this pragma; add_pragma.m ignores both varsets.
+                reuse_varset            :: prog_varset,
+                reuse_tvarset           :: tvarset,
+
+                % As of 2019 10 29, and probably long before then,
+                % the compiler *always* fills this slot with `yes(...)'.
+                % A `no' would mean that the relevant information is not
+                % available, but in that case, we simply do not write out
+                % this pragma.
                 reuse_description       :: maybe(structure_reuse_domain)
             ).
 
@@ -2379,6 +2483,8 @@ item_desc_pieces(Item) = Pieces :-
         Pieces = [words("a type representation description")]
     ).
 
+project_pragma_type(item_pragma_info(Pragma, _, _)) = Pragma.
+
 %-----------------------------------------------------------------------------%
 
 add_included_module_name(Incl, !ModuleNames) :-
@@ -2763,7 +2869,7 @@ get_foreign_code_indicators_from_fim(Globals, FIM, !Info) :-
 get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _),
         get_pragma_foreign_code(Globals, Pragma, !Info)
     ;
         Item = item_mutable(_),
@@ -2860,7 +2966,7 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
         % rather than assembler code. So we need to treat `pragma export'
         % like the other pragmas for foreign code.
         Pragma = pragma_foreign_proc_export(FPEInfo),
-        FPEInfo = pragma_info_foreign_proc_export(Lang, _, _),
+        FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
         ( if list.member(Lang, BackendLangs) then
             !Info ^ used_foreign_languages :=
                 set.insert(!.Info ^ used_foreign_languages, Lang),

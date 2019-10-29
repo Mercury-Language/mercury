@@ -289,20 +289,14 @@ error_is_exported(Context, ItemPieces, !Specs) :-
 
 report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
         !Specs) :-
-    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, _SeqNum),
+    ItemPragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
     ( if
         % Is the pragma in the interface?
         ItemMercuryStatus = item_defined_in_this_module(ItemExport),
         ItemExport = item_export_anywhere,
 
         % Is the pragma *wrongly* in the interface?
-        pragma_allowed_in_interface(Pragma) = no,
-
-        % Is there any point in generating an error message about the pragma?
-        % If the pragma was created by the compiler, then the *real* problem
-        % is whatever bug in the compiler caused it to *create* this pragma,
-        % and the user cannot do anything about that bug.
-        MaybeAttrs = item_origin_user
+        pragma_allowed_in_interface(Pragma) = no
     then
         ContextPieces = pragma_desc_pieces(Pragma),
         error_is_exported(Context, ContextPieces, !Specs)

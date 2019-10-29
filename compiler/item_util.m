@@ -108,7 +108,7 @@ item_needs_foreign_imports(Item) = Langs :-
         Langs = [Lang]
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _),
         Langs = pragma_needs_foreign_imports(Pragma)
     ;
         ( Item = item_clause(_)
@@ -140,7 +140,7 @@ pragma_needs_foreign_imports(Pragma) = Langs :-
             FCInfo = pragma_info_foreign_code(Lang, _)
         ;
             Pragma = pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(Lang, _, _)
+            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _)
         ),
         Langs = [Lang]
     ;

@@ -33,6 +33,11 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred mercury_output_item_pred_marker(pragma_info_pred_marker::in,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
 :- pred mercury_output_pragma_decl(sym_name::in, int::in, pred_or_func::in,
     string::in, maybe(string)::in, io::di, io::uo) is det.
 :- func mercury_pragma_decl_to_string(sym_name, int, pred_or_func, string,
@@ -83,12 +88,15 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred write_pragma_termination2_info(output_lang::in,
+    pragma_info_termination2_info::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
 :- pred write_pragma_structure_sharing_info(output_lang::in,
-    maybe(prog_varset)::in, maybe(tvarset)::in,
     pragma_info_structure_sharing::in, io::di, io::uo) is det.
 
 :- pred write_pragma_structure_reuse_info(output_lang::in,
-    maybe(prog_varset)::in, maybe(tvarset)::in,
     pragma_info_structure_reuse::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -123,7 +131,7 @@
 %---------------------------------------------------------------------------%
 
 mercury_output_item_pragma(Info, ItemPragma, !IO) :-
-    ItemPragma = item_pragma_info(Pragma, _, Context, _SeqNum),
+    ItemPragma = item_pragma_info(Pragma, Context, _SeqNum),
     maybe_output_line_number(Info, Context, !IO),
     Lang = get_output_lang(Info),
     (
@@ -239,13 +247,52 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
             "mode_check_clauses", no, !IO)
     ;
         Pragma = pragma_structure_sharing(SharingInfo),
-        write_pragma_structure_sharing_info(Lang, no, no, SharingInfo, !IO)
+        write_pragma_structure_sharing_info(Lang, SharingInfo, !IO)
     ;
         Pragma = pragma_structure_reuse(ReuseInfo),
-        write_pragma_structure_reuse_info(Lang, no, no, ReuseInfo, !IO)
+        write_pragma_structure_reuse_info(Lang, ReuseInfo, !IO)
     ;
         Pragma = pragma_require_feature_set(RFSInfo),
         mercury_output_pragma_require_feature_set(RFSInfo, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+mercury_output_item_pred_marker(PredMarker, !IO) :-
+    PredMarker = pragma_info_pred_marker(PredNameArity, PredMarkerKind),
+    PredNameArity = pred_name_arity(Pred, Arity),
+    (
+        PredMarkerKind = pmpk_inline,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "inline", no, !IO)
+    ;
+        PredMarkerKind = pmpk_noinline,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "no_inline", no, !IO)
+    ;
+        PredMarkerKind = pmpk_promise_eqv_clauses,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "promise_equivalent_clauses", no, !IO)
+    ;
+        PredMarkerKind = pmpk_promise_pure,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "promise_pure", no, !IO)
+    ;
+        PredMarkerKind = pmpk_promise_semipure,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "promise_semipure", no, !IO)
+    ;
+        PredMarkerKind = pmpk_terminates,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "terminates", no, !IO)
+    ;
+        PredMarkerKind = pmpk_does_not_terminate,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "does_not_terminate", no, !IO)
+    ;
+        PredMarkerKind = pmpk_mode_check_clauses,
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "mode_check_clauses", no, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -757,8 +804,8 @@ extra_attribute_to_string(needs_call_standard_output_registers) =
     pragma_info_foreign_proc_export::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, !U) :-
-   FPEInfo = pragma_info_foreign_proc_export(ForeignLang, PredNameModesPF,
-        ExportName),
+    FPEInfo = pragma_info_foreign_proc_export(_Origin, ForeignLang,
+        PredNameModesPF, ExportName),
     PredNameModesPF = pred_name_modes_pf(Name, ModeList, PredOrFunc),
     varset.init(InstVarSet), % The varset isn't really used.
     add_string(":- pragma foreign_export(", !U),
@@ -1357,9 +1404,6 @@ write_maybe_termination_info(Verbose, MaybeTerminationInfo, !IO) :-
 % Output a termination2_info pragma.
 %
 
-:- pred write_pragma_termination2_info(output_lang::in,
-    pragma_info_termination2_info::in, io::di, io::uo) is det.
-
 write_pragma_termination2_info(Lang, Term2Info, !IO) :-
     Term2Info = pragma_info_termination2_info(PredNameModesPF,
         MaybeSuccess, MaybeFailure, MaybeTermination),
@@ -1379,7 +1423,7 @@ write_pragma_termination2_info(Lang, Term2Info, !IO) :-
 write_maybe_pragma_constr_arg_size_info(no, !IO) :-
     io.write_string("not_set", !IO).
 write_maybe_pragma_constr_arg_size_info(yes(ArgSizeInfo), !IO) :-
-    io.write_string("constaints(", !IO),
+    io.write_string("constraints(", !IO),
     io.write_char('[', !IO),
     io.write_list(ArgSizeInfo, ", ", write_arg_size_constr, !IO),
     io.write_string("])", !IO).
@@ -1435,30 +1479,17 @@ write_maybe_pragma_termination_info(MaybeTermination, !IO) :-
 % Output a structure_sharing pragma.
 %
 
-write_pragma_structure_sharing_info(Lang, MaybeVarSet, MaybeTVarSet,
-        SharingInfo, !IO) :-
+write_pragma_structure_sharing_info(Lang, SharingInfo, !IO) :-
     SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-        HeadVars, HeadVarTypes, MaybeSharingAs),
-    (
-        MaybeVarSet = yes(VarSet)
-    ;
-        MaybeVarSet = no,
-        varset.init(VarSet)
-    ),
-    (
-        MaybeTVarSet = yes(TypeVarSet)
-    ;
-        MaybeTVarSet = no,
-        varset.init(TypeVarSet)
-    ),
+        HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharingAs),
     io.write_string(":- pragma structure_sharing(", !IO),
     write_pred_name_modes_pf(Lang, PredNameModesPF, !IO),
     % write headvars and types:
     io.write_string(", ", !IO),
-    write_vars_and_types(VarSet, TypeVarSet, HeadVars, HeadVarTypes, !IO),
+    write_vars_and_types(VarSet, TVarSet, HeadVars, HeadVarTypes, !IO),
     % write structure sharing information.
     io.write_string(", ", !IO),
-    prog_ctgc.print_interface_structure_sharing_domain(VarSet, TypeVarSet,
+    prog_ctgc.print_interface_structure_sharing_domain(VarSet, TVarSet,
         MaybeSharingAs, !IO),
     io.write_string(").\n", !IO).
 
@@ -1467,30 +1498,17 @@ write_pragma_structure_sharing_info(Lang, MaybeVarSet, MaybeTVarSet,
 % Output a structure_reuse pragma.
 %
 
-write_pragma_structure_reuse_info(Lang, MaybeVarSet, MaybeTVarSet,
-        ReuseInfo, !IO) :-
+write_pragma_structure_reuse_info(Lang, ReuseInfo, !IO) :-
     ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-        HeadVars, HeadVarTypes, MaybeStructureReuseDomain),
-    (
-        MaybeVarSet = yes(VarSet)
-    ;
-        MaybeVarSet = no,
-        varset.init(VarSet)
-    ),
-    (
-        MaybeTVarSet = yes(TypeVarSet)
-    ;
-        MaybeTVarSet = no,
-        varset.init(TypeVarSet)
-    ),
+        HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeStructureReuseDomain),
     io.write_string(":- pragma structure_reuse(", !IO),
     write_pred_name_modes_pf(Lang, PredNameModesPF, !IO),
     % write headvars and types:
     io.write_string(", ", !IO),
-    write_vars_and_types(VarSet, TypeVarSet, HeadVars, HeadVarTypes, !IO),
+    write_vars_and_types(VarSet, TVarSet, HeadVars, HeadVarTypes, !IO),
     % write structure reuse information.
     io.write_string(", ", !IO),
-    prog_ctgc.print_interface_maybe_structure_reuse_domain(VarSet, TypeVarSet,
+    prog_ctgc.print_interface_maybe_structure_reuse_domain(VarSet, TVarSet,
         MaybeStructureReuseDomain, !IO),
     io.write_string(").\n", !IO).
 

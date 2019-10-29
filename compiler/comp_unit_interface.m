@@ -732,7 +732,7 @@ get_private_interface_int0_from_items(ModuleName, [Item | Items],
         cord.snoc(ItemForeignEnumInfo, !ForeignEnums)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _),
         AllowedInInterface = pragma_allowed_in_interface(Pragma),
         (
             AllowedInInterface = no
@@ -1326,7 +1326,7 @@ get_interface_int1_items_loop_int([Item | Items], !IntImplicitFIMLangs,
         set.insert(Lang, !IntImplicitFIMLangs)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _MaybeAttrs, _Context, _SeqNum),
+        ItemPragma = item_pragma_info(Pragma, _Context, _SeqNum),
         AllowedInInterface = pragma_allowed_in_interface(Pragma),
         (
             AllowedInInterface = no

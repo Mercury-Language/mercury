@@ -479,8 +479,7 @@ separate_items([Item | Items], SectionInfo,
         % is inside ItemPragmaInfo0, but (after it knows the value of
         % PragmaType) it *will* know what kind of pragma is inside
         % ItemPragmaInfo.
-        ItemPragmaInfo0 = item_pragma_info(PragmaType, MaybeAttrs,
-            Context, SeqNum),
+        ItemPragmaInfo0 = item_pragma_info(PragmaType, Context, SeqNum),
         SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
         (
             ( PragmaType = pragma_foreign_decl(_)
@@ -511,8 +510,7 @@ separate_items([Item | Items], SectionInfo,
 
             ; PragmaType = pragma_require_feature_set(_)
             ),
-            ItemPragmaInfo = item_pragma_info(PragmaType, MaybeAttrs,
-                Context, SeqNum),
+            ItemPragmaInfo = item_pragma_info(PragmaType, Context, SeqNum),
             Pragma2StatusItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
             !:RevItemPragmas2 = [Pragma2StatusItem | !.RevItemPragmas2]
         ;
@@ -530,8 +528,7 @@ separate_items([Item | Items], SectionInfo,
             ; PragmaType = pragma_structure_sharing(_)
             ; PragmaType = pragma_structure_reuse(_)
             ),
-            ItemPragmaInfo = item_pragma_info(PragmaType, MaybeAttrs,
-                Context, SeqNum),
+            ItemPragmaInfo = item_pragma_info(PragmaType, Context, SeqNum),
             Pragma3StatusItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
             !:RevItemPragmas3 = [Pragma3StatusItem | !.RevItemPragmas3]
         )

@@ -22,15 +22,13 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
     % Perform structure sharing analysis on the procedures defined in the
     % current module.
     %
-:- pred structure_sharing_analysis(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred perform_structure_sharing_analysis(module_info::in, module_info::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -90,7 +88,6 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.ctgc.fixpoint_table.
-:- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.
 :- import_module transform_hlds.intermod.
@@ -98,6 +95,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -117,7 +115,7 @@
 
 %-----------------------------------------------------------------------------%
 
-structure_sharing_analysis(!ModuleInfo, !IO) :-
+perform_structure_sharing_analysis(!ModuleInfo) :-
     % Process all the imported sharing information.
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
@@ -133,19 +131,17 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
     % Annotate the HLDS with liveness information. The liveness analysis
     % requires argument passing information.
     generate_arg_info(!ModuleInfo),
-    annotate_liveness(!ModuleInfo, !IO),
+    annotate_liveness(!ModuleInfo),
 
     % Load all structure sharing information present in the HLDS.
     LoadedSharingTable = load_structure_sharing_table(!.ModuleInfo),
 
     % Analyse structure sharing for the module.
-    sharing_analysis(!ModuleInfo, LoadedSharingTable, !IO),
+    sharing_analysis(!ModuleInfo, LoadedSharingTable),
 
     module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
     set.insert(pak_structure_sharing, ProcAnalysisKinds0, ProcAnalysisKinds),
-    module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
-
-    selector.reset_tables(!IO).
+    module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %
@@ -340,10 +336,9 @@ structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
     % used by the liveness pass (liveness.m). This information is used to
     % eliminate useless sharing pairs during sharing analysis.
     %
-:- pred annotate_liveness(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred annotate_liveness(module_info::in, module_info::out) is det.
 
-annotate_liveness(!ModuleInfo, !IO) :-
+annotate_liveness(!ModuleInfo) :-
     process_all_nonimported_procs(
         update_module(simplify_and_detect_liveness_proc), !ModuleInfo).
 
@@ -362,15 +357,14 @@ simplify_and_detect_liveness_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred sharing_analysis(module_info::in, module_info::out,
-    sharing_as_table::in, io::di, io::uo) is det.
+    sharing_as_table::in) is det.
 
-sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
+sharing_analysis(!ModuleInfo, !.SharingTable) :-
     % Perform a bottom-up traversal of the SCCs in the program,
     % analysing structure sharing in each one as we go.
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
-    list.foldl3(analyse_scc(!.ModuleInfo), SCCs,
-        !SharingTable, [], DepProcs, !IO),
+    list.foldl2(analyse_scc(!.ModuleInfo), SCCs, !SharingTable, [], DepProcs),
 
     % Record the sharing results in the HLDS.
     map.foldl(save_sharing_in_module_info, !.SharingTable, !ModuleInfo),
@@ -407,9 +401,9 @@ save_sharing_in_module_info(PPId, SharingAs_Status, !ModuleInfo) :-
 
 :- pred analyse_scc(module_info::in, scc::in,
     sharing_as_table::in, sharing_as_table::out,
-    dep_procs::in, dep_procs::out, io::di, io::uo) is det.
+    dep_procs::in, dep_procs::out) is det.
 
-analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs, !IO) :-
+analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs) :-
     set.to_sorted_list(SCC, SCCProcs),
     ( if some_preds_require_no_analysis(ModuleInfo, SCC) then
         % At least one procedure in the SCC requires that we don't analyse it.
@@ -429,16 +423,16 @@ analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs, !IO) :-
     else
         FixpointTable0 = ss_fixpoint_table_init(SCCProcs),
         analyse_scc_until_fixpoint(ModuleInfo, SCCProcs, !.SharingTable,
-            FixpointTable0, FixpointTable, !DepProcs, !IO),
+            FixpointTable0, FixpointTable, !DepProcs),
         set.foldl(update_sharing_in_table(FixpointTable), SCC, !SharingTable)
     ).
 
 :- pred analyse_scc_until_fixpoint(module_info::in, list(pred_proc_id)::in,
     sharing_as_table::in, ss_fixpoint_table::in, ss_fixpoint_table::out,
-    dep_procs::in, dep_procs::out, io::di, io::uo) is det.
+    dep_procs::in, dep_procs::out) is det.
 
 analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
-        !FixpointTable, !DepProcs, !IO) :-
+        !FixpointTable, !DepProcs) :-
     % Abort if the analysis is taking too long. It is probably a bug.
     Run = ss_fixpoint_table_which_run(!.FixpointTable),
     ( if Run > max_runs then
@@ -448,14 +442,14 @@ analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
         true
     ),
 
-    list.foldl3(analyse_pred_proc(ModuleInfo, SharingTable), SCC,
-        !FixpointTable, !DepProcs, !IO),
+    list.foldl2(analyse_pred_proc(ModuleInfo, SharingTable), SCC,
+        !FixpointTable, !DepProcs),
     ( if ss_fixpoint_table_stable(!.FixpointTable) then
         true
     else
         ss_fixpoint_table_new_run(!FixpointTable),
         analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
-            !FixpointTable, !DepProcs, !IO)
+            !FixpointTable, !DepProcs)
     ).
 
 :- func max_runs = int.
@@ -469,10 +463,9 @@ max_runs = 100.
 
 :- pred analyse_pred_proc(module_info::in, sharing_as_table::in,
     pred_proc_id::in, ss_fixpoint_table::in, ss_fixpoint_table::out,
-    dep_procs::in, dep_procs::out, io::di, io::uo) is det.
+    dep_procs::in, dep_procs::out) is det.
 
-analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs,
-        !IO) :-
+analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs) :-
     % Collect relevant compiler options.
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, Verbose),
@@ -487,9 +480,11 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs,
     Run = ss_fixpoint_table_which_run(!.FixpointTable),
     TabledAsDescr = ss_fixpoint_table_get_short_description(PPId,
         !.FixpointTable),
-    write_proc_progress_message(
-        "% Sharing analysis (run " ++ string.int_to_string(Run) ++ ") ",
-        PPId, ModuleInfo, !IO),
+    trace [io(!TIO)] (
+        write_proc_progress_message(
+            "% Sharing analysis (run " ++ string.int_to_string(Run) ++ ") ",
+            PPId, ModuleInfo, !TIO)
+    ),
 
     % In some cases the sharing can be predicted to be bottom, in which
     % case a full sharing analysis is not needed.
@@ -500,7 +495,9 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs,
             bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo,
                 ProcInfo)
         then
-            maybe_write_string(Verbose, "\t\t: bottom predicted", !IO),
+            trace [io(!TIO)] (
+                maybe_write_string(Verbose, "\t\t: bottom predicted", !TIO)
+            ),
             Status = optimal
         else
             % Start analysis.
@@ -523,18 +520,22 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs,
                 WidenAsDescr = "-"
             ),
 
-            maybe_write_string(Verbose, "\n\t\t: " ++
-                TabledAsDescr ++ "->" ++
-                FullAsDescr ++ "/" ++
-                ProjAsDescr ++ "/" ++
-                WidenAsDescr, !IO)
+            trace [io(!TIO)] (
+                maybe_write_string(Verbose, "\n\t\t: " ++
+                    TabledAsDescr ++ "->" ++
+                    FullAsDescr ++ "/" ++
+                    ProjAsDescr ++ "/" ++
+                    WidenAsDescr, !TIO)
+            )
         ),
         SharingAs_Status = sharing_as_and_status(!.Sharing, Status),
         ss_fixpoint_table_new_as(ModuleInfo, ProcInfo, PPId, SharingAs_Status,
             !FixpointTable)
     ),
     Desc = ss_fixpoint_table_description(!.FixpointTable),
-    maybe_write_string(Verbose, "\t\t (ft = " ++ Desc ++ ")\n", !IO).
+    trace [io(!TIO)] (
+        maybe_write_string(Verbose, "\t\t (ft = " ++ Desc ++ ")\n", !TIO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -673,9 +674,9 @@ analyse_goal_with_progress(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         Verbose, Goal, !FixpointTable, !DepProcs, !SharingAs, !Status) :-
     (
         Verbose = yes,
-        trace [io(!IO)] (
-            io.write_char('.', !IO),
-            io.flush_output(!IO)
+        trace [io(!TIO)] (
+            io.write_char('.', !TIO),
+            io.flush_output(!TIO)
         )
     ;
         Verbose = no
@@ -1127,18 +1128,18 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
             else
                 Status = Status0
             ),
-            trace [io(!IO),
+            trace [io(!TIO),
                 compile_time(flag("structure_sharing")),
                 run_time(env("TOP_REASONS"))
             ] (
                 ReasonsList = set.to_sorted_list(Reasons),
-                io.write_string(":\n", !IO),
+                io.write_string(":\n", !TIO),
                 io.write_list(ReasonsList, "\n",
-                    write_top_feedback(ModuleInfo), !IO),
-                io.nl(!IO),
-                io.write_string("\t", !IO),
-                io.write(Status, !IO),
-                io.nl(!IO)
+                    write_top_feedback(ModuleInfo), !TIO),
+                io.nl(!TIO),
+                io.write_string("\t", !TIO),
+                io.write(Status, !TIO),
+                io.nl(!TIO)
             )
         ;
             Sharing = structure_sharing_real(SharingPairs),

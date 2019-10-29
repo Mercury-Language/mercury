@@ -32,6 +32,7 @@
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 :- pred middle_pass_for_opt_file(module_info::in, module_info::out,
+    set(pragma_info_unused_args)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 :- pred output_trans_opt_file(module_info::in,
@@ -65,6 +66,9 @@
 :- import_module ll_backend.
 :- import_module ll_backend.deep_profiling.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.module_cmds.
+:- import_module parse_tree.parse_tree_out.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 :- import_module top_level.mercury_compile_mlds_back_end.
@@ -73,6 +77,7 @@
 :- import_module transform_hlds.closure_analysis.
 :- import_module transform_hlds.complexity.
 :- import_module transform_hlds.ctgc.
+:- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
 :- import_module transform_hlds.ctgc.structure_sharing.
@@ -295,7 +300,7 @@ middle_pass(!HLDS, !DumpInfo, !Specs, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-middle_pass_for_opt_file(!HLDS, !Specs, !IO) :-
+middle_pass_for_opt_file(!HLDS, UnusedArgsInfos, !Specs, !IO) :-
     % NOTE If you add any passes here, you will probably need to change the
     % code in mercury_compile_front_end.m that decides whether to call
     % this predicate.
@@ -328,9 +333,7 @@ middle_pass_for_opt_file(!HLDS, !Specs, !IO) :-
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
-    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
-
-    append_analysis_pragmas_to_opt_file(!.HLDS, UnusedArgsInfos, !IO).
+    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -385,7 +388,48 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
     maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
-    write_trans_opt_file(!.HLDS, !IO).
+
+    module_info_get_name(!.HLDS, ModuleName),
+    module_name_to_file_name(Globals, do_create_dirs, ".trans_opt.tmp",
+        ModuleName, TmpOptName, !IO),
+    io.open_output(TmpOptName, TmpOptResult, !IO),
+    (
+        TmpOptResult = error(Error),
+        io.progname_base("mmc", ProgName, !IO),
+        io.error_message(Error, ErrorMsg),
+        io.format("%s: cannot open `%s' for output: %s\n",
+            [s(ProgName), s(TmpOptName), s(ErrorMsg)], !IO),
+        io.set_exit_status(1, !IO)
+    ;
+        TmpOptResult = ok(TmpOptStream),
+        write_trans_opt_file(TmpOptStream, !.HLDS, ParseTreeTransOpt, !IO),
+        io.close_output(TmpOptStream, !IO),
+
+        module_name_to_file_name(Globals, do_not_create_dirs, ".trans_opt",
+            ModuleName, OptName, !IO),
+        update_interface(Globals, OptName, !IO),
+        touch_interface_datestamp(Globals, ModuleName, ".trans_opt_date", !IO),
+
+        globals.lookup_bool_option(Globals, experiment5, Experiment5),
+        (
+            Experiment5 = no
+        ;
+            Experiment5 = yes,
+            io.open_output(OptName ++ "x", OptXResult, !IO),
+            (
+                OptXResult = error(_)
+            ;
+                OptXResult = ok(OptXStream),
+                Info = init_merc_out_info(Globals, unqualified_item_names,
+                    output_mercury),
+                io.set_output_stream(OptXStream, OldOutputStream, !IO),
+                mercury_output_parse_tree_trans_opt(Info, ParseTreeTransOpt,
+                    !IO),
+                io.set_output_stream(OldOutputStream, _, !IO),
+                io.close_output(OptXStream, !IO)
+            )
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -564,7 +608,7 @@ maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
     (
         ClosureAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing closures...\n", !IO),
-        closure_analyse_module(!HLDS, !IO),
+        closure_analyse_module(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1012,7 +1056,8 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
         Sharing = yes,
         maybe_write_string(Verbose, "% Structure sharing analysis...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        structure_sharing_analysis(!HLDS, !IO),
+        perform_structure_sharing_analysis(!HLDS),
+        transform_hlds.ctgc.selector.reset_tables(!IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1032,7 +1077,8 @@ maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :-
         ReuseAnalysis = yes,
         maybe_write_string(Verbose, "% Structure reuse analysis...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        perform_structure_reuse_analysis(!HLDS, !IO),
+        perform_structure_reuse_analysis(!HLDS),
+        transform_hlds.ctgc.selector.reset_tables(!IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1073,7 +1119,7 @@ maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO) :-
     (
         AnalyseTrail = yes,
         maybe_write_string(Verbose, "% Analysing trail usage...\n", !IO),
-        analyse_trail_usage(!HLDS),
+        analyse_trail_usage_in_module(!HLDS),
         maybe_write_string(Verbose, "% Trail usage analysis done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

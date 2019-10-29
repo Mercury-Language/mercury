@@ -621,7 +621,7 @@ split_items_into_clauses_and_decls([Item | Items],
         !:RevClauses = [Item | !.RevClauses]
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _),
         AllowedInInterface = pragma_allowed_in_interface(Pragma),
         (
             AllowedInInterface = no,
@@ -2037,7 +2037,7 @@ keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
         [Item0 | Items0], !ItemCord) :-
     ( if
         Item0 = item_pragma(ItemPragma0),
-        ItemPragma0 = item_pragma_info(Pragma0, _, _, _),
+        ItemPragma0 = item_pragma_info(Pragma0, _, _),
         (
             UnusedArgs = yes,
             Pragma0 = pragma_unused_args(_)

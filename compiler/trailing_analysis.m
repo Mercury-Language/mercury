@@ -62,7 +62,8 @@
 
     % Perform trail usage analysis on a module.
     %
-:- pred analyse_trail_usage(module_info::in, module_info::out) is det.
+:- pred analyse_trail_usage_in_module(module_info::in, module_info::out)
+    is det.
 
     % Types and instances for the intermodule analysis framework.
     %
@@ -126,7 +127,7 @@
 % that is if we are generating code as opposed to building the optimization
 % interfaces.
 
-analyse_trail_usage(!ModuleInfo) :-
+analyse_trail_usage_in_module(!ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (

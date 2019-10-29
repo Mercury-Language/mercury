@@ -19,8 +19,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- inst item_pragma_info_inst(I) for item_pragma_info/0
-    --->    item_pragma_info(I, ground, ground, ground).
+:- inst item_pragma_info_inst(I) for item_pragma_info/1
+    --->    item_pragma_info(I, ground, ground).
 
 :- inst pragma_pass_2_inst for pragma_type/0
     --->    pragma_foreign_decl(ground)
@@ -77,9 +77,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_foreign_proc_export(item_maybe_attrs::in,
-    pragma_info_foreign_proc_export::in, prog_context::in,
-    module_info::in, module_info::out,
+:- pred add_pragma_foreign_proc_export(pragma_info_foreign_proc_export::in,
+    prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -154,7 +153,7 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
     SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
     report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
         !Specs),
-    ItemPragmaInfo = item_pragma_info(Pragma, _MaybeAttrs, Context, _SeqNum),
+    ItemPragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
     (
         Pragma = pragma_foreign_decl(FDInfo),
         % XXX STATUS Check ItemMercuryStatus
@@ -1105,7 +1104,7 @@ add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
     SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
     report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
         !Specs),
-    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, SeqNum),
+    ItemPragmaInfo = item_pragma_info(Pragma, Context, SeqNum),
     (
         Pragma = pragma_foreign_proc(FPInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
@@ -1113,7 +1112,7 @@ add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
             !ModuleInfo, !Specs)
     ;
         Pragma = pragma_foreign_proc_export(FEInfo),
-        add_pragma_foreign_proc_export(MaybeAttrs, FEInfo, Context,
+        add_pragma_foreign_proc_export(FEInfo, Context,
             !ModuleInfo, !Specs)
     ;
         Pragma = pragma_type_spec(TypeSpecInfo),
@@ -1163,10 +1162,9 @@ add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
-        !ModuleInfo, !Specs) :-
-    FPEInfo = pragma_info_foreign_proc_export(Lang, PrednameModesPF,
-        ExportedName),
+add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs) :-
+    FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
+        PrednameModesPF, ExportedName),
     PrednameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
     list.length(Modes, Arity),
     look_up_pragma_pf_sym_arity(!.ModuleInfo, may_be_partially_qualified,
@@ -1231,25 +1229,27 @@ add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
             )
         else
             (
-                MaybeAttrs = item_origin_user,
+                Origin = item_origin_user,
                 report_undefined_mode_error(SymName, Arity, Context,
                     [pragma_decl("foreign_export"), words("declaration")],
                     !Specs)
             ;
-                MaybeAttrs = item_origin_compiler(_CompilerAttrs)
+                Origin = item_origin_compiler(_CompilerAttrs)
                 % We do not warn about errors in export pragmas created by
                 % the compiler as part of a source-to-source transformation.
+                % XXX Why not?
             )
         )
     ;
         MaybePredId = error1(Specs),
         (
-            MaybeAttrs = item_origin_user,
+            Origin = item_origin_user,
             !:Specs = Specs ++ !.Specs
         ;
-            MaybeAttrs = item_origin_compiler(_CompilerAttrs)
+            Origin = item_origin_compiler(_CompilerAttrs)
             % We do not warn about errors in export pragmas created by
             % the compiler as part of a source-to-source transformation.
+            % XXX Why not?
         )
     ).
 
@@ -1695,15 +1695,13 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
 
 add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
     SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-        HeadVars, Types, MaybeSharingDomain),
+        HeadVars, Types, _VarSet, _TVarSet, MaybeSharingDomain),
     (
         MaybeSharingDomain = no
     ;
         MaybeSharingDomain = yes(SharingDomain),
         PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
         list.length(Modes, Arity),
-        % XXX lfh_ignore:
-        % This happens in `.trans_opt' files sometimes, so just ignore it.
         look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
             lfh_ignore, Context, "structure_sharing",
             PredOrFunc, SymName, Arity, MaybePredId),
@@ -1716,7 +1714,13 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
                 "structure_sharing", Context, ProcTransform,
                 !ModuleInfo, !Specs)
         ;
-            MaybePredId = error1(_Specs)
+            MaybePredId = error1(Specs),
+            % XXX There used to be a comment here which said:
+            %   XXX lfh_ignore:
+            %   This happens in .trans_opt files sometimes, so just ignore it.
+            % This was probably because the original code writing out these
+            % pragmas was writing Modes with output_debug, not output_mercury.
+            !:Specs = Specs ++ !.Specs
         )
     ).
 
@@ -1727,16 +1731,14 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
-    ReuseInfo = pragma_info_structure_reuse(PredNameModesPF, HeadVars,
-        Types, MaybeReuseDomain),
+    ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
+        HeadVars, Types, _VarSet, _TVarSet, MaybeReuseDomain),
     (
         MaybeReuseDomain = no
     ;
         MaybeReuseDomain = yes(ReuseDomain),
         PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
         list.length(Modes, Arity),
-        % XXX lfh_ignore:
-        % This happens in `.trans_opt' files sometimes, so just ignore it.
         look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
             lfh_ignore, Context, "structure_reuse",
             PredOrFunc, SymName, Arity, MaybePredId),
@@ -1748,7 +1750,13 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
             transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
                 "structure_reuse", Context, ProcTransform, !ModuleInfo, !Specs)
         ;
-            MaybePredId = error1(_Specs)
+            MaybePredId = error1(Specs),
+            % XXX There used to be a comment here which said:
+            %   XXX lfh_ignore:
+            %   This happens in .trans_opt files sometimes, so just ignore it.
+            % This was probably because the original code writing out these
+            % pragmas was writing Modes with output_debug, not output_mercury.
+            !:Specs = Specs ++ !.Specs
         )
     ).
 

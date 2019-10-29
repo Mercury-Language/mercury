@@ -426,7 +426,7 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
         !Contents ^ ic_langs := Langs
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _),
         (
             (
                 Pragma = pragma_foreign_decl(FDInfo),
@@ -455,7 +455,7 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
             !Contents ^ ic_langs := Langs
         ;
             Pragma = pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(Lang, _, _),
+            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
             FELangs0 = !.Contents ^ ic_foreign_export_langs,
             Langs0 = !.Contents ^ ic_langs,
             set.insert(Lang, FELangs0, FELangs),
@@ -616,7 +616,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             !ImplicitImportNeeds)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _Origin, _Context, _SeqNum),
+        ItemPragma = item_pragma_info(Pragma, _Context, _SeqNum),
         (
             Pragma = pragma_tabled(TableInfo),
             TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
@@ -1003,7 +1003,7 @@ gather_fact_table_dependencies_in_items([Item | Items],
         !RevFactTableFileNames) :-
     ( if
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _),
         Pragma = pragma_fact_table(FTInfo),
         FTInfo = pragma_info_fact_table(_PredNameArity, FileName)
     then
@@ -1035,7 +1035,7 @@ gather_foreign_include_files_in_items_acc([], !IncludeFiles).
 gather_foreign_include_files_in_items_acc([Item | Items], !IncludeFiles) :-
     ( if
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _),
         (
             Pragma = pragma_foreign_decl(FDInfo),
             FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude)

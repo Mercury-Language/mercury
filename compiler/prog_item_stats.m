@@ -293,7 +293,7 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
     item_stats::in, item_stats::out) is det.
 
 gather_stats_in_item_pragma(ItemPragmaInfo, !ItemStats) :-
-    ItemPragmaInfo = item_pragma_info(PragmaType, _, _, _),
+    ItemPragmaInfo = item_pragma_info(PragmaType, _, _),
     (
         PragmaType = pragma_termination_info(_),
         !ItemStats ^ item_num_pragma_term :=

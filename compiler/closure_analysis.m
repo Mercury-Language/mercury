@@ -26,10 +26,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
-:- import_module io.
-
-:- pred closure_analyse_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred closure_analyse_module(module_info::in, module_info::out) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -56,6 +53,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -67,7 +65,7 @@
 
 %----------------------------------------------------------------------------%
 
-closure_analyse_module(!ModuleInfo, !IO) :-
+closure_analyse_module(!ModuleInfo) :-
     % XXX At the moment it is not necessary to do this on a per-SCC basis,
     % since the analysis is only procedure-local, but we would eventually
     % like to extend it.
@@ -76,7 +74,7 @@ closure_analyse_module(!ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, debug_closure, Debug),
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     SCCs = dependency_info_get_bottom_up_sccs(DepInfo),
-    list.foldl2(closure_analyse_scc(Debug), SCCs, !ModuleInfo, !IO).
+    list.foldl(closure_analyse_scc(Debug), SCCs, !ModuleInfo).
 
 %----------------------------------------------------------------------------%
 %
@@ -84,10 +82,10 @@ closure_analyse_module(!ModuleInfo, !IO) :-
 %
 
 :- pred closure_analyse_scc(bool::in, scc::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-closure_analyse_scc(Debug, SCC, !ModuleInfo, !IO) :-
-    set.foldl2(closure_analyse_proc(Debug), SCC, !ModuleInfo, !IO).
+closure_analyse_scc(Debug, SCC, !ModuleInfo) :-
+    set.foldl(closure_analyse_proc(Debug), SCC, !ModuleInfo).
 
 %----------------------------------------------------------------------------%
 
@@ -150,25 +148,29 @@ insert_unknown(Var, !ClosureInfo) :-
 %
 
 :- pred closure_analyse_proc(bool::in, pred_proc_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-closure_analyse_proc(Debug, PPId, !ModuleInfo, !IO) :-
+closure_analyse_proc(Debug, PPId, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_vartypes(ProcInfo0, VarTypes),
     proc_info_get_argmodes(ProcInfo0, ArgModes),
     ClosureInfo0 = closure_info_init(!.ModuleInfo, VarTypes, HeadVars,
         ArgModes),
-    write_proc_progress_message("% Analysing closures in ", PPId, !.ModuleInfo,
-        !IO),
+    trace [io(!TIO)] (
+        write_proc_progress_message("% Analysing closures in ",
+            PPId, !.ModuleInfo, !TIO)
+    ),
     proc_info_get_goal(ProcInfo0, Body0),
     closure_analyse_goal(VarTypes, !.ModuleInfo, Body0, Body,
         ClosureInfo0, _ClosureInfo),
     (
         Debug = yes,
         proc_info_get_varset(ProcInfo, Varset),
-        dump_closure_info(Varset, Body, !IO),
-        io.flush_output(!IO)
+        trace [io(!TIO)] (
+            dump_closure_info(Varset, Body, !TIO),
+            io.flush_output(!TIO)
+        )
     ;
         Debug = no
     ),

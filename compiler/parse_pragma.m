@@ -95,8 +95,8 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
         else
             Pieces = [words("Error:"), quote(PragmaName),
                 words("is not a recognized pragma name."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeIOM = error1([Spec])
         )
     else
@@ -110,8 +110,8 @@ report_unrecognized_pragma(Context) = Spec :-
     Pieces = [words("Error: a"), decl("pragma"), words("declaration"),
         words("should have the form"),
         quote(":- pragma pragma_name(pragma_arguments)."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -358,15 +358,15 @@ parse_pragma_source_file(PragmaTerms, Context, MaybeIOM) :-
             Pieces = [words("Error: the argument of a"),
                 pragma_decl("source_file"),
                 words("declaration should be a string."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeIOM = error1([Spec])
         )
     else
         Pieces = [words("Error: a"), pragma_decl("source_file"),
             words("declaration must have exactly one argument."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -447,8 +447,8 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     else
         Pieces = [words("Error: a"), pragma_decl("foreign_type"),
             words("declaration must have three or four arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -471,9 +471,8 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
                     [lower_case_next_if_not_first, words("Error:"),
                     words("foreign type assertion"), quote(HeadTermStr),
                     words("is repeated."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(HeadTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(HeadTerm), Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         else
@@ -482,8 +481,8 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
                 [lower_case_next_if_not_first,
                 words("Error: expected a foreign type assertion,"),
                 words("got"), quote(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(HeadTerm), Pieces),
             !:Specs = [Spec | !.Specs]
         ),
         parse_foreign_type_assertions(ContextPieces, VarSet, TailTerm,
@@ -494,9 +493,8 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
             [lower_case_next_if_not_first,
             words("Error: expected a list of foreign type assertions,"),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error,
-            phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -574,8 +572,8 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
     else
         Pieces = [words("Error: a"), pragma_decl("foreign_export_enum"),
             words("declaration must have two, three or four arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -656,9 +654,8 @@ parse_export_enum_attributes(VarSet, AttributesTerm, AttributesResult) :-
                     words("occurs multiple times in"),
                     pragma_decl("foreign_export_enum"),
                     words("declaration."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(AttributesTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(AttributesTerm), Pieces),
                 AttributesResult = error1([Spec])
             )
         ;
@@ -671,8 +668,8 @@ parse_export_enum_attributes(VarSet, AttributesTerm, AttributesResult) :-
             words("in the third argument of a"),
             pragma_decl("foreign_export_enum"), words("declaration,"),
             words("got"), quote(AttributesStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(AttributesTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(AttributesTerm), Pieces),
         AttributesResult = error1([Spec])
     ).
 
@@ -708,8 +705,8 @@ parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
         Pieces = [words("Error: unrecognised attribute in"),
             pragma_decl("foreign_export_enum"), words("declaration:"),
             quote(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeAttribute = error1([Spec])
     ).
 
@@ -778,10 +775,9 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     [words("Error: expected a non-empty list"),
                     words("mapping constructors to foreign values in"),
                     pragma_decl("foreign_enum"), words("declaration."), nl],
-                NoValuesSpec = error_spec(severity_error,
+                NoValuesSpec = simplest_spec(severity_error,
                     phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(ValuesTerm),
-                        [always(NoValuesPieces)])]),
+                    get_term_context(ValuesTerm), NoValuesPieces),
                 MaybeOoMValues = error1([NoValuesSpec])
             ;
                 Values = [HeadValue | TailValues],
@@ -815,8 +811,8 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error: a"), pragma_decl("foreign_enum"),
             words("declaration must have exactly three arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -848,9 +844,8 @@ parse_cur_module_sym_name_string_pair(ModuleName, VarSet, ContextPieces,
                     pragma_decl("foreign_enum"), words("pragma"),
                     words("cannot be qualified with any module name"),
                     words("other than the name of the current module."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(SymNameTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(SymNameTerm), Pieces),
                 MaybePair = error1([Spec])
             )
         ;
@@ -878,8 +873,8 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
             [lower_case_next_if_not_first,
             words("Error: invalid foreign language"),
             quote(describe_error_term(VarSet, LangTerm)), suffix("."), nl],
-        LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(LangTerm), [always(LangPieces)])]),
+        LangSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(LangTerm), LangPieces),
             MaybeForeignLang = error1([LangSpec])
     ).
 
@@ -896,8 +891,8 @@ parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm,
             [lower_case_next_if_not_first,
             words("Error: expected name/arity for type,"),
             words("got"), quote(TypeTermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(TypeTerm), Pieces),
         MaybeTypeCtor = error1([Spec])
     ).
 
@@ -934,11 +929,10 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeFunction = ok1(Function)
         then
             PredNameModesPF = pred_name_modes_pf(PredName, Modes, PredOrFunc),
-            FPEInfo = pragma_info_foreign_proc_export(ForeignLang,
-                PredNameModesPF, Function),
+            FPEInfo = pragma_info_foreign_proc_export(item_origin_user,
+                ForeignLang, PredNameModesPF, Function),
             Pragma = pragma_foreign_proc_export(FPEInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
-                SeqNum),
+            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
@@ -955,8 +949,8 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         ),
         Pieces = [words("Error: a"), pragma_decl("foreign_export"),
             words("declaration must have exactly three arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -972,9 +966,9 @@ parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
                 words("Error: expected a non-empty string for the"),
                 words("foreign language name of the exported procedure,"),
                 words("got empty string."), nl],
-            FunctionSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(FunctionTerm),
-                    [always(EmptyNamePieces)])]),
+            FunctionSpec = simplest_spec(severity_error,
+                phase_term_to_parse_tree,
+                get_term_context(FunctionTerm), EmptyNamePieces),
             MaybeFunction = error1([FunctionSpec])
         else
             % XXX TODO: if we have a valid foreign language, check that
@@ -987,9 +981,8 @@ parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
             words("Error: expected a non-empty string for the foreign"),
             words("language name of the exported procedure, got"),
             quote(describe_error_term(VarSet, FunctionTerm)), suffix("."), nl],
-        FunctionSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(FunctionTerm),
-                [always(FunctionPieces)])]),
+        FunctionSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(FunctionTerm), FunctionPieces),
         MaybeFunction = error1([FunctionSpec])
     ).
 
@@ -1016,10 +1009,9 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
                 quote(describe_error_term(VarSet, ModuleNameTerm)),
                 words("in"), pragma_decl("foreign_import_module"),
                 words("declaration."), nl],
-            ModuleNameSpec = error_spec(severity_error,
+            ModuleNameSpec = simplest_spec(severity_error,
                 phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ModuleNameTerm),
-                    [always(ModuleNamePieces)])]),
+                get_term_context(ModuleNameTerm), ModuleNamePieces),
             MaybeModuleName = error1([ModuleNameSpec])
         ),
         ( if
@@ -1036,8 +1028,8 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
     else
         Pieces = [words("Error: a"), pragma_decl("foreign_import_module"),
             words("declaration must have two arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1076,8 +1068,7 @@ parse_pragma_external_proc(ModuleName, VarSet, ErrorTerm,
                 ExternalInfo = pragma_info_external_proc(FullSymName, Arity,
                     PorF, MaybeBackend),
                 Pragma = pragma_external_proc(ExternalInfo),
-                PragmaInfo = item_pragma_info(Pragma, item_origin_user,
-                    Context, SeqNum),
+                PragmaInfo = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_pragma(PragmaInfo),
                 MaybeIOM = ok1(iom_item(Item))
             else
@@ -1085,9 +1076,8 @@ parse_pragma_external_proc(ModuleName, VarSet, ErrorTerm,
                     cord.list(ContextPieces1) ++
                     [words("is not for the expected module, which is"),
                     qual_sym_name(ModuleName), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(ErrorTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(ErrorTerm), Pieces),
                 MaybeIOM = error1([Spec])
             )
         else
@@ -1098,8 +1088,8 @@ parse_pragma_external_proc(ModuleName, VarSet, ErrorTerm,
     else
         Pieces = [words("Error: a"), pragma_decl(PragmaName),
             words("declaration must have one or two arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1114,9 +1104,8 @@ parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
         else
             ArityPieces = [words("Error: in")] ++ cord.list(ContextPieces) ++
                 [suffix(":"), words("the arity must be an integer."), nl],
-            AritySpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ArityTerm),
-                    [always(ArityPieces)])]),
+            AritySpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(ArityTerm), ArityPieces),
             MaybeArity = error1([AritySpec])
         ),
         ( if
@@ -1132,8 +1121,8 @@ parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
     else
         Pieces = [words("Error:") | cord.list(ContextPieces)] ++
             [words("should be Name/Arity."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(PredTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(PredTerm), Pieces),
         MaybeSymNameArity = error2([Spec])
     ).
 
@@ -1174,8 +1163,8 @@ parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces,
                 quote("low_level_backend"), words("or"),
                 quote("high_level_backend"), suffix(","),
                 words("got"), words(OptionsTermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(OptionsTerm), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(OptionsTerm), Pieces),
             MaybeMaybeBackend = error1([Spec])
         )
     ).
@@ -1210,8 +1199,7 @@ parse_pragma_obsolete_pred(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             ObsoletePragma =
                 pragma_info_obsolete_pred(PredNameArity, ObsoleteInFavourOf),
             Pragma = pragma_obsolete_pred(ObsoletePragma),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
+            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
@@ -1258,8 +1246,7 @@ parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             ObsoletePragma =
                 pragma_info_obsolete_proc(PredNameModesPF, ObsoleteInFavourOf),
             Pragma = pragma_obsolete_proc(ObsoletePragma),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
+            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
@@ -1291,9 +1278,9 @@ parse_pragma_obsolete_in_favour_of(Term, VarSet, MaybeObsoleteInFavourOf) :-
             pragma_decl("obsolete"), words("declaration"),
             words("should be a list of the names and arities of the"),
             words("suggested replacement predicates and/or functions."), nl],
-        Msg = simple_msg(get_term_context(Term), [always(Pieces)]),
-        MaybeObsoleteInFavourOf = error1([error_spec(severity_error,
-            phase_term_to_parse_tree, [Msg])])
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeObsoleteInFavourOf = error1([Spec])
     ).
 
 :- pred parse_pragma_obsolete_in_favour_of_snas(int::in, list(term)::in,
@@ -1311,9 +1298,9 @@ parse_pragma_obsolete_in_favour_of_snas(ArgNum, [Term | Terms], VarSet,
             words("expected a name/arity pair, got"),
             quote(describe_error_term(VarSet, Term)),
             suffix("."), nl],
-        Msg = simple_msg(get_term_context(Term), [always(Pieces)]),
-        MaybeHeadSNA = error1([error_spec(severity_error,
-            phase_term_to_parse_tree, [Msg])])
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeHeadSNA = error1([Spec])
     ),
     parse_pragma_obsolete_in_favour_of_snas(ArgNum + 1, Terms, VarSet,
         MaybeTailSNAs),
@@ -1361,14 +1348,14 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaTerms, _ErrorTerm,
                     have_not_seen_none, no, no, [], Context, MaybeOptions)
             else
                 OptionsContext = get_term_context(OptionsTerm),
-                Pieces1 = [words("Error: expected attribute list for"),
+                Pieces = [words("Error: expected attribute list for"),
                     pragma_decl("require_tail_recursion"),
                     words("declaration, got"),
                     quote(describe_error_term(VarSet, OptionsTerm)),
                     suffix("."), nl],
-                Message1 = simple_msg(OptionsContext, [always(Pieces1)]),
-                MaybeOptions = error1([error_spec(severity_error,
-                    phase_term_to_parse_tree, [Message1])])
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    OptionsContext, Pieces),
+                MaybeOptions = error1([Spec])
             )
         ;
             MaybeOptionsTerm = no,
@@ -1384,9 +1371,8 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaTerms, _ErrorTerm,
                 PragmaType = pragma_require_tail_recursion(
                     pragma_info_require_tail_recursion(Proc,
                         RequireTailrecInfo)),
-                MaybeIOM = ok1(iom_item(item_pragma(
-                    item_pragma_info(PragmaType, item_origin_user, Context,
-                    SeqNum))))
+                PragmaInfo = item_pragma_info(PragmaType, Context, SeqNum),
+                MaybeIOM = ok1(iom_item(item_pragma(PragmaInfo)))
             ;
                 MaybeOptions = error1(Errors),
                 MaybeIOM = error1(Errors)
@@ -1404,8 +1390,8 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaTerms, _ErrorTerm,
     else
         Pieces = [words("Error: a"), pragma_decl(PragmaName),
             words("declaration must have one or two arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1537,26 +1523,24 @@ parse_pragma_require_tail_recursion_options([Term | Terms], SeenNone0,
 :- func conflicting_attributes_error(string, string, prog_context) =
     error_spec.
 
-conflicting_attributes_error(ThisName, EarlierName, Context) = ErrorSpec :-
+conflicting_attributes_error(ThisName, EarlierName, Context) = Spec :-
     Pieces = [words("Error: Conflicting "),
         pragma_decl("require_tail_recursion"), words("attributes: "),
         quote(ThisName), words("conflicts with earlier attribute"),
         quote(EarlierName), suffix("."), nl],
-    Message = simple_msg(Context, [always(Pieces)]),
-    ErrorSpec = error_spec(severity_error,
-        phase_term_to_parse_tree, [Message]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 :- func pragma_require_tailrec_unknown_term_error(term, prog_context) =
     error_spec.
 
-pragma_require_tailrec_unknown_term_error(Term, Context) = ErrorSpec :-
+pragma_require_tailrec_unknown_term_error(Term, Context) = Spec :-
     varset.init(VarSet),
     Pieces = [words("Error: unrecognised "),
         pragma_decl("require_tail_recursion"), words("attribute: "),
         quote(describe_error_term(VarSet, Term)), suffix("."), nl],
-    Message = simple_msg(Context, [always(Pieces)]),
-    ErrorSpec = error_spec(severity_error,
-        phase_term_to_parse_tree, [Message]).
+    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -1584,16 +1568,15 @@ parse_pragma_unused_args(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn,
             UnusedArgs),
         Pragma = pragma_unused_args(UnusedArgsInfo),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
         % XXX Improve this message.
         Pieces = [words("Error in"), pragma_decl("unused_args"),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1651,16 +1634,14 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     Arity, MaybePredOrFunc, MaybeModes, TypeSubns, TVarSet,
                     set.init),
                 Pragma = pragma_type_spec(TypeSpecInfo),
-                ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                    Context, SeqNum),
+                ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
                 MaybeIOM = ok1(iom_item(Item))
             else
                 Pieces = [words("Error: expected type substitution in"),
                     pragma_decl("type_spec"), words("declaration."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(TypeSubnTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(TypeSubnTerm), Pieces),
                 MaybeIOM = error1([Spec])
             )
         ;
@@ -1670,8 +1651,8 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     else
         Pieces = [words("Error: a"), pragma_decl("type_spec"),
             words("declaration must have two or three arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1693,16 +1674,14 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 FactTableInfo = pragma_info_fact_table(PredNameArity,
                     FileName),
                 Pragma = pragma_fact_table(FactTableInfo),
-                ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                    Context, SeqNum),
+                ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
                 MaybeIOM = ok1(iom_item(Item))
             else
                 Pieces = [words("Error: expected string"),
                     words("for fact table filename."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(FileNameTerm),
-                        [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(FileNameTerm), Pieces),
                 MaybeIOM = error1([Spec])
             )
         ;
@@ -1712,8 +1691,8 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     else
         Pieces = [words("Error: a"), pragma_decl("fact_table"),
             words("declaration must have two arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1765,15 +1744,14 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         TermInfo = pragma_info_termination_info(PredNameModesPF,
             MaybeArgSizeInfo, MaybeTerminationInfo),
         Pragma = pragma_termination_info(TermInfo),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Syntax error in"),
             pragma_decl("termination_info"), words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1813,15 +1791,14 @@ parse_pragma_termination2_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         Term2Info = pragma_info_termination2_info(PredNameModesPF,
             SuccessArgSizeInfo, FailureArgSizeInfo, MaybeTerminationInfo),
         Pragma = pragma_termination2_info(Term2Info),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Syntax error in"),
             pragma_decl("termination2_info"), words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1867,18 +1844,19 @@ parse_pragma_structure_sharing(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         )
     then
         PredNameModesPF = pred_name_modes_pf(PredName, ModeList, PredOrFunc),
+        varset.coerce(VarSet, ProgVarSet),
+        varset.coerce(VarSet, TVarSet),
         SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-            HeadVars, Types, MaybeSharingAs),
+            HeadVars, Types, ProgVarSet, TVarSet, MaybeSharingAs),
         Pragma = pragma_structure_sharing(SharingInfo),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Syntax error in"),
             pragma_decl("structure_sharing"), words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1924,18 +1902,19 @@ parse_pragma_structure_reuse(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         )
     then
         PredNameModesPF = pred_name_modes_pf(PredName, ModeList, PredOrFunc),
+        varset.coerce(VarSet, ProgVarSet),
+        varset.coerce(VarSet, TVarSet),
         ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-            HeadVars, Types, MaybeStructureReuse),
+            HeadVars, Types, ProgVarSet, TVarSet, MaybeStructureReuse),
         Pragma = pragma_structure_reuse(ReuseInfo),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Syntax error in"),
             pragma_decl("structure_reuse"), words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1984,15 +1963,14 @@ parse_pragma_exceptions(ModuleName, ErrorTerm, PragmaTerms, Context, SeqNum,
         ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn,
             ThrowStatus),
         Pragma = pragma_exceptions(ExceptionsInfo),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Error in"),
             pragma_decl("exceptions"), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -2029,15 +2007,14 @@ parse_pragma_trailing_info(ModuleName, ErrorTerm, PragmaTerms,
         TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn,
             TrailingStatus),
         Pragma = pragma_trailing_info(TrailingInfo),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Error in"), pragma_decl("trailing_info"),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -2074,15 +2051,14 @@ parse_pragma_mm_tabling_info(ModuleName, ErrorTerm, PragmaTerms,
         TablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
             MM_TablingStatus),
         Pragma = pragma_mm_tabling_info(TablingInfo),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Error in"), pragma_decl("mm_tabling_info"),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -2122,8 +2098,7 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
                     FeatureSet = set.list_to_set(FeatureList),
                     RFSInfo = pragma_info_require_feature_set(FeatureSet),
                     Pragma = pragma_require_feature_set(RFSInfo),
-                    ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                        Context, SeqNum),
+                    ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                     Item = item_pragma(ItemPragma),
                     MaybeIOM = ok1(iom_item(Item))
                 )
@@ -2135,8 +2110,8 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
     else
         Pieces = [words("Error: a"), pragma_decl("require_feature_set"),
             words("declaration must have exactly one argument."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -2203,9 +2178,9 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
                         words("Error: foreign type descriptor for language"),
                         quote(foreign_language_string(Language)),
                         words("must be a non-empty string."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(InputTerm),
-                        [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree,
+                        get_term_context(InputTerm), Pieces),
                     MaybeForeignLangType = error1([Spec])
                 else
                     MaybeForeignLangType = ok1(ForeignLangType)
@@ -2220,9 +2195,9 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
                         words("Error: foreign type descriptor for language"),
                         quote(foreign_language_string(Language)),
                         words("must be an empty string."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(InputTerm),
-                            [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree,
+                        get_term_context(InputTerm), Pieces),
                     MaybeForeignLangType = error1([Spec])
                 )
             )
@@ -2238,8 +2213,8 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
             [lower_case_next_if_not_first, words("Error: expected a string"),
             words("specifying the foreign type descriptor,"),
             words("got"), quote(InputTermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(InputTerm), Pieces),
         MaybeForeignLangType = error1([Spec])
     ).
 
@@ -2260,8 +2235,8 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             words("declaration requires at least two arguments"),
             words("(a language specification and"),
             words("the foreign language declaration itself)."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ;
         (
@@ -2281,10 +2256,9 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                     words("declaration must be either"), quote("local"),
                     words("or"), quote("exported"), suffix(":"),
                     words("got"), quote(IsLocalStr), suffix("."), nl],
-                IsLocalSpec = error_spec(severity_error,
+                IsLocalSpec = simplest_spec(severity_error,
                     phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(IsLocalTerm),
-                        [always(IsLocalPieces)])]),
+                    get_term_context(IsLocalTerm), IsLocalPieces),
                 IsLocalSpecs = [IsLocalSpec]
             )
         ),
@@ -2297,9 +2271,8 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             LangPieces = InvalidDeclPieces ++
                 [words("invalid language parameter"),
                 quote(LangStr), suffix("."), nl],
-            LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(LangTerm),
-                    [always(LangPieces)])]),
+            LangSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(LangTerm), LangPieces),
             LangSpecs = [LangSpec]
         ),
         ( if parse_foreign_literal_or_include(HeaderTerm, LitOrInclPrime) then
@@ -2312,9 +2285,9 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                 [words("expected string or include_file for"),
                 words("foreign declaration code, got"),
                 quote(LitInclStr), suffix("."), nl],
-            LitInclSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeaderTerm),
-                    [always(LitInclPieces)])]),
+            LitInclSpec = simplest_spec(severity_error,
+                phase_term_to_parse_tree,
+                get_term_context(HeaderTerm), LitInclPieces),
             LitInclSpecs = [LitInclSpec]
         ),
         ( if
@@ -2325,8 +2298,7 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             FDInfo = pragma_info_foreign_decl(ForeignLanguage, IsLocal,
                 LiteralOrInclude),
             Pragma = pragma_foreign_decl(FDInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
+            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
@@ -2339,8 +2311,8 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             words("(a language specification,"),
             words("a local/exported indication, and"),
             words("the foreign language declaration itself)."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -2365,9 +2337,8 @@ parse_pragma_foreign_code(ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
                 words("The valid language parameters are")] ++
                 list_to_pieces(all_foreign_language_strings) ++
                 [suffix("."), nl],
-            LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(LangTerm),
-                    [always(LangPieces)])]),
+            LangSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(LangTerm), LangPieces),
             LangSpecs = [LangSpec]
         ),
         ( if parse_foreign_literal_or_include(CodeTerm, CodePrime) then
@@ -2378,9 +2349,8 @@ parse_pragma_foreign_code(ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
             CodePieces = [words("Error: in the second argument of"),
                 pragma_decl("foreign_code"), words("declaration:"),
                 words("expected string for foreign code."), nl],
-            CodeSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(CodeTerm),
-                    [always(CodePieces)])]),
+            CodeSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(CodeTerm), CodePieces),
             CodeSpecs = [CodeSpec]
         ),
         Specs = LangSpecs ++ CodeSpecs,
@@ -2388,8 +2358,7 @@ parse_pragma_foreign_code(ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
             Specs = [],
             FCInfo = pragma_info_foreign_code(ForeignLanguage, Code),
             Pragma = pragma_foreign_code(FCInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
+            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         ;
@@ -2403,8 +2372,8 @@ parse_pragma_foreign_code(ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
         ),
         Pieces = [words("Error: a"), pragma_decl("foreign_code"),
             words("declaration must have exactly two arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -2451,16 +2420,16 @@ parse_pragma_foreign_proc(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context,
         else
             Pieces = [words("Error: a "), pragma_decl("foreign_proc"),
                 words("declaration must have four arguments."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(ErrorTerm), Pieces),
             MaybeIOM = error1([Spec])
         )
     ;
         PragmaTerms = [],
         Pieces = [words("Error: a "), pragma_decl("foreign_proc"),
             words("declaration must have four arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -2517,8 +2486,8 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
             pragma_decl("foreign_proc"), words("declaration:"),
             words("error: expected a string containing foreign code, got"),
             quote(CodeTermStr), suffix("."), nl],
-        ImplSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(CodeContext, [always(ImplPieces)])]),
+        ImplSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            CodeContext, ImplPieces),
         MaybeImpl = error1([ImplSpec])
     ),
 
@@ -2532,8 +2501,7 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
         FPInfo = pragma_info_foreign_proc(Flags, PredName, PredOrFunc,
             PragmaVars, ProgVarSet, InstVarSet, Impl),
         Pragma = pragma_foreign_proc(FPInfo),
-        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-            Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         MaybeIOM = ok1(iom_item(Item))
     else
@@ -2560,8 +2528,7 @@ parse_name_arity_pragma(ModuleName, PragmaName, NameKind, MakePragma,
         (
             MaybeNameAndArity = ok2(Name, Arity),
             MakePragma(Name, Arity, Pragma),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
+            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         ;
@@ -2574,8 +2541,8 @@ parse_name_arity_pragma(ModuleName, PragmaName, NameKind, MakePragma,
         ),
         Pieces = [words("Error: a"), pragma_decl(PragmaName),
             words("declaration must have exactly one argument."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
 
@@ -2604,8 +2571,8 @@ parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
             words("name/arity for"), pragma_decl(PragmaName),
             words("declaration, not"), quote(NameAndArityTermStr),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeNameAndArity = error2([Spec])
     ).
 
@@ -2701,8 +2668,8 @@ parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
             % but the conflict is usually very obvious even without this.
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: conflicting attributes in attribute list."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(Term), Pieces),
             MaybeAttributes = error1([Spec])
         else
             list.foldl(process_attribute, AttrList, Attributes0, Attributes),
@@ -2819,9 +2786,8 @@ parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
                 words("element of the attribute list,"),
                 quote(HeadTermStr), suffix(","),
                 words("is not a valid foreign_proc attribute."), nl],
-            HeadSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeadTerm),
-                    [always(HeadPieces)])]),
+            HeadSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(HeadTerm), HeadPieces),
             MaybeAttrs = error1([HeadSpec | get_any_errors1(MaybeTailAttrs)])
         )
     else
@@ -2831,8 +2797,8 @@ parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
             [lower_case_next_if_not_first,
             words("Error: expected an attribute list, found"),
             words(TermStr), suffix("."), nl],
-        TermSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(TermPieces)])]),
+        TermSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), TermPieces),
         MaybeAttrs = error1([TermSpec])
     ).
 
@@ -3060,8 +3026,8 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
             UnnamedPieces = [words("Sorry, not implemented: "),
                 words("anonymous"), quote("_"),
                 words("variable in pragma foreign_proc."), nl],
-            UnnamedSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(VarContext, [always(UnnamedPieces)])]),
+            UnnamedSpec = simplest_spec(severity_error,
+                phase_term_to_parse_tree, VarContext, UnnamedPieces),
             MaybeVarName = error1([UnnamedSpec])
         ),
         ArgContextPieces = ContextPieces ++ cord.from_list(
@@ -3087,8 +3053,8 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
     else
         Pieces = [words("Error: the"), nth_fixed(ArgNum), words("argument is"),
             words("not in the form"), quote("Var :: mode"), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(HeadTerm), Pieces),
         MaybePragmaVars = error1([Spec | get_any_errors1(MaybeTailPragmaVars)])
     ).
 
@@ -3118,8 +3084,8 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                 words("predicate name/arity for first argument of"),
                 pragma_decl("oisu"), words("declaration, not"),
                 quote(TypeCtorTermStr), suffix("."), nl],
-            TypeCtorSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+            TypeCtorSpec = simplest_spec(severity_error,
+                phase_term_to_parse_tree, get_term_context(ErrorTerm), Pieces),
             MaybeTypeCtor = error1([TypeCtorSpec])
         ),
         parse_oisu_preds_term(ModuleName, VarSet, "second", "creators",
@@ -3143,8 +3109,7 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             OISUInfo = pragma_info_oisu(TypeCtor, CreatorsNamesArities,
                 MutatorsNamesArities, DestructorsNamesArities),
             Pragma = pragma_oisu(OISUInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
+            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
@@ -3162,8 +3127,8 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         ),
         Pieces = [words("Error: a"), pragma_decl("oisu"),
             words("declaration must have three or four arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
 
@@ -3185,8 +3150,8 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
             words("should have the form"),
             quote(ExpectedFunctor ++ "([pred1/arity1, ..., predn/arityn])"),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeNamesArities = error1([Spec])
     ).
 
@@ -3215,8 +3180,8 @@ parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Term,
                 Arg1Str = describe_error_term(VarSet, Arg1),
                 Pieces = [words("Error: expected predname/arity,"),
                     words("not"), quote(Arg1Str), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Arg1), [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(Arg1), Pieces),
                 MaybeHeadNameArity = error1([Spec])
             ),
             parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Arg2,
@@ -3236,8 +3201,8 @@ parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Term,
             Pieces = [words("Error: expected a list as the argument of"),
                 words(Wrapper), suffix(","),
                 words("not"), quote(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(Term), Pieces),
             MaybeNamesArities = error1([Spec])
         )
     ;
@@ -3246,8 +3211,8 @@ parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Term,
         Pieces = [words("Error: expected a list as the argument of"),
             words(Wrapper), suffix(","),
             words("not"), quote(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeNamesArities = error1([Spec])
     ).
 
@@ -3280,8 +3245,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                 TabledInfo = pragma_info_tabled(EvalMethod, PredNameArityMPF,
                     MaybeModes, no),
                 Pragma = pragma_tabled(TabledInfo),
-                ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                    Context, SeqNum),
+                ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
                 MaybeIOM = ok1(iom_item(Item))
             ;
@@ -3302,8 +3266,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                         TabledInfo = pragma_info_tabled(EvalMethod,
                             PredNameArityMPF, MaybeModes, yes(Attributes)),
                         Pragma = pragma_tabled(TabledInfo),
-                        ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                            Context, SeqNum),
+                        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                         Item = item_pragma(ItemPragma),
                         MaybeIOM = ok1(iom_item(Item))
                     ;
@@ -3325,8 +3288,8 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         ),
         Pieces = [words("Error: a"), pragma_decl(PragmaName),
             words("declaration must have one or two arguments."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -3353,8 +3316,8 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
             Pieces = [words("Error: duplicate argument tabling methods"),
                 words("attribute in"), pragma_decl("memo"),
                 words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeAttributes = error1([Spec])
         )
     ;
@@ -3366,8 +3329,8 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
         else
             Pieces = [words("Error: duplicate size limits attribute in"),
                 pragma_decl("memo"), words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeAttributes = error1([Spec])
         )
     ;
@@ -3381,8 +3344,8 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
         else
             Pieces = [words("Error: duplicate statistics attribute in"),
                 pragma_decl("memo"), words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeAttributes = error1([Spec])
         )
     ;
@@ -3396,8 +3359,8 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
         else
             Pieces = [words("Error: duplicate allow_reset attribute in"),
                 pragma_decl("memo"), words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeAttributes = error1([Spec])
         )
     ).
@@ -3417,8 +3380,8 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
             Pieces = [words("Error: evaluation method"),
                 fixed(eval_method_to_string(EvalMethod)),
                 words("does not allow fast_loose tabling."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeContextAttribute = error1([Spec])
         )
     ;
@@ -3463,18 +3426,17 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
                         Pieces = [words("Error: expected hidden argument"),
                             words("tabling method, not"),
                             quote(Arg2Str), suffix("."), nl],
-                        Spec = error_spec(severity_error,
+                        Spec = simplest_spec(severity_error,
                             phase_term_to_parse_tree,
-                            [simple_msg(get_term_context(Arg2),
-                                [always(Pieces)])]),
+                            get_term_context(Arg2), Pieces),
                         MaybeContextAttribute = error1([Spec])
                     )
                 ;
                     MoreArgs = [_, _ | _],
                     Pieces = [words("Error: expected one or two arguments"),
                         words("for"), quote("specified"), suffix("."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(Context, [always(Pieces)])]),
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, Context, Pieces),
                     MaybeContextAttribute = error1([Spec])
                 )
             ;
@@ -3483,8 +3445,8 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
                     fixed(eval_method_to_string(EvalMethod)),
                     words("does not allow specified tabling methods."), nl],
                 % XXX Should we use the context from Arg1?
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    Context, Pieces),
                 MaybeContextAttribute = error1([Spec])
             )
         ;
@@ -3505,8 +3467,8 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
             Pieces = [words("Error: evaluation method"),
                 fixed(eval_method_to_string(EvalMethod)),
                 words("does not allow size limits."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             MaybeContextAttribute = error1([Spec])
         )
     ;
@@ -3568,8 +3530,8 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
         else
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: expected predname/arity."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                get_term_context(ErrorTerm), Pieces),
             MaybeArityOrModes = error1([Spec])
         )
     else
@@ -3692,8 +3654,8 @@ convert_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces, Result) :-
             MaybeVarSet = no,
             Pieces = UnrecognizedPieces ++ [suffix("."), nl]
         ),
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         Result = error1([Spec])
     ;
         Term = term.functor(Functor, Args, Context),
@@ -3721,8 +3683,8 @@ convert_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces, Result) :-
                     MaybeVarSet = no,
                     Pieces = UnrecognizedPieces ++ [suffix("."), nl]
                 ),
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(Term), Pieces),
                 Result = error1([Spec])
             )
         else if
@@ -3741,8 +3703,8 @@ convert_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces, Result) :-
                 Pieces = [words("Error: expected list of"), words(What),
                     suffix("."), nl]
             ),
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             Result = error1([Spec])
         )
     ).
@@ -3767,8 +3729,8 @@ convert_maybe_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces,
             MaybeVarSet = no,
             Pieces = UnrecognizedPieces ++ [suffix("."), nl]
         ),
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         Result = error1([Spec])
     ;
         Term = term.functor(Functor, Args, Context),
@@ -3802,8 +3764,8 @@ convert_maybe_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces,
                     MaybeVarSet = no,
                     Pieces = UnrecognizedPieces ++ [suffix("."), nl]
                 ),
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                    get_term_context(Term), Pieces),
                 Result = error1([Spec])
             )
         else if
@@ -3822,8 +3784,8 @@ convert_maybe_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces,
                 Pieces = [words("Error: expected list of"), words(What),
                     suffix("."), nl]
             ),
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+                Context, Pieces),
             Result = error1([Spec])
         )
     ).

@@ -419,7 +419,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         )
     ;
         Item = item_pragma(ItemPragmaInfo),
-        ItemPragmaInfo = item_pragma_info(Pragma, _, _, _),
+        ItemPragmaInfo = item_pragma_info(Pragma, _, _),
         (
             ( Pragma = pragma_foreign_proc_export(_)
             ; Pragma = pragma_external_proc(_)

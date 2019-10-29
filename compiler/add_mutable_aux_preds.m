@@ -1789,14 +1789,14 @@ add_initialise_for_mutable(ModuleName, MutableName, SymName, Arity,
     % predicates as part of the source-to-source transformation for mutable
     % variables. These predicates *must* be impure in order to prevent the
     % compiler optimizing them away.
-    module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
-    PredNameModesPF = pred_name_modes_pf(SymName, [], pf_predicate),
-    FPEInfo = pragma_info_foreign_proc_export(Lang, PredNameModesPF, CName),
     Attrs = item_compiler_attributes(compiler_origin_mutable(ModuleName,
         MutableName, mutable_pred_init)),
     Origin = item_origin_compiler(Attrs),
-    add_pragma_foreign_proc_export(Origin, FPEInfo, Context,
-        !ModuleInfo, !Specs).
+    module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
+    PredNameModesPF = pred_name_modes_pf(SymName, [], pf_predicate),
+    FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
+        PredNameModesPF, CName),
+    add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 

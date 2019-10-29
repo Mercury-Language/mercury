@@ -64,8 +64,8 @@
     % Perform structure reuse analysis on the procedures defined in the
     % current module.
     %
-:- pred perform_structure_reuse_analysis(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred perform_structure_reuse_analysis(module_info::in, module_info::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -112,7 +112,6 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.
 :- import_module transform_hlds.ctgc.structure_reuse.indirect.
 :- import_module transform_hlds.ctgc.structure_reuse.lbu.
@@ -136,7 +135,7 @@
 
 %-----------------------------------------------------------------------------%
 
-perform_structure_reuse_analysis(!ModuleInfo, !IO):-
+perform_structure_reuse_analysis(!ModuleInfo):-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
@@ -293,9 +292,7 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
     bimap.foldl(
         remove_useless_reuse_proc(!.ModuleInfo, VeryVerbose, ReuseInfoMap),
         ReuseVersionMap, PredTable0, PredTable),
-    module_info_set_predicate_table(PredTable, !ModuleInfo),
-
-    selector.reset_tables(!IO).
+    module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

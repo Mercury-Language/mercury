@@ -59,6 +59,10 @@
     ;       lp_eq
     ;       lp_gt_eq.
 
+:- inst lp_op_lt_eq_or_eq for lp_operator/0
+    --->    lp_lt_eq
+    ;       lp_eq.
+
     % A primitive linear arithmetic constraint.
     %
 :- type constraint.
@@ -85,7 +89,8 @@
     % As above but throws an exception if the constraint is false.
     %
 :- pred deconstruct_non_false_constraint(constraint::in,
-    lp_terms::out, lp_operator::out, lp_constant::out) is det.
+    lp_terms::out, lp_operator::out(lp_op_lt_eq_or_eq), lp_constant::out)
+    is det.
 
     % Succeeds iff the given constraint contains a single variable and
     % that variable is constrained to be a nonnegative value.
@@ -1199,7 +1204,7 @@ fix_basis_and_rem_cols([Var | Vars], !Tableau) :-
     BasisAgg =
         ( pred(R::in, Ones0::in, Ones::out) is det :-
             Val = !.Tableau ^ elem(R, Col),
-            Ones = ( Val = zero -> Ones0 ; [Val - R | Ones0] )
+            Ones = ( if Val = zero then Ones0 else [Val - R | Ones0] )
         ),
     solutions.aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
     ( if Res = [one - Row] then
@@ -1643,7 +1648,7 @@ eliminate_equations(!Vars, Constraints0, Result) :-
 eliminate_equations_2([], [], !Equations, !Inequations).
 eliminate_equations_2([Var | !.Vars], !:Vars, !Equations, !Inequations) :-
     eliminate_equations_2(!Vars, !Equations, !Inequations),
-    ( find_target_equality(Var, Target, !Equations) ->
+    ( if find_target_equality(Var, Target, !Equations) then
         substitute_variable(Target, Var, !Equations, !Inequations,
             SuccessFlag),
         (
@@ -1653,7 +1658,7 @@ eliminate_equations_2([Var | !.Vars], !:Vars, !Equations, !Inequations) :-
         ;
             SuccessFlag = yes
         )
-    ;
+    else
         list.cons(Var, !Vars)
     ).
 
@@ -1725,7 +1730,11 @@ fix_coeff_and_const(_, [], Const, [], -Const).
 fix_coeff_and_const(Var, [Var1 - Coeff1 | Coeffs], Const0, FixedCoeffs,
         Const) :-
     fix_coeff_and_const(Var, Coeffs, Const0, FCoeffs0, Const),
-    FixedCoeffs = ( Var = Var1 -> FCoeffs0 ; [Var1 - (-Coeff1) | FCoeffs0]).
+    ( if Var = Var1 then
+        FixedCoeffs = FCoeffs0
+    else
+        FixedCoeffs = [Var1 - (-Coeff1) | FCoeffs0]
+    ).
 
     % The `Flag' argument is `yes' if one or more substitutions were made,
     % `no' otherwise. substitute_into_constraints/7 fails if a false constraint
@@ -1767,6 +1776,7 @@ substitute_into_constraint(Var, SubCoeffs, SubConst, !Constraint, Flag) :-
 %
 % Fourier elimination.
 %
+
     % Will return `no' if it aborts otherwise `yes(Matrix)', where
     % `Matrix' is the result of the projection.
     %
@@ -1840,7 +1850,7 @@ separate_vectors(Matrix, Var, Pos, Neg, Zero, NumZeros) :-
     int::in, int::out) is det.
 
 classify_vector(Var, Vector0, !Pos, !Neg, !Zero, !Num) :-
-    ( Coefficient = Vector0 ^ terms ^ elem(Var) ->
+    ( if Coefficient = Vector0 ^ terms ^ elem(Var) then
         Vector0 = vector(Label, Terms0, Const0),
         normalize_vector(Var, Terms0, Terms, Const0, Const),
         Vector1 = vector(Label, Terms, Const),
@@ -1849,7 +1859,7 @@ classify_vector(Var, Vector0, !Pos, !Neg, !Zero, !Num) :-
         else
             list.cons(Vector1, !Neg)
         )
-    ;
+    else
         list.cons(Vector0, !Zero),
         !:Num  = !.Num + 1
     ).
@@ -2321,6 +2331,9 @@ write_term(Varset, Var - Coefficient, !IO) :-
 
 % The following predicates write out constraints in a form that is useful
 % for (transitive) intermodule optimization.
+% XXX This should not be needed; (transitive) intermodule optimization
+% should output these constraints only as parts of termination pragmas,
+% and that should be done by parse_tree_out_pragma.m.
 
 output_constraints(OutputVar, Constraints, !IO) :-
     io.write_char('[', !IO),
@@ -2339,8 +2352,8 @@ output_constraint(OutputVar, eq(Terms, Constant), !IO) :-
 output_constraint(_, gte(_,_), _, _) :-
     unexpected($pred, "gte").
 
-:- pred output_constraint_2(output_var::in, lp_terms::in,
-    lp_constant::in, io::di, io::uo) is det.
+:- pred output_constraint_2(output_var::in, lp_terms::in, lp_constant::in,
+    io::di, io::uo) is det.
 
 output_constraint_2(OutputVar, Terms, Constant, !IO) :-
     output_terms(OutputVar, Terms, !IO),
@@ -2348,16 +2361,14 @@ output_constraint_2(OutputVar, Terms, Constant, !IO) :-
     rat.write_rat(Constant, !IO),
     io.write_char(')', !IO).
 
-:- pred output_terms(output_var::in, lp_terms::in, io::di, io::uo)
-    is det.
+:- pred output_terms(output_var::in, lp_terms::in, io::di, io::uo) is det.
 
 output_terms(OutputVar, Terms, !IO) :-
     io.write_char('[', !IO),
     io.write_list(Terms, ", ", output_term(OutputVar), !IO),
     io.write_char(']', !IO).
 
-:- pred output_term(output_var::in, lp_term::in, io::di, io::uo)
-    is det.
+:- pred output_term(output_var::in, lp_term::in, io::di, io::uo) is det.
 
 output_term(OutputVar, Var - Coefficient, !IO) :-
     io.format("term(%s, ", [s(OutputVar(Var))], !IO),

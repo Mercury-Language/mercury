@@ -1057,16 +1057,15 @@ is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) :-
 
 make_and_add_pragma_foreign_proc_export(SymName, HeadModes, CName,
         Origin, Context, !ModuleInfo, !Specs) :-
+    Attrs = item_compiler_attributes(Origin),
+    PEOrigin = item_origin_compiler(Attrs),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, CompilationTarget),
     ExportLang = target_lang_to_foreign_export_lang(CompilationTarget),
     PredNameModesPF = pred_name_modes_pf(SymName, HeadModes, pf_predicate),
-    FPEInfo =
-        pragma_info_foreign_proc_export(ExportLang, PredNameModesPF, CName),
-    Attrs = item_compiler_attributes(Origin),
-    PEOrigin = item_origin_compiler(Attrs),
-    add_pragma_foreign_proc_export(PEOrigin, FPEInfo, Context,
-        !ModuleInfo, !Specs).
+    FPEInfo = pragma_info_foreign_proc_export(PEOrigin, ExportLang,
+        PredNameModesPF, CName),
+    add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 

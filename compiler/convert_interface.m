@@ -21,6 +21,8 @@
 :- module parse_tree.convert_interface.
 :- interface.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
@@ -78,14 +80,32 @@
     = type_ctor_foreign_enum_map.
 
 %---------------------------------------------------------------------------%
+
+:- func wrap_include(module_name) = item_include.
+:- func wrap_import_avail(module_name) = item_avail.
+:- func wrap_use_avail(module_name) = item_avail.
+:- func wrap_import(module_name) = avail_import_info.
+:- func wrap_use(module_name) = avail_use_info.
+
+:- func wrap_type_defn_item(item_type_defn_info) = item.
+:- func wrap_inst_defn_item(item_inst_defn_info) = item.
+:- func wrap_mode_defn_item(item_mode_defn_info) = item.
+:- func wrap_typeclass_item(item_typeclass_info) = item.
+:- func wrap_instance_item(item_instance_info) = item.
+:- func wrap_pred_decl_item(item_pred_decl_info) = item.
+:- func wrap_mode_decl_item(item_mode_decl_info) = item.
+:- func wrap_foreign_enum_item(item_foreign_enum_info) = item.
+:- func wrap_pragma_item(item_pragma_info) = item.
+:- func wrap_promise_item(item_promise_info) = item.
+:- func wrap_type_repn_item(item_type_repn_info) = item.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module recompilation.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.prog_data.
@@ -1302,34 +1322,22 @@ accumulate_foreign_enum_items(AllEnums, !ForeignEnums) :-
 
 %---------------------------------------------------------------------------%
 
-:- func wrap_include(module_name) = item_include.
-
 wrap_include(ModuleName) = Include :-
     Include = item_include(ModuleName, term.context_init, -1).
-
-:- func wrap_import_avail(module_name) = item_avail.
 
 wrap_import_avail(ModuleName) = Avail :-
     ImportInfo = avail_import_info(ModuleName, term.context_init, -1),
     Avail = avail_import(ImportInfo).
 
-:- func wrap_use_avail(module_name) = item_avail.
-
 wrap_use_avail(ModuleName) = Avail :-
     UseInfo = avail_use_info(ModuleName, term.context_init, -1),
     Avail = avail_use(UseInfo).
 
-:- func wrap_type_defn_item(item_type_defn_info) = item.
-:- func wrap_inst_defn_item(item_inst_defn_info) = item.
-:- func wrap_mode_defn_item(item_mode_defn_info) = item.
-:- func wrap_typeclass_item(item_typeclass_info) = item.
-:- func wrap_instance_item(item_instance_info) = item.
-:- func wrap_pred_decl_item(item_pred_decl_info) = item.
-:- func wrap_mode_decl_item(item_mode_decl_info) = item.
-:- func wrap_foreign_enum_item(item_foreign_enum_info) = item.
-:- func wrap_pragma_item(item_pragma_info) = item.
-:- func wrap_promise_item(item_promise_info) = item.
-:- func wrap_type_repn_item(item_type_repn_info) = item.
+wrap_import(ModuleName) = ImportInfo :-
+    ImportInfo = avail_import_info(ModuleName, term.context_init, -1).
+
+wrap_use(ModuleName) = UseInfo :-
+    UseInfo = avail_use_info(ModuleName, term.context_init, -1).
 
 wrap_type_defn_item(X) = item_type_defn(X).
 wrap_inst_defn_item(X) = item_inst_defn(X).

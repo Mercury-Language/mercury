@@ -119,6 +119,8 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
+:- import_module parse_tree.parse_tree_out.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module top_level.mercury_compile_middle_passes.
 :- import_module transform_hlds.
@@ -482,38 +484,80 @@ frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats, Globals,
 
 create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
         !Specs, !IO) :-
-    write_initial_opt_file(!HLDS, !IO),
-
-    % The following passes are only run with `--intermodule-optimisation'
-    % to append their results to the `.opt.tmp' file. For
-    % `--intermodule-analysis', analysis results should be recorded
-    % using the intermodule analysis framework instead.
-    % XXX So why is the test "IntermodAnalysis = no", instead of
-    % "IntermodOpt = yes"?
-    %
-    % If intermod_unused_args is being performed, run polymorphism,
-    % mode analysis and determinism analysis before unused_args.
-    ( if
-        IntermodAnalysis = no,
-        need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
-        NeedMiddlePassForOptFile = yes
-    then
-        frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO),
-        (
-            FoundError = no,
-            middle_pass_for_opt_file(!HLDS, !Specs, !IO)
-        ;
-            FoundError = yes,
-            io.set_exit_status(1, !IO)
-        )
-    else
-        true
-    ),
     module_info_get_name(!.HLDS, ModuleName),
+    module_name_to_file_name(Globals, do_create_dirs, ".opt.tmp",
+        ModuleName, TmpOptName, !IO),
     module_name_to_file_name(Globals, do_create_dirs, ".opt",
         ModuleName, OptName, !IO),
-    update_interface(Globals, OptName, !IO),
-    touch_interface_datestamp(Globals, ModuleName, ".optdate", !IO).
+
+    io.open_output(TmpOptName, OpenResult, !IO),
+    (
+        OpenResult = error(Error),
+        io.progname_base("mmc", ProgName, !IO),
+        io.error_message(Error, ErrorMsg),
+        io.format("%s: cannot open `%s' for output: %s\n",
+            [s(ProgName), s(TmpOptName), s(ErrorMsg)], !IO),
+        io.set_exit_status(1, !IO)
+    ;
+        OpenResult = ok(TmpOptStream),
+        write_initial_opt_file(TmpOptStream, !.HLDS, IntermodInfo,
+            ParseTreePlainOpt0, !IO),
+        maybe_opt_export_listed_entities(IntermodInfo, !HLDS),
+
+        % The following passes are only run with `--intermodule-optimisation'
+        % to append their results to the `.opt.tmp' file. For
+        % `--intermodule-analysis', analysis results should be recorded
+        % using the intermodule analysis framework instead.
+        % XXX So why is the test "IntermodAnalysis = no", instead of
+        % "IntermodOpt = yes"?
+        %
+        % If intermod_unused_args is being performed, run polymorphism,
+        % mode analysis and determinism analysis before unused_args.
+        ( if
+            IntermodAnalysis = no,
+            need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
+            NeedMiddlePassForOptFile = yes
+        then
+            frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO),
+            (
+                FoundError = no,
+                middle_pass_for_opt_file(!HLDS, UnusedArgsInfos, !Specs, !IO),
+                append_analysis_pragmas_to_opt_file(TmpOptStream, !.HLDS,
+                    UnusedArgsInfos, ParseTreePlainOpt0, ParseTreePlainOpt,
+                    !IO)
+            ;
+                FoundError = yes,
+                io.set_exit_status(1, !IO),
+                ParseTreePlainOpt = ParseTreePlainOpt0
+            )
+        else
+            ParseTreePlainOpt = ParseTreePlainOpt0
+        ),
+        io.close_output(TmpOptStream, !IO),
+
+        update_interface(Globals, OptName, !IO),
+        touch_interface_datestamp(Globals, ModuleName, ".optdate", !IO),
+
+        globals.lookup_bool_option(Globals, experiment5, Experiment5),
+        (
+            Experiment5 = no
+        ;
+            Experiment5 = yes,
+            io.open_output(OptName ++ "x", OptXResult, !IO),
+            (
+                OptXResult = error(_)
+            ;
+                OptXResult = ok(OptXStream),
+                Info = init_merc_out_info(Globals, unqualified_item_names,
+                    output_mercury),
+                io.set_output_stream(OptXStream, OldOutputStream, !IO),
+                mercury_output_parse_tree_plain_opt(Info, ParseTreePlainOpt,
+                    !IO),
+                io.set_output_stream(OldOutputStream, _, !IO),
+                io.close_output(OptXStream, !IO)
+            )
+        )
+    ).
 
     % If there is a `.opt' file for this module, then we must mark
     % the items that would be in the .opt file as opt_exported

@@ -674,7 +674,7 @@ replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
 
 replace_in_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         Info0, Info, !RecompInfo, !UsedModules, []) :-
-    Info0 = item_pragma_info(Pragma0, Origin, Context, SeqNum),
+    Info0 = item_pragma_info(Pragma0, Context, SeqNum),
     (
         Pragma0 = pragma_type_spec(TypeSpecInfo0),
         TypeSpecInfo0 = pragma_info_type_spec(PredName, NewName, Arity,
@@ -764,7 +764,7 @@ replace_in_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         ),
         Pragma = Pragma0
     ),
-    Info = item_pragma_info(Pragma, Origin, Context, SeqNum).
+    Info = item_pragma_info(Pragma, Context, SeqNum).
 
 :- pred replace_in_mutable_info(module_name::in, maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in,
