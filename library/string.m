@@ -527,8 +527,8 @@
 
     % all_match(TestPred, String):
     %
-    % True if TestPred is true when applied to each character (code point) in
-    % String or if String is the empty string.
+    % True iff `String' is empty or contains only code points that satisfy
+    % `TestPred'.
     %
 :- pred all_match(pred(char)::in(pred(in) is semidet), string::in) is semidet.
 
@@ -3201,10 +3201,6 @@ is_well_formed(_) :-
 % For speed, most of these predicates have C versions as well as
 % Mercury versions. XXX why not all?
 
-% XXX ILSEQ Behaviour depends on target language.
-% The generic versions use all_match which currently uses unsafe_index_next and
-% ignores the first ill-formed sequence and everything thereafter.
-
 :- pragma foreign_proc("C",
     is_all_alpha(S::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -3347,9 +3343,6 @@ is_all_digits(S) :-
 
 %---------------------%
 
-% XXX ILSEQ all_match should fail if it encounters an ill-formed sequence;
-% instead it acts as if the String ends there.
-
 all_match(P, String) :-
     all_match_loop(P, String, 0).
 
@@ -3357,7 +3350,8 @@ all_match(P, String) :-
     int::in) is semidet.
 
 all_match_loop(P, String, Cur) :-
-    ( if unsafe_index_next(String, Cur, Next, Char) then
+    ( if unsafe_index_next_repl(String, Cur, Next, Char, IsReplaced) then
+        IsReplaced = no,
         P(Char),
         all_match_loop(P, String, Next)
     else
