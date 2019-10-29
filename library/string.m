@@ -4249,12 +4249,11 @@ split_at_separator_loop(DelimP, Str, CurPos, PastSegEnd, !Segments) :-
     % Invariant: 0 =< CurPos =< length(Str).
     % PastSegEnd is one past the last index of the current segment.
     %
-    % XXX ILSEQ unsafe_prev_index fails at an ill-formed sequence.
-    % Ideally code units in an ill-form sequence are skipped over
-    % since they cannot be delimiters.
-    %
-    ( if unsafe_prev_index(Str, CurPos, PrevPos, Char) then
-        ( if DelimP(Char) then
+    ( if unsafe_prev_index_repl(Str, CurPos, PrevPos, Char, IsReplaced) then
+        ( if
+            IsReplaced = no,
+            DelimP(Char)
+        then
             % Chop here.
             SegStart = CurPos,
             Segment = unsafe_between(Str, SegStart, PastSegEnd),
