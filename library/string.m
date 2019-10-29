@@ -3366,13 +3366,6 @@ all_match_loop(P, String, Cur) :-
 
 %---------------------%
 
-% XXX ILSEQ Behaviour depends on target language.
-%  - C/C#/Java: ill-formed sequences don't prevent matching of later chars
-%  - generic: unsafe_index_next stops at first ill-formed sequence
-
-    % strchr always returns true when searching for '\0',
-    % but the '\0' is an implementation detail which really
-    % shouldn't be considered to be part of the string itself.
 :- pragma foreign_proc("C",
     contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -3382,12 +3375,13 @@ all_match_loop(P, String, Cur) :-
     size_t  len;
     if (MR_is_ascii(Ch)) {
         // Fast path.
-        SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
+        // strchr always returns true when searching for NUL,
+        // but the NUL is not part of the string itself.
+        SUCCESS_INDICATOR = (Ch != '\\0') && (strchr(Str, Ch) != NULL);
     } else {
-        // XXX ILSEQ Handle Ch being surrogate or invalid valid.
         len = MR_utf8_encode(buf, Ch);
         buf[len] = '\\0';
-        SUCCESS_INDICATOR = (strstr(Str, buf) != NULL);
+        SUCCESS_INDICATOR = (len > 0) && (strstr(Str, buf) != NULL);
     }
 ").
 :- pragma foreign_proc("C#",
@@ -3410,19 +3404,19 @@ all_match_loop(P, String, Cur) :-
 ").
 
 contains_char(String, Char) :-
-    contains_char(String, Char, 0).
+    contains_char_loop(String, Char, 0).
 
-:- pred contains_char(string::in, char::in, int::in) is semidet.
+:- pred contains_char_loop(string::in, char::in, int::in) is semidet.
 
-contains_char(Str, Char, I) :-
-    ( if unsafe_index_next(Str, I, J, IndexChar) then
-        ( if IndexChar = Char then
-            true
-        else
-            contains_char(Str, Char, J)
-        )
+contains_char_loop(Str, Char, I) :-
+    unsafe_index_next_repl(Str, I, J, IndexChar, IsReplaced),
+    ( if
+        IndexChar = Char,
+        IsReplaced = no
+    then
+        true
     else
-        fail
+        contains_char_loop(Str, Char, J)
     ).
 
 %---------------------%
