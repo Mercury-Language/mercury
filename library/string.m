@@ -252,10 +252,9 @@
     % sequence in `String' then `Char' is the code point encoded by that
     % sequence.
     %
-    % If the code unit in `String' at `Index' is part of an ill-formed sequence
-    % then `Char' is either a U+FFFD REPLACEMENT CHARACTER (when strings are
-    % UTF-8 encoded) or the unpaired surrogate code point at `Index' (when
-    % strings are UTF-16 encoded).
+    % Otherwise, if `Index' is in range, `Char' is either a U+FFFD REPLACEMENT
+    % CHARACTER (when strings are UTF-8 encoded) or the unpaired surrogate
+    % code point at `Index' (when strings are UTF-16 encoded).
     %
     % Fails if `Index' is out of range (negative, or greater than or equal to
     % the length of `String').
@@ -299,10 +298,10 @@
     % sequence, and `NextIndex' is the offset immediately following that
     % sequence.
     %
-    % If the code unit in `String' at `Index' is part of an ill-formed sequence
-    % then `Char' is either a U+FFFD REPLACEMENT CHARACTER (when strings are
-    % UTF-8 encoded) or the unpaired surrogate code point at `Index' (when
-    % strings are UTF-16 encoded), and `NextIndex' is Index + 1.
+    % Otherwise, if `Index' is in range, `Char' is either a U+FFFD REPLACEMENT
+    % CHARACTER (when strings are UTF-8 encoded) or the unpaired surrogate
+    % code point at `Index' (when strings are UTF-16 encoded), and `NextIndex'
+    % is Index + 1.
     %
     % Fails if `Index' is out of range (negative, or greater than or equal to
     % the length of `String').
@@ -325,11 +324,10 @@
     % `String' then `Char' is the code point encoded by that sequence, and
     % `PrevIndex' is the initial code unit offset of that sequence.
     %
-    % If the code unit in `String' at `Index - 1' is part of an ill-formed
-    % sequence then `Char' is either a U+FFFD REPLACEMENT CHARACTER (when
-    % strings are UTF-8 encoded) or the unpaired surrogate code point at
-    % `Index - 1' (when strings are UTF-16 encoded), and `PrevIndex' is
-    % `Index - 1'.
+    % Otherwise, if `Index' is in range, `Char' is either a U+FFFD REPLACEMENT
+    % CHARACTER (when strings are UTF-8 encoded) or the unpaired surrogate
+    % code point at `Index - 1' (when strings are UTF-16 encoded), and
+    % `PrevIndex' is `Index - 1'.
     %
     % Fails if `Index' is out of range (non-positive, or greater than the
     % length of `String').
