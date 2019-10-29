@@ -2569,272 +2569,13 @@ append_analysis_pragmas_to_opt_file(TmpOptStream, ModuleInfo, UnusedArgsInfos,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % Write out the exception pragmas for this predicate.
-    %
-:- pred write_pragma_exceptions_for_pred(module_info::in, order_pred_info::in,
-    cord(item_exceptions)::in, cord(item_exceptions)::out,
+:- pred write_pragma_unused_args(pragma_info_unused_args::in,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
-        !ExceptionsCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo),
-        ProcTable, !ExceptionsCord, !First, !IO).
+write_pragma_unused_args(UnusedArgInfo, !First, !IO) :-
+    maybe_write_nl(!First, !IO),
+    mercury_output_pragma_unused_args(UnusedArgInfo, !IO).
 
-:- pred maybe_write_pragma_exceptions_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_exceptions)::in, cord(item_exceptions)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !ExceptionsCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
-        PredId, PredInfo),
-    ( if
-        proc_info_is_valid_mode(ProcInfo),
-        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_index_or_compare_pred(PredInfo),
-
-        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-        TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-        not set.member(PredId, TypeSpecForcePreds),
-
-        % XXX Writing out pragmas for the automatically generated class
-        % instance methods causes the compiler to abort when it reads them
-        % back in.
-        pred_info_get_markers(PredInfo, Markers),
-        not check_marker(Markers, marker_class_instance_method),
-        not check_marker(Markers, marker_named_class_instance_method),
-
-        proc_info_get_exception_info(ProcInfo, MaybeProcExceptionInfo),
-        MaybeProcExceptionInfo = yes(ProcExceptionInfo)
-    then
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
-            PredOrFunc, ModeNum),
-        ProcExceptionInfo = proc_exception_info(Status, _),
-        ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
-        ItemException = item_pragma_info(ExceptionInfo, term.context_init, -1),
-        cord.snoc(ItemException, !ExceptionsCord),
-        maybe_write_nl(!First, !IO),
-        mercury_output_pragma_exceptions(ExceptionInfo, !IO)
-    else
-        true
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % Write out the trailing_info pragma for this module.
-    %
-:- pred write_pragma_trailing_info_for_pred(module_info::in,
-    order_pred_info::in,
-    cord(item_trailing)::in, cord(item_trailing)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-write_pragma_trailing_info_for_pred(ModuleInfo, OrderPredInfo,
-        !TrailingInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo),
-        ProcTable, !TrailingInfosCord, !First, !IO).
-
-:- pred maybe_write_pragma_trailing_info_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_trailing)::in, cord(item_trailing)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !TrailingInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
-        PredId, PredInfo),
-    proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
-    ( if
-        proc_info_is_valid_mode(ProcInfo),
-        MaybeProcTrailingInfo = yes(ProcTrailingInfo),
-        should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo,
-            for_pragma, ShouldWrite),
-        ShouldWrite = should_write
-    then
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
-            PredOrFunc, ModeNum),
-        ProcTrailingInfo = proc_trailing_info(Status, _),
-        TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, Status),
-        ItemTrailing = item_pragma_info(TrailingInfo, term.context_init, -1),
-        cord.snoc(ItemTrailing, !TrailingInfosCord),
-        maybe_write_nl(!First, !IO),
-        mercury_output_pragma_trailing_info(TrailingInfo, !IO)
-    else
-        true
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % Write out the mm_tabling_info pragma for this predicate.
-    %
-:- pred write_pragma_mm_tabling_info_for_pred(module_info::in,
-    order_pred_info::in,
-    cord(item_mm_tabling)::in, cord(item_mm_tabling)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-write_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo,
-        !MMTablingInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo),
-        ProcTable, !MMTablingInfosCord, !First, !IO).
-
-:- pred maybe_write_pragma_mm_tabling_info_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_mm_tabling)::in, cord(item_mm_tabling)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-maybe_write_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !MMTablingInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
-        PredId, PredInfo),
-    proc_info_get_mm_tabling_info(ProcInfo, MaybeProcMMTablingInfo),
-    ( if
-        proc_info_is_valid_mode(ProcInfo),
-        MaybeProcMMTablingInfo = yes(ProcMMTablingInfo),
-        should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo,
-            for_pragma, ShouldWrite),
-        ShouldWrite = should_write
-    then
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
-            PredOrFunc, ModeNum),
-        ProcMMTablingInfo = proc_mm_tabling_info(Status, _),
-        MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
-            Status),
-        ItemMMTabling = item_pragma_info(MMTablingInfo, term.context_init, -1),
-        cord.snoc(ItemMMTabling, !MMTablingInfosCord),
-        maybe_write_nl(!First, !IO),
-        mercury_output_pragma_mm_tabling_info(MMTablingInfo, !IO)
-    else
-        true
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred write_pragma_structure_reuse_for_pred(module_info::in,
-    order_pred_info::in,
-    cord(item_struct_reuse)::in, cord(item_struct_reuse)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-write_pragma_structure_reuse_for_pred(ModuleInfo, OrderPredInfo,
-        !ReuseInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_structure_reuse_for_proc(ModuleInfo,
-            OrderPredInfo),
-        ProcTable, !ReuseInfosCord, !First, !IO).
-
-:- pred maybe_write_pragma_structure_reuse_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_struct_reuse)::in, cord(item_struct_reuse)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-maybe_write_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !ReuseInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
-        PredId, PredInfo),
-    ( if
-        proc_info_is_valid_mode(ProcInfo),
-        should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
-            for_pragma, ShouldWrite),
-        ShouldWrite = should_write,
-        proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuseDomain),
-        MaybeStructureReuseDomain = yes(StructureReuseDomain)
-    then
-        proc_info_get_varset(ProcInfo, VarSet),
-        pred_info_get_typevarset(PredInfo, TypeVarSet),
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_info_declared_argmodes(ProcInfo, ArgModes),
-        PredNameModesPF = pred_name_modes_pf(PredSymName, ArgModes,
-            PredOrFunc),
-        proc_info_get_headvars(ProcInfo, HeadVars),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
-        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
-        StructureReuseDomain =
-            structure_reuse_domain_and_status(Reuse, _Status),
-        ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Reuse)),
-        ItemReuse = item_pragma_info(ReuseInfo, term.context_init, -1),
-        cord.snoc(ItemReuse, !ReuseInfosCord),
-        write_pragma_structure_reuse_info(output_debug,
-            ReuseInfo,!IO)
-    else
-        true
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred write_pragma_structure_sharing_for_pred(module_info::in,
-    order_pred_info::in,
-    cord(item_struct_sharing)::in, cord(item_struct_sharing)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-write_pragma_structure_sharing_for_pred(ModuleInfo, OrderPredInfo,
-        !SharingInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_structure_sharing_for_proc(ModuleInfo,
-            OrderPredInfo),
-        ProcTable, !SharingInfosCord, !First, !IO).
-
-:- pred maybe_write_pragma_structure_sharing_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_struct_sharing)::in, cord(item_struct_sharing)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-maybe_write_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !SharingInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
-        PredId, PredInfo),
-    ( if
-        proc_info_is_valid_mode(ProcInfo),
-        should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
-            for_pragma, ShouldWrite),
-        ShouldWrite = should_write,
-        proc_info_get_structure_sharing(ProcInfo, MaybeSharingStatus),
-        MaybeSharingStatus = yes(SharingStatus)
-    then
-        proc_info_get_varset(ProcInfo, VarSet),
-        pred_info_get_typevarset(PredInfo, TypeVarSet),
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_info_declared_argmodes(ProcInfo, ArgModes),
-        PredNameModesPF = pred_name_modes_pf(PredSymName, ArgModes,
-            PredOrFunc),
-        proc_info_get_headvars(ProcInfo, HeadVars),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
-        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
-        SharingStatus = structure_sharing_domain_and_status(Sharing, _Status),
-        SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing)),
-        ItemSharing = item_pragma_info(SharingInfo, term.context_init, -1),
-        cord.snoc(ItemSharing, !SharingInfosCord),
-        maybe_write_nl(!First, !IO),
-        write_pragma_structure_sharing_info(output_debug, SharingInfo, !IO)
-    else
-        true
-    ).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
     % Write out a termination_info pragma for the predicate if it is exported,
@@ -3132,12 +2873,270 @@ lp_term_to_arg_size_term(VarToVarIdMap, LPTerm, ArgSizeTerm) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pragma_unused_args(pragma_info_unused_args::in,
+    % Write out the exception pragmas for this predicate.
+    %
+:- pred write_pragma_exceptions_for_pred(module_info::in, order_pred_info::in,
+    cord(item_exceptions)::in, cord(item_exceptions)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_unused_args(UnusedArgInfo, !First, !IO) :-
-    maybe_write_nl(!First, !IO),
-    mercury_output_pragma_unused_args(UnusedArgInfo, !IO).
+write_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
+        !ExceptionsCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.foldl3(
+        maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo),
+        ProcTable, !ExceptionsCord, !First, !IO).
+
+:- pred maybe_write_pragma_exceptions_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(item_exceptions)::in, cord(item_exceptions)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !ExceptionsCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
+        PredId, PredInfo),
+    ( if
+        proc_info_is_valid_mode(ProcInfo),
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_index_or_compare_pred(PredInfo),
+
+        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+        TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+        not set.member(PredId, TypeSpecForcePreds),
+
+        % XXX Writing out pragmas for the automatically generated class
+        % instance methods causes the compiler to abort when it reads them
+        % back in.
+        pred_info_get_markers(PredInfo, Markers),
+        not check_marker(Markers, marker_class_instance_method),
+        not check_marker(Markers, marker_named_class_instance_method),
+
+        proc_info_get_exception_info(ProcInfo, MaybeProcExceptionInfo),
+        MaybeProcExceptionInfo = yes(ProcExceptionInfo)
+    then
+        ModuleName = pred_info_module(PredInfo),
+        PredSymName = qualified(ModuleName, PredName),
+        proc_id_to_int(ProcId, ModeNum),
+        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
+            PredOrFunc, ModeNum),
+        ProcExceptionInfo = proc_exception_info(Status, _),
+        ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
+        ItemException = item_pragma_info(ExceptionInfo, term.context_init, -1),
+        cord.snoc(ItemException, !ExceptionsCord),
+        maybe_write_nl(!First, !IO),
+        mercury_output_pragma_exceptions(ExceptionInfo, !IO)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Write out the trailing_info pragma for this module.
+    %
+:- pred write_pragma_trailing_info_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(item_trailing)::in, cord(item_trailing)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+write_pragma_trailing_info_for_pred(ModuleInfo, OrderPredInfo,
+        !TrailingInfosCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.foldl3(
+        maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo),
+        ProcTable, !TrailingInfosCord, !First, !IO).
+
+:- pred maybe_write_pragma_trailing_info_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(item_trailing)::in, cord(item_trailing)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !TrailingInfosCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
+        PredId, PredInfo),
+    proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
+    ( if
+        proc_info_is_valid_mode(ProcInfo),
+        MaybeProcTrailingInfo = yes(ProcTrailingInfo),
+        should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo,
+            for_pragma, ShouldWrite),
+        ShouldWrite = should_write
+    then
+        ModuleName = pred_info_module(PredInfo),
+        PredSymName = qualified(ModuleName, PredName),
+        proc_id_to_int(ProcId, ModeNum),
+        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
+            PredOrFunc, ModeNum),
+        ProcTrailingInfo = proc_trailing_info(Status, _),
+        TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, Status),
+        ItemTrailing = item_pragma_info(TrailingInfo, term.context_init, -1),
+        cord.snoc(ItemTrailing, !TrailingInfosCord),
+        maybe_write_nl(!First, !IO),
+        mercury_output_pragma_trailing_info(TrailingInfo, !IO)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Write out the mm_tabling_info pragma for this predicate.
+    %
+:- pred write_pragma_mm_tabling_info_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(item_mm_tabling)::in, cord(item_mm_tabling)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+write_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo,
+        !MMTablingInfosCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.foldl3(
+        maybe_write_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo),
+        ProcTable, !MMTablingInfosCord, !First, !IO).
+
+:- pred maybe_write_pragma_mm_tabling_info_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(item_mm_tabling)::in, cord(item_mm_tabling)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+maybe_write_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !MMTablingInfosCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
+        PredId, PredInfo),
+    proc_info_get_mm_tabling_info(ProcInfo, MaybeProcMMTablingInfo),
+    ( if
+        proc_info_is_valid_mode(ProcInfo),
+        MaybeProcMMTablingInfo = yes(ProcMMTablingInfo),
+        should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo,
+            for_pragma, ShouldWrite),
+        ShouldWrite = should_write
+    then
+        ModuleName = pred_info_module(PredInfo),
+        PredSymName = qualified(ModuleName, PredName),
+        proc_id_to_int(ProcId, ModeNum),
+        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
+            PredOrFunc, ModeNum),
+        ProcMMTablingInfo = proc_mm_tabling_info(Status, _),
+        MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
+            Status),
+        ItemMMTabling = item_pragma_info(MMTablingInfo, term.context_init, -1),
+        cord.snoc(ItemMMTabling, !MMTablingInfosCord),
+        maybe_write_nl(!First, !IO),
+        mercury_output_pragma_mm_tabling_info(MMTablingInfo, !IO)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred write_pragma_structure_sharing_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(item_struct_sharing)::in, cord(item_struct_sharing)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+write_pragma_structure_sharing_for_pred(ModuleInfo, OrderPredInfo,
+        !SharingInfosCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.foldl3(
+        maybe_write_pragma_structure_sharing_for_proc(ModuleInfo,
+            OrderPredInfo),
+        ProcTable, !SharingInfosCord, !First, !IO).
+
+:- pred maybe_write_pragma_structure_sharing_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(item_struct_sharing)::in, cord(item_struct_sharing)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+maybe_write_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !SharingInfosCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+        PredId, PredInfo),
+    ( if
+        proc_info_is_valid_mode(ProcInfo),
+        should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
+            for_pragma, ShouldWrite),
+        ShouldWrite = should_write,
+        proc_info_get_structure_sharing(ProcInfo, MaybeSharingStatus),
+        MaybeSharingStatus = yes(SharingStatus)
+    then
+        proc_info_get_varset(ProcInfo, VarSet),
+        pred_info_get_typevarset(PredInfo, TypeVarSet),
+        ModuleName = pred_info_module(PredInfo),
+        PredSymName = qualified(ModuleName, PredName),
+        proc_info_declared_argmodes(ProcInfo, ArgModes),
+        PredNameModesPF = pred_name_modes_pf(PredSymName, ArgModes,
+            PredOrFunc),
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+        SharingStatus = structure_sharing_domain_and_status(Sharing, _Status),
+        SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
+            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing)),
+        ItemSharing = item_pragma_info(SharingInfo, term.context_init, -1),
+        cord.snoc(ItemSharing, !SharingInfosCord),
+        maybe_write_nl(!First, !IO),
+        write_pragma_structure_sharing_info(output_debug, SharingInfo, !IO)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred write_pragma_structure_reuse_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(item_struct_reuse)::in, cord(item_struct_reuse)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+write_pragma_structure_reuse_for_pred(ModuleInfo, OrderPredInfo,
+        !ReuseInfosCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.foldl3(
+        maybe_write_pragma_structure_reuse_for_proc(ModuleInfo,
+            OrderPredInfo),
+        ProcTable, !ReuseInfosCord, !First, !IO).
+
+:- pred maybe_write_pragma_structure_reuse_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(item_struct_reuse)::in, cord(item_struct_reuse)::out,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+maybe_write_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !ReuseInfosCord, !First, !IO) :-
+    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+        PredId, PredInfo),
+    ( if
+        proc_info_is_valid_mode(ProcInfo),
+        should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
+            for_pragma, ShouldWrite),
+        ShouldWrite = should_write,
+        proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuseDomain),
+        MaybeStructureReuseDomain = yes(StructureReuseDomain)
+    then
+        proc_info_get_varset(ProcInfo, VarSet),
+        pred_info_get_typevarset(PredInfo, TypeVarSet),
+        ModuleName = pred_info_module(PredInfo),
+        PredSymName = qualified(ModuleName, PredName),
+        proc_info_declared_argmodes(ProcInfo, ArgModes),
+        PredNameModesPF = pred_name_modes_pf(PredSymName, ArgModes,
+            PredOrFunc),
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+        StructureReuseDomain =
+            structure_reuse_domain_and_status(Reuse, _Status),
+        ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
+            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Reuse)),
+        ItemReuse = item_pragma_info(ReuseInfo, term.context_init, -1),
+        cord.snoc(ItemReuse, !ReuseInfosCord),
+        write_pragma_structure_reuse_info(output_debug,
+            ReuseInfo,!IO)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
