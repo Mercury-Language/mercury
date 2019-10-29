@@ -16,7 +16,7 @@
 % the underlying system. We ensure referential transparency by passing around
 % a ``state-of-the-world'' argument using unique modes. The compiler will check
 % that the state of the world argument is properly single-threaded, and will
-% also ensure that you don't attempt to backtrack over any I/O.
+% also ensure that the program doesn't attempt to backtrack over any I/O.
 %
 % Attempting any operation on a stream which has already been closed results
 % in undefined behaviour.
@@ -144,7 +144,384 @@
 
 %---------------------------------------------------------------------------%
 %
-% Text input predicates.
+% Opening and closing streams, both text and binary.
+%
+
+    % Attempts to open a text file for input.
+    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+    %
+:- pred open_input(string::in, io.res(io.text_input_stream)::out,
+    io::di, io::uo) is det.
+
+    % Attempts to open a binary file for input.
+    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+    %
+:- pred open_binary_input(string::in,
+    io.res(io.binary_input_stream)::out, io::di, io::uo) is det.
+
+%---------------------%
+
+    % Attempts to open a text file for output.
+    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+    %
+:- pred open_output(string::in, io.res(io.text_output_stream)::out,
+    io::di, io::uo) is det.
+
+    % Attempts to open a file for binary output.
+    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+    %
+:- pred open_binary_output(string::in,
+    io.res(io.binary_output_stream)::out, io::di, io::uo) is det.
+
+%---------------------%
+
+    % Attempts to open a text file for appending.
+    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+    %
+:- pred open_append(string::in, io.res(io.text_output_stream)::out,
+    io::di, io::uo) is det.
+
+    % Attempts to open a file for binary appending.
+    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+    %
+:- pred open_binary_append(string::in,
+    io.res(io.binary_output_stream)::out, io::di, io::uo) is det.
+
+%---------------------%
+
+    % Closes an open text input stream.
+    % Throw an io.error exception if an I/O error occurs.
+    %
+:- pred close_input(io.text_input_stream::in, io::di, io::uo) is det.
+
+    % Closes an open binary input stream. This will throw an io.error
+    % exception if an I/O error occurs.
+    %
+:- pred close_binary_input(io.binary_input_stream::in,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % Closes an open text output stream.
+    % This will throw an io.error exception if an I/O error occurs.
+    %
+:- pred close_output(io.text_output_stream::in, io::di, io::uo) is det.
+
+    % Closes an open binary output stream.
+    % This will throw an io.error exception if an I/O error occurs.
+    %
+:- pred close_binary_output(io.binary_output_stream::in,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Switching streams.
+%
+
+    % set_input_stream(NewStream, OldStream, !IO):
+    % Changes the current input stream to NewStream.
+    % Returns the previous input stream as OldStream.
+    %
+:- pred set_input_stream(io.text_input_stream::in,
+    io.text_input_stream::out, io::di, io::uo) is det.
+
+    % Changes the current input stream to the stream specified.
+    % Returns the previous stream.
+    %
+:- pred set_binary_input_stream(io.binary_input_stream::in,
+    io.binary_input_stream::out, io::di, io::uo) is det.
+
+%---------------------%
+
+    % set_output_stream(NewStream, OldStream, !IO):
+    % Changes the current output stream to NewStream.
+    % Returns the previous output stream as OldStream.
+    %
+:- pred set_output_stream(io.text_output_stream::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+
+    % Changes the current binary output stream to the stream specified.
+    % Returns the previous stream.
+    %
+:- pred set_binary_output_stream(io.binary_output_stream::in,
+    io.binary_output_stream::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Prolog style predicates for opening and switching streams.
+%
+
+    % see(FileName, Result, !IO):
+    % Attempts to open the named file for input, and if successful,
+    % sets the current input stream to the newly opened stream.
+    % Result is either 'ok' or 'error(ErrorCode)'.
+    %
+:- pred see(string::in, io.res::out, io::di, io::uo) is det.
+
+    % Attempts to open a file for binary input, and if successful sets
+    % the current binary input stream to the newly opened stream.
+    % Result is either 'ok' or 'error(ErrorCode)'.
+    %
+:- pred see_binary(string::in, io.res::out, io::di, io::uo) is det.
+
+%---------------------%
+
+    % seen(!IO):
+    % Closes the current input stream.
+    % The current input stream reverts to standard input.
+    % This will throw an io.error exception if an I/O error occurs.
+    %
+:- pred seen(io::di, io::uo) is det.
+
+    % Closes the current input stream. The current input stream reverts
+    % to standard input. This will throw an io.error exception if
+    % an I/O error occurs.
+    %
+:- pred seen_binary(io::di, io::uo) is det.
+
+%---------------------%
+
+    % tell(FileName, Result, !IO):
+    % Attempts to open the named file for output, and if successful,
+    % sets the current output stream to the newly opened stream.
+    % Result is either 'ok' or 'error(ErrCode)'.
+    %
+:- pred tell(string::in, io.res::out, io::di, io::uo) is det.
+
+    % Attempts to open a file for binary output, and if successful sets
+    % the current binary output stream to the newly opened stream.
+    % As per Prolog tell/1. Result is either 'ok' or 'error(ErrCode)'.
+    %
+:- pred tell_binary(string::in, io.res::out, io::di, io::uo) is det.
+
+%---------------------%
+
+    % told(!IO):
+    % Closes the current output stream.
+    % The current output stream reverts to standard output.
+    % This will throw an io.error exception if an I/O error occurs.
+    %
+:- pred told(io::di, io::uo) is det.
+
+    % Closes the current binary output stream. The default binary output
+    % stream reverts to standard output. As per Prolog told/0. This will
+    % throw an io.error exception if an I/O error occurs.
+    %
+:- pred told_binary(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Seeking on binary streams.
+%
+
+    % Seek to an offset relative to Whence (documented above)
+    % on a specified binary input stream. Attempting to seek on a pipe
+    % or tty results in implementation dependent behaviour.
+    %
+    % A successful seek undoes any effects of putback_byte on the stream.
+    %
+:- pred seek_binary_input(io.binary_input_stream::in, io.whence::in,
+    int::in, io::di, io::uo) is det.
+
+    % As above, but the offset is always a 64-bit value.
+    %
+:- pred seek_binary_input64(io.binary_input_stream::in, io.whence::in,
+    int64::in, io::di, io::uo) is det.
+
+%---------------------%
+
+    % Seek to an offset relative to Whence (documented above)
+    % on a specified binary output stream. Attempting to seek on a pipe
+    % or tty results in implementation dependent behaviour.
+    %
+:- pred seek_binary_output(io.binary_output_stream::in, io.whence::in,
+    int::in, io::di, io::uo) is det.
+
+    % As above, but the offset is always a 64-bit value.
+    %
+:- pred seek_binary_output64(io.binary_output_stream::in, io.whence::in,
+    int64::in, io::di, io::uo) is det.
+
+%---------------------%
+
+    % Returns the offset (in bytes) into the specified binary input stream.
+    % Throws an exception if the offset is outside the range that can be
+    % represented by the int type. To avoid this possibility, you can use the
+    % 64-bit offset version of this predicate below.
+    %
+:- pred binary_input_stream_offset(io.binary_input_stream::in, int::out,
+    io::di, io::uo) is det.
+
+    % As above, but the offset is always a 64-bit value.
+    %
+:- pred binary_input_stream_offset64(io.binary_input_stream::in, int64::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % Returns the offset (in bytes) into the specified binary output stream.
+    % Throws an exception if the offset is outside the range that can be
+    % represented by the int type. To avoid this possibility, you can use the
+    % 64-bit offset version of this predicate below.
+    %
+:- pred binary_output_stream_offset(io.binary_output_stream::in, int::out,
+    io::di, io::uo) is det.
+
+    % As above, but the offset is always a 64-bit value.
+    %
+:- pred binary_output_stream_offset64(io.binary_output_stream::in, int64::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Standard stream id predicates.
+%
+
+    % Retrieves the standard input stream.
+    %
+:- func stdin_stream = io.text_input_stream.
+
+    % Retrieves the standard input stream.
+    % Does not modify the I/O state.
+    %
+:- pred stdin_stream(io.text_input_stream::out, io::di, io::uo) is det.
+
+    % Retrieves the standard binary input stream.
+    % Does not modify the I/O state.
+    %
+:- pred stdin_binary_stream(io.binary_input_stream::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % Retrieves the standard output stream.
+    %
+:- func stdout_stream = io.text_output_stream.
+
+    % Retrieves the standard output stream.
+    % Does not modify the I/O state.
+    %
+:- pred stdout_stream(io.text_output_stream::out, io::di, io::uo) is det.
+
+    % Retrieves the standard binary output stream.
+    % Does not modify the I/O state.
+    %
+:- pred stdout_binary_stream(io.binary_output_stream::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % Retrieves the standard error stream.
+    %
+:- func stderr_stream = io.text_output_stream.
+
+    % Retrieves the standard error stream.
+    % Does not modify the I/O state.
+    %
+:- pred stderr_stream(io.text_output_stream::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Current stream id predicates.
+%
+
+    % Retrieves the current input stream.
+    % Does not modify the I/O state.
+    %
+:- pred input_stream(io.text_input_stream::out, io::di, io::uo) is det.
+
+    % Retrieves the current binary input stream.
+    % Does not modify the I/O state.
+    %
+:- pred binary_input_stream(io.binary_input_stream::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % Retrieves the current output stream.
+    % Does not modify the I/O state.
+    %
+:- pred output_stream(io.text_output_stream::out, io::di, io::uo) is det.
+
+    % Retrieves the current binary output stream.
+    % Does not modify the I/O state.
+    %
+:- pred binary_output_stream(io.binary_output_stream::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Getting and setting stream properties.
+%
+
+    % Retrieves the human-readable name associated with the current input
+    % stream or the specified output stream. For file streams, this is
+    % the filename. For stdin, this is the string "<standard input>".
+    %
+:- pred input_stream_name(string::out, io::di, io::uo) is det.
+:- pred input_stream_name(io.text_input_stream::in, string::out,
+    io::di, io::uo) is det.
+
+    % Retrieves the human-readable name associated with the current binary
+    % input stream or the specified binary input stream. For file streams,
+    % this is the filename.
+    %
+:- pred binary_input_stream_name(string::out, io::di, io::uo) is det.
+:- pred binary_input_stream_name(io.binary_input_stream::in, string::out,
+    io::di, io::uo) is det.
+
+    % Retrieves the human-readable name associated with the current
+    % output stream or the specified output stream.
+    % For file streams, this is the filename.
+    % For stdout this is the string "<standard output>".
+    % For stderr this is the string "<standard error>".
+    %
+:- pred output_stream_name(string::out, io::di, io::uo) is det.
+:- pred output_stream_name(io.text_output_stream::in, string::out,
+    io::di, io::uo) is det.
+
+    % Retrieves the human-readable name associated with the current
+    % binary output stream or the specified binary output stream.
+    % For file streams, this is the filename.
+    %
+:- pred binary_output_stream_name(string::out, io::di, io::uo) is det.
+:- pred binary_output_stream_name(io.binary_output_stream::in,
+    string::out, io::di, io::uo) is det.
+
+%---------------------%
+
+    % Return the line number of the current input stream or the specified
+    % input stream. Lines are normally numbered starting at 1, but this
+    % can be overridden by calling set_line_number.
+    %
+:- pred get_line_number(int::out, io::di, io::uo) is det.
+:- pred get_line_number(io.text_input_stream::in, int::out, io::di, io::uo)
+    is det.
+
+    % Set the line number of the current input stream or the specified
+    % input stream.
+    %
+:- pred set_line_number(int::in, io::di, io::uo) is det.
+:- pred set_line_number(io.text_input_stream::in, int::in, io::di, io::uo)
+    is det.
+
+    % Return the line number of the current output stream or the
+    % specified output stream. Lines are normally numbered starting at 1,
+    % but this can be overridden by calling set_output_line_number.
+    %
+:- pred get_output_line_number(int::out, io::di, io::uo) is det.
+:- pred get_output_line_number(io.text_output_stream::in, int::out,
+    io::di, io::uo) is det.
+
+    % Set the line number of the current output stream.
+    %
+:- pred set_output_line_number(int::in, io::di, io::uo) is det.
+:- pred set_output_line_number(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Reading values of primitive types.
 %
 
     % Read a character (code point) from the current input stream
@@ -154,113 +531,12 @@
 :- pred read_char(io.text_input_stream::in, io.result(char)::out,
     io::di, io::uo) is det.
 
-    % Read a whitespace delimited word from the current input stream
-    % or from the specified stream.
+    % Reads a character (code point) from the specified stream.
+    % This interface avoids memory allocation when there is no error.
     %
-    % See `char.is_whitespace' for the definition of whitespace characters
-    % used by this predicate.
-    %
-:- pred read_word(io.result(list(char))::out, io::di, io::uo) is det.
-:- pred read_word(io.text_input_stream::in, io.result(list(char))::out,
+:- pred read_char_unboxed(io.text_input_stream::in, io.result::out, char::out,
     io::di, io::uo) is det.
-
-    % Read a line from the current input stream or from the specified
-    % stream, returning the result as a list of characters (code points).
-    %
-    % See the documentation for `string.line' for the definition of a line.
-    %
-:- pred read_line(io.result(list(char))::out, io::di, io::uo) is det.
-:- pred read_line(io.text_input_stream::in, io.result(list(char))::out,
-    io::di, io::uo) is det.
-
-    % Read a line from the current input stream or from the specified
-    % stream, returning the result as a string.
-    %
-    % See the documentation for `string.line' for the definition of a line.
-    %
-    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
-    % or UTF-16.
-    %
-:- pred read_line_as_string(io.result(string)::out, io::di, io::uo) is det.
-:- pred read_line_as_string(io.text_input_stream::in, io.result(string)::out,
-    io::di, io::uo) is det.
-
-    % Read all the characters (code points) from the current input stream
-    % or from the specified stream, until eof or error.
-    %
-:- pred read_file(io.maybe_partial_res(list(char))::out,
-    io::di, io::uo) is det.
-:- pred read_file(io.text_input_stream::in,
-    io.maybe_partial_res(list(char))::out, io::di, io::uo) is det.
-
-    % Read all the characters (code points) from the current input stream
-    % or from the specified stream, until eof or error. Returns the result
-    % as a string rather than as a list of char.
-    %
-    % Returns an error if the file contains a null character, because
-    % null characters are not allowed in Mercury strings.
-    %
-    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
-    % or UTF-16.
-    %
-:- pred read_file_as_string(io.maybe_partial_res(string)::out,
-    io::di, io::uo) is det.
-:- pred read_file_as_string(io.text_input_stream::in,
-    io.maybe_partial_res(string)::out, io::di, io::uo) is det.
-
-    % The same as read_file_as_string, but returns not only a string,
-    % but also the number of code units in that string.
-    %
-    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
-    % or UTF-16.
-    %
-:- pred read_file_as_string_and_num_code_units(
-    io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.
-:- pred read_file_as_string_and_num_code_units(io.text_input_stream::in,
-    io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.
-
-    % Applies the given closure to each character (code point) read from
-    % the input stream in turn, until eof or error.
-    %
-:- pred input_stream_foldl(pred(char, T, T), T, io.maybe_partial_res(T),
-    io, io).
-:- mode input_stream_foldl((pred(in, in, out) is det), in, out,
-    di, uo) is det.
-:- mode input_stream_foldl((pred(in, in, out) is cc_multi), in, out,
-    di, uo) is cc_multi.
-
-    % Applies the given closure to each character (code point) read from
-    % the input stream in turn, until eof or error.
-    %
-:- pred input_stream_foldl_io(pred(char, io, io), io.res, io, io).
-:- mode input_stream_foldl_io((pred(in, di, uo) is det), out, di, uo)
-    is det.
-:- mode input_stream_foldl_io((pred(in, di, uo) is cc_multi), out, di, uo)
-    is cc_multi.
-
-    % Applies the given closure to each character (code point) read from
-    % the input stream in turn, until eof or error.
-    %
-:- pred input_stream_foldl2_io(pred(char, T, T, io, io),
-    T, io.maybe_partial_res(T), io, io).
-:- mode input_stream_foldl2_io((pred(in, in, out, di, uo) is det),
-    in, out, di, uo) is det.
-:- mode input_stream_foldl2_io((pred(in, in, out, di, uo) is cc_multi),
-    in, out, di, uo) is cc_multi.
-
-    % Applies the given closure to each character (code point) read from the
-    % input stream in turn, until eof or error, or the closure returns `no' as
-    % its second argument.
-    %
-:- pred input_stream_foldl2_io_maybe_stop(
-    pred(char, bool, T, T, io, io),
-    T, io.maybe_partial_res(T), io, io).
-:- mode input_stream_foldl2_io_maybe_stop(
-    (pred(in, out, in, out, di, uo) is det),
-    in, out, di, uo) is det.
-:- mode input_stream_foldl2_io_maybe_stop(
-    (pred(in, out, in, out, di, uo) is cc_multi),
-    in, out, di, uo) is cc_multi.
+% NOTE_TO_IMPLEMENTORS there is no version without an explicit stream argument
 
     % Un-read a character (code point) from the current input stream
     % or from the specified stream.
@@ -275,263 +551,171 @@
 :- pred putback_char(io.text_input_stream::in, char::in, io::di, io::uo)
     is det.
 
-    % Reads a character (code point) from the specified stream.
-    % This interface avoids memory allocation when there is no error.
+% Note that there are no read equivalents of write_int, write_intN,
+% write_uint, write_uintN, or write_float. Mercury programs that want to read
+% numbers must first read in strings, and try to convert the appropriate
+% parts of those strings to numbers. This allows them to handle any errors
+% in that conversion process in whatever way they like. Since there are many
+% possible ways to handle conversion failures, it is not very likely that
+% a programmer's chosen method would agree with the one used by a system-supplied
+% predicate for reading in e.g. floats, if this module had one.
+
+%---------------------%
+
+    % Reads a single 8-bit byte from the current binary input stream
+    % or from the specified binary input stream.
     %
-:- pred read_char_unboxed(io.text_input_stream::in, io.result::out, char::out,
+:- pred read_byte(io.result(int)::out, io::di, io::uo) is det.
+:- pred read_byte(io.binary_input_stream::in, io.result(int)::out,
     io::di, io::uo) is det.
 
-    % Applies the given closure to each character (code point) read from the
-    % input stream in turn, until eof or error.
+    % Reads a single signed 8-bit integer from the current binary input
+    % stream or from the specified binary input stream.
     %
-:- pred input_stream_foldl(io.text_input_stream, pred(char, T, T),
-    T, io.maybe_partial_res(T), io, io).
-:- mode input_stream_foldl(in, in(pred(in, in, out) is det),
-    in, out, di, uo) is det.
-:- mode input_stream_foldl(in, in(pred(in, in, out) is cc_multi),
-    in, out, di, uo) is cc_multi.
-
-    % Applies the given closure to each character (code point) read from the
-    % input stream in turn, until eof or error.
-    %
-:- pred input_stream_foldl_io(io.text_input_stream, pred(char, io, io),
-    io.res, io, io).
-:- mode input_stream_foldl_io(in, in(pred(in, di, uo) is det),
-    out, di, uo) is det.
-:- mode input_stream_foldl_io(in, in(pred(in, di, uo) is cc_multi),
-    out, di, uo) is cc_multi.
-
-    % Applies the given closure to each character (code point) read from the
-    % input stream in turn, until eof or error.
-    %
-:- pred input_stream_foldl2_io(io.text_input_stream,
-    pred(char, T, T, io, io),
-    T, maybe_partial_res(T), io, io).
-:- mode input_stream_foldl2_io(in,
-    in(pred(in, in, out, di, uo) is det),
-    in, out, di, uo) is det.
-:- mode input_stream_foldl2_io(in,
-    in(pred(in, in, out, di, uo) is cc_multi),
-    in, out, di, uo) is cc_multi.
-
-    % Applies the given closure to each character (code point) read from the
-    % input stream in turn, until eof or error, or the closure returns `no' as
-    % its second argument.
-    %
-:- pred input_stream_foldl2_io_maybe_stop(io.text_input_stream,
-    pred(char, bool, T, T, io, io),
-    T, maybe_partial_res(T), io, io).
-:- mode input_stream_foldl2_io_maybe_stop(in,
-    (pred(in, out, in, out, di, uo) is det),
-    in, out, di, uo) is det.
-:- mode input_stream_foldl2_io_maybe_stop(in,
-    (pred(in, out, in, out, di, uo) is cc_multi),
-    in, out, di, uo) is cc_multi.
-
-    % Read a ground term of any type, written using standard Mercury syntax,
-    % from the current stream or from the specified input stream.
-    % The type of the term read is determined by the context from which
-    % `io.read' is called.
-    %
-    % This predicate reads the input stream until reaching one of
-    % an end-of-term token, end-of-file, or I/O error.
-    %
-    % - If it finds no non-whitespace characters before the end-of-file,
-    %   then it returns `eof'.
-    %
-    % - If it finds a sequence of tokens ending with an end-of-term token,
-    %   which is a `.' followed by whitespace, then it leaves the trailing
-    %   whitespace in the input stream, and decides what to do based on
-    %   the contents of the token sequence before the end-of-term token.
-    %
-    %   - If the tokens form a syntactically correct ground term of the
-    %     expected type, then it returns `ok(Term)'.
-    %
-    %   - If tokens do not form a syntactically correct term, or if the term
-    %     they form is not ground, or if the term is not a valid term of the
-    %     expected type, then it returns `error(Message, LineNumber)'.
-    %
-    % - If it encounters an I/O error, then it also returns
-    %   `error(Message, LineNumber)'.
-    %
-    % See `char.is_whitespace' for the definition of whitespace characters
-    % used by this predicate.
-    %
-:- pred read(io.read_result(T)::out, io::di, io::uo) is det.
-:- pred read(io.text_input_stream::in, io.read_result(T)::out,
+:- pred read_binary_int8(io.result(int8)::out, io::di, io::uo) is det.
+:- pred read_binary_int8(io.binary_input_stream::in, io.result(int8)::out,
     io::di, io::uo) is det.
 
-    % The type `posn' represents a position within a string.
+    % Reads a single unsigned 8-bit integer from the current binary input
+    % stream or from the specified binary input stream.
     %
-:- type posn
-    --->    posn(
-                % The first two fields are used only for computing
-                % term contexts, for use e.g. in error messages.
-                %
-                % Line numbers start at 1; offsets start at zero.
-                % So the usual posn at the start of a file is posn(1, 0, 0).
-                posn_current_line_number        :: int,
-                posn_offset_of_start_of_line    :: int,
-                posn_current_offset             :: int
-            ).
-
-    % read_from_string(FileName, String, MaxPos, Result, Posn0, Posn):
-    %
-    % Does the same job as read/4, but reads from a string, not from a stream.
-    %
-    % FileName is the name of the source (for use in error messages).
-    % String is the string to be parsed.
-    % Posn0 is the position to start parsing from.
-    % Posn is the position one past where the term read in ends.
-    % MaxPos is the offset in the string which should be considered the
-    % end-of-stream -- this is the upper bound for Posn.
-    % (In the usual case, MaxPos is just the length of the String.)
-    % WARNING: if MaxPos > length of String, then the behaviour is UNDEFINED.
-    %
-:- pred read_from_string(string::in, string::in, int::in,
-    read_result(T)::out, posn::in, posn::out) is det.
-
-    % Discards all the whitespace characters satisfying `char.is_whitespace'
-    % from the current stream or from the specified stream.
-    %
-:- pred ignore_whitespace(io.result::out, io::di, io::uo) is det.
-:- pred ignore_whitespace(io.text_input_stream::in, io.result::out,
+:- pred read_binary_uint8(io.result(uint8)::out, io::di, io::uo) is det.
+:- pred read_binary_uint8(io.binary_input_stream::in, io.result(uint8)::out,
     io::di, io::uo) is det.
+
+%---------------------%
+
+    % Un-reads a byte from the current binary input stream or from the
+    % specified stream. The byte is taken from the bottom 8 bits of the
+    % specified int.
+    %
+    % You can put back as many bytes as you like.
+    % You can even put back something that you did not actually read.
+    %
+    % On some systems and backends, only one byte of pushback is guaranteed.
+    % `putback_byte' will throw an io.error exception if the pushback buffer
+    % is full.
+    %
+    % Pushing back a byte decrements the file position by one, except when
+    % the file position is already zero, in which case the new file position
+    % is unspecified.
+    %
+:- pred putback_byte(int::in, io::di, io::uo) is det.
+:- pred putback_byte(io.binary_input_stream::in, int::in, io::di, io::uo)
+    is det.
+
+    % Like putback_byte, but where the byte value un-read is the 8 bits of the
+    % int8 reinterpreted as a uint8.
+    %
+:- pred putback_int8(int8::in, io::di, io::uo) is det.
+:- pred putback_int8(io.binary_input_stream::in, int8::in, io::di, io::uo)
+    is det.
+
+    % Like putback_byte, but where the byte value un-read is the 8 bits of the
+    % uint8.
+    %
+:- pred putback_uint8(uint8::in, io::di, io::uo) is det.
+:- pred putback_uint8(io.binary_input_stream::in, uint8::in, io::di, io::uo)
+    is det.
+
+%---------------------%
+
+    % The following predicates read multibyte integer values, either from
+    % the current binary input stream, or from the specified binary
+    % input stream.
+    %
+    % The names of these predicates have the form:
+    %
+    %    read_binary_<TYPE><SUFFIX>
+    %
+    % where <TYPE> is the name of one of the Mercury multibyte fixed size
+    % integer types. The optional <SUFFIX> specifies the order in which
+    % the bytes that make up the multibyte integer occur in input stream.
+    % The suffix may be one of:
+    %
+    % "_le":    the bytes are in little endian byte order.
+    % "_be":    the bytes are in big endian byte order.
+    % none:     the bytes are in the byte order of the underlying platform.
+
+:- pred read_binary_int16(maybe_incomplete_result(int16)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int16(io.binary_input_stream::in,
+    maybe_incomplete_result(int16)::out, io::di, io::uo) is det.
+:- pred read_binary_int16_le(maybe_incomplete_result(int16)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int16_le(io.binary_input_stream::in,
+    maybe_incomplete_result(int16)::out, io::di, io::uo) is det.
+:- pred read_binary_int16_be(maybe_incomplete_result(int16)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int16_be(io.binary_input_stream::in,
+    maybe_incomplete_result(int16)::out, io::di, io::uo) is det.
+:- pred read_binary_uint16(maybe_incomplete_result(uint16)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint16(io.binary_input_stream::in,
+    maybe_incomplete_result(uint16)::out, io::di, io::uo) is det.
+:- pred read_binary_uint16_le(maybe_incomplete_result(uint16)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint16_le(io.binary_input_stream::in,
+    maybe_incomplete_result(uint16)::out, io::di, io::uo) is det.
+:- pred read_binary_uint16_be(maybe_incomplete_result(uint16)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint16_be(io.binary_input_stream::in,
+    maybe_incomplete_result(uint16)::out, io::di, io::uo) is det.
+
+:- pred read_binary_int32(maybe_incomplete_result(int32)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int32(io.binary_input_stream::in,
+    maybe_incomplete_result(int32)::out, io::di, io::uo) is det.
+:- pred read_binary_int32_le(maybe_incomplete_result(int32)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int32_le(io.binary_input_stream::in,
+    maybe_incomplete_result(int32)::out, io::di, io::uo) is det.
+:- pred read_binary_int32_be(maybe_incomplete_result(int32)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int32_be(io.binary_input_stream::in,
+    maybe_incomplete_result(int32)::out, io::di, io::uo) is det.
+:- pred read_binary_uint32(maybe_incomplete_result(uint32)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint32(io.binary_input_stream::in,
+    maybe_incomplete_result(uint32)::out, io::di, io::uo) is det.
+:- pred read_binary_uint32_le(maybe_incomplete_result(uint32)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint32_le(io.binary_input_stream::in,
+    maybe_incomplete_result(uint32)::out, io::di, io::uo) is det.
+:- pred read_binary_uint32_be(maybe_incomplete_result(uint32)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint32_be(io.binary_input_stream::in,
+    maybe_incomplete_result(uint32)::out, io::di, io::uo) is det.
+
+:- pred read_binary_int64(maybe_incomplete_result(int64)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int64(io.binary_input_stream::in,
+    maybe_incomplete_result(int64)::out, io::di, io::uo) is det.
+:- pred read_binary_int64_le(maybe_incomplete_result(int64)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int64_le(io.binary_input_stream::in,
+    maybe_incomplete_result(int64)::out, io::di, io::uo) is det.
+:- pred read_binary_int64_be(maybe_incomplete_result(int64)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_int64_be(io.binary_input_stream::in,
+    maybe_incomplete_result(int64)::out, io::di, io::uo) is det.
+:- pred read_binary_uint64(maybe_incomplete_result(uint64)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint64(io.binary_input_stream::in,
+    maybe_incomplete_result(uint64)::out, io::di, io::uo) is det.
+:- pred read_binary_uint64_le(maybe_incomplete_result(uint64)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint64_le(io.binary_input_stream::in,
+    maybe_incomplete_result(uint64)::out, io::di, io::uo) is det.
+:- pred read_binary_uint64_be(maybe_incomplete_result(uint64)::out,
+    io::di, io::uo) is det.
+:- pred read_binary_uint64_be(io.binary_input_stream::in,
+    maybe_incomplete_result(uint64)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Text output predicates.
+% Writing values of primitive types.
 %
-
-% These will all throw an io.error exception if an I/O error occurs.
-
-    % print/3 writes its argument to the standard output stream.
-    % print/4 writes its second argument to the output stream specified in
-    % its first argument. In all cases, the argument to output can be of any
-    % type. It is output in a format that is intended to be human readable.
-    %
-    % If the argument is just a single string or character, it will be printed
-    % out exactly as is (unquoted). If the argument is of type integer (i.e.
-    % an arbitrary precision integer), then its decimal representation will be
-    % printed. If the argument is of type univ, then the value stored in the
-    % the univ will be printed out, but not the type. If the argument is of
-    % type date_time, it will be printed out in the same form as the string
-    % returned by the function date_to_string/1. If the argument is of type
-    % duration, it will be printed out in the same form as the string
-    % returned by the function duration_to_string/1.
-    %
-    % print/5 is the same as print/4 except that it allows the caller to
-    % specify how non-canonical types should be handled. print/3 and
-    % print/4 implicitly specify `canonicalize' as the method for handling
-    % non-canonical types. This means that for higher-order types, or types
-    % with user-defined equality axioms, or types defined using the foreign
-    % language interface (i.e. pragma foreign_type), the text output will only
-    % describe the type that is being printed, not the value.
-    %
-    % print_cc/3 is the same as print/3 except that it specifies
-    % `include_details_cc' rather than `canonicalize'. This means that it will
-    % print the details of non-canonical types. However, it has determinism
-    % `cc_multi'.
-    %
-    % Note that even if `include_details_cc' is specified, some implementations
-    % may not be able to print all the details for higher-order types or types
-    % defined using the foreign language interface.
-    %
-:- pred print(T::in, io::di, io::uo) is det.
-
-:- pred print(io.text_output_stream::in, T::in, io::di, io::uo) is det.
-
-:- pred print(io.text_output_stream, deconstruct.noncanon_handling, T, io, io).
-:- mode print(in, in(do_not_allow), in, di, uo) is det.
-:- mode print(in, in(canonicalize), in, di, uo) is det.
-:- mode print(in, in(include_details_cc), in, di, uo) is cc_multi.
-:- mode print(in, in, in, di, uo) is cc_multi.
-
-:- pred print_cc(T::in, io::di, io::uo) is cc_multi.
-
-    % print_line calls print and then writes a newline character.
-    %
-:- pred print_line(T::in, io::di, io::uo) is det.
-
-:- pred print_line(io.text_output_stream::in, T::in, io::di, io::uo) is det.
-
-:- pred print_line(io.text_output_stream, deconstruct.noncanon_handling,
-    T, io, io).
-:- mode print_line(in, in(do_not_allow), in, di, uo) is det.
-:- mode print_line(in, in(canonicalize), in, di, uo) is det.
-:- mode print_line(in, in(include_details_cc), in, di, uo) is cc_multi.
-:- mode print_line(in, in, in, di, uo) is cc_multi.
-
-:- pred print_line_cc(T::in, io::di, io::uo) is cc_multi.
-
-    % write/3 writes its argument to the current output stream.
-    % write/4 writes its second argument to the output stream specified
-    % in its first argument. In all cases, the argument to output may be
-    % of any type. The argument is written in a format that is intended to
-    % be valid Mercury syntax whenever possible.
-    %
-    % Strings and characters are always printed out in quotes, using backslash
-    % escapes if necessary and backslash or octal escapes for all characters
-    % for which char.is_control/1 is true. For higher-order types, or for types
-    % defined using the foreign language interface (pragma foreign_type), the
-    % text output will only describe the type that is being printed, not the
-    % value, and the result may not be parsable by `read'. For the types
-    % containing existential quantifiers, the type `type_desc' and closure
-    % types, the result may not be parsable by `read', either. But in all other
-    % cases the format used is standard Mercury syntax, and if you append a
-    % period and newline (".\n"), then the results can be read in again using
-    % `read'.
-    %
-    % write/5 is the same as write/4 except that it allows the caller
-    % to specify how non-canonical types should be handled. write_cc/3
-    % is the same as write/3 except that it specifies `include_details_cc'
-    % rather than `canonicalize'.
-    %
-:- pred write(T::in, io::di, io::uo) is det.
-:- pred write(io.text_output_stream::in, T::in, io::di, io::uo) is det.
-
-:- pred write(io.text_output_stream, deconstruct.noncanon_handling, T, io, io).
-:- mode write(in, in(do_not_allow), in, di, uo) is det.
-:- mode write(in, in(canonicalize), in, di, uo) is det.
-:- mode write(in, in(include_details_cc), in, di, uo) is cc_multi.
-:- mode write(in, in, in, di, uo) is cc_multi.
-
-:- pred write_cc(T::in, io::di, io::uo) is cc_multi.
-:- pred write_cc(io.text_output_stream::in, T::in, io::di, io::uo) is cc_multi.
-
-    % write_line calls write and then writes a newline character.
-    %
-:- pred write_line(T::in, io::di, io::uo) is det.
-:- pred write_line(io.text_output_stream::in, T::in, io::di, io::uo) is det.
-
-:- pred write_line(io.text_output_stream, deconstruct.noncanon_handling, T,
-    io, io).
-:- mode write_line(in, in(do_not_allow), in, di, uo) is det.
-:- mode write_line(in, in(canonicalize), in, di, uo) is det.
-:- mode write_line(in, in(include_details_cc), in, di, uo) is cc_multi.
-:- mode write_line(in, in, in, di, uo) is cc_multi.
-
-:- pred write_line_cc(T::in, io::di, io::uo) is cc_multi.
-
-    % Writes a newline character to the current output stream
-    % or to the specified stream.
-    %
-:- pred nl(io::di, io::uo) is det.
-:- pred nl(io.text_output_stream::in, io::di, io::uo) is det.
-
-    % Writes a string to the current output stream or to the
-    % specified output stream.
-    %
-:- pred write_string(string::in, io::di, io::uo) is det.
-:- pred write_string(io.text_output_stream::in, string::in, io::di, io::uo)
-    is det.
-
-    % Writes a list of strings to the current output stream
-    % or to the specified output stream.
-    %
-:- pred write_strings(list(string)::in, io::di, io::uo) is det.
-:- pred write_strings(io.text_output_stream::in, list(string)::in,
-    io::di, io::uo) is det.
 
     % Writes a character to the current output stream
     % or to the specified output stream.
@@ -614,13 +798,434 @@
 :- pred write_float(io.text_output_stream::in, float::in, io::di, io::uo)
     is det.
 
-    % Formats the specified arguments according to the format string,
-    % using string.format, and then writes the result to the current
-    % output stream or to the specified output stream.
-    % (See the documentation of string.format for details.)
+    % Writes a string to the current output stream or to the
+    % specified output stream.
     %
-:- pred format(string::in, list(poly_type)::in, io::di, io::uo) is det.
-:- pred format(io.text_output_stream::in, string::in, list(poly_type)::in,
+:- pred write_string(string::in, io::di, io::uo) is det.
+:- pred write_string(io.text_output_stream::in, string::in, io::di, io::uo)
+    is det.
+
+    % Writes a newline character to the current output stream
+    % or to the specified stream.
+    %
+:- pred nl(io::di, io::uo) is det.
+:- pred nl(io.text_output_stream::in, io::di, io::uo) is det.
+
+%---------------------%
+
+    % Writes a single byte to the current binary output stream
+    % or to the specified binary output stream. The byte is taken from
+    % the bottom 8 bits of the specified int.
+    %
+:- pred write_byte(int::in, io::di, io::uo) is det.
+:- pred write_byte(io.binary_output_stream::in, int::in, io::di, io::uo)
+    is det.
+
+    % Writes a signed 8-bit integer to the current binary output stream
+    % or to the specified binary output stream.
+    %
+:- pred write_binary_int8(int8::in, io::di, io::uo) is det.
+:- pred write_binary_int8(io.binary_output_stream::in, int8::in,
+    io::di, io::uo) is det.
+
+    % Writes an unsigned 8-bit integer to the current binary output stream
+    % or to the specified binary output stream.
+    %
+:- pred write_binary_uint8(uint8::in, io::di, io::uo) is det.
+:- pred write_binary_uint8(io.binary_output_stream::in, uint8::in,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % The following predicates write multibyte integer values, either to the
+    % current binary output stream, or to the specified binary output stream.
+    %
+    % These names of these predicates have the form:
+    %
+    %    write_binary_<TYPE><SUFFIX>
+    %
+    % where <TYPE> is the name of one of the Mercury multibyte fixed size
+    % integer types. The optional <SUFFIX> specifies the order in which
+    % the bytes that make up the multibyte integer are written to the stream.
+    % The suffix may be one of:
+    %
+    % "_le":    the bytes are in little endian byte order.
+    % "_be":    the bytes are in big endian byte order.
+    % none:     the bytes are in the byte order of the underlying platform.
+
+:- pred write_binary_int16(int16::in, io::di, io::uo) is det.
+:- pred write_binary_int16(io.binary_output_stream::in, int16::in,
+    io::di, io::uo) is det.
+:- pred write_binary_int16_le(int16::in, io::di, io::uo) is det.
+:- pred write_binary_int16_le(io.binary_output_stream::in, int16::in,
+    io::di, io::uo) is det.
+:- pred write_binary_int16_be(int16::in, io::di, io::uo) is det.
+:- pred write_binary_int16_be(io.binary_output_stream::in, int16::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint16(uint16::in, io::di, io::uo) is det.
+:- pred write_binary_uint16(io.binary_output_stream::in, uint16::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint16_le(uint16::in, io::di, io::uo) is det.
+:- pred write_binary_uint16_le(io.binary_output_stream::in, uint16::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint16_be(uint16::in, io::di, io::uo) is det.
+:- pred write_binary_uint16_be(io.binary_output_stream::in, uint16::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_int32(int32::in, io::di, io::uo) is det.
+:- pred write_binary_int32(io.binary_output_stream::in, int32::in,
+    io::di, io::uo) is det.
+:- pred write_binary_int32_le(int32::in, io::di, io::uo) is det.
+:- pred write_binary_int32_le(io.binary_output_stream::in, int32::in,
+    io::di, io::uo) is det.
+:- pred write_binary_int32_be(int32::in, io::di, io::uo) is det.
+:- pred write_binary_int32_be(io.binary_output_stream::in, int32::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint32(uint32::in, io::di, io::uo) is det.
+:- pred write_binary_uint32(io.binary_output_stream::in, uint32::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint32_le(uint32::in, io::di, io::uo) is det.
+:- pred write_binary_uint32_le(io.binary_output_stream::in, uint32::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint32_be(uint32::in, io::di, io::uo) is det.
+:- pred write_binary_uint32_be(io.binary_output_stream::in, uint32::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_int64(int64::in, io::di, io::uo) is det.
+:- pred write_binary_int64(io.binary_output_stream::in, int64::in,
+    io::di, io::uo) is det.
+:- pred write_binary_int64_le(int64::in, io::di, io::uo) is det.
+:- pred write_binary_int64_le(io.binary_output_stream::in, int64::in,
+    io::di, io::uo) is det.
+:- pred write_binary_int64_be(int64::in, io::di, io::uo) is det.
+:- pred write_binary_int64_be(io.binary_output_stream::in, int64::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint64(uint64::in, io::di, io::uo) is det.
+:- pred write_binary_uint64(io.binary_output_stream::in, uint64::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint64_le(uint64::in, io::di, io::uo) is det.
+:- pred write_binary_uint64_le(io.binary_output_stream::in, uint64::in,
+    io::di, io::uo) is det.
+:- pred write_binary_uint64_be(uint64::in, io::di, io::uo) is det.
+:- pred write_binary_uint64_be(io.binary_output_stream::in, uint64::in,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Text input predicates.
+%
+
+    % Read a whitespace delimited word from the current input stream
+    % or from the specified stream.
+    %
+    % See `char.is_whitespace' for the definition of whitespace characters
+    % used by this predicate.
+    %
+:- pred read_word(io.result(list(char))::out, io::di, io::uo) is det.
+:- pred read_word(io.text_input_stream::in, io.result(list(char))::out,
+    io::di, io::uo) is det.
+
+    % Read a line from the current input stream or from the specified
+    % stream, returning the result as a list of characters (code points).
+    %
+    % See the documentation for `string.line' for the definition of a line.
+    %
+:- pred read_line(io.result(list(char))::out, io::di, io::uo) is det.
+:- pred read_line(io.text_input_stream::in, io.result(list(char))::out,
+    io::di, io::uo) is det.
+
+    % Read a line from the current input stream or from the specified
+    % stream, returning the result as a string.
+    %
+    % See the documentation for `string.line' for the definition of a line.
+    %
+    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
+    % or UTF-16.
+    %
+:- pred read_line_as_string(io.result(string)::out, io::di, io::uo) is det.
+:- pred read_line_as_string(io.text_input_stream::in, io.result(string)::out,
+    io::di, io::uo) is det.
+
+    % Discards all the whitespace characters satisfying `char.is_whitespace'
+    % from the current stream or from the specified stream.
+    %
+:- pred ignore_whitespace(io.result::out, io::di, io::uo) is det.
+:- pred ignore_whitespace(io.text_input_stream::in, io.result::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Bitmap input and output predicates.
+%
+
+    % Fill a bitmap from the current binary input stream
+    % or from the specified binary input stream.
+    % Return the number of bytes read. On end-of-file, the number of
+    % bytes read will be less than the size of the bitmap, and
+    % the result will be `ok'.
+    % Throws an exception if the bitmap has a partial final byte.
+    %
+:- pred read_bitmap(bitmap::bitmap_di, bitmap::bitmap_uo,
+    int::out, io.res::out, io::di, io::uo) is det.
+:- pred read_bitmap(io.binary_input_stream::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo,
+    int::out, io.res::out, io::di, io::uo) is det.
+
+    % read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO)
+    %
+    % Read NumBytes bytes into a bitmap starting at StartByte from the
+    % current binary input stream, or from the specified binary input stream.
+    % Return the number of bytes read. On end-of-file, the number of
+    % bytes read will be less than NumBytes, and the result will be `ok'.
+    %
+:- pred read_bitmap(byte_index::in, num_bytes::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::out, io.res::out,
+    io::di, io::uo) is det.
+:- pred read_bitmap(io.binary_input_stream::in, byte_index::in, num_bytes::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::out, io.res::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % Write a bitmap to the current binary output stream
+    % or to the specified binary output stream. The bitmap must not contain
+    % a partial final byte.
+    %
+:- pred write_bitmap(bitmap, io, io).
+%:- mode write_bitmap(bitmap_ui, di, uo) is det.
+:- mode write_bitmap(in, di, uo) is det.
+:- pred write_bitmap(io.binary_output_stream, bitmap, io, io).
+%:- mode write_bitmap(in, bitmap_ui, di, uo) is det.
+:- mode write_bitmap(in, in, di, uo) is det.
+
+    % write_bitmap(BM, StartByte, NumBytes, !IO):
+    % write_bitmap(Stream, BM, StartByte, NumBytes, !IO):
+    %
+    % Write part of a bitmap to the current binary output stream
+    % or to the specified binary output stream.
+    %
+:- pred write_bitmap(bitmap, int, int, io, io).
+%:- mode write_bitmap(bitmap_ui, in, in, di, uo) is det.
+:- mode write_bitmap(in, in, in, di, uo) is det.
+:- pred write_bitmap(io.binary_output_stream, bitmap, int, int, io, io).
+%:- mode write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
+:- mode write_bitmap(in, in, in, in, di, uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Reading values of arbitrary types.
+%
+
+    % Read a ground term of any type, written using standard Mercury syntax,
+    % from the current stream or from the specified input stream.
+    % The type of the term read is determined by the context from which
+    % `io.read' is called.
+    %
+    % This predicate reads the input stream until reaching one of
+    % an end-of-term token, end-of-file, or I/O error.
+    %
+    % - If it finds no non-whitespace characters before the end-of-file,
+    %   then it returns `eof'.
+    %
+    % - If it finds a sequence of tokens ending with an end-of-term token,
+    %   which is a `.' followed by whitespace, then it leaves the trailing
+    %   whitespace in the input stream, and decides what to do based on
+    %   the contents of the token sequence before the end-of-term token.
+    %
+    %   - If the tokens form a syntactically correct ground term of the
+    %     expected type, then it returns `ok(Term)'.
+    %
+    %   - If tokens do not form a syntactically correct term, or if the term
+    %     they form is not ground, or if the term is not a valid term of the
+    %     expected type, then it returns `error(Message, LineNumber)'.
+    %
+    % - If it encounters an I/O error, then it also returns
+    %   `error(Message, LineNumber)'.
+    %
+    % See `char.is_whitespace' for the definition of whitespace characters
+    % used by this predicate.
+    %
+:- pred read(io.read_result(T)::out, io::di, io::uo) is det.
+:- pred read(io.text_input_stream::in, io.read_result(T)::out,
+    io::di, io::uo) is det.
+
+    % Reads a binary representation of a term of type T from the current
+    % binary input stream or from the specified binary input stream.
+    %
+    % Note: if you attempt to read a binary representation written by
+    % a different program, or a different version of the same program,
+    % then the results are not guaranteed to be meaningful. Another caveat
+    % is that higher-order types cannot be read. (If you try, you will get
+    % a runtime error.)
+    %
+    % XXX Note also that in the current implementation, read_binary
+    % will not work on the Java back-end.
+    %
+:- pred read_binary(io.result(T)::out, io::di, io::uo) is det.
+:- pred read_binary(io.binary_input_stream::in, io.result(T)::out,
+    io::di, io::uo) is det.
+
+    % The type `posn' represents a position within a string.
+    %
+:- type posn
+    --->    posn(
+                % The first two fields are used only for computing
+                % term contexts, for use e.g. in error messages.
+                %
+                % Line numbers start at 1; offsets start at zero.
+                % So the usual posn at the start of a file is posn(1, 0, 0).
+                posn_current_line_number        :: int,
+                posn_offset_of_start_of_line    :: int,
+                posn_current_offset             :: int
+            ).
+
+    % read_from_string(FileName, String, MaxPos, Result, Posn0, Posn):
+    %
+    % Does the same job as read/4, but reads from a string, not from a stream.
+    %
+    % FileName is the name of the source (for use in error messages).
+    % String is the string to be parsed.
+    % Posn0 is the position to start parsing from.
+    % Posn is the position one past where the term read in ends.
+    % MaxPos is the offset in the string which should be considered the
+    % end-of-stream -- this is the upper bound for Posn.
+    % (In the usual case, MaxPos is just the length of the String.)
+    % WARNING: if MaxPos > length of String, then the behaviour is UNDEFINED.
+    %
+:- pred read_from_string(string::in, string::in, int::in, read_result(T)::out,
+    posn::in, posn::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Writing values of arbitrary types.
+%
+
+% These will all throw an io.error exception if an I/O error occurs.
+
+    % print/3 writes its argument to the standard output stream.
+    % print/4 writes its second argument to the output stream specified in
+    % its first argument. In all cases, the argument to output can be of any
+    % type. It is output in a format that is intended to be human readable.
+    %
+    % If the argument is just a single string or character, it will be printed
+    % out exactly as is (unquoted). If the argument is of type integer (i.e.
+    % an arbitrary precision integer), then its decimal representation will be
+    % printed. If the argument is of type univ, then the value stored in the
+    % the univ will be printed out, but not the type. If the argument is of
+    % type date_time, it will be printed out in the same form as the string
+    % returned by the function date_to_string/1. If the argument is of type
+    % duration, it will be printed out in the same form as the string
+    % returned by the function duration_to_string/1.
+    %
+    % print/5 is the same as print/4 except that it allows the caller to
+    % specify how non-canonical types should be handled. print/3 and
+    % print/4 implicitly specify `canonicalize' as the method for handling
+    % non-canonical types. This means that for higher-order types, or types
+    % with user-defined equality axioms, or types defined using the foreign
+    % language interface (i.e. pragma foreign_type), the text output will only
+    % describe the type that is being printed, not the value.
+    %
+    % print_cc/3 is the same as print/3 except that it specifies
+    % `include_details_cc' rather than `canonicalize'. This means that it will
+    % print the details of non-canonical types. However, it has determinism
+    % `cc_multi'.
+    %
+    % Note that even if `include_details_cc' is specified, some implementations
+    % may not be able to print all the details for higher-order types or types
+    % defined using the foreign language interface.
+    %
+:- pred print(T::in, io::di, io::uo) is det.
+:- pred print(io.text_output_stream::in, T::in, io::di, io::uo) is det.
+
+:- pred print(io.text_output_stream, deconstruct.noncanon_handling, T, io, io).
+:- mode print(in, in(do_not_allow), in, di, uo) is det.
+:- mode print(in, in(canonicalize), in, di, uo) is det.
+:- mode print(in, in(include_details_cc), in, di, uo) is cc_multi.
+:- mode print(in, in, in, di, uo) is cc_multi.
+
+:- pred print_cc(T::in, io::di, io::uo) is cc_multi.
+
+    % print_line calls print and then writes a newline character.
+    %
+:- pred print_line(T::in, io::di, io::uo) is det.
+:- pred print_line(io.text_output_stream::in, T::in, io::di, io::uo) is det.
+
+:- pred print_line(io.text_output_stream, deconstruct.noncanon_handling,
+    T, io, io).
+:- mode print_line(in, in(do_not_allow), in, di, uo) is det.
+:- mode print_line(in, in(canonicalize), in, di, uo) is det.
+:- mode print_line(in, in(include_details_cc), in, di, uo) is cc_multi.
+:- mode print_line(in, in, in, di, uo) is cc_multi.
+
+:- pred print_line_cc(T::in, io::di, io::uo) is cc_multi.
+
+    % write/3 writes its argument to the current output stream.
+    % write/4 writes its second argument to the output stream specified
+    % in its first argument. In all cases, the argument to output may be
+    % of any type. The argument is written in a format that is intended to
+    % be valid Mercury syntax whenever possible.
+    %
+    % Strings and characters are always printed out in quotes, using backslash
+    % escapes if necessary and backslash or octal escapes for all characters
+    % for which char.is_control/1 is true. For higher-order types, or for types
+    % defined using the foreign language interface (pragma foreign_type), the
+    % text output will only describe the type that is being printed, not the
+    % value, and the result may not be parsable by `read'. For the types
+    % containing existential quantifiers, the type `type_desc' and closure
+    % types, the result may not be parsable by `read', either. But in all other
+    % cases the format used is standard Mercury syntax, and if you append a
+    % period and newline (".\n"), then the results can be read in again using
+    % `read'.
+    %
+    % write/5 is the same as write/4 except that it allows the caller
+    % to specify how non-canonical types should be handled. write_cc/3
+    % is the same as write/3 except that it specifies `include_details_cc'
+    % rather than `canonicalize'.
+    %
+:- pred write(T::in, io::di, io::uo) is det.
+:- pred write(io.text_output_stream::in, T::in, io::di, io::uo) is det.
+
+:- pred write(io.text_output_stream, deconstruct.noncanon_handling, T, io, io).
+:- mode write(in, in(do_not_allow), in, di, uo) is det.
+:- mode write(in, in(canonicalize), in, di, uo) is det.
+:- mode write(in, in(include_details_cc), in, di, uo) is cc_multi.
+:- mode write(in, in, in, di, uo) is cc_multi.
+
+:- pred write_cc(T::in, io::di, io::uo) is cc_multi.
+:- pred write_cc(io.text_output_stream::in, T::in, io::di, io::uo) is cc_multi.
+
+    % write_line calls write and then writes a newline character.
+    %
+:- pred write_line(T::in, io::di, io::uo) is det.
+:- pred write_line(io.text_output_stream::in, T::in, io::di, io::uo) is det.
+
+:- pred write_line(io.text_output_stream, deconstruct.noncanon_handling, T,
+    io, io).
+:- mode write_line(in, in(do_not_allow), in, di, uo) is det.
+:- mode write_line(in, in(canonicalize), in, di, uo) is det.
+:- mode write_line(in, in(include_details_cc), in, di, uo) is cc_multi.
+:- mode write_line(in, in, in, di, uo) is cc_multi.
+
+:- pred write_line_cc(T::in, io::di, io::uo) is cc_multi.
+
+    % Writes a binary representation of a term to the current binary output
+    % stream or to the specified stream, in a format suitable for reading in
+    % again with read_binary.
+    %
+:- pred write_binary(T::in, io::di, io::uo) is det.
+:- pred write_binary(io.binary_output_stream::in, T::in, io::di, io::uo)
+    is det.
+
+%---------------------------------------------------------------------------%
+%
+% Writing out several values.
+%
+
+    % Writes a list of strings to the current output stream
+    % or to the specified output stream.
+    %
+:- pred write_strings(list(string)::in, io::di, io::uo) is det.
+:- pred write_strings(io.text_output_stream::in, list(string)::in,
     io::di, io::uo) is det.
 
     % Writes the specified arguments to the current output stream
@@ -628,6 +1233,15 @@
     %
 :- pred write_many(list(poly_type)::in, io::di, io::uo) is det.
 :- pred write_many(io.text_output_stream::in, list(poly_type)::in,
+    io::di, io::uo) is det.
+
+    % Formats the specified arguments according to the format string,
+    % using string.format, and then writes the result to the current
+    % output stream or to the specified output stream.
+    % (See the documentation of string.format for details.)
+    %
+:- pred format(string::in, list(poly_type)::in, io::di, io::uo) is det.
+:- pred format(io.text_output_stream::in, string::in, list(poly_type)::in,
     io::di, io::uo) is det.
 
     % write_list(List, Separator, OutputPred, !IO):
@@ -679,379 +1293,70 @@
 %:- mode write_array(in, array_ui, in, pred(in, di, uo) is cc_multi, di uo)
 % is cc_multi.
 
+%---------------------------------------------------------------------------%
+%
+% Flushing output to the operating system.
+%
+
     % Flush the output buffer of the current output stream
     % or to the specified output stream.
     %
 :- pred flush_output(io::di, io::uo) is det.
 :- pred flush_output(io.text_output_stream::in, io::di, io::uo) is det.
 
-%---------------------------------------------------------------------------%
-%
-% Input text stream predicates.
-%
-
-    % see(File, Result, !IO):
-    % Attempts to open a file for input, and if successful, sets the current
-    % input stream to the newly opened stream.
-    % Result is either 'ok' or 'error(ErrorCode)'.
+    % Flush the output buffer of the current binary output stream.
+    % or of the specified binary output stream.
     %
-:- pred see(string::in, io.res::out, io::di, io::uo) is det.
-
-    % Closes the current input stream.
-    % The current input stream reverts to standard input.
-    % This will throw an io.error exception if an I/O error occurs.
-    %
-:- pred seen(io::di, io::uo) is det.
-
-    % Attempts to open a file for input.
-    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
-    %
-:- pred open_input(string::in, io.res(io.text_input_stream)::out,
-    io::di, io::uo) is det.
-
-    % Closes an open input stream.
-    % Throw an io.error exception if an I/O error occurs.
-    %
-:- pred close_input(io.text_input_stream::in, io::di, io::uo) is det.
-
-    % Retrieves the current input stream.
-    % Does not modify the I/O state.
-    %
-:- pred input_stream(io.text_input_stream::out, io::di, io::uo) is det.
-
-    % set_input_stream(NewStream, OldStream, !IO):
-    % Changes the current input stream to the stream specified.
-    % Returns the previous stream.
-    %
-:- pred set_input_stream(io.text_input_stream::in, io.text_input_stream::out,
-    io::di, io::uo) is det.
-
-    % Retrieves the standard input stream.
-    %
-:- func stdin_stream = io.text_input_stream.
-
-    % Retrieves the standard input stream.
-    % Does not modify the I/O state.
-    %
-:- pred stdin_stream(io.text_input_stream::out, io::di, io::uo) is det.
-
-    % Retrieves the human-readable name associated with the current input
-    % stream. For file streams, this is the filename. For stdin,
-    % this is the string "<standard input>".
-    %
-:- pred input_stream_name(string::out, io::di, io::uo) is det.
-
-    % Retrieves the human-readable name associated with the specified input
-    % stream. For file streams, this is the filename. For stdin,
-    % this is the string "<standard input>".
-    %
-:- pred input_stream_name(io.text_input_stream::in, string::out,
-    io::di, io::uo) is det.
-
-    % Return the line number of the current input stream. Lines are normally
-    % numbered starting at 1, but this can be overridden by calling
-    % set_line_number.
-    %
-:- pred get_line_number(int::out, io::di, io::uo) is det.
-
-    % Return the line number of the specified input stream. Lines are normally
-    % numbered starting at 1, but this can be overridden by calling
-    % set_line_number.
-    %
-:- pred get_line_number(io.text_input_stream::in, int::out, io::di, io::uo)
-    is det.
-
-    % Set the line number of the current input stream.
-    %
-:- pred set_line_number(int::in, io::di, io::uo) is det.
-
-    % Set the line number of the specified input stream.
-    %
-:- pred set_line_number(io.text_input_stream::in, int::in, io::di, io::uo)
-    is det.
-
-%---------------------------------------------------------------------------%
-%
-% Output text stream predicates.
-%
-
-    % Attempts to open a file for output, and if successful sets the current
-    % output stream to the newly opened stream. As per Prolog tell/1.
-    % Result is either 'ok' or 'error(ErrCode)'.
-    %
-:- pred tell(string::in, io.res::out, io::di, io::uo) is det.
-
-    % Closes the current output stream; the default output stream reverts
-    % to standard output. As per Prolog told/0. This will throw an
-    % io.error exception if an I/O error occurs.
-    %
-:- pred told(io::di, io::uo) is det.
-
-    % Attempts to open a file for output.
-    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
-    %
-:- pred open_output(string::in, io.res(io.text_output_stream)::out,
-    io::di, io::uo) is det.
-
-    % Attempts to open a file for appending.
-    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
-    %
-:- pred open_append(string::in, io.res(io.text_output_stream)::out,
-    io::di, io::uo) is det.
-
-    % Closes an open output stream.
-    % This will throw an io.error exception if an I/O error occurs.
-    %
-:- pred close_output(io.text_output_stream::in, io::di, io::uo) is det.
-
-    % Retrieves the current output stream.
-    % Does not modify the I/O state.
-    %
-:- pred output_stream(io.text_output_stream::out, io::di, io::uo) is det.
-
-    % Changes the current output stream to the stream specified.
-    % Returns the previous stream.
-    %
-:- pred set_output_stream(io.text_output_stream::in,
-    io.text_output_stream::out, io::di, io::uo) is det.
-
-    % Retrieves the standard output stream.
-    %
-:- func stdout_stream = io.text_output_stream.
-
-    % Retrieves the standard output stream.
-    % Does not modify the I/O state.
-    %
-:- pred stdout_stream(io.text_output_stream::out, io::di, io::uo) is det.
-
-    % Retrieves the standard error stream.
-    %
-:- func stderr_stream = io.text_output_stream.
-
-    % Retrieves the standard error stream.
-    % Does not modify the I/O state.
-    %
-:- pred stderr_stream(io.text_output_stream::out, io::di, io::uo) is det.
-
-    % Retrieves the human-readable name associated with the current
-    % output stream.
-    % For file streams, this is the filename.
-    % For stdout this is the string "<standard output>".
-    % For stderr this is the string "<standard error>".
-    %
-:- pred output_stream_name(string::out, io::di, io::uo) is det.
-
-    % Retrieves the human-readable name associated with the specified stream.
-    % For file streams, this is the filename.
-    % For stdout this is the string "<standard output>".
-    % For stderr this is the string "<standard error>".
-    %
-:- pred output_stream_name(io.text_output_stream::in, string::out,
-    io::di, io::uo) is det.
-
-    % Return the line number of the current output stream. Lines are normally
-    % numbered starting at 1, but this can be overridden by calling
-    % set_output_line_number.
-    %
-:- pred get_output_line_number(int::out, io::di, io::uo) is det.
-
-    % Return the line number of the specified output stream. Lines are normally
-    % numbered starting at 1, but this can be overridden by calling
-    % set_output_line_number.
-    %
-:- pred get_output_line_number(io.text_output_stream::in, int::out,
-    io::di, io::uo) is det.
-
-    % Set the line number of the current output stream.
-    %
-:- pred set_output_line_number(int::in, io::di, io::uo) is det.
-
-    % Set the line number of the specified output stream.
-    %
-:- pred set_output_line_number(io.text_output_stream::in, int::in,
+:- pred flush_binary_output(io::di, io::uo) is det.
+:- pred flush_binary_output(io.binary_output_stream::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Binary input predicates.
+% Whole file text input predicates.
 %
 
-    % Reads a binary representation of a term of type T from the current
-    % binary input stream or from the specified binary input stream.
+    % Read all the characters (code points) from the current input stream
+    % or from the specified stream, until eof or error.
     %
-    % Note: if you attempt to read a binary representation written by
-    % a different program, or a different version of the same program,
-    % then the results are not guaranteed to be meaningful. Another caveat
-    % is that higher-order types cannot be read. (If you try, you will get
-    % a runtime error.)
-    %
-    % XXX Note also that due to the current implementation,
-    % read_binary will not work for the Java back-end.
-    %
-:- pred read_binary(io.result(T)::out, io::di, io::uo) is det.
-:- pred read_binary(io.binary_input_stream::in, io.result(T)::out,
+:- pred read_file(io.maybe_partial_res(list(char))::out,
     io::di, io::uo) is det.
+:- pred read_file(io.text_input_stream::in,
+    io.maybe_partial_res(list(char))::out, io::di, io::uo) is det.
 
-    % Reads a single 8-bit byte from the current binary input stream
-    % or from the specified binary input stream.
+    % Read all the characters (code points) from the current input stream
+    % or from the specified stream, until eof or error. Returns the result
+    % as a string rather than as a list of char.
     %
-:- pred read_byte(io.result(int)::out, io::di, io::uo) is det.
-:- pred read_byte(io.binary_input_stream::in, io.result(int)::out,
+    % Returns an error if the file contains a null character, because
+    % null characters are not allowed in Mercury strings.
+    %
+    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
+    % or UTF-16.
+    %
+:- pred read_file_as_string(io.maybe_partial_res(string)::out,
     io::di, io::uo) is det.
+:- pred read_file_as_string(io.text_input_stream::in,
+    io.maybe_partial_res(string)::out, io::di, io::uo) is det.
 
-    % Reads a single signed 8-bit integer from the current binary input
+    % The same as read_file_as_string, but returns not only a string,
+    % but also the number of code units in that string.
+    %
+    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
+    % or UTF-16.
+    %
+:- pred read_file_as_string_and_num_code_units(
+    io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.
+:- pred read_file_as_string_and_num_code_units(io.text_input_stream::in,
+    io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.
+
+    % Reads all the bytes until eof or error from the current binary input
     % stream or from the specified binary input stream.
     %
-:- pred read_binary_int8(io.result(int8)::out, io::di, io::uo) is det.
-:- pred read_binary_int8(io.binary_input_stream::in, io.result(int8)::out,
-    io::di, io::uo) is det.
-
-    % Reads a single unsigned 8-bit integer from the current binary input
-    % stream or from the specified binary input stream.
-    %
-:- pred read_binary_uint8(io.result(uint8)::out, io::di, io::uo) is det.
-:- pred read_binary_uint8(io.binary_input_stream::in, io.result(uint8)::out,
-    io::di, io::uo) is det.
-
-    % The following predicates read multibyte integer values, either
-    % from the current binary input stream, or from the specified
-    % binary input stream.
-    %
-    % The names of these predicates have the form:
-    %
-    %    read_binary_<TYPE><SUFFIX>
-    %
-    % where <TYPE> is the name of one of the Mercury multibyte fixed size
-    % integer types. The optional <SUFFIX> specifies the order in which
-    % the bytes that make up the multibyte integer occur in input stream.
-    % The suffix may be one of:
-    %
-    % "_le":    the bytes are in little endian byte order.
-    % "_be":    the bytes are in big endian byte order.
-    % none:     the bytes are in the byte order of the underlying platform.
-    %
-:- pred read_binary_int16(maybe_incomplete_result(int16)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int16(io.binary_input_stream::in,
-    maybe_incomplete_result(int16)::out, io::di, io::uo) is det.
-
-:- pred read_binary_int16_le(maybe_incomplete_result(int16)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int16_le(io.binary_input_stream::in,
-    maybe_incomplete_result(int16)::out, io::di, io::uo) is det.
-
-:- pred read_binary_int16_be(maybe_incomplete_result(int16)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int16_be(io.binary_input_stream::in,
-    maybe_incomplete_result(int16)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint16(maybe_incomplete_result(uint16)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint16(io.binary_input_stream::in,
-    maybe_incomplete_result(uint16)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint16_le(maybe_incomplete_result(uint16)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint16_le(io.binary_input_stream::in,
-    maybe_incomplete_result(uint16)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint16_be(maybe_incomplete_result(uint16)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint16_be(io.binary_input_stream::in,
-    maybe_incomplete_result(uint16)::out, io::di, io::uo) is det.
-
-%---------------------%
-
-:- pred read_binary_int32(maybe_incomplete_result(int32)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int32(io.binary_input_stream::in,
-    maybe_incomplete_result(int32)::out, io::di, io::uo) is det.
-
-:- pred read_binary_int32_le(maybe_incomplete_result(int32)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int32_le(io.binary_input_stream::in,
-    maybe_incomplete_result(int32)::out, io::di, io::uo) is det.
-
-:- pred read_binary_int32_be(maybe_incomplete_result(int32)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int32_be(io.binary_input_stream::in,
-    maybe_incomplete_result(int32)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint32(maybe_incomplete_result(uint32)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint32(io.binary_input_stream::in,
-    maybe_incomplete_result(uint32)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint32_le(maybe_incomplete_result(uint32)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint32_le(io.binary_input_stream::in,
-    maybe_incomplete_result(uint32)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint32_be(maybe_incomplete_result(uint32)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint32_be(io.binary_input_stream::in,
-    maybe_incomplete_result(uint32)::out, io::di, io::uo) is det.
-
-%---------------------%
-
-:- pred read_binary_int64(maybe_incomplete_result(int64)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int64(io.binary_input_stream::in,
-    maybe_incomplete_result(int64)::out, io::di, io::uo) is det.
-
-:- pred read_binary_int64_le(maybe_incomplete_result(int64)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int64_le(io.binary_input_stream::in,
-    maybe_incomplete_result(int64)::out, io::di, io::uo) is det.
-
-:- pred read_binary_int64_be(maybe_incomplete_result(int64)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_int64_be(io.binary_input_stream::in,
-    maybe_incomplete_result(int64)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint64(maybe_incomplete_result(uint64)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint64(io.binary_input_stream::in,
-    maybe_incomplete_result(uint64)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint64_le(maybe_incomplete_result(uint64)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint64_le(io.binary_input_stream::in,
-    maybe_incomplete_result(uint64)::out, io::di, io::uo) is det.
-
-:- pred read_binary_uint64_be(maybe_incomplete_result(uint64)::out,
-    io::di, io::uo) is det.
-:- pred read_binary_uint64_be(io.binary_input_stream::in,
-    maybe_incomplete_result(uint64)::out, io::di, io::uo) is det.
-
-%---------------------%
-
-    % Fill a bitmap from the current binary input stream
-    % or from the specified binary input stream.
-    % Return the number of bytes read. On end-of-file, the number of
-    % bytes read will be less than the size of the bitmap, and
-    % the result will be `ok'.
-    % Throws an exception if the bitmap has a partial final byte.
-    %
-:- pred read_bitmap(bitmap::bitmap_di, bitmap::bitmap_uo,
-    int::out, io.res::out, io::di, io::uo) is det.
-:- pred read_bitmap(io.binary_input_stream::in,
-    bitmap::bitmap_di, bitmap::bitmap_uo,
-    int::out, io.res::out, io::di, io::uo) is det.
-
-    % read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO)
-    %
-    % Read NumBytes bytes into a bitmap starting at StartByte from the
-    % current binary input stream, or from the specified binary input stream.
-    % Return the number of bytes read. On end-of-file, the number of
-    % bytes read will be less than NumBytes, and the result will be `ok'.
-    %
-:- pred read_bitmap(byte_index::in, num_bytes::in,
-    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::out, io.res::out,
-    io::di, io::uo) is det.
-:- pred read_bitmap(io.binary_input_stream::in, byte_index::in, num_bytes::in,
-    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::out, io.res::out,
-    io::di, io::uo) is det.
+:- pred read_binary_file(
+    io.result(list(int))::out, io::di, io::uo) is det.
+:- pred read_binary_file(io.binary_input_stream::in,
+    io.result(list(int))::out, io::di, io::uo) is det.
 
     % Reads all the bytes until eof or error from the current binary input
     % stream or from the specified binary input stream into a bitmap.
@@ -1061,13 +1366,101 @@
 :- pred read_binary_file_as_bitmap(io.binary_input_stream::in,
     io.res(bitmap)::out, io::di, io::uo) is det.
 
-    % Reads all the bytes until eof or error from the current binary input
-    % stream or from the specified binary input stream.
+%---------------------------------------------------------------------------%
+%
+% Processing the contents of a whole file.
+%
+
+    % Applies the given closure to each character (code point) read from
+    % the input stream in turn, until eof or error.
     %
-:- pred read_binary_file(
-    io.result(list(int))::out, io::di, io::uo) is det.
-:- pred read_binary_file(io.binary_input_stream::in,
-    io.result(list(int))::out, io::di, io::uo) is det.
+:- pred input_stream_foldl(pred(char, T, T), T, io.maybe_partial_res(T),
+    io, io).
+:- mode input_stream_foldl((pred(in, in, out) is det), in, out,
+    di, uo) is det.
+:- mode input_stream_foldl((pred(in, in, out) is cc_multi), in, out,
+    di, uo) is cc_multi.
+
+    % Applies the given closure to each character (code point) read from the
+    % input stream in turn, until eof or error.
+    %
+:- pred input_stream_foldl(io.text_input_stream, pred(char, T, T),
+    T, io.maybe_partial_res(T), io, io).
+:- mode input_stream_foldl(in, in(pred(in, in, out) is det),
+    in, out, di, uo) is det.
+:- mode input_stream_foldl(in, in(pred(in, in, out) is cc_multi),
+    in, out, di, uo) is cc_multi.
+
+    % Applies the given closure to each character (code point) read from
+    % the input stream in turn, until eof or error.
+    %
+:- pred input_stream_foldl_io(pred(char, io, io), io.res, io, io).
+:- mode input_stream_foldl_io((pred(in, di, uo) is det), out, di, uo)
+    is det.
+:- mode input_stream_foldl_io((pred(in, di, uo) is cc_multi), out, di, uo)
+    is cc_multi.
+
+    % Applies the given closure to each character (code point) read from the
+    % input stream in turn, until eof or error.
+    %
+:- pred input_stream_foldl_io(io.text_input_stream, pred(char, io, io),
+    io.res, io, io).
+:- mode input_stream_foldl_io(in, in(pred(in, di, uo) is det),
+    out, di, uo) is det.
+:- mode input_stream_foldl_io(in, in(pred(in, di, uo) is cc_multi),
+    out, di, uo) is cc_multi.
+
+    % Applies the given closure to each character (code point) read from
+    % the input stream in turn, until eof or error.
+    %
+:- pred input_stream_foldl2_io(pred(char, T, T, io, io),
+    T, io.maybe_partial_res(T), io, io).
+:- mode input_stream_foldl2_io((pred(in, in, out, di, uo) is det),
+    in, out, di, uo) is det.
+:- mode input_stream_foldl2_io((pred(in, in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
+
+    % Applies the given closure to each character (code point) read from the
+    % input stream in turn, until eof or error.
+    %
+:- pred input_stream_foldl2_io(io.text_input_stream,
+    pred(char, T, T, io, io),
+    T, maybe_partial_res(T), io, io).
+:- mode input_stream_foldl2_io(in,
+    in(pred(in, in, out, di, uo) is det),
+    in, out, di, uo) is det.
+:- mode input_stream_foldl2_io(in,
+    in(pred(in, in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
+
+    % Applies the given closure to each character (code point) read from the
+    % input stream in turn, until eof or error, or the closure returns `no' as
+    % its second argument.
+    %
+:- pred input_stream_foldl2_io_maybe_stop(
+    pred(char, bool, T, T, io, io),
+    T, io.maybe_partial_res(T), io, io).
+:- mode input_stream_foldl2_io_maybe_stop(
+    (pred(in, out, in, out, di, uo) is det),
+    in, out, di, uo) is det.
+:- mode input_stream_foldl2_io_maybe_stop(
+    (pred(in, out, in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
+
+    % Applies the given closure to each character (code point) read from the
+    % input stream in turn, until eof or error, or the closure returns `no' as
+    % its second argument.
+    %
+:- pred input_stream_foldl2_io_maybe_stop(io.text_input_stream,
+    pred(char, bool, T, T, io, io),
+    T, maybe_partial_res(T), io, io).
+:- mode input_stream_foldl2_io_maybe_stop(in,
+    (pred(in, out, in, out, di, uo) is det),
+    in, out, di, uo) is det.
+:- mode input_stream_foldl2_io_maybe_stop(in,
+    (pred(in, out, in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
+
 
     % Applies the given closure to each byte read from the current binary
     % input stream in turn, until eof or error.
@@ -1151,475 +1544,114 @@
 :- mode binary_input_stream_foldl2_io_maybe_stop(in,
     (pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
-    % Un-reads a byte from the current binary input stream or from the
-    % specified stream. The byte is taken from the bottom 8 bits of the
-    % specified int.
-    %
-    % You can put back as many bytes as you like.
-    % You can even put back something that you did not actually read.
-    %
-    % On some systems and backends, only one byte of pushback is guaranteed.
-    % `putback_byte' will throw an io.error exception if the pushback buffer
-    % is full.
-    %
-    % Pushing back a byte decrements the file position by one, except when
-    % the file position is already zero, in which case the new file position
-    % is unspecified.
-    %
-    %
-:- pred putback_byte(int::in, io::di, io::uo) is det.
-:- pred putback_byte(io.binary_input_stream::in, int::in, io::di, io::uo)
-    is det.
-
-    % Like putback_byte, but where the byte value un-read is the 8 bits of the
-    % int8 reinterpreted as a uint8.
-    %
-:- pred putback_int8(int8::in, io::di, io::uo) is det.
-:- pred putback_int8(io.binary_input_stream::in, int8::in, io::di, io::uo)
-    is det.
-
-    % Like putback_byte, but where the byte value un-read is the 8 bits of the
-    % uint8.
-    %
-:- pred putback_uint8(uint8::in, io::di, io::uo) is det.
-:- pred putback_uint8(io.binary_input_stream::in, uint8::in, io::di, io::uo)
-    is det.
-
-%---------------------------------------------------------------------------%
-%
-% Binary output predicates.
-%
-
-% These will all throw an io.error exception if an I/O error occurs.
-% XXX what about wide characters?
-
-    % Writes a binary representation of a term to the current binary output
-    % stream or to the specified stream, in a format suitable for reading in
-    % again with read_binary.
-    %
-:- pred write_binary(T::in, io::di, io::uo) is det.
-:- pred write_binary(io.binary_output_stream::in, T::in, io::di, io::uo)
-    is det.
-
-    % Writes a single byte to the current binary output stream
-    % or to the specified binary output stream. The byte is taken from
-    % the bottom 8 bits of the specified int.
-    %
-:- pred write_byte(int::in, io::di, io::uo) is det.
-:- pred write_byte(io.binary_output_stream::in, int::in, io::di, io::uo)
-    is det.
-
-%---------------------%
-
-    % Writes a signed 8-bit integer to the current binary output stream
-    % or to the specified binary output stream.
-    %
-:- pred write_binary_int8(int8::in, io::di, io::uo) is det.
-:- pred write_binary_int8(io.binary_output_stream::in, int8::in,
-    io::di, io::uo) is det.
-
-    % Writes an unsigned 8-bit integer to the current binary output stream
-    % or to the specified binary output stream.
-    %
-:- pred write_binary_uint8(uint8::in, io::di, io::uo) is det.
-:- pred write_binary_uint8(io.binary_output_stream::in, uint8::in,
-    io::di, io::uo) is det.
-
-%---------------------%
-
-    % The following predicates write multibyte integer values, either to the
-    % current binary output stream, or to the specified binary output stream.
-    %
-    % These names of these predicates have the form:
-    %
-    %    write_binary_<TYPE><SUFFIX>
-    %
-    % where <TYPE> is the name of one of the Mercury multibyte fixed size
-    % integer types. The optional <SUFFIX> specifies the order in which
-    % the bytes that make up the multibyte integer are written to the stream.
-    % The suffix may be one of:
-    %
-    % "_le":    the bytes are in little endian byte order.
-    % "_be":    the bytes are in big endian byte order.
-    % none:     the bytes are in the byte order of the underlying platform.
-    %
-:- pred write_binary_int16(int16::in, io::di, io::uo) is det.
-:- pred write_binary_int16(io.binary_output_stream::in, int16::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_int16_le(int16::in, io::di, io::uo) is det.
-:- pred write_binary_int16_le(io.binary_output_stream::in, int16::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_int16_be(int16::in, io::di, io::uo) is det.
-:- pred write_binary_int16_be(io.binary_output_stream::in, int16::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint16(uint16::in, io::di, io::uo) is det.
-:- pred write_binary_uint16(io.binary_output_stream::in, uint16::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint16_le(uint16::in, io::di, io::uo) is det.
-:- pred write_binary_uint16_le(io.binary_output_stream::in, uint16::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint16_be(uint16::in, io::di, io::uo) is det.
-:- pred write_binary_uint16_be(io.binary_output_stream::in, uint16::in,
-    io::di, io::uo) is det.
-
-%---------------------%
-
-:- pred write_binary_int32(int32::in, io::di, io::uo) is det.
-:- pred write_binary_int32(io.binary_output_stream::in, int32::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_int32_le(int32::in, io::di, io::uo) is det.
-:- pred write_binary_int32_le(io.binary_output_stream::in, int32::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_int32_be(int32::in, io::di, io::uo) is det.
-:- pred write_binary_int32_be(io.binary_output_stream::in, int32::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint32(uint32::in, io::di, io::uo) is det.
-:- pred write_binary_uint32(io.binary_output_stream::in, uint32::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint32_le(uint32::in, io::di, io::uo) is det.
-:- pred write_binary_uint32_le(io.binary_output_stream::in, uint32::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint32_be(uint32::in, io::di, io::uo) is det.
-:- pred write_binary_uint32_be(io.binary_output_stream::in, uint32::in,
-    io::di, io::uo) is det.
-
-%---------------------%
-
-:- pred write_binary_int64(int64::in, io::di, io::uo) is det.
-:- pred write_binary_int64(io.binary_output_stream::in, int64::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_int64_le(int64::in, io::di, io::uo) is det.
-:- pred write_binary_int64_le(io.binary_output_stream::in, int64::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_int64_be(int64::in, io::di, io::uo) is det.
-:- pred write_binary_int64_be(io.binary_output_stream::in, int64::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint64(uint64::in, io::di, io::uo) is det.
-:- pred write_binary_uint64(io.binary_output_stream::in, uint64::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint64_le(uint64::in, io::di, io::uo) is det.
-:- pred write_binary_uint64_le(io.binary_output_stream::in, uint64::in,
-    io::di, io::uo) is det.
-
-:- pred write_binary_uint64_be(uint64::in, io::di, io::uo) is det.
-:- pred write_binary_uint64_be(io.binary_output_stream::in, uint64::in,
-    io::di, io::uo) is det.
-
-%---------------------%
-
-    % Write a bitmap to the current binary output stream
-    % or to the specified binary output stream. The bitmap must not contain
-    % a partial final byte.
-    %
-:- pred write_bitmap(bitmap, io, io).
-%:- mode write_bitmap(bitmap_ui, di, uo) is det.
-:- mode write_bitmap(in, di, uo) is det.
-:- pred write_bitmap(io.binary_output_stream, bitmap, io, io).
-%:- mode write_bitmap(in, bitmap_ui, di, uo) is det.
-:- mode write_bitmap(in, in, di, uo) is det.
-
-    % write_bitmap(BM, StartByte, NumBytes, !IO):
-    % write_bitmap(Stream, BM, StartByte, NumBytes, !IO):
-    %
-    % Write part of a bitmap to the current binary output stream
-    % or to the specified binary output stream.
-    %
-:- pred write_bitmap(bitmap, int, int, io, io).
-%:- mode write_bitmap(bitmap_ui, in, in, di, uo) is det.
-:- mode write_bitmap(in, in, in, di, uo) is det.
-:- pred write_bitmap(io.binary_output_stream, bitmap, int, int, io, io).
-%:- mode write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
-:- mode write_bitmap(in, in, in, in, di, uo) is det.
-
-%---------------------%
-
-    % Flush the output buffer of the current binary output stream.
-    % or of the specified binary output stream.
-    %
-:- pred flush_binary_output(io::di, io::uo) is det.
-:- pred flush_binary_output(io.binary_output_stream::in,
-    io::di, io::uo) is det.
-
-    % Seek to an offset relative to Whence (documented above)
-    % on a specified binary output stream. Attempting to seek on a pipe
-    % or tty results in implementation dependent behaviour.
-    %
-:- pred seek_binary_output(io.binary_output_stream::in, io.whence::in,
-    int::in, io::di, io::uo) is det.
-
-    % As above, but the offset is always a 64-bit value.
-    %
-:- pred seek_binary_output64(io.binary_output_stream::in, io.whence::in,
-    int64::in, io::di, io::uo) is det.
-
-    % Returns the offset (in bytes) into the specified binary output stream.
-    % Throws an exception if the offset is outside the range that can be
-    % represented by the int type. To avoid this possibility, you can use the
-    % 64-bit offset version of this predicate below.
-    %
-:- pred binary_output_stream_offset(io.binary_output_stream::in, int::out,
-    io::di, io::uo) is det.
-
-    % As above, but the offset is always a 64-bit value.
-    %
-:- pred binary_output_stream_offset64(io.binary_output_stream::in, int64::out,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Binary input stream predicates.
-%
-
-    % Attempts to open a file for binary input, and if successful sets
-    % the current binary input stream to the newly opened stream.
-    % Result is either 'ok' or 'error(ErrorCode)'.
-    %
-:- pred see_binary(string::in, io.res::out, io::di, io::uo) is det.
-
-    % Closes the current input stream. The current input stream reverts
-    % to standard input. This will throw an io.error exception if
-    % an I/O error occurs.
-    %
-:- pred seen_binary(io::di, io::uo) is det.
-
-    % Attempts to open a binary file for input.
-    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
-    %
-:- pred open_binary_input(string::in,
-    io.res(io.binary_input_stream)::out, io::di, io::uo) is det.
-
-    % Closes an open binary input stream. This will throw an io.error
-    % exception if an I/O error occurs.
-    %
-:- pred close_binary_input(io.binary_input_stream::in,
-    io::di, io::uo) is det.
-
-    % Retrieves the current binary input stream.
-    % Does not modify the I/O state.
-    %
-:- pred binary_input_stream(io.binary_input_stream::out,
-    io::di, io::uo) is det.
-
-    % Changes the current input stream to the stream specified.
-    % Returns the previous stream.
-    %
-:- pred set_binary_input_stream(io.binary_input_stream::in,
-    io.binary_input_stream::out, io::di, io::uo) is det.
-
-    % Retrieves the standard binary input stream.
-    % Does not modify the I/O state.
-    %
-:- pred stdin_binary_stream(io.binary_input_stream::out,
-    io::di, io::uo) is det.
-
-    % Retrieves the human-readable name associated with the current binary
-    % input stream. For file streams, this is the filename.
-    %
-:- pred binary_input_stream_name(string::out, io::di, io::uo) is det.
-
-    % Retrieves the human-readable name associated with the specified
-    % binary input stream. For file streams, this is the filename.
-    %
-:- pred binary_input_stream_name(io.binary_input_stream::in, string::out,
-    io::di, io::uo) is det.
-
-    % Seek to an offset relative to Whence (documented above)
-    % on a specified binary input stream. Attempting to seek on a pipe
-    % or tty results in implementation dependent behaviour.
-    %
-    % A successful seek undoes any effects of putback_byte on the stream.
-    %
-:- pred seek_binary_input(io.binary_input_stream::in, io.whence::in,
-    int::in, io::di, io::uo) is det.
-
-    % As above, but the offset is always a 64-bit value.
-    %
-:- pred seek_binary_input64(io.binary_input_stream::in, io.whence::in,
-    int64::in, io::di, io::uo) is det.
-
-    % Returns the offset (in bytes) into the specified binary input stream.
-    % Throws an exception if the offset is outside the range that can be
-    % represented by the int type. To avoid this possibility, you can use the
-    % 64-bit offset version of this predicate below.
-    %
-:- pred binary_input_stream_offset(io.binary_input_stream::in, int::out,
-    io::di, io::uo) is det.
-
-    % As above, but the offset is always a 64-bit value.
-    %
-:- pred binary_input_stream_offset64(io.binary_input_stream::in, int64::out,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Binary output stream predicates.
-%
-
-    % Attempts to open a file for binary output, and if successful sets
-    % the current binary output stream to the newly opened stream.
-    % As per Prolog tell/1. Result is either 'ok' or 'error(ErrCode)'.
-    %
-:- pred tell_binary(string::in, io.res::out, io::di, io::uo) is det.
-
-    % Closes the current binary output stream. The default binary output
-    % stream reverts to standard output. As per Prolog told/0. This will
-    % throw an io.error exception if an I/O error occurs.
-    %
-:- pred told_binary(io::di, io::uo) is det.
-
-    % Attempts to open a file for binary output.
-    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
-    %
-:- pred open_binary_output(string::in,
-    io.res(io.binary_output_stream)::out, io::di, io::uo) is det.
-
-    % Attempts to open a file for binary appending.
-    % Result is either 'ok(Stream)' or 'error(ErrorCode)'.
-    %
-:- pred open_binary_append(string::in,
-    io.res(io.binary_output_stream)::out, io::di, io::uo) is det.
-
-    % Closes an open binary output stream.
-    % This will throw an io.error exception if an I/O error occurs.
-    %
-:- pred close_binary_output(io.binary_output_stream::in,
-    io::di, io::uo) is det.
-
-    % Retrieves the current binary output stream.
-    % Does not modify the I/O state.
-    %
-:- pred binary_output_stream(io.binary_output_stream::out,
-    io::di, io::uo) is det.
-
-    % Retrieves the standard binary output stream.
-    % Does not modify the I/O state.
-    %
-:- pred stdout_binary_stream(io.binary_output_stream::out,
-    io::di, io::uo) is det.
-
-    % Changes the current binary output stream to the stream specified.
-    % Returns the previous stream.
-    %
-:- pred set_binary_output_stream(io.binary_output_stream::in,
-    io.binary_output_stream::out, io::di, io::uo) is det.
-
-    % Retrieves the human-readable name associated with the current
-    % binary output stream. For file streams, this is the filename.
-    %
-:- pred binary_output_stream_name(string::out, io::di, io::uo) is det.
-
-    % Retrieves the human-readable name associated with the specified
-    % output stream. For file streams, this is the filename.
-    %
-:- pred binary_output_stream_name(io.binary_output_stream::in,
-    string::out, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Global state predicates.
-%
-
-    % progname(DefaultProgname, Progname).
-    %
-    % Returns the name that the program was invoked with, if available,
-    % or DefaultProgname if the name is not available.
-    % Does not modify the I/O state.
-    %
-:- pred progname(string::in, string::out, io::di, io::uo) is det.
-
-    % progname_base(DefaultProgname, Progname).
-    %
-    % Like `progname', except that it strips off any path name
-    % preceding the program name. Useful for error messages.
-    %
-:- pred progname_base(string::in, string::out, io::di, io::uo) is det.
-
-    % Returns the arguments that the program was invoked with,
-    % if available, otherwise an empty list. Does not modify the I/O state.
-    %
-:- pred command_line_arguments(list(string)::out, io::di, io::uo) is det.
-
-    % The I/O state contains an integer used to record the program's exit
-    % status. When the program finishes, it will return this exit status
-    % to the operating system. The following predicates can be used to get
-    % and set the exit status.
-    %
-:- pred get_exit_status(int::out, io::di, io::uo) is det.
-:- pred set_exit_status(int::in, io::di, io::uo) is det.
-
-    % The I/O state includes a `globals' field which is not used by the
-    % standard library, but can be used by the application. The globals field
-    % is of type `univ' so that the application can store any data it wants
-    % there. The following predicates can be used to access this global state.
-    %
-    % Does not modify the I/O state.
-    %
-:- pred get_globals(univ::out, io::di, io::uo) is det.
-:- pred set_globals(univ::in, io::di, io::uo) is det.
-
-    % update_globals(UpdatePred, !IO).
-    % Update the `globals' field in the I/O state based upon its current value.
-    % This is equivalent to the following:
-    %
-    %   get_globals(Globals0, !IO),
-    %   UpdatePred(Globals0, Globals),
-    %   set_globals(Globals, !IO)
-    %
-    % In parallel grades calls to update_globals/3 are atomic.
-    % If `UpdatePred' throws an exception then the `globals' field is
-    % left unchanged.
-    %
-:- pred update_globals(pred(univ, univ)::in(pred(in, out) is det),
-    io::di, io::uo) is det.
-
-    % The following predicates provide an interface to the environment list.
-    % Do not attempt to put spaces or '=' signs in the names of environment
-    % variables, or bad things may result!
-    %
-    % First argument is the name of the environment variable. Returns
-    % yes(Value) if the variable was set (Value will be set to the value
-    % of the variable) and no if the variable was not set.
-    %
-:- pred get_environment_var(string::in, maybe(string)::out,
-    io::di, io::uo) is det.
-
-    % First argument is the name of the environment variable, second argument
-    % is the value to be assigned to that variable. Res is 'ok' on success or
-    % 'error(ErrorCode)' if the system runs out of environment space or if
-    % the environment cannot be modified.
-    %
-    % Note that the environment cannot be modified on Java.
-    %
-:- pred set_environment_var(string::in, string::in, io.res::out,
-    io::di, io::uo) is det.
-
-    % Same as set_environment_var/5, but throws an exception if an error
-    % occurs.
-    %
-:- pred set_environment_var(string::in, string::in, io::di, io::uo) is det.
-
-    % Test if the set_environment_var/{4,5} predicates are available.
-    % This is false for Java backends.
-    %
-:- pred have_set_environment_var is semidet.
-
 %---------------------------------------------------------------------------%
 %
 % File handling predicates.
+%
+
+    % remove_file(FileName, Result, !IO) attempts to remove the file
+    % `FileName', binding Result to ok/0 if it succeeds, or error/1 if it
+    % fails. If `FileName' names a file that is currently open, the behaviour
+    % is implementation-dependent.
+    %
+:- pred remove_file(string::in, io.res::out, io::di, io::uo) is det.
+
+    % remove_file_recursively(FileName, Result, !IO) attempts to remove
+    % the file `FileName', binding Result to ok/0 if it succeeds, or error/1
+    % if it fails. If `FileName' names a file that is currently open, the
+    % behaviour is implementation-dependent.
+    %
+    % Unlike `remove_file', this predicate will attempt to remove non-empty
+    % directories (recursively). If it fails, some of the directory elements
+    % may already have been removed.
+    %
+:- pred remove_file_recursively(string::in, io.res::out, io::di, io::uo)
+    is det.
+
+    % rename_file(OldFileName, NewFileName, Result, !IO).
+    %
+    % Attempts to rename the file `OldFileName' as `NewFileName', binding
+    % Result to ok/0 if it succeeds, or error/1 if it fails. If `OldFileName'
+    % names a file that is currently open, the behaviour is
+    % implementation-dependent. If `NewFileName' names a file that already
+    % exists the behaviour is also implementation-dependent; on some systems,
+    % the file previously named `NewFileName' will be deleted and replaced
+    % with the file previously named `OldFileName'.
+    %
+:- pred rename_file(string::in, string::in, io.res::out, io::di, io::uo)
+    is det.
+
+%---------------------%
+
+    % Succeeds if this platform can read and create symbolic links.
+    %
+:- pred have_symlinks is semidet.
+
+    % make_symlink(FileName, LinkFileName, Result, !IO).
+    %
+    % Attempts to make `LinkFileName' be a symbolic link to `FileName'.
+    % If `FileName' is a relative path, it is interpreted relative
+    % to the directory containing `LinkFileName'.
+    %
+:- pred make_symlink(string::in, string::in, io.res::out, io::di, io::uo)
+    is det.
+
+    % read_symlink(FileName, Result, !IO) returns `ok(LinkTarget)'
+    % if `FileName' is a symbolic link pointing to `LinkTarget', and
+    % `error(Error)' otherwise. If `LinkTarget' is a relative path,
+    % it should be interpreted relative the directory containing `FileName',
+    % not the current directory.
+    %
+:- pred read_symlink(string::in, io.res(string)::out, io::di, io::uo)
+    is det.
+
+%---------------------%
+
+:- type access_type
+    --->    read
+    ;       write
+    ;       execute.
+
+    % check_file_accessibility(FileName, AccessTypes, Result):
+    %
+    % Check whether the current process can perform the operations given
+    % in `AccessTypes' on `FileName'.
+    % XXX When using the .NET CLI, this predicate will sometimes report
+    % that a directory is writable when in fact it is not.
+    % XXX On the Erlang backend, or on Windows with some compilers, `execute'
+    % access is not checked.
+    %
+:- pred check_file_accessibility(string::in, list(access_type)::in,
+    io.res::out, io::di, io::uo) is det.
+
+:- type file_type
+    --->    regular_file
+    ;       directory
+    ;       symbolic_link
+    ;       named_pipe
+    ;       socket
+    ;       character_device
+    ;       block_device
+    ;       message_queue
+    ;       semaphore
+    ;       shared_memory
+    ;       unknown.
+
+    % file_type(FollowSymLinks, FileName, TypeResult)
+    % finds the type of the given file.
+    %
+:- pred file_type(bool::in, string::in, io.res(file_type)::out,
+    io::di, io::uo) is det.
+
+    % file_modification_time(FileName, TimeResult)
+    % finds the last modification time of the given file.
+    %
+:- pred file_modification_time(string::in, io.res(time_t)::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Predicates for handling temporary files.
 %
 
     % make_temp_file(Result, !IO) creates an empty file whose name is different
@@ -1735,105 +1767,139 @@
     %
 :- pred get_temp_directory(string::out, io::di, io::uo) is det.
 
-    % remove_file(FileName, Result, !IO) attempts to remove the file
-    % `FileName', binding Result to ok/0 if it succeeds, or error/1 if it
-    % fails. If `FileName' names a file that is currently open, the behaviour
-    % is implementation-dependent.
-    %
-:- pred remove_file(string::in, io.res::out, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
+%
+% Global state predicates.
+%
 
-    % remove_file_recursively(FileName, Result, !IO) attempts to remove
-    % the file `FileName', binding Result to ok/0 if it succeeds, or error/1
-    % if it fails. If `FileName' names a file that is currently open, the
-    % behaviour is implementation-dependent.
+    % progname(DefaultProgname, Progname).
     %
-    % Unlike `remove_file', this predicate will attempt to remove non-empty
-    % directories (recursively). If it fails, some of the directory elements
-    % may already have been removed.
+    % Returns the name that the program was invoked with, if available,
+    % or DefaultProgname if the name is not available.
+    % Does not modify the I/O state.
     %
-:- pred remove_file_recursively(string::in, io.res::out, io::di, io::uo)
-    is det.
+:- pred progname(string::in, string::out, io::di, io::uo) is det.
 
-    % rename_file(OldFileName, NewFileName, Result, !IO).
+    % progname_base(DefaultProgname, Progname).
     %
-    % Attempts to rename the file `OldFileName' as `NewFileName', binding
-    % Result to ok/0 if it succeeds, or error/1 if it fails. If `OldFileName'
-    % names a file that is currently open, the behaviour is
-    % implementation-dependent. If `NewFileName' names a file that already
-    % exists the behaviour is also implementation-dependent; on some systems,
-    % the file previously named `NewFileName' will be deleted and replaced
-    % with the file previously named `OldFileName'.
+    % Like `progname', except that it strips off any path name
+    % preceding the program name. Useful for error messages.
     %
-:- pred rename_file(string::in, string::in, io.res::out, io::di, io::uo)
-    is det.
+:- pred progname_base(string::in, string::out, io::di, io::uo) is det.
 
-    % Succeeds if this platform can read and create symbolic links.
+    % Returns the arguments that the program was invoked with,
+    % if available, otherwise an empty list. Does not modify the I/O state.
     %
-:- pred have_symlinks is semidet.
+:- pred command_line_arguments(list(string)::out, io::di, io::uo) is det.
 
-    % make_symlink(FileName, LinkFileName, Result, !IO).
-    %
-    % Attempts to make `LinkFileName' be a symbolic link to `FileName'.
-    % If `FileName' is a relative path, it is interpreted relative
-    % to the directory containing `LinkFileName'.
-    %
-:- pred make_symlink(string::in, string::in, io.res::out, io::di, io::uo)
-    is det.
+%---------------------%
 
-    % read_symlink(FileName, Result, !IO) returns `ok(LinkTarget)'
-    % if `FileName' is a symbolic link pointing to `LinkTarget', and
-    % `error(Error)' otherwise. If `LinkTarget' is a relative path,
-    % it should be interpreted relative the directory containing `FileName',
-    % not the current directory.
+    % The I/O state contains an integer used to record the program's exit
+    % status. When the program finishes, it will return this exit status
+    % to the operating system. The following predicates can be used to get
+    % and set the exit status.
     %
-:- pred read_symlink(string::in, io.res(string)::out, io::di, io::uo)
-    is det.
+:- pred get_exit_status(int::out, io::di, io::uo) is det.
+:- pred set_exit_status(int::in, io::di, io::uo) is det.
 
-:- type access_type
-    --->    read
-    ;       write
-    ;       execute.
+%---------------------%
 
-    % check_file_accessibility(FileName, AccessTypes, Result):
+    % The following predicates provide an interface to the environment list.
+    % Do not attempt to put spaces or '=' signs in the names of environment
+    % variables, or bad things may result!
     %
-    % Check whether the current process can perform the operations given
-    % in `AccessTypes' on `FileName'.
-    % XXX When using the .NET CLI, this predicate will sometimes report
-    % that a directory is writable when in fact it is not.
-    % XXX On the Erlang backend, or on Windows with some compilers, `execute'
-    % access is not checked.
+    % First argument is the name of the environment variable. Returns
+    % yes(Value) if the variable was set (Value will be set to the value
+    % of the variable) and no if the variable was not set.
     %
-:- pred check_file_accessibility(string::in, list(access_type)::in,
-    io.res::out, io::di, io::uo) is det.
-
-:- type file_type
-    --->    regular_file
-    ;       directory
-    ;       symbolic_link
-    ;       named_pipe
-    ;       socket
-    ;       character_device
-    ;       block_device
-    ;       message_queue
-    ;       semaphore
-    ;       shared_memory
-    ;       unknown.
-
-    % file_type(FollowSymLinks, FileName, TypeResult)
-    % finds the type of the given file.
-    %
-:- pred file_type(bool::in, string::in, io.res(file_type)::out,
+:- pred get_environment_var(string::in, maybe(string)::out,
     io::di, io::uo) is det.
 
-    % file_modification_time(FileName, TimeResult)
-    % finds the last modification time of the given file.
+    % First argument is the name of the environment variable, second argument
+    % is the value to be assigned to that variable. Res is 'ok' on success or
+    % 'error(ErrorCode)' if the system runs out of environment space or if
+    % the environment cannot be modified.
     %
-:- pred file_modification_time(string::in, io.res(time_t)::out,
+    % Note that the environment cannot be modified on Java.
+    %
+:- pred set_environment_var(string::in, string::in, io.res::out,
+    io::di, io::uo) is det.
+
+    % Same as set_environment_var/5, but throws an exception if an error
+    % occurs.
+    %
+:- pred set_environment_var(string::in, string::in, io::di, io::uo) is det.
+
+    % Test if the set_environment_var/{4,5} predicates are available.
+    % This is false for Java backends.
+    %
+:- pred have_set_environment_var is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% System access predicates.
+%
+
+    % Invokes the operating system shell with the specified Command.
+    % Result is either `ok(ExitStatus)', if it was possible to invoke
+    % the command, or `error(ErrorCode)' if not. The ExitStatus will be 0
+    % if the command completed successfully or the return value of the system
+    % call. If a signal kills the system call, then Result will be an error
+    % indicating which signal occurred.
+    %
+:- pred call_system(string::in, io.res(int)::out, io::di, io::uo) is det.
+
+:- type system_result
+    --->    exited(int)
+    ;       signalled(int).
+
+    % call_system_return_signal(Command, Result, !IO):
+    %
+    % Invokes the operating system shell with the specified Command.
+    % Result is either `ok(ExitStatus)' if it was possible to invoke
+    % the command or `error(Error)' if the command could not be executed.
+    % If the command could be executed then ExitStatus is either
+    % `exited(ExitCode)' if the command ran to completion or
+    % `signalled(SignalNum)' if the command was killed by a signal.
+    % If the command ran to completion then ExitCode will be 0 if the command
+    % ran successfully and the return value of the command otherwise.
+    %
+:- pred call_system_return_signal(string::in,
+    io.res(system_result)::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Managing the globals structure that Mercury attaches to the I/O state.
+%
+
+    % The I/O state includes a `globals' field which is not used by the
+    % standard library, but can be used by the application. The globals field
+    % is of type `univ' so that the application can store any data it wants
+    % there. The following predicates can be used to access this global state.
+    %
+    % Does not modify the I/O state.
+    %
+:- pred get_globals(univ::out, io::di, io::uo) is det.
+:- pred set_globals(univ::in, io::di, io::uo) is det.
+
+    % update_globals(UpdatePred, !IO).
+    % Update the `globals' field in the I/O state based upon its current value.
+    % This is equivalent to the following:
+    %
+    %   get_globals(Globals0, !IO),
+    %   UpdatePred(Globals0, Globals),
+    %   set_globals(Globals, !IO)
+    %
+    % In parallel grades calls to update_globals/3 are atomic.
+    % If `UpdatePred' throws an exception then the `globals' field is
+    % left unchanged.
+    %
+:- pred update_globals(pred(univ, univ)::in(pred(in, out) is det),
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Memory management predicates.
+% Predicates that report statistics about the current program execution.
 %
 
     % Write memory/time usage statistics to stderr.
@@ -1864,35 +1930,8 @@
 
 %---------------------------------------------------------------------------%
 %
-% Miscellaneous predicates.
+% Interpreting I/O error messages.
 %
-
-    % Invokes the operating system shell with the specified Command.
-    % Result is either `ok(ExitStatus)', if it was possible to invoke
-    % the command, or `error(ErrorCode)' if not. The ExitStatus will be 0
-    % if the command completed successfully or the return value of the system
-    % call. If a signal kills the system call, then Result will be an error
-    % indicating which signal occurred.
-    %
-:- pred call_system(string::in, io.res(int)::out, io::di, io::uo) is det.
-
-:- type system_result
-    --->    exited(int)
-    ;       signalled(int).
-
-    % call_system_return_signal(Command, Result, !IO):
-    %
-    % Invokes the operating system shell with the specified Command.
-    % Result is either `ok(ExitStatus)' if it was possible to invoke
-    % the command or `error(Error)' if the command could not be executed.
-    % If the command could be executed then ExitStatus is either
-    % `exited(ExitCode)' if the command ran to completion or
-    % `signalled(SignalNum)' if the command was killed by a signal.
-    % If the command ran to completion then ExitCode will be 0 if the command
-    % ran successfully and the return value of the command otherwise.
-    %
-:- pred call_system_return_signal(string::in,
-    io.res(system_result)::out, io::di, io::uo) is det.
 
     % Construct an error code including the specified error message.
     %
@@ -1948,8 +1987,7 @@
 :- instance stream.reader(binary_input_stream, int, io, io.error).
 :- instance stream.reader(binary_input_stream, int8, io, io.error).
 :- instance stream.reader(binary_input_stream, uint8, io, io.error).
-:- instance stream.bulk_reader(binary_input_stream, int,
-        bitmap, io, io.error).
+:- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error).
 :- instance stream.putback(binary_input_stream, int, io, io.error).
 :- instance stream.putback(binary_input_stream, int8, io, io.error).
 :- instance stream.putback(binary_input_stream, uint8, io, io.error).
@@ -2053,7 +2091,6 @@
 :- import_module ops.
 
 :- pred get_op_table(ops.table::out, io::di, io::uo) is det.
-
 :- pred set_op_table(ops.table::di, io::di, io::uo) is det.
 
 %
@@ -2145,7 +2182,6 @@
 %
 
 :- semipure pred unsafe_get_io_state(io::uo) is det.
-
 :- impure pred unsafe_set_io_state(io::di) is det.
 
 %---------------------------------------------------------------------------%
