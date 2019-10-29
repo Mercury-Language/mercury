@@ -575,7 +575,7 @@
     % prefix_length(Pred, String):
     %
     % The length (in code units) of the maximal prefix of `String' consisting
-    % entirely of characters (code points) satisfying Pred.
+    % entirely of code points satisfying `Pred'.
     %
 :- func prefix_length(pred(char)::in(pred(in) is semidet), string::in)
     = (int::out) is det.
@@ -583,7 +583,7 @@
     % suffix_length(Pred, String):
     %
     % The length (in code units) of the maximal suffix of `String' consisting
-    % entirely of characters (code points) satisfying Pred.
+    % entirely of code points satisfying `Pred'.
     %
 :- func suffix_length(pred(char)::in(pred(in) is semidet), string::in)
     = (int::out) is det.
@@ -3525,9 +3525,6 @@ compare_ignore_case_ascii_loop(X, Y, I, CommonLen, Res) :-
 
 %---------------------%
 
-    % XXX ILSEQ unsafe_index_next effectively truncates the string at the first
-    % ill-formed sequence.
-    %
 prefix_length(P, S) = Index :-
     prefix_length_loop(P, S, 0, Index).
 
@@ -3536,7 +3533,8 @@ prefix_length(P, S) = Index :-
 
 prefix_length_loop(P, S, I, Index) :-
     ( if
-        unsafe_index_next(S, I, J, Char),
+        unsafe_index_next_repl(S, I, J, Char, IsReplaced),
+        IsReplaced = no,
         P(Char)
     then
         prefix_length_loop(P, S, J, Index)
@@ -3544,9 +3542,6 @@ prefix_length_loop(P, S, I, Index) :-
         Index = I
     ).
 
-    % XXX ILSEQ unsafe_index_next effectively truncates the string at the first
-    % ill-formed sequence.
-    %
 suffix_length(P, S) = End - Index :-
     End = length(S),
     suffix_length_loop(P, S, End, Index).
@@ -3556,7 +3551,8 @@ suffix_length(P, S) = End - Index :-
 
 suffix_length_loop(P, S, I, Index) :-
     ( if
-        unsafe_prev_index(S, I, J, Char),
+        unsafe_prev_index_repl(S, I, J, Char, IsReplaced),
+        IsReplaced = no,
         P(Char)
     then
         suffix_length_loop(P, S, J, Index)
@@ -4639,9 +4635,6 @@ chomp(S) = Chomp :-
     else
         Chomp = S
     ).
-
-% XXX ILSEQ Once the problems with prefix_length, suffix_length are fixed,
-% there should be no problem stripping strings containing ill-formed sequences.
 
 strip(S0) = S :-
     L = prefix_length(char.is_whitespace, S0),
