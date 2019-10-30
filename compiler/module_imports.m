@@ -140,9 +140,10 @@
     % we should build module_and_imports structures the same way
     % for both tasks.
     %
-    % XXX ITEM_LIST This predicate is used by code in modules.m to create
-    % a module_and_imports structure in what seems (to me, zs) to be
-    % a partially filled in state.
+    % XXX ITEM_LIST This predicate is used by code in grab_modules.m
+    % to create a module_and_imports structure in a partially filled in state.
+    % The code in grab_modules.m then proceeds to add more info to the new
+    % module_and_imports structure.
     %
 :- pred make_module_and_imports(globals::in, file_name::in,
     module_name::in, module_name::in, prog_context::in,
