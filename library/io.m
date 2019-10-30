@@ -1313,7 +1313,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Whole file text input predicates.
+% Whole file input predicates.
 %
 
     % Read all the characters (code points) from the current input stream
