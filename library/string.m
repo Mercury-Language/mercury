@@ -3556,11 +3556,6 @@ suffix_length_loop(P, S, I, Index) :-
 
 %---------------------%
 
-% XXX ILSEQ Behaviour depends on target language.
-%   - C: works at code unit level so ill-formed sequences are no problem
-%   - Java: works
-%   - C#: searching for low/high surrogate returns same index
-
 sub_string_search(WholeString, Pattern, Index) :-
     sub_string_search_start(WholeString, Pattern, 0, Index).
 
@@ -3608,7 +3603,8 @@ sub_string_search_start_2(String, SubString, I, Length, SubLength) ->
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    Index = WholeString.IndexOf(Pattern, BeginAt);
+    Index = WholeString.IndexOf(Pattern, BeginAt,
+        System.StringComparison.Ordinal);
     SUCCESS_INDICATOR = (Index >= 0);
 }").
 :- pragma foreign_proc("Java",
