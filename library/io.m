@@ -1218,6 +1218,20 @@
 
 %---------------------------------------------------------------------------%
 %
+% Formatted output.
+%
+
+    % Formats the specified arguments according to the format string,
+    % using string.format, and then writes the result to the current
+    % output stream or to the specified output stream.
+    % (See the documentation of string.format for details.)
+    %
+:- pred format(string::in, list(poly_type)::in, io::di, io::uo) is det.
+:- pred format(io.text_output_stream::in, string::in, list(poly_type)::in,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
 % Writing out several values.
 %
 
@@ -1233,15 +1247,6 @@
     %
 :- pred write_many(list(poly_type)::in, io::di, io::uo) is det.
 :- pred write_many(io.text_output_stream::in, list(poly_type)::in,
-    io::di, io::uo) is det.
-
-    % Formats the specified arguments according to the format string,
-    % using string.format, and then writes the result to the current
-    % output stream or to the specified output stream.
-    % (See the documentation of string.format for details.)
-    %
-:- pred format(string::in, list(poly_type)::in, io::di, io::uo) is det.
-:- pred format(io.text_output_stream::in, string::in, list(poly_type)::in,
     io::di, io::uo) is det.
 
     % write_list(List, Separator, OutputPred, !IO):
