@@ -661,30 +661,28 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         % modules. XXX ITEM_LIST What is the correctness argument that supports
         % the above assertion?
         ( if
-            ForeignImportModules0 = foreign_import_modules(
-                C0, CSharp0, Java0, Erlang0),
+            ForeignImportModules0 = c_j_cs_e_fims(C0, Java0, CSharp0, Erlang0),
             set.is_empty(C0),
-            set.is_empty(CSharp0),
             set.is_empty(Java0),
+            set.is_empty(CSharp0),
             set.is_empty(Erlang0)
         then
-            SrcForeignImportModules = foreign_import_modules(
-                SrcC, SrcCSharp, SrcJava, SrcErlang),
-            IntForeignImportModules = foreign_import_modules(
-                IntC, IntCSharp, IntJava, IntErlang),
-            OptForeignImportModules = foreign_import_modules(
-                OptC, OptCSharp, OptJava, OptErlang),
-            IntForOptForeignImportModules = foreign_import_modules(
-                IntForOptC, IntForOptCSharp, IntForOptJava,
+            SrcForeignImportModules = c_j_cs_e_fims(
+                SrcC, SrcJava, SrcCSharp, SrcErlang),
+            IntForeignImportModules = c_j_cs_e_fims(
+                IntC, IntJava, IntCSharp, IntErlang),
+            OptForeignImportModules = c_j_cs_e_fims(
+                OptC, OptJava, OptCSharp, OptErlang),
+            IntForOptForeignImportModules = c_j_cs_e_fims(
+                IntForOptC, IntForOptJava, IntForOptCSharp,
                 IntForOptErlang),
             C = set.union_list([SrcC, IntC, OptC, IntForOptC]),
+            Java= set.union_list([SrcJava, IntJava, OptJava, IntForOptJava]),
             CSharp = set.union_list([
                 SrcCSharp, IntCSharp, OptCSharp, IntForOptCSharp]),
-            Java= set.union_list([SrcJava, IntJava, OptJava, IntForOptJava]),
             Erlang = set.union_list([
                 SrcErlang, IntErlang, OptErlang, IntForOptErlang]),
-            ForeignImportModules = foreign_import_modules(
-                C, CSharp, Java, Erlang)
+            ForeignImportModules = c_j_cs_e_fims(C, Java, CSharp, Erlang)
         else
             ForeignImportModules = ForeignImportModules0
         )
@@ -709,10 +707,12 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     else
         globals.get_target(Globals, Target),
         (
-            Target = target_csharp,
-            % XXX don't know enough about C# yet
-            ForeignImportTargets = [],
-            ForeignImportExt = ".cs"
+            Target = target_c,
+            % NOTE: for C the possible targets might be a .o file _or_ a
+            % .pic_o file. We need to include dependencies for the latter
+            % otherwise invoking mmake with a <module>.pic_o target will break.
+            ForeignImportTargets = [ObjFileName, PicObjFileName],
+            ForeignImportExt = ".mh"
         ;
             Target = target_java,
             module_name_to_file_name(Globals, do_not_create_dirs, ".class",
@@ -720,18 +720,16 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
             ForeignImportTargets = [ClassFileName],
             ForeignImportExt = ".java"
         ;
+            Target = target_csharp,
+            % XXX don't know enough about C# yet
+            ForeignImportTargets = [],
+            ForeignImportExt = ".cs"
+        ;
             Target = target_erlang,
             module_name_to_file_name(Globals, do_not_create_dirs, ".beam",
                 ModuleName, BeamFileName, !IO),
             ForeignImportTargets = [BeamFileName],
             ForeignImportExt = ".hrl"
-        ;
-            Target = target_c,
-            % NOTE: for C the possible targets might be a .o file _or_ a
-            % .pic_o file. We need to include dependencies for the latter
-            % otherwise invoking mmake with a <module>.pic_o target will break.
-            ForeignImportTargets = [ObjFileName, PicObjFileName],
-            ForeignImportExt = ".mh"
         ),
         % XXX Instead of generating a separate rule for each target in
         % ForeignImportTargets, generate one rule with all those targets

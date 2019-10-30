@@ -60,11 +60,11 @@
     % C++ is commented out while lang_cplusplus is commented out
     % in the foreign_language type.
 :- type foreign_import_modules
-    --->    foreign_import_modules(
+    --->    c_j_cs_e_fims(
                 fim_c           :: set(module_name),
                 % fim_cplusplus :: set(module_name),
-                fim_csharp      :: set(module_name),
                 fim_java        :: set(module_name),
+                fim_csharp      :: set(module_name),
                 fim_erlang      :: set(module_name)
             ).
 
@@ -100,7 +100,7 @@
 :- implementation.
 
 init_foreign_import_modules =
-    foreign_import_modules(set.init, set.init, set.init, set.init).
+    c_j_cs_e_fims(set.init, set.init, set.init, set.init).
 
 add_foreign_import_module(Lang, ModuleName, !FIM) :-
     (
@@ -142,20 +142,20 @@ add_fim_spec(FIMSpec, !FIM) :-
     add_foreign_import_module(Lang, ModuleName, !FIM).
 
 get_all_fim_specs(FIM) = FIMSpecs :-
-    FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesErlang),
+    FIM = c_j_cs_e_fims(ModuleNamesC, ModuleNamesJava,
+        ModuleNamesCSharp, ModuleNamesErlang),
     FIMSpecs = set.union_list([
         set.map(make_fim_spec(lang_c), ModuleNamesC),
-        set.map(make_fim_spec(lang_csharp), ModuleNamesCSharp),
         set.map(make_fim_spec(lang_java), ModuleNamesJava),
+        set.map(make_fim_spec(lang_csharp), ModuleNamesCSharp),
         set.map(make_fim_spec(lang_erlang), ModuleNamesErlang)
         ]).
 
 get_all_foreign_import_modules(FIM) = ModuleNames :-
-    FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesErlang),
-    ModuleNames = set.union_list([ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesErlang]).
+    FIM = c_j_cs_e_fims(ModuleNamesC, ModuleNamesJava,
+        ModuleNamesCSharp, ModuleNamesErlang),
+    ModuleNames = set.union_list([ModuleNamesC, ModuleNamesJava,
+        ModuleNamesCSharp, ModuleNamesErlang]).
 
 get_lang_fim_specs(FIM, Lang) = ImportInfos :-
     ModuleNames = get_lang_fim_modules(FIM, Lang),
