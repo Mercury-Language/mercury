@@ -4620,8 +4620,8 @@ pad_right(String0, PadChar, Width, String) :-
     ).
 
 chomp(S) = Chomp :-
-    ( if prev_index(S, length(S), Offset, '\n') then
-        Chomp = left(S, Offset)
+    ( if prev_index(S, length(S), Index, '\n') then
+        Chomp = unsafe_between(S, 0, Index)
     else
         Chomp = S
     ).
@@ -4629,15 +4629,21 @@ chomp(S) = Chomp :-
 strip(S0) = S :-
     L = prefix_length(char.is_whitespace, S0),
     R = suffix_length(char.is_whitespace, S0),
-    S = between(S0, L, length(S0) - R).
+    Start = L,
+    End = max(L, length(S0) - R),
+    S = unsafe_between(S0, Start, End).
 
 lstrip(S) = lstrip_pred(char.is_whitespace, S).
 
 rstrip(S) = rstrip_pred(char.is_whitespace, S).
 
-lstrip_pred(P, S) = right(S, length(S) - prefix_length(P, S)).
+lstrip_pred(P, S0) = S :-
+    L = prefix_length(P, S0),
+    S = unsafe_between(S0, L, length(S0)).
 
-rstrip_pred(P, S) = left(S, length(S) - suffix_length(P, S)).
+rstrip_pred(P, S0) = S :-
+    R = suffix_length(P, S0),
+    S = unsafe_between(S0, 0, length(S0) - R).
 
 %---------------------%
 
