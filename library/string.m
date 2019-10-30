@@ -175,7 +175,7 @@
     % that cannot be encoded in a string (namely, surrogate code points cannot
     % be encoded in UTF-8 strings).
     %
-    % The forward mode of from_char_list/2 is deprecated because the implied
+    % The reverse mode of from_char_list/2 is deprecated because the implied
     % ability to round trip convert a string to a list then back to the same
     % string does not hold in the presence of ill-formed code unit sequences.
     %
