@@ -601,6 +601,8 @@
     % `Index' is the code unit position in `String' where the first
     % occurrence of `SubString' occurs such that 'Index' is greater than or
     % equal to `BeginAt'. Indices start at zero.
+    % Fails if `BeginAt' is negative or greater than
+    % length(String) - length(SubString).
     %
 :- pred sub_string_search_start(string::in, string::in, int::in, int::out)
     is semidet.
@@ -3603,8 +3605,12 @@ sub_string_search_start_2(String, SubString, I, Length, SubLength) ->
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    Index = WholeString.IndexOf(Pattern, BeginAt,
-        System.StringComparison.Ordinal);
+    if (BeginAt < 0 || BeginAt > WholeString.Length) {
+        Index = -1;
+    } else {
+        Index = WholeString.IndexOf(Pattern, BeginAt,
+            System.StringComparison.Ordinal);
+    }
     SUCCESS_INDICATOR = (Index >= 0);
 }").
 :- pragma foreign_proc("Java",
@@ -3612,7 +3618,13 @@ sub_string_search_start_2(String, SubString, I, Length, SubLength) ->
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Index = WholeString.indexOf(Pattern, BeginAt);
+    // String.indexOf will check BeginAt > WholeString.Length
+    // so we don't need to do it first.
+    if (BeginAt < 0) {
+        Index = -1;
+    } else {
+        Index = WholeString.indexOf(Pattern, BeginAt);
+    }
     SUCCESS_INDICATOR = (Index >= 0);
 ").
 :- pragma foreign_proc("Erlang",
@@ -3620,14 +3632,23 @@ sub_string_search_start_2(String, SubString, I, Length, SubLength) ->
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Index = mercury__string:sub_string_search_start_2(String, SubString,
-        BeginAt, size(String), size(SubString)),
+    case BeginAt >= 0 of
+        true ->
+            Index = mercury__string:sub_string_search_start_2(String, SubString,
+                BeginAt, size(String), size(SubString));
+        false ->
+            Index = -1
+    end,
     SUCCESS_INDICATOR = (Index =/= -1)
 ").
 
 sub_string_search_start(String, SubString, BeginAt, Index) :-
-    sub_string_search_start_loop(String, SubString, BeginAt,
-        length(String), length(SubString), Index).
+    ( if BeginAt < 0 then
+        fail
+    else
+        sub_string_search_start_loop(String, SubString, BeginAt,
+            length(String), length(SubString), Index)
+    ).
 
     % Brute force string searching. For short Strings this is good;
     % for longer strings Boyer-Moore is much better.
@@ -3636,7 +3657,7 @@ sub_string_search_start(String, SubString, BeginAt, Index) :-
     int::in, int::out) is semidet.
 
 sub_string_search_start_loop(String, SubString, I, Len, SubLen, Index) :-
-    I < Len,
+    I =< Len - SubLen,
     ( if
         % XXX This is inefficient -- there is no (in, in, in) = in is semidet
         % mode of between, so this ends up calling the (in, in, in) = out
@@ -4277,8 +4298,6 @@ split_at_string(Needle, Total) =
 :- func split_at_string_loop(int, int, string, string) = list(string).
 
 split_at_string_loop(StartAt, NeedleLen, Needle, Total) = Out :-
-    % XXX ILSEQ Behaviour of sub_string_search_start currently differs
-    % across targets.
     ( if sub_string_search_start(Total, Needle, StartAt, NeedlePos) then
         BeforeNeedle = between(Total, StartAt, NeedlePos),
         Tail = split_at_string_loop(NeedlePos+NeedleLen, NeedleLen,

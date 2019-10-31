@@ -26,8 +26,18 @@ main(!IO) :-
         string.sub_string_search("cat", "at", 1),
         string.sub_string_search("cat", "t", 2),
 
+        not string.sub_string_search_start("catcatcat", "cat", -1, _),
+        string.sub_string_search_start("catcatcat", "cat", 0, 0),
         string.sub_string_search_start("catcatcat", "cat", 1, 3),
+        string.sub_string_search_start("catcatcat", "cat", 2, 3),
+        string.sub_string_search_start("catcatcat", "cat", 3, 3),
+        string.sub_string_search_start("catcatcat", "cat", 4, 6),
+        string.sub_string_search_start("catcatcat", "cat", 5, 6),
+        string.sub_string_search_start("catcatcat", "cat", 6, 6),
+        not string.sub_string_search_start("catcatcat", "cat", 7, _),
+        not string.sub_string_search_start("catcatcat", "cat", 8, _),
         not string.sub_string_search_start("catcatcat", "cat", 9, _),
+        not string.sub_string_search_start("catcatcat", "cat", 10, _),
 
         string.sub_string_search("cαtcατcat", "cατ", length("cαt"))
     ->
