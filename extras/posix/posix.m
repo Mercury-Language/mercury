@@ -172,8 +172,7 @@
 :- pred errno(posix.error::out, io::di, io::uo) is det.
 
     % error_to_cerrno(Error, CError):
-    % CError is the error number corresponding to Error, or -1 if Error is
-    % unknown_error/2.
+    % CError is the error number corresponding to Error.
     %
 :- pred error_to_cerrno(posix.error::in, int::out) is det.
 
@@ -226,7 +225,7 @@ error_to_num(Err) = Num :-
     ( if num_error(Num0, Err) then
         Num = Num0
     else
-        Num = (-1)
+        unexpected($pred, "cannot convert to posix.error")
     ).
 
 :- pred num_error(int, posix.error).
@@ -389,8 +388,12 @@ num_error(Num, Err) :-
     }
 ").
 
-error_to_cerrno(Errno, CErrno) :-
-    CErrno = num_to_cerrno(error_to_num(Errno)).
+error_to_cerrno(Error, CErrno) :-
+    ( if Error = unknown(CErrnoPrime, _) then
+        CErrno = CErrnoPrime
+    else
+        CErrno = num_to_cerrno(error_to_num(Error))
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module posix.
