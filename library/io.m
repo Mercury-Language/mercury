@@ -10302,6 +10302,9 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
     % XXX It would be better to use a char_array type rather than array(char).
     % This is because on the Java and IL backends indexing into an array whose
     % element type is known statically requires less overhead.
+    %
+    % It may be possible to merge with string.string_buffer.
+    %
 :- type buffer
     --->    buffer(array(char)).
 

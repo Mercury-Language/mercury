@@ -431,6 +431,7 @@ Changes to the Mercury standard library:
    - compare_substrings/6
    - unsafe_compare_substrings/6
    - nondet_append/3
+   - append_string_pieces/2
 
   The following procedures in the string module have been deprecated:
 

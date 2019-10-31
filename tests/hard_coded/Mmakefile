@@ -354,6 +354,7 @@ ORDINARY_PROGS = \
 	string_append_ioi \
 	string_append_ooi \
 	string_append_ooi_ilseq \
+	string_append_pieces \
 	string_builder_test \
 	string_case \
 	string_char_list_ilseq \

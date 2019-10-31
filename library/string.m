@@ -690,6 +690,24 @@
 
 %---------------------------------------------------------------------------%
 %
+% Making strings from smaller pieces.
+%
+
+:- type string_piece
+    --->    string(string)
+    ;       substring(string, int, int).    % string, start, end offset
+
+    % append_string_pieces(Pieces, String):
+    %
+    % Append together the strings and substrings in `Pieces' into a string.
+    % Throws an exception `Pieces' contains an element
+    % `substring(S, Start, End)' where `Start' or `End' are not within
+    % the range [0, length(S)], or if `Start' > `End'.
+    %
+:- pred append_string_pieces(list(string_piece)::in, string::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
 % Splitting up strings.
 %
 
@@ -4018,6 +4036,169 @@ join_list(Sep, [H | T]) = H ++ join_list_loop(Sep, T).
 
 join_list_loop(_, []) = "".
 join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
+
+%---------------------------------------------------------------------------%
+%
+% Making strings from smaller pieces.
+%
+
+:- type string_buffer
+    --->    string_buffer(string).
+
+:- pragma foreign_type("C", string_buffer, "char *",
+    [can_pass_as_mercury_type]).
+:- pragma foreign_type("C#", string_buffer, "char[]").
+:- pragma foreign_type("Java", string_buffer, "java.lang.StringBuilder").
+
+:- pred alloc_buffer(int::in, string_buffer::uo) is det.
+
+:- pragma foreign_proc("C",
+    alloc_buffer(Size::in, Buffer::uo),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    MR_allocate_aligned_string_msg(Buffer, Size, MR_ALLOC_ID);
+    Buffer[Size] = '\\0';
+").
+:- pragma foreign_proc("C#",
+    alloc_buffer(Size::in, Buffer::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Buffer = new char[Size];
+").
+:- pragma foreign_proc("Java",
+    alloc_buffer(Size::in, Buffer::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Buffer = new java.lang.StringBuilder(Size);
+").
+
+alloc_buffer(_Size, Buffer) :-
+    Buffer = string_buffer("").
+
+:- pred buffer_to_string(string_buffer::di, string::uo) is det.
+
+:- pragma foreign_proc("C",
+    buffer_to_string(Buffer::di, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
+"
+    Str = Buffer;
+").
+:- pragma foreign_proc("C#",
+    buffer_to_string(Buffer::di, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = new string(Buffer);
+").
+:- pragma foreign_proc("Java",
+    buffer_to_string(Buffer::di, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = Buffer.toString();
+").
+
+buffer_to_string(Buffer, Str) :-
+    Buffer = string_buffer(Str).
+
+:- pred copy_into_buffer(string_buffer::di, string_buffer::uo,
+    int::in, int::out, string::in, int::in, int::in) is det.
+
+:- pragma foreign_proc("C",
+    copy_into_buffer(Dest0::di, Dest::uo, DestOffset0::in, DestOffset::out,
+        Src::in, SrcStart::in, SrcEnd::in),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
+"
+    size_t count;
+
+    MR_CHECK_EXPR_TYPE(Dest0, char *);
+    MR_CHECK_EXPR_TYPE(Dest, char *);
+
+    count = SrcEnd - SrcStart;
+    Dest = Dest0;
+    MR_memcpy(Dest + DestOffset0, Src + SrcStart, count);
+    DestOffset = DestOffset0 + count;
+").
+:- pragma foreign_proc("C#",
+    copy_into_buffer(Dest0::di, Dest::uo, DestOffset0::in, DestOffset::out,
+        Src::in, SrcStart::in, SrcEnd::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    int count = SrcEnd - SrcStart;
+    Dest = Dest0;
+    Src.CopyTo(SrcStart, Dest, DestOffset0, count);
+    DestOffset = DestOffset0 + count;
+").
+:- pragma foreign_proc("Java",
+    copy_into_buffer(Dest0::di, Dest::uo, DestOffset0::in, DestOffset::out,
+        Src::in, SrcStart::in, SrcEnd::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // The Java implementation does not actually use the dest offsets.
+    Dest = Dest0;
+    Dest.append(Src, SrcStart, SrcEnd);
+    DestOffset = DestOffset0 + (SrcEnd - SrcStart);
+").
+
+copy_into_buffer(Dest0, Dest, DestOffset0, DestOffset, Src, SrcStart, SrcEnd)
+        :-
+    Dest0 = string_buffer(Buffer0),
+    Buffer = Buffer0 ++ unsafe_between(Src, SrcStart, SrcEnd),
+    DestOffset = DestOffset0 + (SrcEnd - SrcStart),
+    Dest = string_buffer(Buffer).
+
+%---------------------%
+
+append_string_pieces(Pieces, String) :-
+    check_pieces_and_sum_length($pred, Pieces, 0, BufferLen),
+    alloc_buffer(BufferLen, Buffer0),
+    list.foldl2(copy_piece_into_buffer, Pieces, 0, End, Buffer0, Buffer),
+    expect(unify(End, BufferLen), $pred, "End != BufferLen"),
+    buffer_to_string(Buffer, String).
+
+:- pred check_pieces_and_sum_length(string::in, list(string_piece)::in,
+    int::in, int::out) is det.
+
+check_pieces_and_sum_length(PredName, Pieces, Len0, Len) :-
+    (
+        Pieces = [],
+        Len = Len0
+    ;
+        Pieces = [Piece | TailPieces],
+        (
+            Piece = string(Str),
+            PieceLen = length(Str)
+        ;
+            Piece = substring(BaseStr, Start, End),
+            BaseLen = length(BaseStr),
+            ( if
+                Start >= 0,
+                Start =< BaseLen,
+                End >= Start,
+                End =< BaseLen
+            then
+                PieceLen = End - Start
+            else
+                unexpected(PredName, "substring index out of range")
+            )
+        ),
+        Len1 = Len0 + PieceLen,
+        check_pieces_and_sum_length(PredName, TailPieces, Len1, Len)
+    ).
+
+:- pred copy_piece_into_buffer(string_piece::in, int::in, int::out,
+    string_buffer::di, string_buffer::uo) is det.
+
+copy_piece_into_buffer(Piece, !DestOffset, !DestBuffer) :-
+    (
+        Piece = string(Src),
+        SrcStart = 0,
+        SrcEnd = length(Src)
+    ;
+        Piece = substring(Src, SrcStart, SrcEnd)
+    ),
+    copy_into_buffer(!DestBuffer, !DestOffset, Src, SrcStart, SrcEnd).
 
 %---------------------------------------------------------------------------%
 %

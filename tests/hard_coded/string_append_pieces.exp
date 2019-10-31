@@ -1,0 +1,11 @@
+""
+""
+""
+""
+"ab"
+"cool!😀"
+software_error("predicate `string.append_string_pieces\'/2: Unexpected: substring index out of range")
+software_error("predicate `string.append_string_pieces\'/2: Unexpected: substring index out of range")
+software_error("predicate `string.append_string_pieces\'/2: Unexpected: substring index out of range")
+software_error("predicate `string.append_string_pieces\'/2: Unexpected: substring index out of range")
+software_error("predicate `string.append_string_pieces\'/2: Unexpected: substring index out of range")
