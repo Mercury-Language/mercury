@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999, 2001 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -57,6 +57,7 @@
 :- include_module posix.stat.
 :- include_module posix.wait.
 :- include_module posix.write.
+:- include_module posix.strerror.
 
 %-----------------------------------------------------------------------------%
 
@@ -166,7 +167,15 @@
 :- type timeval
     --->    timeval(int, int). % time(Sec, uSec)
 
+%-----------------------------------------------------------------------------%
+
 :- pred errno(posix.error::out, io::di, io::uo) is det.
+
+    % error_to_cerrno(Error, CError):
+    % CError is the error number corresponding to Error, or -1 if Error is
+    % unknown_error/2.
+    %
+:- pred error_to_cerrno(posix.error::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -192,7 +201,7 @@
 
 errno(Error, !IO) :-
     errno0(ErrNo, !IO),
-    Error = error(errnumber(ErrNo)).
+    Error = num_to_error(cerrno_to_num(ErrNo)).
 
 :- pred errno0(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
@@ -202,10 +211,30 @@ errno(Error, !IO) :-
     E = errno;
 ").
 
-:- func error(int) = posix.error.
+:- func num_to_error(int) = posix.error.
 
-error(Num) = Res :-
-    ((  Num = 0,    Err = e2BIG
+num_to_error(Num) = Err :-
+    ( if num_error(Num, Err0) then
+        Err = Err0
+    else
+        Err = unknown(Num, "unknown errno")
+    ).
+
+:- func error_to_num(posix.error) = int.
+
+error_to_num(Err) = Num :-
+    ( if num_error(Num0, Err) then
+        Num = Num0
+    else
+        Num = (-1)
+    ).
+
+:- pred num_error(int, posix.error).
+:- mode num_error(in, out) is semidet.
+:- mode num_error(out, in) is semidet.
+
+num_error(Num, Err) :-
+    (   Num = 0,    Err = e2BIG
     ;   Num = 1,    Err = eACCES
     ;   Num = 2,    Err = eAGAIN
     ;   Num = 3,    Err = eBADF
@@ -248,16 +277,12 @@ error(Num) = Res :-
     ;   Num = 40,   Err = eSRCH
     ;   Num = 41,   Err = eTIMEDOUT
     ;   Num = 42,   Err = eXDEV
-    ) ->
-        Res = Err
-    ;
-        Res = unknown(Num, "unknown errno")
     ).
 
-:- func errnumber(int) = int.
+:- func cerrno_to_num(int) = int.
 
 :- pragma foreign_proc("C",
-    errnumber(Er::in) = (En::out),
+    cerrno_to_num(Er::in) = (En::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     switch (Er) {
@@ -308,3 +333,65 @@ error(Num) = Res :-
             En = -1;
     }
 ").
+
+:- func num_to_cerrno(int) = int.
+
+:- pragma foreign_proc("C",
+    num_to_cerrno(En::in) = (Er::out),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    switch (En) {
+        case  0: Er = E2BIG;        break;
+        case  1: Er = EACCES;       break;
+        case  2: Er = EAGAIN;       break;
+        case  3: Er = EBADF;        break;
+        case  4: Er = EBADMSG;      break;
+        case  5: Er = EBUSY;        break;
+     /* case  6: Er = ECANCELED;    break; */
+        case  7: Er = ECHILD;       break;
+        case  8: Er = EDEADLK;      break;
+        case  9: Er = EDOM;         break;
+        case 10: Er = EEXIST;       break;
+        case 11: Er = EFAULT;       break;
+        case 12: Er = EFBIG;        break;
+        case 13: Er = EINPROGRESS;  break;
+        case 14: Er = EINTR;        break;
+        case 15: Er = EINVAL;       break;
+        case 16: Er = EIO;          break;
+        case 17: Er = EISDIR;       break;
+        case 18: Er = EMFILE;       break;
+        case 19: Er = EMLINK;       break;
+        case 20: Er = EMSGSIZE;     break;
+        case 21: Er = ENAMETOOLONG; break;
+        case 22: Er = ENFILE;       break;
+        case 23: Er = ENODEV;       break;
+        case 24: Er = ENOENT;       break;
+        case 25: Er = ENOEXEC;      break;
+     /* case 26: Er = ENOLOCK;      break; */
+        case 27: Er = ENOMEM;       break;
+        case 28: Er = ENOSPC;       break;
+        case 29: Er = ENOSYS;       break;
+        case 30: Er = ENOTDIR;      break;
+        case 31: Er = ENOTEMPTY;    break;
+     /* case 32: Er = ENOTSUP;      break; */
+        case 33: Er = ENOTTY;       break;
+        case 34: Er = ENXIO;        break;
+        case 35: Er = EPERM;        break;
+        case 36: Er = EPIPE;        break;
+        case 37: Er = ERANGE;       break;
+        case 38: Er = EROFS;        break;
+        case 39: Er = ESPIPE;       break;
+        case 40: Er = ESRCH;        break;
+        case 41: Er = ETIMEDOUT;    break;
+        case 42: Er = EXDEV;        break;
+        default:
+            Er = -1;
+    }
+").
+
+error_to_cerrno(Errno, CErrno) :-
+    CErrno = num_to_cerrno(error_to_num(Errno)).
+
+%-----------------------------------------------------------------------------%
+:- end_module posix.
+%-----------------------------------------------------------------------------%
