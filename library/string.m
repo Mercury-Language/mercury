@@ -3646,8 +3646,11 @@ sub_string_search_start(String, SubString, BeginAt, Index) :-
     ( if BeginAt < 0 then
         fail
     else
-        sub_string_search_start_loop(String, SubString, BeginAt,
-            length(String), length(SubString), Index)
+        Len = length(String),
+        SubLen = length(SubString),
+        LastStart = Len - SubLen,
+        sub_string_search_start_loop(String, SubString, BeginAt, LastStart,
+            SubLen, Index)
     ).
 
     % Brute force string searching. For short Strings this is good;
@@ -3656,19 +3659,12 @@ sub_string_search_start(String, SubString, BeginAt, Index) :-
 :- pred sub_string_search_start_loop(string::in, string::in, int::in, int::in,
     int::in, int::out) is semidet.
 
-sub_string_search_start_loop(String, SubString, I, Len, SubLen, Index) :-
-    I =< Len - SubLen,
-    ( if
-        % XXX This is inefficient -- there is no (in, in, in) = in is semidet
-        % mode of between, so this ends up calling the (in, in, in) = out
-        % mode and then doing the unification. This will create a lot of
-        % unnecessary garbage.
-        % XXX This will abort if either index is not at a code point boundary.
-        between(String, I, I + SubLen) = SubString
-    then
+sub_string_search_start_loop(String, SubString, I, LastI, SubLen, Index) :-
+    I =< LastI,
+    ( if unsafe_compare_substrings((=), String, I, SubString, 0, SubLen) then
         Index = I
     else
-        sub_string_search_start_loop(String, SubString, I + 1, Len, SubLen,
+        sub_string_search_start_loop(String, SubString, I + 1, LastI, SubLen,
             Index)
     ).
 
