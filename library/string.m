@@ -3561,26 +3561,6 @@ suffix_length_loop(P, S, I, Index) :-
 sub_string_search(WholeString, Pattern, Index) :-
     sub_string_search_start(WholeString, Pattern, 0, Index).
 
-:- pragma foreign_decl("Erlang", local, "
--export([sub_string_search_start_2/5]).
-").
-
-:- pragma foreign_code("Erlang", "
-sub_string_search_start_2(String, SubString, I, Length, SubLength) ->
-    case I + SubLength =< Length of
-        true ->
-            case String of
-                <<_:I/binary, SubString:SubLength/binary, _/binary>> ->
-                    I;
-                _ ->
-                    sub_string_search_start_2(String, SubString, I + 1,
-                        Length, SubLength)
-            end;
-        false ->
-            -1
-    end.
-").
-
 :- pragma foreign_proc("C",
     sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
         Index::out),
@@ -3632,11 +3612,20 @@ sub_string_search_start_2(String, SubString, I, Length, SubLength) ->
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    case BeginAt >= 0 of
-        true ->
-            Index = mercury__string:sub_string_search_start_2(String, SubString,
-                BeginAt, size(String), size(SubString));
-        false ->
+    case String of
+        <<_:BeginAt/binary, Haystack/binary>> ->
+            if
+                size(SubString) =:= 0 ->
+                    Index = BeginAt;
+                true ->
+                    case binary:match(Haystack, SubString) of
+                        {FoundStart, FoundLength} ->
+                            Index = BeginAt + FoundStart;
+                        nomatch ->
+                            Index = -1
+                    end
+            end;
+        _ ->
             Index = -1
     end,
     SUCCESS_INDICATOR = (Index =/= -1)
