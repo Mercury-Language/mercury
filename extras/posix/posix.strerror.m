@@ -1,4 +1,4 @@
-%-------------------------------------_--------------------------------------%
+%----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2019 The Mercury team.
@@ -30,12 +30,12 @@ strerror(Err, Msg, !IO) :-
 
 :- pred strerror0(int::in, string::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    strerror0(Errno::in, Txt::out, _IO1::di, _IO2::uo),
+    strerror0(Errno::in, Msg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    char buf[200];
-    MR_strerror(Errno, buf, 200);
-    MR_make_aligned_string_copy(Txt, buf);
+    char buf[MR_STRERROR_BUF_SIZE];
+    MR_make_aligned_string_copy_msg(Msg, MR_strerror(Errno, buf, sizeof(buf)),
+        MR_ALLOC_ID);
 ").
 
 %----------------------------------------------------------------------------%
