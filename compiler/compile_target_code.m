@@ -2457,7 +2457,7 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType,
             (
                 C_CompilerType = cc_cl(_),
                 % XXX WIN64 - this will need to be revisited when we begin
-                % supporting 64-bit Windows.
+                % supporting 64-bit Windows with MSVC.
                 ResCmdLinkFlags = [
                     "-nologo",
                     "-subsystem:console",
