@@ -210,6 +210,8 @@
 :- pred to_code_unit_list(string::in, list(int)::out) is det.
 
     % Convert a string into a list of UTF-8 code units.
+    % Throws an exception if the string contains an unpaired surrogate code
+    % point, as the encoding of surrogate code points is prohibited in UTF-8.
     %
 :- pred to_utf8_code_unit_list(string::in, list(int)::out) is det.
 
@@ -1973,10 +1975,6 @@ to_code_unit_list_loop(String, Index, End, List) :-
 
 %---------------------%
 
-% XXX ILSEQ Behaviour differs according to target language.
-%   - java: throws exception on unpaired surrogate (correct as written)
-%   - csharp: infinite loop on string containing unpaired surrogate
-
 to_utf8_code_unit_list(String, CodeList) :-
     ( if internal_encoding_is_utf8 then
         to_code_unit_list(String, CodeList)
@@ -1990,7 +1988,7 @@ encode_utf8(Char, CodeList0, CodeList) :-
     ( if char.to_utf8(Char, CharCodes) then
         CodeList = CharCodes ++ CodeList0
     else
-        unexpected($pred, "char.to_utf8 failed")
+        unexpected($pred, "surrogate code point")
     ).
 
 %---------------------%
