@@ -4468,11 +4468,15 @@ to_upper(S1) = S2 :-
 :- pragma promise_equivalent_clauses(to_upper/2).
 
 to_upper(StrIn::in, StrOut::uo) :-
-    % XXX ILSEQ to_char_list and from_char_list cannot handle ill-formed
+    % Use to_code_unit_list instead of to_char_list to preserve ill-formed
     % sequences.
-    to_char_list(StrIn, List),
-    char_list_to_upper(List, ListUpp),
-    from_char_list(ListUpp, StrOut).
+    to_code_unit_list(StrIn, CodeList0),
+    list.map(to_upper_code_unit, CodeList0, CodeList),
+    ( if from_code_unit_list_allow_ill_formed(CodeList, StrPrime) then
+        StrOut = StrPrime
+    else
+        unexpected($pred, "string.from_code_unit_list_allow_ill_formed failed")
+    ).
 
 to_upper(X::in, Y::in) :-
     length(X, LenX),
@@ -4525,13 +4529,6 @@ to_upper(X::in, Y::in) :-
     StrOut = new String(cs);
 ").
 
-:- pred char_list_to_upper(list(char)::in, list(char)::out) is det.
-
-char_list_to_upper([], []).
-char_list_to_upper([X | Xs], [Y | Ys]) :-
-    char.to_upper(X, Y),
-    char_list_to_upper(Xs, Ys).
-
 :- pred check_upper_loop(string::in, string::in, int::in, int::in) is semidet.
 
 check_upper_loop(X, Y, Index, End) :-
@@ -4564,11 +4561,15 @@ to_lower(S1) = S2 :-
 :- pragma promise_equivalent_clauses(to_lower/2).
 
 to_lower(StrIn::in, StrOut::uo) :-
-    % XXX ILSEQ to_char_list and from_char_list cannot handle ill-formed
+    % Use to_code_unit_list instead of to_char_list to preserve ill-formed
     % sequences.
-    to_char_list(StrIn, List),
-    char_list_to_lower(List, ListLow),
-    from_char_list(ListLow, StrOut).
+    to_code_unit_list(StrIn, CodeList0),
+    list.map(to_lower_code_unit, CodeList0, CodeList),
+    ( if from_code_unit_list_allow_ill_formed(CodeList, StrPrime) then
+        StrOut = StrPrime
+    else
+        unexpected($pred, "string.from_code_unit_list_allow_ill_formed failed")
+    ).
 
 to_lower(X::in, Y::in) :-
     length(X, LenX),
@@ -4620,13 +4621,6 @@ to_lower(X::in, Y::in) :-
     }
     StrOut = new String(cs);
 ").
-
-:- pred char_list_to_lower(list(char)::in, list(char)::out) is det.
-
-char_list_to_lower([], []).
-char_list_to_lower([X | Xs], [Y | Ys]) :-
-    char.to_lower(X, Y),
-    char_list_to_lower(Xs, Ys).
 
 :- pred check_lower_loop(string::in, string::in, int::in, int::in) is semidet.
 
