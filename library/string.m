@@ -455,8 +455,15 @@
 :- func count_codepoints(string) = int.
 :- pred count_codepoints(string::in, int::out) is det.
 
-    % Determine the number of code units required to represent a string in
-    % UTF-8 encoding.
+    % count_utf8_code_units(String) = Length:
+    %
+    % Return the number of code units required to represent a string in
+    % UTF-8 encoding (with allowance for ill-formed sequences).
+    % Equivalent to `Length = length(to_utf8_code_unit_list(String))'.
+    %
+    % Throws an exception if strings use UTF-16 encoding but the given string
+    % contains an unpaired surrogate code point. Surrogate code points cannot
+    % be represented in UTF-8.
     %
 :- func count_utf8_code_units(string) = int.
 
@@ -3010,36 +3017,23 @@ count_codepoints_loop(String, I, Count0, Count) :-
 
 %---------------------%
 
-% XXX ILSEQ Behaviour depends on target language.
-% In UTF-16 grades, count_utf8_code_units uses string.foldl which (currently)
-% stops at the first ill-formed sequence.
-
-:- pragma foreign_proc("C",
-    count_utf8_code_units(Str::in) = (Length::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Length = strlen(Str);
-").
-:- pragma foreign_proc("Erlang",
-    count_utf8_code_units(Str::in) = (Length::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Length = size(Str)
-").
-
 count_utf8_code_units(String) = Length :-
-    foldl(count_utf8_code_units_2, String, 0, Length).
+    ( if internal_encoding_is_utf8 then
+        Length = length(String)
+    else
+        foldl(count_utf16_to_utf8_code_units, String, 0, Length)
+    ).
 
-:- pred count_utf8_code_units_2(char::in, int::in, int::out) is det.
+:- pred count_utf16_to_utf8_code_units(char::in, int::in, int::out) is det.
 
-count_utf8_code_units_2(Char, !Length) :-
+count_utf16_to_utf8_code_units(Char, !Length) :-
     char.to_int(Char, CharInt),
     ( if CharInt =< 0x7f then
         !:Length = !.Length + 1
     else if char.to_utf8(Char, UTF8) then
         !:Length = !.Length + list.length(UTF8)
     else
-        error($pred, "char.to_utf8 failed")
+        error($pred, "surrogate code point")
     ).
 
 %---------------------%
