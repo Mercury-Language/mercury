@@ -216,6 +216,9 @@
 :- pred to_utf8_code_unit_list(string::in, list(int)::out) is det.
 
     % Convert a string into a list of UTF-16 code units.
+    % Throws an exception if strings use UTF-8 encoding and the given string
+    % contains an ill-formed code unit sequence, as arbitrary bytes cannot be
+    % represented in UTF-16 (even allowing for ill-formed sequences).
     %
 :- pred to_utf16_code_unit_list(string::in, list(int)::out) is det.
 
@@ -1993,24 +1996,34 @@ encode_utf8(Char, CodeList0, CodeList) :-
 
 %---------------------%
 
-% XXX ILSEQ On C backend, to_utf16_code_unit_list stops at the first
-% ill-formed sequence from the end of the string (except that the C version of
-% unsafe_prev_index currently may skip extraneous trailing bytes).
-
 to_utf16_code_unit_list(String, CodeList) :-
     ( if internal_encoding_is_utf8 then
-        foldr(encode_utf16, String, [], CodeList)
+        utf8_to_utf16_code_units_loop(String, length(String), [], CodeList)
     else
         to_code_unit_list(String, CodeList)
     ).
 
-:- pred encode_utf16(char::in, list(int)::in, list(int)::out) is det.
+:- pred utf8_to_utf16_code_units_loop(string::in, int::in,
+    list(int)::in, list(int)::out) is det.
 
-encode_utf16(Char, CodeList0, CodeList) :-
-    ( if char.to_utf16(Char, CharCodes) then
-        CodeList = CharCodes ++ CodeList0
+utf8_to_utf16_code_units_loop(String, Index, CodeList0, CodeList) :-
+    ( if
+        unsafe_prev_index_repl(String, Index, PrevIndex, Char, IsReplaced)
+    then
+        (
+            IsReplaced = yes,
+            unexpected($pred, "ill-formed code unit sequence")
+        ;
+            IsReplaced = no,
+            ( if char.to_utf16(Char, CharCodes) then
+                CodeList1 = CharCodes ++ CodeList0
+            else
+                unexpected($pred, "char.to_utf16 failed")
+            )
+        ),
+        utf8_to_utf16_code_units_loop(String, PrevIndex, CodeList1, CodeList)
     else
-        unexpected($pred, "char.to_utf16 failed")
+        CodeList = CodeList0
     ).
 
 %---------------------%
