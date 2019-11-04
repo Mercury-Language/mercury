@@ -224,6 +224,14 @@
     %
 :- pred from_code_unit_list(list(int)::in, string::uo) is semidet.
 
+    % Convert a list of code units to a string.
+    % The resulting string may contain ill-formed sequences.
+    % Fails if the list contains a code unit that is out of range
+    % or if the string would contain a null character.
+    %
+:- pred from_code_unit_list_allow_ill_formed(list(int)::in, string::uo)
+    is semidet.
+
     % Convert a list of UTF-8 code units to a string.
     % Fails if the list does not contain a valid encoding of a string
     % or if the string would contain a null character.
@@ -2009,12 +2017,18 @@ encode_utf16(Char, CodeList0, CodeList) :-
 
 %---------------------%
 
-% XXX ILSEQ to_code_unit_list(S0, L), from_code_unit_list(L, S) may fail
-% because the original string contained an ill-formed sequence.
-% Perhaps we should provide a predicate that can produce the original string.
+from_code_unit_list(CodeList, Str) :-
+    Verify = yes,
+    do_from_code_unit_list(CodeList, Verify, Str).
+
+from_code_unit_list_allow_ill_formed(CodeList, Str) :-
+    Verify = no,
+    do_from_code_unit_list(CodeList, Verify, Str).
+
+:- pred do_from_code_unit_list(list(int)::in, bool::in, string::uo) is semidet.
 
 :- pragma foreign_proc("C",
-    from_code_unit_list(CodeList::in, Str::uo),
+    do_from_code_unit_list(CodeList::in, Verify::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "
@@ -2047,42 +2061,56 @@ encode_utf16(Char, CodeList0, CodeList) :-
 
     Str[size] = '\\0';
 
-    SUCCESS_INDICATOR = SUCCESS_INDICATOR && MR_utf8_verify(Str);
+    if (SUCCESS_INDICATOR && Verify == MR_YES) {
+        SUCCESS_INDICATOR = MR_utf8_verify(Str);
+    }
 ").
 :- pragma foreign_proc("Java",
-    from_code_unit_list(CodeList::in, Str::uo),
+    do_from_code_unit_list(CodeList::in, Verify::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     java.lang.StringBuilder sb = new java.lang.StringBuilder();
-    boolean prev_high = false;
 
     SUCCESS_INDICATOR = true;
 
-    Iterable<Integer> iterable = new list.ListIterator<Integer>(CodeList);
-    for (int i : iterable) {
-        // Check for null character or invalid code unit.
-        if (i <= 0 || i > 0xffff) {
-            SUCCESS_INDICATOR = false;
-            break;
-        }
-        char c = (char) i;
-        if (prev_high) {
-            if (!java.lang.Character.isLowSurrogate(c)) {
+    if (Verify == bool.YES) {
+        boolean prev_high = false;
+        Iterable<Integer> iterable = new list.ListIterator<Integer>(CodeList);
+        for (int i : iterable) {
+            // Check for null character or invalid code unit.
+            if (i <= 0 || i > 0xffff) {
                 SUCCESS_INDICATOR = false;
                 break;
             }
-            prev_high = false;
-        } else if (java.lang.Character.isHighSurrogate(c)) {
-            prev_high = true;
-        } else if (java.lang.Character.isLowSurrogate(c)) {
-            SUCCESS_INDICATOR = false;
-            break;
+            char c = (char) i;
+            if (prev_high) {
+                if (!java.lang.Character.isLowSurrogate(c)) {
+                    SUCCESS_INDICATOR = false;
+                    break;
+                }
+                prev_high = false;
+            } else if (java.lang.Character.isHighSurrogate(c)) {
+                prev_high = true;
+            } else if (java.lang.Character.isLowSurrogate(c)) {
+                SUCCESS_INDICATOR = false;
+                break;
+            }
+            sb.append(c);
         }
-        sb.append(c);
+        SUCCESS_INDICATOR = SUCCESS_INDICATOR && !prev_high;
+    } else {
+        Iterable<Integer> iterable = new list.ListIterator<Integer>(CodeList);
+        for (int i : iterable) {
+            // Check for null character or invalid code unit.
+            if (i <= 0 || i > 0xffff) {
+                SUCCESS_INDICATOR = false;
+                break;
+            }
+            char c = (char) i;
+            sb.append(c);
+        }
     }
-
-    SUCCESS_INDICATOR = SUCCESS_INDICATOR && !prev_high;
 
     if (SUCCESS_INDICATOR) {
         Str = sb.toString();
@@ -2091,40 +2119,53 @@ encode_utf16(Char, CodeList0, CodeList) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    from_code_unit_list(CodeList::in, Str::uo),
+    do_from_code_unit_list(CodeList::in, Verify::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     System.Text.StringBuilder sb = new System.Text.StringBuilder();
-    bool prev_high = false;
 
     SUCCESS_INDICATOR = true;
 
-    while (!list.is_empty(CodeList)) {
-        int i = (int) list.det_head(CodeList);
-        // Check for null character or invalid code unit.
-        if (i <= 0 || i > 0xffff) {
-            SUCCESS_INDICATOR = false;
-            break;
-        }
-        char c = (char) i;
-        if (prev_high) {
-            if (!System.Char.IsLowSurrogate(c)) {
+    if (Verify == mr_bool.YES) {
+        bool prev_high = false;
+        while (!list.is_empty(CodeList)) {
+            int i = (int) list.det_head(CodeList);
+            // Check for null character or invalid code unit.
+            if (i <= 0 || i > 0xffff) {
                 SUCCESS_INDICATOR = false;
                 break;
             }
-            prev_high = false;
-        } else if (System.Char.IsHighSurrogate(c)) {
-            prev_high = true;
-        } else if (System.Char.IsLowSurrogate(c)) {
-            SUCCESS_INDICATOR = false;
-            break;
+            char c = (char) i;
+            if (prev_high) {
+                if (!System.Char.IsLowSurrogate(c)) {
+                    SUCCESS_INDICATOR = false;
+                    break;
+                }
+                prev_high = false;
+            } else if (System.Char.IsHighSurrogate(c)) {
+                prev_high = true;
+            } else if (System.Char.IsLowSurrogate(c)) {
+                SUCCESS_INDICATOR = false;
+                break;
+            }
+            sb.Append(c);
+            CodeList = list.det_tail(CodeList);
         }
-        sb.Append(c);
-        CodeList = list.det_tail(CodeList);
+        SUCCESS_INDICATOR = SUCCESS_INDICATOR && !prev_high;
+    } else {
+        while (!list.is_empty(CodeList)) {
+            int i = (int) list.det_head(CodeList);
+            // Check for null character or invalid code unit.
+            if (i <= 0 || i > 0xffff) {
+                SUCCESS_INDICATOR = false;
+                break;
+            }
+            char c = (char) i;
+            sb.Append(c);
+            CodeList = list.det_tail(CodeList);
+        }
     }
-
-    SUCCESS_INDICATOR = SUCCESS_INDICATOR && !prev_high;
 
     if (SUCCESS_INDICATOR) {
         Str = sb.ToString();
@@ -2133,7 +2174,7 @@ encode_utf16(Char, CodeList0, CodeList) :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    from_code_unit_list(CodeList::in, Str::uo),
+    do_from_code_unit_list(CodeList::in, _Verify::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "

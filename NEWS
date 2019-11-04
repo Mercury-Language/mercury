@@ -420,6 +420,7 @@ Changes to the Mercury standard library:
    - is_all_alnum/1
    - is_empty/1
    - is_well_formed/1
+   - from_code_unit_list_allow_ill_formed/2
    - to_utf8_code_unit_list/2
    - to_utf16_code_unit_list/2
    - from_utf8_code_unit_list/2

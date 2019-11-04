@@ -2,3 +2,10 @@ from_code_unit_list([]) = ""
 from_code_unit_list([65, 0, 66]) failed
 from_code_unit_list([240, 159, 152, 128]) = "😀"
 from_code_unit_list([-16, 159, 152, 128]) failed
+from_code_unit_list([128, 152, 159, 240]) failed
+
+from_code_unit_list_allow_ill_formed([]) = []
+from_code_unit_list_allow_ill_formed([65, 0, 66]) failed
+from_code_unit_list_allow_ill_formed([240, 159, 152, 128]) = [240, 159, 152, 128]
+from_code_unit_list_allow_ill_formed([-16, 159, 152, 128]) failed
+from_code_unit_list_allow_ill_formed([128, 152, 159, 240]) = [128, 152, 159, 240]

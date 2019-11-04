@@ -2,3 +2,10 @@ from_code_unit_list([]) = ""
 from_code_unit_list([65, 0, 66]) failed
 from_code_unit_list([55357, 56832]) = "😀"
 from_code_unit_list([-10179, 56832]) failed
+from_code_unit_list([56832, 55357]) failed
+
+from_code_unit_list_allow_ill_formed([]) = []
+from_code_unit_list_allow_ill_formed([65, 0, 66]) failed
+from_code_unit_list_allow_ill_formed([55357, 56832]) = [55357, 56832]
+from_code_unit_list_allow_ill_formed([-10179, 56832]) failed
+from_code_unit_list_allow_ill_formed([56832, 55357]) = [56832, 55357]
