@@ -218,18 +218,21 @@
 :- pred to_utf16_code_unit_list(string::in, list(int)::out) is det.
 
     % Convert a list of code units to a string.
-    % Fails if the list does not contain a valid encoding of a string,
-    % in the encoding expected by the current process.
+    % Fails if the list does not contain a valid encoding of a string
+    % (in the encoding expected by the current process),
+    % or if the string would contain a null character.
     %
 :- pred from_code_unit_list(list(int)::in, string::uo) is semidet.
 
     % Convert a list of UTF-8 code units to a string.
-    % Fails if the list does not contain a valid encoding of a string.
+    % Fails if the list does not contain a valid encoding of a string
+    % or if the string would contain a null character.
     %
 :- pred from_utf8_code_unit_list(list(int)::in, string::uo) is semidet.
 
-    % Convert a list of UTF-8 code units to a string.
-    % Fails if the list does not contain a valid encoding of a string.
+    % Convert a list of UTF-16 code units to a string.
+    % Fails if the list does not contain a valid encoding of a string
+    % or if the string would contain a null character.
     %
 :- pred from_utf16_code_unit_list(list(int)::in, string::uo) is semidet.
 
@@ -1690,6 +1693,10 @@ do_to_rev_char_list_loop(Str, Index0, !RevCharList) :-
     ).
 
 %---------------------%
+%
+% XXX There is an inconsistency in that from_char_list/from_rev_char_list
+% throw exceptions unlike from_code_unit_list/from_{utf8,utf16}_code_unit_list
+% which fail when the list of code points cannot be encoded in a string.
 
 from_char_list(Cs) = S :-
     from_char_list(Cs, S).
@@ -2027,11 +2034,9 @@ encode_utf16(Char, CodeList0, CodeList) :-
     size = 0;
     list_ptr = CodeList;
     while (! MR_list_is_empty(list_ptr)) {
-        int c;
-        c = MR_list_head(list_ptr);
-        // It is an error to put a null character in a string
-        // (see the comments at the top of this file).
-        if (c == '\\0' || c > 0xff) {
+        unsigned c = (unsigned) MR_list_head(list_ptr);
+        // Check for null character or invalid code unit.
+        if (c == 0 || c > 0xff) {
             SUCCESS_INDICATOR = MR_FALSE;
             break;
         }
@@ -2056,6 +2061,11 @@ encode_utf16(Char, CodeList0, CodeList) :-
 
     Iterable<Integer> iterable = new list.ListIterator<Integer>(CodeList);
     for (int i : iterable) {
+        // Check for null character or invalid code unit.
+        if (i <= 0 || i > 0xffff) {
+            SUCCESS_INDICATOR = false;
+            break;
+        }
         char c = (char) i;
         if (prev_high) {
             if (!java.lang.Character.isLowSurrogate(c)) {
@@ -2091,8 +2101,13 @@ encode_utf16(Char, CodeList0, CodeList) :-
     SUCCESS_INDICATOR = true;
 
     while (!list.is_empty(CodeList)) {
-        // Both casts are required.
-        char c = (char) (int) list.det_head(CodeList);
+        int i = (int) list.det_head(CodeList);
+        // Check for null character or invalid code unit.
+        if (i <= 0 || i > 0xffff) {
+            SUCCESS_INDICATOR = false;
+            break;
+        }
+        char c = (char) i;
         if (prev_high) {
             if (!System.Char.IsLowSurrogate(c)) {
                 SUCCESS_INDICATOR = false;
@@ -2134,7 +2149,7 @@ from_utf8_code_unit_list(CodeList, String) :-
         from_code_unit_list(CodeList, String)
     else
         decode_utf8(CodeList, [], RevChars),
-        from_rev_char_list(RevChars, String)
+        semidet_from_rev_char_list(RevChars, String)
     ).
 
 :- pred decode_utf8(list(int)::in, list(char)::in, list(char)::out) is semidet.
@@ -2188,7 +2203,7 @@ utf8_is_trail_byte(C) :-
 from_utf16_code_unit_list(CodeList, String) :-
     ( if internal_encoding_is_utf8 then
         decode_utf16(CodeList, [], RevChars),
-        from_rev_char_list(RevChars, String)
+        semidet_from_rev_char_list(RevChars, String)
     else
         from_code_unit_list(CodeList, String)
     ).

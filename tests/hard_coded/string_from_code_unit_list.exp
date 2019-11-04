@@ -1,0 +1,4 @@
+from_code_unit_list([]) = ""
+from_code_unit_list([65, 0, 66]) failed
+from_code_unit_list([240, 159, 152, 128]) = "😀"
+from_code_unit_list([-16, 159, 152, 128]) failed
