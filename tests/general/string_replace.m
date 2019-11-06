@@ -23,17 +23,20 @@ main(!IO) :-
     Str = "aaa bbbb ccccc aaa",
     Str2 = "aßξ啕ßξ啕𐀀.",
     Tests = [
+        % pattern not in string
         {"", "a", "bc"},
-
         {Str, "aab", "**"},
         {Str, "aaaa", "**"},
-        {Str, "", "**"},
 
+        % pattern is empty string
+        {Str, "", "**"},
+        {Str2, "", "**"},
+
+        % pattern in string
         {Str, "aaa", ""},
         {Str, "cc", "**"},
-
-        {Str2, "ßξ", "**"},   % decreased code units
-        {Str2, "ßξ", "★★"},   % increased code units
+        {Str2, "ßξ", "**"},
+        {Str2, "ßξ", "★★"},
         {Str2, "啕ßξ", "***"}
     ],
     list__foldl(test_replace, Tests, !IO),

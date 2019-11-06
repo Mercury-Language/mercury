@@ -6,6 +6,8 @@ string__replace("aaa bbbb ccccc aaa", "aaaa", "**", Result)
 	FAIL!
 string__replace("aaa bbbb ccccc aaa", "", "**", Result) 
 	"**aaa bbbb ccccc aaa"
+string__replace("aßξ啕ßξ啕𐀀.", "", "**", Result) 
+	"**aßξ啕ßξ啕𐀀."
 string__replace("aaa bbbb ccccc aaa", "aaa", "", Result) 
 	" bbbb ccccc aaa"
 string__replace("aaa bbbb ccccc aaa", "cc", "**", Result) 
@@ -24,6 +26,8 @@ string__replace_all("aaa bbbb ccccc aaa", "aaaa", "**", Result)
 	"aaa bbbb ccccc aaa"
 string__replace_all("aaa bbbb ccccc aaa", "", "**", Result) 
 	"**a**a**a** **b**b**b**b** **c**c**c**c**c** **a**a**a**"
+string__replace_all("aßξ啕ßξ啕𐀀.", "", "**", Result) 
+	"**a**ß**ξ**啕**ß**ξ**啕**𐀀**.**"
 string__replace_all("aaa bbbb ccccc aaa", "aaa", "", Result) 
 	" bbbb ccccc "
 string__replace_all("aaa bbbb ccccc aaa", "cc", "**", Result) 
