@@ -54,7 +54,6 @@ ORDINARY_PROGS = \
 	cc_nondet_disj \
 	change_hunk_test \
 	char_signed \
-	char_to_string \
 	char_unicode \
 	checked_nondet_tailcall \
 	checked_nondet_tailcall_noinline \
@@ -365,7 +364,6 @@ ORDINARY_PROGS = \
 	string_compare_substrings \
 	string_count_codepoints_ilseq \
 	string_first_char \
-	string_first_char_ilseq \
 	string_fold_ilseq \
 	string_from_char_list_ilseq \
 	string_index_ilseq \
@@ -752,6 +750,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		bitwise_uint64 \
 		bitwise_uint8 \
 		bit_buffer_test \
+		char_to_string \
 		cmp_int16 \
 		cmp_int32 \
 		cmp_int64 \
@@ -770,6 +769,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		map_merge_test \
 		mutable_excp \
 		null_char \
+		string_first_char_ilseq \
 		take_split_upto \
 		test_array2d \
 		test_injection \
