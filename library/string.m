@@ -1069,18 +1069,25 @@
 :- func rstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
 
-    % replace(String0, Search, Replace, String):
+    % replace(String0, Pattern, Subst, String):
     %
-    % Replace replaces the first occurrence of Search in String0
-    % with Replace to give String. It fails if Search does not occur
-    % in String0.
+    % Replaces the first occurrence of Pattern in String0 with Subst to give
+    % String. Fails if Pattern does not occur in String0.
     %
 :- pred replace(string::in, string::in, string::in, string::uo) is semidet.
 
-    % replace_all(String0, Search, Replace, String):
+    % replace_all(String0, Pattern, Subst, String):
     %
-    % Replaces any occurrences of Search in String0 with Replace to give
+    % Replaces any occurrences of Pattern in String0 with Subst to give
     % String.
+    %
+    % If Pattern is the empty string then Subst is inserted at every point
+    % in String0 except between two code units in an encoding of a code point.
+    % For example, these are true:
+    %
+    %   replace_all("", "", "|", "|")
+    %   replace_all("a", "", "|", "|a|")
+    %   replace_all("ab", "", "|", "|a|b|")
     %
 :- func replace_all(string::in, string::in, string::in) = (string::uo) is det.
 :- pred replace_all(string::in, string::in, string::in, string::uo) is det.
@@ -4718,15 +4725,56 @@ replace_all(S1, S2, S3) = S4 :-
 
 replace_all(Str, Pat, Subst, Result) :-
     ( if Pat = "" then
-        % XXX ILSEQ foldl cannot handle ill-formed sequences.
-        F = (func(C, L) = [char_to_string(C) ++ Subst | L]),
-        Foldl = foldl(F, Str, []),
-        Result = append_list([Subst | list.reverse(Foldl)])
+        replace_all_empty_pat(Str, Subst, Result)
     else
         PatLength = length(Pat),
         replace_all_loop(Str, Pat, Subst, PatLength, 0, [], ReversedChunks),
         Chunks = list.reverse(ReversedChunks),
         Result = append_list(Chunks)
+    ).
+
+:- pred replace_all_empty_pat(string::in, string::in, string::uo) is det.
+
+replace_all_empty_pat(Str, Subst, Result) :-
+    % This implementation is not the most efficient, but it is not expected
+    % to be used much in practice.
+    to_code_unit_list(Subst, SubstCodes),
+    Codes0 = SubstCodes,
+    replace_all_empty_pat_loop(Str, SubstCodes, length(Str), Codes0, Codes),
+    ( if from_code_unit_list_allow_ill_formed(Codes, ResultPrime) then
+        Result = ResultPrime
+    else
+        unexpected($pred, "string.from_code_unit_list_allow_ill_formed failed")
+    ).
+
+:- pred replace_all_empty_pat_loop(string::in, list(int)::in, int::in,
+    list(int)::in, list(int)::out) is det.
+
+replace_all_empty_pat_loop(Str, Subst, Index, Codes0, Codes) :-
+    ( if unsafe_prev_index(Str, Index, PrevIndex, Char) then
+        char.to_int(Char, CharInt),
+        ( if CharInt =< 0x7f then
+            % Fast path for single code unit code points.
+            Codes1 = [CharInt | Codes0]
+        else
+            prepend_code_units(Str, PrevIndex, Index - 1, Codes0, Codes1)
+        ),
+        Codes2 = Subst ++ Codes1,
+        replace_all_empty_pat_loop(Str, Subst, PrevIndex, Codes2, Codes)
+    else
+        Codes = Codes0
+    ).
+
+:- pred prepend_code_units(string::in, int::in, int::in,
+    list(int)::in, list(int)::out) is det.
+
+prepend_code_units(Str, FirstIndex, Index, Codes0, Codes) :-
+    unsafe_index_code_unit(Str, Index, Code),
+    Codes1 = [Code | Codes0],
+    ( if Index = FirstIndex then
+        Codes = Codes1
+    else
+        prepend_code_units(Str, FirstIndex, Index - 1, Codes1, Codes)
     ).
 
 :- pred replace_all_loop(string::in, string::in, string::in,
