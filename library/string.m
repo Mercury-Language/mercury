@@ -4459,19 +4459,20 @@ split_at_separator_loop(DelimP, Str, CurPos, PastSegEnd, !Segments) :-
 split_at_char(C, String) =
     split_at_separator(unify(C), String).
 
-split_at_string(Needle, Total) =
-    split_at_string_loop(0, length(Needle), Needle, Total).
+split_at_string(Needle, Total) = Out :-
+    split_at_string_loop(Total, Needle, length(Needle), 0, Out).
 
-:- func split_at_string_loop(int, int, string, string) = list(string).
+:- pred split_at_string_loop(string::in, string::in, int::in, int::in,
+    list(string)::out) is det.
 
-split_at_string_loop(StartAt, NeedleLen, Needle, Total) = Out :-
-    ( if sub_string_search_start(Total, Needle, StartAt, NeedlePos) then
-        BeforeNeedle = between(Total, StartAt, NeedlePos),
-        Tail = split_at_string_loop(NeedlePos+NeedleLen, NeedleLen,
-            Needle, Total),
+split_at_string_loop(Total, Needle, NeedleLen, StartAt, Out) :-
+    ( if unsafe_sub_string_search_start(Total, Needle, StartAt, NeedlePos) then
+        BeforeNeedle = unsafe_between(Total, StartAt, NeedlePos),
+        split_at_string_loop(Total, Needle, NeedleLen, NeedlePos + NeedleLen,
+            Tail),
         Out = [BeforeNeedle | Tail]
     else
-        split(Total, StartAt, _Skip, Last),
+        unsafe_between(Total, StartAt, length(Total), Last),
         Out = [Last]
     ).
 
