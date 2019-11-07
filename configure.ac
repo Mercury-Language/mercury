@@ -568,7 +568,7 @@ EOF
             --grade none.gc \
             --warn-insts-without-matching-type \
             --warn-known-bad-format-calls \
-            --simplest-msg-2019-09-22 \
+            --obsolete-proc-2019-10-23 \
             --no-detect-libgrades \
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \

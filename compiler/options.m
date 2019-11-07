@@ -1182,7 +1182,7 @@ option_defaults_2(warning_option, [
     % XXX TYPE_REPN We should set this to "yes" once we require
     % the installed compiler to ensure that what it puts into
     % interface files won't generate any errors.
-    halt_at_invalid_interface           -   bool(no),
+    halt_at_invalid_interface           -   bool(yes),
 
     % IMPORTANT NOTE:
     % if you add any new warning options, or if you change the default
