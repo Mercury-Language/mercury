@@ -3799,7 +3799,7 @@ S1 ++ S2 = append(S1, S2).
 %---------------------%
 %
 % We implement append_list in foreign code as the Mercury version
-% creates significant amounts of unnecessary garbage.
+% creates some unnecessary garbage.
 %
 
 :- pragma foreign_proc("C",
@@ -3865,21 +3865,21 @@ S1 ++ S2 = append(S1, S2).
     Str = list_to_binary(Strs)
 ").
 
-append_list(Strs::in) = (Str::uo) :-
-    (
-        Strs = [X | Xs],
-        Str = X ++ append_list(Xs)
-    ;
-        Strs = [],
-        Str = ""
-    ).
+append_list(Strs) = Str :-
+    append_list(Strs, Str).
 
-append_list(Lists, append_list(Lists)).
+append_list(Strs, Str) :-
+    Pieces = map(make_string_piece, Strs),
+    unsafe_append_string_pieces(Pieces, Str).
+
+:- func make_string_piece(string) = string_piece.
+
+make_string_piece(S) = substring(S, 0, length(S)).
 
 %---------------------%
 %
 % We implement join_list in foreign code as the Mercury version
-% creates significant amounts of unnecessary garbage.
+% creates some unnecessary garbage.
 %
 
 :- pragma foreign_proc("C",
@@ -3968,13 +3968,19 @@ append_list(Lists, append_list(Lists)).
     Str = sb.toString();
 ").
 
-join_list(_, []) = "".
-join_list(Sep, [H | T]) = H ++ join_list_loop(Sep, T).
+join_list(_Sep, []) = "".
+join_list(Sep, [H | T]) = Str :-
+    join_list_loop(make_string_piece(Sep), T, TailPieces),
+    Pieces = [make_string_piece(H) | TailPieces],
+    unsafe_append_string_pieces(Pieces, Str).
 
-:- func join_list_loop(string::in, list(string)::in) = (string::uo) is det.
+:- pred join_list_loop(string_piece::in, list(string)::in,
+    list(string_piece)::out) is det.
 
-join_list_loop(_, []) = "".
-join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
+join_list_loop(_Sep, [], []).
+join_list_loop(Sep, [H | T], Pieces) :-
+    join_list_loop(Sep, T, TailPieces),
+    Pieces = [Sep, make_string_piece(H) | TailPieces].
 
 %---------------------------------------------------------------------------%
 %
