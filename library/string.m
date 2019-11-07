@@ -706,6 +706,14 @@
     %
 :- pred append_string_pieces(list(string_piece)::in, string::uo) is det.
 
+    % Same as append_string_pieces/2 but without range checks.
+    % WARNING: if any piece `substring(S, Start, End)' has `Start' or `End'
+    % outside the range [0, length(S)], or if `Start' > `End',
+    % then the behaviour is UNDEFINED. Use with care!
+    %
+:- pred unsafe_append_string_pieces(list(string_piece)::in, string::uo)
+    is det.
+
 %---------------------------------------------------------------------------%
 %
 % Splitting up strings.
@@ -4151,16 +4159,19 @@ copy_into_buffer(Dest0, Dest, DestOffset0, DestOffset, Src, SrcStart, SrcEnd)
 %---------------------%
 
 append_string_pieces(Pieces, String) :-
-    check_pieces_and_sum_length($pred, Pieces, 0, BufferLen),
-    alloc_buffer(BufferLen, Buffer0),
-    list.foldl2(copy_piece_into_buffer, Pieces, 0, End, Buffer0, Buffer),
-    expect(unify(End, BufferLen), $pred, "End != BufferLen"),
-    buffer_to_string(Buffer, String).
+    DoCheck = yes,
+    sum_piece_lengths($pred, DoCheck, Pieces, 0, BufferLen),
+    do_append_string_pieces(Pieces, BufferLen, String).
 
-:- pred check_pieces_and_sum_length(string::in, list(string_piece)::in,
+unsafe_append_string_pieces(Pieces, String) :-
+    DoCheck = no,
+    sum_piece_lengths($pred, DoCheck, Pieces, 0, BufferLen),
+    do_append_string_pieces(Pieces, BufferLen, String).
+
+:- pred sum_piece_lengths(string::in, bool::in, list(string_piece)::in,
     int::in, int::out) is det.
 
-check_pieces_and_sum_length(PredName, Pieces, Len0, Len) :-
+sum_piece_lengths(PredName, DoCheck, Pieces, Len0, Len) :-
     (
         Pieces = [],
         Len = Len0
@@ -4171,21 +4182,36 @@ check_pieces_and_sum_length(PredName, Pieces, Len0, Len) :-
             PieceLen = length(Str)
         ;
             Piece = substring(BaseStr, Start, End),
-            BaseLen = length(BaseStr),
-            ( if
-                Start >= 0,
-                Start =< BaseLen,
-                End >= Start,
-                End =< BaseLen
-            then
-                PieceLen = End - Start
-            else
-                unexpected(PredName, "substring index out of range")
-            )
+            (
+                DoCheck = yes,
+                BaseLen = length(BaseStr),
+                ( if
+                    Start >= 0,
+                    Start =< BaseLen,
+                    End >= Start,
+                    End =< BaseLen
+                then
+                    true
+                else
+                    unexpected(PredName, "substring index out of range")
+                )
+            ;
+                DoCheck = no
+            ),
+            PieceLen = End - Start
         ),
         Len1 = Len0 + PieceLen,
-        check_pieces_and_sum_length(PredName, TailPieces, Len1, Len)
+        sum_piece_lengths(PredName, DoCheck, TailPieces, Len1, Len)
     ).
+
+:- pred do_append_string_pieces(list(string_piece)::in, int::in, string::uo)
+    is det.
+
+do_append_string_pieces(Pieces, BufferLen, String) :-
+    alloc_buffer(BufferLen, Buffer0),
+    list.foldl2(copy_piece_into_buffer, Pieces, 0, End, Buffer0, Buffer),
+    expect(unify(End, BufferLen), $pred, "End != BufferLen"),
+    buffer_to_string(Buffer, String).
 
 :- pred copy_piece_into_buffer(string_piece::in, int::in, int::out,
     string_buffer::di, string_buffer::uo) is det.
