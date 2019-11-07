@@ -433,6 +433,7 @@ Changes to the Mercury standard library:
    - nondet_append/3
    - append_string_pieces/2
    - unsafe_append_string_pieces/2
+   - unsafe_sub_string_search_start/4
 
   The following procedures in the string module have been deprecated:
 

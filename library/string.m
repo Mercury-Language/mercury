@@ -630,6 +630,16 @@
 :- pred sub_string_search_start(string::in, string::in, int::in, int::out)
     is semidet.
 
+    % unsafe_sub_string_search_start(String, SubString, BeginAt, Index):
+    %
+    % Same as sub_string_search_start/4 but does not check that `BeginAt'
+    % is in range.
+    % WARNING: if `BeginAt' is negative or greater than length(String)
+    % then the behaviour is UNDEFINED. Use with care!
+    %
+:- pred unsafe_sub_string_search_start(string::in, string::in, int::in,
+    int::out) is semidet.
+
 %---------------------------------------------------------------------------%
 %
 % Appending strings.
@@ -3584,100 +3594,92 @@ suffix_length_loop(P, S, I, Index) :-
 sub_string_search(WholeString, Pattern, Index) :-
     sub_string_search_start(WholeString, Pattern, 0, Index).
 
+sub_string_search_start(WholeString, Pattern, BeginAt, Index) :-
+    ( if
+        (
+            BeginAt = 0
+        ;
+            BeginAt > 0,
+            BeginAt =< length(WholeString)
+        )
+    then
+        unsafe_sub_string_search_start(WholeString, Pattern, BeginAt, Index)
+    else
+        fail
+    ).
+
 :- pragma foreign_proc("C",
-    sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
+    unsafe_sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    char *match;
-    if ((MR_Unsigned) BeginAt > strlen(WholeString)) {
-        SUCCESS_INDICATOR = MR_FALSE;
+    char *match = strstr(WholeString + BeginAt, Pattern);
+    if (match) {
+        Index = match - WholeString;
+        SUCCESS_INDICATOR = MR_TRUE;
     } else {
-        match = strstr(WholeString + BeginAt, Pattern);
-        if (match) {
-            Index = match - WholeString;
-            SUCCESS_INDICATOR = MR_TRUE;
-        } else {
-            SUCCESS_INDICATOR = MR_FALSE;
-        }
+        SUCCESS_INDICATOR = MR_FALSE;
     }
 }").
 :- pragma foreign_proc("C#",
-    sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
+    unsafe_sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    if (BeginAt < 0 || BeginAt > WholeString.Length) {
-        Index = -1;
-    } else {
-        Index = WholeString.IndexOf(Pattern, BeginAt,
-            System.StringComparison.Ordinal);
-    }
+    Index = WholeString.IndexOf(Pattern, BeginAt,
+        System.StringComparison.Ordinal);
     SUCCESS_INDICATOR = (Index >= 0);
 }").
 :- pragma foreign_proc("Java",
-    sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
+    unsafe_sub_string_search_start(WholeString::in, Pattern::in, BeginAt::in,
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // String.indexOf will check BeginAt > WholeString.Length
-    // so we don't need to do it first.
-    if (BeginAt < 0) {
-        Index = -1;
-    } else {
-        Index = WholeString.indexOf(Pattern, BeginAt);
-    }
+    Index = WholeString.indexOf(Pattern, BeginAt);
     SUCCESS_INDICATOR = (Index >= 0);
 ").
 :- pragma foreign_proc("Erlang",
-    sub_string_search_start(String::in, SubString::in, BeginAt::in,
+    unsafe_sub_string_search_start(String::in, SubString::in, BeginAt::in,
         Index::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    case String of
-        <<_:BeginAt/binary, Haystack/binary>> ->
-            if
-                size(SubString) =:= 0 ->
-                    Index = BeginAt;
-                true ->
-                    case binary:match(Haystack, SubString) of
-                        {FoundStart, FoundLength} ->
-                            Index = BeginAt + FoundStart;
-                        nomatch ->
-                            Index = -1
-                    end
-            end;
-        _ ->
-            Index = -1
+    <<_:BeginAt/binary, Haystack/binary>> = String,
+    if
+        size(SubString) =:= 0 ->
+            Index = BeginAt;
+        true ->
+            case binary:match(Haystack, SubString) of
+                {FoundStart, FoundLength} ->
+                    Index = BeginAt + FoundStart;
+                nomatch ->
+                    Index = -1
+            end
     end,
     SUCCESS_INDICATOR = (Index =/= -1)
 ").
 
-sub_string_search_start(String, SubString, BeginAt, Index) :-
-    ( if BeginAt < 0 then
-        fail
-    else
-        Len = length(String),
-        SubLen = length(SubString),
-        LastStart = Len - SubLen,
-        sub_string_search_start_loop(String, SubString, BeginAt, LastStart,
-            SubLen, Index)
-    ).
+unsafe_sub_string_search_start(String, SubString, BeginAt, Index) :-
+    Len = length(String),
+    SubLen = length(SubString),
+    LastStart = Len - SubLen,
+    unsafe_sub_string_search_start_loop(String, SubString, BeginAt, LastStart,
+        SubLen, Index).
 
     % Brute force string searching. For short Strings this is good;
     % for longer strings Boyer-Moore is much better.
     %
-:- pred sub_string_search_start_loop(string::in, string::in, int::in, int::in,
-    int::in, int::out) is semidet.
+:- pred unsafe_sub_string_search_start_loop(string::in, string::in, int::in,
+    int::in, int::in, int::out) is semidet.
 
-sub_string_search_start_loop(String, SubString, I, LastI, SubLen, Index) :-
+unsafe_sub_string_search_start_loop(String, SubString, I, LastI, SubLen, Index)
+        :-
     I =< LastI,
     ( if unsafe_compare_substrings((=), String, I, SubString, 0, SubLen) then
         Index = I
     else
-        sub_string_search_start_loop(String, SubString, I + 1, LastI, SubLen,
-            Index)
+        unsafe_sub_string_search_start_loop(String, SubString, I + 1, LastI,
+            SubLen, Index)
     ).
 
 %---------------------------------------------------------------------------%
