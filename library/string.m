@@ -4826,17 +4826,19 @@ replace(Str, Pat, Subst, Result) :-
     ],
     unsafe_append_string_pieces(Pieces, Result).
 
-replace_all(S1, S2, S3) = S4 :-
-    replace_all(S1, S2, S3, S4).
+replace_all(Str, Pat, Subst) = Result :-
+    replace_all(Str, Pat, Subst, Result).
 
 replace_all(Str, Pat, Subst, Result) :-
     ( if Pat = "" then
         replace_all_empty_pat(Str, Subst, Result)
     else
-        PatLength = length(Pat),
-        replace_all_loop(Str, Pat, Subst, PatLength, 0, [], ReversedChunks),
-        Chunks = list.reverse(ReversedChunks),
-        Result = append_list(Chunks)
+        % Using substring instead of string avoids two calls to string.length
+        % every time that SubstPiece appears in Pieces.
+        SubstPiece = substring(Subst, 0, length(Subst)),
+        replace_all_loop(Str, Pat, length(Pat), SubstPiece, 0, [], RevPieces),
+        list.reverse(RevPieces, Pieces),
+        unsafe_append_string_pieces(Pieces, Result)
     ).
 
 :- pred replace_all_empty_pat(string::in, string::in, string::uo) is det.
@@ -4883,19 +4885,19 @@ prepend_code_units(Str, FirstIndex, Index, Codes0, Codes) :-
         prepend_code_units(Str, FirstIndex, Index - 1, Codes1, Codes)
     ).
 
-:- pred replace_all_loop(string::in, string::in, string::in,
-    int::in, int::in, list(string)::in, list(string)::out) is det.
+:- pred replace_all_loop(string::in, string::in, int::in, string_piece::in,
+    int::in, list(string_piece)::in, list(string_piece)::out) is det.
 
-replace_all_loop(Str, Pat, Subst, PatLength, BeginAt,
-        RevChunks0, RevChunks) :-
-    ( if sub_string_search_start(Str, Pat, BeginAt, Index) then
-        Initial = unsafe_between(Str, BeginAt, Index),
-        Start = Index + PatLength,
-        replace_all_loop(Str, Pat, Subst, PatLength, Start,
-            [Subst, Initial | RevChunks0], RevChunks)
+replace_all_loop(Str, Pat, PatLength, SubstPiece, BeginAt,
+        RevPieces0, RevPieces) :-
+    ( if unsafe_sub_string_search_start(Str, Pat, BeginAt, PatStart) then
+        InitialPiece = substring(Str, BeginAt, PatStart),
+        RevPieces1 = [SubstPiece, InitialPiece | RevPieces0],
+        replace_all_loop(Str, Pat, PatLength, SubstPiece, PatStart + PatLength,
+            RevPieces1, RevPieces)
     else
-        EndString = unsafe_between(Str, BeginAt, length(Str)),
-        RevChunks = [EndString | RevChunks0]
+        TailPiece = substring(Str, BeginAt, length(Str)),
+        RevPieces = [TailPiece | RevPieces0]
     ).
 
 %---------------------%
