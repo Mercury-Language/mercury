@@ -4818,15 +4818,13 @@ rstrip_pred(P, S0) = S :-
 %---------------------%
 
 replace(Str, Pat, Subst, Result) :-
-    sub_string_search(Str, Pat, Index),
-
-    Initial = unsafe_between(Str, 0, Index),
-
-    BeginAt = Index + length(Pat),
-    EndAt = length(Str),
-    Final = unsafe_between(Str, BeginAt, EndAt),
-
-    Result = append_list([Initial, Subst, Final]).
+    sub_string_search(Str, Pat, PatStart),
+    Pieces = [
+        substring(Str, 0, PatStart),
+        substring(Subst, 0, length(Subst)),
+        substring(Str, PatStart + length(Pat), length(Str))
+    ],
+    unsafe_append_string_pieces(Pieces, Result).
 
 replace_all(S1, S2, S3) = S4 :-
     replace_all(S1, S2, S3, S4).
