@@ -166,7 +166,7 @@ input_substring(Start, End, Substring, Offset, Offset) :-
     promise_pure (
         semipure input_string_and_length(Str, Length),
         End =< Length,
-        Substring = unsafe_substring(Str, Start, End - Start)
+        Substring = unsafe_between(Str, Start, End)
     ).
 
 %---------------------------------------------------------------------------%

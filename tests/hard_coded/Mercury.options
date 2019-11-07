@@ -75,7 +75,6 @@ MCFLAGS-sharing_comb	    =	--ctgc --structure-sharing-widening 2
 MCFLAGS-shift_test          =   --no-warn-obsolete
 MCFLAGS-simplify_multi_arm_switch = -O3
 MCFLAGS-spawn_native	    =	--no-ansi-c
-MCFLAGS-string_substring    =	--no-warn-obsolete
 MCFLAGS-tail-rec-scc        =	--inine-linear-tail-rec-sccs
 MCFLAGS-term_io_test        =	--no-warn-unresolved-polymorphism
 MCFLAGS-test_imported_no_tag = --no-warn-interface-imports

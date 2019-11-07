@@ -443,6 +443,20 @@ Changes to the Mercury standard library:
    - prefix(in, out)
    - suffix(in, out)
 
+  The following obsolete predicates and functions have been removed from the
+  string module:
+
+   - substring/3
+   - substring/4
+   - unsafe_substring/3
+   - unsafe_substring/4
+   - foldl_substring/5
+   - foldl_substring/6
+   - foldl2_substring/8
+   - foldl2_substring/8
+   - foldr_substring/5
+   - foldr_substring/6
+
 * The following predicates have been added to the map module:
 
    - foldl5/12

@@ -45,36 +45,12 @@ main(!IO) :-
         "\"\nrev(\"Hello, World!\", 50, 10) = \"",
                rev("Hello, World!", 50, 10),
         "\"\n"
-    ], !IO),
-    io__write_strings([
-            "rev_old(\"Hello, World!\",  0,  5) = \"",
-               rev_old("Hello, World!",  0,  5),
-        "\"\nrev_old(\"Hello, World!\",  0, 50) = \"",
-               rev_old("Hello, World!",  0, 50),
-        "\"\nrev_old(\"Hello, World!\",  0, -5) = \"",
-               rev_old("Hello, World!",  0, -5),
-        "\"\nrev_old(\"Hello, World!\", -5, 12) = \"",
-               rev_old("Hello, World!", -5, 12),
-        "\"\nrev_old(\"Hello, World!\", -5, 50) = \"",
-               rev_old("Hello, World!", -5, 50),
-        "\"\nrev_old(\"Hello, World!\",  7,  0) = \"",
-               rev_old("Hello, World!",  7,  0),
-        "\"\nrev_old(\"Hello, World!\",  7, 12) = \"",
-               rev_old("Hello, World!",  7, 12),
-        "\"\nrev_old(\"Hello, World!\", 50, 10) = \"",
-               rev_old("Hello, World!", 50, 10),
-        "\"\n"
     ], !IO).
 
 :- func rev(string, int, int) = string.
 
 rev(S, I, N) =
     from_char_list(foldl_between(func(X, Xs) = [X | Xs], S, I, N, [])).
-
-:- func rev_old(string, int, int) = string.
-
-rev_old(S, I, N) =
-    from_char_list(foldl_substring(func(X, Xs) = [X | Xs], S, I, N, [])).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

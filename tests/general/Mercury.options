@@ -11,10 +11,6 @@ MCFLAGS-ho_spec_branch_bug = --optimize-higher-order
 MCFLAGS-intermod_type = --intermodule-optimization
 MCFLAGS-intermod_type2 = --intermodule-optimization
 
-# These test cases also check obsolete procedures.
-MCFLAGS-string_foldl_substring = --no-warn-obsolete
-MCFLAGS-string_foldr_substring = --no-warn-obsolete
-
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), string_test needs to be linked
 # with `--no-strip', otherwise it gets a seg fault. 

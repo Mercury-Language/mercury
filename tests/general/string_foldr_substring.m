@@ -45,36 +45,12 @@ main(!IO) :-
         "\"\nsub(\"Hello, World!\", 50, 10) = \"",
                sub("Hello, World!", 50, 10),
         "\"\n"
-    ], !IO),
-    io__write_strings([
-            "sub_old(\"Hello, World!\",  0,  5) = \"",
-               sub_old("Hello, World!",  0,  5),
-        "\"\nsub_old(\"Hello, World!\",  0, 50) = \"",
-               sub_old("Hello, World!",  0, 50),
-        "\"\nsub_old(\"Hello, World!\",  0, -5) = \"",
-               sub_old("Hello, World!",  0, -5),
-        "\"\nsub_old(\"Hello, World!\", -5, 12) = \"",
-               sub_old("Hello, World!", -5, 12),
-        "\"\nsub_old(\"Hello, World!\", -5, 50) = \"",
-               sub_old("Hello, World!", -5, 50),
-        "\"\nsub_old(\"Hello, World!\",  7,  0) = \"",
-               sub_old("Hello, World!",  7,  0),
-        "\"\nsub_old(\"Hello, World!\",  7, 12) = \"",
-               sub_old("Hello, World!",  7, 12),
-        "\"\nsub_old(\"Hello, World!\", 50, 10) = \"",
-               sub_old("Hello, World!", 50, 10),
-        "\"\n"
     ], !IO).
 
 :- func sub(string, int, int) = string.
 
 sub(S, I, N) =
     from_char_list(foldr_between(func(X, Xs) = [X | Xs], S, I, N, [])).
-
-:- func sub_old(string, int, int) = string.
-
-sub_old(S, I, N) =
-    from_char_list(foldr_substring(func(X, Xs) = [X | Xs], S, I, N, [])).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

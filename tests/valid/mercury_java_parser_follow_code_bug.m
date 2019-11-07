@@ -155,7 +155,7 @@ char(Char, Offset, Offset + 1) :-
 input_substring(Start, End, Substring, Offset, Offset) :-
     semipure input_string_and_length(Str, Length),
     End =< Length,
-    Substring = unsafe_substring(Str, Start, End - Start).
+    Substring = unsafe_between(Str, Start, End).
 
 :- pred match_string(string::in, int::in, int::out) is semidet.
 :- pragma promise_pure(match_string/3).

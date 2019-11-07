@@ -809,14 +809,6 @@
 :- func between(string::in, int::in, int::in) = (string::uo) is det.
 :- pred between(string::in, int::in, int::in, string::uo) is det.
 
-    % substring(String, Start, Count, Substring):
-    % Please use `between' instead.
-    %
-:- pragma obsolete(substring/3).
-:- pragma obsolete(substring/4).
-:- func substring(string::in, int::in, int::in) = (string::uo) is det.
-:- pred substring(string::in, int::in, int::in, string::uo) is det.
-
     % between_codepoints(String, Start, End, Substring):
     %
     % `Substring' is the part of `String' between the code point positions
@@ -855,14 +847,6 @@
     %
 :- func unsafe_between(string::in, int::in, int::in) = (string::uo) is det.
 :- pred unsafe_between(string::in, int::in, int::in, string::uo) is det.
-
-    % unsafe_substring(String, Start, Count, Substring):
-    % Please use unsafe_between instead.
-    %
-:- pragma obsolete(unsafe_substring/3).
-:- pragma obsolete(unsafe_substring/4).
-:- func unsafe_substring(string::in, int::in, int::in) = (string::uo) is det.
-:- pred unsafe_substring(string::in, int::in, int::in, string::uo) is det.
 
     % words_separator(SepP, String) returns the list of non-empty
     % substrings of String (in first to last order) that are delimited
@@ -1227,43 +1211,6 @@
 :- mode foldl2_between(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-    % foldl_substring(Closure, String, Start, Count, !Acc)
-    % Please use foldl_between instead.
-    %
-:- pragma obsolete(foldl_substring/5).
-:- pragma obsolete(foldl_substring/6).
-:- func foldl_substring(func(char, A) = A, string, int, int, A) = A.
-:- pred foldl_substring(pred(char, A, A), string, int, int, A, A).
-:- mode foldl_substring(pred(in, in, out) is det, in, in, in,
-    in, out) is det.
-:- mode foldl_substring(pred(in, di, uo) is det, in, in, in,
-    di, uo) is det.
-:- mode foldl_substring(pred(in, in, out) is semidet, in, in, in,
-    in, out) is semidet.
-:- mode foldl_substring(pred(in, in, out) is nondet, in, in, in,
-    in, out) is nondet.
-:- mode foldl_substring(pred(in, in, out) is multi, in, in, in,
-    in, out) is multi.
-
-    % foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2)
-    % Please use foldl2_between instead.
-    %
-:- pragma obsolete(foldl2_substring/8).
-:- pred foldl2_substring(pred(char, A, A, B, B),
-    string, int, int, A, A, B, B).
-:- mode foldl2_substring(pred(in, di, uo, di, uo) is det,
-    in, in, in, di, uo, di, uo) is det.
-:- mode foldl2_substring(pred(in, in, out, di, uo) is det,
-    in, in, in, in, out, di, uo) is det.
-:- mode foldl2_substring(pred(in, in, out, in, out) is det,
-    in, in, in, in, out, in, out) is det.
-:- mode foldl2_substring(pred(in, in, out, in, out) is semidet,
-    in, in, in, in, out, in, out) is semidet.
-:- mode foldl2_substring(pred(in, in, out, in, out) is nondet,
-    in, in, in, in, out, in, out) is nondet.
-:- mode foldl2_substring(pred(in, in, out, in, out) is multi,
-    in, in, in, in, out, in, out) is multi.
-
     % foldr(Closure, String, !Acc):
     % As foldl/4, except that processing proceeds right-to-left.
     %
@@ -1292,24 +1239,6 @@
 :- mode foldr_between(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
 :- mode foldr_between(pred(in, in, out) is multi, in, in, in,
-    in, out) is multi.
-
-    % foldr_substring(Closure, String, Start, Count, !Acc)
-    % Please use foldr_between instead.
-    %
-:- pragma obsolete(foldr_substring/5).
-:- pragma obsolete(foldr_substring/6).
-:- func foldr_substring(func(char, T) = T, string, int, int, T) = T.
-:- pred foldr_substring(pred(char, T, T), string, int, int, T, T).
-:- mode foldr_substring(pred(in, in, out) is det, in, in, in,
-    in, out) is det.
-:- mode foldr_substring(pred(in, di, uo) is det, in, in, in,
-    di, uo) is det.
-:- mode foldr_substring(pred(in, in, out) is semidet, in, in, in,
-    in, out) is semidet.
-:- mode foldr_substring(pred(in, in, out) is nondet, in, in, in,
-    in, out) is nondet.
-:- mode foldr_substring(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
 %---------------------------------------------------------------------------%
@@ -4361,30 +4290,6 @@ between(Str, Start, End, SubStr) :-
 
 %---------------------%
 
-substring(Str, Start, Count) = SubString :-
-    substring(Str, Start, Count, SubString).
-
-substring(Str, Start, Count, SubString) :-
-    convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    between(Str, ClampStart, ClampEnd, SubString).
-
-:- pred convert_endpoints(int::in, int::in, int::out, int::out) is det.
-
-convert_endpoints(Start, Count, ClampStart, ClampEnd) :-
-    ClampStart = int.max(0, Start),
-    ( if Count =< 0 then
-        ClampEnd = ClampStart
-    else
-        % Check for overflow.
-        ( if ClampStart > max_int - Count then
-            ClampEnd = max_int
-        else
-            ClampEnd = ClampStart + Count
-        )
-    ).
-
-%---------------------%
-
 between_codepoints(Str, Start, End) = SubString :-
     between_codepoints(Str, Start, End, SubString).
 
@@ -4442,12 +4347,6 @@ unsafe_between(Str, Start, End) = SubString :-
     Count = End - Start,
     << _:Start/binary, SubString:Count/binary, _/binary >> = Str
 ").
-
-unsafe_substring(Str, Start, Count) = SubString :-
-    unsafe_between(Str, Start, Start + Count) = SubString.
-
-unsafe_substring(Str, Start, Count, SubString) :-
-    unsafe_between(Str, Start, Start + Count, SubString).
 
 %---------------------%
 
@@ -5207,19 +5106,6 @@ foldl2_between_2(Closure, String, I, End, !Acc1, !Acc2) :-
         true
     ).
 
-foldl_substring(F, String, Start, Count, Acc0) = Acc :-
-    convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    Acc = foldl_between(F, String, ClampStart, ClampEnd, Acc0).
-
-foldl_substring(Closure, String, Start, Count, !Acc) :-
-    convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    foldl_between(Closure, String, ClampStart, ClampEnd, !Acc).
-
-foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2) :-
-    convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    foldl2_between(Closure, String, ClampStart, ClampEnd,
-        !Acc1, !Acc2).
-
 %---------------------%
 
 foldr(F, String, Acc0) = Acc :-
@@ -5261,14 +5147,6 @@ foldr_between_2(Closure, String, Start, I, !Acc) :-
     else
         true
     ).
-
-foldr_substring(F, String, Start, Count, Acc0) = Acc :-
-    convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    Acc = foldr_between(F, String, ClampStart, ClampEnd, Acc0).
-
-foldr_substring(Closure, String, Start, Count, !Acc) :-
-    convert_endpoints(Start, Count, ClampStart, ClampEnd),
-    foldr_between(Closure, String, ClampStart, ClampEnd, !Acc).
 
 %---------------------------------------------------------------------------%
 %
