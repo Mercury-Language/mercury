@@ -18,18 +18,18 @@ MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
 MCFLAGS-lexer += --optimize-constructor-last-call
 
-MCFLAGS-sparse_bitset += --use-atomic-cells --optimize-constant-propagation
-MCFLAGS-tree_bitset += --use-atomic-cells --optimize-constant-propagation
+MCFLAGS-sparse_bitset   += --use-atomic-cells --optimize-constant-propagation
+MCFLAGS-tree_bitset     += --use-atomic-cells --optimize-constant-propagation
 
 # Speed up structure sharing analysis.
-MCFLAGS-set_ctree234 += --structure-sharing-widening 1
-MCFLAGS-set_tree234 += --structure-sharing-widening 1
-MCFLAGS-tree234 += --structure-sharing-widening 1
+MCFLAGS-set_ctree234            += --structure-sharing-widening 1
+MCFLAGS-set_tree234             += --structure-sharing-widening 1
+MCFLAGS-tree234                 += --structure-sharing-widening 1
 
 # Bug workarounds.
-MCFLAGS-std_util += --no-halt-at-warn
-MCFLAGS-dir += --no-halt-at-warn
-MCFLAGS-exception += --no-halt-at-warn
+MCFLAGS-std_util                += --no-halt-at-warn
+MCFLAGS-dir                     += --no-halt-at-warn
+MCFLAGS-exception               += --no-halt-at-warn
 
 # Workaround for a compiler abort with --profile-for-implicit-parallelism.
 # Bug #98 in Mantis.
@@ -39,39 +39,37 @@ MCFLAGS-erlang_rtti_implementation += --no-inline-simple
 # io.m uses library features that are supported by POSIX but which are not
 # part of ANSI C, such as `struct stat', fileno(), and putenv().
 # We need to pass --no-ansi to mgnuc to ensure that these are declared.
-MGNUCFLAGS-io  += --no-ansi
+MGNUCFLAGS-io                   += --no-ansi
 
 # This is needed to avoid errors on the calls that implement e.g. io.format/3
 # in terms of io.format/4, and string.format/2 in terms of string.format/3.
 # varset.trans_opt includes the relevant part of string.opt.
-MCFLAGS-io     += --no-warn-unknown-format-calls
-MCFLAGS-stream += --no-warn-unknown-format-calls
-MCFLAGS-stream.string_writer += --no-warn-unknown-format-calls
-MCFLAGS-string += --no-warn-unknown-format-calls
+MCFLAGS-io                      += --no-warn-unknown-format-calls
+MCFLAGS-stream                  += --no-warn-unknown-format-calls
+MCFLAGS-stream.string_writer    += --no-warn-unknown-format-calls
+MCFLAGS-string                  += --no-warn-unknown-format-calls
 
-MCFLAGS-erlang_builtin += --no-warn-nothing-exported
-MCFLAGS-erlang_conf += --no-warn-nothing-exported
-MCFLAGS-mer_std += --no-warn-nothing-exported
+MCFLAGS-erlang_builtin          += --no-warn-nothing-exported
+MCFLAGS-erlang_conf             += --no-warn-nothing-exported
+MCFLAGS-mer_std                 += --no-warn-nothing-exported
 
 # Avoid warnings about insts with non-existent function symbols in their
 # bound lists.  The non-existent function symbols are used here to represent
 # insts for foreign types.
-#
-MCFLAGS-array += --no-warn-insts-without-matching-type
-MCFLAGS-bitmap += --no-warn-insts-without-matching-type
-MCFLAGS-io += --no-warn-insts-without-matching-type
+MCFLAGS-array                   += --no-warn-insts-without-matching-type
+MCFLAGS-bitmap                  += --no-warn-insts-without-matching-type
+MCFLAGS-io                      += --no-warn-insts-without-matching-type
 
 # Avoid warnings about unused imports.
-#
-MCFLAGS-builtin += --no-warn-unused-imports
-MCFLAGS-construct += --no-warn-unused-imports
-MCFLAGS-deconstruct += --no-warn-unused-imports
-MCFLAGS-int32 += --no-warn-unused-imports
-MCFLAGS-int64 += --no-warn-unused-imports
-MCFLAGS-library += --no-warn-unused-imports
-MCFLAGS-mer_std += --no-warn-unused-imports
-MCFLAGS-term_size_prof_builtin += --no-warn-unused-imports
-MCFLAGS-uint64 += --no-warn-unused-imports
+MCFLAGS-builtin                 += --no-warn-unused-imports
+MCFLAGS-construct               += --no-warn-unused-imports
+MCFLAGS-deconstruct             += --no-warn-unused-imports
+MCFLAGS-int32                   += --no-warn-unused-imports
+MCFLAGS-int64                   += --no-warn-unused-imports
+MCFLAGS-library                 += --no-warn-unused-imports
+MCFLAGS-mer_std                 += --no-warn-unused-imports
+MCFLAGS-term_size_prof_builtin  += --no-warn-unused-imports
+MCFLAGS-uint64                  += --no-warn-unused-imports
 
 # In parallel, low level C grades that don't reserve a machine register for
 # the engine base (i.e. don't use gcc global registers) don't generate code
@@ -79,27 +77,25 @@ MCFLAGS-uint64 += --no-warn-unused-imports
 # MR_local_thread_engine_base.  This module contains handwritten code
 # that jumps about a bit and maintaining MR_local_thread_engine_base in all
 # the right places is tricky (i.e. I gave up).
-#
-MCFLAGS-thread += --no-local-thread-engine-base
-MCFLAGS-thread.semaphore += --no-local-thread-engine-base
+MCFLAGS-thread                  += --no-local-thread-engine-base
+MCFLAGS-thread.semaphore        += --no-local-thread-engine-base
 
 # Work around a problem in the HiPE compiler (as of Erlang R11B5).
-MCFLAGS-bitmap += --no-erlang-native-code
+MCFLAGS-bitmap                  += --no-erlang-native-code
 
 # Work around a warning for termination analysis of the user defined equality
 # and comparison code for lazy values.
-MCFLAGS-lazy += --no-warn-non-term-special-preds
+MCFLAGS-lazy                    += --no-warn-non-term-special-preds
 
 # Work around a problem with --warn-unused-imports: it complains about
 # erlang_rtti_implementation, which is needed in some grades.
-MCFLAGS-type_desc += --no-warn-unused-imports
+MCFLAGS-type_desc               += --no-warn-unused-imports
 
 # Keep all modules' contents in a consistent order, except these (for now).
-MCFLAGS-array           += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-bt_array        += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-exception       += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-getopt          += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-getopt_io       += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-io              += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-pprint          += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-robdd           += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-array                   += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-bt_array                += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-exception               += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-getopt                  += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-getopt_io               += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-pprint                  += --no-warn-inconsistent-pred-order-clauses
+MCFLAGS-robdd                   += --no-warn-inconsistent-pred-order-clauses
