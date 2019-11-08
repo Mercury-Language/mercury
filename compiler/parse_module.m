@@ -196,6 +196,18 @@
     parse_tree_opt::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
+    % Versions of actually_read_module_opt that return, for each kind of
+    % optimization file, a value of a type that is specific to that kind.
+    %
+:- pred actually_read_module_plain_opt(globals::in,
+    file_name::in, module_name::in, list(prog_context)::in,
+    parse_tree_plain_opt::out, list(error_spec)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+:- pred actually_read_module_trans_opt(globals::in,
+    file_name::in, module_name::in, list(prog_context)::in,
+    parse_tree_trans_opt::out, list(error_spec)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
 :- type maybe_require_module_decl
     --->    dont_require_module_decl
     ;       require_module_decl.
@@ -311,71 +323,7 @@ actually_read_module_int(IntFileKind, Globals,
             make_dummy_parse_tree_int(IntFileKind),
             read_parse_tree_int(IntFileKind),
             InitParseTreeInt, Specs0, Errors, !IO),
-        convert_parse_tree_int_parse_tree_int0(
-            InitParseTreeInt, ParseTreeInt0, Specs0, Specs1),
-        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
-            HaltAtInvalidInterface),
-        (
-            HaltAtInvalidInterface = no,
-            Specs = Specs0
-        ;
-            HaltAtInvalidInterface = yes,
-            Specs = Specs1
-        ),
-        ParseTreeInt =
-            convert_parse_tree_int0_to_parse_tree_int(ParseTreeInt0)
-    ;
-        IntFileKind = ifk_int1,
-        do_actually_read_module(Globals,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeFileNameAndStream,
-            ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-            make_dummy_parse_tree_int(IntFileKind),
-            read_parse_tree_int(IntFileKind),
-            InitParseTreeInt, Specs0, Errors, !IO),
-        convert_parse_tree_int_parse_tree_int1(
-            InitParseTreeInt, ParseTreeInt1, Specs0, Specs1),
-        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
-            HaltAtInvalidInterface),
-        (
-            HaltAtInvalidInterface = no,
-            Specs = Specs0
-        ;
-            HaltAtInvalidInterface = yes,
-            Specs = Specs1
-        ),
-        ParseTreeInt = convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1)
-    ;
-        IntFileKind = ifk_int2,
-        do_actually_read_module(Globals,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeFileNameAndStream,
-            ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-            make_dummy_parse_tree_int(IntFileKind),
-            read_parse_tree_int(IntFileKind),
-            InitParseTreeInt, Specs0, Errors, !IO),
-        convert_parse_tree_int_parse_tree_int2(
-            InitParseTreeInt, ParseTreeInt2, Specs0, Specs1),
-        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
-            HaltAtInvalidInterface),
-        (
-            HaltAtInvalidInterface = no,
-            Specs = Specs0
-        ;
-            HaltAtInvalidInterface = yes,
-            Specs = Specs1
-        ),
-        ParseTreeInt = convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2)
-    ;
-        IntFileKind = ifk_int3,
-        do_actually_read_module(Globals,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeFileNameAndStream,
-            ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-            make_dummy_parse_tree_int(IntFileKind),
-            read_parse_tree_int(IntFileKind),
-            InitParseTreeInt, Specs0, Errors, !IO),
-        convert_parse_tree_int_parse_tree_int3(InitParseTreeInt, ParseTreeInt3,
+        check_convert_parse_tree_int_to_int0(InitParseTreeInt, ParseTreeInt0,
             Specs0, Specs1),
         globals.lookup_bool_option(Globals, halt_at_invalid_interface,
             HaltAtInvalidInterface),
@@ -386,7 +334,70 @@ actually_read_module_int(IntFileKind, Globals,
             HaltAtInvalidInterface = yes,
             Specs = Specs1
         ),
-        ParseTreeInt = convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3)
+        ParseTreeInt = convert_parse_tree_int0_to_int(ParseTreeInt0)
+    ;
+        IntFileKind = ifk_int1,
+        do_actually_read_module(Globals,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeFileNameAndStream,
+            ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+            make_dummy_parse_tree_int(IntFileKind),
+            read_parse_tree_int(IntFileKind),
+            InitParseTreeInt, Specs0, Errors, !IO),
+        check_convert_parse_tree_int_to_int1(InitParseTreeInt, ParseTreeInt1,
+            Specs0, Specs1),
+        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
+            HaltAtInvalidInterface),
+        (
+            HaltAtInvalidInterface = no,
+            Specs = Specs0
+        ;
+            HaltAtInvalidInterface = yes,
+            Specs = Specs1
+        ),
+        ParseTreeInt = convert_parse_tree_int1_to_int(ParseTreeInt1)
+    ;
+        IntFileKind = ifk_int2,
+        do_actually_read_module(Globals,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeFileNameAndStream,
+            ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+            make_dummy_parse_tree_int(IntFileKind),
+            read_parse_tree_int(IntFileKind),
+            InitParseTreeInt, Specs0, Errors, !IO),
+        check_convert_parse_tree_int_to_int2(InitParseTreeInt, ParseTreeInt2,
+            Specs0, Specs1),
+        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
+            HaltAtInvalidInterface),
+        (
+            HaltAtInvalidInterface = no,
+            Specs = Specs0
+        ;
+            HaltAtInvalidInterface = yes,
+            Specs = Specs1
+        ),
+        ParseTreeInt = convert_parse_tree_int2_to_int(ParseTreeInt2)
+    ;
+        IntFileKind = ifk_int3,
+        do_actually_read_module(Globals,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeFileNameAndStream,
+            ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+            make_dummy_parse_tree_int(IntFileKind),
+            read_parse_tree_int(IntFileKind),
+            InitParseTreeInt, Specs0, Errors, !IO),
+        check_convert_parse_tree_int_to_int3(InitParseTreeInt, ParseTreeInt3,
+            Specs0, Specs1),
+        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
+            HaltAtInvalidInterface),
+        (
+            HaltAtInvalidInterface = no,
+            Specs = Specs0
+        ;
+            HaltAtInvalidInterface = yes,
+            Specs = Specs1
+        ),
+        ParseTreeInt = convert_parse_tree_int3_to_int(ParseTreeInt3)
     ).
 
 actually_read_module_int0(IntFileKind, Globals,
@@ -397,8 +408,7 @@ actually_read_module_int0(IntFileKind, Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs0, Errors, !IO),
-    convert_parse_tree_int_parse_tree_int0(ParseTree, ParseTree0,
-        Specs0, Specs).
+    check_convert_parse_tree_int_to_int0(ParseTree, ParseTree0, Specs0, Specs).
 
 actually_read_module_int1(IntFileKind, Globals,
         DefaultModuleName, DefaultExpectationContexts,
@@ -408,8 +418,7 @@ actually_read_module_int1(IntFileKind, Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs0, Errors, !IO),
-    convert_parse_tree_int_parse_tree_int1(ParseTree, ParseTree1,
-        Specs0, Specs).
+    check_convert_parse_tree_int_to_int1(ParseTree, ParseTree1, Specs0, Specs).
 
 actually_read_module_int2(IntFileKind, Globals,
         DefaultModuleName, DefaultExpectationContexts,
@@ -419,8 +428,7 @@ actually_read_module_int2(IntFileKind, Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs0, Errors, !IO),
-    convert_parse_tree_int_parse_tree_int2(ParseTree, ParseTree2,
-        Specs0, Specs).
+    check_convert_parse_tree_int_to_int2(ParseTree, ParseTree2, Specs0, Specs).
 
 actually_read_module_int3(IntFileKind, Globals,
         DefaultModuleName, DefaultExpectationContexts,
@@ -430,8 +438,7 @@ actually_read_module_int3(IntFileKind, Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs0, Errors, !IO),
-    convert_parse_tree_int_parse_tree_int3(ParseTree, ParseTree3,
-        Specs0, Specs).
+    check_convert_parse_tree_int_to_int3(ParseTree, ParseTree3, Specs0, Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -445,11 +452,75 @@ actually_read_module_opt(OptFileKind, Globals, FileName,
         always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(OptFileKind),
         read_parse_tree_opt(OptFileKind),
+        ParseTreeOpt0, ItemSpecs, Errors, !IO),
+    ModuleName = ParseTreeOpt0 ^ pto_module_name,
+    check_module_has_expected_name(FileName, DefaultModuleName,
+        DefaultExpectationContexts, ModuleName, no, NameSpecs),
+    Specs0 = ItemSpecs ++ NameSpecs,
+    (
+        OptFileKind = ofk_opt,
+        check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt0,
+            ParseTreePlainOpt, Specs0, Specs1),
+        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
+            HaltAtInvalidInterface),
+        (
+            HaltAtInvalidInterface = no,
+            Specs = Specs0
+        ;
+            HaltAtInvalidInterface = yes,
+            Specs = Specs1
+        ),
+        ParseTreeOpt = convert_parse_tree_plain_opt_to_opt(ParseTreePlainOpt)
+    ;
+        OptFileKind = ofk_trans_opt,
+        check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt0,
+            ParseTreeTransOpt, Specs0, Specs1),
+        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
+            HaltAtInvalidInterface),
+        (
+            HaltAtInvalidInterface = no,
+            Specs = Specs0
+        ;
+            HaltAtInvalidInterface = yes,
+            Specs = Specs1
+        ),
+        ParseTreeOpt = convert_parse_tree_trans_opt_to_opt(ParseTreeTransOpt)
+    ).
+
+actually_read_module_plain_opt(Globals, FileName, DefaultModuleName,
+        DefaultExpectationContexts, ParseTreePlainOpt, Specs, Errors, !IO) :-
+    globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
+    search_for_file_and_stream(Dirs, FileName, MaybeFileNameAndStream, !IO),
+    do_actually_read_module(Globals,
+        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
+        always_read_module(dont_return_timestamp), _,
+        make_dummy_parse_tree_opt(ofk_opt),
+        read_parse_tree_opt(ofk_opt),
         ParseTreeOpt, ItemSpecs, Errors, !IO),
     ModuleName = ParseTreeOpt ^ pto_module_name,
     check_module_has_expected_name(FileName, DefaultModuleName,
-        DefaultExpectationContexts,ModuleName, no, NameSpecs),
-    Specs = ItemSpecs ++ NameSpecs.
+        DefaultExpectationContexts, ModuleName, no, NameSpecs),
+    Specs0 = ItemSpecs ++ NameSpecs,
+    check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
+        Specs0, Specs).
+
+actually_read_module_trans_opt(Globals, FileName,
+        DefaultModuleName, DefaultExpectationContexts,
+        ParseTreeTransOpt, Specs, Errors, !IO) :-
+    globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
+    search_for_file_and_stream(Dirs, FileName, MaybeFileNameAndStream, !IO),
+    do_actually_read_module(Globals,
+        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
+        always_read_module(dont_return_timestamp), _,
+        make_dummy_parse_tree_opt(ofk_trans_opt),
+        read_parse_tree_opt(ofk_trans_opt),
+        ParseTreeOpt, ItemSpecs, Errors, !IO),
+    ModuleName = ParseTreeOpt ^ pto_module_name,
+    check_module_has_expected_name(FileName, DefaultModuleName,
+        DefaultExpectationContexts, ModuleName, no, NameSpecs),
+    Specs0 = ItemSpecs ++ NameSpecs,
+    check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
+        Specs0, Specs).
 
 %---------------------------------------------------------------------------%
 

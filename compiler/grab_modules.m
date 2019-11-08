@@ -1914,12 +1914,12 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors0),
     module_and_imports_get_int_deps_set(!.ModuleAndImports, IntDeps0),
     module_and_imports_get_imp_deps_set(!.ModuleAndImports, ImpDeps0),
-    OptFiles = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
+    OptModules = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
     globals.lookup_bool_option(Globals, read_opt_files_transitively,
         Transitive),
-    set.insert(ModuleName, OptFiles, ModulesProcessed),
+    set.insert(ModuleName, OptModules, ModulesProcessed),
     read_optimization_interfaces(Globals, Transitive,
-        set.to_sorted_list(OptFiles), ModulesProcessed,
+        set.to_sorted_list(OptModules), ModulesProcessed,
         cord.empty, OptItemBlocksCord, [], OptSpecs, no, OptError, !IO),
     OptItemBlocks = cord.list(OptItemBlocksCord),
 
@@ -1960,12 +1960,13 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
 
     % Read .int0 files required by the `.opt' files.
     map.init(HaveReadModuleMapInt),
-    OptFileAncestors = set.power_union(set.map(get_ancestors_set, OptFiles)),
-    Int0Files = set.delete(OptFileAncestors, ModuleName),
+    OptModuleAncestors =
+        set.power_union(set.map(get_ancestors_set, OptModules)),
+    Int0Modules = set.delete(OptModuleAncestors, ModuleName),
     process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
         "opt_int0s", make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
-        set.to_sorted_list(Int0Files),
+        set.to_sorted_list(Int0Modules),
         set.init, AncestorImports1, set.init, AncestorImports2,
         !ModuleAndImports, !IO),
 

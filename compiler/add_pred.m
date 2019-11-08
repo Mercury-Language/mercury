@@ -675,14 +675,14 @@ module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
             else
                 ModeSectionStr = decl_section_to_string(ModeDeclSection),
                 PredSectionStr = decl_section_to_string(PredDeclSection),
+                SNA1 = sym_name_arity(unqualified(PredName), Arity),
                 SectionPieces = [words("Error: mode declaration in the"),
                     fixed(ModeSectionStr), words("section"),
                     words("for"), p_or_f(PredOrFunc),
-                    unqual_sym_name_and_arity(
-                        sym_name_arity(unqualified(PredName), Arity)),
-                    suffix(","), words("whose"),
-                    p_or_f(PredOrFunc), words("declaration"), words("is"),
-                    words("in the"), fixed(PredSectionStr), suffix("."), nl],
+                    unqual_sym_name_and_arity(SNA1), suffix(","),
+                    words("whose"), p_or_f(PredOrFunc), words("declaration"),
+                    words("is in the"), fixed(PredSectionStr), suffix("."),
+                    nl],
                 SectionSpec = simplest_spec(severity_error,
                     phase_parse_tree_to_hlds, Context, SectionPieces),
                 !:Specs = [SectionSpec | !.Specs]
@@ -691,10 +691,9 @@ module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
                 PredIsPredMode = no_predmode_decl
             ;
                 PredIsPredMode = predmode_decl,
+                SNA2 = sym_name_arity(unqualified(PredName), Arity),
                 PredModePieces = [words("Error:"),
-                    p_or_f(PredOrFunc),
-                    unqual_sym_name_and_arity(
-                        sym_name_arity(unqualified(PredName), Arity)),
+                    p_or_f(PredOrFunc), unqual_sym_name_and_arity(SNA2),
                     words("has its"), p_or_f(PredOrFunc), words("declaration"),
                     words("combined with a mode declaration,"),
                     words("so it may not have a separate mode declaration."),

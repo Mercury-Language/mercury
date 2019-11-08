@@ -233,7 +233,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
@@ -1388,7 +1387,7 @@ write_opt_file_initial(IntermodInfo, ParseTreePlainOpt, !IO) :-
         some_type_needs_to_be_written(TypeCtorsDefns, no)
     then
         ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, term.context_init,
-            [], [], [], [], [], [], [], [], [], [], [], [], [],
+            set.init, set.init, [], [], [], [], [], [], [], [], [], [], [], [],
             [], [], [], [], [], [], [], [])
     else
         write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO)
@@ -1423,10 +1422,9 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
     % XXX We could and should reduce AvailModules to the set of modules
     % that are *actually needed* by the items being written.
-    map.keys(AvailModuleMap, AvailModuleNames),
-    list.foldl(intermod_write_use_module, AvailModuleNames, !IO),
-
-    Uses = list.map(wrap_use, AvailModuleNames),
+    map.keys(AvailModuleMap, UsedModuleNames),
+    list.foldl(intermod_write_use_module, UsedModuleNames, !IO),
+    set.sorted_list_to_set(UsedModuleNames, UsedModuleNamesSet),
 
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo0 = init_hlds_out_info(Globals, output_mercury),
@@ -1451,15 +1449,14 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
             ForeignImportModules),
         FIMSpecs = get_all_fim_specs(ForeignImportModules),
         ( if set.is_empty(FIMSpecs) then
-            FIMs = []
+            true
         else
             io.nl(!IO),
-            set.fold(mercury_output_fim_spec, FIMSpecs, !IO),
-            FIMs = set.to_sorted_list(set.map(fim_spec_to_item, FIMSpecs))
+            set.fold(mercury_output_fim_spec, FIMSpecs, !IO)
         )
     ;
         NeedFIMs = do_not_need_foreign_import_modules,
-        FIMs = []
+        set.init(FIMSpecs)
     ),
     generate_order_pred_infos(ModuleInfo, WriteDeclPredIds,
         DeclOrderPredInfos),
@@ -1485,13 +1482,14 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
         PredMarkerPragmasCord1, PredMarkerPragmasCord, !IO),
     PredMarkerPragmas = cord.list(PredMarkerPragmasCord),
     Clauses = [],
+    ForeignProcs = [],
 
     module_info_get_name(ModuleInfo, ModuleName),
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, term.context_init,
-        Uses, FIMs, TypeDefns, ForeignEnums, InstDefns, ModeDefns,
-        TypeClasses, Instances, PredDecls, ModeDecls,
-        PredMarkerPragmas, TypeSpecPragmas, Clauses,
-        [], [], [], [], [], [], [], []).
+        UsedModuleNamesSet, FIMSpecs, TypeDefns, ForeignEnums,
+        InstDefns, ModeDefns, TypeClasses, Instances,
+        PredDecls, ModeDecls, Clauses, ForeignProcs,
+        PredMarkerPragmas, TypeSpecPragmas, [], [], [], [], [], [], [], []).
 
 :- type maybe_first
     --->    is_not_first

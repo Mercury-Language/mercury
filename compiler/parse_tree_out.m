@@ -291,26 +291,26 @@ mercury_output_parse_tree_opt(Info, ParseTree, !IO) :-
 
 mercury_output_parse_tree_plain_opt(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_plain_opt(ModuleName, _Context,
-        Uses, FIMs, TypeDefns, ForeignEnums, InstDefns, ModeDefns,
-        TypeClasses, Instances, PredDecls, ModeDecls,
-        PredMarkers, TypeSpecs, Clauses,
-        UnusedArgs, Terms, Term2s, Exceptions, Trailings, MMTablings,
-        Sharings, Reuses),
+        UsedModuleNames, FIMSpecs, TypeDefns, ForeignEnums,
+        InstDefns, ModeDefns, TypeClasses, Instances,
+        PredDecls, ModeDecls, Clauses, ForeignProcs,
+        PredMarkers, TypeSpecs, UnusedArgs, Terms, Term2s,
+        Exceptions, Trailings, MMTablings, Sharings, Reuses),
     Lang = get_output_lang(Info),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
-    list.foldl(mercury_output_item_use(Info), Uses, !IO),
+    set.foldl(mercury_output_module_decl("use_module"), UsedModuleNames, !IO),
     list.foldl(mercury_output_item_type_defn(Info), TypeDefns, !IO),
     list.foldl(mercury_output_item_foreign_enum(Info), ForeignEnums, !IO),
     list.foldl(mercury_output_item_inst_defn(Info), InstDefns, !IO),
     list.foldl(mercury_output_item_mode_defn(Info), ModeDefns, !IO),
     list.foldl(mercury_output_item_typeclass(Info), TypeClasses, !IO),
     list.foldl(mercury_output_item_instance(Info), Instances, !IO),
-    % XXX FIMs should be output just after Uses, but the existing code
-    % whose output we want to compare the output of this code to
-    % prints them in this position.
-    list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
+    % XXX FIMSpecs should be output just after UsedModuleNames, but
+    % the existing code whose output we want to compare the output
+    % of this code to prints them in this position.
+    set.foldl(mercury_output_fim_spec, FIMSpecs, !IO),
     list.foldl(mercury_output_item_pred_decl(Info), PredDecls, !IO),
     list.foldl(mercury_output_item_mode_decl(Info), ModeDecls, !IO),
     list.foldl(mercury_output_item_pred_marker,
@@ -318,6 +318,8 @@ mercury_output_parse_tree_plain_opt(Info, ParseTree, !IO) :-
     list.foldl(mercury_output_pragma_type_spec(print_name_only, Lang),
         list.map(project_pragma_type, TypeSpecs), !IO),
     list.foldl(mercury_output_item_clause(Info), Clauses, !IO),
+    list.foldl(mercury_output_pragma_foreign_proc(Lang),
+        list.map(project_pragma_type, ForeignProcs), !IO),
 
     list.foldl(mercury_output_pragma_unused_args,
         list.map(project_pragma_type, UnusedArgs), !IO),

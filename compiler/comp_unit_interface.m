@@ -209,7 +209,7 @@ generate_short_interface_int3(Globals, RawCompUnit,
         IntInclModuleNames, IntImportModuleNames,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
-    ParseTreeInt0 = convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3),
+    ParseTreeInt0 = convert_parse_tree_int3_to_int(ParseTreeInt3),
     % Any Specs this can generate would be better reported when the module
     % is being compiled to target language code.
     module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt,
@@ -469,8 +469,7 @@ generate_interface_int2_via_int3(Globals, AugCompUnit, ParseTreeInt23,
         IntInclModuleNames, IntImportModuleNames,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
-    ParseTreeInt23Prime =
-        convert_parse_tree_int3_to_parse_tree_int(ParseTreeInt3),
+    ParseTreeInt23Prime = convert_parse_tree_int3_to_int(ParseTreeInt3),
     ParseTreeInt23 = ParseTreeInt23Prime ^ pti_int_file_kind := ifk_int2.
 
 %---------------------------------------------------------------------------%
@@ -555,8 +554,7 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
         ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpForeignEnumMap, ImpPragmas, ImpPromises),
-    ParseTreeInt0 =
-        convert_parse_tree_int0_to_parse_tree_int(ParseTreeInt0Prime).
+    ParseTreeInt0 = convert_parse_tree_int0_to_int(ParseTreeInt0Prime).
 
     % get_private_interface_int0_from_item_blocks processes each item
     % in the item blocks of a module, as part of the process of creating
@@ -909,8 +907,8 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2A),
-    ParseTreeInt1 = convert_parse_tree_int1_to_parse_tree_int(ParseTreeInt1A),
-    ParseTreeInt2 = convert_parse_tree_int2_to_parse_tree_int(ParseTreeInt2A).
+    ParseTreeInt1 = convert_parse_tree_int1_to_int(ParseTreeInt1A),
+    ParseTreeInt2 = convert_parse_tree_int2_to_int(ParseTreeInt2A).
 
 :- pred generate_interface_int1(aug_compilation_unit::in,
     set(module_name)::out, set(module_name)::out,

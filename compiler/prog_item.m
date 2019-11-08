@@ -495,8 +495,8 @@
                 ptpo_module_name_context    :: prog_context,
 
                 % `:- use_module' (not `:- import_module') declarations.
-                ptpo_uses                   :: list(avail_use_info),
-                ptpo_fims                   :: list(item_fim),
+                ptpo_uses                   :: set(module_name),
+                ptpo_fims                   :: set(fim_spec),
                 ptpo_type_defns             :: list(item_type_defn_info),
                 ptpo_foreign_enums          :: list(item_foreign_enum_info),
                 ptpo_inst_defns             :: list(item_inst_defn_info),
@@ -505,10 +505,11 @@
                 ptpo_instances              :: list(item_instance_info),
                 ptpo_pred_decls             :: list(item_pred_decl_info),
                 ptpo_mode_decls             :: list(item_mode_decl_info),
+                ptpo_clauses                :: list(item_clause_info),
+                ptpo_foreign_procs          :: list(item_foreign_proc),
+
                 ptpo_pred_marker_pragmas    :: list(item_pred_marker),
                 ptpo_type_spec_pragmas      :: list(item_type_spec),
-                ptpo_clauses                :: list(item_clause_info),
-
                 ptpo_unused_args            :: list(item_unused_args),
                 ptpo_termination            :: list(item_termination),
                 ptpo_termination2           :: list(item_termination2),
@@ -1689,6 +1690,7 @@
                 pred_marker_pragma_kind
             ).
 
+:- type item_foreign_proc ==   item_pragma_info(pragma_info_foreign_proc).
 :- type item_pred_marker ==    item_pragma_info(pragma_info_pred_marker).
 :- type item_type_spec ==      item_pragma_info(pragma_info_type_spec).
 :- type item_unused_args ==    item_pragma_info(pragma_info_unused_args).

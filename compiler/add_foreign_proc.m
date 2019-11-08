@@ -485,10 +485,10 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
         add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
             NewContext, Globals, Target, NewLang, AllProcIds, NewClauseProcId,
             LaterClauses0, LaterClauses, LaterOverridden, !Specs),
-        FirstClause0 = clause(ApplProcIds0, Body, ClauseLang, ClauseContext,
-            StateVarWarnings),
+        FirstClause0 = clause(ApplProcIds0, Body, FirstClauseLang,
+            FirstClauseContext, StateVarWarnings),
         (
-            ClauseLang = impl_lang_mercury,
+            FirstClauseLang = impl_lang_mercury,
             (
                 ApplProcIds0 = all_modes,
                 ProcIds0 = AllProcIds
@@ -512,7 +512,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     % in some modes, so mark it as being applicable only in the
                     % remaining modes.
                     FirstClause = clause(selected_modes(ProcIds), Body,
-                        ClauseLang, ClauseContext, StateVarWarnings),
+                        FirstClauseLang, FirstClauseContext, StateVarWarnings),
                     Clauses = [FirstClause | LaterClauses]
                 )
             else
@@ -523,7 +523,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
             % A Mercury clause can never take precedence over a foreign_proc.
             Overridden = LaterOverridden
         ;
-            ClauseLang = impl_lang_foreign(OldLang),
+            FirstClauseLang = impl_lang_foreign(OldLang),
             (
                 ApplProcIds0 = all_modes,
                 unexpected($pred, "all_modes")
@@ -556,7 +556,8 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                         %
                         % XXX This should not happen.
                         FirstClause = clause(selected_modes(ProcIds), Body,
-                            ClauseLang, ClauseContext, StateVarWarnings),
+                            FirstClauseLang, FirstClauseContext,
+                            StateVarWarnings),
                         Clauses = [FirstClause | LaterClauses],
                         Overridden = LaterOverridden
                     ),
@@ -582,18 +583,17 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     % out foreign_procs in such languages way before we get
                     % here.
                     ( if OldLang = NewLang then
-                        PiecesA = [words("Error: multiple clauses for"),
-                            p_or_f(PredOrFunc),
-                            unqual_sym_name_and_arity(
-                                sym_name_arity(PredName, Arity)),
-                            words("in language"),
-                            words(foreign_language_string(OldLang)),
-                            suffix("."), nl],
-                        PiecesB = [words("The first occurrence was here."),
-                            nl],
+                        SNA = sym_name_arity(PredName, Arity),
+                        OldLangStr = foreign_language_string(OldLang),
+                        PiecesA = [words("Error: duplicate"),
+                            pragma_decl("foreign_proc"), words("declaration"),
+                            words("for this mode of"), p_or_f(PredOrFunc),
+                            unqual_sym_name_and_arity(SNA),
+                            words("in"), words(OldLangStr), suffix("."), nl],
+                        PiecesB = [words("The first one was here."), nl],
                         MsgA = simplest_msg(NewContext, PiecesA),
-                        MsgB = error_msg(yes(ClauseContext), treat_as_first, 0,
-                            [always(PiecesB)]),
+                        MsgB = error_msg(yes(FirstClauseContext),
+                            treat_as_first, 0, [always(PiecesB)]),
                         Spec = error_spec(severity_error,
                             phase_parse_tree_to_hlds, [MsgA, MsgB]),
                         !:Specs = [Spec | !.Specs]
