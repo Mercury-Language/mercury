@@ -1,20 +1,27 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module change_func_r.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module change_func_r_2, std_util.
+:- import_module change_func_r_2.
+:- import_module std_util.
 
-main -->
-	( { semidet_succeed, Str = changed_func("OK\n") } ->
-		io__write_string(Str)
-	;
-		io__write_string("failed\n")
-	),
-	io__write_string(changed_func_2("OK\n")).
-
+main(!IO) :-
+    ( if
+        semidet_succeed,
+        Str = changed_func("OK\n")
+    then
+        io.write_string(Str, !IO)
+    else
+        io.write_string("failed\n", !IO)
+    ),
+    io.write_string(changed_func_2("OK\n"), !IO).

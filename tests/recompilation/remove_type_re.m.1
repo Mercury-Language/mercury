@@ -1,18 +1,24 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module remove_type_re.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module remove_type_re_2.
 
-main -->
-	output_foo(a).
+main(!IO) :-
+    output_foo(a, !IO).
 
-:- pred output_foo(foo::in, io__state::di, io__state::uo) is det.
-	
-output_foo(X) --> io__write(X), io__nl.
+:- pred output_foo(foo::in, io::di, io::uo) is det.
+
+output_foo(X, !IO) :-
+    io.write(X, !IO),
+    io.nl(!IO).

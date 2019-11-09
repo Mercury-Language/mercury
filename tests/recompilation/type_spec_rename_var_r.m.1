@@ -1,16 +1,20 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module type_spec_rename_var_r.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module type_spec_rename_var_r_2.
 
-main -->
-	{ p(1, 2.0, Result) },
-	io__write(Result),
-	io__nl.
+main(!IO) :-
+    p(1, 2.0, Result),
+    io.write(Result, !IO),
+    io.nl(!IO).

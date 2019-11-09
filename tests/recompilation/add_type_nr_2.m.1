@@ -1,14 +1,17 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module add_type_nr_2.
 
 :- interface.
 
 :- type foo
-	--->	a
-	;	b(int).
+    --->    a
+    ;       b(int).
 
 :- pred init(foo::out) is det.
 
 :- implementation.
 
 init(a).
-

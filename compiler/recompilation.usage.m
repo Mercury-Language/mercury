@@ -247,15 +247,15 @@ write_module_name_and_used_items(RecompInfo, TimestampMap, ModuleInstances,
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(", """, !IO),
     map.lookup(TimestampMap, ModuleName,
-        module_timestamp(FileKind, ModuleTimestamp, NeedQualifier)),
+        module_timestamp(FileKind, ModuleTimestamp, RecompNeedQual)),
     io.write_string(file_kind_to_extension(FileKind), !IO),
     io.write_string(""", ", !IO),
     write_version_number(ModuleTimestamp, !IO),
     (
-        NeedQualifier = must_be_qualified,
+        RecompNeedQual = recomp_must_be_qualified,
         io.write_string(", used)", !IO)
     ;
-        NeedQualifier = may_be_unqualified,
+        RecompNeedQual = recomp_may_be_unqualified,
         io.write_string(")", !IO)
     ),
     ( if

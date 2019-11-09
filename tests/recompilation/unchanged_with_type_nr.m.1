@@ -1,32 +1,35 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unchanged_with_type_nr.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module unchanged_with_type_nr_2.
 :- import_module list.
 
-main -->
-	{ with_type_1([1], [1], "OK\n", Str1) },
-	io__write_string(Str1),
+main(!IO) :-
+    with_type_1([1], [1], "OK\n", Str1),
+    io.write_string(Str1, !IO),
 
-	{ Str2 = with_type_2([1], [1], "OK\n") },
-	io__write_string(Str2),
+    Str2 = with_type_2([1], [1], "OK\n"),
+    io.write_string(Str2, !IO),
 
-	{ with_type_3([1], [1], "OK\n", Str3) },
-	io__write_string(Str3),
+    with_type_3([1], [1], "OK\n", Str3),
+    io.write_string(Str3, !IO),
 
-	{ with_type_4("OK\n", Str4) },
-	io__write_string(Str4),
+    with_type_4("OK\n", Str4),
+    io.write_string(Str4, !IO),
 
-	{ Str5 = with_type_5("OK\n") },
-	io__write_string(Str5),
+    Str5 = with_type_5("OK\n"),
+    io.write_string(Str5, !IO),
 
-	{ Str6 = with_type_6("OK\n") },
-	io__write_string(Str6).
-
+    Str6 = with_type_6("OK\n"),
+    io.write_string(Str6, !IO).

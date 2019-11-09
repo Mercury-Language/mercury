@@ -1,16 +1,19 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module change_type_nr.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module change_type_nr_3.
 
-main -->
-	io__write(a `with_type` foo),
-	io__nl.
-
+main(!IO) :-
+    io.write(a `with_type` foo, !IO),
+    io.nl(!IO).

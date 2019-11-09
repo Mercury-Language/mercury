@@ -266,7 +266,8 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         (
             MaybeTimestamp = yes(Timestamp),
             MaybeTimestampMap = yes(map.singleton(ModuleName,
-                module_timestamp(fk_src, Timestamp, may_be_unqualified)))
+                module_timestamp(fk_src, Timestamp,
+                    recomp_may_be_unqualified)))
         ;
             MaybeTimestamp = no,
             MaybeTimestampMap = no
@@ -301,7 +302,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         set.init(!:IntImpIndirectImported),
         set.init(!:ImpImpIndirectImported),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "int_imported", pik_direct(int123_1, may_be_unqualified),
+            "int_imported", pik_direct(int123_1, recomp_may_be_unqualified),
             make_ims_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
@@ -309,7 +310,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "imp_imported", pik_direct(int123_1, may_be_unqualified),
+            "imp_imported", pik_direct(int123_1, recomp_may_be_unqualified),
             make_ims_imported(import_locn_implementation),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
@@ -319,7 +320,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
 
         % Get the .int files of the modules imported using `use_module'.
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "int_used", pik_direct(int123_1, must_be_qualified),
+            "int_used", pik_direct(int123_1, recomp_must_be_qualified),
             make_ims_used(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
@@ -327,7 +328,7 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "imp_used", pik_direct(int123_1, must_be_qualified),
+            "imp_used", pik_direct(int123_1, recomp_must_be_qualified),
             make_ims_used(import_locn_implementation),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
@@ -338,7 +339,8 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         % Get the .int files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "int_used_imp_imported", pik_direct(int123_1, may_be_unqualified),
+            "int_used_imp_imported",
+            pik_direct(int123_1, recomp_may_be_unqualified),
             make_ims_used_and_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
@@ -477,21 +479,24 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         set.init(!:IntIndirectImported),
         set.init(!:ImpIndirectImported),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_parent_imported", pik_direct(int123_3, may_be_unqualified),
+            "unqual_parent_imported",
+            pik_direct(int123_3, recomp_may_be_unqualified),
             make_ims_imported(import_locn_import_by_ancestor),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
             set.to_sorted_list(AncestorImports),
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_int_imported", pik_direct(int123_3, may_be_unqualified),
+            "unqual_int_imported",
+            pik_direct(int123_3, recomp_may_be_unqualified),
             make_ims_imported(import_locn_interface),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
             set.to_sorted_list(IntImports),
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_imp_imported", pik_direct(int123_3, may_be_unqualified),
+            "unqual_imp_imported",
+            pik_direct(int123_3, recomp_may_be_unqualified),
             make_ims_imported(import_locn_implementation),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
@@ -500,21 +505,22 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 
         % Get the .int3 files of the modules imported using `use_module'.
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_parent_used", pik_direct(int123_3, must_be_qualified),
+            "unqual_parent_used",
+            pik_direct(int123_3, recomp_must_be_qualified),
             make_ims_used(import_locn_import_by_ancestor),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
             set.to_sorted_list(AncestorUses),
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_int_used", pik_direct(int123_3, must_be_qualified),
+            "unqual_int_used", pik_direct(int123_3, recomp_must_be_qualified),
             make_ims_used(import_locn_interface),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
             set.to_sorted_list(IntUses),
             !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
         process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_imp_used", pik_direct(int123_3, must_be_qualified),
+            "unqual_imp_used", pik_direct(int123_3, recomp_must_be_qualified),
             make_ims_used(import_locn_implementation),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
@@ -525,7 +531,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         % in the interface and `import_module' in the implementation.
         process_module_int123_files(Globals, HaveReadModuleMapInt,
             "unqual_int_used_imp_imported",
-            pik_direct(int123_3, may_be_unqualified),
+            pik_direct(int123_3, recomp_may_be_unqualified),
             make_ims_used_and_imported(import_locn_interface),
             make_ims_int3_implementation,
             module_and_imports_add_direct_int_item_blocks,
@@ -1062,8 +1068,8 @@ process_module_int123_file(Globals, HaveReadModuleMapInt, PIKind,
 
 :- type process_interface_kind
     --->    pik_int0
-    ;       pik_direct(int123, need_qualifier)
-    ;       pik_indirect(int123).   % implicitly must_be_qualified
+    ;       pik_direct(int123, recomp_need_qualifier)
+    ;       pik_indirect(int123).   % implicitly recomp_must_be_qualified
 
 :- pred process_module_interface_general(globals::in,
     have_read_module_int_map::in, process_interface_kind::in,
@@ -1144,8 +1150,8 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
     (
         PIKind = pik_int0,
         % XXX Why do we ignore Errors here for the timestamp (only)?
-        maybe_record_timestamp(ModuleName, ifk_int0, may_be_unqualified,
-            MaybeTimestamp, !ModuleAndImports),
+        maybe_record_timestamp(ModuleName, ifk_int0,
+            recomp_may_be_unqualified, MaybeTimestamp, !ModuleAndImports),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         ( if set.is_empty(FatalErrors) then
             module_and_imports_add_ancestor(ModuleName, !ModuleAndImports)
@@ -1156,8 +1162,8 @@ process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
         PIKind = pik_indirect(_),
         % XXX Why do we ignore Errors here for (a) the timestamp,
         % and (b) for the update of !ModuleAndImports?
-        maybe_record_timestamp(ModuleName, IntFileKind, must_be_qualified,
-            MaybeTimestamp, !ModuleAndImports),
+        maybe_record_timestamp(ModuleName, IntFileKind,
+            recomp_must_be_qualified, MaybeTimestamp, !ModuleAndImports),
         module_and_imports_add_indirect_dep(ModuleName, !ModuleAndImports)
     ;
         PIKind = pik_direct(_, NeedQual),
@@ -1189,14 +1195,14 @@ maybe_log_augment_decision(Why, PIKind, ModuleName, Read, !IO) :-
             PIKind = pik_int0,
             ExtensionStr = ".int0"
         ;
-            PIKind = pik_direct(IntFileKind, NeedQual),
+            PIKind = pik_direct(IntFileKind, RecompNeedQual),
             KindStr = int123_str(IntFileKind),
             (
-                NeedQual = must_be_qualified,
-                ExtensionStr = "direct must_be_qualified " ++ KindStr
+                RecompNeedQual = recomp_must_be_qualified,
+                ExtensionStr = "direct recomp_must_be_qualified " ++ KindStr
             ;
-                NeedQual = may_be_unqualified,
-                ExtensionStr = "direct may_be_unqualied " ++ KindStr
+                RecompNeedQual = recomp_may_be_unqualified,
+                ExtensionStr = "direct recomp_may_be_unqualied " ++ KindStr
             )
         ;
             PIKind = pik_indirect(IntFileKind),
@@ -1228,10 +1234,10 @@ maybe_return_timestamp(yes(_), do_return_timestamp).
 maybe_return_timestamp(no, dont_return_timestamp).
 
 :- pred maybe_record_timestamp(module_name::in, int_file_kind::in,
-    need_qualifier::in, maybe(timestamp)::in,
+    recomp_need_qualifier::in, maybe(timestamp)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-maybe_record_timestamp(ModuleName, IntFileKind, NeedQual, MaybeTimestamp,
+maybe_record_timestamp(ModuleName, IntFileKind, RecompNeedQual, MaybeTimestamp,
         !ModuleAndImports) :-
     module_and_imports_get_maybe_timestamp_map(!.ModuleAndImports,
         MaybeTimestampMap),
@@ -1240,7 +1246,8 @@ maybe_record_timestamp(ModuleName, IntFileKind, NeedQual, MaybeTimestamp,
         (
             MaybeTimestamp = yes(Timestamp),
             FileKind = fk_int(IntFileKind),
-            TimestampInfo = module_timestamp(FileKind, Timestamp, NeedQual),
+            TimestampInfo =
+                module_timestamp(FileKind, Timestamp, RecompNeedQual),
             map.set(ModuleName, TimestampInfo, TimestampMap0, TimestampMap),
             module_and_imports_set_maybe_timestamp_map(yes(TimestampMap),
                 !ModuleAndImports)
@@ -1984,7 +1991,7 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
 
     % Read in the .int, and .int2 files needed by the .opt files.
     process_module_int123_files(Globals, HaveReadModuleMapInt,
-        "opt_new_deps", pik_direct(int123_1, must_be_qualified),
+        "opt_new_deps", pik_direct(int123_1, recomp_must_be_qualified),
         make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
         set.to_sorted_list(NewDeps),

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module change_class_r_2.
 
 :- interface.
@@ -5,16 +9,16 @@
 :- import_module io.
 
 :- type foo
-	--->	a
-	;	b(int).
+    --->    a
+    ;       b(int).
 
 :- pred init_foo(foo::out) is det.
 
 :- typeclass io(T) where [
-	pred output(T::in, io__state::di, io__state::uo) is det,
-	pred input(T::out, io__state::di, io__state::uo) is det
+    pred output(T::in, io::di, io::uo) is det,
+    pred input(T::out, io::di, io::uo) is det
 ].
-	
+    
 :- instance io(foo).
 
 :- implementation.
@@ -22,16 +26,15 @@
 :- import_module require.
 
 :- instance io(foo) where [
-	pred(output/3) is io__write,
-	(input(T) -->
-		io__read(Result),
-		{ Result = ok(T0) ->
-			T = T0
-		;
-			error("io__read failed")
-		}
-	)
+    pred(output/3) is io.write,
+    ( input(T, !IO) :-
+        io.read(Result, !IO),
+        ( if Result = ok(T0) then
+            T = T0
+        else
+            error("io.read failed")
+        )
+    )
 ].
 
 init_foo(a).
-

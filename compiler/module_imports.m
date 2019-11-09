@@ -54,8 +54,16 @@
     % The first reason is that the need_qualifier field is set by
     % the code that *wants to read* a file, and is not a field
     % whose value should be filled in by *reading* the file.
-    % (The timestamp field is properly filled in by reading
-    % the file.)
+    % RESOLVED: this need_qualifier field does NOT mean the same thing
+    % as need_qualifier fields elsewhere. Its value is used only by
+    % the recompilation package to make decisions about whether a module
+    % should be recompiled, and while the logic in recompilation.check.m
+    % has *some* similarities to other forms of qualificaton testing,
+    % it also has differences. To this end, this field now uses values
+    % of a type, recomp_need_qualifier, that is completely separate
+    % from the need_qualifier type used elsewhere. If I (zs) understood
+    % its semantics better, I would give it both it and its function symbols
+    % names that are more specific to that semantics.
     %
     % The second reason is that when we read in e.g. mod1.int, we simply
     % overwrite any existing entry in the module_timestamp_map for mod1.
@@ -75,17 +83,23 @@
     % - Proposition 2b: when we add an entry for a module, the map
     %   *can* contain a previous entry for the module, the need_qualifier
     %   field in the new entry is at least as restrictive as in
-    %   the old entry. (This means that once we required the file
+    %   the old entry. This means that once we required the file
     %   we read for a module to be fully module qualified, we shouldn't
-    %   later forget about that requirement.
+    %   later forget about that requirement. (XXX See the discussion
+    %   of the first reason above.)
     %
 :- type module_timestamp_map == map(module_name, module_timestamp).
 :- type module_timestamp
     --->    module_timestamp(
                 mts_file_kind       :: file_kind,
                 mts_timestamp       :: timestamp,
-                mts_need_qualifier  :: need_qualifier
+                mts_need_qualifier  :: recomp_need_qualifier
             ).
+
+    % XXX See the discussion above.
+:- type recomp_need_qualifier
+    --->    recomp_must_be_qualified
+    ;       recomp_may_be_unqualified.
 
 %---------------------------------------------------------------------------%
 

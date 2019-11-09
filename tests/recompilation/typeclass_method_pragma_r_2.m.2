@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module typeclass_method_pragma_r_2.
 
 :- interface.
@@ -5,15 +9,15 @@
 :- import_module io.
 
 :- type foo
-	--->	a
-	;	b(int).
+    --->    a
+    ;       b(int).
 
 :- pred init_foo(foo::out) is det.
 
 :- pragma obsolete(output/3).
 
 :- typeclass io(T) where [
-	pred output(T::in, io__state::di, io__state::uo) is det
+    pred output(T::in, io::di, io::uo) is det
 ].
 
 :- instance io(foo).
@@ -21,9 +25,7 @@
 :- implementation.
 
 :- instance io(foo) where [
-	pred(output/3) is io__write
+    pred(output/3) is io.write
 ].
 
-
 init_foo(a).
-

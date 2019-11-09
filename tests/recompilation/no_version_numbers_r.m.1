@@ -1,16 +1,19 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module no_version_numbers_r.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det. 
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module no_version_numbers_r_2.
 
-main -->
-	io__write_string(no_version_numbers_r_2__message),
-	io__nl.
-
+main(!IO) :-
+    io.write_string(no_version_numbers_r_2.message, !IO),
+    io.nl(!IO).

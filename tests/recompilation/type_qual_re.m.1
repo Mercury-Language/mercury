@@ -1,18 +1,21 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module type_qual_re.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module type_qual_re_2.
 :- import_module type_desc.
 
-main -->
-	% Type name used only in type qualification.
-	io__write_string(type_name(type_of(_ `with_type` bar))),
-	io__nl.
-
+main(!IO) :-
+    % Type name used only in type qualification.
+    io.write_string(type_name(type_of(_ `with_type` bar)), !IO),
+    io.nl(!IO).

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module add_instance_2_r_2.
 
 :- interface.
@@ -13,6 +17,5 @@
 :- import_module io.
 
 :- instance io(int) where [
-	pred(output/3) is io__write_int
-].	
-
+    pred(output/3) is io.write_int
+].  

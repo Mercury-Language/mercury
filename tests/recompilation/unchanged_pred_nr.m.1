@@ -1,17 +1,20 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unchanged_pred_nr.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module unchanged_pred_nr_2.
 :- import_module list.
 
-main -->
-	{ unchanged_pred([1], [1], "OK\n", Str) },
-	io__write_string(Str).
-
+main(!IO) :-
+    unchanged_pred([1], [1], "OK\n", Str),
+    io.write_string(Str, !IO).
