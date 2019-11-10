@@ -5252,6 +5252,39 @@ fi
 AC_SUBST(USE_MSVCRT)
 
 #-----------------------------------------------------------------------------#
+
+AC_ARG_ENABLE(lto,
+    AC_HELP_STRING([--enable-lto],
+                   [Enable link-time optimizations for C grades]),
+    mercury_cv_lto=yes,mercury_cv_lto=no)
+
+USE_LINK_TIME_OPT=$mercury_cv_lto
+AC_SUBST(USE_LINK_TIME_OPT)
+
+if test "$mercury_cv_lto" = "yes"; then
+    case "$C_COMPILER_TYPE" in
+        msvc*)
+            CFLAGS_FOR_LTO="-GL"
+            LDFLAGS_FOR_LTO="-LTCG"
+            ;;
+        gcc*|clang*)
+            CFLAGS_FOR_LTO="-flto"
+            LDFLAGS_FOR_LTO="-flto"
+            ;;
+        *)
+            CFLAGS_FOR_LTO=""
+            LDFLAGS_FOR_LTO=""
+            ;;
+    esac
+else
+    CFLAGS_FOR_LTO=""
+    LDFLAGS_FOR_LTO=""
+fi
+
+AC_SUBST(CFLAGS_FOR_LTO)
+AC_SUBST(LDFLAGS_FOR_LTO)
+
+#-----------------------------------------------------------------------------#
 #
 # Check for readline and editline (libedit).
 #
