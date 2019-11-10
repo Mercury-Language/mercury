@@ -72,6 +72,7 @@ DEFAULT_MCFLAGS=\
 		--cflags-for-regs "@CFLAGS_FOR_REGS@" \
 		--cflags-for-gotos "@CFLAGS_FOR_GOTOS@" \
 		--cflags-for-pic "@CFLAGS_FOR_PIC@" \
+		--cflags-for-lto "@CFLAGS_FOR_LTO@" \
 		--c-flag-to-name-object-file "@OBJFILE_OPT@" \
 		--java-flags "@JAVAC_FLAGS_FOR_HEAP_SIZE_CONFIG@" \
 		--object-file-extension ".@OBJ_SUFFIX@" \
@@ -98,6 +99,7 @@ DEFAULT_MCFLAGS=\
 		--readline-libs "@READLINE_LIBRARIES@" \
 		--linker-opt-separator "@LINK_OPT_SEP@" \
 		--linker-thread-flags "@LDFLAGS_FOR_THREADS@" \
+		--linker-lto-flags "@LDFLAGS_FOR_LTO@" \
 		--shlib-linker-thread-flags "@LD_LIBFLAGS_FOR_THREADS@" \
 		--linker-trace-flags "@LDFLAGS_FOR_TRACE@" \
 		--shlib-linker-trace-flags "@LD_LIBFLAGS_FOR_TRACE@" \

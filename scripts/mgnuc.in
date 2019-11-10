@@ -25,6 +25,7 @@ C_COMPILER_TYPE=${MERCURY_C_COMPILER_TYPE="@C_COMPILER_TYPE@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
+CFLAGS_FOR_LTO="@CFLAGS_FOR_LTO@"
 CFLAGS_FOR_NO_STRICT_ALIASING="@CFLAGS_FOR_NO_STRICT_ALIASING@"
 CFLAGS_FOR_ANSI="@CFLAGS_FOR_ANSI@"
 CFLAGS_FOR_SANITIZERS="@CFLAGS_FOR_SANITIZERS@"
@@ -86,7 +87,7 @@ case "$C_COMPILER_TYPE" in
     msvc*)
         ANSI_OPTS=""
         CHECK_OPTS="-nologo"    # Suppress the MSVC banner message.
-        OPT_OPTS=""
+        OPT_OPTS="-O1"
         # See README.MS-VisualC for why we don't enable C level debugging.
         #DEBUG_OPTS="-Zi"
         DEBUG_OPTS=""
@@ -514,6 +515,9 @@ esac
 # if sanitizers were enabled at configure time, add CFLAGS_FOR_SANITIZERS
 SANITIZER_OPTS="$CFLAGS_FOR_SANITIZERS"
 
+# Use any applicable LTO options
+LTO_OPTS="$CFLAGS_FOR_LTO"
+
 #
 # Special case hacks for particular architectures
 # Any code here needs to be duplicated in ../configure.in.
@@ -645,6 +649,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $ANSI_OPTS\
     $CHECK_OPTS\
     $OPT_OPTS\
+    $LTO_OPTS\
     $HLC_OPTS\
     $HLD_OPTS\
     $GCC_OPTS\

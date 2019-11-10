@@ -921,6 +921,7 @@
     ;       cflags_for_debug
     ;       cflags_for_sanitizers
     ;       cflags_for_pic
+    ;       cflags_for_lto
     ;       c_flag_to_name_object_file
     ;       object_file_extension
     ;       pic_object_file_extension
@@ -1015,6 +1016,7 @@
     ;       linker_opt_separator
     ;       linker_thread_flags
     ;       shlib_linker_thread_flags
+    ;       linker_lto_flags
     ;       linker_static_flags
     ;       linker_strip_flag
     ;       linker_link_lib_flag
@@ -1853,6 +1855,7 @@ option_defaults_2(target_code_compilation_option, [
     cflags_for_threads                  -   string(""),
     cflags_for_debug                    -   string("-g"),
     cflags_for_pic                      -   string(""),
+    cflags_for_lto                      -   string(""),
     c_flag_to_name_object_file          -   string("-o "),
     object_file_extension               -   string(".o"),
     pic_object_file_extension           -   string(".o"),
@@ -1963,6 +1966,7 @@ option_defaults_2(link_option, [
     shlib_linker_trace_flags            -   string(""),
     linker_thread_flags                 -   string(""),
     shlib_linker_thread_flags           -   string(""),
+    linker_lto_flags                    -   string(""),
     linker_static_flags                 -   string("-static"),
     linker_strip_flag                   -   string("-s"),
     linker_link_lib_flag                -   string("-l"),
@@ -2889,6 +2893,7 @@ long_option("cflags-for-threads",   cflags_for_threads).
 long_option("cflags-for-debug",     cflags_for_debug).
 long_option("cflags-for-sanitizers", cflags_for_sanitizers).
 long_option("cflags-for-pic",       cflags_for_pic).
+long_option("cflags-for-lto",       cflags_for_lto).
 long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
 long_option("object-file-extension",    object_file_extension).
 long_option("pic-object-file-extension", pic_object_file_extension).
@@ -2997,6 +3002,7 @@ long_option("linker-trace-flags",   linker_trace_flags).
 long_option("shlib-linker-trace-flags", shlib_linker_trace_flags).
 long_option("linker-thread-flags",  linker_thread_flags).
 long_option("shlib-linker-thread-flags", shlib_linker_thread_flags).
+long_option("linker-lto-flags",     linker_lto_flags).
 long_option("linker-static-flags",  linker_static_flags).
 long_option("linker-strip-flag",    linker_strip_flag).
 long_option("linker-link-lib-flag", linker_link_lib_flag).

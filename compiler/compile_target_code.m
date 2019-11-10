@@ -336,6 +336,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         PIC = non_pic,
         CFLAGS_FOR_PIC = ""
     ),
+    globals.lookup_string_option(Globals, cflags_for_lto, CFLAGS_FOR_LTO),
     globals.lookup_bool_option(Globals, target_debug, Target_Debug),
     (
         Target_Debug = yes,
@@ -473,6 +474,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         GradeDefinesOpts,
         CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
         CFLAGS_FOR_THREADS, " ", CFLAGS_FOR_PIC, " ",
+        CFLAGS_FOR_LTO, " ",
         Target_DebugOpt,
         SanitizerOpts, " ",
         TypeLayoutOpt,
@@ -1824,6 +1826,8 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         UndefOpt = "",
         ReserveStackSizeOpt = reserve_stack_size_flags(Globals)
     ),
+    
+    globals.lookup_string_option(Globals, linker_lto_flags, LTOOpts),
 
     % Should the executable be stripped?
     globals.lookup_bool_option(Globals, strip, Strip),
@@ -2015,6 +2019,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                     LinkerStripOpt, " ",
                     UndefOpt, " ",
                     ThreadOpts, " ",
+                    LTOOpts, " ",
                     TraceOpts, " ",
                     ReserveStackSizeOpt, " ",
                     OutputOpt, quote_arg(OutputFileName), " ",
