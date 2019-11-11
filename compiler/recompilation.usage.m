@@ -251,13 +251,31 @@ write_module_name_and_used_items(RecompInfo, TimestampMap, ModuleInstances,
     io.write_string(file_kind_to_extension(FileKind), !IO),
     io.write_string(""", ", !IO),
     write_version_number(ModuleTimestamp, !IO),
+    % This must be kept in sync with parse_module_timestamp in
+    % recompilation.check.m.
     (
-        RecompNeedQual = recomp_must_be_qualified,
-        io.write_string(", used)", !IO)
+        RecompNeedQual = recomp_avail_src,
+        io.write_string(", src", !IO)
     ;
-        RecompNeedQual = recomp_may_be_unqualified,
-        io.write_string(")", !IO)
+        RecompNeedQual = recomp_avail_int_use,
+        % We used to output just ", used".
+        io.write_string(", int_used", !IO)
+    ;
+        RecompNeedQual = recomp_avail_imp_use,
+        io.write_string(", imp_used", !IO)
+    ;
+        RecompNeedQual = recomp_avail_int_import,
+        % We used to output nothing.
+        io.write_string(", int_imported", !IO)
+    ;
+        RecompNeedQual = recomp_avail_imp_import,
+        % We used to output nothing.
+        io.write_string(", imp_imported", !IO)
+    ;
+        RecompNeedQual = recomp_avail_int_use_imp_import,
+        io.write_string(", int_used_imp_imported", !IO)
     ),
+    io.write_string(")", !IO),
     ( if
         % XXX We don't yet record all uses of items from these modules
         % in polymorphism.m, etc.

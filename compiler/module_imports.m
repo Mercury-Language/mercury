@@ -45,33 +45,40 @@
     % file, or generated .opt/.transopt file) we read, and the modification
     % time of the file.
     %
-    % We also record whether we expected the file we read to be
-    % fully module qualified or not.
+    % We also record whether code in the source module whose compilation
+    % we are concerned with may refer to items in the read-in module
+    % using non-fully-qualified names, or not.
     %
-    % XXX The handling of the map looks wrong to me (zs),
-    % for two separate reasons.
+    % What follows in the next two paragraphs is conjecture by wangp,
+    % but I (zs) agree that it is likely a correct description of
+    % what we use this information for.
     %
-    % The first reason is that the need_qualifier field is set by
-    % the code that *wants to read* a file, and is not a field
-    % whose value should be filled in by *reading* the file.
-    % RESOLVED: this need_qualifier field does NOT mean the same thing
-    % as need_qualifier fields elsewhere. Its value is used only by
-    % the recompilation package to make decisions about whether a module
-    % should be recompiled, and while the logic in recompilation.check.m
-    % has *some* similarities to other forms of qualificaton testing,
-    % it also has differences. To this end, this field now uses values
-    % of a type, recomp_need_qualifier, that is completely separate
-    % from the need_qualifier type used elsewhere. If I (zs) understood
-    % its semantics better, I would give it both it and its function symbols
-    % names that are more specific to that semantics.
+    % Suppose a module msrc gets added to it a :- use_module declaration
+    % for a module m1, when previously it did not import module m1 in any
+    % shape or form. If msrc compiled cleanly until now, then a non-fully-
+    % qualified reference (e.g. f) to a item (type, data constructor,
+    % predicate etc) could not have been a reference to an item in m1,
+    % even if m1 defines an item named f of the relevant kind.
     %
-    % The second reason is that when we read in e.g. mod1.int, we simply
-    % overwrite any existing entry in the module_timestamp_map for mod1.
-    % I see no documented argument anywhere for any of the following
-    % propositions, which could each make the above the right thing to do.
+    % On the other hand, consider a version of the situation above
+    % in which msrc gains access to m1 via an :- import_module declaration.
+    % In that case, if m1 defines an item named f, then a non-fully-qualified
+    % reference to that name *could* refer to that item in m1. If msrc
+    % compiled cleanly before, this f must have been resolved to refer
+    % to an item defined in some other module, but now that msrc imports m1,
+    % the non-fully-qualified reference to f has become ambiguous.
+    % This means that msrc must be recompiled, so that the recompilation
+    % may detect and report any such ambiguities.
+    %
+    % XXX The handling of the map looks wrong to me (zs), because
+    % when we read in e.g. mod1.int, we simply overwrite any existing entry
+    % in the module_timestamp_map for mod1. I see no documented argument
+    % anywhere for any of the following propositions, which could each make
+    % the above the right thing to do.
     %
     % - Proposition 1: when we add an entry for a module, the map
     %   cannot contain any previous entry for that module.
+    %   I (zs) think this is the correct answer, but have no proof.
     %
     % - Proposition 2a: when we add an entry for a module, the map
     %   *can* contain a previous entry for the module, but for
@@ -81,25 +88,44 @@
     %   module).
     %
     % - Proposition 2b: when we add an entry for a module, the map
-    %   *can* contain a previous entry for the module, the need_qualifier
+    %   *can* contain a previous entry for the module, the avail_kind
     %   field in the new entry is at least as restrictive as in
-    %   the old entry. This means that once we required the file
-    %   we read for a module to be fully module qualified, we shouldn't
-    %   later forget about that requirement. (XXX See the discussion
-    %   of the first reason above.)
+    %   the old entry.
     %
 :- type module_timestamp_map == map(module_name, module_timestamp).
 :- type module_timestamp
     --->    module_timestamp(
                 mts_file_kind       :: file_kind,
                 mts_timestamp       :: timestamp,
-                mts_need_qualifier  :: recomp_need_qualifier
+                mts_avail_kind      :: recomp_avail
             ).
 
-    % XXX See the discussion above.
-:- type recomp_need_qualifier
-    --->    recomp_must_be_qualified
-    ;       recomp_may_be_unqualified.
+:- type recomp_avail
+    --->    recomp_avail_src
+            % The module is the souurce module.
+    ;       recomp_avail_int_import
+            % There was an ":- import_module" in the interface section,
+            % or in an ancestor module. In either case, references to
+            % items defined by the read-in module may be made anywhere
+            % in the source module.
+    ;       recomp_avail_imp_import
+            % There was an ":- import_module" in the implementation section,
+            % or in an optimization file. In either case, references to
+            % items defined by the read-in module may be made only in
+            % in the implementation section of the source module.
+    ;       recomp_avail_int_use
+            % There was an ":- use_module" in the interface section,
+            % or in an ancestor module. In either case, references to
+            % items defined by the read-in module may be made anywhere
+            % in the source module.
+    ;       recomp_avail_imp_use
+            % There was an ":- use_module" in the implementation section,
+            % or in an optimization file. In either case, references to
+            % items defined by the read-in module may be made only in
+            % in the implementation section of the source module.
+    ;       recomp_avail_int_use_imp_import.
+            % There was an ":- use_module" in the interface section
+            % and an ":- import_module" in the implementation section.
 
 %---------------------------------------------------------------------------%
 

@@ -387,16 +387,38 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
         SuffixTerm = term.functor(term.string(SuffixStr), [], _),
         extension_to_file_kind(SuffixStr, FileKind),
         Timestamp = term_to_timestamp(TimestampTerm),
+        % This must be kept in sync with write_module_name_and_used_items
+        % in recompilation.usage.m.
         (
-            MaybeOtherTerms = [term.functor(term.atom("used"), [], _)],
-            RecompNeedQual = recomp_must_be_qualified
-        ;
             MaybeOtherTerms = [],
-            RecompNeedQual = recomp_may_be_unqualified
+            RecompAvail = recomp_avail_int_import
+        ;
+            MaybeOtherTerms = [term.functor(term.atom(Other), [], _)],
+            (
+                Other = "src",
+                RecompAvail = recomp_avail_src
+            ;
+                ( Other = "used"
+                ; Other = "int_used"
+                ),
+                RecompAvail = recomp_avail_int_use
+            ;
+                Other = "imp_used",
+                RecompAvail = recomp_avail_imp_use
+            ;
+                Other = "int_imported",
+                RecompAvail = recomp_avail_int_import
+            ;
+                Other = "imp_imported",
+                RecompAvail = recomp_avail_imp_import
+            ;
+                Other = "int_used_imp_imported",
+                RecompAvail = recomp_avail_int_use_imp_import
+            )
         )
     then
         ModuleName = ModuleNamePrime,
-        ModuleTimestamp = module_timestamp(FileKind, Timestamp, RecompNeedQual)
+        ModuleTimestamp = module_timestamp(FileKind, Timestamp, RecompAvail)
     else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in module timestamp"),
@@ -695,7 +717,7 @@ check_imported_module(Globals, Term, !Info, !IO) :-
         ImportedModuleName, ModuleTimestamp),
 
     ModuleTimestamp =
-        module_timestamp(FileKind, RecordedTimestamp, RecompNeedQual),
+        module_timestamp(FileKind, RecordedTimestamp, RecompAvail),
     (
         FileKind = fk_int(IntFileKind)
     ;
@@ -755,7 +777,7 @@ check_imported_module(Globals, Term, !Info, !IO) :-
                     ms_interface, ms_implementation,
                     IntIncls, ImpIncls, IntAvails, ImpAvails,
                     IntFIMs, ImpFIMs, IntItems, ImplItems, RawItemBlocks),
-                check_module_used_items(ImportedModuleName, RecompNeedQual,
+                check_module_used_items(ImportedModuleName, RecompAvail,
                     RecordedTimestamp, UsedItemsTerm, VersionNumbers,
                     RawItemBlocks, !Info)
             else
@@ -775,11 +797,11 @@ check_imported_module(Globals, Term, !Info, !IO) :-
         throw_syntax_error(recompile_for_file_error(FileName, Pieces), !.Info)
     ).
 
-:- pred check_module_used_items(module_name::in, recomp_need_qualifier::in,
+:- pred check_module_used_items(module_name::in, recomp_avail::in,
     timestamp::in, term::in, version_numbers::in, list(raw_item_block)::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_module_used_items(ModuleName, RecompNeedQual, OldTimestamp,
+check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
         UsedItemsTerm, NewVersionNumbers, RawItemBlocks, !Info) :-
     parse_version_numbers(UsedItemsTerm, UsedItemsResult),
     (
@@ -811,7 +833,7 @@ check_module_used_items(ModuleName, RecompNeedQual, OldTimestamp,
     % Check whether added or modified items could cause name resolution
     % ambiguities with items which were used.
     list.foldl(
-        check_raw_item_block_for_ambiguities(RecompNeedQual,
+        check_raw_item_block_for_ambiguities(RecompAvail,
             OldTimestamp, UsedItemVersionNumbers),
         RawItemBlocks, !Info),
 
@@ -914,23 +936,22 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
     % file, check whether it introduces ambiguities with items which were used
     % when the current module was last compiled.
     %
-:- pred check_raw_item_block_for_ambiguities(recomp_need_qualifier::in,
+:- pred check_raw_item_block_for_ambiguities(recomp_avail::in,
     timestamp::in, item_version_numbers::in, raw_item_block::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_raw_item_block_for_ambiguities(RecompNeedQual, OldTimestamp,
+check_raw_item_block_for_ambiguities(RecompAvail, OldTimestamp,
         VersionNumbers, RawItemBlock, !Info) :-
     RawItemBlock = item_block(_, _, _Incls, _Avails, _FIMs, Items),
     list.foldl(
-        check_item_for_ambiguities(RecompNeedQual, OldTimestamp,
-            VersionNumbers),
+        check_item_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers),
         Items, !Info).
 
-:- pred check_item_for_ambiguities(recomp_need_qualifier::in, timestamp::in,
+:- pred check_item_for_ambiguities(recomp_avail::in, timestamp::in,
     item_version_numbers::in, item::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_item_for_ambiguities(RecompNeedQual, OldTimestamp, VersionNumbers, Item,
+check_item_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers, Item,
         !Info) :-
     (
         Item = item_clause(_),
@@ -940,12 +961,12 @@ check_item_for_ambiguities(RecompNeedQual, OldTimestamp, VersionNumbers, Item,
         ItemTypeDefn = item_type_defn_info(TypeSymName, TypeParams, TypeBody,
             _, _, _),
         list.length(TypeParams, TypeArity),
-        check_for_simple_item_ambiguity(RecompNeedQual, OldTimestamp,
+        check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
             VersionNumbers, type_abstract_item, TypeSymName, TypeArity,
             NeedsCheck, !Info),
         (
             NeedsCheck = yes,
-            check_type_defn_ambiguity_with_functor(RecompNeedQual,
+            check_type_defn_ambiguity_with_functor(RecompAvail,
                 type_ctor(TypeSymName, TypeArity), TypeBody, !Info)
         ;
             NeedsCheck = no
@@ -956,21 +977,21 @@ check_item_for_ambiguities(RecompNeedQual, OldTimestamp, VersionNumbers, Item,
         ItemInstDefn = item_inst_defn_info(InstSymName, InstParams,
             _MaybeForTypeCtor, _, _, _, _),
         list.length(InstParams, InstArity),
-        check_for_simple_item_ambiguity(RecompNeedQual, OldTimestamp,
+        check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
             VersionNumbers, inst_item, InstSymName, InstArity, _, !Info)
     ;
         Item = item_mode_defn(ItemModeDefn),
         ItemModeDefn = item_mode_defn_info(ModeSymName, ModeParams,
             _, _, _, _),
         list.length(ModeParams, ModeArity),
-        check_for_simple_item_ambiguity(RecompNeedQual, OldTimestamp,
+        check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
             VersionNumbers, mode_item, ModeSymName, ModeArity, _, !Info)
     ;
         Item = item_typeclass(ItemTypeClass),
         ItemTypeClass = item_typeclass_info(TypeClassSymName, TypeClassParams,
             _, _, Interface, _, _, _),
         list.length(TypeClassParams, TypeClassArity),
-        check_for_simple_item_ambiguity(RecompNeedQual, OldTimestamp,
+        check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
             VersionNumbers, typeclass_item, TypeClassSymName, TypeClassArity,
             NeedsCheck, !Info),
         ( if
@@ -978,7 +999,7 @@ check_item_for_ambiguities(RecompNeedQual, OldTimestamp, VersionNumbers, Item,
             Interface = class_interface_concrete(ClassDecls)
         then
             list.foldl(
-                check_class_decl_for_ambiguities(RecompNeedQual,
+                check_class_decl_for_ambiguities(RecompAvail,
                     OldTimestamp, VersionNumbers),
                 ClassDecls, !Info)
         else
@@ -988,7 +1009,7 @@ check_item_for_ambiguities(RecompNeedQual, OldTimestamp, VersionNumbers, Item,
         Item = item_pred_decl(ItemPredDecl),
         ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, Args,
             WithType, _, _, _, _, _, _, _, _, _, _),
-        check_for_pred_or_func_item_ambiguity(no, RecompNeedQual, OldTimestamp,
+        check_for_pred_or_func_item_ambiguity(no, RecompAvail, OldTimestamp,
             VersionNumbers, PredOrFunc, PredSymName, Args, WithType, !Info)
     ;
         ( Item = item_mode_decl(_)
@@ -1004,17 +1025,17 @@ check_item_for_ambiguities(RecompNeedQual, OldTimestamp, VersionNumbers, Item,
         )
     ).
 
-:- pred check_class_decl_for_ambiguities(recomp_need_qualifier::in,
+:- pred check_class_decl_for_ambiguities(recomp_avail::in,
     timestamp::in, item_version_numbers::in, class_decl::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_class_decl_for_ambiguities(RecompNeedQual, OldTimestamp, VersionNumbers,
+check_class_decl_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         Decl, !Info) :-
     (
         Decl = class_decl_pred_or_func(PredOrFuncInfo),
         PredOrFuncInfo = class_pred_or_func_info(MethodName, PredOrFunc,
             MethodArgs, MethodWithType, _, _, _, _, _, _, _, _),
-        check_for_pred_or_func_item_ambiguity(yes, RecompNeedQual,
+        check_for_pred_or_func_item_ambiguity(yes, RecompAvail,
             OldTimestamp, VersionNumbers, PredOrFunc, MethodName,
             MethodArgs, MethodWithType, !Info)
     ;
@@ -1037,12 +1058,12 @@ item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
         true
     ).
 
-:- pred check_for_simple_item_ambiguity(recomp_need_qualifier::in,
+:- pred check_for_simple_item_ambiguity(recomp_avail::in,
     timestamp::in, item_version_numbers::in, item_type::in(simple_item),
     sym_name::in, arity::in, bool::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_simple_item_ambiguity(RecompNeedQual, UsedFileTimestamp,
+check_for_simple_item_ambiguity(RecompAvail, UsedFileTimestamp,
         VersionNumbers, ItemType, SymName, Arity, NeedsCheck, !Info) :-
     ( if
         item_is_new_or_changed(UsedFileTimestamp, VersionNumbers,
@@ -1055,7 +1076,7 @@ check_for_simple_item_ambiguity(RecompNeedQual, UsedFileTimestamp,
         ( if map.search(UsedItemMap, Name - Arity, MatchingQualifiers) then
             map.foldl(
                 check_for_simple_item_ambiguity_2(ItemType,
-                    RecompNeedQual, SymName, Arity),
+                    RecompAvail, SymName, Arity),
                 MatchingQualifiers, !Info)
         else
             true
@@ -1065,17 +1086,22 @@ check_for_simple_item_ambiguity(RecompNeedQual, UsedFileTimestamp,
     ).
 
 :- pred check_for_simple_item_ambiguity_2(item_type::in,
-    recomp_need_qualifier::in, sym_name::in, arity::in,
+    recomp_avail::in, sym_name::in, arity::in,
     module_qualifier::in, module_name::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_simple_item_ambiguity_2(ItemType, RecompNeedQual, SymName, Arity,
+check_for_simple_item_ambiguity_2(ItemType, RecompAvail, SymName, Arity,
         OldModuleQualifier, OldMatchingModuleName, !Info) :-
     Name = unqualify_name(SymName),
     ( if
+        % XXX RECOMP401 This logic is ancient, and may do the wrong thing
+        % with most values of RecompAvail, since they those values did not
+        % exist when the original version of this was written.
+        ( RecompAvail = recomp_avail_int_use
+        ; RecompAvail = recomp_avail_imp_use
+        ),
         % XXX This is a bit conservative in the case of partially qualified
         % names but that hopefully won't come up too often.
-        RecompNeedQual = recomp_must_be_qualified,
         OldModuleQualifier = unqualified("")
     then
         true
@@ -1094,12 +1120,12 @@ check_for_simple_item_ambiguity_2(ItemType, RecompNeedQual, SymName, Arity,
     ).
 
 :- pred check_for_pred_or_func_item_ambiguity(bool::in,
-    recomp_need_qualifier::in, timestamp::in, item_version_numbers::in,
+    recomp_avail::in, timestamp::in, item_version_numbers::in,
     pred_or_func::in, sym_name::in,
     list(type_and_mode)::in, maybe(mer_type)::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompNeedQual, OldTimestamp,
+check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
         VersionNumbers, PredOrFunc, SymName, Args, WithType, !Info) :-
     (
         WithType = no,
@@ -1123,7 +1149,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompNeedQual, OldTimestamp,
         ( if map.search(UsedItemMap, Name, MatchingArityList) then
             list.foldl(
                 check_for_pred_or_func_item_ambiguity_1(WithType,
-                    ItemType, RecompNeedQual, SymName, Arity),
+                    ItemType, RecompAvail, SymName, Arity),
                 MatchingArityList, !Info)
         else
             true
@@ -1142,7 +1168,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompNeedQual, OldTimestamp,
             ),
             ResolvedFunctor = resolved_functor_pred_or_func(PredId, ModuleName,
                 PredOrFunc, Arity),
-            check_functor_ambiguities_by_name(RecompNeedQual, SymName,
+            check_functor_ambiguities_by_name(RecompAvail, SymName,
                 AritiesToMatch, ResolvedFunctor, !Info)
         ;
             SymName = unqualified(_),
@@ -1153,11 +1179,11 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompNeedQual, OldTimestamp,
     ).
 
 :- pred check_for_pred_or_func_item_ambiguity_1(maybe(mer_type)::in,
-    item_type::in, recomp_need_qualifier::in, sym_name::in, arity::in,
+    item_type::in, recomp_avail::in, sym_name::in, arity::in,
     pair(arity, map(sym_name, set(pair(pred_id, module_name))))::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, RecompNeedQual,
+check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, RecompAvail,
         SymName, Arity, MatchArity - MatchingQualifiers, !Info) :-
     ( if
         (
@@ -1169,7 +1195,7 @@ check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, RecompNeedQual,
         )
     then
         map.foldl(
-            check_for_pred_or_func_item_ambiguity_2(ItemType, RecompNeedQual,
+            check_for_pred_or_func_item_ambiguity_2(ItemType, RecompAvail,
                 SymName, MatchArity),
             MatchingQualifiers, !Info)
     else
@@ -1177,17 +1203,22 @@ check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, RecompNeedQual,
     ).
 
 :- pred check_for_pred_or_func_item_ambiguity_2(item_type::in,
-    recomp_need_qualifier::in, sym_name::in, arity::in, module_qualifier::in,
+    recomp_avail::in, sym_name::in, arity::in, module_qualifier::in,
     set(pair(pred_id, module_name))::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_pred_or_func_item_ambiguity_2(ItemType, RecompNeedQual,
+check_for_pred_or_func_item_ambiguity_2(ItemType, RecompAvail,
         SymName, Arity, OldModuleQualifier, OldMatchingModuleNames, !Info) :-
     Name = unqualify_name(SymName),
     ( if
+        % XXX RECOMP401 This logic is ancient, and may do the wrong thing
+        % with most values of RecompAvail, since they those values did not
+        % exist when the original version of this was written.
+        ( RecompAvail = recomp_avail_int_use
+        ; RecompAvail = recomp_avail_imp_use
+        ),
         % XXX This is a bit conservative in the case of partially qualified
         % names but that hopefully won't come up too often.
-        RecompNeedQual = recomp_must_be_qualified,
         OldModuleQualifier = unqualified("")
     then
         true
@@ -1216,11 +1247,11 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, RecompNeedQual,
     % any of them could create an ambiguity with functors used during the
     % last compilation.
     %
-:- pred check_type_defn_ambiguity_with_functor(recomp_need_qualifier::in,
+:- pred check_type_defn_ambiguity_with_functor(recomp_avail::in,
     type_ctor::in, type_defn::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_type_defn_ambiguity_with_functor(RecompNeedQual, TypeCtor, TypeDefn,
+check_type_defn_ambiguity_with_functor(RecompAvail, TypeCtor, TypeDefn,
         !Info) :-
     (
         ( TypeDefn = parse_tree_abstract_type(_)
@@ -1231,30 +1262,30 @@ check_type_defn_ambiguity_with_functor(RecompNeedQual, TypeCtor, TypeDefn,
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu = type_details_du(Ctors, _, _),
-        list.foldl(check_functor_ambiguities(RecompNeedQual, TypeCtor),
+        list.foldl(check_functor_ambiguities(RecompAvail, TypeCtor),
             one_or_more_to_list(Ctors), !Info)
     ).
 
-:- pred check_functor_ambiguities(recomp_need_qualifier::in, type_ctor::in,
+:- pred check_functor_ambiguities(recomp_avail::in, type_ctor::in,
     constructor::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities(RecompNeedQual, TypeCtor, Ctor, !Info) :-
+check_functor_ambiguities(RecompAvail, TypeCtor, Ctor, !Info) :-
     Ctor = ctor(_, _, Name, Args, Arity, _),
     TypeCtorItem = type_ctor_to_item_name(TypeCtor),
     ResolvedCtor = resolved_functor_constructor(TypeCtorItem),
-    check_functor_ambiguities_by_name(RecompNeedQual, Name,
+    check_functor_ambiguities_by_name(RecompAvail, Name,
         match_arity_exact(Arity), ResolvedCtor, !Info),
     list.foldl(
-        check_field_ambiguities(RecompNeedQual,
+        check_field_ambiguities(RecompAvail,
             resolved_functor_field(TypeCtorItem, item_name(Name, Arity))),
         Args, !Info).
 
-:- pred check_field_ambiguities(recomp_need_qualifier::in,
+:- pred check_field_ambiguities(recomp_avail::in,
     resolved_functor::in, constructor_arg::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_field_ambiguities(RecompNeedQual, ResolvedCtor, CtorArg, !Info) :-
+check_field_ambiguities(RecompAvail, ResolvedCtor, CtorArg, !Info) :-
     CtorArg = ctor_arg(MaybeCtorFieldName, _, _),
     (
         MaybeCtorFieldName = no
@@ -1265,9 +1296,9 @@ check_field_ambiguities(RecompNeedQual, ResolvedCtor, CtorArg, !Info) :-
         % allow taking the address of field access functions.
         field_access_function_name(get, FieldName, ExtractFuncName),
         field_access_function_name(set, FieldName, UpdateFuncName),
-        check_functor_ambiguities_by_name(RecompNeedQual, ExtractFuncName,
+        check_functor_ambiguities_by_name(RecompAvail, ExtractFuncName,
             match_arity_exact(1), ResolvedCtor, !Info),
-        check_functor_ambiguities_by_name(RecompNeedQual, UpdateFuncName,
+        check_functor_ambiguities_by_name(RecompAvail, UpdateFuncName,
             match_arity_exact(2), ResolvedCtor, !Info)
     ).
 
@@ -1278,29 +1309,29 @@ check_field_ambiguities(RecompNeedQual, ResolvedCtor, CtorArg, !Info) :-
     ;       match_arity_less_than_or_equal(arity)
     ;       match_arity_any.
 
-:- pred check_functor_ambiguities_by_name(recomp_need_qualifier::in,
+:- pred check_functor_ambiguities_by_name(recomp_avail::in,
     sym_name::in, functor_match_arity::in, resolved_functor::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities_by_name(RecompNeedQual, Name, MatchArity,
+check_functor_ambiguities_by_name(RecompAvail, Name, MatchArity,
         ResolvedCtor, !Info) :-
     UsedItems = !.Info ^ rci_used_items,
     UnqualName = unqualify_name(Name),
     UsedCtors = UsedItems ^ functors,
     ( if map.search(UsedCtors, UnqualName, UsedCtorAL) then
-        check_functor_ambiguities_2(RecompNeedQual, Name, MatchArity,
+        check_functor_ambiguities_2(RecompAvail, Name, MatchArity,
             ResolvedCtor, UsedCtorAL, !Info)
     else
         true
     ).
 
-:- pred check_functor_ambiguities_2(recomp_need_qualifier::in, sym_name::in,
+:- pred check_functor_ambiguities_2(recomp_avail::in, sym_name::in,
     functor_match_arity::in, resolved_functor::in,
     assoc_list(arity, resolved_functor_map)::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_functor_ambiguities_2(_, _, _, _, [], !Info).
-check_functor_ambiguities_2(RecompNeedQual, Name, MatchArity,
+check_functor_ambiguities_2(RecompAvail, Name, MatchArity,
         ResolvedCtor, [Arity - UsedCtorMap | UsedCtorAL], !Info) :-
     (
         MatchArity = match_arity_exact(ArityToMatch),
@@ -1331,30 +1362,35 @@ check_functor_ambiguities_2(RecompNeedQual, Name, MatchArity,
     ),
     (
         Check = yes,
-        map.foldl(check_functor_ambiguity(RecompNeedQual, Name, Arity,
+        map.foldl(check_functor_ambiguity(RecompAvail, Name, Arity,
             ResolvedCtor), UsedCtorMap, !Info)
     ;
         Check = no
     ),
     (
         Continue = yes,
-        check_functor_ambiguities_2(RecompNeedQual, Name, MatchArity,
+        check_functor_ambiguities_2(RecompAvail, Name, MatchArity,
             ResolvedCtor, UsedCtorAL, !Info)
     ;
         Continue = no
     ).
 
-:- pred check_functor_ambiguity(recomp_need_qualifier::in,
+:- pred check_functor_ambiguity(recomp_avail::in,
     sym_name::in, arity::in, resolved_functor::in,
     module_qualifier::in, set(resolved_functor)::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguity(RecompNeedQual, SymName, Arity, ResolvedCtor,
+check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
         OldModuleQualifier, OldResolvedCtors, !Info) :-
     ( if
+        % XXX RECOMP401 This logic is ancient, and may do the wrong thing
+        % with most values of RecompAvail, since they those values did not
+        % exist when the original version of this was written.
+        ( RecompAvail = recomp_avail_int_use
+        ; RecompAvail = recomp_avail_imp_use
+        ),
         % XXX This is a bit conservative in the case of partially qualified
         % names but that hopefully won't come up too often.
-        RecompNeedQual = recomp_must_be_qualified,
         OldModuleQualifier = unqualified("")
     then
         true
@@ -1364,10 +1400,9 @@ check_functor_ambiguity(RecompNeedQual, SymName, Arity, ResolvedCtor,
         partial_sym_name_matches_full(OldName, SymName),
         not set.member(ResolvedCtor, OldResolvedCtors)
     then
-        Reason = recompile_for_functor_ambiguity(
-            module_qualify_name(OldModuleQualifier, Name),
-            Arity, ResolvedCtor, set.to_sorted_list(OldResolvedCtors)
-        ),
+        OldModuleQualName = module_qualify_name(OldModuleQualifier, Name),
+        Reason = recompile_for_functor_ambiguity(OldModuleQualName, Arity,
+            ResolvedCtor, set.to_sorted_list(OldResolvedCtors)),
         record_recompilation_reason(Reason, !Info)
     else
         true
