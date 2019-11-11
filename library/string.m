@@ -4500,9 +4500,12 @@ capitalize_first(S1) = S2 :-
     capitalize_first(S1, S2).
 
 capitalize_first(S0, S) :-
-    ( if first_char(S0, C, S1) then
+    ( if
+        unsafe_index_next(S0, 0, _NextIndex, C),
         char.to_upper(C, UpperC),
-        first_char(S, UpperC, S1)
+        C \= UpperC
+    then
+        unsafe_set_char(UpperC, 0, S0, S)
     else
         S = S0
     ).
@@ -4511,9 +4514,12 @@ uncapitalize_first(S1) = S2 :-
     uncapitalize_first(S1, S2).
 
 uncapitalize_first(S0, S) :-
-    ( if first_char(S0, C, S1) then
+    ( if
+        unsafe_index_next(S0, 0, _NextIndex, C),
         char.to_lower(C, LowerC),
-        first_char(S, LowerC, S1)
+        C \= LowerC
+    then
+        unsafe_set_char(LowerC, 0, S0, S)
     else
         S = S0
     ).
