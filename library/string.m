@@ -375,10 +375,18 @@
 
     % set_char(Char, Index, String0, String):
     %
-    % `String' is `String0', with the code point beginning at code unit
-    % `Index' removed and replaced by `Char'.
+    % `String' is `String0', with the code unit sequence beginning at `Index'
+    % replaced by the encoding of `Char'. If the code unit at `Index' is the
+    % initial code unit in a valid encoding of a code point, then that entire
+    % code unit sequence is replaced. Otherwise, only the code unit at `Index'
+    % is replaced.
+    %
     % Fails if `Index' is out of range (negative, or greater than or equal to
     % the length of `String0').
+    %
+    % Throws an exception if `Char' is the null character or a code point that
+    % cannot be encoded in a string (namely, surrogate code points cannot be
+    % encoded in UTF-8 strings).
     %
 :- pred set_char(char, int, string, string).
 :- mode set_char(in, in, in, out) is semidet.
@@ -388,10 +396,8 @@
 
     % det_set_char(Char, Index, String0, String):
     %
-    % `String' is `String0', with the code point beginning at code unit
-    % `Index' removed and replaced by `Char'.
-    % Calls error/1 if `Index' is out of range (negative, or greater than
-    % or equal to the length of `String0').
+    % Same as set_char/4 but throws an exception if `Index' is out of range
+    % (negative, or greater than or equal to the length of `String0').
     %
 :- func det_set_char(char, int, string) = string.
 :- pred det_set_char(char, int, string, string).
@@ -402,12 +408,10 @@
 
     % unsafe_set_char(Char, Index, String0, String):
     %
-    % `String' is `String0', with the code point beginning at code unit
-    % `Index' removed and replaced by `Char'.
+    % Same as set_char/4 but does not check if `Index' is in range.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String0').
-    % This version is constant time, whereas det_set_char
-    % may be linear in the length of the string. Use with care!
+    % Use with care!
     %
 :- func unsafe_set_char(char, int, string) = string.
 :- mode unsafe_set_char(in, in, in) = out is det.
@@ -2689,118 +2693,22 @@ index_check(Index, Length) :-
 % Writing characters to strings.
 %
 
-% XXX ILSEQ If Index does not point to the start of a well-formed sequence,
-% consider making set_char/unsafe_set_char replace the code unit at Index with
-% the encoding of Char, i.e. treat the code unit as its own pseudo code point.
-
-set_char(Char, Index, !Str) :-
+set_char(Char, Index, Str0, Str) :-
     ( if char.to_int(Char, 0) then
         unexpected($pred, "null character")
+    else if
+        internal_encoding_is_utf8,
+        char.is_surrogate(Char)
+    then
+        unexpected($pred, "surrogate code point")
     else
-        set_char_non_null(Char, Index, !Str)
+        Len0 = length(Str0),
+        ( if index_check(Index, Len0) then
+            unsafe_set_char_copy_string(Char, Index, Len0, Str0, Str)
+        else
+            fail
+        )
     ).
-
-:- pred set_char_non_null(char, int, string, string).
-:- mode set_char_non_null(in, in, in, out) is semidet.
-% NOTE This mode is disabled because the compiler puts constant strings
-% into static data even when they might be updated.
-% :- mode set_char_non_null(in, in, di, uo) is semidet.
-
-:- pragma foreign_proc("C",
-    set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    size_t len = strlen(Str0);
-    if ((MR_Unsigned) Index >= len) {
-        SUCCESS_INDICATOR = MR_FALSE;
-    } else if (MR_is_ascii(Str0[Index]) && MR_is_ascii(Ch)) {
-        // Fast path.
-        SUCCESS_INDICATOR = MR_TRUE;
-        MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
-        strcpy(Str, Str0);
-        Str[Index] = Ch;
-    } else {
-        int oldc = MR_utf8_get(Str0, Index);
-        if (oldc < 0) {
-            SUCCESS_INDICATOR = MR_FALSE;
-        } else {
-            size_t oldwidth = MR_utf8_width(oldc);
-            size_t newwidth = MR_utf8_width(Ch);
-            size_t newlen;
-
-            newlen = len - oldwidth + newwidth;
-            MR_allocate_aligned_string_msg(Str, newlen, MR_ALLOC_ID);
-            MR_memcpy(Str, Str0, Index);
-            MR_utf8_encode(Str + Index, Ch);
-            strcpy(Str + Index + newwidth, Str0 + Index + oldwidth);
-            SUCCESS_INDICATOR = MR_TRUE;
-        }
-    }
-").
-:- pragma foreign_proc("C#",
-    set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (Index < 0 || Index >= Str0.Length) {
-        Str = null;
-        SUCCESS_INDICATOR = false;
-    } else {
-        System.Text.StringBuilder sb = new System.Text.StringBuilder(Str0);
-        if (!System.Char.IsHighSurrogate(Str0, Index) && Ch <= 0xffff) {
-            // Fast path.
-            sb[Index] = (char) Ch;
-        } else {
-            if (Str0.Length > Index + 1 &&
-                System.Char.IsLowSurrogate(Str0, Index + 1))
-            {
-                sb.Remove(Index, 2);
-            } else {
-                sb.Remove(Index, 1);
-            }
-            sb.Insert(Index, System.Char.ConvertFromUtf32(Ch));
-        }
-        Str = sb.ToString();
-        SUCCESS_INDICATOR = true;
-    }
-").
-:- pragma foreign_proc("Java",
-    set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (Index < 0 || Index >= Str0.length()) {
-        Str = null;
-        SUCCESS_INDICATOR = false;
-    } else {
-        java.lang.StringBuilder sb = new StringBuilder(Str0);
-
-        int oldc = sb.codePointAt(Index);
-        int oldwidth = java.lang.Character.charCount(oldc);
-        int newwidth = java.lang.Character.charCount(Ch);
-        if (oldwidth == 1 && newwidth == 1) {
-            sb.setCharAt(Index, (char) Ch);
-        } else {
-            char[] buf = java.lang.Character.toChars(Ch);
-            sb.replace(Index, Index + oldwidth, new String(buf));
-        }
-
-        Str = sb.toString();
-        SUCCESS_INDICATOR = true;
-    }
-").
-:- pragma foreign_proc("Erlang",
-    set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    case Str0 of
-        <<Left:Index/binary, _/utf8, Right/binary>> ->
-            Str = unicode:characters_to_binary([Left, Ch, Right]),
-            SUCCESS_INDICATOR = true;
-        _ ->
-            Str = <<>>,
-            SUCCESS_INDICATOR = false
-    end
-").
 
 det_set_char(C, N, S0) = S :-
     det_set_char(C, N, S0, S).
@@ -2817,65 +2725,91 @@ det_set_char(Char, Int, String0, String) :-
 unsafe_set_char(C, N, S0) = S :-
     unsafe_set_char(C, N, S0, S).
 
-unsafe_set_char(Char, Index, !Str) :-
+unsafe_set_char(Char, Index, Str0, Str) :-
     ( if char.to_int(Char, 0) then
         unexpected($pred, "null character")
+    else if
+        internal_encoding_is_utf8,
+        char.is_surrogate(Char)
+    then
+        unexpected($pred, "surrogate code point")
     else
-        unsafe_set_char_non_null(Char, Index, !Str)
+        Len0 = length(Str0),
+        unsafe_set_char_copy_string(Char, Index, Len0, Str0, Str)
     ).
 
-:- pred unsafe_set_char_non_null(char, int, string, string).
-:- mode unsafe_set_char_non_null(in, in, in, out) is det.
-% NOTE This mode is disabled because the compiler puts constant strings
-% into static data even when they might be updated.
-% :- mode unsafe_set_char_non_null(in, in, di, uo) is det.
+:- pred unsafe_set_char_copy_string(char, int, int, string, string).
+:- mode unsafe_set_char_copy_string(in, in, in, in, uo) is det.
 
 :- pragma foreign_proc("C",
-    unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    unsafe_set_char_copy_string(Ch::in, Index::in, Len0::in,
+        Str0::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    size_t len = strlen(Str0);
-    if (MR_is_ascii(Str0[Index]) && MR_is_ascii(Ch)) {
+    int b;
+    size_t oldlen;
+    size_t oldwidth;
+    size_t newwidth;
+    size_t newlen;
+
+    // The cast to (unsigned char *) is to prevent sign extension.
+    b = ((const unsigned char *) Str0)[Index];
+    if (MR_utf8_is_lead_byte(b)) {
+        MR_Integer next_index = Index;
+        int oldc = MR_utf8_get_next_mb(Str0, &next_index);
+        if (oldc < 0) {
+            oldwidth = 1;
+        } else {
+            oldwidth = next_index - Index;
+        }
+    } else {
+        oldwidth = 1;
+    }
+
+    if (MR_is_ascii(Ch)) {
         // Fast path.
-        MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
-        strcpy(Str, Str0);
+        newwidth = 1;
+    } else {
+        newwidth = MR_utf8_width(Ch);
+    }
+
+    oldlen = Len0;
+    newlen = oldlen - oldwidth + newwidth;
+
+    MR_allocate_aligned_string_msg(Str, newlen, MR_ALLOC_ID);
+    MR_memcpy(Str, Str0, Index);
+    if (MR_is_ascii(Ch)) {
+        // Fast path.
         Str[Index] = Ch;
     } else {
-        // XXX ILSEQ Fail for surrogate code points.
-        int oldc = MR_utf8_get(Str0, Index);
-        size_t oldwidth = MR_utf8_width(oldc);
-        size_t newwidth = MR_utf8_width(Ch);
-        size_t newlen;
-        size_t tailofs;
-
-        newlen = len - oldwidth + newwidth;
-        MR_allocate_aligned_string_msg(Str, newlen, MR_ALLOC_ID);
-        MR_memcpy(Str, Str0, Index);
         MR_utf8_encode(Str + Index, Ch);
-        strcpy(Str + Index + newwidth, Str0 + Index + oldwidth);
     }
+    MR_memcpy(Str + Index + newwidth,
+        Str0 + Index + oldwidth,
+        oldlen - Index - oldwidth + 1);
 ").
 :- pragma foreign_proc("C#",
-    unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    unsafe_set_char_copy_string(Ch::in, Index::in, _Len0::in,
+        Str0::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (System.Char.IsHighSurrogate(Str0, Index)) {
-        Str = System.String.Concat(
-            Str0.Substring(0, Index),
-            System.Char.ConvertFromUtf32(Ch),
-            Str0.Substring(Index + 2)
-        );
+    int oldwidth;
+    if (System.Char.IsHighSurrogate(Str0, Index)
+        && Index + 1 < Str0.Length
+        && System.Char.IsLowSurrogate(Str0, Index + 1))
+    {
+        oldwidth = 2;
     } else {
-        Str = System.String.Concat(
-            Str0.Substring(0, Index),
-            System.Char.ConvertFromUtf32(Ch),
-            Str0.Substring(Index + 1)
-        );
+        oldwidth = 1;
     }
+    Str = Str0.Substring(0, Index)
+        + System.Char.ConvertFromUtf32(Ch)
+        + Str0.Substring(Index + oldwidth);
 ").
 :- pragma foreign_proc("Java",
-    unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    unsafe_set_char_copy_string(Ch::in, Index::in, _Len0::in,
+        Str0::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int oldc = Str0.codePointAt(Index);
@@ -2885,9 +2819,11 @@ unsafe_set_char(Char, Index, !Str) :-
         + Str0.subSequence(Index + oldwidth, Str0.length());
 ").
 :- pragma foreign_proc("Erlang",
-    unsafe_set_char_non_null(Ch::in, Index::in, Str0::in, Str::out),
+    unsafe_set_char_copy_string(Ch::in, Index::in, _Len0::in,
+        Str0::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
+    % XXX does not implement defined behaviour
     <<Left:Index/binary, _/utf8, Right/binary>> = Str0,
     Str = unicode:characters_to_binary([Left, Ch, Right])
 ").

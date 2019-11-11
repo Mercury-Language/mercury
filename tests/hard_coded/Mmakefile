@@ -374,6 +374,7 @@ ORDINARY_PROGS = \
 	string_presuffix \
 	string_prev_index_ilseq \
 	string_set_char \
+	string_set_char_ilseq \
 	string_split \
 	string_split_2 \
 	string_string \
