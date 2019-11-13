@@ -140,7 +140,7 @@
     % ability to round trip convert a string to a list then back to the same
     % string does not hold in the presence of ill-formed code unit sequences.
     %
-%:- pragma obsolete_proc(to_char_list(uo, in), [from_char_list/2]).
+:- pragma obsolete_proc(to_char_list(uo, in), [from_char_list/2]).
 :- func to_char_list(string) = list(char).
 :- pred to_char_list(string, list(char)).
 :- mode to_char_list(in, out) is det.
@@ -164,7 +164,7 @@
     % ability to round trip convert a string to a list then back to the same
     % string does not hold in the presence of ill-formed code unit sequences.
     %
-%:- pragma obsolete_proc(to_rev_char_list(uo, in), [from_rev_char_list/2]).
+:- pragma obsolete_proc(to_rev_char_list(uo, in), [from_rev_char_list/2]).
 :- func to_rev_char_list(string) = list(char).
 :- pred to_rev_char_list(string, list(char)).
 :- mode to_rev_char_list(in, out) is det.
@@ -179,7 +179,7 @@
     % ability to round trip convert a string to a list then back to the same
     % string does not hold in the presence of ill-formed code unit sequences.
     %
-%:- pragma obsolete_proc(from_char_list(out, in), [to_char_list/2]).
+:- pragma obsolete_proc(from_char_list(out, in), [to_char_list/2]).
 :- func from_char_list(list(char)::in) = (string::uo) is det.
 :- pred from_char_list(list(char), string).
 :- mode from_char_list(in, uo) is det.
@@ -666,7 +666,7 @@
     % the semantics of the forwards modes in the presence of ill-formed code
     % unit sequences. Use nondet_append/3 instead.
     %
-%:- pragma obsolete_proc(append(out, out, in), [nondet_append/3]).
+:- pragma obsolete_proc(append(out, out, in), [nondet_append/3]).
 :- pred append(string, string, string).
 :- mode append(in, in, in) is semidet.  % implied
 :- mode append(in, uo, in) is semidet.
@@ -915,7 +915,7 @@
     % prefix(String, Prefix) is true iff Prefix is a prefix of String.
     % Same as append(Prefix, _, String).
     %
-%:- pragma obsolete_proc(prefix(in, out)).
+:- pragma obsolete_proc(prefix(in, out)).
 :- pred prefix(string, string).
 :- mode prefix(in, in) is semidet.
 :- mode prefix(in, out) is multi.
@@ -923,7 +923,7 @@
     % suffix(String, Suffix) is true iff Suffix is a suffix of String.
     % Same as append(_, Suffix, String).
     %
-%:- pragma obsolete_proc(suffix(in, out)).
+:- pragma obsolete_proc(suffix(in, out)).
 :- pred suffix(string, string).
 :- mode suffix(in, in) is semidet.
 :- mode suffix(in, out) is multi.
