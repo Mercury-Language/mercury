@@ -714,7 +714,7 @@
     % append_string_pieces(Pieces, String):
     %
     % Append together the strings and substrings in `Pieces' into a string.
-    % Throws an exception `Pieces' contains an element
+    % Throws an exception if `Pieces' contains an element
     % `substring(S, Start, End)' where `Start' or `End' are not within
     % the range [0, length(S)], or if `Start' > `End'.
     %
@@ -765,8 +765,8 @@
 
     % split_by_codepoint(String, Count, LeftSubstring, RightSubstring):
     %
-    % `LeftSubstring' is the left-most `Count' characters (code points) of
-    % `String', and `RightSubstring' is the remainder of `String'.
+    % `LeftSubstring' is the left-most `Count' code points of `String',
+    % and `RightSubstring' is the remainder of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
@@ -775,7 +775,7 @@
 
     % left(String, Count, LeftSubstring):
     %
-    % `LeftSubstring' is the left-most `Count' code _units_ of `String'.
+    % `LeftSubstring' is the left-most `Count' code units of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
@@ -784,8 +784,7 @@
 
     % left_by_codepoint(String, Count, LeftSubstring):
     %
-    % `LeftSubstring' is the left-most `Count' characters (code points) of
-    % `String'.
+    % `LeftSubstring' is the left-most `Count' code points of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
@@ -794,7 +793,7 @@
 
     % right(String, Count, RightSubstring):
     %
-    % `RightSubstring' is the right-most `Count' code _units_ of `String'.
+    % `RightSubstring' is the right-most `Count' code units of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
@@ -803,8 +802,7 @@
 
     % right_by_codepoint(String, Count, RightSubstring):
     %
-    % `RightSubstring' is the right-most `Count' characters (code points) of
-    % `String'.
+    % `RightSubstring' is the right-most `Count' code points of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
@@ -864,7 +862,7 @@
 
     % words_separator(SepP, String) returns the list of non-empty
     % substrings of String (in first to last order) that are delimited
-    % by non-empty sequences of characters (code points) matched by SepP.
+    % by non-empty sequences of code points matched by SepP.
     % For example,
     %
     % words_separator(char.is_whitespace, " the cat  sat on the  mat") =
@@ -882,7 +880,7 @@
 
     % split_at_separator(SepP, String) returns the list of (possibly empty)
     % substrings of String (in first to last order) that are delimited
-    % by characters (code points) matched by SepP. For example,
+    % by code points matched by SepP. For example,
     %
     % split_at_separator(char.is_whitespace, " a cat  sat on the  mat")
     %   = ["", "a", "cat", "", "sat", "on", "the", "", "mat"]
@@ -1080,7 +1078,7 @@
     % lstrip_pred(Pred, String):
     %
     % Returns `String' minus the maximal prefix consisting entirely
-    % of characters (code points) satisfying `Pred'.
+    % of code points satisfying `Pred'.
     %
 :- func lstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
@@ -1088,7 +1086,7 @@
     % rstrip_pred(Pred, String):
     %
     % Returns `String' minus the maximal suffix consisting entirely
-    % of characters (code points) satisfying `Pred'.
+    % of code points satisfying `Pred'.
     %
 :- func rstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
@@ -1147,7 +1145,7 @@
     % foldl(Closure, String, !Acc):
     %
     % `Closure' is an accumulator predicate which is to be called for each
-    % character (code point) of the string `String' in turn.
+    % code point of the string `String' in turn.
     % If `String' contains ill-formed sequences, `Closure' is called for each
     % code unit in an ill-formed sequence. If strings use UTF-8 encoding,
     % U+FFFD is passed to `Closure' in place of each such code unit.
