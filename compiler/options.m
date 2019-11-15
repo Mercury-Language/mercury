@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2019 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -5917,7 +5917,7 @@ options_help_target_code_compilation -->
         % not documented.
 
         % The --cflags-for-regs, --cflags-for-gotos,
-        % --cflags-for-threads, --cflags-for-pic,
+        % --cflags-for-threads, --cflags-for-pic, --cflags-for-lto,
         % --cflags-for-warnings, --cflags-for-ansi,
         % --cflags-for-optimization, --cflags-for-sanitizers,
         % --c-flag-to-name-object-file,
@@ -6137,7 +6137,7 @@ options_help_link -->
         % --hwloc-libs, --hwloc-static-libs,
         % --linker-opt-separator,
         % --linker-debug-flags, --shlib-linker-debug-flags,
-        % --linker-sanitizer-flags,
+        % --linker-sanitizer-flags, --linker-lto-flags
         % --linker-trace-flags, --shlib-linker-trace-flags,
         % --linker-thread-flags, --shlib-linker-thread-flags,
         % --linker-static-flags, --linker-strip-flag,
