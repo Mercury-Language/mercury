@@ -5255,7 +5255,7 @@ AC_SUBST(USE_MSVCRT)
 
 AC_ARG_ENABLE(lto,
     AC_HELP_STRING([--enable-lto],
-                   [Enable link-time optimizations for C grades]),
+                   [Enable link-time optimization for C grades (experimental)]),
     mercury_cv_lto=yes,mercury_cv_lto=no)
 
 USE_LINK_TIME_OPT=$mercury_cv_lto
