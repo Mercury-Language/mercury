@@ -1084,7 +1084,7 @@ new_procrep_id_string = "Mercury deep profiler procrep version 6\n".
 read_file_as_bytecode(FileName, Result, !IO) :-
     read_file_as_bytecode_2(FileName, ByteCode, Size, Error, !IO),
     ( if Size < 0 then
-        io.make_err_msg(Error, "opening " ++ FileName ++ ": ", Msg),
+        io.make_err_msg(Error, "opening " ++ FileName ++ ": ", Msg, !IO),
         Result = error(io.make_io_error(Msg))
     else
         Result = ok(bytecode(ByteCode, Size))

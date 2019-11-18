@@ -2024,36 +2024,36 @@
 :- pragma foreign_type(java, system_error, "java.lang.Exception").
 :- pragma foreign_type(erlang, system_error, "").
 
-    % is_error(Error, MessagePrefix, IOError):
-    % Succeeds iff `Error' indicates an error (not success).
-    % IOError contains an error message obtained by looking up the
-    % message for the given errno value and prepending
-    % `MessagePrefix'.
+    % is_error(Error, MessagePrefix, MaybeIOError, !IO):
+    % Returns `yes(IOError)' if `Error' indicates an error (not success).
+    % `IOError' contains an error message obtained by looking up the message
+    % for the given errno value and prepending `MessagePrefix'.
     %
-:- pred is_error(system_error::in, string::in, io.error::out) is semidet.
+:- pred is_error(system_error::in, string::in, maybe(io.error)::out,
+    io::di, io::uo) is det.
 
-    % is_maybe_win32_error(Error, MessagePrefix, IOError):
+    % is_maybe_win32_error(Error, MessagePrefix, MaybeIOError, !IO):
     % Same as is_error except that `Error' is a Win32 error value on Windows.
     %
-:- pred is_maybe_win32_error(system_error::in, string::in, io.error::out)
-    is semidet.
+:- pred is_maybe_win32_error(system_error::in, string::in,
+    maybe(io.error)::out, io::di, io::uo) is det.
 
-    % make_err_msg(Error, MessagePrefix, Message):
-    % `Message' is an error message obtained by looking up the
-    % message for the given errno value and prepending
-    % `MessagePrefix'.
+    % make_err_msg(Error, MessagePrefix, Message, !IO):
+    % `Message' is an error message obtained by looking up the message for the
+    % given errno value and prepending `MessagePrefix'.
     %
-:- pred make_err_msg(system_error::in, string::in, string::out) is det.
+:- pred make_err_msg(system_error::in, string::in, string::out,
+    io::di, io::uo) is det.
 
-    % make_maybe_win32_err_msg(Error, MessagePrefix, Message):
+    % make_maybe_win32_err_msg(Error, MessagePrefix, Message, !IO):
     %
     % `Message' is an error message obtained by looking up the error message
     % for `Error' and prepending `MessagePrefix'.
     % On Win32 systems, `Error' is obtained by calling GetLastError.
     % On other systems `Error' is obtained by reading errno.
     %
-:- pred make_maybe_win32_err_msg(system_error::in, string::in, string::out)
-    is det.
+:- pred make_maybe_win32_err_msg(system_error::in, string::in, string::out,
+    io::di, io::uo) is det.
 
     % Return a unique identifier for the given file (after following
     % symlinks in FileName).
@@ -4420,20 +4420,18 @@ mercury_set_current_binary_output(Stream) ->
 ").
 
 %---------------------------------------------------------------------------%
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-%---------------------------------------------------------------------------%
 %
 % Opening and closing streams, both text and binary.
 %
 
 open_input(FileName, Result, !IO) :-
     do_open_text(FileName, "r", OpenCount, NewStream, Error, !IO),
-    ( if is_error(Error, "can't open input file: ", IOError) then
+    is_error(Error, "can't open input file: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(input_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, input, text, file(FileName)), !IO)
@@ -4441,9 +4439,12 @@ open_input(FileName, Result, !IO) :-
 
 open_binary_input(FileName, Result, !IO) :-
     do_open_binary(FileName, "rb", OpenCount, NewStream, Error, !IO),
-    ( if is_error(Error, "can't open input file: ", IOError) then
+    is_error(Error, "can't open input file: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(binary_input_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, input, binary, file(FileName)), !IO)
@@ -4453,9 +4454,12 @@ open_binary_input(FileName, Result, !IO) :-
 
 open_output(FileName, Result, !IO) :-
     do_open_text(FileName, "w", OpenCount, NewStream, Error, !IO),
-    ( if is_error(Error, "can't open output file: ", IOError) then
+    is_error(Error, "can't open output file: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, output, text, file(FileName)), !IO)
@@ -4463,9 +4467,12 @@ open_output(FileName, Result, !IO) :-
 
 open_binary_output(FileName, Result, !IO) :-
     do_open_binary(FileName, "wb", OpenCount, NewStream, Error, !IO),
-    ( if is_error(Error, "can't open output file: ", IOError) then
+    is_error(Error, "can't open output file: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(binary_output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, output, binary, file(FileName)), !IO)
@@ -4475,9 +4482,12 @@ open_binary_output(FileName, Result, !IO) :-
 
 open_append(FileName, Result, !IO) :-
     do_open_text(FileName, "a", OpenCount, NewStream, Error, !IO),
-    ( if is_error(Error, "can't append to file: ", IOError) then
+     is_error(Error, "can't append to file: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, append, text, file(FileName)), !IO)
@@ -4485,9 +4495,12 @@ open_append(FileName, Result, !IO) :-
 
 open_binary_append(FileName, Result, !IO) :-
     do_open_binary(FileName, "ab", OpenCount, NewStream, Error, !IO),
-    ( if is_error(Error, "can't append to file: ", IOError) then
+    is_error(Error, "can't append to file: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(binary_output_stream(NewStream)),
         insert_stream_info(NewStream,
             stream(OpenCount, append, binary, file(FileName)), !IO)
@@ -6028,7 +6041,7 @@ read_char(Stream, Result, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6043,7 +6056,7 @@ read_char_unboxed(Stream, Result, Char, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6305,7 +6318,7 @@ read_byte(binary_input_stream(Stream), Result, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6324,7 +6337,7 @@ read_binary_int8(binary_input_stream(Stream), Result, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6343,7 +6356,7 @@ read_binary_uint8(binary_input_stream(Stream), Result, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6632,7 +6645,7 @@ read_binary_int16_le(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6657,7 +6670,7 @@ read_binary_int16_be(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6694,7 +6707,7 @@ read_binary_uint16_le(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6718,7 +6731,7 @@ read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6862,7 +6875,7 @@ read_binary_int32_le(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6887,7 +6900,7 @@ read_binary_int32_be(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6924,7 +6937,7 @@ read_binary_uint32_le(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -6948,7 +6961,7 @@ read_binary_uint32_be(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -7114,7 +7127,7 @@ read_binary_int64_le(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -7139,7 +7152,7 @@ read_binary_int64_be(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -7176,7 +7189,7 @@ read_binary_uint64_le(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -7200,7 +7213,7 @@ read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -9096,7 +9109,7 @@ read_line(Stream, Result, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -9141,7 +9154,7 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
         Result = error(io_error("null character in input"))
     ;
         Res = error,
-        make_err_msg(Error, "read failed: ", Msg),
+        make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
 
@@ -9334,9 +9347,12 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
     then
         do_read_bitmap(Stream, Start, NumBytes,
             !Bitmap, 0, BytesRead, Error, !IO),
-        ( if is_error(Error, "read failed: ", IOError) then
+        is_error(Error, "read failed: ", MaybeIOError, !IO),
+        (
+            MaybeIOError = yes(IOError),
             Result = error(IOError)
-        else
+        ;
+            MaybeIOError = no,
             Result = ok
         )
     else if
@@ -9347,7 +9363,7 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
         BytesRead = 0
     else
         bitmap.throw_bounds_error(!.Bitmap, "io.read_bitmap",
-                Start * bits_per_byte, NumBytes * bits_per_byte)
+            Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
 :- pred do_read_bitmap(stream::in, byte_index::in, num_bytes::in,
@@ -9995,9 +10011,12 @@ read_file_as_string(Result, !IO) :-
 
 read_file_as_string(input_stream(Stream), Result, !IO) :-
     read_file_as_string_2(Stream, String, _NumCUs, Error, NullCharError, !IO),
-    ( if is_error(Error, "read failed: ", IOError) then
+    is_error(Error, "read failed: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(String, IOError)
-    else
+    ;
+        MaybeIOError = no,
         (
             NullCharError = yes,
             Result = error("", io_error("null character in input"))
@@ -10013,9 +10032,12 @@ read_file_as_string_and_num_code_units(Result, !IO) :-
 
 read_file_as_string_and_num_code_units(input_stream(Stream), Result, !IO) :-
     read_file_as_string_2(Stream, String, NumCUs, Error, NullCharError, !IO),
-    ( if is_error(Error, "read failed: ", IOError) then
+    is_error(Error, "read failed: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error2(String, NumCUs, IOError)
-    else
+    ;
+        MaybeIOError = no,
         (
             NullCharError = yes,
             Result = error2("", 0, io_error("null character in input"))
@@ -10882,9 +10904,12 @@ chunk_size = 1000.
 
 remove_file(FileName, Result, !IO) :-
     remove_file_2(FileName, Error, !IO),
-    ( if is_error(Error, "remove failed: ", IOError) then
+    is_error(Error, "remove failed: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok
     ).
 
@@ -11021,9 +11046,12 @@ remove_directory_entry(DirName, FileName, _FileType, Continue, _, Res, !IO) :-
 
 rename_file(OldFileName, NewFileName, Result, !IO) :-
     rename_file_2(OldFileName, NewFileName, Error, !IO),
-    ( if is_error(Error, "rename failed: ", IOError) then
+    is_error(Error, "rename failed: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok
     ).
 
@@ -11139,10 +11167,13 @@ have_symlinks :-
 
 make_symlink(FileName, LinkFileName, Result, !IO) :-
     ( if io.have_symlinks then
-        io.make_symlink_2(FileName, LinkFileName, Error, !IO),
-        ( if is_error(Error, "io.make_symlink failed: ", IOError) then
+        make_symlink_2(FileName, LinkFileName, Error, !IO),
+        is_error(Error, "io.make_symlink failed: ", MaybeIOError, !IO),
+        (
+            MaybeIOError = yes(IOError),
             Result = error(IOError)
-        else
+        ;
+            MaybeIOError = no,
             Result = ok
         )
     else
@@ -11206,9 +11237,12 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
 read_symlink(FileName, Result, !IO) :-
     ( if have_symlinks then
         read_symlink_2(FileName, TargetFileName, Error, !IO),
-        ( if is_error(Error, "io.read_symlink failed: ", IOError) then
+        is_error(Error, "io.read_symlink failed: ", MaybeIOError, !IO),
+        (
+            MaybeIOError = yes(IOError),
             Result = error(IOError)
-        else
+        ;
+            MaybeIOError = no,
             Result = ok(TargetFileName)
         )
     else
@@ -11313,9 +11347,12 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
         CheckExecute = pred_to_bool(contains(AccessTypes, execute)),
         check_file_accessibility_2(FileName, CheckRead, CheckWrite,
             CheckExecute, Error, !IO),
-        ( if is_error(Error, "file not accessible: ", IOError) then
+        is_error(Error, "file not accessible: ", MaybeIOError, !IO),
+        (
+            MaybeIOError = yes(IOError),
             Result = error(IOError)
-        else
+        ;
+            MaybeIOError = no,
             Result = ok
         )
     ).
@@ -11478,9 +11515,12 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
         ( if FileType = directory then
             check_directory_accessibility_dotnet(FileName,
                 CheckRead, CheckWrite, Error, !IO),
-            ( if is_error(Error, "file not accessible: ", IOError) then
+            is_error(Error, "file not accessible: ", MaybeIOError, !IO),
+            (
+                MaybeIOError = yes(IOError),
                 Result = error(IOError)
-            else
+            ;
+                MaybeIOError = no,
                 Result = ok
             )
         else
@@ -11523,9 +11563,12 @@ check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
                 CheckExec = yes
             then
                 have_dotnet_exec_permission(Error, !IO),
-                ( if is_error(Error, "file not accessible: ", IOError) then
+                is_error(Error, "file not accessible: ", MaybeIOError, !IO),
+                (
+                    MaybeIOError = yes(IOError),
                     Result = error(IOError)
-                else
+                ;
+                    MaybeIOError = no,
                     Result = ok
                 )
             else
@@ -11635,9 +11678,12 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
         FollowSymLinksInt = 0
     ),
     file_type_2(FollowSymLinksInt, FileName, FileType, Error,  !IO),
-    ( if is_error(Error, "can't find file type: ", IOError) then
+    is_error(Error, "can't find file type: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(FileType)
     ).
 
@@ -11881,9 +11927,12 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
 
 file_modification_time(File, Result, !IO) :-
     file_modification_time_2(File, Time, Error, !IO),
-    ( if is_error(Error, "can't get file modification time: ", IOError) then
+    is_error(Error, "can't get file modification time: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(Time)
     ).
 
@@ -12000,9 +12049,12 @@ make_temp(Name, !IO) :-
 make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     do_make_temp(Dir, Prefix, Suffix, char_to_string(dir.directory_separator),
         Name, Error, !IO),
-    ( if is_error(Error, "error creating temporary file: ", IOError) then
+    is_error(Error, "error creating temporary file: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(Name)
     ).
 
@@ -12190,9 +12242,12 @@ make_temp_directory(Result, !IO) :-
 make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
     do_make_temp_directory(Dir, Prefix, Suffix,
         char_to_string(dir.directory_separator), DirName, Error, !IO),
-    ( if is_error(Error, "error creating temporary directory: ", IOError) then
+    is_error(Error, "error creating temporary directory: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(DirName)
     ).
 
@@ -12886,9 +12941,12 @@ call_system(Command, Result, !IO) :-
 
 call_system_return_signal(Command, Result, !IO) :-
     call_system_code(Command, Status, Error, !IO),
-    ( if is_error(Error, "error invoking system command: ", IOError) then
+     is_error(Error, "error invoking system command: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = decode_system_command_exit_code(Status)
     ).
 
@@ -13587,37 +13645,41 @@ have_dotnet :-
     SUCCESS_INDICATOR = (Error =:= ok)
 ").
 
-is_error(Error, Prefix, io_error(Message)) :-
+is_error(Error, Prefix, MaybeError, !IO) :-
     ( if is_success(Error) then
-        fail
+        MaybeError = no
     else
-        make_err_msg(Error, Prefix, Message)
+        make_err_msg(Error, Prefix, Message, !IO),
+        IOError = io_error(Message),
+        MaybeError = yes(IOError)
     ).
 
-is_maybe_win32_error(Error, Prefix, io_error(Message)) :-
+is_maybe_win32_error(Error, Prefix, MaybeError, !IO) :-
     ( if is_success(Error) then
-        fail
+        MaybeError = no
     else
-        make_maybe_win32_err_msg(Error, Prefix, Message)
+        make_maybe_win32_err_msg(Error, Prefix, Message, !IO),
+        IOError = io_error(Message),
+        MaybeError = yes(IOError)
     ).
 
 :- pragma foreign_proc("C",
-    make_err_msg(Error::in, Msg0::in, Msg::out),
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, no_sharing, tabled_for_io],
 "
     ML_make_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
 ").
 
 :- pragma foreign_proc("C#",
-    make_err_msg(Error::in, Msg0::in, Msg::out),
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Msg = System.String.Concat(Msg0, Error.Message);
 ").
 
 :- pragma foreign_proc("Java",
-    make_err_msg(Error::in, Msg0::in, Msg::out),
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Error.getMessage() != null) {
@@ -13628,7 +13690,7 @@ is_maybe_win32_error(Error, Prefix, io_error(Message)) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    make_err_msg(Error::in, Msg0::in, Msg::out),
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Error of
@@ -13639,16 +13701,17 @@ is_maybe_win32_error(Error, Prefix, io_error(Message)) :-
     end
 ").
 
-make_maybe_win32_err_msg(Error, Msg0, Msg) :-
+make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
     ( if have_win32 then
-        make_win32_err_msg(Error, Msg0, Msg)
+        make_win32_err_msg(Error, Msg0, Msg, !IO)
     else
-        make_err_msg(Error, Msg0, Msg)
+        make_err_msg(Error, Msg0, Msg, !IO)
     ).
 
-:- pred make_win32_err_msg(system_error::in, string::in, string::out) is det.
+:- pred make_win32_err_msg(system_error::in, string::in, string::out,
+    io::di, io::uo) is det.
 
-make_win32_err_msg(_, _, "") :-
+make_win32_err_msg(_, _, "", !IO) :-
     ( if semidet_succeed then
         error("io.make_win32_err_msg called for non Win32 back-end")
     else
@@ -13658,9 +13721,9 @@ make_win32_err_msg(_, _, "") :-
     % Is FormatMessage thread-safe?
     %
 :- pragma foreign_proc("C",
-    make_win32_err_msg(Error::in, Msg0::in, Msg::out),
+    make_win32_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, does_not_affect_liveness,
-        no_sharing],
+        no_sharing, tabled_for_io],
 "
 #ifdef MR_WIN32
     ML_make_win32_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
@@ -13672,10 +13735,12 @@ make_win32_err_msg(_, _, "") :-
 :- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
 
 throw_on_error(Error, Prefix, !IO) :-
-    ( if is_error(Error, Prefix, IOError) then
+    is_error(Error, Prefix, MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         throw(IOError)
-    else
-        true
+    ;
+        MaybeIOError = no
     ).
 
 :- pred throw_on_output_error(system_error::in, io::di, io::uo) is det.
@@ -13787,10 +13852,13 @@ compare_file_id(Result, FileId1, FileId2) :-
 ").
 
 file_id(FileName, Result, !IO) :-
-    io.file_id_2(FileName, FileId, Error, !IO),
-    ( if is_error(Error, "cannot get file id: ", IOError) then
+    file_id_2(FileName, FileId, Error, !IO),
+    is_error(Error, "cannot get file id: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Result = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Result = ok(FileId)
     ).
 

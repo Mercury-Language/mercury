@@ -263,6 +263,7 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
+:- import_module maybe.
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
@@ -849,9 +850,12 @@ relative_path_name_from_components(Components) = PathName :-
 
 current_directory(Res, !IO) :-
     current_directory_2(CurDir, Error, !IO),
-    ( if is_error(Error, "dir.current_directory failed: ", IOError) then
+    is_error(Error, "dir.current_directory failed: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Res = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Res = ok(CurDir)
     ).
 
@@ -988,7 +992,7 @@ make_directory_or_check_exists(DirName, Res, !IO) :-
             check_dir_accessibility(DirName, Res, !IO)
         else
             make_maybe_win32_err_msg(MaybeWin32Error,
-                "cannot create directory: ", Message),
+                "cannot create directory: ", Message, !IO),
             Res = error(make_io_error(Message))
         )
     ;
@@ -997,7 +1001,7 @@ make_directory_or_check_exists(DirName, Res, !IO) :-
     ;
         Res0 = error,
         make_maybe_win32_err_msg(MaybeWin32Error,
-            "cannot create directory: ", Message),
+            "cannot create directory: ", Message, !IO),
         Res = error(make_io_error(Message))
     ).
 
@@ -1033,9 +1037,12 @@ have_make_directory_including_parents :-
 
 make_directory_including_parents(DirName, Res, !IO) :-
     make_directory_including_parents_2(DirName, Error, CheckAccess, !IO),
-    ( if is_error(Error, "cannot make directory: ", IOError) then
+    is_error(Error, "cannot make directory: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Res = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         (
             CheckAccess = yes,
             check_dir_accessibility(DirName, Res, !IO)
@@ -1126,7 +1133,7 @@ make_single_directory(DirName, Result, !IO) :-
         ; Status = error
         ),
         make_maybe_win32_err_msg(MaybeWin32Error, "cannot create directory: ",
-            Message),
+            Message, !IO),
         Result = error(make_io_error(Message))
     ).
 
@@ -1580,13 +1587,14 @@ open(DirName, Res, !IO) :-
     io::di, io::uo) is det.
 
 open_2(DirName, DirPattern, Res, !IO) :-
-    dir.open_3(DirName, DirPattern, Dir, MaybeWin32Error, !IO),
-    ( if
-        is_maybe_win32_error(MaybeWin32Error, "cannot open directory: ",
-            IOError)
-    then
+    open_3(DirName, DirPattern, Dir, MaybeWin32Error, !IO),
+    is_maybe_win32_error(MaybeWin32Error, "cannot open directory: ",
+        MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Res = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Res = ok(Dir)
     ).
 
@@ -1594,7 +1602,7 @@ open_2(DirName, DirPattern, Res, !IO) :-
     io.system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dir.open_3(DirName::in, DirPattern::in, Dir::out, Error::out,
+    open_3(DirName::in, DirPattern::in, Dir::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         will_not_modify_trail, does_not_affect_liveness, may_not_duplicate],
@@ -1633,7 +1641,7 @@ open_2(DirName, DirPattern, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    dir.open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
+    open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_modify_trail, promise_pure, tabled_for_io, thread_safe],
 "
@@ -1648,7 +1656,7 @@ open_2(DirName, DirPattern, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    dir.open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
+    open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -1678,7 +1686,7 @@ open_2(DirName, DirPattern, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
+    open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -1726,13 +1734,14 @@ check_dir_readable(DirName, Res, !IO) :-
 :- pred close(dir.stream::in, io.res::out, io::di, io::uo) is det.
 
 close(Dir, Res, !IO) :-
-    dir.close_2(Dir, MaybeWin32Error, !IO),
-    ( if
-        is_maybe_win32_error(MaybeWin32Error,
-            "dir.foldl2: closing directory failed: ", IOError)
-    then
+    close_2(Dir, MaybeWin32Error, !IO),
+    is_maybe_win32_error(MaybeWin32Error,
+        "dir.foldl2: closing directory failed: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Res = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         Res = ok
     ).
 
@@ -1740,7 +1749,7 @@ close(Dir, Res, !IO) :-
     is det.
 
 :- pragma foreign_proc("C",
-    dir.close_2(Dir::in, Error::out, _IO0::di, _IO::uo),
+    close_2(Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         will_not_modify_trail, does_not_affect_liveness, may_not_duplicate],
 "
@@ -1765,7 +1774,7 @@ close(Dir, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    dir.close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
+    close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     // Nothing to do.
@@ -1773,7 +1782,7 @@ close(Dir, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    dir.close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
+    close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     // Nothing to do.
@@ -1781,7 +1790,7 @@ close(Dir, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.close_2(Dir::in, Error::out, _IO0::di, _IO::uo),
+    close_2(Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     ets:delete(Dir, value),
@@ -1792,13 +1801,14 @@ close(Dir, Res, !IO) :-
     is det.
 
 read_entry(Dir, Res, !IO) :-
-    dir.read_entry_2(Dir, MaybeWin32Error, HaveFileName, FileName, !IO),
-    ( if
-        is_maybe_win32_error(MaybeWin32Error,
-            "dir.foldl2: reading directory entry failed: ", IOError)
-    then
+    read_entry_2(Dir, MaybeWin32Error, HaveFileName, FileName, !IO),
+    is_maybe_win32_error(MaybeWin32Error,
+        "dir.foldl2: reading directory entry failed: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
         Res = error(IOError)
-    else
+    ;
+        MaybeIOError = no,
         (
             HaveFileName = no,
             Res = eof
@@ -1824,7 +1834,7 @@ read_entry(Dir, Res, !IO) :-
     string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    dir.read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
+    read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         will_not_modify_trail, does_not_affect_liveness, may_not_duplicate],
@@ -1880,7 +1890,7 @@ read_entry(Dir, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    dir.read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
+    read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -1903,7 +1913,7 @@ read_entry(Dir, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    dir.read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
+    read_entry_2(Dir::in, Error::out, HaveFileName::out, FileName::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -1924,7 +1934,7 @@ read_entry(Dir, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    dir.read_entry_2(Dir::in, Error::out, HaveFileName::out,
+    read_entry_2(Dir::in, Error::out, HaveFileName::out,
         FileName::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
