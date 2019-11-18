@@ -462,6 +462,11 @@ Changes to the Mercury standard library:
    - foldr_substring/5
    - foldr_substring/6
 
+* Predicates and functions in the string module now have defined behaviours
+  for strings containing ill-formed sequences. Also, some predicates and
+  functions now have defined behaviour on surrogate code points
+  (e.g. failing or throwing an exception) that was previously undefined.
+
 * The following predicates have been added to the map module:
 
    - foldl5/12

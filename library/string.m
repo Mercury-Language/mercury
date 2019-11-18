@@ -7,7 +7,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: string.m.
-% Main authors: fjh, petdr.
+% Main authors: fjh, petdr, wangp.
 % Stability: medium to high.
 %
 % This modules provides basic string handling facilities.
@@ -32,8 +32,7 @@
 % UTF-8 or UTF-16 via I/O, foreign code, and substring operations.
 % Predicates or functions that inspect strings may fail, throw an exception,
 % or else behave in some special way when an ill-formed code unit sequence is
-% encountered. Handling ill-formed sequences consistently in this module is
-% ongoing work.
+% encountered.
 %
 % Unexpected null characters embedded in the middle of strings can be a source
 % of security vulnerabilities, so the Mercury library predicates and functions
