@@ -23,6 +23,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module string.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 
@@ -58,12 +59,17 @@ write_string_debug(S, !IO) :-
 :- pred write_string_debug_loop(string::in, int::in, io::di, io::uo) is det.
 
 write_string_debug_loop(S, Index, !IO) :-
-    ( if string.index_next(S, Index, NextIndex, Char) then
-        ( if char.is_surrogate(Char) ; Char = '\ufffd' then
-            string.unsafe_index_code_unit(S, Index, Code),
-            io.format("[%x]", [i(Code)], !IO)
-        else
-            io.write_char(Char, !IO)
+    ( if string.index_next_repl(S, Index, NextIndex, Char, MaybeReplaced) then
+        (
+            MaybeReplaced = replaced_code_unit(Code),
+            io.format("[%x]", [i(uint8.to_int(Code))], !IO)
+        ;
+            MaybeReplaced = not_replaced,
+            ( if char.is_surrogate(Char) then
+                io.format("[%x]", [i(char.to_int(Char))], !IO)
+            else
+                io.write_char(Char, !IO)
+            )
         ),
         write_string_debug_loop(S, NextIndex, !IO)
     else

@@ -262,6 +262,15 @@
 % Reading characters from strings.
 %
 
+    % This type is used by the _repl indexing predicates to distinguish a
+    % U+FFFD code point that is actually in a string from a U+FFFD code point
+    % generated when the predicate encounters an ill-formed code unit sequence
+    % in a UTF-8 string.
+    %
+:- type maybe_replaced
+    --->    not_replaced
+    ;       replaced_code_unit(uint8).
+
     % index(String, Index, Char):
     %
     % If `Index' is the initial code unit offset of a well-formed code unit
@@ -324,6 +333,18 @@
     %
 :- pred index_next(string::in, int::in, int::out, char::uo) is semidet.
 
+    % index_next_repl(String, Index, NextIndex, Char, MaybeReplaced):
+    %
+    % Like index_next/4 but `MaybeReplaced' is `replaced_code_unit(CodeUnit)'
+    % iff `Char' is the Unicode REPLACEMENT CHARACTER (U+FFFD) but `String'
+    % does NOT contain an encoding of U+FFFD beginning at `Index';
+    % `CodeUnit' is the code unit at `Index'.
+    % (`MaybeReplaced' is always `not_replaced' when strings are UTF-16
+    % encoded.)
+    %
+:- pred index_next_repl(string::in, int::in, int::out, char::uo,
+    maybe_replaced::out) is semidet.
+
     % unsafe_index_next(String, Index, NextIndex, Char):
     %
     % Like index_next/4 but does not check that `Index' is in range.
@@ -333,6 +354,17 @@
     % (negative, or greater than the length of `String').
     %
 :- pred unsafe_index_next(string::in, int::in, int::out, char::uo) is semidet.
+
+    % unsafe_index_next_repl(String, Index, NextIndex, Char, MaybeReplaced):
+    %
+    % Like index_next_repl/5 but does not check that `Index' is in range.
+    % Fails if `Index' is equal to the length of `String'.
+    %
+    % WARNING: behavior is UNDEFINED if `Index' is out of range
+    % (negative, or greater than the length of `String').
+    %
+:- pred unsafe_index_next_repl(string::in, int::in, int::out, char::uo,
+    maybe_replaced::out) is semidet.
 
     % prev_index(String, Index, PrevIndex, Char):
     %
@@ -350,6 +382,18 @@
     %
 :- pred prev_index(string::in, int::in, int::out, char::uo) is semidet.
 
+    % prev_index_repl(String, Index, PrevIndex, Char, MaybeReplaced):
+    %
+    % Like prev_index/4 but `MaybeReplaced' is `replaced_code_unit(CodeUnit)'
+    % iff `Char' is the Unicode REPLACEMENT CHARACTER (U+FFFD) but `String'
+    % does NOT contain an encoding of U+FFFD ending at `Index - 1';
+    % `CodeUnit' is the code unit at `Index - 1'.
+    % (`MaybeReplaced' is always `not_replaced' when strings are UTF-16
+    % encoded.)
+    %
+:- pred prev_index_repl(string::in, int::in, int::out, char::uo,
+    maybe_replaced::out) is semidet.
+
     % unsafe_prev_index(String, Index, PrevIndex, Char):
     %
     % Like prev_index/4 but does not check that `Index' is in range.
@@ -359,6 +403,17 @@
     % (negative, or greater than the length of `String').
     %
 :- pred unsafe_prev_index(string::in, int::in, int::out, char::uo) is semidet.
+
+    % unsafe_prev_index_repl(String, Index, PrevIndex, Char, MaybeReplaced):
+    %
+    % Like prev_index_repl/5 but does not check that `Index' is in range.
+    % Fails if `Index' is zero.
+    %
+    % WARNING: behavior is UNDEFINED if `Index' is out of range
+    % (negative, or greater than the length of `String').
+    %
+:- pred unsafe_prev_index_repl(string::in, int::in, int::out, char::uo,
+    maybe_replaced::out) is semidet.
 
     % unsafe_index_code_unit(String, Index, CodeUnit):
     %
@@ -1578,6 +1633,7 @@
 :- import_module string.format.
 :- import_module string.to_string.
 :- import_module term_io.
+:- import_module uint8.
 
 % Many routines in this module are implemented using foreign language code.
 
@@ -1989,13 +2045,13 @@ to_utf16_code_unit_list(String, CodeList) :-
 
 utf8_to_utf16_code_units_loop(String, Index, CodeList0, CodeList) :-
     ( if
-        unsafe_prev_index_repl(String, Index, PrevIndex, Char, IsReplaced)
+        unsafe_prev_index_repl(String, Index, PrevIndex, Char, MaybeReplaced)
     then
         (
-            IsReplaced = yes,
+            MaybeReplaced = replaced_code_unit(_),
             unexpected($pred, "ill-formed code unit sequence")
         ;
-            IsReplaced = no,
+            MaybeReplaced = not_replaced,
             ( if char.to_utf16(Char, CharCodes) then
                 CodeList1 = CharCodes ++ CodeList0
             else
@@ -2282,17 +2338,18 @@ duplicate_char(Char, Count, String) :-
 % so that the compiler can do loop invariant hoisting on calls to them
 % that occur in loops.
 
-% XXX ILSEQ
-% We should allow the possibility of working with strings containing ill-formed
-% sequences. That would require predicates that can return either a code point
-% when possible, or else code units from ill-formed sequences.
-
 :- pragma inline(index/3).
 :- pragma inline(det_index/3).
 :- pragma inline(index_next/4).
 :- pragma inline(index_next_repl/5).
+:- pragma inline(unsafe_index_next/4).
+:- pragma inline(unsafe_index_next_repl/5).
+:- pragma inline(unsafe_index_next_repl_2/5).
 :- pragma inline(prev_index/4).
 :- pragma inline(prev_index_repl/5).
+:- pragma inline(unsafe_prev_index/4).
+:- pragma inline(unsafe_prev_index_repl/5).
+:- pragma inline(unsafe_prev_index_repl_2/5).
 
 index(Str, Index, Char) :-
     Len = length(Str),
@@ -2368,42 +2425,39 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 %---------------------%
 
 index_next(Str, Index, NextIndex, Char) :-
-    index_next_repl(Str, Index, NextIndex, Char, _IsReplaced).
+    index_next_repl(Str, Index, NextIndex, Char, _MaybeReplaced).
 
-unsafe_index_next(Str, Index, NextIndex, Ch) :-
-    unsafe_index_next_repl(Str, Index, NextIndex, Ch, _IsReplaced).
-
-    % XXX ILSEQ Export something like this.
-    % index_next_repl(String, Index, NextIndex, Char, IsReplaced):
-    %
-    % Like index_next/4 but `IsReplaced' is `yes' iff `Char' is U+FFFD but
-    % `String' does NOT contain an encoding of U+FFFD beginning at `Index'.
-    % (`IsReplaced' is always `no' when strings are UTF-16 encoded.)
-    %
-:- pred index_next_repl(string::in, int::in, int::out, char::uo, bool::out)
-    is semidet.
-
-index_next_repl(Str, Index, NextIndex, Char, IsReplaced) :-
+index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced) :-
     Len = length(Str),
     ( if index_check(Index, Len) then
-        unsafe_index_next_repl(Str, Index, NextIndex, Char, IsReplaced)
+        unsafe_index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced)
     else
         fail
     ).
 
-    % XXX ILSEQ Export something like this.
-    %
-:- pred unsafe_index_next_repl(string::in, int::in, int::out, char::uo,
-    bool::out) is semidet.
+unsafe_index_next(Str, Index, NextIndex, Ch) :-
+    unsafe_index_next_repl_2(Str, Index, NextIndex, Ch, _ReplacedCodeUnit).
+
+unsafe_index_next_repl(Str, Index, NextIndex, Ch, MaybeReplaced) :-
+    unsafe_index_next_repl_2(Str, Index, NextIndex, Ch, ReplacedCodeUnit),
+    ( if ReplacedCodeUnit = -1 then
+        MaybeReplaced = not_replaced
+    else
+        CodeUnit = uint8.cast_from_int(ReplacedCodeUnit),
+        MaybeReplaced = replaced_code_unit(CodeUnit)
+    ).
+
+:- pred unsafe_index_next_repl_2(string::in, int::in, int::out, char::uo,
+    int::out) is semidet.
 
 :- pragma foreign_proc("C",
-    unsafe_index_next_repl(Str::in, Index::in, NextIndex::out, Ch::uo,
-        IsReplaced::out),
+    unsafe_index_next_repl_2(Str::in, Index::in, NextIndex::out, Ch::uo,
+        ReplacedCodeUnit::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
     Ch = Str[Index];
-    IsReplaced = MR_FALSE;
+    ReplacedCodeUnit = -1;
     if (MR_is_ascii(Ch)) {
         NextIndex = Index + 1;
         SUCCESS_INDICATOR = (Ch != 0);
@@ -2412,19 +2466,19 @@ index_next_repl(Str, Index, NextIndex, Char, IsReplaced) :-
         Ch = MR_utf8_get_next_mb(Str, &NextIndex);
         if (Ch < 0) {
             Ch = 0xfffd;
-            IsReplaced = MR_TRUE;
+            ReplacedCodeUnit = Str[Index];
             NextIndex = Index + 1;
         }
         SUCCESS_INDICATOR = MR_TRUE;
     }
 ").
 :- pragma foreign_proc("C#",
-    unsafe_index_next_repl(Str::in, Index::in, NextIndex::out, Ch::uo,
-        IsReplaced::out),
+    unsafe_index_next_repl_2(Str::in, Index::in, NextIndex::out, Ch::uo,
+        ReplacedCodeUnit::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    IsReplaced = mr_bool.NO;
+    ReplacedCodeUnit = -1;
     try {
         Ch = System.Char.ConvertToUtf32(Str, Index);
         if (Ch <= 0xffff) {
@@ -2445,12 +2499,12 @@ index_next_repl(Str, Index, NextIndex, Char, IsReplaced) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    unsafe_index_next_repl(Str::in, Index::in, NextIndex::out, Ch::uo,
-        IsReplaced::out),
+    unsafe_index_next_repl_2(Str::in, Index::in, NextIndex::out, Ch::uo,
+        ReplacedCodeUnit::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    IsReplaced = bool.NO;
+    ReplacedCodeUnit = -1;
     try {
         Ch = Str.codePointAt(Index);
         NextIndex = Index + java.lang.Character.charCount(Ch);
@@ -2462,8 +2516,8 @@ index_next_repl(Str, Index, NextIndex, Char, IsReplaced) :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    unsafe_index_next_repl(Str::in, Index::in, NextIndex::out, Ch::uo,
-        IsReplaced::out),
+    unsafe_index_next_repl_2(Str::in, Index::in, NextIndex::out, Ch::uo,
+        ReplacedCodeUnit::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2480,11 +2534,11 @@ index_next_repl(Str, Index, NextIndex, Char, IsReplaced) :-
                 true ->
                     NextIndex = Index + 4
             end,
-            IsReplaced = {no},
+            ReplacedCodeUnit = -1,
             SUCCESS_INDICATOR = true;
         _ ->
             Ch = -1,
-            IsReplaced = {no},
+            ReplacedCodeUnit = -1,
             NextIndex = Index,
             SUCCESS_INDICATOR = false
     end
@@ -2493,36 +2547,38 @@ index_next_repl(Str, Index, NextIndex, Char, IsReplaced) :-
 %---------------------%
 
 prev_index(Str, Index, PrevIndex, Char) :-
-    prev_index_repl(Str, Index, PrevIndex, Char, _IsReplaced).
+    prev_index_repl(Str, Index, PrevIndex, Char, _MaybeReplaced).
 
-unsafe_prev_index(Str, Index, PrevIndex, Ch) :-
-    unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, _IsReplaced).
-
-    % XXX ILSEQ Export something like this.
-    %
-:- pred prev_index_repl(string::in, int::in, int::out, char::uo, bool::out)
-    is semidet.
-
-prev_index_repl(Str, Index, PrevIndex, Char, IsReplaced) :-
+prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced) :-
     Len = length(Str),
     ( if index_check(Index - 1, Len) then
-        unsafe_prev_index_repl(Str, Index, PrevIndex, Char, IsReplaced)
+        unsafe_prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced)
     else
         fail
     ).
 
-    % XXX ILSEQ Export something like this.
-    %
-:- pred unsafe_prev_index_repl(string::in, int::in, int::out, char::uo,
-    bool::out) is semidet.
+unsafe_prev_index(Str, Index, PrevIndex, Ch) :-
+    unsafe_prev_index_repl_2(Str, Index, PrevIndex, Ch, _ReplacedCodeUnit).
+
+unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
+    unsafe_prev_index_repl_2(Str, Index, PrevIndex, Ch, ReplacedCodeUnit),
+    ( if ReplacedCodeUnit = -1 then
+        MaybeReplaced = not_replaced
+    else
+        CodeUnit = uint8.cast_from_int(ReplacedCodeUnit),
+        MaybeReplaced = replaced_code_unit(CodeUnit)
+    ).
+
+:- pred unsafe_prev_index_repl_2(string::in, int::in, int::out, char::uo,
+    int::out) is semidet.
 
 :- pragma foreign_proc("C",
-    unsafe_prev_index_repl(Str::in, Index::in, PrevIndex::out, Ch::uo,
-        IsReplaced::out),
+    unsafe_prev_index_repl_2(Str::in, Index::in, PrevIndex::out, Ch::uo,
+        ReplacedCodeUnit::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    IsReplaced = MR_FALSE;
+    ReplacedCodeUnit = -1;
     if (Index <= 0) {
         PrevIndex = Index;
         Ch = 0;
@@ -2537,7 +2593,7 @@ prev_index_repl(Str, Index, PrevIndex, Char, IsReplaced) :-
             // unaccounted for.
             if (Ch < 0 || PrevIndex + MR_utf8_width(Ch) != Index) {
                 Ch = 0xfffd;
-                IsReplaced = MR_TRUE;
+                ReplacedCodeUnit = Str[Index - 1];
                 PrevIndex = Index - 1;
             }
         }
@@ -2545,12 +2601,12 @@ prev_index_repl(Str, Index, PrevIndex, Char, IsReplaced) :-
     }
 ").
 :- pragma foreign_proc("C#",
-    unsafe_prev_index_repl(Str::in, Index::in, PrevIndex::out, Ch::uo,
-        IsReplaced::out),
+    unsafe_prev_index_repl_2(Str::in, Index::in, PrevIndex::out, Ch::uo,
+        ReplacedCodeUnit::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    IsReplaced = mr_bool.NO;
+    ReplacedCodeUnit = -1;
     if (Index <= 0) {
         Ch = 0;
         PrevIndex = Index;
@@ -2579,12 +2635,12 @@ prev_index_repl(Str, Index, PrevIndex, Char, IsReplaced) :-
     }
 ").
 :- pragma foreign_proc("Java",
-    unsafe_prev_index_repl(Str::in, Index::in, PrevIndex::out, Ch::uo,
-        IsReplaced::out),
+    unsafe_prev_index_repl_2(Str::in, Index::in, PrevIndex::out, Ch::uo,
+        ReplacedCodeUnit::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    IsReplaced = bool.NO;
+    ReplacedCodeUnit = -1;
     try {
         Ch = Str.codePointBefore(Index);
         PrevIndex = Index - java.lang.Character.charCount(Ch);
@@ -2596,15 +2652,19 @@ prev_index_repl(Str, Index, PrevIndex, Char, IsReplaced) :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    unsafe_prev_index_repl(Str::in, Index::in, PrevIndex::out, Ch::uo,
-        IsReplaced::out),
+    unsafe_prev_index_repl_2(Str::in, Index::in, PrevIndex::out, Ch::uo,
+        ReplacedCodeUnit::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate, no_sharing],
+        does_not_affect_liveness, no_sharing],
 "
     % XXX does not handle ill-formed sequences as described
-    {PrevIndex, Ch} = do_unsafe_prev_index(Str, Index - 1),
-    IsReplaced = {no},
+    {PrevIndex, Ch} = mercury__string:do_unsafe_prev_index(Str, Index - 1),
+    ReplacedCodeUnit = -1,
     SUCCESS_INDICATOR = (Ch =/= -1)
+").
+
+:- pragma foreign_decl("Erlang", local, "
+-export([do_unsafe_prev_index/2]).
 ").
 
 :- pragma foreign_code("Erlang", "
@@ -3319,8 +3379,7 @@ all_match(P, String) :-
     int::in) is semidet.
 
 all_match_loop(P, String, Cur) :-
-    ( if unsafe_index_next_repl(String, Cur, Next, Char, IsReplaced) then
-        IsReplaced = no,
+    ( if unsafe_index_next_repl(String, Cur, Next, Char, not_replaced) then
         P(Char),
         all_match_loop(P, String, Next)
     else
@@ -3372,11 +3431,8 @@ contains_char(String, Char) :-
 :- pred contains_char_loop(string::in, char::in, int::in) is semidet.
 
 contains_char_loop(Str, Char, I) :-
-    unsafe_index_next_repl(Str, I, J, IndexChar, IsReplaced),
-    ( if
-        IndexChar = Char,
-        IsReplaced = no
-    then
+    unsafe_index_next_repl(Str, I, J, IndexChar, not_replaced),
+    ( if IndexChar = Char then
         true
     else
         contains_char_loop(Str, Char, J)
@@ -3496,8 +3552,7 @@ prefix_length(P, S) = Index :-
 
 prefix_length_loop(P, S, I, Index) :-
     ( if
-        unsafe_index_next_repl(S, I, J, Char, IsReplaced),
-        IsReplaced = no,
+        unsafe_index_next_repl(S, I, J, Char, not_replaced),
         P(Char)
     then
         prefix_length_loop(P, S, J, Index)
@@ -3514,8 +3569,7 @@ suffix_length(P, S) = End - Index :-
 
 suffix_length_loop(P, S, I, Index) :-
     ( if
-        unsafe_prev_index_repl(S, I, J, Char, IsReplaced),
-        IsReplaced = no,
+        unsafe_prev_index_repl(S, I, J, Char, not_replaced),
         P(Char)
     then
         suffix_length_loop(P, S, J, Index)
@@ -4120,8 +4174,7 @@ first_char(Str::uo, First::in, Rest::in) :-
 :- mode first_char_rest_in(in, uo, in) is semidet.
 
 first_char_rest_in(Str, First, Rest) :-
-    index_next_repl(Str, 0, NextIndex, First0, IsReplaced),
-    IsReplaced = no,
+    index_next_repl(Str, 0, NextIndex, First0, not_replaced),
     not is_surrogate(First0),
     unsafe_promise_unique(First0, First),
     unsafe_compare_substrings((=), Str, NextIndex, Rest, 0, length(Rest)).
@@ -4131,8 +4184,7 @@ first_char_rest_in(Str, First, Rest) :-
 :- mode first_char_rest_out(in, uo, uo) is semidet.
 
 first_char_rest_out(Str, First, Rest) :-
-    index_next_repl(Str, 0, NextIndex, First0, IsReplaced),
-    IsReplaced = no,
+    index_next_repl(Str, 0, NextIndex, First0, not_replaced),
     not is_surrogate(First0),
     unsafe_promise_unique(First0, First),
     unsafe_between(Str, NextIndex, length(Str), Rest).
@@ -4325,8 +4377,7 @@ words_loop(SepP, String, WordStartPos, Words) :-
 
 skip_to_next_word_start(SepP, String, CurPos, NextWordStartPos) :-
     ( if
-        unsafe_index_next_repl(String, CurPos, NextPos, Char, IsReplaced),
-        IsReplaced = no,
+        unsafe_index_next_repl(String, CurPos, NextPos, Char, not_replaced),
         SepP(Char)
     then
         skip_to_next_word_start(SepP, String, NextPos, NextWordStartPos)
@@ -4341,8 +4392,11 @@ skip_to_next_word_start(SepP, String, CurPos, NextWordStartPos) :-
     string::in, int::in, int::out) is det.
 
 skip_to_word_end(SepP, String, CurPos, PastWordEndPos) :-
-    ( if unsafe_index_next_repl(String, CurPos, NextPos, Char, IsReplaced) then
-        ( if IsReplaced = no, SepP(Char) then
+    ( if unsafe_index_next_repl(String, CurPos, NextPos, Char, MaybeReplaced) then
+        ( if
+            MaybeReplaced = not_replaced,
+            SepP(Char)
+        then
             PastWordEndPos = CurPos
         else
             skip_to_word_end(SepP, String, NextPos, PastWordEndPos)
@@ -4367,9 +4421,9 @@ split_at_separator_loop(DelimP, Str, CurPos, PastSegEnd, !Segments) :-
     % Invariant: 0 =< CurPos =< length(Str).
     % PastSegEnd is one past the last index of the current segment.
     %
-    ( if unsafe_prev_index_repl(Str, CurPos, PrevPos, Char, IsReplaced) then
+    ( if unsafe_prev_index_repl(Str, CurPos, PrevPos, Char, MaybeReplaced) then
         ( if
-            IsReplaced = no,
+            MaybeReplaced = not_replaced,
             DelimP(Char)
         then
             % Chop here.
@@ -5509,8 +5563,7 @@ char_to_string(C) = S1 :-
 char_to_string(Char::in, String::uo) :-
     from_char_list([Char], String).
 char_to_string(Char::out, String::in) :-
-    index_next_repl(String, 0, NextIndex, Char, IsReplaced),
-    IsReplaced = no,
+    index_next_repl(String, 0, NextIndex, Char, not_replaced),
     length(String, NextIndex).
 
 from_char(Char) = char_to_string(Char).

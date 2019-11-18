@@ -434,6 +434,10 @@ Changes to the Mercury standard library:
    - append_string_pieces/2
    - unsafe_append_string_pieces/2
    - unsafe_sub_string_search_start/4
+   - index_next_repl/5
+   - unsafe_index_next_repl/5
+   - prev_index_repl/5
+   - unsafe_prev_index_repl/5
 
   The following procedures in the string module have been deprecated:
 
