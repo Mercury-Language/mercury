@@ -354,7 +354,6 @@ ORDINARY_PROGS = \
 	string_append_ioi \
 	string_append_ooi \
 	string_append_ooi_ilseq \
-	string_append_pieces \
 	string_builder_test \
 	string_case \
 	string_char_list_ilseq \
@@ -772,6 +771,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		map_merge_test \
 		mutable_excp \
 		null_char \
+		string_append_pieces \
 		string_first_char_ilseq \
 		take_split_upto \
 		test_array2d \
