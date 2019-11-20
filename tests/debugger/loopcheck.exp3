@@ -22,5 +22,5 @@ mdb> finish
 mdb> continue
 Uncaught Mercury exception:
 Software Error: detected infinite recursion in pred loopcheck.loop/1
-Last trace event was event #142.
+Last trace event was event #137.
 Last trace event before the unhandled exception was event #8.
