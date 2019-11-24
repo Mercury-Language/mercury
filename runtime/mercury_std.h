@@ -78,8 +78,15 @@ typedef char        MR_small_bool;
 
 #ifdef MR_LOWLEVEL_DEBUG
   #define MR_assert(ASSERTION)  assert(ASSERTION)
+#elif defined(MR_MSVC)
+  // This marks an MR_assert(0) as an unreachable branch. This also silences
+  // warnings about unused variables, and also can improve optimization.
+  #define MR_assert(ASSERTION)  __assume(ASSERTION)
 #else
-  #define MR_assert(ASSERTION)  ((void)0)
+  // Using sizeof ensures that the argument to MR_assert is valid, but does
+  // not actually execute any code. This helps prevent bitrot when code is not
+  // tested with assertions enabled.
+  #define MR_assert(ASSERTION)  ((void)sizeof(ASSERTION))
 #endif
 
 ////////////////////////////////////////////////////////////////////////////
