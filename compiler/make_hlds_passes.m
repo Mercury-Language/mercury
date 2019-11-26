@@ -137,7 +137,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %   clauses but also clause-like pragmas such as foreign_procs
     %   to the module, while
     % - pass 2 did the tasks that had to be done before pass 3 started
-    %   but which needed access to all the declarations added by pass 1,
+    %   but which needed access to *all* the declarations added by pass 1,
     %   not just the ones processed so far.
     %
     % We now add items to the HLDS by item kind: first one kind of item,
@@ -244,8 +244,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % We need to process the mode declaration of a predicate
     % after we have seen the (type) declaration of the predicate.
     % In the past, this required the predicate declaration to precede
-    % the mode declaration in the source code, but now, the order does not
-    % matter.
+    % the mode declaration in the source code, but now, the order
+    % in the source code does not matter.
     %
     % Note that mode declarations embedded in predmode declarations
     % have already been added to the HLDS by add_pred_decl.
@@ -291,32 +291,9 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
     % Implement several kinds of pragmas, the ones in the subtype
     % defined by the pragma_pass_2 inst.
-    %
-    % We have to implement the pragmas that affect type representations
-    % BEFORE we process the type table below, because if we don't, that
-    % processing may operate on incomplete data.
-    %
-    % We have to to implement pragmas that record some information
-    % for declared predicates (e.g. assertions that they terminate, or
-    % promises about their purity) after we have processed their declarations.
-    % (Users may have valid stylistic reasons for putting pragmas affecting
-    % a predicate before the declaration of the predicate itself.)
-    % With most of them, we don't *have to* process them yet, but we can,
-    % and we do. An exception is pragma_external_proc, which we *do* have
-    % to process before adding clauses, so that we can guarantee that we catch
-    % attempts to add clauses for external predicates, and generate an
-    % error message for each such attempt.
-    % XXX PASS STRUCTURE Do we actually catch such attempts?
-    %
-    % We also add some kinds of pragmas that don't have to be added
-    % at any specific time, such as pragma_foreign_decl, pragma_foreign_code
-    % and pragma_require_feature_set.
-    %
-    % NOTE We loop over ItemPragmas2 with a bespoke predicate, not list.foldl2,
-    % because list.foldl2 doesn't (yet) know how to preserve the subtype inst
-    % of ItemPragmas2.
-    add_pass_2_pragmas(ItemPragmas2,
-        !ModuleInfo, !Specs),
+
+    % Record imports of foreign-language modules for use by the target code
+    % we may generate.
     list.foldl(module_add_foreign_import_module, ItemFIMs,
         !ModuleInfo),
 
@@ -393,12 +370,41 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     list.foldl2(add_finalise, ItemFinalises,
         !ModuleInfo, !Specs),
 
-    % Implement all the pragmas we haven't processed earlier.
-    % These will be the ones in the subtype defined by the pragma_pass_3 inst.
+    % Implement all pragmas.
     %
-    % NOTE We loop over ItemPragmas3 with a bespoke predicate, not list.foldl3,
-    % because list.foldl2 doesn't (yet) know how to preserve the subtype inst
-    % of ItemPragmas3.
+    % Once upon a time, we processed many pragmas in pass 2.
+    % We had three different reasons for doing this for three different
+    % kinds of pragmas.
+    %
+    % 1: We had to do this for foreign_enum pragmas, since these may affect
+    %    type representations, and *that* may affect many other things.
+    %    However, but these now have their own item kind, which are processed
+    %    at the very top above.
+    %
+    % 2: We once also had to do this for foreign_decl pragmas, but the
+    %    separation of user and aux foreign decls has removed that requirement
+    %    (see the comments on the module_info fields containing foreign_decls
+    %    in hlds_module.m).
+    %
+    % 3: We wanted to do this also for pragmas that mark predicates and/or
+    %    functions as external, so that we could catch and report attempts
+    %    to add clauses for any predicates and/or functions so marked, However,
+    %    we have no code to actually do this. If we ever *do* want to implement
+    %    this check, it can easily be done in this pass: just emit the error
+    %    message if a predicate or function being marked has some clauses.
+    %
+    % We can now add all the remaining pragmas to the HLDS at the same time.
+    % This times does have to be after we have processed all predicate
+    % and mode declarations, since several pragmas do refer to predicates
+    % or to modes of predicates.
+    %
+    % XXX This means we don't need to make any distinction between pass 2 and
+    % pass 3 pragmas anymore. This distinction will be deleted soon.
+    % NOTE Until then, we loop over the pragmas with a bespoke predicate,
+    % not list.foldl2, because list.foldl2 doesn't (yet) know how to preserve
+    % the subtype inst of ItemPragmas[23].
+    add_pass_2_pragmas(ItemPragmas2,
+        !ModuleInfo, !Specs),
     add_pass_3_pragmas(ItemPragmas3,
         !ModuleInfo, !QualInfo, !Specs),
 

@@ -125,8 +125,12 @@ get_foreign_export_decls(ModuleInfo, ForeignExportDecls) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
 
-    module_info_get_foreign_decl_codes(ModuleInfo, ForeignDeclCodeCord),
-    ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
+    module_info_get_foreign_decl_codes_user(ModuleInfo,
+        ForeignDeclCodeUserCord),
+    module_info_get_foreign_decl_codes_aux(ModuleInfo,
+        ForeignDeclCodeAuxCord),
+    ForeignDeclCodes =
+        cord.list(ForeignDeclCodeUserCord ++ ForeignDeclCodeAuxCord),
 
     module_info_get_pragma_exported_procs(ModuleInfo, ExportedProcsCord),
     get_foreign_export_decls_loop(ModuleInfo, Preds,

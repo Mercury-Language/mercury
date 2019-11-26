@@ -1044,7 +1044,7 @@ define_mutable_global_var_c(TargetMutableName, Type, IsConstant, IsThreadLocal,
         "#endif\n" | LockDeclStrs]),
     ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_exported,
         floi_literal(DeclBody), Context),
-    module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo),
+    module_add_foreign_decl_code_aux(ForeignDeclCode, !ModuleInfo),
 
     DefnBody = string.append_list([
         TypeName, " ", TargetMutableName, ";\n" | LockDefnStrs]),

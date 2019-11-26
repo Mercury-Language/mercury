@@ -34,13 +34,9 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module bool.
-:- import_module cord.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
-
-:- type foreign_decl_codes == cord(foreign_decl_code).
-:- type foreign_body_codes == cord(foreign_body_code).
 
 :- type foreign_decl_code
     --->    foreign_decl_code(

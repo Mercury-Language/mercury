@@ -308,10 +308,12 @@
     has_parallel_conj::out) is det.
 :- pred module_info_get_has_user_event(module_info::in,
     has_user_event::out) is det.
-:- pred module_info_get_foreign_decl_codes(module_info::in,
-    foreign_decl_codes::out) is det.
+:- pred module_info_get_foreign_decl_codes_user(module_info::in,
+    cord(foreign_decl_code)::out) is det.
+:- pred module_info_get_foreign_decl_codes_aux(module_info::in,
+    cord(foreign_decl_code)::out) is det.
 :- pred module_info_get_foreign_body_codes(module_info::in,
-    foreign_body_codes::out) is det.
+    cord(foreign_body_code)::out) is det.
 :- pred module_get_fact_table_file_names(module_info::in,
     list(string)::out) is det.
 :- pred module_info_get_maybe_dependency_info(module_info::in,
@@ -400,9 +402,11 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_has_user_event(
     module_info::in, module_info::out) is det.
-:- pred module_info_set_foreign_decl_codes(foreign_decl_codes::in,
+:- pred module_info_set_foreign_decl_codes_user(cord(foreign_decl_code)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_foreign_body_codes(foreign_body_codes::in,
+:- pred module_info_set_foreign_decl_codes_aux(cord(foreign_decl_code)::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_foreign_body_codes(cord(foreign_body_code)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_type_ctor_gen_infos(list(type_ctor_gen_info)::in,
     module_info::in, module_info::out) is det.
@@ -516,7 +520,9 @@
 
 %---------------------%
 
-:- pred module_add_foreign_decl_code(foreign_decl_code::in,
+:- pred module_add_foreign_decl_code_user(foreign_decl_code::in,
+    module_info::in, module_info::out) is det.
+:- pred module_add_foreign_decl_code_aux(foreign_decl_code::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_add_foreign_body_code(foreign_body_code::in,
@@ -756,8 +762,32 @@
                 mri_has_parallel_conj           :: has_parallel_conj,
                 mri_has_user_event              :: has_user_event,
 
-                mri_foreign_decl_codes          :: foreign_decl_codes,
-                mri_foreign_body_codes          :: foreign_body_codes,
+                % We classify foreign code fragments bodily included in the
+                % generated target language file into three categories,
+                % based on two criteria.
+                %
+                % The first criterion is declarations (decl_codes) vs
+                % non-declarations (body codes). We separate these because
+                % we have to put definitions before code that may use those
+                % definitions.
+                %
+                % We would prefer the second criterion to be declarations
+                % that define types vs declarations that define other entities
+                % that may refer to those types, such as global variables
+                % or function, again so that we can emit the former before
+                % the latter, Unfortunately, foreign_decl pragmas do not
+                % specify what they define. Instead, our second criterion is
+                % user-provided declarations vs aux declarations added
+                % by the Mercury compiler itself to implement either
+                % (a) mutables, or (b) fact tables. Neither of the latter
+                % define types, so putting these after user-provided
+                % declarations will work, as long as in the user-provided
+                % declarations, definitions of types precede definitions
+                % of other entities that refer to those types. Ensuring that
+                % is the programmer's responsibility.
+                mri_foreign_decl_codes_user     :: cord(foreign_decl_code),
+                mri_foreign_decl_codes_aux      :: cord(foreign_decl_code),
+                mri_foreign_body_codes          :: cord(foreign_body_code),
 
                 % The names of the files containing fact tables implementing
                 % predicates defined in this module.
@@ -960,8 +990,9 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     exclusive_table_init(ExclusiveTable),
     HasParallelConj = has_no_parallel_conj,
     HasUserEvent = has_no_user_event,
-    ForeignDeclInfo = cord.init,
-    ForeignBodyInfo = cord.init,
+    ForeignDeclsUser = cord.init,
+    ForeignDeclsAux = cord.init,
+    ForeignBodies = cord.init,
     FactTableFiles = [],
     MaybeDependencyInfo = maybe.no,
     NumErrors = 0,
@@ -1051,8 +1082,9 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         ExclusiveTable,
         HasParallelConj,
         HasUserEvent,
-        ForeignDeclInfo,
-        ForeignBodyInfo,
+        ForeignDeclsUser,
+        ForeignDeclsAux,
+        ForeignBodies,
         FactTableFiles,
         MaybeDependencyInfo,
         NumErrors,
@@ -1216,8 +1248,10 @@ module_info_get_has_parallel_conj(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_has_parallel_conj.
 module_info_get_has_user_event(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_has_user_event.
-module_info_get_foreign_decl_codes(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_foreign_decl_codes.
+module_info_get_foreign_decl_codes_user(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_foreign_decl_codes_user.
+module_info_get_foreign_decl_codes_aux(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_foreign_decl_codes_aux.
 module_info_get_foreign_body_codes(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_foreign_body_codes.
 module_get_fact_table_file_names(MI, X) :-
@@ -1344,8 +1378,10 @@ module_info_set_has_parallel_conj(!MI) :-
 module_info_set_has_user_event(!MI) :-
     X = has_user_event,
     !MI ^ mi_rare_info ^ mri_has_user_event := X.
-module_info_set_foreign_decl_codes(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_foreign_decl_codes := X.
+module_info_set_foreign_decl_codes_user(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_foreign_decl_codes_user := X.
+module_info_set_foreign_decl_codes_aux(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_foreign_decl_codes_aux := X.
 module_info_set_foreign_body_codes(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_foreign_body_codes := X.
 module_info_set_maybe_dependency_info(X, !MI) :-
@@ -1499,10 +1535,15 @@ predicate_arity(ModuleInfo, PredId) = Arity :-
 
 %---------------------%
 
-module_add_foreign_decl_code(ForeignDeclCode, !Module) :-
-    module_info_get_foreign_decl_codes(!.Module, ForeignDeclCodes0),
+module_add_foreign_decl_code_user(ForeignDeclCode, !Module) :-
+    module_info_get_foreign_decl_codes_user(!.Module, ForeignDeclCodes0),
     ForeignDeclCodes = cord.snoc(ForeignDeclCodes0, ForeignDeclCode),
-    module_info_set_foreign_decl_codes(ForeignDeclCodes, !Module).
+    module_info_set_foreign_decl_codes_user(ForeignDeclCodes, !Module).
+
+module_add_foreign_decl_code_aux(ForeignDeclCode, !Module) :-
+    module_info_get_foreign_decl_codes_aux(!.Module, ForeignDeclCodes0),
+    ForeignDeclCodes = cord.snoc(ForeignDeclCodes0, ForeignDeclCode),
+    module_info_set_foreign_decl_codes_aux(ForeignDeclCodes, !Module).
 
 module_add_foreign_body_code(ForeignBodyCode, !Module) :-
     module_info_get_foreign_body_codes(!.Module, ForeignBodyCodes0),

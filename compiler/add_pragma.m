@@ -159,7 +159,7 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
         % XXX STATUS Check ItemMercuryStatus
         FDInfo = pragma_info_foreign_decl(Lang, IsLocal, CHeader),
         ForeignDeclCode = foreign_decl_code(Lang, IsLocal, CHeader, Context),
-        module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo)
+        module_add_foreign_decl_code_user(ForeignDeclCode, !ModuleInfo)
     ;
         Pragma = pragma_foreign_code(FCInfo),
         % XXX STATUS Check ItemMercuryStatus
@@ -1309,7 +1309,7 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
             % Create foreign_decls to declare extern variables.
             ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_local,
                 floi_literal(C_HeaderCode), Context),
-            module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo),
+            module_add_foreign_decl_code_aux(ForeignDeclCode, !ModuleInfo),
 
             module_add_fact_table_file(FileName, !ModuleInfo),
 

@@ -92,11 +92,15 @@ ml_code_gen(Target, MLDS, !ModuleInfo, !Specs) :-
     map(foreign_language, mlds_foreign_code)::out) is det.
 
 ml_gen_foreign_code(ModuleInfo, AllForeignCodeMap) :-
-    module_info_get_foreign_decl_codes(ModuleInfo, ForeignDeclCodeCord),
+    module_info_get_foreign_decl_codes_user(ModuleInfo,
+        ForeignDeclCodeUserCord),
+    module_info_get_foreign_decl_codes_aux(ModuleInfo,
+        ForeignDeclCodeAuxCord),
     module_info_get_foreign_body_codes(ModuleInfo, ForeignBodyCodeCord),
     module_info_get_foreign_import_modules(ModuleInfo, ForeignImportModules),
     module_info_get_pragma_exported_procs(ModuleInfo, ForeignExportsCord),
-    ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
+    ForeignDeclCodes =
+        cord.list(ForeignDeclCodeUserCord ++ ForeignDeclCodeAuxCord),
     ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
     ForeignExports = cord.list(ForeignExportsCord),
 
