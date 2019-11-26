@@ -1536,15 +1536,15 @@ write_recompilation_message(Globals, P, !IO) :-
 write_recompile_reason(Globals, ModuleName, Reason, !IO) :-
     PrefixPieces = [words("Recompiling module"), qual_sym_name(ModuleName),
         suffix(":"), nl],
-    recompile_reason_message(PrefixPieces, Reason, Spec),
+    recompile_reason_message(Globals, PrefixPieces, Reason, Spec),
     % Since these messages are informational, there should be no warnings
     % or errors.
     write_error_spec_ignore(Spec, Globals, !IO).
 
-:- pred recompile_reason_message(list(format_component)::in,
+:- pred recompile_reason_message(globals::in, list(format_component)::in,
     recompile_reason::in, error_spec::out) is det.
 
-recompile_reason_message(PrefixPieces, Reason, Spec) :-
+recompile_reason_message(Globals, PrefixPieces, Reason, Spec) :-
     (
         (
             Reason = recompile_for_file_error(_FileName, Pieces)
@@ -1607,17 +1607,11 @@ recompile_reason_message(PrefixPieces, Reason, Spec) :-
             [error_msg(MaybeContext, treat_as_first, 0, [always(AllPieces)])])
     ;
         Reason = recompile_for_unreadable_used_items(Specs),
-        MsgsList = list.map(project_spec_to_msgs, Specs),
+        list.map(extract_spec_msgs(Globals), Specs, MsgsList),
         list.condense(MsgsList, Msgs),
         % MaybeContext = find_first_context_in_msgs(Msgs),
         Spec = error_spec(severity_informational, phase_read_files, Msgs)
     ).
-
-:- func project_spec_to_msgs(error_spec) = list(error_msg).
-
-project_spec_to_msgs(Spec0) = Msgs :-
-    expand_simplest_spec(Spec0, Spec),
-    Spec = error_spec(_Severity, _Phase, Msgs).
 
 :- func describe_item(item_id) = list(format_component).
 

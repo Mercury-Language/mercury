@@ -71,6 +71,11 @@
 % simplest_spec(Severity, Phase, Context, Pieces) is a shorthand for
 % (and equivalent in every respect to) error_spec(Severity, Phase,
 % [simple_msg(Context, always(Pieces)])]).
+%
+% conditional_spec(Option, MatchValue, Severity, Phase, Msgs) is intended
+% to represent the error specification given by its last three fields
+% *iff* Option has the value MatchValue. If Option is *not* MatchValue,
+% it asks for nothing to be printed, and for the exit status to be left alone.
 
 :- type error_spec
     --->    error_spec(
@@ -83,13 +88,18 @@
                 simp_spec_phase         :: error_phase,
                 simp_spec_context       :: prog_context,
                 simp_spec_pieces        :: list(format_component)
+            )
+    ;       conditional_spec(
+                cond_spec_option        :: option,
+                cond_spec_value         :: bool,
+
+                cond_spec_severity      :: error_severity,
+                cond_spec_phase         :: error_phase,
+                cond_spec_msgs          :: list(error_msg)
             ).
 
-:- inst full_spec for error_spec/0
-    --->    error_spec(ground, ground, ground).
-
-:- pred expand_simplest_spec(error_spec::in, error_spec::out(full_spec))
-    is det.
+:- pred extract_spec_msgs(globals::in, error_spec::in,
+    list(error_msg)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -644,14 +654,20 @@
 
 %---------------------------------------------------------------------------%
 
-expand_simplest_spec(Spec0, Spec) :-
+extract_spec_msgs(Globals, Spec, Msgs) :-
     (
-        Spec0 = error_spec(Severity, Phase, Msgs),
-        Spec = error_spec(Severity, Phase, Msgs)
+        Spec = error_spec(_Severity, _Phase, Msgs)
     ;
-        Spec0 = simplest_spec(Severity, Phase, Context, Pieces),
-        Spec = error_spec(Severity, Phase,
-            [simple_msg(Context, [always(Pieces)])])
+        Spec = simplest_spec(_Severity, _Phase, Context, Pieces),
+        Msgs = [simplest_msg(Context, Pieces)]
+    ;
+        Spec = conditional_spec(Option, MatchValue, _Severity, _Phase, Msgs0),
+        globals.lookup_bool_option(Globals, Option, Value),
+        ( if Value = MatchValue then
+            Msgs = Msgs0
+        else
+            Msgs = []
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -710,10 +726,20 @@ worst_severity_in_specs(Globals, Specs) = MaybeWorst :-
 
 worst_severity_in_specs_2(_Globals, [], !MaybeWorst).
 worst_severity_in_specs_2(Globals, [Spec | Specs], !MaybeWorst) :-
-    ( Spec = error_spec(Severity, _, _)
-    ; Spec = simplest_spec(Severity, _, _, _)
+    (
+        ( Spec = error_spec(Severity, _, _)
+        ; Spec = simplest_spec(Severity, _, _, _)
+        ),
+        MaybeThis = actual_error_severity(Globals, Severity)
+    ;
+        Spec = conditional_spec(Option, MatchValue, Severity, _, _),
+        globals.lookup_bool_option(Globals, Option, OptionValue),
+        ( if OptionValue = MatchValue then
+            MaybeThis = actual_error_severity(Globals, Severity)
+        else
+            MaybeThis = no
+        )
     ),
-    MaybeThis = actual_error_severity(Globals, Severity),
     (
         !.MaybeWorst = no,
         !:MaybeWorst = MaybeThis
@@ -817,7 +843,7 @@ sort_error_specs(Globals, !Specs) :-
     % since the cost of doing so is trivial.)
     %
     list.filter_map(remove_conditionals_in_spec(Globals), !Specs),
-    list.sort_and_remove_dups(compare_error_specs, !Specs).
+    list.sort_and_remove_dups(compare_error_specs(Globals), !Specs).
 
 :- pred remove_conditionals_in_spec(globals::in,
     error_spec::in, error_spec::out) is semidet.
@@ -825,13 +851,26 @@ sort_error_specs(Globals, !Specs) :-
 remove_conditionals_in_spec(Globals, Spec0, Spec) :-
     require_det (
         (
-            Spec0 = error_spec(Severity0, Phase, Msgs0)
+            Spec0 = error_spec(Severity0, Phase, Msgs0),
+            MaybeActualSeverity = actual_error_severity(Globals, Severity0),
+            list.filter_map(remove_conditionals_in_msg(Globals), Msgs0, Msgs)
         ;
             Spec0 = simplest_spec(Severity0, Phase, Context0, Pieces0),
-            Msgs0 = [simplest_msg(Context0, Pieces0)]
-        ),
-        MaybeActualSeverity = actual_error_severity(Globals, Severity0),
-        list.filter_map(remove_conditionals_in_msg(Globals), Msgs0, Msgs)
+            MaybeActualSeverity = actual_error_severity(Globals, Severity0),
+            Msgs = [simplest_msg(Context0, Pieces0)]
+        ;
+            Spec0 = conditional_spec(Option, MatchValue,
+                Severity0, Phase, Msgs0),
+            globals.lookup_bool_option(Globals, Option, OptionValue),
+            ( if OptionValue = MatchValue then
+                MaybeActualSeverity =
+                    actual_error_severity(Globals, Severity0),
+                Msgs = Msgs0
+            else
+                MaybeActualSeverity = no,
+                Msgs = []
+            )
+        )
     ),
     ( if
         MaybeActualSeverity = yes(ActualSeverity),
@@ -889,13 +928,13 @@ remove_conditionals_in_msg(Globals, Msg0, Msg) :-
 
 remove_conditionals_in_msg_component(Globals, Component, !ComponentCord) :-
     (
-        Component = option_is_set(Option, RequiredValue, EmbeddedComponents),
+        Component = option_is_set(Option, MatchValue, EmbeddedComponents),
         % We could recurse down into EmbeddedComponents, but we currently
         % have any places in the compiler that can generate two error messages
         % that differ only in nested option settings, so there would be
         % no point.
         globals.lookup_bool_option(Globals, Option, OptionValue),
-        ( if OptionValue = RequiredValue then
+        ( if OptionValue = MatchValue then
             !:ComponentCord =
                 !.ComponentCord ++ cord.from_list(EmbeddedComponents)
         else
@@ -920,14 +959,12 @@ remove_conditionals_in_msg_component(Globals, Component, !ComponentCord) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred compare_error_specs(error_spec::in, error_spec::in,
+:- pred compare_error_specs(globals::in, error_spec::in, error_spec::in,
     comparison_result::out) is det.
 
-compare_error_specs(SpecA0, SpecB0, Result) :-
-    expand_simplest_spec(SpecA0, SpecA),
-    expand_simplest_spec(SpecB0, SpecB),
-    SpecA = error_spec(_, _, MsgsA),
-    SpecB = error_spec(_, _, MsgsB),
+compare_error_specs(Globals, SpecA, SpecB, Result) :-
+    extract_spec_msgs(Globals, SpecA, MsgsA),
+    extract_spec_msgs(Globals, SpecB, MsgsB),
     compare_error_msg_lists(MsgsA, MsgsB, MsgsResult),
     (
         MsgsResult = (=),
@@ -1154,13 +1191,29 @@ write_error_specs(Stream, Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-do_write_error_spec(Stream, Globals, Spec0, !NumWarnings, !NumErrors,
+do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
         !AlreadyPrintedVerbose, !IO) :-
-    expand_simplest_spec(Spec0, Spec),
-    Spec = error_spec(Severity, _, Msgs),
+    (
+        Spec = error_spec(Severity, _Phase, Msgs),
+        MaybeActual = actual_error_severity(Globals, Severity)
+    ;
+        Spec = simplest_spec(Severity, _Phase, Context, Pieces),
+        MaybeActual = actual_error_severity(Globals, Severity),
+        Msgs = [simplest_msg(Context, Pieces)]
+    ;
+        Spec = conditional_spec(Option, MatchValue,
+            Severity, _Phase, Msgs0),
+        globals.lookup_bool_option(Globals, Option, Value),
+        ( if Value = MatchValue then
+            MaybeActual = actual_error_severity(Globals, Severity),
+            Msgs = Msgs0
+        else
+            MaybeActual = no,
+            Msgs = []
+        )
+    ),
     do_write_error_msgs(Stream, Msgs, Globals, treat_as_first,
         have_not_printed_anything, PrintedSome, !AlreadyPrintedVerbose, !IO),
-    MaybeActual = actual_error_severity(Globals, Severity),
     (
         PrintedSome = have_not_printed_anything
         % XXX The following assertion is commented out because the compiler
@@ -1187,7 +1240,7 @@ do_write_error_spec(Stream, Globals, Spec0, !NumWarnings, !NumErrors,
             )
         ;
             MaybeActual = no,
-            unexpected($pred, "MaybeActual is no")
+            unexpected($pred, "printed_something but MaybeActual = no")
         )
     ).
 
@@ -1257,9 +1310,9 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
     ;
-        Component = option_is_set(Option, RequiredValue, EmbeddedComponents),
+        Component = option_is_set(Option, MatchValue, EmbeddedComponents),
         globals.lookup_bool_option(Globals, Option, OptionValue),
-        ( if OptionValue = RequiredValue then
+        ( if OptionValue = MatchValue then
             write_msg_components(Stream, EmbeddedComponents, MaybeContext,
                 Indent, Globals, !First, !PrintedSome,
                 !AlreadyPrintedVerbose, !IO)

@@ -739,8 +739,8 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     mode_info_set_context(ErrorContext, !ModeInfo),
     mode_info_set_mode_context(ModeContext, !ModeInfo),
     SubSpec0 = mode_error_to_spec(!.ModeInfo, ModeError),
-    expand_simplest_spec(SubSpec0, SubSpec),
-    SubSpec = error_spec(_, _, SubMsgs),
+    module_info_get_globals(ModuleInfo, Globals),
+    extract_spec_msgs(Globals, SubSpec0, SubMsgs),
     Msgs = [Msg1, Msg2] ++ SubMsgs.
 
 :- type write_indented_goal
@@ -1007,8 +1007,8 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         mode_info_set_context(CalleeContext, !ModeInfo),
         mode_info_set_mode_context(CalleeModeContext, !ModeInfo),
         CalleeModeErrorSpec0 = mode_error_to_spec(!.ModeInfo, CalleeModeError),
-        expand_simplest_spec(CalleeModeErrorSpec0, CalleeModeErrorSpec),
-        CalleeModeErrorSpec = error_spec(_, _, LaterMsgs0),
+        module_info_get_globals(ModuleInfo, Globals),
+        extract_spec_msgs(Globals, CalleeModeErrorSpec0, LaterMsgs0),
         (
             LaterMsgs0 = [],
             LaterMsgs = []
@@ -1264,12 +1264,13 @@ mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst,
         MaybeMultiModeError = yes(MultiModeError),
         ConnectPieces = [words("This may have been caused by"),
             words("the following error."), nl],
-        ConnectMsgs = [simple_msg(Context, [always(ConnectPieces)])],
+        ConnectMsgs = [simplest_msg(Context, ConnectPieces)],
         MultiModeError = pred_var_multimode_pred_error(PredId, MultiMode),
         SubSpec0 = mode_error_unify_var_multimode_pred_to_spec(ModeInfo,
             Var, PredId, MultiMode),
-        expand_simplest_spec(SubSpec0, SubSpec),
-        SubSpec = error_spec(_SubSeverity, _SubPhase, SubMsgs),
+        mode_info_get_module_info(ModeInfo, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        extract_spec_msgs(Globals, SubSpec0, SubMsgs),
         Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
             MainMsgs ++ ConnectMsgs ++ SubMsgs)
     ).
