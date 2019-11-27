@@ -1,0 +1,4 @@
+external2.m:019: The predicate `p'/2 has clauses, so it cannot be marked as
+external2.m:019:   external.
+external2.m:020: The function `f'/2 has clauses, so it cannot be marked as
+external2.m:020:   external.

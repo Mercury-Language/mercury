@@ -633,63 +633,6 @@ prepare_for_tail_call(_) :-
 :- pragma external_pred(non_fail_port_code_ac/2).
 :- pragma external_pred(non_fail_port_code_sr/3).
 
-det_call_port_code_ac(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("det_call_port_code_ac").
-det_call_port_code_sr(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("det_call_port_code_sr").
-det_exit_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("det_exit_port_code_ac").
-det_exit_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("det_exit_port_code_sr").
-semi_call_port_code_ac(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("semi_call_port_code_ac").
-semi_call_port_code_sr(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("semi_call_port_code_sr").
-semi_exit_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("semi_exit_port_code_ac").
-semi_exit_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("semi_exit_port_code_sr").
-semi_fail_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    semidet_succeed,
-    private_builtin.sorry("semi_fail_port_code_ac").
-semi_fail_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    semidet_succeed,
-    private_builtin.sorry("semi_fail_port_code_sr").
-non_call_port_code_ac(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_call_port_code_ac").
-non_call_port_code_sr(_, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_call_port_code_sr").
-non_exit_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_exit_port_code_ac").
-non_exit_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_exit_port_code_sr").
-non_redo_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_redo_port_code_ac").
-non_redo_port_code_sr(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_redo_port_code_sr").
-non_fail_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_fail_port_code_ac").
-non_fail_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_fail_port_code_sr").
-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",

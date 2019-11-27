@@ -145,6 +145,7 @@ SINGLEMODULE= \
 	ext_type \
 	ext_type_bug \
 	external \
+	external2 \
 	extra_info_prompt \
 	field_syntax_error \
 	foreign_enum_import \

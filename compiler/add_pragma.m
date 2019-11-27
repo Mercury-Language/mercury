@@ -202,7 +202,8 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
             ),
             (
                 PredIds = [_ | _],
-                list.foldl(mark_pred_as_external, PredIds, !ModuleInfo)
+                list.foldl2(mark_pred_as_external(Context), PredIds,
+                    !ModuleInfo, !Specs)
             ;
                 PredIds = [],
                 module_info_get_preds(!.ModuleInfo, PredTable0),
@@ -377,15 +378,34 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mark_pred_as_external(pred_id::in,
-    module_info::in, module_info::out) is det.
+:- pred mark_pred_as_external(prog_context::in, pred_id::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-mark_pred_as_external(PredId, !ModuleInfo) :-
+mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_mark_as_external(PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+    pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers),
+    IsEmpty = clause_list_is_empty(ClausesRep0),
+    (
+        IsEmpty = yes,
+        pred_info_mark_as_external(PredInfo0, PredInfo),
+        map.det_update(PredId, PredInfo, PredTable0, PredTable),
+        module_info_set_preds(PredTable, !ModuleInfo)
+    ;
+        IsEmpty = no,
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
+        pred_info_get_name(PredInfo0, PredName),
+        Arity = pred_info_orig_arity(PredInfo0),
+        SNA = sym_name_arity(unqualified(PredName), Arity),
+        Pieces = [words("The"), p_or_f(PredOrFunc),
+            unqual_sym_name_and_arity(SNA), words("has clauses,"),
+            words("so it cannot be marked as external."), nl],
+        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
 
 %-----------------------------------------------------------------------------%
 
