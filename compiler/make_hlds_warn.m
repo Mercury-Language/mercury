@@ -484,7 +484,10 @@ generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
     Preamble = [words("In clause for"), simple_call(CallId), suffix(":"), nl],
     VarStrs0 = list.map(mercury_var_to_name_only(VarSet), Vars),
     list.sort_and_remove_dups(VarStrs0, VarStrs),
-    VarsPiece = quote(string.join_list(", ", VarStrs)),
+    VarsStr = "`" ++ string.join_list(", ", VarStrs) ++ "'",
+    % We want VarsPiece to be breakable into two or more lines
+    % in case VarsStr does not fit on one line.
+    VarsPiece = words(VarsStr),
     ( if VarStrs = [_] then
         Pieces = [words("warning: variable"), VarsPiece,
             words("occurs"), words(Count), words("in this scope."), nl]
