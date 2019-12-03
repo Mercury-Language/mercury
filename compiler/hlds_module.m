@@ -329,8 +329,6 @@
     table_struct_map::out) is det.
 :- pred module_info_get_avail_module_map(module_info::in,
     avail_module_map::out) is det.
-:- pred module_info_get_indirectly_imported_module_names(module_info::in,
-    set(module_name)::out) is det.
 :- pred module_info_get_used_modules(module_info::in,
     used_modules::out) is det.
 :- pred module_info_get_maybe_complexity_proc_map(module_info::in,
@@ -1171,6 +1169,8 @@ module_info_optimize(!ModuleInfo) :-
     map(prog_context, counter)::out) is det.
 :- pred module_info_get_atomics_per_context(module_info::in,
     map(prog_context, counter)::out) is det.
+:- pred module_info_get_indirectly_imported_module_names(module_info::in,
+    set(module_name)::out) is det.
 :- pred module_info_get_user_init_pred_c_names(module_info::in,
     assoc_list(sym_name_and_arity, string)::out) is det.
 :- pred module_info_get_user_final_pred_c_names(module_info::in,
