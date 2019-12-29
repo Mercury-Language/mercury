@@ -916,14 +916,14 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
                     WithType = no
                 then
                     parse_func_decl_base(ModuleName, VarSet,
-                        BaseTerm, MaybeDetism,
+                        BaseTerm, MaybeDetism, IsInClass,
                         Context, SeqNum, PurityAttrs, QuantConstrAttrs,
                         MaybeIOM)
                 else
                     parse_pred_decl_base(PredOrFunc, ModuleName, VarSet,
                         BaseTerm, WithType, WithInst, MaybeDetism,
-                        Context, SeqNum, PurityAttrs, QuantConstrAttrs,
-                        MaybeIOM)
+                        IsInClass, Context, SeqNum, PurityAttrs,
+                        QuantConstrAttrs, MaybeIOM)
                 )
             )
         else
@@ -950,12 +950,12 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
     %
 :- pred parse_pred_decl_base(pred_or_func::in, module_name::in, varset::in,
     term::in, maybe(mer_type)::in, maybe(mer_inst)::in,
-    maybe(determinism)::in, prog_context::in, int::in,
+    maybe(determinism)::in, decl_in_class::in, prog_context::in, int::in,
     list(purity_attr)::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
-        WithType, WithInst, MaybeDet, Context, SeqNum,
+        WithType, WithInst, MaybeDet, IsInClass, Context, SeqNum,
         PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
     ContextPieces = cord.singleton(words("In")) ++
         cord.from_list(pred_or_func_decl_pieces(PredOrFunc)) ++
@@ -970,8 +970,8 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
     then
         % The term parser turns "X(a, b)" into "`'(X, a, b)".
         ( if
-            is_the_name_a_variable(VarSet, vtk_type_decl_pred, PredTypeTerm,
-                Spec)
+            is_the_name_a_variable(VarSet, vtk_type_decl_pred(IsInClass),
+                PredTypeTerm, Spec)
         then
             MaybeIOM = error1([Spec])
         else
@@ -1057,12 +1057,12 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
     % Parse a `:- func p(...)' declaration *without* a with_type clause.
     %
 :- pred parse_func_decl_base(module_name::in, varset::in, term::in,
-    maybe(determinism)::in, prog_context::in, int::in,
+    maybe(determinism)::in, decl_in_class::in, prog_context::in, int::in,
     list(purity_attr)::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Context, SeqNum,
-        PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
+parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, IsInClass, Context,
+        SeqNum, PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
     ContextPieces = cord.from_list([words("In"), decl("func"),
         words("declaration:"), nl]),
     get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
@@ -1078,7 +1078,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Context, SeqNum,
         then
             % The term parser turns "X(a, b)" into "`'(X, a, b)".
             ( if
-                is_the_name_a_variable(VarSet, vtk_type_decl_func,
+                is_the_name_a_variable(VarSet, vtk_type_decl_func(IsInClass),
                     MaybeSugaredFuncTerm, Spec)
             then
                 MaybeIOM = error1([Spec])
@@ -1340,8 +1340,9 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
                 get_term_context(Term), Pieces),
             MaybeIOM = error1([Spec])
         else
-            parse_mode_decl_base(ModuleName, VarSet, BaseTerm, Context, SeqNum,
-                WithInst, MaybeDetism, QuantConstrAttrs,MaybeIOM)
+            parse_mode_decl_base(ModuleName, VarSet, BaseTerm, IsInClass,
+                Context, SeqNum, WithInst, MaybeDetism, QuantConstrAttrs,
+                MaybeIOM)
         )
     else
         Specs = get_any_errors1(MaybeMaybeDetism)
@@ -1350,10 +1351,11 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
     ).
 
 :- pred parse_mode_decl_base(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, maybe(mer_inst)::in, maybe(determinism)::in,
-    list(quant_constr_attr)::in, maybe1(item_or_marker)::out) is det.
+    decl_in_class::in, prog_context::in, int::in, maybe(mer_inst)::in,
+    maybe(determinism)::in, list(quant_constr_attr)::in,
+    maybe1(item_or_marker)::out) is det.
 
-parse_mode_decl_base(ModuleName, VarSet, Term, Context, SeqNum,
+parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
         WithInst, MaybeDet, QuantConstrAttrs, MaybeIOM) :-
     ( if
         WithInst = no,
@@ -1362,7 +1364,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Context, SeqNum,
     then
         % The term parser turns "X(a, b)" into "`'(X, a, b)".
         ( if
-            is_the_name_a_variable(VarSet, vtk_mode_decl_func,
+            is_the_name_a_variable(VarSet, vtk_mode_decl_func(IsInClass),
                 MaybeSugaredFuncTerm, Spec)
         then
             MaybeIOM = error1([Spec])
@@ -1385,7 +1387,8 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Context, SeqNum,
     else
         % The term parser turns "X(a, b)" into "`'(X, a, b)".
         ( if
-            is_the_name_a_variable(VarSet, vtk_mode_decl_pred, Term, Spec)
+            is_the_name_a_variable(VarSet, vtk_mode_decl_pred(IsInClass),
+                Term, Spec)
         then
             MaybeIOM = error1([Spec])
         else
@@ -1935,10 +1938,10 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
 %---------------------------------------------------------------------------%
 
 :- type var_term_kind
-    --->    vtk_type_decl_pred
-    ;       vtk_type_decl_func
-    ;       vtk_mode_decl_pred
-    ;       vtk_mode_decl_func
+    --->    vtk_type_decl_pred(decl_in_class)
+    ;       vtk_type_decl_func(decl_in_class)
+    ;       vtk_mode_decl_pred(decl_in_class)
+    ;       vtk_mode_decl_func(decl_in_class)
     ;       vtk_clause_pred
     ;       vtk_clause_func.
 
@@ -1963,17 +1966,41 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
             VarPieces = []
         ),
         (
-            Kind = vtk_type_decl_pred,
-            WhatPieces = [words("a predicate")]
+            Kind = vtk_type_decl_pred(IsInClass),
+            (
+                IsInClass = decl_is_not_in_class,
+                WhatPieces = [words("a predicate")]
+            ;
+                IsInClass = decl_is_in_class,
+                WhatPieces = [words("a type class predicate method")]
+            )
         ;
-            Kind = vtk_type_decl_func,
-            WhatPieces = [words("a function")]
+            Kind = vtk_type_decl_func(IsInClass),
+            (
+                IsInClass = decl_is_not_in_class,
+                WhatPieces = [words("a function")]
+            ;
+                IsInClass = decl_is_in_class,
+                WhatPieces = [words("a type class function method")]
+            )
         ;
-            Kind = vtk_mode_decl_pred,
-            WhatPieces = [words("a mode for a predicate")]
+            Kind = vtk_mode_decl_pred(IsInClass),
+            (
+                IsInClass = decl_is_not_in_class,
+                WhatPieces = [words("a mode for a predicate")]
+            ;
+                IsInClass = decl_is_in_class,
+                WhatPieces = [words("a mode for a type class predicate method")]
+            )
         ;
-            Kind = vtk_mode_decl_func,
-            WhatPieces = [words("a mode for a function")]
+            Kind = vtk_mode_decl_func(IsInClass),
+            (
+                IsInClass = decl_is_not_in_class,
+                WhatPieces = [words("a mode for a function")]
+            ;
+                IsInClass = decl_is_in_class,
+                WhatPieces = [words("a mode for a type class function method")]
+            )
         ;
             Kind = vtk_clause_pred,
             WhatPieces = [words("a clause for a predicate")]
@@ -1990,7 +2017,8 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
         fail
     ).
 
-%---------------------------------------------------------------------------% 
+%---------------------------------------------------------------------------%
+
 :- func in_pred_or_func_decl_desc(pred_or_func) = string.
 
 in_pred_or_func_decl_desc(pf_function) = "in function declaration".

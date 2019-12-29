@@ -22,6 +22,15 @@
 :- pred U(string::in, int::out).
 :- pred V(string::in, int::out) is det.
 
+:- typeclass foo(T) where [
+   pred MA(T, T),
+   mode MA(in, in) is semidet,
+   pred MB(T::in, T::in) is semidet,
+   func MC(T) = T,
+   mode MC(in) = out is semidet,
+   func MD(T::in) = (T::out) is semidet
+].
+
 :- implementation.
 
 :- import_module string.

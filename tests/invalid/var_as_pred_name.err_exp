@@ -20,8 +20,22 @@ var_as_pred_name.m:022: Error: you cannot declare a predicate whose name is a
 var_as_pred_name.m:022:   variable such as `U'.
 var_as_pred_name.m:023: Error: you cannot declare a predicate whose name is a
 var_as_pred_name.m:023:   variable such as `V'.
-var_as_pred_name.m:029: Error: you cannot declare a clause for a function whose
-var_as_pred_name.m:029:   name is a variable such as `X'.
-var_as_pred_name.m:032: Error: you cannot declare a clause for a predicate
-var_as_pred_name.m:032:   whose name is a variable such as `Y'.
+var_as_pred_name.m:026: Error: you cannot declare a type class predicate method
+var_as_pred_name.m:026:   whose name is a variable such as `MA'.
+var_as_pred_name.m:027: Error: you cannot declare a mode for a type class
+var_as_pred_name.m:027:   predicate method whose name is a variable such as
+var_as_pred_name.m:027:   `MA'.
+var_as_pred_name.m:028: Error: you cannot declare a type class predicate method
+var_as_pred_name.m:028:   whose name is a variable such as `MB'.
+var_as_pred_name.m:029: Error: you cannot declare a type class function method
+var_as_pred_name.m:029:   whose name is a variable such as `MC'.
+var_as_pred_name.m:030: Error: you cannot declare a mode for a type class
+var_as_pred_name.m:030:   function method whose name is a variable such as
+var_as_pred_name.m:030:   `MC'.
+var_as_pred_name.m:031: Error: you cannot declare a type class function method
+var_as_pred_name.m:031:   whose name is a variable such as `MD'.
+var_as_pred_name.m:038: Error: you cannot declare a clause for a function whose
+var_as_pred_name.m:038:   name is a variable such as `X'.
+var_as_pred_name.m:041: Error: you cannot declare a clause for a predicate
+var_as_pred_name.m:041:   whose name is a variable such as `Y'.
 For more information, recompile with `-E'.
