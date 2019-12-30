@@ -169,17 +169,24 @@ Changes that may break compatibility:
 
 Changes to the Mercury language:
 
-* We have added a new primitive type, uint, which is an unsigned integer type
-  of the same size as Mercury's int type. Literals of this type must have the
-  suffix `u', for example:
+* We have added nine new primitive types: uint, int8, int16, int32, int64,
+  uint8, uint16, uint32 and uint64. The type uint is an unsigned integer type
+  of the same size as Mercury's int type; the types int8, int16, int32 and
+  int64 are signed integer types of width 8, 16, 32 and 64 bits respectively;
+  the types uint8, uint16, uint32 and uint64 are unsigned integer types of
+  width 8, 16, 32 and 64 bits respectively.
+
+  Literals of these new types must have a distinguishing suffix, for example:
 
        999u
-       0b1111100111u
-       0o1747u
-       0x3e7u
+       561i32
+       0b1111100111i64
+       0o16u8
+       0x3e732i64
 
-  Basic operations on uint values are provided by the new standard library
-  module `uint'. (See below for details.)
+  Basic operations on the new primitive types are provided by the new standard
+  library modules: `uint', `int8', `int16', `int32', `int64', `uint8',
+  `uint16', `uint32' and `uint64'.  (See below for details.)
 
 * We have added a new kind of scope to the language: determinism checks
   for switch arms. These scopes are introduced by any of the new keywords
@@ -246,18 +253,13 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
-* We have added a new module, uint, that exports basic operations on the new
-  uint type.
+* We have added the new modules uint, int8, int16, int32, int64, uint8,
+  uint16, uint32, and uint64. These modules export basic operations on the
+  new integer type of the same name as the module.
 
-  The following predicates and functions have been added to other standard
-  library modules in order to support the uint type:
-
-  - integer.to_uint/2
-  - integer.det_to_uint/1
-  - integer.from_uint/1
-  - string.uint_to_string/1
-  - io.write_uint/3, io.write_uint/4
-  - stream.string_writer.put_int/4
+  Many other standard library modules have additional predicates that
+  support the new integer types; see the entries for those modules for
+  details.
 
 * We have added variants of the process_options predicates to the getopt
   and getopt_io modules that represent errors using a type instead of strings.
@@ -383,6 +385,30 @@ Changes to the Mercury standard library:
 * string.string_to_doc/1 now replaces characters in its input argument with
   backslash escapes when required.
 
+* The following predicates have been added to the io module:
+
+   - write_uint/3, write_uint/4
+   - write_int{8,16,32,64}/3, write_int{8,16,32,64}/4
+   - write_uint{8,16,32,64}/3, write_uint{8,16,32,64}/4
+   - write_binary_int8/3, write_binary_int8/4
+   - write_binary_uint8/3, write_binary_uint8/4
+   - write_binary_int{16,32,64}/3, write_binary_int{16,32,64}/4
+   - write_binary_int{16,32,64}_{le,be}/3, write_binary_int{16,32,64}_{le,be}/4
+   - read_binary_int8/3, read_binary_int8/4
+   - read_binary_uint8/3, read_binary_uint8/4
+   - putback_int8/3, putback_int8/4
+   - putback_uint8/3, putback_uint8/4
+   - read_binary_int{16,32,64}/3, read_binary_int{16,32,64}/4
+   - read_binary_int{16,32,64}_{le,be}/3, read_binary_int{16,32,64}_{le,be}/4
+   - read_binary_uint{16,32,64}/3, read_binary_uint{16,32,64}/4
+   - read_binary_uint{16,32,64}_{le,be}/3, read_binary_uint{16,32,64}_{le,be}/4
+  
+* The following predicates have been added to the stream.string_writer module:
+
+   - put_uint/4
+   - put_int{8,16,32,64}/4
+   - put_uint{8,16,32,64}/4
+
 * The following classification predicates have been added to the float module:
 
    - is_finite/1
@@ -403,6 +429,15 @@ Changes to the Mercury standard library:
    - to_base_string/2
    - negative_one/0, two/0, ten/0
    - is_zero/1
+   - to_uint/2
+   - det_to_uint/1
+   - from_uint/1
+   - to_int{8,16,32,64}/2
+   - det_to_int{8,16,32,64}/1
+   - from_int{8,16,32,64}/1
+   - to_uint{8,16,32,64}/2
+   - det_to_uint{8,16,32,64}/1
+   - from_uint{8,16,32,64}/1
 
   The following functions in the integer module have been deprecated:
 
@@ -438,6 +473,9 @@ Changes to the Mercury standard library:
    - unsafe_index_next_repl/5
    - prev_index_repl/5
    - unsafe_prev_index_repl/5
+   - uint_to_string/1
+   - int{8,16,32,64}_to_string/1
+   - uint{8,16,32,64}_to_string/1
 
   The following procedures in the string module have been deprecated:
 
