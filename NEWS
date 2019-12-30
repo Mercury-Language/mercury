@@ -1,10 +1,9 @@
-NEWS since Mercury 14.01.x
---------------------------
+# NEWS since Mercury 14.01.x
 
-Changes that may break compatibility:
+## Changes that may break compatibility
 
 * When the Mercury compiler looks at code using Mercury keywords (such as
-  "func" and "pred") and Mercury operators (such as clause neck operator ":-")
+  `"func"` and `"pred"`) and Mercury operators (such as clause neck operator `":-"`)
   but which cannot be parsed as the Mercury constructs that those Mercury
   keywords and operators are part of, it now generates a specific error
   message for each discrepancy. In the past, when it found such code,
@@ -13,43 +12,46 @@ Changes that may break compatibility:
   declared type and the called functions and predicates did not exist,
   leading to confusing error messages from the compiler.
 
-  The compiler's new approach generates considerably better diagnostics,
-  but it does mean that code that uses Mercury's keywords and/or operators
-  in ways that are inconsistent with Mercury's own uses of those keywords
-  and operators won't compile anymore. Such code will need to be changed,
+  The compiler\'s new approach generates considerably better diagnostics,
+  but it does mean that code that uses Mercury\'s keywords and/or operators
+  in ways that are inconsistent with Mercury\'s own uses of those keywords
+  and operators will not compile anymore. Such code will need to be changed,
   typically by changing the names of some function symbols, functions
   or predicates.
 
-* Code that switches on a field of a term could previously written
-  directly as
+* Code that switches on a field of a term could previously written directly as
 
-      (
+    ```
+    (
         Term ^ field = value1,
         ...
-      ;
+    ;
         Term ^ field = value2,
         ...
-      )
+    )
+    ```
 
-  The compiler would then internally rearrange this as
+    The compiler would then internally rearrange this as
 
-      Field = Term ^ field,
-      (
+    ```
+    Field = Term ^ field,
+    (
         Field = value1,
         ...
-      ;
+    ;
         Field = value2,
         ...
-      )
+    )
+    ```
 
-  and then recognize this as a switch on Field.
+    and then recognize this as a switch on `Field`.
 
-  However, it turns out that while this transformation is valid
-  in the vast majority of cases (well in excess of 99%), it is not valid
-  in some rare circumstances involving terms with unique arguments.
-  This means that the current version of the compiler is not allowed
-  to do the above transformation automatically, so programmers must
-  perform it themselves if needed.
+    However, it turns out that while this transformation is valid
+    in the vast majority of cases (well in excess of 99%), it is not valid
+    in some rare circumstances involving terms with unique arguments.
+    This means that the current version of the compiler is not allowed
+    to do the above transformation automatically, so programmers must
+    perform it themselves if needed.
 
 * We have enabled stricter checking of non-ground final insts to reject more
   mode-incorrect code. Due to compiler limitations, some code that should be
@@ -68,181 +70,198 @@ Changes that may break compatibility:
   of solver types may not be exported from their defining module.
 
 * We have enabled stricter checking of module accessibility rules.
-  If a module m has an import_module or use_module declaration for
-  module x.y.z, it must also have import_module or use_module declarations
-  for its ancestors x and x.y. And if the import or use of x.y.z
-  is in module m's interface, then the import or use of x.y.z's
+  If a module `m` has an `import_module` or `use_module` declaration for
+  module `x.y.z`, it must also have `import_module` or `use_module` declarations
+  for its ancestors `x` and `x.y`. And if the import or use of `x.y.z`
+  is in module `m`\'s interface, then the import or use of `x.y.z`\'s
   ancestor modules must also be in the interface.
 
-* References to everything imported via `:- use_module' declarations
+* References to everything imported via `:- use_module` declarations
   must now be fully module qualified.
 
-* `for' is now an operator.
+* `for` is now an operator.
 
 * It is now an error for a program to redefine a builtin type. The affected
   type names are:
 
-      int
-      int{8,16,32,64}
-      uint
-      uint{8,16,32,64}
-      float
-      character
-      string
-      {}
-      =
-      pred
-      func
-      pure
-      semipure
-      impure
-      ''
+    ```
+    int
+    int{8,16,32,64}
+    uint
+    uint{8,16,32,64}
+    float
+    character
+    string
+    {}
+    =
+    pred
+    func
+    pure
+    semipure
+    impure
+    ''
+    ```
 
 * It is now an error for a program to redefine a builtin inst. The affected
   inst names are:
 
-      =<
-      any
-      bound
-      bound_unique
-      clobbered
-      clobbered_any
-      free
-      ground
-      is
-      mostly_clobbered
-      mostly_unique
-      mostly_unique_any
-      not_reached
-      unique
-      unique_any
+    ```
+    =<
+    any
+    bound
+    bound_unique
+    clobbered
+    clobbered_any
+    free
+    ground
+    is
+    mostly_clobbered
+    mostly_unique
+    mostly_unique_any
+    not_reached
+    unique
+    unique_any
+    ```
 
 * It is now an error for a program to redefine a builtin mode. The affected
   mode names are:
 
-      =
-      >>
-      any_func
-      any_pred
-      func
-      is
-      pred
+    ```
+    =
+    >>
+    any_func
+    any_pred
+    func
+    is
+    pred
+    ```
 
-* We have deleted the builtin inst synonyms `old' and `new': their uses
-  should be replaced with `any' and `free' respectively.
+* We have deleted the builtin inst synonyms `old` and `new`: their uses
+  should be replaced with `any` and `free` respectively.
 
-* We have deleted the builtin modes `no' and `oo': their uses should be
-  replaced with `oa' and `ia' respectively.
+* We have deleted the builtin modes `no` and `oo`: their uses should be
+  replaced with `oa` and `ia` respectively.
 
-* The minimum version of the Java platform required by Mercury's Java
+* The minimum version of the Java platform required by Mercury\'s Java
   backend is now Java SE 8.
 
-* The representation of integer constants in the standard library's term and
-  lexer modules has been generalised. The base, signedness and size of each
-  integer constant is now recorded. Furthermore, these modules now use
+* The representation of integer constants in the standard library\'s `term`
+  and `lexer` modules has been generalised. The base, signedness and size of
+  each integer constant is now recorded. Furthermore, these modules now use
   arbitrary-precision integers to represent the values of integer constants.
 
   Code that relies on the old representation of integer constants used by
-  the term or lexer modules may use the `old_term_parser' library in the
+  the `term` or `lexer` modules may use the `old_term_parser` library in the
   extras instead.
 
-* We have changed the semantics of int.(<<) and int.(>>) so that they throw
+* We have changed the semantics of `int.(<<)` and `int.(>>)` so that they throw
   an exception if their second operand is not in [0, bits_per_int). For now,
   the old behaviour of these operations is provided by the functions
-  int.legacy_left_shift/2 and int.legacy_right_shift/2. These functions
+  `int.legacy_left_shift`/2 and `int.legacy_right_shift`/2. These functions
   will be deleted in a future release.
 
-* We have changed the semantics of int.abs/1 so that it throws an exception
-  if its argument is equal to int.min_int. The old behaviour of this function
-  is provided by the new function int.unchecked_abs/1.
+* We have changed the semantics of `int.abs`/1 so that it throws an exception
+  if its argument is equal to `int.min_int`. The old behaviour of this function
+  is provided by the new function `int.unchecked_abs`/1.
 
-* We have changed the semantics of array.map_corresponding_foldl/6 so that it
+* We have changed the semantics of `array.map_corresponding_foldl`/6 so that it
   throws an exception if the input arrays differ in size.
 
-* We have changed the semantics of array.shrink/3 and array.resize/4 so that
+* We have changed the semantics of `array.shrink`/3 and `array.resize`/4 so that
   they throw an exception if their first argument is negative.
 
-* We have changed the semantics of array.fetch_items/4 so that it always
+* We have changed the semantics of `array.fetch_items`/4 so that it always
   throws an exception if its second or third argument is out of bounds.
   Previously, it would return an empty if list if its third argument was less
   than the second even if one, or both, of these arguments was out of bounds.
 
-Changes to the Mercury language:
+* We have removed the `io.poly_type` equivalence type from the `io` module.
+  `string.poly_type` should be used directly. This may require an explicit
+  import of the `string` module.
 
-* We have added nine new primitive types: uint, int8, int16, int32, int64,
-  uint8, uint16, uint32 and uint64. The type uint is an unsigned integer type
-  of the same size as Mercury's int type; the types int8, int16, int32 and
-  int64 are signed integer types of width 8, 16, 32 and 64 bits respectively;
-  the types uint8, uint16, uint32 and uint64 are unsigned integer types of
-  width 8, 16, 32 and 64 bits respectively.
+## Changes to the Mercury language
 
-  Literals of these new types must have a distinguishing suffix, for example:
+* We have added nine new primitive types: `uint`, `int8`, `int16`, `int32`,
+  `int64`, `uint8`, `uint16`, `uint32` and `uint64`. The type `uint` is an
+  unsigned integer type of the same size as Mercury\'s `int` type; the types
+  `int8`, `int16`, `int32` and `int64` are signed integer types of width
+  8, 16, 32 and 64 bits respectively; the types `uint8`, `uint16`, `uint32`
+  and `uint64` are unsigned integer types of width 8, 16, 32 and 64 bits
+  respectively.
 
-       999u
-       561i32
-       0b1111100111i64
-       0o16u8
-       0x3e732i64
+    Literals of these new types must have a distinguishing suffix, for example:
 
-  Basic operations on the new primitive types are provided by the new standard
-  library modules: `uint', `int8', `int16', `int32', `int64', `uint8',
-  `uint16', `uint32' and `uint64'.  (See below for details.)
+    ```
+    999u
+    561i32
+    0b1111100111i64
+    0o16u8
+    0x3e732i64
+    ```
+
+    Basic operations on the new primitive types are provided by the new standard
+    library modules: `uint`, `int8`, `int16`, `int32`, `int64`, `uint8`,
+    `uint16`, `uint32` and `uint64`.
 
 * We have added a new kind of scope to the language: determinism checks
-  for switch arms. These scopes are introduced by any of the new keywords
+for switch arms. These scopes are introduced by any of the new keywords
 
-      require_switch_arms_det
-      require_switch_arms_semidet
-      require_switch_arms_multi
-      require_switch_arms_nondet
-      require_switch_arms_cc_multi
-      require_switch_arms_cc_nondet
-      require_switch_arms_erroneous
-      require_switch_arms_failure
+    ```
+    require_switch_arms_det
+    require_switch_arms_semidet
+    require_switch_arms_multi
+    require_switch_arms_nondet
+    require_switch_arms_cc_multi
+    require_switch_arms_cc_nondet
+    require_switch_arms_erroneous
+    require_switch_arms_failure
+    ```
 
-  `require_switch_arms_<determinism> [Var] Goal' tells the compiler to require
-  `Goal' to be a switch on `Var' in which all the switch arms have determinisms
-  at least as tight as <determinism>, and to generate error messages
-  for any violations of this requirement.
+    `require_switch_arms_<determinism> [Var] Goal` tells the compiler to require
+    `Goal` to be a switch on `Var` in which all the switch arms have determinisms
+    at least as tight as `<determinism>`, and to generate error messages
+    for any violations of this requirement.
 
-* We have changed the meaning of require_complete_switch scopes slightly:
+* We have changed the meaning of `require_complete_switch` scopes slightly:
   the compiler now generates an error if the goal inside the scope
   is not a switch on the named variable.
 
 * We have added a new kind of scope to the language for disabling warnings
   within the scope. A goal such as
 
-      disable_warnings [singleton_vars] (
-        Goal
-      )
+    ```
+    disable_warnings [singleton_vars] (
+       Goal
+    )
+    ```
 
-  is equivalent to Goal, with the exception that the compiler will not generate
-  warnings about singleton variables inside Goal.
+    is equivalent to `Goal`, with the exception that the compiler will not
+    generate warnings about singleton variables inside `Goal`.
 
 * We have added an extension to include external files
-  in pragma foreign_decl and pragma foreign_code declarations.
+  in `pragma foreign_decl` and `pragma foreign_code` declarations.
 
-* We have added a foreign type assertion `word_aligned_pointer' that
+* We have added a foreign type assertion `word_aligned_pointer` that
   allows the Mercury implementation to avoid boxing values of the foreign type
   that the assertion is for when the type appears as the sole argument
   of a data constructor.
 
-* We have added a new pragma named `consider_used'. This pragma tells
+* We have added a new pragma named `consider_used`. This pragma tells
   the compiler to consider the predicate or function it names to be used,
   preventing it from generating unused procedure warnings either for
   any of its procedures, or for any of the procedures they call,
   directly or indirectly.
 
-* We have added an optional second field to the `obsolete' pragma.
+* We have added an optional second field to the `obsolete` pragma.
   When present, it may contain a list of the names and arities of
   predicates and/or functions that programmers should consider using
   instead of the obsolete predicate or function.
 
-* We have added an `obsolete_proc' pragma. While the `obsolete' pragma
+* We have added an `obsolete_proc` pragma. While the `obsolete` pragma
   declares all modes of a predicate or function to be obsolete, the
-  `obsolete_proc' pragma declares only one mode of a predicate or function
-  to be obsolete. Like the updated version of the `obsolete' pragma,
-  the `obsolete_proc' pragma may have a second argument naming one or more
+  `obsolete_proc` pragma declares only one mode of a predicate or function
+  to be obsolete. Like the updated version of the `obsolete` pragma,
+  the `obsolete_proc` pragma may have a second argument naming one or more
   suggested replacements.
 
 * The Java backend now supports defining foreign types as primitive Java
@@ -251,495 +270,598 @@ Changes to the Mercury language:
 * Digits in numeric literals may now be separated by underscores in order
   to improve readability.
 
-Changes to the Mercury standard library:
+## Changes to the Mercury standard library
 
-* We have added the new modules uint, int8, int16, int32, int64, uint8,
-  uint16, uint32, and uint64. These modules export basic operations on the
-  new integer type of the same name as the module.
+### New Integer Modules
 
-  Many other standard library modules have additional predicates that
-  support the new integer types; see the entries for those modules for
-  details.
+* We have added the new modules `uint`, `int8`, `int16`, `int32`, `int64`, `uint8`,
+  `uint16`, `uint32` and `uint64`. These modules provide the basic operations on the
+  new integer types.
 
-* We have added variants of the process_options predicates to the getopt
-  and getopt_io modules that represent errors using a type instead of strings.
-  A new function, option_error_to_string/1, can be used to convert values
-  of the new error type into strings.
+  Many other standard library modules now have additional predicates that support
+  the new integer types; see the entries for those modules for details.
 
-* We have added the print_line and write_line family of predicates to the
-  io module. These behave like the print and write predicates, but also
-  write a terminating newline.
+### New Module: `diet`
 
-* We have added the predicates write_array/5 and write_array/6 to the io
-  module; these predicates write arrays using a user-specified procedure
-  to write the elements and separating the elements with a user-specified
-  separator string.
+* This module provides discrete interval encoding trees, which are a highly
+  efficient set implementation for fat sets. This module is a contribution
+  from Yes Logic Pty. Ltd.
 
-* io.print and string_writer.print now print arbitrary precision integers
-  in their decimal form instead of printing their underlying representation.
+### New Module: `psqueue`
 
-* We have added io.read_line_as_string_and_num_code_units, a variant of
-  io.read_line_as_string that also returns the number of code units
-  in the file that was read in.
+* This module implements a priority search queue ADT.  This is a blend between
+  a priority queue and a map. This was contributed by Matthias Güdemann.
 
-* We have added temp_directory/3, make_temp_directory/3 and
-  make_temp_directory/5 predicates to the io module.
+### New Module: `ranges`
 
-* We have added a variant of io.set_environment_var that returns an io.res
-  value rather than throwing an exception. We have added the predicate
-  io.have_set_environment_var/0 that tests for the ability to set
-  environment variables on the current platform.
+* This module represents sets of integer using a sort list of ranges. This module
+  export operations that make it particularly suitable for representing domains
+  in finite domain constraint solvers.
 
-* We have removed the io.poly_type equivalence type from the io module.
-  string.poly_type should be used directly.
+### New Module: `thread.barrier`
 
-* We have made these predicates exception safe: the current input or output
-  stream is restored to the original stream if an exception is thrown during
-  their execution:
-
-    - io.read/4
-    - io.write_list/6
-    - io.write_array/6
-    - io.read_binary/4
-    - io.write_binary/4
-
-* We have added predicates to the lexer and parser modules that read from
-  an explicitly specified input stream, not from the current input stream.
-
-* We have added a module for discrete interval encoding trees, which are a
-  highly efficient set implementation for fat sets. This module, diet.m,
-  is a contribution from Yes Logic Pty. Ltd.
-
-+ We have added two new modules for concurrent programming: thread.barrier
-  and thread.future. The barrier module provides a barrier type which can
-  be used to control progress in concurrent code. The future module
-  provides future and future_io data types which can be used to compute
-  values in parallel using other threads. These modules were contributed by
+* This module provides the `barrier`/0 type. This type can be used to control
+  progress in concurrent code. This module was contributed by
   Mission Critical IT.
 
-* We have added a new module, ranges, that represents sets of integers using
-  a sorted list of ranges. The new module exports operations that make it
-  suitable for implementing domains in finite domain constraint solvers.
+### New Module: `thread.future`
 
-* We have added thread.spawn_native/4 to dedicate an OS thread to a Mercury
-  thread. thread.spawn/4 was added as well.
+* This module provides the `future`/0 and `future_io`/0 types. These type can
+  be used to compute values in parallel using other threads. This module was
+  contributed by Mission Critical IT.
 
-* We have added the function from_reverse_list/1 to the version_array module.
+### Changes to the `array` module
 
-* We have added thread.num_processors/3 which returns the number of
-  processors available for parallel work.
+* The following functions and predicates have been added:
 
-* The following predicates and functions have been added to the thread.mvar
-  module:
+    - `det_least_index`/1
+    - `semidet_least_index`/1
+    - `det_greatest_index`/1
+    - `semidet_greatest_index`/1
+    - `foldl_corresponding`/5
+    - `foldl2_corresponding`/7
+    - `fill`/3
+    - `fill_range`/5
+    - `swap`/4
+    - `unsafe_swap`/4
 
-    - mvar.init/1
-    - mvar.impure_init/1
-    - mvar.try_read/4
+* The following functions have been deprecated and will be removed in a future
+  release:
 
-+ We have deprecated the impure init/1 function in thread.semaphore.
+    - `least_index`/1
+    - `greatest_index`/1
 
-* In C grades, the math module now provides the fused multiply-add operation
-  on platforms that support it.
+### Changes to the `array2d` module
 
-* Procedures in the store module no longer acquire the global lock.
+* The following functions and predicates have been added:
 
-* The following predicates and functions have been added to the char module:
+    - `is_empty`/1
+    - `fill`/3
+    - `from_array`/3
 
-    - is_ascii/1
-    - is_decimal_digit/1
-    - is_base_digit/2
-    - int_to_binary_digit/2, det_int_to_binary_digit/1
-    - int_to_octal_digit/2, det_int_to_octal_digit/1
-    - int_to_decimal_digit/2, det_int_to_decimal_digit/1
-    - int_to_hex_digit/2, det_int_to_hex_digit/1
-    - base_int_to_digit/3, det_base_int_to_digit/2
-    - binary_digit_to_int/2, det_binary_digit_to_int/1
-    - octal_digit_to_int/2, det_octal_digit_to_int/1
-    - decimal_digit_to_int/2, det_decimal_digit_to_int/1
-    - hex_digit_to_int/2, det_hex_digit_to_int/1
-    - base_digit_to_int/3, det_base_digit_to_int/2
-    - is_leading_surrogate/1, is_trailing_surrogate/1
-    - is_control/1, is_space_separator/1, is_paragraph_separator/1
-    - is_line_separator/1, is_private_use/1
+### Changes to the `assoc_list` module
 
-  The following predicates in the char module have been deprecated and will
-  either be removed or have their semantics changed in a future release:
+* The following predicate has been added:
 
-    - is_hex_digit/2
-    - int_to_hex_char/2
-    - digit_to_int/2
-    - int_to_digit/2
-    - det_int_to_digit/1, det_int_to_digit/2
+    - `svremove`/4
 
-  NOTE: existing code that calls char.digit_to_int/2 assuming that it will
+* `svremove`/4 is like `remove`/4 but its arguments are in an order
+  more conducive to the use of state variable notation.
+
+### Changes to the `bag` module
+
+* The following functions and predicates have been added:
+
+    - `singleton`/1
+    - `insert_duplicates`/4
+    - `det_insert_duplicates`/4
+    - `det_insert_duplicates`/3
+
+### Changes to the `bitmap` module
+
+* The following predicates and functions have been added:
+
+    - `is_empty`/1
+    - `det_from_string`/1
+    - `get_uint8`/1, `unsafe_get_uint8`/1
+    - `set_uint8`/4, `unsafe_set_uint8`/4
+
+### Changes to the `builtin` module
+
+* The following predicate and function have been deprecated and will be removed
+  in a future release:
+
+    - `promise_only_solution`/1
+    - `promise_only_solution_io`/4
+
+  Existing code that uses either of these should be replaced with code that
+  uses a `promise_equivalent_solutions` goal instead.
+
+* The following modes have been deprecated and will be removed in a future
+  release:
+
+    - `input`/0
+    - `output`/0
+
+  Existing code that uses these modes should replace their use with `in`
+  or `out` respectively.
+
+### Changes to the `calendar` module
+
+* The following functions and predicates have been added:
+
+    - `int_to_month`/2
+    - `det_int_to_month`/1
+    - `int0_to_month`/2
+    - `det_int0_to_month`/1
+    - `month_to_int`/1
+    - `month_to_int0`/1
+    - `same_date`/1
+
+### Changes to the `char` module
+
+* The following predicates and functions have been added:
+
+    - `is_ascii`/1
+    - `is_decimal_digit`/1
+    - `is_base_digit`/2
+    - `int_to_binary_digit`/2, `det_int_to_binary_digit`/1
+    - `int_to_octal_digit`/2, `det_int_to_octal_digit`/1
+    - `int_to_decimal_digit`/2, `det_int_to_decimal_digit`/1
+    - `int_to_hex_digit`/2, `det_int_to_hex_digit`/1
+    - `base_int_to_digit`/3, `det_base_int_to_digit`/2
+    - `binary_digit_to_int`/2, `det_binary_digit_to_int`/1
+    - `octal_digit_to_int`/2, `det_octal_digit_to_int`/1
+    - `decimal_digit_to_int`/2, `det_decimal_digit_to_int`/1
+    - `hex_digit_to_int`/2, `det_hex_digit_to_int`/1
+    - `base_digit_to_int`/3, `det_base_digit_to_int`/2
+    - `is_leading_surrogate`/1, `is_trailing_surrogate`/1
+    - `is_control`/1, `is_space_separator`/1, `is_paragraph_separator`/1
+    - `is_line_separator`/1, `is_private_use`/1
+
+* The following predicates have been deprecated and will either be removed or
+  have their semantics changed in a future release:
+
+    - `is_hex_digit`/2
+    - `int_to_hex_char`/2
+    - `digit_to_int`/2
+    - `int_to_digit`/2
+    - `det_int_to_digit`/1, `det_int_to_digit`/2
+
+      NOTE: existing code that calls `digit_to_int`/2 assuming that it will
   only succeed for decimal digits (0-9) may be broken.
 
-* Float special values, NaNs and Infinities, are now converted to strings in
-  a way that is backend- and grade-independent. (Bug #348)
+### Changes to the `cord` module
 
-* string.base_digit_to_int/3 and string.det_base_digit_to_int/2 now check
-  for overflow and underflow in all bases, not only base 10.
+* The following predicates and functions have been added:
 
-* We have reduced the memory allocated by string.to_lower and string.to_upper.
+    - `to_list`/1     (synonym for the existing `list`/1 function)
+    - `to_rev_list`/1 (synonym for the existing `rev_list`/1 function)
+    - `rev_cord_list_to_cord`/1 (similar to `cord_list_to_cord`/1)
+    - `rev_cord_list_to_list`/1 (similar to `cord_list_to_list`/1)
+    - `cons`/3
+    - `snoc`/3
+    - `find_first_match`/3
 
-* string.string_to_doc/1 now replaces characters in its input argument with
-  backslash escapes when required.
+### Changes to the `deconstruct` module
 
-* The following predicates have been added to the io module:
+* The predicate `functor`/4 has been modified so that for character and string
+  data, any control characters in the functor representation are escaped.
 
-   - write_uint/3, write_uint/4
-   - write_int{8,16,32,64}/3, write_int{8,16,32,64}/4
-   - write_uint{8,16,32,64}/3, write_uint{8,16,32,64}/4
-   - write_binary_int8/3, write_binary_int8/4
-   - write_binary_uint8/3, write_binary_uint8/4
-   - write_binary_int{16,32,64}/3, write_binary_int{16,32,64}/4
-   - write_binary_int{16,32,64}_{le,be}/3, write_binary_int{16,32,64}_{le,be}/4
-   - read_binary_int8/3, read_binary_int8/4
-   - read_binary_uint8/3, read_binary_uint8/4
-   - putback_int8/3, putback_int8/4
-   - putback_uint8/3, putback_uint8/4
-   - read_binary_int{16,32,64}/3, read_binary_int{16,32,64}/4
-   - read_binary_int{16,32,64}_{le,be}/3, read_binary_int{16,32,64}_{le,be}/4
-   - read_binary_uint{16,32,64}/3, read_binary_uint{16,32,64}/4
-   - read_binary_uint{16,32,64}_{le,be}/3, read_binary_uint{16,32,64}_{le,be}/4
-  
-* The following predicates have been added to the stream.string_writer module:
+### Changes to the `digraph` module
 
-   - put_uint/4
-   - put_int{8,16,32,64}/4
-   - put_uint{8,16,32,64}/4
+* The following predicates and functions have been added:
 
-* The following classification predicates have been added to the float module:
+    - `return_vertices_in_from_to_order`/2
+    - `return_vertices_in_to_from_order`/2
+    - `return_sccs_in_from_to_order`/1
+    - `return_sccs_in_to_from_order`/1
 
-   - is_finite/1
-   - is_zero/1
-   - is_infinite/1        (synonym for the existing is_inf/1 predicate)
-   - is_nan_or_infinite/1 (synonym for the existing is_nan_or_inf/1 predicate)
+### Changes to the `float` module
 
-  The following function has been added to the float module:
+* The following predicates and function have been added:
 
-   - infinity/0
+    - `is_finite`/1
+    - `is_zero`/1
+    - `is_infinite`/1        (synonym for the existing is_inf/1 predicate)
+    - `is_nan_or_infinite`/1 (synonym for the existing is_nan_or_inf/1 predicate)
+    - `infinity`/0
 
-* The following predicates and functions have been added to the integer module:
+### Changes to the `getopt` and `getopt_io` modules
 
-   - from_string/2
-   - from_base_string/3
-   - to_int/2
-   - det_to_int/1
-   - to_base_string/2
-   - negative_one/0, two/0, ten/0
-   - is_zero/1
-   - to_uint/2
-   - det_to_uint/1
-   - from_uint/1
-   - to_int{8,16,32,64}/2
-   - det_to_int{8,16,32,64}/1
-   - from_int{8,16,32,64}/1
-   - to_uint{8,16,32,64}/2
-   - det_to_uint{8,16,32,64}/1
-   - from_uint{8,16,32,64}/1
+* We have added variants of the `process_options` predicates that return errors
+  using a type instead of strings.  A new function, `option_error_to_string`/1,
+  can be used to convert values of the new error type into strings.
 
-  The following functions in the integer module have been deprecated:
+### Changes to the `hash_table` module
 
-   - from_string/1
-   - from_base_string/2
-   - int/1
+* The following predicates have been added:
 
-* The following predicates and functions have been added to the require module:
+    - `fold2`/6
+    - `fold3`/8
 
-   - error/2
-   - func_error/2
+### Changes to the `int` module
 
-* The following predicates have been added to the string module:
+* The following predicates and functions have been added:
 
-   - is_all_alnum/1
-   - is_empty/1
-   - is_well_formed/1
-   - from_code_unit_list_allow_ill_formed/2
-   - to_utf8_code_unit_list/2
-   - to_utf16_code_unit_list/2
-   - from_utf8_code_unit_list/2
-   - from_utf16_code_unit_list/2
-   - det_remove_prefix/3
-   - compare_ignore_case_ascii/3
-   - to_rev_char_list/2
-   - compare_substrings/6
-   - unsafe_compare_substrings/6
-   - nondet_append/3
-   - append_string_pieces/2
-   - unsafe_append_string_pieces/2
-   - unsafe_sub_string_search_start/4
-   - index_next_repl/5
-   - unsafe_index_next_repl/5
-   - prev_index_repl/5
-   - unsafe_prev_index_repl/5
-   - uint_to_string/1
-   - int{8,16,32,64}_to_string/1
-   - uint{8,16,32,64}_to_string/1
+    - `all_true_in_range`/3
+    - `unchecked_abs`/1
+    - `nabs`/1
 
-  The following procedures in the string module have been deprecated:
+### Changes to the `integer` module
 
-   - to_char_list(uo, in)
-   - to_rev_char_list(uo, in)
-   - from_char_list(out, in)
-   - append(out, out, in)
-   - prefix(in, out)
-   - suffix(in, out)
+* The following predicates and functions have been added:
 
-  The following obsolete predicates and functions have been removed from the
-  string module:
+    - `from_string`/2
+    - `from_base_string`/3
+    - `to_int`/2
+    - `det_to_int`/1
+    - `to_base_string`/2
+    - `negative_one`/0, `two`/0, `ten`/0
+    - `is_zero`/1
+    - `to_uint`/2
+    - `det_to_uint`/1
+    - `from_uint`/1
+    - `to_int{8,16,32,64}`/2
+    - `det_to_int{8,16,32,64}`/1
+    - `from_int{8,16,32,64}`/1
+    - `to_uint{8,16,32,64}`/2
+    - `det_to_uint{8,16,32,64}`/1
+    - `from_uint{8,16,32,64}`/1
 
-   - substring/3
-   - substring/4
-   - unsafe_substring/3
-   - unsafe_substring/4
-   - foldl_substring/5
-   - foldl_substring/6
-   - foldl2_substring/8
-   - foldl2_substring/8
-   - foldr_substring/5
-   - foldr_substring/6
+* The following functions have been deprecated and will be removed in a
+  future release:
 
-* Predicates and functions in the string module now have defined behaviours
+    - `from_string`/1
+    - `from_base_string`/2
+    - `int`/1
+
+### Changes to the `io` module
+
+* The following predicates have been added:
+
+    - `write_uint/3`, `write_uint`/4
+    - `write_int{8,16,32,64}`/3, `write_int{8,16,32,64}`/4
+    - `write_uint{8,16,32,64}`/3, `write_uint{8,16,32,64}`/4
+    - `write_binary_int8`/3, `write_binary_int8`/4
+    - `write_binary_uint8`/3, `write_binary_uint8`/4
+    - `write_binary_int{16,32,64}`/3, `write_binary_int{16,32,64}`/4
+    - `write_binary_int{16,32,64}_{le,be}`/3, `write_binary_int{16,32,64}_{le,be}`/4
+    - `read_binary_int8`/3, `read_binary_int8`/4
+    - `read_binary_uint8`/3, `read_binary_uint8`/4
+    - `putback_int8`/3, `putback_int8`/4
+    - `putback_uint8`/3, `putback_uint8`/4
+    - `read_binary_int{16,32,64}`/3, `read_binary_int{16,32,64}`/4
+    - `read_binary_int{16,32,64}_{le,be}`/3, `read_binary_int{16,32,64}_{le,be}`/4
+    - `read_binary_uint{16,32,64}`/3, `read_binary_uint{16,32,64}`/4
+    - `read_binary_uint{16,32,64}_{le,be}`/3, `read_binary_uint{16,32,64}_{le,be}`/4
+    - `read_line_as_string_and_num_code_units`/[34]
+    - `print_line`/[34], `write_line`/[34]
+    - `write_array`/[56] (similar to `write_list` but for arrays)
+    - `temp_directory`/3
+    - `make_temp_directory`/3
+    - `make_temp_directory`/5
+    - `set_environment_var`/5
+    - `have_set_environment_var`/0
+
+* The `print_line` and `write_line` family of predicates behave like the
+  `print` and `write` predicates, but also write a terminating newline.
+
+* `print` now outputs arbitrary precision integers in their decimal form
+   instead of printing their underlying representation.
+
+* The predicate `set_environment_var`/5 returns an `io.res` value rather than
+  throwing an exception. The predicate `have_set_environment_var`/0 can test
+  whether the current platform supports the ability to set environment variables.
+
+* We have made the following predicates exception safe: the current input or
+  output stream is restored to the original stream if an exception is thrown
+  during their execution:
+
+     - `read/4`
+     - `write_list/6`
+     - `write_array/6`
+     - `read_binary/4`
+     - `write_binary/4`
+
+### Changes to the `lexer` module
+
+* We have added predicates that read from an explicitly specified input stream,
+  not from the current input stream.
+
+### Changes to the `list` module
+
+* The following predicates and functions have been added:
+
+    - `any_true`/2
+    - `any_false`/2
+    - `reverse_prepend`/2
+    - `reverse_prepend`/3
+    - `take_while`/4
+    - `take_while`/3
+    - `take_while`/2
+    - `drop_while`/3
+    - `drop_while`/2
+    - `one_or_more_to_list`/1
+    - `list_to_one_or_more`/2
+    - `list_to_one_or_more_det`/2
+
+* The following predicate has been deprecated and will be remove in a future
+  release:
+
+    - `takewhile`/4 (use `take_while`/4 instead)
+
+* The `take`/3 and `drop`/3 predicates have been modified so that they fail if
+  their first argument is less than zero.
+
+* The `split_upto`/4 and `take_upto`/3 predicates and `take_upto`/2 function
+  have been modified so that they throw an exception if their first argument
+  is negative.
+
+### Changes to the `map` module
+
+* The following predicates have been added:
+
+    - `foldl5`/12
+    - `foldr5`/12
+    - `map_foldl4`/11
+    - `intersect_list`/4
+    - `union_list`/4
+    - `select_unselect`/4
+    - `select_unselect_sorted_list`/4
+
+### Changes to the `math` module
+
+* The following function and predicate have been added:
+
+    - `fma`/3
+    - `have_fma`/0
+
+* `fma`/3 provides the fused multiply-add operation on platforms that
+  support that operation. The predicate `have_fma`/0 may be used to check for
+  this support.
+
+### Changes to the `maybe` module
+
+* We have a added a new type, `maybe_errors`, to the `maybe` module.
+
+* The following predicate and function have been added:
+
+    - `fold2_maybe`/6
+    - `maybe_default`/2
+    - `pred_to_maybe`/1
+    - `func_to_maybe`/1
+
+### Changes to the `parser` module
+
+* We have added predicates that read from an explicitly specified input stream,
+  not from the current input stream.
+
+### Changes to the `pretty_printer` module
+
+* The type `formatter_limit` has been renamed to `func_symbol_limit`, since
+  this better reflects the type\'s purpose.
+
+* We have replaced the `set_formatter` function with a predicate of the same
+  name, since this allows the use of state variable notation when setting up more
+  than one type-specific formatter,
+
+* We have renamed the `write_doc_to_stream` predicate as `put_doc`, to better
+  fit in with the names other predicates that operate on values of the
+  `stream.writer` typeclass, and changed its interface to group the prettyprinter
+  parameters together in a value of the type that was designed for this purpose.
+
+### Changes to the `rbtree` module
+
+* The following predicates have been added:
+
+    - `foldl_values`/4
+    - `foldl2_values`/6
+
+### Changes to the `require` module
+
+* The following predicate and function have been added:
+
+    - `error`/2
+    - `func_error`/2
+
+### Changes to the `set` module
+
+* The following predicates and/or functions have been added:
+
+    - `intersection_and_differences`/5
+    - `det_remove`/3
+    - `det_remove_list`/3
+    - `rev_sorted_list_to_set`/[12]
+
+* The following predicate and/or functions have been deprecated:
+
+    - `empty`/1
+    - `non_empty`/1
+    - `set`/1
+
+    Similar changes have been made to the other set implementations in the library.
+
+### Changes to the `std_util` module
+
+* The following functions have been deprecated:
+
+    - `maybe_pred`/3
+    - `maybe_func`/2
+
+### Changes to the `stream.string_writer` module
+
+* The following predicates have been added:
+
+    - `put_uint`/4
+    - `put_int{8,16,32,64}`/4
+    - `put_uint{8,16,32,64}`/4
+
+* `print` now outputs arbitrary precision integers in their decimal form
+  instead of printing their underlying representation.
+
+### Changes to the `string` module
+
+* Predicates and functions in this module now have defined behaviours
   for strings containing ill-formed sequences. Also, some predicates and
   functions now have defined behaviour on surrogate code points
   (e.g. failing or throwing an exception) that was previously undefined.
 
-* The following predicates have been added to the map module:
+* The following predicates have been added:
 
-   - foldl5/12
-   - foldr5/12
-   - map_foldl4/11
-   - intersect_list/4
-   - union_list/4
-   - select_unselect/4
-   - select_unselect_sorted_list/4
+    - `is_all_alnum`/1
+    - `is_empty`/1
+    - `is_well_formed`/1
+    - `from_code_unit_list_allow_ill_formed`/2
+    - `to_utf8_code_unit_list`/2
+    - `to_utf16_code_unit_list`/2
+    - `from_utf8_code_unit_list`/2
+    - `from_utf16_code_unit_list`/2
+    - `det_remove_prefix`/3
+    - `compare_ignore_case_ascii`/3
+    - `to_rev_char_list`/2
+    - `compare_substrings`/6
+    - `unsafe_compare_substrings`/6
+    - `nondet_append`/3
+    - `append_string_pieces`/2
+    - `unsafe_append_string_pieces`/2
+    - `unsafe_sub_string_search_start`/4
+    - `index_next_repl`/5
+    - `unsafe_index_next_repl`/5
+    - `prev_index_repl`/5
+    - `unsafe_prev_index_repl`/5
+    - `uint_to_string`/1
+    - `int{8,16,32,64}_to_string`/1
+    - `uint{8,16,32,64}_to_string`/1
 
-* The following predicates have been added to the tree234 module:
+* The following procedures have been deprecated:
 
-   - map_foldl4/11
+    - `to_char_list(uo, in)`
+    - `to_rev_char_list(uo, in)`
+    - `from_char_list(out, in)`
+    - `append(out, out, in)`
+    - `prefix(in, out)`
+    - `suffix(in, out)`
 
-* The following predicates and/or functions have been added to the set modules:
+* The following obsolete predicates and functions have been removed:
 
-   - intersection_and_differences
-   - det_remove
-   - det_remove_list
-   - rev_sorted_list_to_set
+    - `substring`/3
+    - `substring`/4
+    - `unsafe_substring`/3
+    - `unsafe_substring`/4
+    - `foldl_substring`/5
+    - `foldl_substring`/6
+    - `foldl2_substring`/8
+    - `foldl2_substring`/8
+    - `foldr_substring`/5
+    - `foldr_substring`/6
 
-   while the following predicates and/or functions have been marked as obsolete:
+* `base_digit_to_int`/3 and `det_base_digit_to_int`/2 now check
+  for overflow and underflow in all bases, not only base 10.
 
-   - empty
-   - non_empty
-   - set
+* We have reduced the memory allocated by `to_lower` and `to_upper`.
 
-* We have a added a new type, maybe_errors, to the maybe module.
+* `string_to_doc`/1 now escapes characters in its input argument with
+  backslash escapes when required.
 
-  The following predicate and function have been added to the maybe module:
+* Float special values, NaNs and Infinities, are now converted to strings in
+  a way that is backend- and grade-independent. (Bug #348)
 
-   - fold2_maybe/6
-   - maybe_default/2
-   - pred_to_maybe/1
-   - func_to_maybe/1
+### Changes to the `store` module
 
-* The following predicates and functions have been added to the calendar
-  module:
+* Procedures in this module no longer acquire the global lock.
 
-   - int_to_month/2
-   - det_int_to_month/1
-   - int0_to_month/2
-   - det_int0_to_month/1
-   - month_to_int/1
-   - month_to_int0/1
-   - same_date/1
+### Changes to the `term` module
 
-* We have added a new module, psqueue, that implements a priority search
-  queue ADT. This is a blend between a priority queue and a map. This was
-  contributed by Matthias Güdemann.
+* The following predicate has been added:
 
-* The following predicates and functions have been added to the int module:
+    - `is_dummy_context`/1
 
-  - all_true_in_range/3
-  - nabs/1
+### Changes to the `thread` module
 
-* We have added a predicate named is_dummy_context to the term module.
+* The following predicates have been added:
 
-* The following predicates and functions have been added to the list module:
+    - `spawn_native`/4
+    - `spawn`/4
+    - `num_processors`/3
 
-   - any_true/2
-   - any_false/2
-   - reverse_prepend/2
-   - reverse_prepend/3
-   - take_while/4
-   - take_while/3
-   - take_while/2
-   - drop_while/3
-   - drop_while/2
-   - one_or_more_to_list/1
-   - list_to_one_or_more/2
-   - list_to_one_or_more_det/2
+* `spawn_native`/4 allows you to dedicate an OS thread to a Mercury thread.
 
-* The takewhile/4 predicate has been deprecated in the list module,
-  take_while/4 can be used instead.
+* `num_processors`/3 returns the number of processors available for 
+  parallel work.
 
-* The take/3 and drop/3 predicates in the list module have been modified
-  so that they fail if their first argument is less than zero.
+### Changes to the `thread.mvar` module
 
-* The split_upto/4 and take_upto/3 predicates and take_upto/2 function
-  in the list module have been modified so that they throw an exception
-  if their first argument is negative.
+* The following predicates and functions have been added:
 
-* The following predicate and function in the builtin module have been
-  deprecated and will be removed in a future release:
+    - `init`/1
+    - `impure_init`/1
+    - `try_read`/4
 
-   - promise_only_solution/1
-   - promise_only_solution_io/4
+### Changes to the `thread.semaphore` module
 
-  Existing code that uses either of these should be replaced with code that
-  uses a `promise_equivalent_solutions' goal instead.
+* The following predicate has been deprecated and will be removed in a
+  future release:
 
-* The following modes in the builtin module have been deprecated and will
-  be removed in a future release:
+     - `init`/1
 
-   - input/0
-   - output/0
+### Changes to the `time` module
 
-  Existing code that uses these modes should replace their use with `in'
-  or `out' respectively.
+* The following predicates have been added:
 
-* The following predicates and functions have been added to the cord module:
+    - `localtime`/4
+    - `mktime`/4
 
-   - to_list/1     (synonym for the existing list/1 function)
-   - to_rev_list/1 (synonym for the existing rev_list/1 function)
-   - rev_cord_list_to_cord/1 (similar to cord_list_to_cord/1)
-   - rev_cord_list_to_list/1 (similar to cord_list_to_list/1)
-   - cons/3
-   - snoc/3
-   - find_first_match/3
+* The following functions have been deprecated and will be removed in a
+  future release:
 
-* The following functions and predicates have been added to the array module:
+    - `localtime`/1
+    - `mktime`/1
+    - `ctime`/1
 
-   - det_least_index/1
-   - semidet_least_index/1
-   - det_greatest_index/1
-   - semidet_greatest_index/1
-   - foldl_corresponding/5
-   - foldl2_corresponding/7
-   - fill/3
-   - fill_range/5
-   - swap/4
-   - unsafe_swap/4
+### Changes to the `tree234` module
 
-   The following functions in the array module have been deprecated:
+* The following predicate has been added:
 
-   - least_index/1
-   - greatest_index/1
+    - `map_foldl4`/11
 
-* The following predicates and functions have been added to the array2d
-  module:
+### Changes to the `version_array` module
 
-   - is_empty/1
-   - fill/3
-   - from_array/3
+* The following function has been added:
 
-* The following predicates have been added to the time module:
+    - `from_reverse_list`/1
 
-   - localtime/4
-   - mktime/4
-
-  The following functions in the time module have been deprecated:
-
-   - localtime/1
-   - mktime/1
-   - ctime/1
-
-* The following predicates have been added to the rbtree module:
-
-   - foldl_values/4
-   - foldl2_values/6
-
-* The following predicates have been added to the hash_table module:
-
-   - fold2/6
-   - fold3/8
-
-* We have added the predicate svremove/4 to the assoc_list module.
-  This like the remove/4 predicate but with its arguments are in
-  an order more conducive to the use of state variable notation.
-
-* We have made several changes to the pretty_printer module:
-
-  - The type formatter_limit has been renamed to func_symbol_limit,
-    since this better reflects the type's purpose.
-  - We have replaced the set_formatter function with a predicate
-    of the same name, since this allows the use of state variable notation
-    when setting up more than one type-specific formatter,
-  - We have renamed the write_doc_to_stream predicate as put_doc,
-    to better fit in with the names other predicates that operate on
-    values of the stream.writer typeclass, and changed its interface
-    to group the prettyprinter parameters together in a value of the type
-    that was designed for this purpose.
-
-* We have deprecated the following functions from the std_util module:
-
-  - maybe_pred/3
-  - maybe_func/2
-
-* We have added the following predicates and functions to the digraph module:
-
-  - return_vertices_in_from_to_order/2
-  - return_vertices_in_to_from_order/2
-  - return_sccs_in_from_to_order/1
-  - return_sccs_in_to_from_order/1
-
-* We have added the following predicates and functions to the bag module:
-
-  - singleton/1
-  - insert_duplicates/4
-  - det_insert_duplicates/4
-  - det_insert_duplicates/3
-
-* We have added the following predicates and functions  to the bitmap module:
-
-  - is_empty/1
-  - det_from_string/1
-  - get_uint8/1, unsafe_get_uint8/1
-  - set_uint8/4, unsafe_set_uint8/4
-
-* The functor/4 predicate in the deconstruct module has been modified so
-  that for character and string data, any control characters in the functor
-  representation are escaped.
-
-Changes to the Mercury compiler:
+## Changes to the Mercury compiler
 
 * We have extended tail call optimization from self recursive calls only
   to mutually recursive calls as well, when generating high level C code,
   C# code, or Java code. (The compiler has long been able apply tail call
   optimization to mutually recursive calls when generating low level C code.)
 
-* We have added a new option --warn-dead-preds. While the existing option
-  --warn-dead-procs asks the compiler to generate warnings for every
+* We have added a new option `--warn-dead-preds`. While the existing option
+  `--warn-dead-procs` asks the compiler to generate warnings for every
   unused procedure of the module being compiled, the new option asks
   the compiler to generate a warning for an unused procedure only if
   none of the procedures of a predicate or function is used.
 
-* We have added a new option --warn-implicit-stream-calls, which asks
+* We have added a new option `--warn-implicit-stream-calls`, which asks
   the compiler to generate a warning for every call to a predicate p/n
   if there is also a predicate p/(n+1) which differs from p/n only in that
   it has additional argument at the front of its argument list that specifies
   an I/O stream. This is intended to generate warnings for calls to predicates
-  such as io.write_string/3, which writes to the current output stream,
-  to encourage programmers to call io.write_string/4 instead. If the option
+  such as `io.write_string`/3, which writes to the current output stream,
+  to encourage programmers to call `io.write_string`/4 instead. If the option
   is given, the compiler will also generate warnings for calls to predicates
-  such as io.see, io.seen, io.tell and io.told, which set the current input
+  such as `io.see`, `io.seen`, `io.tell` and `io.told`, which set the current input
   or output streams respectively.
 
-* We have added a new option --warn-non-contiguous-decls, which asks
+* We have added a new option `--warn-non-contiguous-decls`, which asks
   the compiler to generate a warning if the mode declaration(s) of a
-  predicate or function don't immediately follow its ":- pred" or ":- func"
+  predicate or function does not immediately follow its `:- pred` or `:- func`
   declaration. This is option is turned on by default.
 
-* We have added the new options --warn-inconsistent-pred-order-clauses
-  and --warn-inconsistent-pred-order-foreign-procs. Both of these ask the
+* We have added the new options `--warn-inconsistent-pred-order-clauses`
+  and `--warn-inconsistent-pred-order-foreign-procs`. Both of these ask the
   compiler to generate a warning if, among either (a) the set of exported
   predicates and functions of the module, or (b) the set of nonexported
   predicates and functions of the module, the order of their definitions
@@ -748,21 +870,21 @@ Changes to the Mercury compiler:
   the second applies to predicates and functions defined by either
   Mercury clauses or foreign procedures.
 
-  The option --warn-inconsistent-pred-order is a shorter synonym for
-  --warn-inconsistent-pred-order-clauses.
+    The option `--warn-inconsistent-pred-order` is a shorter synonym for
+    `--warn-inconsistent-pred-order-clauses`.
 
-* We have added a new option --inhibit-style-warnings, which tells
+* We have added a new option `--inhibit-style-warnings`, which tells
   the compiler not to generate any warnings that are purely about
   programming style, and do not point out code that is reasonably likely
   to be wrong.
 
-* We have added a new option --inline-linear-tail-rec-sccs that tells
+* We have added a new option `--inline-linear-tail-rec-sccs` that tells
   the compiler, when it finds a set of procedures that each contain
   one tail call to one *other* member of the set, to inline the tail calls
   to turn those mutually recursive procedures into procedures that each
   contain only *self* tail recursion.
 
-* We have significantly improved the compiler's ability to detect, and
+* We have significantly improved the compiler\'s ability to detect, and
   to generate warnings about, code that violates the occurs check.
 
 * We have fixed a long-standing bug causing crashes in deep profiling
@@ -774,7 +896,7 @@ Changes to the Mercury compiler:
     - IRIX
     - OSF/1
 
-* The asm_fast* and reg* grades now work on 64-bit Intel OS X systems when
+* The `asm_fast*` and `reg*` grades now work on 64-bit Intel OS X systems when
   using GCC as the C compiler.
   See README.MacOS for further details.
 
@@ -782,7 +904,7 @@ Changes to the Mercury compiler:
     - allow architectures other than i*86
     - allow use of shared libraries
     - enabled threads support
-    - enabled parallel job support with mmc --make
+    - enabled parallel job support with `mmc --make`
 
 * We have added support for OpenBSD.
 
@@ -791,38 +913,38 @@ Changes to the Mercury compiler:
 * We have improved support for AIX.
 
 * The compiler now reports an error for binary/octal/hexadecimal integer
-  literals that cannot be represented in the compiler's native int type.
+  literals that cannot be represented in the compiler\'s native `int` type.
 
 * Class files generated for executables in the Java grade are now automatically
   packaged up into Java archives (JARs).
 
-* The --generate-module-order and --imports-graph options no longer imply
-  --generate-dependencies.
+* The `--generate-module-order` and `--imports-graph` options no longer imply
+  `--generate-dependencies`.
 
 * The compiler does not set the runtime search path when
-  --mercury-linkage=static is used.
+  `--mercury-linkage=static` is used.
 
-* We have added an option --no-default-runtime-library-directory to
+* We have added an option `--no-default-runtime-library-directory` to
   prevent the compiler adding any directories to the runtime search path
   automatically.
 
-* We have renamed the --inhibit-accumulator-warnings option to
-  --no-warn-accumulator-swaps.
+* We have renamed the `--inhibit-accumulator-warnings` option to
+  `--no-warn-accumulator-swaps`.
 
 * We have disabled intermodule optimisation of any predicates or functions
-  using `try' goals. This fixes a serious issue as `try' goals are not
-  properly written to .opt files, so when read back would not actually
+  using `try` goals. This fixes a serious issue as `try` goals are not
+  properly written to `.opt` files, so when read back would not actually
   catch any exceptions.
 
-* We have disabled the old --num-reserved-objects option.
+* We have disabled the old `--num-reserved-objects` option.
 
 * We have upgraded the bundled Boehm GC to v7.6.10 and libatomic_ops to v7.6.2.
 
-Changes to the Mercury debugger:
+## Changes to the Mercury debugger
 
 * Interactive queries are now supported on OS X.
 
-* The "break" command can now auto-complete on the filename:linenumber pairs
+* The `break` command can now auto-complete on the filename:linenumber pairs
   of events, provided the Mercury system can access the readline library.
 
 * Interactive queries have been improved:
@@ -831,11 +953,11 @@ Changes to the Mercury debugger:
     - Non-canonical output bindings are now printed in solutions.
     - Underscore variables are no longer printed in solutions.
 
-* We have added a "browse --web" command to view terms in a web browser.
+* We have added a `browse --web` command to view terms in a web browser.
 
-Changes to the extras distribution:
+## Changes to the extras distribution
 
-* We have added support for Unicode and other enhancements to the lex and
-  regex libraries. Thanks to Sebastian Godelet.
+* We have added support for Unicode and other enhancements to the `lex` and
+  `regex` libraries. Thanks to Sebastian Godelet.
 
 For news about earlier versions, see the HISTORY file.
