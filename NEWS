@@ -773,9 +773,18 @@ for switch arms. These scopes are introduced by any of the new keywords
 
 ### Changes to the `term` module
 
-* The following predicate has been added:
+* The following predicates and functions have been added:
 
     - `is_dummy_context`/1
+    - `term_to_int`/2
+    - `term_to_uint`/2
+    - `term_to_int{8,16,32,64}`/2
+    - `term_to_uint{8,16,32,64}`/2
+    - `decimal_term_to_int`/2
+    - `int_to_decimal_term`/2
+    - `int{8,16,32,64}_to_decimal_term`/2
+    - `uint_to_decimal_term`/2
+    - `uint{8,16,32,64}_to_decimal_term`/2
 
 ### Changes to the `thread` module
 
