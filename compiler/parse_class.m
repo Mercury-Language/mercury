@@ -177,9 +177,9 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
             list.sort_and_remove_dups(FunDepVars, SortedFunDepVars),
 
             Params = ItemTypeClass0 ^ tc_class_params,
-            list.filter(is_in_list(Params), SortedConstraintVars,
+            list.filter(list.contains(Params), SortedConstraintVars,
                 _ConstraintInParams, ConstraintNotInParams),
-            list.filter(is_in_list(Params), SortedFunDepVars,
+            list.filter(list.contains(Params), SortedFunDepVars,
                 _FunDepInParams, FunDepNotInParams),
             (
                 ConstraintNotInParams = [_ | _],
@@ -585,7 +585,8 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
     ( if
         prog_type.constraint_list_get_tvars(Constraints, TVars),
         type_vars_list(Types, TypesVars),
-        list.filter(is_in_list(TypesVars), TVars, _BoundTVars, UnboundTVars),
+        list.filter(list.contains(TypesVars), TVars, _BoundTVars,
+            UnboundTVars),
         UnboundTVars = [_ | _]
     then
         UnboundTVarStrs = list.map(mercury_var_to_name_only(TVarSet),
@@ -989,13 +990,6 @@ constraint_is_not_simple(constraint(_ClassName, ArgTypes)) :-
         type_is_nonvar(ArgType),
         type_is_nonground(ArgType)
     ).
-
-%---------------------------------------------------------------------------%
-
-:- pred is_in_list(list(T)::in, T::in) is semidet.
-
-is_in_list(List, Element) :-
-    list.member(Element, List).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_class.
