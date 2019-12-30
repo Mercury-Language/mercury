@@ -4573,7 +4573,7 @@ NEWS for Mercury 14.01.2, not released
 This is a bug-fix release.
 
 * Fix array.sort, which has been buggy since 2001. You may wish to
-  reference array.sort_fix_2014 to ensure that you using the fixed version.
+  reference array.sort_fix_2014 to ensure that you are using the fixed version.
 * Fix the handling of nondet code by the auto-parallelisation analysis in
   mdprof_create_feedback. (Bug #364)
 * Fix string.between_codepoints so that the clamping of start/end points
