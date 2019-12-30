@@ -82,7 +82,7 @@ into another language, under the above conditions for modified versions.
 @c                       that hold.
 @menu
 * Introduction::      A brief introduction to Mercury.
-* Syntax::            Mercury's syntax is similar to ISO Prolog.
+* Syntax::            A description of Mercury's syntax.
 * Types::             Mercury has a strong parametric polymorphic type system.
 * Modes::             Modes allow you to specify the direction of data flow.
 * Unique modes::      Unique modes allow you to specify when there is only one
@@ -224,12 +224,7 @@ whitespace is defined to be the following characters:
 @node Tokens
 @section Tokens
 
-Tokens in Mercury are the same as in ISO Prolog.
-The only differences are the @samp{#@var{line}} token,
-which is used as a line number directive (see below)
-and the backquote (@samp{`}) token.
-
-The different tokens are as follows.
+The different tokens in Mercury are as follows.
 Tokens may be separated by whitespace.
 
 @table @emph
@@ -416,19 +411,6 @@ The end of file.
 
 @node Terms
 @section Terms
-
-Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
-except that as extensions we permit higher-order terms
-and the introduction of infix operators
-by the use of grave accents (backquotes), as described below,
-and we support an extended set of builtin operators.
-@xref{Builtin operators}.
-Also, the constructor for list terms in Mercury is @code{[|]/2},
-not @code{./2} as in Prolog.
-
-Note, however, that the meaning of some terms in Mercury
-is different to that in Prolog.
-@xref{Data-terms}.
 
 A term is either a variable or a functor.
 

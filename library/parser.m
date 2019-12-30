@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2001, 2003-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -10,27 +10,16 @@
 % Main author: fjh.
 % Stability: high.
 %
-% This file exports the predicate read_term, which reads
-% a term from the current input stream.
-% The read_term_from_string predicates are the same as the
-% read_term predicates, except that the term is read from
-% a string rather than from the current input stream.
-% The parse_token_list predicate is similar,
-% but it takes a list of tokens rather than a string.
-%
-% The parser and lexer are intended to exactly follow ISO Prolog
-% syntax, but there are some departures from that for three reasons:
-%
-%   (1) I wrote some of the code at home when the ISO Prolog draft
-%       was at uni - so in some places I just guessed.
-%   (2) In some places the lexer reports an error when it shouldn't.
-%   (3) There are a couple of hacks to make it compatible with NU-Prolog
-%       syntax.
+% This file exports the predicate read_term, which reads a term from the
+% current input stream. The read_term_from_*string predicates are the same as
+% the read_term predicates, except that the term is read from a string rather
+% than from the current input stream. The parse_token_list predicate is
+% similar, but it takes a list of tokens rather than a string.
 %
 % The parser is a relatively straight-forward top-down recursive descent
 % parser, made somewhat complicated by the need to handle operator
 % precedences.  It uses `lexer.get_token_list' to read a list of tokens.
-% It uses the routines in module `ops' to look up operator precedences.
+% It uses the routines from the module `ops' to look up operator precedences.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
