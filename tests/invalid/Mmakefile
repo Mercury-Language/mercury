@@ -346,6 +346,7 @@ SINGLEMODULE= \
 	unterminated_octal_escape \
 	user_eq_dummy \
 	uu_type \
+	var_as_class_name \
 	var_as_pred_name \
 	vars_in_wrong_places \
 	where_abstract_enum \

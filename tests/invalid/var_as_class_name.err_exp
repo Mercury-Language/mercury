@@ -1,0 +1,12 @@
+var_as_class_name.m:014: Error: you cannot declare a type class whose name is a
+var_as_class_name.m:014:   variable such as `A'.
+var_as_class_name.m:015: Error: you cannot declare a type class whose name is a
+var_as_class_name.m:015:   variable such as `B'.
+var_as_class_name.m:016: Error: you cannot declare a type class whose name is a
+var_as_class_name.m:016:   variable such as `C'.
+var_as_class_name.m:017: Error: you cannot declare a type class whose name is a
+var_as_class_name.m:017:   variable such as `D'.
+var_as_class_name.m:019: Error: you cannot declare an instance for a type class
+var_as_class_name.m:019:   whose name is a variable such as `A'.
+var_as_class_name.m:020: Error: you cannot declare an instance for a type class
+var_as_class_name.m:020:   whose name is a variable such as `B'.

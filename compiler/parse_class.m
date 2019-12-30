@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2011 University of Melbourne.
+% Copyright (C) 2016-2019 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -330,44 +331,51 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
         MaybeTypeClassInfo) :-
     ContextPieces = cord.singleton(words("In typeclass declaration:")),
     varset.coerce(TVarSet, VarSet),
-    parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
-        VarSet, ContextPieces, MaybeClassName),
-    (
-        MaybeClassName = ok2(ClassName, TermVars0),
-        list.map(term.coerce, TermVars0, TermVars),
+    ( if is_the_name_a_variable(VarSet, vtk_class_decl, NameTerm, Spec) then
+        MaybeTypeClassInfo = error1([Spec])
+    else
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
+            VarSet, ContextPieces, MaybeClassName),
         (
-            TermVars = [],
-            Pieces = [words("Error: typeclass declarations require"),
-                words("at least one class parameter."), nl],
-            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                get_term_context(NameTerm), Pieces),
-            MaybeTypeClassInfo = error1([Spec])
-        ;
-            TermVars = [_ | _],
-            ( if
-                term.term_list_to_var_list(TermVars, Vars),
-                list.sort_and_remove_dups(TermVars, SortedTermVars),
-                list.length(SortedTermVars, NumSortedTermVars),
-                list.length(TermVars, NumTermVars),
-                NumSortedTermVars = NumTermVars
-            then
-                % XXX Would this be a better context?
-                % Context = get_term_context(NameTerm),
-                TypeClassInfo = item_typeclass_info(ClassName, Vars, [], [],
-                    class_interface_abstract, TVarSet, Context, SeqNum),
-                MaybeTypeClassInfo = ok1(TypeClassInfo)
-            else
-                Pieces = [words("Error: expected distinct variables"),
-                    words("as class parameters."), nl],
-                % XXX Would Context be better than get_term_context(NameTerm)?
+            MaybeClassName = ok2(ClassName, TermVars0),
+            list.map(term.coerce, TermVars0, TermVars),
+            (
+                TermVars = [],
+                Pieces = [words("Error: typeclass declarations require"),
+                    words("at least one class parameter."), nl],
                 Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
                     get_term_context(NameTerm), Pieces),
                 MaybeTypeClassInfo = error1([Spec])
+            ;
+                TermVars = [_ | _],
+                ( if
+                    term.term_list_to_var_list(TermVars, Vars),
+                    list.sort_and_remove_dups(TermVars, SortedTermVars),
+                    list.length(SortedTermVars, NumSortedTermVars),
+                    list.length(TermVars, NumTermVars),
+                    NumSortedTermVars = NumTermVars
+                then
+                    % XXX Would this be a better context?
+                    % Context = get_term_context(NameTerm),
+                    TypeClassInfo = item_typeclass_info(ClassName, Vars, [],
+                        [], class_interface_abstract, TVarSet, Context,
+                        SeqNum),
+                    MaybeTypeClassInfo = ok1(TypeClassInfo)
+                else
+                    Pieces = [words("Error: expected distinct variables"),
+                        words("as class parameters."), nl],
+                    % XXX Would Context be better than
+                    % get_term_context(NameTerm)?
+                    Spec = simplest_spec(severity_error,
+                        phase_term_to_parse_tree, get_term_context(NameTerm),
+                        Pieces),
+                    MaybeTypeClassInfo = error1([Spec])
+                )
             )
+        ;
+            MaybeClassName = error2(Specs),
+            MaybeTypeClassInfo = error1(Specs)
         )
-    ;
-        MaybeClassName = error2(Specs),
-        MaybeTypeClassInfo = error1(Specs)
     ).
 
 :- pred parse_class_decls(module_name::in, varset::in, term::in,
@@ -506,25 +514,30 @@ parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     % could well be for a typeclass defined in another module.
     NameContextPieces = cord.singleton(words("In instance declaration:")),
     varset.coerce(TVarSet, VarSet),
-    parse_sym_name_and_args(VarSet, NameContextPieces,
-        NameTerm, MaybeClassName),
-    (
-        MaybeClassName = ok2(ClassName, TypeTerms),
-        TypesContextPieces = NameContextPieces,
-        parse_types(no_allow_ho_inst_info(wnhii_class_constraint),
-            VarSet, TypesContextPieces, TypeTerms, MaybeTypes),
+    ( if is_the_name_a_variable(VarSet, vtk_instance_decl, NameTerm, Spec) then
+        MaybeItemInstanceInfo = error1([Spec])
+    else
+        parse_sym_name_and_args(VarSet, NameContextPieces,
+            NameTerm, MaybeClassName),
         (
-            MaybeTypes = ok1(Types),
-            ItemInstanceInfo = item_instance_info(ClassName, Types, Types, [],
-                instance_body_abstract, TVarSet, ModuleName, Context, SeqNum),
-            MaybeItemInstanceInfo = ok1(ItemInstanceInfo)
+            MaybeClassName = ok2(ClassName, TypeTerms),
+            TypesContextPieces = NameContextPieces,
+            parse_types(no_allow_ho_inst_info(wnhii_class_constraint),
+                VarSet, TypesContextPieces, TypeTerms, MaybeTypes),
+            (
+                MaybeTypes = ok1(Types),
+                ItemInstanceInfo = item_instance_info(ClassName, Types, Types,
+                    [], instance_body_abstract, TVarSet, ModuleName, Context,
+                    SeqNum),
+                MaybeItemInstanceInfo = ok1(ItemInstanceInfo)
+            ;
+                MaybeTypes = error1(Specs),
+                MaybeItemInstanceInfo = error1(Specs)
+            )
         ;
-            MaybeTypes = error1(Specs),
+            MaybeClassName = error2(Specs),
             MaybeItemInstanceInfo = error1(Specs)
         )
-    ;
-        MaybeClassName = error2(Specs),
-        MaybeItemInstanceInfo = error1(Specs)
     ).
 
 :- pred parse_non_empty_instance(module_name::in, varset::in, tvarset::in,

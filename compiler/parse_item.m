@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury team.
+% Copyright (C) 2014, 2016-2019 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,6 +16,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_item.
@@ -56,6 +57,40 @@
     maybe1(class_decl)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+    % This type specifies whether the declaration we are attempting to parse
+    % occurs inside a typeclass declaration or not.
+    % XXX possibly we should also include the identity of the typeclass
+    % involved in the case where parsing the class head succeeds.
+    %
+:- type decl_in_class
+    --->    decl_is_in_class
+    ;       decl_is_not_in_class.
+
+%---------------------------------------------------------------------------%
+
+:- type var_term_kind
+    --->    vtk_type_decl_pred(decl_in_class)
+    ;       vtk_type_decl_func(decl_in_class)
+    ;       vtk_mode_decl_pred(decl_in_class)
+    ;       vtk_mode_decl_func(decl_in_class)
+    ;       vtk_class_decl
+    ;       vtk_instance_decl
+    ;       vtk_clause_pred
+    ;       vtk_clause_func.
+
+    % The term parser turns "X(a, b)" into "`'(X, a, b)".
+    %
+    % Check whether Term is the result of this transformation,
+    % and if yes, return an error message that reflects what
+    % the term was supposed to be.
+    %
+    % Exported for use by parse_class.m.
+    %
+:- pred is_the_name_a_variable(varset::in, var_term_kind::in, term::in,
+    error_spec::out) is semidet.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -63,7 +98,6 @@
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_class.
 :- import_module parse_tree.parse_dcg_goal.
 :- import_module parse_tree.parse_goal.
@@ -145,15 +179,6 @@ decl_functor_is_not_valid(Term, Functor) = Spec :-
         Context, Pieces).
 
 %---------------------------------------------------------------------------%
-
-    % This type specifies whether the declaration we are attempting to parse
-    % occurs inside a typeclass declaration or not.
-    % XXX possibly we should also include the identity of the typeclass
-    % involved in the case where parsing the class head succeeds.
-    %
-:- type decl_in_class
-    --->    decl_is_in_class
-    ;       decl_is_not_in_class.
 
 :- pred parse_decl_item_or_marker(module_name::in, varset::in,
     string::in, list(term)::in, decl_in_class::in, prog_context::in,
@@ -1937,23 +1962,6 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
 
 %---------------------------------------------------------------------------%
 
-:- type var_term_kind
-    --->    vtk_type_decl_pred(decl_in_class)
-    ;       vtk_type_decl_func(decl_in_class)
-    ;       vtk_mode_decl_pred(decl_in_class)
-    ;       vtk_mode_decl_func(decl_in_class)
-    ;       vtk_clause_pred
-    ;       vtk_clause_func.
-
-    % The term parser turns "X(a, b)" into "`'(X, a, b)".
-    %
-    % Check whether Term is the result of this transformation,
-    % and if yes, return an error message that reflects what
-    % the term was supposed to be.
-    %
-:- pred is_the_name_a_variable(varset::in, var_term_kind::in, term::in,
-    error_spec::out) is semidet.
-
 is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
     ( if Term = term.functor(term.atom(""), ArgTerms, TermContext) then
         ( if
@@ -1965,6 +1973,7 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
         else
             VarPieces = []
         ),
+        require_complete_switch [Kind]
         (
             Kind = vtk_type_decl_pred(IsInClass),
             (
@@ -2001,6 +2010,12 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
                 IsInClass = decl_is_in_class,
                 WhatPieces = [words("a mode for a type class function method")]
             )
+        ;
+            Kind = vtk_class_decl,
+            WhatPieces = [words("a type class")]
+        ;
+            Kind = vtk_instance_decl,
+            WhatPieces = [words("an instance for a type class")]
         ;
             Kind = vtk_clause_pred,
             WhatPieces = [words("a clause for a predicate")]
