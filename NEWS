@@ -818,7 +818,7 @@ Changes to the Mercury compiler:
 
 * We have upgraded the bundled Boehm GC to v7.6.10 and libatomic_ops to v7.6.2.
 
-Change to the Mercury debugger:
+Changes to the Mercury debugger:
 
 * Interactive queries are now supported on OS X.
 
