@@ -275,6 +275,13 @@ Changes to the Mercury standard library
   efficient set implementation for fat sets. This module is a contribution
   from Yes Logic Pty. Ltd.
 
+### New Module: `edit_seq`
+
+* This module provides operations for computing and manipulating edit
+  sequences. Given two sequences of items, an edit sequence is the shortest
+  sequence of edit operations (deletes, inserts and/or replaces) that will
+  transform the first sequence into the second.
+
 ### New Module: `psqueue`
 
 * This module implements a priority search queue ADT.  This is a blend between
