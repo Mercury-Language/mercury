@@ -345,6 +345,12 @@ Changes to the Mercury standard library
     - `det_insert_duplicates`/4
     - `det_insert_duplicates`/3
 
+* The following predicate and function have been deprecated and will be
+  remove in a future release.
+
+    - `to_set_without_duplicates`/2
+    - `to_set_without_duplicates`/1
+
 ### Changes to the `bitmap` module
 
 * The following predicates and functions have been added:
@@ -531,6 +537,8 @@ Changes to the Mercury standard library
     - `make_temp_directory`/5
     - `set_environment_var`/5
     - `have_set_environment_var`/0
+    - `seek_binary_input64`/5, `seek_binary_output64`/5
+    - `binary_input_stream_offset64`/4, `binary_output_stream_offset64`/4
 
 * The `print_line` and `write_line` family of predicates behave like the
   `print` and `write` predicates, but also write a terminating newline.
