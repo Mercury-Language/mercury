@@ -171,6 +171,11 @@ Changes that may break compatibility
   `string.poly_type` should be used directly. This may require an explicit
   import of the `string` module.
 
+* We have removed legacy support for the following systems:
+
+    - IRIX
+    - OSF/1
+
 Changes to the Mercury language
 -------------------------------
 
@@ -905,26 +910,6 @@ Changes to the Mercury compiler
 
 * We have fixed some bugs with constrained polymorphic modes.
 
-* We have removed legacy support for the following systems:
-    - IRIX
-    - OSF/1
-
-* The `asm_fast*` and `reg*` grades now work on 64-bit Intel OS X systems when
-  using GCC as the C compiler.
-  See README.MacOS for further details.
-
-* We have improved support for FreeBSD:
-    - allow architectures other than i*86
-    - allow use of shared libraries
-    - enabled threads support
-    - enabled parallel job support with `mmc --make`
-
-* We have added support for OpenBSD.
-
-* We have added support for Linux systems using musl libc.
-
-* We have improved support for AIX.
-
 * The compiler now reports an error for binary/octal/hexadecimal integer
   literals that cannot be represented in the compiler's native `int` type.
 
@@ -953,6 +938,33 @@ Changes to the Mercury compiler
 
 * We have upgraded the bundled Boehm GC to v7.6.10 and libatomic_ops to v7.6.2.
 
+Portability improvements
+------------------------
+
+* The `asm_fast*` and `reg*` grades now work on 64-bit Intel OS X systems when
+  using GCC as the C compiler.
+
+  See README.MacOS for further details.
+
+* We have improved support for FreeBSD, specifically:
+
+    - Allowing architectures other than `i*86`.
+    - Allowing the use of shared libraries.
+    - Enabling support for threads.
+    - Enabling parallel job support with `mmc --make`.
+
+  See README.FreeBSD for further details.
+
+* We have added support for OpenBSD.
+
+  See README.OpenBSD for further details.
+
+* We have added support for Linux systems using musl libc.
+
+* We have improved support for AIX.
+
+  See README.AIX for further details.
+
 Changes to the Mercury debugger
 -------------------------------
 
@@ -962,6 +974,7 @@ Changes to the Mercury debugger
   of events, provided the Mercury system can access the readline library.
 
 * Interactive queries have been improved:
+
     - Queries can use variable bindings from the current environment.
     - Exceptions thrown from queries are properly handled.
     - Non-canonical output bindings are now printed in solutions.
