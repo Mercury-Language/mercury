@@ -1,6 +1,8 @@
-# NEWS since Mercury 14.01.x
+NEWS since Mercury 14.01.x
+==========================
 
-## Changes that may break compatibility
+Changes that may break compatibility
+------------------------------------
 
 * When the Mercury compiler looks at code using Mercury keywords (such as
   `"func"` and `"pred"`) and Mercury operators (such as clause neck operator `":-"`)
@@ -12,37 +14,33 @@
   declared type and the called functions and predicates did not exist,
   leading to confusing error messages from the compiler.
 
-  The compiler\'s new approach generates considerably better diagnostics,
-  but it does mean that code that uses Mercury\'s keywords and/or operators
-  in ways that are inconsistent with Mercury\'s own uses of those keywords
+  The compiler's new approach generates considerably better diagnostics,
+  but it does mean that code that uses Mercury's keywords and/or operators
+  in ways that are inconsistent with Mercury's own uses of those keywords
   and operators will not compile anymore. Such code will need to be changed,
   typically by changing the names of some function symbols, functions
   or predicates.
 
 * Code that switches on a field of a term could previously written directly as
 
-    ```
-    (
-        Term ^ field = value1,
-        ...
-    ;
-        Term ^ field = value2,
-        ...
-    )
-    ```
+        (
+            Term ^ field = value1,
+            ...
+        ;
+            Term ^ field = value2,
+            ...
+        )
 
     The compiler would then internally rearrange this as
 
-    ```
-    Field = Term ^ field,
-    (
-        Field = value1,
-        ...
-    ;
-        Field = value2,
-        ...
-    )
-    ```
+        Field = Term ^ field,
+        (
+            Field = value1,
+            ...
+        ;
+            Field = value2,
+            ...
+        )
 
     and then recognize this as a switch on `Field`.
 
@@ -73,7 +71,7 @@
   If a module `m` has an `import_module` or `use_module` declaration for
   module `x.y.z`, it must also have `import_module` or `use_module` declarations
   for its ancestors `x` and `x.y`. And if the import or use of `x.y.z`
-  is in module `m`\'s interface, then the import or use of `x.y.z`\'s
+  is in module `m`'s interface, then the import or use of `x.y.z`'s
   ancestor modules must also be in the interface.
 
 * References to everything imported via `:- use_module` declarations
@@ -84,57 +82,51 @@
 * It is now an error for a program to redefine a builtin type. The affected
   type names are:
 
-    ```
-    int
-    int{8,16,32,64}
-    uint
-    uint{8,16,32,64}
-    float
-    character
-    string
-    {}
-    =
-    pred
-    func
-    pure
-    semipure
-    impure
-    ''
-    ```
+        int
+        int{8,16,32,64}
+        uint
+        uint{8,16,32,64}
+        float
+        character
+        string
+        {}
+        =
+        pred
+        func
+        pure
+        semipure
+        impure
+        ''
 
 * It is now an error for a program to redefine a builtin inst. The affected
   inst names are:
 
-    ```
-    =<
-    any
-    bound
-    bound_unique
-    clobbered
-    clobbered_any
-    free
-    ground
-    is
-    mostly_clobbered
-    mostly_unique
-    mostly_unique_any
-    not_reached
-    unique
-    unique_any
-    ```
+        =<
+        any
+        bound
+        bound_unique
+        clobbered
+        clobbered_any
+        free
+        ground
+        is
+        mostly_clobbered
+        mostly_unique
+        mostly_unique_any
+        not_reached
+        unique
+        unique_any
 
 * It is now an error for a program to redefine a builtin mode. The affected
   mode names are:
 
-    ```
-    =
-    >>
-    any_func
-    any_pred
-    func
-    is
-    pred
-    ```
+        =
+        >>
+        any_func
+        any_pred
+        func
+        is
+        pred
 
 * We have deleted the builtin inst synonyms `old` and `new`: their uses
   should be replaced with `any` and `free` respectively.
@@ -142,10 +134,10 @@
 * We have deleted the builtin modes `no` and `oo`: their uses should be
   replaced with `oa` and `ia` respectively.
 
-* The minimum version of the Java platform required by Mercury\'s Java
+* The minimum version of the Java platform required by Mercury's Java
   backend is now Java SE 8.
 
-* The representation of integer constants in the standard library\'s `term`
+* The representation of integer constants in the standard library's `term`
   and `lexer` modules has been generalised. The base, signedness and size of
   each integer constant is now recorded. Furthermore, these modules now use
   arbitrary-precision integers to represent the values of integer constants.
@@ -179,11 +171,12 @@
   `string.poly_type` should be used directly. This may require an explicit
   import of the `string` module.
 
-## Changes to the Mercury language
+Changes to the Mercury language
+-------------------------------
 
 * We have added nine new primitive types: `uint`, `int8`, `int16`, `int32`,
   `int64`, `uint8`, `uint16`, `uint32` and `uint64`. The type `uint` is an
-  unsigned integer type of the same size as Mercury\'s `int` type; the types
+  unsigned integer type of the same size as Mercury's `int` type; the types
   `int8`, `int16`, `int32` and `int64` are signed integer types of width
   8, 16, 32 and 64 bits respectively; the types `uint8`, `uint16`, `uint32`
   and `uint64` are unsigned integer types of width 8, 16, 32 and 64 bits
@@ -191,13 +184,11 @@
 
     Literals of these new types must have a distinguishing suffix, for example:
 
-    ```
-    999u
-    561i32
-    0b1111100111i64
-    0o16u8
-    0x3e732i64
-    ```
+        999u
+        561i32
+        0b1111100111i64
+        0o16u8
+        0x3e732i64
 
     Basic operations on the new primitive types are provided by the new standard
     library modules: `uint`, `int8`, `int16`, `int32`, `int64`, `uint8`,
@@ -206,16 +197,14 @@
 * We have added a new kind of scope to the language: determinism checks
 for switch arms. These scopes are introduced by any of the new keywords
 
-    ```
-    require_switch_arms_det
-    require_switch_arms_semidet
-    require_switch_arms_multi
-    require_switch_arms_nondet
-    require_switch_arms_cc_multi
-    require_switch_arms_cc_nondet
-    require_switch_arms_erroneous
-    require_switch_arms_failure
-    ```
+        require_switch_arms_det
+        require_switch_arms_semidet
+        require_switch_arms_multi
+        require_switch_arms_nondet
+        require_switch_arms_cc_multi
+        require_switch_arms_cc_nondet
+        require_switch_arms_erroneous
+        require_switch_arms_failure
 
     `require_switch_arms_<determinism> [Var] Goal` tells the compiler to require
     `Goal` to be a switch on `Var` in which all the switch arms have determinisms
@@ -229,11 +218,9 @@ for switch arms. These scopes are introduced by any of the new keywords
 * We have added a new kind of scope to the language for disabling warnings
   within the scope. A goal such as
 
-    ```
-    disable_warnings [singleton_vars] (
-       Goal
-    )
-    ```
+        disable_warnings [singleton_vars] (
+           Goal
+        )
 
     is equivalent to `Goal`, with the exception that the compiler will not
     generate warnings about singleton variables inside `Goal`.
@@ -270,7 +257,8 @@ for switch arms. These scopes are introduced by any of the new keywords
 * Digits in numeric literals may now be separated by underscores in order
   to improve readability.
 
-## Changes to the Mercury standard library
+Changes to the Mercury standard library
+---------------------------------------
 
 ### New Integer Modules
 
@@ -640,7 +628,7 @@ for switch arms. These scopes are introduced by any of the new keywords
 ### Changes to the `pretty_printer` module
 
 * The type `formatter_limit` has been renamed to `func_symbol_limit`, since
-  this better reflects the type\'s purpose.
+  this better reflects the type's purpose.
 
 * We have replaced the `set_formatter` function with a predicate of the same
   name, since this allows the use of state variable notation when setting up more
@@ -840,7 +828,8 @@ for switch arms. These scopes are introduced by any of the new keywords
 
     - `from_reverse_list`/1
 
-## Changes to the Mercury compiler
+Changes to the Mercury compiler
+-------------------------------
 
 * We have extended tail call optimization from self recursive calls only
   to mutually recursive calls as well, when generating high level C code,
@@ -893,7 +882,7 @@ for switch arms. These scopes are introduced by any of the new keywords
   to turn those mutually recursive procedures into procedures that each
   contain only *self* tail recursion.
 
-* We have significantly improved the compiler\'s ability to detect, and
+* We have significantly improved the compiler's ability to detect, and
   to generate warnings about, code that violates the occurs check.
 
 * We have fixed a long-standing bug causing crashes in deep profiling
@@ -922,7 +911,7 @@ for switch arms. These scopes are introduced by any of the new keywords
 * We have improved support for AIX.
 
 * The compiler now reports an error for binary/octal/hexadecimal integer
-  literals that cannot be represented in the compiler\'s native `int` type.
+  literals that cannot be represented in the compiler's native `int` type.
 
 * Class files generated for executables in the Java grade are now automatically
   packaged up into Java archives (JARs).
@@ -949,7 +938,8 @@ for switch arms. These scopes are introduced by any of the new keywords
 
 * We have upgraded the bundled Boehm GC to v7.6.10 and libatomic_ops to v7.6.2.
 
-## Changes to the Mercury debugger
+Changes to the Mercury debugger
+-------------------------------
 
 * Interactive queries are now supported on OS X.
 
@@ -964,7 +954,8 @@ for switch arms. These scopes are introduced by any of the new keywords
 
 * We have added a `browse --web` command to view terms in a web browser.
 
-## Changes to the extras distribution
+Changes to the extras distribution
+----------------------------------
 
 * We have added support for Unicode and other enhancements to the `lex` and
   `regex` libraries. Thanks to Sebastian Godelet.
