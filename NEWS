@@ -811,9 +811,13 @@ Changes to the Mercury standard library
 
 * The following predicates and functions have been added:
 
-    - `init/1`
     - `impure_init/1`
     - `try_read/4`
+
+* The following function has been deprecated and will be revoved in a
+  future release:
+
+    - `init/1`
 
 ### Changes to the `thread.semaphore` module
 
