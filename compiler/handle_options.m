@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2019 The Mercury Team.
+% Copyright (C) 2013-2020 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2473,7 +2473,7 @@ display_compiler_version(!IO) :-
     io.write_strings([
         "Mercury Compiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1993-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2019 The Mercury team\n"
+        "Copyright (C) 2013-2020 The Mercury team\n"
     ], !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,
@@ -2504,7 +2504,7 @@ long_usage(!IO) :-
         Version, ", on ", Fullarch, "\n"], !IO),
     io.write_string("Copyright: Copyright (C) 1993-2012 " ++
         "The University of Melbourne\n", !IO),
-    io.write_string("           Copyright (C) 2013-2019 " ++
+    io.write_string("           Copyright (C) 2013-2020 " ++
         "The Mercury team\n", !IO),
     io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),
     io.write_string("Arguments:\n", !IO),
