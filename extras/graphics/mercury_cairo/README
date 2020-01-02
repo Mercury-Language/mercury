@@ -101,7 +101,7 @@ surfaces is in the submodule "cairo.image".
 
 Image surfaces are always supported.  PDF, PostScript, SVG and recording
 surfaces are optional.  The following predicates may be used to test whether
-they are are supported by an installation:
+they are supported by an installation:
     
     cairo.pdf.have_pdf_surface/0
     cairo.ps.have_ps_surface/0
