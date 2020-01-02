@@ -494,6 +494,10 @@ Changes to the Mercury standard library
     - `unchecked_abs/1`
     - `nabs/1`
 
+* The following predicate has been deprecated:
+
+    - `is/2`
+
 ### Changes to the `integer` module
 
 * The following predicates and functions have been added:
