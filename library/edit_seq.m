@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2019 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -129,7 +129,7 @@
     %    Hoover
     %
     % This change hunk shows the insertion of one line containing "Pershing"
-    % into a list of US presidents. The "-25,6" part of the header shows that 
+    % into a list of US presidents. The "-25,6" part of the header shows that
     % the part of the original sequence (sequence A) covered by this change
     % hunk contains six lines, starting at line 25. The "+25,7" part shows that
     % the part of the updated sequence (sequence B) contains seven lines,
@@ -157,12 +157,12 @@
     % of the item sequence that there are fewer than ContextSize unchanged
     % items there.
     %
-    % The reason why there may be up to 2 * ContextSize consecutive unchanged 
+    % The reason why there may be up to 2 * ContextSize consecutive unchanged
     % items in the middle of a change hunk is that if the limit were any lower,
     % then some of those unchanged items would end up *both* in the trailing
     % context of one change hunk and the initial context of the next change
     % hunk.
-    % 
+    %
     % To make sense, ContextSize must be least one. This predicate throws
     % an exception if ContextSize is zero or negative.
     %
@@ -340,7 +340,7 @@ add_entry(RowNum, ColNum, Entry, !Table) :-
         map.det_insert(RowNum, Row, !Table)
     ).
 
-:- pred delete_row(int::in, 
+:- pred delete_row(int::in,
     dynprog_table(T)::in, dynprog_table(T)::out) is det.
 
 delete_row(RowNum, !Table) :-
