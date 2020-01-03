@@ -171,6 +171,11 @@ Changes that may break compatibility
   `string.poly_type` should be used directly. This may require an explicit
   import of the `string` module.
 
+* The predicates and functions in the `term` module that provide conversion
+  from arbitrary types to terms and vice versa have been moved to their own
+  module, `term_conversion`. See the changes to the `term` module below for
+  a list of affected predicates and functions.
+
 * We have removed legacy support for the following systems:
 
     - IRIX
@@ -294,9 +299,17 @@ Changes to the Mercury standard library
 
 ### New Module: `ranges`
 
-* This module represents sets of integer using a sort list of ranges. This module
-  export operations that make it particularly suitable for representing domains
-  in finite domain constraint solvers.
+* This module represents sets of integer using a sort list of ranges. This
+  module exports operations that make it particularly suitable for representing
+  domains in finite domain constraint solvers.
+
+### New Module: `term_conversion`
+
+* This module provides generic operations for the conversion of values of
+  arbitrary types to and from terms. These operations were previously
+  provided by the `term` module.
+
+  See the list of changes to the `term` module below.
 
 ### New Module: `thread.barrier`
 
@@ -798,6 +811,15 @@ Changes to the Mercury standard library
     - `uint_to_decimal_term/2`
     - `uint{8,16,32,64}_to_decimal_term/2`
 
+* The following predicates and functions have been moved to the
+  `term_conversion` module:
+
+   - `try_term_to_type/[12]`
+   - `term_to_type/2`
+   - `det_term_to_type/[12]`
+   - `type_to_term/[12]`
+   - `univ_to_term/[12]`
+
 ### Changes to the `thread` module
 
 * The following predicates have been added:
@@ -818,7 +840,7 @@ Changes to the Mercury standard library
     - `impure_init/1`
     - `try_read/4`
 
-* The following function has been deprecated and will be revoved in a
+* The following function has been deprecated and will be removed in a
   future release:
 
     - `init/1`
