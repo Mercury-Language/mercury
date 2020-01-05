@@ -715,7 +715,7 @@ X / Y = Z :-
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
-    Ceil = (MR_Integer) ceil(X);
+    Ceil = (MR_Integer) ML_FLOAT_CEIL(X);
 ").
 :- pragma foreign_proc("C#",
     ceiling_to_int(X::in) = (Ceil::out),
@@ -754,7 +754,7 @@ X / Y = Z :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    Floor = (MR_Integer) floor(X);
+    Floor = (MR_Integer) ML_FLOAT_FLOOR(X);
 ").
 :- pragma foreign_proc("C#",
     floor_to_int(X::in) = (Floor::out),
@@ -793,7 +793,7 @@ X / Y = Z :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    Round = (MR_Integer) floor(X + 0.5);
+    Round = (MR_Integer) ML_FLOAT_FLOOR(X + (MR_Float)0.5);
 ").
 :- pragma foreign_proc("C#",
     round_to_int(X::in) = (Round::out),
@@ -1090,6 +1090,19 @@ is_zero(0.0).
         #define ML_FLOAT_MANT_DIG   DBL_MANT_DIG
         #define ML_FLOAT_MIN_EXP    DBL_MIN_EXP
         #define ML_FLOAT_MAX_EXP    DBL_MAX_EXP
+    #endif
+").
+
+% For C grades, choose between floor/floorf and ceil/ceilf depending on the
+% size of MR_Float
+:- pragma foreign_decl("C",
+"
+    #if defined MR_USE_SINGLE_PREC_FLOAT
+        #define ML_FLOAT_FLOOR  floorf
+        #define ML_FLOAT_CEIL   ceilf
+    #else
+        #define ML_FLOAT_FLOOR  floor
+        #define ML_FLOAT_CEIL   ceil
     #endif
 ").
 
