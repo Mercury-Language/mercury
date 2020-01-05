@@ -29,8 +29,7 @@
 
     % Get the dependencies for a given module.
     % Dependencies are generated on demand, not by a `mmc --make depend'
-    % command, so this predicate may need to read the source for
-    % the module.
+    % command, so this predicate may need to read the source for the module.
     %
 :- pred get_module_dependencies(globals::in, module_name::in,
     maybe(module_and_imports)::out, make_info::in, make_info::out,
@@ -93,12 +92,11 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
             MaybeModuleAndImports, !Info, !IO)
     ;
         ModuleName = qualified(_, _),
-        % For sub-modules, we need to generate the dependencies
-        % for the parent modules first (make_module_dependencies
-        % expects to be given the top-level module in a source file).
-        % If the module is a nested module, its dependencies will be
-        % generated as a side effect of generating the parent's
-        % dependencies.
+        % For submodules, we need to generate the dependencies for the
+        % parent modules first (make_module_dependencies expects to be given
+        % the top-level module in a source file).
+        % If the module is a nested module, its dependencies will be generated
+        % as a side effect of generating the parent's dependencies.
         AncestorsAndSelf = get_ancestors(ModuleName) ++ [ModuleName],
         Error0 = no,
         maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
@@ -112,7 +110,8 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
     list(module_name)::in, bool::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-maybe_get_modules_dependencies(_Globals, _RebuildModuleDeps, [], _, !Info, !IO).
+maybe_get_modules_dependencies(_Globals, _RebuildModuleDeps,
+        [], _, !Info, !IO).
 maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
         [ModuleName | ModuleNames], !.Error, !Info, !IO) :-
     (
@@ -127,8 +126,8 @@ maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
         )
     ;
         !.Error = yes,
-        % If we found a problem when processing an ancestor, don't even
-        % try to process the later modules.
+        % If we found a problem when processing an ancestor, don't even try
+        % to process the later modules.
         ModuleDepMap0 = !.Info ^ module_dependencies,
         MaybeModuleAndImports = no,
         % XXX Could this be map.det_update or map.det_insert?
@@ -184,8 +183,8 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             ; compare((>), DepFileTimestamp, SourceFileTimestamp)
             )
         then
-            % Since the source file was found in this directory, don't
-            % use module_dep files which might be for installed copies
+            % Since the source file was found in this directory, do not use
+            % module_dep files which might be for installed copies
             % of the module.
             read_module_dependencies_no_search(Globals, RebuildModuleDeps,
                 ModuleName, !Info, !IO)
@@ -199,8 +198,8 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             ModuleName, !Info, !IO),
 
         % Check for the case where the module name doesn't match the
-        % source file name (e.g. parse.m contains module mdb.parse). Get
-        % the correct source file name from the module dependency file,
+        % source file name (e.g. parse.m contains module mdb.parse).
+        % Get the correct source file name from the module dependency file,
         % then check whether the module dependency file is up to date.
 
         map.lookup(!.Info ^ module_dependencies, ModuleName,
@@ -228,11 +227,9 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
                 )
             ;
                 MaybeSourceFileTimestamp1 = error(Message),
-                io.write_string("** Error reading file `", !IO),
-                io.write_string(SourceFileName1, !IO),
-                io.write_string("' to generate dependencies: ", !IO),
-                io.write_string(Message, !IO),
-                io.write_string(".\n", !IO),
+                io.format("** Error reading file `%s' " ++
+                    "to generate dependencies: %s.\n",
+                    [s(SourceFileName1), s(Message)], !IO),
                 maybe_write_importing_module(ModuleName,
                     !.Info ^ importing_module, !IO)
             )
@@ -244,8 +241,8 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         SearchDirsString = join_list(", ",
             map((func(Dir) = "`" ++ Dir ++ "'"), SearchDirs)),
         debug_make_msg(Globals,
-            io.format("Module dependencies file '%s' "
-                    ++ "not found in directories %s.\n",
+            io.format(
+                "Module dependencies file '%s' not found in directories %s.\n",
                 [s(DepFileName), s(SearchDirsString)]),
             !IO),
 
@@ -298,8 +295,8 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     ;
         ProgDepResult = error(Error),
         io.error_message(Error, Msg),
-        io.write_strings(["Error opening ", ProgDepFile, " for output: ",
-            Msg, "\n"], !IO),
+        io.format("Error opening %s for output: %s\n",
+            [s(ProgDepFile), s(Msg)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -777,9 +774,9 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.set_output_stream(ErrorStream, _, !IO),
             write_error_specs_ignore(Specs0, Globals, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
-            io.write_string("** Error reading file `", !IO),
-            io.write_string(SourceFileName, !IO),
-            io.write_string("' to generate dependencies.\n", !IO),
+            io.format(
+                "** Error reading file `%s' to generate dependencies.\n",
+                [s(SourceFileName)], !IO),
             maybe_write_importing_module(ModuleName, !.Info ^ importing_module,
                 !IO),
 
@@ -805,21 +802,13 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                  RawCompUnits),
 
             io.set_output_stream(ErrorStream, _, !IO),
-            % XXX Why do want ignore all previously reported errors?
+            % XXX Why are we ignoring all previously reported errors?
             io.set_exit_status(0, !IO),
             write_error_specs_ignore(Specs, Globals, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
-            list.foldl(
-                ( pred(ModuleAndImports::in, Info0::in, Info::out) is det :-
-                    module_and_imports_get_module_name(ModuleAndImports,
-                        SubModuleName),
-                    ModuleDeps0 = Info0 ^ module_dependencies,
-                    % XXX Could this be map.det_insert?
-                    map.set(SubModuleName, yes(ModuleAndImports),
-                        ModuleDeps0, ModuleDeps),
-                    Info = Info0 ^ module_dependencies := ModuleDeps
-                ), ModuleAndImportsList, !Info),
+            list.foldl(make_info_add_module_and_imports_as_dep,
+                ModuleAndImportsList, !Info),
 
             % If there were no errors, write out the `.int3' file
             % while we have the contents of the module. The `int3' file
@@ -859,9 +848,19 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         MaybeErrorStream = no
     ).
 
+:- pred make_info_add_module_and_imports_as_dep(module_and_imports::in,
+    make_info::in, make_info::out) is det.
+
+make_info_add_module_and_imports_as_dep(ModuleAndImports, !Info) :-
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    ModuleDeps0 = !.Info ^ module_dependencies,
+    % XXX Could this be map.det_insert?
+    map.set(ModuleName, yes(ModuleAndImports), ModuleDeps0, ModuleDeps),
+    !Info ^ module_dependencies := ModuleDeps.
+
 :- pred make_int3_files(io.output_stream::in, file_name::in,
-    list(raw_compilation_unit)::in, globals::in, list(string)::in,
-    bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
+    list(raw_compilation_unit)::in, globals::in, list(string)::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_int3_files(ErrorStream, SourceFileName, RawCompUnits, Globals,
         _, Succeeded, !Info, !IO) :-

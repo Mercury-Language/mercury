@@ -137,125 +137,20 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
     dependency_status(Globals, Dep, Status, !Info, !IO),
     (
         Status = deps_status_not_considered,
-        TargetFile = target_file(ModuleName, TargetType),
+        TargetFile = target_file(ModuleName, _TargetType),
         get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
             !Info, !IO),
         (
             MaybeModuleAndImports = no,
             Succeeded = no,
-            !Info ^ dependency_status ^ elem(Dep) := deps_status_error
+            DepStatus0 = !.Info ^ dependency_status,
+            version_hash_table.set(Dep, deps_status_error,
+                DepStatus0, DepStatus),
+            !Info ^ dependency_status := DepStatus
         ;
             MaybeModuleAndImports = yes(ModuleAndImports),
-            CompilationTask = compilation_task(TargetType),
-            module_and_imports_get_source_file_module_name(ModuleAndImports,
-                SourceFileModuleName),
-            ( if
-                % For a target built by processing a Mercury source file,
-                % the target for a nested sub-module is produced as a side
-                % effect of making the target for the top-level module in
-                % the file.
-                CompilationTask = process_module(_) - _,
-                SourceFileModuleName \= ModuleName
-            then
-                NestedTargetFile =
-                    target_file(SourceFileModuleName, TargetType),
-                make_module_target_extra_options(ExtraOptions, Globals,
-                    dep_target(NestedTargetFile),
-                    Succeeded, !Info, !IO)
-            else
-                CompilationTask = CompilationTaskType - _,
-                touched_files(Globals, TargetFile, CompilationTaskType,
-                    TouchedTargetFiles, TouchedFiles, !Info, !IO),
-                list.foldl(update_target_status(deps_status_being_built),
-                    TouchedTargetFiles, !Info),
-
-                debug_file_msg(Globals, TargetFile, "checking dependencies",
-                    !IO),
-
-                ( if CompilationTask = process_module(_) - _ then
-                    module_and_imports_get_nested_children(ModuleAndImports,
-                        NestedChildren),
-                    ModulesToCheck =
-                        [ModuleName | set.to_sorted_list(NestedChildren)]
-                else
-                    ModulesToCheck = [ModuleName]
-                ),
-                module_names_to_index_set(ModulesToCheck, ModulesToCheckSet,
-                    !Info),
-
-                deps_set_foldl3_maybe_stop_at_error(!.Info ^ keep_going,
-                    union_deps(target_dependencies(Globals, TargetType)),
-                    Globals, ModulesToCheckSet, DepsSuccess,
-                    sparse_bitset.init, DepFiles0, !Info, !IO),
-                dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
-                    DepFilesSet0),
-                ( if
-                    TargetFile = target_file(_, TargetType),
-                    TargetType = module_target_int0
-                then
-                    % Avoid circular dependencies (the `.int0' files
-                    % for the nested sub-modules depend on this module's
-                    % `.int0' file).
-                    PrivateInts = make_dependency_list(ModulesToCheck,
-                        module_target_int0),
-                    DepFilesToMake = set.to_sorted_list(
-                        set.delete_list(DepFilesSet0, PrivateInts))
-                else
-                    DepFilesToMake = set.to_sorted_list(DepFilesSet0)
-                ),
-
-                debug_make_msg(Globals,
-                   ( pred(!.IO::di, !:IO::uo) is det :-
-                        make_write_target_file(Globals, TargetFile, !IO),
-                        io.write_string(": dependencies:\n", !IO),
-                        dependency_file_index_set_to_plain_set(!.Info,
-                            DepFiles0, PlainSet),
-                        make_write_dependency_file_list(Globals,
-                            to_sorted_list(PlainSet), !IO)
-                    ), !IO),
-
-                globals.lookup_bool_option(Globals, keep_going, KeepGoing),
-                ( if
-                    DepsSuccess = no,
-                    KeepGoing = no
-                then
-                    DepsResult = deps_error
-                else
-                    make_dependency_files(Globals, TargetFile, DepFilesToMake,
-                        TouchedTargetFiles, TouchedFiles, DepsResult0,
-                        !Info, !IO),
-                    (
-                        DepsSuccess = yes,
-                        DepsResult = DepsResult0
-                    ;
-                        DepsSuccess = no,
-                        DepsResult = deps_error
-                    )
-                ),
-                (
-                    DepsResult = deps_error,
-                    Succeeded = no,
-                    list.foldl(update_target_status(deps_status_error),
-                        TouchedTargetFiles, !Info)
-                ;
-                    DepsResult = deps_out_of_date,
-                    Targets0 = !.Info ^ command_line_targets,
-                    set.delete(ModuleName - module_target(TargetType),
-                        Targets0, Targets),
-                    !Info ^ command_line_targets := Targets,
-                    build_target(Globals, CompilationTask, TargetFile,
-                        ModuleAndImports, TouchedTargetFiles, TouchedFiles,
-                        ExtraOptions, Succeeded, !Info, !IO)
-                ;
-                    DepsResult = deps_up_to_date,
-                    maybe_warn_up_to_date_target(Globals,
-                        ModuleName - module_target(TargetType), !Info, !IO),
-                    debug_file_msg(Globals, TargetFile, "up to date", !IO),
-                    Succeeded = yes,
-                    list.foldl(update_target_status(deps_status_up_to_date),
-                        [TargetFile | TouchedTargetFiles], !Info)
-                )
-            )
+            make_module_target_file_main_path(ExtraOptions, Globals,
+                TargetFile, ModuleAndImports, Succeeded, !Info, !IO)
         )
     ;
         Status = deps_status_up_to_date,
@@ -266,6 +161,114 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
     ;
         Status = deps_status_error,
         Succeeded = no
+    ).
+
+:- pred make_module_target_file_main_path(list(string)::in, globals::in,
+    target_file::in, module_and_imports::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
+        ModuleAndImports, Succeeded, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
+    CompilationTask = compilation_task(TargetType),
+    module_and_imports_get_source_file_module_name(ModuleAndImports,
+        SourceFileModuleName),
+    CompilationTask = task_and_options(CompilationTaskType, _),
+    ( if
+        % For a target built by processing a Mercury source file,
+        % the target for a nested sub-module is produced as a side effect
+        % of making the target for the top-level module in the file.
+        CompilationTaskType = process_module(_),
+        SourceFileModuleName \= ModuleName
+    then
+        NestedTargetFile =
+            target_file(SourceFileModuleName, TargetType),
+        make_module_target_extra_options(ExtraOptions, Globals,
+            dep_target(NestedTargetFile), Succeeded, !Info, !IO)
+    else
+        touched_files(Globals, TargetFile, CompilationTaskType,
+            TouchedTargetFiles, TouchedFiles, !Info, !IO),
+        list.foldl(update_target_status(deps_status_being_built),
+            TouchedTargetFiles, !Info),
+
+        debug_file_msg(Globals, TargetFile, "checking dependencies", !IO),
+
+        ( if CompilationTaskType = process_module(_) then
+            module_and_imports_get_nested_children(ModuleAndImports,
+                NestedChildren),
+            ModulesToCheck = [ModuleName | set.to_sorted_list(NestedChildren)]
+        else
+            ModulesToCheck = [ModuleName]
+        ),
+        module_names_to_index_set(ModulesToCheck, ModulesToCheckSet, !Info),
+
+        deps_set_foldl3_maybe_stop_at_error(!.Info ^ keep_going,
+            union_deps(target_dependencies(Globals, TargetType)),
+            Globals, ModulesToCheckSet, DepsSuccess,
+            sparse_bitset.init, DepFiles0, !Info, !IO),
+        dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
+            DepFilesSet0),
+        ( if TargetType = module_target_int0 then
+            % Avoid circular dependencies (the `.int0' files for the
+            % nested sub-modules depend on this module's `.int0' file).
+            PrivateInts = make_dependency_list(ModulesToCheck,
+                module_target_int0),
+            DepFilesToMake = set.to_sorted_list(
+                set.delete_list(DepFilesSet0, PrivateInts))
+        else
+            DepFilesToMake = set.to_sorted_list(DepFilesSet0)
+        ),
+
+        debug_make_msg(Globals,
+           ( pred(!.IO::di, !:IO::uo) is det :-
+                make_write_target_file(Globals, TargetFile, !IO),
+                io.write_string(": dependencies:\n", !IO),
+                dependency_file_index_set_to_plain_set(!.Info,
+                    DepFiles0, PlainSet),
+                make_write_dependency_file_list(Globals,
+                    set.to_sorted_list(PlainSet), !IO)
+            ), !IO),
+
+        globals.lookup_bool_option(Globals, keep_going, KeepGoing),
+        ( if
+            DepsSuccess = no,
+            KeepGoing = no
+        then
+            DepsResult = deps_error
+        else
+            make_dependency_files(Globals, TargetFile, DepFilesToMake,
+                TouchedTargetFiles, TouchedFiles, DepsResult0, !Info, !IO),
+            (
+                DepsSuccess = yes,
+                DepsResult = DepsResult0
+            ;
+                DepsSuccess = no,
+                DepsResult = deps_error
+            )
+        ),
+        (
+            DepsResult = deps_error,
+            Succeeded = no,
+            list.foldl(update_target_status(deps_status_error),
+                TouchedTargetFiles, !Info)
+        ;
+            DepsResult = deps_out_of_date,
+            Targets0 = !.Info ^ command_line_targets,
+            set.delete(ModuleName - module_target(TargetType),
+                Targets0, Targets),
+            !Info ^ command_line_targets := Targets,
+            build_target(Globals, CompilationTask, TargetFile,
+                ModuleAndImports, TouchedTargetFiles, TouchedFiles,
+                ExtraOptions, Succeeded, !Info, !IO)
+        ;
+            DepsResult = deps_up_to_date,
+            maybe_warn_up_to_date_target(Globals,
+                ModuleName - module_target(TargetType), !Info, !IO),
+            debug_file_msg(Globals, TargetFile, "up to date", !IO),
+            Succeeded = yes,
+            list.foldl(update_target_status(deps_status_up_to_date),
+                [TargetFile | TouchedTargetFiles], !Info)
+        )
     ).
 
 :- pred make_dependency_files(globals::in, target_file::in,
@@ -356,18 +359,18 @@ force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_target(globals::in, compilation_task_result::in, target_file::in,
-    module_and_imports::in, list(target_file)::in, list(file_name)::in,
-    list(string)::in, bool::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred build_target(globals::in, compilation_task_type_and_options::in,
+    target_file::in, module_and_imports::in, list(target_file)::in,
+    list(file_name)::in, list(string)::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
         TouchedFiles, ExtraOptions, Succeeded, !Info, !IO) :-
     maybe_make_target_message(Globals, TargetFile, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
-    CompilationTask = Task - TaskOptions,
+    CompilationTask = task_and_options(Task, TaskOptions),
     ( if
-        CompilationTask = process_module(ModuleTask) - _,
+        Task = process_module(ModuleTask),
         forkable_module_compilation_task_type(ModuleTask) = yes,
         not can_fork
     then
@@ -378,7 +381,7 @@ build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
         (
             ArgFileNameResult = ok(ArgFileName),
             MaybeArgFileName = yes(ArgFileName),
-            ArgFileNameSuccess = ok
+            ArgFileNameSuccess = ok : io.res
         ;
             ArgFileNameResult = error(Error),
             MaybeArgFileName = no,
@@ -390,25 +393,11 @@ build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
     ),
 
     (
-        ArgFileNameSuccess = ok : io.res,
-        Cleanup =
-            ( pred(!.MakeInfo::in, !:MakeInfo::out, !.IO::di, !:IO::uo)
-                    is det :-
-                % XXX Remove `.int.tmp' files.
-                list.foldl2(make_remove_target_file(Globals, very_verbose),
-                    TouchedTargetFiles, !MakeInfo, !IO),
-                list.foldl2(make_remove_file(Globals, very_verbose),
-                    TouchedFiles, !MakeInfo, !IO),
-                (
-                    MaybeArgFileName = yes(ArgFileName2),
-                    io.remove_file(ArgFileName2, _, !IO)
-                ;
-                    MaybeArgFileName = no
-                )
-            ),
-
+        ArgFileNameSuccess = ok,
         get_real_milliseconds(Time0, !IO),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+        Cleanup = cleanup_files(Globals, MaybeArgFileName,
+            TouchedTargetFiles, TouchedFiles),
         build_with_check_for_interrupt(VeryVerbose,
             build_with_module_options_and_output_redirect(Globals, ModuleName,
                 ExtraOptions ++ TaskOptions,
@@ -438,6 +427,24 @@ build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
         io.format(stderr_stream, "Could not create temporary file: %s\n",
             [s(error_message(ArgFileError))], !IO),
         Succeeded = no
+    ).
+
+:- pred cleanup_files(globals::in, maybe(string)::in,
+    list(target_file)::in, list(string)::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
+        !MakeInfo, !IO) :-
+    % XXX Remove `.int.tmp' files.
+    list.foldl2(make_remove_target_file(Globals, very_verbose),
+        TouchedTargetFiles, !MakeInfo, !IO),
+    list.foldl2(make_remove_file(Globals, very_verbose),
+        TouchedFiles, !MakeInfo, !IO),
+    (
+        MaybeArgFileName = yes(ArgFileName2),
+        io.remove_file(ArgFileName2, _, !IO)
+    ;
+        MaybeArgFileName = no
     ).
 
 :- pred build_target_2(module_name::in, compilation_task_type::in,
@@ -470,8 +477,9 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
         % the Mercury stacks. If the compilation is run in a separate process,
         % it is also easier to kill if an interrupt arrives. We do the same for
         % intermodule-optimization interfaces because if type checking gets
-        % overloaded by ambiguities it can be difficult to kill the compiler
+        % overloaded by ambiguities, it can be difficult to kill the compiler
         % otherwise.
+        % XXX The above comment is likely to be quite out-of-date.
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         IsForkable = forkable_module_compilation_task_type(ModuleTask),
         (
@@ -793,7 +801,9 @@ record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
 
 update_target_status(TargetStatus, TargetFile, !Info) :-
     Dep = dep_target(TargetFile),
-    !Info ^ dependency_status ^ elem(Dep) := TargetStatus.
+    DepStatus0 = !.Info ^ dependency_status,
+    version_hash_table.set(Dep, TargetStatus, DepStatus0, DepStatus),
+    !Info ^ dependency_status := DepStatus.
 
 :- pred delete_analysis_registry_timestamps(globals::in, string::in,
     maybe_error(timestamp)::in,
@@ -822,9 +832,14 @@ delete_timestamp(Globals, TouchedFile, !Timestamps) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type compilation_task_result == pair(compilation_task_type, list(string)).
+:- type compilation_task_type_and_options
+    --->    task_and_options(
+                compilation_task_type,
+                list(string)
+            ).
 
-:- func compilation_task(module_target_type) = compilation_task_result.
+:- func compilation_task(module_target_type) =
+    compilation_task_type_and_options.
 
 compilation_task(Target) = Result :-
     (
@@ -834,63 +849,70 @@ compilation_task(Target) = Result :-
         unexpected($pred, "compilation_task")
     ;
         Target = module_target_errors,
-        Result = process_module(task_errorcheck) - ["--errorcheck-only"]
+        Result = task_and_options(process_module(task_errorcheck),
+            ["--errorcheck-only"])
     ;
         Target = module_target_int0,
-        Result = process_module(task_make_int0) - ["--make-private-interface"]
+        Result = task_and_options(process_module(task_make_int0),
+            ["--make-private-interface"])
     ;
         ( Target = module_target_int1
         ; Target = module_target_int2
         ),
-        Result = process_module(task_make_int12) - ["--make-interface"]
+        Result = task_and_options(process_module(task_make_int12),
+            ["--make-interface"])
     ;
         Target = module_target_int3,
-        Result = process_module(task_make_int3) - ["--make-short-interface"]
+        Result = task_and_options(process_module(task_make_int3),
+            ["--make-short-interface"])
     ;
         Target = module_target_opt,
-        Result = process_module(task_make_opt) -
-            ["--make-optimization-interface"]
+        Result = task_and_options(process_module(task_make_opt),
+            ["--make-optimization-interface"])
     ;
         Target = module_target_analysis_registry,
-        Result = process_module(task_make_analysis_registry) -
-            ["--make-analysis-registry"]
+        Result = task_and_options(process_module(task_make_analysis_registry),
+            ["--make-analysis-registry"])
     ;
         ( Target = module_target_c_header(_)
         ; Target = module_target_c_code
         ),
-        Result = process_module(task_compile_to_target_code) -
-            ["--compile-to-c"]
+        Result = task_and_options(process_module(task_compile_to_target_code),
+            ["--compile-to-c"])
     ;
         Target = module_target_csharp_code,
-        Result = process_module(task_compile_to_target_code) -
-            ["--csharp-only"]
+        Result = task_and_options(process_module(task_compile_to_target_code),
+            ["--csharp-only"])
     ;
         Target = module_target_java_code,
-        Result = process_module(task_compile_to_target_code) - ["--java-only"]
+        Result = task_and_options(process_module(task_compile_to_target_code),
+            ["--java-only"])
     ;
         Target = module_target_java_class_code,
-        Result = target_code_to_object_code(non_pic) - []
+        Result = task_and_options(target_code_to_object_code(non_pic), [])
     ;
         ( Target = module_target_erlang_header
         ; Target = module_target_erlang_code
         ),
-        Result = process_module(task_compile_to_target_code) -
-            ["--erlang-only"]
+        Result = task_and_options(process_module(task_compile_to_target_code),
+            ["--erlang-only"])
     ;
         Target = module_target_erlang_beam_code,
-        Result = target_code_to_object_code(non_pic) - []
+        Result = task_and_options(target_code_to_object_code(non_pic), [])
     ;
         Target = module_target_object_code(PIC),
-        Result = target_code_to_object_code(PIC) - []
+        Result = task_and_options(target_code_to_object_code(PIC), [])
     ;
         Target = module_target_foreign_object(PIC, Lang),
-        Result = foreign_code_to_object_code(PIC, Lang) - []
+        Result = task_and_options(foreign_code_to_object_code(PIC, Lang), [])
     ;
         Target = module_target_fact_table_object(PIC, FactTable),
-        Result = fact_table_code_to_object_code(PIC, FactTable) - []
+        Result = task_and_options(
+            fact_table_code_to_object_code(PIC, FactTable), [])
     ;
         Target = module_target_xml_doc,
-        Result = process_module(task_make_xml_doc) - ["--make-xml-doc"]
+        Result = task_and_options(process_module(task_make_xml_doc),
+            ["--make-xml-doc"])
     ).
 
     % Find the files which could be touched by a compilation task.
