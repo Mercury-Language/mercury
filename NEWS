@@ -898,6 +898,17 @@ Changes to the Mercury compiler
 
 ### New warning options
 
+* `--inform-incomplete-switch`, `--inform-incomplete-switch-threshold N`
+
+   This option asks the compiler to generate an informational message for
+   switches that do not cover all of the function symbols that the switched-on
+   variable could be bound to.
+
+   The option `--inform-incomplete-switch-threshold N` can be used to restrict
+   the generation of these messages to only switches that *do* cover at least
+   *N* percent of the function symbols that the switched-on variable
+   could be bound to.
+
 * `--inhibit-style-warnings`
 
   This option asks the compiler not to generate any warnings that are purely
@@ -941,6 +952,12 @@ Changes to the Mercury compiler
   The option `--warn-inconsistent-pred-order` is a shorter synonym for
   `--warn-inconsistent-pred-order-clauses`.
 
+* `--warn-interface-imports-in-parents`
+
+  This option asks the compiler to generate a warning for modules that are
+  imported in the interface of a parent module, but not used in the interface
+  of that module.
+
 * `--warn-non-contiguous-decls`
 
   This option asks the compiler to generate a warning if the mode
@@ -953,6 +970,11 @@ Changes to the Mercury compiler
   to generate warnings about, code that violates the occurs check. This
   option is turned on by default.
 
+* `--warn-suspicious-foreign-code`
+
+  This option asks the compiler to warn about possible errors in the bodies of
+  `foreign_code` pragmas.
+
 ### New link options
 
 * `--no-default-runtime-library-directory`
@@ -960,11 +982,27 @@ Changes to the Mercury compiler
   This new option prevents the compiler from adding any directories to the
   runtime search path automatically.
 
+### New output options
+
+* `--output-class-dir`, `--output-class-directory`
+
+   This option causes the compiler to print the name of the directory in
+   which generated Java class files will be placed.
+
+* `--output-csharp-compiler`
+
+  This option causes the compiler to print the command used to invoke
+  the C# compiler.
+
+* `--output-target-arch`
+
+  This option causes the compiler to print the target architecture.
+
 ### Changes to output options
 
 * `--generate-module-order`, `--imports-graph`
 
-  These options no longer imply `--generate-dependencies`
+  These options no longer imply `--generate-dependencies`.
 
 ### Changes to link options
 
