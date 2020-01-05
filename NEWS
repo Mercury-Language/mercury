@@ -805,7 +805,7 @@ Changes to the Mercury standard library
   backslash escapes when required.
 
 * Float special values, NaNs and Infinities, are now converted to strings in
-  a way that is backend- and grade-independent. (Bug #348)
+  a way that is backend- and grade-independent. [Mantis bug #348]
 
 ### Changes to the `store` module
 
@@ -896,90 +896,124 @@ Changes to the Mercury standard library
 Changes to the Mercury compiler
 -------------------------------
 
+### New warning options
+
+* `--inhibit-style-warnings`
+
+  This option asks the compiler not to generate any warnings that are purely
+  about programming style, and do not point out code that is reasonably
+  likely to be wrong.
+
+* `--no-warn-accumulator-swaps`
+
+  We have renamed the `--inhibit-accumulator-warnings` option to
+  `--no-warn-accumulator-swaps`.
+
+* `--warn-dead-preds`
+
+  While the existing option `--warn-dead-procs` asks the compiler to generate
+  warnings for every unused procedure of the module being compiled, this new
+  option asks the compiler to generate a warning for an unused procedure only
+  if none of the procedures of a predicate or function is used.
+
+* `--warn-implicit-stream-calls`
+
+  This option asks the compiler to generate a warning for every call to a
+  predicate `p/N` if there is also a predicate `p/(N+1)` which differs from
+  `p/N` only in that it has additional argument at the front of its argument
+  list that specifies an I/O stream. This is intended to generate warnings for
+  calls to predicates such as `io.write_string/3`, which writes to the current
+  output stream, to encourage programmers to call `io.write_string/4` instead.
+  If the option is given, the compiler will also generate warnings for calls
+  to predicates such as `io.see`, `io.seen`, `io.tell` and `io.told`, which
+  set the current input or output streams respectively.
+
+* `--warn-inconsistent-pred-order-clauses`, `--warn-inconsistent-pred-order-foreign-procs`
+
+  Both of these options ask the compiler to generate a warning if, among
+  either (a) the set of exported predicates and functions of the module,
+  or (b) the set of nonexported predicates and functions of the module,
+  the order of their definitions does not match the order of their
+  declarations. The first option applies only to predicates and functions
+  defined by Mercury clauses; the second applies to predicates and functions
+  defined by either Mercury clauses or foreign procedures.
+
+  The option `--warn-inconsistent-pred-order` is a shorter synonym for
+  `--warn-inconsistent-pred-order-clauses`.
+
+* `--warn-non-contiguous-decls`
+
+  This option asks the compiler to generate a warning if the mode
+  declaration(s) of a predicate or function does not immediately follow its
+  `:- pred` or `:- func` declaration. This is option is turned on by default.
+
+* `--warn-suspected-occurs-check-failure`
+
+  We have significantly improved the compiler's ability to detect, and
+  to generate warnings about, code that violates the occurs check. This
+  option is turned on by default.
+
+### New optimization options
+
+* `--inline-linear-tail-rec-sccs`
+
+  This option tells the compiler, when it finds a set of procedures that each
+  contain one tail call to one *other* member of the set, to inline the tail
+  calls to turn those mutually recursive procedures into procedures that each
+  contain only *self* tail recursion.
+
+### New link options
+
+* `--no-default-runtime-library-directory`
+
+  This new option prevents the compiler from adding any directories to the
+  runtime search path automatically.
+
+### Changes to output options
+
+* `--generate-module-order`, `--imports-graph`
+
+  These options no longer imply `--generate-dependencies`
+
+### Changes to link options
+
+* `--mercury-linkage`
+
+  The compiler no longer sets the runtime search path when
+  the value of `--mercury-linkage` is `static`.
+
+### Changes to the developer compilation model options
+
+* `--num-reserved-objects`
+
+  We have deleted this option.
+
+### Changes to optimizations
+
 * We have extended tail call optimization from self recursive calls only
   to mutually recursive calls as well, when generating high level C code,
   C# code, or Java code. (The compiler has long been able apply tail call
   optimization to mutually recursive calls when generating low level C code.)
-
-* We have added a new option `--warn-dead-preds`. While the existing option
-  `--warn-dead-procs` asks the compiler to generate warnings for every
-  unused procedure of the module being compiled, the new option asks
-  the compiler to generate a warning for an unused procedure only if
-  none of the procedures of a predicate or function is used.
-
-* We have added a new option `--warn-implicit-stream-calls`, which asks
-  the compiler to generate a warning for every call to a predicate p/n
-  if there is also a predicate p/(n+1) which differs from p/n only in that
-  it has additional argument at the front of its argument list that specifies
-  an I/O stream. This is intended to generate warnings for calls to predicates
-  such as `io.write_string/3`, which writes to the current output stream,
-  to encourage programmers to call `io.write_string/4` instead. If the option
-  is given, the compiler will also generate warnings for calls to predicates
-  such as `io.see`, `io.seen`, `io.tell` and `io.told`, which set the current input
-  or output streams respectively.
-
-* We have added a new option `--warn-non-contiguous-decls`, which asks
-  the compiler to generate a warning if the mode declaration(s) of a
-  predicate or function does not immediately follow its `:- pred` or `:- func`
-  declaration. This is option is turned on by default.
-
-* We have added the new options `--warn-inconsistent-pred-order-clauses`
-  and `--warn-inconsistent-pred-order-foreign-procs`. Both of these ask the
-  compiler to generate a warning if, among either (a) the set of exported
-  predicates and functions of the module, or (b) the set of nonexported
-  predicates and functions of the module, the order of their definitions
-  does not match the order of their declarations. The first option
-  applies only to predicates and functions defined by Mercury clauses;
-  the second applies to predicates and functions defined by either
-  Mercury clauses or foreign procedures.
-
-    The option `--warn-inconsistent-pred-order` is a shorter synonym for
-    `--warn-inconsistent-pred-order-clauses`.
-
-* We have added a new option `--inhibit-style-warnings`, which tells
-  the compiler not to generate any warnings that are purely about
-  programming style, and do not point out code that is reasonably likely
-  to be wrong.
-
-* We have added a new option `--inline-linear-tail-rec-sccs` that tells
-  the compiler, when it finds a set of procedures that each contain
-  one tail call to one *other* member of the set, to inline the tail calls
-  to turn those mutually recursive procedures into procedures that each
-  contain only *self* tail recursion.
-
-* We have significantly improved the compiler's ability to detect, and
-  to generate warnings about, code that violates the occurs check.
-
-* We have fixed a long-standing bug causing crashes in deep profiling
-  grades, related to unify/compare for tuples. (Bug #3)
-
-* We have fixed some bugs with constrained polymorphic modes.
-
-* The compiler now reports an error for binary/octal/hexadecimal integer
-  literals that cannot be represented in the compiler's native `int` type.
-
-* Class files generated for executables in the Java grade are now automatically
-  packaged up into Java archives (JARs).
-
-* The `--generate-module-order` and `--imports-graph` options no longer imply
-  `--generate-dependencies`.
-
-* The compiler does not set the runtime search path when
-  `--mercury-linkage=static` is used.
-
-* We have added an option `--no-default-runtime-library-directory` to
-  prevent the compiler adding any directories to the runtime search path
-  automatically.
-
-* We have renamed the `--inhibit-accumulator-warnings` option to
-  `--no-warn-accumulator-swaps`.
 
 * We have disabled intermodule optimisation of any predicates or functions
   using `try` goals. This fixes a serious issue as `try` goals are not
   properly written to `.opt` files, so when read back would not actually
   catch any exceptions.
 
-* We have disabled the old `--num-reserved-objects` option.
+### Bug fixes
+
+* We have fixed a long-standing bug causing crashes in deep profiling
+  grades, related to unify/compare for tuples. [Mantis bug #3]
+
+* We have fixed some bugs with constrained polymorphic modes.
+
+* The compiler now reports an error for binary/octal/hexadecimal integer
+  literals that cannot be represented in the compiler's native `int` type.
+
+### Other changes
+
+* Class files generated for executables in the Java grade are now automatically
+  packaged up into Java archives (JARs).
 
 * We have upgraded the bundled Boehm GC to v7.6.10 and libatomic_ops to v7.6.2.
 
