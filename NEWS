@@ -913,8 +913,8 @@ Changes to the Mercury compiler
 
   While the existing option `--warn-dead-procs` asks the compiler to generate
   warnings for every unused procedure of the module being compiled, this new
-  option asks the compiler to generate a warning for an unused procedure only
-  if none of the procedures of a predicate or function is used.
+  option asks the compiler to generate a warning for a predicate or function
+  only if none of its procedures is used.
 
 * `--warn-implicit-stream-calls`
 
@@ -953,15 +953,6 @@ Changes to the Mercury compiler
   to generate warnings about, code that violates the occurs check. This
   option is turned on by default.
 
-### New optimization options
-
-* `--inline-linear-tail-rec-sccs`
-
-  This option tells the compiler, when it finds a set of procedures that each
-  contain one tail call to one *other* member of the set, to inline the tail
-  calls to turn those mutually recursive procedures into procedures that each
-  contain only *self* tail recursion.
-
 ### New link options
 
 * `--no-default-runtime-library-directory`
@@ -981,12 +972,6 @@ Changes to the Mercury compiler
 
   The compiler no longer sets the runtime search path when
   the value of `--mercury-linkage` is `static`.
-
-### Changes to the developer compilation model options
-
-* `--num-reserved-objects`
-
-  We have deleted this option.
 
 ### Changes to optimizations
 
