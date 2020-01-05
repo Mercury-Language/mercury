@@ -1,6 +1,21 @@
 NEWS since Mercury 14.01.x
 ==========================
 
+Changes to the core libraries license
+-------------------------------------
+
+* We have modified the terms under which the Mercury core libraries are
+  licensed by adding an exception to the requirements of clause 6 for
+  executable files linked against the Mercury core libraries.
+
+  See the file COPYING.LIB for the terms of the Mercury core library
+  license.
+
+  See the file LICENSE for licensing information in general.
+
+  The licensing of the compiler and other parts of the system has **not**
+  been changed.
+
 Changes that may break compatibility
 ------------------------------------
 
