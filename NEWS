@@ -998,6 +998,21 @@ Changes to the Mercury compiler
 
   This option causes the compiler to print the target architecture.
 
+### New auxiliary output options
+
+* `--show-definitions`
+
+  This option causes the compiler to write out a list of the types, insts,
+  modes, predicates, functions, typeclasses and instances defined in a module
+  to a file named `<module>.defns`.
+
+* `--show-definition-line-counts`
+
+  This option causes the compiler to write out a list of predicates and
+  functions defined in a module, together with the names of the files
+  containing them and their approximate line counts, to a file named
+  `<module>.defn_line_counts`.
+
 ### Changes to output options
 
 * `--generate-module-order`, `--imports-graph`
