@@ -69,7 +69,7 @@ Changes that may break compatibility
 * We have enabled stricter checking of non-ground final insts to reject more
   mode-incorrect code. Due to compiler limitations, some code that should be
   accepted will now be rejected. They will require modifications to appease
-  the compiler.
+  the compiler. [Mantis bugs #86, #117, #191].
 
 * We have enabled stricter checking of the requirement that a type, inst
   or a mode that is *not* exported from a module may not be used in the
@@ -830,16 +830,16 @@ Changes to the Mercury standard library
     - `foldr_substring/5`
     - `foldr_substring/6`
 
-* `base_digit_to_int/3` and `det_base_digit_to_int/2` now check
-  for overflow and underflow in all bases, not only base 10.
-
 * We have reduced the memory allocated by `to_lower` and `to_upper`.
 
 * `string_to_doc/1` now escapes characters in its input argument with
   backslash escapes when required.
 
-* Float special values, NaNs and Infinities, are now converted to strings in
-  a way that is backend- and grade-independent. [Mantis bug #348]
+* [Mantis bug #348].  Float special values, NaNs and Infinities, are now
+  converted to strings in a way that is backend- and grade-independent.
+
+* [Mantis bug #376]. `base_digit_to_int/3` and `det_base_digit_to_int/2` now
+  check for overflow and underflow in all bases, not only base 10.
 
 ### Changes to the `store` module
 
@@ -1074,13 +1074,53 @@ Changes to the Mercury compiler
 
 ### Bug fixes
 
-* We have fixed a long-standing bug causing crashes in deep profiling
-  grades, related to unify/compare for tuples. [Mantis bug #3]
-
 * We have fixed some bugs with constrained polymorphic modes.
 
 * The compiler now reports an error for binary/octal/hexadecimal integer
   literals that cannot be represented in the compiler's native `int` type.
+
+* [Mantis bug #3]. We have fixed a long-standing bug causing crashes in
+  deep profiling grades, related to unify/compare for tuples.
+
+* [Mantis bug #184]. We have fixed a bug that caused a compiler abort in the
+  presence of unsatisfied type class constraints.
+
+* [Mantis bug #196]. We have made binary compatibility checks in C grades
+  work again; GCC and clang were optimizing them away.
+
+* [Mantis bug #264]. Putting a function with a non-default signature into a
+  ground term is now no longer allowed. This is because extracting the function
+  from the term would assume the default function signature.
+
+* [Mantis bug #278]. We have fixed a bug where erroneous state variable use
+  in the head of a lambda expression would cause a compiler abort instead of
+  generating an error message.
+
+* [Mantis bug #318]. We no longer erroneously report an error if a
+  `foreign_type` pragma precedes the `:- type` declaration to which it applies.
+
+* [Mantis bug #388]. We have fixed a bug where JAR files were being installed
+  with incorrect permissions.
+
+* [Mantis bug #391]. We have fixed a bug where the conditions on `trace` goals
+  were being discarded when inlined across module boundaries.
+
+* [Mantis bug #402]. The current state of a state variable can now be used in
+  the head of a `require_complete_switch` scope.
+
+* [Mantis bug #415]. We have fixed a bug that caused the compiler to go into
+  an infinite loop when pretty printing recursive insts for use in error
+  messages.
+
+* [Mantis bug #420]. We have fixed a bug where `try` goals that were inlined
+  across module boundaries would ignore exceptions instead of catching them.
+
+* [Mantis bug #436]. We have fixed a bug where the compiler would silently
+  allow a `foreign_enum` pragma to contain a constructor not belonging to the
+  type that is the subject of the pragma.
+
+* [Mantis bug #437]. We have fixed a bug that caused the compiler to abort if
+  an empty submodule was encountered.
 
 ### Other changes
 
@@ -1115,6 +1155,12 @@ Portability improvements
 * We have improved support for AIX.
 
   See README.AIX for further details.
+
+* [Mantis bug #357]. We now use the `libdispatch` implementation of semaphores
+  on OS X as the POSIX one was a non-functional stub.
+
+* [Mantis bug #463]. We now support the use of the Microsoft C# compiler
+  (i.e. Roslyn) in POSIX environments.
 
 Changes to the Mercury debugger
 -------------------------------
