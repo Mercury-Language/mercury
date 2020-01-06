@@ -294,6 +294,24 @@ Changes to the Mercury standard library
   Many other standard library modules now have additional predicates that support
   the new integer types; see the entries for those modules for details.
 
+### New Random Number Generator Framework
+
+* We have added a new type class based interface to random number generators
+  to the `random` module. The new interface provides predicates for:
+
+    - generating pseudo-random integers that are uniformly distributed
+      in a range.
+    - generating pseudo-random floats that are uniformly distributed
+      in a range.
+    - generating pseudo-random floats from a normal (i.e. Gaussian)
+      distribution.
+    - generating a random permutation of an array.
+    - generating a random permutation of a list.
+
+  Three new submodules, `random.sfc16`, `random.sfc32` and `random.sfc64`,
+  provide instances of the new type classes. Further instances can be found
+  in the extras distribution (see below).
+
 ### New Module: `diet`
 
 * This module provides discrete interval encoding trees, which are a highly
@@ -690,6 +708,22 @@ Changes to the Mercury standard library
   fit in with the names other predicates that operate on values of the
   `stream.writer` typeclass, and changed its interface to group the prettyprinter
   parameters together in a value of the type that was designed for this purpose.
+
+### Changes to the `random` module.
+
+* The existing random number generator defined in this module has been
+  deprecated in favour of the type class based random number generation
+  framework described above.
+
+  As such, the `supply/0` type and the following predicates have been
+  deprecated and will be deleted in a future release:
+
+    - `init/2`
+    - `random/3`
+    - `random/5`
+    - `randmax/3`
+    - `randcount/3`
+    - `permutation/4`
 
 ### Changes to the `rbtree` module
 
@@ -1104,5 +1138,8 @@ Changes to the extras distribution
 
 * We have added support for Unicode and other enhancements to the `lex` and
   `regex` libraries. Thanks to Sebastian Godelet.
+
+* We have added some additional random number generator implementations for
+  use with the new random number generator framework.
 
 For news about earlier versions, see the HISTORY file.
