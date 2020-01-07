@@ -853,6 +853,7 @@ Changes to the Mercury standard library
 
 * The following predicates and functions have been added:
 
+    - `dummy_context_init/0`
     - `is_dummy_context/1`
     - `term_to_int/2`
     - `term_to_uint/2`

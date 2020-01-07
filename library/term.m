@@ -726,6 +726,7 @@
 
     % Return a dummy term context.
     %
+:- func dummy_context_init = context.
 :- func context_init = context.
 :- pred context_init(context::out) is det.
 
@@ -1465,11 +1466,12 @@ get_term_context(Term) = Context :-
 context_init(File, LineNumber) = context(File, LineNumber).
 context_init(File, LineNumber, context(File, LineNumber)).
 
-context_init = context("", 0).
-context_init(context("", 0)).
+dummy_context_init = context("", 0).
+context_init = dummy_context_init.
+context_init(dummy_context_init).
 
 is_dummy_context(Context) :-
-    Context = context("", 0).
+    Context = dummy_context_init.
 
 context_line(context(_, LineNumber)) = LineNumber.
 context_line(context(_, LineNumber), LineNumber).
