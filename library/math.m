@@ -253,42 +253,42 @@
     // Choose between float or double cmath functions depending on the type of
     // MR_Float
     #if defined MR_USE_SINGLE_PREC_FLOAT
-        #define ML_EXP      expf
-        #define ML_LOG      logf
-        #define ML_LOG10    log10f
-        #define ML_POW      powf
-        #define ML_SQRT     sqrtf
-        #define ML_SIN      sinf
-        #define ML_COS      cosf
-        #define ML_TAN      tanf
-        #define ML_ASIN     asinf
-        #define ML_ACOS     acosf
-        #define ML_ATAN     atanf
-        #define ML_ATAN2    atan2f
-        #define ML_SINH     sinhf
-        #define ML_COSH     coshf
-        #define ML_TANH     tanhf
+        #define ML_EXP(X)       expf(X)
+        #define ML_LOG(X)       logf(X)
+        #define ML_LOG10(X)     log10f(X)
+        #define ML_POW(X, Y)    powf(X, Y)
+        #define ML_SQRT(X)      sqrtf(X)
+        #define ML_SIN(X)       sinf(X)
+        #define ML_COS(X)       cosf(X)
+        #define ML_TAN(X)       tanf(X)
+        #define ML_ASIN(X)      asinf(X)
+        #define ML_ACOS(X)      acosf(X)
+        #define ML_ATAN(X)      atanf(X)
+        #define ML_ATAN2(X, Y)  atan2f(X, Y)
+        #define ML_SINH(X)      sinhf(X)
+        #define ML_COSH(X)      coshf(X)
+        #define ML_TANH(X)      tanhf(X)
         #if defined(MR_HAVE_FMA)
-            #define ML_FMA      fmaf
+            #define ML_FMA(X, Y, Z) fmaf(X, Y, Z)
         #endif
     #else
-        #define ML_EXP      exp
-        #define ML_LOG      log
-        #define ML_LOG10    log10
-        #define ML_POW      pow
-        #define ML_SQRT     sqrt
-        #define ML_SIN      sin
-        #define ML_COS      cos
-        #define ML_TAN      tan
-        #define ML_ASIN     asin
-        #define ML_ACOS     acos
-        #define ML_ATAN     atan
-        #define ML_ATAN2    atan2
-        #define ML_SINH     sinh
-        #define ML_COSH     cosh
-        #define ML_TANH     tanh
+        #define ML_EXP(X)       exp(X)
+        #define ML_LOG(X)       log(X)
+        #define ML_LOG10(X)     log10(X)
+        #define ML_POW(X, Y)    pow(X, Y)
+        #define ML_SQRT(X)      sqrt(X)
+        #define ML_SIN(X)       sin(X)
+        #define ML_COS(X)       cos(X)
+        #define ML_TAN(X)       tan(X)
+        #define ML_ASIN(X)      asin(X)
+        #define ML_ACOS(X)      acos(X)
+        #define ML_ATAN(X)      atan(X)
+        #define ML_ATAN2(X, Y)  atan2(X, Y)
+        #define ML_SINH(X)      sinh(X)
+        #define ML_COSH(X)      cosh(X)
+        #define ML_TANH(X)      tanh(X)
         #if defined(MR_HAVE_FMA)
-            #define ML_FMA      fma
+            #define ML_FMA(X, Y, Z) fma(X, Y, Z)
         #endif
     #endif
 

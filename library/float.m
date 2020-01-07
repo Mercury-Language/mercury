@@ -1098,11 +1098,11 @@ is_zero(0.0).
 :- pragma foreign_decl("C",
 "
     #if defined MR_USE_SINGLE_PREC_FLOAT
-        #define ML_FLOAT_FLOOR  floorf
-        #define ML_FLOAT_CEIL   ceilf
+        #define ML_FLOAT_FLOOR(X)   floorf(X)
+        #define ML_FLOAT_CEIL(X)    ceilf(X)
     #else
-        #define ML_FLOAT_FLOOR  floor
-        #define ML_FLOAT_CEIL   ceil
+        #define ML_FLOAT_FLOOR(X)   floor(X)
+        #define ML_FLOAT_CEIL(X)    ceil(X)
     #endif
 ").
 
