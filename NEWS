@@ -859,6 +859,22 @@ Changes to the Mercury standard library
     - `int{8,16,32,64}_to_decimal_term/2`
     - `uint_to_decimal_term/2`
     - `uint{8,16,32,64}_to_decimal_term/2`
+    - `rename_var_in_term/4`
+    - `rename_vars_in_terms/4`
+    - `apply_renaming_in_term/3`
+    - `apply_renaming_in_terms/3`
+    - `apply_renaming_in_var/3`
+    - `apply_renaming_in_vars/3`
+    - `apply_renaming_in_term/3`
+    - `apply_renaming_in_terms/3`
+    - `substitute_var_in_term/4`
+    - `substitute_var_in_terms/4`
+    - `substitute_corresponding_in_term/4`
+    - `substitute_corresponding_in_terms/4`
+    - `apply_substitution_in_term/3`
+    - `apply_substitution_in_terms/3`
+    - `apply_rec_substitution_in_term/3`
+    - `apply_rec_substitution_in_terms/3`
 
 * The following predicates and functions have been moved to the
   `term_conversion` module:
@@ -868,6 +884,29 @@ Changes to the Mercury standard library
    - `det_term_to_type/[12]`
    - `type_to_term/[12]`
    - `univ_to_term/[12]`
+
+* The following predicates and functions have been deprecated and will be
+  removed in a future release:
+
+   - `var_id/1`
+   - `relabel_variable/[34]`
+   - `relabel_variables/[34]`
+   - `rename/[34]`
+   - `rename_list/[34]`
+   - `apply_renaming/[23]`
+   - `apply_renaming_to_list/[23]`
+   - `apply_variable_renaming_to_var/[23]`
+   - `apply_variable_renaming_to_vars/[23]`
+   - `apply_variable_renaming/[23]`
+   - `apply_variable_renaming_to_list/[23]`
+   - `substitute/[34]`
+   - `substitute_list/[34]`
+   - `substitute_corresponding/[34]`
+   - `substitute_corresponding_list/[34]`
+   - `apply_substitution/[23]`
+   - `apply_substitution_to_list/[23]`
+   - `apply_rec_substitution/[23]`
+   - `apply_rec_substitution_to_list/[23]`
 
 ### Changes to the `thread` module
 
