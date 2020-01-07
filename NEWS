@@ -20,13 +20,13 @@ Changes that may break compatibility
 ------------------------------------
 
 * When the Mercury compiler looks at code using Mercury keywords (such as
-  `"func"` and `"pred"`) and Mercury operators (such as clause neck operator `":-"`)
-  but which cannot be parsed as the Mercury constructs that those Mercury
-  keywords and operators are part of, it now generates a specific error
-  message for each discrepancy. In the past, when it found such code,
-  the compiler considered such code to construct terms and/or to call
-  functions and predicates. Usually, the terms did not belong to any
-  declared type and the called functions and predicates did not exist,
+  `"func"` and `"pred"`) and Mercury operators (such as the clause neck
+  operator `":-"`) but which cannot be parsed as the Mercury constructs
+  that those Mercury keywords and operators are part of, it now generates
+  a specific error message for each discrepancy. In the past, when it found
+  such code, the compiler considered such code to construct terms and/or
+  to call functions and predicates. Usually, the terms did not belong to
+  any declared type and the called functions and predicates did not exist,
   leading to confusing error messages from the compiler.
 
   The compiler's new approach generates considerably better diagnostics,
@@ -84,9 +84,9 @@ Changes that may break compatibility
 
 * We have enabled stricter checking of module accessibility rules.
   If a module `m` has an `import_module` or `use_module` declaration for
-  module `x.y.z`, it must also have `import_module` or `use_module` declarations
-  for its ancestors `x` and `x.y`. And if the import or use of `x.y.z`
-  is in module `m`'s interface, then the import or use of `x.y.z`'s
+  module `x.y.z`, it must also have `import_module` or `use_module`
+  declarations for its ancestors `x` and `x.y`. And if the import or use
+  of `x.y.z` is in module `m`'s interface, then the import or use of `x.y.z`'s
   ancestor modules must also be in the interface.
 
 * References to everything imported via `:- use_module` declarations
@@ -174,8 +174,8 @@ Changes that may break compatibility
 * We have changed the semantics of `array.map_corresponding_foldl/6` so that it
   throws an exception if the input arrays differ in size.
 
-* We have changed the semantics of `array.shrink/3` and `array.resize/4` so that
-  they throw an exception if their first argument is negative.
+* We have changed the semantics of `array.shrink/3` and `array.resize/4`
+  so that they throw an exception if their first argument is negative.
 
 * We have changed the semantics of `array.fetch_items/4` so that it always
   throws an exception if its second or third argument is out of bounds.
@@ -215,12 +215,12 @@ Changes to the Mercury language
         0o16u8
         0x3e732i64
 
-    Basic operations on the new primitive types are provided by the new standard
-    library modules: `uint`, `int8`, `int16`, `int32`, `int64`, `uint8`,
-    `uint16`, `uint32` and `uint64`.
+    Basic operations on the new primitive types are provided by the
+    new standard library modules: `uint`, `int8`, `uint8`, `int16`, `uint16`,
+    `int32`, `uint32` `int64`, and `uint64`.
 
 * We have added a new kind of scope to the language: determinism checks
-for switch arms. These scopes are introduced by any of the new keywords
+  for switch arms. These scopes are introduced by any of the new keywords
 
         require_switch_arms_det
         require_switch_arms_semidet
@@ -231,10 +231,10 @@ for switch arms. These scopes are introduced by any of the new keywords
         require_switch_arms_erroneous
         require_switch_arms_failure
 
-    `require_switch_arms_<determinism> [Var] Goal` tells the compiler to require
-    `Goal` to be a switch on `Var` in which all the switch arms have determinisms
-    at least as tight as `<determinism>`, and to generate error messages
-    for any violations of this requirement.
+    `require_switch_arms_<determinism> [Var] Goal` tells the compiler
+    to require `Goal` to be a switch on `Var` in which all the switch arms
+    have determinisms at least as tight as `<determinism>`, and to generate
+    error messages for any violations of this requirement.
 
 * We have changed the meaning of `require_complete_switch` scopes slightly:
   the compiler now generates an error if the goal inside the scope
@@ -287,12 +287,13 @@ Changes to the Mercury standard library
 
 ### New Integer Modules
 
-* We have added the new modules `uint`, `int8`, `int16`, `int32`, `int64`, `uint8`,
-  `uint16`, `uint32` and `uint64`. These modules provide the basic operations on the
-  new integer types.
+* We have added the new modules `uint`, `int8`, `uint8`, `int16`, `uint16`,
+  `int32`, `uint32`, `int64` and `uint64`. These modules provide
+  the basic operations on the new integer types.
 
-  Many other standard library modules now have additional predicates that support
-  the new integer types; see the entries for those modules for details.
+  Many other standard library modules now have additional predicates
+  that support the new integer types; see the entries for those modules
+  for details.
 
 ### New Random Number Generator Framework
 
@@ -327,7 +328,7 @@ Changes to the Mercury standard library
 
 ### New Module: `psqueue`
 
-* This module implements a priority search queue ADT.  This is a blend between
+* This module implements a priority search queue ADT. This is a blend between
   a priority queue and a map. This was contributed by Matthias Güdemann.
 
 ### New Module: `ranges`
@@ -522,7 +523,7 @@ Changes to the Mercury standard library
 ### Changes to the `getopt` and `getopt_io` modules
 
 * We have added variants of the `process_options` predicates that return errors
-  using a type instead of strings.  A new function, `option_error_to_string/1`,
+  using a type instead of strings. A new function, `option_error_to_string/1`,
   can be used to convert values of the new error type into strings.
 
 ### Changes to the `hash_table` module
@@ -610,7 +611,8 @@ Changes to the Mercury standard library
 
 * The predicate `set_environment_var/5` returns an `io.res` value rather than
   throwing an exception. The predicate `have_set_environment_var/0` can test
-  whether the current platform supports the ability to set environment variables.
+  whether the current platform supports the ability to set environment
+  variables.
 
 * We have made the following predicates exception safe: the current input or
   output stream is restored to the original stream if an exception is thrown
@@ -701,13 +703,14 @@ Changes to the Mercury standard library
   this better reflects the type's purpose.
 
 * We have replaced the `set_formatter` function with a predicate of the same
-  name, since this allows the use of state variable notation when setting up more
-  than one type-specific formatter,
+  name, since this allows the use of state variable notation when
+  setting up more than one type-specific formatter,
 
 * We have renamed the `write_doc_to_stream` predicate as `put_doc`, to better
   fit in with the names other predicates that operate on values of the
-  `stream.writer` typeclass, and changed its interface to group the prettyprinter
-  parameters together in a value of the type that was designed for this purpose.
+  `stream.writer` typeclass, and changed its interface to group
+  the prettyprinter parameters together in a value of the type
+  that was designed for this purpose.
 
 ### Changes to the `random` module.
 
@@ -754,7 +757,8 @@ Changes to the Mercury standard library
     - `non_empty/1`
     - `set/1`
 
-    Similar changes have been made to the other set implementations in the library.
+    Similar changes have been made to the other set implementations
+    in the library.
 
 ### Changes to the `std_util` module
 
@@ -835,7 +839,7 @@ Changes to the Mercury standard library
 * `string_to_doc/1` now escapes characters in its input argument with
   backslash escapes when required.
 
-* [Mantis bug #348].  Float special values, NaNs and Infinities, are now
+* [Mantis bug #348]. Float special values, NaNs and Infinities, are now
   converted to strings in a way that is backend- and grade-independent.
 
 * [Mantis bug #376]. `base_digit_to_int/3` and `det_base_digit_to_int/2` now
