@@ -1044,6 +1044,11 @@ Changes to the Mercury compiler
   The option `--warn-inconsistent-pred-order` is a shorter synonym for
   `--warn-inconsistent-pred-order-clauses`.
 
+* `--warn-insts-with-functors-without-type`
+
+  This option asks the compiler to generate a warning for inst definitions
+  that specify functors but do not specify what type they are for.
+
 * `--warn-interface-imports-in-parents`
 
   This option asks the compiler to generate a warning for modules that are
@@ -1066,6 +1071,14 @@ Changes to the Mercury compiler
 
   This option asks the compiler to warn about possible errors in the bodies of
   `foreign_code` pragmas.
+
+### New verbosity options
+
+* `--limit-error-contexts`
+
+  This option asks the compiler the restrict the errors and warnings it prints
+  to those originating from a named file or files and/or specified ranges of
+  line numbers.
 
 ### New link options
 
