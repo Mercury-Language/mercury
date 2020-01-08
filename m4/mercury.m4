@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1999,2001-2004, 2006-2012 The University of Melbourne.
-# Copyright (C) 2013-2019 The Mercury team.
+# Copyright (C) 2013-2020 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -763,30 +763,30 @@ AC_MSG_RESULT([$mercury_cv_cc_type])
 
 #-----------------------------------------------------------------------------#
 
+# NOTE: updates to this macro may need to be reflected in compiler/globals.m.
+# Generating an executable and running it does not work when cross-compiling.
+# Also, the Apple vendored version of clang "lies" about its version if you
+# check using --version or by looking at __clang_major__ etc -- both of those
+# return the XCode version instead of the underlying clang version.
+
 AC_DEFUN([MERCURY_CLANG_VERSION], [
 AC_REQUIRE([AC_PROG_CC])
 
-cat > conftest.c << EOF
-
-#include <stdio.h>
-
-int main(int argc, char **argv)
-{
-
-    printf("%d_%d_%d", __clang_major__, __clang_minor__, __clang_patchlevel__);
-    return 0;
-}
-EOF
-
-echo "$CC -o conftest contest.c" >&AC_FD_CC 2>&1
-if
-    $CC -o conftest conftest.c
-then
-    mercury_cv_clang_version=`./conftest`
-else
-    # This shouldn't happen as we have already checked for this.
-    AC_MSG_ERROR([unexpected: $CC cannot create executable])
-fi
+# We expect that the major and minor version numbers will always be present.
+# For GCC we allow for a suffix after the second or third number that should
+# be ignored; it seems prudent to do the same for clang here as well.
+mercury_cv_clang_version=`$CC -dumpversion | tr .- '  ' | {
+    read major minor third ignore
+    case $third in
+        [[0-9]]*)
+            patchlevel=$third
+            ;;
+        *)
+            patchlevel=
+            ;;
+    esac
+    echo ${major:-u}_${minor:-u}_${patchlevel:-u}
+    }`
 ])
 
 #-----------------------------------------------------------------------------#
