@@ -92,7 +92,8 @@ Changes that may break compatibility
 * References to everything imported via `:- use_module` declarations
   must now be fully module qualified.
 
-* `for` is now an operator.
+* `for` is now an operator. (See the extension of the syntax of inst
+  declarations below.)
 
 * It is now an error for a program to redefine a builtin type. The affected
   type names are:
@@ -249,6 +250,19 @@ Changes to the Mercury language
 
     is equivalent to `Goal`, with the exception that the compiler will not
     generate warnings about singleton variables inside `Goal`.
+
+* We have extended the syntax of `:- inst` declarations to allow programmers
+  to specify which type constructor's values the inst is meant for.
+  The syntax consists of adding `for`, followed by the type constructor's
+  name and arity, between the name of the inst and its definition, like this:
+
+        :- inst listskel(Inst) for list/1
+            --->    []
+            ;       [Inst | listskel(Inst)].
+
+  For the time being, this is useful only as a documentation of the
+  programmer's intention; the compiler does not (yet) prevent the use of insts
+  on values of types other than the one they were declared to be for.
 
 * We have added an extension to include external files
   in `pragma foreign_decl` and `pragma foreign_code` declarations.

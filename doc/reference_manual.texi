@@ -2946,7 +2946,7 @@ Mercury's mode system allows users
 to declare names for instantiatedness trees using declarations such as
 
 @example
-:- inst listskel == bound( [] ; [free | listskel] ).
+:- inst listskel == bound([] ; [free | listskel]).
 @end example
 
 This instantiatedness tree describes lists
@@ -2972,15 +2972,30 @@ for @code{bound} instantiatedness trees:
 @example
 :- inst maybeskel
     --->    no
-    ;       yes(ground).
+    ;       yes(free).
 @end example
 
 @noindent
 which is equivalent to writing
 
 @example
-:- inst maybeskel == bound(no ; yes(ground)).
+:- inst maybeskel == bound(no ; yes(free)).
 @end example
+
+You can specify what type (actually what type constructor)
+an inst is intended to be used on
+by adding @code{for}, followed by the name and arity of that type constructor,
+after the name of the inst, like this:
+@example
+:- inst maybeskel for maybe/1
+    --->    no
+    ;       yes(free).
+@end example
+
+@noindent
+This can be useful documentation,
+even though the compiler does not (yet) prevent
+the use of such insts on values of other types.
 
 As execution proceeds, variables may become more instantiated.
 A @dfn{mode mapping} is a mapping
@@ -3003,6 +3018,7 @@ corresponding to the standard notions of inputs and outputs:
 :- mode out == free >> ground.
 @end example
 
+Though we do not recommend this,
 Prolog fans who want to use the symbols @samp{+} and @samp{-}
 can do so by simply defining them using a mode declaration:
 
@@ -3032,7 +3048,7 @@ you would need declarations such as
 :- type operation
      --->   lookup(key, data)
      ;      set(key, data).
-:- inst request
+:- inst request for operation/0
     --->    lookup(ground, free)
     ;       set(ground, ground).
 :- mode create_request == free >> request.
@@ -3043,7 +3059,7 @@ you would need declarations such as
 For example, the following declaration
 
 @example
-:- inst listskel(Inst)
+:- inst listskel(Inst) for list/1
     --->    []
     ;       [Inst | listskel(Inst)].
 @end example
