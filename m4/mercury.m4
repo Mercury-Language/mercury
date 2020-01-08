@@ -692,7 +692,7 @@ AC_REQUIRE([AC_PROG_CC])
 mercury_cv_gcc_version=`$CC -dumpversion | tr .- '  ' | {
     read major minor third ignore
     case $third in
-        [0-9]*)
+        [[0-9]]*)
             patchlevel=$third
             ;;
         *)
