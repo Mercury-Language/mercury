@@ -252,7 +252,7 @@
 
     // Choose between float or double cmath functions depending on the type of
     // MR_Float
-    #if defined MR_USE_SINGLE_PREC_FLOAT
+    #if defined(MR_USE_SINGLE_PREC_FLOAT)
         #define ML_EXP(X)       expf(X)
         #define ML_LOG(X)       logf(X)
         #define ML_LOG10(X)     log10f(X)

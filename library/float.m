@@ -1076,7 +1076,7 @@ is_zero(0.0).
 "
     #define ML_FLOAT_RADIX  FLT_RADIX   // There is no DBL_RADIX.
 
-    #if defined MR_USE_SINGLE_PREC_FLOAT
+    #if defined(MR_USE_SINGLE_PREC_FLOAT)
         #define ML_FLOAT_MAX        FLT_MAX
         #define ML_FLOAT_MIN        FLT_MIN
         #define ML_FLOAT_EPSILON    FLT_EPSILON
@@ -1091,13 +1091,8 @@ is_zero(0.0).
         #define ML_FLOAT_MIN_EXP    DBL_MIN_EXP
         #define ML_FLOAT_MAX_EXP    DBL_MAX_EXP
     #endif
-").
 
-% For C grades, choose between floor/floorf and ceil/ceilf depending on the
-% size of MR_Float
-:- pragma foreign_decl("C",
-"
-    #if defined MR_USE_SINGLE_PREC_FLOAT
+    #if defined(MR_USE_SINGLE_PREC_FLOAT)
         #define ML_FLOAT_FLOOR(X)   floorf(X)
         #define ML_FLOAT_CEIL(X)    ceilf(X)
     #else
