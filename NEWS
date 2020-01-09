@@ -1195,6 +1195,10 @@ Changes to the Mercury compiler
 
 ### Other changes
 
+* The C# back-end now bootstraps.
+
+* The Java back-end now bootstraps.
+
 * Class files generated for executables in the Java grade are now automatically
   packaged up into Java archives (JARs).
 
