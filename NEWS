@@ -1227,6 +1227,9 @@ Portability improvements
 
   See README.AIX for further details.
 
+* The NetBSD `editline` library may now be used in place of GNU `readline` to
+  provide line editing capabilities in the debugger.
+
 * [Mantis bug #357]. We now use the `libdispatch` implementation of semaphores
   on OS X as the POSIX one was a non-functional stub.
 
