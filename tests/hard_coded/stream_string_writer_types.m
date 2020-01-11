@@ -81,3 +81,17 @@ write_type_ctor_of(X, !IO) :-
 "
     Ptr = 0;
 ").
+
+:- pragma foreign_proc("C#",
+    get_c_pointer = (Ptr::out),
+    [promise_pure, thread_safe],
+"
+    Ptr = null;
+").
+
+:- pragma foreign_proc("Java",
+    get_c_pointer = (Ptr::out),
+    [promise_pure, thread_safe],
+"
+    Ptr = null;
+").
