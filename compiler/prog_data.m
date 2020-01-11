@@ -1071,6 +1071,63 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
     % This is how instantiatednesses and modes are represented.
     %
+    % Note that the inst of a variable at a given program point encodes
+    % five different kinds distinct but related kinds of information:
+    %
+    % 1     Is the program point reachable?
+    %
+    % 2     Which nodes of the type tree of the variable are bound?
+    %
+    % 3a    Of the nodes which are bound, which are unique or clobbered?
+    %
+    % 4     Of the nodes which are bound, which are known to be bound to
+    %       only a subset of the function symbols of the type of the affected
+    %       type tree node?
+    %
+    % 5     Of the nodes which are bound, and which correspond to a higher
+    %       order type, what is the determinism and what are the modes
+    %       of the arguments of that higher order value?
+    %
+    % And eventually, we would want it to consider a sixth:
+    %
+    % 3b:   Of the nodes which are free, which are aliased to nodes of
+    %       other variables, and if so, which ones?
+    %
+    % Each one of those can be handled reasonably easily. The reason why code
+    % dealing with insts tends to be quite complex is that you have to consider
+    % *all possible combinations* of these factors, which usually leads to
+    % an explosion of complexity.
+    %
+    % The term "ground" answers the second question for a given var at a given
+    % program point: all the var's nodes are bound. The different meanings
+    % of "ground" differ in what restrictions, if any, they impose on
+    % the answers to the third, fourth and fifth questions. Just by combining
+    % the answers to "do we care about each of those three kinds of
+    % distinctions or not", we have 2^3=8 possible meanings of "ground".
+    % And they are NOT quite independent; in code in which some function
+    % symbols of a type have higher order arguments while other function
+    % symbols do not, the answers to the fourth and fifth questions
+    % are in effect coupled together.
+    %
+    % And "ground" does not answer the second question for a given var
+    % *unless* specify the program point. If you know that e.g. an argument X
+    % in a predicate has initial inst i1 whose meaning is "either f(ground),
+    % or g(ground), or h(free)", then the inst X at the program point at the
+    % start of the predicate body is not ground. But if execution reaches
+    % a program point where we know that X can be bound to only f or g,
+    % then X must be a ground term at that program point, *even if no part
+    % of it has been bound since the execution of this call has started*.
+    %
+    % The first question is often the easiest to handle, in that its answer
+    % depends only on the program point, and not the variable. Yet answers
+    % to the fourth question for a variable at a program point can affect
+    % whether a later program point is reachable or not (by affecting
+    % which tests may succeed and which may not), and answers to the first
+    % question affect all the others (since branches of e.g. disjunctions
+    % whose endpoint is unreachable don't have to bind variables that are
+    % bound by the other branches), so the first question cannot be considered
+    % separately from the others either :-(
+    %
 :- type mer_inst
     --->        free
     ;           free(mer_type)
