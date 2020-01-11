@@ -250,8 +250,9 @@ increase_array_size(N) = (if N = 0 then 1 else N * 2).
     is det.
 
 module_index_to_name(Info, Index, ModuleName) :-
+    Info ^ module_index_map = module_index_map(_Forward, Reverse, _Size),
     Index = module_index(I),
-    ModuleName = Info ^ module_index_map ^ mim_reverse_map ^ elem(I).
+    ModuleName = version_array.lookup(Reverse, I).
 
 module_names_to_index_set(ModuleNames, IndexSet, !Info) :-
     module_names_to_index_set_2(ModuleNames, sparse_bitset.init,
@@ -306,8 +307,10 @@ dependency_file_to_index(DepFile, Index, !Info) :-
     dependency_file::out) is det.
 
 index_to_dependency_file(Info, Index, DepFile) :-
-    Index = dependency_file_index(Int),
-    DepFile = Info ^ dep_file_index_map ^ dfim_reverse_map ^ elem(Int).
+    Info ^ dep_file_index_map =
+        dependency_file_index_map(_Forward, Reverse, _Size),
+    Index = dependency_file_index(I),
+    DepFile = version_array.lookup(Reverse, I).
 
 dependency_file_index_set_to_plain_set(Info, DepIndices, DepFiles) :-
     foldl(dependency_file_index_set_to_plain_set_2(Info), DepIndices,
@@ -715,7 +718,8 @@ init_cached_direct_imports = map.init.
     io::di, io::uo) is det.
 
 direct_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
-    ( if Result0 = !.Info ^ cached_direct_imports ^ elem(ModuleIndex) then
+    CachedDirectImports0 = !.Info ^ cached_direct_imports,
+    ( if map.search(CachedDirectImports0, ModuleIndex, Result0) then
         Result0 = deps_result(Success, Modules)
     else
         KeepGoing = !.Info ^ keep_going,
@@ -749,8 +753,11 @@ direct_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
                 Modules = delete(Modules1, ModuleIndex)
             )
         ),
-        !Info ^ cached_direct_imports ^ elem(ModuleIndex)
-            := deps_result(Success, Modules)
+        Result = deps_result(Success, Modules),
+        CachedDirectImports1 = !.Info ^ cached_direct_imports,
+        map.det_insert(ModuleIndex, Result,
+            CachedDirectImports1, CachedDirectImports),
+        !Info ^ cached_direct_imports := CachedDirectImports
     ).
 
     % Return the modules for which `.int' files are read in a compilation
@@ -762,16 +769,20 @@ direct_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
 
 non_intermod_direct_imports(Globals, ModuleIndex, Success, Modules,
         !Info, !IO) :-
-    ( if
-        !.Info ^ cached_non_intermod_direct_imports ^ elem(ModuleIndex)
-            = Result
-    then
-        Result = deps_result(Success, Modules)
+    CachedNonIntermodDirectImports0 =
+        !.Info ^ cached_non_intermod_direct_imports,
+    ( if map.search(CachedNonIntermodDirectImports0, ModuleIndex, Result0) then
+        Result0 = deps_result(Success, Modules)
     else
         non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
             !Info, !IO),
-        !Info ^ cached_non_intermod_direct_imports ^ elem(ModuleIndex)
-            := deps_result(Success, Modules)
+        Result = deps_result(Success, Modules),
+        CachedNonIntermodDirectImports1 =
+            !.Info ^ cached_non_intermod_direct_imports,
+        map.det_insert(ModuleIndex, Result,
+            CachedNonIntermodDirectImports1, CachedNonIntermodDirectImports),
+        !Info ^ cached_non_intermod_direct_imports
+            := CachedNonIntermodDirectImports
     ).
 
 :- pred non_intermod_direct_imports_2(globals::in, module_index::in, bool::out,
@@ -951,13 +962,17 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Success,
 find_module_foreign_imports_2(Languages, Globals, ModuleIndex, Success,
         ForeignModules, !Info, !IO) :-
     % Languages should be constant for the duration of the process.
-    ( if Result0 = !.Info ^ cached_foreign_imports ^ elem(ModuleIndex) then
+    CachedForeignImports0 = !.Info ^ cached_foreign_imports,
+    ( if map.search(CachedForeignImports0, ModuleIndex, Result0) then
         Result0 = deps_result(Success, ForeignModules)
     else
         find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
             Success, ForeignModules, !Info, !IO),
-        !Info ^ cached_foreign_imports ^ elem(ModuleIndex)
-            := deps_result(Success, ForeignModules)
+        Result = deps_result(Success, ForeignModules),
+        CachedForeignImports1 = !.Info ^ cached_foreign_imports,
+        map.det_insert(ModuleIndex, Result,
+            CachedForeignImports1, CachedForeignImports),
+        !Info ^ cached_foreign_imports := CachedForeignImports
     ).
 
 :- pred find_module_foreign_imports_3(set(foreign_language)::in,
@@ -1102,16 +1117,18 @@ find_transitive_module_dependencies(Globals, DependenciesType, ModuleLocn,
         ModuleIndex, Success, Modules, !Info, !IO) :-
     DepsRoot = transitive_dependencies_root(ModuleIndex, DependenciesType,
         ModuleLocn),
-    CachedTransDeps = !.Info ^ cached_transitive_dependencies,
-    ( if map.search(CachedTransDeps, DepsRoot, Result0) then
+    CachedTransDeps0 = !.Info ^ cached_transitive_dependencies,
+    ( if map.search(CachedTransDeps0, DepsRoot, Result0) then
         Result0 = deps_result(Success, Modules)
     else
         globals.lookup_bool_option(Globals, keep_going, KeepGoing),
         find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
             ModuleLocn, Globals, ModuleIndex, Success, init, Modules,
             !Info, !IO),
-        !Info ^ cached_transitive_dependencies ^ elem(DepsRoot)
-            := deps_result(Success, Modules)
+        Result = deps_result(Success, Modules),
+        CachedTransDeps1 = !.Info ^ cached_transitive_dependencies,
+        map.det_insert(DepsRoot, Result, CachedTransDeps1, CachedTransDeps),
+        !Info ^ cached_transitive_dependencies := CachedTransDeps
     ).
 
 :- pred find_transitive_module_dependencies_2(bool::in,
@@ -1130,7 +1147,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
     else if
         DepsRoot = transitive_dependencies_root(ModuleIndex,
             DependenciesType, ModuleLocn),
-        Result0 = !.Info ^ cached_transitive_dependencies ^ elem(DepsRoot)
+        map.search(!.Info ^ cached_transitive_dependencies, DepsRoot, Result0)
     then
         Result0 = deps_result(Success, Modules1),
         Modules = union(Modules0, Modules1)
@@ -1446,8 +1463,8 @@ make_write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
 dependency_status(Globals, Dep, Status, !Info, !IO) :-
     (
         Dep = dep_file(_FileName, _),
-        DepStatusMap = !.Info ^ dependency_status,
-        ( if version_hash_table.search(DepStatusMap, Dep, StatusPrime) then
+        DepStatusMap0 = !.Info ^ dependency_status,
+        ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
             Status = StatusPrime
         else
             get_dependency_timestamp(Globals, Dep, MaybeTimestamp, !Info, !IO),
@@ -1461,7 +1478,9 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
                 io.write_string(Error, !IO),
                 io.nl(!IO)
             ),
-            !Info ^ dependency_status ^ elem(Dep) := Status
+            version_hash_table.det_insert(Dep, Status,
+                DepStatusMap0, DepStatusMap),
+            !Info ^ dependency_status := DepStatusMap
         )
     ;
         Dep = dep_target(Target),
@@ -1479,8 +1498,8 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
                 !Info, !IO),
             Status = deps_status_up_to_date
         else if
-            DepStatusMap = !.Info ^ dependency_status,
-            version_hash_table.search(DepStatusMap, Dep, StatusPrime)
+            DepStatusMap0 = !.Info ^ dependency_status,
+            version_hash_table.search(DepStatusMap0, Dep, StatusPrime)
         then
             Status = StatusPrime
         else
@@ -1515,7 +1534,10 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
                     )
                 )
             ),
-            !Info ^ dependency_status ^ elem(Dep) := Status
+            DepStatusMap1 = !.Info ^ dependency_status,
+            version_hash_table.det_insert(Dep, Status,
+                DepStatusMap1, DepStatusMap),
+            !Info ^ dependency_status := DepStatusMap
         )
     ).
 
