@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module tsub.
+:- module ts.tsub.
 :- interface.
 
 :- pred foo(st::ia) is det.

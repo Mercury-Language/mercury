@@ -112,8 +112,8 @@ into another language, under the above conditions for modified versions.
 * Pragmas::           Various compiler directives, used for example to
                       control optimization.
 * Implementation-dependent extensions::
-                      The University of Melbourne Mercury implementation
-                      supports several extensions to the Mercury language.
+                      The Melbourne Mercury implementation supports
+                      several extensions to the Mercury language.
 * Bibliography::      References for further reading.
 @end menu
 
@@ -2540,7 +2540,7 @@ except for those defined using the foreign language interface
 However, Mercury implementations are permitted to provide a method
 of processing Mercury programs in which such errors are not reported
 until and unless the predicate or function is actually called.
-(The University of Melbourne Mercury implementation provides this
+(The Melbourne Mercury implementation provides this
 with its @samp{--allow-stubs} option.
 This can be useful during program development,
 since it allows you to execute parts of a program
@@ -5342,12 +5342,21 @@ Each of the named sub-modules in an @samp{:- include_module} declaration
 must be defined in a separate source file.
 The mapping between module names and source file names
 is implementation-defined.
-(For a module named @samp{foo.bar.baz},
-The University of Melbourne Mercury implementation
-requires the source to be located in a file named
-@file{foo.bar.baz.m}, @file{bar.baz.m}, or @file{baz.m}.)
-The separate source file must contain the declaration (interface)
-and definition (implementation) of the sub-module.
+The Melbourne Mercury implementation requires that
+@itemize
+@item @emph{either} every module must be in a file
+whose name is the fully qualified module name followed by @samp{.m},
+(so a module named e.g. @samp{foo.bar.baz},
+must be in a file named @file{foo.bar.baz.m})
+@item @emph{or} that the programmer tell the implementation
+about which files contain which modules
+using a command such as @samp{mmc -f *.m}.
+(Alternatively, you could replace the @samp{*.m} in that command
+with a list of the file names of all the Mercury modules in the program.)
+@end itemize
+
+The source file of a separate sub-module must contain
+the declaration (interface) and definition (implementation) of the sub-module.
 It must start with a @samp{:- module} declaration
 which matches that in the @samp{:- include_module} declaration in the parent,
 followed by the interface and (if necessary) implementation sections,
@@ -5356,7 +5365,7 @@ and it may optionally end with a @samp{:- end_module} declaration.
 and @w{@samp{:- include_module}} declarations need not be fully-qualified.
 However, if the file name used for a particular module
 does not include all the module qualifiers,
-then the University of Melbourne Mercury implementation
+then the Melbourne Mercury implementation
 requires the module name in the @samp{:- module} declaration
 for that module to be fully qualified.)
 
@@ -7109,7 +7118,7 @@ under the strict commutative semantics
 then you can be guaranteed that it will work correctly
 on every implementation, under every possible implementation-defined semantics.
 
-The University of Melbourne Mercury implementation offers
+The Melbourne Mercury implementation offers
 eight different semantics,
 which can be selected with different combinations
 of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
@@ -7361,8 +7370,7 @@ then the Mercury implementation
 must not invoke the code concurrently from multiple threads.
 If the Mercury implementation does use multithreading,
 then it must take appropriate steps to prevent this.
-(The multithreaded version
-of the University of Melbourne Mercury implementation
+(The multithreaded version of the Melbourne Mercury implementation
 protects @samp{not_thread_safe} code using a mutex:
 C code that is not thread-safe has code inserted around it
 to obtain and release a mutex.
@@ -8612,7 +8620,7 @@ The set of other languages supported is implementation-defined.
 A suitable compiler or assembler for the foreign language
 must be available on the system.
 
-The University of Melbourne Mercury implementation supports
+The Melbourne Mercury implementation supports
 interfacing with the following languages:
 
 @table @asis
@@ -9075,7 +9083,7 @@ to link with object files or libraries that were produced by compiling C code.
 The exact mechanism for linking with C object files
 is implementation-dependent.
 The following text describes how it is done
-for the University of Melbourne Mercury implementation.
+for the Melbourne Mercury implementation.
 
 To link an existing object file or archive of object files
 into your Mercury code,
@@ -10772,7 +10780,7 @@ when the called type class methods are simple enough to be inlined.
 @node Implementation specific details
 @subsection Implementation specific details
 
-The University of Melbourne Mercury compiler
+The Melbourne Mercury compiler
 performs user-requested type specializations
 when invoked with @samp{--user-guided-type-specialization},
 which is enabled at optimization level @samp{-O2} or higher.
@@ -10930,8 +10938,8 @@ as in the above example.
 @node Implementation-dependent extensions
 @chapter Implementation-dependent extensions
 
-The University of Melbourne Mercury implementation
-supports the following extensions to the Mercury language:
+The Melbourne Mercury implementation supports
+the following extensions to the Mercury language:
 
 @menu
 * Fact tables::                 Support for very large tables of facts.
@@ -11508,7 +11516,7 @@ then the compiler will quit with an error message.
 @c @node Reserved tag
 @c @section Reserved tag
 @c
-@c The University of Melbourne Mercury implementation includes some fairly
+@c The Melbourne Mercury implementation includes some fairly
 @c low-level support for implementing Herbrand constraint solvers
 @c (i.e. Prolog-style logic variables).
 @c
@@ -11665,8 +11673,8 @@ then the compiler will quit with an error message.
 @node Feature sets
 @section Feature sets
 
-The University of Melbourne Mercury implementation
-supports a number of optional compilation model features,
+The Melbourne Mercury implementation supports
+a number of optional compilation model features,
 such as @ref{Trailing} or @ref{Tabled evaluation}.
 Feature sets allow the programmer to assert that a module requires
 the presence of one or more optional features in the compilation model.
@@ -11750,7 +11758,7 @@ that is not supported by the compilation model.
 
 In certain compilation grades
 (see the ``Compilation model options'' section of the Mercury User's Guide),
-the University of Melbourne Mercury implementation supports trailing.
+the Melbourne Mercury implementation supports trailing.
 Trailing is a means of having side-effects,
 such as destructive updates to data structures, undone on backtracking.
 The basic idea is that during forward execution,

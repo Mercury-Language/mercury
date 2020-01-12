@@ -89,6 +89,15 @@ Changes that may break compatibility
   of `x.y.z` is in module `m`'s interface, then the import or use of `x.y.z`'s
   ancestor modules must also be in the interface.
 
+* The compiler now requires that, in projects that do not build
+  a Mercury.modules file using e.g. "mmc -f *.m", submodules must be stored
+  in files whose name is the fully qualified module name followed by ".m".
+  (This means that e.g. a module named a.b.c must be in a file named
+  a.b.c.m.) The reason for this change is that without it, the compiler
+  cannot tell whether a file named e.g. lexer.m contains the Mercury
+  standard library module "lexer", or a submodule of a user-written
+  parent module. [Mantis bug #489].
+
 * References to everything imported via `:- use_module` declarations
   must now be fully module qualified.
 
