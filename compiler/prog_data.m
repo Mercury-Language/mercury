@@ -1110,13 +1110,14 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     % are in effect coupled together.
     %
     % And "ground" does not answer the second question for a given var
-    % *unless* specify the program point. If you know that e.g. an argument X
-    % in a predicate has initial inst i1 whose meaning is "either f(ground),
-    % or g(ground), or h(free)", then the inst X at the program point at the
-    % start of the predicate body is not ground. But if execution reaches
-    % a program point where we know that X can be bound to only f or g,
-    % then X must be a ground term at that program point, *even if no part
-    % of it has been bound since the execution of this call has started*.
+    % *unless* you specify the program point. If you know that e.g.
+    % an argument X in a predicate has initial inst i1 whose meaning is
+    % "either f(ground), or g(ground), or h(free)", then the inst X
+    % at the program point at the start of the predicate body is not ground.
+    % But if execution reaches a program point where we know that X
+    % can be bound to only f or g, then X must be a ground term
+    % at that program point, *even if no part of it has been bound
+    % since the execution of this call has started*.
     %
     % The first question is often the easiest to handle, in that its answer
     % depends only on the program point, and not the variable. Yet answers
