@@ -62,6 +62,7 @@
 :- import_module transform_hlds.implicit_parallelism.push_goals_together.
 
 :- import_module assoc_list.
+:- import_module bimap.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -125,7 +126,7 @@ do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
             module_info_set_has_parallel_conj(!ModuleInfo)
         )
     else
-        map.lookup(SourceFileMap, ModuleName, ModuleFilename),
+        bimap.lookup(SourceFileMap, ModuleName, ModuleFilename),
         Context = context(ModuleFilename, 1),
         Pieces = [words("Implicit parallelism was requested but the"),
             words("feedback file does not the candidate parallel"),

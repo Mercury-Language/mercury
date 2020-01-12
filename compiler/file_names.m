@@ -39,7 +39,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% XXX This interface should be improved in two ways.
+% XXX This interface should be improved in three ways.
 %
 % - First, the argument order
 %
@@ -67,6 +67,10 @@
 %   for these two kinds of classes into two separate types, we could
 %   have a version of this predicate for each type, one with and one
 %   without an I/O state pair.
+%
+% - Third, calls which search for a source file for reading (that may not
+%   exist) should be separated from calls that construct a file name
+%   to write the file.
 %
 % XXX Given the wide variety of uses cases that choose_file_name has
 % to handle for its callers, the only way to ensure that a diff implementing
@@ -224,6 +228,7 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 
@@ -284,7 +289,18 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
         Ext = ".m"
     then
         % Look up the module in the module->file mapping.
-        source_file_map.lookup_module_source_file(ModuleName, FileName, !IO)
+        source_file_map.lookup_module_source_file(ModuleName, MaybeFileName,
+            !IO),
+        (
+            MaybeFileName = yes(FileName)
+        ;
+            MaybeFileName = no,
+            % XXX We should propagate the fact that no source file is available
+            % for the given module back to the caller. That can be left for a
+            % more comprehensive improvement of the module_to_*file_name
+            % interface.
+            FileName = "Mercury/.missing." ++ default_source_file(ModuleName)
+        )
     else
         ( if
             % Java files need to be placed into a package subdirectory
