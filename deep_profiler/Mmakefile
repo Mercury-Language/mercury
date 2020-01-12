@@ -117,7 +117,6 @@ $(DEPEND): DEEP_FLAGS $(MDBCOMP_MODULES) Mercury.modules
 # This directory contains source files for which the module name
 # does not match the file name, so smart recompilation won't work
 # without the Mercury.modules file.
-.PHONY: Mercury.modules
 Mercury.modules: DEEP_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
@@ -258,7 +257,7 @@ javas: $(mdprof_procrep.javas)
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f .deep_tags tags DEEP_FLAGS DEEP_FLAGS.date \
+	rm -f Mercury.modules .deep_tags tags DEEP_FLAGS DEEP_FLAGS.date \
 		.mdbcomp_modules $(MDBCOMP_MODULES) mdbcomp.*.err
 	rm -f $(PDBS) vc*.pdb
 

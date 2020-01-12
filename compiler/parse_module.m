@@ -529,52 +529,52 @@ check_module_has_expected_name(FileName, ExpectedName, ExpectationContexts,
     ( if ActualName = ExpectedName then
         Specs = []
     else
-        ( if
-            MaybeActualContext = yes(ActualContext),
-            ActualContext \= term.context_init
-        then
-            MaybeContext = MaybeActualContext
-        else
-            MaybeContext = no
-        ),
-        MainPieces = [words("Error: file"), quote(FileName),
-            words("contains the wrong module."),
-            words("Expected module"), qual_sym_name(ExpectedName), suffix(","),
-            words("found module"), qual_sym_name(ActualName), suffix("."), nl],
-        % We make the warning conditional on the warn_wrong_module_name option.
-        % This option is turned on by default, and it is turned off
-        % automatically by the compiler only in situations where it
-        % clearly makes sense to do so (in handle_options.m and options.m).
-        % If it is turned off manually by the user, he/she presumably
-        % has a good reason.
-        %
-        % Despite the option name having the "warn_" prefix,
-        % the severity is an error. The severity is deliberate.
-        % XXX The option should be renamed, but there is no obvious
-        % non-misleading name.
-        Severity = severity_conditional(warn_wrong_module_name,
-            yes, severity_error, no),
-        MainComponent = option_is_set(warn_wrong_module_name, yes,
-            [always(MainPieces)]),
-        MainMsg = error_msg(MaybeContext, treat_as_first, 0,
-            [MainComponent]),
-        list.sort_and_remove_dups(ExpectationContexts,
-            SortedExpectationContexts0),
-        list.delete_all(SortedExpectationContexts0, term.context_init,
-            SortedExpectationContexts),
-        list.map(expectation_context_to_msg, SortedExpectationContexts,
-            SubMsgs),
-        Spec = error_spec(Severity, phase_module_name, [MainMsg | SubMsgs]),
+        report_module_has_unexpected_name(FileName, ExpectedName,
+            ExpectationContexts, ActualName, MaybeActualContext, Spec),
         Specs = [Spec]
     ).
+
+:- pred report_module_has_unexpected_name(file_name::in,
+    module_name::in, list(prog_context)::in,
+    module_name::in, maybe(term.context)::in, error_spec::out) is det.
+
+report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
+        ActualName, MaybeActualContext, Spec) :-
+    ( if
+        MaybeActualContext = yes(ActualContext),
+        ActualContext \= term.context_init
+    then
+        MaybeContext = MaybeActualContext
+    else
+        MaybeContext = no
+    ),
+    MainPieces = [words("Error: file"), quote(FileName),
+        words("contains the wrong module."),
+        words("Expected module"), qual_sym_name(ExpectedName), suffix(","),
+        words("found module"), qual_sym_name(ActualName), suffix("."), nl],
+    MainMsg = error_msg(MaybeContext, treat_as_first, 0, [always(MainPieces)]),
+    list.sort_and_remove_dups(ExpectationContexts, SortedExpectationContexts0),
+    list.delete_all(SortedExpectationContexts0, term.context_init,
+        SortedExpectationContexts),
+    list.map(expectation_context_to_msg, SortedExpectationContexts, SubMsgs),
+    % We make the warning conditional on the warn_wrong_module_name option.
+    % This option is turned on by default, and it is turned off automatically
+    % by the compiler only in situations where it clearly makes sense to do so
+    % (in handle_options.m and options.m). If it is turned off manually
+    % by the user, he/she presumably has a good reason.
+    %
+    % Despite the option name having the "warn_" prefix,
+    % the severity is an error. The severity is deliberate.
+    % XXX The option should be renamed, but there is no obvious
+    % non-misleading name.
+    Spec = conditional_spec(warn_wrong_module_name, yes,
+        severity_error, phase_module_name, [MainMsg | SubMsgs]).
 
 :- pred expectation_context_to_msg(prog_context::in, error_msg::out) is det.
 
 expectation_context_to_msg(Context, SubMsg) :-
     SubPieces = [words("The expected name is specified here."), nl],
-    SubComponent = option_is_set(warn_wrong_module_name, yes,
-        [always(SubPieces)]),
-    SubMsg = simple_msg(Context, [SubComponent]).
+    SubMsg = simplest_msg(Context, SubPieces).
 
 %---------------------%
 
@@ -1499,24 +1499,12 @@ read_parse_tree_src_submodule(FileString, MaxOffset,
 
 handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
         EndedModuleName, EndContext, FinalLookAhead, !Specs, !Errors) :-
-    ( if
-        CurModuleName = EndedModuleName
-    then
+    ( if CurModuleName = EndedModuleName then
         FinalLookAhead = no_lookahead
-    else if
-        partial_sym_name_matches_full(EndedModuleName,
-            CurModuleName)
-    then
+    else if partial_sym_name_matches_full(EndedModuleName, CurModuleName) then
         % XXX ITEM_LIST Should this be an error? Warning?
         FinalLookAhead = no_lookahead
-    else if
-        % XXX ITEM_LIST Do thing without nondet code.
-        some [ContainingModule] (
-            list.member(ContainingModule, ContainingModules),
-            partial_sym_name_matches_full(EndedModuleName,
-                ContainingModule)
-        )
-    then
+    else if is_for_containing_module(EndedModuleName, ContainingModules) then
         Pieces = [words("Error: missing"), decl("end_module"),
             words("declaration for"), qual_sym_name(CurModuleName),
             suffix("."), nl],
@@ -1536,6 +1524,17 @@ handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
         set.insert(rme_bad_module_end, !Errors),
         % Eat the bad end_module declaration.
         FinalLookAhead = no_lookahead
+    ).
+
+:- pred is_for_containing_module(module_name::in, list(module_name)::in)
+    is semidet.
+
+is_for_containing_module(EndedModuleName,
+        [ContainingModule | ContainingModules]) :-
+    ( if partial_sym_name_matches_full(EndedModuleName, ContainingModule) then
+        true
+    else
+        is_for_containing_module(EndedModuleName, ContainingModules)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1669,26 +1668,15 @@ read_first_module_decl(FileString, MaxOffset, RequireModuleDecl,
             % The first term is a `:- module' decl, as expected.
             % Check whether it matches the expected module name.
             % If it doesn't, report a warning.
-            ( if
-                partial_sym_name_matches_full(DefaultModuleName,
-                    StartModuleName)
-            then
+            ( if DefaultModuleName = StartModuleName then
                 ModuleName = StartModuleName,
                 ModuleDeclPresent =
                     right_module_decl_present(ModuleName, ModuleNameContext)
-            else if
-                partial_sym_name_matches_full(StartModuleName,
-                    DefaultModuleName)
-            then
-                % XXX ITEM_LIST Should this be an error?
-                ModuleName = DefaultModuleName,
-                ModuleDeclPresent =
-                    right_module_decl_present(ModuleName, ModuleNameContext)
             else
-                check_module_has_expected_name(!.SourceFileName,
+                report_module_has_unexpected_name(!.SourceFileName,
                     DefaultModuleName, DefaultExpectationContexts,
-                    StartModuleName, yes(ModuleNameContext), NameSpecs),
-                !:Specs = NameSpecs ++ !.Specs,
+                    StartModuleName, yes(ModuleNameContext), NameSpec),
+                !:Specs = [NameSpec | !.Specs],
                 set.insert(rme_unexpected_module_name, !Errors),
 
                 % Which one should we use here? We used to use the default

@@ -27,7 +27,13 @@ MAIN_TARGET = all
 MERCURY_MAIN_MODULES = choose_grade test_grades try_all_grade_structs
 # EXTRA_MCFLAGS = --trace-flag debug_solver
 
-DEPENDS = $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+DEPENDS = Mercury.modules $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+
+# This directory contains source files for which the module
+# name doesn't match the file name, so smart recompilation
+# won't work without the Mercury.modules file.
+Mercury.modules: GRADE_LIB_FLAGS
+	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: all
 all:	$(MERCURY_MAIN_MODULES)
