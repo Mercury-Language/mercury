@@ -166,6 +166,9 @@ depend_aux: browse_test.depend declarative_test.depend
 # This directory contains source files for which the module name
 # does not match the file name, so smart recompilation won't work
 # without the Mercury.modules file.
+# XXX this .PHONY directive is required when building the source
+# distribution -- why?
+.PHONY: Mercury.modules
 Mercury.modules: MDB_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
