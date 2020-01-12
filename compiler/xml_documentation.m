@@ -90,29 +90,35 @@ xml_documentation(ModuleInfo, !IO) :-
     module_name_to_file_name(Globals, do_create_dirs, ".xml",
         ModuleName, FileName, !IO),
 
-    lookup_module_source_file(ModuleName, SrcFileName, !IO),
-    io.open_input(SrcFileName, SrcResult, !IO),
+    lookup_module_source_file(ModuleName, MaybeSrcFileName, !IO),
     (
-        SrcResult = ok(SrcStream),
-        build_comments(SrcStream, comments(map.init), Comments, !IO),
-
-        % XXX We should find the ":- module " declaration
-        % and get the comment from there.
-        ModuleComment = get_comment_forwards(Comments, 1),
-
-        io.open_output(FileName, OpenResult, !IO),
+        MaybeSrcFileName = yes(SrcFileName),
+        io.open_input(SrcFileName, SrcResult, !IO),
         (
-            OpenResult = ok(Stream),
-            MIXmlDoc = module_info_xml_doc(Comments, ModuleComment,
-                ModuleInfo),
-            write_xml_doc(Stream, MIXmlDoc, !IO)
+            SrcResult = ok(SrcStream),
+            build_comments(SrcStream, comments(map.init), Comments, !IO),
+
+            % XXX We should find the ":- module " declaration
+            % and get the comment from there.
+            ModuleComment = get_comment_forwards(Comments, 1),
+
+            io.open_output(FileName, OpenResult, !IO),
+            (
+                OpenResult = ok(Stream),
+                MIXmlDoc = module_info_xml_doc(Comments, ModuleComment,
+                    ModuleInfo),
+                write_xml_doc(Stream, MIXmlDoc, !IO)
+            ;
+                OpenResult = error(Err),
+                unable_to_open_file(FileName, Err, !IO)
+            )
         ;
-            OpenResult = error(Err),
-            unable_to_open_file(FileName, Err, !IO)
+            SrcResult = error(SrcErr),
+            unable_to_open_file(SrcFileName, SrcErr, !IO)
         )
     ;
-        SrcResult = error(SrcErr),
-        unable_to_open_file(SrcFileName, SrcErr, !IO)
+        MaybeSrcFileName = no,
+        unexpected($pred, "no source file name")
     ).
 
 %-----------------------------------------------------------------------------%

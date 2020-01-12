@@ -28,6 +28,7 @@
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.sym_name. % for module_name
 
+:- import_module bimap.
 :- import_module bool.
 :- import_module getopt_io.
 :- import_module io.
@@ -219,7 +220,7 @@
 
     % Map from module name to file name.
     %
-:- type source_file_map == map(module_name, string).
+:- type source_file_map == bimap(module_name, string).
 
 :- type line_number_range
     --->    line_number_range(
