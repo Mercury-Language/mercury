@@ -2235,8 +2235,8 @@ get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
         !:OptDeps, !:TransOptDeps, !IO),
     (
         BuildOptFiles = yes,
-        search_for_module_source(Globals, IntermodDirs, IntermodDirs,
-            Dep, MaybeFileName, !IO),
+        search_for_module_source(Globals, IntermodDirs, Dep, MaybeFileName,
+            !IO),
         (
             MaybeFileName = ok(_),
             !:OptDeps = [Dep | !.OptDeps],
@@ -2282,8 +2282,7 @@ get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Suffix, [Dep | Deps],
         !:OptDeps, !IO),
     (
         BuildOptFiles = yes,
-        search_for_module_source(Globals, IntermodDirs, IntermodDirs,
-            Dep, Result1, !IO),
+        search_for_module_source(Globals, IntermodDirs, Dep, Result1, !IO),
         (
             Result1 = ok(_),
             !:OptDeps = [Dep | !.OptDeps],

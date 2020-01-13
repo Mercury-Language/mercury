@@ -7,4 +7,4 @@
     --->    f1
     ;       f2.
 
-:- include_module bad_module_name_sub.
+:- include_module sub.
