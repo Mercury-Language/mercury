@@ -15,5 +15,5 @@ MCFLAGS += --ld-flags "`allegro-config --libs`"
 MAIN_TARGET = libmercury_allegro
 MCFLAGS-allegro.util = --no-warn-nothing-exported
 MCFLAGS-allegrogl = --allow-stubs
-MCFLAGS-mercury_allegro = --no-warn-nothing-exported --no-warn-unused-imports
-MCFLAGS-mercury_allegrogl = --no-warn-nothing-exported --no-warn-unused-imports
+MCFLAGS-mercury_allegro = --no-warn-nothing-exported --no-warn-unused-imports --no-warn-interface-imports
+MCFLAGS-mercury_allegrogl = --no-warn-nothing-exported --no-warn-unused-imports --no-warn-inteface-imports
