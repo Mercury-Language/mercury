@@ -14,7 +14,7 @@
 :- interface.
 
 %
-% The binding is divided into submodules which correspond with sections 
+% The binding is divided into submodules which correspond with sections
 % in the Allegro manual.
 %
 
@@ -33,7 +33,7 @@
         % Joystick routines
     :- include_module allegro.joystick.
 
-        % Graphics modes    
+        % Graphics modes
     :- include_module allegro.graphics.
 
         % Bitmap objects
@@ -98,6 +98,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- include_module allegro.util.
 
 %
 % Hooks for AllegroGL.
