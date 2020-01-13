@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
+% Copyright (C) 2014-2017, 2019-2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -186,6 +187,11 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             % Since the source file was found in this directory, do not use
             % module_dep files which might be for installed copies
             % of the module.
+            %
+            % XXX SourceFileName may not actually be the correct source file
+            % for the required module. Usually the purported source file would
+            % have a later timestamp than the .module_dep file, though, so the
+            % other branch would be taken.
             read_module_dependencies_no_search(Globals, RebuildModuleDeps,
                 ModuleName, !Info, !IO)
         else
@@ -223,6 +229,24 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
                 then
                     true
                 else
+                    % XXX The existence of a .module_dep file reflects a
+                    % previous state of the workspace which may not match the
+                    % current workspace.
+                    %
+                    % Here is a (contrived) case where we run into an issue:
+                    % 1. create prog.m which imports the standard library lexer
+                    %    module
+                    % 2. copy the standard library lexer.m file to the current
+                    %    directory for editing
+                    % 3. run mmc --make; it creates lexer.module_dep
+                    % 4. change lexer.m into a sub-module of prog
+                    % 5. run mmc --make again, it no longer works
+                    %
+                    % The local lexer.module_dep prevents mmc --make finding
+                    % the lexer.module_dep from the standard library, even
+                    % though there is no longer any local source file for the
+                    % `lexer' module.
+
                     make_module_dependencies(Globals, ModuleName, !Info, !IO)
                 )
             ;
@@ -769,16 +793,37 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             do_not_ignore_errors, do_not_search, ModuleName, [],
             SourceFileName, always_read_module(do_return_timestamp), _,
             ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
+
         set.intersect(ReadModuleErrors, fatal_read_module_errors, FatalErrors),
         ( if set.is_non_empty(FatalErrors) then
+            FatalReadError = yes,
+            DisplayErrorReadingFile = yes
+        else if set.contains(ReadModuleErrors, rme_unexpected_module_name) then
+            % If the source file does not contain the expected module then
+            % do not make the .module_dep file; it would leave a .module_dep
+            % file for the wrong module lying around, which the user needs
+            % to delete manually.
+            FatalReadError = yes,
+            DisplayErrorReadingFile = no
+        else
+            FatalReadError = no,
+            DisplayErrorReadingFile = no
+        ),
+        (
+            FatalReadError = yes,
             io.set_output_stream(ErrorStream, _, !IO),
             write_error_specs_ignore(Specs0, Globals, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
-            io.format(
-                "** Error reading file `%s' to generate dependencies.\n",
-                [s(SourceFileName)], !IO),
-            maybe_write_importing_module(ModuleName, !.Info ^ importing_module,
-                !IO),
+            (
+                DisplayErrorReadingFile = yes,
+                io.format(
+                    "** Error reading file `%s' to generate dependencies.\n",
+                    [s(SourceFileName)], !IO),
+                maybe_write_importing_module(ModuleName,
+                    !.Info ^ importing_module, !IO)
+            ;
+                DisplayErrorReadingFile = no
+            ),
 
             % Display the contents of the `.err' file, then remove it
             % so we don't leave `.err' files lying around for nonexistent
@@ -790,11 +835,13 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             module_name_to_file_name(Globals, do_not_create_dirs, ".err",
                 ModuleName, ErrFileName, !IO),
             io.remove_file(ErrFileName, _, !IO),
+
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_update?
             map.set(ModuleName, no, ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap
-        else
+        ;
+            FatalReadError = no,
             parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
                 ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
                 RawCompUnits, ModuleAndImportsList),
