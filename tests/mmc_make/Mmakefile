@@ -11,8 +11,8 @@ MAYBE_J1 =
 
 MMAKE_USE_MMC_MAKE=yes
 
-# Any program added here should also be added to the `.cvsignore' file.
 PROGS =	\
+	bug489 \
 	complex_test \
 	hello \
 	include_file \
@@ -31,6 +31,11 @@ TESTS = $(sort $(PROGS))
 include $(TESTS_DIR)/Mmake.common
 
 %.runtest: %.res ;
+
+Mercury.modules: lexer.m
+	$(MC) -f $^
+
+bug489.log: Mercury.modules
 
 complex_test.log: install_libs
 
@@ -80,5 +85,6 @@ realclean_mmc_make: TESTS_FLAGS
 	# ./TESTS_FLAGS is expected by the following line.
 	cd lib; $(MCM) complex_numbers.realclean linkage_test2.realclean
 	rm -f TESTS_FLAGS
+	rm -f Mercury.modules
 
 #-----------------------------------------------------------------------------#
