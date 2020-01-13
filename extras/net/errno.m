@@ -29,6 +29,8 @@
 
 :- implementation.
 
+:- pragma foreign_decl("C", "#include \"mercury_runtime_util.h\"").
+
 %-----------------------------------------------------------------------------%
 
     % Errno handling.
