@@ -95,12 +95,10 @@
     % printing progress messages along the way if the verbosity level
     % calls for that.
     %
-    % If ModuleName is a nested module, then try searching for different
-    % filenames: for modules such as `foo.bar.baz.m', search first for
-    % `foo.bar.baz.m', then `bar.baz.m', then `baz.m'. If Search is do_search,
-    % search all directories given by the option search_directories for the
-    % module; otherwise, search for those filenames only in the current
-    % directory. Return in FileName the actual source file name found
+    % If Search is do_search, search all directories given by the option
+    % search_directories for the module;
+    % otherwise, search for those filenames only in the current directory.
+    % Return in FileName the actual source file name found
     % (excluding the directory part). If the actual module name
     % (as determined by the `:- module' declaration) does not match
     % the specified module name, then report an error message,
@@ -248,12 +246,11 @@ read_module_src(Globals, Descr, IgnoreErrors, Search,
         ReadModuleAndTimestamps, MaybeTimestamp,
         ParseTreeSrc, Specs, Errors, !IO) :-
     read_module_begin(Globals, Descr, Search, ModuleName, fk_src,
-        FileName0, VeryVerbose, InterfaceSearchDirs, SearchDirs, !IO),
+        FileName0, VeryVerbose, SearchDirs, !IO),
     % For `.m' files we need to deal with the case where the module name
-    % does not match the file name, or where a partial match occurs
-    % in the current directory but the full match occurs in a search directory.
+    % does not match the file name.
     search_for_module_source_and_stream(Globals, SearchDirs,
-        InterfaceSearchDirs, ModuleName, MaybeFileNameAndStream, !IO),
+        ModuleName, MaybeFileNameAndStream, !IO),
     actually_read_module_src(Globals, ModuleName, ExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
         ParseTreeSrc0, ModuleSpecs, Errors, !IO),
@@ -307,7 +304,7 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
         FileName, ReadModuleAndTimestamps, MaybeTimestamp,
         ParseTreeInt, Specs, Errors, !IO) :-
     read_module_begin(Globals, Descr, Search, ModuleName, fk_int(IntFileKind),
-        FileName0, VeryVerbose, _InterfaceSearchDirs, SearchDirs, !IO),
+        FileName0, VeryVerbose, SearchDirs, !IO),
     search_for_file_and_stream(SearchDirs, FileName0,
         MaybeFileNameAndStream, !IO),
     actually_read_module_int(IntFileKind, Globals, ModuleName, [],
@@ -321,10 +318,10 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
 
 :- pred read_module_begin(globals::in, string::in,
     maybe_search::in, module_name::in, file_kind::in, file_name::out,
-    bool::out, list(string)::out, list(string)::out, io::di, io::uo) is det.
+    bool::out, list(string)::out, io::di, io::uo) is det.
 
 read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
-        FileName0, VeryVerbose, InterfaceSearchDirs, SearchDirs, !IO) :-
+        FileName0, VeryVerbose, SearchDirs, !IO) :-
     Extension = file_kind_to_extension(FileKind),
     (
         Search = do_search,
@@ -340,11 +337,10 @@ read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
     maybe_write_string(VeryVerbose, Msg, !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    globals.lookup_accumulating_option(Globals, search_directories,
-        InterfaceSearchDirs),
     (
         Search = do_search,
-        SearchDirs = InterfaceSearchDirs
+        globals.lookup_accumulating_option(Globals, search_directories,
+            SearchDirs)
     ;
         Search = do_not_search,
         SearchDirs = [dir.this_directory]
