@@ -14,14 +14,17 @@ MERCURY_FILES=$(wildcard *.m)
 
 all: libnet.so echo test_lookups
 
-libnet.so: $(MERCURY_FILES)
+libnet.so: Mercury.modules
 	$(MMC) $(MCFLAGS) --make libnet
 
-echo: $(MERCURY_FILES)
+echo: Mercury.modules
 	$(MMC) $(MCFLAGS) --make echo
 
-test_lookups: $(MERCURY_FILES)
+test_lookups: Mercury.modules
 	$(MMC) $(MCFLAGS) --make test_lookups
+
+Mercury.modules: $(MERCURY_FILES)
+	$(MMC) -f $(MERCURY_FILES)
 
 tags: $(MERCURY_FILES)
 	$(MTAGS) $(MERCURY_FILES)
