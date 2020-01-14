@@ -98,6 +98,9 @@ Changes that may break compatibility
   standard library module `lexer`, or a submodule of a user-written
   parent module. [Mantis bug #489].
 
+* The `:- module` declaration in a separate submodule now must contain the
+  fully qualified module name.
+
 * References to everything imported via `:- use_module` declarations
   must now be fully module qualified.
 

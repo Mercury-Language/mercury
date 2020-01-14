@@ -5288,8 +5288,8 @@ matching @samp{:- module} and @samp{:- end_module} declarations.
 (Note that @samp{:- end_module} for nested sub-modules
 are mandatory, not optional,
 even if the nested sub-module is the last thing in the source file.
-Also note that the module name in a @samp{:- module} or @samp{:- end_module}
-declaration need not be fully-qualified.)
+The module name in a @samp{:- module} or @samp{:- end_module}
+declaration for a nested sub-module need not be fully qualified.)
 The sequence of items thus delimited is known as a sub-module item sequence.
 
 The interface and implementation parts of a nested sub-module
@@ -5338,6 +5338,8 @@ a comma-separated list of sub-modules.
 :- include_module @var{Module1}, @var{Module2}, @dots{}, @var{ModuleN}.
 @end example
 
+The module names need not be fully qualified.
+
 Each of the named sub-modules in an @samp{:- include_module} declaration
 must be defined in a separate source file.
 The mapping between module names and source file names
@@ -5358,16 +5360,11 @@ with a list of the file names of all the Mercury modules in the program.)
 The source file of a separate sub-module must contain
 the declaration (interface) and definition (implementation) of the sub-module.
 It must start with a @samp{:- module} declaration
-which matches that in the @samp{:- include_module} declaration in the parent,
+containing the fully qualified module name,
 followed by the interface and (if necessary) implementation sections,
 and it may optionally end with a @samp{:- end_module} declaration.
-(Note: the module names in the @samp{:- module}, @samp{:- end_module},
-and @w{@samp{:- include_module}} declarations need not be fully-qualified.
-However, if the file name used for a particular module
-does not include all the module qualifiers,
-then the Melbourne Mercury implementation
-requires the module name in the @samp{:- module} declaration
-for that module to be fully qualified.)
+(The module name in the @samp{:- end_module} declaration need not be
+fully qualified.)
 
 The semantics of separate sub-modules
 are identical to those of nested sub-modules.
@@ -5437,9 +5434,9 @@ occurs only in the implementation section of the parent module
 may only be imported or used by its parent module
 or by sub-modules of its parent module.
 
-Note that as mentioned previously,
+As mentioned previously,
 all @samp{:- import_module} and @samp{:- use_module} declarations
-must use fully-qualified module names.
+must use fully qualified module names.
 
 @node Implementation bugs and limitations
 @subsection Implementation bugs and limitations
