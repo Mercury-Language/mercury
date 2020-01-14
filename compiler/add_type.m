@@ -1025,7 +1025,7 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         !:Specs = [Spec | !.Specs]
     else
         some [!OtherConsIds] (
-            % Schedule the addition of the fully-qualified cons_id
+            % Schedule the addition of the fully qualified cons_id
             % into the cons_table.
             MainConsId = QualifiedConsIdA,
             !:OtherConsIds = [QualifiedConsIdB],

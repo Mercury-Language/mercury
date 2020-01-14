@@ -1653,10 +1653,10 @@ the line number (integer) of the goal in which the literal appears,
 or -1 if it cannot be determined.
 
 @item @samp{$module}
-a string representation of the fully-qualified module name.
+a string representation of the fully qualified module name.
 
 @item @samp{$pred}
-a string containing the fully-qualified predicate or function name and arity.
+a string containing the fully qualified predicate or function name and arity.
 
 @end table
 
@@ -5103,7 +5103,7 @@ Future versions of the language may allow these forms.
 @menu
 * The module system::
 * An example module::
-* Sub-modules::
+* Submodules::
 * Module initialisation::
 * Module finalisation::
 * Module-local mutable variables::
@@ -5134,12 +5134,12 @@ or definitions of (sub-)modules.
 An @samp{:- implementation.} declaration indicates
 the start of the module's implementation section.
 Any entities declared in this section are local to the module
-(and its sub-modules, if any) and cannot be used by other modules.
+(and its submodules, if any) and cannot be used by other modules.
 The implementation section must contain definitions
 for all abstract data types, abstract instance declarations,
-functions, predicates, and sub-modules exported by the module,
+functions, predicates, and submodules exported by the module,
 as well as for all local types, type class instances, functions,
-predicates, and sub-modules.
+predicates, and submodules.
 The implementation section can be omitted if it is empty.
 
 The module may optionally end
@@ -5156,7 +5156,7 @@ using one or more @samp{:- import_module @var{Modules}}
 or @w{@samp{:- use_module @var{Modules}}} declarations,
 in order to make those declarations visible.
 In both cases, @var{Modules}
-is a comma-separated list of fully-qualified module names.
+is a comma-separated list of fully qualified module names.
 These declarations may occur
 either in the interface or the implementation section.
 If the imported entities are used in the interface section,
@@ -5260,56 +5260,56 @@ get([Elem | Queue], Elem, Queue).
 :- end_module queue.
 @end example
 
-@node Sub-modules
-@section Sub-modules
+@node Submodules
+@section Submodules
 
-As mentioned above, modules may contain sub-modules.
-There are two kinds of sub-modules,
-called nested sub-modules and separate sub-modules;
-the difference is that nested sub-modules
+As mentioned above, modules may contain submodules.
+There are two kinds of submodules,
+called nested submodules and separate submodules;
+the difference is that nested submodules
 are defined in the same source file as the containing module,
-whereas separate sub-modules are defined in separate source files.
-Implementations should support separate compilation of separate sub-modules.
+whereas separate submodules are defined in separate source files.
+Implementations should support separate compilation of separate submodules.
 
-A module may not contain more than one sub-module with the same name.
+A module may not contain more than one submodule with the same name.
 
 @menu
-* Nested sub-modules::
-* Separate sub-modules::
+* Nested submodules::
+* Separate submodules::
 * Visibility rules::
 * Implementation bugs and limitations::
 @end menu
 
-@node Nested sub-modules
-@subsection Nested sub-modules
+@node Nested submodules
+@subsection Nested submodules
 
-Nested sub-modules within a module are delimited by
+Nested submodules within a module are delimited by
 matching @samp{:- module} and @samp{:- end_module} declarations.
-(Note that @samp{:- end_module} for nested sub-modules
+(Note that @samp{:- end_module} for nested submodules
 are mandatory, not optional,
-even if the nested sub-module is the last thing in the source file.
+even if the nested submodule is the last thing in the source file.
 The module name in a @samp{:- module} or @samp{:- end_module}
-declaration for a nested sub-module need not be fully qualified.)
-The sequence of items thus delimited is known as a sub-module item sequence.
+declaration for a nested submodule need not be fully qualified.)
+The sequence of items thus delimited is known as a submodule item sequence.
 
-The interface and implementation parts of a nested sub-module
-may be specified in two different sub-module declarations.
-If a sub-module item sequence includes an interface section,
-then it is a declaration of that sub-module;
+The interface and implementation parts of a nested submodule
+may be specified in two different submodule declarations.
+If a submodule item sequence includes an interface section,
+then it is a declaration of that submodule;
 if it includes an implementation section,
-then it is a definition of that sub-module;
+then it is a definition of that submodule;
 and if includes both, then it is both declaration and definition.
 
-It is an error to declare a sub-module twice, or to define it twice.
-It is an error to define a sub-module without declaring it.
+It is an error to declare a submodule twice, or to define it twice.
+It is an error to define a submodule without declaring it.
 As mentioned earlier, it is an error
-to define a sub-module in the interface section of its parent module.
+to define a submodule in the interface section of its parent module.
 
-If a sub-module is declared but not explicitly defined,
+If a submodule is declared but not explicitly defined,
 then there is an implicit definition
-with an empty implementation section for that sub-module.
+with an empty implementation section for that submodule.
 This empty implementation section will result in an error
-if the interface section of a sub-module contains any of the following:
+if the interface section of a submodule contains any of the following:
 
 @itemize @bullet
 @item
@@ -5321,18 +5321,18 @@ of that type, inst, mode or typeclass;
 @item
 an abstract declaration of a typeclass instance; or
 @item
-a (doubly, triply, etc) nested sub-module
+a (doubly, triply, etc) nested submodule
 (which perforce has only an interface section, and no implementation section)
 and which contains any of the above.
 @end itemize
 
-@node Separate sub-modules
-@subsection Separate sub-modules
+@node Separate submodules
+@subsection Separate submodules
 
-Separate sub-modules are declared using
+Separate submodules are declared using
 @samp{:- include_module @var{Modules}} declarations.
 Each @samp{:- include_module} declaration specifies
-a comma-separated list of sub-modules.
+a comma-separated list of submodules.
 
 @example
 :- include_module @var{Module1}, @var{Module2}, @dots{}, @var{ModuleN}.
@@ -5340,7 +5340,7 @@ a comma-separated list of sub-modules.
 
 The module names need not be fully qualified.
 
-Each of the named sub-modules in an @samp{:- include_module} declaration
+Each of the named submodules in an @samp{:- include_module} declaration
 must be defined in a separate source file.
 The mapping between module names and source file names
 is implementation-defined.
@@ -5357,8 +5357,8 @@ using a command such as @samp{mmc -f *.m}.
 with a list of the file names of all the Mercury modules in the program.)
 @end itemize
 
-The source file of a separate sub-module must contain
-the declaration (interface) and definition (implementation) of the sub-module.
+The source file of a separate submodule must contain
+the declaration (interface) and definition (implementation) of the submodule.
 It must start with a @samp{:- module} declaration
 containing the fully qualified module name,
 followed by the interface and (if necessary) implementation sections,
@@ -5366,19 +5366,19 @@ and it may optionally end with a @samp{:- end_module} declaration.
 (The module name in the @samp{:- end_module} declaration need not be
 fully qualified.)
 
-The semantics of separate sub-modules
-are identical to those of nested sub-modules.
-The procedure to transform a separate sub-module
-into a nested sub-module is as follows:
+The semantics of separate submodules
+are identical to those of nested submodules.
+The procedure to transform a separate submodule
+into a nested submodule is as follows:
 
 @enumerate
 @item
 Replace the @samp{:- include_module @var{submodule}} declaration
-with the interface section of the sub-module
+with the interface section of the submodule
 enclosed within @samp{:- module @var{submodule}}
 and @samp{:- end_module @var{submodule}} declarations.
 @item
-Place the implementation section of the sub-module
+Place the implementation section of the submodule
 enclosed within @samp{:- module @var{submodule}}
 and @samp{:- end_module @var{submodule}} declarations
 in the implementation section of the parent module.
@@ -5414,12 +5414,12 @@ is equivalent to
 
 Any declarations in the parent module,
 including those in the parent module's implementation section,
-are visible in the parent's sub-modules,
-including indirect sub-modules (i.e.@: sub-sub-modules, etc.).
+are visible in the parent's submodules,
+including indirect submodules (i.e.@: sub-submodules, etc.).
 Similarly, declarations in the interfaces of any modules
 imported using an @samp{:- import_module} or a @samp{:- use_module}
 in the parent module
-are visible in the parent's sub-modules, including indirect sub-modules.
+are visible in the parent's submodules, including indirect submodules.
 
 Declarations in a child module are not visible in the parent module,
 or in ``sibling'' modules (other children of the same parent),
@@ -5428,11 +5428,11 @@ unless the child is explicitly imported using
 an @samp{:- import_module} or @samp{:- use_module} declaration.
 It is an error to import a module without importing all of its parent modules.
 
-Note that a sub-module for which
+Note that a submodule for which
 the @samp{:- module} or @samp{:- include_module} declaration
 occurs only in the implementation section of the parent module
 may only be imported or used by its parent module
-or by sub-modules of its parent module.
+or by submodules of its parent module.
 
 As mentioned previously,
 all @samp{:- import_module} and @samp{:- use_module} declarations
@@ -5441,18 +5441,18 @@ must use fully qualified module names.
 @node Implementation bugs and limitations
 @subsection Implementation bugs and limitations
 
-The current implementation of sub-modules has a couple of minor limitations.
+The current implementation of submodules has a couple of minor limitations.
 
 @itemize @bullet
 @item
 The compiler sometimes reports spurious errors
-if you define an equivalence type in a sub-module
+if you define an equivalence type in a submodule
 and export it as an abstract type.
 @item
 Using @samp{mmake} to do parallel makes (e.g.@: @samp{mmake --jobs 2})
-doesn't always work correctly if you are using nested sub-modules.
-(The work-around is to use separate sub-modules instead of nested sub-modules,
-i.e.@: to put the sub-modules in separate source files.)
+doesn't always work correctly if you are using nested submodules.
+(The work-around is to use separate submodules instead of nested submodules,
+i.e.@: to put the submodules in separate source files.)
 @end itemize
 
 @node Module initialisation
@@ -5483,7 +5483,7 @@ is to ensure that @samp{@var{initpredname}/@var{arity}} is invoked
 before the program's @samp{main/2} predicate.
 Initialisation predicates within a module are executed
 in the order in which they are specified,
-although no order may be assumed between different modules or sub-modules.
+although no order may be assumed between different modules or submodules.
 Initialisation predicates are only invoked
 after any initialisation required by the Mercury standard library.
 
@@ -5524,7 +5524,7 @@ is to ensure that @samp{@var{finalpredname}/@var{arity}} is invoked
 after the program's @samp{main} predicate.
 Finalisation predicates within a module
 are executed in the order in which they are specified,
-although no order may be assumed between different modules or sub-modules.
+although no order may be assumed between different modules or submodules.
 Any finalisation required by the Mercury standard library
 will always occur after any finalisation predicates have been invoked.
 
@@ -5655,7 +5655,7 @@ together with either of the @samp{trailed} or @samp{constant} attributes.
 
 It is an error for a @samp{mutable} directive
 to appear in the interface section of a module.
-The usual visibility rules for sub-modules
+The usual visibility rules for submodules
 apply to the mutable variable access predicates.
 
 For the purposes of determining
@@ -11743,7 +11743,7 @@ in the implementation section of a module.
 
 A @samp{pragma require_feature_set} affects
 only the module in which it occurs;
-in particular it does not affect any sub-modules.
+in particular it does not affect any submodules.
 
 If a module contains multiple @samp{pragma require_feature_set} declarations,
 then the implementation should emit an error

@@ -47,7 +47,7 @@
     %
     % We also record whether code in the source module whose compilation
     % we are concerned with may refer to items in the read-in module
-    % using non-fully-qualified names, or not.
+    % using non-fully qualified names, or not.
     %
     % What follows in the next two paragraphs is conjecture by wangp,
     % but I (zs) agree that it is likely a correct description of
@@ -62,11 +62,11 @@
     %
     % On the other hand, consider a version of the situation above
     % in which msrc gains access to m1 via an :- import_module declaration.
-    % In that case, if m1 defines an item named f, then a non-fully-qualified
+    % In that case, if m1 defines an item named f, then a non-fully qualified
     % reference to that name *could* refer to that item in m1. If msrc
     % compiled cleanly before, this f must have been resolved to refer
     % to an item defined in some other module, but now that msrc imports m1,
-    % the non-fully-qualified reference to f has become ambiguous.
+    % the non-fully qualified reference to f has become ambiguous.
     % This means that msrc must be recompiled, so that the recompilation
     % may detect and report any such ambiguities.
     %

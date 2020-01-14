@@ -239,7 +239,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
                     % 2. copy the standard library lexer.m file to the current
                     %    directory for editing
                     % 3. run mmc --make; it creates lexer.module_dep
-                    % 4. change lexer.m into a sub-module of prog
+                    % 4. change lexer.m into a submodule of prog
                     % 5. run mmc --make again, it no longer works
                     %
                     % The local lexer.module_dep prevents mmc --make finding
@@ -617,7 +617,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
                     SearchDirs),
                 NestedChildren, !Info, !IO),
             ( if some_bad_module_dependency(!.Info, NestedChildren) then
-                Result = error("error in nested sub-modules")
+                Result = error("error in nested submodules")
             else
                 Result = ok
             )

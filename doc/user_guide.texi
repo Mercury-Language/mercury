@@ -311,7 +311,7 @@ where @var{module} is the name of the Mercury module defined in
 @file{@var{filename}.m}.
 It also will leave the intermediate C code in a file called
 @file{@var{module}.c}.
-If the source file contains nested modules, then each sub-module will get
+If the source file contains nested modules, then each submodule will get
 compiled to separate C and object files.
 
 Before you can compile a module,
@@ -951,7 +951,7 @@ and, on many platforms, it supports shared object libraries.
 @section Writing libraries
 
 A Mercury library is identified by a top-level module,
-which should contain all of the modules in that library as sub-modules.
+which should contain all of the modules in that library as submodules.
 It may be as simple as this @file{mypackage.m} file:
 
 @example
@@ -963,7 +963,7 @@ It may be as simple as this @file{mypackage.m} file:
 @end example
 
 @noindent
-This defines a module @samp{mypackage} containing sub-modules
+This defines a module @samp{mypackage} containing submodules
 @samp{mypackage.foo}, @samp{mypackage.bar}, and @samp{mypackage.baz}.
 
 It is also possible to build libraries of unrelated modules,
@@ -990,7 +990,7 @@ Alternatively, the library could of course just export something,
 such as a predicate that returns its version number.
 
 Generally it is better style for each library
-to consist of a single module which encapsulates its sub-modules,
+to consist of a single module which encapsulates its submodules,
 as in the first example,
 rather than just a group of unrelated modules,
 as in the second example.
@@ -7168,7 +7168,7 @@ Write the unqualified version of the short interface to
 @itemx --make-private-interface
 @findex --make-priv-int
 @findex --make-private-interface
-Write the module's private interface (used for compiling nested sub-modules)
+Write the module's private interface (used for compiling nested submodules)
 to @file{@var{module}.int0}.
 
 @sp 1
