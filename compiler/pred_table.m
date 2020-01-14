@@ -223,9 +223,9 @@
     predicate_table::in, predicate_table::out) is det.
 
     % Equivalent to predicate_table_insert_qual/6, except that only the
-    % fully-qualified version of the predicate will be inserted into the
+    % fully qualified version of the predicate will be inserted into the
     % predicate symbol table. This is useful for creating compiler-generated
-    % predicates which will only ever be accessed via fully-qualified names.
+    % predicates which will only ever be accessed via fully qualified names.
     %
 :- pred predicate_table_insert(pred_info::in, pred_id::out,
     predicate_table::in, predicate_table::out) is det.
@@ -967,7 +967,7 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
         MaybeQualInfo = no,
         AccessibleByPartiallyQualifiedNames = no
     ),
-    % Insert the fully-qualified name into the module.name/arity index.
+    % Insert the fully qualified name into the module.name/arity index.
     insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index),
     Access = access(AccessibleByUnqualifiedName,
         AccessibleByPartiallyQualifiedNames),

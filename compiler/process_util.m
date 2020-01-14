@@ -9,7 +9,7 @@
 % File: process_util.m.
 % Main author: stayl.
 %
-% Process and signal handling, mainly for use by make.m and its sub-modules.
+% Process and signal handling, mainly for use by make.m and its submodules.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

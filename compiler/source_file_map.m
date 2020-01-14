@@ -47,7 +47,7 @@
     %
 :- pred have_source_file_map(bool::out, io::di, io::uo) is det.
 
-    % Return the default fully-qualified source file name.
+    % Return the default fully qualified source file name.
     %
 :- func default_source_file(module_name) = file_name.
 

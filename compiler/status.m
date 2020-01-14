@@ -145,8 +145,8 @@
 
     ;       status_abstract_exported
             % Describes a type with only an abstract declaration exported
-            % to non-sub-modules. The definition of the type is exported to
-            % sub-modules.
+            % to non-submodules. The definition of the type is exported to
+            % submodules.
 
     ;       status_pseudo_exported
             % The converse of pseudo_imported; this means that only the
@@ -154,15 +154,15 @@
 
     ;       status_exported_to_submodules
             % Defined in the implementation of this module, and thus in
-            % a sense local, but the module contains sub-modules, so the
-            % entity needs to be exported to those sub-modules.
+            % a sense local, but the module contains submodules, so the
+            % entity needs to be exported to those submodules.
 
     ;       status_local.
             % Defined in the implementation of this module, and the module
-            % does not contain any sub-modules.
+            % does not contain any submodules.
 
     % Returns yes if the status indicates that the item was in any way exported
-    % -- that is, if it could be used by any other module, or by sub-modules
+    % -- that is, if it could be used by any other module, or by submodules
     % of this module.
     %
     % NOTE: this returns `no' for :- external procedures.
@@ -179,7 +179,7 @@
 :- func old_status_is_exported(old_import_status) = bool.
 
     % Returns yes if the status indicates that the item was exported
-    % to importing modules (not just to sub-modules).
+    % to importing modules (not just to submodules).
     %
     % NOTE: this returns `no' for :- external procedures.
     %
@@ -192,7 +192,7 @@
 :- func instance_status_is_exported_to_non_submodules(instance_status) = bool.
 
     % Returns yes if the status indicates that the item was in any way imported
-    % -- that is, if it was defined in some other module, or in a sub-module
+    % -- that is, if it was defined in some other module, or in a submodule
     % of this module. This is the opposite of status_defined_in_this_module.
     %
     % NOTE: this returns `yes' for :- external procedures.

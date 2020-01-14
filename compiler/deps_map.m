@@ -47,8 +47,8 @@
     ;       nested_submodule
     ;       separate_submodule.
 
-    % Check if a module is a top-level module, a nested sub-module,
-    % or a separate sub-module.
+    % Check if a module is a top-level module, a nested submodule,
+    % or a separate submodule.
     %
 :- func get_submodule_kind(module_name, deps_map) = submodule_kind.
 
@@ -61,19 +61,19 @@
     % in the deps_map, then we just replace the old entry (presumed to be
     % a dummy entry) with the new one.
     %
-    % This can only occur for sub-modules which have been imported before
+    % This can only occur for submodules which have been imported before
     % their parent module was imported: before reading a module and
     % inserting it into the deps map, we check if it was already there,
     % but when we read in the module, we try to insert not just that module
-    % but also all the nested sub-modules inside that module. If a sub-module
+    % but also all the nested submodules inside that module. If a submodule
     % was previously imported, then it may already have an entry in the
-    % deps_map. However, unless the sub-module is defined both as a separate
-    % sub-module and also as a nested sub-module, the previous entry will be
+    % deps_map. However, unless the submodule is defined both as a separate
+    % submodule and also as a nested submodule, the previous entry will be
     % a dummy entry that we inserted after trying to read the source file
     % and failing.
     %
     % Note that the case where a module is defined as both a separate
-    % sub-module and also as a nested sub-module is caught in
+    % submodule and also as a nested submodule is caught in
     % split_into_submodules.
     %
     % XXX This shouldn't need to be exported.
@@ -240,7 +240,7 @@ insert_into_deps_map(ModuleImports, !DepsMap) :-
     map.set(ModuleName, Deps, !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
-    % and any nested sub-modules it contains. Return the module_and_imports
+    % and any nested submodules it contains. Return the module_and_imports
     % structure for the named module, and each of its nested submodules.
     % If we cannot do better, return a dummy module_and_imports structure
     % for the named module.
