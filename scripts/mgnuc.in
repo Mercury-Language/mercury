@@ -594,6 +594,21 @@ case "$FULLARCH" in
         ;;
 esac
 
+# Using global register variables triggers an internal error in the LRA pass of
+# GCC 9.1 and 9.2 on x86_64 systems in debug grades unless we compile at -O0.
+# See: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91430>
+#
+# Changes to this need to be reflected in the predicate
+# gather_c_compiler_flags/3 in compiler/compile_target_code.m.
+
+case "$FULLARCH" in x86_64*)
+    case $global_regs,$debug in true,true)
+        case "$C_COMPILER_TYPE" in gcc_9_[12]*)
+            ARCH_OPTS="$ARCH_OPTS -O0" ;;
+        esac ;;
+    esac ;;
+esac
+
 # The -floop-optimize option is incompatible with the global register code
 # we generated on Darwin PowerPC. See the hard_coded/ppc_bug test case
 # for an example program which fails with this optimization.

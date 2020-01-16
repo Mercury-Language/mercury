@@ -349,6 +349,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ),
     globals.lookup_string_option(Globals, cflags_for_sanitizers,
         SanitizerOpts),
+    globals.get_c_compiler_type(Globals, C_CompilerType),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
         UseTrail = yes,
@@ -362,7 +363,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         % Note that this will also affect the untagged version of the trail,
         % but that shouldn't matter.
         %
-        globals.get_c_compiler_type(Globals, C_CompilerType),
         (
             C_CompilerType = cc_gcc(_, _, _),
             globals.lookup_int_option(Globals, bytes_per_word, BytesPerWord),
@@ -432,9 +432,10 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     % program which fails with this optimization.
 
     globals.lookup_string_option(Globals, target_arch, TargetArch),
+    globals.lookup_bool_option(Globals, gcc_global_registers, GlobalRegisters),
     ( if
         globals.lookup_bool_option(Globals, highlevel_code, no),
-        globals.lookup_bool_option(Globals, gcc_global_registers, yes),
+        GlobalRegisters = yes,
         string.prefix(TargetArch, "powerpc-apple-darwin")
     then
         AppleGCCRegWorkaroundOpt = "-fno-loop-optimize "
@@ -442,12 +443,34 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         AppleGCCRegWorkaroundOpt = ""
     ),
 
-    % Workaround performance problem(s) with gcc that causes the C files
-    % generated in debugging grades to compile very slowly at -O1 and above.
-    % (Changes here need to be reflected in scripts/mgnuc.in.)
+    % Last resort workarounds for C compiler bugs.
+    % Changes here need to be reflected in scripts/mgnuc.in.
+    %
+    globals.lookup_bool_option(Globals, exec_trace, ExecTrace),
     ( if
-        globals.lookup_bool_option(Globals, exec_trace, yes),
-        arch_is_apple_darwin(TargetArch)
+        % We need to disable C compiler optimizations in debugging grades
+        % in either of the two situations described below.
+        ExecTrace = yes,
+        (
+            % 1. On Apple Darwin systems there are performance problems with
+            % GCC that cause it to compile the C files generated in debugging
+            % grades very slowly at -O1 or greater.
+            %
+            % XXX we are also enabling this for clang; does it have the
+            % same performance problems?
+            %
+            arch_is_apple_darwin(TargetArch)
+        ;
+            % 2. There is a bug in GCC 9.[12] that results in an internal error
+            % in the LRA pass when compiling generated C files in debugging
+            % grades that also use global registers on x86_64 machines.
+            % See: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91430>
+            %
+            GlobalRegisters = yes,
+            C_CompilerType = cc_gcc(yes(9), yes(GCCMinorVersion), _),
+            ( GCCMinorVersion = 1 ; GCCMinorVersion = 2),
+            string.prefix(TargetArch, "x86_64")
+        )
     then
         OverrideOpts = "-O0"
     else
