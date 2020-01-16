@@ -685,11 +685,22 @@ AC_SUBST([ERL])
 
 AC_DEFUN([MERCURY_GCC_VERSION], [
 AC_REQUIRE([AC_PROG_CC])
+    
+AC_MSG_CHECKING([what the gcc version is])
+
+# -dumpfullversion has only been supported since GCC 7; if it is available we
+# prefer its output since it is guaranteed to be in the form major.minor.patch.
+#
+raw_gcc_version=`$CC -dumpfullversion 2> /dev/null`
+if test $? -ne 0
+then
+    raw_gcc_version=`$CC -dumpversion`
+fi
 
 # We expect that the major and minor version numbers will always be present.
 # MinGW-w64 may add a suffix "-win32" or "-posix" after the second or third
 # number that should be ignored.
-mercury_cv_gcc_version=`$CC -dumpversion | tr .- '  ' | {
+mercury_cv_gcc_version=`echo $raw_gcc_version | tr .- '  ' | {
     read major minor third ignore
     case $third in
         [[0-9]]*)
@@ -701,6 +712,8 @@ mercury_cv_gcc_version=`$CC -dumpversion | tr .- '  ' | {
     esac
     echo ${major:-u}_${minor:-u}_${patchlevel:-u}
     }`
+
+AC_MSG_RESULT([$mercury_cv_gcc_version])
 ])
 
 #-----------------------------------------------------------------------------#
