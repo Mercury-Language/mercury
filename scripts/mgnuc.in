@@ -603,7 +603,7 @@ esac
 
 case "$FULLARCH" in x86_64*)
     case $global_regs,$debug in true,true)
-        case "$C_COMPILER_TYPE" in gcc_9_[12]*)
+        case "$C_COMPILER_TYPE" in gcc_9_*)
             ARCH_OPTS="$ARCH_OPTS -O0" ;;
         esac ;;
     esac ;;
