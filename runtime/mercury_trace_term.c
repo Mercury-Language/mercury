@@ -496,7 +496,7 @@ MR_copy_str_fragment(const char *original, int string_length)
     char    *copy;
 
     copy = MR_malloc(string_length + 1);
-    strncpy(copy, original, string_length);
+    MR_memcpy(copy, original, string_length);
     copy[string_length] = '\0';
     return copy;
 }
