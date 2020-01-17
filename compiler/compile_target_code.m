@@ -467,8 +467,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
             % See: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91430>
             %
             GlobalRegisters = yes,
-            C_CompilerType = cc_gcc(yes(9), yes(GCCMinorVersion), _),
-            ( GCCMinorVersion = 1 ; GCCMinorVersion = 2),
+            C_CompilerType = cc_gcc(yes(9), _, _),
             string.prefix(TargetArch, "x86_64")
         )
     then
