@@ -191,7 +191,7 @@ The Mercury distribution contains:
         -  arithmetic on complex and imaginary numbers
         -  arithmetic on fixed-point numbers
      o  UIs:
-        -  graphics using Tk, OpenGL, GLUT, GLFW,  Xlib, Allegro or Cairo.
+        -  graphics using Tk, OpenGL, GLUT, GLFW, Xlib, Allegro or Cairo.
         -  text interfaces using curses
         -  processing HTML forms using the CGI interface
      o  interfacing:
