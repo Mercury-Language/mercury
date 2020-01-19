@@ -432,10 +432,9 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     % program which fails with this optimization.
 
     globals.lookup_string_option(Globals, target_arch, TargetArch),
-    globals.lookup_bool_option(Globals, gcc_global_registers, GlobalRegisters),
     ( if
         globals.lookup_bool_option(Globals, highlevel_code, no),
-        GlobalRegisters = yes,
+        GCC_Regs = yes,
         string.prefix(TargetArch, "powerpc-apple-darwin")
     then
         AppleGCCRegWorkaroundOpt = "-fno-loop-optimize "
@@ -466,7 +465,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
             % grades that also use global registers on x86_64 machines.
             % See: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91430>
             %
-            GlobalRegisters = yes,
+            GCC_Regs = yes,
             C_CompilerType = cc_gcc(yes(9), _, _),
             string.prefix(TargetArch, "x86_64")
         )
