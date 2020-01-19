@@ -484,7 +484,7 @@ case $use_regions in
         ;;
 esac
 
-GCC_OPTS="$NEST_OPTS $ASM_OPTS $GOTO_OPTS $REG_OPTS"
+GCC_OPTS="$ASM_OPTS $GOTO_OPTS $REG_OPTS"
 
 # check that special grades are only used with gcc
 case $COMPILER in
