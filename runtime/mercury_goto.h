@@ -420,6 +420,11 @@
     // before entering Mercury code, and restore it before returning to C code.
     // However, gcc and/or setjmp()/longjmp() will do that for us
     // automatically, precisely because it is a callee-save register.
+    //
+    // This does not work with GCC 5+ because GCC no longer reserves `ebx'
+    // to hold the GOT address; the code we jump into may expect to find
+    // the GOT address in a different location.
+    //
 
     #if defined(__i386__)
 
