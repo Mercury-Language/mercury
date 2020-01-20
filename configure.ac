@@ -1229,6 +1229,17 @@ AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
 
 #-----------------------------------------------------------------------------#
 #
+# Add option for dynamic linking.
+#
+
+AC_ARG_ENABLE(dynamic-link,
+    AC_HELP_STRING([--disable-dynamic-link],
+                   [disable the use of dynamic linking]),
+    [mercury_cv_enable_dynamic_link="$enableval"],
+    [mercury_cv_enable_dynamic_link=yes])
+
+#-----------------------------------------------------------------------------#
+#
 # Check whether to use symbolic links
 #
 
@@ -2600,7 +2611,31 @@ case "$ac_cv_prog_gcc" in yes)
         mips-*)
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
             ;;
-        i*86-*|x86_64*)
+        i*86-*)
+            # On x86-64 and x86, GCC labels do not work correctly with
+            # -ftree-dominator-opts.
+            CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
+            CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
+
+            # An old hack allowing non-local gotos to work with PIC on x86
+            # will no longer work with GCC 5+ (see mercury_goto.h).
+            # The following disables non-local gotos if dynamically linking
+            # is enabled, even though statically linked libraries (non-PIC)
+            # would still work.
+            # Alternatively, we may wish to consider using non-PIC in shared
+            # libraries, accepting whatever drawbacks that entails.
+            case $C_COMPILER_TYPE in
+                gcc_3_*|gcc_4_*) ;;
+                gcc_*)
+                    if test "$mercury_cv_enable_dynamic_link" = yes
+                    then
+                        mercury_cv_asm_labels=no
+                        mercury_cv_gcc_labels=no
+                    fi
+                    ;;
+            esac
+            ;;
+        x86_64*)
             # On x86-64 and x86, GCC labels do not work correctly with
             # -ftree-dominator-opts.
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
@@ -5169,14 +5204,11 @@ AC_SUBST(NSL_LIBRARY)
 
 #-----------------------------------------------------------------------------#
 #
-# Check for dynamic linking, unless the --disable-dynamic-link option
-# was specified.
+# Check libraries for dynamic linking.
 #
-
-AC_ARG_ENABLE(dynamic-link,
-    AC_HELP_STRING([--disable-dynamic-link],
-                   [disable the use of dynamic linking]),
-mercury_cv_enable_dynamic_link="$enableval",mercury_cv_enable_dynamic_link=yes)
+# XXX This needs to occur after mercury_check_for_functions is defined,
+# but the option defining mercury_cv_enable_dynamic_link is needed earlier.
+#
 
 if test "$mercury_cv_enable_dynamic_link" = "yes"; then
     MERCURY_CHECK_FOR_HEADERS(dlfcn.h)
