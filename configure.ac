@@ -1294,7 +1294,7 @@ AC_ARG_WITH(csharp-compiler,
     mercury_cv_with_csharp_compiler="")
 MERCURY_CHECK_DOTNET
 
-# The Roslyn (i.e. Microsoft) C# compiler does not support signing assmblies
+# The Roslyn (i.e. Microsoft) C# compiler does not support signing assemblies
 # with a strong name on non-Windows platforms.  If we are using that compiler
 # on a non-Windows platform then only delay sign the assembly.
 
@@ -3497,10 +3497,10 @@ BEST_DEBUG_BASE_GRADE=$BEST_LLDS_BASE_GRADE
 # efficiency too much.
 
 case $BEST_LLDS_BASE_GRADE in
-    none|fast|jump)
+    none|fast|jump|reg)
         DEFAULT_BASE_GRADE=hlc
         ;;
-    asm_fast|asm_jump|reg)
+    asm_fast|asm_jump)
         DEFAULT_BASE_GRADE=$BEST_LLDS_BASE_GRADE
         ;;
     *)
