@@ -2624,6 +2624,11 @@ case "$ac_cv_prog_gcc" in yes)
             # would still work.
             # Alternatively, we may wish to consider using non-PIC in shared
             # libraries, accepting whatever drawbacks that entails.
+            #
+            # XXX Not all platforms use PIC for dynamic linking, e.g. Windows,
+            # so this should be contingent on CFLAGS_FOR_PIC which is set
+            # further down. (We don't support DLLs on Windows yet.)
+            #
             case $C_COMPILER_TYPE in
                 gcc_3_*|gcc_4_*) ;;
                 gcc_*)
