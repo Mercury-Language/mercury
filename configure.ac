@@ -1229,14 +1229,14 @@ AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
 
 #-----------------------------------------------------------------------------#
 #
-# Add option for dynamic linking.
+# Check whether the user wants to disable the use of shared libraries.
 #
 
-AC_ARG_ENABLE(dynamic-link,
-    AC_HELP_STRING([--disable-dynamic-link],
-                   [disable the use of dynamic linking]),
-    [mercury_cv_enable_dynamic_link="$enableval"],
-    [mercury_cv_enable_dynamic_link=yes])
+AC_ARG_ENABLE(shared-libs,
+    AC_HELP_STRING([--disable-shared-libs],
+      [do not build shared version of the library even if that is supported]),
+    [mercury_cv_enable_shared_libs="$enableval"],
+    [mercury_cv_enable_shared_libs=yes])
 
 #-----------------------------------------------------------------------------#
 #
@@ -2619,7 +2619,7 @@ case "$ac_cv_prog_gcc" in yes)
 
             # An old hack allowing non-local gotos to work with PIC on x86
             # will no longer work with GCC 5+ (see mercury_goto.h).
-            # The following disables non-local gotos if dynamically linking
+            # The following disables non-local gotos if dynamic linking
             # is enabled, even though statically linked libraries (non-PIC)
             # would still work.
             # Alternatively, we may wish to consider using non-PIC in shared
@@ -2632,7 +2632,7 @@ case "$ac_cv_prog_gcc" in yes)
             case $C_COMPILER_TYPE in
                 gcc_3_*|gcc_4_*) ;;
                 gcc_*)
-                    if test "$mercury_cv_enable_dynamic_link" = yes
+                    if test "$mercury_cv_enable_shared_libs" = yes
                     then
                         mercury_cv_asm_labels=no
                         mercury_cv_gcc_labels=no
@@ -4400,216 +4400,226 @@ ALLOW_UNDEFINED=""
 ERROR_UNDEFINED=""
 DEFAULT_LINKAGE="shared"
 
-case "$host" in
-    i*86-*-linux|i*86-*-linux-gnu|x86_64-*-linux*)
-        case $ac_cv_prog_gcc in
-            yes)
-                AC_MSG_RESULT(yes)
-                EXT_FOR_SHARED_LIB=so
-                AC_MSG_CHECKING(if linker supports --no-undefined)
-                rm -f conftest*
-                if test "$mercury_cv_thread_local_storage" = yes; then
-                    # --no-undefined doesn't work with TLS
-                    # and older versions of glibc.
-                    echo "__thread int x;
-                    int main(void) { return x; }" > conftest.c
-                    $CC -Wl,--no-undefined -fPIC -shared \
-                        -o conftest conftest.c 2>/dev/null
-                else
-                    echo "int main(void) { return 0; }" > conftest.c
-                    $CC -Wl,--no-undefined -o conftest conftest.c
-                fi
-                if test -f conftest; then
+if test "$mercury_cv_enable_shared_libs" = "yes"; then
+    case "$host" in
+        i*86-*-linux|i*86-*-linux-gnu|x86_64-*-linux*)
+            case $ac_cv_prog_gcc in
+                yes)
                     AC_MSG_RESULT(yes)
-                    ERROR_UNDEFINED="-Wl,--no-undefined"
-
-                    AC_MSG_CHECKING(for ld-linux.so)
+                    EXT_FOR_SHARED_LIB=so
+                    AC_MSG_CHECKING(if linker supports --no-undefined)
                     rm -f conftest*
-                    echo "int main(void) { return 0; }" > conftest.c
-                    $CC -o conftest conftest.c
-                    ld_linux=`ldd ./conftest | \
-                        awk '/ld-linux/{print $1;}'`
-                    case $ld_linux in
-                        /lib/ld-linux.so*)
-                            AC_MSG_RESULT($ld_linux)
-                            SHARED_LIBS="$SHARED_LIBS $ld_linux"
-                            SHARED_LIBS_SH="$SHARED_LIBS_SH $ld_linux"
-                            ;;
-                        *)
-                            AC_MSG_RESULT(no)
-                            ;;
-                    esac
-                else
+                    if test "$mercury_cv_thread_local_storage" = yes; then
+                        # --no-undefined doesn't work with TLS
+                        # and older versions of glibc.
+                        echo "__thread int x;
+                        int main(void) { return x; }" > conftest.c
+                        $CC -Wl,--no-undefined -fPIC -shared \
+                            -o conftest conftest.c 2>/dev/null
+                    else
+                        echo "int main(void) { return 0; }" > conftest.c
+                        $CC -Wl,--no-undefined -o conftest conftest.c
+                    fi
+                    if test -f conftest; then
+                        AC_MSG_RESULT(yes)
+                        ERROR_UNDEFINED="-Wl,--no-undefined"
+    
+                        AC_MSG_CHECKING(for ld-linux.so)
+                        rm -f conftest*
+                        echo "int main(void) { return 0; }" > conftest.c
+                        $CC -o conftest conftest.c
+                        ld_linux=`ldd ./conftest | \
+                            awk '/ld-linux/{print $1;}'`
+                        case $ld_linux in
+                            /lib/ld-linux.so*)
+                                AC_MSG_RESULT($ld_linux)
+                                SHARED_LIBS="$SHARED_LIBS $ld_linux"
+                                SHARED_LIBS_SH="$SHARED_LIBS_SH $ld_linux"
+                                ;;
+                            *)
+                                AC_MSG_RESULT(no)
+                                ;;
+                        esac
+                    else
+                        AC_MSG_RESULT(no)
+                    fi
+                    rm -f conftest*
+                    ;;
+                *)
                     AC_MSG_RESULT(no)
-                fi
-                rm -f conftest*
-                ;;
-            *)
-                AC_MSG_RESULT(no)
-                ;;
-        esac
-
-        # On x86_64 machines we use -fPIC rather than -fpic
-        # in order to avoid limits on the size of the global
-        # offset table implied by the latter.
-        case "$host" in
-            x86_64-*-linux*)
-                CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
-                ;;
-        esac
-        ;;
-    m68*-linux|m68*-linux-gnu)
-        AC_MSG_RESULT(yes)
-        EXT_FOR_SHARED_LIB=so
-        ;;
-    *-freebsd*)
-        # Tested on FreeBSD 10.1 i386/amd64.
-        AC_MSG_RESULT(yes)
-        EXT_FOR_SHARED_LIB=so
-        ;;
-    *-openbsd*)
-        AC_MSG_RESULT(yes)
-        EXT_FOR_SHARED_LIB=so
-        ;;
-    i*86-*-solaris2.*)
-        AC_MSG_RESULT(yes)
-
-        # XXX For Solaris/SPARC, we don't link in libgcc.a.
-        # Why not?  Do we need to do the same thing for Solaris/x86?
-        #SHARED_LIBS="$(MATH_LIB) -lc"  # don't link in libgcc.a
-        #SHARED_LIBS_SH="$MATH_LIB -lc" # don't link in libgcc.a
-
-        # XXX We need -mimpure-text because libraries such as
-        # libreadline.a might be installed with only the .a rather
-        # than the .so, and not compiled with -fpic,
-        # and we need to link against them when creating shared libs.
-        LINK_SHARED_OBJ="$CC -shared -mimpure-text"
-        LINK_SHARED_OBJ_SH="$CC -shared -mimpure-text"
-
-        # XXX We should use the following.
-        # However, this causes problems on mundroo.cs.mu.oz.au,
-        # due to the readline library being installed only as
-        # libreadline.a, with no corresponding libreadline.so.
-        #ERROR_UNDEFINED="-Wl,-z,defs"
-
-        EXE_RPATH_OPT="-R"
-        EXE_RPATH_SEP=" -R"
-        SHLIB_RPATH_OPT="-R"
-        SHLIB_RPATH_SEP=" -R"
-        EXT_FOR_SHARED_LIB=so
-        DEFAULT_LINKAGE=static
-        ;;
-    sparc-sun-solaris2.*)
-        AC_MSG_RESULT(yes)
-        SHARED_LIBS="$(MATH_LIB) -lc"   # don't link in libgcc.a
-        SHARED_LIBS_SH="$MATH_LIB -lc"  # don't link in libgcc.a
-        LINK_SHARED_OBJ="$CC -shared -mimpure-text"
-        LINK_SHARED_OBJ_SH="$CC -shared -mimpure-text"
-        ERROR_UNDEFINED="-Wl,-z,defs"
-        EXE_RPATH_OPT="-R"
-        EXE_RPATH_SEP=" -R"
-        SHLIB_RPATH_OPT="-R"
-        SHLIB_RPATH_SEP=" -R"
-        CFLAGS_FOR_PIC="-fpic -DMR_PIC" # used only for libgc.{a,so}
-        EXT_FOR_PIC_OBJECTS=o
-
-        # Note that despite the above definition of CFLAGS_FOR_PIC,
-        # we don't use `-fpic' for shared libraries on Solaris
-        # (the definition of EXT_FOR_PIC_OBJECTS=o means that
-        # CFLAGS_FOR_PIC will be used only for building libgc.a
-        # and libgc.so.)
-        #
-        # The reason for this is that shared libraries work without it
-        # (well, at least they are shared on disk -- although the code is
-        # not shared at runtime), and using `-fpic' would reduce efficiency.
-        #
-        # It works because the Solaris dynamic linker will actually do
-        # the fixups at runtime for non-PIC code. (The code is mapped
-        # copy-on-write, and when the linker does the fixups, it gets copied.
-        # Hence the lack of runtime sharing.) We need to link with
-        # `gcc -shared -mimpure-text' rather than `gcc -shared', because
-        # `gcc -shared' passes `-z text' to the linker, which causes it to
-        # report an error if any runtime fixups would be needed.
-        #
-        # If you *do* use `-fpic', you must also use `-DMR_PIC'.
-        #
-        # See runtime/mercury_goto.h for the code that handles PIC on SPARCs.
-        # Note that mixing PIC and non-PIC code is fine on SPARCs.
-
-        EXT_FOR_SHARED_LIB=so
-        ;;
-    *-cygwin*)
-        # Disabled for now, since it hasn't been tested.
-        # xxx_MSG_RESULT(yes)
-        # EXT_FOR_SHARED_LIB=dll
-        # USE_DLLS=yes
-        AC_MSG_RESULT(disabled for now because it is untested)
-
-        CFLAGS_FOR_PIC=
-        EXT_FOR_PIC_OBJECTS=o
-        DEFAULT_LINKAGE=static
-        ;;
-    *mingw*)
-        # disabled for now, since it hasn't been tested
-        # xxx_MSG_RESULT(yes)
-        # EXT_FOR_SHARED_LIB=dll
-        # USE_DLLS=yes
-        AC_MSG_RESULT(disabled for now because it is untested)
-
-        CFLAGS_FOR_PIC=
-        EXT_FOR_PIC_OBJECTS=o
-        DEFAULT_LINKAGE=static
-        ;;
-    *apple*darwin*)
-        # If the compiler is gcc or clang then use Darwin style dynamic
-        # linking. Otherwise use static linking.
-        case "$C_COMPILER_TYPE" in
-            gcc*|clang*)
-                AC_MSG_RESULT(yes)
-                SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
-                SHLIB_INSTALL_NAME_FLAG="-install_name "
-                EXT_FOR_SHARED_LIB=dylib
-                CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
-                ERROR_UNDEFINED="-undefined error"
-                # The MACOSX_DEPLOYMENT_TARGET environment variable needs to be
-                # set so we can use the `-undefined dynamic_lookup' option.
-                SET_MACOSX_DEPLOYMENT_TARGET="\
-                    MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET; \
-                    export MACOSX_DEPLOYMENT_TARGET"
-                AC_SUBST(SET_MACOSX_DEPLOYMENT_TARGET)
-                LINK_SHARED_OBJ="$CC -multiply_defined suppress \
-                     -dynamiclib -single_module"
-                LINK_SHARED_OBJ_SH="$CC -multiply_defined \
-                    suppress -dynamiclib -single_module"
-                ALLOW_UNDEFINED="-undefined dynamic_lookup"
+                    ;;
+            esac
+    
+            # On x86_64 machines we use -fPIC rather than -fpic
+            # in order to avoid limits on the size of the global
+            # offset table implied by the latter.
+            case "$host" in
+                x86_64-*-linux*)
+                    CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
+                    ;;
+            esac
             ;;
-
-            *)
-                CFLAGS_FOR_PIC=
-                EXT_FOR_PIC_OBJECTS=o
-                DEFAULT_LINKAGE=static
-                AC_MSG_RESULT(no)
+        m68*-linux|m68*-linux-gnu)
+            AC_MSG_RESULT(yes)
+            EXT_FOR_SHARED_LIB=so
             ;;
-        esac
-        ;;
-    arm*-linux|arm*-linux-gnu)
-        AC_MSG_RESULT(yes)
-        EXT_FOR_SHARED_LIB=so
-        # One can build gcc with a default PIC register other than sl
-        # so let's force it. If you change this,
-        # update MR_ARM_PIC_REG in runtime/mercury_goto.h as well.
-        CFLAGS_FOR_PIC="-mpic-register=sl $CFLAGS_FOR_PIC"
-        ;;
-    *)
-        # CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating libgc.a.
-        # If the system doesn't support shared libraries,
-        # then we should set it to empty, not `-fpic'.
-        CFLAGS_FOR_PIC=
-        EXT_FOR_PIC_OBJECTS=o
-        DEFAULT_LINKAGE=static
-        AC_MSG_RESULT(no)
-        ;;
-esac
+        *-freebsd*)
+            # Tested on FreeBSD 10.1 i386/amd64.
+            AC_MSG_RESULT(yes)
+            EXT_FOR_SHARED_LIB=so
+            ;;
+        *-openbsd*)
+            AC_MSG_RESULT(yes)
+            EXT_FOR_SHARED_LIB=so
+            ;;
+        i*86-*-solaris2.*)
+            AC_MSG_RESULT(yes)
+    
+            # XXX For Solaris/SPARC, we don't link in libgcc.a.
+            # Why not?  Do we need to do the same thing for Solaris/x86?
+            #SHARED_LIBS="$(MATH_LIB) -lc"  # don't link in libgcc.a
+            #SHARED_LIBS_SH="$MATH_LIB -lc" # don't link in libgcc.a
+    
+            # XXX We need -mimpure-text because libraries such as
+            # libreadline.a might be installed with only the .a rather
+            # than the .so, and not compiled with -fpic,
+            # and we need to link against them when creating shared libs.
+            LINK_SHARED_OBJ="$CC -shared -mimpure-text"
+            LINK_SHARED_OBJ_SH="$CC -shared -mimpure-text"
+    
+            # XXX We should use the following.
+            # However, this causes problems on mundroo.cs.mu.oz.au,
+            # due to the readline library being installed only as
+            # libreadline.a, with no corresponding libreadline.so.
+            #ERROR_UNDEFINED="-Wl,-z,defs"
+    
+            EXE_RPATH_OPT="-R"
+            EXE_RPATH_SEP=" -R"
+            SHLIB_RPATH_OPT="-R"
+            SHLIB_RPATH_SEP=" -R"
+            EXT_FOR_SHARED_LIB=so
+            DEFAULT_LINKAGE=static
+            ;;
+        sparc-sun-solaris2.*)
+            AC_MSG_RESULT(yes)
+            SHARED_LIBS="$(MATH_LIB) -lc"   # don't link in libgcc.a
+            SHARED_LIBS_SH="$MATH_LIB -lc"  # don't link in libgcc.a
+            LINK_SHARED_OBJ="$CC -shared -mimpure-text"
+            LINK_SHARED_OBJ_SH="$CC -shared -mimpure-text"
+            ERROR_UNDEFINED="-Wl,-z,defs"
+            EXE_RPATH_OPT="-R"
+            EXE_RPATH_SEP=" -R"
+            SHLIB_RPATH_OPT="-R"
+            SHLIB_RPATH_SEP=" -R"
+            CFLAGS_FOR_PIC="-fpic -DMR_PIC" # used only for libgc.{a,so}
+            EXT_FOR_PIC_OBJECTS=o
+    
+            # Note that despite the above definition of CFLAGS_FOR_PIC,
+            # we don't use `-fpic' for shared libraries on Solaris
+            # (the definition of EXT_FOR_PIC_OBJECTS=o means that
+            # CFLAGS_FOR_PIC will be used only for building libgc.a
+            # and libgc.so.)
+            #
+            # The reason for this is that shared libraries work without it
+            # (well, at least they are shared on disk -- although the code is
+            # not shared at runtime), and using `-fpic' would reduce efficiency.
+            #
+            # It works because the Solaris dynamic linker will actually do
+            # the fixups at runtime for non-PIC code. (The code is mapped
+            # copy-on-write, and when the linker does the fixups, it gets copied.
+            # Hence the lack of runtime sharing.) We need to link with
+            # `gcc -shared -mimpure-text' rather than `gcc -shared', because
+            # `gcc -shared' passes `-z text' to the linker, which causes it to
+            # report an error if any runtime fixups would be needed.
+            #
+            # If you *do* use `-fpic', you must also use `-DMR_PIC'.
+            #
+            # See runtime/mercury_goto.h for the code that handles PIC on SPARCs.
+            # Note that mixing PIC and non-PIC code is fine on SPARCs.
+    
+            EXT_FOR_SHARED_LIB=so
+            ;;
+        *-cygwin*)
+            # Disabled for now, since it hasn't been tested.
+            # xxx_MSG_RESULT(yes)
+            # EXT_FOR_SHARED_LIB=dll
+            # USE_DLLS=yes
+            AC_MSG_RESULT(disabled for now because it is untested)
+    
+            CFLAGS_FOR_PIC=
+            EXT_FOR_PIC_OBJECTS=o
+            DEFAULT_LINKAGE=static
+            ;;
+        *mingw*)
+            # disabled for now, since it hasn't been tested
+            # xxx_MSG_RESULT(yes)
+            # EXT_FOR_SHARED_LIB=dll
+            # USE_DLLS=yes
+            AC_MSG_RESULT(disabled for now because it is untested)
+    
+            CFLAGS_FOR_PIC=
+            EXT_FOR_PIC_OBJECTS=o
+            DEFAULT_LINKAGE=static
+            ;;
+        *apple*darwin*)
+            # If the compiler is gcc or clang then use Darwin style dynamic
+            # linking. Otherwise use static linking.
+            case "$C_COMPILER_TYPE" in
+                gcc*|clang*)
+                    AC_MSG_RESULT(yes)
+                    SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
+                    SHLIB_INSTALL_NAME_FLAG="-install_name "
+                    EXT_FOR_SHARED_LIB=dylib
+                    CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
+                    ERROR_UNDEFINED="-undefined error"
+                    # The MACOSX_DEPLOYMENT_TARGET environment variable needs to be
+                    # set so we can use the `-undefined dynamic_lookup' option.
+                    SET_MACOSX_DEPLOYMENT_TARGET="\
+                        MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET; \
+                        export MACOSX_DEPLOYMENT_TARGET"
+                    AC_SUBST(SET_MACOSX_DEPLOYMENT_TARGET)
+                    LINK_SHARED_OBJ="$CC -multiply_defined suppress \
+                         -dynamiclib -single_module"
+                    LINK_SHARED_OBJ_SH="$CC -multiply_defined \
+                        suppress -dynamiclib -single_module"
+                    ALLOW_UNDEFINED="-undefined dynamic_lookup"
+                ;;
+    
+                *)
+                    CFLAGS_FOR_PIC=
+                    EXT_FOR_PIC_OBJECTS=o
+                    DEFAULT_LINKAGE=static
+                    AC_MSG_RESULT(no)
+                ;;
+            esac
+            ;;
+        arm*-linux|arm*-linux-gnu)
+            AC_MSG_RESULT(yes)
+            EXT_FOR_SHARED_LIB=so
+            # One can build gcc with a default PIC register other than sl
+            # so let's force it. If you change this,
+            # update MR_ARM_PIC_REG in runtime/mercury_goto.h as well.
+            CFLAGS_FOR_PIC="-mpic-register=sl $CFLAGS_FOR_PIC"
+            ;;
+        *)
+            # CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating libgc.a.
+            # If the system doesn't support shared libraries,
+            # then we should set it to empty, not `-fpic'.
+            CFLAGS_FOR_PIC=
+            EXT_FOR_PIC_OBJECTS=o
+            DEFAULT_LINKAGE=static
+            AC_MSG_RESULT(no)
+            ;;
+    esac
+else
+    # CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating libgc.a.
+    # If the system doesn't support shared libraries,
+    # then we should set it to empty, not `-fpic'.
+    CFLAGS_FOR_PIC=
+    EXT_FOR_PIC_OBJECTS=o
+    DEFAULT_LINKAGE=static
+    AC_MSG_RESULT(no)
+fi
 
 #-----------------------------------------------------------------------------#
 #
@@ -5211,9 +5221,13 @@ AC_SUBST(NSL_LIBRARY)
 #
 # Check libraries for dynamic linking.
 #
-# XXX This needs to occur after mercury_check_for_functions is defined,
-# but the option defining mercury_cv_enable_dynamic_link is needed earlier.
-#
+
+# XXX this is poorly named.
+AC_ARG_ENABLE(dynamic-link,
+    AC_HELP_STRING([--disable-dynamic-link],
+                   [disable the use of dynamic linking]),
+    [mercury_cv_enable_dynamic_link="$enableval"],
+    [mercury_cv_enable_dynamic_link=yes])
 
 if test "$mercury_cv_enable_dynamic_link" = "yes"; then
     MERCURY_CHECK_FOR_HEADERS(dlfcn.h)
