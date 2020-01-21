@@ -185,7 +185,7 @@ make install
 #          grades hlc.gc.ssdebug and java.ssdebug, if hlc.gc or java grades
 #          are also present.
 #
-#          The option --disable-dynamic-link prevents the installation of shared
+#          The option --disable-shared-libs prevents the installation of shared
 #          libraries, even if they are supported on this system.
 #
 #          The option --enable-deep-profiler=/some/dir/name enables the deep
