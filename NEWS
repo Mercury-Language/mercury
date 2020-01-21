@@ -1269,6 +1269,12 @@ Changes to the Mercury debugger
 
 * We have added a `browse --web` command to view terms in a web browser.
 
+Editor support
+--------------
+
+* The vim syntax highlighting files have been significantly improved
+  thanks to Sebastian Godelet.
+
 Changes to the extras distribution
 ----------------------------------
 
