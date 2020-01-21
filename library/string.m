@@ -1423,7 +1423,8 @@
     %
 :- func from_char(char::in) = (string::uo) is det.
 
-    % Convert an integer to a string.
+    % Convert an integer to a string in base 10.
+    % See int_to_base_string for the string format.
     %
 :- func int_to_string(int::in) = (string::uo) is det.
 :- pred int_to_string(int::in, string::uo) is det.
@@ -1435,6 +1436,9 @@
     % int_to_base_string(Int, Base, String):
     %
     % Convert an integer to a string in a given Base.
+    % `String' will consist of a minus sign (U+002D HYPHEN-MINUS)
+    % if `Int' is negative, followed by one or more decimal digits (0-9)
+    % or uppercase letters (A-Z). There will be no leading zeros.
     %
     % Base must be between 2 and 36, both inclusive; if it is not,
     % the predicate will throw an exception.
@@ -1442,14 +1446,17 @@
 :- func int_to_base_string(int::in, int::in) = (string::uo) is det.
 :- pred int_to_base_string(int::in, int::in, string::uo) is det.
 
-    % Convert an integer to a string with commas as thousand separators.
+    % Convert an integer to a string in base 10 with commas as thousand
+    % separators.
     %
 :- func int_to_string_thousands(int::in) = (string::uo) is det.
 
     % int_to_base_string_group(Int, Base, GroupLength, Separator, String):
     %
-    % Convert an integer to a string in a given Base
-    % and insert Separator between every GroupLength digits.
+    % Convert an integer to a string in a given Base,
+    % in the same format as int_to_base_string,
+    % with Separator inserted between every GroupLength digits
+    % (grouping from the end of the string).
     % If GroupLength is less than one, no separators will appear
     % in the output. Useful for formatting numbers like "1,300,000".
     %
