@@ -359,7 +359,7 @@ Changes to the Mercury standard library
 
 ### New Module: `ranges`
 
-* This module represents sets of integer using a sort list of ranges. This
+* This module represents sets of integers using sorted lists of ranges. This
   module exports operations that make it particularly suitable for representing
   domains in finite domain constraint solvers.
 
