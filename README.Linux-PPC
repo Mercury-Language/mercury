@@ -1,3 +1,8 @@
+
+NOTE: we do not know if the Linux/PPC port has been tested since 1998.
+
+----------------------------------------------------------------------
+
 Mercury should build "out-of-the-box" on Linux for PPC.
 Thanks to Robert A. Abernathy for his help with this port.
 

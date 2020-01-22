@@ -1,7 +1,6 @@
-Mercury 0.13 may not work on Solaris 10 (SunOS 5.10) due to incompatibilities
-with the version of Boehm GC shipped with that version of Mercury.
 
-(The above problem has been fixed in post-0.13 versions of Mercury.)
+An older version of the Mercury system was previously tested on
+Solaris 10 (SunOS 5.10); we do not know if it still works.
 
-Also, note that `--linkage static' is not supported on Solaris.  Executables
+Note that `--linkage static' is not supported on Solaris.  Executables
 produced using this option will cause a segmentation fault.

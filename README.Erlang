@@ -10,7 +10,7 @@ system.
 WARNING
 
 The Erlang backend is incomplete, and will not see any more work in
-the future.
+the future. It has not been tested for version 20.01 of the Mercury system.
 
 Large parts of the Mercury standard library are not yet implemented.
 Some RTTI related features are incompletely or incorrectly implemented.
