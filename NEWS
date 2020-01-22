@@ -213,7 +213,7 @@ Changes that may break compatibility
 
     - asm_jump*
     - jump*
-    _ hl_nest*
+    - hl_nest*
     - hlc_nest*
     - il*
 
