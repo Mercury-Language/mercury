@@ -4,9 +4,6 @@ For the Linux/Alpha port, see README.Linux-Alpha.
 (Ports to Linux on other architectures have not yet
 been attempted, but should not be difficult.)
 
-Linux systems that produce executables in a.out format are not supported by
-the Mercury compiler.
-
 
 BUILDING A 32-BIT MERCURY COMPILER ON 64-BIT LINUX
 ==================================================
