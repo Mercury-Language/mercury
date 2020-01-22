@@ -1,5 +1,5 @@
-This directory contains the source distribution for the University of Melbourne
-Mercury compiler, version @VERSION@.
+This directory contains the source distribution for the
+Melbourne Mercury compiler, version @VERSION@.
 
 See the file LICENSE for copyright and licensing information.
 
@@ -8,7 +8,7 @@ In some cases, additional steps may be needed for particular operating systems
 or particular architectures, so first read the README file for your particular
 platform, if there is one:
 
-	README.AIX		RS/6000 systems running AIX
+	README.AIX		AIX on POWER
 	README.FreeBSD		FreeBSD on Intel x86 and x86_64
 	README.HPUX		HPPA systems running HPUX
 	README.Linux		Linux on Intel x86 and x86_64
@@ -20,14 +20,11 @@ platform, if there is one:
 	README.OpenBSD		OpenBSD on x86_64
 	README.Solaris		Solaris (SunOS) on SPARC or Intel x86.
 
-The documentation sources are in the `doc' subdirectory.  The installation
-process will install INFO, HTML, and DVI versions in the locations specified
-in the file Mmake.common - by default these locations are
-/usr/local/mercury-@VERSION@/info,
-/usr/local/mercury-@VERSION@/lib/mercury/html,
-and /usr/local/mercury-@VERSION@/lib/mercury/doc respectively.
-The installation process will also install Unix-style man pages -
-by default they will be installed in /usr/local/mercury-@VERSION@/man/man1.
+The documentation sources are in the `doc' subdirectory.
+The installation process will install INFO, HTML, and DVI versions under the
+nominated installation prefix, by default /usr/local/mercury-@VERSION@.
+It will also install Unix-style man pages under the same prefix.
+
 The files RELEASE_NOTES, NEWS, HISTORY, LIMITATIONS, and BUGS
 also contain useful information.  If you're interested in looking
 at the source code, the file compiler/notes/compiler_design.html is
@@ -37,19 +34,6 @@ The `samples' directory contains some example Mercury programs.
 There are also some additional Mercury programs and libraries
 in the `extras' directory.
 
-For more information about Mercury, see the Mercury WWW home page at
-<http://www.mercurylang.org>, or send mail to mercury@mercurylang.org.
-
-If you would like to join the Mercury mailing lists (there are two,
-mercury-users for general discussion, and mercury-announce for
-announcements), see the instructions at <http://lists.mercurylang.org>.
-
-Please send bug reports, enhancement requests, suggestions for improvements,
-and any other feedback to bugs@mercurylang.org or mercury@mercurylang.org.
-If you find something you don't like, please tell us.
-If you find something you do like, please tell the world!
-
-The Mercury distribution is available via HTTP from the following location:
-
-	http://dl.mercurylang.org/index.html
-
+The Mercury home page is located at <https://www.mercurylang.org>.
+There you can also find information about joining the mailing lists
+for announcements and general discussion.

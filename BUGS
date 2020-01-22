@@ -1,14 +1,15 @@
-Bugs can be reported via the Mercury bug tracking system at
-<https://bugs.mercurylang.org>.  We use the Mantis bug tracking software.  
-You will need to login in order to access the bug tracking system.
-If you do not have an account, you can create one by clicking on the 
-``Signup for a new account'' link at the bottom of the login page and
-following the instructions.
+The Mercury bug tracking system is located at <https://bugs.mercurylang.org>.
+To report a bug, first create an account by clicking on the
+``Signup for a new account'' link at the top of each page.
+You do not need to create an account to view existing bug reports.
 
-Alternatively, you may email bug reports to bugs@mercurylang.org.
-If you are reporting more than one bug, please use separate emails for each
-bug.  (If it's something that only shows up in multi-module programs, send
-a shar archive or uuencoded tar archive including your source files.)
+There is also an issue tracker on our GitHub page:
+<https://github.com/Mercury-Language/mercury/issues>
+
+You may email bug reports to bugs@mercurylang.org.
+Please use separate emails for each bug. Attach to each such email either a
+single Mercury source file demonstrating the bug, or a tar or zip file
+containing the files needed to demonstrate the bug.
 
 Please include the following information in your bug report:
 
@@ -25,8 +26,5 @@ Please try to ensure that bug report contains all the information that we need t
 be able to reproduce the problem.  Make sure that all bug reports are fully
 self-contained.
 
-The bug tracking system contains a current list of known outstanding bugs.
-Some other problems related to using Mercury on specific operating systems are
-described in the README.* files.
-
-See also the LIMITATIONS file.
+Some known problems related to using Mercury on specific operating systems are
+described in the README.* files. See also the LIMITATIONS file.
