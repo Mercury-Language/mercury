@@ -1219,6 +1219,10 @@ Changes to the Mercury compiler
 
 * The Java back-end now bootstraps.
 
+* The old IL back-end has been deleted.
+
+* The Erlang backend is deprecated and will be removed in a future release.
+
 * Class files generated for executables in the Java grade are now automatically
   packaged up into Java archives (JARs).
 
