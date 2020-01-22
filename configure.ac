@@ -2625,17 +2625,24 @@ case "$ac_cv_prog_gcc" in yes)
             # Alternatively, we may wish to consider using non-PIC in shared
             # libraries, accepting whatever drawbacks that entails.
             #
-            # XXX Not all platforms use PIC for dynamic linking, e.g. Windows,
-            # so this should be contingent on CFLAGS_FOR_PIC which is set
-            # further down. (We don't support DLLs on Windows yet.)
+            # XXX Not all platforms use PIC for dynamic linking, so this should
+            # be contingent on CFLAGS_FOR_PIC which is set further down. 
             #
             case $C_COMPILER_TYPE in
                 gcc_3_*|gcc_4_*) ;;
                 gcc_*)
                     if test "$mercury_cv_enable_shared_libs" = yes
                     then
-                        mercury_cv_asm_labels=no
-                        mercury_cv_gcc_labels=no
+                        # XXX Make an exception for Windows since it doesn't use
+                        # PIC and we don't yet support DLLs anyway.
+                        case "$host" in
+                            *cygwin*|*mingw*)
+                                ;;
+                            *)
+                                mercury_cv_asm_labels=no
+                                mercury_cv_gcc_labels=no
+                                ;;
+                        esac
                     fi
                     ;;
             esac
