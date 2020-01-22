@@ -209,6 +209,14 @@ Changes that may break compatibility
     - IRIX
     - OSF/1
 
+* The following compilation grades are no longer supported:
+
+    - asm_jump*
+    - jump*
+    _ hl_nest*
+    - hlc_nest*
+    - il*
+
 Changes to the Mercury language
 -------------------------------
 
