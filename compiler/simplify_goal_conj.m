@@ -92,8 +92,9 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
 
         Detism = goal_info_get_determinism(GoalInfo0),
         ( if
-            simplify_do_mark_code_model_changes(!.Info),
+            % Put the condition that we expect to fail most frequently first.
             determinism_components(Detism, CanFail, at_most_zero),
+            simplify_do_mark_code_model_changes(!.Info),
             contains_multisoln_goal(Goals)
         then
             determinism_components(InnerDetism, CanFail, at_most_many),
@@ -108,10 +109,15 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
 
 :- pred contains_multisoln_goal(list(hlds_goal)::in) is semidet.
 
-contains_multisoln_goal(Goals) :-
-    list.member(hlds_goal(_GoalExpr, GoalInfo), Goals),
+contains_multisoln_goal([Goal | Goals]) :-
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
     Detism = goal_info_get_determinism(GoalInfo),
-    determinism_components(Detism, _, at_most_many).
+    determinism_components(Detism, _, SolnCount),
+    ( if SolnCount = at_most_many then
+        true
+    else
+        contains_multisoln_goal(Goals)
+    ).
 
 %---------------------------------------------------------------------------%
 
