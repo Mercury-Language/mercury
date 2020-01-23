@@ -133,9 +133,9 @@ case $mercury_libs in
 	default)
 		mercury_libs=shared
 		case $FULLARCH in
-			i*86-*-freebsd*|i*86-*-cygwin*|i*86-*-solaris*)
+			*-cygwin*|i*86-*-solaris*)
 				# Shared libraries are not the default on the above systems.
-				# See configure.in for details.
+				# See configure.ac for details.
 				case $make_shared_lib in
 					false)
 						mercury_libs=static
@@ -151,9 +151,9 @@ case $all_libs in
 	default)
 		all_libs=shared
 		case $FULLARCH in
-			i*86-*-freebsd*|i*86-*-cygwin*)
+			*-cygwin*)
 				# Shared libraries are not the default on the above systems.
-				# See configure.in for details.
+				# See configure.ac for details.
 				#
 				# We don't do this for Solaris/x86 because -ldl is
 				# only available for dynamically linked executables
