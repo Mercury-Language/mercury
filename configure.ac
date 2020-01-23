@@ -260,13 +260,12 @@ fi
 # Ensure that the user does not try to build MSYS executables; we do not
 # (currently) support that.
 
-case "$host" in x86_64-pc-msys)
-   AC_MSG_ERROR(
+case "$host" in *-pc-msys)
+    AC_MSG_ERROR(
 [
-***** The x86_64-pc-msys architecture is not supported.
-***** You probably meant to use one of: x86_64-pc-mingw32, x86_64-pc_mingw64.])
-   exit 1
-   ;;
+***** The $host architecture is not supported.
+***** You probably meant to use one of: x86_64-pc-mingw32, x86_64-pc-mingw64.])
+    ;;
 esac
 
 #-----------------------------------------------------------------------------#
