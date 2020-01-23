@@ -35,13 +35,18 @@ do the following:
 
     or this one to start the MSYS2 shell:
 
-        C:\> C:\msys32\msys2_shell.cmd -use-full-path
+        C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw32
 
     or this one to start the Cygwin shell:
 
         C:\> C:\CYGWIN\cygwin.bat
 
 (We assume the default installation locations for MinGW/MSYS and Cygwin above.)
+
+Users of MSYS2 should note that it is required that the configuration type
+returned by autoconf match '*mingw*'; in particular it must *not* match
+'*-pc-msys'.  You can use the config.guess script to see what configuration
+type autoconf detects.
 
 In order to install the C#, Erlang or Java grades you will require a C#,
 Erlang or Java compiler to be included in the Windows PATH.
