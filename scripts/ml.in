@@ -134,7 +134,7 @@ case $mercury_libs in
 	default)
 		mercury_libs=shared
 		case $FULLARCH in
-			*-cygwin*|i*86-*-solaris*)
+			*-cygwin*|*-mingw*|i*86-*-solaris*)
 				# Shared libraries are not the default on the above systems.
 				# See configure.ac for details.
 				case $make_shared_lib in
@@ -161,7 +161,7 @@ case $all_libs in
 	default)
 		all_libs=shared
 		case $FULLARCH in
-			*-cygwin*)
+			*-cygwin*|*-mingw*)
 				# Shared libraries are not the default on the above systems.
 				# See configure.ac for details.
 				#
