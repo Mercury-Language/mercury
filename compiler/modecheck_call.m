@@ -81,7 +81,7 @@
 
 %---------------------------------------------------------------------------%
 
-modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
+modecheck_call_pred(PredId, MaybeDetism, ProcId0, TheProcId,
         ArgVars0, ArgVars, _GoalInfo, ExtraGoals, !ModeInfo) :-
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
     mode_info_get_preds(!.ModeInfo, Preds),
@@ -106,7 +106,6 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     ( if
         % In order to give better diagnostics, we handle the cases where there
         % are zero or one modes for the called predicate specially.
-        %
         ProcIds = [],
         not check_marker(Markers, marker_infer_modes)
     then
@@ -126,7 +125,6 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 
         % Check that `ArgsVars0' have livenesses which match the
         % expected livenesses.
-        %
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
         modecheck_var_list_is_live_no_exact_match(ArgVars0, ProcArgLives0,
@@ -135,7 +133,6 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         % Check that `ArgsVars0' have insts which match the expected
         % initial insts, and set their new final insts (introducing
         % extra unifications for implied modes, if necessary).
-        %
         proc_info_get_argmodes(ProcInfo, ProcArgModes0),
         proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
         mode_info_get_instvarset(!.ModeInfo, InstVarSet0),
@@ -157,12 +154,14 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 
         set_of_var.init(WaitingVars0),
         modecheck_find_matching_modes(ProcIds, PredId, Procs, ArgVars0,
-            [], RevMatchingProcIds, WaitingVars0, WaitingVars1, !ModeInfo),
+            [], RevMatchingProcIds, [], RevProcInitialInsts,
+            WaitingVars0, WaitingVars1, !ModeInfo),
 
         (
             RevMatchingProcIds = [],
-            no_matching_modes(PredId, ArgVars0, DeterminismKnown,
-                WaitingVars1, TheProcId, !ModeInfo),
+            list.reverse(RevProcInitialInsts, ProcInitialInsts),
+            no_matching_modes(PredId, ArgVars0, ProcInitialInsts,
+                MaybeDetism, WaitingVars1, TheProcId, !ModeInfo),
             ArgVars = ArgVars0,
             ExtraGoals = no_extra_goals
         ;
@@ -173,21 +172,20 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
             map.lookup(Procs, TheProcId, ProcInfo),
             proc_info_get_mode_errors(ProcInfo, CalleeModeErrors),
             (
+                CalleeModeErrors = [],
+                modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
+                    ArgOffset, InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
+            ;
                 CalleeModeErrors = [_ | _],
-                % mode error in callee for this mode
+                % Mode error in callee for this mode.
                 ArgVars = ArgVars0,
                 WaitingVars = set_of_var.list_to_set(ArgVars),
                 ExtraGoals = no_extra_goals,
                 instmap_lookup_vars(InstMap, ArgVars, ArgInsts),
                 mode_info_set_call_arg_context(0, !ModeInfo),
-                mode_info_error(WaitingVars,
-                    mode_error_in_callee(ArgVars, ArgInsts, PredId, TheProcId,
-                        CalleeModeErrors),
-                    !ModeInfo)
-            ;
-                CalleeModeErrors = [],
-                modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
-                    ArgOffset, InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
+                ModeError = mode_error_in_callee(ArgVars, ArgInsts,
+                    PredId, TheProcId, CalleeModeErrors),
+                mode_info_error(WaitingVars, ModeError, !ModeInfo)
             )
         ),
 
@@ -200,14 +198,16 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 %---------------------%
 
 :- pred modecheck_find_matching_modes(list(proc_id)::in, pred_id::in,
-    proc_table::in, list(prog_var)::in, list(proc_mode)::in,
-    list(proc_mode)::out, set_of_progvar::in, set_of_progvar::out,
+    proc_table::in, list(prog_var)::in,
+    list(proc_mode)::in, list(proc_mode)::out,
+    list(list(mer_inst))::in, list(list(mer_inst))::out,
+    set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_find_matching_modes([], _PredId, _Procs, _ArgVars,
-        !MatchingProcIds, !WaitingVars, !ModeInfo).
+        !MatchingProcIds, !RevProcInitialInsts, !WaitingVars, !ModeInfo).
 modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
-        !MatchingProcIds, !WaitingVars, !ModeInfo) :-
+        !MatchingProcIds, !RevProcInitialInsts, !WaitingVars, !ModeInfo) :-
     % Find the initial insts and the final livenesses of the arguments
     % for this mode of the called pred.
     map.lookup(Procs, ProcId, ProcInfo),
@@ -236,6 +236,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
     % implied modes?
 
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
+    !:RevProcInitialInsts = [InitialInsts | !.RevProcInitialInsts],
     ( if proc_info_is_valid_mode(ProcInfo) then
         modecheck_var_has_inst_list_no_exact_match(ArgVars0, InitialInsts, 0,
             InstVarSub, !ModeInfo)
@@ -261,16 +262,16 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 
     % Keep trying with the other modes for the called pred.
     modecheck_find_matching_modes(ProcIds, PredId, Procs, ArgVars0,
-        !MatchingProcIds, !WaitingVars, !ModeInfo).
+        !MatchingProcIds, !RevProcInitialInsts, !WaitingVars, !ModeInfo).
 
 %---------------------%
 
 :- pred no_matching_modes(pred_id::in, list(prog_var)::in,
-    maybe(determinism)::in, set_of_progvar::in, proc_id::out,
-    mode_info::in, mode_info::out) is det.
+    list(list(mer_inst))::in, maybe(determinism)::in, set_of_progvar::in,
+    proc_id::out, mode_info::in, mode_info::out) is det.
 
-no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
-        !ModeInfo) :-
+no_matching_modes(PredId, ArgVars, ProcInitialInsts, MaybeDetism, WaitingVars,
+        NewProcId, !ModeInfo) :-
     % There were no matching modes.
     % If we are inferring modes for this called predicate, then
     % just insert a new mode declaration which will match.
@@ -280,8 +281,7 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if check_marker(Markers, marker_infer_modes) then
-        insert_new_mode(PredId, ArgVars, DeterminismKnown, TheProcId,
-            !ModeInfo),
+        insert_new_mode(PredId, ArgVars, MaybeDetism, NewProcId, !ModeInfo),
         % We don't yet know the final insts for the newly created mode
         % of the called predicate, so we set the instmap to unreachable,
         % indicating that we have no information about the modes at this
@@ -289,12 +289,13 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
         instmap.init_unreachable(Instmap),
         mode_info_set_instmap(Instmap, !ModeInfo)
     else
-        TheProcId = invalid_proc_id,    % dummy value
+        NewProcId = invalid_proc_id,    % dummy value
         mode_info_get_instmap(!.ModeInfo, InstMap),
         instmap_lookup_vars(InstMap, ArgVars, ArgInsts),
         mode_info_set_call_arg_context(0, !ModeInfo),
-        mode_info_error(WaitingVars,
-            mode_error_no_matching_mode(ArgVars, ArgInsts), !ModeInfo)
+        ModeError = mode_error_no_matching_mode(ArgVars, ArgInsts,
+            ProcInitialInsts),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
     % Insert a new inferred mode for a predicate.

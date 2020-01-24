@@ -18,4 +18,7 @@ try_detism.m:016:     unique,
 try_detism.m:016:     free
 try_detism.m:016:   which does not match any of the modes for predicate
 try_detism.m:016:   `exception.try_io'/4.
+try_detism.m:016:   The first argument `TryLambda', whose inst is
+try_detism.m:016:     /* unique */ (pred(out, di, uo) is semidet),
+try_detism.m:016:   does not match any of those modes.
 For more information, recompile with `-E'.

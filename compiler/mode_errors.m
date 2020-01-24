@@ -106,9 +106,20 @@
             % A call to a predicate for which there are no mode declarations
             % (and mode inference is not enabled).
 
-    ;       mode_error_no_matching_mode(list(prog_var), list(mer_inst))
+    ;       mode_error_no_matching_mode(list(prog_var), list(mer_inst),
+                list(list(mer_inst)))
             % Call to a predicate with an insufficiently instantiated variable
             % (for preds with >1 mode).
+            %
+            % The first two arguments give the argument vars of the call
+            % and their insts at the time of the call.
+            %
+            % If the third argument is a nonempty list, then every member
+            % of that list gives the list of the required initial insts
+            % of the argument vars.
+            %
+            % All the lists of insts must have exactly one inst for
+            % each var in the list of vars.
 
     ;       mode_error_in_callee(list(prog_var), list(mer_inst),
                 pred_id, proc_id, list(mode_error_info))
@@ -166,13 +177,13 @@
 :- type schedule_culprit
     --->    goal_itself_was_impure
     ;       goals_followed_by_impure_goal(hlds_goal)
-    ;       conj_floundered.        % We've reached the end of a conjunction
+    ;       conj_floundered.        % We have reached the end of a conjunction
                                     % and there were still delayed goals.
 
 :- type final_inst_error
     --->    too_instantiated
     ;       not_instantiated_enough
-    ;       wrongly_instantiated.   % A catchall for anything that doesn't
+    ;       wrongly_instantiated.   % A catchall for anything that does not
                                     % fit into the above two categories.
 
 :- type mode_error_unify_rhs
@@ -249,6 +260,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.error_msg_inst.
@@ -257,6 +269,7 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.status.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
@@ -272,6 +285,7 @@
 :- import_module int.
 :- import_module io.            % used only for a typeclass instance
 :- import_module map.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -570,8 +584,9 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         ModeError = mode_error_conj(Errors, Culprit),
         Spec = mode_error_conj_to_spec(ModeInfo, Errors, Culprit)
     ;
-        ModeError = mode_error_no_matching_mode(Vars, Insts),
-        Spec = mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts)
+        ModeError = mode_error_no_matching_mode(Vars, Insts, InitialInsts),
+        Spec = mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts,
+            InitialInsts)
     ;
         ModeError = mode_error_in_callee(Vars, Insts,
             CalleePredId, CalleeProcId, CalleeErrors),
@@ -624,7 +639,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
         Msgs1 = mode_error_conjunct_to_msgs(Context, ModeInfo, Error)
     ;
         Errors = [_, _ | _],
-        % If there's more than one error, we use the setting of
+        % If there is more than one error, we use the setting of
         % --verbose-errors to decide between reporting just one and
         % reporting them all. Unfortunately, We can't use the
         % verbose_and_nonverbose functor of the error_msg_component type
@@ -664,11 +679,11 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
                 fixed(int_to_string(list.length(Errors))),
                 words("error messages indicate"),
                 words("possible causes of this error.")],
-            Msgs1Start = [simple_msg(Context,
-                [always(Preamble ++ ConjPieces)])],
-            Msgs1Rest = list.map(
+            Msgs1Start = [simplest_msg(Context, Preamble ++ ConjPieces)],
+            Msgs1Rest0 = list.map(
                 mode_error_conjunct_to_msgs(Context, ModeInfo),
                 ImportantErrors ++ OtherErrors),
+            Msgs1Rest = list.map(prefix_with_blank_line(Context), Msgs1Rest0),
             Msgs1 = Msgs1Start ++ list.condense(Msgs1Rest)
         )
     ),
@@ -677,7 +692,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
     % past an impure goal, then report that.
     (
         Culprit = conj_floundered,
-        % We've already reported everything we can.
+        % We have already reported everything we can.
         Msgs2 = []
     ;
         Culprit = goal_itself_was_impure,
@@ -698,6 +713,12 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
     ),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         Msgs1 ++ Msgs2).
+
+:- func prefix_with_blank_line(prog_context, list(error_msg))
+    = list(error_msg).
+
+prefix_with_blank_line(Context, Msgs) = [BlankMsg | Msgs] :-
+    BlankMsg = simplest_msg(Context, [blank_line]).
 
 :- pred is_error_important(delayed_goal::in) is semidet.
 
@@ -722,26 +743,44 @@ is_error_important(Error) :-
     = list(error_msg).
 
 mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
-    DelayedGoal = delayed_goal(Vars, Error, Goal),
-    set_of_var.to_sorted_list(Vars, VarList),
-    mode_info_get_varset(!.ModeInfo, VarSet),
-    Pieces1 = [words("Floundered goal, waiting on {"),
-        words(mercury_vars_to_name_only(VarSet, VarList)), words("}:"), nl],
-    Msg1 = simple_msg(Context,
-        [option_is_set(debug_modes, yes, [always(Pieces1)])]),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    Msg2 = error_msg(no, do_not_treat_as_first, 0,
-        [option_is_set(very_verbose, yes,
-            [always([nl]),
-             'new print_anything'(
-                write_indented_goal(ModuleInfo, VarSet, Goal))])]),
+    module_info_get_globals(ModuleInfo, Globals),
+
+    DelayedGoal = delayed_goal(Vars, Error, Goal),
     Error = mode_error_info(_, ModeError, ErrorContext, ModeContext),
     mode_info_set_context(ErrorContext, !ModeInfo),
     mode_info_set_mode_context(ModeContext, !ModeInfo),
+
     SubSpec0 = mode_error_to_spec(!.ModeInfo, ModeError),
-    module_info_get_globals(ModuleInfo, Globals),
     extract_spec_msgs(Globals, SubSpec0, SubMsgs),
-    Msgs = [Msg1, Msg2] ++ SubMsgs.
+
+    globals.lookup_bool_option(Globals, debug_modes, DebugModes),
+    (
+        DebugModes = no,
+        Msgs = SubMsgs
+    ;
+        DebugModes = yes,
+        set_of_var.to_sorted_list(Vars, VarList),
+        mode_info_get_varset(!.ModeInfo, VarSet),
+        VarNames = mercury_vars_to_name_only(VarSet, VarList),
+        Pieces1 = [words("Floundered goal, waiting on {"),
+            words(VarNames), words("}:"), nl],
+        Msg1 = simplest_msg(Context, Pieces1),
+        % XXX Shouldn't we check debug_modes_verbose instead of very_verbose?
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+        (
+            VeryVerbose = no,
+            Msgs = [Msg1] ++ SubMsgs
+        ;
+            VeryVerbose = yes,
+            Pieces2 =
+                [always([nl]),
+                'new print_anything'(
+                    write_indented_goal(ModuleInfo, VarSet, Goal))],
+            Msg2 = error_msg(no, do_not_treat_as_first, 0, Pieces2),
+            Msgs = [Msg1, Msg2] ++ SubMsgs
+        )
+    ).
 
 :- type write_indented_goal
     --->    write_indented_goal(module_info, prog_varset, hlds_goal).
@@ -1037,10 +1076,13 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         unexpected($pred, "no error")
     ).
 
-:- func mode_error_no_matching_mode_to_spec(mode_info, list(prog_var),
-    list(mer_inst)) = error_spec.
+%---------------------------------------------------------------------------%
 
-mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
+:- func mode_error_no_matching_mode_to_spec(mode_info, list(prog_var),
+    list(mer_inst), list(list(mer_inst))) = error_spec.
+
+mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
+        = Spec :-
     list.length(Vars, NumVars),
     list.length(Insts, NumInsts),
     expect(unify(NumVars, NumInsts), $pred, "NumVars != NumInsts"),
@@ -1105,25 +1147,34 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
         UserVarInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
             PredOrFunc, UserVars, UserInsts),
         ( if list.all_true(inst_is_ground(ModuleInfo), ExtraInsts) then
-            VarInstPieces = UserVarInstPieces
+            VarListInstPieces = UserVarInstPieces
         else
             ExtraArgPieces = [words("the compiler-generated argument")],
             ExtraVarInstPieces = arg_inst_mismatch_pieces(ModeInfo,
                 ExtraArgPieces, pf_predicate, ExtraVars, ExtraInsts),
-            VarInstPieces =  ExtraVarInstPieces ++ UserVarInstPieces
+            VarListInstPieces =  ExtraVarInstPieces ++ UserVarInstPieces
         )
     else
         UserArgPieces = [words("argument")],
-        VarInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
+        VarListInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
             PredOrFunc, Vars, Insts)
     ),
     NoMatchPieces =
         [words("which does not match any of the modes for"),
         words(call_id_to_string(CallId)), suffix("."), nl],
-    Pieces = PrefixPieces ++ VarInstPieces ++ NoMatchPieces,
+    mode_info_get_var_types(ModeInfo, VarTypes),
+    construct_argnum_var_type_inst_tuples(VarTypes, Vars, Insts, 1, ArgTuples),
+    find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples, InitialInsts,
+        0, map.init, ArgNumMatchedProcs),
+    report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
+        ArgTuples, BadArgPieces),
+    Pieces = PrefixPieces ++ VarListInstPieces ++ NoMatchPieces ++
+        BadArgPieces,
     mode_info_get_context(ModeInfo, Context),
-    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context, [always(Pieces)])]).
+    Spec = simplest_spec(severity_error, phase_mode_check(report_in_any_mode),
+        Context, Pieces).
+
+%---------------------%
 
 :- func arg_inst_mismatch_pieces(mode_info, list(format_component),
     pred_or_func, list(prog_var), list(mer_inst)) = list(format_component).
@@ -1181,6 +1232,101 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, Vars, Insts)
             )
         )
     ).
+
+%---------------------%
+
+:- type argnum_var_type_inst
+    --->    argnum_var_type_inst(int, prog_var, mer_type, mer_inst).
+
+:- pred construct_argnum_var_type_inst_tuples(vartypes::in,
+    list(prog_var)::in, list(mer_inst)::in, int::in,
+    list(argnum_var_type_inst)::out) is det.
+
+construct_argnum_var_type_inst_tuples(_VarTypes, [], [], _ArgNum, []).
+construct_argnum_var_type_inst_tuples(_VarTypes, [], [_ | _], _ArgNum, _) :-
+    unexpected($pred, "length mismatch").
+construct_argnum_var_type_inst_tuples(_VarTypes, [_ | _], [], _ArgNum, _) :-
+    unexpected($pred, "length mismatch").
+construct_argnum_var_type_inst_tuples(VarTypes, [Var | Vars], [Inst | Insts],
+        ArgNum, [ArgTuple | ArgTuples]) :-
+    lookup_var_type(VarTypes, Var, Type),
+    ArgTuple = argnum_var_type_inst(ArgNum, Var, Type, Inst),
+    construct_argnum_var_type_inst_tuples(VarTypes, Vars, Insts,
+        ArgNum + 1, ArgTuples).
+
+:- pred find_satisfied_initial_insts_in_procs(module_info::in,
+    list(argnum_var_type_inst)::in, list(list(mer_inst))::in, int::in,
+    multi_map(int, int)::in, multi_map(int, int)::out) is det.
+
+find_satisfied_initial_insts_in_procs(_ModuleInfo, _ArgTuples,
+        [], _ProcNum, !ArgNumMatchedProcs).
+find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
+        [Proc | Procs], ProcNum, !ArgNumMatchedProcs) :-
+    find_satisfied_initial_insts_in_proc(ModuleInfo, ArgTuples, Proc,
+        ProcNum, !ArgNumMatchedProcs),
+    find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
+        Procs, ProcNum + 1, !ArgNumMatchedProcs).
+
+:- pred find_satisfied_initial_insts_in_proc(module_info::in,
+    list(argnum_var_type_inst)::in, list(mer_inst)::in, int::in,
+    multi_map(int, int)::in, multi_map(int, int)::out) is det.
+
+find_satisfied_initial_insts_in_proc(_ModuleInfo, [], [],
+        _ProcNum, !ArgNumMatchedProcs).
+find_satisfied_initial_insts_in_proc(_ModuleInfo, [], [_ | _],
+        _ProcNum, !ArgNumMatchedProcs) :-
+    unexpected($pred, "length mismatch").
+find_satisfied_initial_insts_in_proc(_ModuleInfo, [_ | _], [],
+        _ProcNum, !ArgNumMatchedProcs) :-
+    unexpected($pred, "length mismatch").
+find_satisfied_initial_insts_in_proc(ModuleInfo,
+        [ArgTuple | ArgTuples], [ProcInitialInst | ProcInitialInsts],
+        ProcNum, !ArgNumMatchedProcs) :-
+    ArgTuple = argnum_var_type_inst(ArgNum, _Var, VarType, VarInst),
+    ( if
+        inst_matches_initial_sub(VarInst, ProcInitialInst, VarType,
+            ModuleInfo, _UpdatedModuleInfo, map.init, _Subst)
+    then
+        multi_map.add(ArgNum, ProcNum, !ArgNumMatchedProcs)
+    else
+        true
+    ),
+    find_satisfied_initial_insts_in_proc(ModuleInfo,
+        ArgTuples, ProcInitialInsts, ProcNum, !ArgNumMatchedProcs).
+
+:- pred report_any_never_matching_args(mode_info::in,
+    multi_map(int, int)::in, int::in, list(argnum_var_type_inst)::in,
+    list(format_component)::out) is det.
+
+report_any_never_matching_args(_ModeInfo, _ArgNumMatchedProcs, _NumExtra,
+        [], []).
+report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
+        [ArgTuple | ArgTuples], BadArgPieces) :-
+    report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
+        ArgTuples, BadArgPiecesTail),
+    ArgTuple = argnum_var_type_inst(ArgNum, Var, _VarType, VarInst),
+    ( if map.search(ArgNumMatchedProcs, ArgNum, _) then
+        BadArgPieces = BadArgPiecesTail
+    else
+        ( if ArgNum =< NumExtra then
+            ArgNumPieces = [words("The compiler-generated"), nth_fixed(ArgNum),
+                words("argument")]
+        else
+            ArgNumPieces = [words("The"), nth_fixed(ArgNum - NumExtra),
+                words("argument")]
+        ),
+        mode_info_get_varset(ModeInfo, VarSet),
+        BadArgPieces = ArgNumPieces ++
+            [quote(mercury_var_to_name_only(VarSet, Var)), suffix(","),
+            words("whose inst is")] ++
+            report_inst(ModeInfo, quote_short_inst, [suffix(",")],
+                [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
+                VarInst) ++
+            [words("does not match any of those modes."), nl] ++
+            BadArgPiecesTail
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- func mode_error_higher_order_pred_var_to_spec(mode_info, pred_or_func,
     prog_var, mer_inst, arity) = error_spec.
@@ -1632,7 +1778,7 @@ mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, ExpInst, Reason)
         Problem = "did not get sufficiently instantiated."
     ;
         Reason = wrongly_instantiated,
-        % I don't think this can happen.  But just in case...
+        % I don't think this can happen. But just in case...
         Problem = "had the wrong instantiatedness."
     ),
     Pieces = [words("mode error: argument"), fixed(int_to_string(ArgNum)),
