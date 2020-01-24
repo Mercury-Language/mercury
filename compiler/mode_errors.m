@@ -262,6 +262,7 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
+:- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_error_util.
@@ -1315,14 +1316,24 @@ report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
             ArgNumPieces = [words("The"), nth_fixed(ArgNum - NumExtra),
                 words("argument")]
         ),
+        mode_info_get_module_info(ModeInfo, ModuleInfo),
+        ( if inst_contains_higher_order(ModuleInfo, VarInst) then
+            HOPieces = [words("(For higher order insts like this,"),
+                words("the mismatch is sometimes caused by"),
+                words("the arity of the predicate or function"),
+                words("being different in the inst than in the type.)"), nl]
+        else
+            HOPieces = []
+        ),
         mode_info_get_varset(ModeInfo, VarSet),
         BadArgPieces = ArgNumPieces ++
-            [quote(mercury_var_to_name_only(VarSet, Var)), suffix(","),
-            words("whose inst is")] ++
+            [quote(mercury_var_to_name_only(VarSet, Var)),
+            words("has inst")] ++
             report_inst(ModeInfo, quote_short_inst, [suffix(",")],
                 [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
                 VarInst) ++
-            [words("does not match any of those modes."), nl] ++
+            [words("which does not match any of those modes."), nl] ++
+            HOPieces ++
             BadArgPiecesTail
     ).
 
