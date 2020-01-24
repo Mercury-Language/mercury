@@ -116,6 +116,8 @@
 :- pred var_inst_contains_any(module_info::in, instmap::in, prog_var::in)
     is semidet.
 
+:- pred inst_contains_higher_order(module_info::in, mer_inst::in) is semidet.
+
     % Return the default mode for a function of the given arity.
     %
 :- func pred_inst_info_default_func_mode(arity) = pred_inst_info.
@@ -2370,6 +2372,99 @@ bound_inst_list_contains_any(ModuleInfo, [BoundInst | BoundInsts],
 var_inst_contains_any(ModuleInfo, Instmap, Var) :-
     instmap_lookup_var(Instmap, Var, Inst),
     inst_contains_any(ModuleInfo, Inst).
+
+%---------------------------------------------------------------------------%
+
+inst_contains_higher_order(ModuleInfo, Inst) :-
+    set.init(Expansions),
+    inst_contains_higher_order_2(ModuleInfo, Inst, Expansions) = yes.
+
+:- func inst_contains_higher_order_2(module_info, mer_inst, set(inst_name))
+    = bool.
+
+inst_contains_higher_order_2(ModuleInfo, Inst, !.Expansions) = ContainsHO :-
+    (
+        ( Inst = ground(_, HOInstInfo)
+        ; Inst = any(_, HOInstInfo)
+        ),
+        ContainsHO = ho_inst_info_contains_higher_order(HOInstInfo)
+    ;
+        Inst = bound(_, _, BoundInsts),
+        ContainsHO = bound_inst_list_contains_higher_order(ModuleInfo,
+            BoundInsts, !.Expansions)
+    ;
+        Inst = inst_var(_),
+        unexpected($pred, "uninstantiated inst parameter")
+    ;
+        Inst = defined_inst(InstName),
+        ( if set.member(InstName, !.Expansions) then
+            ContainsHO = no
+        else
+            set.insert(InstName, !Expansions),
+            inst_lookup(ModuleInfo, InstName, SubInst),
+            ContainsHO =
+                inst_contains_higher_order_2(ModuleInfo, SubInst, !.Expansions)
+        )
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        ContainsHO =
+            inst_contains_higher_order_2(ModuleInfo, SubInst, !.Expansions)
+    ;
+        Inst = abstract_inst(_, ArgInsts),
+        ContainsHO = inst_list_contains_higher_order(ModuleInfo, ArgInsts,
+            !.Expansions)
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = not_reached
+        ),
+        ContainsHO = no
+    ).
+
+:- func inst_list_contains_higher_order(module_info, list(mer_inst),
+    set(inst_name)) = bool.
+
+inst_list_contains_higher_order(_ModuleInfo, [], _Expansions) = no.
+inst_list_contains_higher_order(ModuleInfo, [Inst | Insts], Expansions) =
+        ContainsHO :-
+    HeadContainsHO = inst_contains_higher_order_2(ModuleInfo, Inst, Expansions),
+    (
+        HeadContainsHO = yes,
+        ContainsHO = yes
+    ;
+        HeadContainsHO = no,
+        ContainsHO =
+            inst_list_contains_higher_order(ModuleInfo, Insts, Expansions)
+    ).
+
+:- func bound_inst_list_contains_higher_order(module_info, list(bound_inst),
+    set(inst_name)) = bool.
+
+bound_inst_list_contains_higher_order(_ModuleInfo, [], _Expansions) = no.
+bound_inst_list_contains_higher_order(ModuleInfo, [BoundInst | BoundInsts],
+        Expansions) = ContainsHO :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    HeadContainsHO =
+        inst_list_contains_higher_order(ModuleInfo, ArgInsts, Expansions),
+    (
+        HeadContainsHO = yes,
+        ContainsHO = yes
+    ;
+        HeadContainsHO = no,
+        ContainsHO = bound_inst_list_contains_higher_order(ModuleInfo,
+            BoundInsts, Expansions)
+    ).
+
+:- func ho_inst_info_contains_higher_order(ho_inst_info) = bool.
+
+ho_inst_info_contains_higher_order(HOInstInfo) = ContainsHO :-
+    (
+        HOInstInfo = higher_order(_),
+        ContainsHO = yes
+    ;
+        HOInstInfo = none_or_default_func,
+        ContainsHO = no
+    ).
 
 %---------------------------------------------------------------------------%
 

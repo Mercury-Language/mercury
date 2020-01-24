@@ -25,12 +25,16 @@ ho_type_mode_bug.m:029:     free,
 ho_type_mode_bug.m:029:     free
 ho_type_mode_bug.m:029:   which does not match any of the modes for predicate
 ho_type_mode_bug.m:029:   `ho_type_mode_bug.my_foldl2'/6.
-ho_type_mode_bug.m:029:   The first argument `P', whose inst is
-ho_type_mode_bug.m:029:   `(pred(in, in, out) is det)', does not match any of
-ho_type_mode_bug.m:029:   those modes.
-ho_type_mode_bug.m:029:   The third argument `FirstAcc1', whose inst is `free',
+ho_type_mode_bug.m:029:   The first argument `P' has inst
+ho_type_mode_bug.m:029:   `(pred(in, in, out) is det)', which does not match
+ho_type_mode_bug.m:029:   any of those modes.
+ho_type_mode_bug.m:029:   (For higher order insts like this, the mismatch is
+ho_type_mode_bug.m:029:   sometimes caused by the arity of the predicate or
+ho_type_mode_bug.m:029:   function being different in the inst than in the
+ho_type_mode_bug.m:029:   type.)
+ho_type_mode_bug.m:029:   The third argument `FirstAcc1' has inst `free', which
 ho_type_mode_bug.m:029:   does not match any of those modes.
-ho_type_mode_bug.m:029:   The fifth argument `SecAcc1', whose inst is `free',
+ho_type_mode_bug.m:029:   The fifth argument `SecAcc1' has inst `free', which
 ho_type_mode_bug.m:029:   does not match any of those modes.
 ho_type_mode_bug.m:029:   
 ho_type_mode_bug.m:027:   In clause for `my_foldl2((pred(in, in, out) is det),
@@ -75,12 +79,16 @@ ho_type_mode_bug.m:029:     free,
 ho_type_mode_bug.m:029:     free
 ho_type_mode_bug.m:029:   which does not match any of the modes for predicate
 ho_type_mode_bug.m:029:   `ho_type_mode_bug.my_foldl2'/6.
-ho_type_mode_bug.m:029:   The first argument `P', whose inst is
-ho_type_mode_bug.m:029:   `(pred(in, in, out) is det)', does not match any of
-ho_type_mode_bug.m:029:   those modes.
-ho_type_mode_bug.m:029:   The third argument `FirstAcc1', whose inst is `free',
+ho_type_mode_bug.m:029:   The first argument `P' has inst
+ho_type_mode_bug.m:029:   `(pred(in, in, out) is det)', which does not match
+ho_type_mode_bug.m:029:   any of those modes.
+ho_type_mode_bug.m:029:   (For higher order insts like this, the mismatch is
+ho_type_mode_bug.m:029:   sometimes caused by the arity of the predicate or
+ho_type_mode_bug.m:029:   function being different in the inst than in the
+ho_type_mode_bug.m:029:   type.)
+ho_type_mode_bug.m:029:   The third argument `FirstAcc1' has inst `free', which
 ho_type_mode_bug.m:029:   does not match any of those modes.
-ho_type_mode_bug.m:029:   The fifth argument `SecAcc1', whose inst is `free',
+ho_type_mode_bug.m:029:   The fifth argument `SecAcc1' has inst `free', which
 ho_type_mode_bug.m:029:   does not match any of those modes.
 ho_type_mode_bug.m:029:   
 ho_type_mode_bug.m:027:   In clause for `my_foldl2((pred(in, in, out) is det),
