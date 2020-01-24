@@ -3277,12 +3277,22 @@ case "$host" in
         esac
         ;;
 
-    *-w64-mingw*)
-        CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
-        BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
-        THREAD_LIBS="-lpthread"
-        ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+    *-w64-mingw*|x86_64-pc-mingw*)
+        THREAD_LIBS=""
+        case "$mercury_cv_cc_type" in
+            msvc)
+                CFLAGS_FOR_THREADS="-DGC_THREADS -MD"
+                LDFLAGS_FOR_THREADS="-MD"
+                LD_LIBFLAGS_FOR_THREADS="-MD"
+                ;;
+            *)
+                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
+                BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
+                THREAD_LIBS="-lpthread"
+                ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                ;;
+        esac
         ;;
 
     *apple*darwin*)
