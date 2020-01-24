@@ -20,6 +20,8 @@ constrained_poly_insts2.m:049:   inst:
 constrained_poly_insts2.m:049:     ground
 constrained_poly_insts2.m:049:   which does not match any of the modes for
 constrained_poly_insts2.m:049:   higher-order predicate call.
+constrained_poly_insts2.m:049:   The first argument `X', whose inst is
+constrained_poly_insts2.m:049:   `ground', does not match any of those modes.
 constrained_poly_insts2.m:054: In clause for `p2((pred(in((I =< ground))) is
 constrained_poly_insts2.m:054:   det), in((J =<
 constrained_poly_insts2.m:054:   (constrained_poly_insts2.apple))))':
@@ -34,6 +36,13 @@ constrained_poly_insts2.m:054:         apple
 constrained_poly_insts2.m:054:       ) )
 constrained_poly_insts2.m:054:   which does not match any of the modes for
 constrained_poly_insts2.m:054:   higher-order predicate call.
+constrained_poly_insts2.m:054:   The first argument `X', whose inst is
+constrained_poly_insts2.m:054:     ( J =< named inst apple,
+constrained_poly_insts2.m:054:     which expands to
+constrained_poly_insts2.m:054:       bound(
+constrained_poly_insts2.m:054:         apple
+constrained_poly_insts2.m:054:       ) ),
+constrained_poly_insts2.m:054:   does not match any of those modes.
 constrained_poly_insts2.m:059: In clause for `p3((pred(in((I =<
 constrained_poly_insts2.m:059:   (constrained_poly_insts2.apple)))) is det),
 constrained_poly_insts2.m:059:   in((constrained_poly_insts2.orange)))':
@@ -65,6 +74,13 @@ constrained_poly_insts2.m:064:         apple
 constrained_poly_insts2.m:064:       ) )
 constrained_poly_insts2.m:064:   which does not match any of the modes for
 constrained_poly_insts2.m:064:   higher-order predicate call.
+constrained_poly_insts2.m:064:   The first argument `X', whose inst is
+constrained_poly_insts2.m:064:     ( J =< named inst apple,
+constrained_poly_insts2.m:064:     which expands to
+constrained_poly_insts2.m:064:       bound(
+constrained_poly_insts2.m:064:         apple
+constrained_poly_insts2.m:064:       ) ),
+constrained_poly_insts2.m:064:   does not match any of those modes.
 constrained_poly_insts2.m:069: In clause for `p5((pred(in((I =<
 constrained_poly_insts2.m:069:   (constrained_poly_insts2.apple)))) is det),
 constrained_poly_insts2.m:069:   in((constrained_poly_insts2.apple)))':
@@ -79,3 +95,10 @@ constrained_poly_insts2.m:069:         apple
 constrained_poly_insts2.m:069:       )
 constrained_poly_insts2.m:069:   which does not match any of the modes for
 constrained_poly_insts2.m:069:   higher-order predicate call.
+constrained_poly_insts2.m:069:   The first argument `X', whose inst is
+constrained_poly_insts2.m:069:     named inst apple,
+constrained_poly_insts2.m:069:     which expands to
+constrained_poly_insts2.m:069:       bound(
+constrained_poly_insts2.m:069:         apple
+constrained_poly_insts2.m:069:       ),
+constrained_poly_insts2.m:069:   does not match any of those modes.

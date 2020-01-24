@@ -1,12 +1,14 @@
 modes_erroneous.m:020: In clause for `p(in, out)':
 modes_erroneous.m:020:   mode error in conjunction. The next 2 error messages
 modes_erroneous.m:020:   indicate possible causes of this error.
+modes_erroneous.m:020:   
 modes_erroneous.m:020:   In clause for `p(in, out)':
 modes_erroneous.m:020:   in argument 1 of call to predicate
 modes_erroneous.m:020:   `modes_erroneous.p'/2:
 modes_erroneous.m:020:   mode error: variable `V_5' has instantiatedness
 modes_erroneous.m:020:   `free',
 modes_erroneous.m:020:   expected instantiatedness was `ground'.
+modes_erroneous.m:020:   
 modes_erroneous.m:019:   In clause for `p(in, out)':
 modes_erroneous.m:019:   in argument 2 of clause head:
 modes_erroneous.m:019:   mode error in unification of `HeadVar__2' and `X'.

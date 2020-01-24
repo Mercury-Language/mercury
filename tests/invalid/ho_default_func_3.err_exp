@@ -1,6 +1,7 @@
 ho_default_func_3.m:034: In clause for `baz(in, out)':
 ho_default_func_3.m:034:   mode error in conjunction. The next 2 error messages
 ho_default_func_3.m:034:   indicate possible causes of this error.
+ho_default_func_3.m:034:   
 ho_default_func_3.m:034:   In clause for `baz(in, out)':
 ho_default_func_3.m:034:   in call to function `univ.univ'/1:
 ho_default_func_3.m:034:   mode error: argument `V_7' and the return value
@@ -9,6 +10,7 @@ ho_default_func_3.m:034:     /* unique */ (func(di) = uo is det),
 ho_default_func_3.m:034:     free
 ho_default_func_3.m:034:   which does not match any of the modes for function
 ho_default_func_3.m:034:   `univ.univ'/1.
+ho_default_func_3.m:034:   
 ho_default_func_3.m:034:   In clause for `baz(in, out)':
 ho_default_func_3.m:034:   in call to predicate `univ.univ_to_type'/2:
 ho_default_func_3.m:034:   mode error: arguments `V_6, Y0' have the following
