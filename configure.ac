@@ -5361,8 +5361,17 @@ if test "$mercury_cv_lto" = "yes"; then
             NM=${GCC_NM:-$NM}
             ;;
         clang*)
+            # Also consider using flto=thin
             CFLAGS_FOR_LTO="-flto"
             LDFLAGS_FOR_LTO="-flto"
+            LINK_SHARED_OBJ="$LINK_SHARED_OBJ -flto"
+            LINK_SHARED_OBJ_SH="$LINK_SHARED_OBJ_SH -flto"
+            AC_CHECK_TOOL([LLVM_AR], [llvm-ar], [])
+            AC_CHECK_TOOL([LLVM_RANLIB], [llvm-ranlib], [])
+            AC_CHECK_TOOL([LLVM_NM], [llvm-nm], [])
+            AR=${LLVM_AR:-$AR}
+            RANLIB=${LLVM_RANLIB:-$RANLIB}
+            NM=${LLVM_NM:-$NM}
             ;;
         *)
             CFLAGS_FOR_LTO=""
