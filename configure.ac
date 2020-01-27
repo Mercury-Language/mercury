@@ -5348,7 +5348,19 @@ if test "$mercury_cv_lto" = "yes"; then
             CFLAGS_FOR_LTO="-GL"
             LDFLAGS_FOR_LTO="-LTCG"
             ;;
-        gcc*|clang*)
+        gcc*)
+            CFLAGS_FOR_LTO="-flto"
+            LDFLAGS_FOR_LTO="-flto"
+            LINK_SHARED_OBJ="$LINK_SHARED_OBJ -flto"
+            LINK_SHARED_OBJ_SH="$LINK_SHARED_OBJ_SH -flto"
+            AC_CHECK_TOOL([GCC_AR], [gcc-ar], [])
+            AC_CHECK_TOOL([GCC_RANLIB], [gcc-ranlib], [])
+            AC_CHECK_TOOL([GCC_NM], [gcc-nm], [])
+            AR=${GCC_AR:-$AR}
+            RANLIB=${GCC_RANLIB:-$RANLIB}
+            NM=${GCC_NM:-$NM}
+            ;;
+        clang*)
             CFLAGS_FOR_LTO="-flto"
             LDFLAGS_FOR_LTO="-flto"
             ;;
