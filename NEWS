@@ -1296,4 +1296,11 @@ Changes to the extras distribution
 * We have added some additional random number generator implementations for
   use with the new random number generator framework.
 
+Known issues
+------------
+
+* [Mantis bug #466]. The experimental support for dependent parallel
+  conjunctions in low-level C grades is known to sometimes cause aborts
+  in the code generator.
+
 For news about earlier versions, see the HISTORY file.
