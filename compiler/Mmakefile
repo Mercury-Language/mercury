@@ -46,8 +46,6 @@ VPATH = \
 MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
 
 ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
-MLOBJS       := ../trace/lib$(EVENTSPEC_LIB_NAME).$A \
-		$(MLOBJS)
 MLLIBS       += $(THREAD_LIBS)
 else
 MLOBJS =
