@@ -299,6 +299,12 @@
 :- func sorted_keys(map(K, _V)) = list(K).
 :- pred sorted_keys(map(K, _V)::in, list(K)::out) is det.
 
+    % Given a map, return a list of all the keys in the map,
+    % as a set.
+    %
+:- func keys_as_set(map(K, _V)) = set(K).
+:- pred keys_as_set(map(K, _V)::in, set(K)::out) is det.
+
     % Given a map, return a list of all the values in the map.
     %
 :- func values(map(_K, V)) = list(V).
@@ -1376,6 +1382,13 @@ sorted_keys(M) = Ks :-
 sorted_keys(Map, KeyList) :-
     % Guaranteed to yield sorted lists.
     tree234.keys(Map, KeyList).
+
+keys_as_set(Map) = KeySet :-
+    keys_as_set(Map, KeySet).
+
+keys_as_set(Map, KeySet) :-
+    map.sorted_keys(Map, Keys),
+    set.sorted_list_to_set(Keys, KeySet).
 
 values(M) = Vs :-
     map.values(M, Vs).

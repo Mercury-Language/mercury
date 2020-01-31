@@ -8,8 +8,8 @@ Changes to the Mercury standard library
 
 * The following function and predicate have been added:
 
-    - `keys_as_set/1`
-    - `keys_as_set/2`
+    - func `keys_as_set/1`
+    - pred `keys_as_set/2`
 
 NEWS for Mercury 20.01
 ======================
