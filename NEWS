@@ -1,5 +1,18 @@
-NEWS for  Mercury 20.01
-=======================
+NEWS since Mercury 20.01.x
+==========================
+
+Changes to the Mercury standard library
+---------------------------------------
+
+### Changes to the `map` module
+
+* The following function and predicate have been added:
+
+    - `keys_as_set/1`
+    - `keys_as_set/2`
+
+NEWS for Mercury 20.01
+======================
 
 Changes to the core libraries license
 -------------------------------------
