@@ -4,12 +4,25 @@ NEWS since Mercury 20.01.x
 Changes to the Mercury standard library
 ---------------------------------------
 
+### Changes to the `hash_table` module
+
+* The following obsolete functions have been removed:
+
+    - func `new/3`
+    - func `new_default/1`
+
 ### Changes to the `map` module
 
 * The following function and predicate have been added:
 
     - func `keys_as_set/1`
     - pred `keys_as_set/2`
+
+### Changes to the `version_array` module
+
+* The following obsolete function has been removed:
+
+    - func `unsafe_new/2`
 
 NEWS for Mercury 20.01
 ======================

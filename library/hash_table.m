@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001, 2003-2006, 2010-2012 The University of Melbourne
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -72,23 +72,11 @@
 :- func init(hash_pred(K), int, float) = hash_table(K, V).
 :- mode init(in(hash_pred), in, in) = hash_table_uo is det.
 
-    % A synonym for the above.
-    %
-:- pragma obsolete(new/3).
-:- func new(hash_pred(K), int, float) = hash_table(K, V).
-:- mode new(in(hash_pred), in, in) = hash_table_uo is det.
-
     % init_default(HashFn) constructs a hash table with default size and
     % occupancy arguments.
     %
 :- func init_default(hash_pred(K)) = hash_table(K, V).
 :- mode init_default(in(hash_pred)) = hash_table_uo is det.
-
-    % A synonym for the above.
-    %
-:- pragma obsolete(new_default/1).
-:- func new_default(hash_pred(K)) = hash_table(K, V).
-:- mode new_default(in(hash_pred)) = hash_table_uo is det.
 
 %---------------------------------------------------------------------------%
 
@@ -346,14 +334,11 @@ init(HashPred, N, MaxOccupancy) = HT :-
         HT = ht(0, MaxOccupants, HashPred, Buckets)
     ).
 
-new(HashPred, N, MaxOccupancy) = init(HashPred, N, MaxOccupancy).
-
 %---------------------------------------------------------------------------%
 
     % These numbers are picked out of thin air.
     %
 init_default(HashPred) = init(HashPred, 7, 0.9).
-new_default(HashPred) = init(HashPred, 7, 0.9).
 
 %---------------------------------------------------------------------------%
 

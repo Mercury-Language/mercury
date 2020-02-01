@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury Team.
+% Copyright (C) 2014-2020 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -97,11 +97,6 @@
     % concurrently access the version array.
     %
 :- func unsafe_init(int, T) = version_array(T).
-
-    % An obsolete synonym for the above.
-    %
-:- pragma obsolete(unsafe_new/2).
-:- func unsafe_new(int, T) = version_array(T).
 
     % version_array(Xs) returns an array constructed from the items in the list
     % Xs.
@@ -434,8 +429,6 @@
 "
     VA = ML_uva.init(N, X);
 ").
-
-unsafe_new(N, X) = unsafe_init(N, X).
 
 %---------------------------------------------------------------------------%
 
