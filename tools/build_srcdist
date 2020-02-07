@@ -7,7 +7,7 @@
 set -e
 
 DATE=`date '+%Y-%m-%d'`
-ROTD_VERSION=20.01-beta-$DATE
+ROTD_VERSION=20.01.1-beta-$DATE
 RELEASE_VERSION=$ROTD_VERSION
 CC=gcc
 RUN=no
