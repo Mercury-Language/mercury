@@ -27,7 +27,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -40,37 +39,31 @@
 :- pred detect_switches_in_proc(switch_detect_info::in,
     proc_info::in, proc_info::out) is det.
 
+%-----------------------------------------------------------------------------%
+
 :- type found_deconstruct
     --->    did_find_deconstruct
     ;       did_not_find_deconstruct.
 
-    % Which unifications are we allowed to pull out of a branched control
-    % structure? Maybe all unifications with the given variable, maybe just
-    % those which unify that variable with one of the given cons_ids.
-:- type may_pull
-    --->    may_pull_all_functors
-    ;       may_pull_some_functors(set(cons_id)).
+:- type process_unify(Result, Info) ==
+    pred(prog_var, hlds_goal, list(hlds_goal), Result, Result, Info, Info).
+:- inst process_unify == (pred(in, in, out, in, out, in, out) is det).
 
-    % find_bind_var(Var, MayPull, ProcessUnify, Goal0, Goal, !Result, !Info,
+    % find_bind_var(Var, ProcessUnify, Goal0, Goal, !Result, !Info,
     %   FoundDeconstruct):
     %
     % Used by both switch_detection and cse_detection. Searches through
     % Goal0 looking for the first deconstruction unification with Var
     % or an alias of Var. If find_bind_var finds a deconstruction unification
-    % of the variable, and if it is with a cons_id that is allowed by MayPull,
-    % it calls ProcessUnify to handle it (which may replace the unification
-    % with some other goals, which is why we return Goal), and it stops
-    % searching. If it doesn't find such a deconstruction, find_bind_var
-    % leaves !Result unchanged.
+    % of the variable, it calls ProcessUnify to handle it (which may replace
+    % the unification with some other goals, which is why we return Goal),
+    % and it stops searching. If it doesn't find such a deconstruction,
+    % find_bind_var leaves !Result unchanged.
     %
-:- pred find_bind_var(prog_var::in, may_pull::in,
+:- pred find_bind_var(prog_var::in,
     process_unify(Result, Info)::in(process_unify),
     hlds_goal::in, hlds_goal::out, Result::in, Result::out,
     Info::in, Info::out, found_deconstruct::out) is det.
-
-:- type process_unify(Result, Info) ==
-    pred(prog_var, hlds_goal, list(hlds_goal), Result, Result, Info, Info).
-:- inst process_unify == (pred(in, in, out, in, out, in, out) is det).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -100,6 +93,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module set_tree234.
 :- import_module term.
 :- import_module unit.
@@ -1245,9 +1239,8 @@ create_expanded_conjunction(Unifies, LaterGoals, GoalInfo, Disjunct, Goal) :-
 
 partition_disj_trial([], _Var, !Left, !CasesTable).
 partition_disj_trial([Disjunct0 | Disjuncts0], Var, !Left, !CasesTable) :-
-    find_bind_var(Var, may_pull_all_functors,
-        find_bind_var_for_switch_in_deconstruct, Disjunct0, Disjunct,
-        no, MaybeConsId, unit, _, _),
+    find_bind_var(Var, find_bind_var_for_switch_in_deconstruct,
+        Disjunct0, Disjunct, no, MaybeConsId, unit, _, _),
     (
         MaybeConsId = yes(ConsId),
         add_single_entry(ConsId, Disjunct, !CasesTable)
@@ -1293,10 +1286,9 @@ find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
 
 %-----------------------------------------------------------------------------%
 
-find_bind_var(Var, MayPull, ProcessUnify, !Goal, !Result, !Info,
-        FoundDeconstruct) :-
+find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
     map.init(Subst),
-    find_bind_var_2(Var, MayPull, ProcessUnify, !Goal, Subst, _,
+    find_bind_var_2(Var, ProcessUnify, !Goal, Subst, _,
         !Result, !Info, DeconstructSearch),
     (
         DeconstructSearch = before_deconstruct,
@@ -1314,13 +1306,13 @@ find_bind_var(Var, MayPull, ProcessUnify, !Goal, !Result, !Info,
     ;       found_deconstruct
     ;       given_up_search.
 
-:- pred find_bind_var_2(prog_var::in, may_pull::in,
+:- pred find_bind_var_2(prog_var::in,
     process_unify(Result, Info)::in(process_unify),
     hlds_goal::in, hlds_goal::out,
     prog_substitution::in, prog_substitution::out, Result::in, Result::out,
     Info::in, Info::out, deconstruct_search::out) is det.
 
-find_bind_var_2(Var, MayPull, ProcessUnify, Goal0, Goal, !Subst,
+find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
         !Result, !Info, FoundDeconstruct) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
@@ -1334,7 +1326,7 @@ find_bind_var_2(Var, MayPull, ProcessUnify, Goal0, Goal, !Subst,
             % we keep going.
             FoundDeconstruct = before_deconstruct
         else
-            find_bind_var_2(Var, MayPull, ProcessUnify, SubGoal0, SubGoal,
+            find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal,
                 !Subst, !Result, !Info, FoundDeconstruct),
             ( if
                 FoundDeconstruct = found_deconstruct,
@@ -1357,9 +1349,8 @@ find_bind_var_2(Var, MayPull, ProcessUnify, Goal0, Goal, !Subst,
                 FoundDeconstruct = before_deconstruct
             ;
                 SubGoals0 = [_ | _],
-                conj_find_bind_var(Var, MayPull, ProcessUnify,
-                    SubGoals0, SubGoals, !Subst, !Result, !Info,
-                    FoundDeconstruct),
+                conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
+                    !Subst, !Result, !Info, FoundDeconstruct),
                 Goal = hlds_goal(conj(ConjType, SubGoals), GoalInfo)
             )
         ;
@@ -1372,24 +1363,16 @@ find_bind_var_2(Var, MayPull, ProcessUnify, Goal0, Goal, !Subst,
         ( if
             % Check whether the unification is a deconstruction unification
             % on either Var or on a variable aliased to Var.
-            UnifyInfo0 = deconstruct(UnifyVar, ConsId, _, _, _, _),
+            UnifyInfo0 = deconstruct(UnifyVar, _ConsId, _, _, _, _),
             term.apply_rec_substitution_in_term(!.Subst,
                 term.variable(Var, term.context_init),
                 term.variable(SubstVar, term.context_init)),
             term.apply_rec_substitution_in_term(!.Subst,
                 term.variable(UnifyVar, term.context_init),
                 term.variable(SubstUnifyVar, term.context_init)),
-            SubstVar = SubstUnifyVar,
-            % Check whether we may pull this unification out of the branched
-            % control structure it is in.
-            (
-                MayPull = may_pull_all_functors
-            ;
-                MayPull = may_pull_some_functors(AllowedConsIds),
-                set.contains(AllowedConsIds, ConsId)
-            )
+            SubstVar = SubstUnifyVar
         then
-            call(ProcessUnify, Var, Goal0, Goals, !Result, !Info),
+            ProcessUnify(Var, Goal0, Goals, !Result, !Info),
             conj_list_to_goal(Goals, GoalInfo, Goal),
             FoundDeconstruct = found_deconstruct
         else
@@ -1434,22 +1417,21 @@ find_bind_var_2(Var, MayPull, ProcessUnify, Goal0, Goal, !Subst,
         )
     ).
 
-:- pred conj_find_bind_var(prog_var::in, may_pull::in,
+:- pred conj_find_bind_var(prog_var::in,
     process_unify(Result, Info)::in(process_unify),
     list(hlds_goal)::in, list(hlds_goal)::out,
     prog_substitution::in, prog_substitution::out, Result::in, Result::out,
     Info::in, Info::out, deconstruct_search::out) is det.
 
-conj_find_bind_var(_Var, _MayPull, _, [], [], !Subst, !Result, !Info,
-        before_deconstruct).
-conj_find_bind_var(Var, MayPull, ProcessUnify,
-        [Goal0 | Goals0], [Goal | Goals], !Subst, !Result, !Info,
-        FoundDeconstruct) :-
-    find_bind_var_2(Var, MayPull, ProcessUnify, Goal0, Goal, !Subst,
+conj_find_bind_var(_Var, _, [], [],
+        !Subst, !Result, !Info, before_deconstruct).
+conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
+        !Subst, !Result, !Info, FoundDeconstruct) :-
+    find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
         !Result, !Info, FoundDeconstruct1),
     (
         FoundDeconstruct1 = before_deconstruct,
-        conj_find_bind_var(Var, MayPull, ProcessUnify, Goals0, Goals,
+        conj_find_bind_var(Var, ProcessUnify, Goals0, Goals,
             !Subst, !Result, !Info, FoundDeconstruct)
     ;
         ( FoundDeconstruct1 = found_deconstruct

@@ -2218,6 +2218,8 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_get_item_number(proc_info::in, int::out) is det.
 :- pred proc_info_get_can_process(proc_info::in, can_process::out) is det.
 :- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
+:- pred proc_info_get_cse_nopull_contexts(proc_info::in,
+    list(prog_context)::out) is det.
 :- pred proc_info_get_maybe_untuple_info(proc_info::in,
     maybe(untuple_proc_info)::out) is det.
 :- pred proc_info_get_var_name_remap(proc_info::in,
@@ -2291,8 +2293,6 @@ marker_list_to_markers(Markers, MarkerSet) :-
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_argmodes(list(mer_mode)::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_head_modes_constraint(mode_constraint::in,
-    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_arglives(maybe(list(is_live))::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_inferred_determinism(determinism::in,
@@ -2304,7 +2304,11 @@ marker_list_to_markers(Markers, MarkerSet) :-
 
 :- pred proc_info_set_can_process(can_process::in,
     proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_head_modes_constraint(mode_constraint::in,
+    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_detism_decl(detism_decl::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_cse_nopull_contexts(list(prog_context)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_untuple_info(maybe(untuple_proc_info)::in,
     proc_info::in, proc_info::out) is det.
@@ -2522,9 +2526,10 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- type proc_info
     --->    proc_info(
                 % The Boehm collector allocates blocks whose sizes are
-                % multiples of 2. Ideally, we would want the number of fields
-                % of pred_info to be a multiple of 2 as well, but as of
-                % 2017 march 15, this seems to be the optimal arrangement (zs).
+                % multiples (and usually powers) of 2. Ideally, we would want
+                % the number of fields of pred_info to match one of the Boehm
+                % block sizes, but as of 2017 march 15, this seems to be the
+                % optimal arrangement (zs).
 
 /*  1 */        proc_head_vars                  :: list(prog_var),
 /*  2 */        proc_body                       :: hlds_goal,
@@ -2541,24 +2546,23 @@ marker_list_to_markers(Markers, MarkerSet) :-
 /*  7 */        proc_maybe_decl_head_modes      :: maybe(list(mer_mode)),
 
 /*  8 */        proc_actual_head_modes          :: list(mer_mode),
-/*  9 */        proc_maybe_head_modes_constr    :: maybe(mode_constraint),
 
                 % Liveness (in the mode analysis sense) of the arguments
                 % in the caller; says whether each argument may be used
                 % after the call.
-/* 10 */        proc_headvar_caller_liveness    :: maybe(list(is_live)),
+/*  9 */        proc_headvar_caller_liveness    :: maybe(list(is_live)),
 
                 % The _declared_ determinism of the procedure, or `no'
                 % if there was no detism declaration.
-/* 11 */        proc_declared_detism            :: maybe(determinism),
-/* 12 */        proc_inferred_detism            :: determinism,
+/* 10 */        proc_declared_detism            :: maybe(determinism),
+/* 11 */        proc_inferred_detism            :: determinism,
 
                 % How should the proc be evaluated.
-/* 13 */        proc_eval_method                :: eval_method,
+/* 12 */        proc_eval_method                :: eval_method,
 
-/* 14 */        proc_mode_errors                :: list(mode_error_info),
+/* 13 */        proc_mode_errors                :: list(mode_error_info),
 
-/* 15 */        proc_sub_info                   :: proc_sub_info
+/* 14 */        proc_sub_info                   :: proc_sub_info
             ).
 
 :- type proc_sub_info
@@ -2577,9 +2581,25 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 % of the unique_modes pass.
                 psi_can_process                 :: can_process,
 
+                % XXX The mode of the procedure in the ROBDD based
+                % constraint system. Whether it represents the declared
+                % or the actual mode is unclear, but since that constraint
+                % system is obsolete, this does not much matter :-(
+                psi_maybe_head_modes_constr    :: maybe(mode_constraint),
+
                 % Was the determinism declaration explicit, or was it implicit,
                 % as for functions?
                 psi_detism_decl                 :: detism_decl,
+
+                % A list of all the contexts at which cse_detection.m
+                % declined to pull out a common deconstruction out of
+                % a branched control structure due to concerns about
+                % uniqueness in the inst of the affected variable.
+                % Determinism analysis wants this information so that
+                % it knows whether to mention this fact to the user
+                % as a possible cause of a determinism error.
+                % See Mantis bug #496.
+                psi_cse_nopull_contexts         :: list(prog_context),
 
                 % If set, it means this procedure was created from another
                 % procedure by the untupling transformation. This slot records
@@ -2908,6 +2928,7 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
     % argument ItemNumber
     CanProcess = can_process_now,
     % argument DetismDecl
+    CseNopullContexts = [],
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
     StateVarWarnings = [],
@@ -2944,7 +2965,9 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
         MainContext,
         ItemNumber,
         CanProcess,
+        MaybeHeadModesConstr,
         DetismDecl,
+        CseNopullContexts,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
@@ -3003,7 +3026,6 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
         InstVarSet,
         DeclaredModes,
         Modes,
-        MaybeHeadModesConstr,
         MaybeArgLives,
         MaybeDeclaredDetism,
         InferredDetism,
@@ -3040,6 +3062,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     % argument ItemNumber
     CanProcess = can_process_now,
     % argument DetismDecl
+    CseNopullContexts = [],
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
     StateVarWarnings = [],
@@ -3076,7 +3099,9 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         MainContext,
         ItemNumber,
         CanProcess,
+        MaybeHeadModesConstr,
         DetismDecl,
+        CseNopullContexts,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
@@ -3132,7 +3157,6 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         InstVarSet,
         DeclaredModes,
         Modes,
-        MaybeHeadModesConstr,
         MaybeArgLives,
         MaybeDeclaredDetism,
         Detism,
@@ -3182,6 +3206,8 @@ proc_info_get_can_process(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_can_process.
 proc_info_get_detism_decl(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_detism_decl.
+proc_info_get_cse_nopull_contexts(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_cse_nopull_contexts.
 proc_info_get_maybe_untuple_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_untuple_info.
 proc_info_get_var_name_remap(PI, X) :-
@@ -3255,8 +3281,6 @@ proc_info_set_maybe_declared_argmodes(X, !PI) :-
     !PI ^ proc_maybe_decl_head_modes := X.
 proc_info_set_argmodes(X, !PI) :-
     !PI ^ proc_actual_head_modes := X.
-proc_info_set_head_modes_constraint(X, !PI) :-
-    !PI ^ proc_maybe_head_modes_constr := yes(X).
 proc_info_set_maybe_arglives(X, !PI) :-
     !PI ^ proc_headvar_caller_liveness := X.
 proc_info_set_inferred_determinism(X, !PI) :-
@@ -3268,8 +3292,12 @@ proc_info_set_mode_errors(X, !PI) :-
 
 proc_info_set_can_process(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_can_process := X.
+proc_info_set_head_modes_constraint(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_head_modes_constr := yes(X).
 proc_info_set_detism_decl(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_detism_decl := X.
+proc_info_set_cse_nopull_contexts(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_cse_nopull_contexts := X.
 proc_info_set_maybe_untuple_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_untuple_info := X.
 proc_info_set_var_name_remap(X, !PI) :-
@@ -3376,7 +3404,8 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
         ^ maybe_imported_reuse := no.
 
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
-    MaybeHeadModesConstraint = ProcInfo ^ proc_maybe_head_modes_constr,
+    MaybeHeadModesConstraint =
+        ProcInfo ^ proc_sub_info ^ psi_maybe_head_modes_constr,
     (
         MaybeHeadModesConstraint = yes(HeadModesConstraint)
     ;

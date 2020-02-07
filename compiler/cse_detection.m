@@ -119,7 +119,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -267,11 +266,12 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
 
 :- type cse_info
     --->    cse_info(
-                csei_module_info    :: module_info,
-                csei_varset         :: prog_varset,
-                csei_vartypes       :: vartypes,
-                csei_rtti_varmaps   :: rtti_varmaps,
-                csei_redo           :: bool
+                csei_module_info        :: module_info,
+                csei_varset             :: prog_varset,
+                csei_vartypes           :: vartypes,
+                csei_rtti_varmaps       :: rtti_varmaps,
+                csei_redo               :: bool,
+                csei_nopull_contexts    :: list(prog_context)
             ).
 
 :- pred detect_cse_in_proc_pass(module_info::in, bool::out,
@@ -288,15 +288,20 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     Redo0 = no,
-    CseInfo0 = cse_info(ModuleInfo, Varset0, VarTypes0, RttiVarMaps0, Redo0),
+    CseInfo0 =
+        cse_info(ModuleInfo, Varset0, VarTypes0, RttiVarMaps0, Redo0, []),
     detect_cse_in_goal(Goal0, Goal1, CseInfo0, CseInfo, InstMap0),
-    CseInfo = cse_info(_, _, _, _, Redo),
+    CseInfo = cse_info(_, _, _, _, Redo, CseNoPullContexts),
+    proc_info_get_cse_nopull_contexts(!.ProcInfo, NoPullContexts0),
+    NoPullContexts = CseNoPullContexts ++ NoPullContexts0,
+    proc_info_set_cse_nopull_contexts(NoPullContexts, !ProcInfo),
     (
         Redo = no
     ;
         Redo = yes,
         % ModuleInfo should not be changed by detect_cse_in_goal.
-        CseInfo = cse_info(_ModuleInfo, VarSet1, VarTypes1, RttiVarMaps1, _),
+        CseInfo =
+            cse_info(_ModuleInfo, VarSet1, VarTypes1, RttiVarMaps1, _, _),
 
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         implicitly_quantify_clause_body_general(
@@ -530,21 +535,36 @@ detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap) :-
     hlds_goal_expr::out) is det.
 
 detect_cse_in_disj([], Goals0, _GoalInfo0, InstMap0, !CseInfo, GoalExpr) :-
+    % We get here only if we couldn't pull any common unifications
+    % out of two or more of the disjuncts represented by Goals0.
+    % In that case, we look for transformation opportunities inside
+    % *each* disjunct.
     detect_cse_in_independent_goals(Goals0, Goals, !CseInfo, InstMap0),
     GoalExpr = disj(Goals).
 detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
         !CseInfo, GoalExpr) :-
-    instmap_lookup_var(InstMap0, Var, VarInst0),
+    CseInfo0 = !.CseInfo,
     ( if
-        may_pull_lhs_inst(!.CseInfo, VarInst0, MayPull),
-        common_deconstruct(Goals0, Var, MayPull, !CseInfo, UnifyGoal,
+        common_deconstruct(Goals0, Var, !CseInfo, UnifyGoal, ConsId,
             FirstOldNew, LaterOldNew, Goals)
     then
-        maybe_update_existential_data_structures(UnifyGoal,
-            FirstOldNew, LaterOldNew, !CseInfo),
-        GoalExpr = conj(plain_conj,
-            [UnifyGoal, hlds_goal(disj(Goals), GoalInfo0)]),
-        !CseInfo ^ csei_redo := yes
+        instmap_lookup_var(InstMap0, Var, VarInst0),
+        ( if may_pull_lhs_inst_cons_id(!.CseInfo, VarInst0, ConsId) then
+            maybe_update_existential_data_structures(UnifyGoal,
+                FirstOldNew, LaterOldNew, !CseInfo),
+            GoalExpr = conj(plain_conj,
+                [UnifyGoal, hlds_goal(disj(Goals), GoalInfo0)]),
+            !CseInfo ^ csei_redo := yes
+        else
+            % Throw away any changes made by common_deconstruct above.
+            !:CseInfo = CseInfo0,
+            % Record the fact that we *could* have pulled a deconstruction
+            % out of two or more arms *if* uniqueness in the inst of the
+            % variable concerned didn't stop us.
+            record_pull_decline(UnifyGoal, !CseInfo),
+            detect_cse_in_disj(Vars, Goals0, GoalInfo0, InstMap0,
+                !CseInfo, GoalExpr)
+        )
     else
         detect_cse_in_disj(Vars, Goals0, GoalInfo0, InstMap0,
             !CseInfo, GoalExpr)
@@ -566,22 +586,38 @@ detect_cse_in_independent_goals([Goal0 | Goals0], [Goal | Goals], !CseInfo,
 
 detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo,
         InstMap0, !CseInfo, GoalExpr) :-
+    % We get here only if we couldn't pull any common unifications
+    % out of two or more of the switch arms represented by Cases0.
+    % In that case, we look for transformation opportunities inside
+    % *each* switch arm.
     detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0),
     GoalExpr = switch(SwitchVar, CanFail, Cases).
 detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
         InstMap0, !CseInfo, GoalExpr) :-
+    CseInfo0 = !.CseInfo,
     ( if
         Var \= SwitchVar,
-        instmap_lookup_var(InstMap0, Var, VarInst0),
-        may_pull_lhs_inst(!.CseInfo, VarInst0, MayPull),
-        common_deconstruct_cases(Cases0, Var, MayPull, !CseInfo,
-            UnifyGoal, FirstOldNew, LaterOldNew, Cases)
+        common_deconstruct_cases(Cases0, Var, !CseInfo, UnifyGoal, ConsId,
+            FirstOldNew, LaterOldNew, Cases)
     then
-        maybe_update_existential_data_structures(UnifyGoal,
-            FirstOldNew, LaterOldNew, !CseInfo),
-        SwitchGoal = hlds_goal(switch(SwitchVar, CanFail, Cases), GoalInfo),
-        GoalExpr = conj(plain_conj, [UnifyGoal, SwitchGoal]),
-        !CseInfo ^ csei_redo := yes
+        instmap_lookup_var(InstMap0, Var, VarInst0),
+        ( if may_pull_lhs_inst_cons_id(!.CseInfo, VarInst0, ConsId) then
+            maybe_update_existential_data_structures(UnifyGoal,
+                FirstOldNew, LaterOldNew, !CseInfo),
+            SwitchGoalExpr = switch(SwitchVar, CanFail, Cases),
+            SwitchGoal = hlds_goal(SwitchGoalExpr, GoalInfo),
+            GoalExpr = conj(plain_conj, [UnifyGoal, SwitchGoal]),
+            !CseInfo ^ csei_redo := yes
+        else
+            % Throw away any changes made by common_deconstruct above.
+            !:CseInfo = CseInfo0,
+            % Record the fact that we *could* have pulled a deconstruction
+            % out of two or more arms *if* uniqueness in the inst of the
+            % variable concerned didn't stop us.
+            record_pull_decline(UnifyGoal, !CseInfo),
+            detect_cse_in_cases(Vars, SwitchVar, CanFail, Cases0, GoalInfo,
+                InstMap0, !CseInfo, GoalExpr)
+        )
     else
         detect_cse_in_cases(Vars, SwitchVar, CanFail, Cases0, GoalInfo,
             InstMap0, !CseInfo, GoalExpr)
@@ -602,28 +638,48 @@ detect_cse_in_cases_arms([Case0 | Cases0], [Case | Cases], !CseInfo,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_info::in,
     instmap::in, cse_info::in, cse_info::out, hlds_goal_expr::out) is det.
 
-detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, InstMap, !CseInfo,
+detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, InstMap0, !CseInfo,
         GoalExpr) :-
+    % We get here only if we couldn't pull any common unifications
+    % out of both arms of the if-then-else. In that case, we look for
+    % transformation opportunities inside *each* arm.
     detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
-        InstMap),
+        InstMap0),
     GoalExpr = if_then_else(IfVars, Cond, Then, Else).
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
-        InstMap, !CseInfo, GoalExpr) :-
-    instmap_lookup_var(InstMap, Var, VarInst0),
+        InstMap0, !CseInfo, GoalExpr) :-
+    CseInfo0 = !.CseInfo,
     ( if
-        may_pull_lhs_inst(!.CseInfo, VarInst0, MayPull),
-        common_deconstruct([Then0, Else0], Var, MayPull, !CseInfo,
-            UnifyGoal, FirstOldNew, LaterOldNew, Goals),
-        Goals = [Then, Else]
+        common_deconstruct([Then0, Else0], Var, !CseInfo, UnifyGoal, ConsId,
+            FirstOldNew, LaterOldNew, Goals)
     then
-        maybe_update_existential_data_structures(UnifyGoal,
-            FirstOldNew, LaterOldNew, !CseInfo),
-        IfGoal = hlds_goal(if_then_else(IfVars, Cond0, Then, Else), GoalInfo),
-        GoalExpr = conj(plain_conj, [UnifyGoal, IfGoal]),
-        !CseInfo ^ csei_redo := yes
+        ( if Goals = [Then1, Else1] then
+            Then = Then1,
+            Else = Else1
+        else
+            unexpected($pred, "common_deconstruct changes number of goals")
+        ),
+        instmap_lookup_var(InstMap0, Var, VarInst0),
+        ( if may_pull_lhs_inst_cons_id(!.CseInfo, VarInst0, ConsId) then
+            maybe_update_existential_data_structures(UnifyGoal,
+                FirstOldNew, LaterOldNew, !CseInfo),
+            IfGoalExpr = if_then_else(IfVars, Cond0, Then, Else),
+            IfGoal = hlds_goal(IfGoalExpr, GoalInfo),
+            GoalExpr = conj(plain_conj, [UnifyGoal, IfGoal]),
+            !CseInfo ^ csei_redo := yes
+        else
+            % Throw away any changes made by common_deconstruct above.
+            !:CseInfo = CseInfo0,
+            % Record the fact that we *could* have pulled a deconstruction
+            % out of two or more arms *if* uniqueness in the inst of the
+            % variable concerned didn't stop us.
+            record_pull_decline(UnifyGoal, !CseInfo),
+            detect_cse_in_ite(Vars, IfVars, Cond0, Then0, Else0, GoalInfo,
+                InstMap0, !CseInfo, GoalExpr)
+        )
     else
         detect_cse_in_ite(Vars, IfVars, Cond0, Then0, Else0, GoalInfo,
-            InstMap, !CseInfo, GoalExpr)
+            InstMap0, !CseInfo, GoalExpr)
     ).
 
 :- pred detect_cse_in_ite_arms(hlds_goal::in, hlds_goal::out,
@@ -639,68 +695,89 @@ detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
 
 %---------------------------------------------------------------------------%
 
-    % common_deconstruct(Goals0, Var, MayPull, !CseInfo, Unify, Goals):
+:- pred record_pull_decline(hlds_goal::in, cse_info::in, cse_info::out) is det.
+
+record_pull_decline(UnifyGoal, !CseInfo) :-
+    UnifyGoal = hlds_goal(_, UnifyGoalInfo),
+    Context = goal_info_get_context(UnifyGoalInfo),
+    NoPullContexts0 = !.CseInfo ^ csei_nopull_contexts,
+    NoPullContexts = [Context | NoPullContexts0],
+    !CseInfo ^ csei_nopull_contexts := NoPullContexts.
+
+%---------------------------------------------------------------------------%
+
+    % common_deconstruct(Goals0, Var, !CseInfo, Unify, ConsId,
+    %   FirstOldNew, LaterOldNew, Goals):
     % input vars:
     %   Goals0 is a list of parallel goals in a branched structure
     %   (disjunction, if-then-else, or switch).
     %   Var is the variable we are looking for a common deconstruction on.
-    %   MayPull says which Var = cons_id(...) unifications we may pull out.
     %   !.CseInfo contains the original varset and type map.
     % output vars:
     %   !:CseInfo has a varset and a type map reflecting the new variables
     %   we have introduced.
     %   Goals is the modified version of Goals0 after the common deconstruction
     %   has been hoisted out, with the new variables as the functor arguments.
-    %   Unify is the unification that was hoisted out.
+    %   Unify is the unification goal that was hoisted out; it is guaranteed
+    %   to be a deconstruction unification with the right hand side being an
+    %   rhs_functor naming ConsId as the function symbol.
+    %   FirstOldNew and LaterOldNew give the mapping from argument variables
+    %   in the old unification in the first and later branches respectively
+    %   to the freshly created argument variables in Unify.
     %
-:- pred common_deconstruct(list(hlds_goal)::in, prog_var::in, may_pull::in,
-    cse_info::in, cse_info::out, hlds_goal::out, assoc_list(prog_var)::out,
-    list(assoc_list(prog_var))::out, list(hlds_goal)::out) is semidet.
+:- pred common_deconstruct(list(hlds_goal)::in, prog_var::in,
+    cse_info::in, cse_info::out, hlds_goal::out, cons_id::out,
+    assoc_list(prog_var)::out, list(assoc_list(prog_var))::out,
+    list(hlds_goal)::out) is semidet.
 
-common_deconstruct(Goals0, Var, MayPull, !CseInfo, Unify,
+common_deconstruct(Goals0, Var, !CseInfo, Unify, ConsId,
         FirstOldNew, LaterOldNew, Goals) :-
-    common_deconstruct_2(Goals0, Var, MayPull, before_candidate,
-        have_candidate(Unify, FirstOldNew, LaterOldNew), !CseInfo, Goals),
+    CseState0 = before_candidate,
+    common_deconstruct_2(Goals0, Var, CseState0, CseState,
+        !CseInfo, Goals),
+    CseState = have_candidate(Unify, ConsId, FirstOldNew, LaterOldNew),
     LaterOldNew = [_ | _].
 
-:- pred common_deconstruct_2(list(hlds_goal)::in, prog_var::in, may_pull::in,
+:- pred common_deconstruct_2(list(hlds_goal)::in, prog_var::in,
     cse_state::in, cse_state::out, cse_info::in, cse_info::out,
     list(hlds_goal)::out) is semidet.
 
-common_deconstruct_2([], _Var, _MayPull, !CseState, !CseInfo, []).
-common_deconstruct_2([Goal0 | Goals0], Var, MayPull, !CseState, !CseInfo,
+common_deconstruct_2([], _Var, !CseState, !CseInfo, []).
+common_deconstruct_2([Goal0 | Goals0], Var, !CseState, !CseInfo,
         [Goal | Goals]) :-
-    find_bind_var(Var, MayPull, find_bind_var_for_cse_in_deconstruct,
+    find_bind_var(Var, find_bind_var_for_cse_in_deconstruct,
         Goal0, Goal, !CseState, !CseInfo, did_find_deconstruct),
-    !.CseState = have_candidate(_, _, _),
-    common_deconstruct_2(Goals0, Var, MayPull, !CseState, !CseInfo, Goals).
+    !.CseState = have_candidate(_, _, _, _),
+    common_deconstruct_2(Goals0, Var, !CseState, !CseInfo, Goals).
 
 %---------------------------------------------------------------------------%
 
-:- pred common_deconstruct_cases(list(case)::in, prog_var::in, may_pull::in,
-    cse_info::in, cse_info::out, hlds_goal::out, assoc_list(prog_var)::out,
-    list(assoc_list(prog_var))::out, list(case)::out) is semidet.
+:- pred common_deconstruct_cases(list(case)::in, prog_var::in,
+    cse_info::in, cse_info::out, hlds_goal::out, cons_id::out,
+    assoc_list(prog_var)::out, list(assoc_list(prog_var))::out,
+    list(case)::out) is semidet.
 
-common_deconstruct_cases(Cases0, Var, MayPull, !CseInfo, Unify,
+common_deconstruct_cases(Cases0, Var, !CseInfo, Unify, ConsId,
         FirstOldNew, LaterOldNew, Cases) :-
-    common_deconstruct_cases_2(Cases0, Var, MayPull, before_candidate,
-        have_candidate(Unify, FirstOldNew, LaterOldNew), !CseInfo, Cases),
+    CseState0 = before_candidate,
+    common_deconstruct_cases_2(Cases0, Var, CseState0, CseState,
+        !CseInfo, Cases),
+    CseState = have_candidate(Unify, ConsId, FirstOldNew, LaterOldNew),
     LaterOldNew = [_ | _].
 
-:- pred common_deconstruct_cases_2(list(case)::in, prog_var::in, may_pull::in,
+:- pred common_deconstruct_cases_2(list(case)::in, prog_var::in,
     cse_state::in, cse_state::out, cse_info::in, cse_info::out,
     list(case)::out) is semidet.
 
-common_deconstruct_cases_2([], _Var, _MayPull, !CseState, !CseInfo, []).
-common_deconstruct_cases_2([Case0 | Cases0], Var, MayPull, !CseState, !CseInfo,
+common_deconstruct_cases_2([], _Var, !CseState, !CseInfo, []).
+common_deconstruct_cases_2([Case0 | Cases0], Var, !CseState, !CseInfo,
         [Case | Cases]) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    find_bind_var(Var, MayPull, find_bind_var_for_cse_in_deconstruct,
+    find_bind_var(Var, find_bind_var_for_cse_in_deconstruct,
         Goal0, Goal, !CseState, !CseInfo, did_find_deconstruct),
     Case = case(MainConsId, OtherConsIds, Goal),
-    !.CseState = have_candidate(_, _, _),
-    common_deconstruct_cases_2(Cases0, Var, MayPull,
-        !CseState, !CseInfo, Cases).
+    !.CseState = have_candidate(_, _, _, _),
+    common_deconstruct_cases_2(Cases0, Var, !CseState, !CseInfo, Cases).
 
 %---------------------------------------------------------------------------%
 
@@ -719,13 +796,13 @@ common_deconstruct_cases_2([Case0 | Cases0], Var, MayPull, !CseState, !CseInfo,
     % before the branched control structure. The first_old_new field
     % gives the mapping from argument variables in the old unification
     % in the first branch to the freshly created variables in the goal
-    % being hoisted before the branched control structure. The
-    % later_old_new field contains the same information for the second
-    % and later branches.
+    % being hoisted before the branched control structure. The later_old_new
+    % field contains the same information for the second and later branches.
 :- type cse_state
     --->    before_candidate
     ;       have_candidate(
                 hc_goal             ::  hlds_goal,
+                hc_cons_id          ::  cons_id,
                 hc_first_old_new    ::  assoc_list(prog_var),
                 hc_later_old_new    ::  list(assoc_list(prog_var))
             )
@@ -739,11 +816,11 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
         !CseState, !CseInfo) :-
     (
         !.CseState = before_candidate,
-        construct_common_unify(Var, Goal0, !CseInfo, OldNewVars,
+        construct_common_unify(Var, Goal0, !CseInfo, ConsId, OldNewVars,
             HoistedGoal, Goals),
-        !:CseState = have_candidate(HoistedGoal, OldNewVars, [])
+        !:CseState = have_candidate(HoistedGoal, ConsId, OldNewVars, [])
     ;
-        !.CseState = have_candidate(HoistedGoal,
+        !.CseState = have_candidate(HoistedGoal, ConsId,
             FirstOldNewVars, LaterOldNewVars0),
         Goal0 = hlds_goal(_, GoalInfo),
         Context = goal_info_get_context(GoalInfo),
@@ -753,7 +830,7 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
         then
             Goals = Goals0,
             LaterOldNewVars = [OldNewVars | LaterOldNewVars0],
-            !:CseState = have_candidate(HoistedGoal,
+            !:CseState = have_candidate(HoistedGoal, ConsId,
                 FirstOldNewVars, LaterOldNewVars)
         else
             Goals = [Goal0],
@@ -766,16 +843,17 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
     ).
 
 :- pred construct_common_unify(prog_var::in, hlds_goal::in,
-    cse_info::in, cse_info::out, assoc_list(prog_var)::out,
+    cse_info::in, cse_info::out, cons_id::out, assoc_list(prog_var)::out,
     hlds_goal::out, list(hlds_goal)::out) is det.
 
-construct_common_unify(Var, Goal0, !CseInfo, OldNewVars, HoistedGoal,
+construct_common_unify(Var, Goal0, !CseInfo, ConsId, OldNewVars, HoistedGoal,
         ReplacementGoals) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( if
         GoalExpr0 = unify(_, RHS, Umode, Unif0, Ucontext),
-        Unif0 = deconstruct(_, ConsId, ArgVars, Submodes, CanFail, CanCGC)
+        Unif0 = deconstruct(_, ConsId0, ArgVars, Submodes, CanFail, CanCGC)
     then
+        ConsId = ConsId0,
         Unif = deconstruct(Var, ConsId, ArgVars, Submodes, CanFail, CanCGC),
         (
             RHS = rhs_functor(_, _, _),
@@ -1079,10 +1157,10 @@ find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
     % variable has this inst out of two or more arms, to put before
     % the disjunction, switch or if-then-else?
     %
-:- pred may_pull_lhs_inst(cse_info::in, mer_inst::in, may_pull::out)
+:- pred may_pull_lhs_inst_cons_id(cse_info::in, mer_inst::in, cons_id::in)
     is semidet.
 
-may_pull_lhs_inst(CseInfo, VarInst, MayPull) :-
+may_pull_lhs_inst_cons_id(CseInfo, VarInst, ConsId) :-
     ModuleInfo = CseInfo ^ csei_module_info,
     % XXX We only need inst_is_bound, but leave this as it is until
     % mode analysis can handle aliasing between free variables.
@@ -1096,37 +1174,48 @@ may_pull_lhs_inst(CseInfo, VarInst, MayPull) :-
     % However, the vast majority of the time, the whole inst is free
     % of uniqueness, so for efficiency in the common case, we test that first.
     ( if inst_is_not_partly_unique(ModuleInfo, VarInst) then
-        MayPull = may_pull_all_functors
+        true
     else
         inst_is_bound_to_functors(ModuleInfo, VarInst, FunctorBoundInsts),
-        may_pull_which_functors(ModuleInfo, FunctorBoundInsts,
-            MayPullConsIds, MayNotPullConsIds),
-        % Fail if there are *no* constructors we may pull.
-        MayPullConsIds = [_ | _],
-        (
-            MayNotPullConsIds = [],
-            MayPull = may_pull_all_functors
-        ;
-            MayNotPullConsIds = [_ | _],
-            MayPull = may_pull_some_functors(set.list_to_set(MayPullConsIds))
-        )
+        compute_may_pull_cons_id(ModuleInfo, FunctorBoundInsts, ConsId,
+            MayPullConsId),
+        MayPullConsId = may_pull_cons_id
     ).
 
-:- pred may_pull_which_functors(module_info::in, list(bound_inst)::in,
-    list(cons_id)::out, list(cons_id)::out) is det.
+:- type may_pull_cons_id
+    --->    may_pull_cons_id
+    ;       may_not_pull_cons_id.
 
-may_pull_which_functors(_, [], [], []).
-may_pull_which_functors(ModuleInfo, [BoundInst | BoundInsts],
-        MayPullConsIds, MayNotPullConsIds) :-
-    may_pull_which_functors(ModuleInfo, BoundInsts,
-        TailMayPullConsIds, TailMayNotPullConsIds),
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    ( if list.all_true(inst_is_not_partly_unique(ModuleInfo), ArgInsts) then
-        MayPullConsIds = [ConsId | TailMayPullConsIds],
-        MayNotPullConsIds = TailMayNotPullConsIds
+:- pred compute_may_pull_cons_id(module_info::in, list(bound_inst)::in,
+    cons_id::in, may_pull_cons_id::out) is det.
+
+compute_may_pull_cons_id(_ModuleInfo, [], _ConsId, may_not_pull_cons_id).
+compute_may_pull_cons_id(ModuleInfo, [BoundInst | BoundInsts],
+        ConsId, MayPullConsId) :-
+    BoundInst = bound_functor(InstConsId, ArgInsts),
+    ( if
+        (
+            ConsId = InstConsId
+        ;
+            % While the type constructor in ConsId is filled in by the type
+            % checker, the type constructor in InstConsId need not be.
+            % This code tests whether the two cons_ids are the same
+            % modulo this irrelevant possible difference.
+            ConsId = cons(SymName, Arity, _),
+            InstConsId = cons(InstSymName, InstArity, _),
+            SymName = InstSymName,
+            Arity = InstArity
+        )
+    then
+        ( if
+            list.all_true(inst_is_not_partly_unique(ModuleInfo), ArgInsts)
+        then
+            MayPullConsId = may_pull_cons_id
+        else
+            MayPullConsId = may_not_pull_cons_id
+        )
     else
-        MayPullConsIds = TailMayPullConsIds,
-        MayNotPullConsIds = [ConsId | TailMayNotPullConsIds]
+        compute_may_pull_cons_id(ModuleInfo, BoundInsts, ConsId, MayPullConsId)
     ).
 
 %---------------------------------------------------------------------------%
