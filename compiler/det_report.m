@@ -267,8 +267,9 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 DetInfo0, DetInfo, GoalMsgs),
             det_info_get_module_info(DetInfo, !:ModuleInfo),
             sort_error_msgs(GoalMsgs, SortedGoalMsgs),
+            cse_nopull_msgs(ProcInfo, CseMsgs),
             ReportSpec = error_spec(severity_error, phase_detism_check,
-                ReportMsgs ++ SortedGoalMsgs),
+                ReportMsgs ++ SortedGoalMsgs ++ CseMsgs),
             !:Specs = [ReportSpec | !.Specs]
         )
     ),
@@ -306,6 +307,41 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 verbose_only(verbose_always, VerbosePieces)])]),
         !:Specs = [ValidSpec | !.Specs]
     ).
+
+:- pred cse_nopull_msgs(proc_info::in, list(error_msg)::out) is det.
+
+cse_nopull_msgs(ProcInfo, Msgs) :-
+    proc_info_get_cse_nopull_contexts(ProcInfo, CseNoPullContexts),
+    list.sort(CseNoPullContexts, SortedCseNoPullContexts),
+    (
+        SortedCseNoPullContexts = [],
+        Msgs = []
+    ;
+        SortedCseNoPullContexts = [FirstNoPullContext | _],
+        Msgs = [simplest_msg(FirstNoPullContext, cse_nopull_pieces)]
+    ).
+
+:- func cse_nopull_pieces = list(format_component).
+
+cse_nopull_pieces =
+    [words("It is possible that"),
+    words("the cause of the declared determinism not being satisfied"),
+    words("is the inability of determinism analysis to recognize that"),
+    words("a disjunction (usually created by the compiler for a switch arm)"),
+    words("is a switch on a *subterm* of a variable"),
+    words("when the instantiation state of that variable"),
+    words("is at least partially unique."),
+    words("This is because converting such a disjunction to a switch"),
+    words("requires replacing several unifications,"),
+    words("one in each arm of the disjunction,"),
+    words("that each unify the variable representing the subterm"),
+    words("(e.g. the tail of a list) with the same function symbol,"),
+    words("with just one unification before the disjunction,"),
+    words("but due to limitations of the current modechecker,"),
+    words("this transformation could destroy the uniqueness."), nl,
+    words("In cases where this uniqueness is not needed,"),
+    words("the programmer can fix the determinism error"),
+    words("by performing this transformation manually."), nl].
 
 :- pred make_reqscope_checks_if_needed(module_info::in,
     pred_proc_id::in, pred_info::in, proc_info::in,

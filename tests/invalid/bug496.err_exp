@@ -1,0 +1,24 @@
+bug496.m:022: In `options_to_action'(in, in, out):
+bug496.m:022:   error: determinism declaration not satisfied.
+bug496.m:022:   Declared `det', inferred `nondet'.
+bug496.m:050:   Inside the case [|]/2 of the switch on AllActions:
+bug496.m:050:   disjunction has multiple clauses with solutions.
+bug496.m:050:   In argument 2 of functor `[|]/2':
+bug496.m:050:   unification with `list.[]' can fail.
+bug496.m:053:   In argument 2 of functor `[|]/2':
+bug496.m:053:   unification with `list.[V_11 | V_12]' can fail.
+bug496.m:050:   It is possible that the cause of the declared determinism not
+bug496.m:050:   being satisfied is the inability of determinism analysis to
+bug496.m:050:   recognize that a disjunction (usually created by the compiler
+bug496.m:050:   for a switch arm) is a switch on a *subterm* of a variable when
+bug496.m:050:   the instantiation state of that variable is at least partially
+bug496.m:050:   unique. This is because converting such a disjunction to a
+bug496.m:050:   switch requires replacing several unifications, one in each arm
+bug496.m:050:   of the disjunction, that each unify the variable representing
+bug496.m:050:   the subterm (e.g. the tail of a list) with the same function
+bug496.m:050:   symbol, with just one unification before the disjunction, but
+bug496.m:050:   due to limitations of the current modechecker, this
+bug496.m:050:   transformation could destroy the uniqueness.
+bug496.m:050:   In cases where this uniqueness is not needed, the programmer
+bug496.m:050:   can fix the determinism error by performing this transformation
+bug496.m:050:   manually.
