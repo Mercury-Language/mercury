@@ -24,6 +24,40 @@ Changes to the Mercury standard library
 
     - func `unsafe_new/2`
 
+NEWS for Mercury 20.01.1
+========================
+
+This is a bug-fix release.
+
+* [Mantis bug #496]. The compiler now emits a reminder about the limitation
+  of common subexpression elimination in the presence of uniqueness when
+  this is a possible cause of determinism errors.
+
+  As of version 20.01, common subexpression elimination does not transform
+
+         (
+             X = f(A1, ..., An),
+             goal A
+         ;
+             X = f(B1, ..., Bn),
+             goal B
+         )
+
+  into
+
+         X = f(X1, ..., Xn),
+         (
+             A1 = X1, ..., An = Xn,
+             goal A
+         ;
+             B1 = X1, ..., Bn = Xn,
+             goal B
+         )
+
+  when the insts of some of the arguments of `X` are at least partially unique.
+  This is because the current mode analysis cannot track uniqueness through
+  the extra unifications that this transformation introduces.
+
 NEWS for Mercury 20.01
 ======================
 
