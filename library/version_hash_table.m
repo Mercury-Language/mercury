@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2018 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -93,11 +93,17 @@
     % They are very simple and almost certainly not very good
     % for your purpose, whatever your purpose is.
     %
+:- pragma obsolete(int_hash/2, [int.hash/2]).
 :- pred int_hash(int::in, int::out) is det.
+:- pragma obsolete(uint_hash/2, [uint.hash/2]).
 :- pred uint_hash(uint::in, int::out) is det.
+:- pragma obsolete(char_hash/2, [char.hash/2]).
 :- pred char_hash(char::in, int::out) is det.
+:- pragma obsolete(string_hash/2, [string.hash/2]).
 :- pred string_hash(string::in, int::out) is det.
+:- pragma obsolete(float_hash/2, [float.hash/2]).
 :- pred float_hash(float::in, int::out) is det.
+:- pragma obsolete(generic_hash/2).
 :- pred generic_hash(T::in, int::out) is det.
 
     % Copy the hash table explicitly.
@@ -341,54 +347,20 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
 
 %---------------------------------------------------------------------------%
 
-    % The integer hash functions below are originally from:
-    %
-    %   http://www.concentric.net/~Ttwang/tech/inthash.htm
-    %
-    % The above link is now dead; the last version can be found at:
-    %
-    %   https://web.archive.org/web/20121102023700/http://www.concentric.net/~Ttwang/tech/inthash.htm
-    %
-    % The algorithms from that page that we use are:
-    %
-    %   public int hash32shiftmult(int key)
-    %   public long hash64shift(long key)
-    %
 int_hash(Key, Hash) :-
-    UKey = uint.cast_from_int(Key),
-    uint_hash(UKey, Hash).
+    int.hash(Key, Hash).
 
-uint_hash(!.Key, Hash) :-
-    C2 = 0x_27d4_eb2d_u, % A prime or odd constant.
-    ( if bits_per_uint = 32 then
-        !:Key = (!.Key `xor` 61_u) `xor` (!.Key >> 16),
-        !:Key = !.Key + (!.Key << 3),
-        !:Key = !.Key `xor` (!.Key >> 4),
-        !:Key = !.Key * C2,
-        !:Key = !.Key `xor` (!.Key >> 15)
-    else
-        !:Key = (\ !.Key) + (!.Key << 21), % !:Key = (!.Key << 21) - !.Key - 1
-        !:Key = !.Key `xor` (!.Key >> 24),
-        !:Key = (!.Key + (!.Key << 3)) + (!.Key << 8), % !.Key * 265
-        !:Key = !.Key `xor` (!.Key >> 14),
-        !:Key = (!.Key + (!.Key << 2)) + (!.Key << 4), % !.Key * 21
-        !:Key = !.Key `xor` (!.Key >> 28),
-        !:Key = !.Key + (!.Key << 31)
-    ),
-    Hash = uint.cast_to_int(!.Key).
+uint_hash(Key, Hash) :-
+    uint.hash(Key, Hash).
 
-    % There are almost certainly better ones out there...
-    %
 char_hash(C, H) :-
-    int_hash(char.to_int(C), H).
+    char.hash(C, H).
 
-    % There are almost certainly better ones out there...
-    %
-string_hash(S, string.hash(S)).
+string_hash(S, H) :-
+    string.hash(S, H).
 
-    % There are almost certainly better ones out there...
-    %
-float_hash(F, float.hash(F)).
+float_hash(F, H) :-
+    float.hash(F, H).
 
 generic_hash(T, H) :-
     % This, again, is straight off the top of my head.

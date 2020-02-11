@@ -38,7 +38,7 @@ main(!IO) :-
     Max = string.det_to_int(A),
     MaxOccupancy = string.det_to_float(B),
     some [!HT] (
-        !:HT = hash_table.init(int_hash, 1, MaxOccupancy),
+        !:HT = hash_table.init(int.hash, 1, MaxOccupancy),
 
         io.write_string("Inserting elements\n", !IO),
         inst_preserving_fold_up(do_insert, 0, Max - 1, !HT),

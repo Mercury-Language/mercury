@@ -16,6 +16,7 @@
 
 :- import_module list.
 :- import_module pair.
+:- import_module string.
 :- import_module version_hash_table.
 
 %---------------------------------------------------------------------------%
@@ -23,7 +24,7 @@
 main(!IO) :-
     % Test `fold' which had an off-by-one bug.
     some [!HT] (
-        !:HT = version_hash_table.init_default(generic_hash),
+        !:HT = version_hash_table.init_default(string.hash),
         version_hash_table.set("one", 1, !HT),
         version_hash_table.set("two", 2, !HT),
         version_hash_table.set("three", 3, !HT),

@@ -254,11 +254,17 @@
 
     % Default hash_preds for ints and strings and everything (buwahahaha!)
     %
+:- pragma obsolete(int_hash/2, [int.hash/2]).
 :- pred int_hash(int::in, int::out) is det.
+:- pragma obsolete(uint_hash/2, [uint.hash/2]).
 :- pred uint_hash(uint::in, int::out) is det.
+:- pragma obsolete(float_hash/2, [float.hash/2]).
 :- pred float_hash(float::in, int::out) is det.
+:- pragma obsolete(char_hash/2, [char.hash/2]).
 :- pred char_hash(char::in, int::out) is det.
+:- pragma obsolete(string_hash/2, [string.hash/2]).
 :- pred string_hash(string::in, int::out) is det.
+:- pragma obsolete(generic_hash/2).
 :- pred generic_hash(T::in, int::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -774,51 +780,21 @@ fold3_p(P, List, !A, !B, !C) :-
 
 %---------------------------------------------------------------------------%
 
-% The integer hash functions below are originally from:
-%
-%  http://www.concentric.net/~Ttwang/tech/inthash.htm
-%
-% The above link is now dead; the last version can be found at:
-%
-%  https://web.archive.org/web/20121102023700/http://www.concentric.net/~Ttwang/tech/inthash.htm
-%
-% The algorithms from that page that we use are:
-%
-%   public int hash32shiftmult(int key)
-%   public long hash64shift(long key)
-
 int_hash(Key, Hash) :-
     UKey = uint.cast_from_int(Key),
     uint_hash(UKey, Hash).
 
-uint_hash(!.Key, Hash) :-
-    C2 = 0x_27d4_eb2d_u, % A prime or odd constant.
-    ( if bits_per_uint = 32 then
-        !:Key = (!.Key `xor` 61_u) `xor` (!.Key >> 16),
-        !:Key = !.Key + (!.Key << 3),
-        !:Key = !.Key `xor` (!.Key >> 4),
-        !:Key = !.Key * C2,
-        !:Key = !.Key `xor` (!.Key >> 15)
-    else
-        !:Key = (\ !.Key) + (!.Key << 21), % !:Key = (!.Key << 21) - !.Key - 1
-        !:Key = !.Key `xor` (!.Key >> 24),
-        !:Key = (!.Key + (!.Key << 3)) + (!.Key << 8), % !.Key * 265
-        !:Key = !.Key `xor` (!.Key >> 14),
-        !:Key = (!.Key + (!.Key << 2)) + (!.Key << 4), % !.Key * 21
-        !:Key = !.Key `xor` (!.Key >> 28),
-        !:Key = !.Key + (!.Key << 31)
-    ),
-    Hash = uint.cast_to_int(!.Key).
+uint_hash(Key, Hash) :-
+    uint.hash(Key, Hash).
 
-float_hash(F, float.hash(F)).
-    % There are almost certainly better ones out there...
+float_hash(F, Hash) :-
+    float.hash(F, Hash).
 
 char_hash(C, H) :-
-    % There are almost certainly better ones out there...
-    int_hash(char.to_int(C), H).
+    char.hash(C, H).
 
-string_hash(S, string.hash(S)).
-    % There are almost certainly better ones out there...
+string_hash(S, H) :-
+    string.hash(S, H).
 
 %---------------------------------------------------------------------------%
 

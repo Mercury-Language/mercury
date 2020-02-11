@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -473,6 +473,16 @@
 :- func int_to_doc(int) = pretty_printer.doc.
 
 %---------------------------------------------------------------------------%
+%
+% Computing hashes of ints.
+%
+
+    % Compute a hash value for an int.
+    %
+:- func hash(int) = int.
+:- pred hash(int::in, int::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -483,13 +493,18 @@
 
 %---------------------------------------------------------------------------%
 
+% XXX the module qualification in these promises is necessary because
+% otherwise the compiler gets confused by the import of the uint module
+% in the implementation section of this one.
+
     % commutativity and associativity of +
-:- promise all [A, B, C]        ( C = B + A <=> C = A + B ).
-:- promise all [A, B, C, ABC]   ( ABC = (A + B) + C <=> ABC = A + (B + C) ).
+:- promise all [A, B, C] ( C = int.(B + A) <=> C = int.(A + B) ).
+:- promise all [A, B, C, ABC] ( ABC = int.(A + B) + C <=>
+    ABC = A + int.(B + C) ).
 
     % commutativity and associativity of *
-:- promise all [A, B, C]        ( C = B * A <=> C = A * B ).
-:- promise all [A, B, C, ABC]   ( ABC = (A * B) * C <=> ABC = A * (B * C) ).
+:- promise all [A, B, C] ( C = int.(B * A) <=> C = A * B ).
+:- promise all [A, B, C, ABC] ( ABC = int.(A * B) * C <=> ABC = A * (B * C) ).
 
 %---------------------------------------------------------------------------%
 
@@ -530,6 +545,7 @@
 :- import_module exception.
 :- import_module math.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -1053,6 +1069,15 @@ all_true_in_range(P, Lo, Hi) :-
 %---------------------------------------------------------------------------%
 
 int_to_doc(X) = str(string.int_to_string(X)).
+
+%---------------------------------------------------------------------------%
+
+hash(Int) = Hash :-
+    UInt = uint.cast_from_int(Int),
+    Hash = uint.hash(UInt).
+
+hash(Int, Hash) :-
+    Hash = int.hash(Int).
 
 %---------------------------------------------------------------------------%
 

@@ -397,6 +397,16 @@
 :- pred det_int_to_digit(int::in, char::out) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Computing hashes of chars.
+%
+
+    % Compute a hash value for a char.
+    %
+:- func hash(char) = int.
+:- pred hash(char::in, int::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -404,6 +414,7 @@
 :- import_module int.
 :- import_module require.
 :- import_module term_io.
+:- import_module uint.
 
 :- instance enum(character) where [
     (to_int(X) = Y :-
@@ -1160,6 +1171,14 @@ int_to_extended_digit(32, 'W').
 int_to_extended_digit(33, 'X').
 int_to_extended_digit(34, 'Y').
 int_to_extended_digit(35, 'Z').
+
+%---------------------------------------------------------------------------%
+
+hash(C) = H :-
+    uint.hash(uint.cast_from_int(char.to_int(C)), H).
+
+hash(C, H) :-
+    H = hash(C).
 
 %---------------------------------------------------------------------------%
 :- end_module char.

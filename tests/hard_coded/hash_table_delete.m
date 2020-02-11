@@ -22,7 +22,7 @@
 
 main(!IO) :-
     some [!HT] (
-        !:HT = hash_table.init_default(generic_hash),
+        !:HT = hash_table.init_default(string.hash),
         myfoldl(fill, keys, !HT),
         myfoldl(hash_table.delete, keys, !HT),
         Residue = hash_table.to_assoc_list(!.HT),

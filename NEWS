@@ -4,12 +4,42 @@ NEWS since Mercury 20.01.x
 Changes to the Mercury standard library
 ---------------------------------------
 
+### Changes to the `char` module
+
+* The following function and predicate have been added:
+
+    - func `hash/1`
+    - pred `hash/2`
+
+### Changes to the `float` module
+
+* The following predicate has been added:
+
+    - pred `hash/2`
+
 ### Changes to the `hash_table` module
+
+* The following predicates have been deprecated and will be removed in a future
+  release:
+
+    - pred `int_hash/2`
+    - pred `uint_hash/2`
+    - pred `float_hash/2`
+    - pred `char_hash/2`
+    - pred `string_hash/2`
+    - pred `generic_hash/2`
 
 * The following obsolete functions have been removed:
 
     - func `new/3`
     - func `new_default/1`
+
+### Changes to the `int` module
+
+* The following function and predicate have been added:
+
+    - func `hash/1`
+    - pred `hash/2`
 
 ### Changes to the `map` module
 
@@ -18,11 +48,30 @@ Changes to the Mercury standard library
     - func `keys_as_set/1`
     - pred `keys_as_set/2`
 
+### Changes to the `uint` module
+
+* The following function and predicate have been added:
+
+    - func `hash/1`
+    - pred `hash/2`
+
 ### Changes to the `version_array` module
 
 * The following obsolete function has been removed:
 
     - func `unsafe_new/2`
+
+### Changes to the `version_hash_table` module
+
+* The following predicates have been deprecated and will be removed in a future
+  release:
+
+    - pred `int_hash/2`
+    - pred `uint_hash/2`
+    - pred `float_hash/2`
+    - pred `char_hash/2`
+    - pred `string_hash/2`
+    - pred `generic_hash/2`
 
 NEWS for Mercury 20.01.1
 ========================

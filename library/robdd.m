@@ -407,7 +407,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module hash_table.
 :- import_module int.
 :- import_module multi_map.
 :- import_module pair.
@@ -1178,7 +1177,7 @@ restrict_true_false_vars_2(TrueVars0, FalseVars0, R0, R, Seen0, Seen) :-
 :- pred robdd_hash(robdd(T)::in, int::out) is det.
 
 robdd_hash(R, H) :-
-    int_hash(node_num(R), H).
+    int.hash(node_num(R), H).
 
 restrict_filter(P, F0) =
     restrict_filter(P, (pred(_::in) is semidet :- true), F0).

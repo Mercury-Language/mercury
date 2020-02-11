@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016-2018 The Mercury team.
+% Copyright (C) 2016-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -185,6 +185,16 @@
     % Convert a uint to a pretty_printer.doc for formatting.
     %
 :- func uint_to_doc(uint) = pretty_printer.doc.
+
+%---------------------------------------------------------------------------%
+%
+% Computing hashes of uints.
+%
+
+    % Compute a hash value for a uint.
+    %
+:- func hash(uint) = int.
+:- pred hash(uint::in, int::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -420,6 +430,43 @@ odd(X) :-
 %---------------------------------------------------------------------------%
 
 uint_to_doc(X) = str(string.uint_to_string(X)).
+
+%---------------------------------------------------------------------------%
+
+% The integer hash functions below are originally from:
+%
+%  http://www.concentric.net/~Ttwang/tech/inthash.htm
+%
+% The above link is now dead; the last version can be found at:
+%
+%  https://web.archive.org/web/20121102023700/http://www.concentric.net/~Ttwang/tech/inthash.htm
+%
+% The algorithms from that page that we use are:
+%
+%   public int hash32shiftmult(int key)
+%   public long hash64shift(long key)
+
+hash(!.Key) = Hash :-
+    C2 = 0x_27d4_eb2d_u, % A prime or odd constant.
+    ( if bits_per_uint = 32 then
+        !:Key = (!.Key `xor` 61_u) `xor` (!.Key >> 16),
+        !:Key = !.Key + (!.Key << 3),
+        !:Key = !.Key `xor` (!.Key >> 4),
+        !:Key = !.Key * C2,
+        !:Key = !.Key `xor` (!.Key >> 15)
+    else
+        !:Key = (\ !.Key) + (!.Key << 21), % !:Key = (!.Key << 21) - !.Key - 1
+        !:Key = !.Key `xor` (!.Key >> 24),
+        !:Key = (!.Key + (!.Key << 3)) + (!.Key << 8), % !.Key * 265
+        !:Key = !.Key `xor` (!.Key >> 14),
+        !:Key = (!.Key + (!.Key << 2)) + (!.Key << 4), % !.Key * 21
+        !:Key = !.Key `xor` (!.Key >> 28),
+        !:Key = !.Key + (!.Key << 31)
+    ),
+    Hash = uint.cast_to_int(!.Key).
+
+hash(UInt, Hash) :-
+    Hash = hash(UInt).
 
 %---------------------------------------------------------------------------%
 :- end_module uint.
