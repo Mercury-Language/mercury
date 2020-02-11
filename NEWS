@@ -34,6 +34,18 @@ This is a bug-fix release.
   such as leading to infinite recursion. (This feature was present in the
   20.01 release but not announced.)
 
+* We now allow combined higher-order types and insts as direct arguments of
+  functors in discriminated unions, as in the following type:
+
+        :- type job
+            --->    job(pred(int::out, io::di, io::uo) is det).
+
+  For any construction unification using this functor the argument must have
+  the required higher-order inst; it is a mode error if it does not. When
+  terms of type `job` with inst `ground` are deconstructed, the argument is
+  inferred to have the given inst, allowing a higher-order call in that mode.
+  (This feature was present in the 20.01 release but not announced.)
+
 * [Mantis bug #496]. The compiler now emits a reminder about the limitation
   of common subexpression elimination in the presence of uniqueness when
   this is a possible cause of determinism errors.
