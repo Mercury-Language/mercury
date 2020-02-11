@@ -3957,9 +3957,9 @@ options_help_warning -->
         "--no-warn-undefined-options-variables",
         "\tDo not warn about references to undefined variables in",
         "\toptions files with `--make'.",
-%       "--warn-suspicious-recursion",
-%       "\tWarn about recursive calls which are likely to have problems,",
-%       "\tsuch as leading to infinite recursion.",
+        "--warn-suspicious-recursion",
+        "\tWarn about recursive calls which are likely to have problems,",
+        "\tsuch as leading to infinite recursion.",
 % These are the internal options that implement --warn-non-tail-recursion.
 %       "--warn-non-tail-recursion-self",
 %       "\tWarn about any self recursive calls that are not tail recursive.",

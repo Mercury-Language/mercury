@@ -3,6 +3,11 @@ NEWS for Mercury 20.01.1
 
 This is a bug-fix release.
 
+* We have added a new option `--warn-suspicious-recursion` that asks the
+  compiler to warn about recursive calls which are likely to have problems,
+  such as leading to infinite recursion. (This feature was present in the
+  20.01 release but not announced.)
+
 * [Mantis bug #496]. The compiler now emits a reminder about the limitation
   of common subexpression elimination in the presence of uniqueness when
   this is a possible cause of determinism errors.
