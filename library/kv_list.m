@@ -1,44 +1,61 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2001, 2004-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: assoc_list.m.
-% Main authors: fjh, zs.
+% File: kv_list.m.
+% Main author: zs.
 % Stability: medium to high.
 %
-% This file contains the definition of the type assoc_list(K, V)
-% and some predicates which operate on those types.
+% This file defines the type kv_list(K, V), which represents lists of
+% key-value pairs, and provides a range of operations on such lists.
+%
+% The kv_list module resembles the assoc_list module quite closely.
+% The data type it defines stores the same information, and the set
+% of operations they provide is the same, modulo the fact that the
+% operations that convert between the two representations are here.
+% The difference is that kv_list uses one memory cell, not two,
+% to represent one key-value pair, which should mean that it requires
+% fewer memory allocations. On the other hand, values of type assoc_list
+% may be operated on as plain lists, while this cannot be done on values
+% of type kv_list.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module assoc_list.
+:- module kv_list.
 :- interface.
 
+:- import_module assoc_list.
 :- import_module list.
-:- import_module pair.
 
 %---------------------------------------------------------------------------%
 
-:- type assoc_list(K, V) == list(pair(K, V)).
-
-:- type assoc_list(T) == list(pair(T, T)).
+:- type kv_list(K, V)
+    --->    kv_nil
+    ;       kv_cons(K, V, kv_list(K, V)).
 
 %---------------------------------------------------------------------------%
 %
-% Creating assoc_lists from lists of keys and values.
+% Creating kv_lists from lists of keys and values.
 %
 
     % Zip together a list of keys and a list of values.
     % Throw an exception if they are of different lengths.
     %
-:- func from_corresponding_lists(list(K), list(V)) = assoc_list(K, V).
+:- func from_corresponding_lists(list(K), list(V)) = kv_list(K, V).
 :- pred from_corresponding_lists(list(K)::in, list(V)::in,
-    assoc_list(K, V)::out) is det.
+    kv_list(K, V)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Conversion to and from assoc_lists.
+%
+
+:- func assoc_list_to_kv_list(assoc_list(K, V)) = kv_list(K, V).
+:- func kv_list_to_assoc_list(kv_list(K, V)) = assoc_list(K, V).
 
 %---------------------------------------------------------------------------%
 %
@@ -47,66 +64,65 @@
 
     % Swap the two sides of the pairs in each member of the list.
     %
-:- func reverse_members(assoc_list(K, V)) = assoc_list(V, K).
-:- pred reverse_members(assoc_list(K, V)::in, assoc_list(V, K)::out) is det.
+:- func reverse_members(kv_list(K, V)) = kv_list(V, K).
+:- pred reverse_members(kv_list(K, V)::in, kv_list(V, K)::out) is det.
 
     % Return the first member of each pair.
     %
-:- func keys(assoc_list(K, V)) = list(K).
-:- pred keys(assoc_list(K, V)::in, list(K)::out) is det.
+:- func keys(kv_list(K, V)) = list(K).
+:- pred keys(kv_list(K, V)::in, list(K)::out) is det.
 
     % Return the second member of each pair.
     %
-:- func values(assoc_list(K, V)) = list(V).
-:- pred values(assoc_list(K, V)::in, list(V)::out) is det.
+:- func values(kv_list(K, V)) = list(V).
+:- pred values(kv_list(K, V)::in, list(V)::out) is det.
 
     % Return two lists containing respectively the first and the second member
-    % of each pair in the assoc_list.
+    % of each pair in the kv_list.
     %
-:- pred keys_and_values(assoc_list(K, V)::in,
-    list(K)::out, list(V)::out) is det.
+:- pred keys_and_values(kv_list(K, V)::in, list(K)::out, list(V)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Searching assoc_lists.
+% Searching kv_lists.
 %
 
-    % Find the first element of the association list that matches
+    % Find the first element of the kv_list list that matches
     % the given key, and return the associated value.
     % Fail if there is no matching key.
     %
-:- pred search(assoc_list(K, V)::in, K::in, V::out) is semidet.
+:- pred search(kv_list(K, V)::in, K::in, V::out) is semidet.
 
-    % Find the first element of the association list that matches
+    % Find the first element of the kv_list list that matches
     % the given key, and return the associated value.
     % Throw an exception if there is no matching key.
     %
-:- pred lookup(assoc_list(K, V)::in, K::in, V::out) is det.
+:- pred lookup(kv_list(K, V)::in, K::in, V::out) is det.
 
     % A field access version of search.
     %
-:- func assoc_list(K, V) ^ elem(K) = V is semidet.
+:- func kv_list(K, V) ^ elem(K) = V is semidet.
 
     % A field access version of lookup.
     %
-:- func assoc_list(K, V) ^ det_elem(K) = V is det.
+:- func kv_list(K, V) ^ det_elem(K) = V is det.
 
 %---------------------------------------------------------------------------%
 %
-% Removing elements from assoc_lists.
+% Removing elements from kv_lists.
 %
 
-    % Find the first element of the association list that matches
-    % the given key. Return the associated value, and the original list
-    % with the selected element removed.
+    % Find the first element of the association list that matches the given
+    % key. Return the associated value, and the original list with the selected
+    % element removed.
     %
-:- pred remove(assoc_list(K, V)::in, K::in, V::out, assoc_list(K, V)::out)
+:- pred remove(kv_list(K, V)::in, K::in, V::out, kv_list(K, V)::out)
     is semidet.
 
     % As above, but with an argument ordering that is more conducive to
     % the use of state variable notation.
     %
-:- pred svremove(K::in, V::out, assoc_list(K, V)::in, assoc_list(K, V)::out)
+:- pred svremove(K::in, V::out, kv_list(K, V)::in, kv_list(K, V)::out)
     is semidet.
 
 %---------------------------------------------------------------------------%
@@ -114,21 +130,21 @@
 % Mapping keys or values.
 %
 
-:- func map_keys_only(func(K) = L, assoc_list(K, V)) = assoc_list(L, V).
-:- pred map_keys_only(pred(K, L), assoc_list(K, V), assoc_list(L, V)).
+:- func map_keys_only(func(K) = L, kv_list(K, V)) = kv_list(L, V).
+:- pred map_keys_only(pred(K, L), kv_list(K, V), kv_list(L, V)).
 :- mode map_keys_only(pred(in, out) is det, in, out) is det.
 
-:- func map_values_only(func(V) = W, assoc_list(K, V)) = assoc_list(K, W).
-:- pred map_values_only(pred(V, W), assoc_list(K, V), assoc_list(K, W)).
+:- func map_values_only(func(V) = W, kv_list(K, V)) = kv_list(K, W).
+:- pred map_values_only(pred(V, W), kv_list(K, V), kv_list(K, W)).
 :- mode map_values_only(pred(in, out) is det, in, out) is det.
 
-:- func map_values(func(K, V) = W, assoc_list(K, V)) = assoc_list(K, W).
-:- pred map_values(pred(K, V, W), assoc_list(K, V), assoc_list(K, W)).
+:- func map_values(func(K, V) = W, kv_list(K, V)) = kv_list(K, W).
+:- pred map_values(pred(K, V, W), kv_list(K, V), kv_list(K, W)).
 :- mode map_values(pred(in, in, out) is det, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Filtering elements in assoc_lists.
+% Filtering elements in kv_lists.
 %
 
     % filter(Pred, List, TrueList) takes a closure with one input argument,
@@ -136,31 +152,31 @@
     % The key-value pair is included in TrueList iff Pred(K) is true.
     %
 :- func filter(pred(K)::in(pred(in) is semidet),
-    assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
+    kv_list(K, V)::in) = (kv_list(K, V)::out) is det.
 :- pred filter(pred(K)::in(pred(in) is semidet),
-    assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
+    kv_list(K, V)::in, kv_list(K, V)::out) is det.
 
     % negated_filter(Pred, List, FalseList) takes a closure with one
     % input argument, and for each key-value pair in List, calls the closure
-    % on the key K. The key-value pair is included in TrueList iff
-    % Pred(K) is false.
+    % on the key K. The key-value pair is included in TrueList iff Pred(K)
+    % is false.
     %
 :- func negated_filter(pred(K)::in(pred(in) is semidet),
-    assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
+    kv_list(K, V)::in) = (kv_list(K, V)::out) is det.
 :- pred negated_filter(pred(K)::in(pred(in) is semidet),
-    assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
+    kv_list(K, V)::in, kv_list(K, V)::out) is det.
 
     % filter(Pred, List, TrueList, FalseList) takes a closure with
     % one input argument, and for each key-value pair in List,
     % calls the closure on the key K. If Pred(K) is true, the key-value pair
     % is included in TrueList; otherwise, it is included in FalseList.
-    %      
+    %
 :- pred filter(pred(K)::in(pred(in) is semidet),
-    assoc_list(K, V)::in, assoc_list(K, V)::out, assoc_list(K, V)::out) is det.
+    kv_list(K, V)::in, kv_list(K, V)::out, kv_list(K, V)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Merging assoc_lists.
+% Merging kv_lists.
 %
 
     % merge(L1, L2, L):
@@ -168,20 +184,20 @@
     % L is the result of merging the elements of L1 and L2, in ascending order.
     % L1 and L2 must be sorted on the keys.
     %
-:- func merge(assoc_list(K, V), assoc_list(K, V)) = assoc_list(K, V).
-:- pred merge(assoc_list(K, V)::in, assoc_list(K, V)::in,
-    assoc_list(K, V)::out) is det.
+:- func merge(kv_list(K, V), kv_list(K, V)) = kv_list(K, V).
+:- pred merge(kv_list(K, V)::in, kv_list(K, V)::in,
+    kv_list(K, V)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Folding over assoc_lists.
+% Folding over kv_lists.
 %
 
     % foldl_keys(Pred, List, Start End) calls Pred
     % with each key in List (working left-to-right) and an accumulator
     % (with initial value of Start), and returns the final value in End.
     %
-:- pred foldl_keys(pred(K, A, A), assoc_list(K, V), A, A).
+:- pred foldl_keys(pred(K, A, A), kv_list(K, V), A, A).
 :- mode foldl_keys(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldl_keys(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode foldl_keys(pred(in, di, uo) is det, in, di, uo) is det.
@@ -195,7 +211,7 @@
     % with each value in List (working left-to-right) and an accumulator
     % (with initial value of Start), and returns the final value in End.
     %
-:- pred foldl_values(pred(V, A, A), assoc_list(K, V), A, A).
+:- pred foldl_values(pred(V, A, A), kv_list(K, V), A, A).
 :- mode foldl_values(pred(in, in, out) is det, in,
     in, out) is det.
 :- mode foldl_values(pred(in, mdi, muo) is det, in,
@@ -215,7 +231,7 @@
 
     % As above, but with two accumulators.
     %
-:- pred foldl2_values(pred(V, A, A, B, B), assoc_list(K, V),
+:- pred foldl2_values(pred(V, A, A, B, B), kv_list(K, V),
     A, A, B, B).
 :- mode foldl2_values(pred(in, in, out, in, out) is det, in,
     in, out, in, out) is det.
@@ -236,7 +252,7 @@
 
     % As above, but with three accumulators.
     %
-:- pred foldl3_values(pred(V, A, A, B, B, C, C), assoc_list(K, V),
+:- pred foldl3_values(pred(V, A, A, B, B, C, C), kv_list(K, V),
     A, A, B, B, C, C).
 :- mode foldl3_values(pred(in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
@@ -260,17 +276,18 @@
 
 :- implementation.
 
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
 
 %---------------------------------------------------------------------------%
 
-from_corresponding_lists(Ks, Vs) = AL :-
-    assoc_list.from_corresponding_lists(Ks, Vs, AL).
+from_corresponding_lists(Ks, Vs) = KVs :-
+    kv_list.from_corresponding_lists(Ks, Vs, KVs).
 
 from_corresponding_lists(Ks, Vs, KVs) :-
-    ( if assoc_list.from_corresponding_loop(Ks, Vs, KVsPrime) then
+    ( if kv_list.from_corresponding_loop(Ks, Vs, KVsPrime) then
         KVs = KVsPrime
     else
         KeyType = type_name(type_of(Ks)),
@@ -288,191 +305,199 @@ from_corresponding_lists(Ks, Vs, KVs) :-
         unexpected($pred, ErrorString)
     ).
 
-:- pred assoc_list.from_corresponding_loop(list(K)::in, list(V)::in,
-    assoc_list(K,V)::out) is semidet.
+:- pred kv_list.from_corresponding_loop(list(K)::in, list(V)::in,
+    kv_list(K,V)::out) is semidet.
 
-from_corresponding_loop([], [], []).
-from_corresponding_loop([A | As], [B | Bs], [A - B | ABs]) :-
-    assoc_list.from_corresponding_loop(As, Bs, ABs).
+from_corresponding_loop([], [], kv_nil).
+from_corresponding_loop([K | Ks], [V | Vs], kv_cons(K, V, KVs)) :-
+    kv_list.from_corresponding_loop(Ks, Vs, KVs).
 
 %---------------------------------------------------------------------------%
 
-reverse_members(AL1) = AL2 :-
-    assoc_list.reverse_members(AL1, AL2).
+assoc_list_to_kv_list([]) = kv_nil.
+assoc_list_to_kv_list([K - V | KVs0]) = kv_cons(K, V, KVs) :-
+    KVs = assoc_list_to_kv_list(KVs0).
 
-reverse_members([], []).
-reverse_members([K - V | KVs], [V - K | VKs]) :-
-    assoc_list.reverse_members(KVs, VKs).
+kv_list_to_assoc_list(kv_nil) = [].
+kv_list_to_assoc_list(kv_cons(K, V, KVs0)) = [K - V | KVs] :-
+    KVs = kv_list_to_assoc_list(KVs0).
 
-keys(AL) = Ks :-
-    assoc_list.keys(AL, Ks).
+%---------------------------------------------------------------------------%
 
-keys([], []).
-keys([K - _ | KVs], [K | Ks]) :-
-    assoc_list.keys(KVs, Ks).
+reverse_members(KVs) = VKs :-
+    kv_list.reverse_members(KVs, VKs).
+
+reverse_members(kv_nil, kv_nil).
+reverse_members(kv_cons(K, V, KVs), kv_cons(V, K, VKs)) :-
+    kv_list.reverse_members(KVs, VKs).
+
+keys(KVs) = Ks :-
+    kv_list.keys(KVs, Ks).
+
+keys(kv_nil, []).
+keys(kv_cons(K, _, KVs), [K | Ks]) :-
+    kv_list.keys(KVs, Ks).
 
 values(AL) = Vs :-
-    assoc_list.values(AL, Vs).
+    kv_list.values(AL, Vs).
 
-values([], []).
-values([_ - V | KVs], [V | Vs]) :-
-    assoc_list.values(KVs, Vs).
+values(kv_nil, []).
+values(kv_cons(_, V, KVs), [V | Vs]) :-
+    kv_list.values(KVs, Vs).
 
-keys_and_values([], [], []).
-keys_and_values([K - V | KVs], [K | Ks], [V | Vs]) :-
-    assoc_list.keys_and_values(KVs, Ks, Vs).
+keys_and_values(kv_nil, [], []).
+keys_and_values(kv_cons(K, V, KVs), [K | Ks], [V | Vs]) :-
+    kv_list.keys_and_values(KVs, Ks, Vs).
 
 %---------------------------------------------------------------------------%
 
-search([K - V | KVs], Key, Value) :-
+search(kv_cons(K, V, KVs), Key, Value) :-
     ( if K = Key then
         Value = V
     else
-        assoc_list.search(KVs, Key, Value)
+        kv_list.search(KVs, Key, Value)
     ).
 
 lookup(KVs, K, V) :-
-    ( if assoc_list.search(KVs, K, VPrime) then
+    ( if kv_list.search(KVs, K, VPrime) then
         V = VPrime
     else
-        report_lookup_error("assoc_list.lookup: key not found", K)
+        report_lookup_error("kv_list.lookup: key not found", K)
     ).
 
-AL ^ elem(K) = V :-
-    assoc_list.search(AL, K, V).
+KVs ^ elem(K) = V :-
+    kv_list.search(KVs, K, V).
 
-AL ^ det_elem(K) = V :-
-    assoc_list.lookup(AL, K, V).
+KVs ^ det_elem(K) = V :-
+    kv_list.lookup(KVs, K, V).
 
 %---------------------------------------------------------------------------%
 
-remove([K - V | KVs], Key, Value, Filtered) :-
-    ( if K = Key then
-        Value = V,
-        Filtered = KVs
+remove(kv_cons(HeadK, HeadV, TailKVs), Key, Value, FilteredKVs) :-
+    ( if HeadK = Key then
+        Value = HeadV,
+        FilteredKVs = TailKVs
     else
-        assoc_list.remove(KVs, Key, Value, FilteredTail),
-        Filtered = [K - V | FilteredTail]
+        kv_list.remove(TailKVs, Key, Value, FilteredTailKVs),
+        FilteredKVs = kv_cons(HeadK, HeadV, FilteredTailKVs)
     ).
 
-svremove(Key, Value, !AL) :-
-    assoc_list.remove(!.AL, Key, Value, !:AL).
+svremove(Key, Value, !KVs) :-
+    kv_list.remove(!.KVs, Key, Value, !:KVs).
 
 %---------------------------------------------------------------------------%
 
-map_keys_only(_F, []) = [].
-map_keys_only(F, [K0 - V | KVs0]) = [K - V | KVs] :-
-    K = F(K0),
-    KVs = assoc_list.map_keys_only(F, KVs0).
+map_keys_only(_F, kv_nil) = kv_nil.
+map_keys_only(F, kv_cons(HeadK0, HeadV, TailKVs0))
+        = kv_cons(HeadK, HeadV, TailKVs) :-
+    HeadK = F(HeadK0),
+    TailKVs = kv_list.map_keys_only(F, TailKVs0).
 
-map_keys_only(_P, [], []).
-map_keys_only(P, [K0 - V | KVs0], [K - V | KVs]) :-
-    P(K0, K),
-    assoc_list.map_keys_only(P, KVs0, KVs).
+map_keys_only(_P, kv_nil, kv_nil).
+map_keys_only(P,
+        kv_cons(HeadK0, HeadV, TailKVs0), kv_cons(HeadK, HeadV, TailKVs)) :-
+    P(HeadK0, HeadK),
+    kv_list.map_keys_only(P, TailKVs0, TailKVs).
 
-map_values_only(_F, []) = [].
-map_values_only(F, [K - V0 | KVs0]) = [K - V | KVs] :-
-    V = F(V0),
-    KVs = assoc_list.map_values_only(F, KVs0).
+map_values_only(_F, kv_nil) = kv_nil.
+map_values_only(F, kv_cons(HeadK, HeadV0, TailKVs0))
+        = kv_cons(HeadK, HeadV, TailKVs) :-
+    HeadV = F(HeadV0),
+    TailKVs = kv_list.map_values_only(F, TailKVs0).
 
-map_values_only(_P, [], []).
-map_values_only(P, [K - V0 | KVs0], [K - V | KVs]) :-
-    P(V0, V),
-    assoc_list.map_values_only(P, KVs0, KVs).
+map_values_only(_P, kv_nil, kv_nil).
+map_values_only(P,
+        kv_cons(HeadK, HeadV0, TailKVs0), kv_cons(HeadK, HeadV, TailKVs)) :-
+    P(HeadV0, HeadV),
+    kv_list.map_values_only(P, TailKVs0, TailKVs).
 
-map_values(_F, []) = [].
-map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
-    V = F(K, V0),
-    KVs = assoc_list.map_values(F, KVs0).
+map_values(_F, kv_nil) = kv_nil.
+map_values(F, kv_cons(HeadK, HeadV0, TailKVs0)) =
+        kv_cons(HeadK, HeadV, TailKVs) :-
+    HeadV = F(HeadK, HeadV0),
+    TailKVs = kv_list.map_values(F, TailKVs0).
 
-map_values(_P, [], []).
-map_values(P, [K - V0 | KVs0], [K - V | KVs]) :-
-    P(K, V0, V),
-    assoc_list.map_values(P, KVs0, KVs).
+map_values(_P, kv_nil, kv_nil).
+map_values(P,
+        kv_cons(HeadK, HeadV0, TailKVs0), kv_cons(HeadK, HeadV, TailKVs)) :-
+    P(HeadK, HeadV0, HeadV),
+    kv_list.map_values(P, TailKVs0, TailKVs).
 
 %---------------------------------------------------------------------------%
 
 filter(P, List) = Trues :-
-    assoc_list.filter(P, List, Trues).
+    kv_list.filter(P, List, Trues).
 
-filter(_, [],  []).
-filter(P, [HK - HV | T], True) :-
-    ( if P(HK) then
-        assoc_list.filter(P, T, TrueTail),
-        True = [HK - HV | TrueTail]
+filter(_, kv_nil,  kv_nil).
+filter(P, kv_cons(HeadK, HeadV, TailKVs), TrueKVs) :-
+    ( if P(HeadK) then
+        kv_list.filter(P, TailKVs, TailTrueKVs),
+        TrueKVs = kv_cons(HeadK, HeadV, TailTrueKVs)
     else
-        assoc_list.filter(P, T, True)
+        kv_list.filter(P, TailKVs, TrueKVs)
     ).
 
 negated_filter(P, List) = Falses :-
-    assoc_list.negated_filter(P, List, Falses).
+    kv_list.negated_filter(P, List, Falses).
 
-negated_filter(_, [],  []).
-negated_filter(P, [HK - HV | T], False) :-
-    ( if P(HK) then
-        assoc_list.negated_filter(P, T, False)
+negated_filter(_, kv_nil,  kv_nil).
+negated_filter(P, kv_cons(HeadK, HeadV, TailKVs), FalseKVs) :-
+    ( if P(HeadK) then
+        kv_list.negated_filter(P, TailKVs, FalseKVs)
     else
-        assoc_list.negated_filter(P, T, FalseTail),
-        False = [HK - HV | FalseTail]
+        kv_list.negated_filter(P, TailKVs, TailFalseKVs),
+        FalseKVs = kv_cons(HeadK, HeadV, TailFalseKVs)
     ).
 
-filter(_, [],  [], []).
-filter(P, [HK - HV | T], True, False) :-
-    ( if P(HK) then
-        assoc_list.filter(P, T, TrueTail, False),
-        True = [HK - HV | TrueTail]
+filter(_, kv_nil,  kv_nil, kv_nil).
+filter(P, kv_cons(HeadK, HeadV, TailKVs), TrueKVs, FalseKVs) :-
+    ( if P(HeadK) then
+        kv_list.filter(P, TailKVs, TailTrueKVs, FalseKVs),
+        TrueKVs = kv_cons(HeadK, HeadV, TailTrueKVs)
     else
-        assoc_list.filter(P, T, True, FalseTail),
-        False = [HK - HV | FalseTail]
+        kv_list.filter(P, TailKVs, TrueKVs, TailFalseKVs),
+        FalseKVs = kv_cons(HeadK, HeadV, TailFalseKVs)
     ).
 
 %---------------------------------------------------------------------------%
 
 merge(As, Bs) = ABs :-
-    assoc_list.merge(As, Bs, ABs).
+    kv_list.merge(As, Bs, ABs).
 
-merge([], Bs, Bs).
-merge([A | As], [], [A | As]).
-merge([A | As], [B | Bs], Cs) :-
-    ( if
-        A = AK - _AV,
-        B = BK - _BV,
-        compare(>, AK, BK)
-    then
-        assoc_list.merge([A | As], Bs, Cs0),
-        Cs = [B | Cs0]
+merge(kv_nil, B, B).
+merge(A @ kv_cons(_, _, _), kv_nil, A).
+merge(A @ kv_cons(AK, AV, AKVs), B @ kv_cons(BK, BV, BKVs), C) :-
+    ( if compare(>, AK, BK) then
+        kv_list.merge(A, BKVs, CKVs),
+        C = kv_cons(BK, BV, CKVs)
     else
         % If compare((=), AK, BK), take A first.
-        assoc_list.merge(As, [B | Bs], Cs0),
-        Cs = [A | Cs0]
+        kv_list.merge(AKVs, B, CKVs),
+        C = kv_cons(AK, AV, CKVs)
     ).
 
 %---------------------------------------------------------------------------%
 
-foldl_keys(_, [], !Acc).
-foldl_keys(P, [KV | KVs], !Acc) :-
-    KV = K - _V,
+foldl_keys(_, kv_nil, !Acc).
+foldl_keys(P, kv_cons(K, _V, KVs), !Acc) :-
     P(K, !Acc),
-    assoc_list.foldl_keys(P, KVs, !Acc).
+    kv_list.foldl_keys(P, KVs, !Acc).
 
-foldl_values(_, [], !Acc).
-foldl_values(P, [KV | KVs], !Acc) :-
-    KV = _K - V,
+foldl_values(_, kv_nil, !Acc).
+foldl_values(P, kv_cons(_K, V, KVs), !Acc) :-
     P(V, !Acc),
-    assoc_list.foldl_values(P, KVs, !Acc).
+    kv_list.foldl_values(P, KVs, !Acc).
 
-foldl2_values(_, [], !Acc1, !Acc2).
-foldl2_values(P, [KV | KVs], !Acc1, !Acc2) :-
-    KV = _K - V,
+foldl2_values(_, kv_nil, !Acc1, !Acc2).
+foldl2_values(P, kv_cons(_K, V, KVs), !Acc1, !Acc2) :-
     P(V, !Acc1, !Acc2),
-    assoc_list.foldl2_values(P, KVs, !Acc1, !Acc2).
+    kv_list.foldl2_values(P, KVs, !Acc1, !Acc2).
 
-foldl3_values(_, [], !Acc1, !Acc2, !Acc3).
-foldl3_values(P, [KV | KVs], !Acc1, !Acc2, !Acc3) :-
-    KV = _K - V,
+foldl3_values(_, kv_nil, !Acc1, !Acc2, !Acc3).
+foldl3_values(P, kv_cons(_K, V, KVs), !Acc1, !Acc2, !Acc3) :-
     P(V, !Acc1, !Acc2, !Acc3),
-    assoc_list.foldl3_values(P, KVs, !Acc1, !Acc2, !Acc3).
+    kv_list.foldl3_values(P, KVs, !Acc1, !Acc2, !Acc3).
 
 %---------------------------------------------------------------------------%
-:- end_module assoc_list.
+:- end_module kv_list.
 %---------------------------------------------------------------------------%

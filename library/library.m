@@ -58,6 +58,8 @@
 %   not be included in that documentation).
 %
 % Please keep all these lists in alphabetical order.
+% NOTES_TO_IMPLEMENTORS But do it manually. The standard Unix sort program
+% NOTES_TO_IMPLEMENTORS screws up the ordering of e.g. int8 vs int16.
 
 % The modules intended for application programmers.
 
@@ -102,6 +104,7 @@
 :- import_module int64.
 :- import_module integer.
 :- import_module io.
+:- import_module kv_list.
 :- import_module lazy.
 :- import_module lexer.
 :- import_module list.
@@ -284,6 +287,7 @@ mercury_std_library_module("int32").
 mercury_std_library_module("int64").
 mercury_std_library_module("integer").
 mercury_std_library_module("io").
+mercury_std_library_module("kv_list").
 mercury_std_library_module("lazy").
 mercury_std_library_module("lexer").
 mercury_std_library_module("library").
