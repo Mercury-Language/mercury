@@ -6,14 +6,14 @@ Changes to the Mercury standard library
 
 ### New module: `kv_list` module
 
-This module, whose name is short for key-value list, contains the same
-functionality as the existing assoc_list module, but stores lists of
-key-value pairs in a more space-efficient manner. Specifically, it uses
-one three-word cell on the heap to represent each pair, while the
-assoc_list module uses two two-word cells, which means that kv_list
-will allocate fewer heap cells. The tradeoff is that unlike assoc_lists,
-kv_lists are not standard lists, and thus cannot be manipulated
-using the functions and predicates of the list module.
+* This module, whose name is short for key-value list, contains the same
+  functionality as the existing `assoc_list` module, but stores lists of
+  key-value pairs in a more space-efficient manner. Specifically, it uses
+  one three-word cell on the heap to represent each pair, while the
+  `assoc_list` module uses two two-word cells, which means that `kv_list`
+  will allocate fewer heap cells. The tradeoff is that unlike assoc_lists,
+  kv_lists are not standard lists, and thus cannot be manipulated
+  using the functions and predicates of the `list` module.
 
 ### Changes to the `assoc_list` module
 
