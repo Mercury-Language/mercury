@@ -109,6 +109,18 @@
 
 %---------------------------------------------------------------------------%
 %
+% Updating elements in kv_lists.
+%
+
+    % Find the first element of the kv_list list that matches
+    % the given key, and update the associated value.
+    % Fail if there is no matching key.
+    %
+:- pred update(K::in, V::in, kv_list(K, V)::in, kv_list(K, V)::out)
+    is semidet.
+
+%---------------------------------------------------------------------------%
+%
 % Removing elements from kv_lists.
 %
 
@@ -193,9 +205,23 @@
 % Folding over kv_lists.
 %
 
+    % foldl(Pred, List, Start End) calls Pred
+    % with each key-value pair in List, working left-to-right,
+    % and an accumulator whose initial value is Start,
+    % and returns the final value in End.
+    %
+:- pred foldl(pred(K, V, A, A), kv_list(K, V), A, A).
+:- mode foldl(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl(pred(in, in, in, out) is nondet, in, in, out) is nondet.
+
     % foldl_keys(Pred, List, Start End) calls Pred
-    % with each key in List (working left-to-right) and an accumulator
-    % (with initial value of Start), and returns the final value in End.
+    % with each key in List, working left-to-right, and an accumulator
+    % whose initial value is Start, and returns the final value in End.
     %
 :- pred foldl_keys(pred(K, A, A), kv_list(K, V), A, A).
 :- mode foldl_keys(pred(in, in, out) is det, in, in, out) is det.
@@ -208,8 +234,8 @@
 :- mode foldl_keys(pred(in, in, out) is nondet, in, in, out) is nondet.
 
     % foldl_values(Pred, List, Start End) calls Pred
-    % with each value in List (working left-to-right) and an accumulator
-    % (with initial value of Start), and returns the final value in End.
+    % with each value in List, working left-to-right, and an accumulator
+    % whose initial value is Start, and returns the final value in End.
     %
 :- pred foldl_values(pred(V, A, A), kv_list(K, V), A, A).
 :- mode foldl_values(pred(in, in, out) is det, in,
@@ -229,7 +255,25 @@
 :- mode foldl_values(pred(in, in, out) is nondet, in,
     in, out) is nondet.
 
-    % As above, but with two accumulators.
+    % As foldl, but with two accumulators.
+    %
+:- pred foldl2(pred(K, V, A, A, B, B), kv_list(K, V), A, A, B, B).
+:- mode foldl2(pred(in, in, in, out, in, out) is det, in, in, out,
+    in, out) is det.
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is det, in, in, out,
+    mdi, muo) is det.
+:- mode foldl2(pred(in, in, in, out, di, uo) is det, in, in, out,
+    di, uo) is det.
+:- mode foldl2(pred(in, in, in, out, in, out) is semidet, in, in, out,
+    in, out) is semidet.
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is semidet, in,in, out,
+    mdi, muo) is semidet.
+:- mode foldl2(pred(in, in, in, out, di, uo) is semidet, in, in, out,
+    di, uo) is semidet.
+:- mode foldl2(pred(in, in, in, out, in, out) is nondet, in, in, out,
+    in, out) is nondet.
+
+    % As foldl_values, but with two accumulators.
     %
 :- pred foldl2_values(pred(V, A, A, B, B), kv_list(K, V),
     A, A, B, B).
@@ -250,7 +294,26 @@
 :- mode foldl2_values(pred(in, in, out, in, out) is nondet, in,
     in, out, in, out) is nondet.
 
-    % As above, but with three accumulators.
+    % As foldl, but with three accumulators.
+    %
+:- pred foldl3(pred(K, V, A, A, B, B, C, C), kv_list(K, V),
+    A, A, B, B, C, C).
+:- mode foldl3(pred(in, in, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out) is det.
+:- mode foldl3(pred(in, in, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, mdi, muo) is det.
+:- mode foldl3(pred(in, in, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, di, uo) is det.
+:- mode foldl3(pred(in, in, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out) is semidet.
+:- mode foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet, in,
+        in, out, in, out, mdi, muo) is semidet.
+:- mode foldl3(pred(in, in, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, di, uo) is semidet.
+:- mode foldl3(pred(in, in, in, out, in, out, in, out) is nondet, in,
+    in, out, in, out, in, out) is nondet.
+
+    % As foldl_values, but with three accumulators.
     %
 :- pred foldl3_values(pred(V, A, A, B, B, C, C), kv_list(K, V),
     A, A, B, B, C, C).
@@ -373,6 +436,23 @@ KVs ^ det_elem(K) = V :-
 
 %---------------------------------------------------------------------------%
 
+update(Key, Value, KVs0, KVs) :-
+    require_complete_switch [KVs0]
+    (
+        KVs0 = kv_nil,
+        fail
+    ;
+        KVs0 = kv_cons(K, V, TailKVs0),
+        ( if Key = K then
+            KVs = kv_cons(K, Value, TailKVs0)
+        else
+            update(Key, Value, TailKVs0, TailKVs),
+            KVs = kv_cons(K, V, TailKVs)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
 remove(kv_cons(HeadK, HeadV, TailKVs), Key, Value, FilteredKVs) :-
     ( if HeadK = Key then
         Value = HeadV,
@@ -478,22 +558,37 @@ merge(A @ kv_cons(AK, AV, AKVs), B @ kv_cons(BK, BV, BKVs), C) :-
 
 %---------------------------------------------------------------------------%
 
-foldl_keys(_, kv_nil, !Acc).
+foldl(_P, kv_nil, !A).
+foldl(P, kv_cons(K, V, TailKVs), !A) :-
+    P(K, V, !A),
+    foldl(P, TailKVs, !A).
+
+foldl_keys(_P, kv_nil, !Acc).
 foldl_keys(P, kv_cons(K, _V, KVs), !Acc) :-
     P(K, !Acc),
     kv_list.foldl_keys(P, KVs, !Acc).
 
-foldl_values(_, kv_nil, !Acc).
+foldl_values(_P, kv_nil, !Acc).
 foldl_values(P, kv_cons(_K, V, KVs), !Acc) :-
     P(V, !Acc),
     kv_list.foldl_values(P, KVs, !Acc).
 
-foldl2_values(_, kv_nil, !Acc1, !Acc2).
+foldl2(_P, kv_nil, !A, !B).
+foldl2(P, kv_cons(K, V, TailKVs), !A, !B) :-
+    P(K, V, !A, !B),
+    foldl2(P, TailKVs, !A, !B).
+
+foldl2_values(_P, kv_nil, !Acc1, !Acc2).
 foldl2_values(P, kv_cons(_K, V, KVs), !Acc1, !Acc2) :-
     P(V, !Acc1, !Acc2),
     kv_list.foldl2_values(P, KVs, !Acc1, !Acc2).
 
-foldl3_values(_, kv_nil, !Acc1, !Acc2, !Acc3).
+foldl3(_P, kv_nil, !A, !B, !C).
+foldl3(P, kv_cons(K, V, TailKVs), !A, !B, !C) :-
+    P(K, V, !A, !B, !C),
+    foldl3(P, TailKVs, !A, !B, !C).
+
+foldl3_values(_P, kv_nil, !Acc1, !Acc2, !Acc3).
 foldl3_values(P, kv_cons(_K, V, KVs), !Acc1, !Acc2, !Acc3) :-
     P(V, !Acc1, !Acc2, !Acc3),
     kv_list.foldl3_values(P, KVs, !Acc1, !Acc2, !Acc3).

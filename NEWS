@@ -17,9 +17,13 @@ Changes to the Mercury standard library
 
 ### Changes to the `assoc_list` module
 
-* The following predicate has been added:
+* The following predicates has been added:
 
     - pred `lookup/3`
+    - pred `update/4`
+    - pred `foldl/4`
+    - pred `foldl2/6`
+    - pred `foldl3/8`
 
 ### Changes to the `char` module
 
