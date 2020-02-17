@@ -56,6 +56,10 @@
 
     % Place an item back at the start of the channel.
     %
+    % WARNING: a call to `channel.untake' will deadlock if a call to
+    % `channel.take' is blocked on the same channel.
+    %
+:- pragma obsolete(untake/4).
 :- pred untake(channel(T)::in, T::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
