@@ -88,6 +88,7 @@ term_io.m
 term_to_xml.m
 thread.barrier.m
 thread.channel.m
+thread.closeable_channel.m
 thread.future.m
 thread.m
 thread.mvar.m

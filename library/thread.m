@@ -28,6 +28,7 @@
 
 :- include_module barrier.
 :- include_module channel.
+:- include_module closeable_channel.
 :- include_module future.
 :- include_module mvar.
 :- include_module semaphore.

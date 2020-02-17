@@ -15,6 +15,13 @@ Changes to the Mercury standard library
   kv_lists are not standard lists, and thus cannot be manipulated
   using the functions and predicates of the `list` module.
 
+### New module: `thread.closeable_channel` module
+
+* This module implements closeable unbounded channels, similar to the unbounded
+  channels provided by the `thread.channel` module, but with the addition of a
+  close operation. Once a channel is closed, no more items can be added to it,
+  and reading from a closed channel will not block indefinitely.
+
 ### Changes to the `assoc_list` module
 
 * The following predicates has been added:
