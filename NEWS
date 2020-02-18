@@ -108,6 +108,30 @@ Changes to the Mercury standard library
     - pred `string_hash/2`
     - pred `generic_hash/2`
 
+Changes to the Mercury compiler
+-------------------------------
+
+### Changes to code model options
+
+* `--trail-segments`
+
+   Grades that support trailing now always use trail segments. This means
+   that the `--trail-segments` option now has no effect, and it is therefore
+   deprecated.
+
+Changes to the Mercury implementation
+-------------------------------------
+
+* Grades that support trailing now always use trail segments; it is no longer
+  possible to use a fixed size trail.
+
+  One consequence of this is that the `trseg` grade component now acts
+  as a synonym for the `tr` component. Since `tr' is shorter, `trseg'
+  is deprecated in its favor.
+
+  Another consequence is that the `--trail-size` and `--trail-size-kwords`
+  runtime options no longer have any effect, and are deprecated.
+
 NEWS for Mercury 20.01.1
 ========================
 

@@ -50,7 +50,6 @@ solver_var_name("gcc_conf",                     svar_gcc_conf).
 solver_var_name("low_tag_bits_use",             svar_low_tag_bits_use).
 solver_var_name("stack_len",                    svar_stack_len).
 solver_var_name("trail",                        svar_trail).
-solver_var_name("trail_segments",               svar_trail_segments).
 solver_var_name("minmodel",                     svar_minmodel).
 solver_var_name("thread_safe",                  svar_thread_safe).
 solver_var_name("gc",                           svar_gc).
@@ -119,9 +118,6 @@ solver_var_value_name("exts",                   svalue_stack_len_extend).
 
 solver_var_value_name("no_trail",               svalue_trail_no).
 solver_var_value_name("trail",                  svalue_trail_yes).
-
-solver_var_value_name("trfix",                  svalue_trail_segments_no).
-solver_var_value_name("trseg",                  svalue_trail_segments_yes).
 
 solver_var_value_name("no_mm",                  svalue_minmodel_no).
 solver_var_value_name("mm_stack_copy",      

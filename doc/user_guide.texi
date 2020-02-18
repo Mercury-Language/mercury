@@ -7973,7 +7973,8 @@ The set of aspects and their alternatives are:
 (the default is no profiling).
 
 @item Whether to enable the trail:
-@samp{tr} and @samp{trseg} (the default is no trailing).
+@samp{tr} (the default is no trailing).  @samp{trseg} is currently
+accepted as synonym for @samp{tr}.
 
 @item Whether to use single-precision representation of floating point values:
 @samp{spf} (the default is to use double-precision floats)
@@ -8470,10 +8471,8 @@ This option is only supported by the C back-ends.
 @cindex Constraint solving
 @cindex Backtrackable destructive update
 @cindex Destructive update, backtrackable
-Enable the use of a dynamically sized trail that is composed of small segments.
-This can help to avoid trail exhaustion at the cost of increased execution
-time.
-This option is only supported by the C back-ends.
+This option is deprecated as trailing now always uses trail segments.
+The @samp{.trseg} grade modifier is a synonym for @samp{.tr}.
 
 @sp 1
 @item @code{--parallel}
@@ -10701,27 +10700,30 @@ Sets the size of the solutions heap to @var{size} kilobytes.
 Sets the size of the solutions heap to @var{size} kilobytes
 multiplied by the word size in bytes.
 
-@sp 1
-@item --trail-size @var{size}
-@findex --trail-size (runtime option)
-@cindex Trail size
-Sets the size of the trail to @var{size} kilobytes.
-This option is ignored in grades that use trail segments.
+@c These two options are commented out as we support a fixed size tail ONLY
+@c for developers.
+@c
+@c @sp 1
+@c @item --trail-size @var{size}
+@c @findex --trail-size (runtime option)
+@c @cindex Trail size
+@c Sets the size of the trail to @var{size} kilobytes.
+@c This option is ignored in grades that use trail segments.
 
-@sp 1
-@item --trail-size-kwords @var{size}
-@findex --trail-size-kwords (runtime option)
-@cindex Trail size
-Sets the size of the trail to @var{size} kilobytes
-multiplied by the word size in bytes.
-This option is ignored in grades that use trail segments.
+@c @sp 1
+@c @item --trail-size-kwords @var{size}
+@c @findex --trail-size-kwords (runtime option)
+@c @cindex Trail size
+@c Sets the size of the trail to @var{size} kilobytes
+@c multiplied by the word size in bytes.
+@c This option is ignored in grades that use trail segments.
 
 @sp 1
 @item --trail-segment-size @var{size}
 @findex --trail-segment-size (runtime option)
 @cindex Trail size
 Sets the size of each trail segment to be @var{size} kilobytes.
-This option is ignored in grades that do not use trail segments.
+This option is ignored in grades that do not use a trail.
 
 @sp 1
 @item --trail-segment-size-kwords @var{size}
@@ -10729,7 +10731,7 @@ This option is ignored in grades that do not use trail segments.
 @cindex Trail size
 Set the size of each trail segment to be @var{size} kilobytes multiplied by the
 words size in bytes.
-This option is ignored in grades that do not use trail segments.
+This option is ignored in grades that do not use trail.
 
 @sp 1
 @item --genstack-size @var{size}

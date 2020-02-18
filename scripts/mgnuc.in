@@ -390,9 +390,6 @@ esac
 case $use_trail in
     true)
         TRAIL_OPTS="-DMR_USE_TRAIL"
-        case $trail_segments in
-            true) TRAIL_OPTS="$TRAIL_OPTS -DMR_TRAIL_SEGMENTS" ;;
-        esac
         # See the comment in compile_c_file/7 in compiler/compile_target_code.m
         # for an explanation of this.
         case $COMPILER in
@@ -402,15 +399,7 @@ case $use_trail in
         ;;
 
     false)
-        TRAIL_OPTS=""
-        case $trail_segments in
-            true)
-                    progname`basename $0`
-                    echo "$progname: cannot use trail segments without trailing"
-                    exit 1;;
-        esac
-        FN_ALIGN_OPTS=""
-    ;;
+        TRAIL_OPTS="" ;;
 esac
 
 case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks in

@@ -350,8 +350,7 @@ gc_to_strs(grade_var_gc_history) = ["hgc"].
 :- func c_trail_to_strs(c_trail) = list(string).
 
 c_trail_to_strs(c_trail_no) = [].
-c_trail_to_strs(c_trail_yes(grade_var_trail_segments_no)) = ["tr"].
-c_trail_to_strs(c_trail_yes(grade_var_trail_segments_yes)) = ["trseg"].
+c_trail_to_strs(c_trail_yes) = ["tr"].
 
 :- type thread_safe_backend
     --->    tsb_llds(which_grade_string)
@@ -713,13 +712,11 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_term_size_prof - svalue_term_size_prof_words,
         Settings = []
     ;
-        ComponentStr = "tr",
+        ( ComponentStr = "tr"
+        ; ComponentStr = "trseg"
+        ),
         Setting = svar_trail - svalue_trail_yes,
-        Settings = [svar_trail_segments - svalue_trail_segments_no]
-    ;
-        ComponentStr = "trseg",
-        Setting = svar_trail - svalue_trail_yes,
-        Settings = [svar_trail_segments - svalue_trail_segments_yes]
+        Settings = []
     ;
         ( ComponentStr = "mm"
         ; ComponentStr = "mmsc"

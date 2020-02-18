@@ -710,19 +710,10 @@ gather_grade_defines(Globals, GradeDefines) :-
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
         UseTrail = yes,
-        UseTrailOpt = "-DMR_USE_TRAIL ",
-        globals.lookup_bool_option(Globals, trail_segments, TrailSegments),
-        (
-            TrailSegments = yes,
-            TrailSegOpt = "-DMR_TRAIL_SEGMENTS "
-        ;
-            TrailSegments = no,
-            TrailSegOpt = ""
-        )
+        UseTrailOpt = "-DMR_USE_TRAIL "
     ;
         UseTrail = no,
-        UseTrailOpt = "",
-        TrailSegOpt = ""
+        UseTrailOpt = ""
     ),
     globals.lookup_bool_option(Globals, use_minimal_model_stack_copy,
         MinimalModelStackCopy),
@@ -821,7 +812,6 @@ gather_grade_defines(Globals, GradeDefines) :-
         SourceDebugOpt,
         ExecTraceOpt,
         UseTrailOpt,
-        TrailSegOpt,
         MinimalModelOpt,
         PregeneratedDistOpt,
         SinglePrecFloatOpt,

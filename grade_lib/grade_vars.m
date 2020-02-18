@@ -54,7 +54,6 @@
                 gv_low_tag_bits_use     :: grade_var_low_tag_bits_use,
                 gv_stack_len            :: grade_var_stack_len,
                 gv_trail                :: grade_var_trail,
-                gv_trail_segments       :: grade_var_trail_segments,
                 gv_minmodel             :: grade_var_minmodel,
                 gv_thread_safe          :: grade_var_thread_safe,
                 gv_gc                   :: grade_var_gc,
@@ -230,7 +229,6 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     map.det_remove(svar_low_tag_bits_use, LowTagBitsUse, !SuccMap),
     map.det_remove(svar_stack_len, StackLen, !SuccMap),
     map.det_remove(svar_trail, Trail, !SuccMap),
-    map.det_remove(svar_trail_segments, TrailSegments, !SuccMap),
     map.det_remove(svar_minmodel, MinimalModel, !SuccMap),
     map.det_remove(svar_thread_safe, ThreadSafe, !SuccMap),
     map.det_remove(svar_gc, Gc, !SuccMap),
@@ -333,14 +331,6 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         GradeVarTrail = grade_var_trail_yes
     else
         unexpected($pred, "unexpected value of Trail")
-    ),
-
-    ( if TrailSegments = svalue_trail_segments_no then
-        GradeVarTrailSegments = grade_var_trail_segments_no
-    else if TrailSegments = svalue_trail_segments_yes then
-        GradeVarTrailSegments = grade_var_trail_segments_yes
-    else
-        unexpected($pred, "unexpected value of TrailSegments")
     ),
 
     ( if MinimalModel = svalue_minmodel_no then
@@ -504,7 +494,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     GradeVars = grade_vars(GradeVarPregen, GradeVarBackend,
         GradeVarTarget, GradeVarDataRep,
         GradeVarGccConf, GradeVarLowTagBitsUse, GradeVarStackLen,
-        GradeVarTrail, GradeVarTrailSegments,
+        GradeVarTrail,
         GradeVarMinimalModel, GradeVarThreadSafe, GradeVarGc,
         GradeVarDeepProf,
         GradeVarMprofCall, GradeVarMprofTime, GradeVarMprofMemory,

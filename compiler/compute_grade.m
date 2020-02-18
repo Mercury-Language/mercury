@@ -190,10 +190,10 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
             ; Target = target_csharp
             ; Target = target_erlang
             ),
-            Trailpec =
+            TrailSpec =
                 [words("Trailing is incompatible with"),
                 words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(phase_options, Trailpec, !Specs)
+            add_error(phase_options, TrailSpec, !Specs)
         ;
             Target = target_c
         )
@@ -654,9 +654,11 @@ grade_component_table("tsc", comp_term_size,
 
     % Trailing components.
 grade_component_table("tr", comp_trail,
-    [use_trail - bool(yes), trail_segments - bool(no)], no, yes).
-grade_component_table("trseg", comp_trail,
     [use_trail - bool(yes), trail_segments - bool(yes)], no, yes).
+    % NOTE: we do no include `.trseg' in grades strings because it
+    % it is just a synonym for `.tr'.
+grade_component_table("trseg", comp_trail,
+    [use_trail - bool(yes), trail_segments - bool(yes)], no, no).
 
     % Minimal model tabling components.
     % NOTE: we do not include `.mm' and `.dmm' in grade strings

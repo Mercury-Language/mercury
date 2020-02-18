@@ -329,7 +329,7 @@ struct MR_Context_Struct {
 
 #ifdef  MR_USE_TRAIL
     MR_MemoryZone       *MR_ctxt_trail_zone;
-  #ifdef MR_TRAIL_SEGMENTS
+  #ifndef MR_USE_FIXED_SIZE_TRAIL
     MR_MemoryZones      *MR_ctxt_prev_trail_zones;
   #endif
     MR_TrailEntry       *MR_ctxt_trail_ptr;

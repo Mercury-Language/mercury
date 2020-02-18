@@ -20,7 +20,7 @@
 MR_MemoryZone   *MR_trail_zone;
 MR_TrailEntry   *MR_trail_ptr_var;
 
-  #if defined(MR_TRAIL_SEGMENTS)
+  #if !defined(MR_USE_FIXED_SIZE_TRAIL)
     MR_MemoryZones *MR_prev_trail_zones;
   #endif
 
@@ -28,7 +28,7 @@ MR_Unsigned     MR_ticket_counter_var = 1;
 MR_Unsigned     MR_ticket_high_water_var = 1;
 #endif
 
-#if defined(MR_TRAIL_SEGMENTS)
+#if !defined(MR_USE_FIXED_SIZE_TRAIL)
 static void
 MR_pop_trail_segment(void);
 #endif
@@ -64,7 +64,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
             // We need to walk backwards through all the previous segments
             // (invoking function trail entries as we go) until we find it.
 
-            #if defined(MR_TRAIL_SEGMENTS)
+            #if !defined(MR_USE_FIXED_SIZE_TRAIL)
                 if (tr_ptr == tr_base
                     && tr_ptr != old_trail_ptr)
                 {
@@ -115,7 +115,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
                 *MR_get_trail_entry_address(tr_ptr) =
                     MR_get_trail_entry_value(tr_ptr);
             }
-            #if defined(MR_TRAIL_SEGMENTS)
+            #if !defined(MR_USE_FIXED_SIZE_TRAIL)
                 if (tr_ptr == tr_base
                     && tr_ptr != old_trail_ptr)
                 {
@@ -143,7 +143,7 @@ MR_num_trail_entries(void)
 {
     MR_Unsigned     n_entries = 0;
 
-#if defined(MR_TRAIL_SEGMENTS)
+#if !defined(MR_USE_FIXED_SIZE_TRAIL)
     MR_MemoryZones  *list;
     MR_MemoryZone   *zone;
 
@@ -154,7 +154,7 @@ MR_num_trail_entries(void)
             - (MR_TrailEntry *) zone->MR_zone_min;
         list = list->MR_zones_tail;
     }
-#endif // MR_TRAIL_SEGMENTS
+#endif // ! MR_USE_FIXED_SIZE_TRAIL
 
     n_entries += MR_trail_ptr - MR_TRAIL_BASE;
 
@@ -166,7 +166,7 @@ MR_num_trail_entries(void)
 void
 MR_reset_trail(void)
 {
-    #if defined(MR_TRAIL_SEGMENTS)
+    #if !defined(MR_USE_FIXED_SIZE_TRAIL)
         while (MR_PREV_TRAIL_ZONES != NULL) {
             MR_reset_trail_zone();
             MR_pop_trail_segment();
@@ -204,7 +204,7 @@ MR_reset_trail_zone(void) {
 
 ////////////////////////////////////////////////////////////////////////////
 
-#if defined(MR_TRAIL_SEGMENTS)
+#if !defined(MR_USE_FIXED_SIZE_TRAIL)
 void
 MR_new_trail_segment(void)
 {
@@ -280,7 +280,7 @@ MR_num_trail_segments(void)
     return n_segments;
 }
 
-#endif // MR_TRAIL_SEGMENTS
+#endif // ! MR_USE_FIXED_SIZE_TRAIL
 
 #endif // MR_USE_TRAIL
 

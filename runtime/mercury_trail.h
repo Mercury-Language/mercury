@@ -320,7 +320,7 @@ struct MR_TrailEntry_Struct {
     // The Mercury trail.
     extern MR_MemoryZone *MR_trail_zone;
 
-    #if defined(MR_TRAIL_SEGMENTS)
+    #if !defined(MR_USE_FIXED_SIZE_TRAIL)
         // A list of any previous trail zones.
          extern MR_MemoryZones *MR_prev_trail_zones;
     #endif
@@ -372,7 +372,7 @@ struct MR_TrailEntry_Struct {
 
     #define MR_TRAIL_ZONE (MR_CONTEXT(MR_ctxt_trail_zone))
 
-    #if defined(MR_TRAIL_SEGMENTS)
+    #if !defined(MR_USE_FIXED_SIZE_TRAIL)
         #define MR_PREV_TRAIL_ZONES (MR_CONTEXT(MR_ctxt_prev_trail_zones))
     #endif
 
@@ -381,7 +381,7 @@ struct MR_TrailEntry_Struct {
 #else
     #define MR_TRAIL_ZONE   MR_trail_zone
 
-    #if defined(MR_TRAIL_SEGMENTS)
+    #if !defined(MR_USE_FIXED_SIZE_TRAIL)
         #define MR_PREV_TRAIL_ZONES MR_prev_trail_zones
     #endif
 
@@ -397,7 +397,7 @@ struct MR_TrailEntry_Struct {
 
 ////////////////////////////////////////////////////////////////////////////
 
-#if defined(MR_TRAIL_SEGMENTS)
+#if !defined(MR_USE_FIXED_SIZE_TRAIL)
 
 #define MR_trail_extend_and_check()                                         \
     do {                                                                    \
@@ -406,11 +406,11 @@ struct MR_TrailEntry_Struct {
         }                                                                   \
     } while (0)
 
-#else // ! MR_TRAIL_SEGMENTS
+#else // ! MR_USE_FIXED_SIZE_TRAIL
 
     #define MR_trail_extend_and_check()     ((void) 0)
 
-#endif // !MR_TRAIL_SEGMENTS
+#endif // MR_USE_FIXED_SIZE_TRAIL
 
 // void  MR_trail_value(MR_Word *address, MR_Word value);
 //
@@ -511,7 +511,7 @@ extern MR_Unsigned  MR_num_trail_entries(void);
 
 extern void         MR_reset_trail(void);
 
-#if defined(MR_TRAIL_SEGMENTS)
+#if !defined(MR_USE_FIXED_SIZE_TRAIL)
 
 // Push the current trail segment onto the list of previous segments,
 // allocate a new segment and set MR_trail_ptr to point to beginning
@@ -523,6 +523,6 @@ extern void         MR_new_trail_segment(void);
 
 extern MR_Unsigned  MR_num_trail_segments(void);
 
-#endif // MR_TRAIL_SEGMENTS
+#endif // ! MR_USE_FIXED_SIZE_TRAIL
 
 #endif // not MERCURY_TRAIL_H

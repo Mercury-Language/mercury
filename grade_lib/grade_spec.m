@@ -46,7 +46,6 @@
     ;       svar_low_tag_bits_use
     ;       svar_stack_len
     ;       svar_trail
-    ;       svar_trail_segments
     ;       svar_minmodel
     ;       svar_thread_safe
     ;       svar_gc
@@ -137,9 +136,6 @@
 
     ;       svalue_trail_no
     ;       svalue_trail_yes
-
-    ;       svalue_trail_segments_no
-    ;       svalue_trail_segments_yes
 
     ;       svalue_minmodel_no
     ;       svalue_minmodel_stack_copy
@@ -363,8 +359,6 @@ init_solver_var_specs(SpecsVersion) = Specs :-
             StackLenPrefOrder),
         solver_var_spec(svar_trail,
             [svalue_trail_no, svalue_trail_yes]),
-        solver_var_spec(svar_trail_segments,
-            [svalue_trail_segments_yes, svalue_trail_segments_no]),
 
         solver_var_spec(svar_minmodel,
             [svalue_minmodel_no,
@@ -729,13 +723,6 @@ init_requirement_specs = [
         "Trailing interferes with minimal model tabling.",
         (svar_trail `being` svalue_trail_yes) `implies_that`
         (svar_minmodel `is_one_of` [svalue_minmodel_no])
-    ),
-
-% Requirements of values of svar_trail_segments.
-    requirement_spec(
-        "Trail segments require trailing.",
-        (svar_trail_segments `being` svalue_trail_segments_yes) `implies_that`
-        (svar_trail `is_one_of` [svalue_trail_yes])
     ),
 
 % Requirements of values of svar_minmodel.

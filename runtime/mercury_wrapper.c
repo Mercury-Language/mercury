@@ -1505,7 +1505,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                #if !defined(MR_TRAIL_SEGMENTS)
+                #if defined(MR_USE_FIXED_SIZE_TRAIL)
                     MR_trail_size = size;
                 #endif
                 break;
@@ -1515,7 +1515,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                #if !defined(MR_TRAIL_SEGMENTS)
+                #if defined(MR_USE_FIXED_SIZE_TRAIL)
                     MR_trail_size = size * sizeof(MR_Word);
                 #endif
                 break;
@@ -1525,7 +1525,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                #if defined(MR_TRAIL_SEGMENTS)
+                #if !defined(MR_USE_FIXED_SIZE_TRAIL)
                     MR_trail_size = size;
                 #endif
                 break;
@@ -1535,7 +1535,7 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
-                #if defined(MR_TRAIL_SEGMENTS)
+                #if !defined(MR_USE_FIXED_SIZE_TRAIL)
                     MR_trail_size = size * sizeof(MR_Word);
                 #endif
                 break;

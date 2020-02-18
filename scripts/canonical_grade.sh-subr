@@ -119,14 +119,9 @@ case $record_term_sizes_as_words,$record_term_sizes_as_cells in
 			;;
 esac
 
-case $use_trail,$trail_segments in
-	true,false)	GRADE="$GRADE.tr" ;;
-	true,true)	GRADE="$GRADE.trseg" ;;
-	false,false)	;;
-	*)		progname=`basename $0`
-			echo "$progname: error: invalid combination of trailing options." 1>&2
-			exit 1
-			;;
+case $use_trail in
+	true)	GRADE="$GRADE.tr" ;;
+	*)      ;;
 esac
 
 case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks,$minimal_model_debug in

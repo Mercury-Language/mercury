@@ -111,9 +111,7 @@
 
 :- type c_trail
     --->    c_trail_no
-    ;       c_trail_yes(
-                grade_var_trail_segments
-            ).
+    ;       c_trail_yes.
 
 :- type llds_minmodel_kind
     --->    lmk_stack_copy
@@ -236,12 +234,12 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
     % *some* arguments is vulnerable to not picking up some arguments
     % in *either*.
     GradeVars = grade_vars(Pregen, Backend, _, _, _, _, _, _,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
 
     (
         Pregen = grade_var_pregen_yes,
         GradeVars = grade_vars(_Pregen, _Backend, Target, DataRep,
-            GccConf, LowTagBitsUse, StackLen, Trail, TrailSegments,
+            GccConf, LowTagBitsUse, StackLen, Trail,
             MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, SSDebug, TargetDebug,
@@ -259,8 +257,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             "pregen but StackLen != grade_var_stack_len_std"),
         expect(unify(Trail, grade_var_trail_no), $pred,
             "pregen but Trail != grade_var_trail_no"),
-        expect(unify(TrailSegments, grade_var_trail_segments_no), $pred,
-            "pregen but TrailSegments != grade_var_trail_segments_no"),
         expect(unify(MinimalModel, grade_var_minmodel_no), $pred,
             "pregen but MinimalModel != grade_var_minmodel_no"),
         expect(unify(ThreadSafe, grade_var_thread_safe_c_no), $pred,
@@ -335,7 +331,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             Backend = grade_var_backend_llds,
 
             GradeVars = grade_vars(_Pregen, _Backend, Target, DataRep,
-                GccConf, LowTagBitsUse, StackLen, Trail, TrailSegments,
+                GccConf, LowTagBitsUse, StackLen, Trail,
                 MinimalModel, ThreadSafe, Gc,
                 DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
                 TermSizeProf, Debug, SSDebug, TargetDebug,
@@ -355,7 +351,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 (
                     MinimalModel = grade_var_minmodel_no,
                     encode_c_gc(Gc, CGc),
-                    encode_c_trail(Trail, TrailSegments, CTrail),
+                    encode_c_trail(Trail, CTrail),
                     (
                         DeepProf = grade_var_deep_prof_no,
                         (
@@ -437,9 +433,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     ),
                     expect(unify(Trail, grade_var_trail_no), $pred,
                         "Trail != grade_var_trail_no"),
-                    expect(unify(TrailSegments, grade_var_trail_segments_no),
-                        $pred,
-                        "TrailSegments != grade_var_trail_segments_no"),
                     expect(unify(DeepProf, grade_var_deep_prof_no), $pred,
                         "DeepProf != grade_var_deep_prof_no"),
                     expect(unify(MprofCall, grade_var_mprof_call_no), $pred,
@@ -467,7 +460,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     "MinModel != grade_var_minmodel_no"),
 
                 encode_thread_safe_c_gc(Gc, ThreadSafeCGc),
-                encode_c_trail(Trail, TrailSegments, CTrail),
+                encode_c_trail(Trail, CTrail),
                 expect(unify(DeepProf, grade_var_deep_prof_no), $pred,
                     "DeepProf != grade_var_deep_prof_no"),
                 expect(unify(MprofCall, grade_var_mprof_call_no), $pred,
@@ -496,7 +489,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             Backend = grade_var_backend_mlds,
 
             GradeVars = grade_vars(_Pregen, _Backend, Target, DataRep,
-                GccConf, LowTagBitsUse, StackLen, Trail, TrailSegments,
+                GccConf, LowTagBitsUse, StackLen, Trail,
                 MinimalModel, ThreadSafe, Gc,
                 DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
                 TermSizeProf, Debug, SSDebug, TargetDebug,
@@ -575,7 +568,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     CTrail = c_trail_no
                 ;
                     Trail = grade_var_trail_yes,
-                    CTrail = c_trail_yes(TrailSegments)
+                    CTrail = c_trail_yes
                 ),
                 TargetC = mlds_target_c(MLDSCDataRep, MLDSCThreadSafe,
                     CTrail, MercFile, LowTagBitsUse, MercFloat),
@@ -593,9 +586,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     "Gc != grade_var_gc_target_native"),
                 expect(unify(Trail, grade_var_trail_no), $pred,
                     "Trail != grade_var_trail_no"),
-                expect(unify(TrailSegments, grade_var_trail_segments_no),
-                    $pred,
-                    "TrailSegments != grade_var_trail_segments_no"),
                 expect(unify(MprofCall, grade_var_mprof_call_no), $pred,
                     "MprofCall != grade_var_mprof_call_no"),
                 expect(unify(MprofTime, grade_var_mprof_time_no), $pred,
@@ -635,7 +625,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             Backend = grade_var_backend_elds,
 
             GradeVars = grade_vars(_Pregen, _Backend, Target, DataRep,
-                GccConf, _LowTagBitsUse, StackLen, Trail, TrailSegments,
+                GccConf, _LowTagBitsUse, StackLen, Trail,
                 MinimalModel, ThreadSafe, Gc,
                 DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
                 TermSizeProf, Debug, SSDebug, TargetDebug,
@@ -654,8 +644,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 "StackLen != grade_var_stack_len_std"),
             expect(unify(Trail, grade_var_trail_no), $pred,
                 "Trail != grade_var_trail_no"),
-            expect(unify(TrailSegments, grade_var_trail_segments_no), $pred,
-                "TrailSegments != grade_var_trail_segments_no"),
             expect(unify(MinimalModel, grade_var_minmodel_no), $pred,
                 "MinimalModel != grade_var_minmodel_no"),
             expect(unify(ThreadSafe, grade_var_thread_safe_target_native),
@@ -747,18 +735,15 @@ encode_thread_safe_c_gc(Gc, ThreadSafeCGc) :-
         unexpected($pred, "thread safe, Gc = history")
     ).
 
-:- pred encode_c_trail(grade_var_trail::in, grade_var_trail_segments::in,
-    c_trail::out) is det.
+:- pred encode_c_trail(grade_var_trail::in, c_trail::out) is det.
 
-encode_c_trail(Trail, TrailSegments, CTrail) :-
+encode_c_trail(Trail, CTrail) :-
     (
         Trail = grade_var_trail_no,
-        expect(unify(TrailSegments, grade_var_trail_segments_no), $pred,
-            "Trail = no, TrailSegments = yes"),
         CTrail = c_trail_no
     ;
         Trail = grade_var_trail_yes,
-        CTrail = c_trail_yes(TrailSegments)
+        CTrail = c_trail_yes
     ).
 
 %---------------------------------------------------------------------------%
