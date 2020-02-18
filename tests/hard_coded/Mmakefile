@@ -57,6 +57,7 @@ ORDINARY_PROGS = \
 	char_unicode \
 	checked_nondet_tailcall \
 	checked_nondet_tailcall_noinline \
+	closeable_channel_test \
 	closure_extension \
 	common_type_cast \
 	compare_spec \
