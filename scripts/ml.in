@@ -1,5 +1,5 @@
 #! /bin/sh
-# vim: ts=4 sw=4 noet
+# vim: ts=4 sw=4 et
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2008, 2010-2011 The University of Melbourne.
@@ -95,102 +95,102 @@ MDBCOMP_LIB_NAME=mer_mdbcomp
 MAYBE_STATIC_OPT=""
 
 case $debug in
-	true)
-		trace=true
-		;;
-	false)
-		;;
+    true)
+        trace=true
+        ;;
+    false)
+        ;;
 esac
 
 trace_base=false
 case $trace in
-	true)
-		trace_base=true
-		;;
-	false)
-		;;
+    true)
+        trace_base=true
+        ;;
+    false)
+        ;;
 esac
 case $ss_debug in
-	true)
-		trace_base=true
-		;;
-	false)
-		;;
+    true)
+        trace_base=true
+        ;;
+    false)
+        ;;
 esac
 
 case "$mercury_stdlib_dir" in
-	"")
-		LIBDIR=
-		;;
-	*)
-		LIBDIR=$mercury_stdlib_dir/lib
-		;;
+    "")
+        LIBDIR=
+        ;;
+    *)
+        LIBDIR=$mercury_stdlib_dir/lib
+        ;;
 esac
 
 # If you haven't set mercury_libs, set it to the default value
 # (shared on most systems). Note that if you have set all_libs,
 # it will also have set mercury_libs.
 case $mercury_libs in
-	default)
-		mercury_libs=shared
-		case $FULLARCH in
-			*-cygwin*|*-mingw*|i*86-*-solaris*)
-				# Shared libraries are not the default on the above systems.
-				# See configure.ac for details.
-				case $make_shared_lib in
-					false)
-						mercury_libs=static
-						;;
-				esac
-		esac
-		;;
+    default)
+        mercury_libs=shared
+        case $FULLARCH in
+            *-cygwin*|*-mingw*|i*86-*-solaris*)
+                # Shared libraries are not the default on the above systems.
+                # See configure.ac for details.
+                case $make_shared_lib in
+                    false)
+                        mercury_libs=static
+                        ;;
+                esac
+        esac
+        ;;
 esac
 
 # We cannot determine if we are using MSVC by looking at FULLARCH;
 # we must use static linkage with it as we do not currently support
 # the use of DLLs on Windows.
 case "$C_COMPILER_TYPE" in
-	msvc*)
-		mercury_libs=static
-	;;
+    msvc*)
+        mercury_libs=static
+    ;;
 esac
 
 # If you haven't set all_libs, set it to the default value
 # (shared on most systems).
 case $all_libs in
-	default)
-		all_libs=shared
-		case $FULLARCH in
-			*-cygwin*|*-mingw*)
-				# Shared libraries are not the default on the above systems.
-				# See configure.ac for details.
-				#
-				# We don't do this for Solaris/x86 because -ldl is
-				# only available for dynamically linked executables
-				# XXX With these defaults linking with Mercury
-				# libraries other than the standard library will fail.
-				case $make_shared_lib in
-					false)
-						all_libs=static
-						;;
-				esac
-				;;
-		esac
-		;;
+    default)
+        all_libs=shared
+        case $FULLARCH in
+            *-cygwin*|*-mingw*)
+                # Shared libraries are not the default on the above systems.
+                # See configure.ac for details.
+                #
+                # We don't do this for Solaris/x86 because -ldl is
+                # only available for dynamically linked executables
+                # XXX With these defaults linking with Mercury
+                # libraries other than the standard library will fail.
+                case $make_shared_lib in
+                    false)
+                        all_libs=static
+                        ;;
+                esac
+                ;;
+        esac
+        ;;
 esac
 
 case "$C_COMPILER_TYPE" in
-	msvc*)
-		all_libs=static
-	;;
+    msvc*)
+        all_libs=static
+    ;;
 esac
 
 # Defaults have been set, now set options.
 
 case $all_libs in
-	static)
-		MAYBE_STATIC_OPT=$LD_STATIC_FLAGS
-		;;
+    static)
+        MAYBE_STATIC_OPT=$LD_STATIC_FLAGS
+        ;;
 esac
 
 #
@@ -203,364 +203,364 @@ esac
 # if the --print-grade option is specified,
 # then all we do is print the grade and then exit
 case "$print_grade" in
-	true)
-		echo $GRADE
-		exit 0
-		;;
+    true)
+        echo $GRADE
+        exit 0
+        ;;
 esac
 
 # Compute the gc grade from the grade
 case "$GRADE" in
-	*.par*.gcd*.ll_debug*.prof*)
-		gc_grade=par_gc_debug_ll_debug_prof
-		;;
-	*.gcd*.ll_debug*.prof*)
-		gc_grade=gc_debug_ll_debug_prof
-		;;
-	*.par*.gcd*.ll_debug*)
-		gc_grade=par_gc_debug_ll_debug
-		;;
-	*.gcd*.ll_debug*)
-		gc_grade=gc_debug_ll_debug
-		;;
-	*.par*.gcd*.prof*)
-		gc_grade=par_gc_debug_prof
-		;;
-	*.par*.gcd*)
-		gc_grade=par_gc_debug
-		;;
-	*.gcd*.prof*)
-		gc_grade=gc_debug_prof
-		;;
-	*.gcd*)
-		gc_grade=gc_debug
-		;;
-	*.par*.gc*.ll_debug*.prof*)
-		gc_grade=par_gc_ll_debug_prof
-		;;
-	*.par*.gc*.ll_debug*)
-		gc_grade=par_gc_ll_debug
-		;;
-	*.gc*.ll_debug*.prof*)
-		gc_grade=gc_ll_debug_prof
-		;;
-	*.gc*.ll_debug*)
-		gc_grade=gc_ll_debug
-		;;
-	*.par*.gc*.prof*)
-		gc_grade=par_gc_prof
-		;;
-	*.par*.gc*)
-		gc_grade=par_gc
-		;;
-	*.gc*.prof*)
-		gc_grade=gc_prof
-		;;
-	*.gc*)
-		gc_grade=gc
-		;;
-	*.hgc*)
-		gc_grade=hgc
-		;;
-	*)
-		gc_grade=nogc
-		;;
+    *.par*.gcd*.ll_debug*.prof*)
+        gc_grade=par_gc_debug_ll_debug_prof
+        ;;
+    *.gcd*.ll_debug*.prof*)
+        gc_grade=gc_debug_ll_debug_prof
+        ;;
+    *.par*.gcd*.ll_debug*)
+        gc_grade=par_gc_debug_ll_debug
+        ;;
+    *.gcd*.ll_debug*)
+        gc_grade=gc_debug_ll_debug
+        ;;
+    *.par*.gcd*.prof*)
+        gc_grade=par_gc_debug_prof
+        ;;
+    *.par*.gcd*)
+        gc_grade=par_gc_debug
+        ;;
+    *.gcd*.prof*)
+        gc_grade=gc_debug_prof
+        ;;
+    *.gcd*)
+        gc_grade=gc_debug
+        ;;
+    *.par*.gc*.ll_debug*.prof*)
+        gc_grade=par_gc_ll_debug_prof
+        ;;
+    *.par*.gc*.ll_debug*)
+        gc_grade=par_gc_ll_debug
+        ;;
+    *.gc*.ll_debug*.prof*)
+        gc_grade=gc_ll_debug_prof
+        ;;
+    *.gc*.ll_debug*)
+        gc_grade=gc_ll_debug
+        ;;
+    *.par*.gc*.prof*)
+        gc_grade=par_gc_prof
+        ;;
+    *.par*.gc*)
+        gc_grade=par_gc
+        ;;
+    *.gc*.prof*)
+        gc_grade=gc_prof
+        ;;
+    *.gc*)
+        gc_grade=gc
+        ;;
+    *.hgc*)
+        gc_grade=hgc
+        ;;
+    *)
+        gc_grade=nogc
+        ;;
 esac
 
 # if the --print-gc-grade option is specified,
 # then all we do is print the gc grade and then exit
 case "$print_gc_grade" in
-	true)
-		echo $gc_grade
-		exit 0
-		;;
+    true)
+        echo $gc_grade
+        exit 0
+        ;;
 esac
 
 case "$gc_grade" in
-	nogc)	
-		LIBGC=
-		LIBGC_STATIC=
-		;;
-	hgc)
-		# HGC is part of the runtime, don't link anything extra.
-		LIBGC=
-		LIBGC_STATIC=
-		;;
-	*)
-		LIBGC="-l$gc_grade"
-		LIBGC_STATIC=`$FIX_PATH_FOR_LINKER $LIBDIR/lib$gc_grade.@LIB_SUFFIX@`
-		;;
+    nogc)   
+        LIBGC=
+        LIBGC_STATIC=
+        ;;
+    hgc)
+        # HGC is part of the runtime, don't link anything extra.
+        LIBGC=
+        LIBGC_STATIC=
+        ;;
+    *)
+        LIBGC="-l$gc_grade"
+        LIBGC_STATIC=`$FIX_PATH_FOR_LINKER $LIBDIR/lib$gc_grade.@LIB_SUFFIX@`
+        ;;
 esac
 
 
 case $readline in
-	true)
-		;;
-	false)
-		READLINE_LIBRARIES=
-		;;
+    true)
+        ;;
+    false)
+        READLINE_LIBRARIES=
+        ;;
 esac
 
 case $trace_base in
-	true)	
-		TRACE_BASE_LIBS="-l$EVENTSPEC_LIB_NAME \
-			-l$BROWSER_LIB_NAME -l$MDBCOMP_LIB_NAME"
- 		TRACE_BASE_LIBS_SYSTEM="$TRACE_BASE_LIBS_SYSTEM \
-		  	$READLINE_LIBRARIES"
- 		TRACE_BASE_STATIC_LIBS="\
-			`$FIX_PATH_FOR_LINKER \
-				$LIBDIR/$GRADE/lib$EVENTSPEC_LIB_NAME.@LIB_SUFFIX@` \
-			`$FIX_PATH_FOR_LINKER \
-				$LIBDIR/$GRADE/lib$BROWSER_LIB_NAME.@LIB_SUFFIX@` \
-			`$FIX_PATH_FOR_LINKER \
-				$LIBDIR/$GRADE/lib$MDBCOMP_LIB_NAME.@LIB_SUFFIX@`"
-		;;
-	false)
-		TRACE_BASE_LIBS=
-		TRACE_BASE_LIBS_SYSTEM=
-		TRACE_BASE_STATIC_LIBS=
-		;;
+    true)   
+        TRACE_BASE_LIBS="-l$EVENTSPEC_LIB_NAME \
+            -l$BROWSER_LIB_NAME -l$MDBCOMP_LIB_NAME"
+        TRACE_BASE_LIBS_SYSTEM="$TRACE_BASE_LIBS_SYSTEM \
+            $READLINE_LIBRARIES"
+        TRACE_BASE_STATIC_LIBS="\
+            `$FIX_PATH_FOR_LINKER \
+                $LIBDIR/$GRADE/lib$EVENTSPEC_LIB_NAME.@LIB_SUFFIX@` \
+            `$FIX_PATH_FOR_LINKER \
+                $LIBDIR/$GRADE/lib$BROWSER_LIB_NAME.@LIB_SUFFIX@` \
+            `$FIX_PATH_FOR_LINKER \
+                $LIBDIR/$GRADE/lib$MDBCOMP_LIB_NAME.@LIB_SUFFIX@`"
+        ;;
+    false)
+        TRACE_BASE_LIBS=
+        TRACE_BASE_LIBS_SYSTEM=
+        TRACE_BASE_STATIC_LIBS=
+        ;;
 esac
 
 case $trace in
-	true)
-		TRACE_LIBS="-l$TRACE_LIB_NAME $TRACE_BASE_LIBS"
-		TRACE_LIBS_SYSTEM="$TRACE_BASE_LIBS_SYSTEM"
-		TRACE_STATIC_LIBS="\
-			`$FIX_PATH_FOR_LINKER \
-				$LIBDIR/$GRADE/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
-			$TRACE_BASE_STATIC_LIBS"
-		;;
-	false)
-		TRACE_LIBS=
-		TRACE_LIBS_SYSTEM=
-		TRACE_STATIC_LIBS=
-		;;
+    true)
+        TRACE_LIBS="-l$TRACE_LIB_NAME $TRACE_BASE_LIBS"
+        TRACE_LIBS_SYSTEM="$TRACE_BASE_LIBS_SYSTEM"
+        TRACE_STATIC_LIBS="\
+            `$FIX_PATH_FOR_LINKER \
+                $LIBDIR/$GRADE/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
+            $TRACE_BASE_STATIC_LIBS"
+        ;;
+    false)
+        TRACE_LIBS=
+        TRACE_LIBS_SYSTEM=
+        TRACE_STATIC_LIBS=
+        ;;
 esac
 
 case $ss_debug in
-	true)
-		SSDB_LIBS="-l$SSDB_LIB_NAME"
-		SSDB_STATIC_LIBS="\
-		  `$FIX_PATH_FOR_LINKER \
-			   $LIBDIR/$GRADE/lib$SSDB_LIB_NAME.@LIB_SUFFIX@`"
-		;;
-	false)
-		SSDB_LIBS=
-		SSDB_STATIC_LIBS=
-		;;
+    true)
+        SSDB_LIBS="-l$SSDB_LIB_NAME"
+        SSDB_STATIC_LIBS="\
+          `$FIX_PATH_FOR_LINKER \
+               $LIBDIR/$GRADE/lib$SSDB_LIB_NAME.@LIB_SUFFIX@`"
+        ;;
+    false)
+        SSDB_LIBS=
+        SSDB_STATIC_LIBS=
+        ;;
 esac
 
 # compile_target_code.m falls back to calling `strip' separately if using a
 # linker flag is not possible. That would be non-trivial in this script.
 case $strip in
-	true)
-		STRIP_OPTS="@LD_STRIP_FLAG@"
-		;;
-	false)
-		STRIP_OPTS=""
-		;;
+    true)
+        STRIP_OPTS="@LD_STRIP_FLAG@"
+        ;;
+    false)
+        STRIP_OPTS=""
+        ;;
 esac
 
 # Determine whether to link the executable with debugging symbols when using
 # MSVC.
 if test $strip = "false"
 then
-	case "$C_COMPILER_TYPE" in
-		msvc*) DEBUG_FLAG="-DEBUG" ;;
-		*)     DEBUG_FLAG="" ;;
-	esac
+    case "$C_COMPILER_TYPE" in
+        msvc*) DEBUG_FLAG="-DEBUG" ;;
+        *)     DEBUG_FLAG="" ;;
+    esac
 else
-	DEBUG_FLAG=""
+    DEBUG_FLAG=""
 fi
 
 case $thread_safe in
-	true)
-		use_thread_libs=true
-		;;
+    true)
+        use_thread_libs=true
+        ;;
 esac
 
 case $use_thread_libs.$make_shared_lib in
-	true.false)
-		ARCH_OPTS=$LDFLAGS_FOR_THREADS
-		;;
-	true.true)
-		ARCH_OPTS=$LD_LIBFLAGS_FOR_THREADS
-		;;
-	false.*)
-		THREAD_LIBS=""
-		;;
+    true.false)
+        ARCH_OPTS=$LDFLAGS_FOR_THREADS
+        ;;
+    true.true)
+        ARCH_OPTS=$LD_LIBFLAGS_FOR_THREADS
+        ;;
+    false.*)
+        THREAD_LIBS=""
+        ;;
 esac
 case "$thread_safe,$all_libs" in
-	true,static)
-		THREAD_LIBS="$THREAD_LIBS $HWLOC_STATIC_LIBS"
-		;;
-	true,shared)
-		THREAD_LIBS="$THREAD_LIBS $HWLOC_LIBS"
-		;;
+    true,static)
+        THREAD_LIBS="$THREAD_LIBS $HWLOC_STATIC_LIBS"
+        ;;
+    true,shared)
+        THREAD_LIBS="$THREAD_LIBS $HWLOC_LIBS"
+        ;;
 esac
 
 # Set the correct flags if we're to use the MS Visual C runtime.
 use_msvcrt=@USE_MSVCRT@
 if test $use_msvcrt = "yes"
 then
-	MSVCRT_OPTS="-MD" 			# Enable linking with the MS Visual C runtime.
-	NODEFAULTLIB_FLAG="-nodefaultlib:libcmt"
+    MSVCRT_OPTS="-MD"           # Enable linking with the MS Visual C runtime.
+    NODEFAULTLIB_FLAG="-nodefaultlib:libcmt"
 else
-	MSVCRT_OPTS=""
-	NODEFAULTLIB_FLAG=""
+    MSVCRT_OPTS=""
+    NODEFAULTLIB_FLAG=""
 fi
 
 # Use any applicable LTO options
 LTO_OPTS="$LDFLAGS_FOR_LTO"
 
 case $make_shared_lib in
-	true)
-		LINKER="$LINK_SHARED_OBJ"
-		case $allow_undef in
-			true)
-				UNDEF_OPT="$ALLOW_UNDEFINED"
-				;;
-			false)
-				UNDEF_OPT="$ERROR_UNDEFINED"
-				;;
-		esac
-		RPATH_OPT="$SHLIB_RPATH_OPT"
-		RPATH_SEP="$SHLIB_RPATH_SEP"
-		STDLIBS="$SHARED_LIBS $THREAD_LIBS"
-		case $trace in
-			true)
-				ARCH_OPTS="$ARCH_OPTS $LD_LIBFLAGS_FOR_TRACE"
-				;;
-		esac
-		SANITIZER_OPTS="$LDFLAGS_FOR_SANITIZERS"
-		;;
-	false)
-		LINKER="$CC"
-		UNDEF_OPT=""
-		RPATH_OPT="$EXE_RPATH_OPT"
-		RPATH_SEP="$EXE_RPATH_SEP"
-		STDLIBS="$MATH_LIB $THREAD_LIBS"
-		case $trace in
-			true)
-				ARCH_OPTS="$ARCH_OPTS $LDFLAGS_FOR_TRACE"
-				;;
-		esac
-		SANITIZER_OPTS="$LDFLAGS_FOR_SANITIZERS"
-		;;
+    true)
+        LINKER="$LINK_SHARED_OBJ"
+        case $allow_undef in
+            true)
+                UNDEF_OPT="$ALLOW_UNDEFINED"
+                ;;
+            false)
+                UNDEF_OPT="$ERROR_UNDEFINED"
+                ;;
+        esac
+        RPATH_OPT="$SHLIB_RPATH_OPT"
+        RPATH_SEP="$SHLIB_RPATH_SEP"
+        STDLIBS="$SHARED_LIBS $THREAD_LIBS"
+        case $trace in
+            true)
+                ARCH_OPTS="$ARCH_OPTS $LD_LIBFLAGS_FOR_TRACE"
+                ;;
+        esac
+        SANITIZER_OPTS="$LDFLAGS_FOR_SANITIZERS"
+        ;;
+    false)
+        LINKER="$CC"
+        UNDEF_OPT=""
+        RPATH_OPT="$EXE_RPATH_OPT"
+        RPATH_SEP="$EXE_RPATH_SEP"
+        STDLIBS="$MATH_LIB $THREAD_LIBS"
+        case $trace in
+            true)
+                ARCH_OPTS="$ARCH_OPTS $LDFLAGS_FOR_TRACE"
+                ;;
+        esac
+        SANITIZER_OPTS="$LDFLAGS_FOR_SANITIZERS"
+        ;;
 esac
 
 # If the --print-link-command option is specified,
 # then all we do is print the command used to link executables
 # and then exit.
 case "$print_link_command" in
-	true)
-		echo $LINKER
-		exit 0
-		;;
+    true)
+        echo $LINKER
+        exit 0
+        ;;
 esac
 
 # If the --print-shared-lib-command option is specified,
 # then all we do is print the command used to link executables
 # and then exit.
 case "$print_shared_lib_link_command" in
-	true)
-		echo $LINK_SHARED_OBJ
-		exit 0
-		;;
+    true)
+        echo $LINK_SHARED_OBJ
+        exit 0
+        ;;
 esac
 
 if $print_map
 then
-	PRINT_MAP_OPT="-Wl,--print-map"
+    PRINT_MAP_OPT="-Wl,--print-map"
 else
-	PRINT_MAP_OPT=""
+    PRINT_MAP_OPT=""
 fi
 
 merc_libdir_opts="\
-	@LIB_LIBPATH@$LIBDIR/$GRADE
-	@LIB_LIBPATH@$LIBDIR
+    @LIB_LIBPATH@$LIBDIR/$GRADE
+    @LIB_LIBPATH@$LIBDIR
 "
 system_libdir_opts=
 for dir in $ALL_LOCAL_C_LIB_DIRS kludge_for_broken_shells; do
-	if test "$dir" != "kludge_for_broken_shells"
-	then
-		system_libdir_opts="@LIB_LIBPATH@$dir $system_libdir_opts"
-	fi
+    if test "$dir" != "kludge_for_broken_shells"
+    then
+        system_libdir_opts="@LIB_LIBPATH@$dir $system_libdir_opts"
+    fi
 done
 LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts $system_libdir_opts"
 
 case $mercury_libs in
-	shared)
-		MERCURY_LIBS=${MERCURY_LIBS="$SSDB_LIBS $TRACE_LIBS \
-			-l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC"}
-		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
-		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE"
-		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR"
-		;;
-	static)
-		MERCURY_LIBS=${MERCURY_LIBS="$SSDB_STATIC_LIBS \
-			$TRACE_STATIC_LIBS \
-			`$FIX_PATH_FOR_LINKER \
-				$LIBDIR/$GRADE/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
-			`$FIX_PATH_FOR_LINKER \
-				$LIBDIR/$GRADE/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
-			$LIBGC_STATIC"}
-		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
-		merc_shlib_dirs=""
-		;;
-	none)
-		LIBS="$TRACE_LIBS_SYSTEM $STDLIBS"
-		LIBDIR_OPTS="$user_libdir_opts $system_libdir_opts"
-		merc_shlib_dirs=""
-		;;
+    shared)
+        MERCURY_LIBS=${MERCURY_LIBS="$SSDB_LIBS $TRACE_LIBS \
+            -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC"}
+        LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
+        merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE"
+        merc_shlib_dirs="$merc_shlib_dirs $LIBDIR"
+        ;;
+    static)
+        MERCURY_LIBS=${MERCURY_LIBS="$SSDB_STATIC_LIBS \
+            $TRACE_STATIC_LIBS \
+            `$FIX_PATH_FOR_LINKER \
+                $LIBDIR/$GRADE/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
+            `$FIX_PATH_FOR_LINKER \
+                $LIBDIR/$GRADE/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
+            $LIBGC_STATIC"}
+        LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
+        merc_shlib_dirs=""
+        ;;
+    none)
+        LIBS="$TRACE_LIBS_SYSTEM $STDLIBS"
+        LIBDIR_OPTS="$user_libdir_opts $system_libdir_opts"
+        merc_shlib_dirs=""
+        ;;
 esac
 
 case $all_libs in
-	shared)
-		system_shlib_dirs=$ALL_LOCAL_C_LIB_DIRS
-		;;
-	static)
-		system_shlib_dirs=""
-		;;
+    shared)
+        system_shlib_dirs=$ALL_LOCAL_C_LIB_DIRS
+        ;;
+    static)
+        system_shlib_dirs=""
+        ;;
 esac
 
 RPATH_OPT_LIST=
 # Only set RPATH_OPT_LIST if the system supports shared libraries.
 case $EXT_FOR_SHARED_LIB in
-	so)
-		prev=""
-		for dir in $user_shlib_dirs $merc_shlib_dirs \
-			$system_shlib_dirs 'kludge for broken shells'
-		do
-			case "$dir" in
-				'kludge for broken shells')
-					;;
-				*)
-					case "$prev" in
-						"")
-							RPATH_OPT_LIST="$RPATH_OPT$dir"
-							;;
-						*)
-							RPATH_OPT_LIST="$RPATH_OPT_LIST$RPATH_SEP$dir"
-							;;
-					esac
-					;;
-			esac
-			prev=$dir
-		done
-		;;
+    so)
+        prev=""
+        for dir in $user_shlib_dirs $merc_shlib_dirs \
+            $system_shlib_dirs 'kludge for broken shells'
+        do
+            case "$dir" in
+                'kludge for broken shells')
+                    ;;
+                *)
+                    case "$prev" in
+                        "")
+                            RPATH_OPT_LIST="$RPATH_OPT$dir"
+                            ;;
+                        *)
+                            RPATH_OPT_LIST="$RPATH_OPT_LIST$RPATH_SEP$dir"
+                            ;;
+                    esac
+                    ;;
+            esac
+            prev=$dir
+        done
+        ;;
 esac
 
 case "$MKFIFO" in
     none)
-		demangle=false
-		;;
+        demangle=false
+        ;;
 esac
 
 case "$C_COMPILER_TYPE" in
-	msvc*) NOLOGO_OPTS="-nologo" ;;
-	*) NOLOGO_OPTS="" ;;
+    msvc*) NOLOGO_OPTS="-nologo" ;;
+    *) NOLOGO_OPTS="" ;;
 esac
 
 LINKER_PRE_FLAGS="$NOLOGO_OPTS $MSVCRT_OPTS $PRINT_MAP_OPT $UNDEF_OPT $STRIP_OPTS $LTO_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS $SANITIZER_OPTS"
@@ -568,78 +568,78 @@ LINKER_POST_FLAGS="@LINK_OPT_SEP@ $NODEFAULTLIB_FLAG $DEBUG_FLAG $LIBDIR_OPTS $R
 
 case $verbose in
     true)
-		echo "ml: using grade \`$GRADE'"
-		case $demangle in
-			false)
-				echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS
-				;;
-			true)
-				echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS "|"
-				echo "$DEMANGLER"
-				;;
-		esac
-		;;
+        echo "ml: using grade \`$GRADE'"
+        case $demangle in
+            false)
+                echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS
+                ;;
+            true)
+                echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS "|"
+                echo "$DEMANGLER"
+                ;;
+        esac
+        ;;
 esac
 
 case $demangle in
     true)
-		# We would like to just run $CC and pipe the result into $DEMANGLER,
-		# but `$CC | $DEMANGLER' would return the wrong exit status, so
-		# we need to use a named pipe; if the system doesn't have named
-		# pipes, then we don't use the demangler.
+        # We would like to just run $CC and pipe the result into $DEMANGLER,
+        # but `$CC | $DEMANGLER' would return the wrong exit status, so
+        # we need to use a named pipe; if the system doesn't have named
+        # pipes, then we don't use the demangler.
 
-		# Create the pipe, making sure we remove it if interrupted.
-		old_umask=`umask`
-		umask 022
-		try=0
-		until 
-			ML_TMPDIR=$TMPDIR/ml$$.$try
-			PIPE=$ML_TMPDIR/pipe
-			trap 'rmdir $ML_TMPDIR >/dev/null 2>&1; exit 1' 1 2 3 13 15 
-			mkdir $ML_TMPDIR
-		do
-			try="`expr $try + 1`"
-			# give up after 20 tries
-			case "$try" in
-				20)
-					echo "ml: unable to create temporary directory for pipe" \
-						1>&2
-					exit 1
-					;;
-			esac
-		done
-		trap 'rm -rf $ML_TMPDIR; exit 1' 1 2 3 13 15 
-		umask $old_umask
-		$MKFIFO $PIPE
-		# Execute the demangler in the background, with stdin coming from
-		# the pipe and with stdout redirected to stderr.
-		exec $DEMANGLER --explain-link-errors 1>&2 < $PIPE &
-		# Execute $CC with stdout & stderr redirected to go via the pipe
-		# to $DEMANGLER and then to stderr.
-		case $# in
-			0)
-				$LINKER $LINKER_PRE_FLAGS      $LINKER_POST_FLAGS >$PIPE 2>&1
-				;;
-			*)
-				$LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS >$PIPE 2>&1
-				;;
-		esac
-		linker_status=$?
-		# Now we can remove the pipe; since is an open file, it will stay
-		# around until $DEMANGLER exits.
-		rm -rf $ML_TMPDIR
-		# Wait for the demangler to exit before exiting ourselves.
-		wait
-		exit $linker_status
-		;;
-	false)
-		case $# in
-			0)
-				exec $LINKER $LINKER_PRE_FLAGS      $LINKER_POST_FLAGS
-				;;
-			*)
-				exec $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS
-				;;
-		esac
-		;;
+        # Create the pipe, making sure we remove it if interrupted.
+        old_umask=`umask`
+        umask 022
+        try=0
+        until 
+            ML_TMPDIR=$TMPDIR/ml$$.$try
+            PIPE=$ML_TMPDIR/pipe
+            trap 'rmdir $ML_TMPDIR >/dev/null 2>&1; exit 1' 1 2 3 13 15 
+            mkdir $ML_TMPDIR
+        do
+            try="`expr $try + 1`"
+            # give up after 20 tries
+            case "$try" in
+                20)
+                    echo "ml: unable to create temporary directory for pipe" \
+                        1>&2
+                    exit 1
+                    ;;
+            esac
+        done
+        trap 'rm -rf $ML_TMPDIR; exit 1' 1 2 3 13 15 
+        umask $old_umask
+        $MKFIFO $PIPE
+        # Execute the demangler in the background, with stdin coming from
+        # the pipe and with stdout redirected to stderr.
+        exec $DEMANGLER --explain-link-errors 1>&2 < $PIPE &
+        # Execute $CC with stdout & stderr redirected to go via the pipe
+        # to $DEMANGLER and then to stderr.
+        case $# in
+            0)
+                $LINKER $LINKER_PRE_FLAGS      $LINKER_POST_FLAGS >$PIPE 2>&1
+                ;;
+            *)
+                $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS >$PIPE 2>&1
+                ;;
+        esac
+        linker_status=$?
+        # Now we can remove the pipe; since is an open file, it will stay
+        # around until $DEMANGLER exits.
+        rm -rf $ML_TMPDIR
+        # Wait for the demangler to exit before exiting ourselves.
+        wait
+        exit $linker_status
+        ;;
+    false)
+        case $# in
+            0)
+                exec $LINKER $LINKER_PRE_FLAGS      $LINKER_POST_FLAGS
+                ;;
+            *)
+                exec $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS
+                ;;
+        esac
+        ;;
 esac
