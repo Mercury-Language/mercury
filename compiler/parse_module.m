@@ -542,7 +542,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
         ActualName, MaybeActualContext, Spec) :-
     ( if
         MaybeActualContext = yes(ActualContext),
-        ActualContext \= term.context_init
+        not is_dummy_context(ActualContext)
     then
         MaybeContext = MaybeActualContext
     else

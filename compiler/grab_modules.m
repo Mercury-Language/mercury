@@ -1735,7 +1735,7 @@ update_iu_and_least_context(IoUC, !ImportAndOrUse, !LeastContext) :-
     ),
     ( if
         compare((<), Context, !.LeastContext),
-        Context \= term.context_init
+        not is_dummy_context(Context)
     then
         !:LeastContext = Context
     else

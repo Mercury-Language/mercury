@@ -1236,7 +1236,7 @@ typecheck_goal(Goal0, Goal, EnclosingContext, !TypeAssignSet, !Info) :-
     % but it was easier to do here.)
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Context0 = goal_info_get_context(GoalInfo0),
-    ( if Context0 = term.context_init then
+    ( if is_dummy_context(Context0) then
         Context = EnclosingContext,
         goal_info_set_context(Context, GoalInfo0, GoalInfo)
     else
