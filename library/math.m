@@ -233,6 +233,8 @@
 :- import_module exception.
 :- import_module float.
 
+:- pragma foreign_import_module("C", float).    % For ML_FLOAT_{CEIL,FLOOR}.
+
 % These operations are mostly implemented using the C interface.
 
 :- pragma foreign_decl("C", "
@@ -483,7 +485,7 @@ e = 2.7182818284590452353602874713526625.
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    Rounded = ML_FLOAT_FLOOR(Num + (MR_Float)0.5);
+    Rounded = ML_FLOAT_FLOOR(Num + (MR_Float) 0.5);
 ").
 :- pragma foreign_proc("C#",
     round(Num::in) = (Rounded::out),
