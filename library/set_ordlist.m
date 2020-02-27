@@ -785,7 +785,7 @@ union(sol(Set0), sol(Set1), sol(Set)) :-
 
 union_list(ListofSets) = Set :-
     init(Set0),
-    power_union_2(ListofSets, Set0, Set).
+    union_list_loop(ListofSets, Set0, Set).
 
 union_list(ListofSets, Set) :-
     Set = union_list(ListofSets).
@@ -796,13 +796,13 @@ power_union(SS) = S :-
 power_union(sol(ListofSets), Set) :-
     Set = union_list(ListofSets).
 
-:- pred power_union_2(list(set_ordlist(T))::in, set_ordlist(T)::in,
-    set_ordlist(T)::out) is det.
+:- pred union_list_loop(list(set_ordlist(T))::in,
+    set_ordlist(T)::in, set_ordlist(T)::out) is det.
 
-power_union_2([], Set, Set).
-power_union_2([NextSet | SetofSets], Set0, Set) :-
-    union(Set0, NextSet, Set1),
-    power_union_2(SetofSets, Set1, Set).
+union_list_loop([], !UnionSet).
+union_list_loop([Set | Sets], !UnionSet) :-
+    union(Set, !UnionSet),
+    union_list_loop(Sets, !UnionSet).
 
 %---------------------%
 

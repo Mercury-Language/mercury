@@ -69,6 +69,23 @@ Changes to the Mercury standard library
     - func `hash/1`
     - pred `hash/2`
 
+### Changes to the `list` module
+
+* The following predicate has been added:
+
+    - pred `map_corresponding3/5`
+
+### Changes to the `map` module
+
+* The following predicates and functions have been added:
+
+    - pred `filter_map_values/3`
+    - pred `filter_map_values_only/3`
+    - pred `foldl4_values/10`
+    - pred `foldl5_values/12`
+    - func `keys_as_set/1`
+    - pred `keys_as_set/2`
+
 ### Changes to the `thread.channel` module
 
 * The following predicate has been deprecated and will be removed in a future
@@ -76,12 +93,14 @@ Changes to the Mercury standard library
 
     - pred `untake/4`
 
-### Changes to the `map` module
+### Changes to the `tree234` module
 
-* The following function and predicate have been added:
+* The following predicates have been added:
 
-    - func `keys_as_set/1`
-    - pred `keys_as_set/2`
+    - pred `filter_map_values/3`
+    - pred `filter_map_values_only/3`
+    - pred `foldl4_values/10`
+    - pred `foldl5_values/12`
 
 ### Changes to the `uint` module
 

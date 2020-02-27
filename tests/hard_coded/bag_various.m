@@ -25,27 +25,29 @@ main(!IO) :-
     dump("bag.to_assoc_list: ", []++bag.to_assoc_list(Bag), !IO),
     dump("bag.count: ", 0+bag.count(Bag), !IO),
     dump("bag.count_unique: ", 0+bag.count_unique(Bag), !IO),
-    ( if bag.member(4, Bag)
-    then dump("bag.member(4): ", yes, !IO)
-    else dump("bag.member(4): ", no, !IO)
+    ( if bag.member(4, Bag) then
+        dump("bag.member(4): ", yes, !IO)
+    else
+        dump("bag.member(4): ", no, !IO)
     ),
-    ( if bag.member(5, Bag)
-    then dump("bag.member(5): ", yes, !IO)
-    else dump("bag.member(5): ", no, !IO)
+    ( if bag.member(5, Bag) then
+        dump("bag.member(5): ", yes, !IO)
+    else
+        dump("bag.member(5): ", no, !IO)
     ),
-    unsorted_solutions(
-    (pred(O::out) is nondet:-
-        bag.member(M, Bag, Rest),
-        O = {M, []++to_list(Rest)}
-    ), Sols),
+    unsorted_solutions(bag_member_test(Bag), Sols),
     dump("unsorted_solutions(bag.member/3): ", Sols, !IO),
 
     test_insert_duplicates(5, bag.init, !IO),
     test_insert_duplicates(0, bag.init, !IO),
     test_insert_duplicates(-1, bag.init, !IO),
-    test_insert_duplicates(4, bag.from_list(["foo"]), !IO),
+    test_insert_duplicates(4, bag.from_list(["foo"]), !IO).
 
-    true.
+:- pred bag_member_test(bag(int)::in, {int, list(int)}::out) is nondet.
+
+bag_member_test(Bag, O) :-
+    bag.member(M, Bag, BagMinusM),
+    O = {M, bag.to_list(BagMinusM)}.
 
 :- pred test_insert_duplicates(int::in, bag(string)::in, io::di, io::uo)
     is det.

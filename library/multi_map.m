@@ -433,7 +433,7 @@ delete(Key, Value, !MultiMap) :-
             map.delete(Key, !MultiMap)
         ;
             Values = [_ | _],
-            map.set(Key, Values, !MultiMap)
+            map.det_update(Key, Values, !MultiMap)
         )
     else
         true

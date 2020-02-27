@@ -364,6 +364,53 @@
 :- mode foldl3_values(pred(in, in, out, in, out, di, uo) is cc_multi,
     in, in, out, in, out, di, uo) is cc_multi.
 
+:- pred foldl4_values(pred(V, A, A, B, B, C, C, D, D), tree234(K, V),
+    A, A, B, B, C, C, D, D).
+:- mode foldl4_values(pred(in, in, out, in, out, in, out, in, out)
+    is det,
+    in, in, out, in, out, in, out, in, out) is det.
+:- mode foldl4_values(pred(in, in, out, in, out, in, out, mdi, muo)
+    is det,
+    in, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldl4_values(pred(in, in, out, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, in, out, di, uo) is det.
+:- mode foldl4_values(pred(in, in, out, in, out, di, uo, di, uo) is det,
+    in, in, out, in, out, di, uo, di, uo) is det.
+:- mode foldl4_values(pred(in, in, out, di, uo, di, uo, di, uo) is det,
+    in, in, out, di, uo, di, uo, di, uo) is det.
+:- mode foldl4_values(pred(in, di, uo, di, uo, di, uo, di, uo) is det,
+    in, di, uo, di, uo, di, uo, di, uo) is det.
+:- mode foldl4_values(pred(in, in, out, in, out, in, out, in, out)
+    is semidet,
+    in, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldl4_values(pred(in, in, out, in, out, in, out, mdi, muo)
+    is semidet,
+    in, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl4_values(pred(in, in, out, in, out, in, out, di, uo)
+    is semidet,
+    in, in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred foldl5_values(pred(V, A, A, B, B, C, C, D, D, E, E), tree234(K, V),
+    A, A, B, B, C, C, D, D, E, E).
+:- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, in, out)
+    is det,
+    in, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+    is det,
+    in, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, di, uo)
+    is det,
+    in, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, in, out)
+    is semidet,
+    in, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+    is semidet,
+    in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, di, uo)
+    is semidet,
+    in, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
 :- func foldr(func(K, V, A) = A, tree234(K, V), A) = A.
 
 :- pred foldr(pred(K, V, A, A), tree234(K, V), A, A).
@@ -473,10 +520,16 @@
 :- mode map_values_only(pred(in, out) is det, in, out) is det.
 :- mode map_values_only(pred(in, out) is semidet, in, out) is semidet.
 
+:- pred filter_map_values(pred(K, V, W)::in(pred(in, in, out) is semidet),
+    tree234(K, V)::in, tree234(K, W)::out) is det.
+
+:- pred filter_map_values_only(pred(V, W)::in(pred(in, out) is semidet),
+    tree234(K, V)::in, tree234(K, W)::out) is det.
+
 %---------------------%
 
-:- pred map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
-    A, A).
+:- pred map_foldl(pred(K, V, W, A, A),
+    tree234(K, V), tree234(K, W), A, A).
 :- mode map_foldl(pred(in, in, out, in, out) is det,
     in, out, in, out) is det.
 :- mode map_foldl(pred(in, in, out, mdi, muo) is det,
@@ -4033,6 +4086,48 @@ foldl3_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
     Pred(V2, !A, !B, !C),
     tree234.foldl3_values(Pred, T3, !A, !B, !C).
 
+foldl4_values(_Pred, empty, !A, !B, !C, !D).
+foldl4_values(Pred, two(_K, V, T0, T1), !A, !B, !C, !D) :-
+    tree234.foldl4_values(Pred, T0, !A, !B, !C, !D),
+    Pred(V, !A, !B, !C, !D),
+    tree234.foldl4_values(Pred, T1, !A, !B, !C, !D).
+foldl4_values(Pred, three(_K0, V0, _K1, V1, T0, T1, T2), !A, !B, !C, !D) :-
+    tree234.foldl4_values(Pred, T0, !A, !B, !C, !D),
+    Pred(V0, !A, !B, !C, !D),
+    tree234.foldl4_values(Pred, T1, !A, !B, !C, !D),
+    Pred(V1, !A, !B, !C, !D),
+    tree234.foldl4_values(Pred, T2, !A, !B, !C, !D).
+foldl4_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
+        !A, !B, !C, !D) :-
+    tree234.foldl4_values(Pred, T0, !A, !B, !C, !D),
+    Pred(V0, !A, !B, !C, !D),
+    tree234.foldl4_values(Pred, T1, !A, !B, !C, !D),
+    Pred(V1, !A, !B, !C, !D),
+    tree234.foldl4_values(Pred, T2, !A, !B, !C, !D),
+    Pred(V2, !A, !B, !C, !D),
+    tree234.foldl4_values(Pred, T3, !A, !B, !C, !D).
+
+foldl5_values(_Pred, empty, !A, !B, !C, !D, !E).
+foldl5_values(Pred, two(_K, V, T0, T1), !A, !B, !C, !D, !E) :-
+    tree234.foldl5_values(Pred, T0, !A, !B, !C, !D, !E),
+    Pred(V, !A, !B, !C, !D, !E),
+    tree234.foldl5_values(Pred, T1, !A, !B, !C, !D, !E).
+foldl5_values(Pred, three(_K0, V0, _K1, V1, T0, T1, T2), !A, !B, !C, !D, !E) :-
+    tree234.foldl5_values(Pred, T0, !A, !B, !C, !D, !E),
+    Pred(V0, !A, !B, !C, !D, !E),
+    tree234.foldl5_values(Pred, T1, !A, !B, !C, !D, !E),
+    Pred(V1, !A, !B, !C, !D, !E),
+    tree234.foldl5_values(Pred, T2, !A, !B, !C, !D, !E).
+foldl5_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
+        !A, !B, !C, !D, !E) :-
+    tree234.foldl5_values(Pred, T0, !A, !B, !C, !D, !E),
+    Pred(V0, !A, !B, !C, !D, !E),
+    tree234.foldl5_values(Pred, T1, !A, !B, !C, !D, !E),
+    Pred(V1, !A, !B, !C, !D, !E),
+    tree234.foldl5_values(Pred, T2, !A, !B, !C, !D, !E),
+    Pred(V2, !A, !B, !C, !D, !E),
+    tree234.foldl5_values(Pred, T3, !A, !B, !C, !D, !E).
+
 %---------------------------------------------------------------------------%
 
 foldr(F, T, A) = B :-
@@ -4204,6 +4299,66 @@ map_values_only(Pred, Tree0, Tree) :-
     tree234.map_values_only(Pred, RMid0, RMid),
     tree234.map_values_only(Pred, Right0, Right),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
+filter_map_values(Pred, Tree0, Tree) :-
+    filter_map_values_acc(Pred, Tree0, [], KVs),
+    tree234.from_sorted_assoc_list(KVs, Tree).
+
+:- pred filter_map_values_acc(pred(K, V, W)::in(pred(in, in, out) is semidet),
+    tree234(K, V)::in, assoc_list(K, W)::in, assoc_list(K, W)::out) is det.
+
+filter_map_values_acc(_Pred, empty, !KVs).
+filter_map_values_acc(Pred, Tree0, !KVs) :-
+    Tree0 = two(K0, V0, Left, Right),
+    tree234.filter_map_values_acc(Pred, Right, !KVs),
+    ( if Pred(K0, V0, W0) then !:KVs = [K0 - W0 | !.KVs] else true ),
+    tree234.filter_map_values_acc(Pred, Left, !KVs).
+filter_map_values_acc(Pred, Tree0, !KVs) :-
+    Tree0 = three(K0, V0, K1, V1, Left, Middle, Right),
+    tree234.filter_map_values_acc(Pred, Right, !KVs),
+    ( if Pred(K1, V1, W1) then !:KVs = [K1 - W1 | !.KVs] else true ),
+    tree234.filter_map_values_acc(Pred, Middle, !KVs),
+    ( if Pred(K0, V0, W0) then !:KVs = [K0 - W0 | !.KVs] else true ),
+    tree234.filter_map_values_acc(Pred, Left, !KVs).
+filter_map_values_acc(Pred, Tree0, !KVs) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left, LMid, RMid, Right),
+    tree234.filter_map_values_acc(Pred, Right, !KVs),
+    ( if Pred(K2, V2, W2) then !:KVs = [K2 - W2 | !.KVs] else true ),
+    tree234.filter_map_values_acc(Pred, RMid, !KVs),
+    ( if Pred(K1, V1, W1) then !:KVs = [K1 - W1 | !.KVs] else true ),
+    tree234.filter_map_values_acc(Pred, LMid, !KVs),
+    ( if Pred(K0, V0, W0) then !:KVs = [K0 - W0 | !.KVs] else true ),
+    tree234.filter_map_values_acc(Pred, Left, !KVs).
+
+filter_map_values_only(Pred, Tree0, Tree) :-
+    filter_map_values_only_acc(Pred, Tree0, [], KVs),
+    tree234.from_sorted_assoc_list(KVs, Tree).
+
+:- pred filter_map_values_only_acc(pred(V, W)::in(pred(in, out) is semidet),
+    tree234(K, V)::in, assoc_list(K, W)::in, assoc_list(K, W)::out) is det.
+
+filter_map_values_only_acc(_Pred, empty, !KVs).
+filter_map_values_only_acc(Pred, Tree0, !KVs) :-
+    Tree0 = two(K0, V0, Left, Right),
+    tree234.filter_map_values_only_acc(Pred, Right, !KVs),
+    ( if Pred(V0, W0) then !:KVs = [K0 - W0 | !.KVs] else true ),
+    tree234.filter_map_values_only_acc(Pred, Left, !KVs).
+filter_map_values_only_acc(Pred, Tree0, !KVs) :-
+    Tree0 = three(K0, V0, K1, V1, Left, Middle, Right),
+    tree234.filter_map_values_only_acc(Pred, Right, !KVs),
+    ( if Pred(V1, W1) then !:KVs = [K1 - W1 | !.KVs] else true ),
+    tree234.filter_map_values_only_acc(Pred, Middle, !KVs),
+    ( if Pred(V0, W0) then !:KVs = [K0 - W0 | !.KVs] else true ),
+    tree234.filter_map_values_only_acc(Pred, Left, !KVs).
+filter_map_values_only_acc(Pred, Tree0, !KVs) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left, LMid, RMid, Right),
+    tree234.filter_map_values_only_acc(Pred, Right, !KVs),
+    ( if Pred(V2, W2) then !:KVs = [K2 - W2 | !.KVs] else true ),
+    tree234.filter_map_values_only_acc(Pred, RMid, !KVs),
+    ( if Pred(V1, W1) then !:KVs = [K1 - W1 | !.KVs] else true ),
+    tree234.filter_map_values_only_acc(Pred, LMid, !KVs),
+    ( if Pred(V0, W0) then !:KVs = [K0 - W0 | !.KVs] else true ),
+    tree234.filter_map_values_only_acc(Pred, Left, !KVs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
