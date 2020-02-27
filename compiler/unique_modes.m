@@ -119,8 +119,7 @@ unique_modes_check_proc(ProcId, PredId, !ModuleInfo, Changed, Specs) :-
 unique_modes_check_goal(Goal0, Goal, !ModeInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
-    term.context_init(EmptyContext),
-    ( if Context = EmptyContext then
+    ( if is_dummy_context(Context) then
         true
     else
         mode_info_set_context(Context, !ModeInfo)

@@ -862,8 +862,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
         SolverNonLocals = []
     then
         BodyContext = goal_info_get_context(BodyGoalInfo0),
-        term.context_init(EmptyContext),
-        ( if BodyContext = EmptyContext then
+        ( if is_dummy_context(BodyContext) then
             true
         else
             mode_info_set_context(BodyContext, !ModeInfo)
