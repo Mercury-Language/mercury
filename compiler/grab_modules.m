@@ -137,6 +137,7 @@
 :- import_module cord.
 :- import_module map.
 :- import_module multi_map.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module term.
 :- import_module string.

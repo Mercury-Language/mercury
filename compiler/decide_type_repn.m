@@ -110,6 +110,7 @@
 :- import_module cord.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module set_tree234.
 :- import_module term.
 :- import_module varset.

@@ -251,6 +251,7 @@
 :- import_module counter.
 :- import_module int.
 :- import_module lexer.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module parser.
 :- import_module require.

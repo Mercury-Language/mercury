@@ -1,6 +1,16 @@
 NEWS since Mercury 20.01.x
 ==========================
 
+Changes that may break compatibility
+------------------------------------
+
+* We have deleted the `one_or_more` type, and the operations on it, from
+  the `list` module of the Mercury standard library, and moved them to
+  a new module named `one_or_more`. This will break compatibility for
+  code that used the moved functionality, but such breaks can be fixed
+  simply by importing `one_or_more` as well as (or in rare cases, instead of)
+  the `list` module.
+
 Changes to the Mercury standard library
 ---------------------------------------
 
@@ -14,6 +24,21 @@ Changes to the Mercury standard library
   will allocate fewer heap cells. The tradeoff is that unlike assoc_lists,
   kv_lists are not standard lists, and thus cannot be manipulated
   using the functions and predicates of the `list` module.
+
+### New module: `one_or_more` module
+
+* This module defines the `one_or_more` type, which represents nonempty lists,
+  and provides operations on the values of this type. For every operation
+  in the `list` module that makes sense for nonempty lists, there is a
+  corresponding operation in `one_or_more`.
+
+### New module: `one_or_more_map` module
+
+* This module implements `one_or_more_map`, a map from keys to one or more
+  values. Its functionality is very similar to that of the `multi_map` module
+  (in fact, the two modules define the exact same set of operations),
+  but unlike `multi_map`, it uses the type system to enforce the invariant
+  that every key in the map must have at least one associated value.
 
 ### New module: `thread.closeable_channel` module
 
@@ -74,6 +99,16 @@ Changes to the Mercury standard library
 * The following predicate has been added:
 
     - pred `map_corresponding3/5`
+
+* The following type, functions and predicates have been moved to the
+  new `one_or_more` module. Note: this change can break backwards
+  compatibility.
+
+    - type `one_or_more/1`
+    - func `one_or_more_cons/2`     (as `one_or_more.cons/2`)
+    - func `one_or_more_to_list/1`
+    - pred `list_to_one_or_more/2`
+    - pred `det_list_to_one_or_more/2`
 
 ### Changes to the `map` module
 

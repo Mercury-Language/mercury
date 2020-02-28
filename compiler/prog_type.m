@@ -27,6 +27,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%

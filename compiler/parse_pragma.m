@@ -74,6 +74,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module string.
 :- import_module unit.

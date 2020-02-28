@@ -112,8 +112,11 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
+:- import_module one_or_more.
 :- import_module queue.
 :- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
     module_info_get_maybe_recompilation_info(ModuleInfo, MaybeRecompInfo),

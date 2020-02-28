@@ -19,9 +19,10 @@
 :- module libs.mmakefiles.
 :- interface.
 
+:- import_module cord.
 :- import_module io.
 :- import_module list.
-:- import_module cord.
+:- import_module one_or_more.
 
 %---------------------------------------------------------------------------%
 

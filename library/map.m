@@ -15,7 +15,8 @@
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Value) pairs that allows you to look up any Value given its Key.
 % Each Key has exactly only one corresponding Value. (If you want the ability
-% to store more than one Value for a given Key, use multi_map.m.)
+% to store more than one Value for a given Key, use either multi_map.m
+% or one_or_more_map.m.)
 %
 % The implementation uses balanced 2-3-4 trees, as provided by tree234.m.
 % Virtually all the predicates in this file just forward the work

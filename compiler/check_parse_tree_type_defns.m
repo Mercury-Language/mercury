@@ -26,6 +26,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 
 %-----------------------------------------------------------------------------%
 

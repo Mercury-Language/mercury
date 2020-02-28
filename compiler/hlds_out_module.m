@@ -82,6 +82,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.

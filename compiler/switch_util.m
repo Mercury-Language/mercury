@@ -399,6 +399,7 @@
 :- import_module int64.
 :- import_module io.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module string.
 :- import_module uint.

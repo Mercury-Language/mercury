@@ -79,6 +79,7 @@
 
 :- import_module bag.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module set.
 :- import_module uint32.
@@ -279,7 +280,7 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, CurOrdinal,
             MaybeTailConstructors = ok1(TailConstructors)
         then
             MaybeConstructors =
-                ok1(one_or_more_cons(HeadConstructor, TailConstructors))
+                ok1(one_or_more.cons(HeadConstructor, TailConstructors))
         else
             Specs = get_any_errors1(MaybeHeadConstructor) ++
                 get_any_errors1(MaybeTailConstructors),

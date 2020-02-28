@@ -60,6 +60,7 @@
 
 :- import_module counter.
 :- import_module list.
+:- import_module one_or_more.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

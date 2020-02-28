@@ -60,6 +60,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module set.
 :- import_module varset.

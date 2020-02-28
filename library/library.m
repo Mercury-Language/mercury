@@ -112,6 +112,8 @@
 :- import_module math.
 :- import_module maybe.
 :- import_module multi_map.
+:- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module ops.
 :- import_module pair.
 :- import_module parser.
@@ -296,6 +298,8 @@ mercury_std_library_module("map").
 mercury_std_library_module("math").
 mercury_std_library_module("maybe").
 mercury_std_library_module("multi_map").
+mercury_std_library_module("one_or_more").
+mercury_std_library_module("one_or_more_map").
 mercury_std_library_module("mutvar").
 mercury_std_library_module("ops").
 mercury_std_library_module("pair").

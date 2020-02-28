@@ -1,82 +1,61 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: list.m.
-% Authors: fjh, conway, trd, zs, philip, warwick, ...
-% Stability: medium to high.
+% File: one_or_more.m.
+% Stability: high.
 %
-% This module defines the list type, and various utility predicates that
-% operate on lists.
+% This module defines the one_or_more type, values of which represent
+% nonempty lists, and various utility predicates that operate on them.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module list.
+:- module one_or_more.
 :- interface.
 
+:- import_module list.
 :- import_module pretty_printer.
 
 %---------------------------------------------------------------------------%
 
-    % The definition of the type `list(T)':
-    % A list is either an empty list, denoted `[]',
-    % or an element `Head' of type `T' followed by a tail `Tail'
-    % of type `list(T)', denoted `[Head | Tail]'.
-    %
-:- type list(T)
-    --->    []
-    ;       [T | list(T)].
+:- type one_or_more(T)
+    --->    one_or_more(T, list(T)).
+            % The head, which is the one element that must be present,
+            % and the tail of the list, which may be empty.
 
 %---------------------------------------------------------------------------%
 
-    % These instantiation states and modes can be used for instantiation
-    % state subtyping.
+    % Convert from one_or_more to list.
     %
-    % They could also be used for partial instantiation but partial
-    % instantiation does not work completely, for information see the
-    % LIMITATIONS file distributed with Mercury.
-    %
-:- inst list_skel(I) for list/1
-    --->    []
-    ;       [I | list_skel(I)].
-:- inst list(I) == list_skel(I).
+:- func one_or_more_to_list(one_or_more(T)) = list(T).
+:- mode one_or_more_to_list(di) = uo is det.
+:- mode one_or_more_to_list(in) = out is det.
 
-:- inst empty_list for list/1
-    --->    [].
-:- inst non_empty_list for list/1
-    --->    [ground | ground].
+    % Convert from list to one_or_more. The first version fails
+    % if the list is empty, while the second throws an exception.
+    %
+:- pred list_to_one_or_more(list(T)::in, one_or_more(T)::out) is semidet.
+:- pred det_list_to_one_or_more(list(T)::in, one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred is_empty(list(T)::in) is semidet.
-
-:- pred is_not_empty(list(T)::in) is semidet.
-
-%---------------------------------------------------------------------------%
-
-:- func head(list(T)) = T is semidet.
-
-    % det_head(List) returns the first element of List,
-    % calling error/1 if List is empty.
+    % Return the head and the tail respectively.
     %
-:- func det_head(list(T)) = T.
+:- func head(one_or_more(T)) = T.
+:- func tail(one_or_more(T)) = list(T).
 
-:- func tail(list(T)) = list(T) is semidet.
-
-    % det_tail(List) returns the tail of List,
-    % calling error/1 if List is empty.
+    % Add a new element to the front of a one_or_more.
     %
-:- func det_tail(list(T)) = list(T).
-
-    % cons(X, Y) = Z <=> Z = [X | Y].
+    % In list terms:
     %
-:- func cons(T, list(T)) = list(T).
-:- pred cons(T::in, list(T)::in, list(T)::out) is det.
+    %   cons(X, Y) = Z <=> Z = [X | Y].
+    %
+:- func cons(T, one_or_more(T)) = one_or_more(T).
+:- pred cons(T::in, one_or_more(T)::in, one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -84,44 +63,41 @@
     % append(Start, End, List) is true iff
     % `List' is the result of concatenating `Start' and `End'.
     %
-:- pred append(list(T), list(T), list(T)).
+:- pred append(one_or_more(T), one_or_more(T), one_or_more(T)).
 :- mode append(di, di, uo) is det.
 :- mode append(in, in, out) is det.
 :- mode append(in, in, in) is semidet.    % implied
-:- mode append(in, out, in) is semidet.
-:- mode append(out, out, in) is multi.
-% The following mode is semidet in the sense that it doesn't
-% succeed more than once - but it does create a choice-point,
-% which means it's inefficient and that the compiler can't deduce
-% that it is semidet. Use remove_suffix instead.
-% :- mode append(out, in, in) is semidet.
-
-:- func append(list(T), list(T)) = list(T).
 
     % L1 ++ L2 = L :- append(L1, L2, L).
     %
-:- func list(T) ++ list(T) = list(T).
+:- func one_or_more(T) ++ one_or_more(T) = one_or_more(T).
 
-    % remove_suffix(List, Suffix, Prefix):
+    % Append a list and a one_or_more, in either order.
     %
-    % The same as append(Prefix, Suffix, List) except that
-    % this is semidet whereas append(out, in, in) is nondet.
-    %
-:- pred remove_suffix(list(T)::in, list(T)::in, list(T)::out) is semidet.
+:- pred append_one_or_more_list(one_or_more(T), list(T), one_or_more(T)).
+:- mode append_one_or_more_list(di, di, uo) is det.
+:- mode append_one_or_more_list(in, in, out) is det.
+
+:- pred append_list_one_or_more(list(T), one_or_more(T), one_or_more(T)).
+:- mode append_list_one_or_more(di, di, uo) is det.
+:- mode append_list_one_or_more(in, in, out) is det.
 
 %---------------------%
 
-    % associativity of append
+    % Assert the associativity of append.
+    %
 :- promise all [A, B, C, ABC]
     (
-        ( some [AB] (list.append(A, B, AB), list.append(AB, C, ABC)) )
+        ( some [AB] (
+            one_or_more.append(A, B, AB),
+            one_or_more.append(AB, C, ABC))
+        )
     <=>
-        ( some [BC] (list.append(B, C, BC), list.append(A, BC, ABC)) )
+        ( some [BC] (
+            one_or_more.append(B, C, BC),
+            one_or_more.append(A, BC, ABC))
+        )
     ).
-    % construction equivalence law.
-    % NOTE_TO_IMPLEMENTORS when we implement rewrite rules,
-    % NOTE_TO_IMPLEMENTORS we should change this law to a rewrite rule.
-:- promise all [L, H, T] ( append([H], T, L) <=> L = [H | T] ).
 
 %---------------------------------------------------------------------------%
 
@@ -130,33 +106,20 @@
     % True iff `Length' is the length of `List', i.e. if `List' contains
     % `Length' elements.
     %
-:- pred length(list(_T), int).
-:- mode length(in, out) is det.
-% NOTE_TO_IMPLEMENTORS XXX The current mode checker can't handle this mode.
-% NOTE_TO_IMPLEMENTORS :- mode length(input_list_skel, out) is det.
-
-:- func length(list(T)) = int.
+:- func length(one_or_more(T)) = int.
+:- pred length(one_or_more(T)::in, int::out) is det.
 
     % same_length(ListA, ListB):
     %
     % True iff `ListA' and `ListB' have the same length,
     % i.e. iff they both contain the same number of elements.
     %
-:- pred same_length(list(T1), list(T2)).
-% NOTE_TO_IMPLEMENTORS XXX The current mode checker can't handle these modes.
-% NOTE_TO_IMPLEMENTORS :- mode same_length(in, output_list_skel) is det.
-% NOTE_TO_IMPLEMENTORS :- mode same_length(output_list_skel, in) is det.
-:- mode same_length(in, in) is semidet.
-% NOTE_TO_IMPLEMENTORS XXX The current mode checker can't handle these modes.
-% NOTE_TO_IMPLEMENTORS :- mode same_length(input_list_skel, output_list_skel)
-% NOTE_TO_IMPLEMENTORS      is det.
-% NOTE_TO_IMPLEMENTORS :- mode same_length(output_list_skel, input_list_skel)
-% NOTE_TO_IMPLEMENTORS      is det.
+:- pred same_length(one_or_more(T1)::in, one_or_more(T2)::in) is semidet.
 
     % As above, but for three lists.
     %
-:- pred same_length3(list(T1)::in, list(T2)::in, list(T3)::in)
-    is semidet.
+:- pred same_length3(one_or_more(T1)::in, one_or_more(T2)::in,
+    one_or_more(T3)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -164,39 +127,31 @@
     %
     % True iff `List' contains `Elem'.
     %
-:- pred member(T, list(T)).
+:- pred member(T, one_or_more(T)).
 :- mode member(in, in) is semidet.
-:- mode member(out, in) is nondet.
-
-    % member(Elem, List, SubList):
-    %
-    % True iff `List' contains `Elem', and `SubList' is a suffix of `List'
-    % beginning with `Elem'.
-    % Same as `SubList = [Elem | _], append(_, SubList, List)'.
-    %
-:- pred member(T::out, list(T)::in, list(T)::out) is nondet.
+:- mode member(out, in) is multi.
 
     % member_index0(Elem, List, Index).
     %
     % True iff `List' contains `Elem' at the zero-based index `Index'.
     %
-:- pred member_index0(T, list(T), int).
+:- pred member_index0(T, one_or_more(T), int).
 :- mode member_index0(in, in, in) is semidet.
 :- mode member_index0(in, in, out) is nondet.
-:- mode member_index0(out, in, out) is nondet.
+:- mode member_index0(out, in, out) is multi.
 
     % member_indexes0(Elem, List, Indexes).
     %
     % True iff `List' contains `Elem' at the zero-based indexes `Indexes'.
     % `Indexes' will be sorted.
     %
-:- pred member_indexes0(T::in, list(T)::in, list(int)::out) is det.
+:- pred member_indexes0(T::in, one_or_more(T)::in, list(int)::out) is det.
 
     % contains(List, Elem) iff member(Elem, List).
     % Sometimes you need the arguments in this order, because you want to
     % construct a closure with only the list.
     %
-:- pred contains(list(T)::in, T::in) is semidet.
+:- pred contains(one_or_more(T)::in, T::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -209,13 +164,13 @@
     % is out of range, whereas the semidet preds fail if the index is out of
     % range.
     %
-:- pred index0(list(T)::in, int::in, T::out) is semidet.
-:- pred index1(list(T)::in, int::in, T::out) is semidet.
+:- pred index0(one_or_more(T)::in, int::in, T::out) is semidet.
+:- pred index1(one_or_more(T)::in, int::in, T::out) is semidet.
 
-:- func det_index0(list(T), int) = T.
-:- pred det_index0(list(T)::in, int::in, T::out) is det.
-:- func det_index1(list(T), int) = T.
-:- pred det_index1(list(T)::in, int::in, T::out) is det.
+:- func det_index0(one_or_more(T), int) = T.
+:- pred det_index0(one_or_more(T)::in, int::in, T::out) is det.
+:- func det_index1(one_or_more(T), int) = T.
+:- pred det_index1(one_or_more(T)::in, int::in, T::out) is det.
 
     % nth_member_search(List, Elem, Position):
     %
@@ -224,25 +179,27 @@
     % NOTE_TO_IMPLEMENTORS XXX This pred is identical
     % NOTE_TO_IMPLEMENTORS to index1_of_first_occurrence.
     %
-:- pred nth_member_search(list(T)::in, T::in, int::out) is semidet.
+:- pred nth_member_search(one_or_more(T)::in, T::in, int::out) is semidet.
 
     % A deterministic version of nth_member_search, which throws an exception
     % instead of failing if the element is not found in the list.
     % NOTE_TO_IMPLEMENTORS XXX This pred is identical
     % NOTE_TO_IMPLEMENTORS to det_index1_of_first_occurrence.
     %
-:- pred nth_member_lookup(list(T)::in, T::in, int::out) is det.
+:- pred nth_member_lookup(one_or_more(T)::in, T::in, int::out) is det.
 
     % index*_of_first_occurrence(List, Elem, Position):
     %
     % Computes the least value of Position such that
-    % list_index*(List, Position, Elem). The `det_' funcs call error/1
+    % index*(List, Position, Elem). The `det_' funcs call error/1
     % if Elem is not a member of List.
     %
-:- pred index0_of_first_occurrence(list(T)::in, T::in, int::out) is semidet.
-:- pred index1_of_first_occurrence(list(T)::in, T::in, int::out) is semidet.
-:- func det_index0_of_first_occurrence(list(T), T) = int.
-:- func det_index1_of_first_occurrence(list(T), T) = int.
+:- pred index0_of_first_occurrence(one_or_more(T)::in, T::in, int::out)
+    is semidet.
+:- pred index1_of_first_occurrence(one_or_more(T)::in, T::in, int::out)
+    is semidet.
+:- func det_index0_of_first_occurrence(one_or_more(T), T) = int.
+:- func det_index1_of_first_occurrence(one_or_more(T), T) = int.
 
 %---------------------------------------------------------------------------%
 
@@ -251,118 +208,82 @@
     % `Reverse' is a list containing the same elements as `List'
     % but in reverse order.
     %
-:- pred reverse(list(T), list(T)).
+:- func reverse(one_or_more(T)) = one_or_more(T).
+:- pred reverse(one_or_more(T), one_or_more(T)).
 :- mode reverse(in, out) is det.
 :- mode reverse(out, in) is det.
 
-:- func reverse(list(T)) = list(T).
-
-    % reverse_prepend(Xs, Ys, Zs):
-    %
-    % Same as `Zs = list.reverse(Xs) ++ Ys' but more efficient.
-    %
-:- pred reverse_prepend(list(T)::in, list(T)::in, list(T)::out) is det.
-:- func reverse_prepend(list(T), list(T)) = list(T).
-
 %---------------------------------------------------------------------------%
-
-    % insert(Elem, List0, List):
-    %
-    % `List' is the result of inserting `Elem' somewhere in `List0'.
-    % Same as `delete(List, Elem, List0)'.
-    %
-:- pred insert(T, list(T), list(T)).
-:- mode insert(in, in, in) is semidet.
-:- mode insert(in, out, in) is nondet.
-:- mode insert(out, out, in) is nondet.
-:- mode insert(in, in, out) is multi.
 
     % delete(List, Elem, Remainder):
     %
     % True iff `Elem' occurs in `List', and `Remainder' is the result of
     % deleting one occurrence of `Elem' from `List'.
     %
-:- pred delete(list(T), T, list(T)).
-:- mode delete(in, in, in) is semidet.
-:- mode delete(in, in, out) is nondet.
-:- mode delete(in, out, out) is nondet.
-:- mode delete(out, in, in) is multi.
+:- pred delete(one_or_more(T)::in, T::in, list(T)::out) is nondet.
 
     % delete_first(List0, Elem, List) is true iff Elem occurs in List0
     % and List is List0 with the first occurrence of Elem removed.
     %
-:- pred delete_first(list(T)::in, T::in, list(T)::out) is semidet.
+:- pred delete_first(one_or_more(T)::in, T::in, list(T)::out) is semidet.
 
     % delete_all(List0, Elem) = List is true iff List is List0 with
     % all occurrences of Elem removed.
     %
-:- func delete_all(list(T), T) = list(T).
-:- pred delete_all(list(T), T, list(T)).
+:- func delete_all(one_or_more(T), T) = list(T).
+:- pred delete_all(one_or_more(T), T, list(T)).
 :- mode delete_all(di, in, uo) is det.
 :- mode delete_all(in, in, out) is det.
 
     % delete_elems(List0, Elems) = List is true iff List is List0 with
     % all occurrences of all elements of Elems removed.
     %
-:- func delete_elems(list(T), list(T)) = list(T).
-:- pred delete_elems(list(T)::in, list(T)::in, list(T)::out) is det.
+:- func delete_elems(one_or_more(T), list(T)) = list(T).
+:- pred delete_elems(one_or_more(T)::in, list(T)::in, list(T)::out) is det.
 
     % sublist(SubList, FullList) is true if one can obtain SubList
     % by starting with FullList and deleting some of its elements.
     %
-:- pred sublist(list(T)::in, list(T)::in) is semidet.
+:- pred sublist(one_or_more(T)::in, one_or_more(T)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
     % replace(List0, D, R, List) is true iff List is List0
     % with an occurrence of D replaced with R.
     %
-:- pred replace(list(T), T, T, list(T)).
+:- pred replace(one_or_more(T), T, T, one_or_more(T)).
 :- mode replace(in, in, in, in) is semidet.
 :- mode replace(in, in, in, out) is nondet.
 
     % replace_first(List0, D, R, List) is true iff List is List0
     % with the first occurrence of D replaced with R.
     %
-:- pred replace_first(list(T)::in, T::in, T::in, list(T)::out) is semidet.
+:- pred replace_first(one_or_more(T)::in, T::in, T::in, one_or_more(T)::out)
+    is semidet.
 
     % replace_all(List0, D, R) = List is true iff List is List0
     % with all occurrences of D replaced with R.
     %
-:- func replace_all(list(T), T, T) = list(T).
-:- pred replace_all(list(T)::in, T::in, T::in, list(T)::out) is det.
+:- func replace_all(one_or_more(T), T, T) = one_or_more(T).
+:- pred replace_all(one_or_more(T)::in, T::in, T::in, one_or_more(T)::out)
+    is det.
 
     % replace_nth(List0, N, R, List) is true iff List is List0
     % with N'th element replaced with R.
     % Fails if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
-:- pred replace_nth(list(T)::in, int::in, T::in, list(T)::out) is semidet.
+:- pred replace_nth(one_or_more(T)::in, int::in, T::in, one_or_more(T)::out)
+    is semidet.
 
     % det_replace_nth(List0, N, R) = List is true iff List is List0
     % with N'th element replaced with R.
     % Throws an exception if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
-:- func det_replace_nth(list(T), int, T) = list(T).
-:- pred det_replace_nth(list(T)::in, int::in, T::in, list(T)::out) is det.
-
-%---------------------------------------------------------------------------%
-
-    % Lo `..` Hi = [Lo, Lo + 1, ..., Hi] if Lo =< Hi, and [] otherwise.
-    %
-:- func int `..` int = list(int).
-
-%---------------------------------------------------------------------------%
-
-    % series(X, OK, Succ) = [X0, X1, ..., Xn]
-    %
-    % where X0 = X and successive elements Xj, Xk are computed as
-    % Xk = Succ(Xj). The series terminates as soon as an element Xi is
-    % generated such that OK(Xi) fails; Xi is not included in the output.
-    %
-:- func series(T, pred(T), func(T) = T) = list(T).
-:- mode series(in, pred(in) is semidet, func(in) = out is det) = out is det.
+:- func det_replace_nth(one_or_more(T), int, T) = one_or_more(T).
+:- pred det_replace_nth(one_or_more(T)::in, int::in, T::in,
+    one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -371,24 +292,24 @@
     % L is the result of deleting the second and subsequent occurrences
     % of every element that occurs twice in L0.
     %
-:- func remove_dups(list(T)) = list(T).
-:- pred remove_dups(list(T)::in, list(T)::out) is det.
+:- func remove_dups(one_or_more(T)) = one_or_more(T).
+:- pred remove_dups(one_or_more(T)::in, one_or_more(T)::out) is det.
 
     % remove_adjacent_dups(L0) = L:
     %
     % L is the result of replacing every sequence of duplicate elements in L0
     % with a single such element.
     %
-:- func remove_adjacent_dups(list(T)) = list(T).
-:- pred remove_adjacent_dups(list(T)::in, list(T)::out) is det.
+:- func remove_adjacent_dups(one_or_more(T)) = one_or_more(T).
+:- pred remove_adjacent_dups(one_or_more(T)::in, one_or_more(T)::out) is det.
 
     % remove_adjacent_dups(P, L0, L) is true iff L is the result
     % of replacing every sequence of elements in L0 which are equivalent
     % with respect to the ordering, with the first occurrence in L0 of
     % such an element.
     %
-:- pred remove_adjacent_dups(comparison_pred(X)::in(comparison_pred),
-    list(X)::in, list(X)::out) is det.
+:- pred remove_adjacent_dups(comparison_pred(T)::in(comparison_pred),
+    one_or_more(T)::in, one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -397,8 +318,9 @@
     % L is the result of merging the elements of L1 and L2, in ascending order.
     % L1 and L2 must be sorted.
     %
-:- func merge(list(T), list(T)) = list(T).
-:- pred merge(list(T)::in, list(T)::in, list(T)::out) is det.
+:- func merge(one_or_more(T), one_or_more(T)) = one_or_more(T).
+:- pred merge(one_or_more(T)::in, one_or_more(T)::in, one_or_more(T)::out)
+    is det.
 
     % merge(Compare, As, Bs) = Sorted is true iff, assuming As and
     % Bs are sorted with respect to the ordering defined by Compare,
@@ -408,9 +330,10 @@
     % sequence in Sorted as they do in that list, otherwise the elements
     % from As appear before the elements from Bs.
     %
-:- func merge(comparison_func(X), list(X), list(X)) = list(X).
-:- pred merge(comparison_pred(X)::in(comparison_pred),
-    list(X)::in, list(X)::in, list(X)::out) is det.
+:- func merge(comparison_func(T), one_or_more(T), one_or_more(T))
+    = one_or_more(T).
+:- pred merge(comparison_pred(T)::in(comparison_pred),
+    one_or_more(T)::in, one_or_more(T)::in, one_or_more(T)::out) is det.
 
     % merge_and_remove_dups(L1, L2) = L:
     %
@@ -418,8 +341,9 @@
     % and eliminating any duplicates. L1 and L2 must be sorted and must each
     % not contain any duplicates.
     %
-:- func merge_and_remove_dups(list(T), list(T)) = list(T).
-:- pred merge_and_remove_dups(list(T)::in, list(T)::in, list(T)::out) is det.
+:- func merge_and_remove_dups(one_or_more(T), one_or_more(T)) = one_or_more(T).
+:- pred merge_and_remove_dups(one_or_more(T)::in, one_or_more(T)::in,
+    one_or_more(T)::out) is det.
 
     % merge_and_remove_dups(Compare, As, Bs) = Sorted is true iff,
     % assuming As and Bs are sorted with respect to the ordering defined
@@ -429,10 +353,10 @@
     % Bs (that is, they are equivalent in the ordering), then the element
     % from As is the one that appears in Sorted.
     %
-:- func merge_and_remove_dups(comparison_func(X), list(X), list(X))
-    = list(X).
-:- pred merge_and_remove_dups(comparison_pred(X)::in(comparison_pred),
-    list(X)::in, list(X)::in, list(X)::out) is det.
+:- func merge_and_remove_dups(comparison_func(T),
+    one_or_more(T), one_or_more(T)) = one_or_more(T).
+:- pred merge_and_remove_dups(comparison_pred(T)::in(comparison_pred),
+    one_or_more(T)::in, one_or_more(T)::in, one_or_more(T)::out) is det.
 
 %---------------------%
 
@@ -440,16 +364,16 @@
     %
     % SortedList is List sorted.
     %
-:- func sort(list(T)) = list(T).
-:- pred sort(list(T)::in, list(T)::out) is det.
+:- func sort(one_or_more(T)) = one_or_more(T).
+:- pred sort(one_or_more(T)::in, one_or_more(T)::out) is det.
 
     % sort_and_remove_dups(List) = SortedList:
     %
     % SortedList is List sorted with the second and subsequent occurrence of
     % any duplicates removed.
     %
-:- func sort_and_remove_dups(list(T)) = list(T).
-:- pred sort_and_remove_dups(list(T)::in, list(T)::out) is det.
+:- func sort_and_remove_dups(one_or_more(T)) = one_or_more(T).
+:- pred sort_and_remove_dups(one_or_more(T)::in, one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -460,9 +384,9 @@
     % in the same sequence in Sorted as they do in Unsorted
     % (that is, the sort is stable).
     %
-:- func sort(comparison_func(X), list(X)) = list(X).
-:- pred sort(comparison_pred(X)::in(comparison_pred), list(X)::in,
-    list(X)::out) is det.
+:- func sort(comparison_func(T), one_or_more(T)) = one_or_more(T).
+:- pred sort(comparison_pred(T)::in(comparison_pred),
+    one_or_more(T)::in, one_or_more(T)::out) is det.
 
     % sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff
     % Sorted is a list containing the same elements as Unsorted, where
@@ -471,8 +395,8 @@
     % are equivalent with respect to this ordering only the one which
     % occurs first will be in Sorted.
     %
-:- pred sort_and_remove_dups(comparison_pred(X)::in(comparison_pred),
-    list(X)::in, list(X)::out) is det.
+:- pred sort_and_remove_dups(comparison_pred(T)::in(comparison_pred),
+    one_or_more(T)::in, one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -482,7 +406,7 @@
     % `End'. Fails if `N' is not in `0 .. length(List)'.
     % See also: take, drop and split_upto.
     %
-:- pred split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
+:- pred split_list(int::in, one_or_more(T)::in, list(T)::out, list(T)::out)
     is semidet.
 
     % det_split_list(N, List, Start, End):
@@ -490,7 +414,7 @@
     % A deterministic version of split_list, which throws an exception
     % instead of failing if `N' is not in 0 .. length(List).
     %
-:- pred det_split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
+:- pred det_split_list(int::in, one_or_more(T)::in, list(T)::out, list(T)::out)
     is det.
 
     % split_upto(N, List, Start, End):
@@ -499,131 +423,35 @@
     % and a remainder `End'. Throws an exception if `N' < 0.
     % See also: split_list, take, drop.
     %
-:- pred split_upto(int::in, list(T)::in, list(T)::out, list(T)::out) is det.
+:- pred split_upto(int::in, one_or_more(T)::in, list(T)::out, list(T)::out)
+    is det.
 
 %---------------------%
 
     % last(List, Last) is true if Last is the last element of List.
     %
-:- pred last(list(T)::in, T::out) is semidet.
-
-    % A deterministic version of last, which throws an exception instead of
-    % failing if the input list is empty.
-    %
-:- func det_last(list(T)) = T.
-:- pred det_last(list(T)::in, T::out) is det.
+:- func last(one_or_more(T)) = T.
+:- pred last(one_or_more(T)::in, T::out) is det.
 
     % split_last(List, AllButLast, Last) is true if Last is the
     % last element of List and AllButLast is the list of elements before it.
     %
-:- pred split_last(list(T)::in, list(T)::out, T::out) is semidet.
-
-    % A deterministic version of split_last, which throws an exception
-    % instead of failing if the input list is empty.
-    %
-:- pred det_split_last(list(T)::in, list(T)::out, T::out) is det.
-
-%---------------------%
-
-    % take(N, List, Start):
-    %
-    % `Start' is the first `Len' elements of `List'.
-    % Fails if `N' is not in `0 .. length(List)'.
-    %
-:- pred take(int::in, list(T)::in, list(T)::out) is semidet.
-
-    % det_take(Len, List, Start):
-    %
-    % As above, but throw an exception instead of failing.
-    %
-:- pred det_take(int::in, list(T)::in, list(T)::out) is det.
-
-    % take_upto(Len, List) = Start:
-    %
-    % `Start' is the first `Len' elements of `List'. If `List' has less than
-    % `Len' elements, return the entire list. Throws an exception if `N' < 0.
-    %
-:- func take_upto(int, list(T)) = list(T).
-:- pred take_upto(int::in, list(T)::in, list(T)::out) is det.
-
-%---------------------%
-
-    % drop(N, List, End):
-    %
-    % `End' is the remainder of `List' after removing the first `N' elements.
-    % Fails if `N' is not in `0 .. length(List)'.
-    % See also: split_list.
-    %
-:- pred drop(int::in, list(T)::in, list(T)::out) is semidet.
-
-    % det_drop(N, List, End):
-    %
-    % `End' is the remainder of `List' after removing the first `N' elements.
-    % Throws an exception if `N' is not in `0 .. length(List)'.
-    % See also: split_list.
-    %
-:- pred det_drop(int::in, list(T)::in, list(T)::out) is det.
-
-%---------------------%
-
-    % take_while(Pred, List, Start, End)
-    %
-    % List = Start ++ End. Start is the longest prefix of List where Pred
-    % succeeds for every element in Start. End is the remainder of the list.
-    %
-:- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
-    list(T)::out, list(T)::out) is det.
-
-    % takewhile/4 is the old name for take_while/4.
-    %
-:- pragma obsolete(takewhile/4).
-:- pred takewhile(pred(T)::in(pred(in) is semidet), list(T)::in,
-    list(T)::out, list(T)::out) is det.
-
-    % take_while(Pred, List) = Start :-
-    %     take_while(Pred, List, Start, _End)
-    %
-    % Start is the longest prefix of List where Pred succeeds for every element
-    % in Start.
-    %
-:- func take_while(pred(T), list(T)) = list(T).
-:- mode take_while(pred(in) is semidet, in) = out is det.
-:- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
-    list(T)::out) is det.
-
-%---------------------%
-
-    % drop_while(Pred, List) = End :-
-    %     take_while(Pred, List, _Start, End).
-    %
-    % End is the remainder of List after removing all the consecutive
-    % elements from the start of List for which Pred succeeds.
-    %
-:- func drop_while(pred(T), list(T)) = list(T).
-:- mode drop_while(pred(in) is semidet, in) = out is det.
-:- pred drop_while(pred(T)::in(pred(in) is semidet), list(T)::in,
-    list(T)::out) is det.
+:- pred split_last(one_or_more(T)::in, list(T)::out, T::out) is det.
 
 %---------------------------------------------------------------------------%
-
-    % duplicate(Count, Elem) = List is true iff List is a list
-    % containing Count duplicate copies of Elem.
-    %
-:- func duplicate(int, T) = list(T).
-:- pred duplicate(int::in, T::in, list(T)::out) is det.
 
     % all_same(List) is true if all elements of the list are the same.
     %
-:- pred all_same(list(T)::in) is semidet.
+:- pred all_same(one_or_more(T)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
-    % condense(ListOfLists) = List:
+    % condense(ListOfOoMs) = List:
     %
-    % `List' is the result of concatenating all the elements of `ListOfLists'.
+    % `List' is the result of concatenating all the elements of `ListOfOoMs'.
     %
-:- func condense(list(list(T))) = list(T).
-:- pred condense(list(list(T))::in, list(T)::out) is det.
+:- func condense(list(one_or_more(T))) = list(T).
+:- pred condense(list(one_or_more(T))::in, list(T)::out) is det.
 
     % chunk(List, ChunkSize) = Chunks:
     %
@@ -633,8 +461,9 @@
     % last one is exactly `ChunkSize', and the length of the last list in
     % `Chunks' is between one and `ChunkSize'.)
     %
-:- func chunk(list(T), int) = list(list(T)).
-:- pred chunk(list(T)::in, int::in, list(list(T))::out) is det.
+:- func chunk(one_or_more(T), int) = one_or_more(one_or_more(T)).
+:- pred chunk(one_or_more(T)::in, int::in, one_or_more(one_or_more(T))::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -646,8 +475,8 @@
     % of ListB, etc.). When there are no more elements remaining in one of
     % the lists, the remainder of the nonempty list is appended.
     %
-:- func zip(list(T), list(T)) = list(T).
-:- pred zip(list(T)::in, list(T)::in, list(T)::out) is det.
+:- func zip(one_or_more(T), one_or_more(T)) = one_or_more(T).
+:- pred zip(one_or_more(T)::in, one_or_more(T)::in, one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -655,13 +484,13 @@
     %
     % True iff `List' is a permutation of `List0'.
     %
-:- pred perm(list(T)::in, list(T)::out) is multi.
+:- pred perm(one_or_more(T)::in, one_or_more(T)::out) is multi.
 
 %---------------------------------------------------------------------------%
 
     % Convert a list to a pretty_printer.doc for formatting.
     %
-:- func list_to_doc(list(T)) = pretty_printer.doc.
+:- func one_or_more_to_doc(one_or_more(T)) = pretty_printer.doc.
 
 %---------------------------------------------------------------------------%
 %
@@ -675,32 +504,36 @@
     % input argument. It returns the first element X of the list (if any)
     % for which Pred(X) is true.
     %
-:- pred find_first_match(pred(X)::in(pred(in) is semidet), list(X)::in,
-    X::out) is semidet.
+:- pred find_first_match(pred(T)::in(pred(in) is semidet), one_or_more(T)::in,
+    T::out) is semidet.
 
     % any_true(Pred, List):
     % Succeeds iff Pred succeeds for at least one element of List.
     % Same as `not all_false(Pred, List)'.
     %
-:- pred any_true(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+:- pred any_true(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
+    is semidet.
 
     % any_false(Pred, List):
     % Succeeds iff Pred fails for at least one element of List.
     % Same as `not all_true(Pred, List)'.
     %
-:- pred any_false(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+:- pred any_false(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
+    is semidet.
 
     % all_true(Pred, List) takes a closure with one input argument.
     % If Pred succeeds for every member of List, all_true succeeds.
     % If Pred fails for any member of List, all_true fails.
     %
-:- pred all_true(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+:- pred all_true(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
+    is semidet.
 
     % all_false(Pred, List) takes a closure with one input argument.
     % If Pred fails for every member of List, all_false succeeds.
     % If Pred succeeds for any member of List, all_false fails.
     %
-:- pred all_false(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+:- pred all_false(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
+    is semidet.
 
     % all_true_corresponding(Pred, ListA, ListB):
     % Succeeds if Pred succeeds for every corresponding pair of elements from
@@ -710,7 +543,7 @@
     % An exception is raised if the list arguments differ in length.
     %
 :- pred all_true_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
-    list(X)::in, list(Y)::in) is semidet.
+    one_or_more(X)::in, one_or_more(Y)::in) is semidet.
 
     % all_false_corresponding(Pred, ListA, ListB):
     % Succeeds if Pred fails for every corresponding pair of elements from
@@ -720,7 +553,7 @@
     % An exception is raised if the list arguments differ in length.
     %
 :- pred all_false_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
-    list(X)::in, list(Y)::in) is semidet.
+    one_or_more(X)::in, one_or_more(Y)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -728,33 +561,33 @@
     % input argument and for each member X of List, calls the closure.
     % X is included in TrueList iff Pred(X) is true.
     %
-:- func filter(pred(X)::in(pred(in) is semidet), list(X)::in)
-    = (list(X)::out) is det.
-:- pred filter(pred(X)::in(pred(in) is semidet), list(X)::in,
-    list(X)::out) is det.
+:- func filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
+    = (list(T)::out) is det.
+:- pred filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in,
+    list(T)::out) is det.
 
     % filter(Pred, List, TrueList, FalseList) takes a closure with one
     % input argument and for each member X of List, calls the closure.
-    % X is included in TrueList iff Pred(X) is true.
-    % X is included in FalseList iff Pred(X) is false.
+    % X is included in TrueList iff Pred(T) is true.
+    % X is included in FalseList iff Pred(T) is false.
     %
-:- pred filter(pred(X)::in(pred(in) is semidet), list(X)::in,
-    list(X)::out, list(X)::out) is det.
+:- pred filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in,
+    list(T)::out, list(T)::out) is det.
 
     % negated_filter(Pred, List) = FalseList takes a closure with one
     % input argument and for each member of List `X', calls the closure.
     % X is included in FalseList iff Pred(X) is false.
     %
-:- func negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in)
-    = (list(X)::out) is det.
-:- pred negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in,
-    list(X)::out) is det.
+:- func negated_filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
+    = (list(T)::out) is det.
+:- pred negated_filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in,
+    list(T)::out) is det.
 
     % filter_map(Transformer, List, TrueList) takes a semidet function
     % and calls it with each element of List. If a call succeeds, then
     % its return value is included in TrueList.
     %
-:- func filter_map(func(X) = Y, list(X)) = list(Y).
+:- func filter_map(func(X) = Y, one_or_more(X)) = list(Y).
 :- mode filter_map(func(in) = out is semidet, in) = out is det.
 
     % filter_map(Transformer, List, TrueList) takes a predicate
@@ -763,7 +596,7 @@
     % its output is included in TrueList.
     %
 :- pred filter_map(pred(X, Y)::in(pred(in, out) is semidet),
-    list(X)::in, list(Y)::out) is det.
+    one_or_more(X)::in, list(Y)::out) is det.
 
     % filter_map(Transformer, List, TrueList, FalseList) takes
     % a predicate with one input argument and one output argument.
@@ -772,25 +605,25 @@
     % input is included in FalseList.
     %
 :- pred filter_map(pred(X, Y)::in(pred(in, out) is semidet),
-    list(X)::in, list(Y)::out, list(X)::out) is det.
+    one_or_more(X)::in, list(Y)::out, list(X)::out) is det.
 
     % Same as filter_map/3 except that it only returns the first match:
     %
     %   find_first_map(X, Y, Z) <=> filter_map(X, Y, [Z | _])
     %
 :- pred find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
-    list(X)::in, Y::out) is semidet.
+    one_or_more(X)::in, Y::out) is semidet.
 
     % Same as find_first_map, except with two outputs.
     %
 :- pred find_first_map2(pred(X, A, B)::in(pred(in, out, out) is semidet),
-    list(X)::in, A::out, B::out) is semidet.
+    one_or_more(X)::in, A::out, B::out) is semidet.
 
     % Same as find_first_map, except with three outputs.
     %
 :- pred find_first_map3(
     pred(X, A, B, C)::in(pred(in, out, out, out) is semidet),
-    list(X)::in, A::out, B::out, C::out) is semidet.
+    one_or_more(X)::in, A::out, B::out, C::out) is semidet.
 
     % find_index_of_match(Match, List, Index0, Index)
     %
@@ -798,7 +631,7 @@
     % where the first element in the list has the index Index0.
     % (Index0 is *not* the number of items to skip at the head of List.)
     %
-:- pred find_index_of_match(pred(T), list(T), int, int).
+:- pred find_index_of_match(pred(T), one_or_more(T), int, int).
 :- mode find_index_of_match(pred(in) is semidet, in, in, out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -809,8 +642,8 @@
     % Apply the closure T to transform the elements of L
     % into the elements of M.
     %
-:- func map(func(X) = Y, list(X)) = list(Y).
-:- pred map(pred(X, Y), list(X), list(Y)).
+:- func map(func(X) = Y, one_or_more(X)) = one_or_more(Y).
+:- pred map(pred(X, Y), one_or_more(X), one_or_more(Y)).
 :- mode map(pred(in, out) is det, in, out) is det.
 :- mode map(pred(in, out) is cc_multi, in, out) is cc_multi.
 :- mode map(pred(in, out) is semidet, in, out) is semidet.
@@ -821,7 +654,7 @@
     % map2(T, L, M1, M2) uses the closure T
     % to transform the elements of L into the elements of M1 and M2.
     %
-:- pred map2(pred(A, B, C), list(A), list(B), list(C)).
+:- pred map2(pred(A, B, C), one_or_more(A), one_or_more(B), one_or_more(C)).
 :- mode map2(pred(in, out, out) is det, in, out, out) is det.
 :- mode map2(pred(in, out, out) is cc_multi, in, out, out) is cc_multi.
 :- mode map2(pred(in, out, out) is semidet, in, out, out) is semidet.
@@ -832,7 +665,8 @@
     % map3(T, L, M1, M2, M3) uses the closure T
     % to transform the elements of L into the elements of M1, M2 and M3.
     %
-:- pred map3(pred(A, B, C, D), list(A), list(B), list(C), list(D)).
+:- pred map3(pred(A, B, C, D),
+    one_or_more(A), one_or_more(B), one_or_more(C), one_or_more(D)).
 :- mode map3(pred(in, out, out, out) is det, in, out, out, out) is det.
 :- mode map3(pred(in, out, out, out) is cc_multi, in, out, out, out)
     is cc_multi.
@@ -847,8 +681,9 @@
     % map4(T, L, M1, M2, M3, M4) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3 and M4.
     %
-:- pred map4(pred(A, B, C, D, E), list(A), list(B), list(C), list(D),
-    list(E)).
+:- pred map4(pred(A, B, C, D, E),
+    one_or_more(A), one_or_more(B), one_or_more(C), one_or_more(D),
+    one_or_more(E)).
 :- mode map4(pred(in, out, out, out, out) is det, in, out, out, out, out)
     is det.
 :- mode map4(pred(in, out, out, out, out) is cc_multi, in, out, out, out,
@@ -866,8 +701,9 @@
     % to transform the elements of L into the elements of M1, M2, M3, M4
     % and M5.
     %
-:- pred map5(pred(A, B, C, D, E, F), list(A), list(B), list(C), list(D),
-    list(E), list(F)).
+:- pred map5(pred(A, B, C, D, E, F),
+    one_or_more(A), one_or_more(B), one_or_more(C), one_or_more(D),
+    one_or_more(E), one_or_more(F)).
 :- mode map5(pred(in, out, out, out, out, out) is det, in, out, out, out,
     out, out) is det.
 :- mode map5(pred(in, out, out, out, out, out) is cc_multi, in, out, out,
@@ -885,8 +721,9 @@
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5 and M6.
     %
-:- pred map6(pred(A, B, C, D, E, F, G), list(A), list(B), list(C),
-    list(D), list(E), list(F), list(G)).
+:- pred map6(pred(A, B, C, D, E, F, G),
+    one_or_more(A), one_or_more(B), one_or_more(C), one_or_more(D),
+    one_or_more(E), one_or_more(F), one_or_more(G)).
 :- mode map6(pred(in, out, out, out, out, out, out) is det, in, out, out,
     out, out, out, out) is det.
 :- mode map6(pred(in, out, out, out, out, out, out) is cc_multi, in, out,
@@ -904,8 +741,9 @@
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5, M6 and M7.
     %
-:- pred map7(pred(A, B, C, D, E, F, G, H), list(A), list(B), list(C),
-    list(D), list(E), list(F), list(G), list(H)).
+:- pred map7(pred(A, B, C, D, E, F, G, H),
+    one_or_more(A), one_or_more(B), one_or_more(C), one_or_more(D),
+    one_or_more(E), one_or_more(F), one_or_more(G), one_or_more(H)).
 :- mode map7(pred(in, out, out, out, out, out, out, out) is det,
     in, out, out, out, out, out, out, out) is det.
 :- mode map7(pred(in, out, out, out, out, out, out, out) is cc_multi,
@@ -923,8 +761,10 @@
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5, M6, M7 and M8.
     %
-:- pred map8(pred(A, B, C, D, E, F, G, H, I), list(A), list(B), list(C),
-    list(D), list(E), list(F), list(G), list(H), list(I)).
+:- pred map8(pred(A, B, C, D, E, F, G, H, I),
+    one_or_more(A), one_or_more(B), one_or_more(C), one_or_more(D),
+    one_or_more(E), one_or_more(F), one_or_more(G), one_or_more(H),
+    one_or_more(I)).
 :- mode map8(pred(in, out, out, out, out, out, out, out, out) is det,
     in, out, out, out, out, out, out, out, out) is det.
 :- mode map8(pred(in, out, out, out, out, out, out, out, out) is cc_multi,
@@ -945,8 +785,10 @@
     %
     % An exception is raised if the list arguments differ in length.
     %
-:- func map_corresponding(func(A, B) = R, list(A), list(B)) = list(R).
-:- pred map_corresponding(pred(A, B, R), list(A), list(B), list(R)).
+:- func map_corresponding(func(A, B) = R, one_or_more(A), one_or_more(B))
+    = one_or_more(R).
+:- pred map_corresponding(pred(A, B, R), one_or_more(A), one_or_more(B),
+    one_or_more(R)).
 :- mode map_corresponding(in(pred(in, in, out) is det), in, in, out)
     is det.
 :- mode map_corresponding(in(pred(in, in, out) is semidet), in, in, out)
@@ -957,10 +799,10 @@
     %
     % An exception is raised if the list arguments differ in length.
     %
-:- func map_corresponding3(func(A, B, C) = R, list(A), list(B), list(C))
-    = list(R).
-:- pred map_corresponding3(pred(A, B, C, R), list(A), list(B), list(C),
-    list(R)).
+:- func map_corresponding3(func(A, B, C) = R,
+    one_or_more(A), one_or_more(B), one_or_more(C)) = one_or_more(R).
+:- pred map_corresponding3(pred(A, B, C, R), one_or_more(A), one_or_more(B),
+    one_or_more(C), one_or_more(R)).
 :- mode map_corresponding3(in(pred(in, in, in, out) is det),
     in, in, in, out) is det.
 :- mode map_corresponding3(in(pred(in, in, in, out) is semidet),
@@ -973,26 +815,26 @@
     % consists of only those applications of the function argument that
     % succeeded.
     %
-:- func filter_map_corresponding(func(A, B) = R, list(A), list(B))
-    = list(R).
-:- mode filter_map_corresponding(func(in, in) = out is semidet, in, in)
-    = out is det.
+:- func filter_map_corresponding(
+    (func(A, B) = R)::(func(in, in) = out is semidet),
+    one_or_more(A)::in, one_or_more(B)::in) = (list(R)::out) is det.
 :- pred filter_map_corresponding(
     pred(A, B, R)::in(pred(in, in, out) is semidet),
-    list(A)::in, list(B)::in, list(R)::out) is det.
+    one_or_more(A)::in, one_or_more(B)::in, list(R)::out) is det.
 
     % filter_map_corresponding3/4 is like map_corresponding3/4
     % except the function argument is semidet and the output list
     % consists of only those applications of the function argument that
     % succeeded.
     %
-:- func filter_map_corresponding3(func(A, B, C) = R,
-    list(A), list(B), list(C)) = list(R).
-:- mode filter_map_corresponding3(func(in, in, in) = out is semidet,
-    in, in, in) = out is det.
+:- func filter_map_corresponding3(
+    (func(A, B, C) = R)::in(func(in, in, in) = out is semidet),
+    one_or_more(A)::in, one_or_more(B)::in, one_or_more(C)::in)
+    = (list(R)::out) is det.
 :- pred filter_map_corresponding3(
     pred(A, B, C, R)::in(pred(in, in, in, out) is semidet),
-    list(A)::in, list(B)::in, list(C)::in, list(R)::out) is det.
+    one_or_more(A)::in, one_or_more(B)::in, one_or_more(C)::in,
+    list(R)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1000,13 +842,13 @@
     % (working left-to-right) and an accumulator (with the initial value
     % of Start), and returns the final value in End.
     %
-:- func foldl(func(L, A) = A, list(L), A) = A.
+:- func foldl(func(L, A) = A, one_or_more(L), A) = A.
 
     % foldl(Pred, List, Start, End) calls Pred with each element of List
     % (working left-to-right) and an accumulator (with the initial value
     % of Start), and returns the final value in End.
     %
-:- pred foldl(pred(L, A, A), list(L), A, A).
+:- pred foldl(pred(L, A, A), one_or_more(L), A, A).
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
@@ -1024,7 +866,7 @@
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred foldl2(pred(L, A, A, Z, Z), list(L), A, A, Z, Z).
+:- pred foldl2(pred(L, A, A, Z, Z), one_or_more(L), A, A, Z, Z).
 :- mode foldl2(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
 :- mode foldl2(pred(in, in, out, mdi, muo) is det,
@@ -1057,7 +899,7 @@
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred foldl3(pred(L, A, A, B, B, C, C), list(L),
+:- pred foldl3(pred(L, A, A, B, B, C, C), one_or_more(L),
     A, A, B, B, C, C).
 :- mode foldl3(pred(in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
@@ -1085,7 +927,7 @@
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred foldl4(pred(L, A, A, B, B, C, C, D, D), list(L),
+:- pred foldl4(pred(L, A, A, B, B, C, C, D, D), one_or_more(L),
     A, A, B, B, C, C, D, D).
 :- mode foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out) is det.
@@ -1113,7 +955,7 @@
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred foldl5(pred(L, A, A, B, B, C, C, D, D, E, E), list(L),
+:- pred foldl5(pred(L, A, A, B, B, C, C, D, D, E, E), one_or_more(L),
     A, A, B, B, C, C, D, D, E, E).
 :- mode foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
     is det,
@@ -1151,7 +993,7 @@
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred foldl6(pred(L, A, A, B, B, C, C, D, D, E, E, F, F), list(L),
+:- pred foldl6(pred(L, A, A, B, B, C, C, D, D, E, E, F, F), one_or_more(L),
     A, A, B, B, C, C, D, D, E, E, F, F).
 :- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     in, out) is det,
@@ -1187,13 +1029,13 @@
     % (working right-to-left) and an accumulator (with the initial value
     % of Start), and returns the final value in End.
     %
-:- func foldr(func(L, A) = A, list(L), A) = A.
+:- func foldr(func(L, A) = A, one_or_more(L), A) = A.
 
     % foldr(Pred, List, Start, End) calls Pred with each element of List
     % (working right-to-left) and an accumulator (with the initial value
     % of Start), and returns the final value in End.
     %
-:- pred foldr(pred(L, A, A), list(L), A, A).
+:- pred foldr(pred(L, A, A), one_or_more(L), A, A).
 :- mode foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
@@ -1211,7 +1053,7 @@
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred foldr2(pred(L, A, A, B, B), list(L), A, A, B, B).
+:- pred foldr2(pred(L, A, A, B, B), one_or_more(L), A, A, B, B).
 :- mode foldr2(pred(in, in, out, in, out) is det, in, in, out,
     in, out) is det.
 :- mode foldr2(pred(in, in, out, mdi, muo) is det, in, in, out,
@@ -1234,7 +1076,7 @@
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred foldr3(pred(L, A, A, B, B, C, C), list(L), A, A, B, B, C, C).
+:- pred foldr3(pred(L, A, A, B, B, C, C), one_or_more(L), A, A, B, B, C, C).
 :- mode foldr3(pred(in, in, out, in, out, in, out) is det, in,
     in, out, in, out, in, out) is det.
 :- mode foldr3(pred(in, in, out, in, out, mdi, muo) is det, in,
@@ -1259,7 +1101,8 @@
     % Does the same job as foldl, but works on two lists in parallel.
     % An exception is raised if the list arguments differ in length.
     %
-:- pred foldl_corresponding(pred(A, B, C, C), list(A), list(B), C, C).
+:- pred foldl_corresponding(pred(A, B, C, C),
+    one_or_more(A), one_or_more(B), C, C).
 :- mode foldl_corresponding(pred(in, in, in, out) is det,
     in, in, in, out) is det.
 :- mode foldl_corresponding(pred(in, in, mdi, muo) is det,
@@ -1281,14 +1124,15 @@
 :- mode foldl_corresponding(pred(in, in, di, uo) is cc_multi,
     in, in, di, uo) is cc_multi.
 
-:- func foldl_corresponding(func(A, B, C) = C, list(A), list(B), C) = C.
+:- func foldl_corresponding(func(A, B, C) = C,
+    one_or_more(A), one_or_more(B), C) = C.
 
     % foldl2_corresponding(F, As, Bs, !Acc1, !Acc2):
     % Does the same job as foldl_corresponding, but has two
     % accumulators.
     %
-:- pred foldl2_corresponding(pred(A, B, C, C, D, D), list(A), list(B),
-    C, C, D, D).
+:- pred foldl2_corresponding(pred(A, B, C, C, D, D),
+    one_or_more(A), one_or_more(B), C, C, D, D).
 :- mode foldl2_corresponding(pred(in, in, in, out, in, out) is det,
     in, in, in, out, in, out) is det.
 :- mode foldl2_corresponding(pred(in, in, in, out, mdi, muo) is det,
@@ -1315,7 +1159,7 @@
     % accumulators.
     %
 :- pred foldl3_corresponding(pred(A, B, C, C, D, D, E, E),
-    list(A), list(B), C, C, D, D, E, E).
+    one_or_more(A), one_or_more(B), C, C, D, D, E, E).
 :- mode foldl3_corresponding(
     pred(in, in, in, out, in, out, in, out) is det, in, in, in, out,
     in, out, in, out) is det.
@@ -1340,7 +1184,7 @@
     % lists.
     %
 :- pred foldl_corresponding3(pred(A, B, C, D, D),
-    list(A), list(B), list(C), D, D).
+    one_or_more(A), one_or_more(B), one_or_more(C), D, D).
 :- mode foldl_corresponding3(pred(in, in, in, in, out) is det,
     in, in, in, in, out) is det.
 :- mode foldl_corresponding3(pred(in, in, in, mdi, muo) is det,
@@ -1358,7 +1202,7 @@
     % like foldl_corresponding3 but with two accumulators.
     %
 :- pred foldl2_corresponding3(pred(A, B, C, D, D, E, E),
-    list(A), list(B), list(C), D, D, E, E).
+    one_or_more(A), one_or_more(B), one_or_more(C), D, D, E, E).
 :- mode foldl2_corresponding3(pred(in, in, in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
 :- mode foldl2_corresponding3(pred(in, in, in, in, out, mdi, muo) is det,
@@ -1379,7 +1223,7 @@
     % like foldl_corresponding3 but with three accumulators.
     %
 :- pred foldl3_corresponding3(pred(A, B, C, D, D, E, E, F, F),
-    list(A), list(B), list(C), D, D, E, E, F, F).
+    one_or_more(A), one_or_more(B), one_or_more(C), D, D, E, E, F, F).
 :- mode foldl3_corresponding3(
     pred(in, in, in, in, out, in, out, in, out) is det,
     in, in, in, in, out, in, out, in, out) is det.
@@ -1403,7 +1247,7 @@
     % like foldl_corresponding3 but with four accumulators.
     %
 :- pred foldl4_corresponding3(pred(A, B, C, D, D, E, E, F, F, G, G),
-    list(A), list(B), list(C), D, D, E, E, F, F, G, G).
+    one_or_more(A), one_or_more(B), one_or_more(C), D, D, E, E, F, F, G, G).
 :- mode foldl4_corresponding3(
     pred(in, in, in, in, out, in, out, in, out, in, out) is det,
     in, in, in, in, out, in, out, in, out, in, out) is det.
@@ -1431,7 +1275,7 @@
     % InList into OutList. The final value of the accumulator is
     % returned in End.
     %
-:- pred map_foldl(pred(L, M, A, A), list(L), list(M), A, A).
+:- pred map_foldl(pred(L, M, A, A), one_or_more(L), one_or_more(M), A, A).
 :- mode map_foldl(pred(in, out, in, out) is det, in, out, in, out)
     is det.
 :- mode map_foldl(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
@@ -1459,7 +1303,8 @@
 
     % Same as map_foldl, but with two accumulators.
     %
-:- pred map_foldl2(pred(L, M, A, A, B, B), list(L), list(M), A, A, B, B).
+:- pred map_foldl2(pred(L, M, A, A, B, B),
+    one_or_more(L), one_or_more(M), A, A, B, B).
 :- mode map_foldl2(pred(in, out, in, out, in, out) is det,
     in, out, in, out, in, out) is det.
 :- mode map_foldl2(pred(in, out, in, out, mdi, muo) is det,
@@ -1485,8 +1330,8 @@
 
     % Same as map_foldl, but with three accumulators.
     %
-:- pred map_foldl3(pred(L, M, A, A, B, B, C, C), list(L), list(M),
-    A, A, B, B, C, C).
+:- pred map_foldl3(pred(L, M, A, A, B, B, C, C),
+    one_or_more(L), one_or_more(M), A, A, B, B, C, C).
 :- mode map_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
     in, out, in, out, in, out, di, uo) is det.
 :- mode map_foldl3(pred(in, out, in, out, in, out, in, out) is det,
@@ -1502,8 +1347,8 @@
 
     % Same as map_foldl, but with four accumulators.
     %
-:- pred map_foldl4(pred(L, M, A, A, B, B, C, C, D, D), list(L), list(M),
-    A, A, B, B, C, C, D, D).
+:- pred map_foldl4(pred(L, M, A, A, B, B, C, C, D, D),
+    one_or_more(L), one_or_more(M), A, A, B, B, C, C, D, D).
 :- mode map_foldl4(pred(in, out, in, out, in, out, in, out, di, uo)
     is det,
     in, out, in, out, in, out, in, out, di, uo) is det.
@@ -1526,7 +1371,7 @@
     % Same as map_foldl, but with five accumulators.
     %
 :- pred map_foldl5(pred(L, M, A, A, B, B, C, C, D, D, E, E),
-    list(L), list(M), A, A, B, B, C, C, D, D, E, E).
+    one_or_more(L), one_or_more(M), A, A, B, B, C, C, D, D, E, E).
 :- mode map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
     di, uo) is det,
     in, out, in, out, in, out, in, out, in, out, di, uo) is det.
@@ -1549,7 +1394,7 @@
     % Same as map_foldl, but with six accumulators.
     %
 :- pred map_foldl6(pred(L, M, A, A, B, B, C, C, D, D, E, E, F, F),
-    list(L), list(M), A, A, B, B, C, C, D, D, E, E, F, F).
+    one_or_more(L), one_or_more(M), A, A, B, B, C, C, D, D, E, E, F, F).
 :- mode map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
     in, out, di, uo) is det,
     in, out, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
@@ -1575,8 +1420,8 @@
 
     % Same as map_foldl, but with two mapped outputs.
     %
-:- pred map2_foldl(pred(L, M, N, A, A), list(L), list(M), list(N),
-    A, A).
+:- pred map2_foldl(pred(L, M, N, A, A),
+    one_or_more(L), one_or_more(M), one_or_more(N), A, A).
 :- mode map2_foldl(pred(in, out, out, in, out) is det, in, out, out,
     in, out) is det.
 :- mode map2_foldl(pred(in, out, out, mdi, muo) is det, in, out, out,
@@ -1601,8 +1446,8 @@
     % Same as map_foldl, but with two mapped outputs and two
     % accumulators.
     %
-:- pred map2_foldl2(pred(L, M, N, A, A, B, B), list(L), list(M), list(N),
-    A, A, B, B).
+:- pred map2_foldl2(pred(L, M, N, A, A, B, B),
+    one_or_more(L), one_or_more(M), one_or_more(N), A, A, B, B).
 :- mode map2_foldl2(pred(in, out, out, in, out, di, uo) is det,
     in, out, out, in, out, di, uo) is det.
 :- mode map2_foldl2(pred(in, out, out, in, out, in, out) is det,
@@ -1620,7 +1465,7 @@
     % accumulators.
     %
 :- pred map2_foldl3(pred(L, M, N, A, A, B, B, C, C),
-    list(L), list(M), list(N), A, A, B, B, C, C).
+    one_or_more(L), one_or_more(M), one_or_more(N), A, A, B, B, C, C).
 :- mode map2_foldl3(
     pred(in, out, out, in, out, in, out, in, out) is det,
     in, out, out, in, out, in, out, in, out) is det.
@@ -1644,7 +1489,7 @@
     % accumulators.
     %
 :- pred map2_foldl4(pred(L, M, N, A, A, B, B, C, C, D, D),
-    list(L), list(M), list(N), A, A, B, B, C, C, D, D).
+    one_or_more(L), one_or_more(M), one_or_more(N), A, A, B, B, C, C, D, D).
 :- mode map2_foldl4(
     pred(in, out, out, in, out, in, out, in, out, in, out) is det,
     in, out, out, in, out, in, out, in, out, in, out) is det.
@@ -1666,8 +1511,8 @@
 
     % Same as map_foldl, but with three mapped outputs.
     %
-:- pred map3_foldl(pred(L, M, N, O, A, A), list(L), list(M), list(N),
-    list(O), A, A).
+:- pred map3_foldl(pred(L, M, N, O, A, A),
+    one_or_more(L), one_or_more(M), one_or_more(N), one_or_more(O), A, A).
 :- mode map3_foldl(pred(in, out, out, out, in, out) is det, in, out, out,
     out, in, out) is det.
 :- mode map3_foldl(pred(in, out, out, out, mdi, muo) is det, in, out, out,
@@ -1692,8 +1537,8 @@
     % Same as map_foldl, but with three mapped outputs and two
     % accumulators.
     %
-:- pred map3_foldl2(pred(L, M, N, O, A, A, B, B), list(L),
-    list(M), list(N), list(O), A, A, B, B).
+:- pred map3_foldl2(pred(L, M, N, O, A, A, B, B), one_or_more(L),
+    one_or_more(M), one_or_more(N), one_or_more(O), A, A, B, B).
 :- mode map3_foldl2(pred(in, out, out, out, in, out, di, uo) is det,
     in, out, out, out, in, out, di, uo) is det.
 :- mode map3_foldl2(pred(in, out, out, out, in, out, in, out) is det,
@@ -1709,8 +1554,9 @@
 
     % Same as map_foldl, but with four mapped outputs.
     %
-:- pred map4_foldl(pred(L, M, N, O, P, A, A), list(L), list(M), list(N),
-    list(O), list(P), A, A).
+:- pred map4_foldl(pred(L, M, N, O, P, A, A), one_or_more(L), one_or_more(M),
+one_or_more(N),
+    one_or_more(O), one_or_more(P), A, A).
 :- mode map4_foldl(pred(in, out, out, out, out, in, out) is det,
     in, out, out, out, out, in, out) is det.
 :- mode map4_foldl(pred(in, out, out, out, out, mdi, muo) is det,
@@ -1740,7 +1586,7 @@
     % InList into OutList. The final value of the accumulator is
     % returned in End.
     %
-:- pred map_foldr(pred(L, M, A, A), list(L), list(M), A, A).
+:- pred map_foldr(pred(L, M, A, A), one_or_more(L), one_or_more(M), A, A).
 :- mode map_foldr(pred(in, out, in, out) is det, in, out, in, out)
     is det.
 :- mode map_foldr(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
@@ -1762,7 +1608,7 @@
     % that it has an accumulator threaded through it.
     %
 :- pred map_corresponding_foldl(pred(A, B, C, D, D),
-    list(A), list(B), list(C), D, D).
+    one_or_more(A), one_or_more(B), one_or_more(C), D, D).
 :- mode map_corresponding_foldl(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
 :- mode map_corresponding_foldl(pred(in, in, out, mdi, muo) is det,
@@ -1780,7 +1626,7 @@
     % accumulators.
     %
 :- pred map_corresponding_foldl2(pred(A, B, C, D, D, E, E),
-    list(A), list(B), list(C), D, D, E, E).
+    one_or_more(A), one_or_more(B), one_or_more(C), D, D, E, E).
 :- mode map_corresponding_foldl2(
     pred(in, in, out, in, out, in, out) is det, in, in, out, in, out,
     in, out) is det.
@@ -1804,7 +1650,7 @@
     % accumulators.
     %
 :- pred map_corresponding_foldl3(pred(A, B, C, D, D, E, E, F, F),
-    list(A), list(B), list(C), D, D, E, E, F, F).
+    one_or_more(A), one_or_more(B), one_or_more(C), D, D, E, E, F, F).
 :- mode map_corresponding_foldl3(
     pred(in, in, out, in, out, in, out, in, out) is det, in, in, out, in, out,
     in, out, in, out) is det.
@@ -1828,7 +1674,7 @@
     % that it has an accumulator threaded through it.
     %
 :- pred map_corresponding3_foldl(pred(A, B, C, D, E, E),
-    list(A), list(B), list(C), list(D), E, E).
+    one_or_more(A), one_or_more(B), one_or_more(C), one_or_more(D), E, E).
 :- mode map_corresponding3_foldl(pred(in, in, in, out, in, out) is det,
     in, in, in, out, in, out) is det.
 :- mode map_corresponding3_foldl(pred(in, in, in, out, mdi, muo) is det,
@@ -1852,8 +1698,85 @@
     % accumulator. It is called with each element of List. If a call succeeds,
     % then the output is included in TrueList and the accumulator is updated.
     %
-:- pred filter_map_foldl(pred(X, Y, A, A)::in(pred(in, out, in, out)
-    is semidet), list(X)::in, list(Y)::out, A::in, A::out) is det.
+:- pred filter_map_foldl(
+    pred(X, Y, A, A)::in(pred(in, out, in, out) is semidet),
+    one_or_more(X)::in, list(Y)::out, A::in, A::out) is det.
+
+%---------------------------------------------------------------------------%
+
+% The following is a list of the functions and predicates that are
+% present in list.m but not in one_or_more.m, together with the reasons
+% for their absences.
+%
+% - pred is_empty/1
+% - pred is_not_empty/1
+%
+%   When applied to known-to-be-nonempty lists, the outcomes of these tests
+%   are known statically.
+%
+% - func det_head/1
+% - func det_tail/1
+%
+%   For nonempty lists, the simple head and tail functions are already
+%   deterministic.
+%
+% - func append/2
+%
+%   You can append two one_or_mores using the ++ function, and the compiler
+%   already gets confused by whether references to append with an arity
+%   less than three is a reference to the function or to the predicate version.
+%
+% - pred remove_suffix/3
+%
+%   When the suffix is removed, there may be no element left.
+%
+% - pred reverse_prepend/3
+%
+%   In list.m, it is part of the implementation of reverse, but one_or_more.m
+%   implements reverse by calling list.reverse.
+%   XXX We could implement reverse_prepend nevertheless.
+%
+% - pred insert/3
+%
+%   In the reverse modes, where the caller is deleting an element,
+%   there may be no element left.
+%
+% - func ../2
+%
+%   Depending on the values of the lower and upper bounds, the resulting list
+%   may be empty.
+%
+% - func det_last/1
+% - pred det_last/2
+% - pred det_split_last/3
+%
+%   For nonempty lists, the simple last function and predicate,
+%   and the split_last predicate, are already deterministic.
+%
+% - pred take/3
+% - pred det_take/3
+% - func take_upto/2
+% - pred take_upto/3
+% - pred drop/3
+% - pred det_drop/3
+%
+%   Depending on the value of the count parameter, the resulting list
+%   may contain no elements.
+%
+% - pred take_while/4
+% - func take_while/2
+% - pred take_while/3
+% - func drop_while/2
+% - pred drop_while/3
+%
+%   Depending on the value of the count parameter, the resulting list
+%   may contain no elements.
+%
+% - func duplicate/1
+% - pred duplicate/2
+%
+%   Depending on the value of the count parameter, the resulting list
+%   may contain no elements.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1863,374 +1786,248 @@
 % Everything below here is not intended to be part of the public interface,
 % and will not be included in the Mercury library reference manual.
 
-:- interface.
-
-    % Some declarations for complicated modes using lists.
-    %
-    % See our comment above regarding incomplete support for partial
-    % instantiation.
-
-:- inst list_skel == list_skel(free).
-
-:- mode in_list_skel  == list_skel >> list_skel.
-:- mode out_list_skel == free >> list_skel.
-:- mode list_skel_out == list_skel >> ground.
-
-    % These modes are useful for passing around lists of higher order terms,
-    % since they have complicated insts which are not correctly approximated
-    % by "ground".
-    %
-    % These could be made public (not deprecated) however I prefer to
-    % encourage the in(list_skel(I)) and out(list_skel(I)) style syntax.
-    %
-:- mode list_skel_in(I)  == list_skel(I) >> list_skel(I).
-:- mode list_skel_out(I) == free >> list_skel(I).
-
-    % This is the same as the usual forward mode of append, but preserves
-    % any extra information available in the input arguments.
-    % NOTE_TO_IMPLEMENTORS If Mercury recorded the mode and determinism
-    % NOTE_TO_IMPLEMENTORS information of higher order types in the *types*
-    % NOTE_TO_IMPLEMENTORS of higher order variables instead of in their
-    % NOTE_TO_IMPLEMENTORS *insts*, this function would not be needed.
-    %
-:- func inst_preserving_append(list(T)::in(list_skel(I =< ground)),
-    list(T)::in(list_skel(I =< ground))) =
-    (list(T)::out(list_skel(I =< ground))) is det.
-
-    % This is the same as the usual forward mode of reverse, but preserves
-    % any extra information available in the input argument.
-    %
-:- func inst_preserving_reverse(list(T)::in(list_skel(I =< ground))) =
-    (list(T)::out(list_skel(I =< ground))) is det.
-
-:- import_module term.      % for var/1.
-
-:- pragma type_spec(list.merge(in, in, out), T = var(_)).
-
-:- pragma type_spec(list.merge_and_remove_dups(in, in, out), T = var(_)).
-:- pragma type_spec(list.merge_and_remove_dups/2, T = var(_)).
-
-:- pragma type_spec(list.remove_adjacent_dups/2, T = var(_)).
-:- pragma type_spec(list.remove_adjacent_dups/1, T = var(_)).
-
-:- pragma type_spec(list.member(in, in), T = var(_)).
-
-:- pragma type_spec(list.sort_and_remove_dups/2, T = var(_)).
-:- pragma type_spec(list.sort_and_remove_dups/1, T = var(_)).
-
-:- pragma type_spec(list.sort(in, out), T = var(_)).
-:- pragma type_spec(list.sort/1, T = var(_)).
-
-%---------------------------------------------------------------------------%
-
-:- implementation.
-
 :- import_module int.
 :- import_module require.
-:- import_module set_tree234.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
-is_empty([]).
+one_or_more_to_list(one_or_more(Head, Tail)) = [Head | Tail].
 
-is_not_empty([_ | _]).
+list_to_one_or_more([Head | Tail], one_or_more(Head, Tail)).
 
-%---------------------------------------------------------------------------%
-
-head([X | _]) = X.
-
-det_head([]) = _ :-
+det_list_to_one_or_more([], _) :-
     unexpected($pred, "empty list").
-det_head([X | _]) = X.
-
-tail([_ | Xs]) = Xs.
-
-det_tail([]) = _ :-
-    unexpected($pred, "empty list").
-det_tail([_ | Xs]) = Xs.
-
-cons(H, T) = [H | T].
-
-cons(H, T, [H | T]).
+det_list_to_one_or_more([Head | Tail], one_or_more(Head, Tail)).
 
 %---------------------------------------------------------------------------%
 
-append([], Ys, Ys).
-append([X | Xs], Ys, [X | Zs]) :-
-    list.append(Xs, Ys, Zs).
+head(one_or_more(H, _T)) = H.
 
-append(Xs, Ys) = Zs :-
-    list.append(Xs, Ys, Zs).
+tail(one_or_more(_H, T)) = T.
 
-L1 ++ L2 = list.append(L1, L2).
+cons(H, T) = L :-
+    one_or_more.cons(H, T, L).
 
-remove_suffix(List, Suffix, Prefix) :-
-    list.length(List, ListLength),
-    list.length(Suffix, SuffixLength),
-    PrefixLength = ListLength - SuffixLength,
-    list.split_list(PrefixLength, List, Prefix, Suffix).
+cons(Head, one_or_more(HeadTail, TailTail), R) :-
+    R = one_or_more(Head, [HeadTail | TailTail]).
 
 %---------------------------------------------------------------------------%
 
-% Note - it is not possible to write a version of
-% list.length/1 in pure Mercury that works in both directions
-% unless you make it semidet rather than det.
+append(OoMA, OoMB, OoMC) :-
+    OoMA = one_or_more(AH, AT),
+    append_list_one_or_more(AT, OoMB, OoMATB),
+    OoMC = one_or_more(AH, one_or_more_to_list(OoMATB)).
 
-length(L, N) :-
-    list.length_acc(L, 0, N).
+A ++ B = C :-
+    one_or_more.append(A, B, C).
 
-length(Xs) = N :-
-    list.length(Xs, N).
+append_one_or_more_list(OoMA, ListB, OoMR) :-
+    OoMA = one_or_more(AH, AT),
+    list.append(AT, ListB, RT),
+    OoMR = one_or_more(AH, RT).
 
-:- pred length_acc(list(T), int, int).
-:- mode length_acc(in, in, out) is det.
-
-length_acc([], N, N).
-length_acc([_ | L1], N0, N) :-
-    N1 = N0 + 1,
-    list.length_acc(L1, N1, N).
-
-%---------------------------------------------------------------------------%
-
-same_length([], []).
-same_length([_ | L1], [_ | L2]) :-
-    list.same_length(L1, L2).
-
-same_length3([], [], []).
-same_length3([_ | L1], [_ | L2], [_ | L3]) :-
-    list.same_length3(L1, L2, L3).
-
-%---------------------------------------------------------------------------%
-
-member(X, [X | _]).
-member(X, [_ | Xs]) :-
-    list.member(X, Xs).
-
-member(Element, List, SubList) :-
-    SubList = [Element | _],
-    list.append(_, SubList, List).
-
-member_index0(X, [X | _], 0).
-member_index0(X, [_ | Xs], Index + 1) :-
-    list.member_index0(X, Xs, Index).
-
-member_indexes0(X, List, Indexes) :-
-    list.member_indexes0_loop(X, 0, List, Indexes).
-
-:- pred member_indexes0_loop(T::in, int::in, list(T)::in,
-    list(int)::out) is det.
-
-member_indexes0_loop(_X, _I, [], []).
-member_indexes0_loop(X, I, [H | T], Indexes) :-
-    list.member_indexes0_loop(X, I + 1, T, IndexesTail),
-    ( if X = H then
-        Indexes = [I | IndexesTail]
-    else
-        Indexes = IndexesTail
+append_list_one_or_more(ListA, OoMB, OoMR) :-
+    (
+        ListA = [AH | AT],
+        append_list_one_or_more(AT, OoMB, ATOoMB),
+        OoMR = one_or_more(AH, one_or_more_to_list(ATOoMB))
+    ;
+        ListA = [],
+        OoMR = OoMB
     ).
 
-contains(List, Elem) :-
-    list.member(Elem, List).
+%---------------------------------------------------------------------------%
+
+length(OoM) = Length :-
+    one_or_more.length(OoM, Length).
+
+length(one_or_more(_H, T), Length) :-
+    Length = 1 + list.length(T).
 
 %---------------------------------------------------------------------------%
 
-index0([X | Xs], N, Elem) :-
+same_length(one_or_more(_AH, AT), one_or_more(_B, BT)) :-
+    list.same_length(AT, BT).
+
+same_length3(one_or_more(_, AT), one_or_more(_, BT), one_or_more(_, CT)) :-
+    list.same_length3(AT, BT, CT).
+
+%---------------------------------------------------------------------------%
+
+member(X, one_or_more(X, _)).
+member(X, one_or_more(_, T)) :-
+    list.member(X, T).
+
+member_index0(X, one_or_more(X, _), 0).
+member_index0(X, one_or_more(_, T), Index + 1) :-
+    list.member_index0(X, T, Index).
+
+member_indexes0(X, one_or_more(H, T), Indexes) :-
+    list.member_indexes0(X, [H | T], Indexes).
+
+contains(one_or_more(H, T), Elem) :-
+    list.member(Elem, [H | T]).
+
+%---------------------------------------------------------------------------%
+
+index0(one_or_more(H, T), N, Elem) :-
     ( if N = 0 then
-        Elem = X
+        Elem = H
     else
-        list.index0(Xs, N - 1, Elem)
+        list.index0(T, N - 1, Elem)
     ).
 
-index1(List, N, Elem) :-
-    list.index0(List, N - 1, Elem).
+index1(one_or_more(H, T), N, Elem) :-
+    list.index0([H | T], N - 1, Elem).
 
 det_index0(Xs, N) = A :-
-    list.det_index0(Xs, N, A).
+    one_or_more.det_index0(Xs, N, A).
 
-det_index0(List, N, Elem) :-
-    ( if list.index0(List, N, Elem0) then
-        Elem = Elem0
+det_index0(OoM, N, Elem) :-
+    ( if one_or_more.index0(OoM, N, ElemPrime) then
+        Elem = ElemPrime
     else
         unexpected($pred, "index out of range")
     ).
 
-det_index1(Xs, N) = A :-
-    list.det_index1(Xs, N, A).
+det_index1(OoM, N) = A :-
+    one_or_more.det_index1(OoM, N, A).
 
-det_index1(Xs, N, Elem) :-
-    list.det_index0(Xs, N - 1, Elem).
-
-%---------------------------------------------------------------------------%
-
-nth_member_search(Xs, SearchX, N) :-
-    list.index1_of_first_occurrence(Xs, SearchX, N).
-
-nth_member_lookup(Xs, SearchX, N) :-
-    N = list.det_index1_of_first_occurrence(Xs, SearchX).
+det_index1(OoM, N, Elem) :-
+    one_or_more.det_index0(OoM, N - 1, Elem).
 
 %---------------------------------------------------------------------------%
 
-index0_of_first_occurrence(Xs, SearchX, N) :-
-    list.index0_of_first_occurrence_2(Xs, SearchX, 0, N).
+nth_member_search(one_or_more(H, T), SearchX, N) :-
+    list.index1_of_first_occurrence([H | T], SearchX, N).
 
-:- pred index0_of_first_occurrence_2(list(T)::in, T::in,
-    int::in, int::out) is semidet.
+nth_member_lookup(one_or_more(H, T), SearchX, N) :-
+    N = list.det_index1_of_first_occurrence([H | T], SearchX).
 
-index0_of_first_occurrence_2([X | Xs], SearchX, Cur, N) :-
-    ( if X = SearchX then
-        N = Cur
-    else
-        list.index0_of_first_occurrence_2(Xs, SearchX, Cur + 1, N)
-    ).
+%---------------------------------------------------------------------------%
 
-index1_of_first_occurrence(Xs, SearchX, N + 1) :-
-    list.index0_of_first_occurrence(Xs, SearchX, N).
+index0_of_first_occurrence(one_or_more(H, T), SearchX, N) :-
+    list.index0_of_first_occurrence([H | T], SearchX, N).
 
-det_index0_of_first_occurrence(Xs, SearchX) = N :-
-    ( if list.index0_of_first_occurrence(Xs, SearchX, N0) then
-        N = N0
+index1_of_first_occurrence(OoM, SearchX, N + 1) :-
+    one_or_more.index0_of_first_occurrence(OoM, SearchX, N).
+
+det_index0_of_first_occurrence(OoM, SearchX) = N :-
+    ( if one_or_more.index0_of_first_occurrence(OoM, SearchX, NPrime) then
+        N = NPrime
     else
         unexpected($pred, "item not found")
     ).
 
-det_index1_of_first_occurrence(Xs, SearchX) = N :-
-    ( if list.index1_of_first_occurrence(Xs, SearchX, N0) then
-        N = N0
+det_index1_of_first_occurrence(OoM, SearchX) = N :-
+    ( if one_or_more.index1_of_first_occurrence(OoM, SearchX, NPrime) then
+        N = NPrime
     else
         unexpected($pred, "item not found")
     ).
 
 %---------------------------------------------------------------------------%
+
+reverse(OoM) = RevOoM :-
+    List = one_or_more_to_list(OoM),
+    list.reverse(List, RevList),
+    det_list_to_one_or_more(RevList, RevOoM).
 
     % reverse(A, B) <=> reverse(B, A).
-:- pragma promise_equivalent_clauses(list.reverse/2).
+:- pragma promise_equivalent_clauses(one_or_more.reverse/2).
 
-:- pragma foreign_proc("Erlang",
-    list.reverse(L0::in, L::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    L = lists:reverse(L0)
-").
-
-reverse(L0::in, L::out) :-
-    list.reverse_prepend(L0, [], L).
-reverse(L::out, L0::in) :-
-    list.reverse_prepend(L0, [], L).
-
-reverse(Xs) = Ys :-
-    list.reverse(Xs, Ys).
-
-reverse_prepend([], L, L).
-reverse_prepend([X | Xs], L0, L) :-
-    list.reverse_prepend(Xs, [X | L0], L).
-
-reverse_prepend(Xs, Ys) = Zs :-
-    list.reverse_prepend(Xs, Ys, Zs).
+reverse(OoM::in, RevOoM::out) :-
+    RevOoM = one_or_more.reverse(OoM).
+reverse(RevOoM::out, OoM::in) :-
+    RevOoM = one_or_more.reverse(OoM).
 
 %---------------------------------------------------------------------------%
 
-insert(Elem, List0, List) :-
-    list.delete(List, Elem, List0).
-
-delete([X | Xs], ToDelete, Xs) :-
-    X = ToDelete.
-delete([X | Xs], ToDelete, [X | DXs]) :-
-    list.delete(Xs, ToDelete, DXs).
-
-delete_first([X | Xs], ToDelete, DXs) :-
-    ( if X = ToDelete then
-        DXs = Xs
-    else
-        list.delete_first(Xs, ToDelete, DXs0),
-        DXs = [X | DXs0]
+delete(one_or_more(H, T), ToDelete, R) :-
+    (
+        H = ToDelete,
+        R = T
+    ;
+        list.delete(T, ToDelete, RT),
+        R = [H | RT]
     ).
 
-delete_all(Xs, A) = DXs :-
-    list.delete_all(Xs, A, DXs).
-
-delete_all([], _, []).
-delete_all([X | Xs], ToDelete, DXs) :-
-    ( if X = ToDelete then
-        list.delete_all(Xs, ToDelete, DXs)
+delete_first(one_or_more(H, T), ToDelete, R) :-
+    ( if H = ToDelete then
+        R = T
     else
-        list.delete_all(Xs, ToDelete, DXs0),
-        DXs = [X | DXs0]
+        list.delete_first(T, ToDelete, RT),
+        R = [H | RT]
     ).
 
-delete_elems(Xs, ToDeletes) = DXs :-
-    list.delete_elems(Xs, ToDeletes, DXs).
+delete_all(one_or_more(H, T), ToDelete) = R :-
+    list.delete_all([H | T], ToDelete, R).
 
-delete_elems(Xs, [], Xs).
-delete_elems(Xs, [ToDelete | ToDeletes], DDXs) :-
-    list.delete_all(Xs, ToDelete, DXs),
-    list.delete_elems(DXs, ToDeletes, DDXs).
+delete_all(one_or_more(H, T), ToDelete, R) :-
+    list.delete_all([H | T], ToDelete, R).
 
-sublist([], _).
-sublist([SH | ST], [FH | FT]) :-
-    ( if SH = FH then
-        list.sublist(ST, FT)
-    else
-        list.sublist([SH | ST], FT)
-    ).
+delete_elems(one_or_more(H, T), ToDeletes) = R :-
+    list.delete_elems([H | T], ToDeletes, R).
+
+delete_elems(one_or_more(H, T), ToDeletes, R) :-
+    list.delete_elems([H | T], ToDeletes, R).
+
+sublist(SubOoM, FullOoM) :-
+    SubList = one_or_more_to_list(SubOoM),
+    FullList = one_or_more_to_list(FullOoM),
+    list.sublist(SubList, FullList).
 
 %---------------------------------------------------------------------------%
 
-replace([X | Xs0], From, To, [To | Xs0]) :-
-    X = From.
-replace([X | Xs0], From, To, [X | Xs]) :-
-    list.replace(Xs0, From, To, Xs).
-
-replace_first([X | Xs], From, To, RXs) :-
-    ( if X = From then
-        RXs = [To | Xs]
-    else
-        list.replace_first(Xs, From, To, RXs0),
-        RXs = [X | RXs0]
+replace(one_or_more(H0, T0), From, To, one_or_more(H, T)) :-
+    (
+        H0 = From,
+        H = To,
+        T = T0
+    ;
+        list.replace(T0, From, To, T),
+        H = H0
     ).
 
-replace_all(Xs, A, B) = RXs :-
-    list.replace_all(Xs, A, B, RXs).
-
-replace_all([], _, _, []).
-replace_all([X | Xs], From, To, RXs) :-
-    ( if X = From then
-        list.replace_all(Xs, From, To, RXs0),
-        RXs = [To | RXs0]
+replace_first(one_or_more(H0, T0), From, To, one_or_more(H, T)) :-
+    ( if H0 = From then
+        H = To,
+        T = T0
     else
-        list.replace_all(Xs, From, To, RXs0),
-        RXs = [X | RXs0]
+        list.replace_first(T0, From, To, T),
+        H = H0
     ).
 
-replace_nth(Xs, N, To, RXs) :-
-    N > 0,
-    list.replace_nth_loop(Xs, N, To, RXs).
+replace_all(OoM, N, To) = R :-
+    one_or_more.replace_all(OoM, N, To, R).
 
-:- pred replace_nth_loop(list(T)::in, int::in, T::in, list(T)::out)
-    is semidet.
+replace_all(one_or_more(H0, T0), From, To, one_or_more(H, T)) :-
+    ( if H0 = From then
+        H = To
+    else
+        H = H0
+    ),
+    list.replace_all(T0, From, To, T).
 
-replace_nth_loop([X | Xs], N, To, RXs) :-
+replace_nth(one_or_more(H0, T0), N, To, R) :-
     ( if N > 1 then
-        list.replace_nth_loop(Xs, N - 1, To, RXs0),
-        RXs = [X | RXs0]
-    else if N = 1 then
-        RXs = [To | Xs]
+        list.replace_nth(T0, N - 1, To, T),
+        R = one_or_more(H0, T)
+    else if N > 0 then
+        R = one_or_more(To, T0)
     else
         fail
     ).
 
-det_replace_nth(Xs, N, To) = RXs :-
-    list.det_replace_nth(Xs, N, To, RXs).
+det_replace_nth(OoM, N, To) = R :-
+    one_or_more.det_replace_nth(OoM, N, To, R).
 
-det_replace_nth(Xs, N, To, RXs) :-
-    ( if N > 0 then
-        ( if list.replace_nth_loop(Xs, N, To, RXsPrime) then
-            RXs = RXsPrime
-        else
-            unexpected($pred,
-                "Cannot replace element whose index position " ++
-                "is past the end of the list")
-        )
+det_replace_nth(one_or_more(H0, T0), N, To, R) :-
+    ( if N > 1 then
+        list.det_replace_nth(T0, N - 1, To, T),
+        R = one_or_more(H0, T)
+    else if N > 0 then
+        R = one_or_more(To, T0)
     else
         unexpected($pred,
             "Cannot replace element whose index position is less than 1.")
@@ -2238,525 +2035,141 @@ det_replace_nth(Xs, N, To, RXs) :-
 
 %---------------------------------------------------------------------------%
 
-Lo `..` Hi = List :-
-    successive_integers(Lo, Hi, [], List).
+remove_dups(OoM) = FilteredOoM :-
+    one_or_more.remove_dups(OoM, FilteredOoM).
 
-:- pred successive_integers(int::in, int::in, list(int)::in, list(int)::out)
-    is det.
-
-successive_integers(Lo, Hi, !Ints) :-
-    ( if Lo =< Hi then
-        !:Ints = [Hi | !.Ints],
-        successive_integers(Lo, Hi - 1, !Ints)
-    else
-        true
-    ).
+remove_dups(one_or_more(H, T), FilteredOoM) :-
+    list.remove_dups([H | T], FilteredList),
+    det_list_to_one_or_more(FilteredList, FilteredOoM).
 
 %---------------------------------------------------------------------------%
 
-series(I, OK, Succ) = Series :-
-    % In order to ensure that our stack consumption is constant,
-    % not linear, we build the series "backwards" and then reverse it.
-    series_acc(I, OK, Succ, [], RevSeries),
-    reverse(RevSeries, Series).
+remove_adjacent_dups(OoM) = FilteredOoM :-
+    one_or_more.remove_adjacent_dups(OoM, FilteredOoM).
 
-:- pred series_acc(T, pred(T), func(T) = T, list(T), list(T)).
-:- mode series_acc(in, pred(in) is semidet, func(in) = out is det, in, out)
-    is det.
+remove_adjacent_dups(one_or_more(H, T), FilteredOoM) :-
+    list.remove_adjacent_dups([H | T], FilteredList),
+    det_list_to_one_or_more(FilteredList, FilteredOoM).
 
-series_acc(I, OK, Succ, !RevSeries) :-
-    ( if OK(I) then
-        !:RevSeries = [I | !.RevSeries],
-        series_acc(Succ(I), OK, Succ, !RevSeries)
-    else
-        true
-    ).
+remove_adjacent_dups(ComparePred, one_or_more(H, T), FilteredOoM) :-
+    list.remove_adjacent_dups(ComparePred, [H | T], FilteredList),
+    det_list_to_one_or_more(FilteredList, FilteredOoM).
 
 %---------------------------------------------------------------------------%
 
-remove_dups(Xs) = FilteredXs :-
-    remove_dups(Xs, FilteredXs).
+merge(As, Bs) = ResultOoM :-
+    one_or_more.merge(As, Bs, ResultOoM).
 
-remove_dups(Xs, FilteredXs) :-
-    remove_dups_loop(Xs, set_tree234.init, FilteredXs).
+merge(one_or_more(AH, AT), one_or_more(BH, BT), ResultOoM) :-
+    list.merge([AH | AT], [BH | BT], ResultList),
+    det_list_to_one_or_more(ResultList, ResultOoM).
 
-:- pred remove_dups_loop(list(T)::in, set_tree234(T)::in, list(T)::out)
-    is det.
+merge(CompareFunc, one_or_more(AH, AT), one_or_more(BH, BT)) = ResultOoM :-
+    list.merge(CompareFunc, [AH | AT], [BH | BT]) = ResultList,
+    det_list_to_one_or_more(ResultList, ResultOoM).
 
-remove_dups_loop([], _SoFar, []).
-remove_dups_loop([X | Xs], SoFar0, FilteredXs) :-
-    ( if set_tree234.contains(SoFar0, X) then
-        remove_dups_loop(Xs, SoFar0, FilteredXs)
-    else
-        set_tree234.insert(X, SoFar0, SoFar),
-        remove_dups_loop(Xs, SoFar, FilteredXsTail),
-        FilteredXs = [X | FilteredXsTail]
-    ).
+merge(ComparePred, one_or_more(AH, AT), one_or_more(BH, BT), ResultOoM) :-
+    list.merge(ComparePred, [AH | AT], [BH | BT], ResultList),
+    det_list_to_one_or_more(ResultList, ResultOoM).
 
-%---------------------------------------------------------------------------%
+merge_and_remove_dups(As, Bs) = ResultOoM :-
+    one_or_more.merge_and_remove_dups(As, Bs, ResultOoM).
 
-remove_adjacent_dups(Xs) = FilteredXs :-
-    list.remove_adjacent_dups(Xs, FilteredXs).
+merge_and_remove_dups(one_or_more(AH, AT), one_or_more(BH, BT), ResultOoM) :-
+    list.merge_and_remove_dups([AH | AT], [BH | BT], ResultList),
+    det_list_to_one_or_more(ResultList, ResultOoM).
 
-remove_adjacent_dups([], []).
-remove_adjacent_dups([X | Xs], FilteredXs) :-
-    remove_adjacent_dups_loop(X, Xs, FilteredXs).
+merge_and_remove_dups(CompareFunc, one_or_more(AH, AT), one_or_more(BH, BT))
+        = ResultOoM :-
+    list.merge_and_remove_dups(CompareFunc, [AH | AT], [BH | BT]) = ResultList,
+    det_list_to_one_or_more(ResultList, ResultOoM).
 
-:- pred remove_adjacent_dups_loop(T::in, list(T)::in, list(T)::out) is det.
-:- pragma type_spec(list.remove_adjacent_dups_loop/3, T = var(_)).
-
-remove_adjacent_dups_loop(X, [], [X]).
-remove_adjacent_dups_loop(X0, [X1 | Xs], FilteredXs) :-
-    ( if X0 = X1 then
-        remove_adjacent_dups_loop(X0, Xs, FilteredXs)
-    else
-        remove_adjacent_dups_loop(X1, Xs, FilteredXsTail),
-        FilteredXs = [X0 | FilteredXsTail]
-    ).
-
-remove_adjacent_dups(_, [], []).
-remove_adjacent_dups(ComparePred, [X | Xs], FilteredXs) :-
-    remove_adjacent_dups_loop(ComparePred, X, Xs, FilteredXs).
-
-:- pred remove_adjacent_dups_loop(comparison_pred(T)::in(comparison_pred),
-    T::in, list(T)::in, list(T)::out) is det.
-
-remove_adjacent_dups_loop(_, X, [], [X]).
-remove_adjacent_dups_loop(ComparePred, X0, [X1 | Xs], FilteredXs) :-
-    ( if ComparePred(X0, X1, (=)) then
-        remove_adjacent_dups_loop(ComparePred, X0, Xs, FilteredXs)
-    else
-        remove_adjacent_dups_loop(ComparePred, X1, Xs, FilteredXsTail),
-        FilteredXs = [X0 | FilteredXsTail]
-    ).
+merge_and_remove_dups(ComparePred, one_or_more(AH, AT), one_or_more(BH, BT),
+        ResultOoM) :-
+    list.merge_and_remove_dups(ComparePred, [AH | AT], [BH | BT], ResultList),
+    det_list_to_one_or_more(ResultList, ResultOoM).
 
 %---------------------------------------------------------------------------%
 
-merge(As, Bs) = Cs :-
-    list.merge(As, Bs, Cs).
+sort(OoM) = SortedOoM :-
+    one_or_more.sort(OoM, SortedOoM).
 
-merge([], [], []).
-merge([], [B | Bs], [B | Bs]).
-merge([A | As], [], [A | As]).
-merge([A | As], [B | Bs], Cs) :-
-    ( if compare(>, A, B) then
-        list.merge([A | As], Bs, Cs0),
-        Cs = [B | Cs0]
-    else
-        % If compare((=), A, B), take A first.
-        list.merge(As, [B | Bs], Cs0),
-        Cs = [A | Cs0]
-    ).
+sort(one_or_more(H, T), SortedOoM) :-
+    list.sort([H | T], SortedList),
+    det_list_to_one_or_more(SortedList, SortedOoM).
 
-merge(CompareFunc, As, Bs) = Cs :-
-    ComparePred =
-        ( pred(A::in, B::in, Res::out) is det :- Res = CompareFunc(A, B) ),
-    list.merge(ComparePred, As, Bs, Cs).
+sort_and_remove_dups(OoM) = SortedOoM :-
+    one_or_more.sort_and_remove_dups(OoM, SortedOoM).
 
-merge(_ComparePred, [], [], []).
-merge(_ComparePred, [], [Y | Ys], [Y | Ys]).
-merge(_ComparePred, [A | As], [], [A | As]).
-merge(ComparePred, [A | As], [Y | Ys], Cs) :-
-    ( if ComparePred(A, Y, (>)) then
-        list.merge(ComparePred, [A | As], Ys, CsTail),
-        Cs = [Y | CsTail]
-    else
-        list.merge(ComparePred, As, [Y | Ys], CsTail),
-        Cs = [A | CsTail]
-    ).
-
-merge_and_remove_dups(As, Bs) = Zs :-
-    list.merge_and_remove_dups(As, Bs, Zs).
-
-merge_and_remove_dups([], [], []).
-merge_and_remove_dups([], [B | Bs], [B | Bs]).
-merge_and_remove_dups([A | As], [], [A | As]).
-merge_and_remove_dups([A | As], [B | Bs], Cs) :-
-    compare(Res, A, B),
-    (
-        Res = (<),
-        merge_and_remove_dups(As, [B | Bs], CsTail),
-        Cs = [A | CsTail]
-    ;
-        Res = (=),
-        merge_and_remove_dups(As, Bs, CsTail),
-        Cs = [A | CsTail]
-    ;
-        Res = (>),
-        merge_and_remove_dups([A | As], Bs, CsTail),
-        Cs = [B | CsTail]
-    ).
-
-merge_and_remove_dups(CompareFunc, As, Bs) = Cs :-
-    ComparePred =
-        ( pred(A::in, B::in, Res::out) is det :- Res = CompareFunc(A, B) ),
-    merge_and_remove_dups(ComparePred, As, Bs, Cs).
-
-merge_and_remove_dups(_ComparePred, [], [], []).
-merge_and_remove_dups(_ComparePred, [], [B | Bs], [B | Bs]).
-merge_and_remove_dups(_ComparePred, [A | As], [], [A | As]).
-merge_and_remove_dups(ComparePred, [A | As], [B | Bs], Cs) :-
-    ComparePred(A, B, Res),
-    (
-        Res = (<),
-        merge_and_remove_dups(ComparePred, As, [B | Bs], CsTail),
-        Cs = [A | CsTail]
-    ;
-        Res = (=),
-        merge_and_remove_dups(ComparePred, As, Bs, CsTail),
-        Cs = [A | CsTail]
-    ;
-        Res = (>),
-        merge_and_remove_dups(ComparePred, [A | As], Bs, CsTail),
-        Cs = [B | CsTail]
-    ).
+sort_and_remove_dups(one_or_more(H, T), SortedOoM) :-
+    list.sort_and_remove_dups([H | T], SortedList),
+    det_list_to_one_or_more(SortedList, SortedOoM).
 
 %---------------------------------------------------------------------------%
 
-sort(List) = SortedList :-
-    sort(List, SortedList).
-
-sort(List, SortedList) :-
-    merge_sort(list.length(List), List, SortedList).
-
-sort_and_remove_dups(List) = SortedList :-
-    sort_and_remove_dups(List, SortedList).
-
-sort_and_remove_dups(List, SortedList) :-
-    merge_sort_and_remove_dups(list.length(List), List, SortedList).
-
-%---------------------------------------------------------------------------%
-
-:- pred merge_sort(int::in, list(T)::in, list(T)::out) is det.
-:- pragma type_spec(list.merge_sort(in, in, out), T = var(_)).
-
-merge_sort(Length, List, SortedList) :-
-    ( if Length > 1 then
-        HalfLength = Length // 2,
-        det_split_list(HalfLength, List, Front, Back),
-        merge_sort(HalfLength, Front, SortedFront),
-        merge_sort(Length - HalfLength, Back, SortedBack),
-        merge(SortedFront, SortedBack, SortedList)
-    else
-        SortedList = List
-    ).
-
-:- pred merge_sort_and_remove_dups(int::in, list(T)::in, list(T)::out)
-    is det.
-:- pragma type_spec(merge_sort_and_remove_dups(in, in, out), T = var(_)).
-
-merge_sort_and_remove_dups(Length, List, SortedList) :-
-    ( if Length > 1 then
-        HalfLength = Length // 2,
-        det_split_list(HalfLength, List, Front, Back),
-        merge_sort_and_remove_dups(HalfLength, Front, SortedFront),
-        merge_sort_and_remove_dups(Length - HalfLength, Back, SortedBack),
-        merge_and_remove_dups(SortedFront, SortedBack, SortedList)
-    else
-        SortedList = List
-    ).
-
-%---------------------------------------------------------------------------%
-
-sort(CompareFunc, Xs) = Ys :-
+sort(CompareFunc, OoM) = SortedOoM :-
     ComparePred =
         ( pred(X::in, Y::in, Res::out) is det :-
             Res = CompareFunc(X, Y)
         ),
-    sort(ComparePred, Xs, Ys).
+    one_or_more.sort(ComparePred, OoM, SortedOoM).
 
-sort(ComparePred, List, SortedList) :-
-    list.length(List, N),
-    ( if N = 0 then
-        SortedList = []
-    else
-        ( if
-            hosort(ComparePred, N, List, SortedListPrime, LeftOver),
-            LeftOver = []
-        then
-            SortedList = SortedListPrime
-        else
-            unexpected($pred, "hosort failed")
-        )
-    ).
+sort(ComparePred, one_or_more(H, T), SortedOoM) :-
+    list.sort(ComparePred, [H | T], SortedList),
+    det_list_to_one_or_more(SortedList, SortedOoM).
 
-sort_and_remove_dups(ComparePred, L0, L) :-
-    sort(ComparePred, L0, L1),
-    remove_adjacent_dups(ComparePred, L1, L).
-
-    % list.hosort is a Mercury implementation of the mergesort described
-    % in The Craft of Prolog.
-    %
-    % N denotes the length of the part of L0 that this call is sorting.
-    % (require((length(L0, M), M >= N)))
-    % Since we have redundant information about the list (N, and the length
-    % implicit in the list itself), we get a semidet unification when we
-    % deconstruct the list. list.hosort is therefore actually det but the
-    % compiler can't confirm it.
-    %
-:- pred hosort(comparison_pred(X)::in(comparison_pred), int::in,
-    list(X)::in, list(X)::out, list(X)::out) is semidet.
-
-hosort(ComparePred, N, List, SortedInitialN, LeftOver) :-
-    ( if N = 1 then
-        List = [X | LeftOver],
-        SortedInitialN = [X]
-    else if N = 2 then
-        List = [X, Y | LeftOver],
-        ComparePred(X, Y, Res),
-        (
-            Res = (<),
-            SortedInitialN = [X, Y]
-        ;
-            Res = (=),
-            SortedInitialN = [X, Y]
-        ;
-            Res = (>),
-            SortedInitialN = [Y, X]
-        )
-    else
-        N1 = N // 2,
-        N2 = N - N1,
-        hosort(ComparePred, N1, List, SortedInitialN1, Middle),
-        hosort(ComparePred, N2, Middle, SortedNextN2, LeftOver),
-        merge(ComparePred, SortedInitialN1, SortedNextN2, SortedInitialN)
-    ).
+sort_and_remove_dups(ComparePred, one_or_more(H, T), SortedOoM) :-
+    list.sort_and_remove_dups(ComparePred, [H | T], SortedList),
+    det_list_to_one_or_more(SortedList, SortedOoM).
 
 %---------------------------------------------------------------------------%
 
-split_list(N, List, Start, End) :-
-    ( if N > 0 then
-        List = [Head | Tail],
-        list.split_list(N - 1, Tail, StartTail, End),
-        Start = [Head | StartTail]
+split_list(N, one_or_more(H, T), Start, End) :-
+    list.split_list(N, [H | T], Start, End).
+
+det_split_list(N, one_or_more(H, T), Start, End) :-
+    list.det_split_list(N, [H | T], Start, End).
+
+split_upto(N, one_or_more(H, T), Start, End) :-
+    list.split_upto(N, [H | T], Start, End).
+
+last(OoM) = Last :-
+    one_or_more.last(OoM, Last).
+
+last(one_or_more(H, T), Last) :-
+    ( if list.last(T, LastPrime) then
+        Last = LastPrime
     else
-        N = 0,
-        Start = [],
-        End = List
-    ).
-
-det_split_list(N, List, Start, End) :-
-    ( if N > 0 then
-        (
-            List = [Head | Tail],
-            list.det_split_list(N - 1, Tail, StartTail, End),
-            Start = [Head | StartTail]
-        ;
-            List = [],
-            unexpected($pred, "index out of range")
-        )
-    else if N = 0 then
-        Start = [],
-        End = List
-    else
-        unexpected($pred, "index out of range")
-    ).
-
-split_upto(N, List, Start, End) :-
-    ( if N < 0 then
-        unexpected($file, $pred, "index is negative")
-    else
-        do_split_upto(N, List, Start, End)
-    ).
-
-:- pred do_split_upto(int::in, list(T)::in, list(T)::out, list(T)::out)
-    is det.
-
-do_split_upto(N, List, Start, End) :-
-    ( if
-        N > 0,
-        List = [Head | Tail]
-    then
-        do_split_upto(N - 1, Tail, StartTail, End),
-        Start = [Head | StartTail]
-    else
-        Start = [],
-        End = List
-    ).
-
-%---------------------------------------------------------------------------%
-
-last([H | T], Last) :-
-    (
-        T = [],
         Last = H
-    ;
-        T = [_ | _],
-        list.last(T, Last)
     ).
 
-det_last(List) = Last :-
-    list.det_last(List, Last).
-
-det_last([], _) :-
-    unexpected($pred, "empty list").
-det_last([H | T], Last) :-
-    list.det_last_loop(H, T, Last).
-
-:- pred det_last_loop(T::in, list(T)::in, T::out) is det.
-
-det_last_loop(H, T, Last) :-
-    (
-        T = [],
-        Last = H
-    ;
-        T = [TH | TT],
-        list.det_last_loop(TH, TT, Last)
-    ).
-
-split_last([H | T], AllButLast, Last) :-
+split_last(one_or_more(H, T), AllButLast, Last) :-
     (
         T = [],
         AllButLast = [],
         Last = H
     ;
         T = [TH | TT],
-        list.det_split_last_loop(TH, TT, AllButLastTail, Last),
+        split_last_loop(TH, TT, AllButLastTail, Last),
         AllButLast = [H | AllButLastTail]
     ).
 
-det_split_last([], _, _) :-
-    unexpected($pred, "empty list").
-det_split_last([H | T], AllButLast, Last) :-
+:- pred split_last_loop(T::in, list(T)::in, list(T)::out, T::out) is det.
+
+split_last_loop(H, T, AllButLast, Last) :-
     (
         T = [],
         AllButLast = [],
         Last = H
     ;
         T = [TH | TT],
-        list.det_split_last_loop(TH, TT, AllButLastTail, Last),
-        AllButLast = [H | AllButLastTail]
-    ).
-
-:- pred det_split_last_loop(T::in, list(T)::in, list(T)::out, T::out) is det.
-
-det_split_last_loop(H, T, AllButLast, Last) :-
-    (
-        T = [],
-        AllButLast = [],
-        Last = H
-    ;
-        T = [TH | TT],
-        list.det_split_last_loop(TH, TT, AllButLastTail, Last),
+        split_last_loop(TH, TT, AllButLastTail, Last),
         AllButLast = [H | AllButLastTail]
     ).
 
 %---------------------------------------------------------------------------%
 
-take(N, Xs, InitialXs) :-
-    ( if N > 0 then
-        Xs = [HeadX | TailXs],
-        list.take(N - 1, TailXs, InitialXsTail),
-        InitialXs = [HeadX | InitialXsTail]
-    else
-        N = 0,
-        InitialXs = []
-    ).
-
-det_take(N, Xs, InitialXs) :-
-    ( if list.take(N, Xs, InitialXsPrime) then
-        InitialXs = InitialXsPrime
-    else
-        unexpected($file, $pred, "index out of range")
-    ).
-
-take_upto(N, Xs) = InitialXs :-
-    list.take_upto(N, Xs, InitialXs).
-
-take_upto(N, Xs, InitialXs) :-
-    ( if N < 0 then
-        unexpected($file, $pred, "index is negative")
-    else
-        do_take_upto(N, Xs, InitialXs)
-    ).
-
-:- pred do_take_upto(int::in, list(T)::in, list(T)::out) is det.
-
-do_take_upto(N, Xs, InitialXs) :-
-    ( if list.take(N, Xs, InitialXsPrime) then
-        InitialXs = InitialXsPrime
-    else
-        InitialXs = Xs
-    ).
-
-%---------------------------------------------------------------------------%
-
-drop(N, Xs, FinalXs) :-
-    ( if N > 0 then
-        Xs = [_ | Tail],
-        list.drop(N - 1, Tail, FinalXs)
-    else
-        N = 0,
-        FinalXs = Xs
-    ).
-
-det_drop(N, Xs, FinalXs) :-
-    ( if list.drop(N, Xs, FinalXsPrime) then
-        FinalXs = FinalXsPrime
-    else
-        unexpected($file, $pred, "index out of range")
-    ).
-
-%---------------------------------------------------------------------------%
-
-take_while(_, [], [], []).
-take_while(P, [X | Xs], Ins, Outs) :-
-    ( if P(X) then
-        Ins = [X | Ins0],
-        take_while(P, Xs, Ins0, Outs)
-    else
-        Ins = [],
-        Outs = [X | Xs]
-    ).
-
-takewhile(P, Xs, Ins, Outs) :-
-    take_while(P, Xs, Ins, Outs).
-
-take_while(P, Xs) = Start :-
-    take_while(P, Xs, Start).
-
-take_while(_, [], []).
-take_while(P, [X | Xs], Start) :-
-    ( if P(X) then
-        take_while(P, Xs, Start0),
-        Start = [X | Start0]
-    else
-        Start = []
-    ).
-
-%---------------------------------------------------------------------------%
-
-drop_while(P, Xs) = End :-
-    drop_while(P, Xs, End).
-
-drop_while(_, [], []).
-drop_while(P, [X | Xs], End) :-
-    ( if P(X) then
-        drop_while(P, Xs, End)
-    else
-        End = [X | Xs]
-    ).
-
-%---------------------------------------------------------------------------%
-
-duplicate(N, X) = Xs :-
-    accumulate_n_copies(N, X, [], Xs).
-
-duplicate(N, X, Xs) :-
-    accumulate_n_copies(N, X, [], Xs).
-
-:- pred accumulate_n_copies(int::in, T::in, list(T)::in, list(T)::out) is det.
-
-accumulate_n_copies(N, X, !Xs) :-
-    ( if N > 0 then
-        !:Xs = [X | !.Xs],
-        accumulate_n_copies(N - 1, X, !Xs)
-    else
-        true
-    ).
-
-all_same([]).
-all_same([H | T]) :-
+all_same(one_or_more(H, T)) :-
     all_same_as(H, T).
 
 :- pred all_same_as(T::in, list(T)::in) is semidet.
@@ -2769,821 +2182,479 @@ all_same_as(SameAs, [H | T]) :-
 %---------------------------------------------------------------------------%
 
 condense(Xss) = Ys :-
-    list.condense(Xss, Ys).
+    one_or_more.condense(Xss, Ys).
 
 condense(Xss, Ys) :-
-    reverse(Xss, RevXss),
+    list.reverse(Xss, RevXss),
     condense_acc(RevXss, [], Ys).
 
-:- pred condense_acc(list(list(T))::in, list(T)::in, list(T)::out) is det.
+:- pred condense_acc(list(one_or_more(T))::in, list(T)::in, list(T)::out)
+    is det.
 
 condense_acc([], !Ys).
-condense_acc([L | Ls], !Ys) :-
-    append(L, !Ys),
-    condense_acc(Ls, !Ys).
+condense_acc([OoM | OoMs], !Ys) :-
+    append(one_or_more_to_list(OoM), !Ys),
+    condense_acc(OoMs, !Ys).
 
-chunk(Xs, N) = Ys :-
-    chunk(Xs, N, Ys).
+chunk(OoM, ChunkSize) = OoMChunks :-
+    chunk(OoM, ChunkSize, OoMChunks).
 
-chunk(List, ChunkSize, ListOfSmallLists) :-
-    chunk_loop(List, ChunkSize, [], ChunkSize, ListOfSmallLists).
+chunk(one_or_more(H, T), ChunkSize, OoMChunks) :-
+    compare(Cmp, ChunkSize, 0),
+    expect(unify(Cmp, (>)), $pred, "chunk size must be at least one"),
+    chunk_loop(H, T, ChunkSize, [], ChunkSize, OoMChunks).
 
-:- pred chunk_loop(list(T)::in, int::in, list(T)::in, int::in,
-    list(list(T))::out) is det.
+:- pred chunk_loop(T::in, list(T)::in, int::in, list(T)::in, int::in,
+    one_or_more(one_or_more(T))::out) is det.
 
-chunk_loop([], _ChunkSize, List0, _N, Lists) :-
-    (
-        List0 = [],
-        Lists = []
-    ;
-        List0 = [_ | _],
-        reverse(List0, List),
-        Lists = [List]
-    ).
-chunk_loop([X | Xs], ChunkSize, List0, N, Lists) :-
-    ( if N > 1 then
-        chunk_loop(Xs, ChunkSize, [X | List0], N - 1, Lists)
+chunk_loop(H, T, ChunkSize, RevChunkSoFar, RoomLeft, OoMChunks) :-
+    ( if RoomLeft > 0 then
+        (
+            T = [],
+            list.reverse([H | RevChunkSoFar], Chunk),
+            det_list_to_one_or_more(Chunk, OoMChunk),
+            OoMChunks = one_or_more(OoMChunk, [])
+        ;
+            T = [TH | TT],
+            chunk_loop(TH, TT, ChunkSize, [H | RevChunkSoFar], RoomLeft - 1,
+                OoMChunks)
+        )
     else
-        reverse([X | List0], List),
-        chunk_loop(Xs, ChunkSize, [], ChunkSize, ListsTail),
-        Lists = [List | ListsTail]
+        list.reverse(RevChunkSoFar, Chunk),
+        det_list_to_one_or_more(Chunk, OoMChunk),
+        chunk_loop(H, T, ChunkSize, [], ChunkSize, TailOoMChunks),
+        OoMChunks = one_or_more.cons(OoMChunk, TailOoMChunks)
     ).
 
 %---------------------------------------------------------------------------%
 
-zip(Xs, Ys) = Zs :-
-    zip(Xs, Ys, Zs).
+zip(A, B) = AB :-
+    zip(A, B, AB).
 
-zip([], Bs, Bs).
-zip([A | As], Bs, [A | Cs]) :-
-    zip_2(As, Bs, Cs).
-
-:- pred zip_2(list(T)::in, list(T)::in, list(T)::out) is det.
-
-zip_2(As, [], As).
-zip_2(As, [B | Bs], [B | Cs]) :-
-    zip(As, Bs, Cs).
+zip(A, B, AB) :-
+    ListA = one_or_more_to_list(A),
+    ListB = one_or_more_to_list(B),
+    list.zip(ListA, ListB, ListAB),
+    det_list_to_one_or_more(ListAB, AB).
 
 %---------------------------------------------------------------------------%
 
-perm([], []).
-perm([X | Xs], Ys) :-
-    perm(Xs, Ys0),
-    insert(X, Ys0, Ys).
+perm(OoM, PermutedOoM) :-
+    OoM = one_or_more(H, T),
+    list.perm([H | T], PermutedList),
+    det_list_to_one_or_more(PermutedList, PermutedOoM).
 
 %---------------------------------------------------------------------------%
 
-list_to_doc(Xs) = indent(" ", [str("["), list_to_doc_2(Xs), str("]")]).
-
-:- func list_to_doc_2(list(T)) = doc.
-
-list_to_doc_2([]) = str("").
-list_to_doc_2([X | Xs]) = Doc :-
-    (
-        Xs = [],
-        Doc = format_arg(format(X))
-    ;
-        Xs = [_ | _],
-        Doc = docs([
-            format_arg(format(X)),
-            group([str(", "), nl]),
-            format_susp((func) = list_to_doc_2(Xs))
-        ])
-    ).
+one_or_more_to_doc(one_or_more(H, T)) =
+    indent(" ",
+        [str("one_or_more("),
+        format_arg(format(H)),
+        list_to_doc(T),
+        str(")")]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-find_first_match(P, [H | T], FirstMatch) :-
+find_first_match(P, one_or_more(H, T), FirstMatch) :-
     ( if P(H) then
         FirstMatch = H
     else
-        find_first_match(P, T, FirstMatch)
+        list.find_first_match(P, T, FirstMatch)
     ).
 
-any_true(P, L) :-
-    not all_false(P, L).
+any_true(P, OoM) :-
+    not one_or_more.all_false(P, OoM).
 
 any_false(P, L) :-
-    not all_true(P, L).
+    not one_or_more.all_true(P, L).
 
-all_true(_P, []).
-all_true(P, [X | Xs]) :-
-    P(X),
-    all_true(P, Xs).
+all_true(P, one_or_more(H, T)) :-
+    P(H),
+    list.all_true(P, T).
 
-all_false(_P, []).
-all_false(P, [X | Xs]) :-
-    not P(X),
-    all_false(P, Xs).
+all_false(P, one_or_more(H, T)) :-
+    not P(H),
+    list.all_false(P, T).
 
-all_true_corresponding(_P, [], []).
-all_true_corresponding(_P, [], [_ | _]) :-
-    unexpected($pred, "mismatched list lengths").
-all_true_corresponding(_P, [_ | _], []) :-
-    unexpected($pred, "mismatched list lengths").
-all_true_corresponding(P, [X | Xs], [Y | Ys]) :-
-    P(X, Y),
-    all_true_corresponding(P, Xs, Ys).
+all_true_corresponding(P, one_or_more(AH, AT), one_or_more(BH, BT)) :-
+    P(AH, BH),
+    list.all_true_corresponding(P, AT, BT).
 
-all_false_corresponding(_P, [], []).
-all_false_corresponding(_P, [], [_ | _]) :-
-    unexpected($pred, "mismatched list lengths").
-all_false_corresponding(_P, [_ | _], []) :-
-    unexpected($pred, "mismatched list lengths").
-all_false_corresponding(P, [X | Xs], [Y | Ys]) :-
-    not P(X, Y),
-    all_false_corresponding(P, Xs, Ys).
+all_false_corresponding(P, one_or_more(AH, AT), one_or_more(BH, BT)) :-
+    not P(AH, BH),
+    list.all_false_corresponding(P, AT, BT).
 
 %---------------------------------------------------------------------------%
 
 filter(P, Xs) = Trues :-
-    filter(P, Xs, Trues).
+    one_or_more.filter(P, Xs, Trues).
 
-filter(_, [],  []).
-filter(P, [H | T], True) :-
+filter(P, one_or_more(H, T), Trues) :-
     ( if P(H) then
-        filter(P, T, TrueTail),
-        True = [H | TrueTail]
+        list.filter(P, T, TruesTail),
+        Trues = [H | TruesTail]
     else
-        filter(P, T, True)
+        filter(P, T, Trues)
     ).
 
-filter(_, [],  [], []).
-filter(P, [H | T], True, False) :-
+filter(P, one_or_more(H, T), Trues, Falses) :-
     ( if P(H) then
-        filter(P, T, TrueTail, False),
-        True = [H | TrueTail]
+        filter(P, T, TruesTail, Falses),
+        Trues = [H | TruesTail]
     else
-        filter(P, T, True, FalseTail),
-        False = [H | FalseTail]
+        filter(P, T, Trues, FalsesTail),
+        Falses = [H | FalsesTail]
     ).
 
 negated_filter(P, Xs) = Falses :-
-    negated_filter(P, Xs, Falses).
+    one_or_more.negated_filter(P, Xs, Falses).
 
-negated_filter(_, [],  []).
-negated_filter(P, [H | T], False) :-
+negated_filter(P, one_or_more(H, T), Falses) :-
     ( if P(H) then
-        negated_filter(P, T, False)
+        negated_filter(P, T, Falses)
     else
-        negated_filter(P, T, FalseTail),
-        False = [H | FalseTail]
+        negated_filter(P, T, FalsesTail),
+        Falses = [H | FalsesTail]
     ).
 
 filter_map(F, Xs) = Ys :-
     P = ( pred(X::in, Y::out) is semidet :- Y = F(X) ),
-    filter_map(P, Xs, Ys).
+    one_or_more.filter_map(P, Xs, Ys).
 
-filter_map(_, [],  []).
-filter_map(P, [H0 | T0], True) :-
+filter_map(P, one_or_more(H0, T0), Trues) :-
     ( if P(H0, H) then
-        filter_map(P, T0, TrueTail),
-        True = [H | TrueTail]
+        filter_map(P, T0, TruesTail),
+        Trues = [H | TruesTail]
     else
-        filter_map(P, T0, True)
+        filter_map(P, T0, Trues)
     ).
 
-filter_map(_, [], [], []).
-filter_map(P, [H0 | T0], True, False) :-
+filter_map(P, one_or_more(H0, T0), Trues, Falses) :-
     ( if P(H0, H) then
-        filter_map(P, T0, TrueTail, False),
-        True = [H | TrueTail]
+        list.filter_map(P, T0, TruesTail, Falses),
+        Trues = [H | TruesTail]
     else
-        filter_map(P, T0, True, FalseTail),
-        False = [H0 | FalseTail]
+        list.filter_map(P, T0, Trues, FalsesTail),
+        Falses = [H0 | FalsesTail]
     ).
 
-find_first_map(P, [X | Xs], A) :-
-    ( if P(X, A0) then
+find_first_map(P, one_or_more(H, T), A) :-
+    ( if P(H, A0) then
         A = A0
     else
-        find_first_map(P, Xs, A)
+        find_first_map(P, T, A)
     ).
 
-find_first_map2(P, [X | Xs], A, B) :-
-    ( if P(X, A0, B0) then
+find_first_map2(P, one_or_more(H, T), A, B) :-
+    ( if P(H, A0, B0) then
         A = A0,
         B = B0
     else
-        find_first_map2(P, Xs, A, B)
+        find_first_map2(P, T, A, B)
     ).
 
-find_first_map3(P, [X | Xs], A, B, C) :-
-    ( if P(X, A0, B0, C0) then
+find_first_map3(P, one_or_more(H, T), A, B, C) :-
+    ( if P(H, A0, B0, C0) then
         A = A0,
         B = B0,
         C = C0
     else
-        find_first_map3(P, Xs, A, B, C)
+        list.find_first_map3(P, T, A, B, C)
     ).
 
-find_index_of_match(Match, [X | Xs], Index0, Index) :-
-    ( if Match(X) then
+find_index_of_match(Match, one_or_more(H, T), Index0, Index) :-
+    ( if Match(H) then
         Index = Index0
     else
-        find_index_of_match(Match, Xs, Index0 + 1, Index)
+        list.find_index_of_match(Match, T, Index0 + 1, Index)
     ).
 
 %---------------------------------------------------------------------------%
 
-map(_F, []) = [].
-map(F, [H | T]) = [F(H) | list.map(F, T)].
+map(F, one_or_more(H0, T0)) = one_or_more(F(H0), list.map(F, T0)).
 
-map(_, [],  []).
-map(P, [H0 | T0], [H | T]) :-
+map(P, one_or_more(H0, T0), one_or_more(H, T)) :-
     P(H0, H),
     list.map(P, T0, T).
 
-map2(_, [],  [],  []).
-map2(P, [H0 | T0], [H1 | T1], [H2 | T2]) :-
+map2(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2)) :-
     P(H0, H1, H2),
     list.map2(P, T0, T1, T2).
 
-map3(_, [],  [],  [],  []).
-map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
+map3(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3)) :-
     P(H0, H1, H2, H3),
     list.map3(P, T0, T1, T2, T3).
 
-map4(_, [], [], [], [], []).
-map4(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4]) :-
+map4(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3), one_or_more(H4, T4)) :-
     P(H0, H1, H2, H3, H4),
     list.map4(P, T0, T1, T2, T3, T4).
 
-map5(_, [], [], [], [], [], []).
-map5(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5])
-        :-
+map5(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3), one_or_more(H4, T4), one_or_more(H5, T5)) :-
     P(H0, H1, H2, H3, H4, H5),
     list.map5(P, T0, T1, T2, T3, T4, T5).
 
-map6(_, [], [], [], [], [], [], []).
-map6(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
-        [H6 | T6]) :-
+map6(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3), one_or_more(H4, T4), one_or_more(H5, T5),
+        one_or_more(H6, T6)) :-
     P(H0, H1, H2, H3, H4, H5, H6),
     list.map6(P, T0, T1, T2, T3, T4, T5, T6).
 
-map7(_, [], [], [], [], [], [], [], []).
-map7(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
-        [H6 | T6], [H7 | T7]) :-
+map7(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3), one_or_more(H4, T4), one_or_more(H5, T5),
+        one_or_more(H6, T6), one_or_more(H7, T7)) :-
     P(H0, H1, H2, H3, H4, H5, H6, H7),
     list.map7(P, T0, T1, T2, T3, T4, T5, T6, T7).
 
-map8(_, [], [], [], [], [], [], [], [], []).
-map8(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
-        [H6 | T6], [H7 | T7], [H8 | T8]) :-
+map8(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3), one_or_more(H4, T4), one_or_more(H5, T5),
+        one_or_more(H6, T6), one_or_more(H7, T7), one_or_more(H8, T8)) :-
     P(H0, H1, H2, H3, H4, H5, H6, H7, H8),
     list.map8(P, T0, T1, T2, T3, T4, T5, T6, T7, T8).
 
 %---------------------------------------------------------------------------%
 
-map_corresponding(_, [], []) = [].
-map_corresponding(_, [], [_ | _]) =
-    unexpected($pred, "mismatched list lengths").
-map_corresponding(_, [_ | _], []) =
-    unexpected($pred, "mismatched list lengths").
-map_corresponding(F, [HA | TAs], [HB | TBs]) =
-    [F(HA, HB) | list.map_corresponding(F, TAs, TBs)].
+map_corresponding(F, one_or_more(AH, AT), one_or_more(BH, BT)) =
+    one_or_more(F(AH, BH), list.map_corresponding(F, AT, BT)).
 
-map_corresponding(_, [], [], []).
-map_corresponding(_, [], [_ | _], _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding(_, [_ | _], [], _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding(P, [HA | TAs], [HB | TBs], [HR | TRs]) :-
-    P(HA, HB, HR),
-    list.map_corresponding(P, TAs, TBs, TRs).
+map_corresponding(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(RH, RT)) :-
+    P(AH, BH, RH),
+    list.map_corresponding(P, AT, BT, RT).
 
-map_corresponding3(F, A, B, C) =
-    ( if
-        A = [AH | AT],
-        B = [BH | BT],
-        C = [CH | CT]
-    then
-        [F(AH, BH, CH) | list.map_corresponding3(F, AT, BT, CT)]
-    else if
-        A = [],
-        B = [],
-        C = []
-    then
-        []
+map_corresponding3(F, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT)) =
+    one_or_more(F(AH, BH, CH), list.map_corresponding3(F, AT, BT, CT)).
+
+map_corresponding3(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), one_or_more(RH, RT)) :-
+    P(AH, BH, CH, RH),
+    list.map_corresponding3(P, AT, BT, CT, RT).
+
+%---------------------------------------------------------------------------%
+
+filter_map_corresponding(F, one_or_more(AH, AT), one_or_more(BH, BT)) =
+    ( if F(AH, BH) = RH then
+        [RH | list.filter_map_corresponding(F, AT, BT)]
     else
-        unexpected($pred, "mismatched list lengths")
+        list.filter_map_corresponding(F, AT, BT)
     ).
 
-map_corresponding3(P, A, B, C, R) :-
-    ( if
-        A = [AH | AT],
-        B = [BH | BT],
-        C = [CH | CT]
-    then
-        P(AH, BH, CH, RH),
-        list.map_corresponding3(P, AT, BT, CT, RT),
+filter_map_corresponding(P, one_or_more(AH, AT), one_or_more(BH, BT), R) :-
+    ( if P(AH, BH, RH) then
+        list.filter_map_corresponding(P, AT, BT, RT),
         R = [RH | RT]
-    else if
-        A = [],
-        B = [],
-        C = []
-    then
-        R = []
     else
-        unexpected($pred, "mismatched list lengths")
+        list.filter_map_corresponding(P, AT, BT, R)
+    ).
+
+filter_map_corresponding3(F, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT)) =
+    ( if F(AH, BH, CH) = RH then
+        [RH | list.filter_map_corresponding3(F, AT, BT, CT)]
+    else
+        list.filter_map_corresponding3(F, AT, BT, CT)
+    ).
+
+filter_map_corresponding3(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), R) :-
+    ( if P(AH, BH, CH, RH) then
+        list.filter_map_corresponding3(P, AT, BT, CT, RT),
+        R = [RH | RT]
+    else
+        list.filter_map_corresponding3(P, AT, BT, CT, R)
     ).
 
 %---------------------------------------------------------------------------%
 
-filter_map_corresponding(_, [], []) = [].
-filter_map_corresponding(_, [], [_ | _]) =
-    unexpected($pred, "mismatched list lengths").
-filter_map_corresponding(_, [_ | _], []) =
-    unexpected($pred, "mismatched list lengths").
-filter_map_corresponding(F, [HA | TAs], [HB | TBs]) =
-    ( if F(HA, HB) = HR then
-        [HR | list.filter_map_corresponding(F, TAs, TBs)]
-    else
-        list.filter_map_corresponding(F, TAs, TBs)
-    ).
-
-filter_map_corresponding(_, [], [], []).
-filter_map_corresponding(_, [], [_ | _], _) :-
-    unexpected($pred, "mismatched list lengths").
-filter_map_corresponding(_, [_ | _], [], _) :-
-    unexpected($pred, "mismatched list lengths").
-filter_map_corresponding(P, [HA | TAs], [HB | TBs], Rs) :-
-    ( if P(HA, HB, HR) then
-        list.filter_map_corresponding(P, TAs, TBs, TRs),
-        Rs = [HR | TRs]
-    else
-        list.filter_map_corresponding(P, TAs, TBs, Rs)
-    ).
-
-filter_map_corresponding3(F, As, Bs, Cs) =
-    ( if
-        As = [HA | TAs],
-        Bs = [HB | TBs],
-        Cs = [HC | TCs]
-    then
-        ( if F(HA, HB, HC) = HR then
-            [HR | list.filter_map_corresponding3(F, TAs, TBs, TCs)]
-        else
-            list.filter_map_corresponding3(F, TAs, TBs, TCs)
-        )
-    else if
-        As = [],
-        Bs = [],
-        Cs = []
-    then
-        []
-    else
-        unexpected($pred, "mismatched list lengths")
-    ).
-
-filter_map_corresponding3(P, As, Bs, Cs, Rs) :-
-    ( if
-        As = [HA | TAs],
-        Bs = [HB | TBs],
-        Cs = [HC | TCs]
-    then
-        ( if P(HA, HB, HC, HR) then
-            list.filter_map_corresponding3(P, TAs, TBs, TCs, TRs),
-            Rs = [HR | TRs]
-        else
-            list.filter_map_corresponding3(P, TAs, TBs, TCs, Rs)
-        )
-    else if
-        As = [],
-        Bs = [],
-        Cs = []
-    then
-        Rs = []
-    else
-        unexpected($pred, "mismatched list lengths")
-    ).
-
-%---------------------------------------------------------------------------%
-
-foldl(F, Xs, A) = B :-
+foldl(F, OoM, !.A) = !:A :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.foldl(P, Xs, A, B).
+    one_or_more.foldl(P, OoM, !A).
 
-foldl(_, [], !A).
-foldl(P, [H | T], !A) :-
+foldl(P, one_or_more(H, T), !A) :-
     P(H, !A),
     list.foldl(P, T, !A).
 
-foldl2(_, [], !A, !B).
-foldl2(P, [H | T], !A, !B) :-
+foldl2(P, one_or_more(H, T), !A, !B) :-
     P(H, !A, !B),
     list.foldl2(P, T, !A, !B).
 
-foldl3(_, [], !A, !B, !C).
-foldl3(P, [H | T], !A, !B, !C) :-
+foldl3(P, one_or_more(H, T), !A, !B, !C) :-
     P(H, !A, !B, !C),
     list.foldl3(P, T, !A, !B, !C).
 
-foldl4(_, [], !A, !B, !C, !D).
-foldl4(P, [H | T], !A, !B, !C, !D) :-
+foldl4(P, one_or_more(H, T), !A, !B, !C, !D) :-
     P(H, !A, !B, !C, !D),
     list.foldl4(P, T, !A, !B, !C, !D).
 
-foldl5(_, [], !A, !B, !C, !D, !E).
-foldl5(P, [H | T], !A, !B, !C, !D, !E) :-
+foldl5(P, one_or_more(H, T), !A, !B, !C, !D, !E) :-
     P(H, !A, !B, !C, !D, !E),
     list.foldl5(P, T, !A, !B, !C, !D, !E).
 
-foldl6(_, [], !A, !B, !C, !D, !E, !F).
-foldl6(P, [H | T], !A, !B, !C, !D, !E, !F) :-
+foldl6(P, one_or_more(H, T), !A, !B, !C, !D, !E, !F) :-
     P(H, !A, !B, !C, !D, !E, !F),
     list.foldl6(P, T, !A, !B, !C, !D, !E, !F).
 
 %---------------------------------------------------------------------------%
 
-foldr(F, Xs, A) = B :-
+foldr(F, OoM, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.foldr(P, Xs, A, B).
+    one_or_more.foldr(P, OoM, A, B).
 
-foldr(_, [], !A).
-foldr(P, [H | T], !A) :-
+foldr(P, one_or_more(H, T), !A) :-
     list.foldr(P, T, !A),
     P(H, !A).
 
-foldr2(_, [], !A, !B).
-foldr2(P, [H | T], !A, !B) :-
+foldr2(P, one_or_more(H, T), !A, !B) :-
     list.foldr2(P, T, !A, !B),
     P(H, !A, !B).
 
-foldr3(_, [], !A, !B, !C).
-foldr3(P, [H | T], !A, !B, !C) :-
+foldr3(P, one_or_more(H, T), !A, !B, !C) :-
     list.foldr3(P, T, !A, !B, !C),
     P(H, !A, !B, !C).
 
 %---------------------------------------------------------------------------%
 
-foldl_corresponding(_, [], [], !Acc).
-foldl_corresponding(_, [], [_ | _], _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding(_, [_ | _], [], _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding(P, [A | As], [B | Bs], !Acc) :-
-    P(A, B, !Acc),
-    list.foldl_corresponding(P, As, Bs, !Acc).
+foldl_corresponding(P, one_or_more(AH, AT), one_or_more(BH, BT), !Acc) :-
+    P(AH, BH, !Acc),
+    list.foldl_corresponding(P, AT, BT, !Acc).
 
-foldl_corresponding(_, [], [], Acc) = Acc.
-foldl_corresponding(_, [], [_ | _], _) = _ :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding(_, [_ | _], [], _) = _ :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding(F, [A | As], [B | Bs], !.Acc) = !:Acc :-
-    !:Acc = F(A, B, !.Acc),
-    !:Acc = list.foldl_corresponding(F, As, Bs, !.Acc).
+foldl_corresponding(F, one_or_more(AH, AT), one_or_more(BH, BT),
+        !.Acc) = !:Acc :-
+    !:Acc = F(AH, BH, !.Acc),
+    !:Acc = list.foldl_corresponding(F, AT, BT, !.Acc).
 
-foldl2_corresponding(_, [], [], !Acc1, !Acc2).
-foldl2_corresponding(_, [], [_ | _], _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl2_corresponding(_, [_ | _], [], _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
-    P(A, B, !Acc1, !Acc2),
-    list.foldl2_corresponding(P, As, Bs, !Acc1, !Acc2).
-
-foldl3_corresponding(_, [], [], !Acc1, !Acc2, !Acc3).
-foldl3_corresponding(_, [], [_ | _], _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl3_corresponding(_, [_ | _], [], _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl3_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2, !Acc3) :-
-    P(A, B, !Acc1, !Acc2, !Acc3),
-    list.foldl3_corresponding(P, As, Bs, !Acc1, !Acc2, !Acc3).
-
-foldl_corresponding3(_, [], [], [], !Acc).
-foldl_corresponding3(_, [_ | _], [], [], _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding3(_, [], [_ | _], [], _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding3(_, [], [], [_ | _], _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding3(_, [], [_ | _], [_ | _], _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding3(_, [_ | _], [], [_ | _], _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding3(_, [_ | _], [_ | _], [], _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs], !Acc) :-
-    P(A, B, C, !Acc),
-    list.foldl_corresponding3(P, As, Bs, Cs, !Acc).
-
-foldl2_corresponding3(_, [], [], [], !Acc1, !Acc2).
-foldl2_corresponding3(_, [_ | _], [], [], _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl2_corresponding3(_, [], [_ | _], [], _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl2_corresponding3(_, [], [], [_ | _], _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl2_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl2_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl2_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl2_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
+foldl2_corresponding(P, one_or_more(AH, AT), one_or_more(BH, BT),
         !Acc1, !Acc2) :-
-    P(A, B, C, !Acc1, !Acc2),
-    list.foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2).
+    P(AH, BH, !Acc1, !Acc2),
+    list.foldl2_corresponding(P, AT, BT, !Acc1, !Acc2).
 
-foldl3_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3).
-foldl3_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl3_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl3_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl3_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl3_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl3_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl3_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
+foldl3_corresponding(P, one_or_more(AH, AT), one_or_more(BH, BT),
         !Acc1, !Acc2, !Acc3) :-
-    P(A, B, C, !Acc1, !Acc2, !Acc3),
-    list.foldl3_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3).
+    P(AH, BH, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding(P, AT, BT, !Acc1, !Acc2, !Acc3).
 
-foldl4_corresponding3(_, [], [], [], !Acc1, !Acc2, !Acc3, !Acc4).
-foldl4_corresponding3(_, [_ | _], [], [], _, _, _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl4_corresponding3(_, [], [_ | _], [], _, _, _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl4_corresponding3(_, [], [], [_ | _], _, _, _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl4_corresponding3(_, [], [_ | _], [_ | _], _, _, _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl4_corresponding3(_, [_ | _], [], [_ | _], _, _, _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl4_corresponding3(_, [_ | _], [_ | _], [], _, _, _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-foldl4_corresponding3(P, [ A | As ], [ B | Bs ], [ C | Cs],
-        !Acc1, !Acc2, !Acc3, !Acc4) :-
-    P(A, B, C, !Acc1, !Acc2, !Acc3, !Acc4),
-    list.foldl4_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3, !Acc4).
+foldl_corresponding3(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), !Acc) :-
+    P(AH, BH, CH, !Acc),
+    list.foldl_corresponding3(P, AT, BT, CT, !Acc).
+
+foldl2_corresponding3(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), !Acc1, !Acc2) :-
+    P(AH, BH, CH, !Acc1, !Acc2),
+    list.foldl2_corresponding3(P, AT, BT, CT, !Acc1, !Acc2).
+
+foldl3_corresponding3(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), !Acc1, !Acc2, !Acc3) :-
+    P(AH, BH, CH, !Acc1, !Acc2, !Acc3),
+    list.foldl3_corresponding3(P, AT, BT, CT, !Acc1, !Acc2, !Acc3).
+
+foldl4_corresponding3(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), !Acc1, !Acc2, !Acc3, !Acc4) :-
+    P(AH, BH, CH, !Acc1, !Acc2, !Acc3, !Acc4),
+    list.foldl4_corresponding3(P, AT, BT, CT, !Acc1, !Acc2, !Acc3, !Acc4).
 
 %---------------------------------------------------------------------------%
 
-map_foldl(_, [], [], !A).
-map_foldl(P, [H0 | T0], [H | T], !A) :-
+map_foldl(P, one_or_more(H0, T0), one_or_more(H, T), !A) :-
     P(H0, H, !A),
     list.map_foldl(P, T0, T, !A).
 
-map_foldl2(_, [], [], !A, !B).
-map_foldl2(P, [H0 | T0], [H | T], !A, !B) :-
+map_foldl2(P, one_or_more(H0, T0), one_or_more(H, T), !A, !B) :-
     P(H0, H, !A, !B),
     list.map_foldl2(P, T0, T, !A, !B).
 
-map_foldl3(_, [], [], !A, !B, !C).
-map_foldl3(P, [H0 | T0], [H | T], !A, !B, !C) :-
+map_foldl3(P, one_or_more(H0, T0), one_or_more(H, T), !A, !B, !C) :-
     P(H0, H, !A, !B, !C),
     list.map_foldl3(P, T0, T, !A, !B, !C).
 
-map_foldl4(_, [], [], !A, !B, !C, !D).
-map_foldl4(P, [H0 | T0], [H | T], !A, !B, !C, !D) :-
+map_foldl4(P, one_or_more(H0, T0), one_or_more(H, T), !A, !B, !C, !D) :-
     P(H0, H, !A, !B, !C, !D),
     list.map_foldl4(P, T0, T, !A, !B, !C, !D).
 
-map_foldl5(_, [], [], !A, !B, !C, !D, !E).
-map_foldl5(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E) :-
+map_foldl5(P, one_or_more(H0, T0), one_or_more(H, T), !A, !B, !C, !D, !E) :-
     P(H0, H, !A, !B, !C, !D, !E),
     list.map_foldl5(P, T0, T, !A, !B, !C, !D, !E).
 
-map_foldl6(_, [], [], !A, !B, !C, !D, !E, !F).
-map_foldl6(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E, !F) :-
+map_foldl6(P, one_or_more(H0, T0), one_or_more(H, T),
+        !A, !B, !C, !D, !E, !F) :-
     P(H0, H, !A, !B, !C, !D, !E, !F),
     list.map_foldl6(P, T0, T, !A, !B, !C, !D, !E, !F).
 
-map2_foldl(_, [], [], [], !A).
-map2_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], !A) :-
+map2_foldl(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        !A) :-
     P(H0, H1, H2, !A),
     list.map2_foldl(P, T0, T1, T2, !A).
 
-map2_foldl2(_, [], [], [], !A, !B).
-map2_foldl2(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B) :-
+map2_foldl2(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        !A, !B) :-
     P(H0, H1, H2, !A, !B),
     list.map2_foldl2(P, T0, T1, T2, !A, !B).
 
-map2_foldl3(_, [], [], [], !A, !B, !C).
-map2_foldl3(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B, !C) :-
+map2_foldl3(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        !A, !B, !C) :-
     P(H0, H1, H2, !A, !B, !C),
     list.map2_foldl3(P, T0, T1, T2, !A, !B, !C).
 
-map2_foldl4(_, [], [], [], !A, !B, !C, !D).
-map2_foldl4(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B, !C, !D) :-
+map2_foldl4(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        !A, !B, !C, !D) :-
     P(H0, H1, H2, !A, !B, !C, !D),
     list.map2_foldl4(P, T0, T1, T2, !A, !B, !C, !D).
 
-map3_foldl(_, [], [], [], [], !A).
-map3_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A) :-
+map3_foldl(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3), !A) :-
     P(H0, H1, H2, H3, !A),
     list.map3_foldl(P, T0, T1, T2, T3, !A).
 
-map3_foldl2(_, [], [], [], [], !A, !B).
-map3_foldl2(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A, !B) :-
+map3_foldl2(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3), !A, !B) :-
     P(H0, H1, H2, H3, !A, !B),
     list.map3_foldl2(P, T0, T1, T2, T3, !A, !B).
 
-map4_foldl(_, [], [], [], [], [], !A).
-map4_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], !A) :-
+map4_foldl(P, one_or_more(H0, T0), one_or_more(H1, T1), one_or_more(H2, T2),
+        one_or_more(H3, T3), one_or_more(H4, T4), !A) :-
     P(H0, H1, H2, H3, H4, !A),
     list.map4_foldl(P, T0, T1, T2, T3, T4, !A).
 
-map_foldr(_, [], [], !A).
-map_foldr(P, [H0 | T0], [H | T], !A) :-
+map_foldr(P, one_or_more(H0, T0), one_or_more(H, T), !A) :-
     list.map_foldr(P, T0, T, !A),
     P(H0, H, !A).
 
 %---------------------------------------------------------------------------%
 
-map_corresponding_foldl(_, [], [], [], !Acc).
-map_corresponding_foldl(_, [], [_ | _], _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding_foldl(_, [_ | _], [], _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding_foldl(P, [A | As], [B | Bs], [C | Cs], !Acc) :-
-    P(A, B, C, !Acc),
-    list.map_corresponding_foldl(P, As, Bs, Cs, !Acc).
+map_corresponding_foldl(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), !Acc) :-
+    P(AH, BH, CH, !Acc),
+    list.map_corresponding_foldl(P, AT, BT, CT, !Acc).
 
-map_corresponding_foldl2(_, [], [], [], !Acc1, !Acc2).
-map_corresponding_foldl2(_, [], [_ | _], _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding_foldl2(_, [_ | _], [], _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding_foldl2(P, [A | As], [B | Bs], [C | Cs], !Acc1, !Acc2) :-
-    P(A, B, C, !Acc1, !Acc2),
-    list.map_corresponding_foldl2(P, As, Bs, Cs, !Acc1, !Acc2).
+map_corresponding_foldl2(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), !Acc1, !Acc2) :-
+    P(AH, BH, CH, !Acc1, !Acc2),
+    list.map_corresponding_foldl2(P, AT, BT, CT, !Acc1, !Acc2).
 
-map_corresponding_foldl3(_, [], [], [], !Acc1, !Acc2, !Acc3).
-map_corresponding_foldl3(_, [], [_ | _], _, _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding_foldl3(_, [_ | _], [], _, _, _, _, _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding_foldl3(P, [A | As], [B | Bs], [C | Cs], !Acc1,
-        !Acc2, !Acc3) :-
-    P(A, B, C, !Acc1, !Acc2, !Acc3),
-    list.map_corresponding_foldl3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3).
+map_corresponding_foldl3(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), !Acc1, !Acc2, !Acc3) :-
+    P(AH, BH, CH, !Acc1, !Acc2, !Acc3),
+    list.map_corresponding_foldl3(P, AT, BT, CT, !Acc1, !Acc2, !Acc3).
 
-map_corresponding3_foldl(_, [], [], [], [], !Acc).
-map_corresponding3_foldl(_, [], [_ | _], [_ | _], _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding3_foldl(_, [_ | _], [], [_ | _], _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding3_foldl(_, [_ | _], [_ | _], [], _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding3_foldl(_, [], [], [_ | _], _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding3_foldl(_, [], [_ | _], [], _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding3_foldl(_, [_ | _], [], [], _, _, _) :-
-    unexpected($pred, "mismatched list lengths").
-map_corresponding3_foldl(P, [A | As], [B | Bs], [C | Cs], [D | Ds],
-        !Acc) :-
-    P(A, B, C, D, !Acc),
-    list.map_corresponding3_foldl(P, As, Bs, Cs, Ds, !Acc).
+map_corresponding3_foldl(P, one_or_more(AH, AT), one_or_more(BH, BT),
+        one_or_more(CH, CT), one_or_more(DH, DT), !Acc) :-
+    P(AH, BH, CH, DH, !Acc),
+    list.map_corresponding3_foldl(P, AT, BT, CT, DT, !Acc).
 
 %---------------------------------------------------------------------------%
 
-filter_map_foldl(_, [], [], !A).
-filter_map_foldl(P, [X | Xs], True, !A) :-
-    ( if P(X, Y, !A) then
-        list.filter_map_foldl(P, Xs, TrueTail, !A),
-        True = [Y | TrueTail]
+filter_map_foldl(P, one_or_more(H, T), PHs, !A) :-
+    ( if P(H, PH, !A) then
+        list.filter_map_foldl(P, T, PHsTail, !A),
+        PHs = [PH | PHsTail]
     else
-        list.filter_map_foldl(P, Xs, True, !A)
+        list.filter_map_foldl(P, T, PHs, !A)
     ).
 
 %---------------------------------------------------------------------------%
-
-inst_preserving_append([], L) = L.
-inst_preserving_append([H | T], L) = [H | NT] :-
-    inst_preserving_append(T, L) = NT.
-
-inst_preserving_reverse(Xs) = Ys :-
-    inst_preserving_reverse_prepend(Xs, [], Ys).
-
-:- pred inst_preserving_reverse_prepend(list(T)::in(list_skel(I =< ground)),
-    list(T)::in(list_skel(I =< ground)), list(T)::out(list_skel(I =< ground)))
-    is det.
-
-inst_preserving_reverse_prepend([], L, L).
-inst_preserving_reverse_prepend([X | Xs], L0, L) :-
-    inst_preserving_reverse_prepend(Xs, [X | L0], L).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_code("Java", "
-
-// We don't use `:- pragma foreign_export' to generate these methods,
-// because the interfaces would expect type_info arguments.
-
-// If you need to specify the type parameter, you must use the qualified
-// method name, e.g. list.<Integer>empty_list()
-
-public static <E>
-List_1<E> empty_list()
-{
-    return new List_1.F_nil_0<E>();
-}
-
-public static <E, F extends E>
-List_1<E> cons(F head, List_1<E> tail)
-{
-    return new List_1.F_cons_2<E>(head, tail);
-}
-
-public static <E>
-boolean is_empty(List_1<E> lst)
-{
-    return (lst instanceof List_1.F_nil_0);
-}
-
-public static <E>
-E det_head(List_1<E> lst)
-{
-    return ((List_1.F_cons_2<E>) lst).F1;
-}
-
-public static <E>
-List_1<E> det_tail(List_1<E> lst)
-{
-    return ((List_1.F_cons_2<E>) lst).F2;
-}
-
-// A wrapper class to allow for-each syntax.
-// You must use a new instance of this class for each loop!
-
-public static class ListIterator<E>
-    implements java.lang.Iterable<E>, java.util.Iterator<E>
-{
-    private List_1<E> lst;
-
-    public ListIterator(List_1<E> lst)
-    {
-        this.lst = lst;
-    }
-
-    public java.util.Iterator<E> iterator()
-    {
-        return this;
-    }
-
-    public boolean hasNext()
-    {
-        return !is_empty(lst);
-    }
-
-    public E next()
-    {
-        if (!is_empty(lst)) {
-            E head = det_head(lst);
-            lst = det_tail(lst);
-            return head;
-        } else {
-            throw new java.util.NoSuchElementException();
-        }
-    }
-
-    public void remove()
-    {
-        throw new java.lang.UnsupportedOperationException();
-    }
-}
-").
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_code("C#", "
-public static List_1 empty_list()
-{
-    return new List_1.F_nil_0();
-}
-
-public static List_1 cons(object head, List_1 tail)
-{
-    return new List_1.F_cons_2(head, tail);
-}
-
-public static bool is_empty(List_1 lst)
-{
-    return (lst is List_1.F_nil_0);
-}
-
-public static object det_head(List_1 lst)
-{
-    return ((List_1.F_cons_2) lst).F1;
-}
-
-public static List_1 det_tail(List_1 lst)
-{
-    return ((List_1.F_cons_2) lst).F2;
-}
-").
-
-%---------------------------------------------------------------------------%
-:- end_module list.
+:- end_module one_or_more.
 %---------------------------------------------------------------------------%

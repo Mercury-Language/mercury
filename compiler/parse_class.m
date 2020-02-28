@@ -75,6 +75,7 @@
 :- import_module cord.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 
 %---------------------------------------------------------------------------%
@@ -882,7 +883,7 @@ parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
             HeadResult = ok1(HeadConstraint),
             TailResult = ok1(TailConstraints)
         then
-            Result = ok1(one_or_more_cons(HeadConstraint, TailConstraints))
+            Result = ok1(one_or_more.cons(HeadConstraint, TailConstraints))
         else
             Result = error1(get_any_errors1(HeadResult) ++
                 get_any_errors1(TailResult))
