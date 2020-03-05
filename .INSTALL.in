@@ -2,13 +2,14 @@
 #
 # INSTALL - installation instructions and installation script.
 #
-# You need GNU C (version 3.4.x or later -- note however that version 4.0 will
-# not work) and GNU Make (3.69 or later).  
-# Make sure that they are somewhere in your PATH.  It is also helpful if you
-# have GNU Readline or NetBSD Editline (libedit) installed in one of the
-# standard locations (normally /usr/local or /usr), but this is not essential.
+# You need a C compiler such as the GNU C compiler (gcc, version 3.4.x
+# or later -- note however that version 4.0 will not work) and GNU Make
+# (3.69 or later).  Make sure that they are somewhere in your PATH.
+# It is also helpful if you have GNU Readline or NetBSD Editline (libedit)
+# installed in one of the standard locations (normally /usr/local or /usr),
+# but this is not essential.
 #
-# The source distributions for GNU C, GNU Make, and GNU Readline are
+# The source distributions for gcc, GNU Make, and GNU Readline are
 # available from <ftp://ftp.gnu.org/gnu/>.  The source distribution for
 # NetBSD Editline is available from <https://thrysoee.dk/editline/>.
 # Binaries for the above are included in almost all Linux distributions,
@@ -18,8 +19,7 @@
 # Step 0.  Extract the files from the gzipped tar archive.
 #
 #      NOTE: do not extract the archive into a directory whose absolute
-#      pathname contains spaces as this will cause the installation to
-#      fail.
+#      pathname contains spaces, as this will cause the installation to fail.
 #
 # Step 1.  Run `configure'.  (Just type `sh configure'.)
 #
