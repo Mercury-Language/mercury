@@ -60,8 +60,7 @@ Mmake.params before installing:
 THE ERLANG GRADE
 
 The Mercury compiler currently supports the grade `erlang'.
-The erlang grade is enabled by using any of the options
-`--grade erlang', `--target erlang', or just `--erlang',
+The erlang grade is enabled by using the option `--grade erlang'
 in combination with `mmc --make'.  Mmake does _not_ currently support
 the erlang grade.
 
@@ -72,7 +71,7 @@ You can now build programs such as hello.m or calculator.m in the samples
 directory.
 
         cd samples
-        mmc --make --erlang hello
+        mmc --grade erlang --make hello
 
 Note that when building programs using the erlang grade you *must* use
 mmc --make.
