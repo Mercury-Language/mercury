@@ -24,8 +24,7 @@ In order to try this system you will need
 THE JAVA GRADE
 
 The Mercury compiler currently supports the grade `java' to target Java
-bytecode.  The java grade is enabled by using any of the options
-`--grade java', `--target java', or just `--java'.
+bytecode.  The java grade is enabled by using the option `--grade java'.
 
 To run a Mercury program using the java grade, you need to build the Mercury
 library and runtime in the java grade, using the Mercury source distribution.
@@ -34,7 +33,7 @@ You can now build programs such as hello.m or calculator.m in the samples
 directory.
 	
 	cd samples
-	mmc --make --java hello
+	mmc --grade java --make hello
 
 Note that when building programs using the java grade you *must* use
 mmc --make.

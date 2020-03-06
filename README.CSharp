@@ -22,8 +22,7 @@ or Mono 4.0 or above.
 THE C# GRADE
 
 The Mercury compiler currently supports the grade `csharp'.
-The csharp grade is enabled by using any of the options
-`--grade csharp', `--target csharp', or just `--csharp'.
+The csharp grade is enabled by using the option `--grade csharp'.
 
 To run a Mercury program using the csharp grade, you need to build the Mercury
 library and runtime in the csharp grade, using the Mercury source distribution.
@@ -32,7 +31,7 @@ You can now build programs such as hello.m or calculator.m in the samples
 directory.
 
 	cd samples
-	mmc --make --csharp hello
+	mmc ---grade csharp --make hello
 
 Note that when building programs using the csharp grade you *must* use
 mmc --make.
