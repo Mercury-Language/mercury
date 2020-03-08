@@ -3904,24 +3904,21 @@ if test "$enable_prof_grades" = yes; then
 fi
 
 if test "$enable_trail_grades" = yes; then
-    # Add `.trseg' (--use-trail --trail-segments) grades.
-    # We don't install the fixed size trail `.tr' grades by
-    # default as they are less useful.
-    LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.trseg"
+    LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.tr"
     if test $DEFAULT_BASE_GRADE = hlc; then
-        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.debug.trseg.stseg"
+        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.debug.tr.stseg"
     else
         # $DEFAULT_BASE_GRADE must be an LLDS grade
-        LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.debug.trseg.stseg hlc.gc.trseg"
+        LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.debug.tr.stseg hlc.gc.tr"
     fi
     if test "$enable_inefficient_grades" = yes; then
         if test "$enable_nogc_grades" = yes; then
-            LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.trseg"
+            LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.tr"
         fi
         if test $mercury_cv_profiling = yes &&
            test "$enable_prof_grades" = yes
         then
-            LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.prof.trseg"
+            LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.prof.tr"
         fi
     fi
 fi
@@ -3992,7 +3989,7 @@ then
     LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.stseg"
     if test "$enable_trail_grades" = "yes"
     then
-        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.trseg.stseg"
+        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.tr.stseg"
     fi
 fi
 
