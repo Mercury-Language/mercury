@@ -1427,18 +1427,18 @@ det_elem(Key, Map) = map.lookup(Map, Key).
 member(Map, K, V) :-
     tree234.member(Map, K, V).
 
-keys(M) = Ks :-
-    map.keys(M, Ks).
+keys(Map) = Keys :-
+    map.keys(Map, Keys).
 
-keys(Map, KeyList) :-
-    tree234.keys(Map, KeyList).
+keys(Map, Keys) :-
+    tree234.keys(Map, Keys).
 
-sorted_keys(M) = Ks :-
-    map.sorted_keys(M, Ks).
+sorted_keys(Map) = Keys :-
+    map.sorted_keys(Map, Keys).
 
-sorted_keys(Map, KeyList) :-
+sorted_keys(Map, Keys) :-
     % Guaranteed to yield sorted lists.
-    tree234.keys(Map, KeyList).
+    tree234.keys(Map, Keys).
 
 keys_as_set(Map) = KeySet :-
     keys_as_set(Map, KeySet).

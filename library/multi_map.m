@@ -283,13 +283,25 @@
 
     % Given a multi_map, return a list of all the keys in it.
     %
-:- func keys(multi_map(K, _V)) = list(K).
-:- pred keys(multi_map(K, _V)::in, list(K)::out) is det.
+:- func keys(multi_map(K, V)) = list(K).
+:- pred keys(multi_map(K, V)::in, list(K)::out) is det.
+
+    % Given a multi_map, return a list of all the keys in it
+    % in sorted order.
+    %
+:- func sorted_keys(multi_map(K, V)) = list(K).
+:- pred sorted_keys(multi_map(K, V)::in, list(K)::out) is det.
+
+   % Given a multi_map, return a list of all the keys in it
+    % as a set
+    %
+:- func keys_as_set(multi_map(K, V)) = set(K).
+:- pred keys_as_set(multi_map(K, V)::in, set(K)::out) is det.
 
     % Given a multi_map, return a list of all the values in it.
     %
-:- func values(multi_map(_K, V)) = list(V).
-:- pred values(multi_map(_K, V)::in, list(V)::out) is det.
+:- func values(multi_map(K, V)) = list(V).
+:- pred values(multi_map(K, V)::in, list(V)::out) is det.
 
 %---------------------%
 
@@ -608,6 +620,19 @@ keys(MultiMap) = Keys :-
 
 keys(MultiMap, Keys) :-
     map.keys(MultiMap, Keys).
+
+sorted_keys(Map) = Keys :-
+    map.sorted_keys(Map, Keys).
+
+sorted_keys(Map, Keys) :-
+    map.sorted_keys(Map, Keys).
+
+keys_as_set(Map) = KeySet :-
+    multi_map.keys_as_set(Map, KeySet).
+
+keys_as_set(Map, KeySet) :-
+    multi_map.sorted_keys(Map, Keys),
+    set.sorted_list_to_set(Keys, KeySet).
 
 values(MultiMap) = Values :-
     multi_map.values(MultiMap, Values).

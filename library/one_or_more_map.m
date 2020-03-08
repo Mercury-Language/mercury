@@ -291,6 +291,18 @@
 :- func keys(one_or_more_map(K, V)) = list(K).
 :- pred keys(one_or_more_map(K, V)::in, list(K)::out) is det.
 
+    % Given a one_or_more_map, return a list of all the keys in it
+    % in sorted order.
+    %
+:- func sorted_keys(one_or_more_map(K, V)) = list(K).
+:- pred sorted_keys(one_or_more_map(K, V)::in, list(K)::out) is det.
+
+    % Given a one_or_more_map, return a list of all the keys in it
+    % as a set
+    %
+:- func keys_as_set(one_or_more_map(K, V)) = set(K).
+:- pred keys_as_set(one_or_more_map(K, V)::in, set(K)::out) is det.
+
     % Given a one_or_more_map, return a list of all the values in it.
     %
 :- func values(one_or_more_map(K, V)) = list(V).
@@ -617,6 +629,19 @@ keys(OneOrMoreMap) = Keys :-
 
 keys(OneOrMoreMap, Keys) :-
     map.keys(OneOrMoreMap, Keys).
+
+sorted_keys(Map) = Keys :-
+    map.sorted_keys(Map, Keys).
+
+sorted_keys(Map, Keys) :-
+    map.sorted_keys(Map, Keys).
+
+keys_as_set(Map) = KeySet :-
+    one_or_more_map.keys_as_set(Map, KeySet).
+
+keys_as_set(Map, KeySet) :-
+    one_or_more_map.sorted_keys(Map, Keys),
+    set.sorted_list_to_set(Keys, KeySet).
 
 values(OneOrMoreMap) = Values :-
     one_or_more_map.values(OneOrMoreMap, Values).
