@@ -47,7 +47,13 @@ else
         tcdir=FAILED_TC_DIR
         exitstatus=1
     else
-        rm -f "${test_full}.log" ${test}.out* ${test}.*res*
+        if test "${KEEP_SUCCESS_LOG_FILES}" = "keep_success_log_files"
+        then
+            mv -f "${test_full}.log" "${test_full}.kept_log"
+        else
+            rm -f "${test_full}.log"
+        fi
+        rm -f ${test}.out* ${test}.*res*
         mmake "${test}.realclean" > /dev/null 2>&1
         # The lack of a FAILED TEST is enough to tell you that the test passed.
         # echo PASSED TEST "${this_dir}/${test_full}" "${params_msg}"

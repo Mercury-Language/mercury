@@ -103,6 +103,13 @@ Options:
     --test-params
         When executing the test suite, use the stage 2 Mmake.params
         file.
+    --keep-success-log-files
+        Keep every test case's .log file, renamed as a .kept_log file,
+        even if the test passes. It can be useful to compare these files
+        in a known-good workspace with the corresponding log files
+        in a workspace containing a change that fails some test cases.
+        Note that unneeded .kept_log files must be deleted manually;
+        they do *not* get deleted by any mmake targets.
     --stop-after-stage-2
         Stop after building stage 2, even if it is successful.
     --use-subdirs
@@ -353,6 +360,11 @@ while test $# -gt 0; do
 
     --test-params)
         test_params=true ;;
+
+    --keep-success-log-files)
+        KEEP_SUCCESS_LOG_FILES=keep_success_log_files
+        export KEEP_SUCCESS_LOG_FILES
+        ;;
 
     --stop-after-stage-2)
         stop_after_stage_2=true ;;
