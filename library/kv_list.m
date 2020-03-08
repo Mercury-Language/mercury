@@ -205,6 +205,13 @@
 % Folding over kv_lists.
 %
 
+    % foldl(Func, List, Start) = End calls Func
+    % with each key-value in List, working left-to-right,
+    % and an accumulator whose initial value is Start,
+    % and returns the final value in End.
+    %
+:- func foldl(func(K, V, A) = A, kv_list(K, V), A) = A.
+
     % foldl(Pred, List, Start End) calls Pred
     % with each key-value pair in List, working left-to-right,
     % and an accumulator whose initial value is Start,
@@ -557,6 +564,11 @@ merge(A @ kv_cons(AK, AV, AKVs), B @ kv_cons(BK, BV, BKVs), C) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+foldl(_F, kv_nil, A) = A.
+foldl(F, kv_cons(K, V, TailKVs), !.A) = !:A :-
+    !:A = F(K, V, !.A),
+    !:A = foldl(F, TailKVs, !.A).
 
 foldl(_P, kv_nil, !A).
 foldl(P, kv_cons(K, V, TailKVs), !A) :-
