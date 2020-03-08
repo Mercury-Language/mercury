@@ -6,15 +6,10 @@ Supported versions of Windows
 
 Mercury has been tested with the following versions of Windows:
 
-    * Windows XP SP3
     * Windows 7
-    * Windows Server 2008 R2
-
-It should also work with Windows XP SP2 and Windows Vista but we have
-not tested it with those.
+    * Windows 10
 
 We no longer actively maintain support for older versions of Windows.
-
 
 ---------------------------
 Building Mercury on Windows
@@ -39,7 +34,6 @@ MS Visual C compiler.
 
 NOTE: while a Unix emulation environment is required to build Mercury on
 Windows, one is NOT required to use Mercury on Windows.
-
 
 -------------------------------------
 Building Mercury for Windows on Linux
