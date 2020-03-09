@@ -408,6 +408,7 @@ ORDINARY_PROGS = \
 	test_int_hash \
 	test_keys_and_values \
 	test_map_filter \
+	test_one_or_more \
 	test_one_or_more_chunk \
 	test_pretty_printer \
 	test_pretty_printer_defaults \

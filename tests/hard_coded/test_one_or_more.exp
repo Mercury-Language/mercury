@@ -1,0 +1,6 @@
+member test on A succeeded
+member test on B succeeded
+member test on C succeeded
+sort_and_remove_dups test on A succeeded
+sort_and_remove_dups test on B succeeded
+sort_and_remove_dups test on C succeeded
