@@ -62,6 +62,8 @@
 :- import_module term_to_xml.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
     % Record all the locations of comments in a file.
     %
 :- type comments
