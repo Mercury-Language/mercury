@@ -1,0 +1,22 @@
+Copyright (C) 2020 The Mercury team
+
+As its name says, split_file is a utility program that helps its users to
+split one file into two or more pieces. The intended use case is splitting up
+a Mercury module into several smaller modules, though of course there are
+many other possible uses.
+
+Editing the file to be split up and cutting and pasting selecting sections
+of it to other editor windows open on the destination files is tedious.
+Duplicating a file and then deleting alternating sections from the original
+and its copy is error prone; it is far too easy to have a part end up
+unintentionally in both copies, or none. In both cases, errors are hard
+to recover from.
+
+With split_file, the user can mark up the original source file
+(or better still, a *copy* of that source file) with control lines
+such as "SPLIT 1", "SPLIT 2" and "SPLIT 1 3". When the marked-up file
+is given to split_file as the input, with the names of three output files,
+each block of data lines (the lines between control lines) will end up
+in the output file(s) whose number(s) are on the control line preceding
+the block. In the event of an error, one can just discard both output files,
+modify the markup, and repeat the invocation of split_file.

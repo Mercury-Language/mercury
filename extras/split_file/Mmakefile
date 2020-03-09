@@ -1,0 +1,26 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2020 The Mercury team.
+# This file is distributed under the terms specified in COPYING.LIB.
+#-----------------------------------------------------------------------------#
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+MLFLAGS = --mercury-libs static
+
+-include ../Mmake.params
+
+.PHONY: default_target
+default_target:	split_file
+
+.PHONY: install
+install:
+	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	cp split_file $(INSTALL_BINDIR)
+
+.PHONY: depend
+depend:	split_file.depend
+
+.PHONY: check
+check:
+	true
