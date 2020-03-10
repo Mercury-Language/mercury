@@ -574,49 +574,40 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
      list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
      list(prog_var)::out) is det.
 
-find_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
-    ( if find_output_args_2(ModuleInfo, Types, Modes, Vars, OutputsPrime) then
-        Outputs = OutputsPrime
+find_output_args(ModuleInfo, Types, Modes, Vars, OutputVars) :-
+    ( if
+        Types = [HeadType | TailTypes],
+        Modes = [HeadMode | TailModes],
+        Vars = [HeadVar | TailVars]
+    then
+        find_output_args(ModuleInfo, TailTypes, TailModes, TailVars,
+            TailOutputVars),
+        mode_to_top_functor_mode(ModuleInfo, HeadMode, HeadType,
+            TopFunctorMode),
+        (
+            ( TopFunctorMode = top_in
+            ; TopFunctorMode = top_unused
+            ),
+            OutputVars = TailOutputVars
+        ;
+            TopFunctorMode = top_out,
+            IsDummy = is_type_a_dummy(ModuleInfo, HeadType),
+            (
+                IsDummy = is_not_dummy_type,
+                OutputVars = [HeadVar | TailOutputVars]
+            ;
+                IsDummy = is_dummy_type,
+                OutputVars = TailOutputVars
+            )
+        )
+    else if
+        Types = [],
+        Modes = [],
+        Vars = []
+    then
+        OutputVars = []
     else
         unexpected($pred, "list length mismatch")
-    ).
-
-:- pred find_output_args_2(module_info::in,
-    list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
-    list(prog_var)::out) is semidet.
-
-find_output_args_2(_, [], [], [], []).
-find_output_args_2(ModuleInfo, [Type | Types], [Mode | Modes], [Var | Vars],
-        OutputVars) :-
-    find_output_args_2(ModuleInfo, Types, Modes, Vars, TailOutputVars),
-    require_det (
-        ( if is_output(ModuleInfo, Mode, Type) then
-            OutputVars = [Var | TailOutputVars]
-        else
-            OutputVars = TailOutputVars
-        )
-    ).
-
-:- pred is_output(module_info::in, mer_mode::in, mer_type::in) is semidet.
-
-is_output(ModuleInfo, Mode, Type) :-
-    mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
-    require_complete_switch [TopFunctorMode]
-    (
-        ( TopFunctorMode = top_in
-        ; TopFunctorMode = top_unused
-        ),
-        false
-    ;
-        TopFunctorMode = top_out,
-        IsDummy = is_type_a_dummy(ModuleInfo, Type),
-        require_complete_switch [IsDummy]
-        (
-            IsDummy = is_not_dummy_type
-        ;
-            IsDummy = is_dummy_type,
-            false
-        )
     ).
 
 %---------------------------------------------------------------------------%
