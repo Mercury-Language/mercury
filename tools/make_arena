@@ -16,14 +16,17 @@ fi
 
 mkdir arena
 
-# copy all the compiler source files into the arena
+# Copy all the compiler source files into the arena.
 cp compiler/*.m arena
 
-# copy the interface files and possibly optimization files they will need
+# Copy the interface files and possibly optimization files they will need.
 for dir in library mdbcomp compiler
 do
 	cp $dir/*.int* arena
 	cp $dir/*.*opt arena > /dev/null 2>&1
 done
+
+# Copy all the auxiliary files.
+cp compiler/Mercury.modules compiler/Mercury.options arena
 
 exit 0

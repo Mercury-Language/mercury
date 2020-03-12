@@ -230,8 +230,9 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module parse_tree.parse_module.
 :- import_module parse_tree.find_module.
+:- import_module parse_tree.parse_module.
+:- import_module parse_tree.source_file_map.
 
 :- import_module bool.
 :- import_module cord.
@@ -283,7 +284,20 @@ read_module_src_from_file(Globals, FileName, FileNameDotM, Descr, Search,
     else
         BaseFileName = ""
     ),
-    file_name_to_module_name(BaseFileName, DefaultModuleName),
+    have_source_file_map(HaveMap, !IO),
+    (
+        HaveMap = no,
+        file_name_to_module_name(BaseFileName, DefaultModuleName)
+    ;
+        HaveMap = yes,
+        lookup_source_file_module(FileNameDotM, MaybeModuleName, !IO),
+        (
+            MaybeModuleName = yes(DefaultModuleName)
+        ;
+            MaybeModuleName = no,
+            file_name_to_module_name(BaseFileName, DefaultModuleName)
+        )
+    ),
     (
         Search = do_search,
         globals.lookup_accumulating_option(Globals, search_directories,

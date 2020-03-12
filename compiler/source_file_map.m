@@ -43,6 +43,9 @@
 :- pred lookup_module_source_file(module_name::in, maybe(file_name)::out,
     io::di, io::uo) is det.
 
+:- pred lookup_source_file_module(file_name::in, maybe(module_name)::out,
+    io::di, io::uo) is det.
+
     % Return `yes' if there is a valid Mercury.modules file.
     %
 :- pred have_source_file_map(bool::out, io::di, io::uo) is det.
@@ -85,6 +88,22 @@ lookup_module_source_file(ModuleName, MaybeFileName, !IO) :-
         )
     ).
 
+lookup_source_file_module(FileName, MaybeModuleName, !IO) :-
+    get_source_file_map(SourceFileMap, !IO),
+    ( if bimap.reverse_search(SourceFileMap, ModuleName, FileName) then
+        MaybeModuleName = yes(ModuleName)
+    else
+        ( if default_module_name_for_file(FileName, DefaultModuleName) then
+            ( if bimap.search(SourceFileMap, DefaultModuleName, _) then
+                MaybeModuleName = no
+            else
+                MaybeModuleName = yes(DefaultModuleName)
+            )
+        else
+            MaybeModuleName = no
+        )
+    ).
+
 have_source_file_map(HaveMap, !IO) :-
     get_source_file_map(SourceFileMap, !IO),
     ( if bimap.is_empty(SourceFileMap) then
@@ -94,6 +113,16 @@ have_source_file_map(HaveMap, !IO) :-
     ).
 
 default_source_file(ModuleName) = sym_name_to_string(ModuleName) ++ ".m".
+
+    % If the file name ends in ".m", return the module name whose
+    % default file name that would be.
+    %
+:- pred default_module_name_for_file(file_name::in, module_name::out)
+    is semidet.
+
+default_module_name_for_file(FileName, DefaultModuleName) :-
+    string.remove_suffix(FileName, ".m", FileNameBeforeDotM),
+    file_name_to_module_name(FileNameBeforeDotM, DefaultModuleName).
 
     % Read the Mercury.modules file (if it exists) to find the mapping
     % from module name to file name.
@@ -197,11 +226,9 @@ write_source_file_map(Globals, FileNames, !IO) :-
         io.close_output(Stream, !IO)
     ;
         OpenRes = error(Error),
-        io.set_exit_status(1, !IO),
-        io.write_string("mercury_compile: error opening `", !IO),
-        io.write_string(ModulesFileName, !IO),
-        io.write_string("' for output: ", !IO),
-        io.write_string(io.error_message(Error), !IO)
+        io.format("mercury_compile: error opening `%s' for output: %s",
+            [s(ModulesFileName), s(io.error_message(Error))], !IO),
+        io.set_exit_status(1, !IO)
     ).
 
 :- pred write_source_file_map_2(globals::in, io.output_stream::in,
@@ -218,13 +245,10 @@ write_source_file_map_2(Globals, MapStream, FileName,
             bimap.search(SeenModules0, ModuleName, PrevFileName),
             PrevFileName \= FileName
         then
-            io.write_string("mercury_compile: module `", !IO),
-            io.write_string(sym_name_to_string(ModuleName), !IO),
-            io.write_string("' defined in multiple files: ", !IO),
-            io.write_string(PrevFileName, !IO),
-            io.write_string(", ", !IO),
-            io.write_string(FileName, !IO),
-            io.write_string(".\n", !IO),
+            io.format("mercury_compile: module `%s' " ++
+                "defined in multiple files: %s, %s\n.",
+                [s(sym_name_to_string(ModuleName)),
+                s(PrevFileName), s(FileName)], !IO),
             io.set_exit_status(1, !IO),
             SeenModules = SeenModules0
         else
