@@ -2542,7 +2542,7 @@ origin_name(Origin, Name0) = Name :-
         )
     ;
         ( Origin = origin_instance_method(_, _)
-        ; Origin = origin_class_method
+        ; Origin = origin_class_method(_, _)
         ; Origin = origin_created(_)
         ; Origin = origin_assertion(_, _)
         ; Origin = origin_solver_type(_, _, _)

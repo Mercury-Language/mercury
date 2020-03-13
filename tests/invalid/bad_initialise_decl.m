@@ -29,6 +29,7 @@ i1(X, X).
 :- pred i2(io::in, io::out) is det.
 i2(!IO).
 
-main(!IO) :- io.print("This is main/2.\n", !IO).
+main(!IO) :-
+    io.print("This is main/2.\n", !IO).
 
 %---------------------------------------------------------------------------%

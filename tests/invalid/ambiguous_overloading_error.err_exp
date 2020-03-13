@@ -4,12 +4,12 @@ ambiguous_overloading_error.m:059:   The following symbol was overloaded in the
 ambiguous_overloading_error.m:059:   following contexts.
 ambiguous_overloading_error.m:057:   The function symbol `f'/0.
 ambiguous_overloading_error.m:057:   The possible matches are:
+ambiguous_overloading_error.m:057:     the builtin type constructor
+ambiguous_overloading_error.m:057:     `character',
 ambiguous_overloading_error.m:057:     the type constructor
 ambiguous_overloading_error.m:057:     `ambiguous_overloading_error.bar'/0,
 ambiguous_overloading_error.m:057:     the type constructor
-ambiguous_overloading_error.m:057:     `ambiguous_overloading_error.foo'/0,
-ambiguous_overloading_error.m:057:     the builtin type constructor
-ambiguous_overloading_error.m:057:     `character'.
+ambiguous_overloading_error.m:057:     `ambiguous_overloading_error.foo'/0.
 ambiguous_overloading_error.m:058:   The function symbol `f'/0 is also
 ambiguous_overloading_error.m:058:   overloaded here.
 ambiguous_overloading_error.m:059: Warning: the variable `L' is unified with a
@@ -36,8 +36,8 @@ ambiguous_overloading_error.m:116:   The following symbol was overloaded in the
 ambiguous_overloading_error.m:116:   following contexts.
 ambiguous_overloading_error.m:067:   The predicate symbol predicate `<'/2.
 ambiguous_overloading_error.m:067:   The possible matches are:
-ambiguous_overloading_error.m:067:     predicate `int.<'/2,
-ambiguous_overloading_error.m:067:     predicate `float.<'/2.
+ambiguous_overloading_error.m:067:     predicate `float.<'/2,
+ambiguous_overloading_error.m:067:     predicate `int.<'/2.
 ambiguous_overloading_error.m:068:   The predicate symbol predicate `<'/2 is
 ambiguous_overloading_error.m:068:   also overloaded here.
 ambiguous_overloading_error.m:069:   The predicate symbol predicate `<'/2 is

@@ -65,6 +65,8 @@
 :- import_module set.
 :- import_module varset.
 
+%----------------------------------------------------------------------------%
+
 simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
     % (if A then B else C) is logically equivalent to (A, B ; ~A, C).
@@ -200,12 +202,9 @@ maybe_warn_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
         Context = goal_info_get_context(GoalInfo0),
         Pieces = [words("Warning: the condition of this if-then-else"),
             words(Problem), suffix("."), nl],
-        Msg = simple_msg(Context,
-            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-        Severity = severity_conditional(warn_simple_code, yes,
-            severity_warning, no),
-        Spec = error_spec(Severity,
-            phase_simplify(report_only_if_in_all_modes), [Msg]),
+        Spec = conditional_spec($pred, warn_simple_code, yes,
+            severity_warning, phase_simplify(report_only_if_in_all_modes),
+            [simplest_msg(Context, Pieces)]),
         simplify_info_add_message(Spec, !Info)
     ),
     simplify_info_set_should_requantify(!Info),
@@ -292,13 +291,9 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
                 OnPieces = []
             ),
             Pieces = Pieces0 ++ OnPieces ++ [suffix("."), nl],
-            Msg = simple_msg(Context,
-                [option_is_set(inform_ite_instead_of_switch, yes,
-                    [always(Pieces)])]),
-            Severity = severity_conditional(inform_ite_instead_of_switch,
-                yes, severity_informational, no),
-            Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
-                [Msg]),
+            Spec = conditional_spec($pred, inform_ite_instead_of_switch, yes,
+                severity_informational, phase_simplify(report_in_any_mode),
+                [simplest_msg(Context, Pieces)]),
             simplify_info_add_message(Spec, !Info)
         ;
             CanSwitch = cond_can_switch_uncommitted
@@ -484,21 +479,15 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         determinism_components(Detism, CanFail, MaxSoln),
         ( if CanFail = cannot_fail then
             Pieces = [words("Warning: the negated goal cannot fail.")],
-            Msg = simple_msg(Context,
-                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-            Severity = severity_conditional(warn_simple_code, yes,
-                severity_warning, no),
-            Spec = error_spec(Severity,
-                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            Spec = conditional_spec($pred, warn_simple_code, yes,
+                severity_warning, phase_simplify(report_only_if_in_all_modes),
+                [simplest_msg(Context, Pieces)]),
             simplify_info_add_message(Spec, !Info)
         else if MaxSoln = at_most_zero then
             Pieces = [words("Warning: the negated goal cannot succeed.")],
-            Msg = simple_msg(Context,
-                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-            Severity = severity_conditional(warn_simple_code, yes,
-                severity_warning, no),
-            Spec = error_spec(Severity,
-                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            Spec = conditional_spec($pred, warn_simple_code, yes,
+                severity_warning, phase_simplify(report_only_if_in_all_modes),
+                [simplest_msg(Context, Pieces)]),
             simplify_info_add_message(Spec, !Info)
         else
             true

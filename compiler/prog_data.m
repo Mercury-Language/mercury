@@ -1340,6 +1340,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     --->    ho_arg_reg_r
     ;       ho_arg_reg_f.
 
+% XXX CLEANUP Should be inst_ctor, for consistency with type_ctor
 :- type inst_id
     --->    inst_id(sym_name, arity).
 
@@ -1427,6 +1428,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     --->    real_unify
     ;       fake_unify.
 
+% XXX CLEANUP Should be mode_ctor, for consistency with type_ctor
 :- type mode_id
     --->    mode_id(sym_name, arity).
 
@@ -1793,6 +1795,10 @@ valid_trace_grade_name(GradeName) :-
 :- type sym_name_and_arity
     --->    sym_name_arity(sym_name, arity).
 
+:- type pf_sym_name_and_arity
+    --->    pf_sym_name_arity(pred_or_func, sym_name, arity).
+
+% XXX Uses of this type should be replaced by pf_sym_name_and_arity.
 :- type simple_call_id
     --->    simple_call_id(pred_or_func, sym_name, arity).
 

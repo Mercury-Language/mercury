@@ -97,7 +97,7 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCodeMap) :-
     module_info_get_foreign_decl_codes_aux(ModuleInfo,
         ForeignDeclCodeAuxCord),
     module_info_get_foreign_body_codes(ModuleInfo, ForeignBodyCodeCord),
-    module_info_get_foreign_import_modules(ModuleInfo, ForeignImportModules),
+    module_info_get_c_j_cs_e_fims(ModuleInfo, CJCsEFIMs),
     module_info_get_pragma_exported_procs(ModuleInfo, ForeignExportsCord),
     ForeignDeclCodes =
         cord.list(ForeignDeclCodeUserCord ++ ForeignDeclCodeAuxCord),
@@ -107,8 +107,7 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCodeMap) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
     WantedForeignImports = set.to_sorted_list(set.union_list(
-        list.map(get_lang_fim_specs(ForeignImportModules),
-            BackendForeignLanguages))),
+        list.map(get_lang_fim_specs(CJCsEFIMs), BackendForeignLanguages))),
 
     list.foldl(
         ml_gen_foreign_code_lang(ModuleInfo,

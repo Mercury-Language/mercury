@@ -448,7 +448,6 @@ do_arg_unifications([unify_var_term(XVar, YTerm) | XVarsYTerms],
         Context, ArgContext, Order, ArgNum,
         AncestorVarMap, [Expansion | Expansions],
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    % ZZZ arg order
     do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
         AncestorVarMap, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
@@ -903,7 +902,7 @@ parse_integer_cons_id(Context, Base, Integer, IntDesc, IntSuffixStr, ConvPred,
             words("integer literal"),
             quote(BasePrefix ++ IntString ++ IntSuffixStr),
             words("is outside the range of that type."), nl],
-        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
         % This is a dummy.
@@ -1265,8 +1264,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 words("can be used only in expressions of the form"),
                 quote("<lambda expression head> :- <lambda expression body>"),
                 suffix("."), nl],
-            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                YFunctorContext, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, YFunctorContext, Pieces),
             !:Specs = [Spec | !.Specs],
             qual_info_set_found_syntax_error(yes, !QualInfo),
             Expansion = expansion(not_fgti, cord.empty)
@@ -1462,7 +1461,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                     Pieces = [words("Error: the head of a lambda expression"),
                         words("that is defined by a DCG clause"),
                         words("must have at least arguments."), nl],
-                    Spec = simplest_spec(severity_error,
+                    Spec = simplest_spec($pred, severity_error,
                         phase_parse_tree_to_hlds, Context, Pieces),
                     MaybeLambdaHead =
                         error1([Spec | get_any_errors1(MaybeDetism)])
@@ -1508,8 +1507,8 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                 MaybeDCGVars = dcg_vars(_, _),
                 Pieces = [words("Error: DCG notation is not allowed"),
                     words("in clauses for functions."), nl],
-                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                    Context, Pieces),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context, Pieces),
                 MaybeLambdaHead = error1([Spec | get_any_errors1(MaybeDetism)])
             )
         )
@@ -1549,8 +1548,8 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
             MaybeDCGVars = dcg_vars(_, _),
             Pieces = [words("Error: DCG notation is not allowed"),
                 words("in clauses for functions."), nl],
-            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             MaybeLambdaHead = error1([Spec])
         )
     else
@@ -1564,7 +1563,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
             quote("any_func(<args>) = <retarg>"), suffix(","), nl,
             words("or one of those forms preceded by either"),
             quote("semipure"), words("or"), quote("impure"), suffix("."), nl],
-        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             get_term_context(PFArgsDetTerm), Pieces),
         qual_info_set_found_syntax_error(yes, !QualInfo),
         MaybeLambdaHead = error1([Spec])
@@ -1676,7 +1675,7 @@ add_some_not_all_args_have_modes_error(Context, _AbsentArgs, !Specs) :-
     % We could use _AbsentArgs to make the error message more detailed.
     Pieces = [words("Error: in head of lambda expression:"),
         words("some but not all arguments have modes."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1687,7 +1686,7 @@ add_pred_no_args_have_modes_error(Context, !Specs) :-
     % We could use _AbsentArgs to make the error message more detailed.
     Pieces = [words("Error: in head of predicate lambda expression:"),
         words("none of the arguments have modes."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1869,7 +1868,7 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
         TermStr = describe_error_term(GenericVarSet, DetismTerm),
         Pieces = [words("Error:"), words(TermStr),
             words("is not a valid determinism."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(DetismTerm), Pieces),
         MaybeDetism = error1([Spec])
     ).
@@ -1961,7 +1960,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
             words(choose_number(InconsistentVars, "variable", "variables")) |
             list_to_quoted_pieces(InconsistentVarStrs)] ++
             [words("are inconsistent."), nl],
-        InconsistentVarSpec = simplest_spec(severity_error,
+        InconsistentVarSpec = simplest_spec($pred, severity_error,
             phase_term_to_parse_tree, Context, InconsistentVarPieces),
         !:Specs = [InconsistentVarSpec | !.Specs]
     ),
@@ -2311,8 +2310,8 @@ occurs_check(ModuleInfo, VarSet, AncestorVarMap, Var, !Specs) :-
             varset.lookup_name(VarSet, Var, VarName),
             Pieces = [words("Warning: the variable"), quote(VarName),
                 words("is unified with a term containing itself."), nl],
-            Spec = simplest_spec(severity_warning, phase_parse_tree_to_hlds,
-                AncestorContext, Pieces),
+            Spec = simplest_spec($pred, severity_warning,
+                phase_parse_tree_to_hlds, AncestorContext, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     else

@@ -610,7 +610,7 @@ discard_repn_from_ctor_arg(CtorArgRepn) = CtorArg :-
     % argument in Args does *not* begin a word (i.e. it is
     % partial_word_shifted), then its storage will be within the word
     % at offset !.Offset - 1.
-    % 
+    %
 :- pred write_arg_widths(int::in, int::in,
     list(constructor_arg_repn)::in, io::di, io::uo) is det.
 
@@ -1516,10 +1516,15 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
 
 write_promise(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint, Indent,
         PromiseType, _PredId, _PredOrFunc, HeadVars, Clause, !IO) :-
+    % Please *either* keep this code in sync with mercury_output_item_promise
+    % in parse_tree_out.m, *or* rewrite it to forward the work to that
+    % predicate.
+
     % Curry the varset for term_io.write_variable/4.
-    PrintVar = (pred(VarName::in, IOState0::di, IOState::uo) is det :-
-        term_io.write_variable(VarName, VarSet, IOState0, IOState)
-    ),
+    PrintVar =
+        ( pred(VarName::in, IOState0::di, IOState::uo) is det :-
+            term_io.write_variable(VarName, VarSet, IOState0, IOState)
+        ),
 
     write_indent(Indent, !IO),
 

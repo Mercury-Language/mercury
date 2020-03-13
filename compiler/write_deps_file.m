@@ -119,8 +119,8 @@
 :- import_module dir.
 :- import_module library.
 :- import_module map.
-:- import_module multi_map.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module sparse_bitset.
@@ -223,11 +223,10 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         Ancestors, PublicChildrenMap, NestedDeps,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps0,
         ForeignImportModules0, ForeignIncludeFilesCord, ContainsForeignCode,
-        SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
-        OptItemBlocksCord, IntForOptItemBlocksCord),
-    set.sorted_list_to_set(multi_map.keys(IntDepsMap), IntDeps),
-    set.sorted_list_to_set(multi_map.keys(ImpDepsMap), ImpDeps),
-    set.sorted_list_to_set(multi_map.keys(PublicChildrenMap), PublicChildren),
+        AugCompUnit),
+    one_or_more_map.keys_as_set(IntDepsMap, IntDeps),
+    one_or_more_map.keys_as_set(ImpDepsMap, ImpDeps),
+    one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
 
     ModuleNameString = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
@@ -633,34 +632,28 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     ),
 
     (
-        ContainsForeignCode = contains_foreign_code(_LangSet),
-        ForeignImportModules = ForeignImportModules0
+        ContainsForeignCode = foreign_code_langs_known(_ForeignCodeLangs),
+        % XXX This looks wrong to me (zs) in cases when _ForeignCodeLangs
+        % is not the empty set. It is possible that in all such cases,
+        % ForeignImportModules0 already contains the needed
+        % foreign_import_module declarations, but it would be nice to see
+        % a reasoned correctness argument about that.
+        FIMSpecs = get_all_fim_specs(ForeignImportModules0)
     ;
-        ContainsForeignCode = contains_no_foreign_code,
-        ForeignImportModules = ForeignImportModules0
-    ;
-        ContainsForeignCode = contains_foreign_code_unknown,
-        get_foreign_code_indicators_from_item_blocks(Globals,
-            SrcItemBlocks,
-            _SrcLangSet, SrcForeignImportModules, _, _),
-        % XXX ITEM_LIST DirectIntItemBlocksCord should not be needed
-        % XXX ITEM_LIST IndirectIntItemBlocksCord should not be needed
-        IntItemBlocksCord =
-            DirectIntItemBlocksCord ++ IndirectIntItemBlocksCord,
-        get_foreign_code_indicators_from_item_blocks(Globals,
-            cord.list(IntItemBlocksCord),
-            _IntLangSet, IntForeignImportModules, _, _),
-        get_foreign_code_indicators_from_item_blocks(Globals,
-            cord.list(OptItemBlocksCord),
-            _OptLangSet, OptForeignImportModules, _, _),
-        get_foreign_code_indicators_from_item_blocks(Globals,
-            cord.list(IntForOptItemBlocksCord),
-            _IntForOptLangSet, IntForOptForeignImportModules, _, _),
-        % If we are generating the `.dep' file, ForeignImportModuless0
+        ContainsForeignCode = foreign_code_langs_unknown,
+        % If we are generating the `.dep' file, ForeignImportModules0
         % will contain a conservative approximation to the set of foreign
         % imports needed which will include imports required by imported
-        % modules. XXX ITEM_LIST What is the correctness argument that supports
+        % modules.
+        % XXX ITEM_LIST What is the correctness argument that supports
         % the above assertion?
+        % XXX ITEM_LIST And even if it is true, how does that lead to
+        % us adding the foreign_import_module declarations from the
+        % interface and optimization files to ForeignImportModules
+        % ONLY if ForeignImportModules0 contains nothing?
+        % (Actually, we are replacing ForeignImportModules0 with them,
+        % but when ForeignImportModules0 contains nothing, that is equivalent
+        % to addition.)
         ( if
             ForeignImportModules0 = c_j_cs_e_fims(C0, Java0, CSharp0, Erlang0),
             set.is_empty(C0),
@@ -668,28 +661,38 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
             set.is_empty(CSharp0),
             set.is_empty(Erlang0)
         then
-            SrcForeignImportModules = c_j_cs_e_fims(
-                SrcC, SrcJava, SrcCSharp, SrcErlang),
-            IntForeignImportModules = c_j_cs_e_fims(
-                IntC, IntJava, IntCSharp, IntErlang),
-            OptForeignImportModules = c_j_cs_e_fims(
-                OptC, OptJava, OptCSharp, OptErlang),
-            IntForOptForeignImportModules = c_j_cs_e_fims(
-                IntForOptC, IntForOptJava, IntForOptCSharp,
-                IntForOptErlang),
-            C = set.union_list([SrcC, IntC, OptC, IntForOptC]),
-            Java= set.union_list([SrcJava, IntJava, OptJava, IntForOptJava]),
-            CSharp = set.union_list([
-                SrcCSharp, IntCSharp, OptCSharp, IntForOptCSharp]),
-            Erlang = set.union_list([
-                SrcErlang, IntErlang, OptErlang, IntForOptErlang]),
-            ForeignImportModules = c_j_cs_e_fims(C, Java, CSharp, Erlang)
+            AugCompUnit = aug_compilation_unit(_, _, _, _ParseTreeModuleSrc,
+                AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+                PlainOpts, _TransOpts, IntForOptSpecs),
+            some [!FIMSpecs] (
+                set.init(!:FIMSpecs),
+                map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
+                    AncestorIntSpecs, !FIMSpecs),
+                map.foldl_values(gather_fim_specs_in_direct_int_spec,
+                    DirectIntSpecs, !FIMSpecs),
+                map.foldl_values(gather_fim_specs_in_indirect_int_spec,
+                    IndirectIntSpecs, !FIMSpecs),
+                map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
+                    PlainOpts, !FIMSpecs),
+                % .trans_opt files cannot contain FIMs.
+                map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
+                    IntForOptSpecs, !FIMSpecs),
+                % We restrict the set of FIMs to those that are valid
+                % for the current backend. This preserves old behavior,
+                % and makes sense in that the code below generates mmake rules
+                % only for the current backend, but it would be nice if we
+                % could generate dependency rules for *all* the backends.
+                globals.get_backend_foreign_languages(Globals, BackendLangs),
+                IsBackendFIM =
+                    ( pred(FIMSpec::in) is semidet :-
+                        list.member(FIMSpec ^ fimspec_lang, BackendLangs)
+                    ),
+                set.filter(IsBackendFIM, !.FIMSpecs, FIMSpecs)
+            )
         else
-            ForeignImportModules = ForeignImportModules0
+            FIMSpecs = get_all_fim_specs(ForeignImportModules0)
         )
     ),
-
-    ForeignImports = get_all_fim_specs(ForeignImportModules),
 
     % Handle dependencies introduced by
     % `:- pragma foreign_import_module' declarations.
@@ -702,7 +705,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
             % XXX We can't include mercury.dll as mmake can't find it,
             % but we know that it exists.
             ImportModuleName \= unqualified("mercury")
-        ), ForeignImports, ForeignImportedModuleNames),
+        ), FIMSpecs, ForeignImportedModuleNames),
     ( if set.is_empty(ForeignImportedModuleNames) then
         true
     else
@@ -838,6 +841,86 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         add_mmake_entries(MmakeRulesPattern, !MmakeFile)
     ).
 
+%---------------------------------------------------------------------------%
+
+:- pred gather_fim_specs_in_ancestor_int_spec(ancestor_int_spec::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
+
+gather_fim_specs_in_ancestor_int_spec(AncestorIntSpec, !FIMSpecs) :-
+    AncestorIntSpec = ancestor_int0(ParseTreeInt0, _ReadWhy0),
+    gather_fim_specs_in_parse_tree_int0(ParseTreeInt0, !FIMSpecs).
+
+:- pred gather_fim_specs_in_direct_int_spec(direct_int_spec::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
+
+gather_fim_specs_in_direct_int_spec(DirectIntSpec, !FIMSpecs) :-
+    (
+        DirectIntSpec = direct_int1(ParseTreeInt1, _ReadWhy1),
+        gather_fim_specs_in_parse_tree_int1(ParseTreeInt1, !FIMSpecs)
+    ;
+        DirectIntSpec = direct_int3(_ParseTreeInt3, _ReadWhy3)
+        % .int3 files cannot contain FIMs.
+    ).
+
+:- pred gather_fim_specs_in_indirect_int_spec(indirect_int_spec::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
+
+gather_fim_specs_in_indirect_int_spec(IndirectIntSpec, !FIMSpecs) :-
+    (
+        IndirectIntSpec = indirect_int2(ParseTreeInt2, _ReadWhy2),
+        gather_fim_specs_in_parse_tree_int2(ParseTreeInt2, !FIMSpecs)
+    ;
+        IndirectIntSpec = indirect_int3(_ParseTreeInt3, _ReadWhy3)
+        % .int3 files cannot contain FIMs.
+    ).
+
+:- pred gather_fim_specs_in_int_for_opt_spec(int_for_opt_spec::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
+
+gather_fim_specs_in_int_for_opt_spec(IntForOptSpec, !FIMSpecs) :-
+    (
+        IntForOptSpec = for_opt_int0(ParseTreeInt0, _ReadWhy0),
+        gather_fim_specs_in_parse_tree_int0(ParseTreeInt0, !FIMSpecs)
+    ;
+        IntForOptSpec = for_opt_int1(ParseTreeInt1, _ReadWhy1),
+        gather_fim_specs_in_parse_tree_int1(ParseTreeInt1, !FIMSpecs)
+    ;
+        IntForOptSpec = for_opt_int2(ParseTreeInt2, _ReadWhy2),
+        gather_fim_specs_in_parse_tree_int2(ParseTreeInt2, !FIMSpecs)
+    ).
+
+:- pred gather_fim_specs_in_parse_tree_int0(parse_tree_int0::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
+
+gather_fim_specs_in_parse_tree_int0(ParseTreeInt0, !FIMSpecs) :-
+    IntFIMS = ParseTreeInt0 ^ pti0_int_fims,
+    ImpFIMS = ParseTreeInt0 ^ pti0_imp_fims,
+    !:FIMSpecs = set.union_list([IntFIMS, ImpFIMS, !.FIMSpecs]).
+
+:- pred gather_fim_specs_in_parse_tree_int1(parse_tree_int1::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
+
+gather_fim_specs_in_parse_tree_int1(ParseTreeInt1, !FIMSpecs) :-
+    IntFIMS = ParseTreeInt1 ^ pti1_int_fims,
+    ImpFIMS = ParseTreeInt1 ^ pti1_imp_fims,
+    !:FIMSpecs = set.union_list([IntFIMS, ImpFIMS, !.FIMSpecs]).
+
+:- pred gather_fim_specs_in_parse_tree_int2(parse_tree_int2::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
+
+gather_fim_specs_in_parse_tree_int2(ParseTreeInt2, !FIMSpecs) :-
+    IntFIMS = ParseTreeInt2 ^ pti2_int_fims,
+    ImpFIMS = ParseTreeInt2 ^ pti2_imp_fims,
+    !:FIMSpecs = set.union_list([IntFIMS, ImpFIMS, !.FIMSpecs]).
+
+:- pred gather_fim_specs_in_parse_tree_plain_opt(parse_tree_plain_opt::in,
+    set(fim_spec)::in, set(fim_spec)::out) is det.
+
+gather_fim_specs_in_parse_tree_plain_opt(ParseTreePlainOpt, !FIMSpecs) :-
+    set.union(ParseTreePlainOpt ^ ptpo_fims, !FIMSpecs).
+
+%---------------------------------------------------------------------------%
+
 :- pred gather_nested_deps(globals::in, module_name::in, list(module_name)::in,
     string::in, mmake_entry::out, io::di, io::uo) is det.
 
@@ -958,8 +1041,7 @@ generate_dependencies_write_d_file(Globals, Dep,
         module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
         get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
             IndirectOptDepsMap),
-        set.sorted_list_to_set(multi_map.keys(IndirectOptDepsMap),
-            IndirectOptDeps),
+        one_or_more_map.keys_as_set(IndirectOptDepsMap, IndirectOptDeps),
 
         globals.lookup_bool_option(Globals, intermodule_optimization,
             Intermod),
@@ -977,38 +1059,32 @@ generate_dependencies_write_d_file(Globals, Dep,
             get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDepsMap),
             get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
                 IndirectDepsMap),
-            set.sorted_list_to_set(multi_map.keys(IndirectDepsMap),
-                IndirectDeps)
+            one_or_more_map.keys_as_set(IndirectDepsMap, IndirectDeps)
         ),
 
         % Assume we need the `.mh' files for all imported modules
         % (we will if they define foreign types).
         % XXX This overly conservative assumption can lead to a lot of
         % unnecessary recompilations.
-        ForeignImportModules0 = init_foreign_import_modules,
+        CJCsEFIMs0 = init_foreign_import_modules,
         globals.get_target(Globals, Target),
         (
             Target = target_c,
-            ForeignImportModules =
-                ForeignImportModules0 ^ fim_c := IndirectOptDeps
+            CJCsEFIMs = CJCsEFIMs0 ^ fim_c := IndirectOptDeps
         ;
             Target = target_csharp,
-            ForeignImportModules =
-                ForeignImportModules0 ^ fim_csharp := IndirectOptDeps
+            CJCsEFIMs = CJCsEFIMs0 ^ fim_csharp := IndirectOptDeps
         ;
             Target = target_java,
-            ForeignImportModules =
-                ForeignImportModules0 ^ fim_java := IndirectOptDeps
+            CJCsEFIMs = CJCsEFIMs0 ^ fim_java := IndirectOptDeps
         ;
             Target = target_erlang,
-            ForeignImportModules =
-                ForeignImportModules0 ^ fim_erlang := IndirectOptDeps
+            CJCsEFIMs = CJCsEFIMs0 ^ fim_erlang := IndirectOptDeps
         ),
         module_and_imports_set_int_deps_map(IntDepsMap, !ModuleAndImports),
         module_and_imports_set_imp_deps_map(ImpDepsMap, !ModuleAndImports),
         module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports),
-        module_and_imports_set_foreign_import_modules(ForeignImportModules,
-            !ModuleAndImports),
+        module_and_imports_set_c_j_cs_e_fims(CJCsEFIMs, !ModuleAndImports),
 
         % Compute the trans-opt dependencies for this module. To avoid
         % the possibility of cycles, each module is only allowed to depend
@@ -1040,7 +1116,7 @@ generate_dependencies_write_d_file(Globals, Dep,
     ).
 
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
-    multi_map(module_name, prog_context)::out) is det.
+    module_names_contexts::out) is det.
 
 get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
     digraph.add_vertex(ModuleName, ModuleKey, DepsGraph0, DepsGraph),
@@ -1048,9 +1124,10 @@ get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
     AddKeyDep =
         ( pred(Key::in, Deps0::in, Deps::out) is det :-
             digraph.lookup_vertex(DepsGraph, Key, Dep),
-            multi_map.add(Dep, term.context_init, Deps0, Deps)
+            one_or_more_map.add(Dep, term.context_init, Deps0, Deps)
         ),
-    sparse_bitset.foldl(AddKeyDep, DepsKeysSet, multi_map.init, Dependencies).
+    sparse_bitset.foldl(AddKeyDep, DepsKeysSet,
+        one_or_more_map.init, Dependencies).
 
 %---------------------------------------------------------------------------%
 
@@ -1121,7 +1198,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         ( pred(Module::in) is semidet :-
             map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
             module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
-            not multi_map.is_empty(ChildrenMap)
+            not one_or_more_map.is_empty(ChildrenMap)
         ), Modules),
 
     make_module_file_names_with_suffix(Globals, "", ModulesWithSubModules,
@@ -1859,7 +1936,7 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         some [ModuleAndImports] (
             map.member(DepsMap, _, deps(_, ModuleAndImports)),
             module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
-            not multi_map.is_empty(ChildrenMap)
+            not one_or_more_map.is_empty(ChildrenMap)
         )
     then
         % The `.int0' files only need to be installed with

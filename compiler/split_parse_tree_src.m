@@ -101,8 +101,16 @@
 
                 split_nested_info,
 
-                cord(raw_item_block)
-                % The contents of the module.
+                cord(raw_item_block),
+                % The contents of the module, at least as much as of it
+                % as we have seen so far (since nested modules may be included
+                % twice, once for their interface and once for their
+                % implementation), and except for the item_includes
+                % for any modules nested inside, which ....
+
+                submodule_include_info_map 
+                % ... should be derived from this field, once we have seen
+                % all of this module's pieces.
             ).
 
 :- type split_module_map == map(module_name, split_module_entry).
@@ -233,26 +241,38 @@ create_split_compilation_units_depth_first(ModuleName,
         Entry = split_included(_),
         map.delete(ModuleName, !SubModulesMap)
     ;
-        Entry = split_nested(NestedInfo, RawItemBlockCord),
+        Entry = split_nested(NestedInfo, RawItemBlockCord0, SubInclInfoMap),
+        add_includes_for_nested_submodules(ModuleName, SubInclInfoMap,
+            RawItemBlockCord0, RawItemBlockCord),
+        RawItemBlocks = cord.list(RawItemBlockCord),
         (
             ( NestedInfo = split_nested_top_module(Context)
             ; NestedInfo = split_nested_only_int(Context)
             ; NestedInfo = split_nested_int_imp(Context, _)
             ),
-            RawItemBlocks = cord.list(RawItemBlockCord),
             check_interface_blocks_for_abstract_instances(RawItemBlocks,
                 !Specs),
             RawCompUnit = raw_compilation_unit(ModuleName, Context,
                 RawItemBlocks),
             !:RawCompUnitsCord = cord.snoc(!.RawCompUnitsCord, RawCompUnit)
         ;
-            NestedInfo = split_nested_empty(_)
+            NestedInfo = split_nested_empty(Context),
+            % This module may contain include declarations (added by
+            % add_includes_for_nested_submodules above) even though
+            % it contains no other kinds of declarations, or code.
+            % If we don't return this empty raw compilation unit, the
+            % rest of the compiler won't know that e.g. it needs to create
+            % interface files for the empty module. That would lead to
+            % the failure of the submodule/deeply_nested test case.
+            RawCompUnit = raw_compilation_unit(ModuleName, Context,
+                RawItemBlocks),
+            !:RawCompUnitsCord = cord.snoc(!.RawCompUnitsCord, RawCompUnit)
         ;
             NestedInfo = split_nested_only_imp(Context),
             Pieces = [words("Submodule"), qual_sym_name(ModuleName),
                 words("is missing its interface section."), nl],
-            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ),
         ( if map.remove(ModuleName, SubModulesCord, !SubModulesMap) then
@@ -314,9 +334,9 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
         !SubModulesMap),
 
     SubModuleSectionAncestors = sa_parent(ModuleName, ModuleAncestors),
-    split_components_discover_submodules(ModuleComponents,
+    split_components_discover_submodules(ModuleName, ModuleComponents,
         SubModuleSectionAncestors, !SplitModuleMap, !SubModulesMap,
-        cord.init, ItemBlockCord0, !Specs),
+        map.init, SubInclInfoMap0, cord.init, ItemBlockCord0, !Specs),
     (
         ModuleAncestors = ma_no_parent,
         ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
@@ -329,7 +349,7 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                 OldPieces = [words("This is the location of the"),
                     decl("include_module"), words("declaration."), nl]
             ;
-                OldEntry = split_nested(SplitNested, _),
+                OldEntry = split_nested(SplitNested, _, _),
                 OldContext = split_nested_info_get_context(SplitNested),
                 Pieces = [words("The top level module"),
                     qual_sym_name(ModuleName),
@@ -338,12 +358,12 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             ),
             Msg = simplest_msg(Context, Pieces),
             OldMsg = simplest_msg(OldContext, OldPieces),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
                 [Msg, OldMsg]),
             !:Specs = [Spec | !.Specs]
         else
             Entry = split_nested(split_nested_top_module(Context),
-                ItemBlockCord0),
+                ItemBlockCord0, SubInclInfoMap0),
             map.det_insert(ModuleName, Entry, !SplitModuleMap)
         )
     ;
@@ -352,7 +372,6 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
         SectionAncestors = sa_parent(ParentModuleName, _),
         ItemBlocks = cord.list(ItemBlockCord0),
         get_raw_item_block_section_kinds(ItemBlocks, no, SeenInt, no, SeenImp),
-        ItemBlockCord = cord.from_list(ItemBlocks),
         (
             SeenInt = no,
             SeenImp = no,
@@ -363,7 +382,8 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                     dup_empty, ParentModuleName, OldEntry, !Specs)
             else
                 SplitNested = split_nested_empty(Context),
-                Entry = split_nested(SplitNested, ItemBlockCord),
+                Entry = split_nested(SplitNested, ItemBlockCord0,
+                    SubInclInfoMap0),
                 map.det_insert(ModuleName, Entry, !SplitModuleMap)
             )
         ;
@@ -371,82 +391,99 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             SeenImp = no,
             ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
                 ( if
-                    OldEntry = split_nested(OldSplitNested, OldItemBlockCord),
+                    OldEntry = split_nested(OldSplitNested, OldItemBlockCord,
+                        OldSubInclInfoMap),
                     OldSplitNested = split_nested_only_imp(ImpContext)
                 then
                     NewSplitNested = split_nested_int_imp(Context, ImpContext),
-                    NewItemBlockCord = ItemBlockCord ++ OldItemBlockCord,
-                    NewEntry = split_nested(NewSplitNested, NewItemBlockCord),
+                    NewItemBlockCord = ItemBlockCord0 ++ OldItemBlockCord,
+                    map.union(combine_submodule_include_infos,
+                        SubInclInfoMap0, OldSubInclInfoMap, NewSubInclInfoMap),
+                    NewEntry = split_nested(NewSplitNested, NewItemBlockCord,
+                        NewSubInclInfoMap),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
                 else if
-                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord),
+                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord,
+                        _OldSubInclInfoMap),
                     OldSplitNested = split_nested_empty(EmptyContext)
                 then
                     warn_duplicate_of_empty_submodule(ModuleName,
                         ParentModuleName, Context, EmptyContext, !Specs),
-                    SplitNested = split_nested_only_int(Context),
-                    NewEntry = split_nested(SplitNested, ItemBlockCord),
+                    NewSplitNested = split_nested_only_int(Context),
+                    NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                        SubInclInfoMap0),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
                 else
                     report_duplicate_submodule(ModuleName, Context,
                         dup_int_only, ParentModuleName, OldEntry, !Specs)
                 )
             else
-                SplitNested = split_nested_only_int(Context),
-                Entry = split_nested(SplitNested, ItemBlockCord),
-                map.det_insert(ModuleName, Entry, !SplitModuleMap)
+                NewSplitNested = split_nested_only_int(Context),
+                NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                    SubInclInfoMap0),
+                map.det_insert(ModuleName, NewEntry, !SplitModuleMap)
             )
         ;
             SeenInt = no,
             SeenImp = yes,
             ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
                 ( if
-                    OldEntry = split_nested(OldSplitNested, OldItemBlockCord),
+                    OldEntry = split_nested(OldSplitNested, OldItemBlockCord,
+                        OldSubInclInfoMap),
                     OldSplitNested = split_nested_only_int(IntContext)
                 then
                     NewSplitNested = split_nested_int_imp(IntContext, Context),
-                    NewItemBlockCord = OldItemBlockCord ++ ItemBlockCord,
-                    NewEntry = split_nested(NewSplitNested, NewItemBlockCord),
+                    NewItemBlockCord = OldItemBlockCord ++ ItemBlockCord0,
+                    map.union(combine_submodule_include_infos,
+                        SubInclInfoMap0, OldSubInclInfoMap, NewSubInclInfoMap),
+                    NewEntry = split_nested(NewSplitNested, NewItemBlockCord,
+                        NewSubInclInfoMap),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
                 else if
-                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord),
+                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord,
+                        _OldSubInclInfoMap),
                     OldSplitNested = split_nested_empty(EmptyContext)
                 then
                     warn_duplicate_of_empty_submodule(ModuleName,
                         ParentModuleName, Context, EmptyContext, !Specs),
-                    SplitNested = split_nested_only_imp(Context),
-                    NewEntry = split_nested(SplitNested, ItemBlockCord),
+                    NewSplitNested = split_nested_only_imp(Context),
+                    NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                        SubInclInfoMap0),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
                 else
                     report_duplicate_submodule(ModuleName, Context,
                         dup_imp_only, ParentModuleName, OldEntry, !Specs)
                 )
             else
-                SplitNested = split_nested_only_imp(Context),
-                Entry = split_nested(SplitNested, ItemBlockCord),
-                map.det_insert(ModuleName, Entry, !SplitModuleMap)
+                NewSplitNested = split_nested_only_imp(Context),
+                NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                    SubInclInfoMap0),
+                map.det_insert(ModuleName, NewEntry, !SplitModuleMap)
             )
         ;
             SeenInt = yes,
             SeenImp = yes,
             ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
                 ( if
-                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord),
+                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord,
+                        _OldSubInclInfoMap),
                     OldSplitNested = split_nested_empty(EmptyContext)
                 then
                     warn_duplicate_of_empty_submodule(ModuleName,
                         ParentModuleName, Context, EmptyContext, !Specs),
-                    SplitNested = split_nested_int_imp(Context, Context),
-                    NewEntry = split_nested(SplitNested, ItemBlockCord),
+                    NewSplitNested = split_nested_int_imp(Context, Context),
+                    NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                        SubInclInfoMap0),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
                 else
                     report_duplicate_submodule(ModuleName, Context,
                         dup_int_imp, ParentModuleName, OldEntry, !Specs)
                 )
             else
-                SplitNested = split_nested_int_imp(Context, Context),
-                Entry = split_nested(SplitNested, ItemBlockCord),
-                map.det_insert(ModuleName, Entry, !SplitModuleMap)
+                NewSplitNested = split_nested_int_imp(Context, Context),
+                NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                    SubInclInfoMap0),
+                map.det_insert(ModuleName, NewEntry, !SplitModuleMap)
             )
         )
     ).
@@ -458,7 +495,7 @@ warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
     Pieces = [words("Warning: submodule"), qual_sym_name(ModuleName),
         words("of"), words("module"), qual_sym_name(ParentModuleName),
         words("is empty."), nl],
-    Spec = simplest_spec(severity_warning, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_warning, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -474,7 +511,7 @@ warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
     Msg1 = simplest_msg(Context, Pieces1),
     Pieces2 = [words("This is the location of the empty submodule,"), nl],
     Msg2 = simplest_msg(EmptyContext, Pieces2),
-    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds,
+    Spec = error_spec($pred, severity_warning, phase_parse_tree_to_hlds,
         [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
@@ -501,10 +538,10 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             words("of that previous declaration."), nl],
         Msg = simplest_msg(Context, Pieces),
         OldMsg = simplest_msg(OldContext, OldPieces),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
             [Msg, OldMsg])
     ;
-        OldEntry = split_nested(SplitNested, _),
+        OldEntry = split_nested(SplitNested, _, _),
         (
             DupSection = dup_empty,
             OldContext = split_nested_info_get_context(SplitNested),
@@ -516,7 +553,7 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             OldPieces = [words("That previous declaration was here."), nl],
             Msg = simplest_msg(Context, Pieces),
             OldMsg = simplest_msg(OldContext, OldPieces),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
                 [Msg, OldMsg])
         ;
             DupSection = dup_int_only,
@@ -619,7 +656,7 @@ report_duplicate_submodule_vs_top(ModuleName, Context, ParentModuleName,
         suffix(":"), nl,
         words("error: nested submodule"), qual_sym_name(ModuleName),
         words("has the same name as its ancestor module."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces).
 
 :- pred report_duplicate_submodule_one_section_2(module_name::in,
@@ -636,7 +673,7 @@ report_duplicate_submodule_one_section_2(ModuleName, Context,
         words("was also declarated here."), nl],
     Msg = simplest_msg(Context, Pieces),
     OldMsg = simplest_msg(OldContext, OldPieces),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
         [Msg, OldMsg]).
 
 :- pred report_duplicate_submodule_both_sections(module_name::in,
@@ -655,7 +692,7 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
             words("were also declarated here."), nl],
         Msg = simplest_msg(Context, Pieces),
         OldMsg = simplest_msg(OldIntContext, OldPieces),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
             [Msg, OldMsg])
     else
         OldIntPieces = [words("However, its interface"),
@@ -665,7 +702,7 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
         Msg = simplest_msg(Context, Pieces),
         OldIntMsg = simplest_msg(OldIntContext, OldIntPieces),
         OldImpMsg = simplest_msg(OldImpContext, OldImpPieces),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
             [Msg, OldIntMsg, OldImpMsg])
     ).
 
@@ -687,32 +724,38 @@ get_raw_item_block_section_kinds([ItemBlock | ItemBlocks],
 
 %---------------------------------------------------------------------------%
 
-:- pred split_components_discover_submodules(list(module_component)::in,
-    section_ancestors::in,
+:- pred split_components_discover_submodules(module_name::in,
+    list(module_component)::in, section_ancestors::in,
     split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
+    submodule_include_info_map::in, submodule_include_info_map::out,
     cord(raw_item_block)::in, cord(raw_item_block)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-split_components_discover_submodules([], _,
-        !SplitModuleMap, !SubModulesMap, !RawItemBlockCord, !Specs).
-split_components_discover_submodules([Component | Components],
+split_components_discover_submodules(_, [],
+        _, !SplitModuleMap, !SubModulesMap,
+        !SubInclInfoMap, !RawItemBlockCord, !Specs).
+split_components_discover_submodules(ModuleName, [Component | Components],
         SectionAncestors, !SplitModuleMap, !SubModulesMap,
-        !RawItemBlockCord, !Specs) :-
-    split_component_discover_submodules(Component, SectionAncestors,
-        !SplitModuleMap, !SubModulesMap, !RawItemBlockCord, !Specs),
-    split_components_discover_submodules(Components, SectionAncestors,
-        !SplitModuleMap, !SubModulesMap, !RawItemBlockCord, !Specs).
+        !SubInclInfoMap, !RawItemBlockCord, !Specs) :-
+    split_component_discover_submodules(ModuleName, Component,
+        SectionAncestors, !SplitModuleMap, !SubModulesMap,
+        !SubInclInfoMap, !RawItemBlockCord, !Specs),
+    split_components_discover_submodules(ModuleName, Components,
+        SectionAncestors, !SplitModuleMap, !SubModulesMap,
+        !SubInclInfoMap, !RawItemBlockCord, !Specs).
 
-:- pred split_component_discover_submodules(module_component::in,
-    section_ancestors::in,
+:- pred split_component_discover_submodules(module_name::in,
+    module_component::in, section_ancestors::in,
     split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
+    submodule_include_info_map::in, submodule_include_info_map::out,
     cord(raw_item_block)::in, cord(raw_item_block)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-split_component_discover_submodules(Component, SectionAncestors,
-        !SplitModuleMap, !SubModulesMap, !RawItemBlockCord, !Specs) :-
+split_component_discover_submodules(ModuleName, Component, SectionAncestors,
+        !SplitModuleMap, !SubModulesMap, !SubInclInfoMap,
+        !RawItemBlockCord, !Specs) :-
     (
         Component = mc_section(ComponentModuleName, SectionKind,
             SectionContext, IncludesCord, AvailsCord, FIMsCord, ItemsCord),
@@ -756,22 +799,31 @@ split_component_discover_submodules(Component, SectionAncestors,
                     words("the interface section of"), words(PorA),
                     words("module"), qual_sym_name(ProblemAncestor),
                     suffix("."), nl],
-                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                    SectionContext, Pieces),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, SectionContext, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         )
     ;
         Component = mc_nested_submodule(ComponentModuleName, SectionKind,
             SectionContext, NestedModuleParseTree),
-        % Replace the nested submodule with an `include_module' declaration.
         NestedModuleParseTree = parse_tree_src(NestedModuleName,
             NestedModuleContext, _NestedModuleComponents),
-        NestedIncludeItem =
-            item_include(NestedModuleName, NestedModuleContext, -1),
-        RawItemBlock = item_block(ComponentModuleName, SectionKind,
-            [NestedIncludeItem], [], [], []),
-        !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, RawItemBlock),
+        expect(unify(ModuleName, ComponentModuleName), $pred,
+            "ModuleName != ComponentModuleName"),
+        ( if NestedModuleName = qualified(ComponentModuleName, _) then
+            true
+        else
+            unexpected($pred,
+                "ComponentModuleName is not NestedModuleName's parent")
+        ),
+        NewEntry = submodule_include_info(SectionKind, NestedModuleContext),
+        ( if map.search(!.SubInclInfoMap, NestedModuleName, OldEntry) then
+            combine_submodule_include_infos(OldEntry, NewEntry, Entry),
+            map.det_update(NestedModuleName, Entry, !SubInclInfoMap)
+        else
+            map.det_insert(NestedModuleName, NewEntry, !SubInclInfoMap)
+        ),
 
         % Discover any submodules nested inside NestedModuleParseTree.
         NestedModuleAncestors = ma_parent(SectionKind, SectionContext,
@@ -799,7 +851,7 @@ discover_included_submodules([Include | Includes], SectionAncestors,
             suffix(","),
             words("included here as separate submodule,")],
         (
-            OldEntry = split_nested(OldSplitNested, _),
+            OldEntry = split_nested(OldSplitNested, _, _),
             OldContext = split_nested_info_get_context(OldSplitNested),
             Pieces2 = [words("was previously declared to be"),
                 words("a nested submodule."), nl]
@@ -813,7 +865,7 @@ discover_included_submodules([Include | Includes], SectionAncestors,
             words("of that previous declaration."), nl],
         Msg = simplest_msg(Context, Pieces1 ++ Pieces2),
         OldMsg = simplest_msg(OldContext, OldPieces),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
             [Msg, OldMsg]),
         !:Specs = [Spec | !.Specs]
     else
@@ -825,6 +877,99 @@ discover_included_submodules([Include | Includes], SectionAncestors,
     ),
     discover_included_submodules(Includes, SectionAncestors,
         !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs).
+
+%---------------------------------------------------------------------------%
+
+:- type submodule_include_info
+    --->    submodule_include_info(
+                % Should be submodule be include in its parent's interface
+                % section, or in its implementation section? If it is included
+                % in both, we generate an item_include for it only in the
+                % interface section. This reflects the fact that the submodule
+                % is visible to clients of the parent module, but avoids
+                % a compiler error message about the submodule being included
+                % twice.
+                module_section,
+
+                % The context we should generate for that item_include.
+                prog_context
+            ).
+
+:- type submodule_include_info_map == map(module_name, submodule_include_info).
+
+    % If the two entries differ in section, return the entry for the interface.
+    % Otherwise, return the entry with the earlier context.
+    %
+:- pred combine_submodule_include_infos(
+    submodule_include_info::in, submodule_include_info::in,
+    submodule_include_info::out) is det.
+
+combine_submodule_include_infos(EntryA, EntryB, Entry) :-
+    EntryA = submodule_include_info(SectionA, ContextA),
+    EntryB = submodule_include_info(SectionB, ContextB),
+    ( if SectionA = ms_interface, SectionB = ms_implementation then
+        Entry = EntryA
+    else if SectionA = ms_implementation, SectionB = ms_interface then
+        Entry = EntryB
+    else
+        % The conditions above test for the only two possible ways
+        % these could be different.
+        expect(unify(SectionA, SectionB), $pred, "SectionA != SectionB"),
+        compare(CmpResult, ContextA, ContextB),
+        (
+            CmpResult = (<),
+            Entry = EntryA
+        ;
+            ( CmpResult = (=)
+            ; CmpResult = (>)
+            ),
+            Entry = EntryB
+        )
+    ).
+
+:- pred add_includes_for_nested_submodules(module_name::in,
+    submodule_include_info_map::in,
+    cord(raw_item_block)::in, cord(raw_item_block)::out) is det.
+
+add_includes_for_nested_submodules(ModuleName, SubInclInfoMap,
+        !RawItemBlockCord) :-
+    map.foldl2(submodule_include_info_map_to_item_includes_acc, SubInclInfoMap,
+        [], RevIntIncludes, [], RevImpIncludes),
+    list.reverse(RevIntIncludes, IntIncludes),
+    list.reverse(RevImpIncludes, ImpIncludes),
+    (
+        IntIncludes = []
+    ;
+        IntIncludes = [_ | _],
+        IntItemBlock = item_block(ModuleName, ms_interface, IntIncludes,
+            [], [], []),
+        !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, IntItemBlock)
+    ),
+    (
+        ImpIncludes = []
+    ;
+        ImpIncludes = [_ | _],
+        ImpItemBlock = item_block(ModuleName, ms_implementation, ImpIncludes,
+            [], [], []),
+        !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, ImpItemBlock)
+    ).
+
+:- pred submodule_include_info_map_to_item_includes_acc(
+    module_name::in, submodule_include_info::in,
+    list(item_include)::in, list(item_include)::out,
+    list(item_include)::in, list(item_include)::out) is det.
+
+submodule_include_info_map_to_item_includes_acc(ModuleName, SubInclInfo,
+        !RevIntIncludes, !RevImpIncludes) :-
+    SubInclInfo = submodule_include_info(SectionKind, Context),
+    Incl = item_include(ModuleName, Context, -1),
+    (
+        SectionKind = ms_interface,
+        !:RevIntIncludes = [Incl | !.RevIntIncludes]
+    ;
+        SectionKind = ms_implementation,
+        !:RevImpIncludes = [Incl | !.RevImpIncludes]
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -849,7 +994,7 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
         words("error:"), decl("implementation"),
         words("declaration for submodule"),
         words("occurs in interface section of parent module."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -861,7 +1006,7 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
 report_non_abstract_instance_in_interface(Context, !Specs) :-
     Pieces = [words("Error: non-abstract instance declaration"),
         words("in module interface."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

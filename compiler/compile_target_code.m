@@ -1045,12 +1045,10 @@ compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
     else
         Prefix = "-r:"
     ),
-    module_and_imports_get_foreign_import_modules(ModuleAndImports,
-        ForeignImportModules),
+    module_and_imports_get_c_j_cs_e_fims(ModuleAndImports, CJCsEFIMs),
     ForeignDeps = list.map(
         (func(FI) = fim_spec_module_name_from_module(FI, ModuleName)),
-        set.to_sorted_list(
-            get_all_fim_specs(ForeignImportModules))),
+        set.to_sorted_list(get_all_fim_specs(CJCsEFIMs))),
     module_and_imports_get_int_deps_set(ModuleAndImports, IntDeps),
     module_and_imports_get_imp_deps_set(ModuleAndImports, ImpDeps),
     set.union(IntDeps, ImpDeps, IntImpDeps),

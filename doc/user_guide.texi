@@ -6503,6 +6503,14 @@ if it finds any syntax errors in the program.
 @c an auto-parallelization requested by a feedback file.
 
 @sp 1
+@item --print-errors-warnings-when-generating-interface
+@findex --no-print-errors-warnings-when-generating-interface
+@findex --print-errors-warnings-when-generating-interface
+Print error and/or warning messages about problems with a module
+not just when the module is compiled, but also when its
+interface files are generated, if the problem is visible then.
+
+@sp 1
 @item --no-warn-accumulator-swaps
 @findex --no-warn-accumulator-swaps
 @findex --warn-accumulator-swaps

@@ -13,9 +13,10 @@
 % this module has the task of figuring out which interface files the
 % raw_comp_unit needs either directly or indirectly, and reading them in,
 % adding them to the module_and_imports structure. If intermodule optimization
-% is enabled, then calls to grab_opt_files and maybe grab_trans_optfiles
-% will figure out what .opt and .trans_opt files the compilation unit can use,
-% again either directly or indirectly, and add those to the module_and_imports
+% is enabled, then calls to grab_plain_opt_and_int_for_opt_files and maybe
+% grab_trans_opt_files will figure out what .opt and .trans_opt files
+% the compilation unit can use, again either directly or indirectly,
+% and add those, and the interface files they need, to the module_and_imports
 % structure. When all this is done, the module_and_imports structure
 % will contain an augmented version of the original compilation unit.
 %
@@ -51,9 +52,9 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % grab_imported_modules_augment(Globals, SourceFileName,
+    % grab_qual_imported_modules_augment(Globals, SourceFileName,
     %   SourceFileModuleName, MaybeTimestamp, NestedSubModules, RawCompUnit,
-    %   HaveReadModuleMaps, ModuleAndImports, !IO):
+    %   ModuleAndImports, !HaveReadModuleMaps, !IO):
     %
     % Given the raw CompUnit, one of the modules stored in SourceFileName,
     % read in the private interface files (.int0) for all the parent modules,
@@ -80,14 +81,15 @@
     % generating target language code, but sometimes it may be e.g.
     % generating .opt and .trans_opt files.
     %
-:- pred grab_imported_modules_augment(globals::in, file_name::in,
+:- pred grab_qual_imported_modules_augment(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, set(module_name)::in,
-    raw_compilation_unit::in, have_read_module_maps::in,
-    module_and_imports::out, io::di, io::uo) is det.
+    raw_compilation_unit::in, module_and_imports::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
 
-    % grab_unqual_imported_modules(Globals,
-    %   SourceFileName, SourceFileModuleName, RawCompUnit, ModuleAndImports,
-    %   !IO):
+    % grab_unqual_imported_modules_make_int(Globals,
+    %   SourceFileName, SourceFileModuleName, RawCompUnit,
+    %   ModuleAndImports, !HaveReadModuleMaps, !IO):
     %
     % Similar to grab_imported_modules_augment, but only reads in the
     % unqualified short interfaces (.int3s), and the .int0 files for
@@ -100,22 +102,26 @@
     %
 :- pred grab_unqual_imported_modules_make_int(globals::in,
     file_name::in, module_name::in,
-    raw_compilation_unit::in, module_and_imports::out, io::di, io::uo) is det.
+    raw_compilation_unit::in, module_and_imports::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
 
     % Add the items from the .opt files of imported modules to
     % the items for this module.
     %
-:- pred grab_opt_files(globals::in,
-    module_and_imports::in, module_and_imports::out, bool::out,
+:- pred grab_plain_opt_and_int_for_opt_files(globals::in, bool::out,
+    module_and_imports::in, module_and_imports::out,
+    have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-    % grab_trans_optfiles(Globals, ModuleList, !ModuleAndImports, Error, !IO):
+    % grab_trans_opt_files(Globals, ModuleList, !ModuleAndImports, Error, !IO):
     %
     % Add the items from each of the modules in ModuleList.trans_opt to
     % the items in ModuleAndImports.
     %
-:- pred grab_trans_opt_files(globals::in, list(module_name)::in,
-    module_and_imports::in, module_and_imports::out, bool::out,
+:- pred grab_trans_opt_files(globals::in, list(module_name)::in, bool::out,
+    module_and_imports::in, module_and_imports::out,
+    have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -125,10 +131,12 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.comp_unit_interface.    % undesirable dependency
+:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_module.
 :- import_module parse_tree.prog_data.
@@ -136,7 +144,7 @@
 
 :- import_module cord.
 :- import_module map.
-:- import_module multi_map.
+:- import_module one_or_more_map.
 :- import_module one_or_more.
 :- import_module require.
 :- import_module term.
@@ -145,9 +153,9 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, NestedChildren, RawCompUnit, HaveReadModuleMaps,
-        !:ModuleAndImports, !IO) :-
+grab_qual_imported_modules_augment(Globals, SourceFileName,
+        SourceFileModuleName, MaybeTimestamp, NestedChildren,
+        RawCompUnit, !:ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
     % two predicates in sync.
@@ -161,108 +169,23 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
 
-        get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-            IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems),
-        get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
-        get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
+        get_raw_components(RawItemBlocks, IntIncls, _ImpIncls,
+            _IntAvails, _ImpAvails, _IntFIMs, _ImpFIMs, IntItems, ImpItems),
         get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-            IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
+            _IntImplicitImportNeeds, _IntImpImplicitImportNeeds, Contents),
         Contents = item_contents(ForeignIncludeFilesCord, FactTablesSet,
             LangSet, ForeignExportLangs, HasMain),
-        FactTables = set.to_sorted_list(FactTablesSet),
-
-        Ancestors = get_ancestors(ModuleName),
-        AncestorsSet = set.list_to_set(Ancestors),
-        !:Specs = [],
-        warn_if_import_for_self_or_ancestor(ModuleName, AncestorsSet,
-            IntImportsMap0, !Specs),
-        warn_if_import_for_self_or_ancestor(ModuleName, AncestorsSet,
-            ImpUsesMap0, !Specs),
-        warn_if_import_for_self_or_ancestor(ModuleName, AncestorsSet,
-            ImpImportsMap0, !Specs),
-        warn_if_import_for_self_or_ancestor(ModuleName, AncestorsSet,
-            ImpUsesMap0, !Specs),
-        warn_if_duplicate_use_import_decls(ModuleName, ModuleNameContext,
-            IntImportsMap0, IntImportsMap1, IntUsesMap0, IntUsesMap1,
-            ImpImportsMap0, ImpImportsMap, ImpUsesMap0, ImpUsesMap,
-            IntUsedImpImported, !Specs),
-
-        set.sorted_list_to_set(map.keys(IntImportsMap1), IntImports1),
-        set.sorted_list_to_set(map.keys(IntUsesMap1), IntUses1),
-        set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports1),
-        set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses1),
-        compute_implicit_import_needs(Globals, IntImplicitImportNeeds,
-            IntImplicitImports, IntImplicitUses),
-        compute_implicit_import_needs(Globals, IntImpImplicitImportNeeds,
-            IntImpImplicitImports, IntImpImplicitUses),
-        set.difference(IntImpImplicitImports, IntImplicitImports,
-            ImpImplicitImports),
-        set.difference(IntImpImplicitUses, IntImplicitUses,
-            ImpImplicitUses),
-        set.union(IntImplicitImports, IntImports1, IntImports2),
-        set.union(IntImplicitUses, IntUses1, IntUses2),
-        set.union(ImpImplicitImports, ImpImports1, ImpImports),
-        set.union(ImpImplicitUses, ImpUses1, ImpUses),
         set.to_sorted_list(LangSet, Langs),
         ImplicitFIMs = list.map(make_foreign_import(ModuleName), Langs),
-        SrcIntIncls = IntIncls,
-        SrcIntAvails = IntAvails,
-        SrcIntFIMs = IntFIMs ++ ImplicitFIMs,
-        ( if
-            IntIncls = [],
-            ImpIncls = []
-        then
-            SrcImpIncls = ImpIncls,
-            SrcSubIncls = [],
-            SrcImpAvails = ImpAvails,
-            SrcSubAvails = [],
-            SrcImpFIMs = ImpFIMs,
-            SrcSubFIMs = [],
-            % We are NOT moving instance items from the interface sections
-            % to the implementation section, leaving an abstract version
-            % in the interface section, like we do in the else case.
-            % XXX Why not?
-            SrcIntItems = IntItems,
-            SrcImpItems = ImpItems,
-            SrcSubItems = []
-        else
-            SrcImpIncls = [],
-            SrcSubIncls = ImpIncls,
-            SrcImpAvails = [],
-            SrcSubAvails = ImpAvails,
-            SrcImpFIMs = [],
-            SrcSubFIMs = ImpFIMs,
-            % We are moving instance items from the interface sections
-            % to the implementation section, leaving an abstract version
-            % in the interface section. However, we then also move
-            % every declaration from the implementation section to the
-            % exported-to-submodules section, leaving only the clauses
-            % and clause-like pragmas in the implementation section proper.
-            separate_instance_non_instance(IntItems,
-                IntAbstractInstanceItems, IntInstanceItems,
-                IntNonInstanceItems),
-            split_items_into_clauses_and_decls(ImpItems,
-                [], RevImpClauseItems, [], RevImpDeclItems),
-            list.reverse(RevImpClauseItems, ImpClauseItems),
-            list.reverse(RevImpDeclItems, ImpDeclItems),
-            SrcIntItems = IntAbstractInstanceItems ++ IntNonInstanceItems,
-            SrcImpItems = ImpClauseItems,
-            SrcSubItems = IntInstanceItems ++ ImpDeclItems
-        ),
+        FactTables = set.to_sorted_list(FactTablesSet),
 
-        list.foldl(get_included_modules_in_item_include_acc, IntIncls,
-            multi_map.init, PublicChildren),
-
-        make_and_add_item_block(ModuleName,
-            sms_impl_but_exported_to_submodules,
-            SrcSubIncls, SrcSubAvails, SrcIntFIMs, SrcSubItems,
-            [], SrcItemBlocks0),
-        make_and_add_item_block(ModuleName, sms_implementation,
-            SrcImpIncls, SrcImpAvails, SrcImpFIMs, SrcImpItems,
-            SrcItemBlocks0, SrcItemBlocks1),
-        make_and_add_item_block(ModuleName, sms_interface,
-            SrcIntIncls, SrcIntAvails, SrcSubFIMs, SrcIntItems,
-            SrcItemBlocks1, SrcItemBlocks),
+        make_and_add_item_block(ModuleName, ms_implementation,
+            [], [], ImplicitFIMs, [],
+            RawItemBlocks, RawItemBlocks1),
+        RawCompUnit1 = raw_compilation_unit(ModuleName, ModuleNameContext,
+            RawItemBlocks1),
+        check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit1,
+            ParseTreeModuleSrc, [], ConvertSpecs),
 
         (
             MaybeTimestamp = yes(Timestamp),
@@ -273,13 +196,30 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
             MaybeTimestampMap = no
         ),
 
+        list.foldl(get_included_modules_in_item_include_acc, IntIncls,
+            one_or_more_map.init, PublicChildren),
+
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ModuleName, ModuleNameContext, SrcItemBlocks,
+            ModuleName, ModuleNameContext, ParseTreeModuleSrc,
             PublicChildren, NestedChildren, FactTables,
             ForeignIncludeFilesCord, ForeignExportLangs, HasMain,
             MaybeTimestampMap, !:ModuleAndImports),
+        module_and_imports_add_specs(ConvertSpecs, !ModuleAndImports),
+        !:Specs = [],
 
-        HaveReadModuleMapInt = HaveReadModuleMaps ^ hrmm_int,
+        RCUMap0 = !.HaveReadModuleMaps ^ hrmm_rcu,
+        map.set(ModuleName, RawCompUnit, RCUMap0, RCUMap),
+        !HaveReadModuleMaps ^ hrmm_rcu := RCUMap,
+
+        ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
+        import_and_or_use_map_to_module_name_contexts(ImportUseMap,
+            IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
+            IntUseImpImportMap),
+        map.keys_as_set(IntImportMap, IntImports2),
+        map.keys_as_set(IntUseMap, IntUses2),
+        ImpImports = map.sorted_keys(ImpImportMap),
+        ImpUses = map.sorted_keys(ImpUseMap),
+        IntUseImpImports = map.sorted_keys(IntUseImpImportMap),
 
         % Get the .int0 files of the ancestor modules.
         %
@@ -288,83 +228,57 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         % to be visible in the current module.
         % XXX grab_unqual_imported_modules_make_int treats AncestorImported and
         % AncestorUsed slightly differently from !.IntImported and !.IntUsed.
-        process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
-            "ancestors",
-            make_ims_imported(import_locn_ancestor_int0_interface),
-            make_ims_imported(import_locn_ancestor_int0_implementation),
-            module_and_imports_add_direct_int_item_blocks,
+        Ancestors = get_ancestors(ModuleName),
+        grab_module_int0_files(Globals,
+            "ancestors", rwi0_section,
             Ancestors, IntImports2, IntImports, IntUses2, IntUses,
-            !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
         set.init(!:ImpIndirectImported),
         set.init(!:IntImpIndirectImported),
         set.init(!:ImpImpIndirectImported),
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "int_imported", pik_direct(int123_1, recomp_avail_int_import),
-            make_ims_imported(import_locn_interface),
-            make_ims_abstract_imported,
-            module_and_imports_add_direct_int_item_blocks,
+        grab_module_int1_files(Globals,
+            "int_imported", rwi1_int_import,
             set.to_sorted_list(IntImports),
             !IntIndirectImported, !IntImpIndirectImported,
-            !ModuleAndImports, !IO),
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "imp_imported", pik_direct(int123_1, recomp_avail_imp_import),
-            make_ims_imported(import_locn_implementation),
-            make_ims_abstract_imported,
-            module_and_imports_add_direct_int_item_blocks,
-            set.to_sorted_list(ImpImports),
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int1_files(Globals,
+            "imp_imported", rwi1_imp_import,
+            ImpImports,
             !ImpIndirectImported, !ImpImpIndirectImported,
-            !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `use_module'.
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "int_used", pik_direct(int123_1, recomp_avail_int_use),
-            make_ims_used(import_locn_interface),
-            make_ims_abstract_imported,
-            module_and_imports_add_direct_int_item_blocks,
+        grab_module_int1_files(Globals,
+            "int_used", rwi1_int_use,
             set.to_sorted_list(IntUses),
             !IntIndirectImported, !IntImpIndirectImported,
-            !ModuleAndImports, !IO),
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "imp_used", pik_direct(int123_1, recomp_avail_imp_use),
-            make_ims_used(import_locn_implementation),
-            make_ims_abstract_imported,
-            module_and_imports_add_direct_int_item_blocks,
-            set.to_sorted_list(ImpUses),
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int1_files(Globals,
+            "imp_used", rwi1_imp_use,
+            ImpUses,
             !ImpIndirectImported, !ImpImpIndirectImported,
-            !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "int_used_imp_imported",
-            pik_direct(int123_1, recomp_avail_int_use_imp_import),
-            make_ims_used_and_imported(import_locn_interface),
-            make_ims_abstract_imported,
-            module_and_imports_add_direct_int_item_blocks,
-            set.to_sorted_list(IntUsedImpImported),
+        grab_module_int1_files(Globals,
+            "int_used_imp_imported", rwi1_int_use_imp_import,
+            IntUseImpImports,
             !IntIndirectImported, !IntImpIndirectImported,
-            !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int2 files of the modules imported in .int files.
-        process_module_indirect_interfaces_transitively(Globals,
-            HaveReadModuleMapInt,
-            "int_indirect_imported", pik_indirect(int123_2),
-            make_ims_used(import_locn_interface),
-            make_ims_abstract_imported,
-            module_and_imports_add_indirect_int_item_blocks,
-            !.IntIndirectImported,
-            !IntImpIndirectImported, !ModuleAndImports, !IO),
-        process_module_indirect_interfaces_transitively(Globals,
-            HaveReadModuleMapInt,
-            "imp_indirect_imported", pik_indirect(int123_2),
-            make_ims_used(import_locn_implementation),
-            make_ims_abstract_imported,
-            module_and_imports_add_indirect_int_item_blocks,
-            !.ImpIndirectImported,
-            !ImpImpIndirectImported, !ModuleAndImports, !IO),
+        grab_module_int2_files_transitively(Globals,
+            "int_indirect_imported", rwi2_int_use,
+            !.IntIndirectImported, !IntImpIndirectImported,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int2_files_transitively(Globals,
+            "imp_indirect_imported", rwi2_imp_use,
+            !.ImpIndirectImported, !ImpImpIndirectImported,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int2 files of the modules indirectly imported
         % the implementation sections of .int/.int2 files.
@@ -374,29 +288,27 @@ grab_imported_modules_augment(Globals, SourceFileName, SourceFileModuleName,
         % implementation of indirectly imported modules. The items in these
         % modules shouldn't be visible to typechecking -- they are used for
         % fully expanding equivalence types after the semantic checking passes.
-        process_module_indirect_interfaces_and_impls_transitively(Globals,
-            HaveReadModuleMapInt,
-            "int_imp_indirect_imported", pik_indirect(int123_2),
-            make_ims_abstract_imported, make_ims_abstract_imported,
-            module_and_imports_add_indirect_int_item_blocks,
-            !.IntImpIndirectImported, !ModuleAndImports, !IO),
-        process_module_indirect_interfaces_and_impls_transitively(Globals,
-            HaveReadModuleMapInt,
-            "imp_imp_indirect_imported", pik_indirect(int123_2),
-            make_ims_abstract_imported, make_ims_abstract_imported,
-            module_and_imports_add_indirect_int_item_blocks,
-            !.ImpImpIndirectImported, !ModuleAndImports, !IO),
+        grab_module_int2_files_and_impls_transitively(Globals,
+            "int_imp_indirect_imported", rwi2_abstract,
+            !.IntImpIndirectImported,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int2_files_and_impls_transitively(Globals,
+            "imp_imp_indirect_imported", rwi2_abstract,
+            !.ImpImpIndirectImported,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
-        module_and_imports_get_aug_comp_unit(!.ModuleAndImports, AugCompUnit,
-            _, _),
+        module_and_imports_get_aug_comp_unit(!.ModuleAndImports,
+            AugCompUnit, _, _),
         AllImportedOrUsed = set.union_list([IntImports, IntUses,
-            ImpImports, ImpUses, IntUsedImpImported]),
+            set.list_to_set(ImpImports), set.list_to_set(ImpUses),
+            set.list_to_set(IntUseImpImports)]),
         check_imports_accessibility(AugCompUnit, AllImportedOrUsed, !Specs),
         module_and_imports_add_specs(!.Specs, !ModuleAndImports)
     ).
 
 grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, RawCompUnit, !:ModuleAndImports, !IO) :-
+        SourceFileModuleName, RawCompUnit, !:ModuleAndImports,
+        !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
     % two predicates in sync.
@@ -405,11 +317,25 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 
     some [!IntIndirectImported, !ImpIndirectImported]
     (
+        % XXX We should consider whether we should print _ConvertSpecs,
+        % and set the exit status accordingly. Doing so would diagnose
+        % several kinds of problems earlier than we do now, but whether
+        % people will find that more helpful than annoying cannot be answered
+        % without actually tryng it out.
+        %
+        % XXX For now, we create ParseTreeModuleSrc only to give it to
+        % make_module_and_imports. However, much of the code between here
+        % and the call to that predicate could probably be simplified
+        % if we changed it to work on ParseTreeModuleSrc instead of
+        % RawItemBlocks.
+        check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
+            ParseTreeModuleSrc0, [], _ConvertSpecs),
+
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
 
-        get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-            IntAvails, ImpAvails, IntFIMs0, ImpFIMs, IntItems, ImpItems),
+        get_raw_components(RawItemBlocks, _IntIncls, _ImpIncls,
+            IntAvails, ImpAvails, _IntFIMs0, _ImpFIMs, IntItems, ImpItems),
         get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
         get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
         get_implicits_foreigns_fact_tables(IntItems, ImpItems,
@@ -422,31 +348,18 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             ImpImportsMap0, ImpImportsMap, ImpUsesMap0, ImpUsesMap,
             IntUsedImpImported, [], _Specs),
 
-        set.sorted_list_to_set(map.keys(IntImportsMap1), IntImports0),
-        set.sorted_list_to_set(map.keys(IntUsesMap1), IntUses0),
-        set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports),
-        set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses),
+        map.keys_as_set(IntImportsMap1, IntImports0),
+        map.keys_as_set(IntUsesMap1, IntUses0),
+        map.keys_as_set(ImpImportsMap, ImpImports),
+        map.keys_as_set(ImpUsesMap, ImpUses),
         % XXX SECTION
-        compute_implicit_import_needs(Globals, IntImpImplicitImportNeeds,
+        compute_implicit_avail_needs(Globals, IntImpImplicitImportNeeds,
             ImplicitIntImports, ImplicitIntUses),
         set.union(ImplicitIntImports, IntImports0, IntImports),
         set.union(ImplicitIntUses, IntUses0, IntUses),
-        set.to_sorted_list(LangSet, Langs),
-        (
-            Langs = [],
-            IntFIMs = IntFIMs0
-        ;
-            Langs = [_ | _],
-            ImplicitFIMs = list.map(make_foreign_import(ModuleName), Langs),
-            IntFIMs = ImplicitFIMs ++ IntFIMs0
-        ),
 
-        make_and_add_item_block(ModuleName, sms_implementation,
-            ImpIncls, ImpAvails, ImpFIMs, ImpItems,
-            [], SrcItemBlocks0),
-        make_and_add_item_block(ModuleName, sms_interface,
-            IntIncls, IntAvails, IntFIMs, IntItems,
-            SrcItemBlocks0, SrcItemBlocks),
+        ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_implicit_fim_langs
+            := yes(LangSet),
 
         map.init(PublicChildren),
         set.init(NestedChildren),
@@ -458,277 +371,69 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         MaybeTimestampMap = no,
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ModuleName, ModuleNameContext, SrcItemBlocks,
+            ModuleName, ModuleNameContext, ParseTreeModuleSrc,
             PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
             ForeignExportLangs, HasMain, MaybeTimestampMap,
             !:ModuleAndImports),
 
-        map.init(HaveReadModuleMapInt),
+        RCUMap0 = !.HaveReadModuleMaps ^ hrmm_rcu,
+        map.set(ModuleName, RawCompUnit, RCUMap0, RCUMap),
+        !HaveReadModuleMaps ^ hrmm_rcu := RCUMap,
 
         % Get the .int0 files of the ancestor modules.
         Ancestors = get_ancestors(ModuleName),
-        process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
-            "unqual_ancestors",
-            make_ims_imported(import_locn_ancestor_int0_interface),
-            make_ims_imported(import_locn_ancestor_int0_implementation),
-            module_and_imports_add_direct_int_item_blocks,
+        grab_module_int0_files(Globals,
+            "unqual_ancestors", rwi0_section,
             Ancestors, set.init, AncestorImports, set.init, AncestorUses,
-            !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
         set.init(!:ImpIndirectImported),
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_parent_imported",
-            pik_direct(int123_3, recomp_avail_int_import),
-            make_ims_imported(import_locn_import_by_ancestor),
-            make_ims_int3_implementation,
-            module_and_imports_add_direct_int_item_blocks,
+        grab_module_int3_files(Globals,
+            "unqual_parent_imported", rwi3_direct_ancestor_import,
             set.to_sorted_list(AncestorImports),
-            !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_int_imported",
-            pik_direct(int123_3, recomp_avail_int_import),
-            make_ims_imported(import_locn_interface),
-            make_ims_int3_implementation,
-            module_and_imports_add_direct_int_item_blocks,
+            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int3_files(Globals,
+            "unqual_int_imported", rwi3_direct_int_import,
             set.to_sorted_list(IntImports),
-            !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_imp_imported",
-            pik_direct(int123_3, recomp_avail_imp_import),
-            make_ims_imported(import_locn_implementation),
-            make_ims_int3_implementation,
-            module_and_imports_add_direct_int_item_blocks,
+            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int3_files(Globals,
+            "unqual_imp_imported", rwi3_direct_imp_import,
             set.to_sorted_list(ImpImports),
-            !ImpIndirectImported, set.init, _, !ModuleAndImports, !IO),
+            !ImpIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'.
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_parent_used",
-            pik_direct(int123_3, recomp_avail_int_use),
-            make_ims_used(import_locn_import_by_ancestor),
-            make_ims_int3_implementation,
-            module_and_imports_add_direct_int_item_blocks,
+        grab_module_int3_files(Globals,
+            "unqual_parent_used", rwi3_direct_ancestor_use,
             set.to_sorted_list(AncestorUses),
-            !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_int_used", pik_direct(int123_3, recomp_avail_int_use),
-            make_ims_used(import_locn_interface),
-            make_ims_int3_implementation,
-            module_and_imports_add_direct_int_item_blocks,
+            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int3_files(Globals,
+            "unqual_int_used", rwi3_direct_int_use,
             set.to_sorted_list(IntUses),
-            !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_imp_used", pik_direct(int123_3, recomp_avail_imp_use),
-            make_ims_used(import_locn_implementation),
-            make_ims_int3_implementation,
-            module_and_imports_add_direct_int_item_blocks,
+            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int3_files(Globals,
+            "unqual_imp_used", rwi3_direct_imp_use,
             set.to_sorted_list(ImpUses),
-            !ImpIndirectImported, set.init, _, !ModuleAndImports, !IO),
+            !ImpIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
-        process_module_int123_files(Globals, HaveReadModuleMapInt,
-            "unqual_int_used_imp_imported",
-            pik_direct(int123_3, recomp_avail_int_use_imp_import),
-            make_ims_used_and_imported(import_locn_interface),
-            make_ims_int3_implementation,
-            module_and_imports_add_direct_int_item_blocks,
+        grab_module_int3_files(Globals,
+            "unqual_int_used_imp_imported", rwi3_direct_int_use_imp_import,
             set.to_sorted_list(IntUsedImpImported),
-            !IntIndirectImported, set.init, _,
-            !ModuleAndImports, !IO),
+            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported in .int3 files.
-        process_module_indirect_interfaces_transitively(Globals,
-            HaveReadModuleMapInt,
-            "unqual_int_indirect_imported", pik_indirect(int123_3),
-            make_ims_used(import_locn_interface), make_ims_int3_implementation,
-            module_and_imports_add_indirect_int_item_blocks,
-            !.IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
-        process_module_indirect_interfaces_transitively(Globals,
-            HaveReadModuleMapInt,
-            "unqual_imp_indirect_imported", pik_indirect(int123_3),
-            make_ims_used(import_locn_implementation),
-            make_ims_int3_implementation,
-            module_and_imports_add_indirect_int_item_blocks,
-            !.ImpIndirectImported, set.init, _, !ModuleAndImports, !IO)
+        grab_module_int3_files_transitively(Globals,
+            "unqual_int_indirect_imported", rwi3_indirect_int_use,
+            !.IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        grab_module_int3_files_transitively(Globals,
+            "unqual_imp_indirect_imported", rwi3_indirect_imp_use,
+            !.ImpIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO)
     ).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % separate_instance_non_instance(Items,
-    %   AbstractInstanceItems, InstanceItems, NonInstanceItems):
-    %
-    % Partition Items into
-    % - the items that are instances (return these as InstanceItems), and
-    % - the items that are not instances (return these as NonInstanceItems).
-    %
-    % Return also abstract version of InstanceItems as AbstractInstanceItems.
-    % (See the XXX below.)
-    %
-:- pred separate_instance_non_instance(list(item)::in,
-    list(item)::out, list(item)::out, list(item)::out) is det.
-
-separate_instance_non_instance(Items,
-        AbstractInstanceItems, InstanceItems, NonInstanceItems) :-
-    separate_instance_non_instance_loop(Items,
-        cord.init, AbstractInstanceCord, cord.init, InstanceCord,
-        cord.init, NonInstanceCord),
-    AbstractInstanceItems = cord.list(AbstractInstanceCord),
-    InstanceItems = cord.list(InstanceCord),
-    NonInstanceItems = cord.list(NonInstanceCord).
-
-:- pred separate_instance_non_instance_loop(list(item)::in,
-    cord(item)::in, cord(item)::out,
-    cord(item)::in, cord(item)::out,
-    cord(item)::in, cord(item)::out) is det.
-
-separate_instance_non_instance_loop([], 
-        !AbstractInstanceCord, !InstanceCord, !NonInstanceCord).
-separate_instance_non_instance_loop([Item | Items], 
-        !AbstractInstanceCord, !InstanceCord, !NonInstanceCord) :-
-    ( if Item = item_instance(ItemInstance) then
-        Body = ItemInstance ^ ci_method_instances,
-        (
-            Body = instance_body_concrete(_),
-            AbstractItemInstance =
-                ItemInstance ^ ci_method_instances := instance_body_abstract,
-            AbstractItem = item_instance(AbstractItemInstance),
-            cord.snoc(AbstractItem, !AbstractInstanceCord),
-            cord.snoc(Item, !InstanceCord)
-        ;
-            Body = instance_body_abstract,
-            % Do not put another copy of this item into !InstanceCord.
-            cord.snoc(Item, !AbstractInstanceCord)
-        )
-    else
-        cord.snoc(Item, !NonInstanceCord)
-    ),
-    separate_instance_non_instance_loop(Items,
-        !AbstractInstanceCord, !InstanceCord, !NonInstanceCord).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred split_items_into_clauses_and_decls(list(item)::in,
-    list(item)::in, list(item)::out, list(item)::in, list(item)::out) is det.
-
-split_items_into_clauses_and_decls([], !RevClauses, !RevImpDecls).
-split_items_into_clauses_and_decls([Item | Items],
-        !RevClauses, !RevImpDecls) :-
-    (
-        ( Item = item_clause(_)
-        ; Item = item_foreign_export_enum(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ),
-        !:RevClauses = [Item | !.RevClauses]
-    ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _),
-        AllowedInInterface = pragma_allowed_in_interface(Pragma),
-        (
-            AllowedInInterface = no,
-            !:RevClauses = [Item | !.RevClauses]
-        ;
-            AllowedInInterface = yes,
-            !:RevImpDecls = [Item | !.RevImpDecls]
-        )
-    ;
-        ( Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_foreign_enum(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_instance(_)
-        ; Item = item_mutable(_)
-        ; Item = item_type_repn(_)
-        ),
-        !:RevImpDecls = [Item | !.RevImpDecls]
-    ),
-    split_items_into_clauses_and_decls(Items, !RevClauses, !RevImpDecls).
-
-%---------------------------------------------------------------------------%
-
-    % Warn if a module imports itself, or an ancestor.
-    %
-:- pred warn_if_import_for_self_or_ancestor(module_name::in,
-    set(module_name)::in, module_names_contexts::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-warn_if_import_for_self_or_ancestor(ModuleName, Ancestors,
-        ImportedOrUsedMap, !Specs) :-
-    set.sorted_list_to_set(multi_map.keys(ImportedOrUsedMap), ImportedOrUsed),
-    set.intersect(Ancestors, ImportedOrUsed, ImportedOrUsedAncestors),
-    set.fold(
-        warn_import_for_ancestor_all_contexts(ModuleName, ImportedOrUsedMap),
-        ImportedOrUsedAncestors, !Specs),
-    ( if set.member(ModuleName, ImportedOrUsed) then
-        warn_import_for_self_all_contexts(ModuleName, ImportedOrUsedMap, !Specs)
-    else
-        true
-    ).
-
-%---------------------%
-
-:- pred warn_import_for_ancestor_all_contexts(module_name::in,
-    module_names_contexts::in, module_name::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-warn_import_for_ancestor_all_contexts(ModuleName, ImportOrUseMap,
-        AncestorModuleName, !Specs) :-
-    multi_map.lookup(ImportOrUseMap, AncestorModuleName, Contexts),
-    list.foldl(
-        warn_import_for_ancestor_context(ModuleName, AncestorModuleName),
-        Contexts, !Specs).
-
-:- pred warn_import_for_ancestor_context(module_name::in, module_name::in,
-    prog_context::in,list(error_spec)::in, list(error_spec)::out) is det.
-
-warn_import_for_ancestor_context(ModuleName, AncestorName, Context, !Specs) :-
-    MainPieces = [words("Module"), qual_sym_name(ModuleName),
-        words("imports its own ancestor, module"),
-        qual_sym_name(AncestorName), words("."), nl],
-    VerbosePieces = [words("Every submodule"),
-        words("implicitly imports its ancestors."),
-        words("There is no need to explicitly import them."), nl],
-    Msg = simple_msg(Context,
-        [option_is_set(warn_simple_code, yes,
-            [always(MainPieces),
-            verbose_only(verbose_once, VerbosePieces)])]),
-    Severity = severity_conditional(warn_simple_code, yes,
-        severity_warning, no),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-%---------------------%
-
-:- pred warn_import_for_self_all_contexts(module_name::in,
-    module_names_contexts::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-warn_import_for_self_all_contexts(ModuleName, ImportOrUseMap, !Specs) :-
-    multi_map.lookup(ImportOrUseMap, ModuleName, Contexts),
-    list.foldl(warn_import_for_self_context(ModuleName), Contexts, !Specs).
-
-:- pred warn_import_for_self_context(module_name::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-warn_import_for_self_context(ModuleName, Context, !Specs) :-
-    Pieces = [words("Warning: module"), qual_sym_name(ModuleName),
-        words("imports itself!"), nl],
-    Msg = simple_msg(Context,
-        [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-    Severity = severity_conditional(warn_simple_code, yes,
-        severity_warning, no),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
 %---------------------------------------------------------------------------%
 
     % This predicate ensures that every import_module declaration is checked
@@ -757,8 +462,8 @@ warn_if_duplicate_use_import_decls(ModuleName, Context,
     do_warn_if_duplicate_use_import_decls(ModuleName, Context,
         !.ImpImportedMap, !ImpUsedMap, !Specs),
     IntUsedImpImported = set.intersect(
-        set.sorted_list_to_set(map.keys(!.ImpImportedMap)), 
-        set.sorted_list_to_set(map.keys(!.IntUsedMap))),
+        map.keys_as_set(!.ImpImportedMap),
+        map.keys_as_set(!.IntUsedMap)),
     ( if set.is_empty(IntUsedImpImported) then
         % This is the usual case; optimize it.
         true
@@ -779,8 +484,8 @@ warn_if_duplicate_use_import_decls(ModuleName, Context,
 
 do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
         ImportedMap, !UsedMap, !Specs) :-
-    Imported = set.sorted_list_to_set(map.keys(ImportedMap)),
-    Used0 = set.sorted_list_to_set(map.keys(!.UsedMap)),
+    map.keys_as_set(ImportedMap, Imported),
+    map.keys_as_set(!.UsedMap, Used0),
     set.intersect(Imported, Used0, ImportedAndUsed),
     ( if set.is_empty(ImportedAndUsed) then
         true
@@ -793,11 +498,9 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
             [words(choose_number(ImportedAndUsedList, "is", "are")),
             words("imported using both"), decl("import_module"),
             words("and"), decl("use_module"), words("declarations."), nl],
-        Msg = simple_msg(Context,
-            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-        Severity = severity_conditional(warn_simple_code, yes,
-            severity_warning, no),
-        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+        Spec = conditional_spec($pred, warn_simple_code, yes,
+            severity_warning, phase_parse_tree_to_hlds,
+            [simplest_msg(Context, Pieces)]),
         !:Specs = [Spec | !.Specs],
 
         % Treat the modules with both types of import as if they
@@ -808,418 +511,406 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-% XXX ITEM_LIST Document what the process_xxx_interface predicates do
+% XXX ITEM_LIST Document what the grab_module_int* predicates do
 % more precisely, and document exactly WHY they do each of their actions.
 % I (zs) think it likely that some of the interface files we now read in
 % are read in unnecessarily.
 
-:- type int_section_maker(MS) ==
-    (func(module_name, int_file_kind) = MS).
-
-:- type section_appender(MS) ==
-    (pred(list(item_block(MS)), module_and_imports, module_and_imports)).
-:- inst section_appender ==
-    (pred(in, in, out) is det).
-
 %---------------------------------------------------------------------------%
 
-    % process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
-    %   Why, NewIntSection, NewImpSection, SectionAppend, Ancestors,
-    %   !DirectImports, !DirectUses, !ModuleAndImports, !IO):
-    %
-    % Read the complete private interfaces (.int0 files) for all the modules
-    % in Ancestors. For each ancestor read, append any imports/uses of modules
-    % to the !DirectImports or !DirectUses.
-    %
-    % Append all the item blocks in the read-in files to !ModuleAndImports,
-    % putting all the ms_interface blocks in the int_module_section kind
-    % generated by NewIntSection, and putting all the ms_implementation blocks
-    % in the int_module_section section kind generated by NewImpSection.
-    %
-:- pred process_int0_files_of_ancestor_modules(globals::in,
-    have_read_module_int_map::in, string::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender),
-    list(module_name)::in,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
+:- pred grab_module_int2_files_and_impls_transitively(globals::in,
+    string::in, read_why_int2::in, set(module_name)::in,
+    have_read_module_maps::in, have_read_module_maps::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_int0_files_of_ancestor_modules(_Globals, _HaveReadModuleMapInt, _Why,
-        _NewIntSection, _NewImpSection, _SectionAppend, [],
-        !DirectImports, !DirectUses, !ModuleAndImports, !IO).
-process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt, Why,
-        NewIntSection, NewImpSection, SectionAppend, [Ancestor | Ancestors],
-        !DirectImports, !DirectUses, !ModuleAndImports, !IO) :-
-    module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
-    expect_not(unify(Ancestor, ModuleName), $pred,
-        "module is its own ancestor?"),
-    module_and_imports_get_ancestors(!.ModuleAndImports, ModAncestors0),
-    ( if set.member(Ancestor, ModAncestors0) then
-        % We have already read it.
-        maybe_log_augment_decision(Why, pik_int0, Ancestor, no, !IO)
-    else
-        maybe_log_augment_decision(Why, pik_int0, Ancestor, yes, !IO),
-        process_module_int0_file(Globals, HaveReadModuleMapInt,
-            Ancestor, NewIntSection, NewImpSection, SectionAppend,
-            !DirectImports, !DirectUses, !ModuleAndImports, !IO)
-    ),
-    process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
-        Why, NewIntSection, NewImpSection, SectionAppend, Ancestors,
-        !DirectImports, !DirectUses, !ModuleAndImports, !IO).
-
-%---------------------------------------------------------------------------%
-
-    % process_module_indirect_interfaces_and_impls_transitively(Globals,
-    %   HaveReadModuleMapInt, Why, PIKind,
-    %   NewIntSection, NewImpSection, SectionAppend,
-    %   Modules, !ModuleAndImports, !IO):
-    %
-    % Read the interfaces specified by PIKind for modules in Modules
-    % (unless they have already been read in) and any modules that
-    % those modules import (transitively) in the interface or implementation.
-    %
-    % Append all the item blocks in the read-in files to !ModuleAndImports,
-    % putting all the ms_interface blocks in the int_module_section kind
-    % generated by NewIntSection, and putting all the ms_implementation blocks
-    % in the int_module_section kind generated by NewImpSection.
-    %
-:- pred process_module_indirect_interfaces_and_impls_transitively(globals::in,
-    have_read_module_int_map::in, string::in, process_interface_kind::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender),
-    set(module_name)::in,
-    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
-
-process_module_indirect_interfaces_and_impls_transitively(Globals,
-        HaveReadModuleMapInt, Why, PIKind,
-        NewIntSection, NewImpSection, SectionAppend,
-        Modules, !ModuleAndImports, !IO) :-
-    process_module_indirect_interfaces_transitively(Globals,
-        HaveReadModuleMapInt, Why, PIKind,
-        NewIntSection, NewImpSection, SectionAppend,
-        Modules, set.init, ImpIndirectImports, !ModuleAndImports, !IO),
+grab_module_int2_files_and_impls_transitively(Globals, Why, ReadWhy2,
+        Modules, !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    grab_module_int2_files_transitively(Globals, Why, ReadWhy2,
+        Modules, set.init, ImpIndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
     ( if set.is_empty(ImpIndirectImports) then
         true
     else
-        process_module_indirect_interfaces_and_impls_transitively(Globals,
-            HaveReadModuleMapInt, Why, PIKind,
-            NewIntSection, NewImpSection, SectionAppend,
-            ImpIndirectImports, !ModuleAndImports, !IO)
+        grab_module_int2_files_and_impls_transitively(Globals, Why, ReadWhy2,
+            ImpIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO)
     ).
 
-    % process_module_indirect_interfaces_transitively(Globals,
-    %   HaveReadModuleMapInt, Why, PIKind,
-    %   NewIntSection, NewImpSection, SectionAppend,
-    %   Modules, !ImpIndirectImports, !ModuleAndImports):
-    %
-    % Read the interfaces specified by PIKind for modules in Modules
-    % (unless they have already been read in) and any modules that
-    % those modules import (transitively) in the interface.
-    %
-    % Append all the item blocks in the read-in files to !ModuleAndImports,
-    % putting all the ms_interface blocks in the int_module_section kind
-    % generated by NewIntSection, and putting all the ms_implementation blocks
-    % in the int_module_section kind generated by NewImpSection.
-    %
-:- pred process_module_indirect_interfaces_transitively(globals::in,
-    have_read_module_int_map::in, string::in, process_interface_kind::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender),
-    set(module_name)::in,
+:- pred grab_module_int2_files_transitively(globals::in, string::in,
+    read_why_int2::in, set(module_name)::in,
     set(module_name)::in, set(module_name)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_module_indirect_interfaces_transitively(Globals, HaveReadModuleMapInt,
-        Why, PIKind, NewIntSection, NewImpSection, SectionAppend,
-        Modules, !ImpIndirectImports, !ModuleAndImports, !IO) :-
-    process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
-        NewIntSection, NewImpSection, SectionAppend,
-        set.to_sorted_list(Modules),
+grab_module_int2_files_transitively(Globals, Why, ReadWhy2,
+        Modules, !ImpIndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    grab_module_int2_files(Globals, Why, ReadWhy2, set.to_sorted_list(Modules),
         set.init, IndirectImports, !ImpIndirectImports,
-        !ModuleAndImports, !IO),
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
     ( if set.is_empty(IndirectImports) then
         true
     else
-        process_module_indirect_interfaces_transitively(Globals,
-            HaveReadModuleMapInt, Why, PIKind,
-            NewIntSection, NewImpSection, SectionAppend,
-            IndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO)
+        grab_module_int2_files_transitively(Globals, Why, ReadWhy2,
+            IndirectImports, !ImpIndirectImports,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO)
     ).
 
-    % process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
-    %   NewIntSection, NewImpSection, SectionAppend,
-    %   Modules, !IntIndirectImports, !ImpIndirectImports,
-    %   !ModuleAndImports, !IO):
-    %
-    % Read the interfaces specified by PIKind for modules in Modules
-    % (unless they have already been read in). Why gives the reason
-    % why we do this (used for logging).
-    % Append the modules imported and/or used by the interface of Modules
-    % to !IntIndirectImports.
-    % Append the modules imported and/or used by the implementation of Modules
-    % to !ImpIndirectImports.
-    %
-    % Append all the item blocks in the read-in files to !ModuleAndImports.
-    % putting all the ms_interface blocks in the int_module_section kind
-    % generated by NewIntSection, and putting all the ms_implementation blocks
-    % in the int_module_section kind generated by NewImpSection.
-    % Do the addition using SectionAppend.
-    %
-:- pred process_module_int123_files(globals::in, have_read_module_int_map::in,
-    string::in, process_interface_kind::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender), list(module_name)::in,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
+:- pred grab_module_int3_files_transitively(globals::in, string::in,
+    read_why_int3::in, set(module_name)::in,
+    have_read_module_maps::in, have_read_module_maps::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_module_int123_files(_Globals, _HaveReadModuleMapInt, _Why, _PIKind,
-        _NewIntSection, _NewImpSection, _SectionAppend, [],
-        !IntIndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO).
-process_module_int123_files(Globals, HaveReadModuleMapInt, Why, PIKind,
-        NewIntSection, NewImpSection, SectionAppend, [Module | Modules],
-        !IntIndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO) :-
-    ( if
-        % Have we already processed Module.some_extension?
-        (
-            module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
-            Module = ModuleName
-        ;
-            module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors),
-            set.member(Module, Ancestors)
-        ;
-            module_and_imports_get_int_deps_map(!.ModuleAndImports, IntDeps),
-            map.search(IntDeps, Module, _)
-        ;
-            module_and_imports_get_imp_deps_map(!.ModuleAndImports, ImpDeps),
-            map.search(ImpDeps, Module, _)
-        ;
-            PIKind = pik_indirect(_),
-            module_and_imports_get_indirect_deps(!.ModuleAndImports,
-                IndirectDeps),
-            set.member(Module, IndirectDeps)
-        )
-    then
-        maybe_log_augment_decision(Why, PIKind, Module, no, !IO)
+grab_module_int3_files_transitively(Globals, Why, ReadWhy3,
+        Modules, !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    grab_module_int3_files(Globals, Why, ReadWhy3, set.to_sorted_list(Modules),
+        set.init, IndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+    ( if set.is_empty(IndirectImports) then
+        true
     else
-        maybe_log_augment_decision(Why, PIKind, Module, yes, !IO),
-        process_module_int123_file(Globals, HaveReadModuleMapInt,
-            PIKind, NewIntSection, NewImpSection, SectionAppend,
-            Module, !IntIndirectImports, !ImpIndirectImports,
-            !ModuleAndImports, !IO)
+        grab_module_int3_files_transitively(Globals, Why, ReadWhy3,
+            IndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO)
+    ).
+
+:- pred grab_module_int0_files(globals::in, string::in, read_why_int0::in,
+    list(module_name)::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+grab_module_int0_files(_Globals, _Why, _ReadWhy0, [],
+        !DirectImports, !DirectUses,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+grab_module_int0_files(Globals, Why, ReadWhy0, [ModuleName | ModuleNames],
+        !DirectImports, !DirectUses,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int0) then
+        maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
+            yes, !IO),
+        process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        map.keys_as_set(ParseTreeInt0 ^ pti0_int_imports, IntImports),
+        map.keys_as_set(ParseTreeInt0 ^ pti0_imp_imports, ImpImports),
+        map.keys_as_set(ParseTreeInt0 ^ pti0_int_uses, IntUses),
+        map.keys_as_set(ParseTreeInt0 ^ pti0_imp_uses, ImpUses),
+        set.union(IntImports, !DirectImports),
+        set.union(ImpImports, !DirectImports),
+        set.union(IntUses, !DirectUses),
+        set.union(ImpUses, !DirectUses)
+    else
+        maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
+            no, !IO)
     ),
-    process_module_int123_files(Globals, HaveReadModuleMapInt, Why,
-        PIKind, NewIntSection, NewImpSection, SectionAppend,
-        Modules, !IntIndirectImports, !ImpIndirectImports,
-        !ModuleAndImports, !IO).
+    grab_module_int0_files(Globals, Why, ReadWhy0, ModuleNames,
+        !DirectImports, !DirectUses,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+
+:- pred grab_module_int1_files(globals::in, string::in, read_why_int1::in,
+    list(module_name)::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+grab_module_int1_files(_Globals, _Why, _ReadWhy1, [],
+        !IntIndirectImports, !ImpIndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+grab_module_int1_files(Globals, Why, ReadWhy1, [ModuleName | ModuleNames],
+        !IntIndirectImports, !ImpIndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int1) then
+        maybe_log_augment_decision(Why, ifk_int1, ReadWhy1, ModuleName,
+            yes, !IO),
+        process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        map.keys_as_set(ParseTreeInt1 ^ pti1_int_uses, IntUses),
+        map.keys_as_set(ParseTreeInt1 ^ pti1_imp_uses, ImpUses),
+        set.union(IntUses, !IntIndirectImports),
+        set.union(ImpUses, !ImpIndirectImports)
+    else
+        maybe_log_augment_decision(Why, ifk_int1, ReadWhy1, ModuleName,
+            no, !IO)
+    ),
+    grab_module_int1_files(Globals, Why, ReadWhy1, ModuleNames,
+        !IntIndirectImports, !ImpIndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+
+:- pred grab_module_int2_files(globals::in, string::in, read_why_int2::in,
+    list(module_name)::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+grab_module_int2_files(_Globals, _Why, _ReadWhy2, [],
+        !IntIndirectImports, !ImpIndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+grab_module_int2_files(Globals, Why, ReadWhy2, [ModuleName | ModuleNames],
+        !IntIndirectImports, !ImpIndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int2) then
+        maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
+            yes, !IO),
+        process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        map.keys_as_set(ParseTreeInt2 ^ pti2_int_uses, IntUses),
+        set.union(IntUses, !IntIndirectImports)
+    else
+        maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
+            no, !IO)
+    ),
+    grab_module_int2_files(Globals, Why, ReadWhy2, ModuleNames,
+        !IntIndirectImports, !ImpIndirectImports,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+
+:- pred grab_module_int3_files(globals::in, string::in, read_why_int3::in,
+    list(module_name)::in,
+    set(module_name)::in, set(module_name)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+grab_module_int3_files(_Globals, _Why, _ReadWhy3, [],
+        !IntIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO).
+grab_module_int3_files(Globals, Why, ReadWhy3, [ModuleName | ModuleNames],
+        !IntIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int3) then
+        maybe_log_augment_decision(Why, ifk_int3, ReadWhy3, ModuleName,
+            yes, !IO),
+        process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
+            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        map.keys_as_set(ParseTreeInt3 ^ pti3_int_imports, Imports),
+        set.union(Imports, !IntIndirectImports)
+    else
+        maybe_log_augment_decision(Why, ifk_int3, ReadWhy3, ModuleName,
+            no, !IO)
+    ),
+    grab_module_int3_files(Globals, Why, ReadWhy3, ModuleNames,
+        !IntIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO).
+
+:- pred should_read_interface(module_and_imports::in, module_name::in,
+    int_file_kind::in) is semidet.
+
+should_read_interface(ModuleAndImports, ModuleName, FileKind) :-
+    module_and_imports_get_grabbed_file_map(ModuleAndImports, GrabbedFileMap),
+    ( if map.search(GrabbedFileMap, ModuleName, OldGrabbedFile) then
+        OldFileKind = grabbed_file_to_file_kind(OldGrabbedFile),
+        ( if compare((<), fk_int(FileKind), OldFileKind) then
+            true
+        else
+            fail
+        )
+    else
+        true
+    ).
+
+:- func grabbed_file_to_file_kind(grabbed_file) = file_kind.
+
+grabbed_file_to_file_kind(GrabbedWhy) = FileKind :-
+    ( GrabbedWhy = gf_src(_),     FileKind = fk_src
+    ; GrabbedWhy = gf_int0(_, _), FileKind = fk_int(ifk_int0)
+    ; GrabbedWhy = gf_int1(_, _), FileKind = fk_int(ifk_int1)
+    ; GrabbedWhy = gf_int2(_, _), FileKind = fk_int(ifk_int2)
+    ; GrabbedWhy = gf_int3(_, _), FileKind = fk_int(ifk_int3)
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- pred process_module_int0_file(globals::in,
-    have_read_module_int_map::in, module_name::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender),
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
+:- pred process_module_int0(globals::in, read_why_int0::in, module_name::in,
+    parse_tree_int0::out,
+    have_read_module_maps::in, have_read_module_maps::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-process_module_int0_file(Globals, HaveReadModuleMapInt,
-        Module, NewIntSection, NewImpSection, SectionAppend,
-        !DirectImports, !DirectUses, !ModuleAndImports, !IO) :-
-    PIKind = pik_int0,
-    process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
-        NewIntSection, NewImpSection, SectionAppend, Module,
-        _IntAvails, _ImpAvails, ItemBlocks, !ModuleAndImports, !IO),
-    get_dependencies_in_item_blocks(ItemBlocks,
-        AncDirectImportsMap, AncDirectUsesMap),
-    set.sorted_list_to_set(map.keys(AncDirectImportsMap), AncDirectImports),
-    set.sorted_list_to_set(map.keys(AncDirectUsesMap), AncDirectUses),
-    set.union(AncDirectImports, !DirectImports),
-    set.union(AncDirectUses, !DirectUses).
-
-:- pred process_module_int123_file(globals::in,
-    have_read_module_int_map::in, process_interface_kind::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender), module_name::in,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
-    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
-
-process_module_int123_file(Globals, HaveReadModuleMapInt, PIKind,
-        NewIntSection, NewImpSection, SectionAppend, Module,
-        !IntImportsUses, !ImpImportsUses, !ModuleAndImports, !IO) :-
-    process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
-        NewIntSection, NewImpSection, SectionAppend, Module,
-        IntAvails, ImpAvails, _ItemBlocks, !ModuleAndImports, !IO),
-    get_imports_uses_maps(IntAvails, IntImportsMap, IntUsesMap),
-    get_imports_uses_maps(ImpAvails, ImpImportsMap, ImpUsesMap),
-    set.sorted_list_to_set(map.keys(IntImportsMap), IntImports),
-    set.sorted_list_to_set(map.keys(IntUsesMap), IntUses),
-    set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports),
-    set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses),
-    !:IntImportsUses = set.union_list([!.IntImportsUses, IntImports, IntUses]),
-    !:ImpImportsUses = set.union_list([!.ImpImportsUses, ImpImports, ImpUses]).
-
-:- type int123
-    --->    int123_1
-    ;       int123_2
-    ;       int123_3.
-
-:- type process_interface_kind
-    --->    pik_int0
-    ;       pik_direct(int123, recomp_avail)
-    ;       pik_indirect(int123).   % implicitly recomp_avail_imp_use
-
-:- pred process_module_interface_general(globals::in,
-    have_read_module_int_map::in, process_interface_kind::in,
-    int_section_maker(MS)::in, int_section_maker(MS)::in,
-    section_appender(MS)::in(section_appender), module_name::in,
-    list(item_avail)::out, list(item_avail)::out, list(item_block(MS))::out,
-    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
-
-process_module_interface_general(Globals, HaveReadModuleMapInt, PIKind,
-        NewIntSection, NewImpSection, SectionAppend, ModuleName,
-        IntAvails, ImpAvails, ItemBlocks, !ModuleAndImports, !IO) :-
+process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    module_and_imports_do_we_need_timestamps(!.ModuleAndImports,
+        ReturnTimestamp),
+    maybe_read_module_int0(Globals, do_search, ModuleName, _FileName,
+        ReturnTimestamp, MaybeTimestamp, ParseTreeInt0, Specs, Errors,
+        !HaveReadModuleMaps, !IO),
+    GrabbedFile = gf_int0(ParseTreeInt0, ReadWhy0),
+    module_and_imports_add_grabbed_file(ModuleName, GrabbedFile,
+        !ModuleAndImports),
     (
-        PIKind = pik_int0,
-        IntFileKind = ifk_int0
+        ReadWhy0 = rwi0_section,
+        AncestorIntSpec = ancestor_int0(ParseTreeInt0, ReadWhy0),
+        module_and_imports_add_ancestor_int_spec(AncestorIntSpec,
+            !ModuleAndImports)
     ;
-        ( PIKind = pik_direct(Int123, _)
-        ; PIKind = pik_indirect(Int123)
-        ),
-        ( Int123 = int123_1, IntFileKind = ifk_int1
-        ; Int123 = int123_2, IntFileKind = ifk_int2
-        ; Int123 = int123_3, IntFileKind = ifk_int3
-        )
+        ReadWhy0 = rwi0_opt,
+        IntForOptSpec = for_opt_int0(ParseTreeInt0, ReadWhy0),
+        module_and_imports_add_int_for_opt_spec(IntForOptSpec,
+            !ModuleAndImports)
     ),
-    IFKStr = int_file_kind_to_extension(IntFileKind),
-    MsgPrefix = "Reading " ++ IFKStr ++ " interface for module",
-
-    module_and_imports_get_maybe_timestamp_map(!.ModuleAndImports,
-        MaybeTimestampMap),
-    maybe_return_timestamp(MaybeTimestampMap, ReturnTimestamp),
-    maybe_read_module_int(Globals, HaveReadModuleMapInt, MsgPrefix, do_search,
-        ModuleName, IntFileKind, _FileName, ReturnTimestamp, MaybeTimestamp,
-        ParseTree, Specs, Errors, !IO),
-
-    ParseTree = parse_tree_int(ParseTreeModuleName, IntKind,
-        _Context, MaybeVersionNumbers, IntIncls, ImpIncls,
-        IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems),
-    expect(unify(ModuleName, ParseTreeModuleName), $pred,
-        "ModuleName != ParseTreeModuleName"),
-    module_and_imports_maybe_add_module_version_numbers(
-        ModuleName, MaybeVersionNumbers, !ModuleAndImports),
-
-    % We do all this here instead of calling int_imp_items_to_item_blocks
-    % to avoid calling NewImpSection if the implementation section is empty,
-    % as in .int3 files.
-    ( if
-        ImpIncls = [],
-        ImpAvails = [],
-        ImpFIMs = [],
-        ImpItems = []
-    then
-        ItemBlocks1 = []
-    else
-        ImpBlock = item_block(ModuleName, NewImpSection(ModuleName, IntKind),
-            ImpIncls, ImpAvails, ImpFIMs, ImpItems),
-        ItemBlocks1 = [ImpBlock]
-    ),
-    ( if
-        IntIncls = [],
-        IntAvails = [],
-        IntFIMs = [],
-        IntItems = []
-    then
-        ItemBlocks = ItemBlocks1
-    else
-        IntBlock = item_block(ModuleName, NewIntSection(ModuleName, IntKind),
-            IntIncls, IntAvails, IntFIMs, IntItems),
-        ItemBlocks = [IntBlock | ItemBlocks1]
-    ),
-
-    SectionAppend(ItemBlocks, !ModuleAndImports),
+    module_and_imports_add_ancestor(ModuleName, !ModuleAndImports),
+    maybe_record_interface_timestamp(ModuleName, ifk_int0,
+        recomp_avail_int_import, MaybeTimestamp, !ModuleAndImports),
     module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports),
+    module_and_imports_maybe_add_module_version_numbers(ModuleName,
+        ParseTreeInt0 ^ pti0_maybe_version_numbers, !ModuleAndImports).
 
-    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
-    maybe_report_stats(Statistics, !IO),
+:- pred process_module_int1(globals::in, read_why_int1::in, module_name::in,
+    parse_tree_int1::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
-    % XXX To me (zs), the differences here seem accidental rather than
-    % deliberate.
+process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    module_and_imports_do_we_need_timestamps(!.ModuleAndImports,
+        ReturnTimestamp),
+    maybe_read_module_int1(Globals, do_search, ModuleName, _FileName,
+        ReturnTimestamp, MaybeTimestamp, ParseTreeInt1, Specs, Errors,
+        !HaveReadModuleMaps, !IO),
+    GrabbedFile = gf_int1(ParseTreeInt1, ReadWhy1),
+    module_and_imports_add_grabbed_file(ModuleName, GrabbedFile,
+        !ModuleAndImports),
     (
-        PIKind = pik_int0,
-        % XXX Why do we ignore Errors here for the timestamp (only)?
-        maybe_record_timestamp(ModuleName, ifk_int0,
-            recomp_avail_int_import, MaybeTimestamp, !ModuleAndImports),
-        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-        ( if set.is_empty(FatalErrors) then
-            module_and_imports_add_ancestor(ModuleName, !ModuleAndImports)
-        else
-            true
-        )
+        (
+            ReadWhy1 = rwi1_int_import,
+            RecompAvail = recomp_avail_int_import
+        ;
+            ReadWhy1 = rwi1_int_use,
+            RecompAvail = recomp_avail_int_use
+        ;
+            ReadWhy1 = rwi1_imp_import,
+            RecompAvail = recomp_avail_imp_import
+        ;
+            ReadWhy1 = rwi1_imp_use,
+            RecompAvail = recomp_avail_imp_use
+        ;
+            ReadWhy1 = rwi1_int_use_imp_import,
+            RecompAvail = recomp_avail_int_use_imp_import
+        ),
+        DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
+        module_and_imports_add_direct_int_spec(DirectIntSpec,
+            !ModuleAndImports),
+        % XXX CLEANUP Why record a context if it is never meaningful?
+        module_and_imports_add_direct_dep(ModuleName, term.dummy_context_init,
+            !ModuleAndImports)
     ;
-        PIKind = pik_indirect(_),
-        % XXX Why do we ignore Errors here for (a) the timestamp,
-        % and (b) for the update of !ModuleAndImports?
-        maybe_record_timestamp(ModuleName, IntFileKind,
-            recomp_avail_imp_use, MaybeTimestamp, !ModuleAndImports),
+        ReadWhy1 = rwi1_opt,
+        RecompAvail = recomp_avail_imp_use,
+        IntForOptSpec = for_opt_int1(ParseTreeInt1, ReadWhy1),
+        module_and_imports_add_int_for_opt_spec(IntForOptSpec,
+            !ModuleAndImports)
+    ),
+    maybe_record_interface_timestamp(ModuleName, ifk_int1, RecompAvail,
+        MaybeTimestamp, !ModuleAndImports),
+    module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports),
+    module_and_imports_maybe_add_module_version_numbers(ModuleName,
+        ParseTreeInt1 ^ pti1_maybe_version_numbers, !ModuleAndImports).
+
+:- pred process_module_int2(globals::in, read_why_int2::in, module_name::in,
+    parse_tree_int2::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    module_and_imports_do_we_need_timestamps(!.ModuleAndImports,
+        ReturnTimestamp),
+    maybe_read_module_int2(Globals, do_search, ModuleName, _FileName,
+        ReturnTimestamp, MaybeTimestamp, ParseTreeInt2, Specs, Errors,
+        !HaveReadModuleMaps, !IO),
+    GrabbedFile = gf_int2(ParseTreeInt2, ReadWhy2),
+    module_and_imports_add_grabbed_file(ModuleName, GrabbedFile,
+        !ModuleAndImports),
+    (
+        ( ReadWhy2 = rwi2_int_use
+        ; ReadWhy2 = rwi2_imp_use
+        ; ReadWhy2 = rwi2_abstract
+        ),
+        IndirectIntSpec = indirect_int2(ParseTreeInt2, ReadWhy2),
+        module_and_imports_add_indirect_int_spec(IndirectIntSpec,
+            !ModuleAndImports),
         module_and_imports_add_indirect_dep(ModuleName, !ModuleAndImports)
     ;
-        PIKind = pik_direct(_, NeedQual),
-        set.intersect(Errors, fatal_read_module_errors, FatalIntErrors),
-        ( if set.is_empty(FatalIntErrors) then
-            maybe_record_timestamp(ModuleName, IntFileKind, NeedQual,
-                MaybeTimestamp, !ModuleAndImports),
-            % Our caller cannot give us a useful nondummy context.
-            Context = term.context_init,
-            module_and_imports_add_imp_dep(ModuleName, Context,
-                !ModuleAndImports)
-        else
-            true
-        )
-    ).
+        ReadWhy2 = rwi2_opt,
+        IntForOptSpec = for_opt_int2(ParseTreeInt2, ReadWhy2),
+        module_and_imports_add_int_for_opt_spec(IntForOptSpec,
+            !ModuleAndImports)
+    ),
+    maybe_record_interface_timestamp(ModuleName, ifk_int2,
+        recomp_avail_imp_use, MaybeTimestamp, !ModuleAndImports),
+    module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports),
+    module_and_imports_maybe_add_module_version_numbers(ModuleName,
+        ParseTreeInt2 ^ pti2_maybe_version_numbers, !ModuleAndImports).
+
+:- pred process_module_int3(globals::in, read_why_int3::in, module_name::in,
+    parse_tree_int3::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
+
+process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+    module_and_imports_do_we_need_timestamps(!.ModuleAndImports,
+        ReturnTimestamp),
+    maybe_read_module_int3(Globals, do_search, ModuleName, _FileName,
+        ReturnTimestamp, MaybeTimestamp, ParseTreeInt3, Specs, Errors,
+        !HaveReadModuleMaps, !IO),
+    GrabbedFile = gf_int3(ParseTreeInt3, ReadWhy3),
+    module_and_imports_add_grabbed_file(ModuleName, GrabbedFile,
+        !ModuleAndImports),
+    (
+        (
+            ReadWhy3 = rwi3_direct_ancestor_import,
+            RecompAvail = recomp_avail_int_import
+        ;
+            ReadWhy3 = rwi3_direct_int_import,
+            RecompAvail = recomp_avail_int_import
+        ;
+            ReadWhy3 = rwi3_direct_imp_import,
+            RecompAvail = recomp_avail_imp_import
+        ;
+            ReadWhy3 = rwi3_direct_ancestor_use,
+            RecompAvail = recomp_avail_int_use
+        ;
+            ReadWhy3 = rwi3_direct_int_use,
+            RecompAvail = recomp_avail_int_use
+        ;
+            ReadWhy3 = rwi3_direct_imp_use,
+            RecompAvail = recomp_avail_imp_use
+        ;
+            ReadWhy3 = rwi3_direct_int_use_imp_import,
+            RecompAvail = recomp_avail_int_use_imp_import
+        ),
+        DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3),
+        module_and_imports_add_direct_int_spec(DirectIntSpec,
+            !ModuleAndImports),
+        % XXX CLEANUP Why record a context if it is never meaningful?
+        module_and_imports_add_direct_dep(ModuleName, term.dummy_context_init,
+            !ModuleAndImports)
+    ;
+        (
+            ReadWhy3 = rwi3_indirect_int_use,
+            RecompAvail = recomp_avail_int_use
+        ;
+            ReadWhy3 = rwi3_indirect_imp_use,
+            RecompAvail = recomp_avail_imp_use
+        ),
+        IndirectIntSpec = indirect_int3(ParseTreeInt3, ReadWhy3),
+        module_and_imports_add_indirect_int_spec(IndirectIntSpec,
+            !ModuleAndImports)
+    ),
+    maybe_record_interface_timestamp(ModuleName, ifk_int3, RecompAvail,
+        MaybeTimestamp, !ModuleAndImports),
+    module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports).
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_log_augment_decision(string::in, process_interface_kind::in,
+:- pred maybe_log_augment_decision(string::in, int_file_kind::in, T::in,
     module_name::in, bool::in, io::di, io::uo) is det.
 % Inlining calls to this predicate effectively optimizes it away
 % if the trace condition is not met, as it usually won't be.
-:- pragma inline(maybe_log_augment_decision/6).
+:- pragma inline(maybe_log_augment_decision/7).
 
-maybe_log_augment_decision(Why, PIKind, ModuleName, Read, !IO) :-
-    trace [compile_time(flag("log_augment_decisions")), io(!TIO)] (
+maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
+    trace [compile_time(flag("log_augment_decisions")),
+        runtime(env("LOG_AUGMENT_DECISION")), io(!TIO)]
+    (
         ModuleNameStr = sym_name_to_string(ModuleName),
-        (
-            PIKind = pik_int0,
-            ExtensionStr = ".int0"
-        ;
-            PIKind = pik_direct(IntFileKind, RecompNeedQual),
-            KindStr = int123_str(IntFileKind),
-            (
-                RecompNeedQual = recomp_avail_src,
-                ExtensionStr = "direct avail_src " ++ KindStr
-            ;
-                RecompNeedQual = recomp_avail_int_use,
-                ExtensionStr = "direct avail_int_use " ++ KindStr
-            ;
-                RecompNeedQual = recomp_avail_imp_use,
-                ExtensionStr = "direct avail_imp_use " ++ KindStr
-            ;
-                RecompNeedQual = recomp_avail_int_import,
-                ExtensionStr = "direct avail_int_import " ++ KindStr
-            ;
-                RecompNeedQual = recomp_avail_imp_import,
-                ExtensionStr = "direct avail_imp_import " ++ KindStr
-            ;
-                RecompNeedQual = recomp_avail_int_use_imp_import,
-                ExtensionStr = "direct avail_int_use_imp_import " ++ KindStr
-            )
-        ;
-            PIKind = pik_indirect(IntFileKind),
-            ExtensionStr = "indirect " ++ int123_str(IntFileKind)
-        ),
+        ExtensionStr = int_file_kind_to_extension(IntFileKind),
+        WhyStr = string.string(ReadWhy),
         (
             Read = no,
             ReadStr = "decided not to read"
@@ -1227,30 +918,19 @@ maybe_log_augment_decision(Why, PIKind, ModuleName, Read, !IO) :-
             Read = yes,
             ReadStr = "decided to read"
         ),
-        io.format("%s, %s, %s: %s\n",
-            [s(Why), s(ModuleNameStr), s(ExtensionStr), s(ReadStr)], !TIO)
+        io.format("AUGMENT_LOG %s, %s, %s, %s: %s\n",
+            [s(Why), s(ModuleNameStr), s(ExtensionStr), s(WhyStr), s(ReadStr)],
+            !TIO)
     ).
-
-:- func int123_str(int123) = string.
-
-int123_str(int123_1) = ".int".
-int123_str(int123_2) = ".int2".
-int123_str(int123_3) = ".int3".
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_return_timestamp(maybe(T)::in, maybe_return_timestamp::out)
-    is det.
-
-maybe_return_timestamp(yes(_), do_return_timestamp).
-maybe_return_timestamp(no, dont_return_timestamp).
-
-:- pred maybe_record_timestamp(module_name::in, int_file_kind::in,
+:- pred maybe_record_interface_timestamp(module_name::in, int_file_kind::in,
     recomp_avail::in, maybe(timestamp)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-maybe_record_timestamp(ModuleName, IntFileKind, RecompAvail, MaybeTimestamp,
-        !ModuleAndImports) :-
+maybe_record_interface_timestamp(ModuleName, IntFileKind, RecompAvail,
+        MaybeTimestamp, !ModuleAndImports) :-
     module_and_imports_get_maybe_timestamp_map(!.ModuleAndImports,
         MaybeTimestampMap),
     (
@@ -1331,12 +1011,12 @@ maybe_record_timestamp(ModuleName, IntFileKind, RecompAvail, MaybeTimestamp,
 
 check_imports_accessibility(AugCompUnit, _ImportedModules, !Specs) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        _ModuleVersionNumbers, SrcItemBlocks,
-        DirectIntItemBlocks, IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks),
-    IntItemBlocks = DirectIntItemBlocks ++ IndirectIntItemBlocks,
-    record_includes_imports_uses(ModuleName, SrcItemBlocks, IntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks, ReadModules, InclMap,
+        _ModuleVersionNumbers, ParseTreeModuleSrc, AncestorIntSpecs,
+        DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs),
+    record_includes_imports_uses(ModuleName, ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, ReadModules, InclMap,
         SrcIntImportUseMap, SrcImpImportUseMap, AncestorImportUseMap),
 
     % The current module is not an import, but this is the obvious place
@@ -1458,14 +1138,20 @@ append_one_or_more(A, B, AB) :-
     % from raw_item_blocks.)
     %
 :- pred record_includes_imports_uses(module_name::in,
-    list(src_item_block)::in, list(int_item_block)::in,
-    list(opt_item_block)::in, list(int_for_opt_item_block)::in,
+    parse_tree_module_src::in, map(module_name, ancestor_int_spec)::in,
+    map(module_name, direct_int_spec)::in,
+    map(module_name, indirect_int_spec)::in,
+    map(module_name, parse_tree_plain_opt)::in,
+    map(module_name, parse_tree_trans_opt)::in,
+    map(module_name, int_for_opt_spec)::in,
     set(module_name)::out, module_inclusion_map::out,
     module_import_or_use_map::out, module_import_or_use_map::out,
     module_import_or_use_map::out) is det.
 
-record_includes_imports_uses(ModuleName, SrcItemBlocks, IntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks, !:ReadModules, !:InclMap,
+record_includes_imports_uses(ModuleName, ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, _TransOpts, IntForOptSpecs,
+        !:ReadModules, !:InclMap,
         !:SrcIntImportUseMap, !:SrcImpImportUseMap, !:AncestorImportUseMap) :-
     set.init(!:ReadModules),
     map.init(!:InclMap),
@@ -1473,88 +1159,314 @@ record_includes_imports_uses(ModuleName, SrcItemBlocks, IntItemBlocks,
     map.init(!:SrcImpImportUseMap),
     map.init(!:AncestorImportUseMap),
     Ancestors = get_ancestors_set(ModuleName),
-    record_includes_imports_uses_in_item_blocks_acc(Ancestors,
-        SrcItemBlocks, src_section_visibility, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-    record_includes_imports_uses_in_item_blocks_acc(Ancestors,
-        IntItemBlocks, int_section_visibility, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-    record_includes_imports_uses_in_item_blocks_acc(Ancestors,
-        OptItemBlocks, opt_section_visibility, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-    record_includes_imports_uses_in_item_blocks_acc(Ancestors,
-        IntForOptItemBlocks, int_for_opt_section_visibility,
+    record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+    map.foldl5_values(
+        record_includes_imports_uses_in_ancestor_int_spec(Ancestors),
+        AncestorIntSpecs, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+    map.foldl5_values(
+        record_includes_imports_uses_in_direct_int_spec(Ancestors),
+        DirectIntSpecs, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+    map.foldl5_values(
+        record_includes_imports_uses_in_indirect_int_spec(Ancestors),
+        IndirectIntSpecs, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+    map.foldl5_values(
+        record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors),
+        PlainOpts, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+    % .trans_opt files may contain no include_module, import_module
+    % or use_module declarations, so there is nothing to record for them.
+    map.foldl5_values(
+        record_includes_imports_uses_in_int_for_opt_spec(Ancestors),
+        IntForOptSpecs, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
 
-:- type which_map
-    --->    src_int
-    ;       src_imp
-    ;       non_src_non_abstract
-    ;       non_src_abstract.
+%---------------------------------------------------------------------------%
 
-:- type section_visibility(MS) == (func(MS) = which_map).
-
-:- func src_section_visibility(src_module_section) = which_map.
-:- func int_section_visibility(int_module_section) = which_map.
-:- func opt_section_visibility(opt_module_section) = which_map.
-:- func int_for_opt_section_visibility(int_for_opt_module_section) = which_map.
-
-src_section_visibility(sms_interface) = src_int.
-src_section_visibility(sms_implementation) = src_imp.
-src_section_visibility(sms_impl_but_exported_to_submodules) = src_imp.
-
-int_section_visibility(ims_imported_or_used(_, _, _, _)) =
-    non_src_non_abstract.
-int_section_visibility(ims_abstract_imported(_, _)) =
-    non_src_abstract.
-
-opt_section_visibility(oms_opt_imported(_, _)) = non_src_non_abstract.
-
-int_for_opt_section_visibility(ioms_opt_imported(_, _)) = non_src_non_abstract.
-
-:- pred record_includes_imports_uses_in_item_blocks_acc(set(module_name)::in,
-    list(item_block(MS))::in, section_visibility(MS)::in,
+:- pred record_includes_imports_uses_in_parse_tree_module_src(
+    parse_tree_module_src::in,
     set(module_name)::in, set(module_name)::out,
     module_inclusion_map::in, module_inclusion_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
-record_includes_imports_uses_in_item_blocks_acc(_,
-        [], _, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
-record_includes_imports_uses_in_item_blocks_acc(Ancestors,
-        [ItemBlock | ItemBlocks], SectionVisibility, !ReadModules, !InclMap,
+record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
+        !ReadModules, !MaybeAbstractInclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    ItemBlock = item_block(ModuleName, Section, Incls, Avails, _FIMs, _Items),
+    % XXX CLEANUP can we use InclMap and/or _ImportUseMap to avoid doing
+    % some of the work below? Note that _ImportUseMap includes implicit
+    % avails, while {Int,Imp}{Import,Use}Map do not.
+    ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _,
+        _IntInclMap, _ImpInclMap, InclMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
+        _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
-    WhichMap = SectionVisibility(Section),
-    (
-        WhichMap = src_int,
-        record_includes_acc(non_abstract_section, Incls, !InclMap),
-        recomp_avails_acc(Avails, !SrcIntImportUseMap)
-    ;
-        WhichMap = src_imp,
-        record_includes_acc(non_abstract_section, Incls, !InclMap),
-        recomp_avails_acc(Avails, !SrcImpImportUseMap)
-    ;
-        (
-            WhichMap = non_src_non_abstract,
-            record_includes_acc(non_abstract_section, Incls, !InclMap)
-        ;
-            WhichMap = non_src_abstract,
-            record_includes_acc(abstract_section, Incls, !InclMap)
-        ),
-        ( if set.contains(Ancestors, ModuleName) then
-            recomp_avails_acc(Avails, !AncestorImportUseMap)
-        else
-            true
-        )
-    ),
-    record_includes_imports_uses_in_item_blocks_acc(Ancestors,
-        ItemBlocks, SectionVisibility, !ReadModules, !InclMap,
+    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
+    AllIncls = IntIncls ++ ImpIncls,
+    record_includes_acc(non_abstract_section, AllIncls, !MaybeAbstractInclMap),
+    map.foldl(acc_avails_with_contexts(import_decl),
+        IntImportMap, [], RevIntImportAvails),
+    map.foldl(acc_avails_with_contexts(use_decl),
+        IntUseMap, [], RevIntUseAvails),
+    map.foldl(acc_avails_with_contexts(import_decl),
+        ImpImportMap, [], RevImpImportAvails),
+    map.foldl(acc_avails_with_contexts(use_decl),
+        ImpUseMap, [], RevImpUseAvails),
+    recomp_avails_acc(RevIntImportAvails, !SrcIntImportUseMap),
+    recomp_avails_acc(RevIntUseAvails,    !SrcIntImportUseMap),
+    recomp_avails_acc(RevImpImportAvails, !SrcImpImportUseMap),
+    recomp_avails_acc(RevImpUseAvails,    !SrcImpImportUseMap).
+
+%---------------------------------------------------------------------------%
+
+:- pred record_includes_imports_uses_in_ancestor_int_spec(set(module_name)::in,
+    ancestor_int_spec::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_ancestor_int_spec(Ancestors,
+        AncestorSpec, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    AncestorSpec = ancestor_int0(ParseTreeInt0, ReadWhyInt0),
+    record_includes_imports_uses_in_parse_tree_int0(Ancestors,
+        ParseTreeInt0, ReadWhyInt0, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+
+:- pred record_includes_imports_uses_in_direct_int_spec(set(module_name)::in,
+    direct_int_spec::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_direct_int_spec(Ancestors,
+        DirectSpec, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    (
+        DirectSpec = direct_int1(ParseTreeInt1, ReadWhyInt1),
+        record_includes_imports_uses_in_parse_tree_int1(Ancestors,
+            ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+    ;
+        DirectSpec = direct_int3(ParseTreeInt3, ReadWhyInt3),
+        record_includes_imports_uses_in_parse_tree_int3(Ancestors,
+            ParseTreeInt3, ReadWhyInt3, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+    ).
+
+:- pred record_includes_imports_uses_in_indirect_int_spec(set(module_name)::in,
+    indirect_int_spec::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_indirect_int_spec(Ancestors,
+        IndirectSpec, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    (
+        IndirectSpec = indirect_int2(ParseTreeInt2, ReadWhyInt2),
+        record_includes_imports_uses_in_parse_tree_int2(Ancestors,
+            ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+    ;
+        IndirectSpec = indirect_int3(ParseTreeInt3, ReadWhyInt3),
+        record_includes_imports_uses_in_parse_tree_int3(Ancestors,
+            ParseTreeInt3, ReadWhyInt3, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+    ).
+
+:- pred record_includes_imports_uses_in_int_for_opt_spec(set(module_name)::in,
+    int_for_opt_spec::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_int_for_opt_spec(Ancestors,
+        IntForOptSpec, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    (
+        IntForOptSpec = for_opt_int0(ParseTreeInt0, ReadWhyInt0),
+        record_includes_imports_uses_in_parse_tree_int0(Ancestors,
+            ParseTreeInt0, ReadWhyInt0, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+    ;
+        IntForOptSpec = for_opt_int1(ParseTreeInt1, ReadWhyInt1),
+        record_includes_imports_uses_in_parse_tree_int1(Ancestors,
+            ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+    ;
+        IntForOptSpec = for_opt_int2(ParseTreeInt2, ReadWhyInt2),
+        record_includes_imports_uses_in_parse_tree_int2(Ancestors,
+            ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred record_includes_imports_uses_in_parse_tree_int0(set(module_name)::in,
+    parse_tree_int0::in, read_why_int0::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_parse_tree_int0(Ancestors,
+        ParseTreeInt0, _ReadWhyInt0, !ReadModules, !MaybeAbstractInclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    ParseTreeInt0 = parse_tree_int0(ModuleName, _, _,
+        _IntInclMap, _ImpInclMap, InclMap,
+        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+    set.insert(ModuleName, !ReadModules),
+    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
+    AllIncls = IntIncls ++ ImpIncls,
+    % Both possible values of ReadWhyInt0 call for treating the file contents
+    % as non-abstract.
+    record_includes_acc(non_abstract_section, AllIncls, !MaybeAbstractInclMap),
+    ( if set.contains(Ancestors, ModuleName) then
+        % XXX CLEANUP This work could be done on ImportUseMap,
+        % *without* constructing AllAvails.
+        import_and_or_use_map_to_item_avails(do_not_include_implicit,
+            ImportUseMap, IntAvails, ImpAvails),
+        AllAvails = IntAvails ++ ImpAvails,
+        recomp_avails_acc(AllAvails, !AncestorImportUseMap)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred record_includes_imports_uses_in_parse_tree_int1(set(module_name)::in,
+    parse_tree_int1::in, read_why_int1::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_parse_tree_int1(Ancestors,
+        ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    ParseTreeInt1 = parse_tree_int1(ModuleName, _, _,
+        IntInclMap, ImpInclMap, _InclMap, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+    set.insert(ModuleName, !ReadModules),
+    % All possible values of ReadWhyInt1 call for treating
+    % the interface as non-abstract.
+    % All possible values of ReadWhyInt1 but one call for treating
+    % the implementation as abstract.
+    IntIncls = module_names_contexts_to_item_includes(IntInclMap),
+    ImpIncls = module_names_contexts_to_item_includes(ImpInclMap),
+    (
+        ( ReadWhyInt1 = rwi1_int_import
+        ; ReadWhyInt1 = rwi1_imp_import
+        ; ReadWhyInt1 = rwi1_int_use
+        ; ReadWhyInt1 = rwi1_imp_use
+        ; ReadWhyInt1 = rwi1_int_use_imp_import
+        ),
+        record_includes_acc(non_abstract_section, IntIncls, !InclMap),
+        record_includes_acc(abstract_section, ImpIncls, !InclMap)
+    ;
+        ReadWhyInt1 = rwi1_opt,
+        record_includes_acc(non_abstract_section, IntIncls, !InclMap),
+        record_includes_acc(non_abstract_section, ImpIncls, !InclMap)
+    ),
+    expect_not(set.contains(Ancestors, ModuleName), $pred,
+        "processing the .int file of an ancestor").
+
+%---------------------------------------------------------------------------%
+
+:- pred record_includes_imports_uses_in_parse_tree_int2(set(module_name)::in,
+    parse_tree_int2::in, read_why_int2::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_parse_tree_int2(Ancestors,
+        ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    ParseTreeInt2 = parse_tree_int2(ModuleName, _, _,
+        IntInclMap, _ParseTreeInclMap, _, _, _, _, _, _, _, _, _, _, _),
+    set.insert(ModuleName, !ReadModules),
+    IntIncls = module_names_contexts_to_item_includes(IntInclMap),
+    (
+        ( ReadWhyInt2 = rwi2_int_use
+        ; ReadWhyInt2 = rwi2_imp_use
+        ; ReadWhyInt2 = rwi2_opt
+        ),
+        record_includes_acc(non_abstract_section, IntIncls, !InclMap)
+    ;
+        ReadWhyInt2 = rwi2_abstract,
+        record_includes_acc(abstract_section, IntIncls, !InclMap)
+    ),
+    expect_not(set.contains(Ancestors, ModuleName), $pred,
+        "processing the .int2 file of an ancestor").
+
+%---------------------------------------------------------------------------%
+
+:- pred record_includes_imports_uses_in_parse_tree_int3(set(module_name)::in,
+    parse_tree_int3::in, read_why_int3::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_parse_tree_int3(Ancestors,
+        ParseTreeInt3, _ReadWhyInt3, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    ParseTreeInt3 = parse_tree_int3(ModuleName, _,
+        _IntInclMap, ParseTreeInclMap, _, _, _, _, _, _, _, _),
+    set.insert(ModuleName, !ReadModules),
+    include_map_to_item_includes(ParseTreeInclMap, IntIncls, ImpIncls),
+    expect(unify(ImpIncls, []), $pred, "ImpIncls != []"),
+    % All possible values of ReadWhyInt3 call for treating the file's
+    % interface as non-abstract.
+    record_includes_acc(non_abstract_section, IntIncls, !InclMap),
+    expect_not(set.contains(Ancestors, ModuleName), $pred,
+        "processing the .int2 file of an ancestor").
+
+%---------------------------------------------------------------------------%
+
+:- pred record_includes_imports_uses_in_parse_tree_plain_opt(
+    set(module_name)::in, parse_tree_plain_opt::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors,
+        ParseTreePlainOpt, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, _, UseMap,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+    ( if set.contains(Ancestors, ModuleName) then
+        Avails = use_map_to_item_avails(UseMap),
+        recomp_avails_acc(Avails, !AncestorImportUseMap)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred record_includes_acc(maybe_abstract_section::in, list(item_include)::in,
     module_inclusion_map::in, module_inclusion_map::out) is det.
@@ -1812,7 +1724,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
     else
         Msgs = [MainMsg]
     ),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, Msgs),
+    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- func wrap_module_name(sym_name) = format_component.
@@ -1899,7 +1811,7 @@ report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
         words("module"), qual_sym_name(ParentModule),
         words("has a submodule named"), quote(SubModule), suffix(","),
         words("but it is visible only to its other submodules."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1911,7 +1823,7 @@ report_missing_include(ParentModule, SubModule, Context, !Specs) :-
         words("module"), qual_sym_name(ParentModule),
         words("does not have a submodule named"), quote(SubModule),
         suffix("."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1927,23 +1839,25 @@ project_out_import_or_use(import_or_use_context(_, Context)) = Context.
 
 %---------------------------------------------------------------------------%
 
-grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
+grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
+        !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
     module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
     module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors0),
     module_and_imports_get_int_deps_set(!.ModuleAndImports, IntDeps0),
     module_and_imports_get_imp_deps_set(!.ModuleAndImports, ImpDeps0),
     OptModules = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     globals.lookup_bool_option(Globals, read_opt_files_transitively,
-        Transitive),
-    set.insert(ModuleName, OptModules, ModulesProcessed),
-    read_optimization_interfaces(Globals, Transitive,
-        set.to_sorted_list(OptModules), ModulesProcessed,
-        cord.empty, OptItemBlocksCord, [], OptSpecs, no, OptError, !IO),
-    OptItemBlocks = cord.list(OptItemBlocksCord),
-
-    module_and_imports_add_opt_item_blocks(OptItemBlocks, !ModuleAndImports),
-    module_and_imports_add_specs(OptSpecs, !ModuleAndImports),
+        ReadOptFilesTransitively),
+    % Do not add to the queue either the modules in the initial queue,
+    % or the module being compiled.
+    set.insert(ModuleName, OptModules, DontQueueOptModules),
+    read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
+        set.to_sorted_list(OptModules), DontQueueOptModules,
+        cord.empty, ParseTreePlainOptsCord0,
+        [], OptSpecs0, no, OptError0, !IO),
+    ParseTreePlainOpts0 = cord.list(ParseTreePlainOptsCord0),
 
     % Get the :- pragma unused_args(...) declarations created when writing
     % the .opt file for the current module. These are needed because we can
@@ -1959,62 +1873,68 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     globals.lookup_bool_option(Globals, intermod_unused_args, UnusedArgs),
     globals.lookup_bool_option(Globals, structure_reuse_analysis,
         StructureReuse),
-    ( if
-        ( UnusedArgs = yes
-        ; StructureReuse = yes
-        )
-    then
-        read_optimization_interfaces(Globals, no, [ModuleName], set.init,
-            cord.empty, LocalItemBlocksCord, [], LocalSpecs, no, UA_SR_Error,
-            !IO),
-        LocalItemBlocks = cord.list(LocalItemBlocksCord),
-        keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs,
-            StructureReuse, LocalItemBlocks, FilteredItemBlocks),
-        module_and_imports_add_opt_item_blocks(FilteredItemBlocks,
-            !ModuleAndImports),
-        module_and_imports_add_specs(LocalSpecs, !ModuleAndImports)
+    ( if (UnusedArgs = yes ; StructureReuse = yes) then
+        read_plain_opt_file(Globals, VeryVerbose, ModuleName, OwnFileName,
+            OwnParseTreePlainOpt0, OwnSpecs, OwnError, !IO),
+        % XXX We should store the whole parse_tree, with a note next to it
+        % saying "keep only these two kinds of pragmas".
+        keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
+            UnusedArgs, StructureReuse,
+            OwnParseTreePlainOpt0, OwnParseTreePlainOpt),
+        ParseTreePlainOpts = [OwnParseTreePlainOpt | ParseTreePlainOpts0],
+        OptSpecs1 = OwnSpecs ++ OptSpecs0,
+        update_opt_error_status(Globals, warn_missing_opt_files, OwnFileName,
+            OwnSpecs, OwnError, OptSpecs1, OptSpecs2, OptError0, OptError),
+        pre_hlds_maybe_write_out_errors(VeryVerbose, Globals,
+            OptSpecs2, OptSpecs, !IO)
     else
-        UA_SR_Error = no
+        ParseTreePlainOpts = ParseTreePlainOpts0,
+        OptSpecs = OptSpecs0,
+        OptError = OptError0
     ),
 
-    % Read .int0 files required by the `.opt' files.
-    map.init(HaveReadModuleMapInt),
+    list.foldl(module_and_imports_add_plain_opt, ParseTreePlainOpts,
+        !ModuleAndImports),
+    module_and_imports_add_specs(OptSpecs, !ModuleAndImports),
+
+    % Read .int0 files required by the `.opt' files, except the ones
+    % we have already read as ancestors of ModuleName,
+    % XXX This code reads in the .int0 files of the ancestors of *OptModules*,
+    % but due to read_opt_files_transitively, ParseTreePlainOpts may contain
+    % more the .opt files of modules that are *not* in OptModules.
+    % This looks like a bug.
     OptModuleAncestors =
         set.power_union(set.map(get_ancestors_set, OptModules)),
-    Int0Modules = set.delete(OptModuleAncestors, ModuleName),
-    process_int0_files_of_ancestor_modules(Globals, HaveReadModuleMapInt,
-        "opt_int0s", make_ioms_opt_imported, make_ioms_opt_imported,
-        module_and_imports_add_int_for_opt_item_blocks,
-        set.to_sorted_list(Int0Modules),
-        set.init, AncestorImports1, set.init, AncestorImports2,
-        !ModuleAndImports, !IO),
+    OldModuleAncestors = get_ancestors_set(ModuleName),
+    OptOnlyModuleAncestors =
+        set.difference(OptModuleAncestors, OldModuleAncestors),
 
-    % Figure out which .int files are needed by the .opt files
-    get_dependencies_in_item_blocks(OptItemBlocks,
-        NewImportDepsMap0, NewUseDepsMap0),
-    get_implicit_dependencies_in_item_blocks(Globals, OptItemBlocks,
-        NewImplicitImportDeps0, NewImplicitUseDeps0),
-    set.sorted_list_to_set(map.keys(NewUseDepsMap0), NewUseDeps0),
-    set.sorted_list_to_set(map.keys(NewImportDepsMap0), NewImportDeps0),
-    NewDeps = set.union_list(
-        [NewImportDeps0, NewUseDeps0,
-        NewImplicitImportDeps0, NewImplicitUseDeps0,
-        AncestorImports1, AncestorImports2]),
+    grab_module_int0_files(Globals,
+        "opt_int0s", rwi0_opt,
+        set.to_sorted_list(OptOnlyModuleAncestors),
+        set.init, OptAncestorImports, set.init, OptAncestorUses,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+
+    % Figure out which .int files are needed by the .opt files.
+    % XXX CLEANUP Since ReadOptFilesTransitively = yes by default,
+    % the call to read_plain_opt_files above *should* have computed
+    % these dependencies. It should be possible to ensure that the
+    % dependencies of a given plain_opt file are never computed
+    % more than once.
+    get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(Globals,
+        ParseTreePlainOpts, NewDeps0),
+    NewDeps = set.union_list([NewDeps0, OptAncestorImports, OptAncestorUses]),
 
     % Read in the .int, and .int2 files needed by the .opt files.
-    process_module_int123_files(Globals, HaveReadModuleMapInt,
-        "opt_new_deps", pik_direct(int123_1, recomp_avail_imp_use),
-        make_ioms_opt_imported, make_ioms_opt_imported,
-        module_and_imports_add_int_for_opt_item_blocks,
+    grab_module_int1_files(Globals,
+        "opt_new_deps", rwi1_opt,
         set.to_sorted_list(NewDeps),
         set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
-        !ModuleAndImports, !IO),
-    process_module_indirect_interfaces_and_impls_transitively(Globals,
-        HaveReadModuleMapInt, "opt_new_indirect_deps", pik_indirect(int123_2),
-        make_ioms_opt_imported, make_ioms_opt_imported,
-        module_and_imports_add_int_for_opt_item_blocks,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+    grab_module_int2_files_and_impls_transitively(Globals,
+        "opt_new_indirect_deps", rwi2_opt,
         set.union(NewIndirectDeps, NewImplIndirectDeps),
-        !ModuleAndImports, !IO),
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
     % Figure out whether anything went wrong.
     % XXX We should try to put all the relevant error indications into
@@ -2023,7 +1943,6 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     ( if
         ( set.is_non_empty(ModuleErrors)
         ; OptError = yes
-        ; UA_SR_Error = yes
         )
     then
         FoundError = yes
@@ -2031,159 +1950,155 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
         FoundError = no
     ).
 
-:- pred keep_only_unused_and_reuse_pragmas_in_blocks(bool::in, bool::in,
-    list(item_block(MS))::in, list(item_block(MS))::out) is det.
+:- pred keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
+    bool::in, bool::in,
+    parse_tree_plain_opt::in, parse_tree_plain_opt::out) is det.
 
-keep_only_unused_and_reuse_pragmas_in_blocks(_, _, [], []).
-keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
-        [ItemBlock0 | ItemBlocks0], [ItemBlock | ItemBlocks]) :-
-    ItemBlock0 = item_block(ModuleName, Section,
-        _Incls0, _Imports0, _FIMs0, Items0),
-    Incls = [],
-    Imports = [],
-    FIMs = [],
-    keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
-        Items0, cord.init, ItemCord),
-    Items = cord.list(ItemCord),
-    ItemBlock = item_block(ModuleName, Section, Incls, Imports, FIMs, Items),
-    keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
-        ItemBlocks0, ItemBlocks).
-
-:- pred keep_only_unused_and_reuse_pragmas_acc(bool::in, bool::in,
-    list(item)::in, cord(item)::in, cord(item)::out) is det.
-
-keep_only_unused_and_reuse_pragmas_acc(_, _, [], !ItemCord).
-keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
-        [Item0 | Items0], !ItemCord) :-
-    ( if
-        Item0 = item_pragma(ItemPragma0),
-        ItemPragma0 = item_pragma_info(Pragma0, _, _),
-        (
-            UnusedArgs = yes,
-            Pragma0 = pragma_unused_args(_)
-        ;
-            StructureReuse = yes,
-            Pragma0 = pragma_structure_reuse(_)
-        )
-    then
-        cord.snoc(Item0, !ItemCord)
-    else
-        true
+keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
+        KeepUnusedArgs, KeepReuses, ParseTreePlainOpt0, ParseTreePlainOpt) :-
+    ParseTreePlainOpt0 = parse_tree_plain_opt(ModuleName, ModuleNameContext,
+        _UsedModuleNames, _FIMSpecs, _TypeDefns, _ForeignEnums,
+        _InstDefns, _ModeDefns, _TypeClasses, _Instances,
+        _PredDecls, _ModeDecls, _Clauses, _ForeignProcs, _Promises,
+        _MarkerPragmas, _TypeSpecs, UnusedArgs0, _TermInfos, _Term2Infos,
+        _Exceptions, _Trailings, _MMTablings, _Sharings, Reuses0),
+    (
+        KeepUnusedArgs = yes,
+        UnusedArgs = UnusedArgs0
+    ;
+        KeepUnusedArgs = no,
+        UnusedArgs = []
     ),
-    keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse, Items0,
-        !ItemCord).
+    (
+        KeepReuses = yes,
+        Reuses = Reuses0
+    ;
+        KeepReuses = no,
+        Reuses = []
+    ),
+    ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, ModuleNameContext,
+        map.init, set.init, [], [], [], [], [], [], [], [], [], [], [],
+        [], [], UnusedArgs, [], [], [], [], [], [], Reuses).
 
-:- pred read_optimization_interfaces(globals::in, bool::in,
+:- pred read_plain_opt_files(globals::in, bool::in, bool::in,
     list(module_name)::in, set(module_name)::in,
-    cord(opt_item_block)::in, cord(opt_item_block)::out,
+    cord(parse_tree_plain_opt)::in, cord(parse_tree_plain_opt)::out,
     list(error_spec)::in, list(error_spec)::out,
     bool::in, bool::out, io::di, io::uo) is det.
 
-read_optimization_interfaces(_, _, [], _, !ItemBlocksCord,
-        !Specs, !Error, !IO).
-read_optimization_interfaces(Globals, Transitive,
-        [ModuleToRead | ModulesToRead], ModulesProcessed0,
-        !OptItemBlocksCord, !Specs, !Error, !IO) :-
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
+read_plain_opt_files(_, _, _, [], _,
+        !ParseTreePlainOptsCord, !Specs, !Error, !IO).
+read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
+        [ModuleName | ModuleNames0], DontQueueOptModules0,
+        !ParseTreePlainOptsCord, !Specs, !Error, !IO) :-
+    read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
+        ParseTreePlainOpt, OptSpecs, OptError, !IO),
+
+    cord.snoc(ParseTreePlainOpt, !ParseTreePlainOptsCord),
+    % We could add OptSpecs to !Specs, but with the option combination
+    % --intermodule-analysis --no-intermodule-optimization, not finding
+    % a .opt file for ModuleName is not an error, and update_opt_error_status
+    % knows that (it treats it as a warning). However, the error_spec
+    % reporting the failure to open the .opt file *will* have severity error,
+    % put there by read_error_msg in parse_module.m. Until read_error_msg
+    % is made configurable in severity, we must not add OptSpecs to !Specs.
+    % If we do, the hard_coded/intermod_unused_args test case will fail.
+    update_opt_error_status(Globals, warn_missing_opt_files, FileName,
+        OptSpecs, OptError, !Specs, !Error),
+    pre_hlds_maybe_write_out_errors(VeryVerbose, Globals, !Specs, !IO),
+    (
+        ReadOptFilesTransitively = yes,
+        get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(
+            Globals, [ParseTreePlainOpt], ParseTreePlainOptDeps),
+        set.difference(ParseTreePlainOptDeps, DontQueueOptModules0, NewDeps),
+        ModuleNames1 = set.to_sorted_list(NewDeps) ++ ModuleNames0,
+        set.union(NewDeps, DontQueueOptModules0, DontQueueOptModules1)
+    ;
+        ReadOptFilesTransitively = no,
+        ModuleNames1 = ModuleNames0,
+        DontQueueOptModules1 = DontQueueOptModules0
+    ),
+
+    read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
+        ModuleNames1, DontQueueOptModules1,
+        !ParseTreePlainOptsCord, !Specs, !Error, !IO).
+
+:- pred read_plain_opt_file(globals::in, bool::in,
+    module_name::in, string::out, parse_tree_plain_opt::out,
+    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
+
+read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
+        ParseTreePlainOpt, OptSpecs, OptError, !IO) :-
     maybe_write_string(VeryVerbose,
         "% Reading optimization interface for module", !IO),
     maybe_write_string(VeryVerbose, " `", !IO),
-    ModuleToReadString = sym_name_to_string(ModuleToRead),
-    maybe_write_string(VeryVerbose, ModuleToReadString, !IO),
+    ModuleNameString = sym_name_to_string(ModuleName),
+    maybe_write_string(VeryVerbose, ModuleNameString, !IO),
     maybe_write_string(VeryVerbose, "'...\n", !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    module_name_to_search_file_name(Globals, ".opt", ModuleToRead, FileName,
-        !IO),
-    actually_read_module_opt(ofk_opt, Globals, FileName, ModuleToRead, [],
-        ParseTreeOpt, OptSpecs, OptError, !IO),
-    ParseTreeOpt = parse_tree_opt(OptModuleName, OptFileKind,
-        _OptModuleContext, OptUses, OptFIMs, OptItems),
-    OptSection = oms_opt_imported(OptModuleName, OptFileKind),
-    OptAvails = list.map(wrap_avail_use, OptUses),
-    OptItemBlock = item_block(OptModuleName, OptSection,
-        [], OptAvails, OptFIMs, OptItems),
-    cord.snoc(OptItemBlock, !OptItemBlocksCord),
-    update_opt_error_status(Globals, opt_file, FileName, OptSpecs, OptError,
-        !Specs, !Error),
-    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
-    maybe_write_string(VeryVerbose, "% done.\n", !IO),
-
-    (
-        Transitive = yes,
-        NewUseDeps0 = set.list_to_set(list.map(get_use_module_name, OptUses)),
-        get_implicit_dependencies_in_items(Globals, OptItems,
-            NewImplicitImportDeps0, NewImplicitUseDeps0),
-        NewDepsSet0 = set.union_list([NewUseDeps0,
-            NewImplicitImportDeps0, NewImplicitUseDeps0]),
-        set.difference(NewDepsSet0, ModulesProcessed0, NewDepsSet),
-        set.union(ModulesProcessed0, NewDepsSet, ModulesProcessed),
-        set.to_sorted_list(NewDepsSet, NewDeps)
-    ;
-        Transitive = no,
-        ModulesProcessed = ModulesProcessed0,
-        NewDeps = []
-    ),
-    read_optimization_interfaces(Globals, Transitive,
-        NewDeps ++ ModulesToRead, ModulesProcessed,
-        !OptItemBlocksCord, !Specs, !Error, !IO).
+    module_name_to_search_file_name(Globals, ".opt",
+        ModuleName, FileName, !IO),
+    actually_read_module_plain_opt(Globals, FileName, ModuleName, [],
+        ParseTreePlainOpt, OptSpecs, OptError, !IO),
+    maybe_write_string(VeryVerbose, "% done.\n", !IO).
 
 %---------------------------------------------------------------------------%
 
-grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
+grab_trans_opt_files(Globals, TransOptModuleNames, FoundError,
+        !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
     maybe_flush_output(Verbose, !IO),
 
-    read_trans_opt_files(Globals, TransOptDeps,
-        cord.empty, OptItemBlocksCord, [], OptSpecs, no, FoundError, !IO),
-
-    OptItemBlocks = cord.list(OptItemBlocksCord),
-    module_and_imports_add_opt_item_blocks(OptItemBlocks, !Module),
-    module_and_imports_add_specs(OptSpecs, !Module),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    read_trans_opt_files(Globals, VeryVerbose, TransOptModuleNames,
+        cord.init, ParseTreeTransOptsCord,
+        [], TransOptSpecs, no, FoundError, !IO),
+    list.foldl(module_and_imports_add_trans_opt,
+        cord.list(ParseTreeTransOptsCord), !ModuleAndImports),
+    module_and_imports_add_specs(TransOptSpecs, !ModuleAndImports),
     % XXX why ignore any existing errors?
-    module_and_imports_set_errors(set.init, !Module),
+    module_and_imports_set_errors(set.init, !ModuleAndImports),
 
     maybe_write_string(Verbose, "% Done.\n", !IO).
 
-:- pred read_trans_opt_files(globals::in, list(module_name)::in,
-    cord(opt_item_block)::in, cord(opt_item_block)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    bool::in, bool::out, io::di, io::uo) is det.
+:- pred read_trans_opt_files(globals::in, bool::in, list(module_name)::in,
+    cord(parse_tree_trans_opt)::in, cord(parse_tree_trans_opt)::out,
+    list(error_spec)::in, list(error_spec)::out, bool::in, bool::out,
+    io::di, io::uo) is det.
 
-read_trans_opt_files(_, [], !OptItemBlocks, !Specs, !Error, !IO).
-read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
-        !Specs, !Error, !IO) :-
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
-    maybe_write_string(VeryVerbose,
-        "% Reading transitive optimization interface for module", !IO),
-    maybe_write_string(VeryVerbose, " `", !IO),
-    ImportString = sym_name_to_string(Import),
-    maybe_write_string(VeryVerbose, ImportString, !IO),
-    maybe_write_string(VeryVerbose, "'... ", !IO),
+read_trans_opt_files(_, _, [], !ParseTreeTransOpts, !Specs, !Error, !IO).
+read_trans_opt_files(Globals, VeryVerbose, [ModuleName | ModuleNames],
+        !ParseTreeTransOptsCord, !Specs, !Error, !IO) :-
+    read_trans_opt_file(Globals, VeryVerbose, ModuleName, FileName,
+        ParseTreeTransOpt, TransOptSpecs, TransOptError, !IO),
+
+    cord.snoc(ParseTreeTransOpt, !ParseTreeTransOptsCord),
+    !:Specs = TransOptSpecs ++ !.Specs,
+    update_opt_error_status(Globals, warn_missing_trans_opt_files, FileName,
+        TransOptSpecs, TransOptError, !Specs, !Error),
+    pre_hlds_maybe_write_out_errors(VeryVerbose, Globals, !Specs, !IO),
+
+    read_trans_opt_files(Globals, VeryVerbose, ModuleNames,
+        !ParseTreeTransOptsCord, !Specs, !Error, !IO).
+
+:- pred read_trans_opt_file(globals::in, bool::in,
+    module_name::in, string::out, parse_tree_trans_opt::out,
+    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
+
+read_trans_opt_file(Globals, VeryVerbose, ModuleName, FileName,
+        ParseTreeTransOpt, TransOptSpecs, TransOptError, !IO) :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    string.format("%% Reading `%s.trans_opt'... ", [s(ModuleNameStr)], Msg),
+    maybe_write_string(VeryVerbose, Msg, !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    module_name_to_search_file_name(Globals, ".trans_opt", Import, FileName,
-        !IO),
-    actually_read_module_opt(ofk_trans_opt, Globals, FileName, Import, [],
-        ParseTreeOpt, OptSpecs, OptError, !IO),
-    maybe_write_string(VeryVerbose, " done.\n", !IO),
-    !:Specs = OptSpecs ++ !.Specs,
-    update_opt_error_status(Globals, trans_opt_file, FileName,
-        OptSpecs, OptError, !Specs, !Error),
-    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
-
-    ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, _OptContext,
-        OptUses, OptFIMs, OptItems),
-    OptSection = oms_opt_imported(OptModuleName, ofk_trans_opt),
-    OptAvails = list.map(wrap_avail_use, OptUses),
-    OptItemBlock = item_block(OptModuleName, OptSection,
-        [], OptAvails, OptFIMs, OptItems),
-    cord.snoc(OptItemBlock, !OptItemBlocks),
-    read_trans_opt_files(Globals, Imports, !OptItemBlocks,
-        !Specs, !Error, !IO).
+    module_name_to_search_file_name(Globals, ".trans_opt",
+        ModuleName, FileName, !IO),
+    actually_read_module_trans_opt(Globals, FileName, ModuleName, [],
+        ParseTreeTransOpt, TransOptSpecs, TransOptError, !IO),
+    maybe_write_string(VeryVerbose, " done.\n", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -2191,8 +2106,8 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
     --->    opt_file
     ;       trans_opt_file.
 
-    % update_opt_error_status(Globals, OptFileType, FileName,
-    %   ModuleSpecs, !Specs, ModuleErrors, !Error):
+    % update_opt_error_status(Globals, WarnOption, FileName,
+    %   ModuleSpecs, ModuleErrors, !Specs, !Error):
     %
     % Work out whether any fatal errors have occurred while reading
     % `.opt' or `.trans_opt' files, updating !Errors if there were
@@ -2203,16 +2118,17 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
     % `--warn-missing-opt-files' or `--warn-missing-trans-opt-files'
     % respectively.
     %
-    % Syntax errors in these files are always fatal.
+    % On the other hand, we consider syntax and other errors in these files
+    % to be always fatal.
     %
-:- pred update_opt_error_status(globals::in, opt_file_type::in, string::in,
+:- pred update_opt_error_status(globals::in, option::in, string::in,
     list(error_spec)::in, read_module_errors::in,
     list(error_spec)::in, list(error_spec)::out, bool::in, bool::out) is det.
 
-update_opt_error_status(_Globals, FileType, FileName,
+update_opt_error_status(Globals, WarnOption, FileName,
         ModuleSpecs, ModuleErrors, !Specs, !Error) :-
     ( if set.is_empty(ModuleErrors) then
-        % OptSpecs contains no errors. I (zs) don't know whether it could
+        % ModuleSpecs contains no errors. I (zs) don't know whether it could
         % contain any warnings or informational messages, but if it could,
         % we should add those error_specs to !Specs. Not doing so preserves
         % old behavior.
@@ -2228,21 +2144,18 @@ update_opt_error_status(_Globals, FileType, FileName,
         % I (zs) don't know whether we should add a version of ModuleSpecs
         % with downgraded severity to !Specs instead of the Spec we generate
         % below.
+        globals.lookup_bool_option(Globals, WarnOption, WarnOptionValue),
         (
-            FileType = opt_file,
-            WarningOption = warn_missing_opt_files
+            WarnOptionValue = no
         ;
-            FileType = trans_opt_file,
-            WarningOption = warn_missing_trans_opt_files
-        ),
-        Severity =
-            severity_conditional(WarningOption, yes, severity_warning, no),
-        Pieces = [option_is_set(WarningOption, yes,
-            [always([words("Warning: cannot open"), quote(FileName),
-                suffix("."), nl])])],
-        Msg = error_msg(no, treat_as_first, 0, Pieces),
-        Spec = error_spec(Severity, phase_read_files, [Msg]),
-        !:Specs = [Spec | !.Specs]
+            WarnOptionValue = yes,
+            Pieces = [words("Warning: cannot open"), quote(FileName),
+                suffix("."), nl],
+            Msg = error_msg(no, treat_as_first, 0, [always(Pieces)]),
+            Spec = error_spec($pred, severity_warning, phase_read_files,
+                [Msg]),
+            !:Specs = [Spec | !.Specs]
+        )
         % NOTE: We do NOT update !Error, since a missing optimization
         % interface file is not necessarily an error.
     else

@@ -178,8 +178,8 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
                     words("Error: module name expected before '.'"),
                     words("in qualified symbol name, not"),
                     words(ModuleTermStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(TermContext, [always(Pieces)])]),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
                 MaybeSymNameAndArgs = error2([Spec])
             )
         else
@@ -189,8 +189,8 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
                 words("Error: identifier expected after '.'"),
                 words("in qualified symbol name, not"),
                 words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, TermContext, Pieces),
             MaybeSymNameAndArgs = error2([Spec])
         )
     else
@@ -203,8 +203,8 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: atom expected at"),
                 words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
             MaybeSymNameAndArgs = error2([Spec])
         )
     ).
@@ -273,8 +273,8 @@ parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, Term,
             Args0 = [_ | _],
             ArgPieces = [words("Error: did not expect"),
                 qual_sym_name(SymName0), words(" to have any arguments."), nl],
-            ArgSpec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                get_term_context(Term), ArgPieces),
+            ArgSpec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), ArgPieces),
             ArgSpecs = [ArgSpec]
         ),
         ( if
@@ -314,8 +314,8 @@ implicitly_qualify_sym_name_and_args(DefaultModuleName, Term, SymName0, Args,
         Pieces = [words("Error: module qualifier in definition"),
             words("does not match preceding"), decl("module"),
             words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeSymNameAndArgs = error2([Spec])
     ).
 
@@ -329,8 +329,8 @@ implicitly_qualify_sym_name(DefaultModuleName, Term, SymName0, MaybeSymName) :-
         Pieces = [words("Error: module qualifier in definition"),
             words("does not match preceding"), decl("module"),
             words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
         MaybeSymName = error1([Spec])
     ).
 
@@ -370,16 +370,16 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
                 Pieces = [words("Error: module name identifier"),
                     words("expected before"), quote(FunctorName),
                     words("in qualified symbol name."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(TermContext, [always(Pieces)])]),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
                 % XXX Should we include _ModuleResultSpecs?
                 MaybeSymName = error1([Spec])
             )
         else
             Pieces = [words("Error: identifier expected after"),
                 quote(FunctorName), words("in qualified symbol name."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(TermContext, [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, TermContext, Pieces),
             MaybeSymName = error1([Spec])
         )
     else
@@ -390,8 +390,8 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: symbol name expected at"),
                 words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
             MaybeSymName = error1([Spec])
         )
     ).
@@ -430,8 +430,8 @@ parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet, Term,
             Pieces = [words("Error: module qualifier in definition"),
                 words("does not match preceding"), decl("module"),
                 words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
             MaybeSymName = error1([Spec])
         else
             UnqualName = unqualify_name(SymName),
@@ -466,15 +466,15 @@ parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
             else
                 Pieces = [words("Error: arity in symbol name specifier"),
                     words("must be a non-negative integer."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
                 MaybeSymNameSpecifier = error1([Spec])
             )
         else
             Pieces = [words("Error: arity in symbol name specifier"),
                 words("must be an integer."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
             MaybeSymNameSpecifier = error1([Spec])
         )
     else

@@ -734,7 +734,7 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
             ),
             io.output_stream(OutputStream, !IO),
             llds_c_to_obj(Globals, OutputStream, ModuleName, CompileOK, !IO),
-            module_get_fact_table_file_names(HLDS, FactTableBaseFiles),
+            module_info_get_fact_table_file_names(HLDS, FactTableBaseFiles),
             list.map2_foldl(compile_fact_table_file(Globals, OutputStream),
                 FactTableBaseFiles, FactTableObjFiles, FactTableCompileOKs,
                 !IO),
@@ -785,12 +785,11 @@ llds_get_c_interface_info(HLDS, UseForeignLanguage, ForeignInterfaceInfo) :-
     module_info_get_foreign_decl_codes_user(HLDS, ForeignDeclCodeUserCord),
     module_info_get_foreign_decl_codes_aux(HLDS, ForeignDeclCodeAuxCord),
     module_info_get_foreign_body_codes(HLDS, ForeignBodyCodeCord),
-    module_info_get_foreign_import_modules(HLDS, ForeignImportsModules0),
+    module_info_get_c_j_cs_e_fims(HLDS, CJCsEFIMs0),
     ForeignDeclCodes =
         cord.list(ForeignDeclCodeUserCord ++ ForeignDeclCodeAuxCord),
     ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
-    add_fim_spec(ForeignSelfImport,
-        ForeignImportsModules0, ForeignImportsModules),
+    add_fim_spec(ForeignSelfImport, CJCsEFIMs0, CJCsEFIMs),
 
     % Always include the module we are compiling amongst the foreign import
     % modules so that pragma foreign_exported procedures are visible to
@@ -805,8 +804,7 @@ llds_get_c_interface_info(HLDS, UseForeignLanguage, ForeignInterfaceInfo) :-
     foreign.filter_bodys(UseForeignLanguage, ForeignBodyCodes,
         WantedForeignBodyCodes, _OtherBodyCodes),
     WantedForeignImports = set.to_sorted_list(
-        get_lang_fim_specs(ForeignImportsModules,
-            UseForeignLanguage)),
+        get_lang_fim_specs(CJCsEFIMs, UseForeignLanguage)),
     export.get_foreign_export_decls(HLDS, ForeignExportDecls),
     export.get_foreign_export_defns(HLDS, ForeignExportDefns),
 

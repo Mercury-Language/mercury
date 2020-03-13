@@ -402,8 +402,8 @@ report_max_iterations_exceeded(ModuleInfo) = Spec :-
         words("(The current limit is"), int_fixed(MaxIterations),
         words("iterations.)"), nl],
     Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [Msg]).
+    Spec = error_spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode), [Msg]).
 
     % copy_pred_bodies(OldPredTable, ProcId, ModuleInfo0, ModuleInfo):
     %
@@ -1515,8 +1515,8 @@ report_eval_method_requires_ground_args(ProcInfo) = Spec :-
         words("is not currently implemented."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [Msg]).
+    Spec = error_spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode), [Msg]).
 
 :- func report_eval_method_destroys_uniqueness(proc_info) = error_spec.
 
@@ -1535,8 +1535,8 @@ report_eval_method_destroys_uniqueness(ProcInfo) = Spec :-
         words("in them no longer being unique."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [Msg]).
+    Spec = error_spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode), [Msg]).
 
 :- func report_wrong_mode_for_main(proc_info) = error_spec.
 
@@ -1546,8 +1546,8 @@ report_wrong_mode_for_main(ProcInfo) = Spec :-
         unqual_sym_name_and_arity(sym_name_arity(unqualified("main"), 2)),
         words("must have mode"), quote("(di, uo)"), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [Msg]).
+    Spec = error_spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode), [Msg]).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.modes.

@@ -54,7 +54,7 @@ MCFLAGS-max_error_line_width    = --max-error-line-width 120 \
 MCFLAGS-method_impl             = --no-intermodule-optimization \
                                     --verbose-error-messages
 MCFLAGS-missing_det_decls       = --no-infer-det --verbose-error-messages
-MCFLAGS-missing_interface_import = --make-interface
+MCFLAGS-missing_interface_import = --make-interface --print-errors-warnings-when-generating-interface
 MCFLAGS-missing_interface_import2 = --no-intermodule-optimization
 MCFLAGS-mode_inf                = --infer-all --verbose-error-messages
 MCFLAGS-mpj1                    = --infer-all --verbose-error-messages

@@ -891,7 +891,7 @@ either explicitly or implicitly.
 We never put any import_module declarations
 in the interface section of the .int2 file,
 nor do we ever put any import_module or use_module declarations
-in the implementation section of the .int2 file,
+in the implementation section of the .int2 file.
 We <em>do</em> put a use_module declaration
 into the interface section of the .int2 file
 for all of the modules that have an import_module and/or use_module declaration
@@ -924,7 +924,7 @@ in one of the following ways:
 As mentioned above in .int file section,
 the reason why we need use_module declarations for these modules
 is that the compiler creates entries
-for e.g. the types we are imported from them
+for e.g. the types we are importing from them
 only when it sees them defined, not when it sees them used.
 <p>
 And as was also mentioned above in .int file section,
@@ -956,6 +956,13 @@ never reads in a .int2 file if it has read in that module's .int file, and
 never reads in a .int3 file if it has read in that module's .int or .int2 file.
 In fact, making this possible is the reason why
 it reads in .int files first, .int2 files next, and .int3 files last.
+<p>
+(Note that in the presence of intermodule optimization,
+grab_modules.m <em>can</em> read in a module's .int file
+(as an int-for-opt file) <em>after</em> it reads in its .int2 or .int3 file.
+This will typically lead to
+many entities defined in the .int2 or .int3 file being defined twice.
+The compiler must (and does) reject such double definititions silently.)
 <p>
 I (zs) don't see any inclusion requirements being placed on .int0 files.
 However, grab_modules.m does have to read in its ancestors'.int0 files first,
@@ -992,10 +999,10 @@ because they need only to <em>look up</em>
 the definition of that entity.
 <p>
 That definition should be needed only in two cases.
-First, the case of type definitions,
+First, in the case of type definitions,
 we may need to follow chains of type equivalences to the end
 in order to make decisions about type representations involving that type.
-Second, the case of inst and mode definitions,
+Second, in the case of inst and mode definitions,
 we may likewise need to follow chains of equivalences to the end
 in order to figure out the exact expansions of named insts and modes,
 which we may need for mode analysis.

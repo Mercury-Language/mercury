@@ -314,7 +314,7 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
             Severity = severity_conditional(warn_accumulator_swaps, yes,
                 severity_warning, no),
             Msgs = [InMsg | WarnMsgs] ++ [EnsureSuppressMsg],
-            Spec = error_spec(Severity, phase_accumulator_intro, Msgs),
+            Spec = error_spec($pred, Severity, phase_accumulator_intro, Msgs),
 
             det_univ_to_type(!.Cookie, Specs0),
             Specs = [Spec | Specs0],

@@ -317,7 +317,7 @@ make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
     Pieces = ContextPieces ++ [lower_case_next_if_not_first,
         words("Error: expected field name, found"),
         quote(TermStr), suffix("."), nl],
-    Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
         Context, Pieces).
 
 %-----------------------------------------------------------------------------%

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: get_dependencies.m.
 %
@@ -24,7 +24,7 @@
 % we should either factor out (if possible) or at least document
 % the commonalities between the code here and in grab_modules.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.get_dependencies.
 :- interface.
@@ -39,25 +39,30 @@
 
 :- import_module cord.
 :- import_module list.
-:- import_module multi_map.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps):
+:- pred get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(
+    globals::in, list(parse_tree_plain_opt)::in, set(module_name)::out) is det.
+
+    % get_implicit_avail_needs_in_*(Globals, Items/ItemBlocks,
+    %   ImplicitlyImportedModules, ImplicitlyUsedModules):
     %
-    % Get the list of modules that a list of things (explicitly) depends on.
-    % ImportDeps is the list of modules imported using `:- import_module',
-    % UseDeps is the list of modules imported using `:- use_module'.
-    % N.B. Typically you also need to consider the module's implicit
-    % dependencies (see get_implicit_dependencies/3), its parent modules
-    % (see get_ancestors/1) and possibly also the module's child modules
-    % (see get_children/2). You may also need to consider indirect
-    % dependencies.
+    % Get the list of builtin modules (e.g. "public_builtin",
+    % "private_builtin" etc) that the given items may implicitly depend on.
+    % ImplicitlyImportedModules is the list of modules which should be
+    % automatically implicitly made available as if via `:- import_module',
+    % and ImplicitlyUsedModules is the list which should be automatically
+    % implicitly made available as if via `:- use_module'.
     %
-:- pred get_dependencies_in_item_blocks(list(item_block(MS))::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out) is det.
+    % The two sets will be distinct, i.e. no module will be in both sets.
+    %
+:- pred get_implicit_avail_needs_in_aug_compilation_unit(globals::in,
+    aug_compilation_unit::in,
+    set(module_name)::out, set(module_name)::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- type maybe_need_tabling
     --->    dont_need_tabling
@@ -87,6 +92,9 @@
     --->    dont_need_io
     ;       do_need_io.
 
+    % A representation of which builtin modules a set of items
+    % implicitly needs imported or used.
+    %
     % XXX We currently discover the need to import the modules needed
     % to compile away format strings by traversing all parts of all clauses,
     % and checking every predicate name and functor name to see whether
@@ -98,18 +106,60 @@
     %
     % We should therefore consider ALWAYS implicitly importing the predicates
     % needed by format_call.m.
-:- type implicit_import_needs
-    --->    implicit_import_needs(
-                iin_tabling             :: maybe_need_tabling,
-                iin_tabling_statistics  :: maybe_need_tabling_statistics,
-                iin_stm                 :: maybe_need_stm,
-                iin_exception           :: maybe_need_exception,
-                iin_string_format       :: maybe_need_string_format,
-                iin_stream_format       :: maybe_need_stream_format,
-                iin_io                  :: maybe_need_io
+:- type implicit_avail_needs
+    --->    implicit_avail_needs(
+                ian_tabling             :: maybe_need_tabling,
+                ian_tabling_statistics  :: maybe_need_tabling_statistics,
+                ian_stm                 :: maybe_need_stm,
+                ian_exception           :: maybe_need_exception,
+                ian_string_format       :: maybe_need_string_format,
+                ian_stream_format       :: maybe_need_stream_format,
+                ian_io                  :: maybe_need_io
             ).
 
-:- func init_implicit_import_needs = implicit_import_needs.
+:- func init_implicit_avail_needs = implicit_avail_needs.
+
+%---------------------%
+
+:- pred acc_implicit_avail_needs_in_instance_method(instance_method::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+:- pred acc_implicit_avail_needs_in_mutable(item_mutable_info::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+:- pred acc_implicit_avail_needs_in_clause(item_clause_info::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+:- pred acc_implicit_avail_needs_in_goal(goal::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+%---------------------%
+
+    % compute_implicit_avail_needs(Globals, ImplicitAvailNeeds,
+    %    ImplicitlyImportedModules, ImplicitlyUsedModules):
+    %
+    % Given ImplicitAvailNeeds, a data structure generated by
+    % starting with init_implicit_avail_needs and then gathering
+    % implicit import needs using calls to acc_implicit_avail_needs_in_*
+    % return
+    %
+    % - the set of modules that the items processed implicitly need imported,
+    %   and
+    %
+    % - the set of modules that the items processed implicitly need used.
+    %
+:- pred compute_implicit_avail_needs(globals::in, implicit_avail_needs::in,
+    set(module_name)::out, set(module_name)::out) is det.
+
+    % extend_import_and_or_use_map_with_implicits(Globals,
+    %   IntImplicitAvailNeeds, ImpImplicitAvailNeeds, !ImportUseMap):
+    %
+    % Given an ImplicitAvailNeeds structure for both the interface
+    % and the implementation sections of a module, record the implicit
+    % imports and/or uses they encode to !ImportUseMap.
+    %
+:- pred extend_import_and_or_use_map_with_implicits(globals::in,
+    implicit_avail_needs::in, implicit_avail_needs::in,
+    import_and_or_use_map::in, import_and_or_use_map::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- type item_contents
     --->    item_contents(
@@ -120,28 +170,10 @@
                 ic_has_main             :: has_main
             ).
 
-    % get_implicit_dependencies_in_*(Globals, Items/ItemBlocks,
-    %   ImportDeps, UseDeps):
-    %
-    % Get the list of builtin modules (e.g. "public_builtin",
-    % "private_builtin" etc) that the given items may implicitly depend on.
-    % ImportDeps is the list of modules which should be automatically
-    % implicitly imported as if via `:- import_module', and UseDeps is
-    % the list which should be automatically implicitly imported as if via
-    % `:- use_module'.
-    %
-:- pred get_implicit_dependencies_in_item_blocks(globals::in,
-    list(item_block(MS))::in,
-    set(module_name)::out, set(module_name)::out) is det.
-:- pred get_implicit_dependencies_in_items(globals::in,
-    list(item)::in,
-    set(module_name)::out, set(module_name)::out) is det.
-
-:- pred compute_implicit_import_needs(globals::in, implicit_import_needs::in,
-    set(module_name)::out, set(module_name)::out) is det.
+:- func init_item_contents = item_contents.
 
     % get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-    %   IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents):
+    %   IntImplicitAvailNeeds, IntImpImplicitAvailNeeds, Contents):
     %
     % Given the interface and implementation items of a raw compilation unit,
     % compute and return
@@ -155,31 +187,11 @@
     % - whether they export the program's entry point predicate.
     %
 :- pred get_implicits_foreigns_fact_tables(list(item)::in, list(item)::in,
-    implicit_import_needs::out, implicit_import_needs::out,
+    implicit_avail_needs::out, implicit_avail_needs::out,
     item_contents::out) is det.
 
-:- pred gather_implicit_import_needs_in_instance_method(instance_method::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-:- pred gather_implicit_import_needs_in_mutable(item_mutable_info::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-:- pred gather_implicit_import_needs_in_clause(item_clause_info::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-:- pred gather_implicit_import_needs_in_goal(goal::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-    % Get the fact table dependencies for the given list of items.
-    %
-:- pred get_fact_table_dependencies_in_item_blocks(list(item_block(MS))::in,
-    list(string)::out) is det.
-
-    % Get foreign include_file dependencies for a module.
-    % This replicates part of get_item_list_foreign_code.
-    %
-:- pred get_foreign_include_files_in_item_blocks(list(item_block(MS))::in,
-    foreign_include_file_infos::out) is det.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -191,59 +203,692 @@
 :- import_module parse_tree.maybe_error.
 
 :- import_module bool.
+:- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-% XXX ITEM_LIST: consider reordering these predicates.
+get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(Globals,
+        ParseTreePlainOpts, AvailModules) :-
+    ImplicitAvailNeeds0 = init_implicit_avail_needs,
+    list.foldl2(acc_avail_needs_in_parse_tree_plain_opt, ParseTreePlainOpts,
+        set.init, ExplicitModules, ImplicitAvailNeeds0, ImplicitAvailNeeds),
+    compute_implicit_avail_needs(Globals, ImplicitAvailNeeds,
+        ImplicitImportModules, ImplicitUseModules),
+    AvailModules = set.union_list([ExplicitModules,
+        ImplicitImportModules, ImplicitUseModules]).
 
-get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps) :-
-    get_dependencies_in_item_blocks_acc(ItemBlocks,
-        multi_map.init, ImportDeps, multi_map.init, UseDeps).
+:- pred acc_avail_needs_in_parse_tree_plain_opt(parse_tree_plain_opt::in,
+    set(module_name)::in, set(module_name)::out,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
 
-:- pred get_dependencies_in_item_blocks_acc(list(item_block(MS))::in,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::in,
-    multi_map(module_name, prog_context)::out) is det.
+acc_avail_needs_in_parse_tree_plain_opt(ParseTreePlainOpt,
+        !ExplicitModules, !ImplicitAvailNeeds) :-
+    ParseTreePlainOpt = parse_tree_plain_opt(_ModuleName, _ModuleNameContext,
+        UseMap, _FIMSpecs, _TypeDefns, _ForeignEnums,
+        _InstDefns, _ModeDefns, _TypeClasses, _Instances,
+        _PredDecls, _ModeDecls, _Clauses, _ForeignProcs, _Promises,
+        _MarkerPragmas, _TypeSpecs, _UnusedArgs, _TermInfos, _Term2Infos,
+        _Exceptions, _Trailings, _MMTablings, _Sharings, _Reuses),
+    set.union(map.keys_as_set(UseMap), !ExplicitModules),
+    acc_implicit_avail_needs_in_parse_tree_plain_opt(ParseTreePlainOpt,
+        !ImplicitAvailNeeds).
 
-get_dependencies_in_item_blocks_acc([], !ImportDeps, !UseDeps).
-get_dependencies_in_item_blocks_acc([ItemBlock | ItemBlocks],
-        !ImportDeps, !UseDeps) :-
-    ItemBlock = item_block(_, _, _, Avails, _, _),
-    accumulate_imports_uses_maps(Avails, !ImportDeps, !UseDeps),
-    get_dependencies_in_item_blocks_acc(ItemBlocks, !ImportDeps, !UseDeps).
+%---------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
+get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
+        ImplicitlyImportedModules, ImplicitlyUsedModules) :-
+    ImplicitAvailNeeds0 = init_implicit_avail_needs,
+    acc_implicit_avail_needs_in_aug_compilation_unit(AugCompUnit,
+        ImplicitAvailNeeds0, ImplicitAvailNeeds),
+    compute_implicit_avail_needs(Globals, ImplicitAvailNeeds,
+        ImplicitlyImportedModules, ImplicitlyUsedModules).
 
-init_implicit_import_needs = ImplicitImportNeeds :-
-    ImplicitImportNeeds = implicit_import_needs(
-        dont_need_tabling, dont_need_tabling_statistics,
-        dont_need_stm, dont_need_exception,
+%---------------------------------------------------------------------------%
+
+init_implicit_avail_needs = ImplicitAvailNeeds :-
+    ImplicitAvailNeeds = implicit_avail_needs(dont_need_tabling,
+        dont_need_tabling_statistics, dont_need_stm, dont_need_exception,
         dont_need_string_format, dont_need_stream_format, dont_need_io).
 
-get_implicit_dependencies_in_item_blocks(Globals, ItemBlocks,
-        ImportDeps, UseDeps) :-
-    ImplicitImportNeeds0 = init_implicit_import_needs,
-    gather_implicit_import_needs_in_item_blocks(ItemBlocks,
-        ImplicitImportNeeds0, ImplicitImportNeeds),
-    compute_implicit_import_needs(Globals, ImplicitImportNeeds,
-        ImportDeps, UseDeps).
+%---------------------------------------------------------------------------%
 
-get_implicit_dependencies_in_items(Globals, Items, ImportDeps, UseDeps) :-
-    ImplicitImportNeeds0 = init_implicit_import_needs,
-    gather_implicit_import_needs_in_items(Items,
-        ImplicitImportNeeds0, ImplicitImportNeeds),
-    compute_implicit_import_needs(Globals, ImplicitImportNeeds,
-        ImportDeps, UseDeps).
+:- pred acc_implicit_avail_needs_in_aug_compilation_unit(
+    aug_compilation_unit::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
 
-compute_implicit_import_needs(Globals, ImplicitImportNeeds,
-        !:ImportDeps, !:UseDeps) :-
-    !:ImportDeps = set.make_singleton_set(mercury_public_builtin_module),
-    !:UseDeps = set.make_singleton_set(mercury_private_builtin_module),
-    ImplicitImportNeeds = implicit_import_needs(
+acc_implicit_avail_needs_in_aug_compilation_unit(AugCompUnit,
+        !ImplicitAvailNeeds) :-
+    AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs),
+    acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
+        !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_ancestor_int_spec,
+        AncestorIntSpecs, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_direct_int_spec,
+        DirectIntSpecs, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_indirect_int_spec,
+        IndirectIntSpecs, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_int_for_opt_spec,
+        IntForOptSpecs, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_parse_tree_plain_opt,
+        PlainOpts, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_parse_tree_trans_opt,
+        TransOpts, !ImplicitAvailNeeds).
+
+%---------------------%
+
+:- pred acc_implicit_avail_needs_in_parse_tree_module_src(
+    parse_tree_module_src::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
+        !ImplicitAvailNeeds) :-
+    ParseTreeModuleSrc = parse_tree_module_src(_ModuleName, _ModuleNameContext,
+        _IntInclMap, _ImpInclMap, _InclMap,
+        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, _ImportUseMap,
+        _IntFIMSpecMap, _ImpFIMSpecMap, _MaybeImplicitFIMLangs,
+
+        _IntTypeDefnsAbs, IntTypeDefnsMer, _IntTypeDefnsForeign,
+        _IntInstDefns, _IntModeDefns, _IntTypeClasses, IntInstances,
+        _IntPredDecls, _IntModeDecls,
+        _IntForeignExportEnums, _IntDeclPragmas, IntPromises, _IntBadPreds,
+
+        _ImpTypeDefnsAbs, ImpTypeDefnsMer, _ImpTypeDefnsForeign,
+        _ImpInstDefns, _ImpModeDefns, _ImpTypeClasses, ImpInstances,
+        _ImpPredDecls, _ImpModeDecls, ImpClauses,
+        _ImpForeignEnums, _ImpForeignExportEnums,
+        _ImpDeclPragmas, ImpImplPragmas, ImpPromises,
+        _ImpInitialises, _ImpFinalises, ImpMutables),
+
+    list.foldl(acc_implicit_avail_needs_in_type_defn,
+        IntTypeDefnsMer, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_instance,
+        IntInstances, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_promise,
+        IntPromises, !ImplicitAvailNeeds),
+
+    list.foldl(acc_implicit_avail_needs_in_type_defn,
+        ImpTypeDefnsMer, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_instance,
+        ImpInstances, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_clause,
+        ImpClauses, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_impl_pragma,
+        ImpImplPragmas, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_promise,
+        ImpPromises, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_mutable,
+        ImpMutables, !ImplicitAvailNeeds).
+
+%---------------------%
+
+:- pred acc_implicit_avail_needs_in_ancestor_int_spec(ancestor_int_spec::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_ancestor_int_spec(AncestorIntSpec,
+        !ImplicitAvailNeeds) :-
+    AncestorIntSpec = ancestor_int0(ParseTreeInt0, _),
+    acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
+        !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_direct_int_spec(direct_int_spec::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_direct_int_spec(DirectIntSpec,
+        !ImplicitAvailNeeds) :-
+    (
+        DirectIntSpec = direct_int1(ParseTreeInt1, _),
+        acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
+            !ImplicitAvailNeeds)
+    ;
+        DirectIntSpec = direct_int3(ParseTreeInt3, _),
+        acc_implicit_avail_needs_in_parse_tree_int3(ParseTreeInt3,
+            !ImplicitAvailNeeds)
+    ).
+
+:- pred acc_implicit_avail_needs_in_indirect_int_spec(indirect_int_spec::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_indirect_int_spec(IndirectIntSpec,
+        !ImplicitAvailNeeds) :-
+    (
+        IndirectIntSpec = indirect_int2(ParseTreeInt2, _),
+        acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
+            !ImplicitAvailNeeds)
+    ;
+        IndirectIntSpec = indirect_int3(ParseTreeInt3, _),
+        acc_implicit_avail_needs_in_parse_tree_int3(ParseTreeInt3,
+            !ImplicitAvailNeeds)
+    ).
+
+:- pred acc_implicit_avail_needs_in_int_for_opt_spec(int_for_opt_spec::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_int_for_opt_spec(IntForOptIntSpec,
+        !ImplicitAvailNeeds) :-
+    (
+        IntForOptIntSpec = for_opt_int0(ParseTreeInt0, _),
+        acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
+            !ImplicitAvailNeeds)
+    ;
+        IntForOptIntSpec = for_opt_int1(ParseTreeInt1, _),
+        acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
+            !ImplicitAvailNeeds)
+    ;
+        IntForOptIntSpec = for_opt_int2(ParseTreeInt2, _),
+        acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
+            !ImplicitAvailNeeds)
+    ).
+
+%---------------------%
+
+:- pred acc_implicit_avail_needs_in_parse_tree_int0(parse_tree_int0::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
+        !ImplicitAvailNeeds) :-
+    ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
+        _IntImportMap, _IntUsedMap, _ImpImportMap, _ImpUseMap, _ImportUseMap,
+        _IntFIMSpecs, _ImpFIMSpecs,
+        IntTypeDefnMap, _IntInstDefnMap, _IntModeDefnMap,
+        _IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
+        _IntForeignEnumMap, _IntDeclPragmas, IntPromises,
+        ImpTypeDefnMap, _ImpInstDefnMap, _ImpModeDefnMap,
+        _ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
+        _ImpForeignEnumMap, _ImpDeclPragmas, ImpPromises),
+
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+        IntTypeDefnMap, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_instance,
+        IntInstances, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_promise,
+        IntPromises, !ImplicitAvailNeeds),
+
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+        ImpTypeDefnMap, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_instance,
+        ImpInstances, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_promise,
+        ImpPromises, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_parse_tree_int1(parse_tree_int1::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
+        !ImplicitAvailNeeds) :-
+    ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
+        _IntUseMap, _ImpUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
+        IntTypeDefnMap, _IntInstDefnMap, _IntModeDefnMap,
+        _IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
+        _IntForeignEnumMap, _IntDeclPragmas, IntPromises, _IntTypeRepnMap,
+        ImpTypeDefnMap, _ImpForeignEnumMap, _ImpTypeClasses),
+
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+        IntTypeDefnMap, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_instance,
+        IntInstances, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_promise,
+        IntPromises, !ImplicitAvailNeeds),
+
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+        ImpTypeDefnMap, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_parse_tree_int2(parse_tree_int2::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
+        !ImplicitAvailNeeds) :-
+    ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntInclMap, _InclMap,
+        _IntUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
+        IntTypeDefnMap, _IntInstDefnMap, _IntModeDefnMap,
+        _IntTypeClasses, IntInstances, _IntTypeRepnMap,
+        ImpTypeDefnMap),
+
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+        IntTypeDefnMap, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_instance,
+        IntInstances, !ImplicitAvailNeeds),
+
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+        ImpTypeDefnMap, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_parse_tree_int3(
+    parse_tree_int3::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_parse_tree_int3(ParseTreeInt3,
+        !ImplicitAvailNeeds) :-
+    ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
+        _IntInclMap, _InclMap, _IntImportMap, _ImportUseMap,
+        IntTypeDefnMap, _IntInstDefnMap, _IntModeDefnMap,
+        _IntTypeClasses, IntInstances, _IntTypeRepnMap),
+
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+        IntTypeDefnMap, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_instance,
+        IntInstances, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_parse_tree_plain_opt(
+    parse_tree_plain_opt::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_parse_tree_plain_opt(ParseTreePlainOpt,
+        !ImplicitAvailNeeds) :-
+    ParseTreePlainOpt = parse_tree_plain_opt(_ModuleName, _ModuleNameContext,
+        _UsedModuleNames, _FIMSpecs, TypeDefns, _ForeignEnums,
+        _InstDefns, _ModeDefns, _TypeClasses, Instances,
+        _PredDecls, _ModeDecls, Clauses, _ForeignProcs, _Promises,
+        _MarkerPragmas, _TypeSpecs, _UnusedArgs, _TermInfos, _Term2Infos,
+        _Exceptions, _Trailings, _MMTablings, _Sharings, _Reuses),
+    list.foldl(acc_implicit_avail_needs_in_type_defn,
+        TypeDefns, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_instance,
+        Instances, !ImplicitAvailNeeds),
+    list.foldl(acc_implicit_avail_needs_in_clause,
+        Clauses, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_parse_tree_trans_opt(
+    parse_tree_trans_opt::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_parse_tree_trans_opt(ParseTreeTransOpt,
+        !ImplicitAvailNeeds) :-
+    ParseTreeTransOpt = parse_tree_trans_opt(_ModuleName, _ModuleNameContext,
+        _TermInfos, _Term2Infos, _Exceptions, _Trailings, _MMTablings,
+        _Sharings, _Reuses).
+    % None of the item kinds in parse_tree_trans_opts can have any
+    % implicit avail needs.
+
+%---------------------%
+
+:- pred acc_implicit_avail_needs_in_type_ctor_add_defns(
+    type_ctor_all_defns::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_type_ctor_add_defns(AllDefns,
+        !ImplicitAvailNeeds) :-
+    AllDefns = type_ctor_all_defns(_SolverAbs, SolverNonAbs,
+        _StdAbs, _StdEqv, _StdDu, _StdForeign),
+    list.foldl(acc_implicit_avail_needs_in_type_defn_solver,
+        SolverNonAbs, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_type_defn(item_type_defn_info::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_type_defn(ItemTypeDefn, !ImplicitAvailNeeds) :-
+    ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
+        TypeDefn, _TVarSet, _Context, _SeqNum),
+    (
+        ( TypeDefn = parse_tree_du_type(_)
+        ; TypeDefn = parse_tree_eqv_type(_)
+        ; TypeDefn = parse_tree_abstract_type(_)
+        ; TypeDefn = parse_tree_foreign_type(_)
+        )
+    ;
+        TypeDefn = parse_tree_solver_type(DetailsSolver),
+        acc_implicit_avail_needs_in_solver_details(DetailsSolver,
+            !ImplicitAvailNeeds)
+    ).
+
+:- pred acc_implicit_avail_needs_in_type_defn_solver(
+    item_type_defn_info_solver::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_type_defn_solver(ItemTypeDefn,
+        !ImplicitAvailNeeds) :-
+    ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
+        DetailsSolver, _TVarSet, _Context, _SeqNum),
+    acc_implicit_avail_needs_in_solver_details(DetailsSolver,
+        !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_solver_details(type_details_solver::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_solver_details(DetailsSolver,
+        !ImplicitAvailNeeds) :-
+    DetailsSolver = type_details_solver(SolverTypeDetails,
+        _MaybeUnifyComparePredNames),
+    SolverTypeDetails = solver_type_details(_RepresentationType,
+        _GroundInst, _AnyInst, MutableItems),
+    list.foldl(acc_implicit_avail_needs_in_mutable, MutableItems,
+        !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_instance(item_instance_info::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_instance(ItemInstance, !ImplicitAvailNeeds) :-
+    ItemInstance = item_instance_info(_DerivingClass, _ClassName,
+        _Types, _OriginalTypes, InstanceBody, _VarSet,
+        _ModuleContainingInstance, _Context, _SeqNum),
+    (
+        InstanceBody = instance_body_abstract
+    ;
+        InstanceBody = instance_body_concrete(InstanceMethods),
+        list.foldl(acc_implicit_avail_needs_in_instance_method,
+            InstanceMethods, !ImplicitAvailNeeds)
+    ).
+
+acc_implicit_avail_needs_in_instance_method(InstanceMethod,
+        !ImplicitAvailNeeds) :-
+    InstanceMethod = instance_method(_PredOrFunc, _MethodName, ProcDef,
+        _Arity, _Context),
+    (
+        ProcDef = instance_proc_def_name(_Name)
+    ;
+        ProcDef = instance_proc_def_clauses(ItemClauses),
+        list.foldl(acc_implicit_avail_needs_in_clause, ItemClauses,
+            !ImplicitAvailNeeds)
+    ).
+
+:- pred acc_implicit_avail_needs_in_impl_pragma(item_impl_pragma_info::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_impl_pragma(ItemImplPragma,
+        !ImplicitAvailNeeds) :-
+    ItemImplPragma = item_pragma_info(ImplPragma, _Context, _SeqNum),
+    (
+        ImplPragma = impl_pragma_tabled(TableInfo),
+        TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
+        !ImplicitAvailNeeds ^ ian_tabling := do_need_tabling,
+        (
+            MaybeAttributes = no
+        ;
+            MaybeAttributes = yes(Attributes),
+            StatsAttr = Attributes ^ table_attr_statistics,
+            (
+                StatsAttr = table_gather_statistics,
+                !ImplicitAvailNeeds ^ ian_tabling_statistics
+                    := do_need_tabling_statistics
+            ;
+                StatsAttr = table_dont_gather_statistics
+            )
+        )
+    ;
+        ( ImplPragma = impl_pragma_foreign_decl(_)
+        ; ImplPragma = impl_pragma_foreign_code(_)
+        ; ImplPragma = impl_pragma_foreign_proc(_)
+        ; ImplPragma = impl_pragma_foreign_proc_export(_)
+        ; ImplPragma = impl_pragma_external_proc(_)
+        ; ImplPragma = impl_pragma_inline(_)
+        ; ImplPragma = impl_pragma_no_inline(_)
+        ; ImplPragma = impl_pragma_consider_used(_)
+        ; ImplPragma = impl_pragma_no_detism_warning(_)
+        ; ImplPragma = impl_pragma_fact_table(_)
+        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
+        ; ImplPragma = impl_pragma_promise_pure(_)
+        ; ImplPragma = impl_pragma_promise_semipure(_)
+        ; ImplPragma = impl_pragma_mode_check_clauses(_)
+        ; ImplPragma = impl_pragma_require_feature_set(_)
+        ; ImplPragma = impl_pragma_require_tail_rec(_)
+        )
+    ).
+
+acc_implicit_avail_needs_in_mutable(ItemMutableInfo,
+        !ImplicitAvailNeeds) :-
+    ItemMutableInfo = item_mutable_info(_Name,
+        _OrigType, _Type, _OrigInst, _Inst, InitValue,
+        _Attrs, _VarSet, _Context, _SeqNum),
+    acc_implicit_avail_needs_in_term(InitValue, !ImplicitAvailNeeds).
+
+acc_implicit_avail_needs_in_clause(ItemClause, !ImplicitAvailNeeds) :-
+    ItemClause = item_clause_info(_PredName,_PredOrFunc, HeadTerms,
+        _Origin, _VarSet, MaybeGoal, _Context, _SeqNum),
+    acc_implicit_avail_needs_in_terms(HeadTerms, !ImplicitAvailNeeds),
+    (
+        MaybeGoal = ok1(Goal),
+        acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds)
+    ;
+        MaybeGoal = error1(_)
+    ).
+
+:- pred acc_implicit_avail_needs_in_promise(item_promise_info::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_promise(ItemPromise, !ImplicitAvailNeeds) :-
+    ItemPromise = item_promise_info(_PromiseType, Goal, _VarSet,
+        _UnivQuantVars, _Context, _SeqNum),
+    acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds).
+
+acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds) :-
+    (
+        ( Goal = true_expr(_)
+        ; Goal = fail_expr(_)
+        )
+        % Cannot contain anything that requires implicit imports.
+    ;
+        ( Goal = conj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = disj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = implies_expr(_, SubGoalA, SubGoalB)
+        ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
+        ),
+        acc_implicit_avail_needs_in_goal(SubGoalA, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_goal(SubGoalB, !ImplicitAvailNeeds)
+    ;
+        ( Goal = not_expr(_, SubGoal)
+        ; Goal = quant_expr(_, _, _, _Vars, SubGoal)
+        ; Goal = promise_purity_expr(_, _Purity, SubGoal)
+        ; Goal = promise_equivalent_solutions_expr(_, _OrdVars,
+            _StateVars, _DotVars, _ColonVars, SubGoal)
+        ; Goal = promise_equivalent_solution_sets_expr(_, _OrdVars,
+            _StateVars, _DotVars, _ColonVars, SubGoal)
+        ; Goal = promise_equivalent_solution_arbitrary_expr(_, _OrdVars,
+            _StateVars, _DotVars, _ColonVars, SubGoal)
+        ; Goal = require_detism_expr(_, _Detism, SubGoal)
+        ; Goal = require_complete_switch_expr(_, _SwitchVar, SubGoal)
+        ; Goal = require_switch_arms_detism_expr(_, _SwitchVar, _Detism,
+            SubGoal)
+        ; Goal = disable_warnings_expr(_, _HeadWarning, _TailWarnings, SubGoal)
+        ),
+        acc_implicit_avail_needs_in_goal(SubGoal, !ImplicitAvailNeeds)
+    ;
+        Goal = trace_expr(_, _CompCond, _RunCond, MaybeIO, _Mutables,
+            SubGoal),
+        (
+            MaybeIO = yes(_),
+            !ImplicitAvailNeeds ^ ian_io := do_need_io
+        ;
+            MaybeIO = no
+        ),
+        acc_implicit_avail_needs_in_goal(SubGoal, !ImplicitAvailNeeds)
+    ;
+        Goal = try_expr(_, _MaybeIO, SubGoal, Then, MaybeElse,
+            Catches, MaybeCatchAny),
+        !ImplicitAvailNeeds ^ ian_exception := do_need_exception,
+        acc_implicit_avail_needs_in_goal(SubGoal, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_goal(Then, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_maybe_goal(MaybeElse,
+            !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_catch_exprs(Catches,
+            !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_maybe_catch_any_expr(MaybeCatchAny,
+            !ImplicitAvailNeeds)
+    ;
+        Goal = if_then_else_expr(_, _Vars, _StateVars, Cond, Then, Else),
+        acc_implicit_avail_needs_in_goal(Cond, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_goal(Then, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_goal(Else, !ImplicitAvailNeeds)
+    ;
+        Goal = atomic_expr(_, _Outer, _Inner, _OutputVars,
+            MainGoal, OrElseGoals),
+        !ImplicitAvailNeeds ^ ian_stm := do_need_stm,
+        !ImplicitAvailNeeds ^ ian_exception := do_need_exception,
+        acc_implicit_avail_needs_in_goal(MainGoal, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_goals(OrElseGoals, !ImplicitAvailNeeds)
+    ;
+        Goal = call_expr(_, CalleeSymName, Args, _Purity),
+        ( if
+            CalleeSymName = qualified(ModuleName, "format")
+        then
+            ( if
+                ( ModuleName = unqualified("string")
+                ; ModuleName = unqualified("io")
+                )
+            then
+                % For io.format, we need to pull in the same modules
+                % as for string.format.
+                !ImplicitAvailNeeds ^ ian_string_format
+                    := do_need_string_format
+            else if
+                ( ModuleName = unqualified("stream")
+                ; ModuleName = unqualified("string_writer")
+                ; ModuleName = qualified(unqualified("stream"),
+                    "string_writer")
+                )
+            then
+                % The replacement of calls to stream.string_writer.format
+                % needs everything that the replacement of calls to
+                % string.format or io.format needs.
+                !ImplicitAvailNeeds ^ ian_string_format
+                    := do_need_string_format,
+                !ImplicitAvailNeeds ^ ian_stream_format
+                    := do_need_stream_format
+            else
+                % The callee cannot be any of the predicates that
+                % format_call.m is designed to optimize.
+                true
+            )
+        else if
+            CalleeSymName = unqualified("format")
+        then
+            % We don't know whether this will resolve to string.format,
+            % io.format, or stream.string.writer.format. Ideally, we would
+            % set ian_stream_format only if the current context contains
+            % an import of stream.string_writer.m, but we don't have that
+            % information here, or in our caller.
+            !ImplicitAvailNeeds ^ ian_string_format := do_need_string_format,
+            !ImplicitAvailNeeds ^ ian_stream_format := do_need_stream_format
+        else
+            true
+        ),
+        acc_implicit_avail_needs_in_terms(Args, !ImplicitAvailNeeds)
+    ;
+        Goal = event_expr(_, _EventName, EventArgs),
+        acc_implicit_avail_needs_in_terms(EventArgs, !ImplicitAvailNeeds)
+    ;
+        Goal = unify_expr(_, TermA, TermB, _Purity),
+        acc_implicit_avail_needs_in_term(TermA, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_term(TermB, !ImplicitAvailNeeds)
+    ).
+
+:- pred acc_implicit_avail_needs_in_goals(list(goal)::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_goals([], !ImplicitAvailNeeds).
+acc_implicit_avail_needs_in_goals([Goal | Goals], !ImplicitAvailNeeds) :-
+    acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds),
+    acc_implicit_avail_needs_in_goals(Goals, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_maybe_goal(maybe(goal)::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_maybe_goal(no, !ImplicitAvailNeeds).
+acc_implicit_avail_needs_in_maybe_goal(yes(Goal), !ImplicitAvailNeeds) :-
+    acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_catch_exprs(list(catch_expr)::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_catch_exprs([], !ImplicitAvailNeeds).
+acc_implicit_avail_needs_in_catch_exprs([CatchExpr | CatchExprs],
+        !ImplicitAvailNeeds) :-
+    CatchExpr = catch_expr(_Pattern, Goal),
+    acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds),
+    acc_implicit_avail_needs_in_catch_exprs(CatchExprs, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_maybe_catch_any_expr(
+    maybe(catch_any_expr)::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_maybe_catch_any_expr(no, !ImplicitAvailNeeds).
+acc_implicit_avail_needs_in_maybe_catch_any_expr(yes(CatchAnyExpr),
+        !ImplicitAvailNeeds) :-
+    CatchAnyExpr = catch_any_expr(_Var, Goal),
+    acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_term(prog_term::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_term(Term, !ImplicitAvailNeeds) :-
+    (
+        Term = variable(_Var, _Context)
+    ;
+        Term = functor(Const, ArgTerms, _Context),
+        (
+            Const = atom(Atom),
+            ( if
+                Atom = "format"
+            then
+                !ImplicitAvailNeeds ^ ian_string_format
+                    := do_need_string_format,
+                !ImplicitAvailNeeds ^ ian_stream_format
+                    := do_need_stream_format
+            else if
+                ( Atom = "string.format"
+                ; Atom = "string__format"
+                ; Atom = "io.format"
+                ; Atom = "io__format"
+                )
+            then
+                !ImplicitAvailNeeds ^ ian_string_format
+                    := do_need_string_format
+            else if
+                ( Atom = "stream.format"
+                ; Atom = "stream__format"
+                ; Atom = "string_writer.format"
+                ; Atom = "string_writer__format"
+                ; Atom = "stream.string_writer.format"
+                ; Atom = "stream.string_writer__format"
+                ; Atom = "stream__string_writer.format"
+                ; Atom = "stream__string_writer__format"
+                )
+            then
+                % The replacement of calls to stream.string_writer.format
+                % needs everything that the replacement of calls to
+                % string.format or io.format needs.
+                !ImplicitAvailNeeds ^ ian_string_format
+                    := do_need_string_format,
+                !ImplicitAvailNeeds ^ ian_stream_format
+                    := do_need_stream_format
+            else
+                true
+            )
+        ;
+            ( Const = integer(_, _, _, _)
+            ; Const = string(_)
+            ; Const = float(_)
+            ; Const = implementation_defined(_)
+            )
+        ),
+        acc_implicit_avail_needs_in_terms(ArgTerms, !ImplicitAvailNeeds)
+    ).
+
+:- pred acc_implicit_avail_needs_in_terms(list(prog_term)::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_terms([], !ImplicitAvailNeeds).
+acc_implicit_avail_needs_in_terms([Term | Terms], !ImplicitAvailNeeds) :-
+    acc_implicit_avail_needs_in_term(Term, !ImplicitAvailNeeds),
+    acc_implicit_avail_needs_in_terms(Terms, !ImplicitAvailNeeds).
+
+%---------------------------------------------------------------------------%
+
+compute_implicit_avail_needs(Globals, ImplicitAvailNeeds,
+        !:ImplicitlyImportedModules, !:ImplicitlyUsedModules) :-
+    !:ImplicitlyImportedModules =
+        set.make_singleton_set(mercury_public_builtin_module),
+    !:ImplicitlyUsedModules =
+        set.make_singleton_set(mercury_private_builtin_module),
+    ImplicitAvailNeeds = implicit_avail_needs(
         ItemsNeedTabling, ItemsNeedTablingStatistics,
         ItemsNeedSTM, ItemsNeedException,
         ItemsNeedStringFormat, ItemsNeedStreamFormat, ItemsNeedIO),
@@ -253,10 +898,10 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
     % to import mercury_table_statistics_module.
     (
         ItemsNeedTabling = do_need_tabling,
-        set.insert(mercury_table_builtin_module, !UseDeps),
+        set.insert(mercury_table_builtin_module, !ImplicitlyUsedModules),
         (
             ItemsNeedTablingStatistics = do_need_tabling_statistics,
-            set.insert(mercury_table_statistics_module, !UseDeps)
+            set.insert(mercury_table_statistics_module, !ImplicitlyUsedModules)
         ;
             ItemsNeedTablingStatistics = dont_need_tabling_statistics
         )
@@ -276,48 +921,48 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
                 globals.lookup_bool_option(Globals, trace_table_io, yes)
             )
         then
-            set.insert(mercury_table_builtin_module, !UseDeps)
+            set.insert(mercury_table_builtin_module, !ImplicitlyUsedModules)
         else
             true
         )
     ),
     (
         ItemsNeedSTM = do_need_stm,
-        set.insert(mercury_stm_builtin_module, !UseDeps),
-        set.insert(mercury_exception_module, !UseDeps),
-        set.insert(mercury_univ_module, !UseDeps)
+        set.insert(mercury_stm_builtin_module, !ImplicitlyUsedModules),
+        set.insert(mercury_exception_module, !ImplicitlyUsedModules),
+        set.insert(mercury_univ_module, !ImplicitlyUsedModules)
     ;
         ItemsNeedSTM = dont_need_stm
     ),
     (
         ItemsNeedException = do_need_exception,
-        set.insert(mercury_exception_module, !UseDeps)
+        set.insert(mercury_exception_module, !ImplicitlyUsedModules)
     ;
         ItemsNeedException = dont_need_exception
     ),
     (
         ItemsNeedStringFormat = do_need_string_format,
-        set.insert(mercury_string_format_module, !UseDeps),
-        set.insert(mercury_string_parse_util_module, !UseDeps)
+        set.insert(mercury_string_format_module, !ImplicitlyUsedModules),
+        set.insert(mercury_string_parse_util_module, !ImplicitlyUsedModules)
     ;
         ItemsNeedStringFormat = dont_need_string_format
     ),
     (
         ItemsNeedStreamFormat = do_need_stream_format,
-        set.insert(mercury_stream_module, !UseDeps)
+        set.insert(mercury_stream_module, !ImplicitlyUsedModules)
     ;
         ItemsNeedStreamFormat = dont_need_stream_format
     ),
     (
         ItemsNeedIO = do_need_io,
-        set.insert(mercury_io_module, !UseDeps)
+        set.insert(mercury_io_module, !ImplicitlyUsedModules)
     ;
         ItemsNeedIO = dont_need_io
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (
         Deep = yes,
-        set.insert(mercury_profiling_builtin_module, !UseDeps)
+        set.insert(mercury_profiling_builtin_module, !ImplicitlyUsedModules)
     ;
         Deep = no
     ),
@@ -330,7 +975,8 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
                 record_term_sizes_as_cells, yes)
         )
     then
-        set.insert(mercury_term_size_prof_builtin_module, !UseDeps)
+        set.insert(mercury_term_size_prof_builtin_module,
+            !ImplicitlyUsedModules)
     else
         true
     ),
@@ -342,14 +988,14 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         HighLevelCode = no,
         Parallel = yes
     then
-        set.insert(mercury_par_builtin_module, !UseDeps)
+        set.insert(mercury_par_builtin_module, !ImplicitlyUsedModules)
     else
         true
     ),
     globals.lookup_bool_option(Globals, use_regions, UseRegions),
     (
         UseRegions = yes,
-        set.insert(mercury_region_builtin_module, !UseDeps)
+        set.insert(mercury_region_builtin_module, !ImplicitlyUsedModules)
     ;
         UseRegions = no
     ),
@@ -366,34 +1012,74 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
             DisableSSDB = yes
         ;
             DisableSSDB = no,
-            set.insert(mercury_ssdb_builtin_module, !UseDeps)
+            set.insert(mercury_ssdb_builtin_module, !ImplicitlyUsedModules)
         )
     ).
 
-%-----------------------------------------------------------------------------%
+extend_import_and_or_use_map_with_implicits(Globals,
+        IntImplicitAvailNeeds, ImpImplicitAvailNeeds, !ImportUseMap) :-
+    compute_implicit_avail_needs(Globals, IntImplicitAvailNeeds,
+        IntImplicitImports, IntImplicitUses),
+    compute_implicit_avail_needs(Globals, ImpImplicitAvailNeeds,
+        ImpImplicitImports, ImpImplicitUses),
+    PublicBuiltin = mercury_public_builtin_module,
+    expect(set.is_singleton(IntImplicitImports, PublicBuiltin), $pred,
+        "module other than builtin.m implicitly imported in interface"),
+    expect(set.is_singleton(ImpImplicitImports, PublicBuiltin), $pred,
+        "module other than builtin.m implicitly imported in implementation"),
+    add_implicit_avail(implicit_int_import, PublicBuiltin, !ImportUseMap),
+    set.foldl(add_implicit_avail(implicit_int_use), IntImplicitUses,
+        !ImportUseMap),
+    set.foldl(add_implicit_avail(implicit_imp_use), ImpImplicitUses,
+        !ImportUseMap).
+
+:- pred add_implicit_avail(implicit_import_or_use::in, module_name::in,
+    import_and_or_use_map::in, import_and_or_use_map::out) is det.
+
+add_implicit_avail(Implicit, ModuleName, !ImportUseMap) :-
+    ( if map.search(!.ImportUseMap, ModuleName, OldEntry) then
+        (
+            OldEntry = explicit_avail(Explicit),
+            NewEntry = implicit_avail(Implicit, yes(Explicit)),
+            map.det_update(ModuleName, NewEntry, !ImportUseMap)
+        ;
+            OldEntry = implicit_avail(_, _)
+            % Since we insert implicit avails into !ImportUseMap in order
+            % from most general (int_import) to least general (imp_use),
+            % if we find any existing implicit avail for this module,
+            % keep it.
+        )
+    else
+        NewEntry = implicit_avail(Implicit, no),
+        map.det_insert(ModuleName, NewEntry, !ImportUseMap)
+    ).
+
+%---------------------------------------------------------------------------%
+
+init_item_contents =
+    item_contents(cord.init, set.init, set.init, set.init, no_main).
 
 get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-        IntImplicitImportNeeds, IntImpImplicitImportNeeds, !:Contents) :-
-    ImplicitImportNeeds0 = init_implicit_import_needs,
-    !:Contents = item_contents(cord.init, set.init, set.init, set.init,
-        no_main),
+        IntImplicitAvailNeeds, IntImpImplicitAvailNeeds, !:Contents) :-
+    ImplicitAvailNeeds0 = init_implicit_avail_needs,
+    !:Contents = init_item_contents,
     get_implicits_foreigns_fact_tables_acc(IntItems,
-        ImplicitImportNeeds0, IntImplicitImportNeeds, !Contents),
+        ImplicitAvailNeeds0, IntImplicitAvailNeeds, !Contents),
     IntHasMain = !.Contents ^ ic_has_main,
     get_implicits_foreigns_fact_tables_acc(ImpItems,
-        IntImplicitImportNeeds, IntImpImplicitImportNeeds, !Contents),
+        IntImplicitAvailNeeds, IntImpImplicitAvailNeeds, !Contents),
     % We ignore declarations of predicates named "main" in the
     % implementation section, because nonexported predicates cannot serve
     % as program entry points.
     !Contents ^ ic_has_main := IntHasMain.
 
 :- pred get_implicits_foreigns_fact_tables_acc(list(item)::in,
-    implicit_import_needs::in, implicit_import_needs::out,
+    implicit_avail_needs::in, implicit_avail_needs::out,
     item_contents::in, item_contents::out) is det.
 
-get_implicits_foreigns_fact_tables_acc([], !ImplicitImportNeeds, !Contents).
+get_implicits_foreigns_fact_tables_acc([], !ImplicitAvailNeeds, !Contents).
 get_implicits_foreigns_fact_tables_acc([Item | Items],
-        !ImplicitImportNeeds, !Contents) :-
+        !ImplicitAvailNeeds, !Contents) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
@@ -404,8 +1090,8 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
                 _MaybeUnifyComparePredNames),
             SolverTypeDetails = solver_type_details(_RepresentationType,
                 _GroundInst, _AnyInst, MutableItems),
-            list.foldl(gather_implicit_import_needs_in_mutable, MutableItems,
-                !ImplicitImportNeeds)
+            list.foldl(acc_implicit_avail_needs_in_mutable, MutableItems,
+                !ImplicitAvailNeeds)
         ;
             TypeDefn = parse_tree_foreign_type(DetailsForeign),
             DetailsForeign = type_details_foreign(ForeignType, _, _),
@@ -425,14 +1111,14 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
         set.insert(Lang, Langs0, Langs),
         !Contents ^ ic_langs := Langs
     ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _),
+        Item = item_impl_pragma(ItemImplPragma),
+        ItemImplPragma = item_pragma_info(ImplPragma, _, _),
         (
             (
-                Pragma = pragma_foreign_decl(FDInfo),
+                ImplPragma = impl_pragma_foreign_decl(FDInfo),
                 FDInfo = pragma_info_foreign_decl(Lang, _, LiteralOrInclude)
             ;
-                Pragma = pragma_foreign_code(FCInfo),
+                ImplPragma = impl_pragma_foreign_code(FCInfo),
                 FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
             ),
             (
@@ -448,13 +1134,13 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
             set.insert(Lang, Langs0, Langs),
             !Contents ^ ic_langs := Langs
         ;
-            Pragma = pragma_foreign_proc(FPInfo),
+            ImplPragma = impl_pragma_foreign_proc(FPInfo),
             FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
             Langs0 = !.Contents ^ ic_langs,
             set.insert(get_foreign_language(Attrs), Langs0, Langs),
             !Contents ^ ic_langs := Langs
         ;
-            Pragma = pragma_foreign_proc_export(FPEInfo),
+            ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
             FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
             FELangs0 = !.Contents ^ ic_foreign_export_langs,
             Langs0 = !.Contents ^ ic_langs,
@@ -463,15 +1149,15 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
             !Contents ^ ic_foreign_export_langs := FELangs,
             !Contents ^ ic_langs := Langs
         ;
-            Pragma = pragma_fact_table(FactTableInfo),
+            ImplPragma = impl_pragma_fact_table(FactTableInfo),
             FactTableInfo = pragma_info_fact_table(_PredNameArity, FileName),
             FactTables0 = !.Contents ^ ic_fact_tables,
             set.insert(FileName, FactTables0, FactTables),
             !Contents ^ ic_fact_tables := FactTables
         ;
-            Pragma = pragma_tabled(TableInfo),
+            ImplPragma = impl_pragma_tabled(TableInfo),
             TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
-            !ImplicitImportNeeds ^ iin_tabling := do_need_tabling,
+            !ImplicitAvailNeeds ^ ian_tabling := do_need_tabling,
             (
                 MaybeAttributes = no
             ;
@@ -479,39 +1165,24 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
                 StatsAttr = Attributes ^ table_attr_statistics,
                 (
                     StatsAttr = table_gather_statistics,
-                    !ImplicitImportNeeds ^ iin_tabling_statistics
+                    !ImplicitAvailNeeds ^ ian_tabling_statistics
                         := do_need_tabling_statistics
                 ;
                     StatsAttr = table_dont_gather_statistics
                 )
             )
         ;
-            ( Pragma = pragma_external_proc(_)
-            ; Pragma = pragma_type_spec(_)
-            ; Pragma = pragma_inline(_)
-            ; Pragma = pragma_no_inline(_)
-            ; Pragma = pragma_consider_used(_)
-            ; Pragma = pragma_unused_args(_)
-            ; Pragma = pragma_exceptions(_)
-            ; Pragma = pragma_trailing_info(_)
-            ; Pragma = pragma_mm_tabling_info(_)
-            ; Pragma = pragma_obsolete_pred(_)
-            ; Pragma = pragma_obsolete_proc(_)
-            ; Pragma = pragma_no_detism_warning(_)
-            ; Pragma = pragma_require_tail_recursion(_)
-            ; Pragma = pragma_oisu(_)
-            ; Pragma = pragma_promise_eqv_clauses(_)
-            ; Pragma = pragma_promise_pure(_)
-            ; Pragma = pragma_promise_semipure(_)
-            ; Pragma = pragma_termination_info(_)
-            ; Pragma = pragma_termination2_info(_)
-            ; Pragma = pragma_terminates(_)
-            ; Pragma = pragma_does_not_terminate(_)
-            ; Pragma = pragma_check_termination(_)
-            ; Pragma = pragma_mode_check_clauses(_)
-            ; Pragma = pragma_structure_sharing(_)
-            ; Pragma = pragma_structure_reuse(_)
-            ; Pragma = pragma_require_feature_set(_)
+            ( ImplPragma = impl_pragma_external_proc(_)
+            ; ImplPragma = impl_pragma_inline(_)
+            ; ImplPragma = impl_pragma_no_inline(_)
+            ; ImplPragma = impl_pragma_consider_used(_)
+            ; ImplPragma = impl_pragma_no_detism_warning(_)
+            ; ImplPragma = impl_pragma_require_tail_rec(_)
+            ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
+            ; ImplPragma = impl_pragma_promise_pure(_)
+            ; ImplPragma = impl_pragma_promise_semipure(_)
+            ; ImplPragma = impl_pragma_mode_check_clauses(_)
+            ; ImplPragma = impl_pragma_require_feature_set(_)
             )
         )
     ;
@@ -523,25 +1194,23 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
             InstanceBody = instance_body_abstract
         ;
             InstanceBody = instance_body_concrete(InstanceMethods),
-            list.foldl(gather_implicit_import_needs_in_instance_method,
-                InstanceMethods, !ImplicitImportNeeds)
+            list.foldl(acc_implicit_avail_needs_in_instance_method,
+                InstanceMethods, !ImplicitAvailNeeds)
         )
     ;
         Item = item_clause(ItemClause),
-        gather_implicit_import_needs_in_clause(ItemClause,
-            !ImplicitImportNeeds)
+        acc_implicit_avail_needs_in_clause(ItemClause, !ImplicitAvailNeeds)
     ;
         Item = item_promise(ItemPromise),
         ItemPromise = item_promise_info(_PromiseType, Goal, _VarSet,
             _UnivQuantVars, _Context, _SeqNum),
-        gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds)
+        acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds)
     ;
         Item = item_mutable(ItemMutable),
         Langs0 = !.Contents ^ ic_langs,
         set.insert_list(all_foreign_languages, Langs0, Langs),
         !Contents ^ ic_langs := Langs,
-        gather_implicit_import_needs_in_mutable(ItemMutable,
-            !ImplicitImportNeeds)
+        acc_implicit_avail_needs_in_mutable(ItemMutable, !ImplicitAvailNeeds)
     ;
         ( Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -585,477 +1254,14 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
         ; Item = item_foreign_export_enum(_)
+        ; Item = item_decl_pragma(_)
+        ; Item = item_generated_pragma(_)
         ; Item = item_type_repn(_)
         )
     ),
     get_implicits_foreigns_fact_tables_acc(Items,
-        !ImplicitImportNeeds, !Contents).
+        !ImplicitAvailNeeds, !Contents).
 
-%-----------------------------------------------------------------------------%
-
-:- pred gather_implicit_import_needs_in_item_blocks(list(item_block(MS))::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-gather_implicit_import_needs_in_item_blocks([], !ImplicitImportNeeds).
-gather_implicit_import_needs_in_item_blocks([ItemBlock | ItemBlocks],
-        !ImplicitImportNeeds) :-
-    ItemBlock = item_block(_, _, _Incls, _Imports, _FIMs, Items),
-    gather_implicit_import_needs_in_items(Items,
-        !ImplicitImportNeeds),
-    gather_implicit_import_needs_in_item_blocks(ItemBlocks,
-        !ImplicitImportNeeds).
-
-:- pred gather_implicit_import_needs_in_items(list(item)::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-gather_implicit_import_needs_in_items([], !ImplicitImportNeeds).
-gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
-    (
-        Item = item_clause(ItemClause),
-        gather_implicit_import_needs_in_clause(ItemClause,
-            !ImplicitImportNeeds)
-    ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _Context, _SeqNum),
-        (
-            Pragma = pragma_tabled(TableInfo),
-            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
-            !ImplicitImportNeeds ^ iin_tabling := do_need_tabling,
-            (
-                MaybeAttributes = no
-            ;
-                MaybeAttributes = yes(Attributes),
-                StatsAttr = Attributes ^ table_attr_statistics,
-                (
-                    StatsAttr = table_gather_statistics,
-                    !ImplicitImportNeeds ^ iin_tabling_statistics
-                        := do_need_tabling_statistics
-                ;
-                    StatsAttr = table_dont_gather_statistics
-                )
-            )
-        ;
-            ( Pragma = pragma_foreign_decl(_)
-            ; Pragma = pragma_foreign_code(_)
-            ; Pragma = pragma_foreign_proc(_)
-            ; Pragma = pragma_foreign_proc_export(_)
-            ; Pragma = pragma_external_proc(_)
-            ; Pragma = pragma_type_spec(_)
-            ; Pragma = pragma_inline(_)
-            ; Pragma = pragma_no_inline(_)
-            ; Pragma = pragma_consider_used(_)
-            ; Pragma = pragma_unused_args(_)
-            ; Pragma = pragma_exceptions(_)
-            ; Pragma = pragma_trailing_info(_)
-            ; Pragma = pragma_mm_tabling_info(_)
-            ; Pragma = pragma_obsolete_pred(_)
-            ; Pragma = pragma_obsolete_proc(_)
-            ; Pragma = pragma_no_detism_warning(_)
-            ; Pragma = pragma_fact_table(_)
-            ; Pragma = pragma_oisu(_)
-            ; Pragma = pragma_promise_eqv_clauses(_)
-            ; Pragma = pragma_promise_pure(_)
-            ; Pragma = pragma_promise_semipure(_)
-            ; Pragma = pragma_termination_info(_)
-            ; Pragma = pragma_termination2_info(_)
-            ; Pragma = pragma_terminates(_)
-            ; Pragma = pragma_does_not_terminate(_)
-            ; Pragma = pragma_check_termination(_)
-            ; Pragma = pragma_mode_check_clauses(_)
-            ; Pragma = pragma_structure_sharing(_)
-            ; Pragma = pragma_structure_reuse(_)
-            ; Pragma = pragma_require_feature_set(_)
-            ; Pragma = pragma_require_tail_recursion(_)
-            )
-        )
-    ;
-        Item = item_promise(ItemPromise),
-        ItemPromise = item_promise_info(_PromiseType, Goal, _VarSet,
-            _UnivQuantVars, _Context, _SeqNum),
-        gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds)
-    ;
-        Item = item_instance(ItemInstance),
-        ItemInstance = item_instance_info(_DerivingClass, _ClassName,
-            _Types, _OriginalTypes, InstanceBody, _VarSet,
-            _ModuleContainingInstance, _Context, _SeqNum),
-        (
-            InstanceBody = instance_body_abstract
-        ;
-            InstanceBody = instance_body_concrete(InstanceMethods),
-            list.foldl(gather_implicit_import_needs_in_instance_method,
-                InstanceMethods, !ImplicitImportNeeds)
-        )
-    ;
-        Item = item_mutable(ItemMutableInfo),
-        gather_implicit_import_needs_in_mutable(ItemMutableInfo,
-            !ImplicitImportNeeds)
-    ;
-        Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
-            TypeDefn, _TVarSet, _Context, _SeqNum),
-        (
-            ( TypeDefn = parse_tree_du_type(_)
-            ; TypeDefn = parse_tree_eqv_type(_)
-            ; TypeDefn = parse_tree_abstract_type(_)
-            ; TypeDefn = parse_tree_foreign_type(_)
-            )
-        ;
-            TypeDefn = parse_tree_solver_type(DetailsSolver),
-            DetailsSolver = type_details_solver(SolverTypeDetails,
-                _MaybeUnifyComparePredNames),
-            SolverTypeDetails = solver_type_details(_RepresentationType,
-                _GroundInst, _AnyInst, MutableItems),
-            list.foldl(gather_implicit_import_needs_in_mutable, MutableItems,
-                !ImplicitImportNeeds)
-        )
-    ;
-        ( Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_foreign_enum(_)
-        ; Item = item_foreign_export_enum(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_type_repn(_)
-        )
-    ),
-    gather_implicit_import_needs_in_items(Items, !ImplicitImportNeeds).
-
-gather_implicit_import_needs_in_instance_method(InstanceMethod,
-        !ImplicitImportNeeds) :-
-    InstanceMethod = instance_method(_PredOrFunc, _MethodName, ProcDef,
-        _Arity, _Context),
-    (
-        ProcDef = instance_proc_def_name(_Name)
-    ;
-        ProcDef = instance_proc_def_clauses(ItemClauses),
-        list.foldl(gather_implicit_import_needs_in_clause, ItemClauses,
-            !ImplicitImportNeeds)
-    ).
-
-gather_implicit_import_needs_in_mutable(ItemMutableInfo,
-        !ImplicitImportNeeds) :-
-    ItemMutableInfo = item_mutable_info(_Name,
-        _OrigType, _Type, _OrigInst, _Inst, InitValue,
-        _Attrs, _VarSet, _Context, _SeqNum),
-    gather_implicit_import_needs_in_term(InitValue, !ImplicitImportNeeds).
-
-gather_implicit_import_needs_in_clause(ItemClause, !ImplicitImportNeeds) :-
-    ItemClause = item_clause_info(_PredName,_PredOrFunc, HeadTerms,
-        _Origin, _VarSet, MaybeGoal, _Context, _SeqNum),
-    gather_implicit_import_needs_in_terms(HeadTerms, !ImplicitImportNeeds),
-    (
-        MaybeGoal = ok1(Goal),
-        gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds)
-    ;
-        MaybeGoal = error1(_)
-    ).
-
-gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds) :-
-    (
-        ( Goal = true_expr(_)
-        ; Goal = fail_expr(_)
-        )
-        % Cannot contain anything that requires implicit imports.
-    ;
-        ( Goal = conj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = disj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = implies_expr(_, SubGoalA, SubGoalB)
-        ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
-        ),
-        gather_implicit_import_needs_in_goal(SubGoalA, !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_goal(SubGoalB, !ImplicitImportNeeds)
-    ;
-        ( Goal = not_expr(_, SubGoal)
-        ; Goal = quant_expr(_, _, _, _Vars, SubGoal)
-        ; Goal = promise_purity_expr(_, _Purity, SubGoal)
-        ; Goal = promise_equivalent_solutions_expr(_, _OrdVars,
-            _StateVars, _DotVars, _ColonVars, SubGoal)
-        ; Goal = promise_equivalent_solution_sets_expr(_, _OrdVars,
-            _StateVars, _DotVars, _ColonVars, SubGoal)
-        ; Goal = promise_equivalent_solution_arbitrary_expr(_, _OrdVars,
-            _StateVars, _DotVars, _ColonVars, SubGoal)
-        ; Goal = require_detism_expr(_, _Detism, SubGoal)
-        ; Goal = require_complete_switch_expr(_, _SwitchVar, SubGoal)
-        ; Goal = require_switch_arms_detism_expr(_, _SwitchVar, _Detism,
-            SubGoal)
-        ; Goal = disable_warnings_expr(_, _HeadWarning, _TailWarnings, SubGoal)
-        ),
-        gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds)
-    ;
-        Goal = trace_expr(_, _CompCond, _RunCond, MaybeIO, _Mutables,
-            SubGoal),
-        (
-            MaybeIO = yes(_),
-            !ImplicitImportNeeds ^ iin_io := do_need_io
-        ;
-            MaybeIO = no
-        ),
-        gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds)
-    ;
-        Goal = try_expr(_, _MaybeIO, SubGoal, Then, MaybeElse,
-            Catches, MaybeCatchAny),
-        !ImplicitImportNeeds ^ iin_exception := do_need_exception,
-        gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_goal(Then, !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_maybe_goal(MaybeElse,
-            !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_catch_exprs(Catches,
-            !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_maybe_catch_any_expr(MaybeCatchAny,
-            !ImplicitImportNeeds)
-    ;
-        Goal = if_then_else_expr(_, _Vars, _StateVars, Cond, Then, Else),
-        gather_implicit_import_needs_in_goal(Cond, !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_goal(Then, !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_goal(Else, !ImplicitImportNeeds)
-    ;
-        Goal = atomic_expr(_, _Outer, _Inner, _OutputVars,
-            MainGoal, OrElseGoals),
-        !ImplicitImportNeeds ^ iin_stm := do_need_stm,
-        !ImplicitImportNeeds ^ iin_exception := do_need_exception,
-        gather_implicit_import_needs_in_goal(MainGoal, !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_goals(OrElseGoals,
-            !ImplicitImportNeeds)
-    ;
-        Goal = call_expr(_, CalleeSymName, Args, _Purity),
-        ( if
-            CalleeSymName = qualified(ModuleName, "format")
-        then
-            ( if
-                ( ModuleName = unqualified("string")
-                ; ModuleName = unqualified("io")
-                )
-            then
-                % For io.format, we need to pull in the same modules
-                % as for string.format.
-                !ImplicitImportNeeds ^ iin_string_format
-                    := do_need_string_format
-            else if
-                ( ModuleName = unqualified("stream")
-                ; ModuleName = unqualified("string_writer")
-                ; ModuleName = qualified(unqualified("stream"),
-                    "string_writer")
-                )
-            then
-                % The replacement of calls to stream.string_writer.format
-                % needs everything that the replacement of calls to
-                % string.format or io.format needs.
-                !ImplicitImportNeeds ^ iin_string_format
-                    := do_need_string_format,
-                !ImplicitImportNeeds ^ iin_stream_format
-                    := do_need_stream_format
-            else
-                % The callee cannot be any of the predicates that
-                % format_call.m is designed to optimize.
-                true
-            )
-        else if
-            CalleeSymName = unqualified("format")
-        then
-            % We don't know whether this will resolve to string.format,
-            % io.format, or stream.string.writer.format. Ideally, we would
-            % set iin_stream_format only if the current context contains
-            % an import of stream.string_writer.m, but we don't have that
-            % information here, or in our caller.
-            !ImplicitImportNeeds ^ iin_string_format := do_need_string_format,
-            !ImplicitImportNeeds ^ iin_stream_format := do_need_stream_format
-        else
-            true
-        ),
-        gather_implicit_import_needs_in_terms(Args, !ImplicitImportNeeds)
-    ;
-        Goal = event_expr(_, _EventName, EventArgs),
-        gather_implicit_import_needs_in_terms(EventArgs, !ImplicitImportNeeds)
-    ;
-        Goal = unify_expr(_, TermA, TermB, _Purity),
-        gather_implicit_import_needs_in_term(TermA, !ImplicitImportNeeds),
-        gather_implicit_import_needs_in_term(TermB, !ImplicitImportNeeds)
-    ).
-
-:- pred gather_implicit_import_needs_in_goals(list(goal)::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-gather_implicit_import_needs_in_goals([], !ImplicitImportNeeds).
-gather_implicit_import_needs_in_goals([Goal | Goals], !ImplicitImportNeeds) :-
-    gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds),
-    gather_implicit_import_needs_in_goals(Goals, !ImplicitImportNeeds).
-
-:- pred gather_implicit_import_needs_in_maybe_goal(maybe(goal)::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-gather_implicit_import_needs_in_maybe_goal(no, !ImplicitImportNeeds).
-gather_implicit_import_needs_in_maybe_goal(yes(Goal), !ImplicitImportNeeds) :-
-    gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds).
-
-:- pred gather_implicit_import_needs_in_catch_exprs(list(catch_expr)::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-gather_implicit_import_needs_in_catch_exprs([], !ImplicitImportNeeds).
-gather_implicit_import_needs_in_catch_exprs([CatchExpr | CatchExprs],
-        !ImplicitImportNeeds) :-
-    CatchExpr = catch_expr(_Pattern, Goal),
-    gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds),
-    gather_implicit_import_needs_in_catch_exprs(CatchExprs,
-        !ImplicitImportNeeds).
-
-:- pred gather_implicit_import_needs_in_maybe_catch_any_expr(
-    maybe(catch_any_expr)::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-gather_implicit_import_needs_in_maybe_catch_any_expr(no, !ImplicitImportNeeds).
-gather_implicit_import_needs_in_maybe_catch_any_expr(yes(CatchAnyExpr),
-        !ImplicitImportNeeds) :-
-    CatchAnyExpr = catch_any_expr(_Var, Goal),
-    gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds).
-
-:- pred gather_implicit_import_needs_in_term(prog_term::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-gather_implicit_import_needs_in_term(Term, !ImplicitImportNeeds) :-
-    (
-        Term = variable(_Var, _Context)
-    ;
-        Term = functor(Const, ArgTerms, _Context),
-        (
-            Const = atom(Atom),
-            ( if
-                Atom = "format"
-            then
-                !ImplicitImportNeeds ^ iin_string_format
-                    := do_need_string_format,
-                !ImplicitImportNeeds ^ iin_stream_format
-                    := do_need_stream_format
-            else if
-                ( Atom = "string.format"
-                ; Atom = "string__format"
-                ; Atom = "io.format"
-                ; Atom = "io__format"
-                )
-            then
-                !ImplicitImportNeeds ^ iin_string_format
-                    := do_need_string_format
-            else if
-                ( Atom = "stream.format"
-                ; Atom = "stream__format"
-                ; Atom = "string_writer.format"
-                ; Atom = "string_writer__format"
-                ; Atom = "stream.string_writer.format"
-                ; Atom = "stream.string_writer__format"
-                ; Atom = "stream__string_writer.format"
-                ; Atom = "stream__string_writer__format"
-                )
-            then
-                % The replacement of calls to stream.string_writer.format
-                % needs everything that the replacement of calls to
-                % string.format or io.format needs.
-                !ImplicitImportNeeds ^ iin_string_format
-                    := do_need_string_format,
-                !ImplicitImportNeeds ^ iin_stream_format
-                    := do_need_stream_format
-            else
-                true
-            )
-        ;
-            ( Const = integer(_, _, _, _)
-            ; Const = string(_)
-            ; Const = float(_)
-            ; Const = implementation_defined(_)
-            )
-        ),
-        gather_implicit_import_needs_in_terms(ArgTerms, !ImplicitImportNeeds)
-    ).
-
-:- pred gather_implicit_import_needs_in_terms(list(prog_term)::in,
-    implicit_import_needs::in, implicit_import_needs::out) is det.
-
-gather_implicit_import_needs_in_terms([], !ImplicitImportNeeds).
-gather_implicit_import_needs_in_terms([Term | Terms], !ImplicitImportNeeds) :-
-    gather_implicit_import_needs_in_term(Term, !ImplicitImportNeeds),
-    gather_implicit_import_needs_in_terms(Terms, !ImplicitImportNeeds).
-
-%-----------------------------------------------------------------------------%
-
-get_fact_table_dependencies_in_item_blocks(ItemBlocks, FactTableFileNames) :-
-    gather_fact_table_dependencies_in_blocks(ItemBlocks,
-        [], RevFactTableFileNames),
-    list.reverse(RevFactTableFileNames, FactTableFileNames).
-
-:- pred gather_fact_table_dependencies_in_blocks(list(item_block(MS))::in,
-    list(string)::in, list(string)::out) is det.
-
-gather_fact_table_dependencies_in_blocks([], !RevFactTableFileNames).
-gather_fact_table_dependencies_in_blocks([ItemBlock | ItemBlocks],
-        !RevFactTableFileNames) :-
-    ItemBlock = item_block(_, _, _, _, _, Items),
-    gather_fact_table_dependencies_in_items(Items, !RevFactTableFileNames),
-    gather_fact_table_dependencies_in_blocks(ItemBlocks,
-        !RevFactTableFileNames).
-
-:- pred gather_fact_table_dependencies_in_items(list(item)::in,
-    list(string)::in, list(string)::out) is det.
-
-gather_fact_table_dependencies_in_items([], !RevFactTableFileNames).
-gather_fact_table_dependencies_in_items([Item | Items],
-        !RevFactTableFileNames) :-
-    ( if
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _),
-        Pragma = pragma_fact_table(FTInfo),
-        FTInfo = pragma_info_fact_table(_PredNameArity, FileName)
-    then
-        !:RevFactTableFileNames = [FileName | !.RevFactTableFileNames]
-    else
-        true
-    ),
-    gather_fact_table_dependencies_in_items(Items, !RevFactTableFileNames).
-
-%-----------------------------------------------------------------------------%
-
-get_foreign_include_files_in_item_blocks(ItemBlocks, IncludeFiles) :-
-    list.foldl(gather_foreign_include_files_in_item_blocks_acc, ItemBlocks,
-        cord.init, IncludeFiles).
-
-:- pred gather_foreign_include_files_in_item_blocks_acc(item_block(_)::in,
-    cord(foreign_include_file_info)::in, cord(foreign_include_file_info)::out)
-    is det.
-
-gather_foreign_include_files_in_item_blocks_acc(ItemBlock, !IncludeFiles) :-
-    ItemBlock = item_block(_, _, _, _, _, Items),
-    gather_foreign_include_files_in_items_acc(Items, !IncludeFiles).
-
-:- pred gather_foreign_include_files_in_items_acc(list(item)::in,
-    cord(foreign_include_file_info)::in, cord(foreign_include_file_info)::out)
-    is det.
-
-gather_foreign_include_files_in_items_acc([], !IncludeFiles).
-gather_foreign_include_files_in_items_acc([Item | Items], !IncludeFiles) :-
-    ( if
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _),
-        (
-            Pragma = pragma_foreign_decl(FDInfo),
-            FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude)
-        ;
-            Pragma = pragma_foreign_code(FCInfo),
-            FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
-        )
-    then
-        (
-            LiteralOrInclude = floi_literal(_)
-        ;
-            LiteralOrInclude = floi_include_file(FileName),
-            IncludeFile = foreign_include_file_info(Lang, FileName),
-            !:IncludeFiles = cord.snoc(!.IncludeFiles, IncludeFile)
-        )
-    else
-        true
-    ),
-    gather_foreign_include_files_in_items_acc(Items, !IncludeFiles).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.get_dependencies.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

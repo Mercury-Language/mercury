@@ -113,7 +113,8 @@ maybe_generate_no_exports_warning(Globals, ModuleName, Context, !Specs) :-
                 decl("type"), suffix(","), decl("inst"), words("or"),
                 decl("mode"), words("declaration."), nl])
             ]),
-        Spec = error_spec(severity_warning, phase_term_to_parse_tree, [Msg]),
+        Spec = error_spec($pred, severity_warning, phase_term_to_parse_tree,
+            [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
 

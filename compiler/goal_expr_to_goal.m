@@ -425,8 +425,8 @@ transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
             words_quote("Field =^ field1 ^ ... ^ fieldN"),
             words("or"), words_quote("^ field1 ^ ... ^ fieldN := Field"),
             words("in DCG field access goal."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -888,9 +888,8 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
                 words("goal with an"), quote("io"),
                 words("parameter cannot have an"), quote("else"),
                 words("part."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error,
-                phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs],
             HLDSGoal = true_goal_with_context(Context)
         )
@@ -1164,7 +1163,7 @@ make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
             % With a catch_any part, end the if-then-else chain with:
             %   CatchAnyVar = exc_univ_value(Excp),
             %   CatchAnyGoal
-            Context = goal_get_context(CatchAnyGoal),
+            Context = get_goal_context(CatchAnyGoal),
             GetUnivValue = unify_expr(Context,
                 variable(CatchAnyVar, Context),
                 exception_functor("exc_univ_value", ExcpVarTerm, Context),

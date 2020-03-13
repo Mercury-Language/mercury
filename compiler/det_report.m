@@ -242,8 +242,8 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                     words("could be tighter."), nl],
                 report_determinism_problem(PredProcId, !.ModuleInfo,
                     MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
-                ReportSpec = error_spec(severity_warning, phase_detism_check,
-                    ReportMsgs),
+                ReportSpec = error_spec($pred, severity_warning,
+                    phase_detism_check, ReportMsgs),
                 !:Specs = [ReportSpec | !.Specs]
             else
                 true
@@ -269,7 +269,7 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             det_info_get_module_info(DetInfo, !:ModuleInfo),
             sort_error_msgs(GoalMsgs, SortedGoalMsgs),
             cse_nopull_msgs(ProcInfo, CseMsgs),
-            ReportSpec = error_spec(severity_error, phase_detism_check,
+            ReportSpec = error_spec($pred, severity_error, phase_detism_check,
                 ReportMsgs ++ SortedGoalMsgs ++ CseMsgs),
             !:Specs = [ReportSpec | !.Specs]
         )
@@ -302,7 +302,7 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             words(choose_number(Detisms, "determinism", "determinisms")),
             suffix(":") |
             DetismPieces] ++ [suffix("."), nl],
-        ValidSpec = error_spec(severity_error, phase_detism_check,
+        ValidSpec = error_spec($pred, severity_error, phase_detism_check,
             [simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)])]),
@@ -444,7 +444,7 @@ check_determinism_of_main(PredInfo, ProcInfo, !Specs) :-
             unqual_sym_name_and_arity(sym_name_arity(unqualified("main"), 2)),
             words("must be"), quote("det"), words("or"), quote("cc_multi"),
             suffix("."), nl],
-        Spec = simplest_spec(severity_error, phase_detism_check,
+        Spec = simplest_spec($pred, severity_error, phase_detism_check,
             ProcContext, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -490,7 +490,7 @@ check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, ModuleInfo, !Specs) :-
             words("the primary mode of a function cannot be"),
             quote(mercury_det_to_string(InferredDetism)), suffix("."), nl],
         VerbosePieces = func_primary_mode_det_msg,
-        Spec = error_spec(severity_error, phase_detism_check,
+        Spec = error_spec($pred, severity_error, phase_detism_check,
             [simple_msg(FuncContext,
                 [always(MainPieces),
                 verbose_only(verbose_once, VerbosePieces)])]),
@@ -531,8 +531,8 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [], !DetInfo,
             GoalMsgs),
         sort_error_msgs(GoalMsgs, SortedGoalMsgs),
-        Spec = error_spec(severity_error, phase_detism_check,
-            [simple_msg(Context, [always(Pieces)])] ++ SortedGoalMsgs),
+        Spec = error_spec($pred, severity_error, phase_detism_check,
+            [simplest_msg(Context, Pieces) | SortedGoalMsgs]),
         det_info_add_error_spec(Spec, !DetInfo)
     ;
         ( Cmp = first_detism_same_as
@@ -1413,7 +1413,7 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
     (
         MaybeSeverityComponents = yes({Severity, SpecComponents}),
         Msg = simple_msg(Context, SpecComponents),
-        Spec = error_spec(Severity, phase_detism_check, [Msg]),
+        Spec = error_spec($pred, Severity, phase_detism_check, [Msg]),
         det_info_add_error_spec(Spec, !DetInfo)
     ;
         MaybeSeverityComponents = no
@@ -1507,7 +1507,8 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
         Msg = simple_msg(Context, [always(Pieces)]),
         det_diagnose_goal(Goal, InstMap0, RequiredDetism, [], !DetInfo,
             SubMsgs),
-        Spec = error_spec(severity_error, phase_detism_check, [Msg | SubMsgs]),
+        Spec = error_spec($pred, severity_error, phase_detism_check,
+            [Msg | SubMsgs]),
         det_info_add_error_spec(Spec, !DetInfo)
     ).
 
@@ -1543,7 +1544,8 @@ generate_error_not_switch_on_required_var(RequiredVar, ScopeWord,
         words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
         words("is not a switch on"), quote(RequiredVarStr), suffix("."), nl],
     Context = goal_info_get_context(ScopeGoalInfo),
-    Spec = simplest_spec(severity_error, phase_detism_check, Context, Pieces),
+    Spec = simplest_spec($pred, severity_error, phase_detism_check,
+        Context, Pieces),
     det_info_add_error_spec(Spec, !DetInfo).
 
 %-----------------------------------------------------------------------------%

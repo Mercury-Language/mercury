@@ -128,7 +128,7 @@
     % module qualified as much as possible.
     %
 :- pred module_qualify_parse_tree_int3(globals::in,
-    parse_tree_int::in, parse_tree_int::out,
+    parse_tree_int3::in, parse_tree_int3::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -249,7 +249,6 @@
 :- import_module map.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module term.
 
@@ -259,23 +258,27 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         EventSpecMap0, EventSpecMap, EventSpecFileName, !:Info,
         UndefTypes, UndefInsts, UndefModes, UndefTypeClasses, !Specs) :-
     AugCompUnit0 = aug_compilation_unit(ModuleName, ModuleNameContext,
-        ModuleVersionNumbers, SrcItemBlocks0,
-        DirectIntItemBlocks, IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks),
-    init_mq_info(Globals, ModuleName, SrcItemBlocks0,
-        DirectIntItemBlocks ++ IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks, should_report_errors, !:Info),
-    collect_mq_info_in_item_blocks(src_section_mq_info, SrcItemBlocks0,
-        !Info),
-    collect_mq_info_in_item_blocks(int_section_mq_info, DirectIntItemBlocks,
-        !Info),
-    % XXX ITEM_LIST asymmetry: collect from 2, qualify 1
-    module_qualify_items_in_src_item_blocks(SrcItemBlocks0, SrcItemBlocks,
-        !Info, !Specs),
+        ModuleVersionNumbers, ParseTreeModuleSrc0, AncestorIntSpecs,
+        DirectIntSpecs, IndirectIntSpecs,
+        PlainOptSpecs, TransOptSpecs, IntForOptSpecs),
+    get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit0,
+        ImplicitlyImportedModules, ImplicitlyUsedModules),
+    set.union(ImplicitlyImportedModules, ImplicitlyUsedModules,
+        ImplicitlyImportedOrUsedModules),
+
+    init_mq_info(Globals, ModuleName, ImplicitlyImportedOrUsedModules,
+        should_report_errors, !:Info),
+    collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc0, !Info),
+    list.foldl(collect_mq_info_in_ancestor_int_spec,
+        map.values(AncestorIntSpecs), !Info),
+    list.foldl(collect_mq_info_in_direct_int_spec,
+        map.values(DirectIntSpecs), !Info),
+    module_qualify_parse_tree_module_src(
+        ParseTreeModuleSrc0, ParseTreeModuleSrc, !Info, !Specs),
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        ModuleVersionNumbers, SrcItemBlocks,
-        DirectIntItemBlocks, IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks),
+        ModuleVersionNumbers, ParseTreeModuleSrc, AncestorIntSpecs,
+        DirectIntSpecs, IndirectIntSpecs,
+        PlainOptSpecs, TransOptSpecs, IntForOptSpecs),
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     qualify_event_specs(mq_not_used_in_interface, EventSpecFileName,
@@ -321,42 +324,27 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         ModuleExportsInstances = no,
         UnusedImportsMap = UnusedImportsMap0
     ),
-    ( if
-        not map.is_empty(UnusedImportsMap),
-        globals.lookup_bool_option(Globals, warn_interface_imports, yes)
-    then
+    globals.lookup_bool_option(Globals, warn_interface_imports,
+        WarnInterfaceImports),
+    (
+        WarnInterfaceImports = no
+    ;
+        WarnInterfaceImports = yes,
         map.to_assoc_list(UnusedImportsMap, UnusedImports),
         list.foldl(warn_unused_interface_import(ModuleName), UnusedImports,
             !Specs)
-    else
-        true
     ).
 
-module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
-    ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntFIMs, ImpFIMs, IntItems0, ImpItems),
-    IntSrcItemBlocks0 = [item_block(ModuleName, sms_interface,
-        IntIncls, IntAvails, IntFIMs, IntItems0)],
-    expect(unify(ImpIncls, []), $pred, "ImpIncls != []"),
-    expect(unify(ImpAvails, []), $pred, "ImpAvails != []"),
-    expect(unify(ImpFIMs, []), $pred, "ImpFIMs != []"),
-    expect(unify(ImpItems, []), $pred, "ImpItems != []"),
-    % XXX ITEM_LIST Check whether we can get a nonempty list of implicit
-    % dependencies in collect_mq_info_in_aug_item_blocks below.
-    DummyItemBlocks = []:list(src_item_block),
-    some [!IntInfo] (
-        init_mq_info(Globals, ModuleName, IntSrcItemBlocks0,
-            DummyItemBlocks, DummyItemBlocks, DummyItemBlocks,
-            should_not_report_errors, !:IntInfo),
-        collect_mq_info_in_item_blocks(src_section_mq_info, IntSrcItemBlocks0,
-            !IntInfo),
-        module_qualify_items_loop(mq_used_in_interface,
-            IntItems0, IntItems, !.IntInfo, _, !Specs)
-    ),
-    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntFIMs, ImpFIMs, IntItems, ImpItems).
+module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
+        !Specs) :-
+    set.init(ImplicitlyImportedOrUsedModules),
+    ModuleName = OrigParseTreeInt3 ^ pti3_module_name,
+    init_mq_info(Globals, ModuleName, ImplicitlyImportedOrUsedModules,
+        should_not_report_errors, Info0),
+    collect_mq_info_in_parse_tree_int3(int3_as_src, OrigParseTreeInt3,
+        Info0, Info1),
+    module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
+        Info1, _Info, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -541,35 +529,18 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
                 % Map each modules known to be imported in the interface
                 % that is not yet known to be needed in the interface
                 % to the location (or sometimes, locations) of the import.
-                mqi_as_yet_unused_interface_modules :: map(module_name,
-                                                    one_or_more(prog_context)),
+                mqi_as_yet_unused_interface_modules :: module_names_contexts,
 
                 mqi_maybe_recompilation_info    :: maybe(recompilation_info)
             ).
 
-:- pred init_mq_info(globals::in, module_name::in,
-    list(item_block(MS1))::in,
-    list(item_block(MS2))::in,
-    list(item_block(MS3))::in,
-    list(item_block(MS4))::in,
+:- pred init_mq_info(globals::in, module_name::in, set(module_name)::in,
     maybe_should_report_errors::in, mq_info::out) is det.
 
-init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
-        ItemBlocksD, ReportErrors, Info) :-
+init_mq_info(Globals, ModuleName, ImplicitlyImportedOrUsedModules,
+        ReportErrors, Info) :-
     % XXX ITEM_LIST Given that our caller starts with an aug_compilation_unit,
     % shouldn't we know the implicit dependencies already?
-    get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksA,
-        ImportDepsA, UseDepsA),
-    get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksB,
-        ImportDepsB, UseDepsB),
-    get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksC,
-        ImportDepsC, UseDepsC),
-    get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksD,
-        ImportDepsD, UseDepsD),
-    ImportedModules = set.union_list([
-        ImportDepsA, ImportDepsB, ImportDepsC, ImportDepsD,
-        UseDepsA, UseDepsB, UseDepsC, UseDepsD
-    ]),
     set.init(InstanceModules),
     ExportedInstancesFlag = no,
     globals.lookup_bool_option(Globals, warn_interface_imports_in_parents,
@@ -584,8 +555,8 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         WarnInterfaceImportsInParents = yes,
         WarnUnusedImportsInParents = should_warn_unused_imports_in_parents
     ),
-    SubInfo = mq_sub_info(ModuleName, ImportedModules, InstanceModules,
-        ExportedInstancesFlag,
+    SubInfo = mq_sub_info(ModuleName, ImplicitlyImportedOrUsedModules,
+        InstanceModules, ExportedInstancesFlag,
         did_not_find_undef_type, did_not_find_undef_inst,
         did_not_find_undef_mode, did_not_find_undef_typeclass,
         do_not_suppress_found_undef,
@@ -616,7 +587,7 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
 :- pred mq_info_get_modes(mq_info::in, mode_id_set::out) is det.
 :- pred mq_info_get_classes(mq_info::in, class_id_set::out) is det.
 :- pred mq_info_get_as_yet_unused_interface_modules(mq_info::in,
-    map(module_name, one_or_more(prog_context))::out) is det.
+    module_names_contexts::out) is det.
 % mq_info_get_recompilation_info is exported
 
 :- pred mq_info_get_this_module(mq_info::in, module_name::out) is det.
@@ -680,8 +651,7 @@ mq_info_get_should_warn_unused_imports_in_parents(Info, X) :-
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_classes(class_id_set::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_as_yet_unused_interface_modules(
-    map(module_name, one_or_more(prog_context))::in,
+:- pred mq_info_set_as_yet_unused_interface_modules(module_names_contexts::in,
     mq_info::in, mq_info::out) is det.
 % mq_info_get_recompilation_info is exported
 

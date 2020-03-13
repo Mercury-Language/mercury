@@ -1497,7 +1497,7 @@ report_missing_higher_order_inst(PredInfo, VarSet, Var, Context) = Spec :-
     ],
     Msg = simple_msg(Context, [always(InPieces), always(ErrorPieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_code_gen, [Msg]).
+    Spec = error_spec($pred, severity_error, phase_code_gen, [Msg]).
 
 %---------------------------------------------------------------------------%
 

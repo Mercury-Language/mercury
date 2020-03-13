@@ -204,7 +204,7 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
             words("(since they are at the same address)"),
             words("are in fact all the same"),
             words("when invoked on"), words(ProcStr), suffix("."), nl],
-        Spec = simplest_spec(severity_warning,
+        Spec = simplest_spec($pred, severity_warning,
             phase_simplify(report_in_any_mode), Context, Pieces),
         simplify_info_add_message(Spec, !Info)
     ).
@@ -280,12 +280,9 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Warning: this disjunct"),
                 words("will never have any solutions.")],
-            Msg = simple_msg(Context,
-                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-            Severity = severity_conditional(warn_simple_code, yes,
-                severity_warning, no),
-            Spec = error_spec(Severity,
-                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            Spec = conditional_spec($pred, warn_simple_code, yes,
+                severity_warning, phase_simplify(report_only_if_in_all_modes),
+                [simplest_msg(Context, Pieces)]),
             simplify_info_add_message(Spec, !Info)
         else
             true

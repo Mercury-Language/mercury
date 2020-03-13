@@ -363,7 +363,8 @@ report_missing_tabled_for_io(PredInfo, PredId, ProcId, ModuleInfo) = Spec :-
     ProcPieces = describe_one_proc_name(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = ProcPieces ++ [words("contains untabled I/O primitive."), nl],
-    Spec = simplest_spec(severity_error, phase_code_gen, Context, Pieces).
+    Spec = simplest_spec($pred, severity_error, phase_code_gen,
+        Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 
@@ -392,7 +393,7 @@ table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
             [words("due to lack of support on this back end."), nl],
         % We don't want to increment the error count, since that would combine
         % with --halt-at-warn to prevent the clean compilation of the library.
-        Spec = simplest_spec(severity_informational, phase_code_gen,
+        Spec = simplest_spec($pred, severity_informational, phase_code_gen,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
 

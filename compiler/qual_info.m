@@ -257,8 +257,8 @@ update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
         else
             Pieces = [words("Error: explicit type qualification"),
                 words("does not match prior qualification."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     else

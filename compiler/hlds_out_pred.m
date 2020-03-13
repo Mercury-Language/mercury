@@ -296,6 +296,8 @@ write_pred_proc_var_name_remap(Indent, VarSet, VarNameRemap, !IO) :-
     pred_origin::in, io::di, io::uo) is det.
 
 write_origin(ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
+    % XXX CLEANUP Either a function version of this predicate should replace
+    % pred_info_id_to_string in hlds_out_util.m, or vice versa.
     (
         Origin = origin_special_pred(_, _),
         io.write_string("% special pred\n", !IO)
@@ -324,8 +326,14 @@ write_origin(ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
             mercury_output_constraint(TVarSet, VarNamePrint), !IO),
         io.nl(!IO)
     ;
-        Origin = origin_class_method,
-        io.write_string("%% class method\n", !IO)
+        Origin = origin_class_method(ClassId, MethodId),
+        ClassId = class_id(ClassSymName, ClassArity),
+        MethodId = pf_sym_name_arity(MethodPredOrFunc,
+            MethodSymName, MethodArity),
+        io.format("%% class method %s %s/%d for %s/%d\n",
+            [s(pred_or_func_to_string(MethodPredOrFunc)),
+            s(sym_name_to_string(MethodSymName)), i(MethodArity),
+            s(sym_name_to_string(ClassSymName)), i(ClassArity)], !IO)
     ;
         Origin = origin_transformed(Transformation, _, OrigPredId),
         OrigPredIdNum = pred_id_to_int(OrigPredId),

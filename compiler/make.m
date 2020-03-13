@@ -78,6 +78,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.read_modules.
 
 :- import_module bool.
 :- import_module dir.
@@ -96,6 +97,9 @@
 
 :- type make_info
     --->    make_info(
+                % XXX CLEANUP Add a prefix to each field name
+                % to avoid accidental name collisions.
+
                 % The items field of each module_and_imports structure
                 % should be empty -- we're not trying to cache the items here.
                 module_dependencies     :: map(module_name,
@@ -108,7 +112,7 @@
                                             file_name),
 
                 % Any flags required to set detected library grades.
-                detected_grade_flags :: list(string),
+                detected_grade_flags    :: list(string),
 
                 % The original set of options passed to mmc, not including
                 % the targets to be made.
@@ -169,7 +173,11 @@
 
                 % An inter-process lock to prevent multiple processes
                 % interleaving their output to standard output.
-                maybe_stdout_lock       :: maybe(stdout_lock)
+                maybe_stdout_lock       :: maybe(stdout_lock),
+
+                % The parse trees of the files we have read so far,
+                % so we never have to read and parse each file more than once.
+                mi_read_module_maps     :: have_read_module_maps
             ).
 
 :- type module_index_map
@@ -374,7 +382,8 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
             no,
             set.list_to_set(ClassifiedTargets),
             AnalysisRepeat,
-            no
+            no,
+            init_have_read_module_maps
         ),
 
         % Build the targets, stopping on any errors if `--keep-going'

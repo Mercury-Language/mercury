@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_item.m.
 % Main author: fjh.
@@ -18,7 +18,42 @@
 % by the various compiler backends; parts of the parse tree that
 % are needed by the backends are contained in prog_data.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% One important consideration in the design of the parse trees is that
+% they have two different use cases:
+%
+% - to represent files being read in, and
+% - to represent files being written out.
+%
+% The two have slightly different requirements, which is why in several
+% kinds of parse trees seemingly the same information is present in
+% more than one set of fields. This is because while we will never
+% knowingly write out erroneous Mercury code, we know that we *will*
+% read in some. An example is import_module and use_module declarations.
+% Each parse_tree_module_src contains four field that respectively specify
+%
+% - the locations where a module has an import_module in the interface
+% - the locations where a module has an use_module in the interface
+% - the locations where a module has an import_module in the implementation
+% - the locations where a module has an use_module in the implementation
+%
+% It is an error if a module has an entry in more than one of these maps,
+% with the sole exception being the use_module in interface and import_module
+% in implementation combination (because each grants a permission that the
+% other does not). Yet we want the ability to represent even invalid
+% combinations of these declarations, so that we can wait to generate
+% the appropriate error messages until we know all the relevant facts.
+% And in the process of checking for and reporting errors, we build up
+% another data structure, the import_and_or_use_map, which contains
+% a record of how the rest of the compiler should view, not just the
+% import_module and use_module declarations explicitly present in the
+% source code, but also the ones that get made available to it implicitly.
+% (Examples include builtin and private_builtin, which are implicitly available
+% to every module, and table_builtin, which is implicitly available
+% to modules that do certain kinds of tabling.)
+%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_item.
 :- interface.
@@ -29,7 +64,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module recompilation.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
@@ -37,17 +71,99 @@
 :- import_module parse_tree.prog_data_pragma.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
+:- import_module one_or_more_map.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type include_module_map == map(module_name, include_module_info).
+:- type include_module_info
+    --->    include_module_info(module_section, prog_context).
+            % The "include_module" declaration occurs in the given section
+            % of the relevant file, and at the given context.
+
+:- type module_name_context == map(module_name, prog_context).
+:- type module_names_contexts == one_or_more_map(module_name, prog_context).
+
+%---------------------%
+
+% The module being compiled can have another module made available to it
+% either explicitly or implicitly.
+%
+% An explicit availability can happen either through an `:- import_module'
+% or a `:- use_module' declaration (import or use, for short), and these
+% declarations can occur in either the interface section or in the
+% implementation section.
+%
+% The values of section_import_and_or_use specify the possible valid ways
+% that a module may be made available explicitly. The first four specify
+% the usual ways: an import or use in either section, with the one context.
+% The last one says that the module was named in an use_module declaration
+% in the interface section and in an import_module declaration
+% in the implementation section, and give the two contexts respectively.
+%
+% The values of the implicit_import_or_use type specify the possible ways
+% that a module may be made available implicitly. Most implicit availability
+% is to give the compiler access to the declarations of predicates and
+% functions that the compiler will automatically insert calls to as part of
+% the implementation of some language feature, such as table resets for
+% memoed procedures. Since these automatically generated references
+% will be created fully module qualified, an import of the target modules
+% is not needed; a use is enough. However, the public builtin module
+% is implicitly imported into every Mercury module, and this one
+% does get imported, not used.
+%
+% Note that we do not record contexts for implicit uses. In general,
+% there is no *single specific* context that makes an implicit use needed,
+% and we don't need contexts for any error messages about implicit imports,
+% since we don't want to require Mercury programmers to have to know
+% such details of the Mercury implementation. We *could* collect the set of
+% contexts that make a given implicit use needed, for internal compiler
+% purposes, but we do not (yet) have any need for that information.
+
+:- type section_import_and_or_use
+    --->    int_import(prog_context)
+    ;       int_use(prog_context)
+    ;       imp_import(prog_context)
+    ;       imp_use(prog_context)
+    ;       int_use_imp_import(prog_context, prog_context).
+
+:- type implicit_import_or_use
+    --->    implicit_int_import
+    ;       implicit_int_use
+    ;       implicit_imp_use.
+
+:- type maybe_implicit_import_and_or_use
+    --->    explicit_avail(
+                section_import_and_or_use
+            )
+    ;       implicit_avail(
+                implicit_import_or_use,
+                maybe(section_import_and_or_use)
+            ).
+
+    % Values of this type specify how each module we have available
+    % was *made* available. If a module had redundant import_module
+    % and/or use_module declarations, each of these has had a warning
+    % generated for it and was then discarded. One of these declarations
+    % can be made redundant redundant not only by another declaration
+    % of the same kind in the same section, but also by more permissive
+    % declarations; import_module declarations grant more permissions
+    % than use_module declarations, and declarations in the interface
+    % give more permissions than the declarations of the same kind
+    % in the implementation section.
+:- type section_import_and_or_use_map ==
+    map(module_name, section_import_and_or_use).
+:- type import_and_or_use_map ==
+    map(module_name, maybe_implicit_import_and_or_use).
+
+%---------------------------------------------------------------------------%
 %
 % The parse_tree_{src,int,opt} types define the ASTs we use for source files,
 % interface files and optimization files respectively.
@@ -58,9 +174,9 @@
 % We use cords of items instead of lists of items where we may need to add
 % items to an already-existing partial parse tree.
 %
-% The contexts of module declarations below may be term.context_init
+% The contexts of module declarations below may be term.dummy_context_init
 % if the actual context isn't known, but if the recorded context is
-% not term.context_init, then it is valid.
+% not term.dummy_context_init, then it is valid.
 
 :- type parse_tree_src
     --->    parse_tree_src(
@@ -100,6 +216,190 @@
                 % The submodule itself.
                 mcns_submodule              :: parse_tree_src
             ).
+
+:- type parse_tree_module_src
+    --->    parse_tree_module_src(
+                ptms_module_name            :: module_name,
+
+                % The context of the `:- module' declaration.
+                ptms_module_name_context    :: prog_context,
+
+                % The set of modules mentioned in `:- include_module'
+                % declarations in the interface and in the implementation,
+                % and their locations. If a module has been included
+                % N times, which is an error, it will appear in (one
+                % or both of) these maps N times.
+                ptms_int_includes           :: module_names_contexts,
+                ptms_imp_includes           :: module_names_contexts,
+
+                % A cleaned-up version of the above two fields,
+                % which maps each included module to *one* effective
+                % section of inclusion (which will be the interface section
+                % if the module is ever included in the interface)
+                % and *one* effective context. The process of filling in
+                % this field will generate error messages for any duplicate
+                % inclusions.
+                ptms_include_map            :: include_module_map,
+
+                % A specification of the set of modules mentioned in
+                % `:- import_module' and/or `:- use_module' declarations
+                % in each section, mapped to their location(s).
+                % Again, any module imported and/or used N times
+                % will appear in these maps N times.
+                ptms_int_imports            :: module_names_contexts,
+                ptms_int_uses               :: module_names_contexts,
+                ptms_imp_imports            :: module_names_contexts,
+                ptms_imp_uses               :: module_names_contexts,
+
+                % A cleaned-up and extended version of the above four fields.
+                %
+                % The cleaned-up part means that each module is mapped
+                % to exactly *one* section_import_and_or_use,
+                % reporting any invalid duplicate availability in the process.
+                % (Having a use_module in the interface section and an
+                % import_module in the implementation section is the only
+                % allowed situation in which a module may have more than one
+                % import or use declaration.)
+                %
+                % The extended part means that this field contains information
+                % about implicit availability of builtin modules as well,
+                % in a form that allows explicit vs implicit availability
+                % to be clearly distinguished from each other.
+                ptms_import_use_map         :: import_and_or_use_map,
+
+                % A cleaned-up version of the set of explicit
+                % `:- pragma foreign_import_module' declarations
+                % in the interface and in the implementation.
+                % The cleaned-up part means that we we have reported both
+                %
+                % - FIMs that occur more than once in a given section, and
+                % - FIMs that occur in both sections.
+                %
+                % We keep the context of only the first FIM for a given
+                % fim_spec in each section, and if a fim_spec occurs in
+                % both sections, we keep only the (first) occurrence in the
+                % interface section.
+                %
+                % We don't have a field containing the original, non-cleaned-up
+                % data, since no part of the compiler (yet) need this.
+                ptms_int_fims               :: map(fim_spec, prog_context),
+                ptms_imp_fims               :: map(fim_spec, prog_context),
+
+                % The set of foreign languages for which this module
+                % should have implicit foreign_import_module declaration
+                % for itself.
+                %
+                % XXX CLEANUP This field should simply contain a set
+                % of foreign languages, but currently,
+                % check_convert_raw_comp_unit_to_module_src creates
+                % this structure when it does not have a valid value
+                % for this field (which we now record as a `no').
+                % The field is then filled in (and thus set to `yes(...)')
+                % *later* by code in grab_unqual_imported_modules_make_int.
+                % However, grab_unqual_imported_modules_make_int is not
+                % called on all compiler invocations, so this field can remain
+                % in its not-filled-in state. This legacy of the traditional
+                % split between how compiler invocations that generate code
+                % and those that don't should be fixed.
+                ptms_implicit_fim_langs     :: maybe(set(foreign_language)),
+
+                % XXX The type, inst and mode definitions should be in
+                % {type,inst,mode}_ctor_defn_maps. We already have code
+                % to create these, and they would make the jobs of the
+                % predicates that add types, insts and modes to the HLDS
+                % significantly simpler.
+                %
+                % For now, we divide type definitions into three kinds:
+                % abstract, Mercury, and foreign type definitions.
+
+                % Items of various kinds in the interface.
+                % All these items are to be treated as being in the
+                % sms_interface section, with one exception.
+                % If this module has some submodules, i.e. if at least one
+                % of the ptms_{int,imp}_included_modules fields above are
+                % nonempty, then we handle any nonabstract instance items
+                % in the interface by
+                % - treating only an abstract version of the item as being
+                %   in sms_interface, and
+                % - treating the original version as being in the
+                %   sms_impl_but_exported_to_submodules section.
+                % (For abstract instances, there is no point in adding them
+                % twice, once in each section, so we treat them as only
+                % being in sms_interface.)
+                ptms_int_type_defns_abs     :: list(item_type_defn_info),
+                ptms_int_type_defns_mer     :: list(item_type_defn_info),
+                ptms_int_type_defns_for     :: list(item_type_defn_info),
+                ptms_int_inst_defns         :: list(item_inst_defn_info),
+                ptms_int_mode_defns         :: list(item_mode_defn_info),
+                ptms_int_typeclasses        :: list(item_typeclass_info),
+                ptms_int_instances          :: list(item_instance_info),
+                ptms_int_pred_decls         :: list(item_pred_decl_info),
+                ptms_int_mode_decls         :: list(item_mode_decl_info),
+                ptms_int_foreign_export_enums ::
+                                        list(item_foreign_export_enum_info),
+                ptms_int_decl_pragmas       :: list(item_decl_pragma_info),
+                ptms_int_promises           :: list(item_promise_info),
+
+                % The set of predicate names for which the interface contains
+                % attempts at either a definition (i.e. a clause or a
+                % foreign_proc), or something else that tells us that
+                % generating a warning about a lack of a definition
+                % in the implementation section (if in fact there is
+                % no definition there) more misleading than useful.
+                ptms_int_bad_clauses        :: set(pf_sym_name_and_arity),
+
+                % A repeat of everything above, but in the implementation
+                % section, with the addition of some item kinds that may occur
+                % *only* in implementation sections.
+                %
+                % However, note that the conversion process we now use
+                % to generate parse_tree_module_srcs will put any impl pragmas,
+                % initialises, finalises and mutable that were wrongly placed
+                % in the interface section into their fields below, so that
+                % if there is something wrong with them *beyond* their
+                % location, the compiler can detect and report it in the
+                % same compiler invocation. It would be easy to put these
+                % misplaced items into separate fields of their own,
+                % but so far there has been no need for that.
+                %
+                % If this module has no submodules, i.e. if the fields
+                % ptms_{int,imp}_included_modules above are both empty,
+                % then all the items in these fields are to be treated
+                % as in being in a sms_implementation section. However,
+                % if this module HAS at least one submodule (in either
+                % section), then only the following kinds of items are
+                % to be treated as being in a sms_implementation section:
+                %
+                %   clauses
+                %   foreign_export_enums
+                %   impl_pragmas
+                %   initialises
+                %   finalises
+                %
+                % All the other kinds of items are to be treated as being
+                % in the sms_impl_but_exported_to_submodules section.
+                ptms_imp_type_defns_abs     :: list(item_type_defn_info),
+                ptms_imp_type_defns_mer     :: list(item_type_defn_info),
+                ptms_imp_type_defns_for     :: list(item_type_defn_info),
+                ptms_imp_inst_defns         :: list(item_inst_defn_info),
+                ptms_imp_mode_defns         :: list(item_mode_defn_info),
+                ptms_imp_typeclasses        :: list(item_typeclass_info),
+                ptms_imp_instances          :: list(item_instance_info),
+                ptms_imp_pred_decls         :: list(item_pred_decl_info),
+                ptms_imp_mode_decls         :: list(item_mode_decl_info),
+                ptms_imp_clauses            :: list(item_clause_info),
+                ptms_imp_foreign_enums      :: list(item_foreign_enum_info),
+                ptms_imp_foreign_export_enums ::
+                                        list(item_foreign_export_enum_info),
+                ptms_imp_decl_pragmas       :: list(item_decl_pragma_info),
+                ptms_imp_impl_pragmas       :: list(item_impl_pragma_info),
+                ptms_imp_promises           :: list(item_promise_info),
+                ptms_imp_initialises        :: list(item_initialise_info),
+                ptms_imp_finalises          :: list(item_finalise_info),
+                ptms_imp_mutables           :: list(item_mutable_info)
+            ).
+
+:- func init_empty_parse_tree_module_src(module_name) = parse_tree_module_src.
 
     % When comp_unit_interface.m creates the contents of an interface file,
     % it will always set the maybe_version_numbers field of that interface file
@@ -163,16 +463,20 @@
                 pti0_maybe_version_numbers  :: maybe_version_numbers,
 
                 % The set of modules mentioned in `:- include_module'
-                % declarations in the interface and implementation.
-                pti0_int_included_modules   :: set(module_name),
-                pti0_imp_included_modules   :: set(module_name),
+                % declarations in the interface and implementation,
+                % and their locations.
+                pti0_int_includes           :: module_names_contexts,
+                pti0_imp_includes           :: module_names_contexts,
+                pti0_include_map            :: include_module_map,
 
                 % The set of modules mentioned in `:- import_module'
-                % declarations in the interface and implementation.
-                pti0_int_imported_modules   :: set(module_name),
-                pti0_int_used_modules       :: set(module_name),
-                pti0_imp_imported_modules   :: set(module_name),
-                pti0_imp_used_modules       :: set(module_name),
+                % declarations in the interface and implementation,
+                % and their locations.
+                pti0_int_imports            :: module_names_contexts,
+                pti0_int_uses               :: module_names_contexts,
+                pti0_imp_imports            :: module_names_contexts,
+                pti0_imp_uses               :: module_names_contexts,
+                pti0_import_use_map         :: import_and_or_use_map,
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.
@@ -192,7 +496,7 @@
                 pti0_int_pred_decls         :: list(item_pred_decl_info),
                 pti0_int_mode_decls         :: list(item_mode_decl_info),
                 pti0_int_foreign_enums      :: type_ctor_foreign_enum_map,
-                pti0_int_pragmas            :: list(item_pragma_info),
+                pti0_int_decl_pragmas       :: list(item_decl_pragma_info),
                 pti0_int_promises           :: list(item_promise_info),
                 % XXX We will probably need a list of item_type_repn_infos.
 
@@ -205,7 +509,7 @@
                 pti0_imp_pred_decls         :: list(item_pred_decl_info),
                 pti0_imp_mode_decls         :: list(item_mode_decl_info),
                 pti0_imp_foreign_enums      :: type_ctor_foreign_enum_map,
-                pti0_imp_pragmas            :: list(item_pragma_info),
+                pti0_imp_decl_pragmas       :: list(item_decl_pragma_info),
                 pti0_imp_promises           :: list(item_promise_info)
                 % XXX We will probably need a list of item_type_repn_infos.
             ).
@@ -222,14 +526,18 @@
                 pti1_maybe_version_numbers  :: maybe_version_numbers,
 
                 % The set of modules mentioned in `:- include_module'
-                % declarations in the interface and implementation.
-                pti1_int_included_modules   :: set(module_name),
-                pti1_imp_included_modules   :: set(module_name),
+                % declarations in the interface and implementation,
+                % and their contexts.
+                pti1_int_includes           :: module_names_contexts,
+                pti1_imp_includes           :: module_names_contexts,
+                pti1_include_map            :: include_module_map,
 
-                % The set of modules mentioned in `:- import_module'
-                % declarations in the interface and implementation.
-                pti1_int_used_modules       :: set(module_name),
-                pti1_imp_used_modules       :: set(module_name),
+                % The set of modules mentioned in `:- use_module'
+                % declarations in the interface and implementation,
+                % and their locations.
+                pti1_int_uses               :: module_names_contexts,
+                pti1_imp_uses               :: module_names_contexts,
+                pti1_import_use_map         :: import_and_or_use_map,
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.
@@ -237,15 +545,15 @@
                 pti1_imp_fims               :: set(fim_spec),
 
                 % Items of various kinds in the interface.
-                pti1_type_defns             :: type_ctor_defn_map,
-                pti1_inst_defns             :: inst_ctor_defn_map,
-                pti1_mode_defns             :: mode_ctor_defn_map,
+                pti1_int_type_defns         :: type_ctor_defn_map,
+                pti1_int_inst_defns         :: inst_ctor_defn_map,
+                pti1_int_mode_defns         :: mode_ctor_defn_map,
                 pti1_int_typeclasses        :: list(item_typeclass_info),
                 pti1_int_instances          :: list(item_instance_info),
                 pti1_int_pred_decls         :: list(item_pred_decl_info),
                 pti1_int_mode_decls         :: list(item_mode_decl_info),
                 pti1_int_foreign_enum_specs :: type_ctor_foreign_enum_map,
-                pti1_int_pragmas            :: list(item_pragma_info),
+                pti1_int_decl_pragmas       :: list(item_decl_pragma_info),
                 pti1_int_promises           :: list(item_promise_info),
 
                 pti1_int_type_repns         :: type_ctor_repn_map,
@@ -273,12 +581,14 @@
                 pti2_maybe_version_numbers  :: maybe_version_numbers,
 
                 % The set of modules mentioned in `:- include_module'
-                % declarations in the interface.
-                pti2_int_included_modules   :: set(module_name),
+                % declarations in the interface, and their locations.
+                pti2_int_includes           :: module_names_contexts,
+                pti2_include_map            :: include_module_map,
 
-                % The set of modules mentioned in `:- import_module'
-                % declarations in the interface.
-                pti2_int_used_modules       :: set(module_name),
+                % The set of modules mentioned in `:- use_module'
+                % declarations in the interface, and their locations.
+                pti2_int_uses               :: module_names_contexts,
+                pti2_import_use_map         :: import_and_or_use_map,
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.
@@ -286,9 +596,9 @@
                 pti2_imp_fims               :: set(fim_spec),
 
                 % Items of various kinds in the interface.
-                pti2_type_defns             :: type_ctor_defn_map,
-                pti2_inst_defns             :: inst_ctor_defn_map,
-                pti2_mode_defns             :: mode_ctor_defn_map,
+                pti2_int_type_defns         :: type_ctor_defn_map,
+                pti2_int_inst_defns         :: inst_ctor_defn_map,
+                pti2_int_mode_defns         :: mode_ctor_defn_map,
                 pti2_int_typeclasses        :: list(item_typeclass_info),
                 pti2_int_instances          :: list(item_instance_info),
                 pti2_int_type_repns         :: type_ctor_repn_map,
@@ -308,23 +618,25 @@
                 pti3_module_name_context    :: prog_context,
 
                 % The set of modules mentioned in `:- include_module'
-                % declarations in the interface.
-                pti3_included_modules       :: set(module_name),
+                % declarations in the interface, and their locations.
+                pti3_int_includes           :: module_names_contexts,
+                pti3_include_map            :: include_module_map,
 
                 % The set of modules mentioned in `:- import_module'
-                % declarations in the interface.
-                pti3_imported_modules       :: set(module_name),
+                % declarations in the interface, and their locations.
+                pti3_int_imports            :: module_names_contexts,
+                pti3_import_use_map         :: import_and_or_use_map,
 
                 % Items of various kinds in the interface.
-                pti3_type_defns             :: type_ctor_defn_map,
-                pti3_inst_defns             :: inst_ctor_defn_map,
-                pti3_mode_defns             :: mode_ctor_defn_map,
-                pti3_typeclasses            :: list(item_typeclass_info),
-                pti3_instances              :: list(item_instance_info),
-                pti3_type_repns             :: type_ctor_repn_map
+                pti3_int_type_defns         :: type_ctor_defn_map,
+                pti3_int_inst_defns         :: inst_ctor_defn_map,
+                pti3_int_mode_defns         :: mode_ctor_defn_map,
+                pti3_int_typeclasses        :: list(item_typeclass_info),
+                pti3_int_instances          :: list(item_instance_info),
+                pti3_int_type_repns         :: type_ctor_repn_map
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The intended semantics of a type_ctor_defn_map is a map of
 % all the type constructors defined in a given SECTION of a given
@@ -452,6 +764,7 @@
     c_java_csharp_erlang(maybe(enum_foreign_repn)).
 
 % The map key is sym_name_and_arity because we don't have an inst_ctor type.
+% XXX CLEANUP We should add one.
 :- type inst_ctor_defn_map == map(sym_name_and_arity, inst_ctor_all_defns).
 :- type inst_ctor_all_defns
     --->    inst_ctor_all_defns(
@@ -460,6 +773,7 @@
             ).
 
 % The map key is sym_name_and_arity because we don't have a mode_ctor type.
+% XXX CLEANUP We should add one.
 :- type mode_ctor_defn_map == map(sym_name_and_arity, mode_ctor_all_defns).
 :- type mode_ctor_all_defns
     --->    mode_ctor_all_defns(
@@ -471,7 +785,7 @@
 
 :- type type_ctor_repn_map == map(type_ctor, item_type_repn_info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type parse_tree_opt
     --->    parse_tree_opt(
@@ -496,7 +810,7 @@
                 ptpo_module_name_context    :: prog_context,
 
                 % `:- use_module' (not `:- import_module') declarations.
-                ptpo_uses                   :: set(module_name),
+                ptpo_uses                   :: module_names_contexts,
                 ptpo_fims                   :: set(fim_spec),
                 ptpo_type_defns             :: list(item_type_defn_info),
                 ptpo_foreign_enums          :: list(item_foreign_enum_info),
@@ -508,6 +822,7 @@
                 ptpo_mode_decls             :: list(item_mode_decl_info),
                 ptpo_clauses                :: list(item_clause_info),
                 ptpo_foreign_procs          :: list(item_foreign_proc),
+                ptpo_promises               :: list(item_promise_info),
 
                 ptpo_pred_marker_pragmas    :: list(item_pred_marker),
                 ptpo_type_spec_pragmas      :: list(item_type_spec),
@@ -537,7 +852,7 @@
                 ptto_struct_reuse           :: list(item_struct_reuse)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % A raw compilation unit is one module to be compiled. A parse_tree_src
 % that contains N nested submodules corresponds to 1 + N raw_compilation_units,
@@ -548,23 +863,121 @@
 % item block containing the items in an interface or implementation section
 % of its module.
 %
+% XXX CLEANUP We should stop using raw_compilation_units completely,
+% replacing their use with a parse_tree_module_src. That also contains
+% the same components (includes, avails, fims and items), but in a more
+% convenient form, with different kinds of separated out and with
+% e.g. duplicate imports and type definitions already handled.
+%
 % Before we convert a raw compilation unit into the HLDS, we augment it
 % with the contents of the interface files of the modules it imports
 % (directly or indirectly), and if requested, with the contents of the
 % optimization files of those modules as well. The augmented compilation unit
-% will consist of
+% will consist of the following for compiler invocations that generate
+% target language code. (For compiler invocations that generate .int and
+% .int2 files, all the interface files mentioned below will be replaced
+% by .int3 files.)
 %
-% - the src_item_blocks, i.e. the item blocks of the original raw compilation
-%   unit, some of which may be marked as implementation but being exported to
-%   submodules,
-% - the int_item_blocks, which were read from the interfaces of other,
-%   directly imported modules,
-% - the opt_item_blocks, which were read from the interfaces or optimization
-%   files of other, indirectly imported modules.
+% - The module_src field contains the original raw_compilation_unit
+%   after being transformed into a parse_tree_module_src.
 %
-% As with the parse tree types above, the contexts in these types
-% may be term.context_init if the actual context isn't known, but if the
-% recorded context is not term.context_init, then it is valid.
+%   Once upon a time, we depended on the raw compilation unit
+%   having item blocks marked as "implementation section but exported
+%   to submodules", but now we rely on the fact that some kinds of items
+%   in the implementation section are *always* exported to the current
+%   module's submodules (if there are any), while others are *never* exported
+%   to submodules, and these are already separated in the
+%   parse_tree_module_src.
+%
+% - The ancestor_int_specs field contains the .int0 interface files of
+%   the ancestors of this module, which are always implicitly imported.
+%
+% - The direct_int_specs field contains the .int files of the modules
+%   directly imported or used by this module, with the "override" exception
+%   noted below.
+%
+% - The indirect_int_specs field contains the .int2 files of the modules
+%   indirectly imported or used by this module, again with the "override"
+%   exception noted below.
+%
+%   In this case, module A "indirectly imports or uses" module C if
+%   module A imports or uses a module B whose .int file uses module C.
+%   (.int files only use modules; they do not import them.)
+%
+%   The exceptions above are that
+%
+%   o   if a module's .int0 file is in the ancestor_int_specs field,
+%       we don't include its .int1 file in the direct_int_specs field,
+%       or its .int2 file in the indirect_int_specs field. In effect,
+%       the appearance of a module in the ancestor_int_specs field
+%       overrides (i.e. prevents) its appearance in the direct_int_specs
+%       or the indirect_int_specs fields.
+%
+%   o   if a module's .int file is in the direct_int_specs field,
+%       we don't include its .int2 file in the indirect_int_specs field.
+%       Again, the appearance of a module in the direct_int_specs field
+%       overrides its appearance in the indirect_int_specs field.
+%
+%   The reason for the exceptions is that an .int0 file contains (or at least
+%   is intended to contain, which *may* be different) every item that
+%   the .int file for the same module contains, and the same relationship
+%   holds between .int and .int2 files. The exceptions thus save the compiler
+%   from doing work that (a) is unnecessary, and (b) would lead things
+%   being declared or defined more than once.
+%
+% - Provided intermodule optimization is enabled, the plain_opts field
+%   will contain
+%
+%   o   the .opt files of the modules whose .int0, .int or .int2 files
+%       are in the ancestor_int_sprcs, direct_int_specs and indirect_int_specs
+%       fields above, and
+%
+%   o   unless the compiler is invoked with --no-read-opt-files-transitively,
+%       the .opt files of every other module the .opt files specified
+%       by either the previous bullet point or *this* bullet point
+%       import either explicitly or implicitly.
+%
+%   These .opt files are supposed to contain more information about
+%   the ancestor-, direct- or indirect-imported modules than their
+%   .int0, .int or .int2 files do. Unfortunately, they often also
+%   *duplicate* items in those interface files, which leads to
+%   double definitions, which may then lead to test case failures
+%   (such as submodules/ts if I -zs- recall correctly).
+%
+% - Provided transitive intermodule optimization is enabled, the trans_opts
+%   field will contain the .trans_opt files of the modules named in
+%   the module's .d file as the module's trans_opt dependencies.
+%   XXX This seems to me (zs) a bit too indirect.
+%
+% - If intermodule optimization is enabled, the int_for_opt_specs field
+%   will contain
+%
+%   o   the .int0 files of the ancestor modules of the modules whose .opt files
+%       are in the plain_opts field,
+%
+%   o   the .int files of the modules imported or used either explicitly
+%       or implicitly by the modules whose .opt files are in the plain_opts
+%       field, or by their ancestors, and
+%
+%   o   the .int2 files of the modules used by the .int files in the previous
+%       bullet point.
+%
+%   The idea is that these interface files may in general be needed to define
+%   entities (such as types, insts or modes) that the .opt files in the
+%   plain_opts field may need.
+%
+%   XXX There is a problem here, which is that override exception does *not*
+%   apply to the int_for_opt_specs field. It is possible for e.g. a module's
+%   .int2 file to appear in the indirect_int_specs field, but its .int0 or
+%   .int file to appear in the int_for_opt_specs field. This may also lead
+%   to double definitions of e.g. types, insts or modes. The compiler does
+%   ignore such double definitions, under the principle of generating error
+%   messages for double definitions *only* when the entity being double-defined
+%   has the module currently being compiled as its module qualifier.
+%   Nevertheless, including more than one interface file for any given module
+%   in the augmented compilation unit will lead to wasted work, which means
+%   that we should avoid doing that if possible.
+%
 
 :- type raw_compilation_unit
     --->    raw_compilation_unit(
@@ -581,34 +994,229 @@
 :- type aug_compilation_unit
     --->    aug_compilation_unit(
                 % The name of the module.
+                % XXX CLEANUP This is available in aci_module_src.
                 aci_module_name                 :: module_name,
 
                 % The context of the `:- module' declaration.
+                % XXX CLEANUP This is available in aci_module_src.
                 aci_module_name_context         :: prog_context,
 
                 % The module_version_numbers records in all the imported
                 % interface files.
                 aci_module_version_numbers_map  :: module_version_numbers_map,
 
-                % The items in the source code of the module.
-                aci_src_item_blocks             :: list(src_item_block),
+                % The source code of the module.
+                aci_module_src                  :: parse_tree_module_src,
 
-                % The items in the interface files of directly imported
-                % modules.
-                aci_direct_int_item_blocks      :: list(int_item_block),
+                % The interface files of the ancestors of this module.
+                % (If we have e.g. module foo.bar among the modules
+                % we import int_for_opt, we also need to grab its ancestor foo,
+                % but such .int0 files also go into the int_for_opt field.
+                aci_ancestor_int_specs          :: map(module_name,
+                                                    ancestor_int_spec),
 
-                % The items in the interface files of indirectly imported
-                % modules.
-                aci_indirect_int_item_blocks    :: list(int_item_block),
+                % The interface files of directly imported modules.
+                aci_direct_int_specs            :: map(module_name,
+                                                    direct_int_spec),
 
-                % The items in the optimization files of directly or indirectly
+                % The interface files of indirectly imported modules.
+                aci_indirect_int_specs          :: map(module_name,
+                                                    indirect_int_spec),
+
+                % The optimization files of directly or indirectly
                 % imported modules.
-                aci_opt_item_blocks             :: list(opt_item_block),
+                aci_plain_opts                  :: map(module_name,
+                                                    parse_tree_plain_opt),
+                aci_trans_opts                  :: map(module_name,
+                                                    parse_tree_trans_opt),
 
-                % The items in the interface files needed to make sense
+                % The interface files needed to make sense
                 % of those optimization files.
-                aci_int_item_blocks_for_opt     :: list(int_for_opt_item_block)
+                aci_int_for_opt_specs           :: map(module_name,
+                                                    int_for_opt_spec)
             ).
+
+:- type ancestor_int_spec
+    --->    ancestor_int0(parse_tree_int0, read_why_int0).
+
+:- type direct_int_spec
+    --->    direct_int1(parse_tree_int1, read_why_int1)
+    ;       direct_int3(parse_tree_int3, read_why_int3).
+
+:- type indirect_int_spec
+    --->    indirect_int2(parse_tree_int2, read_why_int2)
+    ;       indirect_int3(parse_tree_int3, read_why_int3).
+
+:- type int_for_opt_spec
+    --->    for_opt_int0(parse_tree_int0, read_why_int0)
+    ;       for_opt_int1(parse_tree_int1, read_why_int1)
+    ;       for_opt_int2(parse_tree_int2, read_why_int2).
+
+    % All these record recomp_avail_int_import as recompilation reason.
+    % (Since there is no recomp_avail_ancestor_import, yet).
+:- type read_why_int0
+    --->    rwi0_section
+            % The items in the .int0 file's sections should have section marker
+            % make_ims_imported(import_locn_ancestor_int0_interface) and
+            % make_ims_imported(import_locn_ancestor_int0_implementation)
+            % respectively.
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+    ;       rwi0_opt.
+            % The items in both sections should have section marker
+            % make_ioms_opt_imported.
+            %
+            % Add the parse tree to the set of read-int-for-opt interfaces.
+
+:- type read_why_int1
+    --->    rwi1_int_import
+            % The items in the interface should have the section marker
+            % make_ims_imported(import_locn_interface).
+            % The items in the implementation should have the section marker
+            % make_ims_abstract_imported.
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_int_import as recompilation reason.
+    ;       rwi1_int_use
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_interface).
+            % The items in the implementation should have the section marker
+            % make_ims_abstract_imported.
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_int_use as recompilation reason.
+    ;       rwi1_imp_import
+            % The items in the interface should have the section marker
+            % make_ims_imported(import_locn_implementation).
+            % The items in the implementation should have the section marker
+            % make_ims_abstract_imported.
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_imp_import as recompilation reason.
+    ;       rwi1_imp_use
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_implementation).
+            % The items in the implementation should have the section marker
+            % make_ims_abstract_imported.
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_imp_use as recompilation reason.
+    ;       rwi1_int_use_imp_import
+            % The items in the interface should have the section marker
+            % make_ims_used_and_imported(import_locn_interface).
+            % The items in the implementation should have the section marker
+            % make_ims_abstract_imported.
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_int_use_imp_import as recompilation reason.
+    ;       rwi1_opt.
+            % The items in both sections should have the section marker
+            % make_ioms_opt_imported.
+            %
+            % Add the parse tree to the set of read-int-for-opt interfaces.
+            %
+            % Record recomp_avail_imp_use as recompilation reason.
+
+    % All these record recomp_avail_imp_use as recompilation reason.
+:- type read_why_int2
+    --->    rwi2_int_use
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_interface).
+            % The items in the implementation should have the section marker
+            % make_ims_abstract_imported.
+            %
+            % Add the parse tree to the set of indirectly-read interfaces.
+    ;       rwi2_imp_use
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_import_by_ancestor).
+            % The items in the implementation should have the section marker
+            % make_ims_abstract_imported.
+            %
+            % Add the parse tree to the set of indirectly-read interfaces.
+    ;       rwi2_abstract
+            % The items in both sections should have the section marker
+            % make_ims_abstract_imported.
+            %
+            % Add the parse tree to the set of indirectly-read interfaces.
+    ;       rwi2_opt.
+            % The items in both sections should have the section marker
+            % make_ioms_opt_imported.
+            %
+            % Add the parse tree to the set of read-int-for-opt interfaces.
+
+:- type read_why_int3
+    --->    rwi3_direct_ancestor_import
+            % The items in the interface should have the section marker
+            % make_ims_imported(import_locn_import_by_ancestor).
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_int_import as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_import, yet).
+    ;       rwi3_direct_int_import
+            % The items in the interface should have the section marker
+            % make_ims_imported(import_locn_interface).
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_int_import as recompilation reason.
+    ;       rwi3_direct_imp_import
+            % The items in the interface should have the section marker
+            % make_ims_imported(import_locn_implementation).
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_imp_import as recompilation reason.
+    ;       rwi3_direct_ancestor_use
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_import_by_ancestor).
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_int_use as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_use, yet).
+    ;       rwi3_direct_int_use
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_interface).
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_int_use as recompilation reason.
+    ;       rwi3_direct_imp_use
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_implementation).
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_imp_use as recompilation reason.
+    ;       rwi3_direct_int_use_imp_import
+            % The items in the interface should have the section marker
+            % make_ims_used_and_imported(import_locn_interface).
+            %
+            % Add the parse tree to the set of directly-read interfaces.
+            %
+            % Record recomp_avail_int_use_imp_import as recompilation reason.
+    ;       rwi3_indirect_int_use
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_interface).
+            %
+            % Add the parse tree to the set of indirectly-read interfaces.
+            %
+            % Record recomp_avail_int_use as recompilation reason.
+            % (Since there is no recomp_avail_indirect_use_int, yet).
+    ;       rwi3_indirect_imp_use.
+            % The items in the interface should have the section marker
+            % make_ims_used(import_locn_implementation).
+            %
+            % Add the parse tree to the set of indirectly-read interfaces.
+            %
+            % Record recomp_avail_imp_use as recompilation reason.
+            % (Since there is no recomp_avail_indirect_use_imp, yet).
 
 :- type raw_item_block == item_block(module_section).
 
@@ -627,11 +1235,7 @@
                 list(item)
             ).
 
-:- type module_names_contexts == multi_map(module_name, prog_context).
-
-:- pred src_to_raw_item_block(src_item_block::in, raw_item_block::out) is det.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type module_section
     --->    ms_interface
@@ -644,8 +1248,8 @@
             % This is used internally by the compiler, to identify items
             % which originally came from an implementation section of a module
             % that contains submodules; such items need to be exported
-            % to the submodules. This is done by grab_imported_modules_augment
-            % in modules.m.
+            % to the submodules. This is done in grab_modules.m
+            % by grab_qual_imported_modules_augment.
 
 :- type imported_or_used
     --->    iou_imported
@@ -682,7 +1286,7 @@
             % originally came from an interface file needed by an
             % optimization file.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % An import_locn is used to describe the place where an item was
     % imported from.
@@ -702,72 +1306,9 @@
             % The item is from the interface or implementation section
             % of the .int0 file of an ancestor module.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- func make_ims_imported(import_locn, module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_used(import_locn, module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_used_and_imported(import_locn, module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_abstract_imported(module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_int3_implementation(module_name, int_file_kind) =
-    int_module_section.
-
-:- func make_oms_opt_imported(module_name, opt_file_kind) =
-    opt_module_section.
-:- func make_ioms_opt_imported(module_name, int_file_kind) =
-    int_for_opt_module_section.
-
-%-----------------------------------------------------------------------------%
-
-:- func raw_compilation_unit_project_name(raw_compilation_unit) = module_name.
-:- func aug_compilation_unit_project_name(aug_compilation_unit) = module_name.
-
-:- pred make_and_add_item_block(module_name::in, MS::in,
-    list(item_include)::in, list(item_avail)::in,
-    list(item_fim)::in, list(item)::in,
-    list(item_block(MS))::in, list(item_block(MS))::out) is det.
-
-:- pred int_imp_items_to_item_blocks(module_name::in, MS::in, MS::in,
-    list(item_include)::in, list(item_include)::in,
-    list(item_avail)::in, list(item_avail)::in,
-    list(item_fim)::in, list(item_fim)::in, list(item)::in, list(item)::in,
-    list(item_block(MS))::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-    % get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-    %     IntAvails, ImpAvails, IntItems, ImpItems):
-    %
-    % Return the includes, avails (i.e. imports and uses), and items
-    % from both the interface and implementation blocks in RawItemBlocks.
-    %
-:- pred get_raw_components(list(raw_item_block)::in,
-    list(item_include)::out, list(item_include)::out,
-    list(item_avail)::out, list(item_avail)::out,
-    list(item_fim)::out, list(item_fim)::out,
-    list(item)::out, list(item)::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-    % get_imports_uses_maps(Avails, ImportsMap, UsesMap):
-    %
-    % Given the avails of a raw compilation unit, return the set of modules
-    % imported and used in those sections, mapped to the list of locations
-    % of those imports and uses.
-    %
-:- pred get_imports_uses_maps(list(item_avail)::in,
-    module_names_contexts::out, module_names_contexts::out) is det.
-
-    % The accumulator version of get_imports_uses_maps.
-    %
-:- pred accumulate_imports_uses_maps(list(item_avail)::in,
-    module_names_contexts::in, module_names_contexts::out,
-    module_names_contexts::in, module_names_contexts::out) is det.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The main parts of parse trees are items. There are many kinds of items,
 % and most of those kinds have their own item-kind-specific type that stores
@@ -814,7 +1355,10 @@
 :- type compiler_origin
     --->    compiler_origin_initialise
     ;       compiler_origin_finalise
-    ;       compiler_origin_class_method
+    ;       compiler_origin_class_method(
+                cm_class_id                     :: class_id,
+                cm_method                       :: pf_sym_name_and_arity
+            )
     ;       compiler_origin_solver_type(
                 cost_type_ctor_name             :: sym_name,
                 cost_type_ctor_arity            :: arity,
@@ -839,7 +1383,9 @@
     ;       item_mode_decl(item_mode_decl_info)
     ;       item_foreign_enum(item_foreign_enum_info)
     ;       item_foreign_export_enum(item_foreign_export_enum_info)
-    ;       item_pragma(item_pragma_info)
+    ;       item_decl_pragma(item_decl_pragma_info)
+    ;       item_impl_pragma(item_impl_pragma_info)
+    ;       item_generated_pragma(item_generated_pragma_info)
     ;       item_promise(item_promise_info)
     ;       item_typeclass(item_typeclass_info)
     ;       item_instance(item_instance_info)
@@ -965,7 +1511,7 @@
                 fe_language                     :: foreign_language,
                 fe_type_ctor                    :: type_ctor,
                 fe_values                       :: one_or_more(
-                                                        pair(sym_name, string)),
+                                                    pair(sym_name, string)),
                 fe_context                      :: prog_context,
                 fe_seq_num                      :: int
             ).
@@ -982,12 +1528,15 @@
                 fee_language                    :: foreign_language,
                 fee_type_ctor                   :: type_ctor,
                 fee_attributes                  :: export_enum_attributes,
-                fee_overrides                   :: assoc_list(sym_name, string),
+                fee_overrides                   :: assoc_list(sym_name,
+                                                    string),
                 fee_context                     :: prog_context,
                 fee_seq_num                     :: int
             ).
 
-:- type item_pragma_info == item_pragma_info(pragma_type).
+:- type item_decl_pragma_info == item_pragma_info(decl_pragma).
+:- type item_impl_pragma_info == item_pragma_info(impl_pragma).
+:- type item_generated_pragma_info == item_pragma_info(generated_pragma).
 :- type item_pragma_info(T)
     --->    item_pragma_info(
                 prag_type                       :: T,
@@ -1090,13 +1639,7 @@
                 tr_seq_num                      :: int
             ).
 
-:- func get_item_context(item) = prog_context.
-
-:- func item_desc_pieces(item) = list(format_component).
-
-:- func project_pragma_type(item_pragma_info(T)) = T.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Declarations of relationships between modules.
 %
@@ -1123,23 +1666,9 @@
                 incl_seq_num                    :: int
             ).
 
-    % Add the name of the included module to the given set.
-    %
-:- pred add_included_module_name(item_include::in,
-    set(module_name)::in, set(module_name)::out) is det.
-
-    % Add the name of the included module to the given map.
-    %
-:- pred get_included_modules_in_item_include_acc(item_include::in,
-    module_names_contexts::in, module_names_contexts::out) is det.
-
 :- type import_or_use
     --->    import_decl
     ;       use_decl.
-
-    % Return "import_module" or "use_module", depending on the argument.
-    %
-:- func import_or_use_decl_name(import_or_use) = string.
 
     % The representation of an `:- import_module' or an `:- use_module'
     % declaration is a list of one or more item_avails, each of which
@@ -1174,25 +1703,6 @@
                 aui_seq_num         :: int
             ).
 
-:- func item_include_module_name(item_include) = module_name.
-
-:- func get_avail_context(item_avail) = prog_context.
-:- func get_import_context(avail_import_info) = prog_context.
-:- func get_use_context(avail_use_info) = prog_context.
-
-:- pred avail_is_import(item_avail::in, avail_import_info::out) is semidet.
-:- pred avail_is_use(item_avail::in, avail_use_info::out) is semidet.
-
-:- func wrap_avail_import(avail_import_info) = item_avail.
-:- func wrap_avail_use(avail_use_info) = item_avail.
-
-:- pred avail_imports_uses(list(item_avail)::in,
-    list(avail_import_info)::out, list(avail_use_info)::out) is det.
-
-:- func get_avail_module_name(item_avail) = module_name.
-:- func get_import_module_name(avail_import_info) = module_name.
-:- func get_use_module_name(avail_use_info) = module_name.
-
 :- type item_fim
     --->    item_fim(
                 % A `:- pragma foreign_import_module(Lang, ModuleName)'
@@ -1217,10 +1727,7 @@
                 fim_seq_num                     :: int
             ).
 
-:- func fim_item_to_spec(item_fim) = fim_spec.
-:- func fim_spec_to_item(fim_spec) = item_fim.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Type classes.
 %
@@ -1302,7 +1809,7 @@
                 prog_context
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Mutable variables.
 %
@@ -1362,20 +1869,16 @@
 
 :- pred set_mutable_var_trailed(mutable_trailed::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
-
 :- pred set_mutable_add_foreign_name(foreign_name::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
-
 :- pred set_mutable_var_attach_to_io_state(mutable_attach_to_io_state::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
-
 :- pred set_mutable_var_constant(mutable_constant::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
-
 :- pred set_mutable_var_thread_local(mutable_thread_local::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Information about the representations of types defined in other modules.
 %
@@ -1629,51 +2132,48 @@
     ;       fk_uint32
     ;       fk_char21.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Pragmas.
 %
 
-    % XXX We should consider splitting this type into several types, based on
-    %
-    % - whether a pragma may appear in the interface section of a source file;
-    % - whether a pragma may appear in a source file at all,
-    %   or whether it is only used to record the results of analyses
-    %   in automatically generated .int* and/or .*opt files.
-    %
-:- type pragma_type
-    --->    pragma_foreign_decl(pragma_info_foreign_decl)
-    ;       pragma_foreign_code(pragma_info_foreign_code)
-    ;       pragma_foreign_proc(pragma_info_foreign_proc)
-    ;       pragma_foreign_proc_export(pragma_info_foreign_proc_export)
-    ;       pragma_external_proc(pragma_info_external_proc)
-    ;       pragma_type_spec(pragma_info_type_spec)
-    ;       pragma_inline(pred_name_arity)
-    ;       pragma_no_inline(pred_name_arity)
-    ;       pragma_consider_used(pred_name_arity)
-    ;       pragma_unused_args(pragma_info_unused_args)
-    ;       pragma_exceptions(pragma_info_exceptions)
-    ;       pragma_trailing_info(pragma_info_trailing_info)
-    ;       pragma_mm_tabling_info(pragma_info_mm_tabling_info)
-    ;       pragma_no_detism_warning(pred_name_arity)
-    ;       pragma_require_tail_recursion(pragma_info_require_tail_recursion)
-    ;       pragma_tabled(pragma_info_tabled)
-    ;       pragma_fact_table(pragma_info_fact_table)
-    ;       pragma_oisu(pragma_info_oisu)
-    ;       pragma_promise_eqv_clauses(pred_name_arity)
-    ;       pragma_promise_pure(pred_name_arity)
-    ;       pragma_promise_semipure(pred_name_arity)
-    ;       pragma_termination_info(pragma_info_termination_info)
-    ;       pragma_termination2_info(pragma_info_termination2_info)
-    ;       pragma_terminates(pred_name_arity)
-    ;       pragma_does_not_terminate(pred_name_arity)
-    ;       pragma_check_termination(pred_name_arity)
-    ;       pragma_mode_check_clauses(pred_name_arity)
-    ;       pragma_structure_sharing(pragma_info_structure_sharing)
-    ;       pragma_structure_reuse(pragma_info_structure_reuse)
-    ;       pragma_obsolete_pred(pragma_info_obsolete_pred)
-    ;       pragma_obsolete_proc(pragma_info_obsolete_proc)
-    ;       pragma_require_feature_set(pragma_info_require_feature_set).
+:- type decl_pragma
+    --->    decl_pragma_obsolete_pred(pragma_info_obsolete_pred)
+    ;       decl_pragma_obsolete_proc(pragma_info_obsolete_proc)
+    ;       decl_pragma_type_spec(pragma_info_type_spec)
+    ;       decl_pragma_oisu(pragma_info_oisu)
+    ;       decl_pragma_terminates(pred_name_arity)
+    ;       decl_pragma_does_not_terminate(pred_name_arity)
+    ;       decl_pragma_check_termination(pred_name_arity)
+    ;       decl_pragma_termination_info(pragma_info_termination_info)
+    ;       decl_pragma_termination2_info(pragma_info_termination2_info)
+    ;       decl_pragma_structure_sharing(pragma_info_structure_sharing)
+    ;       decl_pragma_structure_reuse(pragma_info_structure_reuse).
+
+:- type impl_pragma
+    --->    impl_pragma_foreign_decl(pragma_info_foreign_decl)
+    ;       impl_pragma_foreign_code(pragma_info_foreign_code)
+    ;       impl_pragma_foreign_proc(pragma_info_foreign_proc)
+    ;       impl_pragma_foreign_proc_export(pragma_info_foreign_proc_export)
+    ;       impl_pragma_external_proc(pragma_info_external_proc)
+    ;       impl_pragma_fact_table(pragma_info_fact_table)
+    ;       impl_pragma_tabled(pragma_info_tabled)
+    ;       impl_pragma_inline(pred_name_arity)
+    ;       impl_pragma_no_inline(pred_name_arity)
+    ;       impl_pragma_consider_used(pred_name_arity)
+    ;       impl_pragma_mode_check_clauses(pred_name_arity)
+    ;       impl_pragma_no_detism_warning(pred_name_arity)
+    ;       impl_pragma_require_tail_rec(pragma_info_require_tail_rec)
+    ;       impl_pragma_promise_pure(pred_name_arity)
+    ;       impl_pragma_promise_semipure(pred_name_arity)
+    ;       impl_pragma_promise_eqv_clauses(pred_name_arity)
+    ;       impl_pragma_require_feature_set(pragma_info_require_feature_set).
+
+:- type generated_pragma
+    --->    gen_pragma_unused_args(pragma_info_unused_args)
+    ;       gen_pragma_exceptions(pragma_info_exceptions)
+    ;       gen_pragma_trailing_info(pragma_info_trailing_info)
+    ;       gen_pragma_mm_tabling_info(pragma_info_mm_tabling_info).
 
 :- type pred_marker_pragma_kind
     --->    pmpk_inline
@@ -1691,24 +2191,18 @@
                 pred_marker_pragma_kind
             ).
 
-:- type item_foreign_proc ==   item_pragma_info(pragma_info_foreign_proc).
 :- type item_pred_marker ==    item_pragma_info(pragma_info_pred_marker).
 :- type item_type_spec ==      item_pragma_info(pragma_info_type_spec).
-:- type item_unused_args ==    item_pragma_info(pragma_info_unused_args).
-:- type item_exceptions ==     item_pragma_info(pragma_info_exceptions).
-:- type item_trailing ==       item_pragma_info(pragma_info_trailing_info).
-:- type item_mm_tabling ==     item_pragma_info(pragma_info_mm_tabling_info).
 :- type item_termination ==    item_pragma_info(pragma_info_termination_info).
 :- type item_termination2 ==   item_pragma_info(pragma_info_termination2_info).
 :- type item_struct_sharing == item_pragma_info(pragma_info_structure_sharing).
 :- type item_struct_reuse ==   item_pragma_info(pragma_info_structure_reuse).
-
-    % Check whether a particular `pragma' declaration is allowed
-    % in the interface section of a module.
-    %
-:- func pragma_allowed_in_interface(pragma_type) = bool.
-
-:- func pragma_desc_pieces(pragma_type) = list(format_component).
+:- type item_foreign_proc ==   item_pragma_info(pragma_info_foreign_proc).
+:- type item_tabled ==         item_pragma_info(pragma_info_tabled).
+:- type item_unused_args ==    item_pragma_info(pragma_info_unused_args).
+:- type item_exceptions ==     item_pragma_info(pragma_info_exceptions).
+:- type item_trailing ==       item_pragma_info(pragma_info_trailing_info).
+:- type item_mm_tabling ==     item_pragma_info(pragma_info_mm_tabling_info).
 
     % Foreign language interfacing pragmas.
 
@@ -1815,8 +2309,8 @@
                 mm_tabling_info_status  :: mm_tabling_status
             ).
 
-:- type pragma_info_require_tail_recursion
-    --->    pragma_info_require_tail_recursion(
+:- type pragma_info_require_tail_rec
+    --->    pragma_info_require_tail_rec(
                 rtr_proc_id             :: pred_name_arity_mpf_mmode,
                 rtr_require_tailrec     :: require_tail_recursion
 
@@ -2003,7 +2497,7 @@
                 pnam_maybe_pf           :: maybe(pred_or_func)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Goals.
 %
@@ -2209,364 +2703,43 @@
                 catch_any_goal  :: goal
             ).
 
-:- func goal_get_context(goal) = prog_context.
+%---------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
+:- func get_item_context(item) = prog_context.
+:- func get_goal_context(goal) = prog_context.
+
+%---------------------------------------------------------------------------%
 
 :- type contains_foreign_code
-    --->    contains_foreign_code(set(foreign_language))
-    ;       contains_no_foreign_code
-    ;       contains_foreign_code_unknown.
+    --->    foreign_code_langs_known(set(foreign_language))
+    ;       foreign_code_langs_unknown.
 
 :- type contains_foreign_export
     --->    contains_foreign_export
     ;       contains_no_foreign_export.
 
-:- pred get_foreign_code_indicators_from_item_blocks(globals::in,
-    list(item_block(MS))::in,
-    set(foreign_language)::out, foreign_import_modules::out,
-    foreign_include_file_infos::out, contains_foreign_export::out) is det.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module parse_tree.prog_foreign.
-
-:- import_module require.
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-src_to_raw_item_block(SrcItemBlock, RawItemBlock) :-
-    SrcItemBlock = item_block(ModuleName, SrcSection,
-        Incls, Avails, FIMs, Items),
-    (
-        SrcSection = sms_interface,
-        RawSection = ms_interface
-    ;
-        ( SrcSection = sms_implementation
-        ; SrcSection = sms_impl_but_exported_to_submodules
-        ),
-        RawSection = ms_implementation
-    ),
-    RawItemBlock = item_block(ModuleName, RawSection,
-        Incls, Avails, FIMs, Items).
-
-%-----------------------------------------------------------------------------%
-
-make_ims_imported(ImportLocn, ModuleName, IntFileKind) =
-    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn, iou_imported).
-make_ims_used(ImportLocn, ModuleName, IntFileKind) =
-    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn, iou_used).
-make_ims_used_and_imported(ImportLocn, ModuleName, IntFileKind) =
-    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn,
-        iou_used_and_imported).
-make_ims_abstract_imported(ModuleName, IntFileKind) =
-    ims_abstract_imported(ModuleName, IntFileKind).
-:- pragma no_determinism_warning(make_ims_int3_implementation/2).
-make_ims_int3_implementation(_ModuleName, _IntFileKind) = _ :-
-    unexpected($pred,
-        "An .int3 file should not have an implementation section").
-
-make_oms_opt_imported(ModuleName, OptFileKind) =
-    oms_opt_imported(ModuleName, OptFileKind).
-make_ioms_opt_imported(ModuleName, OptFileKind) =
-    ioms_opt_imported(ModuleName, OptFileKind).
-
-%-----------------------------------------------------------------------------%
-
-raw_compilation_unit_project_name(RawCompUnit) =
-    RawCompUnit ^ rci_module_name.
-
-aug_compilation_unit_project_name(AugCompUnit) =
-    AugCompUnit ^ aci_module_name.
-
-make_and_add_item_block(ModuleName, Section, Incls, Avails, FIMs, Items,
-        !ItemBlocks) :-
-    ( if
-        Incls = [],
-        Avails = [],
-        FIMs = [],
-        Items = []
-    then
-        true
-    else
-        Block = item_block(ModuleName, Section,
-            Incls, Avails, FIMs, Items),
-        !:ItemBlocks = [Block | !.ItemBlocks]
+init_empty_parse_tree_module_src(ModuleName) = ParseTreeModuleSrc :-
+    ParseTreeModuleSrc = parse_tree_module_src(ModuleName,
+        term.dummy_context_init,
+        map.init, map.init, map.init,
+        map.init, map.init, map.init, map.init, map.init,
+        map.init, map.init, maybe.no,
+        [], [], [], [], [], [], [], [], [], [], [], [], set.init,
+        [], [], [], [], [], [], [], [], [], [], [], [],
+        [], [], [], [], [], []
     ).
 
-int_imp_items_to_item_blocks(ModuleName, IntSection, ImpSection,
-        IntIncls, ImpIncls, IntAvails, ImpAvails, IntFIMs, ImpFIMs,
-        IntItems, ImpItems, !:ItemBlocks) :-
-    make_and_add_item_block(ModuleName, ImpSection,
-        ImpIncls, ImpAvails, ImpFIMs, ImpItems, [], !:ItemBlocks),
-    make_and_add_item_block(ModuleName, IntSection,
-        IntIncls, IntAvails, IntFIMs, IntItems, !ItemBlocks).
-
-%-----------------------------------------------------------------------------%
-
-get_raw_components(RawItemBlocks, !:IntIncls, !:ImpIncls,
-        !:IntAvails, !:ImpAvails, !:IntFIMs, !:ImpFIMs,
-        !:IntItems, !:ImpItems) :-
-    % While lists of items can be very long, this just about never happens
-    % with lists of item BLOCKS, so we don't need tail recursion.
-    (
-        RawItemBlocks = [],
-        !:IntIncls = [],
-        !:ImpIncls = [],
-        !:IntAvails = [],
-        !:ImpAvails = [],
-        !:IntFIMs = [],
-        !:ImpFIMs = [],
-        !:IntItems = [],
-        !:ImpItems = []
-    ;
-        RawItemBlocks = [HeadRawItemBlock | TailRawItemBlocks],
-        get_raw_components(TailRawItemBlocks, !:IntIncls, !:ImpIncls,
-            !:IntAvails, !:ImpAvails, !:IntFIMs, !:ImpFIMs,
-            !:IntItems, !:ImpItems),
-        HeadRawItemBlock = item_block(_, Section, Incls, Avails, FIMs, Items),
-        (
-            Section = ms_interface,
-            !:IntIncls = Incls ++ !.IntIncls,
-            !:IntAvails = Avails ++ !.IntAvails,
-            !:IntFIMs = FIMs ++ !.IntFIMs,
-            !:IntItems = Items ++ !.IntItems
-        ;
-            Section = ms_implementation,
-            !:ImpIncls = Incls ++ !.ImpIncls,
-            !:ImpAvails = Avails ++ !.ImpAvails,
-            !:ImpFIMs = FIMs ++ !.ImpFIMs,
-            !:ImpItems = Items ++ !.ImpItems
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-
-get_imports_uses_maps(Avails, ImportsMap, UsesMap) :-
-    accumulate_imports_uses_maps(Avails,
-        multi_map.init, ImportsMap, multi_map.init, UsesMap).
-
-accumulate_imports_uses_maps([], !ImportsMap, !UsesMap).
-accumulate_imports_uses_maps([Avail | Avails], !ImportsMap, !UsesMap) :-
-    (
-        Avail = avail_import(avail_import_info(ModuleName, Context, _)),
-        multi_map.add(ModuleName, Context, !ImportsMap)
-    ;
-        Avail = avail_use(avail_use_info(ModuleName, Context, _)),
-        multi_map.add(ModuleName, Context, !UsesMap)
-    ),
-    accumulate_imports_uses_maps(Avails, !ImportsMap, !UsesMap).
-
-%-----------------------------------------------------------------------------%
-
-get_item_context(Item) = Context :-
-    (
-        Item = item_clause(ItemClause),
-        Context = ItemClause ^ cl_context
-    ;
-        Item = item_type_defn(ItemTypeDefn),
-        Context = ItemTypeDefn ^ td_context
-    ;
-        Item = item_inst_defn(ItemInstDefn),
-        Context = ItemInstDefn ^ id_context
-    ;
-        Item = item_mode_defn(ItemModeDefn),
-        Context = ItemModeDefn ^ md_context
-    ;
-        Item = item_pred_decl(ItemPredDecl),
-        Context = ItemPredDecl ^ pf_context
-    ;
-        Item = item_mode_decl(ItemModeDecl),
-        Context = ItemModeDecl ^ pfm_context
-    ;
-        Item = item_foreign_enum(ItemForeignEnum),
-        Context = ItemForeignEnum ^ fe_context
-    ;
-        Item = item_foreign_export_enum(ItemForeignExportEnum),
-        Context = ItemForeignExportEnum ^ fee_context
-    ;
-        Item = item_pragma(ItemPragma),
-        Context = ItemPragma ^ prag_context
-    ;
-        Item = item_promise(ItemPromise),
-        Context = ItemPromise ^ prom_context
-    ;
-        Item = item_typeclass(ItemTypeClass),
-        Context = ItemTypeClass ^ tc_context
-    ;
-        Item = item_instance(ItemInstance),
-        Context = ItemInstance ^ ci_context
-    ;
-        Item = item_initialise(ItemInitialise),
-        Context = ItemInitialise ^ init_context
-    ;
-        Item = item_finalise(ItemFinalise),
-        Context = ItemFinalise ^ final_context
-    ;
-        Item = item_mutable(ItemMutable),
-        Context = ItemMutable ^ mut_context
-    ;
-        Item = item_type_repn(ItemTypeRepn),
-        Context = ItemTypeRepn ^ tr_context
-    ).
-
-item_desc_pieces(Item) = Pieces :-
-    (
-        Item = item_clause(_),
-        Pieces = [words("a clause")]
-    ;
-        Item = item_type_defn(_),
-        Pieces = [words("a type definition")]
-    ;
-        Item = item_inst_defn(_),
-        Pieces = [words("an inst definition")]
-    ;
-        Item = item_mode_defn(_),
-        Pieces = [words("a mode definition")]
-    ;
-        Item = item_pred_decl(ItemPredDecl),
-        PorF = ItemPredDecl ^ pf_p_or_f,
-        (
-            PorF = pf_predicate,
-            Pieces = [words("a predicate declaration")]
-        ;
-            PorF = pf_function,
-            Pieces = [words("a function declaration")]
-        )
-    ;
-        Item = item_mode_decl(_),
-        Pieces = [words("a mode declaration")]
-    ;
-        Item = item_foreign_enum(_),
-        Pieces = [pragma_decl("foreign_enum"), words("declaration")]
-    ;
-        Item = item_foreign_export_enum(_),
-        Pieces = [pragma_decl("foreign_export_enum"), words("declaration")]
-    ;
-        Item = item_pragma(ItemPragma),
-        Pieces = pragma_desc_pieces(ItemPragma ^ prag_type)
-    ;
-        Item = item_promise(ItemPromise),
-        PromiseType = ItemPromise ^ prom_type,
-        (
-            PromiseType = promise_type_exclusive,
-            Pieces = [words("an exclusivity promise")]
-        ;
-            PromiseType = promise_type_exhaustive,
-            Pieces = [words("an exhaustivity promise")]
-        ;
-            PromiseType = promise_type_exclusive_exhaustive,
-            Pieces = [words("an exclusivity and exhaustivity promise")]
-        ;
-            PromiseType = promise_type_true,
-            Pieces = [words("an assertion")]
-        )
-    ;
-        Item = item_typeclass(_),
-        Pieces = [words("a typeclass declaration")]
-    ;
-        Item = item_instance(_),
-        Pieces = [words("an instance declaration")]
-    ;
-        Item = item_initialise(_),
-        Pieces = [words("an initialise declaration")]
-    ;
-        Item = item_finalise(_),
-        Pieces = [words("a finalise declaration")]
-    ;
-        Item = item_mutable(_),
-        Pieces = [words("the declaration of a mutable")]
-    ;
-        Item = item_type_repn(_),
-        Pieces = [words("a type representation description")]
-    ).
-
-project_pragma_type(item_pragma_info(Pragma, _, _)) = Pragma.
-
-%-----------------------------------------------------------------------------%
-
-add_included_module_name(Incl, !ModuleNames) :-
-    set.insert(item_include_module_name(Incl), !ModuleNames).
-
-get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
-    Incl = item_include(ModuleName, Context, _SeqNum),
-    multi_map.add(ModuleName, Context, !IncludedModuleNames).
-
-import_or_use_decl_name(import_decl) = "import_module".
-import_or_use_decl_name(use_decl) = "use_module".
-
-item_include_module_name(Incl) = ModuleName :-
-    Incl = item_include(ModuleName, _Context, _SeqNum).
-
-get_avail_context(avail_import(avail_import_info(_, Context, _))) = Context.
-get_avail_context(avail_use(avail_use_info(_, Context, _))) = Context.
-
-get_import_context(avail_import_info(_, Context, _)) = Context.
-
-get_use_context(avail_use_info(_, Context, _)) = Context.
-
-avail_is_import(Avail, ImportInfo) :-
-    require_complete_switch [Avail]
-    (
-        Avail = avail_import(ImportInfo)
-    ;
-        Avail = avail_use(_),
-        fail
-    ).
-
-avail_is_use(Avail, UseInfo) :-
-    require_complete_switch [Avail]
-    (
-        Avail = avail_import(_),
-        fail
-    ;
-        Avail = avail_use(UseInfo)
-    ).
-
-wrap_avail_import(AvailImportInfo) = avail_import(AvailImportInfo).
-
-wrap_avail_use(AvailUseInfo) = avail_use(AvailUseInfo).
-
-avail_imports_uses([], [], []).
-avail_imports_uses([Avail | Avails], !:Imports, !:Uses) :-
-    avail_imports_uses(Avails, !:Imports, !:Uses),
-    (
-        Avail = avail_import(AvailImportInfo),
-        !:Imports = [AvailImportInfo | !.Imports]
-    ;
-        Avail = avail_use(AvailUseInfo),
-        !:Uses = [AvailUseInfo | !.Uses]
-    ).
-
-get_avail_module_name(ItemAvail) = ModuleName :-
-    (
-        ItemAvail = avail_import(AvailImportInfo),
-        AvailImportInfo = avail_import_info(ModuleName, _, _)
-    ;
-        ItemAvail = avail_use(AvailUseInfo),
-        AvailUseInfo = avail_use_info(ModuleName, _, _)
-    ).
-
-get_import_module_name(AvailImportInfo) = ModuleName :-
-    AvailImportInfo = avail_import_info(ModuleName, _, _).
-
-get_use_module_name(AvailUseInfo) = ModuleName :-
-    AvailUseInfo = avail_use_info(ModuleName, _, _).
-
-fim_item_to_spec(FIM) = FIMSpec :-
-    FIM = item_fim(Lang, ModuleName, _, _),
-    FIMSpec = fim_spec(Lang, ModuleName).
-
-fim_spec_to_item(FIMSpec) = FIM :-
-    FIMSpec = fim_spec(Lang, ModuleName),
-    FIM = item_fim(Lang, ModuleName, term.context_init, -1).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Mutable variables.
 %
@@ -2618,182 +2791,66 @@ set_mutable_var_constant(Constant, !Attributes) :-
 set_mutable_var_thread_local(ThreadLocal, !Attributes) :-
     !Attributes ^ mutable_thread_local := ThreadLocal.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-pragma_allowed_in_interface(Pragma) = Allowed :-
-    % XXX This comment is out of date.
-    % pragma `obsolete', `terminates', `does_not_terminate'
-    % `termination_info', `check_termination', `foreign_enum' and
-    % pragma declarations are supposed to go in the interface,
-    % but all other pragma declarations are implementation details only,
-    % and should go in the implementation.
-
+get_item_context(Item) = Context :-
     (
-        ( Pragma = pragma_foreign_code(_)
-        ; Pragma = pragma_foreign_decl(_)
-        ; Pragma = pragma_foreign_proc_export(_)
-        ; Pragma = pragma_foreign_proc(_)
-        ; Pragma = pragma_external_proc(_)
-        ; Pragma = pragma_inline(_)
-        ; Pragma = pragma_no_inline(_)
-        ; Pragma = pragma_consider_used(_)
-        ; Pragma = pragma_no_detism_warning(_)
-        ; Pragma = pragma_require_tail_recursion(_)
-        ; Pragma = pragma_fact_table(_)
-        ; Pragma = pragma_tabled(_)
-        ; Pragma = pragma_promise_pure(_)
-        ; Pragma = pragma_promise_semipure(_)
-        ; Pragma = pragma_promise_eqv_clauses(_)
-        ; Pragma = pragma_unused_args(_)
-        ; Pragma = pragma_exceptions(_)
-        ; Pragma = pragma_trailing_info(_)
-        ; Pragma = pragma_mm_tabling_info(_)
-        ; Pragma = pragma_require_feature_set(_)
-        ),
-        Allowed = no
+        Item = item_clause(ItemClause),
+        Context = ItemClause ^ cl_context
     ;
-        ( Pragma = pragma_obsolete_pred(_)
-        ; Pragma = pragma_obsolete_proc(_)
-        ; Pragma = pragma_type_spec(_)
-        ; Pragma = pragma_termination_info(_)
-        ; Pragma = pragma_termination2_info(_)
-        ; Pragma = pragma_terminates(_)
-        ; Pragma = pragma_does_not_terminate(_)
-        ; Pragma = pragma_check_termination(_)
-        ; Pragma = pragma_structure_sharing(_)
-        ; Pragma = pragma_structure_reuse(_)
-        ; Pragma = pragma_mode_check_clauses(_)
-        ; Pragma = pragma_oisu(_)
-        ),
-        Allowed = yes
+        Item = item_type_defn(ItemTypeDefn),
+        Context = ItemTypeDefn ^ td_context
+    ;
+        Item = item_inst_defn(ItemInstDefn),
+        Context = ItemInstDefn ^ id_context
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        Context = ItemModeDefn ^ md_context
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        Context = ItemPredDecl ^ pf_context
+    ;
+        Item = item_mode_decl(ItemModeDecl),
+        Context = ItemModeDecl ^ pfm_context
+    ;
+        Item = item_foreign_enum(ItemForeignEnum),
+        Context = ItemForeignEnum ^ fe_context
+    ;
+        Item = item_foreign_export_enum(ItemForeignExportEnum),
+        Context = ItemForeignExportEnum ^ fee_context
+    ;
+        Item = item_decl_pragma(ItemDeclPragma),
+        Context = ItemDeclPragma ^ prag_context
+    ;
+        Item = item_impl_pragma(ItemImplPragma),
+        Context = ItemImplPragma ^ prag_context
+    ;
+        Item = item_generated_pragma(ItemGenPragma),
+        Context = ItemGenPragma ^ prag_context
+    ;
+        Item = item_promise(ItemPromise),
+        Context = ItemPromise ^ prom_context
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        Context = ItemTypeClass ^ tc_context
+    ;
+        Item = item_instance(ItemInstance),
+        Context = ItemInstance ^ ci_context
+    ;
+        Item = item_initialise(ItemInitialise),
+        Context = ItemInitialise ^ init_context
+    ;
+        Item = item_finalise(ItemFinalise),
+        Context = ItemFinalise ^ final_context
+    ;
+        Item = item_mutable(ItemMutable),
+        Context = ItemMutable ^ mut_context
+    ;
+        Item = item_type_repn(ItemTypeRepn),
+        Context = ItemTypeRepn ^ tr_context
     ).
 
-pragma_desc_pieces(Pragma) = Pieces :-
-    (
-        Pragma = pragma_foreign_code(_),
-        Pieces = [pragma_decl("foreign_code"), words("declaration")]
-    ;
-        Pragma = pragma_foreign_decl(_),
-        Pieces = [pragma_decl("foreign_decl"), words("declaration")]
-    ;
-        Pragma = pragma_foreign_proc_export(_),
-        Pieces = [pragma_decl("foreign_export"), words("declaration")]
-    ;
-        Pragma = pragma_foreign_proc(_),
-        Pieces = [pragma_decl("foreign_proc"), words("declaration")]
-    ;
-        Pragma = pragma_external_proc(External),
-        External = pragma_info_external_proc(_, _, PorF, _),
-        (
-            PorF = pf_predicate,
-            Pieces = [pragma_decl("external_pred"), words("declaration")]
-        ;
-            PorF = pf_function,
-            Pieces = [pragma_decl("external_func"), words("declaration")]
-        )
-    ;
-        Pragma = pragma_inline(_),
-        Pieces = [pragma_decl("inline"), words("declaration")]
-    ;
-        Pragma = pragma_no_inline(_),
-        Pieces = [pragma_decl("no_inline"), words("declaration")]
-    ;
-        Pragma = pragma_consider_used(_),
-        Pieces = [pragma_decl("consider_used"), words("declaration")]
-    ;
-        Pragma = pragma_no_detism_warning(_),
-        Pieces = [pragma_decl("no_determinism_warning"), words("declaration")]
-    ;
-        Pragma = pragma_require_tail_recursion(_),
-        Pieces = [pragma_decl("require_tail_recursion"), words("declaration")]
-    ;
-        Pragma = pragma_fact_table(_),
-        Pieces = [pragma_decl("fact_table"), words("declaration")]
-    ;
-        Pragma = pragma_tabled(Tabled),
-        Tabled = pragma_info_tabled(EvalMethod, _, _, _),
-        (
-            EvalMethod = eval_memo,
-            Pieces = [pragma_decl("memo"), words("declaration")]
-        ;
-            EvalMethod = eval_loop_check,
-            Pieces = [pragma_decl("loop_check"), words("declaration")]
-        ;
-            EvalMethod = eval_minimal(_),
-            Pieces = [pragma_decl("minimal_model"), words("declaration")]
-        ;
-            EvalMethod = eval_table_io(_, _),
-            unexpected($pred, "eval_table_io")
-        ;
-            EvalMethod = eval_normal,
-            unexpected($pred, "eval_normal")
-        )
-    ;
-        Pragma = pragma_promise_pure(_),
-        Pieces = [pragma_decl("promise_pure"), words("declaration")]
-    ;
-        Pragma = pragma_promise_semipure(_),
-        Pieces = [pragma_decl("promise_semipure"), words("declaration")]
-    ;
-        Pragma = pragma_promise_eqv_clauses(_),
-        Pieces = [pragma_decl("promise_equivalent_clauses"),
-            words("declaration")]
-    ;
-        Pragma = pragma_unused_args(_),
-        Pieces = [pragma_decl("unused_args"), words("declaration")]
-    ;
-        Pragma = pragma_exceptions(_),
-        Pieces = [pragma_decl("exceptions"), words("declaration")]
-    ;
-        Pragma = pragma_trailing_info(_),
-        Pieces = [pragma_decl("trailing_info"), words("declaration")]
-    ;
-        Pragma = pragma_mm_tabling_info(_),
-        Pieces = [pragma_decl("mm_tabling_info"), words("declaration")]
-    ;
-        Pragma = pragma_require_feature_set(_),
-        Pieces = [pragma_decl("require_feature_set"), words("declaration")]
-    ;
-        Pragma = pragma_obsolete_pred(_),
-        Pieces = [pragma_decl("obsolete"), words("declaration")]
-    ;
-        Pragma = pragma_obsolete_proc(_),
-        Pieces = [pragma_decl("obsolete_proc"), words("declaration")]
-    ;
-        Pragma = pragma_type_spec(_),
-        Pieces = [pragma_decl("type_spec"), words("declaration")]
-    ;
-        Pragma = pragma_termination_info(_),
-        Pieces = [pragma_decl("termination_info"), words("declaration")]
-    ;
-        Pragma = pragma_termination2_info(_),
-        Pieces = [pragma_decl("termination2_info"), words("declaration")]
-    ;
-        Pragma = pragma_terminates(_),
-        Pieces = [pragma_decl("terminates"), words("declaration")]
-    ;
-        Pragma = pragma_does_not_terminate(_),
-        Pieces = [pragma_decl("does_not_terminate"), words("declaration")]
-    ;
-        Pragma = pragma_check_termination(_),
-        Pieces = [pragma_decl("check_termination"), words("declaration")]
-    ;
-        Pragma = pragma_structure_sharing(_),
-        Pieces = [pragma_decl("structure_sharing"), words("declaration")]
-    ;
-        Pragma = pragma_structure_reuse(_),
-        Pieces = [pragma_decl("structure_reuse"), words("declaration")]
-    ;
-        Pragma = pragma_mode_check_clauses(_),
-        Pieces = [pragma_decl("mode_check_clauses"), words("declaration")]
-    ;
-        Pragma = pragma_oisu(_),
-        Pieces = [pragma_decl("oisu"), words("declaration")]
-    ).
-
-%-----------------------------------------------------------------------------%
-
-goal_get_context(Goal) = Context :-
+get_goal_context(Goal) = Context :-
     ( Goal = conj_expr(Context, _, _)
     ; Goal = par_conj_expr(Context, _, _)
     ; Goal = true_expr(Context)
@@ -2820,225 +2877,6 @@ goal_get_context(Goal) = Context :-
     ; Goal = unify_expr(Context, _, _, _)
     ).
 
-%-----------------------------------------------------------------------------%
-
-:- type module_foreign_info
-    --->    module_foreign_info(
-                used_foreign_languages      :: set(foreign_language),
-                foreign_proc_languages      :: map(sym_name, foreign_language),
-                all_foreign_import_modules  :: foreign_import_modules,
-                all_foreign_include_files   :: foreign_include_file_infos,
-                module_has_foreign_export   :: contains_foreign_export
-            ).
-
-get_foreign_code_indicators_from_item_blocks(Globals, ItemBlocks,
-        LangSet, ForeignImports, ForeignIncludeFiles, ContainsForeignExport) :-
-    Info0 = module_foreign_info(set.init, map.init,
-        init_foreign_import_modules, cord.init, contains_no_foreign_export),
-    list.foldl(get_foreign_code_indicators_from_item_block(Globals),
-        ItemBlocks, Info0, Info),
-    Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
-        ForeignIncludeFiles, ContainsForeignExport),
-    ForeignProcLangs = map.values(LangMap),
-    LangSet = set.insert_list(LangSet0, ForeignProcLangs).
-
-:- pred get_foreign_code_indicators_from_item_block(globals::in,
-    item_block(MS)::in,
-    module_foreign_info::in, module_foreign_info::out) is det.
-
-get_foreign_code_indicators_from_item_block(Globals, ItemBlock, !Info) :-
-    ItemBlock = item_block(_, _, _, _, FIMs, Items),
-    list.foldl(get_foreign_code_indicators_from_fim(Globals), FIMs, !Info),
-    list.foldl(get_foreign_code_indicators_from_item(Globals), Items, !Info).
-
-:- pred get_foreign_code_indicators_from_fim(globals::in, item_fim::in,
-    module_foreign_info::in, module_foreign_info::out) is det.
-
-get_foreign_code_indicators_from_fim(Globals, FIM, !Info) :-
-    FIM = item_fim(Lang, ImportedModule, _Context, _SeqNum),
-    globals.get_backend_foreign_languages(Globals, BackendLangs),
-    ( if list.member(Lang, BackendLangs) then
-        ForeignImportModules0 = !.Info ^ all_foreign_import_modules,
-        add_foreign_import_module(Lang, ImportedModule,
-            ForeignImportModules0, ForeignImportModules),
-        !Info ^ all_foreign_import_modules := ForeignImportModules
-    else
-        true
-    ).
-
-:- pred get_foreign_code_indicators_from_item(globals::in, item::in,
-    module_foreign_info::in, module_foreign_info::out) is det.
-
-get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
-    (
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _),
-        get_pragma_foreign_code(Globals, Pragma, !Info)
-    ;
-        Item = item_mutable(_),
-        % Mutables introduce foreign_procs, but mutable declarations
-        % won't have been expanded by the time we get here, so we need
-        % to handle them separately.
-        UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
-        set.insert_list(all_foreign_languages,
-            UsedForeignLanguages0, UsedForeignLanguages),
-        !Info ^ used_foreign_languages := UsedForeignLanguages
-    ;
-        ( Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ),
-        % Initialise/finalise declarations introduce export pragmas, but
-        % again they won't have been expanded by the time we get here.
-        UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
-        set.insert_list(all_foreign_languages,
-            UsedForeignLanguages0, UsedForeignLanguages),
-        !Info ^ used_foreign_languages := UsedForeignLanguages,
-        !Info ^ module_has_foreign_export := contains_foreign_export
-    ;
-        ( Item = item_clause(_)
-        ; Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_foreign_enum(_)
-        ; Item = item_foreign_export_enum(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_instance(_)
-        ; Item = item_type_repn(_)
-        )
-    ).
-
-:- pred get_pragma_foreign_code(globals::in, pragma_type::in,
-    module_foreign_info::in, module_foreign_info::out) is det.
-
-get_pragma_foreign_code(Globals, Pragma, !Info) :-
-    globals.get_backend_foreign_languages(Globals, BackendLangs),
-    globals.get_target(Globals, Target),
-
-    (
-        % We do NOT count foreign_decls here. We only link in a foreign object
-        % file if mlds_to_gcc called mlds_to_c.m to generate it, which it
-        % will only do if there is some foreign_code, not just foreign_decls.
-        % Counting foreign_decls here causes problems with intermodule
-        % optimization.
-        Pragma = pragma_foreign_decl(FDInfo),
-        FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude),
-        do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
-    ;
-        Pragma = pragma_foreign_code(FCInfo),
-        FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),
-        ( if list.member(Lang, BackendLangs) then
-            Langs0 = !.Info ^ used_foreign_languages,
-            set.insert(Lang, Langs0, Langs),
-            !Info ^ used_foreign_languages := Langs
-        else
-            true
-        ),
-        do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
-    ;
-        Pragma = pragma_foreign_proc(FPInfo),
-        FPInfo = pragma_info_foreign_proc(Attrs, Name, _, _, _, _, _),
-        NewLang = get_foreign_language(Attrs),
-        FPLangs0 = !.Info ^ foreign_proc_languages,
-        ( if map.search(FPLangs0, Name, OldLang) then
-            % is it better than an existing one?
-            PreferNew = prefer_foreign_language(Globals, Target,
-                OldLang, NewLang),
-            (
-                PreferNew = yes,
-                map.det_update(Name, NewLang, FPLangs0, FPLangs),
-                !Info ^ foreign_proc_languages := FPLangs
-            ;
-                PreferNew = no
-            )
-        else
-            % is it one of the languages we support?
-            ( if list.member(NewLang, BackendLangs) then
-                map.det_insert(Name, NewLang, FPLangs0, FPLangs),
-                !Info ^ foreign_proc_languages := FPLangs
-            else
-                true
-            )
-        )
-    ;
-        % XXX `pragma export' should not be treated as foreign, but currently
-        % mlds_to_gcc.m doesn't handle that declaration, and instead just
-        % punts it on to mlds_to_c.m, thus generating C code for it,
-        % rather than assembler code. So we need to treat `pragma export'
-        % like the other pragmas for foreign code.
-        Pragma = pragma_foreign_proc_export(FPEInfo),
-        FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
-        ( if list.member(Lang, BackendLangs) then
-            !Info ^ used_foreign_languages :=
-                set.insert(!.Info ^ used_foreign_languages, Lang),
-            !Info ^ module_has_foreign_export :=
-                contains_foreign_export
-        else
-            true
-        )
-    ;
-        Pragma = pragma_fact_table(_),
-        (
-            % We generate some C code for fact tables, so we need to treat
-            % modules containing fact tables as if they contain foreign code.
-            Target = target_c,
-            !Info ^ used_foreign_languages :=
-                set.insert(!.Info ^ used_foreign_languages, lang_c)
-        ;
-            ( Target = target_csharp
-            ; Target = target_java
-            ; Target = target_erlang
-            )
-        )
-    ;
-        ( Pragma = pragma_check_termination(_)
-        ; Pragma = pragma_does_not_terminate(_)
-        ; Pragma = pragma_exceptions(_)
-        ; Pragma = pragma_external_proc(_)
-        ; Pragma = pragma_inline(_)
-        ; Pragma = pragma_mm_tabling_info(_)
-        ; Pragma = pragma_mode_check_clauses(_)
-        ; Pragma = pragma_no_detism_warning(_)
-        ; Pragma = pragma_no_inline(_)
-        ; Pragma = pragma_consider_used(_)
-        ; Pragma = pragma_obsolete_pred(_)
-        ; Pragma = pragma_obsolete_proc(_)
-        ; Pragma = pragma_promise_eqv_clauses(_)
-        ; Pragma = pragma_promise_pure(_)
-        ; Pragma = pragma_promise_semipure(_)
-        ; Pragma = pragma_require_feature_set(_)
-        ; Pragma = pragma_require_tail_recursion(_)
-        ; Pragma = pragma_structure_reuse(_)
-        ; Pragma = pragma_structure_sharing(_)
-        ; Pragma = pragma_oisu(_)
-        ; Pragma = pragma_tabled(_)
-        ; Pragma = pragma_terminates(_)
-        ; Pragma = pragma_termination2_info(_)
-        ; Pragma = pragma_termination_info(_)
-        ; Pragma = pragma_trailing_info(_)
-        ; Pragma = pragma_type_spec(_)
-        ; Pragma = pragma_unused_args(_)
-        )
-        % Do nothing.
-    ).
-
-:- pred do_get_item_foreign_include_file(foreign_language::in,
-    foreign_literal_or_include::in, module_foreign_info::in,
-    module_foreign_info::out) is det.
-
-do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info) :-
-    (
-        LiteralOrInclude = floi_literal(_)
-    ;
-        LiteralOrInclude = floi_include_file(FileName),
-        IncludeFile = foreign_include_file_info(Lang, FileName),
-        IncludeFilesCord0 = !.Info ^ all_foreign_include_files,
-        IncludeFilesCord = cord.snoc(IncludeFilesCord0, IncludeFile),
-        !Info ^ all_foreign_include_files := IncludeFilesCord
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_item.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

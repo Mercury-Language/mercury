@@ -488,10 +488,9 @@ check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
             UnknownFormatPieces = [words("Unknown format string in call to"),
                 qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 suffix("."), nl],
-            UnknownFormatMsg = simple_msg(Context,
-                [always(UnknownFormatPieces)]),
-            UnknownFormatSpec = error_spec(severity_warning,
-                phase_simplify(report_in_any_mode), [UnknownFormatMsg]),
+            UnknownFormatSpec = simplest_spec($pred, severity_warning,
+                phase_simplify(report_in_any_mode),
+                Context, UnknownFormatPieces),
             !:Specs = [UnknownFormatSpec | !.Specs]
         )
     ),
@@ -518,10 +517,9 @@ check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
                 [words("Unknown format values in call to"),
                 qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
                 suffix("."), nl],
-            UnknownFormatValuesMsg = simple_msg(Context,
-                [always(UnknownFormatValuesPieces)]),
-            UnknownFormatValuesSpec = error_spec(severity_warning,
-                phase_simplify(report_in_any_mode), [UnknownFormatValuesMsg]),
+            UnknownFormatValuesSpec = simplest_spec($pred, severity_warning,
+                phase_simplify(report_in_any_mode),
+                Context, UnknownFormatValuesPieces),
             !:Specs = [UnknownFormatValuesSpec | !.Specs]
         )
     ),
@@ -558,10 +556,9 @@ check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
                         list.map(string_format_error_to_words, TailErrors)]
                 ),
 
-                BadFormatMsg = simple_msg(Context,
-                    [always(PrefixPieces), always(ErrorPieces)]),
-                BadFormatSpec = error_spec(severity_warning,
-                    phase_simplify(report_in_any_mode), [BadFormatMsg]),
+                BadFormatSpec = simplest_spec($pred, severity_warning,
+                    phase_simplify(report_in_any_mode),
+                    Context, PrefixPieces ++ ErrorPieces),
                 !:Specs = [BadFormatSpec | !.Specs]
             )
         ;

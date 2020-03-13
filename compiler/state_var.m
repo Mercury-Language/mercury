@@ -97,8 +97,8 @@
     % Finish processing a clause. Make the final values of the clause's state
     % vars match the mapping we decided on when processing the head.
     %
-:- pred svar_finish_clause_body(prog_context::in, map(svar, prog_var)::in,
-    hlds_goal::in, hlds_goal::in, hlds_goal::out,
+:- pred svar_finish_clause_body(globals::in, prog_context::in,
+    map(svar, prog_var)::in, hlds_goal::in, hlds_goal::in, hlds_goal::out,
     svar_state::in, svar_state::in, svar_store::in,
     list(error_spec)::out, list(error_spec)::out) is det.
 
@@ -666,13 +666,13 @@ make_svars_read_only(ROC, Context, [SVar - CurStatus | CurTail], LambdaList) :-
 % Handle the end of processing a clause or lambda expression.
 %
 
-svar_finish_clause_body(Context, FinalMap, HeadGoal0, BodyGoal0,
+svar_finish_clause_body(Globals, Context, FinalMap, HeadGoal0, BodyGoal0,
         Goal, InitialSVarState, FinalSVarState, !.SVarStore,
         WarningSpecs, ErrorSpecs) :-
     svar_finish_body(Context, FinalMap, [HeadGoal0, BodyGoal0], Goal1,
         InitialSVarState, FinalSVarState, !SVarStore),
     !.SVarStore = svar_store(_, DelayedRenamings, Specs),
-    list.filter(severity_is_error, Specs, ErrorSpecs, WarningSpecs),
+    list.filter(severity_is_error(Globals), Specs, ErrorSpecs, WarningSpecs),
     ( if
         map.is_empty(FinalMap),
         map.is_empty(DelayedRenamings)
@@ -2210,11 +2210,12 @@ report_illegal_state_var_update(Context, RO_Construct, RO_Context, VarSet,
     Pieces1 = [words("Error: cannot use"), fixed("!:" ++ Name),
         words("here due to the surrounding"), words(RO_Construct), suffix(";"),
         words("you may only refer to"), fixed("!." ++ Name), suffix("."), nl],
-    Msg1 = simple_msg(Context, [always(Pieces1)]),
+    Msg1 = simplest_msg(Context, Pieces1),
     Pieces2 = [words("Here is the surrounding context that makes"),
         words("state variable"), fixed(Name), words("readonly."), nl],
-    Msg2 = simple_msg(RO_Context, [always(Pieces2)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg1, Msg2]),
+    Msg2 = simplest_msg(RO_Context, Pieces2),
+    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
 :- func ro_construct_name(readonly_context_kind) = string.
@@ -2231,8 +2232,8 @@ report_illegal_func_svar_result(Context, VarSet, StateVar, !Specs) :-
     Pieces = [words("Error:"), fixed("!" ++ Name),
         words("cannot be a function result."), nl,
         words("You probably meant"), fixed("!:" ++ Name), suffix("."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
@@ -2243,8 +2244,8 @@ report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !Specs) :-
         words("cannot be a lambda argument."), nl,
         words("Perhaps you meant"), fixed("!." ++ Name),
         words("or"), fixed("!:" ++ Name), suffix("."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
@@ -2257,8 +2258,8 @@ report_non_visible_state_var(DorC, Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error: state variable"), fixed("!" ++ DorC ++ Name),
         words("is not visible in this context."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
@@ -2270,8 +2271,8 @@ report_uninitialized_state_var(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: reference to uninitialized state variable"),
         fixed("!." ++ Name), suffix("."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_warning, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
@@ -2283,8 +2284,8 @@ report_repeated_head_state_var(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: clause head introduces"),
         words("state variable"), fixed(Name), words("more than once."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
@@ -2296,11 +2297,9 @@ report_state_var_shadow(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: new state variable"), fixed(Name),
         words("shadows old one."), nl],
-    Msg = simple_msg(Context, [option_is_set(warn_state_var_shadowing, yes,
-        [always(Pieces)])]),
-    Severity = severity_conditional(warn_state_var_shadowing, yes,
-        severity_warning, no),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+    Spec = conditional_spec($pred, warn_state_var_shadowing, yes,
+        severity_warning, phase_parse_tree_to_hlds,
+        [simplest_msg(Context, Pieces)]),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
@@ -2316,8 +2315,8 @@ report_missing_inits_in_ite(Context, NextStateVars,
         list_to_pieces(NextStateVars) ++ [suffix(","),
         words("but when the condition"), words(WhenMissing), suffix(","),
         words("it does not."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_informational, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_informational,
+        phase_parse_tree_to_hlds, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_missing_inits_in_disjunct(prog_context::in, list(string)::in,
@@ -2327,8 +2326,8 @@ report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
     Pieces = [words("Other disjuncts define")] ++
         list_to_pieces(NextStateVars) ++ [suffix(","),
         words("but not this one."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_informational, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_informational,
+        phase_parse_tree_to_hlds, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
@@ -2339,8 +2338,8 @@ report_svar_unify_error(Context, StateVar, !VarSet, !State, !Specs) :-
         words("cannot appear as a unification argument."), nl,
         words("You probably meant"), fixed("!." ++ Name),
         words("or"), fixed("!:" ++ Name), suffix(".")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs],
     !.State = svar_state(StatusMap0),
     % If StateVar was not known before, then this is the first occurrence
@@ -2366,9 +2365,10 @@ report_svar_unify_error(Context, StateVar, !VarSet, !State, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred severity_is_error(error_spec::in) is semidet.
+:- pred severity_is_error(globals::in, error_spec::in) is semidet.
 
-severity_is_error(error_spec(severity_error, _, _)).
+severity_is_error(Globals, Spec) :-
+    actual_spec_severity(Globals, Spec) = yes(actual_severity_error).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.state_var.

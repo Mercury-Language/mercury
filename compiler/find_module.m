@@ -142,7 +142,7 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
         io.progname_base("mercury_compile", Progname, !IO),
         Pieces = [fixed(Progname), suffix(":"), words("error opening"),
             quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_read_files,
+        Spec = error_spec($pred, severity_error, phase_read_files,
             [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
         write_error_spec_ignore(Spec, Globals, !IO),
         MaybeModuleName = no

@@ -27,6 +27,8 @@
     --->    pf_predicate
     ;       pf_function.
 
+:- func pred_or_func_to_string(pred_or_func) = string.
+
     % The kinds of events with which MR_trace may be called, either
     % by compiler-generated code, or by code in the standard library
     % referring to compiler-generated data structures.
@@ -131,6 +133,9 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+pred_or_func_to_string(pf_predicate) = "predicate".
+pred_or_func_to_string(pf_function) = "function".
 
 string_to_trace_port("CALL", port_call).
 string_to_trace_port("EXIT", port_exit).

@@ -95,7 +95,8 @@
 
 :- import_module cord.
 :- import_module list.
-:- import_module multi_map.
+:- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module set.
 :- import_module term.
@@ -160,16 +161,14 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
         Done0 = not_yet_processed,
         Deps = deps(already_processed, ModuleImports),
         map.det_update(Module, Deps, !DepsMap),
-        module_and_imports_get_foreign_import_modules(ModuleImports,
-            ForeignImportedModules),
+        module_and_imports_get_c_j_cs_e_fims(ModuleImports, CJCsEFIMs),
         % We could keep a list of the modules we have already processed
         % and subtract it from the sets of modules we add here, but doing that
         % actually leads to a small slowdown.
         module_and_imports_get_module_name_context(ModuleImports,
             ModuleNameContext),
         module_and_imports_get_ancestors(ModuleImports, AncestorModuleNames),
-        ForeignImportedModuleNames =
-            get_all_foreign_import_modules(ForeignImportedModules),
+        ForeignImportedModuleNames = get_all_foreign_import_modules(CJCsEFIMs),
         set.foldl(add_module_name_and_context(ModuleNameContext),
             AncestorModuleNames, !Modules),
         set.foldl(add_module_name_and_context(ModuleNameContext),
@@ -179,9 +178,10 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
         module_and_imports_get_imp_deps_map(ModuleImports, ImpDepsMap),
         module_and_imports_get_public_children_map(ModuleImports,
             PublicChildren),
-        multi_map.to_assoc_list(IntDepsMap, IntDepsModuleNamesContexts),
-        multi_map.to_assoc_list(ImpDepsMap, ImpDepsModuleNamesContexts),
-        multi_map.to_assoc_list(PublicChildren, ChildrenModuleNamesContexts),
+        one_or_more_map.to_assoc_list(IntDepsMap, IntDepsModuleNamesContexts),
+        one_or_more_map.to_assoc_list(ImpDepsMap, ImpDepsModuleNamesContexts),
+        one_or_more_map.to_assoc_list(PublicChildren,
+            ChildrenModuleNamesContexts),
         list.foldl(add_module_name_with_contexts,
             IntDepsModuleNamesContexts, !Modules),
         list.foldl(add_module_name_with_contexts,
@@ -204,15 +204,17 @@ add_module_name_and_context(Context, ModuleName, !Modules) :-
     ).
 
 :- pred add_module_name_with_contexts(
-    pair(module_name, list(term.context))::in,
+    pair(module_name, one_or_more(term.context))::in,
     map(module_name, list(term.context))::in,
     map(module_name, list(term.context))::out) is det.
 
 add_module_name_with_contexts(ModuleName - NewContexts, !Modules) :-
     ( if map.search(!.Modules, ModuleName, OldContexts) then
-        map.det_update(ModuleName, NewContexts ++ OldContexts, !Modules)
+        NewOldContexts = one_or_more_to_list(NewContexts) ++ OldContexts,
+        map.det_update(ModuleName, NewOldContexts, !Modules)
     else
-        map.det_insert(ModuleName, NewContexts, !Modules)
+        NewOldContexts = one_or_more_to_list(NewContexts),
+        map.det_insert(ModuleName, NewOldContexts, !Modules)
     ).
 
     % Look up a module in the dependency map.

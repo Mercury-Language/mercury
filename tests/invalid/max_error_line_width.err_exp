@@ -5,9 +5,9 @@ max_error_line_width.m:056:   understand.
 max_error_line_width.m:056:   The following symbol was overloaded in the following contexts.
 max_error_line_width.m:054:   The function symbol `f'/0.
 max_error_line_width.m:054:   The possible matches are:
+max_error_line_width.m:054:     the builtin type constructor `character',
 max_error_line_width.m:054:     the type constructor `max_error_line_width.bar'/0,
-max_error_line_width.m:054:     the type constructor `max_error_line_width.foo'/0,
-max_error_line_width.m:054:     the builtin type constructor `character'.
+max_error_line_width.m:054:     the type constructor `max_error_line_width.foo'/0.
 max_error_line_width.m:055:   The function symbol `f'/0 is also overloaded here.
 max_error_line_width.m:056: Warning: the variable `L' is unified with a term containing itself.
 max_error_line_width.m:059: In clause for predicate `ambig_overload2'/1:
@@ -30,8 +30,8 @@ max_error_line_width.m:113:   understand.
 max_error_line_width.m:113:   The following symbol was overloaded in the following contexts.
 max_error_line_width.m:064:   The predicate symbol predicate `<'/2.
 max_error_line_width.m:064:   The possible matches are:
-max_error_line_width.m:064:     predicate `int.<'/2,
-max_error_line_width.m:064:     predicate `float.<'/2.
+max_error_line_width.m:064:     predicate `float.<'/2,
+max_error_line_width.m:064:     predicate `int.<'/2.
 max_error_line_width.m:065:   The predicate symbol predicate `<'/2 is also overloaded here.
 max_error_line_width.m:066:   The predicate symbol predicate `<'/2 is also overloaded here.
 max_error_line_width.m:067:   The predicate symbol predicate `<'/2 is also overloaded here.

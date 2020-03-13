@@ -443,8 +443,8 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             Pieces = [words("Error: the "), quote("else"), words("operator"),
                 words("should occur in expressions of the form"),
                 quote("( if goal then goal else goal )"), suffix("."), nl],
-            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeGoal = error1([Spec])
         )
     ;
@@ -483,8 +483,8 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             Pieces = [words("Error: the "), quote("else"), words("operator"),
                 words("should occur in expressions of the form"),
                 quote("( if goal then goal else goal )"), suffix("."), nl],
-            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeGoal = error1([Spec])
         )
     ;
@@ -493,8 +493,8 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             Args = [],
             Pieces = [words("Error: there should be at least one goal"),
                 words("between the curly braces."), nl],
-            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeGoal = error1([Spec])
         ;
             Args = [HeadGoal | TailGoals],
@@ -524,8 +524,8 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 words("may only be used to match the input"),
                 words("against a list of zero items,"),
                 words("and must therefore be used with arity 0."), nl],
-            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeGoal = error1([Spec])
         )
     ;
@@ -548,8 +548,8 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             else
                 Pieces = [words("Error: there is no"),
                     quote("[]"), words("at the end of the list."), nl],
-                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                    Context, Pieces),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, Context, Pieces),
                 MaybeGoal = error1([Spec])
             )
         else
@@ -558,8 +558,8 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 words("may only be used to match the input"),
                 words("against a list of one or more items,"),
                 words("and must therefore be used with arity 2."), nl],
-            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeGoal = error1([Spec])
         )
     ;

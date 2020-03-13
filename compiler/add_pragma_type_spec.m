@@ -385,7 +385,7 @@ report_subst_existq_tvars(PredInfo, Context, SubExistQVars, !Specs) :-
         [words("error: the substitution includes"),
         words("the existentially quantified type")] ++
         report_variables(SubExistQVars, TVarSet) ++ [suffix(".")],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -397,7 +397,7 @@ report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, !Specs) :-
         [words("error:")] ++ report_variables(RecursiveVars, TVarSet) ++
         [words(choose_number(RecursiveVars, "occurs", "occur")),
         words("on both sides of the substitution.")],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -411,7 +411,7 @@ report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars,
         [words("error:")] ++ report_variables(MultiSubstVars, TVarSet) ++
         [words(choose_number(MultiSubstVars, "has", "have")),
         words("multiple replacement types.")],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -433,7 +433,7 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars,
         [words("error:")] ++ report_variables(UnknownVars, TVarSet) ++
         [words(choose_number(UnknownVars, "does not", "do not")),
         words("occur in the"), decl(Decl), words("declaration.")],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

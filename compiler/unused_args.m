@@ -1860,8 +1860,8 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
         Pieces2 = [words("arguments") | format_arg_list(UnusedArgs)] ++
             [words("are unused."), nl]
     ),
-    Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
-    Spec = error_spec(severity_warning, phase_code_gen, [Msg]).
+    Spec = simplest_spec($pred, severity_warning, phase_code_gen,
+        Context, Pieces1 ++ Pieces2).
 
 :- func format_arg_list(list(int)) = list(format_component).
 

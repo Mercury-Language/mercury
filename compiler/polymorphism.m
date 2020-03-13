@@ -489,6 +489,16 @@ fixup_pred_polymorphism(PredId, !ExistsCastPredIds, !ModuleInfo) :-
     % otherwise we would stuff up the arg types for unification predicates for
     % equivalence types.
 
+    % Since polymorphism transforms not just the procedures defined
+    % in the module being compiled, but also all the procedures in
+    % all the imported modules, this message can be printed A LOT,
+    % even though it is almost never of interest.
+    % That is why we enable it only when requested.
+    trace [compiletime(flag("poly_msgs")), io(!IO)] (
+        write_pred_progress_message("% Fixup pred polymorphism for ",
+            PredId, !.ModuleInfo, !IO)
+    ),
+
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
@@ -507,8 +517,8 @@ fixup_pred_polymorphism(PredId, !ExistsCastPredIds, !ModuleInfo) :-
     % If the clauses bind some existentially quantified type variables,
     % introduce exists_casts goals for affected head variables, including
     % the new type_info and typeclass_info arguments. Make sure the types
-    % of the internal versions of type_infos for those type variables in the
-    % variable types map are as specific as possible.
+    % of the internal versions of type_infos for those type variables
+    % in the variable types map are as specific as possible.
 
     ( if
         ExistQVars = [_ | _],
@@ -539,7 +549,6 @@ polymorphism_process_pred_msg(PredId, !SafeToContinue, !Specs, !ModuleInfo) :-
     % all the imported modules, this message can be printed A LOT,
     % even though it is almost never of interest.
     % That is why we enable it only when requested.
-
     trace [compiletime(flag("poly_msgs")), io(!IO)] (
         write_pred_progress_message("% Transforming polymorphism for ",
             PredId, !.ModuleInfo, !IO)
@@ -724,7 +733,7 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
             ExtraArgModes0, ExtraArgModes, !Info)
     ;
         ( Origin = origin_special_pred(_, _)
-        ; Origin = origin_class_method
+        ; Origin = origin_class_method(_, _)
         ; Origin = origin_transformed(_, _, _)
         ; Origin = origin_created(_)
         ; Origin = origin_assertion(_, _)
@@ -1765,7 +1774,7 @@ lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars, MaybeResult) :-
             qual_sym_name(PredSymName), words("has no declared determinism,"),
             words("so a curried call to it"),
             words("may not be used as a lambda expression."), nl],
-        Spec = simplest_spec(severity_error, phase_polymorphism,
+        Spec = simplest_spec($pred, severity_error, phase_polymorphism,
             Context, Pieces),
         MaybeResult = error2([Spec])
     ).

@@ -11,6 +11,18 @@ Changes that may break compatibility
   simply by importing `one_or_more` as well as (or in rare cases, instead of)
   the `list` module.
 
+* If module A contains a `:- import_module` or a `:- use_module` declaration
+  for module B but does not refer to anything defined in module B, we used
+  to generate a warning for the declaration only if module A had no submodules,
+  because it is possible that A's submodules refer to entities defined in B.
+  We now generate a warning for unused `:- import_module` and `:- use_module`
+  declaration in this case as well, which will stop the program from compiling
+  if `--halt-at-warn` is set. The fix is simple: replace the declaration
+  being warned about in the parent module with declarations in the child
+  modules that need it. In the fairly frequent case that not all child modules
+  need module B, this avoids the need to recompile those child modules
+  when the interface of module B changes.
+
 Changes to the Mercury standard library
 ---------------------------------------
 
@@ -174,13 +186,34 @@ Changes to the Mercury standard library
 Changes to the Mercury compiler
 -------------------------------
 
+### Changes to the treatment of unused imports
+
+* The compiler now generates warnings for `:- import_module` and
+  `:- use_module` declarations in the interface of a module even if
+  that module has submodules. Previously, it generated such warnings
+  only if the module had no submodules.
+
 ### Changes to code model options
 
 * `--trail-segments`
 
-   Grades that support trailing now always use trail segments. This means
-   that the `--trail-segments` option now has no effect, and it is therefore
-   deprecated.
+  Grades that support trailing now always use trail segments. This means
+  that the `--trail-segments` option now has no effect, and it is therefore
+  deprecated.
+
+### New warning options
+
+* `--print-errors-warnings-when-generating-interface`
+
+  Until now, the compiler did not try to detect problems with a module
+  when generating its interface files. Now it does. To preserve compability,
+  by default it still ignores any problems it finds then, but if this option
+  is enabled, and if it does in fact find any problems, the compiler will
+  report them, and if they are severe enough, it will not generate the
+  interface file at all. In the usual use case where the compiler is asked
+  to generate the interface file as part of rebuilding the whole executable,
+  this behavior has the advantage that the rebuild, which would fail anyway,
+  fails sooner.
 
 Changes to the Mercury implementation
 -------------------------------------
@@ -1205,7 +1238,7 @@ Changes to the Mercury standard library
 
 * `spawn_native/4` allows you to dedicate an OS thread to a Mercury thread.
 
-* `num_processors/3` returns the number of processors available for 
+* `num_processors/3` returns the number of processors available for
   parallel work.
 
 ### Changes to the `thread.mvar` module

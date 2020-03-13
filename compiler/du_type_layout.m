@@ -354,10 +354,8 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
         DirectArgPieces = [words("Error:"), type_ctor_sna(TypeCtor),
             words("has both a"), pragma_decl("foreign_enum"),
             words("declaration and a direct_arg specification."), nl],
-        DirectArgMsg = simple_msg(term.context_init,
-            [always(DirectArgPieces)]),
-        DirectArgSpec = error_spec(severity_error, phase_type_check,
-            [DirectArgMsg]),
+        DirectArgSpec = simplest_spec($pred, severity_error, phase_type_check,
+            term.context_init, DirectArgPieces),
         !:Specs = [DirectArgSpec | !.Specs]
     else
         true
@@ -369,10 +367,8 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
         NonEnumArgPieces = [words("Error:"), type_ctor_sna(TypeCtor),
             words("has a"), pragma_decl("foreign_enum"), words("declaration,"),
             words("but it has function symbols whose arity is not zero."), nl],
-        NonEnumArgMsg = simple_msg(term.context_init,
-            [always(NonEnumArgPieces)]),
-        NonEnumArgSpec = error_spec(severity_error, phase_type_check,
-            [NonEnumArgMsg]),
+        NonEnumArgSpec = simplest_spec($pred, severity_error, phase_type_check,
+            term.context_init, NonEnumArgPieces),
         !:Specs = [NonEnumArgSpec | !.Specs]
     ),
     list.map_foldl(add_repn_to_foreign_enum_ctor(TypeCtor, ForeignEnumTagMap),
@@ -448,8 +444,8 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
         Pieces = [words("Error: all the function symbols of"),
             type_ctor_sna(TypeCtor), words("have arity zero,"),
             words("yet it has a direct_arg specification."), nl],
-        Msg = simple_msg(term.context_init, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_type_check,
+            term.context_init, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -523,8 +519,8 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
         Pieces = [words("Error:"), type_ctor_sna(TypeCtor),
             words("is a no_tag type,"),
             words("yet it has a direct_arg specification."), nl],
-        Msg = simple_msg(term.context_init, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_type_check,
+            term.context_init, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -603,10 +599,8 @@ add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
         DirectArgPieces = [words("Error:"), type_ctor_sna(TypeCtor),
             words("has a foreign language representation on this backend,"),
             words("but it also has a direct_arg specification."), nl],
-        DirectArgMsg = simple_msg(term.context_init,
-            [always(DirectArgPieces)]),
-        DirectArgSpec = error_spec(severity_error, phase_type_check,
-            [DirectArgMsg]),
+        DirectArgSpec = simplest_spec($pred, severity_error, phase_type_check,
+            term.context_init, DirectArgPieces),
         !:Specs = [DirectArgSpec | !.Specs]
     else
         true
@@ -2185,8 +2179,8 @@ check_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors], !Specs) :-
             unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("cannot be represented as a direct pointer"),
             words("to its sole argument."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_type_check,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -2292,8 +2286,8 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
         list.map(describe_sub_word_bin, SubWordBins, SubWordBinPieceLists),
         Pieces = StartPieces ++ list.condense(SubWordBinPieceLists)
             ++ EndPieces,
-        Msg = simple_msg(CtorContext, [always(Pieces)]),
-        Spec = error_spec(severity_informational, phase_type_check, [Msg]),
+        Spec = simplest_spec($pred, severity_informational, phase_type_check,
+            CtorContext, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true

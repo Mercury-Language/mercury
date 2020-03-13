@@ -472,7 +472,7 @@
             % context to allow polymorphism.m to correctly set up the
             % extra type_info and typeclass_info arguments.
 
-    ;       origin_class_method
+    ;       origin_class_method(class_id, pf_sym_name_and_arity)
             % The predicate is a class method implementation.
 
     ;       origin_transformed(pred_transformation, pred_origin, pred_id)

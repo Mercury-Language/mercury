@@ -273,7 +273,7 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
         ),
         FirstMsg = simplest_msg(FirstContext, FirstPieces),
         SecondMsg = simplest_msg(SecondContext, SecondPieces),
-        Spec = error_spec(severity_warning, phase_style,
+        Spec = error_spec($pred, severity_warning, phase_style,
             [FirstMsg, SecondMsg]),
         !:Specs = [Spec | !.Specs]
     ),
@@ -355,7 +355,8 @@ chunks_to_spec(ModuleContext, ExportedOrNotStr, CHunks, Spec) :-
     list.map(change_hunk_to_pieces, CHunks, CHunkPieceLists),
     list.condense(CHunkPieceLists, CHunkPieces),
     Pieces = HeadPieces ++ CHunkPieces,
-    Spec = simplest_spec(severity_warning, phase_style, ModuleContext, Pieces).
+    Spec = simplest_spec($pred, severity_warning, phase_style,
+        ModuleContext, Pieces).
 
 :- pred change_hunk_to_pieces(change_hunk(string)::in,
     list(format_component)::out) is det.

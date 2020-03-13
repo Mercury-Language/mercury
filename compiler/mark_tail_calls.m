@@ -1132,7 +1132,8 @@ add_message_for_nontail_self_recursive_call(SimpleCallId, ProcId, Context,
         words("of"), simple_call(SimpleCallId), suffix(":"), nl,
         WarnOrErrorWord, words("self-recursive call")] ++ ReasonPieces,
     MainMsg = simplest_msg(Context, MainPieces),
-    Spec = error_spec(Severity, phase_code_gen, [MainMsg | VerboseMsgs]),
+    Spec = error_spec($pred, Severity, phase_code_gen,
+        [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
 add_message_for_nontail_mutual_recursive_call(CallerId, CallerProcId,
@@ -1147,7 +1148,8 @@ add_message_for_nontail_mutual_recursive_call(CallerId, CallerProcId,
         WarnOrErrorWord, words("mutually recursive call to"),
         simple_call(CalleeId)] ++ ReasonPieces,
     MainMsg = simplest_msg(Context, MainPieces),
-    Spec = error_spec(Severity, phase_code_gen, [MainMsg | VerboseMsgs]),
+    Spec = error_spec($pred, Severity, phase_code_gen,
+        [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- pred woe_to_severity_and_string(warning_or_error::in,
@@ -1230,7 +1232,8 @@ report_no_tail_or_nontail_recursive_calls(SimpleCallId, Context, !Specs) :-
         words("warning: the code defining this"), p_or_f(PredOrFunc),
         words("contains no recursive calls at all,"),
         words("tail-recursive or otherwise."), nl],
-    Spec = simplest_spec(severity_warning, phase_code_gen, Context, Pieces),
+    Spec = simplest_spec($pred, severity_warning, phase_code_gen,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

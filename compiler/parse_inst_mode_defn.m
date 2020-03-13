@@ -86,17 +86,17 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             Pieces = [words("Error: expected either"),
                 quote("=="), words("or"), quote("--->"),
                 words("at start of"), decl("inst"), words("definition."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(InstDefnTerm),
-                    [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree,
+                get_term_context(InstDefnTerm), Pieces),
             MaybeIOM = error1([Spec])
         )
     else
         Pieces = [words("Error: an"), decl("inst"), words("declaration"),
             words("should have just one argument,"),
             words("which should be the definition of an inst."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -123,9 +123,9 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             ForTypePieces = [words("Error: expected"),
                 words("type constructor name/arity, not"),
                 quote(ForTypeTermStr), suffix("."), nl],
-            ForTypeSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ForTypeTerm),
-                    [always(ForTypePieces)])]),
+            ForTypeSpec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree,
+                get_term_context(ForTypeTerm), ForTypePieces),
             ForTypeSpecs = [ForTypeSpec]
         )
     else
@@ -212,8 +212,8 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
         ),
         Pieces = [words("Error:"), decl("abstract_inst"),
             words("should have exactly one argument."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -301,8 +301,8 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
         ),
         Pieces = [words("Error:"), decl("abstract_inst"),
             words("should have exactly one argument."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -318,8 +318,8 @@ check_user_inst_name(SymName, Context, NameSpecs) :-
     ( if is_known_inst_name(Name) then
         NamePieces = [words("Error: the inst name"), quote(Name),
             words("is reserved for the Mercury implementation."), nl],
-        NameSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(NamePieces)])]),
+        NameSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, Context, NamePieces),
         NameSpecs = [NameSpec]
     else
         NameSpecs = []
@@ -336,8 +336,8 @@ check_user_mode_name(SymName, Context, NameSpecs) :-
     ( if is_known_mode_name(Name) then
         NamePieces = [words("Error: the mode name"), quote(Name),
             words("is reserved for the Mercury implementation."), nl],
-        NameSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(NamePieces)])]),
+        NameSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, Context, NamePieces),
         NameSpecs = [NameSpec]
     else
         NameSpecs = []
@@ -372,9 +372,8 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
                     list_to_quoted_pieces(DupVarNames) ++
                     [words(IsAreWord), words("repeated on left hand side of"),
                     words(DefnKind), suffix("."), nl],
-                RepeatSpec = error_spec(severity_error,
-                    phase_term_to_parse_tree,
-                    [simple_msg(HeadTermContext, [always(RepeatPieces)])]),
+                RepeatSpec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, HeadTermContext, RepeatPieces),
                 !:Specs = [RepeatSpec | !.Specs]
             else
                 true
@@ -400,10 +399,9 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
                     list_to_quoted_pieces(FreeVarNames) ++
                     [words("on right hand side of"),
                     words(DefnKind), suffix("."), nl],
-                FreeSpec = error_spec(severity_error,
+                FreeSpec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(BodyTerm),
-                        [always(FreePieces)])]),
+                    get_term_context(BodyTerm), FreePieces),
                 !:Specs = [FreeSpec | !.Specs]
             else
                 true
@@ -422,8 +420,8 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
         % XXX If term_list_to_var_list returned the non-var's term
         % or context, we could use it here.
         VarPieces = [words("Error: inst parameters must be variables."), nl],
-        VarSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(HeadTermContext, [always(VarPieces)])]),
+        VarSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, HeadTermContext, VarPieces),
         MaybeArgVars = error1([VarSpec])
     ).
 

@@ -4,11 +4,11 @@ ambiguous_overloading.m:048:   The following symbol was overloaded in the
 ambiguous_overloading.m:048:   following context.
 ambiguous_overloading.m:048:   The function symbol `f'/0.
 ambiguous_overloading.m:048:   The possible matches are:
+ambiguous_overloading.m:048:     the builtin type constructor `character',
 ambiguous_overloading.m:048:     the type constructor
 ambiguous_overloading.m:048:     `ambiguous_overloading.bar'/0,
 ambiguous_overloading.m:048:     the type constructor
-ambiguous_overloading.m:048:     `ambiguous_overloading.foo'/0,
-ambiguous_overloading.m:048:     the builtin type constructor `character'.
+ambiguous_overloading.m:048:     `ambiguous_overloading.foo'/0.
 ambiguous_overloading.m:052: In clause for predicate `ambig_overload2'/1:
 ambiguous_overloading.m:052:   warning: highly ambiguous overloading.
 ambiguous_overloading.m:052:   The following symbols were overloaded in the
@@ -31,8 +31,8 @@ ambiguous_overloading.m:063:   The following symbol was overloaded in the
 ambiguous_overloading.m:063:   following contexts.
 ambiguous_overloading.m:057:   The predicate symbol predicate `<'/2.
 ambiguous_overloading.m:057:   The possible matches are:
-ambiguous_overloading.m:057:     predicate `int.<'/2,
-ambiguous_overloading.m:057:     predicate `float.<'/2.
+ambiguous_overloading.m:057:     predicate `float.<'/2,
+ambiguous_overloading.m:057:     predicate `int.<'/2.
 ambiguous_overloading.m:058:   The predicate symbol predicate `<'/2 is also
 ambiguous_overloading.m:058:   overloaded here.
 ambiguous_overloading.m:059:   The predicate symbol predicate `<'/2 is also

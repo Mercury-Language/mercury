@@ -358,9 +358,31 @@ gather_in_item(Section, Item, !Info) :-
         )
         % Do nothing.
     ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(PragmaType, _, _),
-        ( if is_pred_pragma(PragmaType, yes(PredOrFuncId)) then
+        Item = item_decl_pragma(ItemDeclPragma),
+        ItemDeclPragma = item_pragma_info(DeclPragma, _, _),
+        ( if is_pred_decl_pragma(DeclPragma, yes(PredOrFuncId)) then
+            PragmaItems0 = !.Info ^ gii_pragma_items,
+            PragmaItems = cord.snoc(PragmaItems0,
+                {PredOrFuncId, Item, Section}),
+            !Info ^ gii_pragma_items := PragmaItems
+        else
+            true
+        )
+    ;
+        Item = item_impl_pragma(ItemImplPragma),
+        ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+        ( if is_pred_impl_pragma(ImplPragma, yes(PredOrFuncId)) then
+            PragmaItems0 = !.Info ^ gii_pragma_items,
+            PragmaItems = cord.snoc(PragmaItems0,
+                {PredOrFuncId, Item, Section}),
+            !Info ^ gii_pragma_items := PragmaItems
+        else
+            true
+        )
+    ;
+        Item = item_generated_pragma(ItemGenPragma),
+        ItemGenPragma = item_pragma_info(GenPragma, _, _),
+        ( if is_pred_gen_pragma(GenPragma, yes(PredOrFuncId)) then
             PragmaItems0 = !.Info ^ gii_pragma_items,
             PragmaItems = cord.snoc(PragmaItems0,
                 {PredOrFuncId, Item, Section}),
@@ -634,104 +656,126 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 
 :- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_and_arity).
 
-:- pred is_pred_pragma(pragma_type::in, maybe(maybe_pred_or_func_id)::out)
-    is det.
+:- pred is_pred_decl_pragma(decl_pragma::in,
+    maybe(maybe_pred_or_func_id)::out) is det.
 
-is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
+is_pred_decl_pragma(DeclPragma, MaybePredOrFuncId) :-
     (
-        ( PragmaType = pragma_foreign_decl(_)
-        ; PragmaType = pragma_foreign_code(_)
-        ; PragmaType = pragma_oisu(_)               % XXX
-        ; PragmaType = pragma_require_feature_set(_)
-        ; PragmaType = pragma_require_tail_recursion(_)
-        ),
-        MaybePredOrFuncId = no
-    ;
-        ( PragmaType = pragma_inline(PredNameArity)
-        ; PragmaType = pragma_no_inline(PredNameArity)
-        ; PragmaType = pragma_consider_used(PredNameArity)
-        ; PragmaType = pragma_no_detism_warning(PredNameArity)
-        ; PragmaType = pragma_promise_pure(PredNameArity)
-        ; PragmaType = pragma_promise_semipure(PredNameArity)
-        ; PragmaType = pragma_promise_eqv_clauses(PredNameArity)
-        ; PragmaType = pragma_terminates(PredNameArity)
-        ; PragmaType = pragma_does_not_terminate(PredNameArity)
-        ; PragmaType = pragma_check_termination(PredNameArity)
-        ; PragmaType = pragma_mode_check_clauses(PredNameArity)
-        ),
-        PredNameArity = pred_name_arity(Name, Arity),
-        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
-    ;
-        (
-            PragmaType = pragma_obsolete_pred(ObsoletePredInfo),
-            ObsoletePredInfo = pragma_info_obsolete_pred(PredNameArity, _)
-        ;
-            PragmaType = pragma_fact_table(FTInfo),
-            FTInfo = pragma_info_fact_table(PredNameArity, _)
-        ),
-        PredNameArity = pred_name_arity(Name, Arity),
-        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
-    ;
-        PragmaType = pragma_type_spec(TypeSpecInfo),
+        DeclPragma = decl_pragma_type_spec(TypeSpecInfo),
         TypeSpecInfo = pragma_info_type_spec(Name, _, Arity, MaybePredOrFunc,
             _, _, _, _),
         MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
-        PragmaType = pragma_tabled(TabledInfo),
-        TabledInfo = pragma_info_tabled(_, PredNameArityMPF, _, _),
-        PredNameArityMPF = pred_name_arity_mpf(Name, Arity, MaybePredOrFunc),
-        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
+        DeclPragma = decl_pragma_obsolete_proc(ObsoleteProcInfo),
+        ObsoleteProcInfo = pragma_info_obsolete_proc(PredNameModesPF, _),
+        PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
+        adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ;
-        (
-            PragmaType = pragma_unused_args(UnusedArgsInfo),
-            UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn, _)
-        ;
-            PragmaType = pragma_exceptions(ExceptionsInfo),
-            ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn, _)
-        ;
-            PragmaType = pragma_trailing_info(TrailingInfo),
-            TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, _)
-        ;
-            PragmaType = pragma_mm_tabling_info(MMTablingOnfo),
-            MMTablingOnfo = pragma_info_mm_tabling_info(PredNameArityPFMn, _)
+        DeclPragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
+        ObsoletePredInfo = pragma_info_obsolete_pred(PredNameArity, _),
+        PredNameArity = pred_name_arity(Name, Arity),
+        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
+    ;
+        DeclPragma = decl_pragma_oisu(_),              % XXX
+        MaybePredOrFuncId = no
+    ;
+        ( DeclPragma = decl_pragma_terminates(PredNameArity)
+        ; DeclPragma = decl_pragma_does_not_terminate(PredNameArity)
+        ; DeclPragma = decl_pragma_check_termination(PredNameArity)
         ),
-        PredNameArityPFMn = pred_name_arity_pf_mn(Name, Arity, PredOrFunc, _),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
-    ;
-        PragmaType = pragma_foreign_proc(FPInfo),
-        FPInfo = pragma_info_foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
-        adjust_func_arity(PredOrFunc, Arity, list.length(Args)),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
-    ;
-        PragmaType = pragma_external_proc(ExternalInfo),
-        ExternalInfo = pragma_info_external_proc(Name, Arity, PredOrFunc, _),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
+        PredNameArity = pred_name_arity(Name, Arity),
+        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
     ;
         (
-            PragmaType = pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(_, _, PredNameModesPF, _)
-        ;
-            PragmaType = pragma_termination_info(TermInfo),
+            DeclPragma = decl_pragma_termination_info(TermInfo),
             TermInfo = pragma_info_termination_info(PredNameModesPF, _, _)
         ;
-            PragmaType = pragma_termination2_info(Term2Info),
+            DeclPragma = decl_pragma_termination2_info(Term2Info),
             Term2Info = pragma_info_termination2_info(PredNameModesPF, _, _, _)
         ;
-            PragmaType = pragma_structure_sharing(SharingInfo),
+            DeclPragma = decl_pragma_structure_sharing(SharingInfo),
             SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
                 _, _, _, _, _)
         ;
-            PragmaType = pragma_structure_reuse(ReuseInfo),
+            DeclPragma = decl_pragma_structure_reuse(ReuseInfo),
             ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
                 _, _, _, _, _)
-        ;
-            PragmaType = pragma_obsolete_proc(ObsoleteProcInfo),
-            ObsoleteProcInfo = pragma_info_obsolete_proc(PredNameModesPF, _)
         ),
         PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ).
+
+:- pred is_pred_impl_pragma(impl_pragma::in,
+    maybe(maybe_pred_or_func_id)::out) is det.
+
+is_pred_impl_pragma(ImplPragma, MaybePredOrFuncId) :-
+    (
+        ( ImplPragma = impl_pragma_foreign_decl(_)
+        ; ImplPragma = impl_pragma_foreign_code(_)
+        ; ImplPragma = impl_pragma_require_feature_set(_)
+        ; ImplPragma = impl_pragma_require_tail_rec(_)
+        ),
+        MaybePredOrFuncId = no
+    ;
+        ( ImplPragma = impl_pragma_inline(PredNameArity)
+        ; ImplPragma = impl_pragma_no_inline(PredNameArity)
+        ; ImplPragma = impl_pragma_consider_used(PredNameArity)
+        ; ImplPragma = impl_pragma_no_detism_warning(PredNameArity)
+        ; ImplPragma = impl_pragma_promise_pure(PredNameArity)
+        ; ImplPragma = impl_pragma_promise_semipure(PredNameArity)
+        ; ImplPragma = impl_pragma_promise_eqv_clauses(PredNameArity)
+        ; ImplPragma = impl_pragma_mode_check_clauses(PredNameArity)
+        ),
+        PredNameArity = pred_name_arity(Name, Arity),
+        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
+    ;
+        ImplPragma = impl_pragma_fact_table(FTInfo),
+        FTInfo = pragma_info_fact_table(PredNameArity, _),
+        PredNameArity = pred_name_arity(Name, Arity),
+        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
+    ;
+        ImplPragma = impl_pragma_tabled(TabledInfo),
+        TabledInfo = pragma_info_tabled(_, PredNameArityMPF, _, _),
+        PredNameArityMPF = pred_name_arity_mpf(Name, Arity, MaybePredOrFunc),
+        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
+    ;
+        ImplPragma = impl_pragma_foreign_proc(FPInfo),
+        FPInfo = pragma_info_foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
+        adjust_func_arity(PredOrFunc, Arity, list.length(Args)),
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
+    ;
+        ImplPragma = impl_pragma_external_proc(ExternalInfo),
+        ExternalInfo = pragma_info_external_proc(Name, Arity, PredOrFunc, _),
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
+    ;
+        ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
+        FPEInfo = pragma_info_foreign_proc_export(_, _, PredNameModesPF, _),
+        PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
+        adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
+    ).
+
+:- pred is_pred_gen_pragma(generated_pragma::in,
+    maybe(maybe_pred_or_func_id)::out) is det.
+
+is_pred_gen_pragma(GenPragma, MaybePredOrFuncId) :-
+    (
+        GenPragma = gen_pragma_unused_args(UnusedArgsInfo),
+        UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn, _)
+    ;
+        GenPragma = gen_pragma_exceptions(ExceptionsInfo),
+        ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn, _)
+    ;
+        GenPragma = gen_pragma_trailing_info(TrailingInfo),
+        TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, _)
+    ;
+        GenPragma = gen_pragma_mm_tabling_info(MMTablingOnfo),
+        MMTablingOnfo = pragma_info_mm_tabling_info(PredNameArityPFMn, _)
+    ),
+    PredNameArityPFMn = pred_name_arity_pf_mn(Name, Arity, PredOrFunc, _),
+    MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -971,19 +1015,19 @@ is_item_changed(Item1, Item2, Changed) :-
             Changed = changed
         )
     ;
-        Item1 = item_pragma(ItemPragma1),
-        ItemPragma1 = item_pragma_info(PragmaType1, _, _),
+        Item1 = item_decl_pragma(ItemDeclPragma1),
+        ItemDeclPragma1 = item_pragma_info(DeclPragma1, _, _),
         % We do need to compare the variable names in `:- pragma type_spec'
         % declarations because the names of the variables are used to find
         % the corresponding variables in the predicate or function
         % type declaration.
         ( if
-            Item2 = item_pragma(ItemPragma2),
-            ItemPragma2 = item_pragma_info(PragmaType2, _, _)
+            Item2 = item_decl_pragma(ItemDeclPragma2),
+            ItemDeclPragma2 = item_pragma_info(DeclPragma2, _, _)
         then
             ( if
-                PragmaType1 = pragma_type_spec(TypeSpecInfo1),
-                PragmaType2 = pragma_type_spec(TypeSpecInfo2),
+                DeclPragma1 = decl_pragma_type_spec(TypeSpecInfo1),
+                DeclPragma2 = decl_pragma_type_spec(TypeSpecInfo2),
                 TypeSpecInfo1 = pragma_info_type_spec(Name, SpecName, Arity,
                     MaybePredOrFunc, MaybeModes, TypeSubst1, TVarSet1, _),
                 TypeSpecInfo2 = pragma_info_type_spec(Name, SpecName, Arity,
@@ -1007,12 +1051,34 @@ is_item_changed(Item1, Item2, Changed) :-
                     Changed = changed
                 )
             else
-                ( if PragmaType1 = PragmaType2 then
+                ( if DeclPragma1 = DeclPragma2 then
                     Changed = unchanged
                 else
                     Changed = changed
                 )
             )
+        else
+            Changed = changed
+        )
+    ;
+        Item1 = item_impl_pragma(ItemImplPragma1),
+        ItemImplPragma1 = item_pragma_info(ImplPragma, _, _),
+        ( if
+            Item2 = item_impl_pragma(ItemImplPragma2),
+            ItemImplPragma2 = item_pragma_info(ImplPragma, _, _)
+        then
+            Changed = unchanged
+        else
+            Changed = changed
+        )
+    ;
+        Item1 = item_generated_pragma(ItemGenPragma1),
+        ItemGenPragma1 = item_pragma_info(GenPragma, _, _),
+        ( if
+            Item2 = item_generated_pragma(ItemGenPragma2),
+            ItemGenPragma2 = item_pragma_info(GenPragma, _, _)
+        then
+            Changed = unchanged
         else
             Changed = changed
         )
@@ -1453,7 +1519,7 @@ parse_item_type_version_numbers(Term, Result) :-
     else
         % XXX This is an uninformative error message.
         Pieces = [words("Invalid item type version numbers."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
         Result = error1([Spec])
     ).
@@ -1475,7 +1541,7 @@ parse_key_version_number(ParseName, Term, Result) :-
         Result = ok1((Name - Arity) - VersionNumber)
     else
         Pieces = [words("Error in item version number."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
         Result = error1([Spec])
     ).
@@ -1497,7 +1563,7 @@ parse_item_version_number(ParseName, Term, Result) :-
         Result = ok1(item_name(SymName, Arity) - VersionNumber)
     else
         Pieces = [words("Error in item version number."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
         Result = error1([Spec])
     ).

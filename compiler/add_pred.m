@@ -143,8 +143,8 @@ module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl, MaybePredProcId,
             PredOrigin = origin_finalise,
             Markers = Markers0
         ;
-            CompilerOrigin = compiler_origin_class_method,
-            PredOrigin = origin_class_method,
+            CompilerOrigin = compiler_origin_class_method(ClassId, MethodId),
+            PredOrigin = origin_class_method(ClassId, MethodId),
             add_marker(marker_class_method, Markers0, Markers)
         ;
             CompilerOrigin = compiler_origin_solver_type(TypeCtorName,
@@ -258,8 +258,8 @@ module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl, MaybePredProcId,
                 unqual_sym_name_and_arity(sym_name_arity(PredSymName, Arity)),
                 words("declares a determinism without declaring"),
                 words("the modes of its arguments."), nl],
-            DetSpec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                Context, DetPieces),
+            DetSpec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, DetPieces),
             !:Specs = [DetSpec | !.Specs]
         else
             true
@@ -683,7 +683,7 @@ module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
                     words("whose"), p_or_f(PredOrFunc), words("declaration"),
                     words("is in the"), fixed(PredSectionStr), suffix("."),
                     nl],
-                SectionSpec = simplest_spec(severity_error,
+                SectionSpec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, SectionPieces),
                 !:Specs = [SectionSpec | !.Specs]
             ),
@@ -698,7 +698,7 @@ module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
                     words("combined with a mode declaration,"),
                     words("so it may not have a separate mode declaration."),
                     nl],
-                PredModeSpec = simplest_spec(severity_error,
+                PredModeSpec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, PredModePieces),
                 !:Specs = [PredModeSpec | !.Specs]
             )
@@ -738,12 +738,11 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !Specs) :-
         words("option if you want the compiler"),
         words("to automatically infer the determinism"),
         words("of local predicates.)"), nl],
-    InnerComponents = [always(MainPieces),
-        verbose_only(verbose_once, VerbosePieces)],
     Msg = simple_msg(Context,
-        [option_is_set(infer_det, no, InnerComponents)]),
-    Severity = severity_conditional(infer_det, no, severity_error, no),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+        [always(MainPieces),
+        verbose_only(verbose_once, VerbosePieces)]),
+    Spec = conditional_spec($pred, infer_det, no, severity_error,
+        phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred unspecified_det_for_method(sym_name::in, arity::in, pred_or_func::in,
@@ -753,7 +752,7 @@ unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !Specs) :-
     Pieces = [words("Error: no determinism declaration"),
         words("for type class method"), p_or_f(PredOrFunc),
         qual_sym_name_and_arity(sym_name_arity(Name, Arity)), suffix("."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -764,7 +763,7 @@ unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !Specs) :-
     Pieces = [words("Error: no determinism declaration for exported"),
         p_or_f(PredOrFunc),
         qual_sym_name_and_arity(sym_name_arity(Name, Arity)), suffix("."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -775,7 +774,7 @@ unqualified_pred_error(PredSymName, Arity, Context, !Specs) :-
     Pieces = [words("Internal error: the unqualified predicate name"),
         unqual_sym_name_and_arity(sym_name_arity(PredSymName, Arity)),
         words("should have been qualified by the parser."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -916,7 +915,7 @@ report_field_status_mismatch(Context, CallId, !Specs) :-
     Pieces = [words("In declaration of"), simple_call(CallId), suffix(":"), nl,
         words("error: a field access function for an exported field"),
         words("must also be exported."), nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

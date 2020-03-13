@@ -466,10 +466,8 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
                 Pieces = [words("Error: the"), quote("may_duplicate"),
                     words("attribute on the foreign_proc contradicts the"),
                     quote("no_inline"), words("pragma on the predicate.")],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Severity = severity_error,
-                Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
-                    [Msg]),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_simplify(report_in_any_mode), Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             else
                 true
@@ -481,10 +479,8 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
                 Pieces = [words("Error: the"), quote("may_not_duplicate"),
                     words("attribute on the foreign_proc contradicts the"),
                     quote("inline"), words("pragma on the predicate.")],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Severity = severity_error,
-                Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
-                    [Msg]),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_simplify(report_in_any_mode), Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             else
                 true

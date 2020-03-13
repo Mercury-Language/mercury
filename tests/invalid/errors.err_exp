@@ -5,8 +5,6 @@ errors.m:012:   The following assumes that the missing declaration is an
 errors.m:012:   `:- implementation' declaration.
 errors.m:012: Warning: the interface of module `errors' does not export
 errors.m:012:   anything.
-errors.m:012: Warning: module `int' is imported using both `:- import_module'
-errors.m:012:   and `:- use_module' declarations.
 errors.m:030: Error: `:- mode' declaration for predicate
 errors.m:030:   `errors.mode_declaration_without_pred_declaration'/0
 errors.m:030:   without corresponding `:- pred' declaration.
@@ -40,6 +38,11 @@ errors.m:077:   `errors.pred_with_unresolved_polymorphism'/0:
 errors.m:077:   warning: variable `Arg' occurs only once in this scope.
 errors.m:092: In clause for predicate `errors.pred_with_singleton_vars'/1:
 errors.m:092:   warning: variable `X' occurs only once in this scope.
+errors.m:097: Warning: this `:- use_module' declaration for module `int' in the
+errors.m:097:   implementation section is redundant, given the
+errors.m:097:   `:- import_module' declaration for the same module in the same
+errors.m:097:   section.
+errors.m:096:   The previous declaration is here.
 errors.m:101: In definition of type `errors.needs_qualification'/0:
 errors.m:101:   error: undefined type `state'/0.
 errors.m:101:   (Only fully module qualified names may refer to the entities

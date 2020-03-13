@@ -529,7 +529,6 @@
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.make_hlds.add_pragma.
-:- import_module hlds.make_hlds_error.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -559,8 +558,8 @@ add_aux_pred_decls_for_mutable_if_local(SectionItem, !ModuleInfo, !Specs) :-
     SectionItem = sec_item(SectionInfo, ItemMutable),
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     (
-        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-        check_mutable(ItemMutable, ItemExport, !.ModuleInfo, !Specs),
+        ItemMercuryStatus = item_defined_in_this_module(_),
+        check_mutable(ItemMutable, !.ModuleInfo, !Specs),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         add_aux_pred_decls_for_mutable(PredStatus, NeedQual,
             ItemMutable, !ModuleInfo, !Specs)
@@ -572,22 +571,13 @@ add_aux_pred_decls_for_mutable_if_local(SectionItem, !ModuleInfo, !Specs) :-
         % in any submodules of the module that actually defined the mutable.
     ).
 
-:- pred check_mutable(item_mutable_info::in, item_export::in, module_info::in,
+:- pred check_mutable(item_mutable_info::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_mutable(ItemMutable, ItemExport, ModuleInfo, !Specs) :-
+check_mutable(ItemMutable, ModuleInfo, !Specs) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    (
-        ( ItemExport = item_export_nowhere
-        ; ItemExport = item_export_only_submodules
-        )
-    ;
-        ItemExport = item_export_anywhere,
-        error_is_exported(Context,
-            [decl("mutable"), words("declaration")], !Specs)
-    ),
 
     % XXX We don't currently support the foreign_name attribute
     % for all languages.
@@ -622,8 +612,8 @@ check_mutable(ItemMutable, ItemExport, ModuleInfo, !Specs) :-
     then
         TrailPieces = [words("Error: trailed"), decl("mutable"),
             words("declaration in non-trailing grade."), nl],
-        TrailSpec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-            Context, TrailPieces),
+        TrailSpec = simplest_spec($pred, severity_error,
+            phase_parse_tree_to_hlds, Context, TrailPieces),
         !:Specs = [TrailSpec | !.Specs]
     else
         true
@@ -855,7 +845,7 @@ invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         [], [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
     Pieces = [words("Error:") | ParentPieces] ++
         [words("the inst") | InstPieces] ++ ProblemPieces ++ [nl],
-    Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1854,7 +1844,7 @@ get_global_name_from_foreign_names(ModuleInfo, Context,
             words("specified for the"),
             fixed(compilation_target_string(CompilationTarget)),
             words("backend."), nl],
-        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
 

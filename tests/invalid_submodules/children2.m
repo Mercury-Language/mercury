@@ -7,8 +7,6 @@
 :- module children2.
 :- interface.
 
-:- import_module children.
-
 :- module children2.sub1.
 :- interface.
 :- import_module io.
@@ -36,7 +34,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
+:- import_module children.
 :- module children2.sub1.
 :- implementation.
 

@@ -296,8 +296,8 @@ generate_non_term_user_special_warning(Context, SpecialPred, TypeCtor,
         fixed(SpecialPredStr ++ " predicate"), words("for the type"),
         qual_sym_name_and_arity(SNA),
         words("cannot be proven to terminate."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_termination_analysis, [Msg]),
+    Spec = simplest_spec($pred, severity_warning, phase_termination_analysis,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %----------------------------------------------------------------------------%

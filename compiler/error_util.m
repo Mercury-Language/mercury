@@ -68,28 +68,50 @@
 % this fact in the duplicate declaration's context, while printing another
 % message giving the original declaration's context.
 %
-% simplest_spec(Severity, Phase, Context, Pieces) is a shorthand for
-% (and equivalent in every respect to) error_spec(Severity, Phase,
+% simplest_spec(Id, Severity, Phase, Context, Pieces) is a shorthand for
+% (and equivalent in every respect to) error_spec(Id, Severity, Phase,
 % [simple_msg(Context, always(Pieces)])]).
 %
-% conditional_spec(Option, MatchValue, Severity, Phase, Msgs) is intended
+% conditional_spec(Id, Option, MatchValue, Severity, Phase, Msgs) is intended
 % to represent the error specification given by its last three fields
 % *iff* Option has the value MatchValue. If Option is *not* MatchValue,
 % it asks for nothing to be printed, and for the exit status to be left alone.
+%
+% The id field, which is present in all three alternatives, is totally
+% ignored when printing error_specs. Its job is something completely different:
+% helping developers track down where in the source code each error_spec
+% was constructed. Without the id fields, if developers wants to know this,
+% e.g. because they do not want the message printed, or because there is
+% a problem with its wording, they have to grep for some words in the message.
+% However, grepping for a single word will usually get many false hits,
+% while grepping for two or more consecutive words in the message may miss
+% the code generating the message, because in that code, some of those
+% consecutive words are on different lines. On the other hand, if every
+% place that constructs an error_spec, of any of these three varieties,
+% fills in the id field with $pred, then finding the right place is easy:
+% just specify the developer-only option --print-error-spec-id, and
+% the identity of the predicate or function that generated each error_spec
+% will be output just after the messages in that error_spec. Even if the
+% predicate or function that this identifies has several pieces of code
+% that construct specs, the scope in which you have to search for it
+% will be easily manageable.
 
 :- type error_spec
     --->    error_spec(
+                error_id                :: string,
                 error_severity          :: error_severity,
                 error_phase             :: error_phase,
                 error_msgs              :: list(error_msg)
             )
     ;       simplest_spec(
+                simp_id                 :: string,
                 simp_spec_severity      :: error_severity,
                 simp_spec_phase         :: error_phase,
                 simp_spec_context       :: prog_context,
                 simp_spec_pieces        :: list(format_component)
             )
     ;       conditional_spec(
+                cond_id                 :: string,
                 cond_spec_option        :: option,
                 cond_spec_value         :: bool,
 
@@ -268,6 +290,11 @@
 :- func actual_error_severity(globals, error_severity)
     = maybe(actual_severity).
 
+    % Compute the actual severity of an error_spec
+    % (if it actually prints anything).
+    %
+:- func actual_spec_severity(globals, error_spec) = maybe(actual_severity).
+
     % Compute the worst actual severity (if any) occurring in a list of
     % error_specs.
     %
@@ -299,6 +326,11 @@
 :- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred filter_interface_generation_specs(globals::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
 %
 % The error_spec_accumulator type can be used to accumulate errors for
 % multiple modes of a predicate. accumulate_error_specs_for_proc will
@@ -317,9 +349,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_write_out_errors_no_module(bool::in, globals::in,
+:- pred pre_hlds_maybe_write_out_errors(bool::in, globals::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
-:- pred maybe_write_out_errors_no_module(io.text_output_stream::in,
+:- pred pre_hlds_maybe_write_out_errors(io.text_output_stream::in,
     bool::in, globals::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
@@ -609,8 +641,6 @@
 
 :- func describe_sym_name_and_arity(sym_name_and_arity) = string.
 
-:- func pred_or_func_to_string(pred_or_func) = string.
-
     % Put `' quotes around the given string.
     %
 :- func add_quotes(string) = string.
@@ -656,12 +686,13 @@
 
 extract_spec_msgs(Globals, Spec, Msgs) :-
     (
-        Spec = error_spec(_Severity, _Phase, Msgs)
+        Spec = error_spec(_Id, _Severity, _Phase, Msgs)
     ;
-        Spec = simplest_spec(_Severity, _Phase, Context, Pieces),
+        Spec = simplest_spec(_Id, _Severity, _Phase, Context, Pieces),
         Msgs = [simplest_msg(Context, Pieces)]
     ;
-        Spec = conditional_spec(Option, MatchValue, _Severity, _Phase, Msgs0),
+        Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
+            Msgs0),
         globals.lookup_bool_option(Globals, Option, Value),
         ( if Value = MatchValue then
             Msgs = Msgs0
@@ -718,6 +749,22 @@ actual_error_severity(Globals, Severity) = MaybeActual :-
         )
     ).
 
+actual_spec_severity(Globals, Spec) = MaybeSeverity :-
+    (
+        ( Spec = error_spec(_, Severity, _, _)
+        ; Spec = simplest_spec(_, Severity, _, _, _)
+        ),
+        MaybeSeverity = actual_error_severity(Globals, Severity)
+    ;
+        Spec = conditional_spec(_, Option, MatchValue, Severity, _, _),
+        globals.lookup_bool_option(Globals, Option, OptionValue),
+        ( if OptionValue = MatchValue then
+            MaybeSeverity = actual_error_severity(Globals, Severity)
+        else
+            MaybeSeverity = no
+        )
+    ).
+
 worst_severity_in_specs(Globals, Specs) = MaybeWorst :-
     worst_severity_in_specs_2(Globals, Specs, no, MaybeWorst).
 
@@ -726,30 +773,18 @@ worst_severity_in_specs(Globals, Specs) = MaybeWorst :-
 
 worst_severity_in_specs_2(_Globals, [], !MaybeWorst).
 worst_severity_in_specs_2(Globals, [Spec | Specs], !MaybeWorst) :-
-    (
-        ( Spec = error_spec(Severity, _, _)
-        ; Spec = simplest_spec(Severity, _, _, _)
-        ),
-        MaybeThis = actual_error_severity(Globals, Severity)
-    ;
-        Spec = conditional_spec(Option, MatchValue, Severity, _, _),
-        globals.lookup_bool_option(Globals, Option, OptionValue),
-        ( if OptionValue = MatchValue then
-            MaybeThis = actual_error_severity(Globals, Severity)
-        else
-            MaybeThis = no
-        )
-    ),
+    MaybeThis = actual_spec_severity(Globals, Spec),
     (
         !.MaybeWorst = no,
         !:MaybeWorst = MaybeThis
     ;
-        !.MaybeWorst = yes(_Worst),
-        MaybeThis = no
-    ;
         !.MaybeWorst = yes(Worst),
-        MaybeThis = yes(This),
-        !:MaybeWorst = yes(worst_severity(Worst, This))
+        (
+            MaybeThis = no
+        ;
+            MaybeThis = yes(This),
+            !:MaybeWorst = yes(worst_severity(Worst, This))
+        )
     ),
     worst_severity_in_specs_2(Globals, Specs, !MaybeWorst).
 
@@ -851,15 +886,15 @@ sort_error_specs(Globals, !Specs) :-
 remove_conditionals_in_spec(Globals, Spec0, Spec) :-
     require_det (
         (
-            Spec0 = error_spec(Severity0, Phase, Msgs0),
+            Spec0 = error_spec(Id, Severity0, Phase, Msgs0),
             MaybeActualSeverity = actual_error_severity(Globals, Severity0),
             list.filter_map(remove_conditionals_in_msg(Globals), Msgs0, Msgs)
         ;
-            Spec0 = simplest_spec(Severity0, Phase, Context0, Pieces0),
+            Spec0 = simplest_spec(Id, Severity0, Phase, Context0, Pieces0),
             MaybeActualSeverity = actual_error_severity(Globals, Severity0),
             Msgs = [simplest_msg(Context0, Pieces0)]
         ;
-            Spec0 = conditional_spec(Option, MatchValue,
+            Spec0 = conditional_spec(Id, Option, MatchValue,
                 Severity0, Phase, Msgs0),
             globals.lookup_bool_option(Globals, Option, OptionValue),
             ( if OptionValue = MatchValue then
@@ -887,7 +922,7 @@ remove_conditionals_in_spec(Globals, Spec0, Spec) :-
                 ActualSeverity = actual_severity_informational,
                 Severity = severity_informational
             ),
-            Spec = error_spec(Severity, Phase, Msgs)
+            Spec = error_spec(Id, Severity, Phase, Msgs)
         )
     else
         % Spec0 would result in nothing being printed.
@@ -1069,13 +1104,27 @@ project_msg_components(Msg) = Components :-
 
 %---------------------------------------------------------------------------%
 
+filter_interface_generation_specs(Globals, Specs, SpecsToPrint) :-
+    globals.lookup_bool_option(Globals,
+        print_errors_warnings_when_generating_interface, PrintErrors),
+    (
+        PrintErrors = yes,
+        SpecsToPrint = Specs
+    ;
+        PrintErrors = no,
+        SpecsToPrint = []
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- type error_spec_accumulator == maybe(pair(set(error_spec))).
 
 init_error_spec_accumulator = no.
 
 accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
     list.filter(
-        ( pred(error_spec(_, Phase, _)::in) is semidet :-
+        ( pred(Spec::in) is semidet :-
+            Phase = project_spec_phase(Spec),
             ModeReportControl = get_maybe_mode_report_control(Phase),
             ModeReportControl = yes(report_only_if_in_all_modes)
         ), ProcSpecs, ProcAllModeSpecs, ProcAnyModeSpecs),
@@ -1089,6 +1138,17 @@ accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
     ;
         !.MaybeSpecs = no,
         !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
+    ).
+
+:- func project_spec_phase(error_spec) = error_phase.
+
+project_spec_phase(Spec) = Phase :-
+    (
+        Spec = error_spec(_, _, Phase, _)
+    ;
+        Spec = simplest_spec(_, _, Phase, _, _)
+    ;
+        Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
 
 error_spec_accumulator_to_list(no) = [].
@@ -1122,11 +1182,11 @@ get_maybe_mode_report_control(phase_code_gen) = no.
 
 %---------------------------------------------------------------------------%
 
-maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO) :-
+pre_hlds_maybe_write_out_errors(Verbose, Globals, !Specs, !IO) :-
     io.output_stream(Stream, !IO),
-    maybe_write_out_errors_no_module(Stream, Verbose, Globals, !Specs, !IO).
+    pre_hlds_maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO).
 
-maybe_write_out_errors_no_module(Stream, Verbose, Globals, !Specs, !IO) :-
+pre_hlds_maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
     % maybe_write_out_errors in hlds_error_util.m is a HLDS version
     % of this predicate. The documentation is in that file.
     (
@@ -1194,22 +1254,48 @@ write_error_specs(Stream, Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
 do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
         !AlreadyPrintedVerbose, !IO) :-
     (
-        Spec = error_spec(Severity, _Phase, Msgs),
+        Spec = error_spec(Id, Severity, _Phase, Msgs1),
         MaybeActual = actual_error_severity(Globals, Severity)
     ;
-        Spec = simplest_spec(Severity, _Phase, Context, Pieces),
+        Spec = simplest_spec(Id, Severity, _Phase, Context, Pieces),
         MaybeActual = actual_error_severity(Globals, Severity),
-        Msgs = [simplest_msg(Context, Pieces)]
+        Msgs1 = [simplest_msg(Context, Pieces)]
     ;
-        Spec = conditional_spec(Option, MatchValue,
+        Spec = conditional_spec(Id, Option, MatchValue,
             Severity, _Phase, Msgs0),
         globals.lookup_bool_option(Globals, Option, Value),
         ( if Value = MatchValue then
             MaybeActual = actual_error_severity(Globals, Severity),
-            Msgs = Msgs0
+            Msgs1 = Msgs0
         else
             MaybeActual = no,
-            Msgs = []
+            Msgs1 = []
+        )
+    ),
+    globals.lookup_bool_option(Globals, print_error_spec_id, PrintId),
+    (
+        PrintId = no,
+        Msgs = Msgs1
+    ;
+        PrintId = yes,
+        (
+            Msgs1 = [],
+            % Don't add a pred id message to an empty list of messages,
+            % since there is nothing to identify.
+            Msgs = Msgs1
+        ;
+            Msgs1 = [HeadMsg | _],
+            (
+                ( HeadMsg = simplest_msg(HeadContext, _Pieces)
+                ; HeadMsg = simple_msg(HeadContext, _)
+                ),
+                MaybeHeadContext = yes(HeadContext)
+            ;
+                HeadMsg = error_msg(MaybeHeadContext, _, _, _)
+            ),
+            IdMsg = error_msg(MaybeHeadContext, do_not_treat_as_first, 0,
+                [always([words("error_spec id:"), fixed(Id), nl])]),
+            Msgs = Msgs1 ++ [IdMsg]
         )
     ),
     do_write_error_msgs(Stream, Msgs, Globals, treat_as_first,
@@ -2239,9 +2325,6 @@ describe_sym_name(SymName) =
 describe_sym_name_and_arity(sym_name_arity(SymName, Arity)) =
     string.append_list(["`", sym_name_to_string(SymName), "/",
         string.int_to_string(Arity), "'"]).
-
-pred_or_func_to_string(pf_predicate) = "predicate".
-pred_or_func_to_string(pf_function) = "function".
 
 add_quotes(Str) = "`" ++ Str ++ "'".
 

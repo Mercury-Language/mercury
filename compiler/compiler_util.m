@@ -100,12 +100,12 @@ warning_or_error_severity(we_error, severity_error).
 
 add_error(Phase, Pieces, !Specs) :-
     Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec(severity_error, Phase, [Msg]),
+    Spec = error_spec($pred, severity_error, Phase, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 add_warning(Phase, Pieces, !Specs) :-
     Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec(severity_warning, Phase, [Msg]),
+    Spec = error_spec($pred, severity_warning, Phase, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%

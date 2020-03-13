@@ -6,17 +6,18 @@
 
 :- module parent2.
 :- interface.
-:- import_module io.
 
 :- include_module child.
 
 :- implementation.
 
+:- import_module io.
+
 :- type foo
     --->    bar
     ;       baz(int).
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 
-hello -->
-    print("parent2.hello\n").
+hello(!IO) :-
+    print("parent2.hello\n", !IO).

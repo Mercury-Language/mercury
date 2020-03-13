@@ -131,8 +131,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
                 words("This is usually caused by"),
                 words("inadvertently writing a period instead of a comma"),
                 words("at the end of the preceding line."), nl],
-            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
             % A promise will not have a corresponding pred declaration.
@@ -231,7 +231,7 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
             FieldAccessMsg = simple_msg(Context,
                 [always(FieldAccessMainPieces),
                 verbose_only(verbose_always, FieldAccessVerbosePieces)]),
-            FieldAccessSpec = error_spec(severity_error,
+            FieldAccessSpec = error_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, [FieldAccessMsg]),
             !:PredSpecs = [FieldAccessSpec | !.PredSpecs]
         else
@@ -249,10 +249,9 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
             ),
             (
                 AllowDefnOfBuiltin = no,
-                BuiltinMsg = simple_msg(Context,
-                    [always([words("Error: clause for builtin.")])]),
-                BuiltinSpec = error_spec(severity_error,
-                    phase_parse_tree_to_hlds, [BuiltinMsg]),
+                BuiltinSpec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context,
+                    [words("Error: clause for builtin.")]),
                 !:PredSpecs = [BuiltinSpec | !.PredSpecs]
             ;
                 AllowDefnOfBuiltin = yes
@@ -466,8 +465,8 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                 fixed(PredIdStr), suffix(":"), nl,
                 words("syntax error: some but not all arguments"),
                 words("have mode annotations."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs],
 
             % Apply the clause to all modes.
@@ -522,7 +521,7 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo, Context,
     ),
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 :- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
@@ -808,7 +807,8 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
         ),
 
         FinalSVarState = !.SVarState,
-        svar_finish_clause_body(Context, FinalSVarMap,
+        module_info_get_globals(!.ModuleInfo, Globals),
+        svar_finish_clause_body(Globals, Context, FinalSVarMap,
             HeadGoal, BodyGoal, Goal0, InitialSVarState, FinalSVarState,
             !.SVarStore, StateVarWarnings, StateVarErrors),
 

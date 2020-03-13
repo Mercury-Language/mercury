@@ -80,8 +80,8 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     decl("initialise"), words("declaration"),
                     words("must specify the predicate's arity;"),
                     quote(TermStr), words("doesn't."), nl],
-                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                    get_term_context(Term), Pieces),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
                 MaybeIOM = error1([Spec])
             ;
                 SymNameSpecifier =
@@ -97,9 +97,9 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         words("declaration specifies a predicate,"),
                         quote(TermStr), suffix(","), words("whose arity"),
                         words("is not zero or two."), nl],
-                    Spec = simplest_spec(severity_error,
-                        phase_term_to_parse_tree, get_term_context(Term),
-                        Pieces),
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree,
+                        get_term_context(Term), Pieces),
                     MaybeIOM = error1([Spec])
                 )
             )
@@ -108,7 +108,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         Pieces = [words("Error: an"), decl("initialise"), words("declaration"),
             words("should have the form"),
             quote(":- initialise pred_name/pred_arity."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -130,8 +130,8 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 Pieces = [words("Error:"), decl("finalise"),
                     words("declaration"), words("requires arity, found"),
                     fixed(TermStr), suffix("."), nl],
-                Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
-                    get_term_context(Term), Pieces),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
                 MaybeIOM = error1([Spec])
             ;
                 SymNameSpecifier =
@@ -147,9 +147,9 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         words("declaration specifies a predicate"),
                         words("whose arity is not zero or two:"),
                         words(TermStr), suffix("."), nl],
-                    Spec = simplest_spec(severity_error,
-                        phase_term_to_parse_tree, get_term_context(Term),
-                        Pieces),
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree,
+                        get_term_context(Term), Pieces),
                     MaybeIOM = error1([Spec])
                 )
             )
@@ -158,7 +158,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         Pieces = [words("Error: a"), decl("finalise"), words("declaration"),
             words("should have the form"),
             quote(":- finalise pred_name/pred_arity."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -242,7 +242,7 @@ parse_mutable_decl_info(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         Pieces = [words("Error:") | WhatPieces] ++
             [words("should have the form"), quote(Prefix ++ Form1 ++ Suffix1),
             words("or the form"), quote(Prefix ++ Form2 ++ "."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             Context, Pieces),
         MaybeItemMutableInfo = error1([Spec])
     ).
@@ -254,7 +254,7 @@ parse_mutable_name(NameTerm, MaybeName) :-
         MaybeName = ok1(Name)
     else
         Pieces = [words("Error: invalid mutable name."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(NameTerm), Pieces),
         MaybeName = error1([Spec])
     ).
@@ -267,7 +267,7 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
         Pieces = [words("Error: the type in a"), decl("mutable"),
             words("declaration cannot contain variables:"),
             words(TypeTermStr), suffix("."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(TypeTerm), Pieces),
         MaybeType = error1([Spec])
     else
@@ -287,7 +287,7 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
         Pieces = [words("Error: the inst in a"), decl("mutable"),
             words("declaration cannot contain variables:"),
             words(InstTermStr), suffix("."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(InstTerm), Pieces),
         MaybeInst = error1([Spec])
     else
@@ -341,7 +341,8 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
             Pieces = [words("Error: conflicting attributes"),
                 words("in attribute list:"), nl,
                 words(MutAttrsStr), suffix("."), nl],
-            Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree,
                 get_term_context(MutAttrsTerm), Pieces),
             MaybeMutAttrs = error1([Spec])
         else
@@ -355,7 +356,7 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
         Pieces = [words("Error: malformed attribute list"),
             words("in"), decl("mutable"), words("declaration:"),
             words(MutAttrsStr), suffix("."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(MutAttrsTerm), Pieces),
         MaybeMutAttrs = error1([Spec])
     ).
@@ -420,7 +421,7 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
     else
         Pieces = [words("Error: unrecognised attribute"),
             words("in"), decl("mutable"), words("declaration."), nl],
-        Spec = simplest_spec(severity_error, phase_term_to_parse_tree,
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(MutAttrTerm), Pieces),
         MutAttrResult = error1([Spec])
     ).

@@ -241,6 +241,10 @@
                 module_section,
 
                 % import_decl iff any avail_module has import_decl.
+                % XXX CLEANUP This is wrong. A module may have
+                % a ":- use_module" declaration in the interface and
+                % an ":- import_module" declaration in the implementation,
+                % and this design cannot express that.
                 import_or_use,
 
                 % The locations of the *explicit* import_module and
@@ -284,8 +288,8 @@
     type_spec_info::out) is det.
 :- pred module_info_get_const_struct_db(module_info::in,
     const_struct_db::out) is det.
-:- pred module_info_get_foreign_import_modules(module_info::in,
-    foreign_import_modules::out) is det.
+:- pred module_info_get_c_j_cs_e_fims(module_info::in,
+    c_j_cs_e_fims::out) is det.
 :- pred module_info_get_pragma_exported_procs(module_info::in,
     cord(pragma_exported_proc)::out) is det.
 
@@ -314,8 +318,10 @@
     cord(foreign_decl_code)::out) is det.
 :- pred module_info_get_foreign_body_codes(module_info::in,
     cord(foreign_body_code)::out) is det.
-:- pred module_get_fact_table_file_names(module_info::in,
+:- pred module_info_get_fact_table_file_names(module_info::in,
     list(string)::out) is det.
+:- pred module_info_get_int_bad_clauses(module_info::in,
+    set(pf_sym_name_and_arity)::out) is det.
 :- pred module_info_get_maybe_dependency_info(module_info::in,
     maybe(hlds_dependency_info)::out) is det.
 :- pred module_info_get_num_errors(module_info::in, int::out) is det.
@@ -383,7 +389,7 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_const_struct_db(const_struct_db::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_foreign_import_modules(foreign_import_modules::in,
+:- pred module_info_set_c_j_cs_e_fims(c_j_cs_e_fims::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_pragma_exported_procs(cord(pragma_exported_proc)::in,
     module_info::in, module_info::out) is det.
@@ -405,6 +411,8 @@
 :- pred module_info_set_foreign_decl_codes_aux(cord(foreign_decl_code)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_foreign_body_codes(cord(foreign_body_code)::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_int_bad_clauses(set(pf_sym_name_and_arity)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_type_ctor_gen_infos(list(type_ctor_gen_info)::in,
     module_info::in, module_info::out) is det.
@@ -526,7 +534,7 @@
 :- pred module_add_foreign_body_code(foreign_body_code::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_add_foreign_import_module(item_fim::in,
+:- pred module_add_item_fim(item_fim::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_add_fact_table_file(string::in,
@@ -737,7 +745,7 @@
                 % of the program.
                 msi_const_struct_db             :: const_struct_db,
 
-                msi_foreign_import_modules      :: foreign_import_modules,
+                msi_c_j_cs_e_fims               :: c_j_cs_e_fims,
 
                 % List of the procs for which there is a
                 % pragma foreign_export(...) declaration.
@@ -791,6 +799,17 @@
                 % predicates defined in this module.
                 mri_fact_table_file_names       :: list(string),
 
+                % The set of predicates and functions for which there was
+                % an attempt to define them in the interface (by clause,
+                % foreign_proc, or external_proc pragma), which means that
+                % if find no definition for them in the implementation section
+                % either, we should NOT generate an error message complaining
+                % about the definition being missing. Such a message would be
+                % misleading, since the definition is not missing, it was
+                % just misplaced, and we have already generated an error
+                % message about that misplaced attempt at definition.
+                mri_int_bad_clauses             :: set(pf_sym_name_and_arity),
+
                 % Please see module_info_ensure_dependency_info for the
                 % meaning of this dependency_info, and the constraints on it.
                 mri_maybe_dependency_info       :: maybe(hlds_dependency_info),
@@ -822,10 +841,37 @@
 
                 % The names of all the directly imported modules
                 % (used during type checking, and by the MLDS back-end).
+                % XXX CLEANUP The above is COMPLETELY WRONG.
+                %
+                % This field is used by:
+                %
+                % - intermod.m to (over-)estimate the set of use_module decls
+                %   needed by the code put into a .opt file
+                %
+                % - try_expand.m to see whether exception is imported
+                %   and hence whether it has anything to do at all
+                %   (since we import exception.m implicitly if some code
+                %   contains a try goal)
+                %
+                % - by unused_imports.m to decide what import_module and/or
+                %   use_module declarations to warn about
+                %
+                % - by xml_documentation to prettyprint a module as XML
+                %
                 mri_avail_module_map            :: avail_module_map,
 
                 % The names of all the indirectly imported modules
                 % (used by the MLDS back-end).
+                %
+                % XXX CLEANUP The above is misleading.
+                % When added to the info in the previous field, the value
+                % in this field is used to for two purposes, both of which
+                % need the full set of modules imported and/or used both
+                % directly and indirectly, and both explicitly or implicitly.
+                % The purposes are:
+                %
+                % - #including those the .mh and .mih files of those modules;
+                % - reading and writing the .analysis files of those modules.
                 mri_indirectly_imported_module_names
                                                 :: set(module_name),
 
@@ -955,9 +1001,9 @@
 module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         MaybeRecompInfo, ModuleInfo) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        _MaybeVersionNumbers, SrcItemBlocks,
-        DirectIntItemBlocks, IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks),
+        _MaybeVersionNumbers, _ParseTreeModuleSrc,
+        _AncestorIntSpecs, _DirectIntSpecs, _IndirectIntSpecs,
+        _PlainOpts, _TransOpts, _IntForOptSpecs),
 
     SpecialPredMaps = special_pred_maps(map.init, map.init, map.init),
     map.init(ClassTable),
@@ -992,6 +1038,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     ForeignDeclsAux = cord.init,
     ForeignBodies = cord.init,
     FactTableFiles = [],
+    set.init(IntBadPreds),
     MaybeDependencyInfo = maybe.no,
     NumErrors = 0,
     MustBeStratifiedPreds = [],
@@ -1006,41 +1053,19 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     % been done?
     % XXX ITEM_LIST Should a tabled predicate declared in a .int* or .*opt
     % file generate an implicit dependency?
-    get_implicit_dependencies_in_item_blocks(Globals, SrcItemBlocks,
-        SrcImportDeps, SrcUseDeps),
-    get_implicit_dependencies_in_item_blocks(Globals, DirectIntItemBlocks,
-        DirectIntImportDeps, DirectIntUseDeps),
-    get_implicit_dependencies_in_item_blocks(Globals, IndirectIntItemBlocks,
-        IndirectIntImportDeps, IndirectIntUseDeps),
-    get_implicit_dependencies_in_item_blocks(Globals, OptItemBlocks,
-        OptImportDeps, OptUseDeps),
-    get_implicit_dependencies_in_item_blocks(Globals, IntForOptItemBlocks,
-        IntForOptImportDeps, IntForOptUseDeps),
 
     % XXX ITEM_LIST We should record ImportDeps and UseDeps separately.
     % XXX ITEM_LIST Should we record implicitly and explicitly imported
     % separately, or at least record for each import (and use) whether
     % it was explicit or implicit, and one (or more) context where either
     % the explicit imported was requested, or the implicit import was required.
-    ImportedAvailModules = set.union_list([
-        SrcImportDeps,
-        DirectIntImportDeps,
-        IndirectIntImportDeps,
-        OptImportDeps,
-        IntForOptImportDeps]),
-    UsedAvailModules = set.union_list([
-        SrcImportDeps, SrcUseDeps,
-        DirectIntImportDeps, DirectIntUseDeps,
-        IndirectIntImportDeps, IndirectIntUseDeps,
-        OptImportDeps, OptUseDeps,
-        IntForOptImportDeps, IntForOptUseDeps]),
-    OnlyUsedAvailModules =
-        set.difference(UsedAvailModules, ImportedAvailModules),
 
+    get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
+        ImplicitlyImportedModules, ImplicitlyUsedModules),
     map.init(AvailModuleMap0),
-    set.fold(add_implicit_avail_module(import_decl), ImportedAvailModules,
+    set.fold(add_implicit_avail_module(import_decl), ImplicitlyImportedModules,
         AvailModuleMap0, AvailModuleMap1),
-    set.fold(add_implicit_avail_module(use_decl), OnlyUsedAvailModules,
+    set.fold(add_implicit_avail_module(use_decl), ImplicitlyUsedModules,
         AvailModuleMap1, AvailModuleMap),
 
     set.init(IndirectlyImportedModules),
@@ -1084,6 +1109,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         ForeignDeclsAux,
         ForeignBodies,
         FactTableFiles,
+        IntBadPreds,
         MaybeDependencyInfo,
         NumErrors,
         MustBeStratifiedPreds,
@@ -1223,8 +1249,8 @@ module_info_get_type_spec_info(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_type_spec_info.
 module_info_get_const_struct_db(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_const_struct_db.
-module_info_get_foreign_import_modules(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_foreign_import_modules.
+module_info_get_c_j_cs_e_fims(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_c_j_cs_e_fims.
 module_info_get_pragma_exported_procs(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_pragma_exported_procs.
 
@@ -1254,8 +1280,10 @@ module_info_get_foreign_decl_codes_aux(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_foreign_decl_codes_aux.
 module_info_get_foreign_body_codes(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_foreign_body_codes.
-module_get_fact_table_file_names(MI, X) :-
+module_info_get_fact_table_file_names(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_fact_table_file_names.
+module_info_get_int_bad_clauses(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_int_bad_clauses.
 module_info_get_maybe_dependency_info(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_maybe_dependency_info.
 module_info_get_num_errors(MI, X) :-
@@ -1345,8 +1373,8 @@ module_info_set_const_struct_db(X, !MI) :-
     else
         !MI ^ mi_sub_info ^ msi_const_struct_db := X
     ).
-module_info_set_foreign_import_modules(X, !MI) :-
-    !MI ^ mi_sub_info ^ msi_foreign_import_modules := X.
+module_info_set_c_j_cs_e_fims(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_c_j_cs_e_fims := X.
 module_info_set_pragma_exported_procs(X, !MI) :-
     ( if
         private_builtin.pointer_equal(X,
@@ -1384,6 +1412,8 @@ module_info_set_foreign_decl_codes_aux(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_foreign_decl_codes_aux := X.
 module_info_set_foreign_body_codes(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_foreign_body_codes := X.
+module_info_set_int_bad_clauses(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_int_bad_clauses := X.
 module_info_set_maybe_dependency_info(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_maybe_dependency_info := X.
 module_info_set_num_errors(X, !MI) :-
@@ -1550,12 +1580,12 @@ module_add_foreign_body_code(ForeignBodyCode, !Module) :-
     ForeignBodyCodes = cord.snoc(ForeignBodyCodes0, ForeignBodyCode),
     module_info_set_foreign_body_codes(ForeignBodyCodes, !Module).
 
-module_add_foreign_import_module(ItemFIM, !Module) :-
-    module_info_get_foreign_import_modules(!.Module, ForeignImportModules0),
+module_add_item_fim(ItemFIM, !Module) :-
+    module_info_get_c_j_cs_e_fims(!.Module, ForeignImportModules0),
     ItemFIM = item_fim(Lang, ModuleName, _Context, _SeqNum),
     add_foreign_import_module(Lang, ModuleName,
         ForeignImportModules0, ForeignImportModules),
-    module_info_set_foreign_import_modules(ForeignImportModules, !Module).
+    module_info_set_c_j_cs_e_fims(ForeignImportModules, !Module).
 
 module_add_fact_table_file(FileName, !Module) :-
     FileNames0 = !.Module ^ mi_rare_info ^ mri_fact_table_file_names,

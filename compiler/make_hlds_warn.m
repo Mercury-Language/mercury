@@ -118,12 +118,9 @@ quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
             quote(mercury_vars_to_name_only(VarSet, Vars)),
             words("each have overlapping scopes."), nl]
     ),
-    Msg = simple_msg(Context,
-        [option_is_set(warn_overlapping_scopes, yes,
-            [always(Pieces1 ++ Pieces2)])]),
-    Severity = severity_conditional(warn_overlapping_scopes, yes,
-        severity_warning, no),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]).
+    Spec = conditional_spec($pred, warn_overlapping_scopes, yes,
+        severity_warning, phase_parse_tree_to_hlds,
+        [simplest_msg(Context, Pieces1 ++ Pieces2)]).
 
 %-----------------------------------------------------------------------------%
 
@@ -495,12 +492,9 @@ generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
         Pieces = [words("warning: variables"), VarsPiece,
             words("occur"), words(Count), words("in this scope."), nl]
     ),
-    Msg = simple_msg(Context,
-        [option_is_set(warn_singleton_vars, yes,
-            [always(Preamble ++ Pieces)])]),
-    Severity = severity_conditional(warn_singleton_vars, yes,
-        severity_warning, no),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]).
+    Spec = conditional_spec($pred, warn_singleton_vars, yes,
+        severity_warning, phase_parse_tree_to_hlds,
+        [simplest_msg(Context, Preamble ++ Pieces)]).
 
 :- pred add_warn_spec(error_spec::in, warn_info::in, warn_info::out) is det.
 
@@ -525,11 +519,9 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
             simple_call(SimpleCallId), suffix(":"), nl] ++
             variable_warning_start(UnmentionedVars) ++
             [words("not occur in the"), words(LangStr), words("code."), nl],
-        Msg = simple_msg(Context,
-            [option_is_set(warn_singleton_vars, yes, [always(Pieces)])]),
-        Severity = severity_conditional(warn_singleton_vars, yes,
-            severity_warning, no),
-        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+        Spec = conditional_spec($pred, warn_singleton_vars, yes,
+            severity_warning, phase_parse_tree_to_hlds,
+            [simplest_msg(Context, Pieces)]),
         !:Specs = [Spec | !.Specs]
     ),
     pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, SimpleCallId,
@@ -672,20 +664,14 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
                 ),
                 ( if list.member(SuccIndStr, BodyPieces) then
                     LangStr = foreign_language_string(Lang),
-                    Pieces = [
-                        words("Warning: the"), fixed(LangStr),
+                    Pieces = [words("Warning: the"), fixed(LangStr),
                         words("code for"), simple_call(SimpleCallId),
                         words("may set"), quote(SuccIndStr), suffix(","),
-                        words("but it cannot fail.")
-                    ],
-                    Msg = simple_msg(Context,
-                        [option_is_set(warn_suspicious_foreign_procs, yes,
-                            [always(Pieces)])]),
-                    Severity = severity_conditional(
+                        words("but it cannot fail.")],
+                    Spec = conditional_spec($pred,
                         warn_suspicious_foreign_procs, yes,
-                        severity_warning, no),
-                    Spec = error_spec(Severity, phase_parse_tree_to_hlds,
-                        [Msg]),
+                        severity_warning, phase_parse_tree_to_hlds,
+                        [simplest_msg(Context, Pieces)]),
                     !:Specs = [Spec | !.Specs]
                 else
                     true
@@ -698,21 +684,15 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
                     true
                 else
                     LangStr = foreign_language_string(Lang),
-                    Pieces = [
-                        words("Warning: the"), fixed(LangStr),
+                    Pieces = [words("Warning: the"), fixed(LangStr),
                         words("code for"), simple_call(SimpleCallId),
                         words("does not appear to set"),
                         quote(SuccIndStr), suffix(","),
-                        words("but it can fail.")
-                    ],
-                    Msg = simple_msg(Context,
-                        [option_is_set(warn_suspicious_foreign_procs, yes,
-                            [always(Pieces)])]),
-                    Severity = severity_conditional(
+                        words("but it can fail.")],
+                    Spec = conditional_spec($pred,
                         warn_suspicious_foreign_procs, yes,
-                        severity_warning, no),
-                    Spec = error_spec(Severity, phase_parse_tree_to_hlds,
-                        [Msg]),
+                        severity_warning, phase_parse_tree_to_hlds,
+                        [simplest_msg(Context, Pieces)]),
                     !:Specs = [Spec | !.Specs]
                 )
             ;
@@ -745,13 +725,9 @@ check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces, !Specs) :-
                 words("code for"), simple_call(SimpleCallId),
                 words("may contain a"), quote("return"),
                 words("statement."), nl],
-            Msg = simple_msg(Context,
-                [option_is_set(warn_suspicious_foreign_procs, yes,
-                    [always(Pieces)])]
-            ),
-            Severity = severity_conditional(
-                warn_suspicious_foreign_procs, yes, severity_warning, no),
-            Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+            Spec = conditional_spec($pred, warn_suspicious_foreign_procs, yes,
+                severity_warning, phase_parse_tree_to_hlds,
+                [simplest_msg(Context, Pieces)]),
             !:Specs = [Spec | !.Specs]
         else
             true
@@ -802,7 +778,7 @@ check_promise_ex_goal(PromiseType, Goal, !Specs) :-
             "the declaration name", !Specs),
         check_promise_ex_goal(PromiseType, SubGoal, !Specs)
     else
-        promise_ex_error(PromiseType, goal_get_context(Goal),
+        promise_ex_error(PromiseType, get_goal_context(Goal),
             "goal in declaration is not a disjunction", !Specs)
     ).
 
@@ -882,7 +858,7 @@ check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
             ),
             check_promise_ex_disj_arm(PromiseType, TailGoals, yes, !Specs)
         else
-            promise_ex_error(PromiseType, goal_get_context(HeadGoal),
+            promise_ex_error(PromiseType, get_goal_context(HeadGoal),
                 "disjunct is not a call or unification", !Specs),
             check_promise_ex_disj_arm(PromiseType, TailGoals, CallUsed, !Specs)
         )
@@ -897,8 +873,8 @@ promise_ex_error(PromiseType, Context, Message, !Specs) :-
     Pieces = [words("In"), quote(prog_out.promise_to_string(PromiseType)),
         words("declaration:"), nl,
         words("error:"), words(Message), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
@@ -920,13 +896,9 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
                     words("That macro is only defined within the body of"),
                     pragma_decl("foreign_proc"), words("declarations.")
                 ],
-                Msg = simple_msg(Context,
-                    [option_is_set(warn_suspicious_foreign_code, yes,
-                    [always(Pieces)])]),
-                Severity = severity_conditional(
-                    warn_suspicious_foreign_code, yes,
-                    severity_warning, no),
-                Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+                Spec = conditional_spec($pred, warn_suspicious_foreign_code,
+                    yes, severity_warning, phase_parse_tree_to_hlds,
+                    [simplest_msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
             else
                 true

@@ -88,9 +88,11 @@
 :- func report_event_args_mismatch(prog_context, string, list(mer_type),
     list(prog_var)) = error_spec.
 
-:- func report_no_clauses(module_info, pred_id, pred_info) = error_spec.
+:- func maybe_report_no_clauses(module_info, pred_id, pred_info)
+    = list(error_spec).
 
-:- func report_no_clauses_stub(module_info, pred_id, pred_info) = error_spec.
+:- func maybe_report_no_clauses_stub(module_info, pred_id, pred_info)
+    = list(error_spec).
 
 :- func report_non_contiguous_clauses(module_info, pred_id, pred_info,
     clause_item_number_region, clause_item_number_region,
@@ -249,7 +251,7 @@ report_pred_call_error(ClauseContext, Context, PredCallId) = Spec :-
             SwitchedOtherIds = [],
             Msgs = [UndefMsg]
         ),
-        Spec = error_spec(severity_error, phase_type_check, Msgs)
+        Spec = error_spec($pred, severity_error, phase_type_check, Msgs)
     ).
 
 :- func report_error_pred_num_args(type_error_clause_context, prog_context,
@@ -263,7 +265,8 @@ report_error_pred_num_args(ClauseContext, Context, SimpleCallId, Arities)
         error_num_args_to_pieces(yes(PredOrFunc), Arity, Arities) ++ [nl] ++
         [words("in call to"), p_or_f(PredOrFunc), qual_sym_name(SymName),
         suffix("."), nl],
-    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces).
 
 :- func report_error_func_instead_of_pred(prog_context, pred_or_func)
     = error_msg.
@@ -395,48 +398,78 @@ report_apply_instead_of_pred = Components :-
 report_unknown_event_call_error(Context, EventName) = Spec :-
     Pieces = [words("Error: there is no event named"),
         quote(EventName), suffix(".")],
-    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces).
 
 report_event_args_mismatch(Context, EventName, EventArgTypes, Args) = Spec :-
     Pieces =
         [words("Error:")] ++
         error_num_args_to_pieces(no, length(Args), [length(EventArgTypes)]) ++
         [words("in event"), quote(EventName), suffix(".")],
-    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 
-report_no_clauses(ModuleInfo, PredId, PredInfo) = Spec :-
-    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-        PredId),
-    Pieces = [words("Error: no clauses for") | PredPieces] ++ [suffix(".")],
-    pred_info_get_context(PredInfo, Context),
-    % It is possible (and even likely) that the error that got the exit
-    % status set was caused by a syntax error in a clause defining this
-    % predicate or function. Reporting a missing clause could therefore
-    % be redundant and misleading. Even if this predicate or function truly
-    % has no clauses, this error would be caught once the other errors
-    % (the ones leading to the exit status) are fixed by the programmer.
-    %
-    % However, right now we have no means to distinguish the case where the
-    % exit status being set to nonzero was caused by an actual syntax error,
-    % and the case where it was set by a no clauses error for another
-    % predicate. Since we don't want to limit the number of predicates
-    % without clauses we warn about in a single compiler invocation to one,
-    % we choose (as the lesser of two evils) to always report the error.
-    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
+maybe_report_no_clauses(ModuleInfo, PredId, PredInfo) = Specs :-
+    ( if should_report_no_clauses(ModuleInfo, PredInfo) then
+        PredPieces = describe_one_pred_name(ModuleInfo,
+            should_not_module_qualify, PredId),
+        Pieces = [words("Error: no clauses for") | PredPieces] ++
+            [suffix(".")],
+        pred_info_get_context(PredInfo, Context),
+        % It is possible (and even likely) that the error that got the exit
+        % status set was caused by a syntax error in a clause defining this
+        % predicate or function. Reporting a missing clause could therefore
+        % be redundant and misleading. Even if this predicate or function truly
+        % has no clauses, this error would be caught once the other errors
+        % (the ones leading to the exit status) are fixed by the programmer.
+        %
+        % However, right now we have no means to distinguish the case where
+        % the exit status being set to nonzero was caused by an actual syntax
+        % error, and the case where it was set by a no clauses error for
+        % another predicate. Since we don't want to limit the number of
+        % predicates without clauses we warn about in a single compiler
+        % invocation to one, we choose (as the lesser of two evils)
+        % to always report the error.
+        Spec = simplest_spec($pred, severity_error, phase_type_check,
+            Context, Pieces),
+        Specs = [Spec]
+    else
+        Specs = []
+    ).
 
-%-----------------------------------------------------------------------------%
+maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
+    ( if should_report_no_clauses(ModuleInfo, PredInfo) then
+        PredPieces = describe_one_pred_name(ModuleInfo,
+            should_not_module_qualify, PredId),
+        Pieces = [words("Warning: no clauses for ") | PredPieces] ++
+            [suffix(".")],
+        pred_info_get_context(PredInfo, Context),
+        Spec = conditional_spec($pred, warn_stubs, yes, severity_warning,
+            phase_type_check, [simplest_msg(Context, Pieces)]),
+        Specs = [Spec]
+    else
+        Specs = []
+    ).
 
-report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Spec :-
-    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-        PredId),
-    Pieces = [words("Warning: no clauses for ") | PredPieces] ++ [suffix(".")],
-    pred_info_get_context(PredInfo, Context),
-    Msg = simple_msg(Context,
-        [option_is_set(warn_stubs, yes, [always(Pieces)])]),
-    Severity = severity_conditional(warn_stubs, yes, severity_warning, no),
-    Spec = error_spec(Severity, phase_type_check, [Msg]).
+:- pred should_report_no_clauses(module_info::in, pred_info::in) is semidet.
+
+should_report_no_clauses(ModuleInfo, PredInfo) :-
+    require_det (
+        module_info_get_int_bad_clauses(ModuleInfo, IntBadClauses),
+        module_info_get_name(ModuleInfo, ModuleName),
+        pred_info_get_name(PredInfo, PredName),
+        pred_info_get_orig_arity(PredInfo, Arity),
+        pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+        SymName = qualified(ModuleName, PredName),
+        Id = pf_sym_name_arity(PredOrFunc, SymName, Arity)
+    ),
+    ( if set.contains(IntBadClauses, Id) then
+        false
+    else
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -451,7 +484,7 @@ report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
     report_non_contiguous_clause_contexts(PredPieces, 1,
         FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
     Msgs = [FrontMsg | ContextMsgs],
-    Spec = error_spec(severity_warning, phase_type_check, Msgs).
+    Spec = error_spec($pred, severity_warning, phase_type_check, Msgs).
 
 :- pred report_non_contiguous_clause_contexts(list(format_component)::in,
     int::in, clause_item_number_region::in, clause_item_number_region::in,
@@ -502,13 +535,13 @@ report_warning_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-
     Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
         OverloadedSymbolMap, no),
-    Spec = error_spec(severity_warning, phase_type_check, Msgs).
+    Spec = error_spec($pred, severity_warning, phase_type_check, Msgs).
 
 report_error_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-
     Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
         OverloadedSymbolMap, yes),
-    Spec = error_spec(severity_error, phase_type_check, Msgs).
+    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
 
 :- func too_much_overloading_to_msgs(type_error_clause_context, prog_context,
     overloaded_symbol_map, bool) = list(error_msg).
@@ -593,10 +626,13 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
             StartPieces = [words("The predicate symbol"),
                 simple_call(CallId), suffix("."), nl,
                 words("The possible matches are:"), nl_indent_delta(1)],
-            PredIdPiecesList = list.map(describe_one_pred_name(ModuleInfo,
-                should_module_qualify), PredIds),
-            PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
-                [suffix(".")]),
+            PredIdPiecesList = list.map(
+                describe_one_pred_name(ModuleInfo, should_module_qualify),
+                PredIds),
+            list.sort(PredIdPiecesList, SortedPredIdPiecesList),
+            PredIdPieces =
+                component_list_to_line_pieces(SortedPredIdPiecesList,
+                    [suffix(".")]),
             FirstPieces = StartPieces ++ PredIdPieces,
             LaterPieces = [words("The predicate symbol"),
                 simple_call(CallId), words("is also overloaded here.")]
@@ -608,8 +644,10 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                 words("The possible matches are:"), nl_indent_delta(1)],
             SourcePiecesList = list.map(
                 describe_cons_type_info_source(ModuleInfo), Sources),
-            SourcePieces = component_list_to_line_pieces(SourcePiecesList,
-                [suffix(".")]),
+            list.sort(SourcePiecesList, SortedSourcePiecesList),
+            SourcePieces =
+                component_list_to_line_pieces(SortedSourcePiecesList,
+                    [suffix(".")]),
             FirstPieces = StartPieces ++ SourcePieces,
             LaterPieces = [words("The function symbol"),
                 qual_cons_id_and_maybe_arity(ConsId),
@@ -677,7 +715,7 @@ report_error_unif_var_var(ClauseContext, UnifyContext, Context,
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(UnifyContextPieces),
         always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
@@ -743,7 +781,7 @@ report_error_lambda_var(ClauseContext, UnifyContext, Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
         always(Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
@@ -784,7 +822,7 @@ report_error_functor_type(Info, UnifyContext, Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
         always(MainPieces ++ NoSuffixIntegerPieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
@@ -884,7 +922,7 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
         always(VarAndTermPieces ++ ErrorPieces) | VerboseComponents]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- type mismatch_info
     --->    mismatch_info(
@@ -1174,7 +1212,7 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
         [always(InClauseForPieces), always(GoalContextPieces),
         always(TypeErrorPieces ++ MismatchPieces ++ NoSuffixIntegerPieces),
         verbose_only(verbose_always, TypeAssignSetPieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
 
@@ -1201,7 +1239,7 @@ report_arg_vector_type_errors(ClauseContext, Context, ArgVectorKind,
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(ArgVectorKindPieces),
         always(ArgErrorPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- pred arg_vector_type_errors_to_pieces(prog_varset::in,
     list(arg_vector_type_error)::in,
@@ -1326,7 +1364,7 @@ report_error_var_either_type(ClauseContext, GoalContext, Context,
         [always(InClauseForPieces ++ GoalContextPieces),
         always(Pieces1 ++ Pieces2),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
@@ -1364,7 +1402,7 @@ report_error_arg_var(ClauseContext, GoalContext, Context, Var,
         [always(InClauseForPieces ++ GoalContextPieces),
         always(Pieces1 ++ Pieces2),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec(severity_error, phase_type_check, [Msg]).
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
@@ -1443,7 +1481,7 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
     else
         ConsMsgs = []
     ),
-    Spec = error_spec(severity_error, phase_type_check,
+    Spec = error_spec($pred, severity_error, phase_type_check,
         [simple_msg(Context, [InitComp | FunctorComps]) | ConsMsgs]).
 
 :- pred language_builtin_functor_components(string::in, arity::in,
@@ -1670,7 +1708,7 @@ report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
 
     MainMsg = simple_msg(Context,
         [always(InClauseForPieces ++ Pieces1 ++ Pieces2) | VerboseComponents]),
-    Spec = error_spec(severity_error, phase_type_check,
+    Spec = error_spec($pred, severity_error, phase_type_check,
         [MainMsg | WarningMsgs]).
 
 :- func add_qualifiers_reminder = list(format_component).
@@ -1745,7 +1783,7 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
     % XXX This won't be very pretty when there are multiple type_assigns.
     Pieces2 = component_list_to_line_pieces(ConstraintPieceLists,
         [suffix(".")]),
-    Spec = simplest_spec(severity_error, phase_type_check, Context,
+    Spec = simplest_spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ Pieces1 ++ Pieces2).
 
 :- pred constraints_to_pieces(type_assign::in, list(format_component)::out,
@@ -1783,7 +1821,8 @@ report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
     Pieces = [words("The foreign language code for") |
         describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)] ++
         [words("should define the variable"), quote(VarName), suffix(".")],
-    Spec = simplest_spec(severity_error, phase_type_check, Context, Pieces).
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 

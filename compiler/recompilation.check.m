@@ -58,8 +58,9 @@
 :- pred should_recompile(globals::in, module_name::in,
     find_target_file_names::in(find_target_file_names),
     find_timestamp_file_names::in(find_timestamp_file_names),
-    modules_to_recompile::out, have_read_module_maps::out, io::di, io::uo)
-    is det.
+    modules_to_recompile::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -75,6 +76,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
@@ -105,10 +107,9 @@
 %-----------------------------------------------------------------------------%
 
 should_recompile(Globals, ModuleName, FindTargetFiles, FindTimestampFiles,
-        ModulesToRecompile, HaveReadModuleMaps, !IO) :-
+        ModulesToRecompile, HaveReadModuleMaps0, HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, find_all_recompilation_reasons,
         FindAll),
-    HaveReadModuleMaps0 = have_read_module_maps(map.init, map.init, map.init),
     Info0 = recompilation_check_info(ModuleName, no, [], HaveReadModuleMaps0,
         init_item_id_set(map.init, map.init, map.init),
         set.init, some_modules([]), FindAll, []),
@@ -734,9 +735,9 @@ check_imported_module(Globals, Term, !Info, !IO) :-
         % If we are checking a submodule, don't re-read interface files
         % read for other modules checked during this compilation.
         !.Info ^ rci_is_inline_sub_module = yes,
-        find_read_module_int(HaveReadModuleMapInt, ImportedModuleName,
-            IntFileKind, do_return_timestamp,
-            FileNamePrime, MaybeNewTimestampPrime,
+        IntKey = have_read_module_key(ImportedModuleName, IntFileKind),
+        find_read_module_int(HaveReadModuleMapInt, IntKey,
+            do_return_timestamp, FileNamePrime, MaybeNewTimestampPrime,
             ParseTreeIntPrime, SpecsPrime, ErrorsPrime)
     then
         FileName = FileNamePrime,
@@ -1016,7 +1017,9 @@ check_item_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers, Item,
         ( Item = item_mode_decl(_)
         ; Item = item_foreign_enum(_)
         ; Item = item_foreign_export_enum(_)
-        ; Item = item_pragma(_)
+        ; Item = item_decl_pragma(_)
+        ; Item = item_impl_pragma(_)
+        ; Item = item_generated_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_instance(_)
         ; Item = item_initialise(_)
@@ -1494,8 +1497,10 @@ record_read_file_src(ModuleName, FileName, ModuleTimestamp,
         ParseTree, Specs, Errors, !Info) :-
     HaveReadModuleMaps0 = !.Info ^ rci_have_read_module_maps,
     HaveReadModuleMapSrc0 = HaveReadModuleMaps0 ^ hrmm_src,
-    map.set(have_read_module_key(ModuleName, sfk_src),
-        have_read_module(FileName, ModuleTimestamp, ParseTree, Specs, Errors),
+    ModuleTimestamp = module_timestamp(_, Timestamp, _),
+    map.set(ModuleName,
+        have_successfully_read_module(FileName, yes(Timestamp),
+            ParseTree, Specs, Errors),
         HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
     HaveReadModuleMaps =
         HaveReadModuleMaps0 ^ hrmm_src := HaveReadModuleMapSrc,
@@ -1510,8 +1515,10 @@ record_read_file_int(ModuleName, IntFileKind, FileName, ModuleTimestamp,
         ParseTree, Specs, Errors, !Info) :-
     HaveReadModuleMaps0 = !.Info ^ rci_have_read_module_maps,
     HaveReadModuleMapInt0 = HaveReadModuleMaps0 ^ hrmm_int,
+    ModuleTimestamp = module_timestamp(_, Timestamp, _),
     map.set(have_read_module_key(ModuleName, IntFileKind),
-        have_read_module(FileName, ModuleTimestamp, ParseTree, Specs, Errors),
+        have_successfully_read_module(FileName, yes(Timestamp),
+            ParseTree, Specs, Errors),
         HaveReadModuleMapInt0, HaveReadModuleMapInt),
     HaveReadModuleMaps =
         HaveReadModuleMaps0 ^ hrmm_int := HaveReadModuleMapInt,
@@ -1598,20 +1605,21 @@ recompile_reason_message(Globals, PrefixPieces, Reason, Spec) :-
         ),
         MaybeContext = no,
         AllPieces = PrefixPieces ++ Pieces,
-        Spec = error_spec(severity_informational, phase_read_files,
+        Spec = error_spec($pred, severity_informational, phase_read_files,
             [error_msg(MaybeContext, treat_as_first, 0, [always(AllPieces)])])
     ;
         Reason = recompile_for_syntax_error(Context, Msg),
         MaybeContext = yes(Context),
         AllPieces = PrefixPieces ++ [words(Msg), suffix("."), nl],
-        Spec = error_spec(severity_informational, phase_read_files,
+        Spec = error_spec($pred, severity_informational, phase_read_files,
             [error_msg(MaybeContext, treat_as_first, 0, [always(AllPieces)])])
     ;
         Reason = recompile_for_unreadable_used_items(Specs),
         list.map(extract_spec_msgs(Globals), Specs, MsgsList),
         list.condense(MsgsList, Msgs),
         % MaybeContext = find_first_context_in_msgs(Msgs),
-        Spec = error_spec(severity_informational, phase_read_files, Msgs)
+        Spec = error_spec($pred, severity_informational, phase_read_files,
+            Msgs)
     ).
 
 :- func describe_item(item_id) = list(format_component).

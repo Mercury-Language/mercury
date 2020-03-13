@@ -102,8 +102,8 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         AmbiPieces = [words("Error: ambiguous predicate name"),
             simple_call(SimpleCallId), words("in"),
             quote("pragma foreign_proc"), suffix("."), nl],
-        AmbiSpec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-            Context, AmbiPieces),
+        AmbiSpec = simplest_spec($pred, severity_error,
+            phase_parse_tree_to_hlds, Context, AmbiPieces),
         !:Specs = [AmbiSpec | !.Specs]
     ),
 
@@ -170,8 +170,8 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
             Pieces = [words("Error:"), pragma_decl("foreign_proc"),
                 words("declaration for imported"),
                 simple_call(SimpleCallId), suffix("."), nl],
-            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else if
             % Don't add clauses for foreign languages other than the ones
@@ -224,8 +224,8 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
                     pragma_decl("foreign_proc"), words("declaration"),
                     words("for undeclared mode of"),
                     simple_call(SimpleCallId), suffix("."), nl],
-                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                    Context, Pieces),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         )
@@ -278,8 +278,8 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
         (
             AllowDefnOfBuiltin = no,
             Pieces = [words("Error: foreign_proc for builtin."), nl],
-            Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                Context, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             AllowDefnOfBuiltin = yes
@@ -365,7 +365,7 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                     MultiplyOccurringArgVars)),
                 words("occur multiple times in the argument list."), nl]
         ),
-        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces1 ++ Pieces2),
         !:Specs = [Spec | !.Specs]
     ;
@@ -396,8 +396,8 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                     words("but that"), p_or_f(PredOrFunc),
                     words("has been declared"), words(PurityStr),
                     suffix("."), nl],
-                Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
-                    Context, Pieces),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ),
@@ -594,7 +594,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                         MsgA = simplest_msg(NewContext, PiecesA),
                         MsgB = error_msg(yes(FirstClauseContext),
                             treat_as_first, 0, [always(PiecesB)]),
-                        Spec = error_spec(severity_error,
+                        Spec = error_spec($pred, severity_error,
                             phase_parse_tree_to_hlds, [MsgA, MsgB]),
                         !:Specs = [Spec | !.Specs]
                     else

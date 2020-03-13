@@ -7,4 +7,7 @@
 :- interface.
 
 :- include_module breakpoints.b.testmod.
+
+:- implementation.
+
 :- import_module breakpoints.b.testmod.

@@ -73,11 +73,12 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
                 item_num_foreign_export_enum        :: int,
                 item_num_pragma_term                :: int,
                 item_num_pragma_term2               :: int,
+                item_num_pragma_other_decl          :: int,
+                item_num_pragma_impl                :: int,
+                item_num_pragma_unused_args         :: int,
                 item_num_pragma_exceptions          :: int,
                 item_num_pragma_trailing            :: int,
                 item_num_pragma_mm_tabling          :: int,
-                item_num_pragma_other_pass_2        :: int,
-                item_num_pragma_other_pass_3        :: int,
                 item_num_promise                    :: int,
                 item_num_typeclass                  :: int,
                 item_num_instance                   :: int,
@@ -133,7 +134,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
 
 init_item_stats =
     item_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0).
+        0, 0, 0, 0).
 
     % Initialize a goal_stats structure.
     %
@@ -153,39 +154,43 @@ init_goal_stats =
 
 gather_stats_in_aug_comp_unit(AugCompUnit, !:CompUnitStats) :-
     AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
-        _ModuleVersionNumbers, SrcItemBlocks,
-        DirectIntItemBlocks, IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks),
+        _ModuleVersionNumbers, _ParseTreeModuleSrc, _AncestorIntSpecs,
+        _DirectIntSpecs, _IndirectIntSpecs,
+        _PlainOptSpecs, _TransOptSpecs, _IntForOptSpecs),
+    map.init(!:CompUnitStats).
+    % XXX The existing code in this module gathers statistics about
+    % the old structure of aug_compilation_units. It should be adapted
+    % to work on their new structure the next time we need statistics
+    % about item kinds.
+%   gather_stats_in_item_blocks(section_name_src, SrcItemBlocks,
+%       !CompUnitStats),
+%   gather_stats_in_item_blocks(section_name_int, DirectIntItemBlocks,
+%       !CompUnitStats),
+%   gather_stats_in_item_blocks(section_name_int, IndirectIntItemBlocks,
+%       !CompUnitStats),
+%   gather_stats_in_item_blocks(section_name_int_for_opt, IntForOptItemBlocks,
+%       !CompUnitStats),
+%   gather_stats_in_item_blocks(section_name_opt, OptItemBlocks,
+%       !CompUnitStats).
 
-    map.init(!:CompUnitStats),
-    gather_stats_in_item_blocks(section_name_src, SrcItemBlocks,
-        !CompUnitStats),
-    gather_stats_in_item_blocks(section_name_int, DirectIntItemBlocks,
-        !CompUnitStats),
-    gather_stats_in_item_blocks(section_name_int, IndirectIntItemBlocks,
-        !CompUnitStats),
-    gather_stats_in_item_blocks(section_name_int_for_opt, IntForOptItemBlocks,
-        !CompUnitStats),
-    gather_stats_in_item_blocks(section_name_opt, OptItemBlocks,
-        !CompUnitStats).
-
-:- func section_name_src(src_module_section) = string.
-section_name_src(sms_interface) = "src_int".
-section_name_src(sms_implementation) = "src_impl".
-section_name_src(sms_impl_but_exported_to_submodules) = "src_impl_sub".
-
-:- func section_name_int(int_module_section) = string.
-section_name_int(ims_imported_or_used(_, _, _, iou_imported)) = "int_imported".
-section_name_int(ims_imported_or_used(_, _, _, iou_used)) = "int_used".
-section_name_int(ims_imported_or_used(_, _, _, iou_used_and_imported)) =
-    "int_used_and_imported".
-section_name_int(ims_abstract_imported(_, _)) = "int_abstract_imported".
-
-:- func section_name_opt(opt_module_section) = string.
-section_name_opt(oms_opt_imported(_, _)) = "opt_imported".
-
-:- func section_name_int_for_opt(int_for_opt_module_section) = string.
-section_name_int_for_opt(ioms_opt_imported(_, _)) = "int_for_opt_imported".
+% :- func section_name_src(src_module_section) = string.
+% section_name_src(sms_interface) = "src_int".
+% section_name_src(sms_implementation) = "src_impl".
+% section_name_src(sms_impl_but_exported_to_submodules) = "src_impl_sub".
+% 
+% :- func section_name_int(int_module_section) = string.
+% section_name_int(ims_imported_or_used(_, _, _, iou_imported)) =
+%     "int_imported".
+% section_name_int(ims_imported_or_used(_, _, _, iou_used)) = "int_used".
+% section_name_int(ims_imported_or_used(_, _, _, iou_used_and_imported)) =
+%     "int_used_and_imported".
+% section_name_int(ims_abstract_imported(_, _)) = "int_abstract_imported".
+% 
+% :- func section_name_opt(opt_module_section) = string.
+% section_name_opt(oms_opt_imported(_, _)) = "opt_imported".
+% 
+% :- func section_name_int_for_opt(int_for_opt_module_section) = string.
+% section_name_int_for_opt(ioms_opt_imported(_, _)) = "int_for_opt_imported".
 
 %-----------------------------------------------------------------------------%
 
@@ -195,6 +200,7 @@ section_name_int_for_opt(ioms_opt_imported(_, _)) = "int_for_opt_imported".
 :- pred gather_stats_in_item_blocks((func(MS) = string)::in,
     list(item_block(MS))::in,
     comp_unit_stats::in, comp_unit_stats::out) is det.
+:- pragma consider_used(gather_stats_in_item_blocks/4).
 
 gather_stats_in_item_blocks(_, [], !CompUnitStats).
 gather_stats_in_item_blocks(SectionFunc, [ItemBlock | ItemBlocks],
@@ -263,8 +269,15 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
         !ItemStats ^ item_num_foreign_export_enum :=
             !.ItemStats ^ item_num_foreign_export_enum + 1
     ;
-        Item = item_pragma(ItemPragmaInfo),
-        gather_stats_in_item_pragma(ItemPragmaInfo, !ItemStats)
+        Item = item_decl_pragma(ItemDeclPragmaInfo),
+        gather_stats_in_item_decl_pragma(ItemDeclPragmaInfo, !ItemStats)
+    ;
+        Item = item_impl_pragma(_),
+        !ItemStats ^ item_num_pragma_impl :=
+            !.ItemStats ^ item_num_pragma_impl + 1
+    ;
+        Item = item_generated_pragma(ItemGenPragmaInfo),
+        gather_stats_in_item_gen_pragma(ItemGenPragmaInfo, !ItemStats)
     ;
         Item = item_promise(_),
         !ItemStats ^ item_num_promise := !.ItemStats ^ item_num_promise + 1
@@ -289,66 +302,55 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
         !ItemStats ^ item_num_type_repn := !.ItemStats ^ item_num_type_repn + 1
     ).
 
-:- pred gather_stats_in_item_pragma(item_pragma_info::in,
+:- pred gather_stats_in_item_decl_pragma(item_decl_pragma_info::in,
     item_stats::in, item_stats::out) is det.
 
-gather_stats_in_item_pragma(ItemPragmaInfo, !ItemStats) :-
-    ItemPragmaInfo = item_pragma_info(PragmaType, _, _),
+gather_stats_in_item_decl_pragma(ItemDeclPragmaInfo, !ItemStats) :-
+    ItemDeclPragmaInfo = item_pragma_info(Pragma, _, _),
     (
-        PragmaType = pragma_termination_info(_),
+        Pragma = decl_pragma_termination_info(_),
         !ItemStats ^ item_num_pragma_term :=
             !.ItemStats ^ item_num_pragma_term + 1
     ;
-        PragmaType = pragma_termination2_info(_),
+        Pragma = decl_pragma_termination2_info(_),
         !ItemStats ^ item_num_pragma_term2 :=
             !.ItemStats ^ item_num_pragma_term2 + 1
     ;
-        PragmaType = pragma_exceptions(_),
+        ( Pragma = decl_pragma_type_spec(_)
+        ; Pragma = decl_pragma_obsolete_pred(_)
+        ; Pragma = decl_pragma_obsolete_proc(_)
+        ; Pragma = decl_pragma_oisu(_)
+        ; Pragma = decl_pragma_terminates(_)
+        ; Pragma = decl_pragma_does_not_terminate(_)
+        ; Pragma = decl_pragma_check_termination(_)
+        ; Pragma = decl_pragma_structure_sharing(_)
+        ; Pragma = decl_pragma_structure_reuse(_)
+        ),
+        !ItemStats ^ item_num_pragma_other_decl :=
+            !.ItemStats ^ item_num_pragma_other_decl + 1
+    ).
+
+:- pred gather_stats_in_item_gen_pragma(item_generated_pragma_info::in,
+    item_stats::in, item_stats::out) is det.
+
+gather_stats_in_item_gen_pragma(ItemGenPragmaInfo, !ItemStats) :-
+    ItemGenPragmaInfo = item_pragma_info(Pragma, _, _),
+    (
+        Pragma = gen_pragma_unused_args(_),
+        !ItemStats ^ item_num_pragma_unused_args :=
+            !.ItemStats ^ item_num_pragma_unused_args + 1
+    ;
+        Pragma = gen_pragma_exceptions(_),
         !ItemStats ^ item_num_pragma_exceptions :=
             !.ItemStats ^ item_num_pragma_exceptions + 1
     ;
-        PragmaType = pragma_trailing_info(_),
+        Pragma = gen_pragma_trailing_info(_),
         !ItemStats ^ item_num_pragma_trailing :=
             !.ItemStats ^ item_num_pragma_trailing + 1
     ;
-        PragmaType = pragma_mm_tabling_info(_),
+        Pragma = gen_pragma_mm_tabling_info(_),
         !ItemStats ^ item_num_pragma_mm_tabling :=
             !.ItemStats ^ item_num_pragma_mm_tabling + 1
-    ;
-        ( PragmaType = pragma_foreign_decl(_)
-        ; PragmaType = pragma_foreign_code(_)
-        ; PragmaType = pragma_external_proc(_)
-        ; PragmaType = pragma_inline(_)
-        ; PragmaType = pragma_no_inline(_)
-        ; PragmaType = pragma_consider_used(_)
-        ; PragmaType = pragma_unused_args(_)
-        ; PragmaType = pragma_obsolete_pred(_)
-        ; PragmaType = pragma_obsolete_proc(_)
-        ; PragmaType = pragma_no_detism_warning(_)
-        ; PragmaType = pragma_promise_eqv_clauses(_)
-        ; PragmaType = pragma_promise_pure(_)
-        ; PragmaType = pragma_promise_semipure(_)
-        ; PragmaType = pragma_terminates(_)
-        ; PragmaType = pragma_does_not_terminate(_)
-        ; PragmaType = pragma_check_termination(_)
-        ; PragmaType = pragma_mode_check_clauses(_)
-        ; PragmaType = pragma_require_feature_set(_)
-        ; PragmaType = pragma_require_tail_recursion(_)
-        ),
-        !ItemStats ^ item_num_pragma_other_pass_2 :=
-            !.ItemStats ^ item_num_pragma_other_pass_2 + 1
-    ;
-        ( PragmaType = pragma_foreign_proc(_)
-        ; PragmaType = pragma_type_spec(_)
-        ; PragmaType = pragma_tabled(_)
-        ; PragmaType = pragma_fact_table(_)
-        ; PragmaType = pragma_oisu(_)
-        ; PragmaType = pragma_foreign_proc_export(_)
-        ; PragmaType = pragma_structure_sharing(_)
-        ; PragmaType = pragma_structure_reuse(_)
-        ),
-        !ItemStats ^ item_num_pragma_other_pass_3 :=
-            !.ItemStats ^ item_num_pragma_other_pass_3 + 1
     ).
 
 %-----------------------------------------------------------------------------%
@@ -542,9 +544,9 @@ write_section_stats(Stream, SectionName - SectionStats, !IO) :-
 write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     ItemStats = item_stats(Clause, TypeDefn, InstDefn, ModeDefn,
         PredDecl, ModeDecl, FIM, ForeignEnum, ForeignExportEnum,
-        PragmaTerm, PragmaTerm2, PragmaExcp, PragmaTrail, PragmaMM,
-        PragmaPass2, PragmaPass3, Promise, Typeclass, Instance,
-        Initialise, Finalise, Mutable, TypeRepn),
+        PragmaTerm, PragmaTerm2, PragmaDecl, PragmaImpl,
+        PragmaUArgs, PragmaExcp, PragmaTrail, PragmaMM,
+        Promise, Typeclass, Instance, Initialise, Finalise, Mutable, TypeRepn),
     write_one_stat(Stream, SectionName, "item_clause", Clause, !IO),
     write_one_stat(Stream, SectionName, "item_type_defn", TypeDefn, !IO),
     write_one_stat(Stream, SectionName, "item_inst_defn", InstDefn, !IO),
@@ -557,11 +559,12 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
         ForeignExportEnum, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_term", PragmaTerm, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_term2", PragmaTerm2, !IO),
+    write_one_stat(Stream, SectionName, "item_pragma_decl", PragmaDecl, !IO),
+    write_one_stat(Stream, SectionName, "item_pragma_impl", PragmaImpl, !IO),
+    write_one_stat(Stream, SectionName, "item_pragma_uargs", PragmaUArgs, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_excp", PragmaExcp, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_trail", PragmaTrail, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_mm", PragmaMM, !IO),
-    write_one_stat(Stream, SectionName, "item_pragma_pass2", PragmaPass2, !IO),
-    write_one_stat(Stream, SectionName, "item_pragma_pass3", PragmaPass3, !IO),
     write_one_stat(Stream, SectionName, "item_promise", Promise, !IO),
     write_one_stat(Stream, SectionName, "item_typeclass", Typeclass, !IO),
     write_one_stat(Stream, SectionName, "item_instance", Instance, !IO),

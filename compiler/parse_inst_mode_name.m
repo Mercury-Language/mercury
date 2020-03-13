@@ -110,8 +110,8 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: a variable such as"), quote(TermStr),
             words("is not a valid mode."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeMode = error1([Spec])
     ;
         Term = term.functor(TermFunctor, ArgTerms0, Context),
@@ -133,8 +133,8 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error:"), words(Name), words("such as"), quote(TermStr),
                 words("cannot be a valid mode."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeMode = error1([Spec])
         ;
             TermFunctor = term.atom(FunctorName),
@@ -313,8 +313,8 @@ parse_higher_order_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
             quote("func(<mode1>, ...) = <return_mode> is <detism>"), nl,
             quote("any_func(<mode1>, ...) = <return_mode> is <detism>"), nl,
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(BeforeIsTerm), [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(BeforeIsTerm), Pieces),
         MaybeMode = error1([Spec])
     ).
 
@@ -356,8 +356,8 @@ parse_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeInst) :-
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error:"), quote(TermStr),
                 words("is not a valid inst."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeInst = error1([Spec])
         ;
             Functor = term.atom(Name),
@@ -382,8 +382,8 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
                 words("Error: the builtin inst"), quote(Name),
                 words("should only be used with arity"),
                 words(ExpectedArityStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeInst = error1([Spec])
         ;
             KnownInstKind = known_inst_simple(Inst),
@@ -449,9 +449,9 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
                         words("only to inst variables,"),
                         words("not to terms such as"), quote(VarTermStr),
                         suffix("."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(VarTerm),
-                            [always(Pieces)])]),
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree,
+                        get_term_context(VarTerm), Pieces),
                     MaybeInst = error1([Spec])
                 )
             )
@@ -520,8 +520,8 @@ no_allow_constrained_inst_var_result(ContextPieces, Why, VarSet, Term)
         Place = "on the right hand side of the definition of a named mode"
     ;
         Why = wnciv_type_and_mode,
-        % ZZZ This *is* allowed in *some* cases.
-        % ZZZ Add an argument to dont_constrain_inst_vars.
+        % XXX This *is* allowed in *some* cases.
+        % XXX Add an argument to dont_constrain_inst_vars.
         Place = "in a mode annotation on a type"
     ;
         Why = wnciv_solver_type_inst,
@@ -534,8 +534,8 @@ no_allow_constrained_inst_var_result(ContextPieces, Why, VarSet, Term)
         words("Error: a constrained inst variable"),
         words("such as"), quote(TermStr),
         words("may not appear"), words(Place), suffix("."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(Term), [always(Pieces)])]),
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        get_term_context(Term), Pieces),
     MaybeInst = error1([Spec]).
 
 :- type known_compound_inst_kind(T)
@@ -797,8 +797,8 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
             quote("func(<inst1>, ...) = <return_inst> is <detism>"), nl,
             quote("any_func(<inst1>, ...) = <return_inst> is <detism>"), nl,
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(BeforeIsTerm), [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(BeforeIsTerm), Pieces),
         MaybeInst = error1([Spec])
     ).
 
@@ -829,9 +829,9 @@ parse_bound_inst_list(AllowConstrainedInstVar, VarSet, ContextPieces,
                 words("Error: this bound inst lists") |
                 component_list_to_pieces("and", Duplicates)]
                 ++ [words("more than once."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(DisjunctionTerm),
-                    [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree,
+                get_term_context(DisjunctionTerm), Pieces),
             MaybeInst = error1([Spec])
         else
             Inst = bound(Uniqueness, inst_test_no_results, SortedBoundInsts),
@@ -888,8 +888,8 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error:"), quote(TermStr),
             words("is not a bound inst."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeBoundInst = error1([Spec])
     ;
         Term = term.functor(Functor, ArgTerms0, Context),
@@ -924,8 +924,8 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                 words("Error: an implementation defined literal"),
                 words("such as"), quote(TermStr),
                 words("may not be a used as a bound inst."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             MaybeBoundInst = error1([Spec])
         ;
             ( Functor = term.integer(_, _, _, _)
@@ -948,8 +948,8 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                     [lower_case_next_if_not_first, words("Error:"),
                     words(FunctorStr), words("such as"),
                     quote(TermStr), words("may not have any arguments."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(Context, [always(Pieces)])]),
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, Context, Pieces),
                 MaybeBoundInst = error1([Spec])
             )
         )
@@ -967,8 +967,8 @@ parse_determinism(VarSet, Term, MaybeDetism) :-
         TermStr = describe_error_term(VarSet, Term),
         DetismPieces = [words("Error:"), quote(TermStr),
             words("is not a valid determinism."), nl],
-        DetismSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(DetismPieces)])]),
+        DetismSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(Term), DetismPieces),
         MaybeDetism = error1([DetismSpec])
     ).
 

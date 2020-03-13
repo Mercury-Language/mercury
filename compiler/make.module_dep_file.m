@@ -49,6 +49,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_sym_name.
@@ -353,8 +354,7 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
         ContainsForeignCode),
     module_and_imports_get_contains_foreign_export(ModuleAndImports,
         ContainsForeignExport),
-    module_and_imports_get_foreign_import_modules(ModuleAndImports,
-        ForeignImportModules),
+    module_and_imports_get_c_j_cs_e_fims(ModuleAndImports, CJCsEFIMs),
     module_and_imports_get_foreign_include_files(ModuleAndImports,
         ForeignIncludeFiles),
     module_and_imports_get_has_main(ModuleAndImports, HasMain),
@@ -380,15 +380,23 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     io.write_string("},\n\t{", !IO),
     io.write_list(FactDeps, ", ", io.write, !IO),
     io.write_string("},\n\t{", !IO),
-    ( if ContainsForeignCode = contains_foreign_code(Langs) then
-        ForeignLanguages = set.to_sorted_list(Langs)
-    else
+    (
+        ContainsForeignCode = foreign_code_langs_known(ForeignLanguageSet),
+        ForeignLanguages = set.to_sorted_list(ForeignLanguageSet)
+    ;
+        ContainsForeignCode = foreign_code_langs_unknown,
+        % XXX Setting ForeignLanguages to empty when we know that
+        % we *don't* know its correct value looks wrong, but this
+        % may or may not be a bug. It is possible that execution cannot reach
+        % this predicate if this field in the module_and_imports structure
+        % has not been filled in.
+        % XXX CLEANUP We should try replacing this assignment with an abort.
         ForeignLanguages = []
     ),
     io.write_list(ForeignLanguages,
         ", ", mercury_output_foreign_language_string, !IO),
     io.write_string("},\n\t{", !IO),
-    FIMSpecs = get_all_fim_specs(ForeignImportModules),
+    FIMSpecs = get_all_fim_specs(CJCsEFIMs),
     io.write_list(set.to_sorted_list(FIMSpecs), ", ", write_fim_spec, !IO),
     io.write_string("},\n\t", !IO),
     contains_foreign_export_to_string(ContainsForeignExport,
@@ -578,7 +586,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         )
     then
         ContainsForeignCode =
-            construct_contains_foreign_code(ForeignLanguages),
+            foreign_code_langs_known(set.list_to_set(ForeignLanguages)),
         make_module_dep_module_and_imports(SourceFileName, ModuleDir,
             SourceFileModuleName, ModuleName,
             Parents, Children, NestedChildren, IntDeps, ImpDeps, FactDeps,
@@ -691,14 +699,6 @@ foreign_include_term(Term, ForeignInclude) :-
 contains_foreign_export_term(Term, ContainsForeignExport) :-
     atom_term(Term, Atom, []),
     contains_foreign_export_to_string(ContainsForeignExport, Atom).
-
-:- func construct_contains_foreign_code(list(foreign_language))
-    = contains_foreign_code.
-
-construct_contains_foreign_code([]) = contains_no_foreign_code.
-construct_contains_foreign_code(Langs) = contains_foreign_code(LangSet) :-
-    Langs = [_ | _],
-    LangSet = set.list_to_set(Langs).
 
 :- pred has_main_term(term::in, has_main::out) is semidet.
 

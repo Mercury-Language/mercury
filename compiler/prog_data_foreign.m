@@ -59,7 +59,7 @@
     %
     % C++ is commented out while lang_cplusplus is commented out
     % in the foreign_language type.
-:- type foreign_import_modules
+:- type c_j_cs_e_fims
     --->    c_j_cs_e_fims(
                 fim_c           :: set(module_name),
                 % fim_cplusplus :: set(module_name),
@@ -77,25 +77,22 @@
                 fimspec_module_name             :: module_name
             ).
 
-:- func init_foreign_import_modules = foreign_import_modules.
+:- func init_foreign_import_modules = c_j_cs_e_fims.
 
 :- pred add_foreign_import_module(foreign_language::in, module_name::in,
-    foreign_import_modules::in, foreign_import_modules::out) is det.
+    c_j_cs_e_fims::in, c_j_cs_e_fims::out) is det.
 
 :- pred add_fim_spec(fim_spec::in,
-    foreign_import_modules::in, foreign_import_modules::out) is det.
+    c_j_cs_e_fims::in, c_j_cs_e_fims::out) is det.
 
-:- func get_all_fim_specs(foreign_import_modules) =
-    set(fim_spec).
+:- func get_all_fim_specs(c_j_cs_e_fims) = set(fim_spec).
 
-:- func get_all_foreign_import_modules(foreign_import_modules) =
-    set(module_name).
+:- func get_all_foreign_import_modules(c_j_cs_e_fims) = set(module_name).
 
-:- func get_lang_fim_specs(foreign_import_modules,
-    foreign_language) = set(fim_spec).
+:- func get_lang_fim_specs(c_j_cs_e_fims, foreign_language) = set(fim_spec).
 
-:- func get_lang_fim_modules(foreign_import_modules,
-    foreign_language) = set(module_name).
+:- func get_lang_fim_modules(c_j_cs_e_fims, foreign_language)
+    = set(module_name).
 
 :- implementation.
 

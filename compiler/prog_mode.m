@@ -1179,8 +1179,8 @@ report_inconsistent_constrained_inst_vars(WhereDesc, Context, InstVarSet,
         ),
         Pieces = [words("Error: inconsistent constraints on") | VarsPieces]
             ++ [words(WhereDesc), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         MaybeSpec = yes(Spec)
     ).
 

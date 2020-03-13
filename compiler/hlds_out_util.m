@@ -267,6 +267,8 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
     ).
 
 pred_info_id_to_string(PredInfo) = Str :-
+    % XXX CLEANUP Either this function should replace write_origin in
+    % hlds_out_pred.m, or vice versa.
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
@@ -291,13 +293,17 @@ pred_info_id_to_string(PredInfo) = Str :-
         ClassId = class_id(ClassName, _),
         ClassStr = sym_name_to_string(ClassName),
         TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
-        Str = string.append_list([
-            "instance method ", MethodStr,
-            " for `", ClassStr, "(", TypeStrs, ")'"
-        ])
+        string.format("instance method %s for `%s(%s)'",
+            [s(MethodStr), s(ClassStr), s(TypeStrs)], Str)
     ;
-        Origin = origin_class_method,
-        Str = "class method"
+        Origin = origin_class_method(ClassId, MethodId),
+        ClassId = class_id(ClassSymName, ClassArity),
+        MethodId = pf_sym_name_arity(MethodPredOrFunc,
+            MethodSymName, MethodArity),
+        string.format("class method %s %s/%d for %s/%d",
+            [s(pred_or_func_to_string(MethodPredOrFunc)),
+            s(sym_name_to_string(MethodSymName)), i(MethodArity),
+            s(sym_name_to_string(ClassSymName)), i(ClassArity)], Str)
     ;
         Origin = origin_assertion(FileName, LineNumber),
         ( if pred_info_is_promise(PredInfo, PromiseType) then

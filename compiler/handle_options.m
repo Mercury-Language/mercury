@@ -178,7 +178,7 @@ convert_option_table_result_to_globals(MaybeOptionTable0, !:Specs, Globals,
         OptionTablePieces = [words(ErrorMessage)],
         OptionTableMsg = error_msg(no, do_not_treat_as_first, 0,
             [always(OptionTablePieces)]),
-        OptionTableSpec = error_spec(severity_error, phase_options,
+        OptionTableSpec = error_spec($pred, severity_error, phase_options,
             [OptionTableMsg]),
         !:Specs = [OptionTableSpec],
         generate_default_globals(Globals, !IO)

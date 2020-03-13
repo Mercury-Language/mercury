@@ -6,6 +6,8 @@ bad_item_in_interface.m:035: Error: `:- pragma foreign_code' declaration in
 bad_item_in_interface.m:035:   module interface.
 bad_item_in_interface.m:040: Error: `:- pragma foreign_export' declaration in
 bad_item_in_interface.m:040:   module interface.
+bad_item_in_interface.m:046: Error: `:- pragma foreign_export_enum' declaration
+bad_item_in_interface.m:046:   in module interface.
 bad_item_in_interface.m:048: Error: `:- pragma inline' declaration in module
 bad_item_in_interface.m:048:   interface.
 bad_item_in_interface.m:049: Error: `:- pragma no_inline' declaration in module

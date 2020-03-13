@@ -1049,7 +1049,7 @@ build_mercury_foreign_enum_map(TypeCtor, CtorNames, CtorNamesSet,
                 [suffix("."), nl_indent_delta(-2)]
         ),
         Pieces = MainPieces ++ CtorNamePieces ++ ForeignNamePieces,
-        Spec = simplest_spec(severity_error, phase_parse_tree_to_hlds,
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ),
@@ -1099,9 +1099,9 @@ non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, Enum, !Specs) :-
         words("so there must not be any"),
         pragma_decl("foreign_enum"), words("declarations for it."), nl],
     DuPieces = [words("That Mercury definition is here."), nl],
-    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-        [simple_msg(Enum ^ fe_context, [always(EnumPieces)]),
-        simple_msg(DuDefn ^ td_context, [always(DuPieces)])]),
+    Spec = error_spec($pred, severity_warning, phase_term_to_parse_tree,
+        [simplest_msg(Enum ^ fe_context, EnumPieces),
+        simplest_msg(DuDefn ^ td_context, DuPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred du_imp_report_any_foreign_defn_in_int(type_ctor::in,
@@ -1120,9 +1120,9 @@ du_imp_report_any_foreign_defn_in_int(TypeCtor, DuDefn, MaybeForeignDefn,
             words("any foreign type definitions for it"),
             words("must be in the implementation section as well."), nl],
         DuPieces = [words("That Mercury definition is here."), nl],
-        Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-            [simple_msg(ForeignDefn ^ td_context, [always(ForeignPieces)]),
-            simple_msg(DuDefn ^ td_context, [always(DuPieces)])]),
+        Spec = error_spec($pred, severity_warning, phase_term_to_parse_tree,
+            [simplest_msg(ForeignDefn ^ td_context, ForeignPieces),
+            simplest_msg(DuDefn ^ td_context, DuPieces)]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1141,8 +1141,8 @@ report_any_foreign_type_without_declaration(TypeCtor, MaybeForeignDefn,
             unqual_type_ctor(TypeCtor), words("without either"),
             words("a Mercury definition or a Mercury declaration for"),
             unqual_type_ctor(TypeCtor), suffix("."), nl],
-        Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-            [simple_msg(ForeignDefn ^ td_context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_warning, phase_term_to_parse_tree,
+            ForeignDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1163,9 +1163,9 @@ foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
             words("must be in the interface section as well."), nl],
         IntPieces = [words("That foreign definition in the interface"),
             words("is here."), nl],
-        Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-            [simple_msg(ImpForeignDefn ^ td_context, [always(ImpPieces)]),
-            simple_msg(IntForeignContext, [always(IntPieces)])]),
+        Spec = error_spec($pred, severity_warning, phase_term_to_parse_tree,
+            [simplest_msg(ImpForeignDefn ^ td_context, ImpPieces),
+            simplest_msg(IntForeignContext, IntPieces)]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1182,8 +1182,8 @@ report_any_nonabstract_solver_type_in_int(TypeCtor, MaybeDefn, !Specs) :-
             unqual_type_ctor(TypeCtor), words("may be defined"),
             words("(as opposed to declared)"),
             words("only in the implementation section."), nl],
-        Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-            [simple_msg(Defn ^ td_context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_warning, phase_term_to_parse_tree,
+            Defn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1201,8 +1201,8 @@ report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
             unqual_type_ctor(TypeCtor), words("is redundant,"),
             words("since the type has a definition in the"),
             words(Section), words("section."), nl],
-        Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-            [simple_msg(ImpAbstractDefn ^ td_context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_warning, phase_term_to_parse_tree,
+            ImpAbstractDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1222,9 +1222,9 @@ report_any_incompatible_type_definition(TypeCtor, UsedContext, Kind, Section,
             words("with the"), words(Kind), words("definition"),
             words("in the"), words(Section), words("section."), nl],
         UsedPieces = [words("That definition is here."), nl],
-        Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-            [simple_msg(DefnContext, [always(MainPieces)]),
-            simple_msg(UsedContext, [always(UsedPieces)])]),
+        Spec = error_spec($pred, severity_warning, phase_term_to_parse_tree,
+            [simplest_msg(DefnContext, MainPieces),
+            simplest_msg(UsedContext, UsedPieces)]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1239,9 +1239,9 @@ report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
         words("is incompatible with the"), words(Kind),
         words("definition in the"), words(Section), words("section."), nl],
     UsedPieces = [words("That definition is here."), nl],
-    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-        [simple_msg(Enum ^ fe_context, [always(MainPieces)]),
-        simple_msg(UsedContext, [always(UsedPieces)])]),
+    Spec = error_spec($pred, severity_warning, phase_term_to_parse_tree,
+        [simplest_msg(Enum ^ fe_context, MainPieces),
+        simplest_msg(UsedContext, UsedPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_foreign_enum_for_undefined_type(type_ctor::in, string::in,
@@ -1253,8 +1253,8 @@ report_foreign_enum_for_undefined_type(TypeCtor, UndefOrUndecl, Enum,
     Pieces = [words("Error:"), pragma_decl("foreign_enum"),
         words("declaration for the"), words(UndefOrUndecl),
         words("type"), unqual_type_ctor(TypeCtor), suffix("."), nl],
-    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-        [simple_msg(Enum ^ fe_context, [always(Pieces)])]),
+    Spec = simplest_spec($pred, severity_warning, phase_term_to_parse_tree,
+        Enum ^ fe_context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred maybe_report_declared_but_undefined_type(maybe_insist_on_defn::in,
@@ -1277,8 +1277,8 @@ maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
     then
         Pieces = [words("Error: the type"), unqual_type_ctor(TypeCtor),
             words("has this declaration, but it has no definition."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(AbsTypeDefn ^ td_context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            AbsTypeDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         % Do not report undefined types in builtin modules, since
@@ -1384,8 +1384,8 @@ report_type_ctor_enum_in_int(ModuleName, TypeCtor, ForeignEnum, !Specs) :-
             words("in the interface section of its defining module."),
             words("Such declarations must be"),
             words("in the implementation section."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(ForeignEnum ^ fe_context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            ForeignEnum ^ fe_context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         Pieces = [words("Error:"), pragma_decl("foreign_enum"),
@@ -1393,8 +1393,8 @@ report_type_ctor_enum_in_int(ModuleName, TypeCtor, ForeignEnum, !Specs) :-
             words("in the wrong module."),
             words("Such declarations must be in the implementation section"),
             words("of the module that defines the type they are for."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(ForeignEnum ^ fe_context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            ForeignEnum ^ fe_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1442,9 +1442,9 @@ report_duplicate_type_defn(Kind, TypeCtor, LeastContext, Context, !Specs) :-
     MainPieces = [words("Error: duplicate"), words(Kind),
         words("definition for"), unqual_type_ctor(TypeCtor), suffix("."), nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(MainPieces)]),
-        simple_msg(LeastContext, [always(LeastPieces)])]),
+    Spec = error_spec($pred, severity_error, phase_term_to_parse_tree,
+        [simplest_msg(Context, MainPieces),
+        simplest_msg(LeastContext, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred at_most_one_foreign_type_for_lang(type_ctor::in, foreign_language::in,
@@ -1539,9 +1539,9 @@ report_duplicate_foreign_defn(TypeOrEnum, TypeCtor, Lang,
         words("definition in"), fixed(foreign_language_string(Lang)),
         words("for"), unqual_type_ctor(TypeCtor), suffix("."), nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(MainPieces)]),
-        simple_msg(LeastContext, [always(LeastPieces)])]),
+    Spec = error_spec($pred, severity_error, phase_term_to_parse_tree,
+        [simplest_msg(Context, MainPieces),
+        simplest_msg(LeastContext, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- func get_maybe_type_defns(list(maybe(item_type_defn_info_general(T))))
@@ -1695,7 +1695,7 @@ report_duplicate_field_name(FieldName, FirstFNLocn, FNLocn, !Specs) :-
     ),
     FirstPieces = [words("The first occurrence of this field name"),
         words("is here."), nl],
-    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
+    Spec = error_spec($pred, severity_warning, phase_term_to_parse_tree,
         [simplest_msg(Context, MainPieces),
         simplest_msg(FirstContext, FirstPieces)]),
     !:Specs = [Spec | !.Specs].

@@ -28,8 +28,12 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_pragma(merc_out_info::in,
-    item_pragma_info::in, io::di, io::uo) is det.
+:- pred mercury_output_item_decl_pragma(merc_out_info::in,
+    item_decl_pragma_info::in, io::di, io::uo) is det.
+:- pred mercury_output_item_impl_pragma(merc_out_info::in,
+    item_impl_pragma_info::in, io::di, io::uo) is det.
+:- pred mercury_output_item_generated_pragma(merc_out_info::in,
+    item_generated_pragma_info::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -130,130 +134,141 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_pragma(Info, ItemPragma, !IO) :-
-    ItemPragma = item_pragma_info(Pragma, Context, _SeqNum),
+mercury_output_item_decl_pragma(Info, ItemDeclPragma, !IO) :-
+    ItemDeclPragma = item_pragma_info(Pragma, Context, _SeqNum),
     maybe_output_line_number(Info, Context, !IO),
     Lang = get_output_lang(Info),
     (
-        Pragma = pragma_foreign_decl(FDInfo),
-        mercury_output_pragma_foreign_decl(FDInfo, !IO)
+        Pragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
+        mercury_output_pragma_obsolete_pred(ObsoletePredInfo, !IO)
     ;
-        Pragma = pragma_foreign_code(FCInfo),
-        mercury_output_pragma_foreign_code(FCInfo, !IO)
+        Pragma = decl_pragma_obsolete_proc(ObsoleteProcInfo),
+        mercury_output_pragma_obsolete_proc(Lang, ObsoleteProcInfo, !IO)
     ;
-        Pragma = pragma_foreign_proc(FPInfo),
-        mercury_output_pragma_foreign_proc(Lang, FPInfo, !IO)
-    ;
-        Pragma = pragma_foreign_proc_export(FPEInfo),
-        mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, !IO)
-    ;
-        Pragma = pragma_external_proc(ExternalInfo),
-        mercury_format_pragma_external_proc(ExternalInfo, !IO)
-    ;
-        Pragma = pragma_type_spec(TypeSpecInfo),
+        Pragma = decl_pragma_type_spec(TypeSpecInfo),
         VarNamePrint = print_name_only,
         mercury_output_pragma_type_spec(VarNamePrint, Lang, TypeSpecInfo, !IO)
     ;
-        Pragma = pragma_inline(PredNameArity),
-        PredNameArity = pred_name_arity(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
-            "inline", no, !IO)
-    ;
-        Pragma = pragma_no_inline(PredNameArity),
-        PredNameArity = pred_name_arity(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
-            "no_inline", no, !IO)
-    ;
-        Pragma = pragma_consider_used(PredNameArity),
-        PredNameArity = pred_name_arity(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
-            "consider_used", no, !IO)
-    ;
-        Pragma = pragma_unused_args(UnusedArgsInfo),
-        mercury_output_pragma_unused_args(UnusedArgsInfo, !IO)
-    ;
-        Pragma = pragma_exceptions(ExceptionsInfo),
-        mercury_output_pragma_exceptions(ExceptionsInfo, !IO)
-    ;
-        Pragma = pragma_trailing_info(TrailingInfo),
-        mercury_output_pragma_trailing_info(TrailingInfo, !IO)
-    ;
-        Pragma = pragma_mm_tabling_info(TablingInfo),
-        mercury_output_pragma_mm_tabling_info(TablingInfo, !IO)
-    ;
-        Pragma = pragma_obsolete_pred(ObsoletePredInfo),
-        mercury_output_pragma_obsolete_pred(ObsoletePredInfo, !IO)
-    ;
-        Pragma = pragma_obsolete_proc(ObsoleteProcInfo),
-        mercury_output_pragma_obsolete_proc(Lang, ObsoleteProcInfo, !IO)
-    ;
-        Pragma = pragma_no_detism_warning(PredNameArity),
-        PredNameArity = pred_name_arity(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
-            "no_determinism_warning", no, !IO)
-    ;
-        Pragma = pragma_require_tail_recursion(RequireTailrecPragma),
-        mercury_output_pragma_require_tail_recursion(Lang,
-            RequireTailrecPragma, !IO)
-    ;
-        Pragma = pragma_tabled(TabledInfo),
-        mercury_output_pragma_tabled(TabledInfo, !IO)
-    ;
-        Pragma = pragma_fact_table(FactTableInfo),
-        mercury_format_pragma_fact_table(FactTableInfo, !IO)
-    ;
-        Pragma = pragma_oisu(OISUInfo),
+        Pragma = decl_pragma_oisu(OISUInfo),
         mercury_output_pragma_oisu(OISUInfo, !IO)
     ;
-        Pragma = pragma_promise_eqv_clauses(PredNameArity),
-        PredNameArity = pred_name_arity(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
-            "promise_equivalent_clauses", no, !IO)
-    ;
-        Pragma = pragma_promise_pure(PredNameArity),
-        PredNameArity = pred_name_arity(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
-            "promise_pure", no, !IO)
-    ;
-        Pragma = pragma_promise_semipure(PredNameArity),
-        PredNameArity = pred_name_arity(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
-            "promise_semipure", no, !IO)
-    ;
-        Pragma = pragma_termination_info(TermInfo),
-        write_pragma_termination_info(Lang, TermInfo, !IO)
-    ;
-        Pragma = pragma_termination2_info(Term2Info),
-        write_pragma_termination2_info(Lang, Term2Info, !IO)
-    ;
-        Pragma = pragma_terminates(PredNameArity),
+        Pragma = decl_pragma_terminates(PredNameArity),
         PredNameArity = pred_name_arity(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "terminates", no, !IO)
     ;
-        Pragma = pragma_does_not_terminate(PredNameArity),
+        Pragma = decl_pragma_does_not_terminate(PredNameArity),
         PredNameArity = pred_name_arity(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "does_not_terminate", no, !IO)
     ;
-        Pragma = pragma_check_termination(PredNameArity),
+        Pragma = decl_pragma_check_termination(PredNameArity),
         PredNameArity = pred_name_arity(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "check_termination", no, !IO)
     ;
-        Pragma = pragma_mode_check_clauses(PredNameArity),
+        Pragma = decl_pragma_termination_info(TermInfo),
+        write_pragma_termination_info(Lang, TermInfo, !IO)
+    ;
+        Pragma = decl_pragma_termination2_info(Term2Info),
+        write_pragma_termination2_info(Lang, Term2Info, !IO)
+    ;
+        Pragma = decl_pragma_structure_sharing(SharingInfo),
+        write_pragma_structure_sharing_info(Lang, SharingInfo, !IO)
+    ;
+        Pragma = decl_pragma_structure_reuse(ReuseInfo),
+        write_pragma_structure_reuse_info(Lang, ReuseInfo, !IO)
+    ).
+
+mercury_output_item_impl_pragma(Info, ItemImplPragma, !IO) :-
+    ItemImplPragma = item_pragma_info(Pragma, Context, _SeqNum),
+    maybe_output_line_number(Info, Context, !IO),
+    Lang = get_output_lang(Info),
+    (
+        Pragma = impl_pragma_foreign_decl(FDInfo),
+        mercury_output_pragma_foreign_decl(FDInfo, !IO)
+    ;
+        Pragma = impl_pragma_foreign_code(FCInfo),
+        mercury_output_pragma_foreign_code(FCInfo, !IO)
+    ;
+        Pragma = impl_pragma_foreign_proc(FPInfo),
+        mercury_output_pragma_foreign_proc(Lang, FPInfo, !IO)
+    ;
+        Pragma = impl_pragma_foreign_proc_export(FPEInfo),
+        mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, !IO)
+    ;
+        Pragma = impl_pragma_external_proc(ExternalInfo),
+        mercury_format_pragma_external_proc(ExternalInfo, !IO)
+    ;
+        Pragma = impl_pragma_fact_table(FactTableInfo),
+        mercury_format_pragma_fact_table(FactTableInfo, !IO)
+    ;
+        Pragma = impl_pragma_inline(PredNameArity),
+        PredNameArity = pred_name_arity(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "inline", no, !IO)
+    ;
+        Pragma = impl_pragma_no_inline(PredNameArity),
+        PredNameArity = pred_name_arity(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "no_inline", no, !IO)
+    ;
+        Pragma = impl_pragma_tabled(TabledInfo),
+        mercury_output_pragma_tabled(TabledInfo, !IO)
+    ;
+        Pragma = impl_pragma_consider_used(PredNameArity),
+        PredNameArity = pred_name_arity(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "consider_used", no, !IO)
+    ;
+        Pragma = impl_pragma_no_detism_warning(PredNameArity),
+        PredNameArity = pred_name_arity(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "no_determinism_warning", no, !IO)
+    ;
+        Pragma = impl_pragma_mode_check_clauses(PredNameArity),
         PredNameArity = pred_name_arity(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "mode_check_clauses", no, !IO)
     ;
-        Pragma = pragma_structure_sharing(SharingInfo),
-        write_pragma_structure_sharing_info(Lang, SharingInfo, !IO)
+        Pragma = impl_pragma_require_tail_rec(RequireTailrecPragma),
+        mercury_output_pragma_require_tail_rec(Lang,
+            RequireTailrecPragma, !IO)
     ;
-        Pragma = pragma_structure_reuse(ReuseInfo),
-        write_pragma_structure_reuse_info(Lang, ReuseInfo, !IO)
+        Pragma = impl_pragma_promise_pure(PredNameArity),
+        PredNameArity = pred_name_arity(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "promise_pure", no, !IO)
     ;
-        Pragma = pragma_require_feature_set(RFSInfo),
+        Pragma = impl_pragma_promise_semipure(PredNameArity),
+        PredNameArity = pred_name_arity(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "promise_semipure", no, !IO)
+    ;
+        Pragma = impl_pragma_promise_eqv_clauses(PredNameArity),
+        PredNameArity = pred_name_arity(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "promise_equivalent_clauses", no, !IO)
+    ;
+        Pragma = impl_pragma_require_feature_set(RFSInfo),
         mercury_output_pragma_require_feature_set(RFSInfo, !IO)
+    ).
+
+mercury_output_item_generated_pragma(Info, ItemGenPragma, !IO) :-
+    ItemGenPragma = item_pragma_info(Pragma, Context, _SeqNum),
+    maybe_output_line_number(Info, Context, !IO),
+    (
+        Pragma = gen_pragma_unused_args(UnusedArgsInfo),
+        mercury_output_pragma_unused_args(UnusedArgsInfo, !IO)
+    ;
+        Pragma = gen_pragma_exceptions(ExceptionsInfo),
+        mercury_output_pragma_exceptions(ExceptionsInfo, !IO)
+    ;
+        Pragma = gen_pragma_trailing_info(TrailingInfo),
+        mercury_output_pragma_trailing_info(TrailingInfo, !IO)
+    ;
+        Pragma = gen_pragma_mm_tabling_info(TablingInfo),
+        mercury_output_pragma_mm_tabling_info(TablingInfo, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1093,11 +1108,11 @@ wrapped_sym_name_and_arity_to_string(SNA) = Str :-
 % Output a require tail recursion pragma
 %
 
-:- pred mercury_output_pragma_require_tail_recursion(output_lang::in,
-    pragma_info_require_tail_recursion::in, io::di, io::uo) is det.
+:- pred mercury_output_pragma_require_tail_rec(output_lang::in,
+    pragma_info_require_tail_rec::in, io::di, io::uo) is det.
 
-mercury_output_pragma_require_tail_recursion(Lang, RequireTR, !IO) :-
-    RequireTR = pragma_info_require_tail_recursion(Proc, Info),
+mercury_output_pragma_require_tail_rec(Lang, RequireTR, !IO) :-
+    RequireTR = pragma_info_require_tail_rec(Proc, Info),
     ProcSpecStr = format_pred_name_arity_mpf_mmode(Lang, Proc),
 
     (

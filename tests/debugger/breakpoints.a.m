@@ -7,10 +7,11 @@
 :- interface.
 
 :- include_module breakpoints.a.testmod.
-:- import_module breakpoints.a.testmod.
 
 :- func afunc = int.
 
 :- implementation.
+
+:- import_module breakpoints.a.testmod.
 
 afunc = 42.

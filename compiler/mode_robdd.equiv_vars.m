@@ -203,8 +203,8 @@ normalise_leader_map(Map) =
 		Map, map.init).
 
 EA + EB = E :-
-	VarsA = set.sorted_list_to_set(map.sorted_keys(EA ^ leader_map)),
-	VarsB = set.sorted_list_to_set(map.sorted_keys(EB ^ leader_map)),
+	VarsA = map.keys_as_set(EA ^ leader_map),
+	VarsB = map.keys_as_set(EB ^ leader_map),
 	Vars = set.to_sorted_list(VarsA `intersect` VarsB),
 	disj_2(Vars, EA, EB, init_equiv_vars, E).
 

@@ -81,6 +81,8 @@
 
 :- implementation.
 
+:- import_module parse_tree.item_util.
+
 iom_desc_pieces(IOM) = Pieces :-
     (
         IOM = iom_item(Item),

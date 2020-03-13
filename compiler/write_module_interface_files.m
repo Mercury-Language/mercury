@@ -57,6 +57,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.read_modules.
 
 :- import_module io.
 :- import_module maybe.
@@ -69,7 +70,8 @@
     raw_compilation_unit::in, io::di, io::uo) is det.
 
     % write_private_interface_file_int0(Globals, SourceFileName,
-    %   SourceFileModuleName, CompUnit, MaybeTimestamp, !IO):
+    %   SourceFileModuleName, CompUnit, MaybeTimestamp,
+    %   !HaveReadModuleMaps, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
     % representation of a module in that file, output the private (`.int0')
@@ -84,10 +86,12 @@
     %
 :- pred write_private_interface_file_int0(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, raw_compilation_unit::in,
+    have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
     % write_interface_file_int1_int2(Globals, SourceFileName,
-    %   SourceFileModuleName, CompUnit, MaybeTimestamp, !IO):
+    %   SourceFileModuleName, CompUnit, MaybeTimestamp,
+    %   !HaveReadModuleMaps, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
     % representation of a module in that file, output the long (`.int')
@@ -100,6 +104,7 @@
     %
 :- pred write_interface_file_int1_int2(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, raw_compilation_unit::in,
+    have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -118,7 +123,6 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.grab_modules.           % undesirable dependency
 :- import_module parse_tree.parse_tree_out.
-:- import_module parse_tree.read_modules.
 :- import_module recompilation.
 :- import_module recompilation.version.
 
@@ -141,7 +145,8 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     % in the current module and writes out the .int3 file.
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
     generate_short_interface_int3(Globals, RawCompUnit, _, ParseTreeInt3,
-        [], Specs),
+        [], Specs0),
+    filter_interface_generation_specs(Globals, Specs0, Specs),
     EffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, Specs),
     (
@@ -160,14 +165,17 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
 %
 
 write_private_interface_file_int0(Globals, SourceFileName,
-        SourceFileModuleName, MaybeTimestamp, RawCompUnit0, !IO) :-
+        SourceFileModuleName, MaybeTimestamp, RawCompUnit0,
+        !HaveReadModuleMaps, !IO) :-
     RawCompUnit0 = raw_compilation_unit(ModuleName, _, _),
     grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, RawCompUnit0, ModuleAndImports, !IO),
+        SourceFileModuleName, RawCompUnit0, ModuleAndImports,
+        !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
-        GetSpecs, GetErrors),
+        GetSpecs0, GetErrors),
+    filter_interface_generation_specs(Globals, GetSpecs0, GetSpecs),
     GetSpecsEffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
@@ -181,21 +189,24 @@ write_private_interface_file_int0(Globals, SourceFileName,
         % will throw away, and (b) which don't help the module qualification
         % of the items that it keeps.
         module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _EventSpecMap, "", _, _, _, _, _, [], QualSpecs),
+            map.init, _EventSpecMap, "", _, _, _, _, _, [], QualSpecs0),
+        filter_interface_generation_specs(Globals, QualSpecs0, QualSpecs),
         (
             QualSpecs = [],
             % Construct the `.int0' file.
             generate_private_interface_int0(AugCompUnit, ParseTreeInt0,
-                [], Specs),
+                [], GenerateSpecs0),
+            filter_interface_generation_specs(Globals,
+                GenerateSpecs0, GenerateSpecs),
             (
-                Specs = [],
+                GenerateSpecs = [],
                 % Write out the `.int0' file.
                 actually_write_interface_file(Globals, ParseTreeInt0, "",
                     MaybeTimestamp, !IO),
                 touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
             ;
-                Specs = [_ | _],
-                report_file_not_written(Globals, Specs, no,
+                GenerateSpecs = [_ | _],
+                report_file_not_written(Globals, GenerateSpecs, no,
                     ModuleName, ".int0", no, !IO)
             )
         ;
@@ -215,18 +226,20 @@ write_private_interface_file_int0(Globals, SourceFileName,
 %
 
 write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, RawCompUnit0, !IO) :-
+        MaybeTimestamp, RawCompUnit0, !HaveReadModuleMaps, !IO) :-
     RawCompUnit0 = raw_compilation_unit(ModuleName, _, _),
     generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit0,
         IntRawCompUnit),
 
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, IntRawCompUnit, ModuleAndImports, !IO),
+        SourceFileModuleName, IntRawCompUnit, ModuleAndImports,
+        !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
-        GetSpecs, GetErrors),
+        GetSpecs0, GetErrors),
+    filter_interface_generation_specs(Globals, GetSpecs0, GetSpecs),
     GetSpecsEffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
@@ -235,33 +248,26 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
     then
         % Module-qualify all items.
         module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _, "", _, _, _, _, _, [], QualSpecs),
+            map.init, _, "", _, _, _, _, _, [], QualSpecs0),
+        filter_interface_generation_specs(Globals, QualSpecs0, QualSpecs),
         (
             QualSpecs = [],
             % Construct the `.int' and `.int2' files.
             generate_interfaces_int1_int2(Globals, AugCompUnit,
-                ParseTreeInt1, ParseTreeInt2, [], Specs),
+                ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs0),
+            filter_interface_generation_specs(Globals,
+                GenerateSpecs0, GenerateSpecs),
             (
-                Specs = [],
+                GenerateSpecs = [],
                 % Write out the `.int' and `.int2' files.
                 actually_write_interface_file(Globals, ParseTreeInt1, "",
                     MaybeTimestamp, !IO),
                 actually_write_interface_file(Globals, ParseTreeInt2, "",
                     MaybeTimestamp, !IO),
-                globals.lookup_bool_option(Globals, experiment2, Experiment2),
-                (
-                    Experiment2 = no
-                ;
-                    Experiment2 = yes,
-                    generate_interface_int2_via_int3(Globals, AugCompUnit,
-                        ParseTreeInt23, [], _Specs),
-                    actually_write_interface_file(Globals, ParseTreeInt23,
-                        ".via3", MaybeTimestamp, !IO)
-                ),
                 touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
             ;
-                Specs = [_ | _],
-                report_file_not_written(Globals, Specs, no,
+                GenerateSpecs = [_ | _],
+                report_file_not_written(Globals, GenerateSpecs, no,
                     ModuleName, ".int", yes(".int2"), !IO)
             )
         ;
@@ -373,8 +379,8 @@ report_file_not_written(Globals, Specs, MaybePrefixMsg,
     ),
     NotWrittenMsg = error_msg(no, treat_as_first, 0,
         [always(NotWrittenPieces)]),
-    NotWrittenSpec = error_spec(severity_informational, phase_read_files,
-        [NotWrittenMsg]),
+    NotWrittenSpec = error_spec($pred, severity_informational,
+        phase_read_files, [NotWrittenMsg]),
     write_error_spec_ignore(NotWrittenSpec, Globals, !IO).
 
 %---------------------------------------------------------------------------%

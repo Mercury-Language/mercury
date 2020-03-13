@@ -49,17 +49,33 @@
 :- pred mercury_output_parse_tree_src(merc_out_info::in,
     parse_tree_src::in, io::di, io::uo) is det.
 
+:- pred mercury_output_parse_tree_module_src(merc_out_info::in,
+    parse_tree_module_src::in, io::di, io::uo) is det.
+
+:- pred mercury_output_ancestor_int_spec(merc_out_info::in,
+    ancestor_int_spec::in, io::di, io::uo) is det.
+:- pred mercury_output_direct_int_spec(merc_out_info::in,
+    direct_int_spec::in, io::di, io::uo) is det.
+:- pred mercury_output_indirect_int_spec(merc_out_info::in,
+    indirect_int_spec::in, io::di, io::uo) is det.
+:- pred mercury_output_int_for_opt_spec(merc_out_info::in,
+    int_for_opt_spec::in, io::di, io::uo) is det.
+
 :- pred mercury_output_parse_tree_int(merc_out_info::in,
     parse_tree_int::in, io::di, io::uo) is det.
+:- pred mercury_output_parse_tree_int0(merc_out_info::in,
+    parse_tree_int0::in, io::di, io::uo) is det.
+:- pred mercury_output_parse_tree_int1(merc_out_info::in,
+    parse_tree_int1::in, io::di, io::uo) is det.
+:- pred mercury_output_parse_tree_int2(merc_out_info::in,
+    parse_tree_int2::in, io::di, io::uo) is det.
+:- pred mercury_output_parse_tree_int3(merc_out_info::in,
+    parse_tree_int3::in, io::di, io::uo) is det.
 
 :- pred mercury_output_parse_tree_opt(merc_out_info::in,
     parse_tree_opt::in, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
 :- pred mercury_output_parse_tree_plain_opt(merc_out_info::in,
     parse_tree_plain_opt::in, io::di, io::uo) is det.
-
 :- pred mercury_output_parse_tree_trans_opt(merc_out_info::in,
     parse_tree_trans_opt::in, io::di, io::uo) is det.
 
@@ -138,6 +154,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_kind.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_inst_mode_name.
@@ -233,28 +250,201 @@ output_some_parse_tree(Globals, OutputFileName, OutputParseTree,
 
 mercury_output_parse_tree_src(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_src(ModuleName, _Context, ModuleComponentsCord),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
     ModuleComponents = cord.list(ModuleComponentsCord),
     mercury_output_module_components(Info, no, ModuleComponents, !IO),
-    io.write_string(":- end_module ", !IO),
+    mercury_output_module_decl("end_module", ModuleName, !IO).
+
+mercury_output_parse_tree_module_src(Info, ParseTreeModuleSrc, !IO) :-
+    ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _ModuleContext,
+        IntIncludeMap, ImpIncludeMap, InclMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
+        IntFIMSpecMap, ImpFIMSpecMap, MaybeImplicitFIMLangs,
+
+        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
+        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        IntPredDecls, IntModeDecls,
+        IntForeignExportEnums, IntDeclPragmas, IntPromises, _IntBadPreds,
+
+        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
+        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
+        ImpPredDecls, ImpModeDecls, ImpClauses,
+        ImpForeignEnums, ImpForeignExportEnums,
+        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
+        ImpInitialises, ImpFinalises, ImpMutables),
+
+    io.write_string("% module src\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
+
+    io.write_string("% include_module_map\n", !IO),
+    map.foldl(write_include_module_map_entry, InclMap, !IO),
+    io.write_string("% section_import_and_or_use_map\n", !IO),
+    map.foldl(write_import_use_map_entry, ImportUseMap, !IO),
+
+    mercury_output_section_marker(ms_interface, !IO),
+    list.foldl(mercury_output_module_decl("include_module"),
+        map.keys(IntIncludeMap), !IO),
+    list.foldl(mercury_output_module_decl("import_module"),
+        map.keys(IntImportMap), !IO),
+    list.foldl(mercury_output_module_decl("use_module"),
+        map.keys(IntUseMap), !IO),
+    list.foldl(mercury_output_fim_spec, map.keys(IntFIMSpecMap), !IO),
+    (
+        MaybeImplicitFIMLangs = no,
+        io.write_string("% implicit FIM self-import languages not set\n", !IO)
+    ;
+        MaybeImplicitFIMLangs = yes(ImplicitFIMLangs),
+        ImplicitFIMLangStrs = list.map(mercury_foreign_language_to_string,
+            set.to_sorted_list(ImplicitFIMLangs)),
+        io.format("%% implicit FIM self-import languages: %s\n",
+           [s(join_list(", ", ImplicitFIMLangStrs))], !IO)
+    ),
+    list.foldl(mercury_output_item_type_defn(Info), IntTypeDefnsAbs, !IO),
+    list.foldl(mercury_output_item_type_defn(Info), IntTypeDefnsMer, !IO),
+    list.foldl(mercury_output_item_type_defn(Info), IntTypeDefnsForeign, !IO),
+    list.foldl(mercury_output_item_inst_defn(Info), IntInstDefns, !IO),
+    list.foldl(mercury_output_item_mode_defn(Info), IntModeDefns, !IO),
+    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
+    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
+    list.foldl(mercury_output_item_pred_decl(Info), IntPredDecls, !IO),
+    list.foldl(mercury_output_item_mode_decl(Info), IntModeDecls, !IO),
+    list.foldl(mercury_output_item_foreign_export_enum(Info),
+        IntForeignExportEnums, !IO),
+    list.foldl(mercury_output_item_decl_pragma(Info), IntDeclPragmas, !IO),
+    list.foldl(mercury_output_item_promise(Info), IntPromises, !IO),
+
+    mercury_output_section_marker(ms_implementation, !IO),
+    list.foldl(mercury_output_module_decl("include_module"),
+        map.keys(ImpIncludeMap), !IO),
+    list.foldl(mercury_output_module_decl("import_module"),
+        map.keys(ImpImportMap), !IO),
+    list.foldl(mercury_output_module_decl("use_module"),
+        map.keys(ImpUseMap), !IO),
+    list.foldl(mercury_output_fim_spec, map.keys(ImpFIMSpecMap), !IO),
+    list.foldl(mercury_output_item_type_defn(Info), ImpTypeDefnsAbs, !IO),
+    list.foldl(mercury_output_item_type_defn(Info), ImpTypeDefnsMer, !IO),
+    list.foldl(mercury_output_item_type_defn(Info), ImpTypeDefnsForeign, !IO),
+    list.foldl(mercury_output_item_inst_defn(Info), ImpInstDefns, !IO),
+    list.foldl(mercury_output_item_mode_defn(Info), ImpModeDefns, !IO),
+    list.foldl(mercury_output_item_typeclass(Info), ImpTypeClasses, !IO),
+    list.foldl(mercury_output_item_instance(Info), ImpInstances, !IO),
+    list.foldl(mercury_output_item_pred_decl(Info), ImpPredDecls, !IO),
+    list.foldl(mercury_output_item_mode_decl(Info), ImpModeDecls, !IO),
+    list.foldl(mercury_output_item_clause(Info), ImpClauses, !IO),
+    list.foldl(mercury_output_item_foreign_enum(Info), ImpForeignEnums, !IO),
+    list.foldl(mercury_output_item_foreign_export_enum(Info),
+        ImpForeignExportEnums, !IO),
+    list.foldl(mercury_output_item_decl_pragma(Info), ImpDeclPragmas, !IO),
+    list.foldl(mercury_output_item_impl_pragma(Info), ImpImplPragmas, !IO),
+    list.foldl(mercury_output_item_promise(Info), ImpPromises, !IO),
+    list.foldl(mercury_output_item_initialise(Info), ImpInitialises, !IO),
+    list.foldl(mercury_output_item_finalise(Info), ImpFinalises, !IO),
+    list.foldl(mercury_output_item_mutable(Info), ImpMutables, !IO),
+    mercury_output_module_decl("end_module", ModuleName, !IO),
+    io.nl(!IO).
+
+:- pred write_include_module_map_entry(module_name::in,
+    include_module_info::in, io::di, io::uo) is det.
+
+write_include_module_map_entry(ModuleName, InclInfo, !IO) :-
+    InclInfo = include_module_info(Section, _Context),
+    io.write_string("% ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO).
+    io.write_string(" -> ", !IO),
+    (
+        Section = ms_interface,
+        io.write_string("interface", !IO)
+    ;
+        Section = ms_implementation,
+        io.write_string("implementation", !IO)
+    ),
+    io.nl(!IO).
+
+:- pred write_import_use_map_entry(module_name::in,
+    maybe_implicit_import_and_or_use::in, io::di, io::uo) is det.
+
+write_import_use_map_entry(ModuleName, ImportAndOrUse, !IO) :-
+    io.write_string("% ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(" -> ", !IO),
+    (
+        ImportAndOrUse = explicit_avail(SectionImportAndOrUse),
+        (
+            SectionImportAndOrUse = int_import(_),
+            io.write_string("int_import", !IO)
+        ;
+            SectionImportAndOrUse = int_use(_),
+            io.write_string("int_use", !IO)
+        ;
+            SectionImportAndOrUse = imp_import(_),
+            io.write_string("imp_import", !IO)
+        ;
+            SectionImportAndOrUse = imp_use(_),
+            io.write_string("imp_use", !IO)
+        ;
+            SectionImportAndOrUse = int_use_imp_import(_, _),
+            io.write_string("int_use_imp_import", !IO)
+        )
+    ;
+        ImportAndOrUse = implicit_avail(ImplicitImportAndOrUse, _),
+        (
+            ImplicitImportAndOrUse = implicit_int_import,
+            io.write_string("implicit_int_import", !IO)
+        ;
+            ImplicitImportAndOrUse = implicit_int_use,
+            io.write_string("implicit_int_use", !IO)
+        ;
+            ImplicitImportAndOrUse = implicit_imp_use,
+            io.write_string("implicit_imp_use", !IO)
+        )
+    ),
+    io.nl(!IO).
+
+%---------------------------------------------------------------------------%
+
+mercury_output_ancestor_int_spec(Info, AncestorIntSpec, !IO) :-
+    AncestorIntSpec = ancestor_int0(ParseTreeInt0, _),
+    mercury_output_parse_tree_int0(Info, ParseTreeInt0, !IO).
+
+mercury_output_direct_int_spec(Info, DirectIntSpec, !IO) :-
+    (
+        DirectIntSpec = direct_int1(ParseTreeInt1, _),
+        mercury_output_parse_tree_int1(Info, ParseTreeInt1, !IO)
+    ;
+        DirectIntSpec = direct_int3(ParseTreeInt3, _),
+        mercury_output_parse_tree_int3(Info, ParseTreeInt3, !IO)
+    ).
+
+mercury_output_indirect_int_spec(Info, IndirectIntSpec, !IO) :-
+    (
+        IndirectIntSpec = indirect_int2(ParseTreeInt2, _),
+        mercury_output_parse_tree_int2(Info, ParseTreeInt2, !IO)
+    ;
+        IndirectIntSpec = indirect_int3(ParseTreeInt3, _),
+        mercury_output_parse_tree_int3(Info, ParseTreeInt3, !IO)
+    ).
+
+mercury_output_int_for_opt_spec(Info, ForOptIntSpec, !IO) :-
+    (
+        ForOptIntSpec = for_opt_int0(ParseTreeInt0, _),
+        mercury_output_parse_tree_int0(Info, ParseTreeInt0, !IO)
+    ;
+        ForOptIntSpec = for_opt_int1(ParseTreeInt1, _),
+        mercury_output_parse_tree_int1(Info, ParseTreeInt1, !IO)
+    ;
+        ForOptIntSpec = for_opt_int2(ParseTreeInt2, _),
+        mercury_output_parse_tree_int2(Info, ParseTreeInt2, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
 
 mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_int(ModuleName, _IntFileKind, _ModuleContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
-    (
-        MaybeVersionNumbers = no_version_numbers
-    ;
-        MaybeVersionNumbers = version_numbers(VersionNumbers),
-        mercury_output_module_version_numbers(ModuleName, VersionNumbers, !IO)
-    ),
+    mercury_output_module_decl("module", ModuleName, !IO),
+    mercury_output_maybe_module_version_numbers(ModuleName,
+        MaybeVersionNumbers, !IO),
     ( if
         IntIncls = [],
         IntAvails = [],
@@ -280,28 +470,197 @@ mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
         mercury_output_raw_item_block(Info, ImpItemBlock, !IO)
     ).
 
+mercury_output_parse_tree_int0(Info, ParseTreeInt0, !IO) :-
+    ParseTreeInt0 = parse_tree_int0(ModuleName, _ModuleContext,
+        MaybeVersionNumbers, IntInclMap, ImpInclMap, _InclMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
+        IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntForeignEnumMap, IntDeclPragmas, IntPromises,
+        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        ImpForeignEnumMap, ImpDeclPragmas, ImpPromises),
+    io.write_string("% .int0 file\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
+    mercury_output_maybe_module_version_numbers(ModuleName,
+        MaybeVersionNumbers, !IO),
+
+    mercury_output_section_marker(ms_interface, !IO),
+    list.foldl(mercury_output_module_decl("include_module"),
+        map.keys(IntInclMap), !IO),
+    list.foldl(mercury_output_module_decl("import_module"),
+        map.keys(IntImportMap), !IO),
+    list.foldl(mercury_output_module_decl("use_module"),
+        map.keys(IntUseMap), !IO),
+    set.foldl(mercury_output_fim_spec, IntFIMSpecs, !IO),
+    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+        IntTypeDefnMap, !IO),
+    map.foldl_values(mercury_output_inst_ctor_all_defns(Info),
+        IntInstDefnMap, !IO),
+    map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
+        IntModeDefnMap, !IO),
+    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
+    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
+    list.foldl(mercury_output_item_pred_decl(Info), IntPredDecls, !IO),
+    list.foldl(mercury_output_item_mode_decl(Info), IntModeDecls, !IO),
+    map.foldl_values(mercury_output_foreign_enums(Info),
+        IntForeignEnumMap, !IO),
+    list.foldl(mercury_output_item_decl_pragma(Info), IntDeclPragmas, !IO),
+    list.foldl(mercury_output_item_promise(Info), IntPromises, !IO),
+
+    mercury_output_section_marker(ms_implementation, !IO),
+    list.foldl(mercury_output_module_decl("include_module"),
+        map.keys(ImpInclMap), !IO),
+    list.foldl(mercury_output_module_decl("import_module"),
+        map.keys(ImpImportMap), !IO),
+    list.foldl(mercury_output_module_decl("use_module"),
+        map.keys(ImpUseMap), !IO),
+    set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
+    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+        ImpTypeDefnMap, !IO),
+    map.foldl_values(mercury_output_inst_ctor_all_defns(Info),
+        ImpInstDefnMap, !IO),
+    map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
+        ImpModeDefnMap, !IO),
+    list.foldl(mercury_output_item_typeclass(Info), ImpTypeClasses, !IO),
+    list.foldl(mercury_output_item_instance(Info), ImpInstances, !IO),
+    list.foldl(mercury_output_item_pred_decl(Info), ImpPredDecls, !IO),
+    list.foldl(mercury_output_item_mode_decl(Info), ImpModeDecls, !IO),
+    map.foldl_values(mercury_output_foreign_enums(Info),
+        ImpForeignEnumMap, !IO),
+    list.foldl(mercury_output_item_decl_pragma(Info), ImpDeclPragmas, !IO),
+    list.foldl(mercury_output_item_promise(Info), ImpPromises, !IO),
+    io.nl(!IO).
+
+mercury_output_parse_tree_int1(Info, ParseTreeInt1, !IO) :-
+    ParseTreeInt1 = parse_tree_int1(ModuleName, _ModuleContext,
+        MaybeVersionNumbers, IntInclMap, ImpInclMap, _InclMap,
+        IntUseMap, ImpUseMap, _ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntForeignEnumMap, IntDeclPragmas, IntPromises, IntTypeRepnMap,
+        ImpTypeDefnMap, ImpForeignEnumMap, ImpTypeClasses),
+    io.write_string("% .int1 file\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
+    mercury_output_maybe_module_version_numbers(ModuleName,
+        MaybeVersionNumbers, !IO),
+
+    mercury_output_section_marker(ms_interface, !IO),
+    list.foldl(mercury_output_module_decl("include_module"),
+        map.keys(IntInclMap), !IO),
+    list.foldl(mercury_output_module_decl("use_module"),
+        map.keys(IntUseMap), !IO),
+    set.foldl(mercury_output_fim_spec, IntFIMSpecs, !IO),
+    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+        IntTypeDefnMap, !IO),
+    map.foldl_values(mercury_output_inst_ctor_all_defns(Info),
+        IntInstDefnMap, !IO),
+    map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
+        IntModeDefnMap, !IO),
+    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
+    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
+    list.foldl(mercury_output_item_pred_decl(Info), IntPredDecls, !IO),
+    list.foldl(mercury_output_item_mode_decl(Info), IntModeDecls, !IO),
+    map.foldl_values(mercury_output_foreign_enums(Info),
+        IntForeignEnumMap, !IO),
+    list.foldl(mercury_output_item_decl_pragma(Info), IntDeclPragmas, !IO),
+    list.foldl(mercury_output_item_promise(Info), IntPromises, !IO),
+    map.foldl_values(mercury_output_item_type_repn(Info), IntTypeRepnMap, !IO),
+
+    mercury_output_section_marker(ms_implementation, !IO),
+    list.foldl(mercury_output_module_decl("include_module"),
+        map.keys(ImpInclMap), !IO),
+    list.foldl(mercury_output_module_decl("use_module"),
+        map.keys(ImpUseMap), !IO),
+    set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
+    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+        ImpTypeDefnMap, !IO),
+    map.foldl_values(mercury_output_foreign_enums(Info),
+        ImpForeignEnumMap, !IO),
+    list.foldl(mercury_output_item_typeclass(Info), ImpTypeClasses, !IO),
+    io.nl(!IO).
+
+mercury_output_parse_tree_int2(Info, ParseTreeInt2, !IO) :-
+    ParseTreeInt2 = parse_tree_int2(ModuleName, _ModuleContext,
+        MaybeVersionNumbers, IntInclMap, _InclMap, IntUseMap, _ImportUseMap,
+        IntFIMSpecs, ImpFIMSpecs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntTypeRepnMap,
+        ImpTypeDefnMap),
+    io.write_string("% .int2 file\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
+    mercury_output_maybe_module_version_numbers(ModuleName,
+        MaybeVersionNumbers, !IO),
+
+    mercury_output_section_marker(ms_interface, !IO),
+    list.foldl(mercury_output_module_decl("include_module"),
+        map.keys(IntInclMap), !IO),
+    list.foldl(mercury_output_module_decl("use_module"),
+        map.keys(IntUseMap), !IO),
+    set.foldl(mercury_output_fim_spec, IntFIMSpecs, !IO),
+    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+        IntTypeDefnMap, !IO),
+    map.foldl_values(mercury_output_inst_ctor_all_defns(Info),
+        IntInstDefnMap, !IO),
+    map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
+        IntModeDefnMap, !IO),
+    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
+    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
+    map.foldl_values(mercury_output_item_type_repn(Info), IntTypeRepnMap, !IO),
+
+    mercury_output_section_marker(ms_implementation, !IO),
+    set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
+    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+        ImpTypeDefnMap, !IO),
+    io.nl(!IO).
+
+mercury_output_parse_tree_int3(Info, ParseTreeInt3, !IO) :-
+    ParseTreeInt3 = parse_tree_int3(ModuleName, _ModuleContext,
+        IntInclMap, _InclMap, IntImportMap, _ImportUseMap,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntTypeRepnMap),
+    io.write_string("% .int3 file\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
+    mercury_output_section_marker(ms_interface, !IO),
+    list.foldl(mercury_output_module_decl("include_module"),
+        map.keys(IntInclMap), !IO),
+    list.foldl(mercury_output_module_decl("import_module"),
+        map.keys(IntImportMap), !IO),
+    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+        IntTypeDefnMap, !IO),
+    map.foldl_values(mercury_output_inst_ctor_all_defns(Info),
+        IntInstDefnMap, !IO),
+    map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
+        IntModeDefnMap, !IO),
+    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
+    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
+    map.foldl_values(mercury_output_item_type_repn(Info), IntTypeRepnMap, !IO),
+    io.nl(!IO).
+
+%---------------------------------------------------------------------------%
+
 mercury_output_parse_tree_opt(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_opt(ModuleName, _OptFileKind, _Context,
         Use, FIMs, Items),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
+    io.write_string("% generic optimization file\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
     list.foldl(mercury_output_item_use(Info), Use, !IO),
     list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
     mercury_output_items(Info, Items, !IO).
 
 mercury_output_parse_tree_plain_opt(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_plain_opt(ModuleName, _Context,
-        UsedModuleNames, FIMSpecs, TypeDefns, ForeignEnums,
+        UseMap, FIMSpecs, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
-        PredDecls, ModeDecls, Clauses, ForeignProcs,
+        PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
         PredMarkers, TypeSpecs, UnusedArgs, Terms, Term2s,
         Exceptions, Trailings, MMTablings, Sharings, Reuses),
     Lang = get_output_lang(Info),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
-    set.foldl(mercury_output_module_decl("use_module"), UsedModuleNames, !IO),
+    io.write_string("% .opt file\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
+    list.foldl(mercury_output_module_decl("use_module"),
+        map.keys(UseMap), !IO),
     list.foldl(mercury_output_item_type_defn(Info), TypeDefns, !IO),
     list.foldl(mercury_output_item_foreign_enum(Info), ForeignEnums, !IO),
     list.foldl(mercury_output_item_inst_defn(Info), InstDefns, !IO),
@@ -321,6 +680,7 @@ mercury_output_parse_tree_plain_opt(Info, ParseTree, !IO) :-
     list.foldl(mercury_output_item_clause(Info), Clauses, !IO),
     list.foldl(mercury_output_pragma_foreign_proc(Lang),
         list.map(project_pragma_type, ForeignProcs), !IO),
+    list.foldl(mercury_output_item_promise(Info), Promises, !IO),
 
     list.foldl(mercury_output_pragma_unused_args,
         list.map(project_pragma_type, UnusedArgs), !IO),
@@ -339,15 +699,15 @@ mercury_output_parse_tree_plain_opt(Info, ParseTree, !IO) :-
     list.foldl(write_pragma_structure_sharing_info(Lang),
         list.map(project_pragma_type, Sharings), !IO),
     list.foldl(write_pragma_structure_reuse_info(Lang),
-        list.map(project_pragma_type, Reuses), !IO).
+        list.map(project_pragma_type, Reuses), !IO),
+    io.nl(!IO).
 
 mercury_output_parse_tree_trans_opt(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_trans_opt(ModuleName, _Context,
         Terms, Term2s, Exceptions, Trailings, MMTablings, Sharings, Reuses),
     Lang = get_output_lang(Info),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
+    io.write_string("% .trans_opt file\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
     list.foldl(write_pragma_termination_info(Lang),
         list.map(project_pragma_type, Terms), !IO),
     list.foldl(write_pragma_termination2_info(Lang),
@@ -363,36 +723,61 @@ mercury_output_parse_tree_trans_opt(Info, ParseTree, !IO) :-
     list.foldl(write_pragma_structure_sharing_info(Lang),
         list.map(project_pragma_type, Sharings), !IO),
     list.foldl(write_pragma_structure_reuse_info(Lang),
-        list.map(project_pragma_type, Reuses), !IO).
+        list.map(project_pragma_type, Reuses), !IO),
+    io.nl(!IO).
+
+%---------------------------------------------------------------------------%
 
 mercury_output_raw_compilation_unit(Info, CompUnit, !IO) :-
     CompUnit = raw_compilation_unit(ModuleName, _Context, ItemBlocks),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
+    io.write_string("% raw compilation unit\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
     mercury_output_raw_item_blocks(Info, ItemBlocks, !IO).
 
 mercury_output_aug_compilation_unit(Info, AugCompUnit, !IO) :-
     AugCompUnit = aug_compilation_unit(ModuleName, _Context,
-        ModuleVersionNumbers, SrcItemBlocks,
-        DirectIntItemBlocks, IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
+        ModuleVersionNumbers, ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOptSpecs, TransOptSpecs, IntForOptSpecs),
+    io.write_string("% augmented compilation unit\n", !IO),
+    mercury_output_module_decl("module", ModuleName, !IO),
     io.write_string("% The module version numbers.\n", !IO),
     map.foldl(mercury_output_module_version_numbers,
         ModuleVersionNumbers, !IO),
-    io.write_string("% The src item blocks.\n", !IO),
-    mercury_output_src_item_blocks(Info, SrcItemBlocks, !IO),
-    io.write_string("% The direct interface item blocks.\n", !IO),
-    mercury_output_int_item_blocks(Info, DirectIntItemBlocks, !IO),
-    io.write_string("% The indirect interface item blocks.\n", !IO),
-    mercury_output_int_item_blocks(Info, IndirectIntItemBlocks, !IO),
-    io.write_string("% The optimization item blocks.\n", !IO),
-    mercury_output_opt_item_blocks(Info, OptItemBlocks, !IO),
+    io.write_string("% The main module.\n", !IO),
+    mercury_output_parse_tree_module_src(Info, ParseTreeModuleSrc, !IO),
+    io.write_string("% The ancestor interfaces.\n", !IO),
+    map.foldl_values(mercury_output_ancestor_int_spec(Info),
+        AncestorIntSpecs, !IO),
+    io.write_string("% The directly imported interfaces.\n", !IO),
+    map.foldl_values(mercury_output_direct_int_spec(Info),
+        DirectIntSpecs, !IO),
+    io.write_string("% The indirectly imported interfaces.\n", !IO),
+    map.foldl_values(mercury_output_indirect_int_spec(Info),
+        IndirectIntSpecs, !IO),
+    io.write_string("% The plain optimization files.\n", !IO),
+    map.foldl_values(mercury_output_parse_tree_plain_opt(Info),
+        PlainOptSpecs, !IO),
+    io.write_string("% The transitive optimization files.\n", !IO),
+    map.foldl_values(mercury_output_parse_tree_trans_opt(Info),
+        TransOptSpecs, !IO),
     io.write_string("% The interface item blocks for optimization.\n", !IO),
-    mercury_output_int_for_opt_item_blocks(Info, IntForOptItemBlocks, !IO).
+    map.foldl_values(mercury_output_int_for_opt_spec(Info),
+        IntForOptSpecs, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred mercury_output_maybe_module_version_numbers(module_name::in,
+    maybe_version_numbers::in, io::di, io::uo) is det.
+
+mercury_output_maybe_module_version_numbers(ModuleName, MaybeVersionNumbers,
+        !IO) :-
+    (
+        MaybeVersionNumbers = no_version_numbers
+    ;
+        MaybeVersionNumbers = version_numbers(VersionNumbers),
+        mercury_output_module_version_numbers(ModuleName, VersionNumbers, !IO)
+    ).
 
 :- pred mercury_output_module_version_numbers(module_name::in,
     version_numbers::in, io::di, io::uo) is det.
@@ -695,8 +1080,14 @@ mercury_output_item(Info, Item, !IO) :-
         mercury_output_item_foreign_export_enum(Info, ItemForeignExportEnum,
             !IO)
     ;
-        Item = item_pragma(ItemPragma),
-        mercury_output_item_pragma(Info, ItemPragma, !IO)
+        Item = item_decl_pragma(ItemDeclPragma),
+        mercury_output_item_decl_pragma(Info, ItemDeclPragma, !IO)
+    ;
+        Item = item_impl_pragma(ItemImplPragma),
+        mercury_output_item_impl_pragma(Info, ItemImplPragma, !IO)
+    ;
+        Item = item_generated_pragma(ItemGenPragma),
+        mercury_output_item_generated_pragma(Info, ItemGenPragma, !IO)
     ;
         Item = item_promise(ItemPromise),
         mercury_output_item_promise(Info, ItemPromise, !IO)
@@ -721,6 +1112,53 @@ mercury_output_item(Info, Item, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+:- pred mercury_output_type_ctor_all_defns(merc_out_info::in,
+    type_ctor_all_defns::in, io::di, io::uo) is det.
+
+mercury_output_type_ctor_all_defns(Info, TypeCtorAllDefns, !IO) :-
+    TypeCtorAllDefns = type_ctor_all_defns(SolverAbs, SolverNonAbs,
+        StdAbs, StdEqv, StdDu, CJCsE),
+    CJCsE = c_java_csharp_erlang(ForeignC, ForeignJava,
+        ForeignCsharp, ForeignErlang),
+    AbsToGen =
+        ( func(Item) = Item ^ td_ctor_defn :=
+            parse_tree_abstract_type(Item ^ td_ctor_defn)
+        ),
+    SolverToGen =
+        ( func(Item) = Item ^ td_ctor_defn :=
+            parse_tree_solver_type(Item ^ td_ctor_defn)
+        ),
+    EqvToGen =
+        ( func(Item) = Item ^ td_ctor_defn :=
+            parse_tree_eqv_type(Item ^ td_ctor_defn)
+        ),
+    DuToGen =
+        ( func(Item) = Item ^ td_ctor_defn :=
+            parse_tree_du_type(Item ^ td_ctor_defn)
+        ),
+    ForeignToGen =
+        ( func(Item) = Item ^ td_ctor_defn :=
+            parse_tree_foreign_type(Item ^ td_ctor_defn)
+        ),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(AbsToGen, SolverAbs), !IO),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(SolverToGen, SolverNonAbs), !IO),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(AbsToGen, StdAbs), !IO),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(EqvToGen, StdEqv), !IO),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(DuToGen, StdDu), !IO),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(ForeignToGen, ForeignC), !IO),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(ForeignToGen, ForeignJava), !IO),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(ForeignToGen, ForeignCsharp), !IO),
+    list.foldl(mercury_output_item_type_defn(Info),
+        list.map(ForeignToGen, ForeignErlang), !IO).
 
 :- pred mercury_output_item_type_defn(merc_out_info::in,
     item_type_defn_info::in, io::di, io::uo) is det.
@@ -1026,7 +1464,7 @@ mercury_output_ctor(TypeVarSet, Ctor, !IO) :-
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
         ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
-            _UnconstrainedQVars, _ConstrainedQVars), 
+            _UnconstrainedQVars, _ConstrainedQVars),
         mercury_output_quantifier(TypeVarSet, print_name_only, ExistQVars,
             !IO),
         io.write_string("(", !IO),
@@ -1131,6 +1569,14 @@ mercury_output_foreign_type_assertion(Assertion, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred mercury_output_inst_ctor_all_defns(merc_out_info::in,
+    inst_ctor_all_defns::in, io::di, io::uo) is det.
+
+mercury_output_inst_ctor_all_defns(Info, InstCtorAllDefns, !IO) :-
+    InstCtorAllDefns = inst_ctor_all_defns(Abs, Eqv),
+    list.foldl(mercury_output_item_inst_defn(Info), Abs, !IO),
+    list.foldl(mercury_output_item_inst_defn(Info), Eqv, !IO).
+
 :- pred mercury_output_item_inst_defn(merc_out_info::in,
     item_inst_defn_info::in, io::di, io::uo) is det.
 
@@ -1205,6 +1651,14 @@ is_builtin_inst_name(InstVarSet, unqualified(Name), Args0) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred mercury_output_mode_ctor_all_defns(merc_out_info::in,
+    mode_ctor_all_defns::in, io::di, io::uo) is det.
+
+mercury_output_mode_ctor_all_defns(Info, ModeCtorAllDefns, !IO) :-
+    ModeCtorAllDefns = mode_ctor_all_defns(Abs, Eqv),
+    list.foldl(mercury_output_item_mode_defn(Info), Abs, !IO),
+    list.foldl(mercury_output_item_mode_defn(Info), Eqv, !IO).
+
 :- pred mercury_output_item_mode_defn(merc_out_info::in,
     item_mode_defn_info::in, io::di, io::uo) is det.
 
@@ -1232,7 +1686,7 @@ mercury_format_mode_defn(Lang, InstVarSet, Context, Name, Args,
         mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, !U),
         add_string(")).\n", !U)
     ;
-        MaybeAbstractModeDefn = nonabstract_mode_defn(eqv_mode(Mode)), 
+        MaybeAbstractModeDefn = nonabstract_mode_defn(eqv_mode(Mode)),
         add_string(":- mode (", !U),
         mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, !U),
         add_string(") == ", !U),
@@ -1309,6 +1763,17 @@ mercury_output_item_mode_decl(Info, ItemModeDecl, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+:- pred mercury_output_foreign_enums(merc_out_info::in,
+    c_j_cs_e_enums::in, U::di, U::uo) is det <= output(U).
+
+mercury_output_foreign_enums(Info, CJCsEEnums, !U) :-
+    CJCsEEnums = c_java_csharp_erlang(CEnums, JavaEnums,
+        CsharpEnums, ErlangEnums),
+    list.foldl(mercury_output_item_foreign_enum(Info), CEnums, !U),
+    list.foldl(mercury_output_item_foreign_enum(Info), JavaEnums, !U),
+    list.foldl(mercury_output_item_foreign_enum(Info), CsharpEnums, !U),
+    list.foldl(mercury_output_item_foreign_enum(Info), ErlangEnums, !U).
 
 :- pred mercury_output_item_foreign_enum(merc_out_info::in,
     item_foreign_enum_info::in, U::di, U::uo) is det <= output(U).
@@ -1411,6 +1876,9 @@ mercury_format_sym_name_string_pair(SymName - String, !U) :-
     io::di, io::uo) is det.
 
 mercury_output_item_promise(_, ItemPromise, !IO) :-
+    % Any changes here may require similar changes in the write_promise
+    % predicate in hlds_out_module.m.
+
     ItemPromise = item_promise_info(PromiseType, Goal0, VarSet, UnivVars,
         _Context, _SeqNum),
     Indent = 1,
@@ -1423,7 +1891,7 @@ mercury_output_item_promise(_, ItemPromise, !IO) :-
         (
             UnivVars = [_ | _],
             Goal = quant_expr(quant_all, quant_ordinary_vars,
-                goal_get_context(Goal0), UnivVars, Goal0)
+                get_goal_context(Goal0), UnivVars, Goal0)
         ;
             UnivVars = [],
             Goal = Goal0
@@ -1939,7 +2407,7 @@ mercury_output_c_j_cs_e_repn_or_enum(MaybeCJCsERepnOrEnum, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO) :-
-    MaybeCJCsERepn = c_java_csharp_erlang(MaybeRepnC, MaybeRepnJava, 
+    MaybeCJCsERepn = c_java_csharp_erlang(MaybeRepnC, MaybeRepnJava,
         MaybeRepnCsharp, MaybeRepnErlang),
     io.write_string("[", !IO),
     some [!Separator] (

@@ -34,6 +34,26 @@
 :- pred int_section_mq_info(int_module_section::in,
     mq_section::out, module_permissions::out) is det.
 
+%---------------------------------------------------------------------------%
+
+:- type int3_role
+    --->    int3_as_src
+    ;       int3_as_direct_int(read_why_int3).
+
+    % Pass over the given parse tree collecting all defined module, type,
+    % inst, mode and class ids, together with their permissions.
+    %
+:- pred collect_mq_info_in_parse_tree_module_src(parse_tree_module_src::in,
+    mq_info::in, mq_info::out) is det.
+:- pred collect_mq_info_in_ancestor_int_spec(ancestor_int_spec::in,
+    mq_info::in, mq_info::out) is det.
+:- pred collect_mq_info_in_direct_int_spec(direct_int_spec::in,
+    mq_info::in, mq_info::out) is det.
+:- pred collect_mq_info_in_parse_tree_int3(int3_role::in, parse_tree_int3::in,
+    mq_info::in, mq_info::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % Pass over the item_block list collecting all defined module, type,
     % inst, mode and class ids, together with their permissions.
     %
@@ -47,6 +67,13 @@
 
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.parse_sym_name.
+
+:- import_module one_or_more.
+:- import_module one_or_more_map.
+:- import_module require.
+:- import_module string.
+
+%---------------------------------------------------------------------------%
 
 src_section_mq_info(SrcSection, MQSection, Permissions) :-
     (
@@ -108,6 +135,392 @@ int_section_mq_info(IntSection, MQSection, Permissions) :-
 
 %---------------------------------------------------------------------------%
 
+collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
+    IntPermInInt = may_use_in_int(may_be_unqualified),
+    ImpPermInInt = may_not_use_in_int,
+    PermInImp = may_use_in_imp(may_be_unqualified),
+    IntPermissions = module_permissions(IntPermInInt, PermInImp),
+    ImpPermissions = module_permissions(ImpPermInInt, PermInImp),
+
+    ParseTreeModuleSrc = parse_tree_module_src(_ModuleName, _ModuleNameContext,
+        _IntInclMap, _ImpInclMap, InclMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
+        _IntFIMSpecMap, _ImpFIMSpecMap, _MaybeImplicitFIMLangs,
+
+        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
+        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        _IntPredDecls, _IntModeDecls,
+        _IntForeignExportEnums, _IntDeclPragmas, IntPromises, _IntBadPreds,
+
+        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
+        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
+        _ImpPredDecls, _ImpModeDecls, _ImpClauses,
+        _ImpForeignEnums, _ImpForeignExportEnums,
+        _ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
+        _ImpInitialises, _ImpFinalises, _ImpMutables),
+
+    mq_info_get_modules(!.Info, Modules0),
+    map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
+        InclMap, Modules0, Modules),
+    mq_info_set_modules(Modules, !Info),
+
+    mq_info_get_imported_modules(!.Info, ImportedModules0),
+    mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedIntModules0),
+    map.foldl2(collect_mq_info_in_src_avail_map_entry(ms_interface),
+        IntImportMap, ImportedModules0, ImportedModules1,
+        UnusedIntModules0, UnusedIntModules1),
+    map.foldl2(collect_mq_info_in_src_avail_map_entry(ms_interface),
+        IntUseMap, ImportedModules1, ImportedModules2,
+        UnusedIntModules1, UnusedIntModules2),
+    map.foldl2(collect_mq_info_in_src_avail_map_entry(ms_implementation),
+        ImpImportMap, ImportedModules2, ImportedModules3,
+        UnusedIntModules2, UnusedIntModules3),
+    map.foldl2(collect_mq_info_in_src_avail_map_entry(ms_implementation),
+        ImpUseMap, ImportedModules3, ImportedModules,
+        UnusedIntModules3, UnusedIntModules),
+    mq_info_set_imported_modules(ImportedModules, !Info),
+    mq_info_set_as_yet_unused_interface_modules(UnusedIntModules, !Info),
+
+    mq_info_get_types(!.Info, Types0),
+    IntTypeDefns = IntTypeDefnsAbs ++ IntTypeDefnsMer ++ IntTypeDefnsForeign,
+    ImpTypeDefns = ImpTypeDefnsAbs ++ ImpTypeDefnsMer ++ ImpTypeDefnsForeign,
+    list.foldl(id_set_insert(IntPermissions),
+        list.map(item_type_defn_info_to_mq_id, IntTypeDefns), Types0, Types1),
+    list.foldl(id_set_insert(ImpPermissions),
+        list.map(item_type_defn_info_to_mq_id, ImpTypeDefns), Types1, Types),
+    mq_info_set_types(Types, !Info),
+
+    mq_info_get_insts(!.Info, Insts0),
+    list.foldl(id_set_insert(IntPermissions),
+        list.map(item_inst_defn_info_to_mq_id, IntInstDefns), Insts0, Insts1),
+    list.foldl(id_set_insert(ImpPermissions),
+        list.map(item_inst_defn_info_to_mq_id, ImpInstDefns), Insts1, Insts),
+    mq_info_set_insts(Insts, !Info),
+
+    mq_info_get_modes(!.Info, Modes0),
+    list.foldl(id_set_insert(IntPermissions),
+        list.map(item_mode_defn_info_to_mq_id, IntModeDefns), Modes0, Modes1),
+    list.foldl(id_set_insert(ImpPermissions),
+        list.map(item_mode_defn_info_to_mq_id, ImpModeDefns), Modes1, Modes),
+    mq_info_set_modes(Modes, !Info),
+
+    list.foldl(collect_mq_info_in_item_typeclass(IntPermissions),
+        IntTypeClasses, !Info),
+    list.foldl(collect_mq_info_in_item_typeclass(ImpPermissions),
+        ImpTypeClasses, !Info),
+    list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info),
+    list.foldl(collect_mq_info_in_item_instance, ImpInstances, !Info),
+    list.foldl(collect_mq_info_in_item_promise(mq_used_in_interface),
+        IntPromises, !Info),
+    list.foldl(collect_mq_info_in_item_promise(mq_not_used_in_interface),
+        ImpPromises, !Info).
+
+:- pred collect_mq_info_in_src_avail_map_entry(module_section::in,
+    module_name::in, one_or_more(prog_context)::in,
+    set(module_name)::in, set(module_name)::out,
+    module_names_contexts::in, module_names_contexts::out) is det.
+
+collect_mq_info_in_src_avail_map_entry(Section, ModuleName, Contexts,
+        !ImportedModules, !UnusedIntModules) :-
+    set.insert(ModuleName, !ImportedModules),
+    (
+        Section = ms_interface,
+        % Most of the time, ModuleName does not occur in !.UnusedIntModules.
+        % We therefore try the insertion first, and only if the insertion
+        % fails do we look up and update the existing entry (OldContexts)
+        % that caused that failure.
+        ( if map.insert(ModuleName, Contexts, !UnusedIntModules) then
+            true
+        else
+            map.lookup(!.UnusedIntModules, ModuleName, OldContexts),
+            NewContexts = OldContexts ++ Contexts,
+            map.det_update(ModuleName, NewContexts, !UnusedIntModules)
+        )
+    ;
+        Section = ms_implementation
+    ).
+
+%---------------------------------------------------------------------------%
+
+collect_mq_info_in_ancestor_int_spec(AncestorIntSpec, !Info) :-
+    AncestorIntSpec = ancestor_int0(ParseTreeInt0, ReadWhy0),
+    collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info).
+
+collect_mq_info_in_direct_int_spec(DirectIntSpec, !Info) :-
+    (
+        DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
+        collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info)
+    ;
+        DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3),
+        collect_mq_info_in_parse_tree_int3(int3_as_direct_int(ReadWhy3),
+            ParseTreeInt3, !Info)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred collect_mq_info_in_parse_tree_int0(parse_tree_int0::in,
+    read_why_int0::in, mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info) :-
+    trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
+        io.format("collect_mq_info_in_parse_tree_int0: %s ",
+            [s(sym_name_to_string(ParseTreeInt0 ^ pti0_module_name))], !IO),
+        io.write_line(ReadWhy0, !IO)
+    ),
+
+    (
+        ReadWhy0 = rwi0_section,
+        % XXX Whether this module's interface can use an mq_id
+        % that was imported by an ancestor should depend on whether
+        % the ancestor imported that mq_id in its INTERFACE or not.
+        % Since we don't know where that import was, this is a
+        % conservative approximation.
+        IntPermInInt = may_use_in_int(may_be_unqualified),
+        IntPermInImp = may_use_in_imp(may_be_unqualified),
+        ImpPermInInt = may_use_in_int(may_be_unqualified),
+        ImpPermInImp = may_use_in_imp(may_be_unqualified),
+
+        IntPermissions = module_permissions(IntPermInInt, IntPermInImp),
+        ImpPermissions = module_permissions(ImpPermInInt, ImpPermInImp)
+    ;
+        ReadWhy0 = rwi0_opt,
+        % Since we do not collect module qual info for int_for_opt_specs,
+        % we should never encounter this value of ReadWhy0.
+        unexpected($pred, "rwi0_opt")
+    ),
+
+    ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, InclMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
+        _IntFIMSpecs, _ImpFIMSpecs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
+        _IntForeignEnumMap, _IntDeclPragmas, IntPromises,
+        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
+        ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
+        _ImpForeignEnumMap, _ImpDeclPragmas, ImpPromises),
+
+    mq_info_get_modules(!.Info, Modules0),
+    map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
+        InclMap, Modules0, Modules),
+    mq_info_set_modules(Modules, !Info),
+
+    mq_info_get_imported_modules(!.Info, ImportedModules0),
+    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(IntImportMap),
+        ImportedModules0, ImportedModules1),
+    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(IntUseMap),
+        ImportedModules1, ImportedModules2),
+    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(ImpImportMap),
+        ImportedModules2, ImportedModules3),
+    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(ImpUseMap),
+        ImportedModules3, ImportedModules),
+    mq_info_set_imported_modules(ImportedModules, !Info),
+
+    mq_info_get_types(!.Info, Types0),
+    IntTypeIds = list.map(type_ctor_to_mq_id, map.keys(IntTypeDefnMap)),
+    ImpTypeIds = list.map(type_ctor_to_mq_id, map.keys(ImpTypeDefnMap)),
+    list.foldl(id_set_insert(IntPermissions), IntTypeIds, Types0, Types1),
+    list.foldl(id_set_insert(ImpPermissions), ImpTypeIds, Types1, Types),
+    mq_info_set_types(Types, !Info),
+
+    mq_info_get_insts(!.Info, Insts0),
+    IntInstIds = list.map(sym_name_arity_to_mq_id, map.keys(IntInstDefnMap)),
+    ImpInstIds = list.map(sym_name_arity_to_mq_id, map.keys(ImpInstDefnMap)),
+    list.foldl(id_set_insert(IntPermissions), IntInstIds, Insts0, Insts1),
+    list.foldl(id_set_insert(ImpPermissions), ImpInstIds, Insts1, Insts),
+    mq_info_set_insts(Insts, !Info),
+
+    mq_info_get_modes(!.Info, Modes0),
+    IntModeIds = list.map(sym_name_arity_to_mq_id, map.keys(IntModeDefnMap)),
+    ImpModeIds = list.map(sym_name_arity_to_mq_id, map.keys(ImpModeDefnMap)),
+    list.foldl(id_set_insert(IntPermissions), IntModeIds, Modes0, Modes1),
+    list.foldl(id_set_insert(ImpPermissions), ImpModeIds, Modes1, Modes),
+    mq_info_set_modes(Modes, !Info),
+
+    list.foldl(collect_mq_info_in_item_typeclass(IntPermissions),
+        IntTypeClasses, !Info),
+    list.foldl(collect_mq_info_in_item_typeclass(ImpPermissions),
+        ImpTypeClasses, !Info),
+    list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info),
+    list.foldl(collect_mq_info_in_item_instance, ImpInstances, !Info),
+    list.foldl(collect_mq_info_in_item_promise(mq_used_in_interface),
+        IntPromises, !Info),
+    list.foldl(collect_mq_info_in_item_promise(mq_not_used_in_interface),
+        ImpPromises, !Info).
+
+%---------------------------------------------------------------------------%
+
+:- pred collect_mq_info_in_parse_tree_int1(parse_tree_int1::in,
+    read_why_int1::in, mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info) :-
+    trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
+        io.format("collect_mq_info_in_parse_tree_int1: %s ",
+            [s(sym_name_to_string(ParseTreeInt1 ^ pti1_module_name))], !IO),
+        io.write_line(ReadWhy1, !IO)
+    ),
+
+    (
+        ReadWhy1 = rwi1_int_import,
+        IntPermInInt = may_use_in_int(may_be_unqualified),
+        IntPermInImp = may_use_in_imp(may_be_unqualified)
+    ;
+        ReadWhy1 = rwi1_imp_import,
+        IntPermInInt = may_not_use_in_int,
+        IntPermInImp = may_use_in_imp(may_be_unqualified)
+    ;
+        ReadWhy1 = rwi1_int_use,
+        IntPermInInt = may_use_in_int(must_be_qualified),
+        IntPermInImp = may_use_in_imp(must_be_qualified)
+    ;
+        ReadWhy1 = rwi1_imp_use,
+        IntPermInInt = may_not_use_in_int,
+        IntPermInImp = may_use_in_imp(must_be_qualified)
+    ;
+        ReadWhy1 = rwi1_int_use_imp_import,
+        IntPermInInt = may_use_in_int(must_be_qualified),
+        IntPermInImp = may_use_in_imp(may_be_unqualified)
+    ;
+        ReadWhy1 = rwi1_opt,
+        % Since we do not collect module qual info for int_for_opt_specs,
+        % we should never encounter this value of ReadWhy1.
+        unexpected($pred, "rwi1_opt")
+    ),
+    IntPermissions = module_permissions(IntPermInInt, IntPermInImp),
+    % The implementation section of a .int1 file is abstract imported,
+    % which means we have no permission for any item defined there.
+    % We therefore do not need any ImpPermissions.
+
+    ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, InclMap,
+        _IntUseMap, _ImpUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
+        _IntForeignEnumMap, _IntDeclPragmas, IntPromises, _IntTypeRepnMap,
+        _ImpTypeDefnMap, _ImpForeignEnumMap, _ImpTypeClasses),
+
+    mq_info_get_modules(!.Info, Modules0),
+    map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
+        InclMap, Modules0, Modules),
+    mq_info_set_modules(Modules, !Info),
+
+    mq_info_get_types(!.Info, Types0),
+    IntTypeIds = list.map(type_ctor_to_mq_id, map.keys(IntTypeDefnMap)),
+    list.foldl(id_set_insert(IntPermissions), IntTypeIds, Types0, Types),
+    mq_info_set_types(Types, !Info),
+
+    mq_info_get_insts(!.Info, Insts0),
+    IntInstIds = list.map(sym_name_arity_to_mq_id, map.keys(IntInstDefnMap)),
+    list.foldl(id_set_insert(IntPermissions), IntInstIds, Insts0, Insts),
+    mq_info_set_insts(Insts, !Info),
+
+    mq_info_get_modes(!.Info, Modes0),
+    IntModeIds = list.map(sym_name_arity_to_mq_id, map.keys(IntModeDefnMap)),
+    list.foldl(id_set_insert(IntPermissions), IntModeIds, Modes0, Modes),
+    mq_info_set_modes(Modes, !Info),
+
+    list.foldl(collect_mq_info_in_item_typeclass(IntPermissions),
+        IntTypeClasses, !Info),
+    list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info),
+    list.foldl(collect_mq_info_in_item_promise(mq_used_in_interface),
+        IntPromises, !Info).
+
+%---------------------------------------------------------------------------%
+
+collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
+    trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
+        io.format("collect_mq_info_in_parse_tree_int3: %s ",
+            [s(sym_name_to_string(ParseTreeInt3 ^ pti3_module_name))], !IO),
+        io.write_line(Role, !IO)
+    ),
+
+    (
+        Role = int3_as_src,
+        PermInInt = may_use_in_int(may_be_unqualified),
+        PermInImp = may_use_in_imp(may_be_unqualified)
+    ;
+        Role = int3_as_direct_int(ReadWhy3),
+        (
+            ( ReadWhy3 = rwi3_direct_ancestor_import
+            ; ReadWhy3 = rwi3_direct_int_import
+            ),
+            PermInInt = may_use_in_int(may_be_unqualified),
+            PermInImp = may_use_in_imp(may_be_unqualified)
+        ;
+            ( ReadWhy3 = rwi3_direct_ancestor_use
+            ; ReadWhy3 = rwi3_direct_int_use
+            ; ReadWhy3 = rwi3_indirect_int_use
+            ),
+            PermInInt = may_use_in_int(must_be_qualified),
+            PermInImp = may_use_in_imp(must_be_qualified)
+        ;
+            ReadWhy3 = rwi3_direct_imp_import,
+            PermInInt = may_not_use_in_int,
+            PermInImp = may_use_in_imp(may_be_unqualified)
+        ;
+            ( ReadWhy3 = rwi3_direct_imp_use
+            ; ReadWhy3 = rwi3_indirect_imp_use
+            ),
+            PermInInt = may_not_use_in_int,
+            PermInImp = may_use_in_imp(must_be_qualified)
+        ;
+            ReadWhy3 = rwi3_direct_int_use_imp_import,
+            PermInInt = may_use_in_int(must_be_qualified),
+            PermInImp = may_use_in_imp(may_be_unqualified)
+        )
+    ),
+    Permissions = module_permissions(PermInInt, PermInImp),
+
+    ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
+        _IntInclMap, InclMap, IntImportMap, _ImportUseMap,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, _IntTypeRepns),
+
+    mq_info_get_modules(!.Info, Modules0),
+    map.foldl(collect_mq_info_in_included_module_info(Permissions),
+        InclMap, Modules0, Modules),
+    mq_info_set_modules(Modules, !Info),
+
+    mq_info_get_imported_modules(!.Info, ImportedModules0),
+    list.foldl(collect_mq_info_in_int3_import, map.keys(IntImportMap),
+        ImportedModules0, ImportedModules),
+    mq_info_set_imported_modules(ImportedModules, !Info),
+
+    mq_info_get_types(!.Info, Types0),
+    TypeIds = list.map(type_ctor_to_mq_id, map.keys(IntTypeDefnMap)),
+    list.foldl(id_set_insert(Permissions), TypeIds, Types0, Types),
+    mq_info_set_types(Types, !Info),
+
+    mq_info_get_insts(!.Info, Insts0),
+    InstIds = list.map(sym_name_arity_to_mq_id, map.keys(IntInstDefnMap)),
+    list.foldl(id_set_insert(Permissions), InstIds, Insts0, Insts),
+    mq_info_set_insts(Insts, !Info),
+
+    mq_info_get_modes(!.Info, Modes0),
+    ModeIds = list.map(sym_name_arity_to_mq_id, map.keys(IntModeDefnMap)),
+    list.foldl(id_set_insert(Permissions), ModeIds, Modes0, Modes),
+    mq_info_set_modes(Modes, !Info),
+
+    list.foldl(collect_mq_info_in_item_typeclass(Permissions), IntTypeClasses,
+        !Info),
+    list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info).
+
+%---------------------------------------------------------------------------%
+
+:- func type_ctor_to_mq_id(type_ctor) = mq_id.
+
+type_ctor_to_mq_id(TypeCtor) = Id :-
+    TypeCtor = type_ctor(SymName, Arity),
+    Id = mq_id(SymName, Arity).
+
+:- func sym_name_arity_to_mq_id(sym_name_and_arity) = mq_id.
+
+sym_name_arity_to_mq_id(SNA) = Id :-
+    SNA = sym_name_arity(SymName, Arity),
+    Id = mq_id(SymName, Arity).
+
+%---------------------------------------------------------------------------%
+
 collect_mq_info_in_item_blocks(_, [], !Info).
 collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks], !Info) :-
     ItemBlock = item_block(_, Section, Incls, Avails, _FIMs, Items),
@@ -142,7 +555,7 @@ collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks], !Info) :-
     % unnecessary overhead in most cases.
     mq_info_get_imported_modules(!.Info, ImportedModules0),
     mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedIntModules0),
-    list.foldl2(collect_mq_info_in_item_avail(MQSection, Permissions), Avails,
+    list.foldl2(collect_mq_info_in_item_avail(MQSection), Avails,
         ImportedModules0, ImportedModules,
         UnusedIntModules0, UnusedIntModules),
     mq_info_set_imported_modules(ImportedModules, !Info),
@@ -170,20 +583,39 @@ collect_mq_info_in_item_include(Permissions, Incl, !Modules) :-
     Arity = 0,
     id_set_insert(Permissions, mq_id(IncludedModuleName, Arity), !Modules).
 
+:- pred collect_mq_info_in_included_module_info(module_permissions::in,
+    module_name::in, include_module_info::in,
+    module_id_set::in, module_id_set::out) is det.
+
+collect_mq_info_in_included_module_info(IntPermissions, ModuleName, InclInfo,
+        !Modules) :-
+    InclInfo = include_module_info(Section, _Context),
+    (
+        Section = ms_interface,
+        Arity = 0,
+        id_set_insert(IntPermissions, mq_id(ModuleName, Arity), !Modules)
+    ;
+        Section = ms_implementation,
+        Arity = 0,
+        id_set_insert(IntPermissions, mq_id(ModuleName, Arity), !Modules)
+    ).
+
     % For import declarations (`:- import_module' or `:- use_module'),
     % if we are currently in the interface section, then add the
     % imported modules to the as_yet_unused_interface_modules list.
     %
-    % XXX ITEM_LIST Why do we base this decision on the status we get
+    % XXX Why do we base this decision on the status we get
     % from the mq_info, instead of directly on the current section's
     % section kind?
+    % Probably partial answer: when module qualifying a .int3 file,
+    % we want to treat that .int3 file as if it were the source file,
+    % because it is directly and immediately derived from the source file.
     %
-:- pred collect_mq_info_in_item_avail(mq_section::in, module_permissions::in,
+:- pred collect_mq_info_in_item_avail(mq_section::in,
     item_avail::in, set(module_name)::in, set(module_name)::out,
-    map(module_name, one_or_more(prog_context))::in,
-    map(module_name, one_or_more(prog_context))::out) is det.
+    module_names_contexts::in, module_names_contexts::out) is det.
 
-collect_mq_info_in_item_avail(MQSection, _Permissions, Avail,
+collect_mq_info_in_item_avail(MQSection, Avail,
         !ImportedModules, !UnusedIntModules) :-
     % Modules imported from the proper private interface of ancestors of
     % the current module are treated as if they were directly imported
@@ -214,9 +646,7 @@ collect_mq_info_in_item_avail(MQSection, _Permissions, Avail,
             true
         else
             map.lookup(!.UnusedIntModules, ModuleName, OldContexts),
-            OldContexts = one_or_more(OldHeadContext, OldTailContexts),
-            NewContexts = one_or_more(Context,
-                [OldHeadContext | OldTailContexts]),
+            NewContexts = one_or_more.cons(Context, OldContexts),
             map.det_update(ModuleName, NewContexts, !UnusedIntModules)
         )
     ;
@@ -226,6 +656,18 @@ collect_mq_info_in_item_avail(MQSection, _Permissions, Avail,
         ; MQSection = mq_section_abstract_imported
         )
     ).
+
+:- pred collect_mq_info_in_int0_import_or_use(module_name::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+collect_mq_info_in_int0_import_or_use(ModuleName, !ImportedModules) :-
+    set.insert(ModuleName, !ImportedModules).
+
+:- pred collect_mq_info_in_int3_import(module_name::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+collect_mq_info_in_int3_import(ModuleName, !ImportedModules) :-
+    set.insert(ModuleName, !ImportedModules).
 
     % Pass over the item list collecting all defined module, type, mode and
     % inst ids, all module synonym definitions, and the names of all
@@ -280,56 +722,33 @@ collect_mq_info_in_item(MQSection, Permissions, Item, !Info) :-
             mq_info_set_modes(Modes, !Info)
         )
     ;
-        Item = item_promise(ItemPromise),
-        ItemPromise = item_promise_info(_PromiseType, Goal, _ProgVarSet,
-            _UnivVars, _Context, _SeqNum),
-        collect_used_modules_in_promise_goal(Goal,
-            set.init, UsedModuleNames, no, FoundUnqual),
-        (
-            FoundUnqual = no,
-            InInt = mq_section_to_in_interface(MQSection),
-            set.fold(mq_info_set_module_used(InInt), UsedModuleNames, !Info)
-        ;
-            % Any unqualified symbol in the promise might come from *any* of
-            % the imported modules. There is no way for us to tell which ones,
-            % so we conservatively assume that it uses *all* of them.
-            FoundUnqual = yes,
-            map.init(UnusedModules),
-            mq_info_set_as_yet_unused_interface_modules(UnusedModules, !Info)
-        )
-    ;
         Item = item_typeclass(ItemTypeClass),
-        ItemTypeClass = item_typeclass_info(SymName, Params, _, _, _, _, _, _),
         ( if MQSection = mq_section_abstract_imported then
             % This item is not visible in the current module.
             true
         else
-            list.length(Params, Arity),
-            mq_info_get_classes(!.Info, Classes0),
-            id_set_insert(Permissions, mq_id(SymName, Arity),
-                Classes0, Classes),
-            mq_info_set_classes(Classes, !Info)
+            collect_mq_info_in_item_typeclass(Permissions, ItemTypeClass, !Info)
         )
     ;
         Item = item_instance(ItemInstance),
         ( if MQSection = mq_section_imported(_) then
-            InstanceModule = ItemInstance ^ ci_module_containing_instance,
-            mq_info_get_imported_instance_modules(!.Info,
-                ImportedInstanceModules0),
-            set.insert(InstanceModule,
-                ImportedInstanceModules0, ImportedInstanceModules),
-            mq_info_set_imported_instance_modules(ImportedInstanceModules,
-                !Info)
+            collect_mq_info_in_item_instance(ItemInstance, !Info)
         else
             true
         )
+    ;
+        Item = item_promise(ItemPromise),
+        InInt = mq_section_to_in_interface(MQSection),
+        collect_mq_info_in_item_promise(InInt, ItemPromise, !Info)
     ;
         ( Item = item_clause(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_foreign_enum(_)
         ; Item = item_foreign_export_enum(_)
-        ; Item = item_pragma(_)
+        ; Item = item_decl_pragma(_)
+        ; Item = item_impl_pragma(_)
+        ; Item = item_generated_pragma(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
@@ -337,6 +756,66 @@ collect_mq_info_in_item(MQSection, Permissions, Item, !Info) :-
         )
         % Do nothing.
     ).
+
+:- func item_type_defn_info_to_mq_id(item_type_defn_info) = mq_id.
+
+item_type_defn_info_to_mq_id(ItemTypeDefn) = MQId :-
+    ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
+    MQId = mq_id(SymName, list.length(Params)).
+
+:- func item_inst_defn_info_to_mq_id(item_inst_defn_info) = mq_id.
+
+item_inst_defn_info_to_mq_id(ItemInstDefn) = MQId :-
+    ItemInstDefn = item_inst_defn_info(SymName, Params, _, _, _, _, _),
+    MQId = mq_id(SymName, list.length(Params)).
+
+:- func item_mode_defn_info_to_mq_id(item_mode_defn_info) = mq_id.
+
+item_mode_defn_info_to_mq_id(ItemModeDefn) = MQId :-
+    ItemModeDefn = item_mode_defn_info(SymName, Params, _, _, _, _),
+    MQId = mq_id(SymName, list.length(Params)).
+
+:- pred collect_mq_info_in_item_typeclass(module_permissions::in,
+    item_typeclass_info::in, mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_item_typeclass(Permissions, ItemTypeClass, !Info) :-
+    ItemTypeClass = item_typeclass_info(SymName, Params, _, _, _, _, _, _),
+    list.length(Params, Arity),
+    mq_info_get_classes(!.Info, Classes0),
+    id_set_insert(Permissions, mq_id(SymName, Arity), Classes0, Classes),
+    mq_info_set_classes(Classes, !Info).
+
+:- pred collect_mq_info_in_item_instance(item_instance_info::in,
+    mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_item_instance(ItemInstance, !Info) :-
+    InstanceModule = ItemInstance ^ ci_module_containing_instance,
+    mq_info_get_imported_instance_modules(!.Info, ImportedInstanceModules0),
+    set.insert(InstanceModule,
+        ImportedInstanceModules0, ImportedInstanceModules),
+    mq_info_set_imported_instance_modules(ImportedInstanceModules, !Info).
+
+:- pred collect_mq_info_in_item_promise(mq_in_interface::in,
+    item_promise_info::in, mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_item_promise(InInt, ItemPromise, !Info) :-
+    ItemPromise = item_promise_info(_PromiseType, Goal, _ProgVarSet,
+        _UnivVars, _Context, _SeqNum),
+    collect_used_modules_in_promise_goal(Goal,
+        set.init, UsedModuleNames, no, FoundUnqual),
+    (
+        FoundUnqual = no,
+        set.fold(mq_info_set_module_used(InInt), UsedModuleNames, !Info)
+    ;
+        % Any unqualified symbol in the promise might come from *any* of
+        % the imported modules. There is no way for us to tell which ones,
+        % so we conservatively assume that it uses *all* of them.
+        FoundUnqual = yes,
+        map.init(UnusedModules),
+        mq_info_set_as_yet_unused_interface_modules(UnusedModules, !Info)
+    ).
+
+%---------------------%
 
 :- func mq_section_to_in_interface(mq_section) = mq_in_interface.
 

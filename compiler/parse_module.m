@@ -146,6 +146,10 @@
     % Analogous to actually_read_module_src, but opens the IntFileKind
     % interface file for DefaultModuleName.
     %
+    % XXX CLEANUP This predicate should not be needed; callers should call
+    % the versions specific to a given values of IntFileKind. However,
+    % we do still have calls to it.
+    %
 :- pred actually_read_module_int(int_file_kind::in, globals::in,
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
@@ -156,48 +160,40 @@
     % Versions of actually_read_module_int that return, for each kind of
     % interface file, a value of a type that is specific to that kind.
     %
-:- pred actually_read_module_int0(int_file_kind::in, globals::in,
+:- pred actually_read_module_int0(globals::in,
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     parse_tree_int0::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
-:- pred actually_read_module_int1(int_file_kind::in, globals::in,
+:- pred actually_read_module_int1(globals::in,
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     parse_tree_int1::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
-:- pred actually_read_module_int2(int_file_kind::in, globals::in,
+:- pred actually_read_module_int2(globals::in,
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     parse_tree_int2::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
-:- pred actually_read_module_int3(int_file_kind::in, globals::in,
+:- pred actually_read_module_int3(globals::in,
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     parse_tree_int3::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
-    % actually_read_module_opt(OptFileKind, Globals, FileName,
+    % actually_read_module_N_opt(OptFileKind, Globals, FileName,
     %   DefaultModuleName, DefaultExpectationContexts, ParseTree,
     %   Specs, Errors, !IO):
     %
-    % Analogous to actually_read_module_src, but opens the OptFileKind
-    % optimization file for DefaultModuleName. It differs in being
+    % Analogous to actually_read_module_src, but opens the specified kind
+    % of optimization file for DefaultModuleName. It differs in being
     % given the FileName, and using intermod_directories instead of
     % search_directories when searching for that file. Also reports an error
     % if the actual module name doesn't match the expected module name.
-    %
-:- pred actually_read_module_opt(opt_file_kind::in, globals::in,
-    file_name::in, module_name::in, list(prog_context)::in,
-    parse_tree_opt::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-
-    % Versions of actually_read_module_opt that return, for each kind of
-    % optimization file, a value of a type that is specific to that kind.
     %
 :- pred actually_read_module_plain_opt(globals::in,
     file_name::in, module_name::in, list(prog_context)::in,
@@ -240,6 +236,7 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.convert_parse_tree.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_item.
 :- import_module parse_tree.parse_sym_name.
@@ -401,92 +398,47 @@ actually_read_module_int(IntFileKind, Globals,
         ParseTreeInt = convert_parse_tree_int3_to_int(ParseTreeInt3)
     ).
 
-actually_read_module_int0(IntFileKind, Globals,
+actually_read_module_int0(Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree0, Specs, Errors, !IO) :-
-    actually_read_module_int(IntFileKind, Globals,
+    actually_read_module_int(ifk_int0, Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs0, Errors, !IO),
     check_convert_parse_tree_int_to_int0(ParseTree, ParseTree0, Specs0, Specs).
 
-actually_read_module_int1(IntFileKind, Globals,
+actually_read_module_int1(Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree1, Specs, Errors, !IO) :-
-    actually_read_module_int(IntFileKind, Globals,
+    actually_read_module_int(ifk_int1, Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs0, Errors, !IO),
     check_convert_parse_tree_int_to_int1(ParseTree, ParseTree1, Specs0, Specs).
 
-actually_read_module_int2(IntFileKind, Globals,
+actually_read_module_int2(Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree2, Specs, Errors, !IO) :-
-    actually_read_module_int(IntFileKind, Globals,
+    actually_read_module_int(ifk_int2, Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs0, Errors, !IO),
     check_convert_parse_tree_int_to_int2(ParseTree, ParseTree2, Specs0, Specs).
 
-actually_read_module_int3(IntFileKind, Globals,
+actually_read_module_int3(Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree3, Specs, Errors, !IO) :-
-    actually_read_module_int(IntFileKind, Globals,
+    actually_read_module_int(ifk_int3, Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs0, Errors, !IO),
     check_convert_parse_tree_int_to_int3(ParseTree, ParseTree3, Specs0, Specs).
 
 %---------------------------------------------------------------------------%
-
-actually_read_module_opt(OptFileKind, Globals, FileName,
-        DefaultModuleName, DefaultExpectationContexts,
-        ParseTreeOpt, Specs, Errors, !IO) :-
-    globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
-    search_for_file_and_stream(Dirs, FileName, MaybeFileNameAndStream, !IO),
-    do_actually_read_module(Globals,
-        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
-        always_read_module(dont_return_timestamp), _,
-        make_dummy_parse_tree_opt(OptFileKind),
-        read_parse_tree_opt(OptFileKind),
-        ParseTreeOpt0, ItemSpecs, Errors, !IO),
-    ModuleName = ParseTreeOpt0 ^ pto_module_name,
-    check_module_has_expected_name(FileName, DefaultModuleName,
-        DefaultExpectationContexts, ModuleName, no, NameSpecs),
-    Specs0 = ItemSpecs ++ NameSpecs,
-    (
-        OptFileKind = ofk_opt,
-        check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt0,
-            ParseTreePlainOpt, Specs0, Specs1),
-        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
-            HaltAtInvalidInterface),
-        (
-            HaltAtInvalidInterface = no,
-            Specs = Specs0
-        ;
-            HaltAtInvalidInterface = yes,
-            Specs = Specs1
-        ),
-        ParseTreeOpt = convert_parse_tree_plain_opt_to_opt(ParseTreePlainOpt)
-    ;
-        OptFileKind = ofk_trans_opt,
-        check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt0,
-            ParseTreeTransOpt, Specs0, Specs1),
-        globals.lookup_bool_option(Globals, halt_at_invalid_interface,
-            HaltAtInvalidInterface),
-        (
-            HaltAtInvalidInterface = no,
-            Specs = Specs0
-        ;
-            HaltAtInvalidInterface = yes,
-            Specs = Specs1
-        ),
-        ParseTreeOpt = convert_parse_tree_trans_opt_to_opt(ParseTreeTransOpt)
-    ).
 
 actually_read_module_plain_opt(Globals, FileName, DefaultModuleName,
         DefaultExpectationContexts, ParseTreePlainOpt, Specs, Errors, !IO) :-
@@ -568,7 +520,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
     % the severity is an error. The severity is deliberate.
     % XXX The option should be renamed, but there is no obvious
     % non-misleading name.
-    Spec = conditional_spec(warn_wrong_module_name, yes,
+    Spec = conditional_spec($pred, warn_wrong_module_name, yes,
         severity_error, phase_module_name, [MainMsg | SubMsgs]).
 
 :- pred expectation_context_to_msg(prog_context::in, error_msg::out) is det.
@@ -701,7 +653,7 @@ do_actually_read_module(Globals, DefaultModuleName, DefaultExpectationContexts,
 read_error_msg(ErrorMsg, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     Pieces = [fixed(ProgName), suffix(":"), words(ErrorMsg), nl],
-    Spec = error_spec(severity_error, phase_read_files,
+    Spec = error_spec($pred, severity_error, phase_read_files,
         [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
     Specs = [Spec].
 
@@ -848,10 +800,9 @@ read_parse_tree_int(IntFileKind, SourceFileName,
                                 Pieces = [words("Error: an interface file"),
                                     words("should not have two consecutive"),
                                     words("interface sections."), nl],
-                                Spec = error_spec(severity_error,
+                                Spec = simplest_spec($pred, severity_error,
                                     phase_term_to_parse_tree,
-                                        [simple_msg(SectionContext,
-                                            [always(Pieces)])]),
+                                    SectionContext, Pieces),
                                 !:Specs = [Spec | !.Specs],
                                 % Return a dummy parse tree if this happens.
                                 ParseTree = parse_tree_int(ModuleName,
@@ -1017,81 +968,14 @@ read_parse_tree_int_section(FileString, MaxOffset, Globals,
             Pieces = [words("Error: expected the start of an"),
                 words(ExpectedSectionKindStr), words("section, got")] ++
                 IOMPieces ++ [suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
             !:Specs = [Spec | !.Specs],
             % XXX Should we update !Errors?
             FinalLookAhead = lookahead(IOMVarSet, IOMTerm),
             MaybeRawItemBlock = no
         )
     ).
-
-:- pred generate_missing_start_section_warning_int(module_name::in,
-    prog_context::in,
-    missing_section_start_warning::in, missing_section_start_warning::out,
-    list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, read_module_errors::out) is det.
-
-generate_missing_start_section_warning_int(CurModuleName,
-        Context, !MissingStartSectionWarning, !Specs, !Errors) :-
-    (
-        !.MissingStartSectionWarning =
-            have_not_given_missing_section_start_warning,
-        !:MissingStartSectionWarning =
-            have_given_missing_section_start_warning,
-        % XXX ITEM_LIST The wording here is modelled after the corresponding
-        % error in source files, but maybe we should put the emphasis not
-        % on the error itself, but on the fact that this file has an error
-        % at all; since it should be automatically generated, it should not
-        % have any errors at all. Any bug is in the compiler that generated
-        % the interface file, NOT in the user's own code.
-        %
-        % XXX Note: for interface files we assume that the missing section
-        % marker is for an interface section, as required in the example below,
-        % while for source files we assume that it is for an implementation
-        % section, since that is what backwards compatibility (and the law
-        % of least astonishment) require.
-        Pieces = [invis_order_default_start(1),
-            words("Error: module"), qual_sym_name(CurModuleName),
-            words("should start with either an"), decl("interface"),
-            words("or"), decl("implementation"), words("declaration."), nl,
-            words("The following assumes that"),
-            words("the missing declaration is an"),
-            decl("interface"), words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
-        !:Specs = [Spec | !.Specs],
-        set.insert(rme_no_section_decl_at_start, !Errors)
-    ;
-        !.MissingStartSectionWarning =
-            have_given_missing_section_start_warning
-        % Do not generate duplicate warnings.
-    ).
-
-:- pred read_item_sequence_in_hdr_file_without_section_marker(string::in,
-    int::in, globals::in, module_name::in, varset::in, term::in,
-    maybe_lookahead::out, version_number_info::in, version_number_info::out,
-    maybe(raw_item_block)::out, file_name::in, file_name::out,
-    counter::in, counter::out, list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, read_module_errors::out,
-    line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
-
-read_item_sequence_in_hdr_file_without_section_marker(FileString, MaxOffset,
-        Globals, CurModuleName, IOMVarSet, IOMTerm, FinalLookAhead,
-        !VNInfo, MaybeRawItemBlock, !SourceFileName, !SeqNumCounter,
-        !Specs, !Errors, !LineContext, !LinePosn) :-
-    SectionKind = ms_interface,
-    ItemSeqInitLookAhead = lookahead(IOMVarSet, IOMTerm),
-    read_item_sequence(FileString, MaxOffset, Globals, CurModuleName,
-        ItemSeqInitLookAhead, FinalLookAhead, !VNInfo,
-        cord.init, InclsCord, cord.init, AvailsCord,
-        cord.init, FIMsCord, cord.init, ItemsCord,
-        !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-        !LineContext, !LinePosn),
-    RawItemBlock = item_block(CurModuleName, SectionKind,
-        cord.list(InclsCord), cord.list(AvailsCord),
-        cord.list(FIMsCord), cord.list(ItemsCord)),
-    MaybeRawItemBlock = yes(RawItemBlock).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1272,8 +1156,8 @@ read_parse_tree_src_components(FileString, MaxOffset, Globals,
             IOM = iom_marker_version_numbers(_),
             Pieces = [words("Error: unexpected version_numbers record"),
                 words("in source file."), nl],
-            Msg = simple_msg(get_term_context(IOMTerm), [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_read_files, [Msg]),
+            Spec = simplest_spec($pred, severity_error, phase_read_files,
+                get_term_context(IOMTerm), Pieces),
             !:Specs = [Spec | !.Specs],
             read_parse_tree_src_components(FileString, MaxOffset,
                 Globals, CurModuleName, ContainingModules, MaybePrevSection,
@@ -1298,9 +1182,8 @@ read_parse_tree_src_components(FileString, MaxOffset, Globals,
                         qual_sym_name(RawStartModuleName),
                         words("does not match the then-current module,"),
                         qual_sym_name(CurModuleName), suffix("."), nl],
-                    Msg = always(Pieces),
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(StartContext, [Msg])]),
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, StartContext, Pieces),
                     !:Specs = [Spec | !.Specs],
                     % Recover partially by ignoring the bad module
                     % qualification. The recovery is only partial because
@@ -1431,9 +1314,8 @@ generate_missing_start_section_warning_src(CurModuleName,
             words("The following assumes that"),
             words("the missing declaration is an"),
             decl("implementation"), words("declaration."), nl],
-        MissingSectionSpec =
-            error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(MissingSectionPieces)])]),
+        MissingSectionSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, Context, MissingSectionPieces),
         !:Specs = [MissingSectionSpec | !.Specs],
         set.insert(rme_no_section_decl_at_start, !Errors)
     ;
@@ -1469,9 +1351,8 @@ read_parse_tree_src_submodule(FileString, MaxOffset,
             words("The following assumes that"),
             words("the missing declaration is an"),
             decl("interface"), words("declaration."), nl],
-        NoSectionSpec =
-            error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(StartContext, [always(NoSectionPieces)])]),
+        NoSectionSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, StartContext, NoSectionPieces),
         !:Specs = [NoSectionSpec | !.Specs],
         % XXX ITEM_LIST Should this be a situation-specific rme_X value?
         set.insert(rme_no_section_decl_at_start, !Errors),
@@ -1509,8 +1390,8 @@ handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
         Pieces = [words("Error: missing"), decl("end_module"),
             words("declaration for"), qual_sym_name(CurModuleName),
             suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(EndContext, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            EndContext, Pieces),
         !:Specs = [Spec | !.Specs],
         set.insert(rme_bad_module_end, !Errors),
         FinalLookAhead = lookahead(IOMVarSet, IOMTerm)
@@ -1519,8 +1400,8 @@ handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
             words("declaration for"), qual_sym_name(EndedModuleName),
             words("is not for the module at whose end it appears,"),
             words("which is"), qual_sym_name(CurModuleName), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(EndContext, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            EndContext, Pieces),
         !:Specs = [Spec | !.Specs],
         set.insert(rme_bad_module_end, !Errors),
         % Eat the bad end_module declaration.
@@ -1600,7 +1481,7 @@ read_module_header(FileString, MaxOffset,
     % automatically generated by the compiler (.int* and .*opt files)
     % never contain source_file pragmas. For these, callers should pass
     % may_not_change_source_file_name, which calls for any occurrence of
-    % a source_file pragma to be treated as the error it is. 
+    % a source_file pragma to be treated as the error it is.
     %
 :- type may_change_source_file_name
     --->    may_not_change_source_file_name
@@ -1877,9 +1758,8 @@ record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs) :-
             words("record. This indicates an internal error"),
             words("in the Mercury compiler that"),
             words("generated this file."), nl],
-        Msg = simple_msg(get_term_context(IOMTerm),
-            [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_read_files, [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            get_term_context(IOMTerm), Pieces),
         !:Specs = [Spec | !.Specs]
     ;
         !.VNInfo = dont_allow_version_numbers,
@@ -1887,8 +1767,8 @@ record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs) :-
             words("should not appear anywhere"),
             words("except in automatically generated"),
             words("interface files."), nl],
-        Msg = simple_msg(get_term_context(IOMTerm), [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_read_files, [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            get_term_context(IOMTerm), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1938,11 +1818,11 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult,
         ReadIOMResult = read_iom_eof
     ;
         ReadTermResult = error(ErrorMsg, LineNumber),
+        Context = term.context_init(FileName, LineNumber),
         % XXX Do we need to add an "Error:" prefix?
         Pieces = [words(ErrorMsg), suffix("."), nl],
-        Context = term.context_init(FileName, LineNumber),
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
         ReadIOMResult = read_iom_read_error(Spec)
     ;
         ReadTermResult = term(VarSet, Term),
@@ -1975,9 +1855,8 @@ report_missing_module_start(FirstContext, !Specs, !Errors) :-
     Pieces = [invis_order_default_start(0),
         words("Error: module must start with a"),
         decl("module"), words("declaration."), nl],
-    Msgs = [always(Pieces)],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(FirstContext, Msgs)]),
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        FirstContext, Pieces),
     !:Specs = [Spec | !.Specs],
     set.insert(rme_no_module_decl_at_start, !Errors).
 
@@ -1991,9 +1870,8 @@ report_wrong_module_start(FirstContext, Expected, Actual, !Specs, !Errors) :-
         decl("module"), words("declaration."), nl,
         words("Expected module"), qual_sym_name(Expected), suffix(","),
         words("found module"), qual_sym_name(Actual), suffix("."), nl],
-    Msgs = [always(Pieces)],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(FirstContext, Msgs)]),
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        FirstContext, Pieces),
     !:Specs = [Spec | !.Specs],
     set.insert(rme_no_module_decl_at_start, !Errors).
 
@@ -2059,8 +1937,8 @@ report_unexpected_term_at_end(FileKind, Term, !Specs, !Errors) :-
         Error = rme_unexpected_term_in_int_or_opt,
         Pieces = [words("Error: unexpected item in optimization file"), nl]
     ),
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]),
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Context, Pieces),
     !:Specs = [Spec | !.Specs],
     set.insert(Error, !Errors).
 

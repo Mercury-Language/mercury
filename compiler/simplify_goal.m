@@ -151,18 +151,15 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
             )
         then
             MainPieces = [words("Warning: this goal cannot succeed.")],
-            VerbosePieces = [
-                words("The compiler will optimize away this goal,"),
-                words("replacing it with"), quote("fail"), suffix(".")
-            ],
+            VerbosePieces =
+                [words("The compiler will optimize away this goal,"),
+                words("replacing it with"), quote("fail"), suffix(".")],
             Msg = simple_msg(Context,
-                [option_is_set(warn_simple_code, yes,
-                    [always(MainPieces),
-                    verbose_only(verbose_always, VerbosePieces)])]),
-            Severity = severity_conditional(warn_simple_code, yes,
-                severity_warning, no),
-            Spec = error_spec(Severity,
-                phase_simplify(report_only_if_in_all_modes), [Msg]),
+                [always(MainPieces),
+                verbose_only(verbose_always, VerbosePieces)]),
+            Spec = conditional_spec($pred, warn_simple_code, yes,
+                severity_warning, phase_simplify(report_only_if_in_all_modes),
+                [Msg]),
             simplify_info_add_message(Spec, !Info)
         else
             true

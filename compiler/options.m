@@ -157,6 +157,7 @@
     ;       halt_at_syntax_errors
     ;       halt_at_auto_parallel_failure
     ;       halt_at_invalid_interface
+    ;       print_errors_warnings_when_generating_interface
     ;       warn_singleton_vars
     ;       warn_overlapping_scopes
     ;       warn_det_decls_too_lax
@@ -213,6 +214,7 @@
     ;       inform_inferred_types
     ;       inform_inferred_modes
     ;       inform_suboptimal_packing
+    ;       print_error_spec_id
 
     % Verbosity options
     ;       verbose
@@ -1185,6 +1187,7 @@ option_defaults_2(warning_option, [
     % the installed compiler to ensure that what it puts into
     % interface files won't generate any errors.
     halt_at_invalid_interface           -   bool(yes),
+    print_errors_warnings_when_generating_interface -   bool(no),
 
     % IMPORTANT NOTE:
     % if you add any new warning options, or if you change the default
@@ -1252,7 +1255,8 @@ option_defaults_2(warning_option, [
     inform_inferred                     -   bool_special,
     inform_inferred_types               -   bool(yes),
     inform_inferred_modes               -   bool(yes),
-    inform_suboptimal_packing           -   bool(no)
+    inform_suboptimal_packing           -   bool(no),
+    print_error_spec_id                 -   bool(no)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -2106,6 +2110,8 @@ long_option("halt-at-warn",             halt_at_warn).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
 long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
 long_option("halt-at-invalid-interface",    halt_at_invalid_interface).
+long_option("print-errors-warnings-when-generating-interface",
+                    print_errors_warnings_when_generating_interface).
 long_option("warn-singleton-variables", warn_singleton_vars).
 long_option("warn-singleton-vars",      warn_singleton_vars).
 long_option("warn-overlapping-scopes",  warn_overlapping_scopes).
@@ -2185,6 +2191,7 @@ long_option("inform-inferred",          inform_inferred).
 long_option("inform-inferred-types",    inform_inferred_types).
 long_option("inform-inferred-modes",    inform_inferred_modes).
 long_option("inform-suboptimal-packing",    inform_suboptimal_packing).
+long_option("print-error-spec-id",      print_error_spec_id).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -3854,14 +3861,18 @@ options_help_warning -->
         "\tThis option causes the compiler to halt immediately",
         "\tafter syntax checking and not do any semantic checking",
         "\tif it finds any syntax errors in the program.",
+%       "--halt-at-auto-parallel-failure",
+%       "\tThis option causes the compiler to halt if it cannot perform",
+%       "\tan auto-parallelization requested by a feedback file.",
 % --halt-at-invalid-interface is a temporary developer-only option.
 %       "--halt-at-invalid-interface",
 %       "\tThis option causes the compiler to halt immediately",
 %       "\tif it finds that an automatically generated interface file",
 %       "\thas invalid contents.",
-%       "--halt-at-auto-parallel-failure",
-%       "\tThis option causes the compiler to halt if it cannot perform",
-%       "\tan auto-parallelization requested by a feedback file.",
+        "--print-errors-warnings-when-generating-interface",
+        "\tPrint error and/or warning messages about problems with a module",
+        "\tnot just when the module is compiled, but also when its",
+        "\tinterface files are generated, if the problem is visible then.",
         "--no-warn-accumulator-swaps",
         "\tDo not warn about argument order rearrangement caused",
         "\tby `--introduce-accumulators'.",
@@ -4047,6 +4058,9 @@ options_help_warning -->
         "--inform-suboptimal-packing",
         "\tGenerate messages if the arguments of a data constructor",
         "\tcould be packed more tightly if they were reordered."
+%       "--print-error-spec-id",
+%       "\tAfter each error message printed, print its id, which",
+%       "\tby convention is the $pred of the code that constructs it."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

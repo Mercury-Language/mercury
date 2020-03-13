@@ -295,7 +295,7 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
                 else
                     ErrorFile = FileToFind
                 ),
-                ErrorSpec = error_spec(severity_error, phase_read_files,
+                ErrorSpec = error_spec($pred, severity_error, phase_read_files,
                     [error_msg(no, do_not_treat_as_first, 0,
                         [always([words("Error reading options file"),
                             quote(ErrorFile), suffix(".")])])]),
@@ -1138,7 +1138,7 @@ lookup_options_variable(Globals, Vars, OptionsVariableClass, FlagsVar, Result,
                     list_to_pieces(
                         list.map(func(Lib) = add_quotes(Lib), BadLibs))]
                     ++ [suffix(".")],
-                ErrorSpec = error_spec(severity_error, phase_read_files,
+                ErrorSpec = error_spec($pred, severity_error, phase_read_files,
                     [error_msg(no, do_not_treat_as_first, 0,
                         [always(Pieces)])]),
                 write_error_spec_ignore(ErrorSpec, Globals, !IO),
@@ -1204,7 +1204,7 @@ lookup_variable_words_maybe_env(LookupEnv, Vars, VarName, Result, !IO) :-
             Result = var_result_set(EnvWords)
         ;
             SplitResult = error(Msg),
-            ErrorSpec = error_spec(severity_error, phase_read_files,
+            ErrorSpec = error_spec($pred, severity_error, phase_read_files,
                 [error_msg(no, do_not_treat_as_first, 0,
                     [always([words("Error: in environment variable"),
                         quote(VarName), suffix(":"), words(Msg), nl])]

@@ -258,6 +258,7 @@
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module std_util.
@@ -1388,8 +1389,8 @@ write_opt_file_initial(IntermodInfo, ParseTreePlainOpt, !IO) :-
         some_type_needs_to_be_written(TypeCtorsDefns, no)
     then
         ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, term.context_init,
-            set.init, set.init, [], [], [], [], [], [], [], [], [], [], [], [],
-            [], [], [], [], [], [], [], [])
+            map.init, set.init, [], [], [], [], [], [], [], [], [], [], [], [],
+            [], [], [], [], [], [], [], [], [])
     else
         write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO)
     ).
@@ -1421,11 +1422,23 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     set.to_sorted_list(WriteDeclPredIdSet, WriteDeclPredIds),
 
     module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
-    % XXX We could and should reduce AvailModules to the set of modules
+    % XXX CLEANUP We could and should reduce AvailModules to the set of modules
     % that are *actually needed* by the items being written.
+    % XXX CLEANUP And even if builtin.m and/or private_builtin.m is needed
+    % by an item, we *still* shouldn't include them, since the importing
+    % module will import and use them respectively anyway.
     map.keys(AvailModuleMap, UsedModuleNames),
     list.foldl(intermod_write_use_module, UsedModuleNames, !IO),
-    set.sorted_list_to_set(UsedModuleNames, UsedModuleNamesSet),
+    AddToUseMap =
+        ( pred(MN::in, UM0::in, UM::out) is det :-
+            % We don't have a context for any use_module declaration
+            % of this module (since it may have a import_module declaration
+            % instead), which is why we specify a dummy context.
+            % However, these contexts are used only when the .opt file
+            % is read in, not when it is being generated.
+            one_or_more_map.add(MN, term.dummy_context_init, UM0, UM)
+        ),
+    list.foldl(AddToUseMap, UsedModuleNames, one_or_more_map.init, UseMap),
 
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo0 = init_hlds_out_info(Globals, output_mercury),
@@ -1446,9 +1459,8 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     intermod_write_instances(OutInfo, InstanceDefns, Instances, !IO),
     (
         NeedFIMs = do_need_foreign_import_modules,
-        module_info_get_foreign_import_modules(ModuleInfo,
-            ForeignImportModules),
-        FIMSpecs = get_all_fim_specs(ForeignImportModules),
+        module_info_get_c_j_cs_e_fims(ModuleInfo, CJCsEFIMs),
+        FIMSpecs = get_all_fim_specs(CJCsEFIMs),
         ( if set.is_empty(FIMSpecs) then
             true
         else
@@ -1484,12 +1496,17 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     PredMarkerPragmas = cord.list(PredMarkerPragmasCord),
     Clauses = [],
     ForeignProcs = [],
+    % XXX CLEANUP This *may* be a lie, in that some of the predicates we have
+    % written out above *may* have goal_type_promise. However, until
+    % we switch over completely to creating .opt files purely by building up
+    % and then writing out a parse_tree_plain_opt, this shouldn't matter.
+    Promises = [],
 
     module_info_get_name(ModuleInfo, ModuleName),
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, term.context_init,
-        UsedModuleNamesSet, FIMSpecs, TypeDefns, ForeignEnums,
+        UseMap, FIMSpecs, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
-        PredDecls, ModeDecls, Clauses, ForeignProcs,
+        PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
         PredMarkerPragmas, TypeSpecPragmas, [], [], [], [], [], [], [], []).
 
 :- type maybe_first

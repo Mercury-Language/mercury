@@ -108,11 +108,9 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
                     words("but does not declare what type constructor"),
                     words("it is for."), nl],
                 Option = warn_insts_with_functors_without_type,
-                Msg = simple_msg(Context,
-                    [option_is_set(Option, yes, [always(Pieces)])]),
-                Severity =
-                    severity_conditional(Option, yes, severity_warning, no),
-                Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+                Spec = conditional_spec($pred, Option, yes,
+                    severity_warning, phase_parse_tree_to_hlds,
+                    [simplest_msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
             ;
                 Here = no
@@ -144,8 +142,8 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
                 words("is specified to be for a given type constructor,"),
                 words("but it is not defined to be equivalent to a"),
                 quote("bound"), words("inst."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
             true
@@ -365,8 +363,8 @@ report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
         Pieces = [words("Error: circular equivalence"), fixed(Kinds)]
             ++ component_list_to_pieces("and", ExpansionPieces) ++
             [suffix("."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         % We have an inst `OrigId' which is not itself circular,

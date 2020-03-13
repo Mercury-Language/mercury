@@ -319,7 +319,7 @@ report_assertion_interface_error(ModuleInfo, Context, IdPieces, !Specs) :-
         [words("Either move the promise into the implementation section"),
         words("or move the definition into the interface."), nl],
     Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
-    Spec = error_spec(severity_error, phase_type_check,
+    Spec = error_spec($pred, severity_error, phase_type_check,
         [simple_msg(Context, Msgs)]),
     !:Specs = [Spec | !.Specs].
 

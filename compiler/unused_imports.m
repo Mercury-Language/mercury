@@ -59,6 +59,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
@@ -148,9 +149,7 @@ maybe_warn_about_avail(TopModuleName,
         HeadAvail = avail_module(_, _, HeadContext),
         maybe_generate_redundant_avail_warnings(ModuleName, SortedAvails,
             [], !Specs),
-        ( if
-            set.member(ModuleName, UnusedAnywhereImports)
-        then
+        ( if set.member(ModuleName, UnusedAnywhereImports) then
             AnywhereSpec = generate_unused_warning(TopModuleName,
                 ModuleName, ImportOrUse, HeadContext, aoi_anywhere),
             !:Specs = [AnywhereSpec | !.Specs],
@@ -234,7 +233,7 @@ maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
             words("for"), qual_sym_name(ModuleName),
             words("is redundant."), nl],
         MainMsg = simplest_msg(Context, MainPieces),
-        Spec = error_spec(severity_informational, phase_code_gen,
+        Spec = error_spec($pred, severity_informational, phase_code_gen,
             [MainMsg | PrevMsgs]),
         !:Specs = [Spec | !.Specs]
     ),
@@ -303,7 +302,8 @@ generate_unused_warning(TopModuleName, UnusedModuleName, ImportOrUse,
         words("has a"), decl(ImportOrUseDeclName),
         words("declaration"), words(DeclInTheLocn), suffix(","),
         words("but is not used"), words(NotUsedInTheLocn), suffix("."), nl],
-    Spec = simplest_spec(severity_warning, phase_code_gen, Context, Pieces).
+    Spec = simplest_spec($pred, severity_warning, phase_code_gen,
+        Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

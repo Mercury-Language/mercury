@@ -222,12 +222,11 @@
 
 module_name_to_index(ModuleName, Index, !Info) :-
     Map0 = !.Info ^ module_index_map,
-    ( if
-        version_hash_table.search(Map0 ^ mim_forward_map, ModuleName, Index0)
-    then
+    Map0 = module_index_map(Forward0, _Reverse0, _Size0),
+    ( if version_hash_table.search(Forward0, ModuleName, Index0) then
         Index = Index0
     else
-        Map0 = module_index_map(Forward0, Reverse0, Size0),
+        Map0 = module_index_map(_Forward0, Reverse0, Size0),
         Index = module_index(Size0),
         Size = Size0 + 1,
         version_hash_table.det_insert(ModuleName, Index, Forward0, Forward),
@@ -986,11 +985,9 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
         !Info, !IO),
     (
         MaybeModuleAndImports = yes(ModuleAndImports),
-        module_and_imports_get_foreign_import_modules(ModuleAndImports,
-            ForeignModuleInfos),
+        module_and_imports_get_c_j_cs_e_fims(ModuleAndImports, CJCsEFIMs),
         LangForeignModuleNameSets =
-            set.map(get_lang_fim_modules(ForeignModuleInfos),
-                Languages),
+            set.map(get_lang_fim_modules(CJCsEFIMs), Languages),
         set.power_union(LangForeignModuleNameSets, ForeignModuleNameSet),
         module_names_to_index_set(set.to_sorted_list(ForeignModuleNameSet),
             ForeignModules, !Info),
@@ -1167,8 +1164,8 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     ModuleDir = dir.this_directory
                 )
             then
-                module_and_imports_get_foreign_import_modules(
-                    ModuleAndImports, ForeignImportModules),
+                module_and_imports_get_c_j_cs_e_fims(ModuleAndImports,
+                    CJCsEFIMs),
                 module_and_imports_get_ancestors(ModuleAndImports,
                     Ancestors),
                 module_and_imports_get_children_set(ModuleAndImports,
@@ -1187,13 +1184,13 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     DependenciesType = all_dependencies,
                     ImportsToCheck = set.union_list([
                         Ancestors, Children, IntDeps, ImpDeps,
-                        get_all_foreign_import_modules(ForeignImportModules)
+                        get_all_foreign_import_modules(CJCsEFIMs)
                     ])
                 ;
                     DependenciesType = all_imports,
                     ImportsToCheck = set.union_list([
                         Ancestors, IntDeps, ImpDeps,
-                        get_all_foreign_import_modules(ForeignImportModules)
+                        get_all_foreign_import_modules(CJCsEFIMs)
                     ])
                 ),
                 module_names_to_index_set(set.to_sorted_list(ImportsToCheck),
