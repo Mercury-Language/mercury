@@ -65,21 +65,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Convert from the optimization-file-kind specific parse trees
-    % to the generic optimization file parse tree. These conversions go
-    % from more restrictive to less restrictive, so they always
-    % succeed without any problems.
-    %
-    % XXX CLEANUP These conversions should not needed. Once the contents
-    % of an optimization file are in the opt_file_kind-specific form,
-    % there should never be a need to convert it back to the less specific
-    % form, losing the more specific invariants.
-    %
-:- func convert_parse_tree_plain_opt_to_opt(parse_tree_plain_opt)
-    = parse_tree_opt.
-:- func convert_parse_tree_trans_opt_to_opt(parse_tree_trans_opt)
-    = parse_tree_opt.
-
     % Convert from the generic optimization file parse tree to the
     % optimization-file-kind specific parse trees. These conversions go
     % from less restrictive to more restrictive, so they can discover
@@ -997,62 +982,6 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
     ),
     classify_int3_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !TypeRepns, !Specs).
-
-%---------------------------------------------------------------------------%
-
-convert_parse_tree_plain_opt_to_opt(ParseTreePlainOpt) = ParseTreeOpt :-
-    ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, ModuleNameContext,
-        UseMap, FIMSpecs, TypeDefns, ForeignEnums,
-        InstDefns, ModeDefns, TypeClasses, Instances,
-        PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
-        MarkerPragmas, TypeSpecs, UnusedArgs, TermInfos, Term2Infos,
-        Exceptions, Trailings, MMTablings, Sharings, Reuses),
-
-    map.foldl(use_map_to_use_infos_acc, UseMap, [], RevUses),
-    list.reverse(RevUses, Uses),
-    FIMs = list.map(fim_spec_to_item, set.to_sorted_list(FIMSpecs)),
-    Items =
-        list.map(wrap_type_defn_item, TypeDefns) ++
-        list.map(wrap_foreign_enum_item, ForeignEnums) ++
-        list.map(wrap_inst_defn_item, InstDefns) ++
-        list.map(wrap_mode_defn_item, ModeDefns) ++
-        list.map(wrap_typeclass_item, TypeClasses) ++
-        list.map(wrap_instance_item, Instances) ++
-        list.map(wrap_pred_decl_item, PredDecls) ++
-        list.map(wrap_mode_decl_item, ModeDecls) ++
-        list.map(wrap_clause, Clauses) ++
-        list.map(wrap_foreign_proc, ForeignProcs) ++
-        list.map(wrap_promise_item, Promises) ++
-        list.map(wrap_marker_pragma_item, MarkerPragmas) ++
-        list.map(wrap_type_spec_pragma_item, TypeSpecs) ++
-        list.map(wrap_unused_args_pragma_item, UnusedArgs) ++
-        list.map(wrap_termination_pragma_item, TermInfos) ++
-        list.map(wrap_termination2_pragma_item, Term2Infos) ++
-        list.map(wrap_exceptions_pragma_item, Exceptions) ++
-        list.map(wrap_trailing_pragma_item, Trailings) ++
-        list.map(wrap_mm_tabling_pragma_item, MMTablings) ++
-        list.map(wrap_struct_sharing_pragma_item, Sharings) ++
-        list.map(wrap_struct_reuse_pragma_item, Reuses),
-
-    ParseTreeOpt = parse_tree_opt(ModuleName, ofk_opt, ModuleNameContext,
-        Uses, FIMs, Items).
-
-convert_parse_tree_trans_opt_to_opt(ParseTreeTransOpt) = ParseTreeOpt :-
-    ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, ModuleNameContext,
-        TermInfos, Term2Infos, Exceptions, Trailings, MMTablings,
-        Sharings, Reuses),
-
-    Items =
-        list.map(wrap_termination_pragma_item, TermInfos) ++
-        list.map(wrap_termination2_pragma_item, Term2Infos) ++
-        list.map(wrap_exceptions_pragma_item, Exceptions) ++
-        list.map(wrap_trailing_pragma_item, Trailings) ++
-        list.map(wrap_mm_tabling_pragma_item, MMTablings) ++
-        list.map(wrap_struct_sharing_pragma_item, Sharings) ++
-        list.map(wrap_struct_reuse_pragma_item, Reuses),
-
-    ParseTreeOpt = parse_tree_opt(ModuleName, ofk_trans_opt, ModuleNameContext,
-        [], [], Items).
 
 %---------------------------------------------------------------------------%
 
@@ -2848,15 +2777,6 @@ error_is_exported(Context, DescPieces, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
-
-:- pred use_map_to_use_infos_acc(module_name::in,
-    one_or_more(prog_context)::in,
-    list(avail_use_info)::in, list(avail_use_info)::out) is det.
-
-use_map_to_use_infos_acc(ModuleName, Contexts, !RevUses) :-
-    Contexts = one_or_more(Context, _),
-    Use = avail_use_info(ModuleName, Context, -1),
-    !:RevUses = [Use | !.RevUses].
 
 :- pred accumulate_uses_maps(list(avail_use_info)::in,
     module_names_contexts::in, module_names_contexts::out) is det.
