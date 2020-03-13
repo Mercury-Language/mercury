@@ -87,13 +87,11 @@
 
 :- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 
-:- import_module cord.
 :- import_module list.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
@@ -244,8 +242,6 @@ insert_into_deps_map(ModuleImports, !DepsMap) :-
     % Read a module to determine the (direct) dependencies of that module
     % and any nested submodules it contains. Return the module_and_imports
     % structure for the named module, and each of its nested submodules.
-    % If we cannot do better, return a dummy module_and_imports structure
-    % for the named module.
     %
 :- pred read_dependencies(globals::in, module_name::in, list(term.context)::in,
     maybe_search::in, list(module_and_imports)::out, io::di, io::uo) is det.
@@ -258,29 +254,11 @@ read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
         ignore_errors, Search, ModuleName, ExpectationContexts,
         SourceFileName, always_read_module(dont_return_timestamp), _,
         ParseTreeSrc, SrcSpecs, SrcReadModuleErrors, !IO),
-    ParseTreeSrc = parse_tree_src(_ModuleNameSrc0, _ModuleNameContext0,
-        ModuleComponentCord0),
-    ( if
-        cord.is_empty(ModuleComponentCord0),
-        set.intersect(SrcReadModuleErrors, fatal_read_module_errors,
-            FatalErrors),
-        set.is_non_empty(FatalErrors)
-    then
-        read_module_int(Globals, "Getting dependencies for module interface",
-            ignore_errors, Search, ModuleName, ifk_int1, IntFileName,
-            always_read_module(dont_return_timestamp), _,
-            ParseTreeInt, _IntSpecs, _IntReadModuleErrors, !IO),
-        % XXX Shouldn't we pass *Int*ReadModuleErrors?
-        parse_tree_int_to_module_and_imports(Globals, IntFileName,
-            ParseTreeInt, SrcReadModuleErrors, ModuleAndImports),
-        ModuleAndImportsList = [ModuleAndImports]
-    else
-        parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
-            ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs,
-            _RawCompUnits, ModuleAndImportsList),
-        % XXX Why do we print out these error messages?
-        write_error_specs_ignore(Specs, Globals, !IO)
-    ).
+    parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
+        ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs,
+        _RawCompUnits, ModuleAndImportsList),
+    % XXX Why do we print out these error messages?
+    write_error_specs_ignore(Specs, Globals, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.deps_map.

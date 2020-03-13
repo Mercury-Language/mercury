@@ -179,14 +179,6 @@
     list(error_spec)::in, list(error_spec)::out,
     list(raw_compilation_unit)::out, list(module_and_imports)::out) is det.
 
-    % This predicate is used by deps_map.m for building dependency maps
-    % between modules, in case the reading of a module's source file
-    % encounters a fatal error.
-    %
-:- pred parse_tree_int_to_module_and_imports(globals::in, file_name::in,
-    parse_tree_int::in, read_module_errors::in,
-    module_and_imports::out) is det.
-
 :- pred rebuild_module_and_imports_for_dep_file(globals::in,
     module_and_imports::in, module_and_imports::out) is det.
 
@@ -591,23 +583,6 @@ parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
         init_module_and_imports(Globals, SourceFileName, TopModuleName,
             CompUnitModuleNames, MAISpecs0, ReadModuleErrors),
         RawCompUnits, ModuleAndImportsList).
-
-parse_tree_int_to_module_and_imports(Globals, IntFileName,
-        ParseTreeInt, ReadModuleErrors, ModuleAndImports) :-
-    ParseTreeInt = parse_tree_int(ModuleName, _, ModuleContext,
-        _MaybeVersionNumbers, IntIncl, ImpIncls, IntAvails, ImpAvails,
-        IntFIMs, ImpFIMs, IntItems, ImpItems),
-    int_imp_items_to_item_blocks(ModuleName, ms_interface, ms_implementation,
-        IntIncl, ImpIncls, IntAvails, ImpAvails, IntFIMs, ImpFIMs,
-        IntItems, ImpItems, RawItemBlocks),
-    RawCompUnit =
-        raw_compilation_unit(ModuleName, ModuleContext, RawItemBlocks),
-
-    CompUnitModuleNames = set.make_singleton_set(ModuleName),
-    MAISpecs0 = [],
-    init_module_and_imports(Globals, IntFileName, ModuleName,
-        CompUnitModuleNames, MAISpecs0, ReadModuleErrors,
-        RawCompUnit, ModuleAndImports).
 
 rebuild_module_and_imports_for_dep_file(Globals,
         ModuleAndImports0, ModuleAndImports) :-
