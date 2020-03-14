@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2001, 2003-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2019 The Mercury team.
+% Copyright (C) 2014-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -13,7 +13,7 @@
 % This file exports the predicate read_term, which reads a term from the
 % current input stream. The read_term_from_*string predicates are the same as
 % the read_term predicates, except that the term is read from a string rather
-% than from the current input stream. The parse_token_list predicate is
+% than from the current input stream. The parse_tokens predicate is
 % similar, but it takes a list of tokens rather than a string.
 %
 % The parser is a relatively straight-forward top-down recursive descent
