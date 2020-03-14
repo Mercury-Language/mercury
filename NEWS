@@ -61,7 +61,7 @@ Changes to the Mercury standard library
 
 ### Changes to the `assoc_list` module
 
-* The following predicates has been added:
+* The following predicates have been added:
 
     - pred `lookup/3`
     - pred `update/4`
@@ -206,7 +206,7 @@ Changes to the Mercury compiler
 * `--print-errors-warnings-when-generating-interface`
 
   Until now, the compiler did not try to detect problems with a module
-  when generating its interface files. Now it does. To preserve compability,
+  when generating its interface files. Now it does. To preserve compatibility,
   by default it still ignores any problems it finds then, but if this option
   is enabled, and if it does in fact find any problems, the compiler will
   report them, and if they are severe enough, it will not generate the
