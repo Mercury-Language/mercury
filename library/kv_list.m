@@ -226,6 +226,12 @@
 :- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode foldl(pred(in, in, in, out) is nondet, in, in, out) is nondet.
 
+    % foldl_keys(Func List, Start) = End calls Func
+    % with each key in List, working left-to-right, and an accumulator
+    % whose initial value is Start, and returns the final value in End.
+    %
+:- func foldl_keys(func(K, A) = A, kv_list(K, V), A) = A.
+
     % foldl_keys(Pred, List, Start End) calls Pred
     % with each key in List, working left-to-right, and an accumulator
     % whose initial value is Start, and returns the final value in End.
@@ -239,6 +245,12 @@
 :- mode foldl_keys(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode foldl_keys(pred(in, in, out) is multi, in, in, out) is multi.
 :- mode foldl_keys(pred(in, in, out) is nondet, in, in, out) is nondet.
+
+    % foldl_values(Func List, Start) = End calls Func
+    % with each value in List, working left-to-right, and an accumulator
+    % whose initial value is Start, and returns the final value in End.
+    %
+:- func foldl_values(func(V, A) = A, kv_list(K, V), A) = A.
 
     % foldl_values(Pred, List, Start End) calls Pred
     % with each value in List, working left-to-right, and an accumulator
@@ -565,20 +577,30 @@ merge(A @ kv_cons(AK, AV, AKVs), B @ kv_cons(BK, BV, BKVs), C) :-
 
 %---------------------------------------------------------------------------%
 
-foldl(_F, kv_nil, A) = A.
-foldl(F, kv_cons(K, V, TailKVs), !.A) = !:A :-
-    !:A = F(K, V, !.A),
-    !:A = foldl(F, TailKVs, !.A).
+foldl(_F, kv_nil, Acc) = Acc.
+foldl(F, kv_cons(K, V, TailKVs), !.Acc) = !:Acc :-
+    !:Acc = F(K, V, !.Acc),
+    !:Acc = foldl(F, TailKVs, !.Acc).
 
-foldl(_P, kv_nil, !A).
-foldl(P, kv_cons(K, V, TailKVs), !A) :-
-    P(K, V, !A),
-    foldl(P, TailKVs, !A).
+foldl(_P, kv_nil, !Acc).
+foldl(P, kv_cons(K, V, TailKVs), !Acc) :-
+    P(K, V, !Acc),
+    foldl(P, TailKVs, !Acc).
+
+foldl_keys(_F, kv_nil, Acc) = Acc.
+foldl_keys(F, kv_cons(K, _V, KVs), !.Acc) = !:Acc :-
+    !:Acc = F(K, !.Acc),
+    !:Acc = kv_list.foldl_keys(F, KVs, !.Acc).
 
 foldl_keys(_P, kv_nil, !Acc).
 foldl_keys(P, kv_cons(K, _V, KVs), !Acc) :-
     P(K, !Acc),
     kv_list.foldl_keys(P, KVs, !Acc).
+
+foldl_values(_F, kv_nil, Acc) = Acc.
+foldl_values(F, kv_cons(_K, V, KVs), !.Acc) = !:Acc :-
+    !:Acc = F(V, !.Acc),
+    !:Acc = kv_list.foldl_values(F, KVs, !.Acc).
 
 foldl_values(_P, kv_nil, !Acc).
 foldl_values(P, kv_cons(_K, V, KVs), !Acc) :-
