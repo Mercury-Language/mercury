@@ -230,6 +230,14 @@ Changes to the Mercury implementation
   Another consequence is that the `--trail-size` and `--trail-size-kwords`
   runtime options no longer have any effect, and are deprecated.
 
+NEWS for Mercury 20.01.2
+========================
+
+This is a bug-fix release.
+
+* We have a fixed bug that prevented the runtime from building correctly
+  in C grades on 32-bit platforms when *not* using GCC as the C compiler.
+
 NEWS for Mercury 20.01.1
 ========================
 
