@@ -321,7 +321,7 @@
 :- pred module_info_get_fact_table_file_names(module_info::in,
     list(string)::out) is det.
 :- pred module_info_get_int_bad_clauses(module_info::in,
-    set(pf_sym_name_and_arity)::out) is det.
+    set(pf_sym_name_arity)::out) is det.
 :- pred module_info_get_maybe_dependency_info(module_info::in,
     maybe(hlds_dependency_info)::out) is det.
 :- pred module_info_get_num_errors(module_info::in, int::out) is det.
@@ -412,7 +412,7 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_foreign_body_codes(cord(foreign_body_code)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_int_bad_clauses(set(pf_sym_name_and_arity)::in,
+:- pred module_info_set_int_bad_clauses(set(pf_sym_name_arity)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_type_ctor_gen_infos(list(type_ctor_gen_info)::in,
     module_info::in, module_info::out) is det.
@@ -660,7 +660,7 @@
                 trdd_foreign_exports    :: list(item_foreign_export_enum_info)
             ).
 
-:- type direct_arg_map == map(type_ctor, list(sym_name_and_arity)).
+:- type direct_arg_map == map(type_ctor, list(sym_name_arity)).
 
 %---------------------------------------------------------------------------%
 
@@ -808,7 +808,7 @@
                 % misleading, since the definition is not missing, it was
                 % just misplaced, and we have already generated an error
                 % message about that misplaced attempt at definition.
-                mri_int_bad_clauses             :: set(pf_sym_name_and_arity),
+                mri_int_bad_clauses             :: set(pf_sym_name_arity),
 
                 % Please see module_info_ensure_dependency_info for the
                 % meaning of this dependency_info, and the constraints on it.
@@ -898,14 +898,14 @@
                 % Exported C names for preds appearing in `:- initialise
                 % initpred' directives in this module, in order of appearance.
                 mri_user_init_pred_c_names      :: assoc_list(
-                                                    sym_name_and_arity,
+                                                    sym_name_arity,
                                                     string),
 
                 % Export C names for preds appearing in `:- finalise
                 % finalpred' directives in this module, in order of
                 % appearance.
                 mri_user_final_pred_c_names     :: assoc_list(
-                                                    sym_name_and_arity,
+                                                    sym_name_arity,
                                                     string),
 
                 % Predicates which were created as reuse versions of other
@@ -1198,9 +1198,9 @@ module_info_optimize(!ModuleInfo) :-
 :- pred module_info_get_indirectly_imported_module_names(module_info::in,
     set(module_name)::out) is det.
 :- pred module_info_get_user_init_pred_c_names(module_info::in,
-    assoc_list(sym_name_and_arity, string)::out) is det.
+    assoc_list(sym_name_arity, string)::out) is det.
 :- pred module_info_get_user_final_pred_c_names(module_info::in,
-    assoc_list(sym_name_and_arity, string)::out) is det.
+    assoc_list(sym_name_arity, string)::out) is det.
 
 :- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
     module_info::in, module_info::out) is det.
@@ -1211,10 +1211,10 @@ module_info_optimize(!ModuleInfo) :-
 :- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_user_init_pred_c_names(
-    assoc_list(sym_name_and_arity, string)::in,
+    assoc_list(sym_name_arity, string)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_user_final_pred_c_names(
-    assoc_list(sym_name_and_arity, string)::in,
+    assoc_list(sym_name_arity, string)::in,
     module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -1790,7 +1790,7 @@ module_info_user_final_pred_procs(MI, PredProcIds) :-
         SymNameAndArities, PredProcIds).
 
 :- pred get_unique_pred_proc_id_for_symname_and_arity(module_info::in,
-    sym_name_and_arity::in, pred_proc_id::out) is det.
+    sym_name_arity::in, pred_proc_id::out) is det.
 
 get_unique_pred_proc_id_for_symname_and_arity(MI,
         sym_name_arity(SymName, Arity), PredProcId) :-

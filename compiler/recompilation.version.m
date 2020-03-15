@@ -654,7 +654,7 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 
 %-----------------------------------------------------------------------------%
 
-:- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_and_arity).
+:- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_arity).
 
 :- pred is_pred_decl_pragma(decl_pragma::in,
     maybe(maybe_pred_or_func_id)::out) is det.

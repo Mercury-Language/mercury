@@ -51,15 +51,15 @@
     %
     % - All mode definitions (may refer to types and insts).
     %
-    % - All pred and mode declarations in sym_name_and_arity order,
-    %   and with all pred declarations for a given sym_name_and_arity preceding
-    %   all mode declarations for that sym_name_and_arity. If there is a pred
+    % - All pred and mode declarations in sym_name_arity order,
+    %   and with all pred declarations for a given sym_name_arity preceding
+    %   all mode declarations for that sym_name_arity. If there is a pred
     %   declaration for both a predicate and a function for the same
-    %   sym_name_and_arity (which can happen, and does happen reasonably often)
+    %   sym_name_arity (which can happen, and does happen reasonably often)
     %   the resulting order is somewhat awkward, but since mode declarations
     %   contain only a maybe(pred_or_func), not a definite pred_or_func,
     %   we cannot easily do any better. We preserve the order of mode
-    %   declarations for a given sym_name_and_arity, since these matter.
+    %   declarations for a given sym_name_arity, since these matter.
     %
     %   The pred and mode declarations may of course refer to types,
     %   typeclasses, insts and modes. The types, insts and modes were
@@ -215,7 +215,7 @@ order_items(Items, OrderedItems) :-
 
 %---------------------------------------------------------------------------%
 
-:- type sym_name_items_map == map(sym_name_and_arity, cord(item)).
+:- type sym_name_items_map == map(sym_name_arity, cord(item)).
 :- type pred_related_items_map == map(sym_name, pred_related_items).
 
 :- type are_arities_pfs_known
@@ -467,7 +467,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
     classify_items(Items, !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         !PredRelatedMap, !SortableItems, !NonReorderableItemsCord).
 
-:- pred add_to_sym_name_items_map(sym_name_and_arity::in, item::in,
+:- pred add_to_sym_name_items_map(sym_name_arity::in, item::in,
     sym_name_items_map::in, sym_name_items_map::out) is det.
 
 add_to_sym_name_items_map(SymNameAndArity, Item, !SymNameItemsMap) :-

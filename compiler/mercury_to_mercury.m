@@ -97,7 +97,7 @@
 :- pred mercury_format_sym_name_ngt(needs_quotes::in, sym_name::in,
     U::di, U::uo) is det <= output(U).
 
-:- pred mercury_format_sym_name_and_arity(sym_name_and_arity::in, U::di, U::uo)
+:- pred mercury_format_sym_name_arity(sym_name_arity::in, U::di, U::uo)
     is det <= output(U).
 
 %---------------------%
@@ -402,7 +402,7 @@ mercury_format_sym_name_ngt(NextToGraphicToken, SymName, !U) :-
         mercury_format_quoted_atom(NextToGraphicToken, PredName, !U)
     ).
 
-mercury_format_sym_name_and_arity(sym_name_arity(SymName, Arity), !U) :-
+mercury_format_sym_name_arity(sym_name_arity(SymName, Arity), !U) :-
     mercury_format_sym_name(SymName, !U),
     add_char('/', !U),
     add_int(Arity, !U).

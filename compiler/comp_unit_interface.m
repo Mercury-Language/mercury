@@ -1425,7 +1425,7 @@ ctor_args_to_user_type_ctor_set([Arg | Args], !TypeCtors) :-
     %
 :- pred constructor_list_represents_dummy_type(type_defn_map::in,
     one_or_more(constructor)::in, maybe_canonical::in,
-    maybe(list(sym_name_and_arity))::in) is semidet.
+    maybe(list(sym_name_arity))::in) is semidet.
 
 constructor_list_represents_dummy_type(TypeDefnMap,
         OoMCtors, MaybeCanonical, MaybeDirectArgCtors) :-
@@ -1434,7 +1434,7 @@ constructor_list_represents_dummy_type(TypeDefnMap,
 
 :- pred constructor_list_represents_dummy_type_2(type_defn_map::in,
     one_or_more(constructor)::in, maybe_canonical::in,
-    maybe(list(sym_name_and_arity))::in, list(mer_type)::in) is semidet.
+    maybe(list(sym_name_arity))::in, list(mer_type)::in) is semidet.
 
 constructor_list_represents_dummy_type_2(TypeDefnMap, OoMCtors,
         canon, no, CoveredTypes) :-

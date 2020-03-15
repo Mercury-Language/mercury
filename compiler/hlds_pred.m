@@ -472,7 +472,7 @@
             % context to allow polymorphism.m to correctly set up the
             % extra type_info and typeclass_info arguments.
 
-    ;       origin_class_method(class_id, pf_sym_name_and_arity)
+    ;       origin_class_method(class_id, pf_sym_name_arity)
             % The predicate is a class method implementation.
 
     ;       origin_transformed(pred_transformation, pred_origin, pred_id)
@@ -663,7 +663,7 @@
 :- pred pred_info_get_assertions(pred_info::in,
     set(assert_id)::out) is det.
 :- pred pred_info_get_obsolete_in_favour_of(pred_info::in,
-    maybe(list(sym_name_and_arity))::out) is det.
+    maybe(list(sym_name_arity))::out) is det.
 :- pred pred_info_get_instance_method_arg_types(pred_info::in,
     list(mer_type)::out) is det.
 :- pred pred_info_get_clauses_info(pred_info::in,
@@ -716,7 +716,7 @@
 :- pred pred_info_set_assertions(set(assert_id)::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_obsolete_in_favour_of(
-    maybe(list(sym_name_and_arity))::in,
+    maybe(list(sym_name_arity))::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_instance_method_arg_types(list(mer_type)::in,
     pred_info::in, pred_info::out) is det.
@@ -1115,7 +1115,7 @@ calls_are_fully_qualified(Markers) =
                 % In the usual case where this predicate is NOT marked
                 % as obsolete, this will be "no".
                 psi_obsolete_in_favour_of       :: maybe(list(
-                                                    sym_name_and_arity)),
+                                                    sym_name_arity)),
 
                 % If this predicate is a class method implementation, this
                 % list records the argument types before substituting the type
@@ -2259,7 +2259,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_get_table_attributes(proc_info::in,
     maybe(table_attributes)::out) is det.
 :- pred proc_info_get_obsolete_in_favour_of(proc_info::in,
-    maybe(list(sym_name_and_arity))::out) is det.
+    maybe(list(sym_name_arity))::out) is det.
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
     maybe(deep_profile_proc_info)::out) is det.
 :- pred proc_info_get_maybe_arg_size_info(proc_info::in,
@@ -2351,7 +2351,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_set_table_attributes(maybe(table_attributes)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_obsolete_in_favour_of(
-    maybe(list(sym_name_and_arity))::in,
+    maybe(list(sym_name_arity))::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_deep_profile_info(
     maybe(deep_profile_proc_info)::in,
@@ -2763,7 +2763,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 % In the usual case where this predicate is NOT marked
                 % as obsolete, this will be "no".
                 psi_proc_obsolete_in_favour_of  :: maybe(list(
-                                                    sym_name_and_arity)),
+                                                    sym_name_arity)),
 
                 %-----------------------------------------------------------%
                 % Information needed for deep profiling.
@@ -2950,7 +2950,7 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
-    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_and_arity)),
+    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_arity)),
     MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
@@ -3084,7 +3084,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
-    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_and_arity)),
+    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_arity)),
     MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),

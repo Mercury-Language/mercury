@@ -506,11 +506,11 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
             InFavourOf = [OnlyInFavourOf],
             Pieces = MainPieces ++
                 [words("The suggested replacement is"),
-                qual_sym_name_and_arity(OnlyInFavourOf), suffix("."), nl]
+                qual_sym_name_arity(OnlyInFavourOf), suffix("."), nl]
         ;
             InFavourOf = [_, _ | _],
             InFavourOfPieces = component_list_to_pieces("and",
-                list.map(wrap_sym_name_and_arity, InFavourOf)),
+                list.map(wrap_sym_name_arity, InFavourOf)),
             Pieces = MainPieces ++
                 [words("The possible suggested replacements are")] ++
                 InFavourOfPieces ++ [suffix("."), nl]
@@ -523,10 +523,10 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
         true
     ).
 
-:- func wrap_sym_name_and_arity(sym_name_and_arity) = format_component.
+:- func wrap_sym_name_arity(sym_name_arity) = format_component.
 
-wrap_sym_name_and_arity(SymNameAndArity) =
-    qual_sym_name_and_arity(SymNameAndArity).
+wrap_sym_name_arity(SymNameAndArity) =
+    qual_sym_name_arity(SymNameAndArity).
 
 %---------------------%
 

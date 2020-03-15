@@ -291,7 +291,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 % (which must be a *non*-tagged pointer to a heap cell)?
                 % XXX TYPE_REPN This information should NOT be in type_defn
                 % items, but in separate type_representation items.
-                du_direct_arg       :: maybe(list(sym_name_and_arity))
+                du_direct_arg       :: maybe(list(sym_name_arity))
             ).
 
 :- type type_details_eqv
@@ -1790,15 +1790,14 @@ valid_trace_grade_name(GradeName) :-
     --->    sym_name_specifier_name(sym_name)
     ;       sym_name_specifier_name_arity(sym_name, arity).
 
-% XXX CLEANUP
-:- type sym_name_and_arity
+:- type sym_name_arity
     --->    sym_name_arity(sym_name, arity).
 
-:- type pf_sym_name_and_arity
+:- type pf_sym_name_arity
     --->    pf_sym_name_arity(pred_or_func, sym_name, arity).
 
 % XXX CLEANUP
-% XXX Uses of this type should be replaced by pf_sym_name_and_arity.
+% XXX Uses of this type should be replaced by pf_sym_name_arity.
 :- type simple_call_id
     --->    simple_call_id(pred_or_func, sym_name, arity).
 

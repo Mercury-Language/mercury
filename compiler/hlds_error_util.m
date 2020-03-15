@@ -196,10 +196,10 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
         PredSymNameAndArity = sym_name_arity(PredSymName, OrigArity),
         (
             ShouldModuleQualify = should_module_qualify,
-            PredSymNamePiece = qual_sym_name_and_arity(PredSymNameAndArity)
+            PredSymNamePiece = qual_sym_name_arity(PredSymNameAndArity)
         ;
             ShouldModuleQualify = should_not_module_qualify,
-            PredSymNamePiece = unqual_sym_name_and_arity(PredSymNameAndArity)
+            PredSymNamePiece = unqual_sym_name_arity(PredSymNameAndArity)
         ),
         Pieces = Prefix ++ [PredSymNamePiece]
     ).

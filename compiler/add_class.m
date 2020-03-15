@@ -537,7 +537,7 @@ report_any_overlapping_instance_declarations(ClassId,
         % XXX STATUS Multiply defined if type_list_subsumes in BOTH directions.
         NewPieces = [words("Error: multiply defined (or overlapping)"),
             words("instance declarations for class"),
-            qual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
             suffix("."), nl],
         NewMsg = simplest_msg(NewContext, NewPieces),
         OtherPieces = [words("Previous instance declaration was here.")],
@@ -616,7 +616,7 @@ check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
         % of a problem appears at the second declaration. This is why
         % we start the report of the problem with *its* context.
         SecondDeclPieces = [words("In instance declaration for class"),
-            qual_sym_name_and_arity(ClassSNA), suffix(":"), nl,
+            qual_sym_name_arity(ClassSNA), suffix(":"), nl,
             words("the instance constraints here"),
             words("are incompatible with ..."), nl],
         SecondDeclMsg = simplest_msg(SecondContext, SecondDeclPieces),
@@ -776,7 +776,7 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
 
     Pieces = [words("Error: no mode declaration"),
         words("for type class method predicate"),
-        qual_sym_name_and_arity(
+        qual_sym_name_arity(
             sym_name_arity(qualified(ModuleName, PredName), Arity)),
         suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
@@ -789,7 +789,7 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
 undefined_type_class_error(ClassName, ClassArity, Context, Description,
         !Specs) :-
     Pieces = [words("Error:"), words(Description), words("for"),
-        qual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+        qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
         words("without corresponding"), decl("typeclass"),
         words("declaration."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
@@ -803,7 +803,7 @@ undefined_type_class_error(ClassName, ClassArity, Context, Description,
 missing_pred_or_func_method_error(MethodName, MethodArity, PredOrFunc,
         Context, !Specs) :-
     Pieces = [words("Error: mode declaration for type class method"),
-        qual_sym_name_and_arity(sym_name_arity(MethodName, MethodArity)),
+        qual_sym_name_arity(sym_name_arity(MethodName, MethodArity)),
         words("without corresponding"), p_or_f(PredOrFunc),
         words("method declaration."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,

@@ -630,7 +630,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
     process_du_ctors(Params, VarSet, BodyTerm, Ctors, !Specs).
 
 :- pred check_direct_arg_ctors(list(constructor)::in,
-    list(sym_name_and_arity)::in, term::in,
+    list(sym_name_arity)::in, term::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_direct_arg_ctors(_Ctors, [], _ErrorTerm, !Specs).
@@ -654,7 +654,7 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
                 MaybeExistConstraints = exist_constraints(_),
                 Pieces = [words("Error: the"), quote("direct_arg"),
                     words("attribute contains a function symbol"),
-                    unqual_sym_name_and_arity(DirectArgCtor),
+                    unqual_sym_name_arity(DirectArgCtor),
                     words("with existentially quantified type variables."),
                     nl],
                 Spec = simplest_spec($pred, severity_error,
@@ -666,7 +666,7 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
     else
         Pieces = [words("Error: the"), quote("direct_arg"),
             words("attribute lists the function symbol"),
-            unqual_sym_name_and_arity(DirectArgCtor),
+            unqual_sym_name_arity(DirectArgCtor),
             words("which is not in the type definition."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(ErrorTerm), Pieces),
@@ -942,7 +942,7 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
 :- pred parse_type_decl_where_term(is_solver_type::in, module_name::in,
     varset::in, term::in,
     maybe3(maybe(solver_type_details), maybe_canonical,
-        maybe(list(sym_name_and_arity)))::out) is det.
+        maybe(list(sym_name_arity)))::out) is det.
 
 parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
         MaybeWhereDetails) :-
@@ -1235,7 +1235,7 @@ parse_mutable_decl_term(ModuleName, VarSet, Term, MaybeItemMutableInfo) :-
     ).
 
 :- func parse_where_direct_arg_is(module_name, varset, term) =
-    maybe1(list(sym_name_and_arity)).
+    maybe1(list(sym_name_arity)).
 
 parse_where_direct_arg_is(ModuleName, VarSet, Term) = MaybeDirectArgCtors :-
     ( if list_term_to_term_list(Term, FunctorsTerms) then
@@ -1250,7 +1250,7 @@ parse_where_direct_arg_is(ModuleName, VarSet, Term) = MaybeDirectArgCtors :-
     ).
 
 :- pred parse_direct_arg_functor(module_name::in, varset::in, term::in,
-    maybe1(sym_name_and_arity)::out) is det.
+    maybe1(sym_name_arity)::out) is det.
 
 parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
     ( if
@@ -1272,10 +1272,10 @@ parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
     maybe1(maybe(mer_type)), maybe1(maybe(mer_inst)), maybe1(maybe(mer_inst)),
     maybe1(maybe(list(item_mutable_info))),
     maybe1(maybe(equality_pred)), maybe1(maybe(comparison_pred)),
-    maybe1(maybe(list(sym_name_and_arity))),
+    maybe1(maybe(list(sym_name_arity))),
     maybe1(unit), term)
     = maybe3(maybe(solver_type_details), maybe_canonical,
-        maybe(list(sym_name_and_arity))).
+        maybe(list(sym_name_arity))).
 
 make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
         MaybeRepresentationIs, MaybeGroundIs, MaybeAnyIs, MaybeCStoreIs,
@@ -1314,9 +1314,9 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
     maybe(mer_type), maybe(mer_inst), maybe(mer_inst),
     maybe(list(item_mutable_info)),
     maybe(equality_pred), maybe(comparison_pred),
-    maybe(list(sym_name_and_arity)), term)
+    maybe(list(sym_name_arity)), term)
     = maybe3(maybe(solver_type_details), maybe_canonical,
-        maybe(list(sym_name_and_arity))).
+        maybe(list(sym_name_arity))).
 
 make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
         RepresentationIs, GroundIs, AnyIs, CStoreIs,

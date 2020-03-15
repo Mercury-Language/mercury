@@ -897,7 +897,7 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
     (
         PredIds = [],
         Pieces = [words("Error:"),
-            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            qual_sym_name_arity(sym_name_arity(SymName, Arity)),
             words("used in"), decl("initialise"), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
@@ -914,7 +914,7 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 !ModuleInfo, !Specs)
         else
             Pieces = [words("Error:"),
-                qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+                qual_sym_name_arity(sym_name_arity(SymName, Arity)),
                 words("used in initialise declaration"),
                 words("has invalid signature."), nl],
             % TODO: provide verbose error information here.
@@ -925,7 +925,7 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
     ;
         PredIds = [_, _ | _],
         Pieces = [words("Error:"),
-            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            qual_sym_name_arity(sym_name_arity(SymName, Arity)),
             words("used in initialise declaration"),
             words("matches multiple pred declarations."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
@@ -957,7 +957,7 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
     (
         PredIds = [],
         Pieces = [words("Error:"),
-            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            qual_sym_name_arity(sym_name_arity(SymName, Arity)),
             words("used in"), decl("finalise"), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
@@ -974,7 +974,7 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 CName, compiler_origin_finalise, Context, !ModuleInfo, !Specs)
         else
             Pieces = [words("Error:"),
-                qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+                qual_sym_name_arity(sym_name_arity(SymName, Arity)),
                 words("used in"), decl("finalise"),
                 words("declaration has invalid signature."), nl],
             Spec = simplest_spec($pred, severity_error,
@@ -984,7 +984,7 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
     ;
         PredIds = [_, _ | _],
         Pieces = [words("Error:"),
-            qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            qual_sym_name_arity(sym_name_arity(SymName, Arity)),
             words("used in"), decl("finalise"), words("declaration"),
             words("has multiple"), decl("pred"), words("declarations."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,

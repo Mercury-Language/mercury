@@ -127,7 +127,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
             MaybePredId = no,
             SNA = sym_name_arity(unqualified(","), 2),
             Pieces = [words("Attempt to define a clause for"),
-                unqual_sym_name_and_arity(SNA), suffix("."),
+                unqual_sym_name_arity(SNA), suffix("."),
                 words("This is usually caused by"),
                 words("inadvertently writing a period instead of a comma"),
                 words("at the end of the preceding line."), nl],
@@ -375,7 +375,7 @@ add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
         PredArity = PredArity0 + ArityAdjustment,
         adjust_func_arity(PredOrFunc, OrigArity, PredArity),
         SNA = sym_name_arity(PredName, OrigArity),
-        prog_out.write_sym_name_and_arity(SNA, !IO),
+        prog_out.write_sym_name_arity(SNA, !IO),
         io.write_string("'...\n", !IO)
     ;
         VeryVerbose = no

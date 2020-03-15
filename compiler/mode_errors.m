@@ -1575,7 +1575,7 @@ mode_error_unify_var_multimode_pred_to_spec(ModeInfo, X, PredId,
         quote(mercury_var_to_name_only(VarSet, X)),
         words("and higher-order term based on multi-moded"),
         p_or_f(PredOrFunc),
-        qual_sym_name_and_arity(sym_name_arity(QualifiedName, FuncArity)),
+        qual_sym_name_arity(sym_name_arity(QualifiedName, FuncArity)),
         suffix("."), nl],
     (
         MultiModeError = some_ho_args_non_ground(NonGroundArgVars),

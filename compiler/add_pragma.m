@@ -359,7 +359,7 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
         Arity = pred_info_orig_arity(PredInfo0),
         SNA = sym_name_arity(unqualified(PredName), Arity),
         Pieces = [words("The"), p_or_f(PredOrFunc),
-            unqual_sym_name_and_arity(SNA), words("has clauses,"),
+            unqual_sym_name_arity(SNA), words("has clauses,"),
             words("so it cannot be marked as external."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
@@ -561,7 +561,7 @@ add_pragma_require_tail_rec(Pragma, Context, !ModuleInfo, !Specs) :-
     ).
 
 :- pred add_pragma_require_tail_rec_proc(require_tail_recursion::in,
-    prog_context::in, sym_name_and_arity::in, pair(proc_id, proc_info)::in,
+    prog_context::in, sym_name_arity::in, pair(proc_id, proc_info)::in,
     pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -573,7 +573,7 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context,
         MaybeRequireTailrecOrig = yes(RequireTailrecOrig),
         MainPieces = [words("Error: conflicting"),
             pragma_decl("require_tail_recursion"), words("pragmas for"),
-            qual_sym_name_and_arity(SymNameAndArity),
+            qual_sym_name_arity(SymNameAndArity),
             words("or one of its modes.")],
         OrigPieces = [words("Earlier pragma is here.")],
         ( RequireTailrecOrig = suppress_tailrec_warnings(ContextOrig)
@@ -772,7 +772,7 @@ pragma_status_error(PredSymNameArity, Context, PragmaName, !Specs) :-
     PredSymNameArity = pred_name_arity(PredSymName, Arity),
     Pieces = [words("Error:"), pragma_decl(PragmaName),
         words("declaration for exported predicate or function"),
-        unqual_sym_name_and_arity(sym_name_arity(PredSymName, Arity)),
+        unqual_sym_name_arity(sym_name_arity(PredSymName, Arity)),
         words("must also be exported."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
@@ -790,7 +790,7 @@ pragma_conflict_error(PredSymNameArity, Context, PragmaName, ConflictMarkers,
         words("declaration conflicts with previous")] ++
         list_to_pieces(ConflictNames) ++
         [words(choose_number(ConflictNames, "pragma for", "pragmas for")),
-        unqual_sym_name_and_arity(sym_name_arity(PredSymName, Arity)),
+        unqual_sym_name_arity(sym_name_arity(PredSymName, Arity)),
         suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
@@ -829,7 +829,7 @@ mark_pred_as_obsolete(ObsoletePredInfo, PragmaStatus, Context,
             Context, DescPieces, !Specs)
     ).
 
-:- pred mark_pred_ids_as_obsolete(list(sym_name_and_arity)::in,
+:- pred mark_pred_ids_as_obsolete(list(sym_name_arity)::in,
     pred_status::in, list(pred_id)::in, bool::in, bool::out,
     pred_table::in, pred_table::out) is det.
 
@@ -1233,7 +1233,7 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
         ;
             TailPredIds = [_ | _],     % >1 predicate found
             Pieces = [words("In"), quote("pragma fact_table"), words("for"),
-                qual_sym_name_and_arity(sym_name_arity(PredSymName, Arity)),
+                qual_sym_name_arity(sym_name_arity(PredSymName, Arity)),
                 suffix(":"), nl,
                 words("error: ambiguous predicate/function name."), nl],
             Spec = simplest_spec($pred, severity_error,
@@ -1416,7 +1416,7 @@ add_pragma_oisu(OISUInfo, ItemMercuryStatus, Context, !ModuleInfo, !Specs) :-
                 TypeCtor = type_ctor(TypeName, TypeArity),
                 DupPieces = [words("Duplicate"), pragma_decl("oisu"),
                     words("declarations for"),
-                    qual_sym_name_and_arity(
+                    qual_sym_name_arity(
                         sym_name_arity(TypeName, TypeArity)),
                     suffix("."), nl],
                 DupSpec = simplest_spec($pred, severity_error,
@@ -1450,10 +1450,10 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
                 fixed(Kind), words("predicate specification"),
                 words("within the"), quote("pragma oisu"),
                 words("declaration for"),
-                qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+                qual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
                 suffix(":"), nl,
                 words("error: predicate"),
-                qual_sym_name_and_arity(sym_name_arity(PredName, PredArity)),
+                qual_sym_name_arity(sym_name_arity(PredName, PredArity)),
                 words("is undefined."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces)
@@ -1478,10 +1478,10 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
                 fixed(Kind), words("predicate specification"),
                 words("within the"), quote("pragma oisu"),
                 words("declaration for"),
-                qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+                qual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
                 suffix(":"), nl,
                 words("error: predicate"),
-                qual_sym_name_and_arity(sym_name_arity(PredName, PredArity)),
+                qual_sym_name_arity(sym_name_arity(PredName, PredArity)),
                 words("has the wrong arity."),
                 words("Actual arity is"), int_fixed(PredArity), suffix(","),
                 words("expected arity is")] ++ ExpArities ++ [suffix("."), nl],
@@ -1499,10 +1499,10 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
             fixed(Kind), words("predicate specification"),
             words("within the"), pragma_decl("oisu"),
             words("declaration for"),
-            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            qual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
             suffix(":"), nl,
             words("error: ambiguous predicate name"),
-            qual_sym_name_and_arity(sym_name_arity(PredName, PredArity)),
+            qual_sym_name_arity(sym_name_arity(PredName, PredArity)),
             suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),

@@ -86,7 +86,7 @@
     ims_list(item_impl_pragma_info)::out,
     list(item_generated_pragma_info)::out,
     ims_list(item_clause_info)::out,
-    set(pf_sym_name_and_arity)::out) is det.
+    set(pf_sym_name_arity)::out) is det.
 
 %---------------------------------------------------------------------------%
 

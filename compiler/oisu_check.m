@@ -393,7 +393,7 @@ describe_unhandled_kind_fors(HeadKindFor, TailKindFors, Pieces) :-
     ),
     HeadTypeCtor = type_ctor(HeadTypeSymName, HeadTypeArity),
     HeadPieces0 =
-        [unqual_sym_name_and_arity(
+        [unqual_sym_name_arity(
             sym_name_arity(HeadTypeSymName, HeadTypeArity)),
         fixed("(as " ++ HeadKind ++ ")")],
     (
@@ -427,7 +427,7 @@ check_args_have_no_oisu_types(PredInfo, OISUTypeCtors, [Type | Types],
         ProcsPieces = PredDesc ++ [words("is not mentioned"),
             words("in the"), pragma_decl("oisu"), words("declaration"),
             words("as a predicate that handles values of the type"),
-            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            unqual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
             suffix("."), nl],
         pred_info_get_context(PredInfo, Context),
         ProcsSpec = simplest_spec($pred, severity_error, phase_oisu_check,

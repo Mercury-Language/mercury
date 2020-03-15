@@ -397,7 +397,7 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
     ).
 
 :- func badly_formed_instance_type_msg(class_id, hlds_instance_defn, int,
-    sym_name_and_arity, assoc_list(int, mer_type)) = error_spec.
+    sym_name_arity, assoc_list(int, mer_type)) = error_spec.
 
 badly_formed_instance_type_msg(ClassId, InstanceDefn, N, TypeNameArity,
         NonTVarArgs) = Spec :-
@@ -408,7 +408,7 @@ badly_formed_instance_type_msg(ClassId, InstanceDefn, N, TypeNameArity,
     EndPieces = [words("in the"), nth_fixed(N), words("instance type,"),
         words(choose_number(NonTVarArgs, "one", "some")),
         words("of the arguments of the type constructor"),
-        unqual_sym_name_and_arity(TypeNameArity),
+        unqual_sym_name_arity(TypeNameArity),
         words(choose_number(NonTVarArgs,
             "is not a type variable, but should be. This is",
             "are not type variables, but should be. These are"))
@@ -530,7 +530,7 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
             ClassId = class_id(ClassName, ClassArity),
             ClassSNA = sym_name_arity(ClassName, ClassArity),
             Pieces = [words("Error: no definition for typeclass"),
-                unqual_sym_name_and_arity(ClassSNA), suffix("."), nl],
+                unqual_sym_name_arity(ClassSNA), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error, phase_type_check,
                 ClassContext, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -597,7 +597,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         ClassInterface = class_interface_abstract,
         ClassId = class_id(ClassName, ClassArity),
         Pieces = [words("Error: instance declaration for abstract typeclass"),
-            unqual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            unqual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
             suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_type_check,
             TermContext, Pieces),
@@ -1406,7 +1406,7 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
         ClassId = class_id(Name, Arity),
         StartPieces =
             [words("Error: cyclic superclass relation detected:"), nl,
-            qual_sym_name_and_arity(sym_name_arity(Name, Arity)), nl],
+            qual_sym_name_arity(sym_name_arity(Name, Arity)), nl],
         list.foldl(add_path_element, Tail, cord.init, LaterLinesCord),
         Pieces = StartPieces ++ cord.list(LaterLinesCord),
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
@@ -1418,7 +1418,7 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
 
 add_path_element(class_id(SymName, Arity), !LaterLines) :-
     Line = [words("<="),
-        qual_sym_name_and_arity(sym_name_arity(SymName, Arity)), nl],
+        qual_sym_name_arity(sym_name_arity(SymName, Arity)), nl],
     !:LaterLines = !.LaterLines ++ cord.from_list(Line).
 
 %---------------------------------------------------------------------------%
@@ -1614,7 +1614,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
 
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
     Pieces = [words("In instance for typeclass"),
-        unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
         suffix(":"), nl,
         words("functional dependency not satisfied:"),
         words(choose_number(Vars, "type variable", "type variables"))]
@@ -1644,7 +1644,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     Ranges = mercury_vars_to_name_only(TVarSet, RangeParams),
 
     PiecesA = [words("Inconsistent instance declaration for typeclass"),
-        qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        qual_sym_name_arity(sym_name_arity(SymName, Arity)),
         words("with functional dependency"),
         quote("(" ++ Domains ++ " -> " ++ Ranges ++ ")"),
         suffix("."), nl],
@@ -1845,7 +1845,7 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
 
     Pieces = [words("In declaration for type"),
-        qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        qual_sym_name_arity(sym_name_arity(SymName, Arity)),
         suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
@@ -2111,7 +2111,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
         suffix(":"), nl,
         words("multiple implementations of type class"),
         p_or_f(PredOrFunc), words("method"),
-        unqual_sym_name_and_arity(sym_name_arity(MethodName, Arity)),
+        unqual_sym_name_arity(sym_name_arity(MethodName, Arity)),
         suffix("."), nl],
     HeadingMsg = simple_msg(InstanceContext, [always(HeaderPieces)]),
     (
@@ -2157,7 +2157,7 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
         suffix(":"), nl,
         words("no implementation for type class"), p_or_f(PredOrFunc),
         words("method"),
-        unqual_sym_name_and_arity(sym_name_arity(MethodName, Arity)),
+        unqual_sym_name_arity(sym_name_arity(MethodName, Arity)),
         suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         InstanceContext, Pieces),
@@ -2178,17 +2178,17 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
             HeadArity, _Context),
         adjust_func_arity(HeadPredOrFunc, HeadArity, HeadPredArity),
         Pieces = [words("In instance declaration for"),
-            unqual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            unqual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
             suffix(":"), nl,
             words("the type class has no"),
             p_or_f(HeadPredOrFunc), words("method named"),
-            unqual_sym_name_and_arity(
+            unqual_sym_name_arity(
                 sym_name_arity(HeadMethodName, HeadPredArity)),
             suffix("."), nl]
     ;
         TailMethods = [_ | _],
         Pieces1 = [words("In instance declaration for"),
-            unqual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            unqual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
             suffix(":"), nl,
             words("the type class has none of these methods:"), nl],
         format_method_names(HeadMethod, TailMethods, Pieces2),
@@ -2208,13 +2208,13 @@ format_method_names(HeadMethod, TailMethods, Pieces) :-
     (
         TailMethods = [],
         Pieces = [p_or_f(PredOrFunc),
-            unqual_sym_name_and_arity(sym_name_arity(Name, PredArity)),
+            unqual_sym_name_arity(sym_name_arity(Name, PredArity)),
             suffix("."), nl]
     ;
         TailMethods = [HeadTailMethod | TailTailMethods],
         format_method_names(HeadTailMethod, TailTailMethods, TailPieces),
         Pieces = [p_or_f(PredOrFunc),
-            unqual_sym_name_and_arity(sym_name_arity(Name, PredArity)),
+            unqual_sym_name_arity(sym_name_arity(Name, PredArity)),
             suffix(","), words("or"), nl | TailPieces]
     ).
 

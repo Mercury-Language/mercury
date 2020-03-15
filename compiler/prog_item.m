@@ -346,7 +346,7 @@
                 % generating a warning about a lack of a definition
                 % in the implementation section (if in fact there is
                 % no definition there) more misleading than useful.
-                ptms_int_bad_clauses        :: set(pf_sym_name_and_arity),
+                ptms_int_bad_clauses        :: set(pf_sym_name_arity),
 
                 % A repeat of everything above, but in the implementation
                 % section, with the addition of some item kinds that may occur
@@ -763,18 +763,18 @@
 :- type c_j_cs_e_enum_repn ==
     c_java_csharp_erlang(maybe(enum_foreign_repn)).
 
-% The map key is sym_name_and_arity because we don't have an inst_ctor type.
+% The map key is sym_name_arity because we don't have an inst_ctor type.
 % XXX CLEANUP We should add one.
-:- type inst_ctor_defn_map == map(sym_name_and_arity, inst_ctor_all_defns).
+:- type inst_ctor_defn_map == map(sym_name_arity, inst_ctor_all_defns).
 :- type inst_ctor_all_defns
     --->    inst_ctor_all_defns(
                 icad_abstract               :: list(item_inst_defn_info),
                 icad_eqv                    :: list(item_inst_defn_info)
             ).
 
-% The map key is sym_name_and_arity because we don't have a mode_ctor type.
+% The map key is sym_name_arity because we don't have a mode_ctor type.
 % XXX CLEANUP We should add one.
-:- type mode_ctor_defn_map == map(sym_name_and_arity, mode_ctor_all_defns).
+:- type mode_ctor_defn_map == map(sym_name_arity, mode_ctor_all_defns).
 :- type mode_ctor_all_defns
     --->    mode_ctor_all_defns(
                 mcad_abstract               :: list(item_mode_defn_info),
@@ -1357,7 +1357,7 @@
     ;       compiler_origin_finalise
     ;       compiler_origin_class_method(
                 cm_class_id                     :: class_id,
-                cm_method                       :: pf_sym_name_and_arity
+                cm_method                       :: pf_sym_name_arity
             )
     ;       compiler_origin_solver_type(
                 cost_type_ctor_name             :: sym_name,
@@ -1929,7 +1929,7 @@
     --->    tcrepn_is_direct_dummy
     ;       tcrepn_is_notag
     ;       tcrepn_fits_in_n_bits(int, fill_kind)
-    ;       tcrepn_has_direct_arg_functors(list(sym_name_and_arity))
+    ;       tcrepn_has_direct_arg_functors(list(sym_name_arity))
     ;       tcrepn_is_word_aligned_ptr
     ;       tcrepn_is_eqv_to(mer_type)
     ;       tcrepn_du(du_repn)
@@ -2438,13 +2438,13 @@
 :- type pragma_info_obsolete_pred
     --->    pragma_info_obsolete_pred(
                 pred_name_arity,
-                list(sym_name_and_arity)
+                list(sym_name_arity)
             ).
 
 :- type pragma_info_obsolete_proc
     --->    pragma_info_obsolete_proc(
                 pred_name_modes_pf,
-                list(sym_name_and_arity)
+                list(sym_name_arity)
             ).
 
 :- type pragma_info_require_feature_set

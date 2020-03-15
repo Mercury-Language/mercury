@@ -237,7 +237,7 @@ write_pred_markers(Markers, !IO) :-
         io.write_string("\n", !IO)
     ).
 
-:- pred write_obsolete_in_favour_of(int::in, sym_name_and_arity::in,
+:- pred write_obsolete_in_favour_of(int::in, sym_name_arity::in,
     io::di, io::uo) is det.
 
 write_obsolete_in_favour_of(Indent, ObsoleteInFavourOf, !IO) :-
@@ -356,7 +356,7 @@ write_origin(ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
     ;
         Origin = origin_solver_type(TypeCtorSymName, TypeCtorArity,
             SolverAuxPredKind),
-        TypeCtorStr = sym_name_and_arity_to_string(
+        TypeCtorStr = sym_name_arity_to_string(
             sym_name_arity(TypeCtorSymName, TypeCtorArity)),
         (
             SolverAuxPredKind = solver_type_to_ground_pred,

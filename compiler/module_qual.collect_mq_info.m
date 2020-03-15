@@ -513,7 +513,7 @@ type_ctor_to_mq_id(TypeCtor) = Id :-
     TypeCtor = type_ctor(SymName, Arity),
     Id = mq_id(SymName, Arity).
 
-:- func sym_name_arity_to_mq_id(sym_name_and_arity) = mq_id.
+:- func sym_name_arity_to_mq_id(sym_name_arity) = mq_id.
 
 sym_name_arity_to_mq_id(SNA) = Id :-
     SNA = sym_name_arity(SymName, Arity),

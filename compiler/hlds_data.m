@@ -951,7 +951,7 @@ set_type_defn_prev_errors(X, !Defn) :-
                 % currently use it to allow the representation of
                 % "where direct_arg is []" annotations on types,
                 % such as in tests/invalid/where_direct_arg.m.
-                dur_direct_arg_ctors        :: maybe(list(sym_name_and_arity))
+                dur_direct_arg_ctors        :: maybe(list(sym_name_arity))
             ).
 
 :- type constructor_repn

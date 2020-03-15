@@ -1281,7 +1281,7 @@ parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
    ).
 
 :- pred parse_pragma_obsolete_in_favour_of(term::in, varset::in,
-    maybe1(list(sym_name_and_arity))::out) is det.
+    maybe1(list(sym_name_arity))::out) is det.
 
 parse_pragma_obsolete_in_favour_of(Term, VarSet, MaybeObsoleteInFavourOf) :-
     ( if list_term_to_term_list(Term, Terms) then
@@ -1298,7 +1298,7 @@ parse_pragma_obsolete_in_favour_of(Term, VarSet, MaybeObsoleteInFavourOf) :-
     ).
 
 :- pred parse_pragma_obsolete_in_favour_of_snas(int::in, list(term)::in,
-    varset::in, maybe1(list(sym_name_and_arity))::out) is det.
+    varset::in, maybe1(list(sym_name_arity))::out) is det.
 
 parse_pragma_obsolete_in_favour_of_snas(_ArgNum, [], _VarSet, ok1([])).
 parse_pragma_obsolete_in_favour_of_snas(ArgNum, [Term | Terms], VarSet,

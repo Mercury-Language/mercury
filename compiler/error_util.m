@@ -470,8 +470,8 @@
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes.
 
-    ;       qual_sym_name_and_arity(sym_name_and_arity)
-    ;       unqual_sym_name_and_arity(sym_name_and_arity)
+    ;       qual_sym_name_arity(sym_name_arity)
+    ;       unqual_sym_name_arity(sym_name_arity)
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes, followed by '/' and the arity.
 
@@ -639,7 +639,7 @@
 
 :- func describe_sym_name(sym_name) = string.
 
-:- func describe_sym_name_and_arity(sym_name_and_arity) = string.
+:- func describe_sym_name_arity(sym_name_arity) = string.
 
     % Put `' quotes around the given string.
     %
@@ -1800,14 +1800,14 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         (
-            Component = qual_sym_name_and_arity(SymNameAndArity)
+            Component = qual_sym_name_arity(SymNameAndArity)
         ;
-            Component = unqual_sym_name_and_arity(SymNameAndArity0),
+            Component = unqual_sym_name_arity(SymNameAndArity0),
             SymNameAndArity0 = sym_name_arity(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0)),
             SymNameAndArity = sym_name_arity(SymName, Arity)
         ),
-        Word = sym_name_and_arity_to_word(SymNameAndArity),
+        Word = sym_name_arity_to_word(SymNameAndArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         (
@@ -1829,14 +1829,14 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
             TypeCtorSymName = unqualified(unqualify_name(TypeCtorSymName0))
         ),
         SymNameAndArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
-        Word = sym_name_and_arity_to_word(SymNameAndArity),
+        Word = sym_name_arity_to_word(SymNameAndArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = qual_top_ctor_of_type(Type),
         type_to_ctor_det(Type, TypeCtor),
         TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         SymNameArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
-        Word = sym_name_and_arity_to_word(SymNameArity),
+        Word = sym_name_arity_to_word(SymNameArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = p_or_f(PredOrFunc),
@@ -1997,14 +1997,14 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         RevWords1 = [plain_word(sym_name_to_word(SymName)) | RevWords0]
     ;
         (
-            Component = qual_sym_name_and_arity(SymNameAndArity)
+            Component = qual_sym_name_arity(SymNameAndArity)
         ;
-            Component = unqual_sym_name_and_arity(SymNameAndArity0),
+            Component = unqual_sym_name_arity(SymNameAndArity0),
             SymNameAndArity0 = sym_name_arity(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0)),
             SymNameAndArity = sym_name_arity(SymName, Arity)
         ),
-        Word = sym_name_and_arity_to_word(SymNameAndArity),
+        Word = sym_name_arity_to_word(SymNameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         (
@@ -2026,14 +2026,14 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
             TypeCtorSymName = unqualified(unqualify_name(TypeCtorSymName0))
         ),
         SymNameAndArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
-        Word = sym_name_and_arity_to_word(SymNameAndArity),
+        Word = sym_name_arity_to_word(SymNameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Component = qual_top_ctor_of_type(Type),
         type_to_ctor_det(Type, TypeCtor),
         TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
         SymNameArity = sym_name_arity(TypeCtorName, TypeCtorArity),
-        NewWord = plain_word(sym_name_and_arity_to_word(SymNameArity)),
+        NewWord = plain_word(sym_name_arity_to_word(SymNameArity)),
         RevWords1 = [NewWord | RevWords0]
     ;
         Component = p_or_f(PredOrFunc),
@@ -2164,9 +2164,9 @@ join_prefixes([Head | Tail]) = Strings :-
 sym_name_to_word(SymName) =
     add_quotes(sym_name_to_string(SymName)).
 
-:- func sym_name_and_arity_to_word(sym_name_and_arity) = string.
+:- func sym_name_arity_to_word(sym_name_arity) = string.
 
-sym_name_and_arity_to_word(sym_name_arity(SymName, Arity)) =
+sym_name_arity_to_word(sym_name_arity(SymName, Arity)) =
     add_quotes(sym_name_to_string(SymName)) ++ "/" ++ int_to_string(Arity).
 
 :- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
@@ -2322,7 +2322,7 @@ get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
 describe_sym_name(SymName) =
     string.append_list(["`", sym_name_to_string(SymName), "'"]).
 
-describe_sym_name_and_arity(sym_name_arity(SymName, Arity)) =
+describe_sym_name_arity(sym_name_arity(SymName, Arity)) =
     string.append_list(["`", sym_name_to_string(SymName), "/",
         string.int_to_string(Arity), "'"]).
 

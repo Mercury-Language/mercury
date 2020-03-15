@@ -187,7 +187,7 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                 % since we now catch foreign_enum pragmas that refer
                 % to types in other modules when parsing them.
                 NotThisModulePieces = ContextPieces ++
-                    [words("error: "), qual_sym_name_and_arity(TypeSNA),
+                    [words("error: "), qual_sym_name_arity(TypeSNA),
                     words("is not defined in this module."), nl],
                 NotThisModuleSpec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, NotThisModulePieces),
@@ -621,7 +621,7 @@ build_mercury_foreign_map(TypeModuleName, TypeSymName, TypeArity, ForWhat,
 
 :- pred find_nonenum_ctors_build_valid_ctor_names(list(constructor)::in,
     set_tree234(string)::in, set_tree234(string)::out,
-    cord(sym_name_and_arity)::in, cord(sym_name_and_arity)::out) is det.
+    cord(sym_name_arity)::in, cord(sym_name_arity)::out) is det.
 
 find_nonenum_ctors_build_valid_ctor_names([], !ValidNamesSet, !NonEnumSNAs).
 find_nonenum_ctors_build_valid_ctor_names([Ctor | Ctors],
@@ -813,10 +813,10 @@ maybe_add_duplicate_foreign_enum_error(TypeSymame, TypeArity, Lang,
         LangStr = mercury_foreign_language_to_string(Lang),
         CurPieces = [words("Error: duplicate foreign_enum pragma"),
             words("for type constructor"),
-            qual_sym_name_and_arity(TypeSymNameArity),
+            qual_sym_name_arity(TypeSymNameArity),
             words("and target language"), fixed(LangStr), suffix("."), nl],
         OldPieces = [words("The first foreign_enum pragma"),
-            words("for"), qual_sym_name_and_arity(TypeSymNameArity),
+            words("for"), qual_sym_name_arity(TypeSymNameArity),
             words("and"), fixed(LangStr), words("was here."), nl],
         CurMsg = simplest_msg(Context, CurPieces),
         OldMsg = simplest_msg(OldContext, OldPieces),
@@ -840,7 +840,7 @@ report_if_builtin_type(Context, ContextPieces, TypeSymame, TypeArity,
         is_builtin_type_sym_name(TypeSymame)
     then
         Pieces = ContextPieces ++ [words("error: "),
-            unqual_sym_name_and_arity(sym_name_arity(TypeSymame, TypeArity)),
+            unqual_sym_name_arity(sym_name_arity(TypeSymame, TypeArity)),
             words("is a builtin type."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
@@ -852,7 +852,7 @@ report_if_builtin_type(Context, ContextPieces, TypeSymame, TypeArity,
 :- type not_enum_info
     --->    not_enum_du(
                 % The non-enum sym_names and their (nonzero) arities.
-                list(sym_name_and_arity)
+                list(sym_name_arity)
             )
     ;       not_enum_non_du(
                 % What kind of non-du type is it?
@@ -897,7 +897,7 @@ report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
     (
         NotEnumInfo = not_enum_non_du(TypeKindDesc),
         Pieces = ContextPieces ++ [words("error: "),
-            qual_sym_name_and_arity(TypeSNA),
+            qual_sym_name_arity(TypeSNA),
             words("is not an enumeration type;"),
             words("it is"), words(TypeKindDesc), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
@@ -917,13 +917,13 @@ report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
             OrderedNonEnumSNAs = [_ | _],
             SNAPieces =
                 component_list_to_pieces("and",
-                    list.map(func(SNA) = unqual_sym_name_and_arity(SNA),
+                    list.map(func(SNA) = unqual_sym_name_arity(SNA),
                         OrderedNonEnumSNAs)),
             ItHasThese = choose_number(OrderedNonEnumSNAs,
                 words("It has this non-zero arity constructor:"),
                 words("It has these non-zero arity constructors:")),
             Pieces = ContextPieces ++ [words("error: "),
-                qual_sym_name_and_arity(TypeSNA),
+                qual_sym_name_arity(TypeSNA),
                 words("is not an enumeration type."), nl,
                 ItHasThese, nl_indent_delta(2)] ++ SNAPieces ++
                 [suffix("."), nl_indent_delta(-2)],

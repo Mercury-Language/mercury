@@ -319,7 +319,7 @@ parse_type_repn_has_direct_arg_functors(RepnStr, RepnArgs, RepnContext,
     ).
 
 :- pred parse_functor_with_arities(string::in, int::in, list(term)::in,
-    maybe1(list(sym_name_and_arity))::out) is det.
+    maybe1(list(sym_name_arity))::out) is det.
 
 parse_functor_with_arities(_, _, [], ok1([])).
 parse_functor_with_arities(RepnStr, Nth, [Term | Terms], MaybeFunctors) :-

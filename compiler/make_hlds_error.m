@@ -94,7 +94,7 @@ report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         SecondContext = OrigContext
     ),
 
-    SNA = qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+    SNA = qual_sym_name_arity(sym_name_arity(Name, Arity)),
     SecondDeclPieces = [words("Error:"), fixed(DefType), SNA,
         words("multiply defined."), nl],
     FirstDeclPieces = [words("Here is the previous definition of"),
@@ -126,7 +126,7 @@ report_undefined_pred_or_func_error(MaybePorF, Name, Arity, OtherArities,
         PredOrFuncPieces = [decl("func")]
     ),
     MainPieces = [words("Error:") | DescPieces] ++ [words("for"),
-        unqual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+        unqual_sym_name_arity(sym_name_arity(Name, Arity)),
         words("without corresponding")] ++ PredOrFuncPieces ++
         [words("declaration."), nl],
     (
@@ -146,7 +146,7 @@ report_undefined_pred_or_func_error(MaybePorF, Name, Arity, OtherArities,
 
 report_undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
-        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+        qual_sym_name_arity(sym_name_arity(Name, Arity)),
         words("specifies non-existent mode.")],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),

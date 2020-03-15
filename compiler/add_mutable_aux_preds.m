@@ -864,7 +864,7 @@ named_parents_to_pieces([InstCtor | InstCtors], Pieces) :-
 named_parent_to_pieces(InstCtor, Pieces) :-
     InstCtor = inst_ctor(InstName, InstArity),
     Pieces = [words("in the expansion of the named inst"),
-        qual_sym_name_and_arity(sym_name_arity(InstName, InstArity)),
+        qual_sym_name_arity(sym_name_arity(InstName, InstArity)),
         suffix(":"), nl].
 
 %---------------------------------------------------------------------------%

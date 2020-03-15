@@ -670,7 +670,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
         Source = source_type(TypeCtor),
         TypeCtor = type_ctor(SymName, Arity),
         Pieces = [words("the type constructor"),
-            qual_sym_name_and_arity(sym_name_arity(SymName, Arity))]
+            qual_sym_name_arity(sym_name_arity(SymName, Arity))]
     ;
         Source = source_builtin_type(TypeCtorName),
         Pieces = [words("the builtin type constructor"), quote(TypeCtorName)]
@@ -679,13 +679,13 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
         TypeCtor = type_ctor(SymName, Arity),
         Pieces = [words("a"), quote("get"), words("field access function"),
             words("for the type constructor"),
-            qual_sym_name_and_arity(sym_name_arity(SymName, Arity))]
+            qual_sym_name_arity(sym_name_arity(SymName, Arity))]
     ;
         Source = source_set_field_access(TypeCtor),
         TypeCtor = type_ctor(SymName, Arity),
         Pieces = [words("a"), quote("set"), quote("field access function"),
             words("for the type constructor"),
-            qual_sym_name_and_arity(sym_name_arity(SymName, Arity))]
+            qual_sym_name_arity(sym_name_arity(SymName, Arity))]
     ;
         Source = source_pred(PredId),
         Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
@@ -1490,7 +1490,7 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
 language_builtin_functor_components(Name, Arity, Components) :-
     language_builtin_functor(Name, Arity),
     MainPieces = [words("error: the language construct"),
-        unqual_sym_name_and_arity(sym_name_arity(unqualified(Name), Arity)),
+        unqual_sym_name_arity(sym_name_arity(unqualified(Name), Arity)),
         words("should be used as a goal, not as an expression."), nl],
     VerbosePieces = [words("If you are trying to use a goal"),
         words("as a boolean function, you should write"),
@@ -1585,7 +1585,7 @@ syntax_functor_components("-->", 2, Components) :-
     Components = [always(Pieces)].
 syntax_functor_components(".", 2, Components) :-
     Pieces = [words("error: the list constructor is now"),
-        unqual_sym_name_and_arity(sym_name_arity(unqualified("[|]"), 2)),
+        unqual_sym_name_arity(sym_name_arity(unqualified("[|]"), 2)),
         suffix(","), words("not"), quote("./2"),
         suffix("."), nl],
     Components = [always(Pieces)].
@@ -1632,7 +1632,7 @@ report_cons_error(Context, ConsError) = Msgs :-
         Pieces = [words("There are"),
             pragma_decl("foreign_type"),
             words("declarations for type"),
-            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            qual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
             suffix(","),
             words("so it is treated as an abstract type"),
             words("in all predicates and functions"),
@@ -1674,7 +1674,7 @@ report_cons_error(Context, ConsError) = Msgs :-
         TypeCtor = type_ctor(TypeName, TypeArity),
         Pieces = [words("Invalid use of"), quote("new"),
             words("on a constructor of type"),
-            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            qual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
             words("which is not existentially typed."), nl],
         Msgs = [simple_msg(Context, [always(Pieces)])]
     ).

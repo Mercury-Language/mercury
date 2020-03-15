@@ -1076,11 +1076,11 @@ mercury_output_pragma_obsolete_pred(ObsoletePredInfo, !IO) :-
         pragma_info_obsolete_pred(PredNameArity, ObsoleteInFavourOf),
     PredNameArity = pred_name_arity(SymName, Arity),
     PredSymNameArity = sym_name_arity(SymName, Arity),
-    ObsoleteStrs = list.map(wrapped_sym_name_and_arity_to_string,
+    ObsoleteStrs = list.map(wrapped_sym_name_arity_to_string,
         ObsoleteInFavourOf),
     ObsoleteStr = string.join_list(", ", ObsoleteStrs),
     io.format(":- pragma obsolete(%s, [%s]).\n",
-        [s(wrapped_sym_name_and_arity_to_string(PredSymNameArity)),
+        [s(wrapped_sym_name_arity_to_string(PredSymNameArity)),
         s(ObsoleteStr)], !IO).
 
 :- pred mercury_output_pragma_obsolete_proc(output_lang::in,
@@ -1091,14 +1091,14 @@ mercury_output_pragma_obsolete_proc(Lang, ObsoleteProcInfo, !IO) :-
         pragma_info_obsolete_proc(PredNameModesPF, ObsoleteInFavourOf),
     io.write_string(":- pragma obsolete_proc(", !IO),
     write_pred_name_modes_pf(Lang, PredNameModesPF, !IO),
-    ObsoleteStrs = list.map(wrapped_sym_name_and_arity_to_string,
+    ObsoleteStrs = list.map(wrapped_sym_name_arity_to_string,
         ObsoleteInFavourOf),
     ObsoleteStr = string.join_list(", ", ObsoleteStrs),
     io.format(", [%s]).\n", [s(ObsoleteStr)], !IO).
 
-:- func wrapped_sym_name_and_arity_to_string(sym_name_and_arity) = string.
+:- func wrapped_sym_name_arity_to_string(sym_name_arity) = string.
 
-wrapped_sym_name_and_arity_to_string(SNA) = Str :-
+wrapped_sym_name_arity_to_string(SNA) = Str :-
     SNA = sym_name_arity(SymName, Arity),
     Str = mercury_bracketed_sym_name_to_string(SymName) ++
         "/" ++ string.int_to_string(Arity).

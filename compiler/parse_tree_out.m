@@ -123,7 +123,7 @@
 
 :- pred mercury_output_where_attributes(merc_out_info::in, tvarset::in,
     maybe(solver_type_details)::in, maybe_canonical::in,
-    maybe(list(sym_name_and_arity))::in, io::di, io::uo) is det.
+    maybe(list(sym_name_arity))::in, io::di, io::uo) is det.
 
 :- pred mercury_output_ctor(tvarset::in, constructor::in, io::di, io::uo)
     is det.
@@ -1541,11 +1541,11 @@ mercury_output_ctor_arg_name_prefix(yes(FieldName), !IO) :-
     mercury_output_bracketed_sym_name(Name, !IO),
     io.write_string(" :: ", !IO).
 
-:- pred mercury_output_direct_arg_functors(list(sym_name_and_arity)::in,
+:- pred mercury_output_direct_arg_functors(list(sym_name_arity)::in,
     io::di, io::uo) is det.
 
 mercury_output_direct_arg_functors(Ctors, !IO) :-
-    io.write_list(Ctors, ", ", mercury_format_sym_name_and_arity, !IO).
+    io.write_list(Ctors, ", ", mercury_format_sym_name_arity, !IO).
 
 %---------------------%
 %
@@ -2237,7 +2237,7 @@ mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
     ;
         RepnInfo = tcrepn_has_direct_arg_functors(SymNameAndArities),
         io.write_string("has_direct_arg_functors([", !IO),
-        io.write_list(SymNameAndArities, ", ", write_sym_name_and_arity, !IO),
+        io.write_list(SymNameAndArities, ", ", write_sym_name_arity, !IO),
         io.write_string("])", !IO)
     ;
         RepnInfo = tcrepn_du(DuRepn),

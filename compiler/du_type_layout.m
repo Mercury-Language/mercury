@@ -801,7 +801,7 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
             check_direct_arg_assertions(AssertedDirectArgFunctors,
                 NonDirectArgFunctors, !Specs),
             DirectArgFunctorNames =
-                list.map(constructor_to_sym_name_and_arity, DirectArgFunctors)
+                list.map(constructor_to_sym_name_arity, DirectArgFunctors)
         ;
             MaybeDirectArgs = direct_args_disabled,
             DirectArgFunctors = [],
@@ -1904,7 +1904,7 @@ take_local_packable_functors_constant_sectag_bits(ArgPackBits,
 
 :- pred is_direct_arg_ctor(component_type_map::in, module_name::in,
     type_status::in, bool::in, bool::in,
-    list(sym_name_and_arity)::in, constructor::in) is semidet.
+    list(sym_name_arity)::in, constructor::in) is semidet.
 
 is_direct_arg_ctor(ComponentTypeMap, TypeCtorModule, TypeStatus,
         TypeIsImported, TypeDefinedHere, AssertedDirectArgCtors, Ctor) :-
@@ -2167,7 +2167,7 @@ is_foreign_type_body_for_target(ForeignType, Target, Assertions) :-
     % nevertheless appears in AssertedDirectArgCtors, generate an error message
     % for it.
     %
-:- pred check_direct_arg_assertions(list(sym_name_and_arity)::in,
+:- pred check_direct_arg_assertions(list(sym_name_arity)::in,
     list(constructor)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 check_direct_arg_assertions(_AssertedDirectArgCtors, [], !Specs).
@@ -2176,7 +2176,7 @@ check_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors], !Specs) :-
     SymNameArity = sym_name_arity(SymName, Arity),
     ( if list.contains(AssertedDirectArgCtors, SymNameArity) then
         Pieces = [words("Error:"),
-            unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+            unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
             words("cannot be represented as a direct pointer"),
             words("to its sole argument."), nl],
         Spec = simplest_spec($pred, severity_error, phase_type_check,
@@ -2187,9 +2187,9 @@ check_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors], !Specs) :-
     ),
     check_direct_arg_assertions(AssertedDirectArgCtors, Ctors, !Specs).
 
-:- func constructor_to_sym_name_and_arity(constructor) = sym_name_and_arity.
+:- func constructor_to_sym_name_arity(constructor) = sym_name_arity.
 
-constructor_to_sym_name_and_arity(ctor(_, _, Name, _Args, Arity, _)) =
+constructor_to_sym_name_arity(ctor(_, _, Name, _Args, Arity, _)) =
     sym_name_arity(Name, Arity).
 
 %---------------------------------------------------------------------------%
@@ -2268,7 +2268,7 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
         list.length(CtorArgRepns, CtorArity),
         CtorSymNameArity = sym_name_arity(CtorSymName, CtorArity),
         StartPieces = [words("The arguments of the constructor"),
-            unqual_sym_name_and_arity(CtorSymNameArity),
+            unqual_sym_name_arity(CtorSymNameArity),
             words("could be packed more tightly."),
             words("Here is one arrangement for the arguments"),
             words("which take up less than one word each"),
@@ -2523,7 +2523,7 @@ find_initial_args_packable_within_limit(Params, ComponentTypeMap, Limit,
 
 type_ctor_sna(TypeCtor) = Piece :-
     TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-    Piece = qual_sym_name_and_arity(
+    Piece = qual_sym_name_arity(
         sym_name_arity(TypeCtorSymName, TypeCtorArity)).
 
 %---------------------------------------------------------------------------%

@@ -102,7 +102,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
                 Here = yes,
                 ShortInstSymName = unqualified(unqualify_name(InstSymName)),
                 Pieces = [words("Warning: inst"),
-                    qual_sym_name_and_arity(
+                    qual_sym_name_arity(
                         sym_name_arity(ShortInstSymName, InstArity)),
                     words("includes references to function symbols,"),
                     words("but does not declare what type constructor"),
@@ -137,7 +137,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         then
             ShortInstSymName = unqualified(unqualify_name(InstSymName)),
             Pieces = [words("Error: inst"),
-                qual_sym_name_and_arity(
+                qual_sym_name_arity(
                     sym_name_arity(ShortInstSymName, InstArity)),
                 words("is specified to be for a given type constructor,"),
                 words("but it is not defined to be equivalent to a"),
@@ -357,7 +357,7 @@ report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
         Kinds = choose_number(Expansions, One, Several),
         ExpansionPieces = list.map(
             ( func(circ_id(SymName, Arity)) =
-                qual_sym_name_and_arity(sym_name_arity(SymName, Arity))
+                qual_sym_name_arity(sym_name_arity(SymName, Arity))
             ),
             Expansions),
         Pieces = [words("Error: circular equivalence"), fixed(Kinds)]
