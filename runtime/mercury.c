@@ -93,6 +93,40 @@ MR_OUTLINE_DEFN(
 
 #endif // MR_BOXED_FLOAT && !MR_GNUC
 
+#if defined(MR_BOXED_INT64S) && !defined(MR_GNUC)
+
+MR_OUTLINE_DEFN(
+    MR_Box
+    MR_box_int64(int64_t i)
+,
+    {
+        int64_t *ptr;
+
+        MR_make_hp_int64_aligned();
+        ptr = MR_new_object_atomic(int64_t, sizeof(int64_t),
+            MR_ALLOC_SITE_INT64, NULL);
+        *ptr = i;
+        return (MR_Box) ptr;
+    }
+)
+
+MR_OUTLINE_DEFN(
+    MR_Box
+    MR_box_uint64(uint64_t i)
+,
+    {
+        uint64_t *ptr;
+
+        MR_make_hp_uint64_aligned();
+        ptr = MR_new_object_atomic(uint64_t, sizeof(uint64_t),
+            MR_ALLOC_SITE_UINT64, NULL);
+        *ptr = i;
+        return (MR_Box) ptr;
+    }
+)
+
+#endif // MR_BOXED_INT64S && !MR_GNUC
+
 #endif // ! MR_HIGHLEVEL_CODE
 
 ////////////////////////////////////////////////////////////////////////////
