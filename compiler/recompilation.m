@@ -113,12 +113,12 @@
 :- mode string_to_item_type(out, in) is det.
 
 :- func type_ctor_to_item_name(type_ctor) = item_name.
-:- func inst_id_to_item_name(inst_id) = item_name.
-:- func mode_id_to_item_name(mode_id) = item_name.
+:- func inst_ctor_to_item_name(inst_ctor) = item_name.
+:- func mode_ctor_to_item_name(mode_ctor) = item_name.
 
 :- func item_name_to_type_ctor(item_name) = type_ctor.
-:- func item_name_to_inst_id(item_name) = inst_id.
-:- func item_name_to_mode_id(item_name) = mode_id.
+:- func item_name_to_inst_ctor(item_name) = inst_ctor.
+:- func item_name_to_mode_ctor(item_name) = mode_ctor.
 
 %-----------------------------------------------------------------------------%
 
@@ -336,12 +336,12 @@ string_to_item_type("mutable", mutable_item).
 string_to_item_type("foreign_proc", foreign_proc_item).
 
 type_ctor_to_item_name(type_ctor(SymName, Arity)) = item_name(SymName, Arity).
-inst_id_to_item_name(inst_id(SymName, Arity)) = item_name(SymName, Arity).
-mode_id_to_item_name(mode_id(SymName, Arity)) = item_name(SymName, Arity).
+inst_ctor_to_item_name(inst_ctor(SymName, Arity)) = item_name(SymName, Arity).
+mode_ctor_to_item_name(mode_ctor(SymName, Arity)) = item_name(SymName, Arity).
 
 item_name_to_type_ctor(item_name(SymName, Arity)) = type_ctor(SymName, Arity).
-item_name_to_inst_id(item_name(SymName, Arity)) = inst_id(SymName, Arity).
-item_name_to_mode_id(item_name(SymName, Arity)) = mode_id(SymName, Arity).
+item_name_to_inst_ctor(item_name(SymName, Arity)) = inst_ctor(SymName, Arity).
+item_name_to_mode_ctor(item_name(SymName, Arity)) = mode_ctor(SymName, Arity).
 
 %-----------------------------------------------------------------------------%
 

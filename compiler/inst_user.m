@@ -44,7 +44,7 @@
     --->    user_inst_being_processed
     ;       processed_user_inst(hlds_inst_defn).
 
-:- type maybe_inst_defns_map == map(inst_id, maybe_user_inst).
+:- type maybe_inst_defns_map == map(inst_ctor, maybe_user_inst).
 
 pretest_user_inst_table(!ModuleInfo) :-
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -61,9 +61,10 @@ pretest_user_inst_table(!ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred pretest_user_inst_defns(module_info::in,
-    assoc_list(inst_id, hlds_inst_defn)::in,
-    assoc_list(inst_id, hlds_inst_defn)::in, map(inst_id, hlds_inst_defn)::in,
-    map(inst_id, maybe_user_inst)::in, map(inst_id, maybe_user_inst)::out)
+    assoc_list(inst_ctor, hlds_inst_defn)::in,
+    assoc_list(inst_ctor, hlds_inst_defn)::in,
+    map(inst_ctor, hlds_inst_defn)::in,
+    map(inst_ctor, maybe_user_inst)::in, map(inst_ctor, maybe_user_inst)::out)
     is det.
 
 pretest_user_inst_defns(ModuleInfo, [], DelayedInstDefnPairs, UserInstTable0,
@@ -77,8 +78,8 @@ pretest_user_inst_defns(ModuleInfo, [], DelayedInstDefnPairs, UserInstTable0,
     ).
 pretest_user_inst_defns(ModuleInfo, [InstDefnPair | InstDefnPairs],
         !.DelayedInstDefnPairs, UserInstTable0, !MaybeInstDefnsMap) :-
-    InstDefnPair = InstId - InstDefn,
-    ( if map.search(!.MaybeInstDefnsMap, InstId, MaybeUserInst) then
+    InstDefnPair = InstCtor - InstDefn,
+    ( if map.search(!.MaybeInstDefnsMap, InstCtor, MaybeUserInst) then
         (
             MaybeUserInst = user_inst_being_processed,
             !:DelayedInstDefnPairs = [InstDefnPair | !.DelayedInstDefnPairs]
@@ -86,29 +87,29 @@ pretest_user_inst_defns(ModuleInfo, [InstDefnPair | InstDefnPairs],
             MaybeUserInst = processed_user_inst(_)
         )
     else
-        pretest_user_inst_defn(ModuleInfo, InstId, InstDefn, UserInstTable0,
+        pretest_user_inst_defn(ModuleInfo, InstCtor, InstDefn, UserInstTable0,
             !MaybeInstDefnsMap)
     ),
     pretest_user_inst_defns(ModuleInfo, InstDefnPairs, !.DelayedInstDefnPairs,
         UserInstTable0, !MaybeInstDefnsMap).
 
 :- pred pretest_user_inst_defn(module_info::in,
-    inst_id::in, hlds_inst_defn::in, map(inst_id, hlds_inst_defn)::in,
-    map(inst_id, maybe_user_inst)::in, map(inst_id, maybe_user_inst)::out)
+    inst_ctor::in, hlds_inst_defn::in, map(inst_ctor, hlds_inst_defn)::in,
+    map(inst_ctor, maybe_user_inst)::in, map(inst_ctor, maybe_user_inst)::out)
     is det.
 
-pretest_user_inst_defn(ModuleInfo, InstId, InstDefn0, UserInstTable0,
+pretest_user_inst_defn(ModuleInfo, InstCtor, InstDefn0, UserInstTable0,
         !MaybeInstDefnsMap) :-
     InstDefn0 = hlds_inst_defn(InstVarSet, InstParams, InstBody0,
         IFTC, Context, Status),
     InstBody0 = eqv_inst(Inst0),
     (
         InstParams = [_ | _],
-        map.det_insert(InstId, processed_user_inst(InstDefn0),
+        map.det_insert(InstCtor, processed_user_inst(InstDefn0),
             !MaybeInstDefnsMap)
     ;
         InstParams = [],
-        map.det_insert(InstId, user_inst_being_processed,
+        map.det_insert(InstCtor, user_inst_being_processed,
             !MaybeInstDefnsMap),
         pretest_inst(Inst0, Inst1, UserInstTable0, _, _, _, _, _,
             !MaybeInstDefnsMap),
@@ -129,16 +130,16 @@ pretest_user_inst_defn(ModuleInfo, InstId, InstDefn0, UserInstTable0,
         InstBody = eqv_inst(Inst),
         InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
             IFTC, Context, Status),
-        map.det_update(InstId, processed_user_inst(InstDefn),
+        map.det_update(InstCtor, processed_user_inst(InstDefn),
             !MaybeInstDefnsMap)
     ).
 
 :- pred pretest_inst(mer_inst::in, mer_inst::out,
-    map(inst_id, hlds_inst_defn)::in,
+    map(inst_ctor, hlds_inst_defn)::in,
     inst_result_groundness::out, inst_result_contains_any::out,
     inst_result_contains_inst_names::out, inst_result_contains_inst_vars::out,
     inst_result_contains_types::out,
-    map(inst_id, maybe_user_inst)::in, map(inst_id, maybe_user_inst)::out)
+    map(inst_ctor, maybe_user_inst)::in, map(inst_ctor, maybe_user_inst)::out)
     is det.
 
 pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
@@ -230,13 +231,13 @@ pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
     ).
 
 :- pred pretest_bound_insts(list(bound_inst)::in, list(bound_inst)::out,
-    map(inst_id, hlds_inst_defn)::in,
+    map(inst_ctor, hlds_inst_defn)::in,
     inst_result_groundness::in, inst_result_groundness::out,
     inst_result_contains_any::in, inst_result_contains_any::out,
     inst_result_contains_inst_names::in, inst_result_contains_inst_names::out,
     inst_result_contains_inst_vars::in, inst_result_contains_inst_vars::out,
     inst_result_contains_types::in, inst_result_contains_types::out,
-    map(inst_id, maybe_user_inst)::in, map(inst_id, maybe_user_inst)::out)
+    map(inst_ctor, maybe_user_inst)::in, map(inst_ctor, maybe_user_inst)::out)
     is det.
 
 pretest_bound_insts([], [], _UserInstTable0,
@@ -256,13 +257,13 @@ pretest_bound_insts([BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
         !ContainsTypes, !MaybeInstDefnsMap).
 
 :- pred pretest_bound_inst_args(list(mer_inst)::in, list(mer_inst)::out,
-    map(inst_id, hlds_inst_defn)::in,
+    map(inst_ctor, hlds_inst_defn)::in,
     inst_result_groundness::in, inst_result_groundness::out,
     inst_result_contains_any::in, inst_result_contains_any::out,
     inst_result_contains_inst_names::in, inst_result_contains_inst_names::out,
     inst_result_contains_inst_vars::in, inst_result_contains_inst_vars::out,
     inst_result_contains_types::in, inst_result_contains_types::out,
-    map(inst_id, maybe_user_inst)::in, map(inst_id, maybe_user_inst)::out)
+    map(inst_ctor, maybe_user_inst)::in, map(inst_ctor, maybe_user_inst)::out)
     is det.
 
 pretest_bound_inst_args([], [], _UserInstTable0,
@@ -400,29 +401,29 @@ combine_contains_types_results(ContainsTypesA, ContainsTypesB,
 
 %-----------------------------------------------------------------------------%
 
-:- pred record_user_inst_results(assoc_list(inst_id, maybe_user_inst)::in,
-    assoc_list(inst_id, hlds_inst_defn)::out) is det.
+:- pred record_user_inst_results(assoc_list(inst_ctor, maybe_user_inst)::in,
+    assoc_list(inst_ctor, hlds_inst_defn)::out) is det.
 
 record_user_inst_results([], []).
 record_user_inst_results([MaybeInstPair | MaybeInstPairs],
         [InstDefnPair | InstDefnPairs]) :-
-    MaybeInstPair = InstId - MaybeUserInst,
+    MaybeInstPair = InstCtor - MaybeUserInst,
     (
         MaybeUserInst = user_inst_being_processed,
         unexpected($pred, "MaybeUserInst = user_inst_being_processed")
     ;
         MaybeUserInst = processed_user_inst(UserInstDefn)
     ),
-    InstDefnPair = InstId - UserInstDefn,
+    InstDefnPair = InstCtor - UserInstDefn,
     record_user_inst_results(MaybeInstPairs, InstDefnPairs).
 
 %-----------------------------------------------------------------------------%
 
-% :- pred output_user_inst_pair(pair(inst_id, hlds_inst_defn)::in,
+% :- pred output_user_inst_pair(pair(inst_ctor, hlds_inst_defn)::in,
 %     io::di, io::uo) is det.
 %
-% output_user_inst_pair(InstId - InstDefn, !IO) :-
-%     InstId = inst_id(SymName, Arity),
+% output_user_inst_pair(InstCtor - InstDefn, !IO) :-
+%     InstCtor = inst_ctor(SymName, Arity),
 %     io.write_string(sym_name_to_string(SymName), !IO),
 %     io.write_string("/", !IO),
 %     io.write_int(Arity, !IO),

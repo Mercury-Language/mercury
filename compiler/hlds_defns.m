@@ -92,8 +92,8 @@ write_hlds_defns(Stream, ModuleInfo, !IO) :-
 
     module_info_get_mode_table(ModuleInfo, ModeTable),
     mode_table_get_mode_defns(ModeTable, ModeDefnMap),
-    map.keys(ModeDefnMap, ModeIds),
-    gather_local_mode_names(ModuleName, ModeIds,
+    map.keys(ModeDefnMap, ModeCtors),
+    gather_local_mode_names(ModuleName, ModeCtors,
         set.init, ModeNameArities),
 
     module_info_get_preds(ModuleInfo, Preds),
@@ -154,15 +154,16 @@ gather_local_type_names(ModuleName, [TypeCtor - _Defn | TypeCtorDefns],
 
 %-----------------------------------------------------------------------------%
 
-:- pred gather_local_inst_names(module_name::in, list(inst_id)::in,
+:- pred gather_local_inst_names(module_name::in, list(inst_ctor)::in,
     set(name_arity)::in, set(name_arity)::out) is det.
 
 gather_local_inst_names(_, [], !InstNameArities).
-gather_local_inst_names(ModuleName, [InstId | InstIds], !InstNameArities) :-
-    InstId = inst_id(InstSymName, InstArity),
+gather_local_inst_names(ModuleName, [InstCtor | InstCtors],
+        !InstNameArities) :-
+    InstCtor = inst_ctor(InstSymName, InstArity),
     (
         InstSymName = unqualified(_),
-        unexpected($pred, "unqualified inst_id name")
+        unexpected($pred, "unqualified inst_ctor name")
     ;
         InstSymName = qualified(InstModuleName, InstName),
         ( if InstModuleName = ModuleName then
@@ -171,20 +172,20 @@ gather_local_inst_names(ModuleName, [InstId | InstIds], !InstNameArities) :-
             true
         )
     ),
-    gather_local_inst_names(ModuleName, InstIds, !InstNameArities).
+    gather_local_inst_names(ModuleName, InstCtors, !InstNameArities).
 
 %-----------------------------------------------------------------------------%
 
-:- pred gather_local_mode_names(module_name::in, list(mode_id)::in,
+:- pred gather_local_mode_names(module_name::in, list(mode_ctor)::in,
     set(name_arity)::in, set(name_arity)::out) is det.
 
 gather_local_mode_names(_, [], !ModeNameArities).
-gather_local_mode_names(ModuleName, [ModeId | ModeIds],
+gather_local_mode_names(ModuleName, [ModeCtor | ModeCtors],
         !ModeNameArities) :-
-    ModeId = mode_id(ModeSymName, ModeArity),
+    ModeCtor = mode_ctor(ModeSymName, ModeArity),
     (
         ModeSymName = unqualified(_),
-        unexpected($pred, "unqualified mode_id name")
+        unexpected($pred, "unqualified mode_ctor name")
     ;
         ModeSymName = qualified(ModeModuleName, ModeName),
         ( if ModeModuleName = ModuleName then
@@ -193,7 +194,7 @@ gather_local_mode_names(ModuleName, [ModeId | ModeIds],
             true
         )
     ),
-    gather_local_mode_names(ModuleName, ModeIds, !ModeNameArities).
+    gather_local_mode_names(ModuleName, ModeCtors, !ModeNameArities).
 
 %-----------------------------------------------------------------------------%
 

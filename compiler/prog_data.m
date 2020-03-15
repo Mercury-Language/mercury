@@ -1340,9 +1340,8 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     --->    ho_arg_reg_r
     ;       ho_arg_reg_f.
 
-% XXX CLEANUP Should be inst_ctor, for consistency with type_ctor
-:- type inst_id
-    --->    inst_id(sym_name, arity).
+:- type inst_ctor
+    --->    inst_ctor(sym_name, arity).
 
 :- type bound_inst
     --->    bound_functor(cons_id, list(mer_inst)).
@@ -1428,9 +1427,8 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     --->    real_unify
     ;       fake_unify.
 
-% XXX CLEANUP Should be mode_ctor, for consistency with type_ctor
-:- type mode_id
-    --->    mode_id(sym_name, arity).
+:- type mode_ctor
+    --->    mode_ctor(sym_name, arity).
 
 :- type mode_defn
     --->    eqv_mode(mer_mode).
@@ -1763,20 +1761,20 @@ valid_trace_grade_name(GradeName) :-
     %
 :- type promise_type
     --->    promise_type_exclusive
-            % Two disjunct cannot be true at once.
+            % A promise that given two disjuncts, at most one is true.
 
     ;       promise_type_exhaustive
-            % At least one disjunct will be true.
+            % A promise that given two disjuncts, at least one is true.
 
     ;       promise_type_exclusive_exhaustive
-            % Both of the above assertions, which means that
-            % *exactly* one disjunct will be true.
+            % A promise that given two disjuncts, exactly one is true.
 
     ;       promise_type_true.
-            % Promise that the given goal is true.
+            % A promise that the given goal is true.
 
-    % A predicate or function declaration may either give (a) only the types
-    % of the arguments, or (b) both their types and modes.
+    % A predicate or function declaration may give either
+    % (a) only the types of the arguments, or
+    % (b) both their types and modes.
 :- type type_and_mode
     --->    type_only(mer_type)
     ;       type_and_mode(mer_type, mer_mode).
@@ -1792,12 +1790,14 @@ valid_trace_grade_name(GradeName) :-
     --->    sym_name_specifier_name(sym_name)
     ;       sym_name_specifier_name_arity(sym_name, arity).
 
+% XXX CLEANUP
 :- type sym_name_and_arity
     --->    sym_name_arity(sym_name, arity).
 
 :- type pf_sym_name_and_arity
     --->    pf_sym_name_arity(pred_or_func, sym_name, arity).
 
+% XXX CLEANUP
 % XXX Uses of this type should be replaced by pf_sym_name_and_arity.
 :- type simple_call_id
     --->    simple_call_id(pred_or_func, sym_name, arity).

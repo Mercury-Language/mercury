@@ -971,11 +971,11 @@ write_inst_table(Lang, Indent, Limit, InstTable, !IO) :-
 
     io.nl(!IO).
 
-:- pred write_user_inst(int::in, pair(inst_id, hlds_inst_defn)::in,
+:- pred write_user_inst(int::in, pair(inst_ctor, hlds_inst_defn)::in,
     io::di, io::uo) is det.
 
-write_user_inst(Indent, InstId - InstDefn, !IO) :-
-    InstId = inst_id(InstName, _InstArity),
+write_user_inst(Indent, InstCtor - InstDefn, !IO) :-
+    InstCtor = inst_ctor(InstName, _InstArity),
     write_indent(Indent, !IO),
     io.format("\n:- inst %s", [s(sym_name_to_string(InstName))], !IO),
     InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
@@ -1179,11 +1179,11 @@ write_mode_table(Indent, ModeTable, !IO) :-
     map.foldl(write_mode_table_entry(Indent), ModeDefns, !IO),
     io.nl(!IO).
 
-:- pred write_mode_table_entry(int::in, mode_id::in, hlds_mode_defn::in,
+:- pred write_mode_table_entry(int::in, mode_ctor::in, hlds_mode_defn::in,
     io::di, io::uo) is det.
 
-write_mode_table_entry(Indent, ModeId, ModeDefn, !IO) :-
-    ModeId = mode_id(ModeName, _ModeArity),
+write_mode_table_entry(Indent, ModeCtor, ModeDefn, !IO) :-
+    ModeCtor = mode_ctor(ModeName, _ModeArity),
     write_indent(Indent, !IO),
     io.format("\n:- mode %s", [s(sym_name_to_string(ModeName))], !IO),
     ModeDefn = hlds_mode_defn(InstVarSet, InstParams, ModeBody, _Context,

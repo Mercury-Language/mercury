@@ -481,10 +481,10 @@ prog_constraint_used_modules(Visibility, Constraint, !UsedModules) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred user_inst_used_modules(inst_id::in, hlds_inst_defn::in,
+:- pred user_inst_used_modules(inst_ctor::in, hlds_inst_defn::in,
     used_modules::in, used_modules::out) is det.
 
-user_inst_used_modules(_InstId, InstDefn, !UsedModules) :-
+user_inst_used_modules(_InstCtor, InstDefn, !UsedModules) :-
     InstDefn = hlds_inst_defn(_InstVarSet, _InstParams, InstBody,
         InstForTypeCtor, _Context, InstStatus),
     DefinedInThisModule = inst_status_defined_in_this_module(InstStatus),
@@ -520,10 +520,10 @@ type_ctor_used_modules(Visibility, TypeCtor, !UsedModules) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mode_used_modules(mode_id::in, hlds_mode_defn::in,
+:- pred mode_used_modules(mode_ctor::in, hlds_mode_defn::in,
     used_modules::in, used_modules::out) is det.
 
-mode_used_modules(mode_id(Name, _Arity), ModeDefn, !UsedModules) :-
+mode_used_modules(mode_ctor(Name, _Arity), ModeDefn, !UsedModules) :-
     ModeStatus = ModeDefn ^ mode_status,
     DefinedInThisModule = mode_status_defined_in_this_module(ModeStatus),
     (

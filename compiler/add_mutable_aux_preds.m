@@ -662,7 +662,7 @@ check_mutable(ItemMutable, ModuleInfo, !Specs) :-
     % inside a mutable declaration.
     %
 :- pred check_mutable_inst(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_id)::in, mer_inst::in,
+    inst_varset::in, list(inst_ctor)::in, mer_inst::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
@@ -684,9 +684,9 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         (
             InstName = user_inst(UserInstSymName, UserInstArgs),
             list.length(UserInstArgs, UserInstArity),
-            UserInstId = inst_id(UserInstSymName, UserInstArity),
+            UserInstCtor = inst_ctor(UserInstSymName, UserInstArity),
             ( if
-                list.member(UserInstId, ParentInsts)
+                list.member(UserInstCtor, ParentInsts)
             then
                 true
             else if
@@ -711,11 +711,11 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
 
                 module_info_get_inst_table(ModuleInfo, InstTable),
                 inst_table_get_user_insts(InstTable, UserInstTable),
-                ( if map.search(UserInstTable, UserInstId, InstDefn) then
+                ( if map.search(UserInstTable, UserInstCtor, InstDefn) then
                     InstDefn = hlds_inst_defn(DefnInstVarSet, _Params,
                         InstBody, _MMTC, _Context, _Status),
                     InstBody = eqv_inst(EqvInst),
-                    DefnParentInsts = [UserInstId | ParentInsts],
+                    DefnParentInsts = [UserInstCtor | ParentInsts],
                     check_mutable_inst(ModuleInfo, Context, DefnInstVarSet,
                         DefnParentInsts, EqvInst, !Specs)
                 else
@@ -770,7 +770,7 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
     ).
 
 :- pred check_mutable_bound_insts(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_id)::in, list(bound_inst)::in,
+    inst_varset::in, list(inst_ctor)::in, list(bound_inst)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_mutable_bound_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
@@ -784,7 +784,7 @@ check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
         BoundInsts, !Specs).
 
 :- pred check_mutable_insts(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_id)::in, list(mer_inst)::in,
+    inst_varset::in, list(inst_ctor)::in, list(mer_inst)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_mutable_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
@@ -799,7 +799,7 @@ check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
 %---------------------%
 
 :- pred check_mutable_inst_uniqueness(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_id)::in, mer_inst::in, uniqueness::in,
+    inst_varset::in, list(inst_ctor)::in, mer_inst::in, uniqueness::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
@@ -833,7 +833,7 @@ check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
     ).
 
 :- pred invalid_inst_in_mutable(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_id)::in, mer_inst::in,
+    inst_varset::in, list(inst_ctor)::in, mer_inst::in,
     list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -849,20 +849,20 @@ invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred named_parents_to_pieces(list(inst_id)::in,
+:- pred named_parents_to_pieces(list(inst_ctor)::in,
     list(format_component)::out) is det.
 
 named_parents_to_pieces([], []).
-named_parents_to_pieces([InstId | InstIds], Pieces) :-
-    named_parent_to_pieces(InstId, HeadPieces),
-    named_parents_to_pieces(InstIds, TailPieces),
+named_parents_to_pieces([InstCtor | InstCtors], Pieces) :-
+    named_parent_to_pieces(InstCtor, HeadPieces),
+    named_parents_to_pieces(InstCtors, TailPieces),
     Pieces = HeadPieces ++ TailPieces.
 
-:- pred named_parent_to_pieces(inst_id::in,
+:- pred named_parent_to_pieces(inst_ctor::in,
     list(format_component)::out) is det.
 
-named_parent_to_pieces(InstId, Pieces) :-
-    InstId = inst_id(InstName, InstArity),
+named_parent_to_pieces(InstCtor, Pieces) :-
+    InstCtor = inst_ctor(InstName, InstArity),
     Pieces = [words("in the expansion of the named inst"),
         qual_sym_name_and_arity(sym_name_arity(InstName, InstArity)),
         suffix(":"), nl].

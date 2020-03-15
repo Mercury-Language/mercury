@@ -64,16 +64,16 @@ module_add_inst_defn(ItemInstDefnInfo, InstStatus, !ModuleInfo,
         % Add the definition of this inst to the HLDS inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
         inst_table_get_user_insts(InstTable0, UserInstTable0),
-        insts_add(VarSet, InstName, InstParams, MaybeForType, InstDefn, Context,
-            InstStatus, UserInstTable0, UserInstTable, !Specs),
+        insts_add(VarSet, InstName, InstParams, MaybeForType, InstDefn,
+            Context, InstStatus, UserInstTable0, UserInstTable, !Specs),
         inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo),
 
         % Check if the inst is infinitely recursive (at the top level).
         InstArity = list.length(InstParams),
-        InstId = inst_id(InstName, InstArity),
+        InstCtor = inst_ctor(InstName, InstArity),
         TestArgs = list.duplicate(InstArity, not_reached),
-        check_for_cyclic_inst(UserInstTable, InstId, InstId, TestArgs, [],
+        check_for_cyclic_inst(UserInstTable, InstCtor, InstCtor, TestArgs, [],
             Context, InvalidInst, !Specs),
         (
             InvalidInst = no
@@ -91,7 +91,7 @@ module_add_inst_defn(ItemInstDefnInfo, InstStatus, !ModuleInfo,
 insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         Context, InstStatus, !UserInstTable, !Specs) :-
     list.length(InstParams, InstArity),
-    InstId = inst_id(InstSymName, InstArity),
+    InstCtor = inst_ctor(InstSymName, InstArity),
     (
         EqvInst = bound(_, _, _),
         (
@@ -151,7 +151,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
     ),
     InstDefn = hlds_inst_defn(VarSet, InstParams, eqv_inst(EqvInst), IFTC,
         Context, InstStatus),
-    ( if map.insert(InstId, InstDefn, !UserInstTable) then
+    ( if map.insert(InstCtor, InstDefn, !UserInstTable) then
         true
     else
         % If abstract insts are implemented, this will need to change
@@ -163,7 +163,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
             ReportDup = no
         ;
             ReportDup = yes,
-            map.lookup(!.UserInstTable, InstId, OrigInstDefn),
+            map.lookup(!.UserInstTable, InstCtor, OrigInstDefn),
             OrigContext = OrigInstDefn ^ inst_context,
             Extras = [],
             report_multiple_def_error(InstSymName, InstArity, "inst",
@@ -173,28 +173,28 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
 
     % Check if the inst is infinitely recursive (at the top level).
     %
-:- pred check_for_cyclic_inst(user_inst_table::in, inst_id::in, inst_id::in,
-    list(mer_inst)::in, list(inst_id)::in, prog_context::in, bool::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_for_cyclic_inst(user_inst_table::in, inst_ctor::in,
+    inst_ctor::in, list(mer_inst)::in, list(inst_ctor)::in, prog_context::in,
+    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
-        Context, InvalidMode, !Specs) :-
-    ( if list.member(InstId0, Expansions0) then
-        report_circular_inst_equiv_error(OrigInstId, InstId0, Expansions0,
+check_for_cyclic_inst(UserInstTable, OrigInstCtor, InstCtor0, Args0,
+        Expansions0, Context, InvalidMode, !Specs) :-
+    ( if list.member(InstCtor0, Expansions0) then
+        report_circular_inst_equiv_error(OrigInstCtor, InstCtor0, Expansions0,
             Context, !Specs),
         InvalidMode = yes
     else
         ( if
-            map.search(UserInstTable, InstId0, InstDefn),
+            map.search(UserInstTable, InstCtor0, InstDefn),
             InstDefn = hlds_inst_defn(_, Params, Body, _, _, _),
             Body = eqv_inst(EqvInst0),
             inst_substitute_arg_list(Params, Args0, EqvInst0, EqvInst),
             EqvInst = defined_inst(user_inst(Name, Args))
         then
             Arity = list.length(Args),
-            InstId = inst_id(Name, Arity),
-            Expansions = [InstId0 | Expansions0],
-            check_for_cyclic_inst(UserInstTable, OrigInstId, InstId, Args,
+            InstCtor = inst_ctor(Name, Arity),
+            Expansions = [InstCtor0 | Expansions0],
+            check_for_cyclic_inst(UserInstTable, OrigInstCtor, InstCtor, Args,
                 Expansions, Context, InvalidMode, !Specs)
         else
             InvalidMode = no
@@ -252,11 +252,11 @@ module_add_mode_defn(ItemModeDefnInfo, ModeStatus, !ModuleInfo,
 modes_add(VarSet, Name, Args, ModeBody, Context, ModeStatus, InvalidMode,
         !ModeTable, !Specs) :-
     list.length(Args, Arity),
-    ModeId = mode_id(Name, Arity),
+    ModeCtor = mode_ctor(Name, Arity),
     ModeBody = eqv_mode(EqvMode),
     HldsModeBody = hlds_mode_body(EqvMode),
     ModeDefn = hlds_mode_defn(VarSet, Args, HldsModeBody, Context, ModeStatus),
-    ( if mode_table_insert(ModeId, ModeDefn, !ModeTable) then
+    ( if mode_table_insert(ModeCtor, ModeDefn, !ModeTable) then
         true
     else
         ModeStatus = mode_status(InstModeStatus),
@@ -266,7 +266,7 @@ modes_add(VarSet, Name, Args, ModeBody, Context, ModeStatus, InvalidMode,
         ;
             ReportDup = yes,
             mode_table_get_mode_defns(!.ModeTable, ModeDefns),
-            map.lookup(ModeDefns, ModeId, OrigModeDefn),
+            map.lookup(ModeDefns, ModeCtor, OrigModeDefn),
             OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),
             Extras = [],
             report_multiple_def_error(Name, Arity, "mode",
@@ -274,69 +274,69 @@ modes_add(VarSet, Name, Args, ModeBody, Context, ModeStatus, InvalidMode,
         )
     ),
     Expansions0 = [],
-    check_for_cyclic_mode(!.ModeTable, ModeId, ModeId, Expansions0, Context,
-        InvalidMode, !Specs).
+    check_for_cyclic_mode(!.ModeTable, ModeCtor, ModeCtor, Expansions0,
+        Context, InvalidMode, !Specs).
 
     % Check if the mode is infinitely recursive at the top level.
     %
-:- pred check_for_cyclic_mode(mode_table::in, mode_id::in, mode_id::in,
-    list(mode_id)::in, prog_context::in, bool::out,
+:- pred check_for_cyclic_mode(mode_table::in, mode_ctor::in, mode_ctor::in,
+    list(mode_ctor)::in, prog_context::in, bool::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
+check_for_cyclic_mode(ModeTable, OrigModeCtor, ModeCtor0, Expansions0, Context,
         InvalidMode, !Specs) :-
-    ( if list.member(ModeId0, Expansions0) then
-        report_circular_mode_equiv_error(OrigModeId, ModeId0, Expansions0,
+    ( if list.member(ModeCtor0, Expansions0) then
+        report_circular_mode_equiv_error(OrigModeCtor, ModeCtor0, Expansions0,
             Context, !Specs),
         InvalidMode = yes
     else
         mode_table_get_mode_defns(ModeTable, ModeDefns),
         ( if
-            map.search(ModeDefns, ModeId0, ModeDefn),
+            map.search(ModeDefns, ModeCtor0, ModeDefn),
             ModeDefn = hlds_mode_defn(_, _, Body, _, _),
             Body = hlds_mode_body(EqvMode),
             EqvMode = user_defined_mode(Name, Args)
         then
             Arity = list.length(Args),
-            ModeId = mode_id(Name, Arity),
-            Expansions = [ModeId0 | Expansions0],
-            check_for_cyclic_mode(ModeTable, OrigModeId, ModeId, Expansions,
-                Context, InvalidMode, !Specs)
+            ModeCtor = mode_ctor(Name, Arity),
+            Expansions = [ModeCtor0 | Expansions0],
+            check_for_cyclic_mode(ModeTable, OrigModeCtor, ModeCtor,
+                Expansions, Context, InvalidMode, !Specs)
         else
             InvalidMode = no
         )
     ).
 
-:- pred report_circular_inst_equiv_error(inst_id::in, inst_id::in,
-    list(inst_id)::in, prog_context::in,
+:- pred report_circular_inst_equiv_error(inst_ctor::in, inst_ctor::in,
+    list(inst_ctor)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_circular_inst_equiv_error(OrigInstId, InstId, Expansions, Context,
+report_circular_inst_equiv_error(OrigInstCtor, InstCtor, Expansions, Context,
         !Specs) :-
     report_circular_equiv_error("inst", "insts",
-        inst_id_to_circ_id(OrigInstId), inst_id_to_circ_id(InstId),
-        list.map(inst_id_to_circ_id, Expansions),
+        inst_ctor_to_circ_id(OrigInstCtor), inst_ctor_to_circ_id(InstCtor),
+        list.map(inst_ctor_to_circ_id, Expansions),
         Context, !Specs).
 
-:- pred report_circular_mode_equiv_error(mode_id::in, mode_id::in,
-    list(mode_id)::in, prog_context::in,
+:- pred report_circular_mode_equiv_error(mode_ctor::in, mode_ctor::in,
+    list(mode_ctor)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_circular_mode_equiv_error(OrigModeId, ModeId, Expansions, Context,
+report_circular_mode_equiv_error(OrigModeCtor, ModeCtor, Expansions, Context,
         !Specs) :-
     report_circular_equiv_error("mode", "modes",
-        mode_id_to_circ_id(OrigModeId), mode_id_to_circ_id(ModeId),
-        list.map(mode_id_to_circ_id, Expansions),
+        mode_ctor_to_circ_id(OrigModeCtor), mode_ctor_to_circ_id(ModeCtor),
+        list.map(mode_ctor_to_circ_id, Expansions),
         Context, !Specs).
 
 :- type circ_id
     --->    circ_id(sym_name, arity).
 
-:- func inst_id_to_circ_id(inst_id) = circ_id.
-:- func mode_id_to_circ_id(mode_id) = circ_id.
+:- func inst_ctor_to_circ_id(inst_ctor) = circ_id.
+:- func mode_ctor_to_circ_id(mode_ctor) = circ_id.
 
-inst_id_to_circ_id(inst_id(SymName, Arity)) = circ_id(SymName, Arity).
-mode_id_to_circ_id(mode_id(SymName, Arity)) = circ_id(SymName, Arity).
+inst_ctor_to_circ_id(inst_ctor(SymName, Arity)) = circ_id(SymName, Arity).
+mode_ctor_to_circ_id(mode_ctor(SymName, Arity)) = circ_id(SymName, Arity).
 
 :- pred report_circular_equiv_error(string::in, string::in,
     circ_id::in, circ_id::in, list(circ_id)::in, prog_context::in,

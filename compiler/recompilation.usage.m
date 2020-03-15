@@ -962,19 +962,19 @@ find_items_used_by_item(type_body_item, TypeCtorItem, !Info) :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     find_items_used_by_type_body(TypeBody, !Info).
-find_items_used_by_item(mode_item, ModeIdItem, !Info):-
+find_items_used_by_item(mode_item, ModeCtorItem, !Info):-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefns),
-    ModeId = item_name_to_mode_id(ModeIdItem),
-    map.lookup(ModeDefns, ModeId, ModeDefn),
+    ModeCtor = item_name_to_mode_ctor(ModeCtorItem),
+    map.lookup(ModeDefns, ModeCtor, ModeDefn),
     find_items_used_by_mode_defn(ModeDefn, !Info).
-find_items_used_by_item(inst_item, InstIdItem, !Info):-
+find_items_used_by_item(inst_item, InstCtorItem, !Info):-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_inst_table(ModuleInfo, Insts),
     inst_table_get_user_insts(Insts, UserInstTable),
-    InstId = item_name_to_inst_id(InstIdItem),
-    map.lookup(UserInstTable, InstId, InstDefn),
+    InstCtor = item_name_to_inst_ctor(InstCtorItem),
+    map.lookup(UserInstTable, InstCtor, InstDefn),
     find_items_used_by_inst_defn(InstDefn, !Info).
 find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
     ClassItemId = item_name(ClassName, ClassArity),

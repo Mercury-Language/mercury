@@ -95,7 +95,7 @@
                 inst_status             :: inst_status
             ).
 
-:- type user_inst_table ==          map(inst_id, hlds_inst_defn).
+:- type user_inst_table ==          map(inst_ctor, hlds_inst_defn).
 
 :- type maybe_inst
     --->    inst_unknown
@@ -572,7 +572,7 @@ inst_table_set_mostly_uniq_insts(X, !InstTable) :-
     % The symbol table for modes.
     %
 :- type mode_table.
-:- type mode_defns == map(mode_id, hlds_mode_defn).
+:- type mode_defns == map(mode_ctor, hlds_mode_defn).
 
     % A hlds_mode_defn stores the information about a mode
     % definition such as
@@ -614,7 +614,7 @@ inst_table_set_mostly_uniq_insts(X, !InstTable) :-
     % Insert a mode_id and corresponding hlds_mode_defn into the mode_table.
     % Fail if the mode_id is already present in the table.
     %
-:- pred mode_table_insert(mode_id::in, hlds_mode_defn::in,
+:- pred mode_table_insert(mode_ctor::in, hlds_mode_defn::in,
     mode_table::in, mode_table::out) is semidet.
 
 :- pred mode_table_init(mode_table::out) is det.

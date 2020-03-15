@@ -1736,14 +1736,14 @@ intermod_write_insts(OutInfo, ModuleInfo, InstDefns, !IO) :-
         cord.init, InstDefnsCord, is_first, _, !IO),
     InstDefns = cord.list(InstDefnsCord).
 
-:- pred intermod_write_inst(hlds_out_info::in, module_name::in, inst_id::in,
+:- pred intermod_write_inst(hlds_out_info::in, module_name::in, inst_ctor::in,
     hlds_inst_defn::in,
     cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn,
+intermod_write_inst(OutInfo, ModuleName, InstCtor, InstDefn,
         !InstDefnsCord, !First, !IO) :-
-    InstId = inst_id(SymName, _Arity),
+    InstCtor = inst_ctor(SymName, _Arity),
     InstDefn = hlds_inst_defn(Varset, Args, Inst, IFTC, Context, InstStatus),
     ( if
         SymName = qualified(ModuleName, _),
@@ -1784,14 +1784,14 @@ intermod_write_modes(OutInfo, ModuleInfo, ModeDefns, !IO) :-
         cord.init, ModeDefnsCord, is_first, _, !IO),
     ModeDefns = cord.list(ModeDefnsCord).
 
-:- pred intermod_write_mode(hlds_out_info::in, module_name::in, mode_id::in,
+:- pred intermod_write_mode(hlds_out_info::in, module_name::in, mode_ctor::in,
     hlds_mode_defn::in,
     cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn,
+intermod_write_mode(OutInfo, ModuleName, ModeCtor, ModeDefn,
         !ModeDefnsCord, !First, !IO) :-
-    ModeId = mode_id(SymName, _Arity),
+    ModeCtor = mode_ctor(SymName, _Arity),
     ModeDefn = hlds_mode_defn(Varset, Args, hlds_mode_body(Mode), Context,
         ModeStatus),
     ( if
@@ -3438,7 +3438,7 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
     intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_types(assoc_list(type_ctor, hlds_type_defn)::in,
     intermod_info::in, intermod_info::out) is det.
-%:- pred intermod_info_set_insts(set(inst_id)::in,
+%:- pred intermod_info_set_insts(set(inst_ctor)::in,
 %   intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_need_foreign_import_modules(intermod_info::in,
     intermod_info::out) is det.

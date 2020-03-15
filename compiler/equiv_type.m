@@ -241,7 +241,7 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
                 mer_inst
             ).
 
-:- type inst_eqv_map == map(inst_id, eqv_inst_body).
+:- type inst_eqv_map == map(inst_ctor, eqv_inst_body).
 
 %---------------------------------------------------------------------------%
 
@@ -460,8 +460,8 @@ build_eqv_maps_in_inst_ctor_all_defns(InstCtorAllDefns, !InstEqvMap) :-
             InstDefn, VarSet, _Context, _SeqNum),
         ( if InstDefn = nonabstract_inst_defn(eqv_inst(EqvInst)) then
             list.length(InstParams, Arity),
-            InstId = inst_id(Name, Arity),
-            map.set(InstId, eqv_inst_body(VarSet, InstParams, EqvInst),
+            InstCtor = inst_ctor(Name, Arity),
+            map.set(InstCtor, eqv_inst_body(VarSet, InstParams, EqvInst),
                 !InstEqvMap)
         else
             unexpected($pred, "InstDefn != nonabstract_inst_defn")
@@ -491,8 +491,8 @@ build_eqv_maps_in_inst_defn(ItemInstDefn, !InstEqvMap) :-
         InstDefn, VarSet, _Context, _SeqNum),
     ( if InstDefn = nonabstract_inst_defn(eqv_inst(EqvInst)) then
         list.length(InstParams, Arity),
-        InstId = inst_id(Name, Arity),
-        map.set(InstId, eqv_inst_body(VarSet, InstParams, EqvInst),
+        InstCtor = inst_ctor(Name, Arity),
+        map.set(InstCtor, eqv_inst_body(VarSet, InstParams, EqvInst),
             !InstEqvMap)
     else
         true
@@ -2084,29 +2084,29 @@ replace_in_inst(MaybeRecord, InstEqvMap, Inst0, Inst,
         !EquivTypeInfo, !UsedModules).
 
 :- pred replace_in_inst_location(maybe_record_sym_name_use::in,
-    inst_eqv_map::in, set(inst_id)::in, mer_inst::in, mer_inst::out,
+    inst_eqv_map::in, set(inst_ctor)::in, mer_inst::in, mer_inst::out,
     eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstIds, Inst0, Inst,
-        !EquivTypeInfo, !UsedModules) :-
+replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstCtors,
+        Inst0, Inst, !EquivTypeInfo, !UsedModules) :-
     % XXX Need to record the used modules
     ( if Inst0 = defined_inst(user_inst(SymName, ArgInsts)) then
-        InstId = inst_id(SymName, length(ArgInsts)),
+        InstCtor = inst_ctor(SymName, length(ArgInsts)),
         ( if
-            set.member(InstId, ExpandedInstIds)
+            set.member(InstCtor, ExpandedInstCtors)
         then
             Inst = Inst0
         else if
-            map.search(InstEqvMap, InstId, EqvInstBody),
+            map.search(InstEqvMap, InstCtor, EqvInstBody),
             EqvInstBody = eqv_inst_body(_, EqvInstParams, EqvInst)
         then
             inst_substitute_arg_list(EqvInstParams, ArgInsts, EqvInst, Inst1),
-            InstIdItem = inst_id_to_item_name(InstId),
-            record_expanded_item(item_id(inst_item, InstIdItem),
+            InstCtorItem = inst_ctor_to_item_name(InstCtor),
+            record_expanded_item(item_id(inst_item, InstCtorItem),
                 !EquivTypeInfo),
             replace_in_inst_location(MaybeRecord, InstEqvMap,
-                set.insert(ExpandedInstIds, InstId), Inst1, Inst,
+                set.insert(ExpandedInstCtors, InstCtor), Inst1, Inst,
                 !EquivTypeInfo, !UsedModules)
         else
             Inst = Inst0
