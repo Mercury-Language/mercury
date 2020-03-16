@@ -83,8 +83,8 @@
     % (by import or include) from the given module.
     %
 :- pred find_reachable_local_modules(globals::in, module_name::in, bool::out,
-    set(module_name)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    set(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Remove all nested modules from a list of modules.
     %
@@ -98,14 +98,15 @@
     % from the given module. Return a list of `--local-module-id' options
     % suitable for the command line.
     %
-:- pred make_local_module_id_options(globals::in, module_name::in, bool::out,
-    list(string)::out, make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred make_local_module_id_options(globals::in, module_name::in,
+    bool::out, list(string)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_status(globals::in, dependency_file::in,
-    dependency_status::out, make_info::in, make_info::out, io::di, io::uo)
-    is det.
+    dependency_status::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -121,8 +122,8 @@
     %
 :- pred check_dependencies(globals::in, file_name::in,
     maybe_error(timestamp)::in, bool::in, list(dependency_file)::in,
-    dependencies_result::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    dependencies_result::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % check_dependencies(Globals, TargetFileName, TargetFileTimestamp,
     %   BuildDepsSucceeded, Dependencies, Result, !IO)
@@ -533,9 +534,9 @@ ancestors(_Globals, ModuleIndex, yes, AncestorIndices, !Info, !IO) :-
 
 init_cached_direct_imports = map.init.
 
-:- pred direct_imports(globals::in, module_index::in, bool::out,
-    deps_set(module_index)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred direct_imports(globals::in, module_index::in,
+    bool::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 direct_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
     CachedDirectImports0 = !.Info ^ cached_direct_imports,
@@ -584,8 +585,8 @@ direct_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
     % which does not use `--intermodule-optimization'.
     %
 :- pred non_intermod_direct_imports(globals::in, module_index::in, bool::out,
-    deps_set(module_index)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 non_intermod_direct_imports(Globals, ModuleIndex, Success, Modules,
         !Info, !IO) :-
@@ -605,9 +606,9 @@ non_intermod_direct_imports(Globals, ModuleIndex, Success, Modules,
             := CachedNonIntermodDirectImports
     ).
 
-:- pred non_intermod_direct_imports_2(globals::in, module_index::in, bool::out,
-    deps_set(module_index)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred non_intermod_direct_imports_2(globals::in, module_index::in,
+    bool::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
         !Info, !IO) :-
@@ -651,9 +652,9 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
 
     % Return the list of modules for which we should read `.int2' files.
     %
-:- pred indirect_imports(globals::in, module_index::in, bool::out,
-    deps_set(module_index)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred indirect_imports(globals::in, module_index::in,
+    bool::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 indirect_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
     indirect_imports_2(Globals, direct_imports, ModuleIndex,
@@ -663,9 +664,9 @@ indirect_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
     % ignoring those which need to be read as a result of importing modules
     % imported by a `.opt' file.
     %
-:- pred non_intermod_indirect_imports(globals::in, module_index::in, bool::out,
-    deps_set(module_index)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred non_intermod_indirect_imports(globals::in, module_index::in,
+    bool::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 non_intermod_indirect_imports(Globals, ModuleIndex, Success, Modules,
         !Info, !IO) :-
@@ -706,9 +707,9 @@ indirect_imports_2(Globals, FindDirectImports, ModuleIndex, Success,
 
     % Return the list of modules for which we should read `.opt' files.
     %
-:- pred intermod_imports(globals::in, module_index::in, bool::out,
-    deps_set(module_index)::out, make_info::in, make_info::out, io::di, io::uo)
-    is det.
+:- pred intermod_imports(globals::in, module_index::in,
+    bool::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 intermod_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
     globals.get_any_intermod(Globals, AnyIntermod),
@@ -737,9 +738,9 @@ intermod_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
 
 init_cached_foreign_imports = map.init.
 
-:- pred foreign_imports(globals::in, module_index::in, bool::out,
-    deps_set(module_index)::out, make_info::in, make_info::out, io::di, io::uo)
-    is det.
+:- pred foreign_imports(globals::in, module_index::in,
+    bool::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 foreign_imports(Globals, ModuleIndex, Success, Modules, !Info, !IO) :-
     % The object file depends on the header files for the modules
@@ -917,8 +918,8 @@ find_reachable_local_modules(Globals, ModuleName, Success, Modules,
     module_index_set_to_plain_set(!.Info, Modules0, Modules).
 
 :- pred find_transitive_implementation_imports(globals::in, module_index::in,
-    bool::out, deps_set(module_index)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    bool::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_transitive_implementation_imports(Globals, ModuleIndex, Success, Modules,
         !Info, !IO) :-
@@ -928,8 +929,8 @@ find_transitive_implementation_imports(Globals, ModuleIndex, Success, Modules,
 
 :- pred find_transitive_module_dependencies(globals::in,
     transitive_dependencies_type::in, module_locn::in, module_index::in,
-    bool::out, deps_set(module_index)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    bool::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_transitive_module_dependencies(Globals, DependenciesType, ModuleLocn,
         ModuleIndex, Success, Modules, !Info, !IO) :-
@@ -1044,8 +1045,8 @@ remove_nested_modules(Globals, Modules0, Modules, !Info, !IO) :-
     list.negated_filter(set.contains(NestedModules), Modules0, Modules).
 
 :- pred collect_nested_modules(globals::in, module_name::in,
-    set(module_name)::in, set(module_name)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    set(module_name)::in, set(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
     get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
