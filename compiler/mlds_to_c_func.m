@@ -290,12 +290,12 @@ mlds_output_function_defns(Opts, Indent, ModuleName,
     mlds_output_function_defns(Opts, Indent, ModuleName, FuncDefns, !IO).
 
 mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
-    FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
-        MaybePredProcId, Params, MaybeBody,
-        _EnvVarNames, _MaybeRequireTailrecInfo),
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
+    FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
+        MaybePredProcId, Params, MaybeBody,
+        _EnvVarNames, _MaybeRequireTailrecInfo),
     mlds_output_function_decl_flags(Opts, Flags, MaybeBody, !IO),
     (
         MaybePredProcId = no
@@ -408,7 +408,6 @@ mlds_output_access_comment(func_private, !IO) :-
 mlds_output_per_instance_comment(per_instance, !IO).
 mlds_output_per_instance_comment(one_copy, !IO) :-
     io.write_string("/* one_copy */ ", !IO).
-
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_func.

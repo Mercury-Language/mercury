@@ -51,6 +51,9 @@
 %---------------------------------------------------------------------------%
 
 output_function_defn_for_csharp(Info, Indent, OutputAux, FunctionDefn, !IO) :-
+    % Put a blank line before each function definition.
+    io.nl(!IO),
+
     output_n_indents(Indent, !IO),
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
         MaybePredProcId, Params, MaybeBody, _EnvVarNames,

@@ -929,9 +929,10 @@ mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, Errors, !IO) :-
     AncestorModuleNames = get_ancestors(SymName),
     list.map(module_name_to_file_name_stem,
         AncestorModuleNames, AncestorFileNames),
-    WriteAncestorInclude = (pred(Ancestor::in, !.IO::di, !:IO::uo) is det :-
-        io.write_strings(["#include \"", Ancestor, ".mih", "\"\n"], !IO)
-    ),
+    WriteAncestorInclude =
+        ( pred(Ancestor::in, !.IO::di, !:IO::uo) is det :-
+            io.write_strings(["#include \"", Ancestor, ".mih", "\"\n"], !IO)
+        ),
     list.foldl(WriteAncestorInclude, AncestorFileNames, !IO),
     list.map_foldl(
         mlds_output_c_hdr_decl(Opts, Indent, yes(foreign_decl_is_exported)),

@@ -111,9 +111,11 @@ output_param(Info, Indent, Arg, !IO) :-
 %---------------------------------------------------------------------------%
 
 output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
+    % Put a blank line before each function definition.
+    io.nl(!IO),
+
     FunctionDefn = mlds_function_defn(Name, Context, Flags, MaybePredProcId,
         Params, MaybeBody, _EnvVarNames, _MaybeRequireTailrecInfo),
-    io.nl(!IO),
     (
         MaybeBody = body_external,
         % This is just a function declaration, with no body.

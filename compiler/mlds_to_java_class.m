@@ -302,7 +302,6 @@ output_field_var_defn_for_java(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_field_var_decl_flags_for_java(Flags, !IO),
-    % XXX MLDS_DEFN
     output_field_var_decl_for_java(Info, FieldVarName, Type, !IO),
     output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
@@ -355,28 +354,6 @@ output_overridability_constness_for_java(Overridability, Constness, !IO) :-
     else
         true
     ).
-
-% :- pred output_virtuality_for_java(java_out_info::in, virtuality::in,
-%     io::di, io::uo) is det.
-%
-% output_virtuality_for_java(Info, Virtual, !IO) :-
-%     (
-%         Virtual = virtual,
-%         maybe_output_comment_for_java(Info, "virtual", !IO)
-%     ;
-%         Virtual = non_virtual
-%     ).
-
-% :- pred output_abstractness_for_java(abstractness::in,
-%     io::di, io::uo) is det.
-%
-% output_abstractness_for_java(Abstractness, !IO) :-
-%     (
-%         Abstractness = abstract,
-%         io.write_string("abstract ", !IO)
-%     ;
-%         Abstractness = concrete
-%     ).
 
 %---------------------------------------------------------------------------%
 %

@@ -58,8 +58,7 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, _Context, Flags, Kind,
         _Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
-    expect(unify(MemberMethods, []), $pred,
-        "MemberMethods != []"),
+    expect(unify(MemberMethods, []), $pred, "MemberMethods != []"),
     (
         (
             % `static' keyword not allowed on enumerations.
@@ -339,28 +338,6 @@ output_constness_for_csharp(Constness, !IO) :-
     ;
         Constness = modifiable
     ).
-
-% :- pred output_virtuality_for_csharp(virtuality::in, io::di, io::uo) is det.
-%
-% output_virtuality_for_csharp(Virtual, !IO) :-
-%     (
-%         Virtual = virtual,
-%         % In C#, methods are non-virtual by default.
-%         io.write_string("virtual ", !IO)
-%     ;
-%         Virtual = non_virtual
-%     ).
-
-% :- pred output_abstractness_for_csharp(abstractness::in,
-%     io::di, io::uo) is det.
-%
-% output_abstractness_for_csharp(Abstractness, !IO) :-
-%     (
-%         Abstractness = abstract,
-%         io.write_string("abstract ", !IO)
-%     ;
-%         Abstractness = concrete
-%     ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_class.
