@@ -36,8 +36,8 @@
     % we want to do as much work as possible.
     %
 :- type find_module_deps(T) ==
-    pred(globals, module_index, bool, deps_set(T), make_info, make_info,
-        io, io).
+    pred(globals, module_index, bool, deps_set(T),
+        make_info, make_info, io, io).
 :- inst find_module_deps ==
     (pred(in, in, out, out, in, out, di, uo) is det).
 
@@ -238,9 +238,6 @@ target_dependencies(Globals, Target) = FindDeps :-
         ),
         FindDeps = no_deps
     ;
-        Target = module_target_errors,
-        FindDeps = compiled_code_dependencies(Globals)
-    ;
         ( Target = module_target_int0
         ; Target = module_target_int1
         ; Target = module_target_int2
@@ -254,6 +251,7 @@ target_dependencies(Globals, Target) = FindDeps :-
         ; Target = module_target_csharp_code
         ; Target = module_target_java_code
         ; Target = module_target_erlang_code
+        ; Target = module_target_errors
         ),
         FindDeps = compiled_code_dependencies(Globals)
     ;
@@ -287,8 +285,8 @@ target_dependencies(Globals, Target) = FindDeps :-
         TargetCode = target_to_module_target_code(CompilationTarget, PIC),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
-        % For --highlevel-code, the `.c' file will #include the header
-        % file for all imported modules.
+        % For --highlevel-code, the `.c' file will #include the header file
+        % for all imported modules.
         ( if
             CompilationTarget = target_c,
             HighLevelCode = yes
@@ -363,40 +361,15 @@ interface_file_dependencies =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
 
 compiled_code_dependencies(Globals) = Deps :-
-    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
-    globals.lookup_bool_option(Globals, intermodule_analysis,
-        IntermodAnalysis),
+    % We build up Deps in stages.
+    % XXX The *order* of the dependencies this computes looks wrong to me (zs).
+    % For example, why does Deps call for imported modules' .opt files
+    % to be built before their .int files? The dependencies of the .opt files
+    % won't let them be built before the files *they* depend on are ready,
+    % but still ...
+
+    % Stage 0: dependencies on flags.
     globals.lookup_bool_option(Globals, track_flags, TrackFlags),
-    AnyIntermod = bool.or(IntermodOpt, IntermodAnalysis),
-    (
-        AnyIntermod = yes,
-        Deps0 = combine_deps_list([
-            module_target_opt `of` self,
-            module_target_opt `of` intermod_imports,
-            map_find_module_deps(imports,
-                map_find_module_deps(ancestors, intermod_imports)),
-            base_compiled_code_dependencies(TrackFlags)
-        ])
-    ;
-        AnyIntermod = no,
-        Deps0 = base_compiled_code_dependencies(TrackFlags)
-    ),
-    (
-        IntermodAnalysis = yes,
-        Deps = combine_deps_list([
-            module_target_analysis_registry `of` self,
-            module_target_analysis_registry `of` direct_imports,
-            Deps0
-        ])
-    ;
-        IntermodAnalysis = no,
-        Deps = Deps0
-    ).
-
-:- func base_compiled_code_dependencies(bool::in) =
-    (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
-
-base_compiled_code_dependencies(TrackFlags) = Deps :-
     (
         TrackFlags = yes,
         Deps0 = module_target_track_flags `of` self
@@ -404,13 +377,49 @@ base_compiled_code_dependencies(TrackFlags) = Deps :-
         TrackFlags = no,
         Deps0 = no_deps
     ),
-    Deps = combine_deps_list([
+
+    % Stage 1: dependencies on the source file and on the foreign language
+    % files and Mercury interface files it imports.
+    Deps1 = combine_deps_list([
         module_target_source `of` self,
         fact_table_files `files_of` self,
         foreign_include_files `files_of` self,
         map_find_module_deps(imports, self),
         Deps0
-    ]).
+    ]),
+
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
+    AnyIntermod = bool.or(IntermodOpt, IntermodAnalysis),
+
+    % Stage 2: dependencies on optimization files.
+    (
+        AnyIntermod = yes,
+        Deps2 = combine_deps_list([
+            module_target_opt `of` self,
+            module_target_opt `of` intermod_imports,
+            map_find_module_deps(imports,
+                map_find_module_deps(ancestors, intermod_imports)),
+            Deps1
+        ])
+    ;
+        AnyIntermod = no,
+        Deps2 = Deps1
+    ),
+
+    % Stage 3: dependencies on analysis result files.
+    (
+        IntermodAnalysis = yes,
+        Deps = combine_deps_list([
+            module_target_analysis_registry `of` self,
+            module_target_analysis_registry `of` direct_imports,
+            Deps2
+        ])
+    ;
+        IntermodAnalysis = no,
+        Deps = Deps2
+    ).
 
 :- func imports =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
@@ -468,9 +477,9 @@ files_of(FindFiles, FindDeps) =
 files_of_2(FindFiles, FindDeps, Globals, ModuleIndex, Success, DepIndices,
         !Info, !IO) :-
     KeepGoing = !.Info ^ keep_going,
-    FindDeps(Globals, ModuleIndex, Success0, ModuleIndices, !Info, !IO),
+    FindDeps(Globals, ModuleIndex, Success1, ModuleIndices, !Info, !IO),
     ( if
-        Success0 = no,
+        Success1 = no,
         KeepGoing = no
     then
         Success = no,
@@ -478,8 +487,8 @@ files_of_2(FindFiles, FindDeps, Globals, ModuleIndex, Success, DepIndices,
     else
         deps_set_foldl3_maybe_stop_at_error(KeepGoing,
             union_deps_plain_set(FindFiles),
-            Globals, ModuleIndices, Success1, init, FileNames, !Info, !IO),
-        Success = Success0 `and` Success1,
+            Globals, ModuleIndices, Success2, init, FileNames, !Info, !IO),
+        Success = Success1 `and` Success2,
         dependency_files_to_index_set(set.to_sorted_list(FileNames),
             DepIndices, !Info)
     ).
@@ -493,17 +502,17 @@ files_of_2(FindFiles, FindDeps, Globals, ModuleIndex, Success, DepIndices,
 map_find_module_deps(FindDeps2, FindDeps1, Globals, ModuleIndex, Success,
         Result, !Info, !IO) :-
     KeepGoing = !.Info ^ keep_going,
-    FindDeps1(Globals, ModuleIndex, Success0, Modules0, !Info, !IO),
+    FindDeps1(Globals, ModuleIndex, Success1, Modules1, !Info, !IO),
     ( if
-        Success0 = no,
+        Success1 = no,
         KeepGoing = no
     then
         Success = no,
         Result = init
     else
         deps_set_foldl3_maybe_stop_at_error(KeepGoing, union_deps(FindDeps2),
-            Globals, Modules0, Success1, init, Result, !Info, !IO),
-        Success = Success0 `and` Success1
+            Globals, Modules1, Success2, init, Result, !Info, !IO),
+        Success = Success1 `and` Success2
     ).
 
 %-----------------------------------------------------------------------------%
