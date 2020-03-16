@@ -27,27 +27,8 @@
 :- import_module io.
 :- import_module maybe.
 :- import_module set.
-:- import_module sparse_bitset.
 
 %-----------------------------------------------------------------------------%
-
-    % Dependency computation does a lot of unions so we use a set
-    % representation suited to that purpose, namely bitsets. We can't store
-    % module_names and dependency_files in those sets, so we keep a mapping
-    % between module_name <-> module_index and dependency_file <->
-    % dependency_file_index in the make_info structure, and work with sets of
-    % indices instead.
-    %
-    % sparse_bitset is faster than tree_bitset by my tests.
-    %
-:- type deps_set(T) == sparse_bitset(T).
-% :- type deps_set(T) == tree_bitset(T).
-
-:- type module_index.
-:- instance enum(module_index).
-
-:- type dependency_file_index.
-:- instance enum(dependency_file_index).
 
     % find_module_deps(ModuleName, Succeeded, Deps, !Info, !IO).
     %
@@ -98,23 +79,6 @@
     globals::in, deps_set(T)::in, bool::out, Acc::in, Acc::out,
     Info::in, Info::out, IO::di, IO::uo) is det <= enum(T).
 
-    % Convert a list of module_names to a module_index set.
-    %
-:- pred module_names_to_index_set(list(module_name)::in,
-    deps_set(module_index)::out, make_info::in, make_info::out) is det.
-
-    % Convert a module_index set to a module_name set.
-    %
-:- pred module_index_set_to_plain_set(make_info::in,
-    deps_set(module_index)::in, set(module_name)::out) is det.
-
-    % Convert a dependency_file_index set to a dependency_file set.
-    %
-:- pred dependency_file_index_set_to_plain_set(make_info::in,
-    deps_set(dependency_file_index)::in, set(dependency_file)::out) is det.
-
-%-----------------------------------------------------------------------------%
-
     % Find all modules in the current directory which are reachable
     % (by import or include) from the given module.
     %
@@ -124,9 +88,9 @@
 
     % Remove all nested modules from a list of modules.
     %
-:- pred remove_nested_modules(globals::in, list(module_name)::in,
-    list(module_name)::out, make_info::in, make_info::out, io::di, io::uo)
-    is det.
+:- pred remove_nested_modules(globals::in,
+    list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -187,6 +151,7 @@
 
 :- implementation.
 
+:- import_module make.deps_set.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data_foreign.
@@ -194,151 +159,7 @@
 :- import_module assoc_list.
 :- import_module cord.
 :- import_module dir.
-:- import_module int.
-
-%-----------------------------------------------------------------------------%
-%
-% Bitset indices.
-%
-
-:- type module_index
-    --->    module_index(int).
-
-:- type dependency_file_index
-    --->    dependency_file_index(int).
-
-:- instance enum(module_index) where [
-    to_int(module_index(I)) = I,
-    from_int(I) = module_index(I)
-].
-
-:- instance enum(dependency_file_index) where [
-    to_int(dependency_file_index(I)) = I,
-    from_int(I) = dependency_file_index(I)
-].
-
-:- pred module_name_to_index(module_name::in, module_index::out,
-    make_info::in, make_info::out) is det.
-
-module_name_to_index(ModuleName, Index, !Info) :-
-    Map0 = !.Info ^ module_index_map,
-    Map0 = module_index_map(Forward0, _Reverse0, _Size0),
-    ( if version_hash_table.search(Forward0, ModuleName, Index0) then
-        Index = Index0
-    else
-        Map0 = module_index_map(_Forward0, Reverse0, Size0),
-        Index = module_index(Size0),
-        Size = Size0 + 1,
-        version_hash_table.det_insert(ModuleName, Index, Forward0, Forward),
-        TrueSize = version_array.size(Reverse0),
-        ( if Size > TrueSize then
-            NewSize = increase_array_size(TrueSize),
-            version_array.resize(NewSize, ModuleName, Reverse0, Reverse)
-        else
-            version_array.set(Size0, ModuleName, Reverse0, Reverse)
-        ),
-        Map = module_index_map(Forward, Reverse, Size),
-        !Info ^ module_index_map := Map
-    ).
-
-:- func increase_array_size(int) = int.
-
-increase_array_size(N) = (if N = 0 then 1 else N * 2).
-
-:- pred module_index_to_name(make_info::in, module_index::in, module_name::out)
-    is det.
-
-module_index_to_name(Info, Index, ModuleName) :-
-    Info ^ module_index_map = module_index_map(_Forward, Reverse, _Size),
-    Index = module_index(I),
-    ModuleName = version_array.lookup(Reverse, I).
-
-module_names_to_index_set(ModuleNames, IndexSet, !Info) :-
-    module_names_to_index_set_2(ModuleNames, sparse_bitset.init,
-        IndexSet, !Info).
-
-:- pred module_names_to_index_set_2(list(module_name)::in,
-    deps_set(module_index)::in, deps_set(module_index)::out,
-    make_info::in, make_info::out) is det.
-
-module_names_to_index_set_2([], !IndexSet, !Info).
-module_names_to_index_set_2([ModuleName | ModuleNames], !Set, !Info) :-
-    module_name_to_index(ModuleName, ModuleIndex, !Info),
-    sparse_bitset.insert(ModuleIndex, !Set),
-    module_names_to_index_set_2(ModuleNames, !Set, !Info).
-
-module_index_set_to_plain_set(Info, ModuleIndices, Modules) :-
-    foldl(module_index_set_to_plain_set_2(Info), ModuleIndices,
-        set.init, Modules).
-
-:- pred module_index_set_to_plain_set_2(make_info::in, module_index::in,
-    set(module_name)::in, set(module_name)::out) is det.
-
-module_index_set_to_plain_set_2(Info, ModuleIndex, !Set) :-
-    module_index_to_name(Info, ModuleIndex, ModuleName),
-    set.insert(ModuleName, !Set).
-
-:- pred dependency_file_to_index(dependency_file::in,
-    dependency_file_index::out, make_info::in, make_info::out) is det.
-
-dependency_file_to_index(DepFile, Index, !Info) :-
-    Map0 = !.Info ^ dep_file_index_map,
-    ForwardMap0 = Map0 ^ dfim_forward_map,
-    ( if version_hash_table.search(ForwardMap0, DepFile, Index0) then
-        Index = Index0
-    else
-        Map0 = dependency_file_index_map(Forward0, Reverse0, Size0),
-        Index = dependency_file_index(Size0),
-        Size = Size0 + 1,
-        version_hash_table.det_insert(DepFile, Index, Forward0, Forward),
-        TrueSize = version_array.size(Reverse0),
-        ( if Size > TrueSize then
-            NewSize = increase_array_size(TrueSize),
-            version_array.resize(NewSize, DepFile, Reverse0, Reverse)
-        else
-            version_array.set(Size0, DepFile, Reverse0, Reverse)
-        ),
-        Map = dependency_file_index_map(Forward, Reverse, Size),
-        !Info ^ dep_file_index_map := Map
-    ).
-
-:- pred index_to_dependency_file(make_info::in, dependency_file_index::in,
-    dependency_file::out) is det.
-
-index_to_dependency_file(Info, Index, DepFile) :-
-    Info ^ dep_file_index_map =
-        dependency_file_index_map(_Forward, Reverse, _Size),
-    Index = dependency_file_index(I),
-    DepFile = version_array.lookup(Reverse, I).
-
-dependency_file_index_set_to_plain_set(Info, DepIndices, DepFiles) :-
-    foldl(dependency_file_index_set_to_plain_set_2(Info), DepIndices,
-        [], DepFilesList),
-    DepFiles = set.list_to_set(DepFilesList).
-
-:- pred dependency_file_index_set_to_plain_set_2(make_info::in,
-    dependency_file_index::in,
-    list(dependency_file)::in, list(dependency_file)::out) is det.
-
-dependency_file_index_set_to_plain_set_2(Info, DepIndex, List0, List) :-
-    index_to_dependency_file(Info, DepIndex, DepFile),
-    List = [DepFile | List0].
-
-:- pred dependency_files_to_index_set(list(dependency_file)::in,
-    deps_set(dependency_file_index)::out, make_info::in, make_info::out)
-    is det.
-
-dependency_files_to_index_set(DepFiles, DepIndexSet, !Info) :-
-    list.foldl2(dependency_files_to_index_set_2, DepFiles,
-        init, DepIndexSet, !Info).
-
-:- pred dependency_files_to_index_set_2(dependency_file::in,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
-    make_info::in, make_info::out) is det.
-
-dependency_files_to_index_set_2(DepFiles, !Set, !Info) :-
-    dependency_file_to_index(DepFiles, DepIndex, !Info),
-    insert(DepIndex, !Set).
+:- import_module sparse_bitset.
 
 %-----------------------------------------------------------------------------%
 
@@ -474,7 +295,7 @@ target_dependencies(Globals, Target) = FindDeps :-
             HeaderDeps = combine_deps_list([
                 module_target_c_header(header_mih) `of` direct_imports,
                 module_target_c_header(header_mih) `of` indirect_imports,
-                module_target_c_header(header_mih) `of` parents,
+                module_target_c_header(header_mih) `of` ancestors,
                 module_target_c_header(header_mih) `of` intermod_imports
             ])
         else
@@ -491,7 +312,7 @@ target_dependencies(Globals, Target) = FindDeps :-
         ),
         FindDeps = combine_deps_list([
             module_target_source `of` self,
-            module_target_int0 `of` parents,
+            module_target_int0 `of` ancestors,
             module_target_int1 `of` non_intermod_direct_imports,
             module_target_int2 `of` non_intermod_indirect_imports
         ])
@@ -499,7 +320,7 @@ target_dependencies(Globals, Target) = FindDeps :-
         Target = module_target_analysis_registry,
         FindDeps = combine_deps_list([
             module_target_source `of` self,
-            module_target_int0 `of` parents,
+            module_target_int0 `of` ancestors,
             module_target_int1 `of` non_intermod_direct_imports,
             module_target_int2 `of` non_intermod_indirect_imports,
             module_target_opt `of` direct_imports,
@@ -532,7 +353,7 @@ target_to_module_target_code(_CompilationTarget, _PIC) = TargetCode :-
 interface_file_dependencies =
     combine_deps_list([
         module_target_source `of` self,
-        module_target_int0 `of` parents,
+        module_target_int0 `of` ancestors,
         module_target_int3 `of` direct_imports,
         module_target_int3 `of` indirect_imports
     ]).
@@ -552,7 +373,7 @@ compiled_code_dependencies(Globals) = Deps :-
             module_target_opt `of` self,
             module_target_opt `of` intermod_imports,
             map_find_module_deps(imports,
-                map_find_module_deps(parents, intermod_imports)),
+                map_find_module_deps(ancestors, intermod_imports)),
             base_compiled_code_dependencies(TrackFlags)
         ])
     ;
@@ -594,7 +415,7 @@ base_compiled_code_dependencies(TrackFlags) = Deps :-
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
 
 imports = combine_deps_list([
-        module_target_int0 `of` parents,
+        module_target_int0 `of` ancestors,
         module_target_int1 `of` direct_imports,
         module_target_int2 `of` indirect_imports
     ]).
@@ -697,11 +518,11 @@ no_deps(_, _, yes, init, !Info, !IO).
 
 self(_Globals, ModuleIndex, yes, make_singleton_set(ModuleIndex), !Info, !IO).
 
-:- pred parents(globals::in, module_index::in, bool::out,
+:- pred ancestors(globals::in, module_index::in, bool::out,
     deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-parents(_Globals, ModuleIndex, yes, AncestorIndices, !Info, !IO) :-
+ancestors(_Globals, ModuleIndex, yes, AncestorIndices, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     Ancestors = get_ancestors(ModuleName),
     module_names_to_index_set(Ancestors, AncestorIndices, !Info).
