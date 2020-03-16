@@ -196,7 +196,7 @@ build_vars_to_zones_in_goal(CurZone, Goal, !TraceCounter, !VarsToZones) :-
             record_var_in_zone(CurZone, ClosureVar, !VarsToZones)
         ;
             GenericCall = class_method(TypeClassInfoVar, _MethodNum,
-                _ClassId, _SimpleCallId),
+                _ClassId, _PFSymNameArity),
             record_var_in_zone(CurZone, TypeClassInfoVar, !VarsToZones)
         ;
             GenericCall = event_call(_)

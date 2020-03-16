@@ -1,4 +1,4 @@
-purity_nonsense.m:010: Error: clause for predicate `purity_nonsense.e12'/0
+purity_nonsense.m:010: Error: clause for predicate `e12'/0
 purity_nonsense.m:010:   without corresponding `:- pred' declaration.
 purity_nonsense.m:011: In clause for predicate `e12'/0:
 purity_nonsense.m:011:   error: `impure' marker in an inappropriate place.
@@ -16,7 +16,7 @@ purity_nonsense.m:011:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense.m:011:   in argument 1 of functor `\\+/1':
 purity_nonsense.m:011:   in argument 1 of functor `impure/1':
 purity_nonsense.m:011:   error: undefined symbol `imp'/0.
-purity_nonsense.m:012: Error: clause for predicate `purity_nonsense.e13'/0
+purity_nonsense.m:012: Error: clause for predicate `e13'/0
 purity_nonsense.m:012:   without corresponding `:- pred' declaration.
 purity_nonsense.m:013: In clause for predicate `e13'/0:
 purity_nonsense.m:013:   error: `semipure' marker in an inappropriate place.

@@ -1,4 +1,3 @@
-exported_mode.m:008: Error: `:- mode' declaration for predicate
-exported_mode.m:008:   `exported_mode.p'/2
+exported_mode.m:008: Error: `:- mode' declaration for predicate `p'/2
 exported_mode.m:008:   without corresponding `:- pred' declaration.
 exported_mode.m:008: Inferred :- pred p(T1, string).

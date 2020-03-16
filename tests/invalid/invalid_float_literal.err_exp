@@ -29,14 +29,12 @@ invalid_float_literal.m:037: In clause head: error: atom expected at 123.
 invalid_float_literal.m:037: Syntax error: underscore following decimal point.
 invalid_float_literal.m:039: In clause head: error: atom expected at 123.
 invalid_float_literal.m:039: Syntax error: unterminated decimal literal.
-invalid_float_literal.m:041: Error: clause for predicate
-invalid_float_literal.m:041:   `invalid_float_literal.-'/2
+invalid_float_literal.m:041: Error: clause for predicate `-'/2
 invalid_float_literal.m:041:   without corresponding `:- pred' declaration.
 invalid_float_literal.m:041: Inferred :- pred -(T1, int).
 invalid_float_literal.m:041: Syntax error: unterminated exponent in float
 invalid_float_literal.m:041:   literal.
-invalid_float_literal.m:043: Error: clause for predicate
-invalid_float_literal.m:043:   `invalid_float_literal.+'/2
+invalid_float_literal.m:043: Error: clause for predicate `+'/2
 invalid_float_literal.m:043:   without corresponding `:- pred' declaration.
 invalid_float_literal.m:043: Inferred :- pred +(T1, int).
 invalid_float_literal.m:043: Syntax error: unterminated exponent in float

@@ -1,4 +1,3 @@
-exported_mode.int:003: Error: `:- mode' declaration for predicate
-exported_mode.int:003:   `exported_mode.p'/2
+exported_mode.int:003: Error: `:- mode' declaration for predicate `p'/2
 exported_mode.int:003:   without corresponding `:- pred' declaration.
 exported_mode.int:003: Inferred :- pred p(T1, T2).

@@ -2377,7 +2377,7 @@ classify_src_items_int([Item | Items],
         % There is no point printing out the qualified name
         % since the module name is implicit in the context.
         UnqualPredSymName = unqualified(unqualify_name(PredSymName)),
-        PredName = simple_call_id_to_string(PredOrFunc,
+        PredName = pf_sym_name_orig_arity_to_string(PredOrFunc,
             sym_name_arity(UnqualPredSymName, Arity)),
         error_is_exported(Context, [words("clause for"), fixed(PredName)],
             !Specs),

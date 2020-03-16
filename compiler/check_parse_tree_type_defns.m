@@ -920,7 +920,8 @@ decide_du_repn_foreign_only_constants_lang(TypeCtor, CtorNames, CtorNamesSet,
             build_mercury_foreign_enum_map(TypeCtor, CtorNames, CtorNamesSet),
             LeftOverEnums, TailFETuples),
         AllFETuples = [HeadFETuples | TailFETuples],
-        pick_first_error_free_enum_if_any(AllFETuples, MaybeCheckedForeignEnum),
+        pick_first_error_free_enum_if_any(AllFETuples,
+            MaybeCheckedForeignEnum),
         pick_up_all_errors(AllFETuples, !Specs)
     ),
     (

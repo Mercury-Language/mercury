@@ -159,9 +159,9 @@ module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl, MaybePredProcId,
                 MutablePredKind),
             add_marker(marker_mutable_access_pred, Markers0, Markers)
         ;
-            CompilerOrigin = compiler_origin_tabling(SimpleCallId,
+            CompilerOrigin = compiler_origin_tabling(PFSymNameArity,
                 TablingPredKind),
-            PredOrigin = origin_tabling(SimpleCallId, TablingPredKind),
+            PredOrigin = origin_tabling(PFSymNameArity, TablingPredKind),
             Markers = Markers0
         )
     ;
@@ -639,21 +639,19 @@ module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
         pred_info_get_status(!.PredInfo, PredStatus),
         PredModule = pred_info_module(!.PredInfo),
         PredSymName = qualified(PredModule, PredName),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
         (
             IsClassMethod = is_a_class_method,
-            unspecified_det_for_method(PredSymName, Arity, PredOrFunc,
-                Context, !Specs)
+            unspecified_det_for_method(PFSymNameArity, Context, !Specs)
         ;
             IsClassMethod = is_not_a_class_method,
             IsExported = pred_status_is_exported(PredStatus),
             (
                 IsExported = yes,
-                unspecified_det_for_exported(PredSymName, Arity, PredOrFunc,
-                    Context, !Specs)
+                unspecified_det_for_exported(PFSymNameArity, Context, !Specs)
             ;
                 IsExported = no,
-                unspecified_det_for_local(PredSymName, Arity, PredOrFunc,
-                    Context, !Specs)
+                unspecified_det_for_local(PFSymNameArity, Context, !Specs)
             )
         )
     ;
@@ -726,12 +724,33 @@ decl_section_to_string(decl_implementation) = "implementation".
 
 %-----------------------------------------------------------------------------%
 
-:- pred unspecified_det_for_local(sym_name::in, arity::in, pred_or_func::in,
+:- pred unspecified_det_for_method(pf_sym_name_arity::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+unspecified_det_for_method(PFSymNameArity, Context, !Specs) :-
+    Pieces = [words("Error: no determinism declaration"),
+        words("for type class method"),
+        qual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
+    !:Specs = [Spec | !.Specs].
+
+:- pred unspecified_det_for_exported(pf_sym_name_arity::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+unspecified_det_for_exported(PFSymNameArity, Context, !Specs) :-
+    Pieces = [words("Error: no determinism declaration for exported"),
+        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
+    !:Specs = [Spec | !.Specs].
+
+:- pred unspecified_det_for_local(pf_sym_name_arity::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !Specs) :-
+unspecified_det_for_local(PFSymNameArity, Context, !Specs) :-
     MainPieces = [words("Error: no determinism declaration for local"),
-        simple_call(simple_call_id(PredOrFunc, Name, Arity)), suffix("."), nl],
+        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
     VerbosePieces = [words("(This is an error because"),
         words("you specified the"), quote("--no-infer-det"), words("option."),
         words("Use the"), quote("--infer-det"),
@@ -743,28 +762,6 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !Specs) :-
         verbose_only(verbose_once, VerbosePieces)]),
     Spec = conditional_spec($pred, infer_det, no, severity_error,
         phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-:- pred unspecified_det_for_method(sym_name::in, arity::in, pred_or_func::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !Specs) :-
-    Pieces = [words("Error: no determinism declaration"),
-        words("for type class method"), p_or_f(PredOrFunc),
-        qual_sym_name_arity(sym_name_arity(Name, Arity)), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
-
-:- pred unspecified_det_for_exported(sym_name::in, arity::in, pred_or_func::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !Specs) :-
-    Pieces = [words("Error: no determinism declaration for exported"),
-        p_or_f(PredOrFunc),
-        qual_sym_name_arity(sym_name_arity(Name, Arity)), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred unqualified_pred_error(sym_name::in, int::in, prog_context::in,
@@ -891,7 +888,7 @@ check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
     % XXX Our caller adjusted the arity one way; we now adjust it back.
     % It should be possible to do without the double adjustment.
     adjust_func_arity(pf_function, FuncArity, PredArity),
-    FuncCallId = simple_call_id(pf_function, FuncName, PredArity),
+    FuncCallId = pf_sym_name_arity(pf_function, FuncName, PredArity),
 
     % Check that a function applied to an exported type is also exported.
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
@@ -908,11 +905,12 @@ check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
         true
     ).
 
-:- pred report_field_status_mismatch(prog_context::in, simple_call_id::in,
+:- pred report_field_status_mismatch(prog_context::in, pf_sym_name_arity::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_field_status_mismatch(Context, CallId, !Specs) :-
-    Pieces = [words("In declaration of"), simple_call(CallId), suffix(":"), nl,
+report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-
+    Pieces = [words("In declaration of"),
+        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl,
         words("error: a field access function for an exported field"),
         words("must also be exported."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,

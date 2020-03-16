@@ -991,7 +991,8 @@ is_item_changed(Item1, Item2, Changed) :-
         )
     ;
         Item1 = item_foreign_enum(ItemForeignEnum1),
-        ItemForeignEnum1 = item_foreign_enum_info(Lang, TypeCtor, Values, _, _),
+        ItemForeignEnum1 =
+            item_foreign_enum_info(Lang, TypeCtor, Values, _, _),
         ( if
             Item2 = item_foreign_enum(ItemForeignEnum2),
             ItemForeignEnum2 = item_foreign_enum_info(Lang, TypeCtor, Values,

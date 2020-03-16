@@ -10,16 +10,13 @@ constrained_poly_insts.m:018: Error: inconsistent constraints on inst variable
 constrained_poly_insts.m:018:   I in function declaration.
 constrained_poly_insts.m:020: Error: inconsistent constraints on inst variables
 constrained_poly_insts.m:020:   I and J in predicate declaration.
-constrained_poly_insts.m:029: Error: clause for predicate
-constrained_poly_insts.m:029:   `constrained_poly_insts.q'/2
+constrained_poly_insts.m:029: Error: clause for predicate `q'/2
 constrained_poly_insts.m:029:   without corresponding `:- pred' declaration.
 constrained_poly_insts.m:029: Inferred :- pred q(T1, T1).
-constrained_poly_insts.m:031: Error: clause for function
-constrained_poly_insts.m:031:   `constrained_poly_insts.s'/1
+constrained_poly_insts.m:031: Error: clause for function `s'/1
 constrained_poly_insts.m:031:   without corresponding `:- func' declaration.
 constrained_poly_insts.m:031: Inferred :- func s(T1) = T1.
-constrained_poly_insts.m:032: Error: clause for predicate
-constrained_poly_insts.m:032:   `constrained_poly_insts.t'/4
+constrained_poly_insts.m:032: Error: clause for predicate `t'/4
 constrained_poly_insts.m:032:   without corresponding `:- pred' declaration.
 constrained_poly_insts.m:032: Inferred :- pred t(T1, T1, T3, T3).
 constrained_poly_insts.m:033: In clause for `u(in((I =< ground)), out((I =<

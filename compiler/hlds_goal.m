@@ -689,7 +689,7 @@
                 method_class_id :: class_id,
 
                 % The name of the called method.
-                method_name     :: simple_call_id
+                method_name     :: pf_sym_name_arity
             )
 
     ;       event_call(
@@ -1919,8 +1919,8 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
     (
         GenericCall = higher_order(_, _, PredOrFunc, _)
     ;
-        GenericCall = class_method(_, _, _, SimpleCallId),
-        SimpleCallId = simple_call_id(PredOrFunc, _, _)
+        GenericCall = class_method(_, _, _, PFSymNameArity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, _)
     ;
         ( GenericCall = event_call(_)
         ; GenericCall = cast(_)

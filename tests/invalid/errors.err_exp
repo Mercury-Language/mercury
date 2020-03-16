@@ -6,13 +6,13 @@ errors.m:012:   `:- implementation' declaration.
 errors.m:012: Warning: the interface of module `errors' does not export
 errors.m:012:   anything.
 errors.m:030: Error: `:- mode' declaration for predicate
-errors.m:030:   `errors.mode_declaration_without_pred_declaration'/0
+errors.m:030:   `mode_declaration_without_pred_declaration'/0
 errors.m:030:   without corresponding `:- pred' declaration.
 errors.m:034: Error: `:- mode' declaration for predicate
-errors.m:034:   `errors.missing_pred_declaration'/0
+errors.m:034:   `missing_pred_declaration'/0
 errors.m:034:   without corresponding `:- pred' declaration.
 errors.m:040: Error: clause for predicate
-errors.m:040:   `errors.clause_without_pred_or_mode_declaration'/0
+errors.m:040:   `clause_without_pred_or_mode_declaration'/0
 errors.m:040:   without corresponding `:- pred' declaration.
 errors.m:051: Error: constructor `errors.a/0' for type
 errors.m:051:   `errors.type_with_multiply_defined_ctors/0' multiply defined.
@@ -33,10 +33,9 @@ errors.m:062: Error: free type parameter T in right hand side of type
 errors.m:062:   definition.
 errors.m:063: Error: the type variable T occurs only in the right hand side of
 errors.m:063:   this type definition.
-errors.m:077: In clause for predicate
-errors.m:077:   `errors.pred_with_unresolved_polymorphism'/0:
+errors.m:077: In clause for predicate `pred_with_unresolved_polymorphism'/0:
 errors.m:077:   warning: variable `Arg' occurs only once in this scope.
-errors.m:092: In clause for predicate `errors.pred_with_singleton_vars'/1:
+errors.m:092: In clause for predicate `pred_with_singleton_vars'/1:
 errors.m:092:   warning: variable `X' occurs only once in this scope.
 errors.m:097: Warning: this `:- use_module' declaration for module `int' in the
 errors.m:097:   implementation section is redundant, given the

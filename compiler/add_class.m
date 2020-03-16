@@ -755,13 +755,14 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
                 Arity, GoalType, Goal, VarSet, TVarSet, Warnings,
                 !ClausesInfo, !ModuleInfo, !QualInfo, !Specs),
 
-            SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
+            PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, Arity),
 
             % Warn about singleton variables.
-            warn_singletons(!.ModuleInfo, SimpleCallId, VarSet, Goal, !Specs),
+            warn_singletons(!.ModuleInfo, PFSymNameArity, VarSet, Goal,
+                !Specs),
 
             % Warn about variables with overlapping scopes.
-            add_quant_warnings(SimpleCallId, VarSet, Warnings, !Specs)
+            add_quant_warnings(PFSymNameArity, VarSet, Warnings, !Specs)
         )
     ).
 

@@ -6,8 +6,7 @@ with_type.m:017:   error: expected higher order inst after `with_inst`.
 with_type.m:022: In type declaration for function `with_type.with_type_2':
 with_type.m:022:   error: expected higher order function type after
 with_type.m:022:   `with_type`.
-with_type.m:023: Error: `:- mode' declaration for function
-with_type.m:023:   `with_type.with_type_2'/3
+with_type.m:023: Error: `:- mode' declaration for function `with_type_2'/3
 with_type.m:023:   without corresponding `:- func' declaration.
 with_type.m:025: In type declaration for predicate `with_type.with_type_3':
 with_type.m:025:   error: the `with_type` and `with_inst` annotations are

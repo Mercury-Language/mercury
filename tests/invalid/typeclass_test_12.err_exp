@@ -1,4 +1,4 @@
-typeclass_test_12.m:007: In declaration for predicate `typeclass_test_12.p'/0:
+typeclass_test_12.m:007: In declaration for predicate `p'/0:
 typeclass_test_12.m:007:   error in type class constraints: type variable `T'
 typeclass_test_12.m:007:   occurs in the constraints, but is not determined by
 typeclass_test_12.m:007:   the predicate's argument types.
@@ -21,7 +21,7 @@ typeclass_test_12.m:007:   2) The type variable occurs in a type which is fully
 typeclass_test_12.m:007:   determined.
 typeclass_test_12.m:007:   See the "Functional dependencies" section of the
 typeclass_test_12.m:007:   reference manual for details.
-typeclass_test_12.m:009: In declaration for function `typeclass_test_12.q'/0:
+typeclass_test_12.m:009: In declaration for function `q'/0:
 typeclass_test_12.m:009:   error in type class constraints: type variable `T'
 typeclass_test_12.m:009:   occurs in the constraints, but is not determined by
 typeclass_test_12.m:009:   the function's argument or result types.

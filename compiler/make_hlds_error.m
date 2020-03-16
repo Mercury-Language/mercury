@@ -186,10 +186,11 @@ maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
     then
         true
     else
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, Name, Arity),
         PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
         MainPieces = [invis_order_default_start(1),
             words("Error:") | DescPieces] ++ [words("for"),
-            simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,
+            unqual_pf_sym_name_orig_arity(PFSymNameArity), nl,
             words("without corresponding"),
             decl(PredOrFuncStr), words("declaration."), nl],
         MainMsg = simplest_msg(Context, MainPieces),

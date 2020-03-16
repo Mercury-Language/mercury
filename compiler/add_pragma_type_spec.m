@@ -444,9 +444,11 @@ pragma_type_spec_to_pieces(PredInfo) = Pieces :-
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    SimpleCallId = simple_call_id(PredOrFunc, qualified(Module, Name), Arity),
+    PFSymNameArity =
+        pf_sym_name_arity(PredOrFunc, qualified(Module, Name), Arity),
     Pieces = [words("In"), pragma_decl("type_spec"),
-        words("declaration for"), simple_call(SimpleCallId), suffix(":"), nl].
+        words("declaration for"), qual_pf_sym_name_orig_arity(PFSymNameArity),
+        suffix(":"), nl].
 
 :- func report_variables(list(tvar), tvarset) = list(format_component).
 

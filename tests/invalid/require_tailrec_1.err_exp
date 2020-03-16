@@ -4,7 +4,7 @@ require_tailrec_1.m:047: In mode number 1 of predicate `map2'/3:
 require_tailrec_1.m:047:   warning: self-recursive call is not tail recursive.
 require_tailrec_1.m:055: In mode number 1 of function `even1'/1:
 require_tailrec_1.m:055:   warning: mutually recursive call to function
-require_tailrec_1.m:055:   `require_tailrec_1.odd1'/1 is not tail recursive.
+require_tailrec_1.m:055:   `odd1'/1 is not tail recursive.
 require_tailrec_1.m:075: In mode number 1 of predicate `qsortapp_1'/2:
 require_tailrec_1.m:075:   warning: self-recursive call is not tail recursive.
 require_tailrec_1.m:093: In mode number 1 of predicate `qsortapp_3'/2:

@@ -1,5 +1,5 @@
 state_vars_test3.m:011: Error: no clauses for function `f'/1.
-state_vars_test3.m:017: Error: clause for function `state_vars_test3.f'/2
+state_vars_test3.m:017: Error: clause for function `f'/2
 state_vars_test3.m:017:   without corresponding `:- func' declaration.
 state_vars_test3.m:017: Error: !Y cannot be a function result.
 state_vars_test3.m:017:   You probably meant !:Y.

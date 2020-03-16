@@ -76,19 +76,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred simple_call_id_to_sym_name_arity(simple_call_id::in,
-    sym_name_arity::out) is det.
-
-:- func simple_call_id_to_string(simple_call_id) = string.
-:- pred write_simple_call_id(simple_call_id::in, io::di, io::uo) is det.
-
-:- func simple_call_id_to_string(pred_or_func, sym_name_arity) = string.
-:- pred write_simple_call_id(pred_or_func::in, sym_name_arity::in,
-    io::di, io::uo) is det.
-
-:- func simple_call_id_to_string(pred_or_func, sym_name, arity) = string.
-:- pred write_simple_call_id(pred_or_func::in, sym_name::in, arity::in,
-    io::di, io::uo) is det.
+:- func pf_sym_name_orig_arity_to_string(pf_sym_name_arity) = string.
+:- func pf_sym_name_orig_arity_to_string(pred_or_func, sym_name_arity)
+    = string.
+:- func pf_sym_name_orig_arity_to_string(pred_or_func, sym_name, arity)
+    = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -259,59 +251,19 @@ write_module_name(ModuleName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-simple_call_id_to_sym_name_arity(SimpleCallId, SNA) :-
-    SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+pf_sym_name_orig_arity_to_string(PFSymNameArity) = Str :-
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
+    Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity).
+
+pf_sym_name_orig_arity_to_string(PredOrFunc, SNA) = Str :-
+    SNA = sym_name_arity(SymName, Arity),
+    Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity).
+
+pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
-    SNA = sym_name_arity(SymName, OrigArity).
-
-simple_call_id_to_string(simple_call_id(PredOrFunc, SymName, Arity)) =
-    simple_call_id_to_string(PredOrFunc, SymName, Arity).
-
-write_simple_call_id(simple_call_id(PredOrFunc, Name, Arity), !IO) :-
-    Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
-    io.write_string(Str, !IO).
-
-simple_call_id_to_string(PredOrFunc, sym_name_arity(SymName, Arity)) =
-    simple_call_id_to_string(PredOrFunc, SymName, Arity).
-
-write_simple_call_id(PredOrFunc, sym_name_arity(Name, Arity), !IO) :-
-    Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
-    io.write_string(Str, !IO).
-
-simple_call_id_to_string(PredOrFunc, SymName, Arity) = Str :-
-    % XXX When printed, promises are differentiated from predicates or
-    % functions by module name, so the module names `promise',
-    % `promise_exclusive', etc. should be reserved, and their dummy
-    % predicates should have more unusual module names.
-    Name = unqualify_name(SymName),
-    % Is it really a promise?
-    ( if string.prefix(Name, "promise__") then
-        MaybePromise = yes(promise_type_true)
-    else if string.prefix(Name, "promise_exclusive__") then
-        MaybePromise = yes(promise_type_exclusive)
-    else if string.prefix(Name, "promise_exhaustive__") then
-        MaybePromise = yes(promise_type_exhaustive)
-    else if string.prefix(Name, "promise_exclusive_exhaustive__") then
-        MaybePromise = yes(promise_type_exclusive_exhaustive)
-    else
-        MaybePromise = no   % No, it is really a pred or func.
-    ),
-    (
-        MaybePromise = yes(PromiseType),
-        Pieces = [quote(promise_to_string(PromiseType)), words("declaration")]
-    ;
-        MaybePromise = no,
-        SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
-        simple_call_id_to_sym_name_arity(SimpleCallId,
-            AdjustedSymNameAndArity),
-        Pieces = [p_or_f(PredOrFunc),
-            qual_sym_name_arity(AdjustedSymNameAndArity)]
-    ),
-    Str = error_pieces_to_string(Pieces).
-
-write_simple_call_id(PredOrFunc, SymName, Arity, !IO) :-
-    Str = simple_call_id_to_string(PredOrFunc, SymName, Arity),
-    io.write_string(Str, !IO).
+    Str = pred_or_func_to_string(PredOrFunc) ++ " " ++
+        add_quotes(sym_name_to_string(SymName)) ++ "/" ++
+        string.int_to_string(OrigArity).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,14 +1,17 @@
 field_syntax_error.m:018: In clause for function `baz'/1:
+field_syntax_error.m:018:   warning: variable `Bar' occurs only once in this
+field_syntax_error.m:018:   scope.
+field_syntax_error.m:018: In clause for function `baz'/1:
 field_syntax_error.m:018:   in function result term of clause head:
 field_syntax_error.m:018:   error: invalid use of field selection operator
 field_syntax_error.m:018:   (`^').
-field_syntax_error.m:018: In clause for function `field_syntax_error.baz'/1:
-field_syntax_error.m:018:   warning: variable `Bar' occurs only once in this
-field_syntax_error.m:018:   scope.
 field_syntax_error.m:019: In clause for function `baz2'/1:
 field_syntax_error.m:019:   in function result term of clause head:
 field_syntax_error.m:019:   error: invalid use of field selection operator
 field_syntax_error.m:019:   (`^').
+field_syntax_error.m:020: In clause for function `baz3'/1:
+field_syntax_error.m:020:   warning: variable `Bar' occurs only once in this
+field_syntax_error.m:020:   scope.
 field_syntax_error.m:020: In clause for function `baz3'/1:
 field_syntax_error.m:020:   in function result term of clause head:
 field_syntax_error.m:020:   error: invalid use of field update operator (`:=').
@@ -17,9 +20,6 @@ field_syntax_error.m:020:   in function result term of clause head:
 field_syntax_error.m:020:   in argument 1 of functor `:=/2':
 field_syntax_error.m:020:   error: invalid use of field selection operator
 field_syntax_error.m:020:   (`^').
-field_syntax_error.m:020: In clause for function `field_syntax_error.baz3'/1:
-field_syntax_error.m:020:   warning: variable `Bar' occurs only once in this
-field_syntax_error.m:020:   scope.
 field_syntax_error.m:021: In clause for function `baz4'/1:
 field_syntax_error.m:021:   in function result term of clause head:
 field_syntax_error.m:021:   error: invalid use of field update operator (`:=').

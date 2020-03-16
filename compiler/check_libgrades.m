@@ -78,7 +78,8 @@ check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
             % the required grade.  Unless the installation is broken this
             % implies the presence of the other standard library files in that
             % grade.
-            StdLibCheckFile = StdLibDir / "modules" / GradeDirName / "mer_std.init"
+            StdLibCheckFile =
+                StdLibDir / "modules" / GradeDirName / "mer_std.init"
         ;
             % Java grades do not use .init files, so check for the presence of
             % the standard library JAR.
@@ -140,7 +141,8 @@ check_library_is_installed(Globals, GradeDirName, LibName, !Succeeded, !IO) :-
         globals.lookup_accumulating_option(Globals,
             mercury_library_directories, MercuryLibDirs),
         grade_directory_component(Globals, GradeDirNameDir),
-        SearchDirs = list.map((func(LibDir) = LibDir / "lib" / GradeDirNameDir),
+        SearchDirs = list.map(
+            (func(LibDir) = LibDir / "lib" / GradeDirNameDir),
             MercuryLibDirs)
     ),
     search_for_file_returning_dir(SearchDirs, CheckFileName, MaybeDirName,

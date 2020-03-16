@@ -2427,7 +2427,8 @@ inst_contains_higher_order_2(ModuleInfo, Inst, !.Expansions) = ContainsHO :-
 inst_list_contains_higher_order(_ModuleInfo, [], _Expansions) = no.
 inst_list_contains_higher_order(ModuleInfo, [Inst | Insts], Expansions) =
         ContainsHO :-
-    HeadContainsHO = inst_contains_higher_order_2(ModuleInfo, Inst, Expansions),
+    HeadContainsHO =
+        inst_contains_higher_order_2(ModuleInfo, Inst, Expansions),
     (
         HeadContainsHO = yes,
         ContainsHO = yes

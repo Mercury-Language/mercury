@@ -347,8 +347,9 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
 
 init_traversal_info(ModuleInfo, Norm, PPId, Context, Types, Zeros,
         VarMap, SCC, FailConstrs, ArgSizeOnly)
-    = tti_traversal_info(ArgSizeOnly, FailConstrs, none, not_mutually_recursive,
-        [], ModuleInfo, Norm, PPId, Context, Types, Zeros, VarMap, SCC, 0, []).
+    = tti_traversal_info(ArgSizeOnly, FailConstrs, none,
+        not_mutually_recursive, [], ModuleInfo, Norm, PPId, Context,
+        Types, Zeros, VarMap, SCC, 0, []).
 
 :- pred info_increment_maxcalls(tti_traversal_info::in,
     tti_traversal_info::out) is det.

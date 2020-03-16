@@ -1,5 +1,5 @@
 multimode_syntax.m:015: Error: no clauses for function `func0'/0.
-multimode_syntax.m:017: Error: clause for predicate `multimode_syntax.::'/2
+multimode_syntax.m:017: Error: clause for predicate `::'/2
 multimode_syntax.m:017:   without corresponding `:- pred' declaration.
 multimode_syntax.m:017: In clause for predicate `::'/2:
 multimode_syntax.m:017:   in argument 1 of clause head:

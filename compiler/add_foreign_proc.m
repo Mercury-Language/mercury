@@ -54,6 +54,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -62,16 +63,16 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
     FPInfo = pragma_info_foreign_proc(Attributes0, PredName, PredOrFunc,
         PVars, ProgVarSet, _InstVarset, PragmaImpl),
     list.length(PVars, Arity),
-    SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, Arity),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            io.write_string("% Processing `:- pragma foreign_proc' for ", !IO),
-            write_simple_call_id(SimpleCallId, !IO),
-            io.write_string("...\n", !IO)
+            IdStr = pf_sym_name_orig_arity_to_string(PFSymNameArity),
+            io.format("%% Processing `:- pragma foreign_proc' for %s...\n",
+                [s(IdStr)], !IO)
         )
     ;
         VeryVerbose = no
@@ -100,7 +101,7 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         % message generated. We continue so that we can try to find more
         % errors.
         AmbiPieces = [words("Error: ambiguous predicate name"),
-            simple_call(SimpleCallId), words("in"),
+            qual_pf_sym_name_orig_arity(PFSymNameArity), words("in"),
             quote("pragma foreign_proc"), suffix("."), nl],
         AmbiSpec = simplest_spec($pred, severity_error,
             phase_parse_tree_to_hlds, Context, AmbiPieces),
@@ -169,7 +170,7 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         then
             Pieces = [words("Error:"), pragma_decl("foreign_proc"),
                 words("declaration for imported"),
-                simple_call(SimpleCallId), suffix("."), nl],
+                qual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -218,12 +219,13 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
                     ArgInfoBox),
                 warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
                     PragmaImpl, PragmaForeignLanguage, ArgInfo, Context,
-                    SimpleCallId, PredId, ProcId, !Specs)
+                    PFSymNameArity, PredId, ProcId, !Specs)
             else
                 Pieces = [words("Error:"),
                     pragma_decl("foreign_proc"), words("declaration"),
                     words("for undeclared mode of"),
-                    simple_call(SimpleCallId), suffix("."), nl],
+                    qual_pf_sym_name_orig_arity(PFSymNameArity),
+                    suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -348,10 +350,10 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
     (
         MultiplyOccurringArgVars = [_ | _],
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
-        SimpleCallId = simple_call_id(PredOrFunc, PredName, OrigArity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, OrigArity),
         Pieces1 = [words("In"), pragma_decl("foreign_proc"),
-            words("declaration for"), simple_call(SimpleCallId),
-            suffix(":"), nl],
+            words("declaration for"),
+            qual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl],
         (
             MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
             Pieces2 = [words("error: variable"),

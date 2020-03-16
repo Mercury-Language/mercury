@@ -1,9 +1,9 @@
 require_tailrec_3.m:028: In mode number 1 of function `even1'/1:
 require_tailrec_3.m:028:   warning: mutually recursive call to function
-require_tailrec_3.m:028:   `require_tailrec_3.odd1'/1 is not tail recursive.
+require_tailrec_3.m:028:   `odd1'/1 is not tail recursive.
 require_tailrec_3.m:043: In mode number 1 of function `even2'/1:
-require_tailrec_3.m:043:   error: mutually recursive call to function
-require_tailrec_3.m:043:   `require_tailrec_3.odd2'/1 is not tail recursive.
+require_tailrec_3.m:043:   error: mutually recursive call to function `odd2'/1
+require_tailrec_3.m:043:   is not tail recursive.
 require_tailrec_3.m:058: In mode number 1 of function `even3'/1:
 require_tailrec_3.m:058:   warning: mutually recursive call to function
-require_tailrec_3.m:058:   `require_tailrec_3.odd3'/1 is not tail recursive.
+require_tailrec_3.m:058:   `odd3'/1 is not tail recursive.

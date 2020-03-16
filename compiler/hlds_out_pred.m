@@ -243,7 +243,8 @@ write_pred_markers(Markers, !IO) :-
 write_obsolete_in_favour_of(Indent, ObsoleteInFavourOf, !IO) :-
     ObsoleteInFavourOf = sym_name_arity(SymName, Arity),
     write_indent(Indent, !IO),
-    io.format("%%    %s/%d\n", [s(sym_name_to_string(SymName)), i(Arity)], !IO).
+    io.format("%%    %s/%d\n",
+        [s(sym_name_to_string(SymName)), i(Arity)], !IO).
 
 :- pred write_pred_types(int::in, prog_varset::in, tvarset::in,
     var_name_print::in, rtti_varmaps::in,
@@ -375,7 +376,7 @@ write_origin(ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
             [s(SolverAuxPredKindStr), s(TypeCtorStr)], !IO)
     ;
         Origin = origin_tabling(BasePredCallId, TablingAuxPredKind),
-        BasePredStr = simple_call_id_to_string(BasePredCallId),
+        BasePredStr = pf_sym_name_orig_arity_to_string(BasePredCallId),
         (
             TablingAuxPredKind = tabling_aux_pred_stats,
             TablingAuxPredKindStr = "table statistics predicate"

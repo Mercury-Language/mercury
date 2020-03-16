@@ -1,5 +1,4 @@
-complex_constraint_err.m:016: In declaration for predicate
-complex_constraint_err.m:016:   `complex_constraint_err.t'/1:
+complex_constraint_err.m:016: In declaration for predicate `t'/1:
 complex_constraint_err.m:016:   error in type class constraints: type variable
 complex_constraint_err.m:016:   `C' occurs in the constraints, but is not
 complex_constraint_err.m:016:   determined by the predicate's argument types.
@@ -22,8 +21,7 @@ complex_constraint_err.m:016:   2) The type variable occurs in a type which is
 complex_constraint_err.m:016:   fully determined.
 complex_constraint_err.m:016:   See the "Functional dependencies" section of
 complex_constraint_err.m:016:   the reference manual for details.
-complex_constraint_err.m:020: In declaration for predicate
-complex_constraint_err.m:020:   `complex_constraint_err.u'/1:
+complex_constraint_err.m:020: In declaration for predicate `u'/1:
 complex_constraint_err.m:020:   error in type class constraints: type variables
 complex_constraint_err.m:020:   `Z' and `X' occur in the constraints, but are
 complex_constraint_err.m:020:   not determined by the predicate's argument

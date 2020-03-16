@@ -5,23 +5,23 @@ funcs_as_preds.m:014:   an `:- interface' or an `:- implementation'
 funcs_as_preds.m:014:   declaration.
 funcs_as_preds.m:014:   The following assumes that the missing declaration is
 funcs_as_preds.m:014:   an `:- implementation' declaration.
-funcs_as_preds.m:018: Error: clause for function `funcs_as_preds.null'/1
+funcs_as_preds.m:018: Error: clause for function `null'/1
 funcs_as_preds.m:018:   without corresponding `:- func' declaration.
 funcs_as_preds.m:018: In clause for function `null'/1:
 funcs_as_preds.m:018:   in function result term of clause head:
 funcs_as_preds.m:018:   error: the language construct `='/2 should be used as a
 funcs_as_preds.m:018:   goal, not as an expression.
-funcs_as_preds.m:022: Error: clause for function `funcs_as_preds.car'/1
+funcs_as_preds.m:022: Error: clause for function `car'/1
 funcs_as_preds.m:022:   without corresponding `:- func' declaration.
 funcs_as_preds.m:022: Inferred :- func car(list.list(list.list(T))) =
 funcs_as_preds.m:022:   list.list(T).
-funcs_as_preds.m:025: Error: clause for function `funcs_as_preds.cdr'/1
+funcs_as_preds.m:025: Error: clause for function `cdr'/1
 funcs_as_preds.m:025:   without corresponding `:- func' declaration.
 funcs_as_preds.m:025: Inferred :- func cdr(list.list(T)) = list.list(T).
-funcs_as_preds.m:028: Error: clause for function `funcs_as_preds.cons'/2
+funcs_as_preds.m:028: Error: clause for function `cons'/2
 funcs_as_preds.m:028:   without corresponding `:- func' declaration.
 funcs_as_preds.m:028: Inferred :- func cons(T, list.list(T)) = list.list(T).
-funcs_as_preds.m:031: Error: clause for function `funcs_as_preds.ap'/2
+funcs_as_preds.m:031: Error: clause for function `ap'/2
 funcs_as_preds.m:031:   without corresponding `:- func' declaration.
 funcs_as_preds.m:031: In clause for function `ap'/2:
 funcs_as_preds.m:031:   error: undefined predicate `null'/1.

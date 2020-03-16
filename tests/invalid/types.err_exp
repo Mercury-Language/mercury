@@ -11,7 +11,7 @@ types.m:009: Error: constructor `types.a/0' for type `types.t/0' multiply
 types.m:009:   defined.
 types.m:011: Error: constructor `types.f/1' for type `types.t/0' multiply
 types.m:011:   defined.
-types.m:023: Error: clause for predicate `types.r'/0
+types.m:023: Error: clause for predicate `r'/0
 types.m:023:   without corresponding `:- pred' declaration.
-types.m:026: Error: clause for predicate `types.a'/1
+types.m:026: Error: clause for predicate `a'/1
 types.m:026:   without corresponding `:- pred' declaration.

@@ -157,12 +157,12 @@
 :- pred next_mode_id(proc_table::in, proc_id::out) is det.
 
 :- type call_id
-    --->    plain_call_id(simple_call_id)
+    --->    plain_call_id(pf_sym_name_arity)
     ;       generic_call_id(generic_call_id).
 
 :- type generic_call_id
     --->    gcid_higher_order(purity, pred_or_func, arity)
-    ;       gcid_class_method(class_id, simple_call_id)
+    ;       gcid_class_method(class_id, pf_sym_name_arity)
     ;       gcid_event_call(string)
     ;       gcid_cast(cast_kind).
 
@@ -499,9 +499,9 @@
             % the solver_type_pred_kind, for the type constructor given by
             % the sym_name and arity.
 
-    ;       origin_tabling(simple_call_id, tabling_aux_pred_kind)
+    ;       origin_tabling(pf_sym_name_arity, tabling_aux_pred_kind)
             % The predicate is an auxiliary predicate of the indicated kind
-            % for the tabled predicate identified by the simple_call_id.
+            % for the tabled predicate identified by the pf_sym_name_arity.
 
     ;       origin_mutable(module_name, string, mutable_pred_kind)
             % The predicate is a predicate that operates on the mutable
@@ -846,7 +846,8 @@
 
 :- pred purity_to_markers(purity::in, list(pred_marker)::out) is det.
 
-:- pred pred_info_get_simple_call_id(pred_info::in, simple_call_id::out) is det.
+:- pred pred_info_get_pf_sym_name_arity(pred_info::in, pf_sym_name_arity::out)
+    is det.
 
 :- pred pred_info_get_sym_name(pred_info::in, sym_name::out) is det.
 
@@ -1785,11 +1786,11 @@ purity_to_markers(purity_impure, [marker_is_impure]).
 
 %-----------------------------------------------------------------------------%
 
-pred_info_get_simple_call_id(PredInfo, SimpleCallId) :-
+pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_sym_name(PredInfo, SymName),
     Arity = pred_info_orig_arity(PredInfo),
-    SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity).
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity).
 
 pred_info_get_sym_name(PredInfo, SymName) :-
     Module = pred_info_module(PredInfo),

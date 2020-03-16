@@ -2,5 +2,5 @@ state_vars_test2.m:018: Warning: the condition of this if-then-else cannot
 state_vars_test2.m:018:   fail.
 state_vars_test2.m:019: Error: state variable !:Y is not visible in this
 state_vars_test2.m:019:   context.
-state_vars_test2.m:019: In clause for predicate `state_vars_test2.p'/2:
+state_vars_test2.m:019: In clause for predicate `p'/2:
 state_vars_test2.m:019:   warning: variable `Y' occurs only once in this scope.

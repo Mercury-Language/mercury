@@ -1052,14 +1052,15 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
                 OtherPredId, _OtherPredName)
         then
             module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
-            pred_info_get_simple_call_id(PredInfo, PredCallId),
-            pred_info_get_simple_call_id(OtherPredInfo, OtherPredCallId),
+            pred_info_get_pf_sym_name_arity(PredInfo, PredCallId),
+            pred_info_get_pf_sym_name_arity(OtherPredInfo, OtherPredCallId),
             % XXX This is not very nice.
             trace [io(!IO)] (
                 module_info_get_globals(ModuleInfo, Globals),
                 Pieces = [words("Error: unresolved predicate overloading,"),
-                    words("matched"), simple_call(PredCallId), words("and"),
-                    simple_call(OtherPredCallId), suffix("."),
+                    words("matched"), qual_pf_sym_name_orig_arity(PredCallId),
+                    words("and"),
+                    qual_pf_sym_name_orig_arity(OtherPredCallId), suffix("."),
                     words("You need to use an explicit module qualifier."),
                     nl],
                 write_error_pieces(Globals, Context, 0, Pieces, !IO)

@@ -474,8 +474,9 @@ generate_and_pack_one_cons_word([RHSVarWidth | RHSVarsWidths],
         ),
         NextArgNum = CurArgNum + 1,
         generate_and_pack_one_cons_word(RHSVarsWidths, ArgModes,
-            LeftOverRHSVarsWidths, LeftOverArgModes, NextArgNum, LeftOverArgNum,
-            !TakeAddr, !RevToOrRvals, !Completeness, !Code, CI, !CLD)
+            LeftOverRHSVarsWidths, LeftOverArgModes,
+            NextArgNum, LeftOverArgNum, !TakeAddr, !RevToOrRvals,
+            !Completeness, !Code, CI, !CLD)
     ).
 
 :- pred generate_and_pack_tagword(
@@ -1167,8 +1168,9 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ;
                 RemoteArgsTagInfo = remote_args_unshared(Ptag)
             ),
-            generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-                ConstStructMap, ConstArgsPosWidths, RHSTypedRvals)
+            generate_const_struct_args(ModuleInfo, UnboxedFloats,
+                UnboxedInt64s, ConstStructMap, ConstArgsPosWidths,
+                RHSTypedRvals)
         ;
             RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
             RemoteSectag = remote_sectag(SectagUint, SectagSize),

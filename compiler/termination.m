@@ -323,9 +323,11 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
 classify_termination_status(_, [],
-        !KnownPredNamesIds, !KnownContexts, !KnownTermStatuses, !UnknownPPIds).
+        !KnownPredNamesIds, !KnownContexts,
+        !KnownTermStatuses, !UnknownPPIds).
 classify_termination_status(ModuleInfo, [PPId | PPIds],
-        !KnownPredNamesIds, !KnownContexts, !KnownTermStatuses, !UnknownPPIds) :-
+        !KnownPredNamesIds, !KnownContexts,
+        !KnownTermStatuses, !UnknownPPIds) :-
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
     proc_info_get_maybe_termination_info(ProcInfo, MaybeTermStatus),
     (
@@ -342,7 +344,8 @@ classify_termination_status(ModuleInfo, [PPId | PPIds],
         set.insert(PPId, !UnknownPPIds)
     ),
     classify_termination_status(ModuleInfo, PPIds,
-        !KnownPredNamesIds, !KnownContexts, !KnownTermStatuses, !UnknownPPIds).
+        !KnownPredNamesIds, !KnownContexts,
+        !KnownTermStatuses, !UnknownPPIds).
 
 %-----------------------------------------------------------------------------%
 %

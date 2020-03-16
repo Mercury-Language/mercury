@@ -5,13 +5,13 @@ errors1.m:012:   `:- interface' or an `:- implementation' declaration.
 errors1.m:012:   The following assumes that the missing declaration is an
 errors1.m:012:   `:- implementation' declaration.
 errors1.m:030: Error: `:- mode' declaration for predicate
-errors1.m:030:   `errors1.mode_declaration_without_pred_declaration'/0
+errors1.m:030:   `mode_declaration_without_pred_declaration'/0
 errors1.m:030:   without corresponding `:- pred' declaration.
 errors1.m:034: Error: `:- mode' declaration for predicate
-errors1.m:034:   `errors1.missing_pred_declaration'/0
+errors1.m:034:   `missing_pred_declaration'/0
 errors1.m:034:   without corresponding `:- pred' declaration.
 errors1.m:040: Error: clause for predicate
-errors1.m:040:   `errors1.clause_without_pred_or_mode_declaration'/0
+errors1.m:040:   `clause_without_pred_or_mode_declaration'/0
 errors1.m:040:   without corresponding `:- pred' declaration.
 errors1.m:051: Error: constructor `errors1.a/0' for type
 errors1.m:051:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
@@ -28,9 +28,8 @@ errors1.m:059: Error: circular equivalence type
 errors1.m:059:   `errors1.indirectly_circular_eqv_type_1'/0.
 errors1.m:060: Error: circular equivalence type
 errors1.m:060:   `errors1.indirectly_circular_eqv_type_2'/0.
-errors1.m:074: In clause for predicate
-errors1.m:074:   `errors1.pred_with_unresolved_polymorphism'/0:
+errors1.m:074: In clause for predicate `pred_with_unresolved_polymorphism'/0:
 errors1.m:074:   warning: variable `Arg' occurs only once in this scope.
-errors1.m:089: In clause for predicate `errors1.pred_with_singleton_vars'/1:
+errors1.m:089: In clause for predicate `pred_with_singleton_vars'/1:
 errors1.m:089:   warning: variable `X' occurs only once in this scope.
 For more information, recompile with `-E'.

@@ -11,7 +11,7 @@ bad_sv_unify_msg.m:022:   in argument 1 of call to predicate `io.write'/3:
 bad_sv_unify_msg.m:022:   mode error: variable `STATE_VARIABLE_D_0' has
 bad_sv_unify_msg.m:022:   instantiatedness `free',
 bad_sv_unify_msg.m:022:   expected instantiatedness was `ground'.
-bad_sv_unify_msg.m:022: In clause for predicate `bad_sv_unify_msg.x'/2:
+bad_sv_unify_msg.m:022: In clause for predicate `x'/2:
 bad_sv_unify_msg.m:022:   warning: variable `STATE_VARIABLE_D_0' occurs only
 bad_sv_unify_msg.m:022:   once in this scope.
 For more information, recompile with `-E'.

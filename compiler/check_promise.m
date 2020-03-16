@@ -188,8 +188,8 @@ check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
             Context = goal_info_get_context(GoalInfo),
             PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
             Arity = pred_info_orig_arity(CallPredInfo),
-            SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
-            IdPieces = [simple_call(SimpleCallId)],
+            PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
+            IdPieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)],
             report_assertion_interface_error(ModuleInfo, Context, IdPieces,
                 !Specs)
         ;
@@ -214,8 +214,8 @@ check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
             Name = pred_info_name(PragmaPredInfo),
             SymName = unqualified(Name),
             Arity = pred_info_orig_arity(PragmaPredInfo),
-            SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
-            IdPieces = [simple_call(SimpleCallId)],
+            PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
+            IdPieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)],
             report_assertion_interface_error(ModuleInfo, Context, IdPieces,
                 !Specs)
         ;

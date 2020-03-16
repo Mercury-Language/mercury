@@ -4,6 +4,6 @@ state_vars_test5.m:020:   instantiated.
 state_vars_test5.m:020:   Final instantiatedness of `STATE_VARIABLE_X' was
 state_vars_test5.m:020:   `free',
 state_vars_test5.m:020:   expected final instantiatedness was `ground'.
-state_vars_test5.m:020: In clause for predicate `state_vars_test5.p'/1:
+state_vars_test5.m:020: In clause for predicate `p'/1:
 state_vars_test5.m:020:   warning: variable `STATE_VARIABLE_X' occurs only once
 state_vars_test5.m:020:   in this scope.

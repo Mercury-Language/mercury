@@ -1,5 +1,5 @@
 bug410.m:054: Syntax error at token `. ': expected `,', `)', or operator.
-bug410.m:056: Error: clause for predicate `bug410.make_titles'/3
+bug410.m:056: Error: clause for predicate `make_titles'/3
 bug410.m:056:   without corresponding `:- pred' declaration.
 bug410.m:056: Inferred :- pred make_titles(pred(V_1, V_2, V_2), V_2, T3).
 bug410.m:056: Inferred :- mode make_titles(di(/* unique */(pred(out, in, out)

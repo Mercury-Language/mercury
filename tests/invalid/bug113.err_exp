@@ -1,10 +1,10 @@
 bug113.m:019: In module `bug113':
 bug113.m:019:   warning: module `list' is imported in the interface, but it is
 bug113.m:019:   not used in the interface.
-bug113.m:032: Error: clause for function `bug113.new'/1
+bug113.m:032: Error: clause for function `new'/1
 bug113.m:032:   without corresponding `:- func' declaration.
 bug113.m:032: Inferred :- func new(T1) = T2.
-bug113.m:034: Error: clause for function `bug113.new'/2
+bug113.m:034: Error: clause for function `new'/2
 bug113.m:034:   without corresponding `:- func' declaration.
 bug113.m:036: In clause for function `new'/2:
 bug113.m:036:   error: undefined symbol `throw_bitmap_error'/1.

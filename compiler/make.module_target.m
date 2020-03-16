@@ -1084,7 +1084,8 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
         true
     ).
 
-external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles, !IO) :-
+external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles,
+        !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
     %

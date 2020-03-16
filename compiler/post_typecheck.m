@@ -285,9 +285,10 @@ gather_constraint_ids(ReverseConstraintMap, Constraint, !ConstraintIdSets) :-
     % constraint map (it only stores as many as the type checker requires).
     % We should store context information for unproven constraints separately
     % so we can report it in error messages.
-    ( if map.search(ReverseConstraintMap, Constraint, ConstraintIdSet)
-    then !:ConstraintIdSets = [ConstraintIdSet | !.ConstraintIdSets]
-    else true
+    ( if map.search(ReverseConstraintMap, Constraint, ConstraintIdSet) then
+        !:ConstraintIdSets = [ConstraintIdSet | !.ConstraintIdSets]
+    else
+        true
     ).
 
 :- func constrained_goals_to_error_msgs(module_info, list(hlds_goal))
@@ -326,8 +327,8 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
                 should_module_qualify, PredId)
         ;
             GoalExpr = generic_call(GenericCall, _, _, _, _),
-            GenericCall = class_method(_, _, _, SimpleCallId),
-            CallPieces = [simple_call(SimpleCallId)]
+            GenericCall = class_method(_, _, _, PFSymNameArity),
+            CallPieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)]
         ;
             GoalExpr = call_foreign_proc(_, PredId, _, _, _, _, _),
             CallPieces = describe_one_pred_name(ModuleInfo,

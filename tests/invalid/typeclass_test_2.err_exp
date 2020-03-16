@@ -5,7 +5,6 @@ typeclass_test_2.m:024: Error: expected
 typeclass_test_2.m:024:   `pred(<Name> / <Arity>) is <InstanceName>' or
 typeclass_test_2.m:024:   `func(<Name> / <Arity>) is <InstanceName>', not
 typeclass_test_2.m:024:   ((type_num / 0) is foo_type_num).
-typeclass_test_2.m:027: Error: clause for function
-typeclass_test_2.m:027:   `typeclass_test_2.foo_type_num'/1
+typeclass_test_2.m:027: Error: clause for function `foo_type_num'/1
 typeclass_test_2.m:027:   without corresponding `:- func' declaration.
 typeclass_test_2.m:027: Inferred :- func foo_type_num(T1) = int.

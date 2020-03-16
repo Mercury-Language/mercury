@@ -30,7 +30,7 @@
 
     % Warn about variables with overlapping scopes.
     %
-:- pred add_quant_warnings(simple_call_id::in, prog_varset::in,
+:- pred add_quant_warnings(pf_sym_name_arity::in, prog_varset::in,
     list(quant_warning)::in, list(error_spec)::in, list(error_spec)::out)
     is det.
 
@@ -39,8 +39,9 @@
     % but occur more than once, or about variables that do not occur in
     % C code strings when they should.
     %
-:- pred warn_singletons(module_info::in, simple_call_id::in, prog_varset::in,
-    hlds_goal::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred warn_singletons(module_info::in, pf_sym_name_arity::in,
+    prog_varset::in, hlds_goal::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % warn_singletons_in_pragma_foreign_proc checks to see if each variable
     % is mentioned at least once in the foreign code fragments that ought to
@@ -53,7 +54,7 @@
 :- pred warn_singletons_in_pragma_foreign_proc(module_info::in,
     pragma_foreign_proc_impl::in, foreign_language::in,
     list(maybe(foreign_arg_name_mode))::in, prog_context::in,
-    simple_call_id::in, pred_id::in, proc_id::in,
+    pf_sym_name_arity::in, pred_id::in, proc_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % This predicate performs the following checks on promise ex declarations
@@ -102,18 +103,23 @@ add_quant_warnings(PredCallId, VarSet, Warnings, !Specs) :-
         list.map(quant_warning_to_spec(PredCallId, VarSet), Warnings),
     !:Specs = WarningSpecs ++ !.Specs.
 
-:- func quant_warning_to_spec(simple_call_id, prog_varset, quant_warning)
+:- func quant_warning_to_spec(pf_sym_name_arity, prog_varset, quant_warning)
     = error_spec.
 
 quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
     Warning = warn_overlap(Vars, Context),
-    Pieces1 =
-        [words("In clause for"), simple_call(PredCallId), suffix(":"), nl],
-    ( if Vars = [Var] then
+    Pieces1 = [words("In clause for"),
+        unqual_pf_sym_name_orig_arity(PredCallId), suffix(":"), nl],
+    (
+        Vars = [],
+        unexpected($pred, "Vars = []")
+    ;
+        Vars = [Var],
         Pieces2 = [words("warning: variable"),
             quote(mercury_var_to_name_only(VarSet, Var)),
             words("has overlapping scopes."), nl]
-    else
+    ;
+        Vars = [_, _ | _],
         Pieces2 = [words("warning: variables"),
             quote(mercury_vars_to_name_only(VarSet, Vars)),
             words("each have overlapping scopes."), nl]
@@ -181,7 +187,7 @@ warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
 
                 % The id and the varset of the procedure whose body
                 % we are checking.
-                wi_pred_call_id         :: simple_call_id,
+                wi_pred_call_id         :: pf_sym_name_arity,
                 wi_varset               :: prog_varset,
 
                 % The warnings we have generated while checking.
@@ -467,8 +473,8 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
     ;       sm_multi.
 
 :- pred generate_variable_warning(single_or_multi::in, prog_context::in,
-    simple_call_id::in, prog_varset::in, list(prog_var)::in, error_spec::out)
-    is det.
+    pf_sym_name_arity::in, prog_varset::in, list(prog_var)::in,
+    error_spec::out) is det.
 
 generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
     (
@@ -478,17 +484,23 @@ generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
         SingleMulti = sm_multi,
         Count = "more than once"
     ),
-    Preamble = [words("In clause for"), simple_call(CallId), suffix(":"), nl],
+    Preamble = [words("In clause for"),
+        unqual_pf_sym_name_orig_arity(CallId), suffix(":"), nl],
     VarStrs0 = list.map(mercury_var_to_name_only(VarSet), Vars),
     list.sort_and_remove_dups(VarStrs0, VarStrs),
     VarsStr = "`" ++ string.join_list(", ", VarStrs) ++ "'",
     % We want VarsPiece to be breakable into two or more lines
     % in case VarsStr does not fit on one line.
     VarsPiece = words(VarsStr),
-    ( if VarStrs = [_] then
+    (
+        VarStrs = [],
+        unexpected($pred, "VarStrs = []")
+    ;
+        VarStrs = [_],
         Pieces = [words("warning: variable"), VarsPiece,
             words("occurs"), words(Count), words("in this scope."), nl]
-    else
+    ;
+        VarStrs = [_, _ | _],
         Pieces = [words("warning: variables"), VarsPiece,
             words("occur"), words(Count), words("in this scope."), nl]
     ),
@@ -506,7 +518,7 @@ add_warn_spec(Spec, !Info) :-
 %-----------------------------------------------------------------------------%
 
 warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
-        Args, Context, SimpleCallId, PredId, ProcId, !Specs) :-
+        Args, Context, PFSymNameArity, PredId, ProcId, !Specs) :-
     LangStr = foreign_language_string(Lang),
     PragmaImpl = fp_impl_ordinary(Code, _),
     c_code_to_name_list(Code, C_CodeList),
@@ -516,7 +528,7 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
     ;
         UnmentionedVars = [_ | _],
         Pieces = [words("In the"), words(LangStr), words("code for"),
-            simple_call(SimpleCallId), suffix(":"), nl] ++
+            unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl] ++
             variable_warning_start(UnmentionedVars) ++
             [words("not occur in the"), words(LangStr), words("code."), nl],
         Spec = conditional_spec($pred, warn_singleton_vars, yes,
@@ -524,7 +536,7 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
             [simplest_msg(Context, Pieces)]),
         !:Specs = [Spec | !.Specs]
     ),
-    pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, SimpleCallId,
+    pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
         PredId, ProcId, C_CodeList, !Specs).
 
 :- pred var_is_unmentioned(list(string)::in, maybe(foreign_arg_name_mode)::in,
@@ -621,10 +633,10 @@ is_multi_var(NonLocals, VarSet, Var) :-
     string.prefix(Name, "_").
 
 :- pred pragma_foreign_proc_body_checks(module_info::in, foreign_language::in,
-    prog_context::in, simple_call_id::in, pred_id::in, proc_id::in,
+    prog_context::in, pf_sym_name_arity::in, pred_id::in, proc_id::in,
     list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, SimpleCallId,
+pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
         PredId, ProcId, BodyPieces, !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
@@ -634,17 +646,17 @@ pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, SimpleCallId,
     ;
         IsImported = no,
         check_fp_body_for_success_indicator(ModuleInfo, Lang, Context,
-            SimpleCallId, PredId, ProcId, BodyPieces, !Specs),
-        check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces,
+            PFSymNameArity, PredId, ProcId, BodyPieces, !Specs),
+        check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces,
             !Specs)
     ).
 
 :- pred check_fp_body_for_success_indicator(module_info::in,
-    foreign_language::in, prog_context::in, simple_call_id::in,
+    foreign_language::in, prog_context::in, pf_sym_name_arity::in,
     pred_id::in, proc_id::in, list(string)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
+check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
         PredId, ProcId, BodyPieces, !Specs) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_declared_determinism(ProcInfo, MaybeDeclDetism),
@@ -665,7 +677,8 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
                 ( if list.member(SuccIndStr, BodyPieces) then
                     LangStr = foreign_language_string(Lang),
                     Pieces = [words("Warning: the"), fixed(LangStr),
-                        words("code for"), simple_call(SimpleCallId),
+                        words("code for"),
+                        unqual_pf_sym_name_orig_arity(PFSymNameArity),
                         words("may set"), quote(SuccIndStr), suffix(","),
                         words("but it cannot fail.")],
                     Spec = conditional_spec($pred,
@@ -685,7 +698,8 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
                 else
                     LangStr = foreign_language_string(Lang),
                     Pieces = [words("Warning: the"), fixed(LangStr),
-                        words("code for"), simple_call(SimpleCallId),
+                        words("code for"),
+                        unqual_pf_sym_name_orig_arity(PFSymNameArity),
                         words("does not appear to set"),
                         quote(SuccIndStr), suffix(","),
                         words("but it can fail.")],
@@ -710,10 +724,10 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
     % (or whatever the foreign language equivalent is).
     %
 :- pred check_fp_body_for_return(foreign_language::in, prog_context::in,
-    simple_call_id::in, list(string)::in,
+    pf_sym_name_arity::in, list(string)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces, !Specs) :-
+check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
     (
         ( Lang = lang_c
         ; Lang = lang_csharp
@@ -722,7 +736,8 @@ check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces, !Specs) :-
         ( if list.member("return", BodyPieces) then
             LangStr = foreign_language_string(Lang),
             Pieces = [words("Warning: the"), fixed(LangStr),
-                words("code for"), simple_call(SimpleCallId),
+                words("code for"),
+                unqual_pf_sym_name_orig_arity(PFSymNameArity),
                 words("may contain a"), quote("return"),
                 words("statement."), nl],
             Spec = conditional_spec($pred, warn_suspicious_foreign_procs, yes,

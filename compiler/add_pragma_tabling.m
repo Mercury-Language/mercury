@@ -195,12 +195,10 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            io.write_string("% Processing `:- pragma ", !IO),
-            io.write_string(EvalMethodStr, !IO),
-            io.write_string("' for ", !IO),
-            write_simple_call_id(PredOrFunc, sym_name_arity(PredName, Arity),
-                !IO),
-            io.write_string("...\n", !IO)
+            IdStr = pf_sym_name_orig_arity_to_string(PredOrFunc,
+                PredName, Arity),
+            io.format("%% Processing `:- pragma %s' for %s...\n",
+                [s(EvalMethodStr), s(IdStr)], !IO)
         )
     ;
         VeryVerbose = no
@@ -209,16 +207,16 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
     % Issue a warning if this predicate/function has a pragma inline
     % declaration. Tabled procedures cannot be inlined.
     pred_info_get_markers(PredInfo0, Markers),
-    SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, Arity),
     ( if
         check_marker(Markers, marker_user_marked_inline),
         globals.lookup_bool_option(Globals, warn_table_with_inline,
             WarnTableWithInline),
         WarnTableWithInline = yes
     then
-        InlineWarningPieces = [words("Warning: "), simple_call(SimpleCallId),
-            words("has a"), pragma_decl(EvalMethodStr),
-            words("declaration but also has a"),
+        InlineWarningPieces = [words("Warning: "),
+            qual_pf_sym_name_orig_arity(PFSymNameArity), words("has a"),
+            pragma_decl(EvalMethodStr), words("declaration but also has a"),
             pragma_decl("inline"), words("declaration."), nl,
             words("This inline pragma will be ignored"),
             words("since tabled predicates cannot be inlined."), nl,
@@ -232,8 +230,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
     ),
     ( if pred_info_is_imported(PredInfo0) then
         Pieces = [words("Error: "), pragma_decl(EvalMethodStr),
-            words("declaration for imported"), simple_call(SimpleCallId),
-            suffix("."), nl],
+            words("declaration for imported"),
+            qual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
@@ -260,16 +258,18 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                     !.ModuleInfo, ProcId)
             then
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
-                set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context,
-                    SimpleCallId, yes, EvalMethod, MaybeAttributes, PredStatus,
-                    ProcTable0, ProcTable, !ModuleInfo, !QualInfo, !Specs),
+                set_eval_method_create_aux_preds(ProcId, ProcInfo0,
+                    Context, PFSymNameArity, yes, EvalMethod,
+                    MaybeAttributes, PredStatus, ProcTable0, ProcTable,
+                    !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             else
                 Pieces = [words("Error:"),
                     pragma_decl(EvalMethodStr),
                     words("declaration for undeclared mode of"),
-                    simple_call(SimpleCallId), suffix("."), nl],
+                    qual_pf_sym_name_orig_arity(PFSymNameArity),
+                    suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -279,8 +279,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
             (
                 ExistingProcs = [],
                 Pieces = [words("Error: "),
-                    pragma_decl(EvalMethodStr),
-                    words("declaration for"), simple_call(SimpleCallId),
+                    pragma_decl(EvalMethodStr), words("declaration for"),
+                    qual_pf_sym_name_orig_arity(PFSymNameArity),
                     words("with no declared modes."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
@@ -295,7 +295,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                     SingleProc = no
                 ),
                 set_eval_method_create_aux_preds_list(ExistingProcs, Context,
-                    SimpleCallId, SingleProc, EvalMethod, MaybeAttributes,
+                    PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes,
                     PredStatus, ProcTable0, ProcTable,
                     !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
@@ -305,32 +305,33 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
     ).
 
 :- pred set_eval_method_create_aux_preds_list(
-    assoc_list(proc_id, proc_info)::in, prog_context::in, simple_call_id::in,
-    bool::in, eval_method::in, maybe(table_attributes)::in,
-    pred_status::in, proc_table::in, proc_table::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-set_eval_method_create_aux_preds_list([], _, _, _, _, _, _,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
-set_eval_method_create_aux_preds_list([ProcId - ProcInfo0 | Rest], Context,
-        SimpleCallId, SingleProc, EvalMethod, MaybeAttributes, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
-    set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
-        SingleProc, EvalMethod, MaybeAttributes, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs),
-    set_eval_method_create_aux_preds_list(Rest, Context, SimpleCallId,
-        SingleProc, EvalMethod, MaybeAttributes, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
-
-:- pred set_eval_method_create_aux_preds(proc_id::in, proc_info::in,
-    prog_context::in, simple_call_id::in, bool::in, eval_method::in,
+    assoc_list(proc_id, proc_info)::in, prog_context::in,
+    pf_sym_name_arity::in, bool::in, eval_method::in,
     maybe(table_attributes)::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
+set_eval_method_create_aux_preds_list([], _, _, _, _, _, _,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
+set_eval_method_create_aux_preds_list([ProcId - ProcInfo0 | Rest], Context,
+        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes, PredStatus,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+    set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context,
+        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes, PredStatus,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs),
+    set_eval_method_create_aux_preds_list(Rest, Context,
+        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes, PredStatus,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
+
+:- pred set_eval_method_create_aux_preds(proc_id::in, proc_info::in,
+    prog_context::in, pf_sym_name_arity::in, bool::in, eval_method::in,
+    maybe(table_attributes)::in, pred_status::in,
+    proc_table::in, proc_table::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
         SingleProc, EvalMethod, MaybeAttributes, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
@@ -342,8 +343,9 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
         (
             MaybeDeclaredArgModes = no,
             EvalMethodStr = eval_method_to_string(EvalMethod),
-            Pieces = [words("Error:"), pragma_decl(EvalMethodStr),
-                words("declaration for"), simple_call(SimpleCallId),
+            Pieces = [words("Error:"),
+                pragma_decl(EvalMethodStr), words("declaration for"),
+                qual_pf_sym_name_orig_arity(PFSymNameArity),
                 suffix(","), words("which has no declared modes."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
@@ -376,8 +378,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 MaybeError = yes(ArgMsg - ErrorMsg),
                 EvalMethodStr = eval_method_to_string(EvalMethod),
                 Pieces = [words("Error in"),
-                    pragma_decl(EvalMethodStr),
-                    words("declaration for"), simple_call(SimpleCallId),
+                    pragma_decl(EvalMethodStr), words("declaration for"),
+                    qual_pf_sym_name_orig_arity(PFSymNameArity),
                     suffix(":"), nl, fixed(ArgMsg), words(ErrorMsg), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
@@ -399,7 +401,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             (
                 Statistics = table_gather_statistics,
                 create_tabling_statistics_pred(ProcId, Context,
-                    SimpleCallId, SingleProc, PredStatus,
+                    PFSymNameArity, SingleProc, PredStatus,
                     !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
                 Statistics = table_dont_gather_statistics
@@ -407,7 +409,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             (
                 AllowReset = table_allow_reset,
                 create_tabling_reset_pred(ProcId, Context,
-                    SimpleCallId, SingleProc, PredStatus,
+                    PFSymNameArity, SingleProc, PredStatus,
                     !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
                 AllowReset = table_dont_allow_reset
@@ -418,14 +420,16 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
         % this procedure.
         EvalMethodStr = eval_method_to_string(EvalMethod),
         ( if OldEvalMethod = EvalMethod then
-            Pieces = [words("Error:"), simple_call(SimpleCallId),
+            Pieces = [words("Error:"),
+                qual_pf_sym_name_orig_arity(PFSymNameArity),
                 words("has duplicate"), fixed(EvalMethodStr),
                 words("pragmas specified."), nl]
         else
             OldEvalMethodStr = eval_method_to_string(OldEvalMethod),
-            Pieces = [words("Error:"), simple_call(SimpleCallId),
-                words("has both"), fixed(OldEvalMethodStr), words("and"),
-                fixed(EvalMethodStr), words("pragmas specified."),
+            Pieces = [words("Error:"),
+                qual_pf_sym_name_orig_arity(PFSymNameArity), words("has both"),
+                fixed(OldEvalMethodStr), words("and"), fixed(EvalMethodStr),
+                words("pragmas specified."),
                 words("Only one kind of tabling pragma may be applied to it."),
                 nl]
         ),
@@ -435,16 +439,16 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
     ).
 
 :- pred create_tabling_statistics_pred(proc_id::in, prog_context::in,
-    simple_call_id::in, bool::in, pred_status::in,
+    pf_sym_name_arity::in, bool::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
+create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
         PredStatus, !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     TableBuiltinModule = mercury_table_statistics_module,
     StatsPredSymName =
-        tabling_stats_pred_name(SimpleCallId, ProcId, SingleProc),
+        tabling_stats_pred_name(PFSymNameArity, ProcId, SingleProc),
     StatsTypeName = qualified(TableBuiltinModule, "proc_table_statistics"),
     StatsType = defined_type(StatsTypeName, [], kind_star),
     TypeAndModeArg1 = type_and_mode(StatsType, out_mode),
@@ -457,7 +461,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     ExistQVars = [],
     Constraints = constraints([], []),
 
-    Attrs = item_compiler_attributes(compiler_origin_tabling(SimpleCallId,
+    Attrs = item_compiler_attributes(compiler_origin_tabling(PFSymNameArity,
         tabling_aux_pred_stats)),
     MaybeAttrs = item_origin_compiler(Attrs),
     PredDecl = item_pred_decl_info(StatsPredSymName, pf_predicate,
@@ -491,7 +495,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
             set_purity(purity_pure, !Attrs),
             set_may_duplicate(yes(proc_may_not_duplicate), !Attrs),
 
-            Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
+            Global = table_info_c_global_var_name(!.ModuleInfo, PFSymNameArity,
                 ProcId),
             StatsCode = "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
             StatsImpl = fp_impl_ordinary(StatsCode, yes(Context)),
@@ -523,14 +527,14 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     ).
 
 :- pred create_tabling_reset_pred(proc_id::in, prog_context::in,
-    simple_call_id::in, bool::in, pred_status::in,
+    pf_sym_name_arity::in, bool::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
+create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
          PredStatus, !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
-    ResetPredSymName = tabling_reset_pred_name(SimpleCallId, ProcId,
+    ResetPredSymName = tabling_reset_pred_name(PFSymNameArity, ProcId,
         SingleProc),
     TypeAndModeArg1 = type_and_mode(io_state_type, di_mode),
     TypeAndModeArg2 = type_and_mode(io_state_type, uo_mode),
@@ -540,7 +544,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
     ExistQVars = [],
     Constraints = constraints([], []),
 
-    Attrs = item_compiler_attributes(compiler_origin_tabling(SimpleCallId,
+    Attrs = item_compiler_attributes(compiler_origin_tabling(PFSymNameArity,
         tabling_aux_pred_reset)),
     MaybeAttrs = item_origin_compiler(Attrs),
     PredDecl = item_pred_decl_info(ResetPredSymName, pf_predicate,
@@ -570,7 +574,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
             set_may_duplicate(yes(proc_may_not_duplicate), !Attrs),
 
             GlobalVarName = table_info_c_global_var_name(!.ModuleInfo,
-                SimpleCallId, ProcId),
+                PFSymNameArity, ProcId),
             ResetCode = GlobalVarName ++ ".MR_pt_tablenode.MR_integer = 0;",
             ResetImpl = fp_impl_ordinary(ResetCode, yes(Context)),
             ResetPragmaFCInfo = pragma_info_foreign_proc(!.Attrs,
@@ -589,21 +593,21 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         )
     ).
 
-:- func tabling_stats_pred_name(simple_call_id, proc_id, bool) = sym_name.
+:- func tabling_stats_pred_name(pf_sym_name_arity, proc_id, bool) = sym_name.
 
-tabling_stats_pred_name(SimpleCallId, ProcId, SingleProc) =
-    tabling_pred_name("table_statistics_for", SimpleCallId, ProcId,
+tabling_stats_pred_name(PFSymNameArity, ProcId, SingleProc) =
+    tabling_pred_name("table_statistics_for", PFSymNameArity, ProcId,
         SingleProc).
 
-:- func tabling_reset_pred_name(simple_call_id, proc_id, bool) = sym_name.
+:- func tabling_reset_pred_name(pf_sym_name_arity, proc_id, bool) = sym_name.
 
-tabling_reset_pred_name(SimpleCallId, ProcId, SingleProc) =
-    tabling_pred_name("table_reset_for", SimpleCallId, ProcId, SingleProc).
+tabling_reset_pred_name(PFSymNameArity, ProcId, SingleProc) =
+    tabling_pred_name("table_reset_for", PFSymNameArity, ProcId, SingleProc).
 
-:- func tabling_pred_name(string, simple_call_id, proc_id, bool) = sym_name.
+:- func tabling_pred_name(string, pf_sym_name_arity, proc_id, bool) = sym_name.
 
-tabling_pred_name(Prefix, SimpleCallId, ProcId, SingleProc) = NewSymName :-
-    SimpleCallId = simple_call_id(PorF, SymName, Arity0),
+tabling_pred_name(Prefix, PFSymNameArity, ProcId, SingleProc) = NewSymName :-
+    PFSymNameArity = pf_sym_name_arity(PorF, SymName, Arity0),
     (
         PorF = pf_predicate,
         Arity = Arity0
@@ -634,17 +638,17 @@ tabling_pred_name(Prefix, SimpleCallId, ProcId, SingleProc) = NewSymName :-
         NewSymName = unqualified(NewName)
     ).
 
-:- func table_info_c_global_var_name(module_info, simple_call_id, proc_id)
+:- func table_info_c_global_var_name(module_info, pf_sym_name_arity, proc_id)
     = string.
 
-table_info_c_global_var_name(ModuleInfo, SimpleCallId, ProcId) = VarName :-
+table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     expect(unify(Target, target_c), $pred,
         "memo table statistics and reset are supported only for C"),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     module_info_get_name(ModuleInfo, ModuleName),
-    SimpleCallId = simple_call_id(PredOrFunc, PredSymName, Arity),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
     PredName = unqualify_name(PredSymName),
     (
         HighLevelCode = yes,

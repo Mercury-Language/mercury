@@ -24,8 +24,7 @@ invalid_octal_literal.m:031: Syntax error: unterminated octal literal.
 invalid_octal_literal.m:033: Syntax error at token `. ': unexpected token at
 invalid_octal_literal.m:033:   start of (sub)term.
 invalid_octal_literal.m:033: Syntax error: unterminated octal literal.
-invalid_octal_literal.m:035: Error: clause for predicate
-invalid_octal_literal.m:035:   `invalid_octal_literal.o77'/0
+invalid_octal_literal.m:035: Error: clause for predicate `o77'/0
 invalid_octal_literal.m:035:   without corresponding `:- pred' declaration.
 invalid_octal_literal.m:035: Inferred :- pred o77.
 invalid_octal_literal.m:035: Syntax error: unterminated decimal literal.

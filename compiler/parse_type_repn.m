@@ -1176,7 +1176,8 @@ parse_maybe_direct_args(MaxPtag, MaxNumBits, VarSet, AtomStr, Term,
         MaybeMaybeDirectArgs) :-
     ( if
         list_term_to_term_list(Term, MaybeDirectArgTerms),
-        MaybeDirectArgTerms = [HeadMaybeDirectArgTerm | TailMaybeDirectArgTerms]
+        MaybeDirectArgTerms =
+            [HeadMaybeDirectArgTerm | TailMaybeDirectArgTerms]
     then
         parse_maybe_direct_arg(MaxPtag, MaxNumBits, VarSet,
             HeadMaybeDirectArgTerm, MaybeHeadMaybeDirectArg),

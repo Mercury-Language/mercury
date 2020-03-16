@@ -7,7 +7,7 @@ bad_pred_arity.m:025: Error: no clauses for function `f1'/4.
 bad_pred_arity.m:027: Error: no clauses for function `f2'/0.
 bad_pred_arity.m:028: Error: no clauses for function `f2'/2.
 bad_pred_arity.m:029: Error: no clauses for function `f2'/4.
-bad_pred_arity.m:039: Error: clause for predicate `bad_pred_arity.p1'/4
+bad_pred_arity.m:039: Error: clause for predicate `p1'/4
 bad_pred_arity.m:039:   without corresponding `:- pred' declaration.
 bad_pred_arity.m:039:   However, predicates of that name do exist with arities
 bad_pred_arity.m:039:   3 and 5.
@@ -29,7 +29,7 @@ bad_pred_arity.m:039:         string,
 bad_pred_arity.m:039:         int,
 bad_pred_arity.m:039:         string
 bad_pred_arity.m:039:     )
-bad_pred_arity.m:041: Error: clause for predicate `bad_pred_arity.p1'/0
+bad_pred_arity.m:041: Error: clause for predicate `p1'/0
 bad_pred_arity.m:041:   without corresponding `:- pred' declaration.
 bad_pred_arity.m:041:   However, predicates of that name do exist with arities
 bad_pred_arity.m:041:   3 and 5.
@@ -52,7 +52,7 @@ bad_pred_arity.m:041:   -     int,
 bad_pred_arity.m:041:   -     string
 bad_pred_arity.m:041:   - )
 bad_pred_arity.m:041:   + pred
-bad_pred_arity.m:043: Error: clause for predicate `bad_pred_arity.p2'/4
+bad_pred_arity.m:043: Error: clause for predicate `p2'/4
 bad_pred_arity.m:043:   without corresponding `:- pred' declaration.
 bad_pred_arity.m:043:   However, a predicate of that name does exist with arity
 bad_pred_arity.m:043:   0.
@@ -66,7 +66,7 @@ bad_pred_arity.m:043:   +     int,
 bad_pred_arity.m:043:   +     string,
 bad_pred_arity.m:043:   +     string
 bad_pred_arity.m:043:   + )
-bad_pred_arity.m:046: Error: clause for predicate `bad_pred_arity.p3'/4
+bad_pred_arity.m:046: Error: clause for predicate `p3'/4
 bad_pred_arity.m:046:   without corresponding `:- pred' declaration.
 bad_pred_arity.m:046:   However, a predicate of that name does exist with arity
 bad_pred_arity.m:046:   8.
@@ -83,7 +83,7 @@ bad_pred_arity.m:046:         string,
 bad_pred_arity.m:046:   -     int,
 bad_pred_arity.m:046:         string
 bad_pred_arity.m:046:     )
-bad_pred_arity.m:049: Error: clause for predicate `bad_pred_arity.p3'/5
+bad_pred_arity.m:049: Error: clause for predicate `p3'/5
 bad_pred_arity.m:049:   without corresponding `:- pred' declaration.
 bad_pred_arity.m:049:   However, a predicate of that name does exist with arity
 bad_pred_arity.m:049:   8.
@@ -101,7 +101,7 @@ bad_pred_arity.m:049:   -     int,
 bad_pred_arity.m:049:   +     bool.bool,
 bad_pred_arity.m:049:         string
 bad_pred_arity.m:049:     )
-bad_pred_arity.m:052: Error: clause for function `bad_pred_arity.f1'/3
+bad_pred_arity.m:052: Error: clause for function `f1'/3
 bad_pred_arity.m:052:   without corresponding `:- func' declaration.
 bad_pred_arity.m:052:   However, a function of that name does exist with arity
 bad_pred_arity.m:052:   6.
@@ -121,7 +121,7 @@ bad_pred_arity.m:052:   -     float,
 bad_pred_arity.m:052:         string,
 bad_pred_arity.m:052:         int
 bad_pred_arity.m:052:     ) = string
-bad_pred_arity.m:054: Error: clause for function `bad_pred_arity.f1'/0
+bad_pred_arity.m:054: Error: clause for function `f1'/0
 bad_pred_arity.m:054:   without corresponding `:- func' declaration.
 bad_pred_arity.m:054:   However, functions of that name do exist with arities 4
 bad_pred_arity.m:054:   and 6.
@@ -142,7 +142,7 @@ bad_pred_arity.m:054:   -     string,
 bad_pred_arity.m:054:   -     int
 bad_pred_arity.m:054:   - ) = string
 bad_pred_arity.m:054:   + func = string
-bad_pred_arity.m:056: Error: clause for function `bad_pred_arity.f2'/3
+bad_pred_arity.m:056: Error: clause for function `f2'/3
 bad_pred_arity.m:056:   without corresponding `:- func' declaration.
 bad_pred_arity.m:056:   However, functions of that name do exist with arities 2
 bad_pred_arity.m:056:   and 6.

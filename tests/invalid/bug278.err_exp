@@ -3,7 +3,7 @@ bug278.m:032:   out, in, out)':
 bug278.m:032:   mode error: argument 5 did not get sufficiently instantiated.
 bug278.m:032:   Final instantiatedness of `LambdaHeadVar__5' was `free',
 bug278.m:032:   expected final instantiatedness was `ground'.
-bug278.m:032: In clause for predicate `bug278.build_map'/5:
+bug278.m:032: In clause for predicate `build_map'/5:
 bug278.m:032:   warning: variable `STATE_VARIABLE_MemoTable' occurs only once
 bug278.m:032:   in this scope.
 For more information, recompile with `-E'.

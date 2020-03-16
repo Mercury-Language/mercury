@@ -299,11 +299,11 @@
 :- pred mode_info_var_is_locked(mode_info::in, prog_var::in,
     var_lock_reason::out) is semidet.
 
-    % Find the simple_call_id to use in error messages
+    % Find the pf_sym_name_arity to use in error messages
     % for the given pred_id.
     %
-:- pred mode_info_get_simple_call_id(mode_info::in, pred_id::in,
-    simple_call_id::out) is det.
+:- pred mode_info_get_pf_sym_name_arity(mode_info::in, pred_id::in,
+    pf_sym_name_arity::out) is det.
 
     % Check whether a variable or a list of variables are live or not.
     %
@@ -1013,10 +1013,10 @@ mode_info_set_checking_extra_goals(Checking, !MI) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_simple_call_id(ModeInfo, PredId, CallId) :-
+mode_info_get_pf_sym_name_arity(ModeInfo, PredId, CallId) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_simple_call_id(PredInfo, CallId).
+    pred_info_get_pf_sym_name_arity(PredInfo, CallId).
 
 %-----------------------------------------------------------------------------%
 

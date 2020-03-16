@@ -1,8 +1,8 @@
-typeclass_test_9.m:007: In declaration for predicate `typeclass_test_9.p'/0:
+typeclass_test_9.m:007: In declaration for predicate `p'/0:
 typeclass_test_9.m:007:   error in type class constraints: type variable `T'
 typeclass_test_9.m:007:   occurs in the constraints, but is not determined by
 typeclass_test_9.m:007:   the predicate's argument types.
-typeclass_test_9.m:009: In declaration for predicate `typeclass_test_9.q'/0:
+typeclass_test_9.m:009: In declaration for predicate `q'/0:
 typeclass_test_9.m:009:   error in type class constraints: type variable `T'
 typeclass_test_9.m:009:   occurs in the constraints, but is not determined by
 typeclass_test_9.m:009:   the predicate's argument types.

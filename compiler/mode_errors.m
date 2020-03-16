@@ -1099,8 +1099,8 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
             (
                 GenericCallId = gcid_higher_order(_, PredOrFunc, _)
             ;
-                GenericCallId = gcid_class_method(_, SimpleCallId),
-                SimpleCallId = simple_call_id(PredOrFunc, _, _)
+                GenericCallId = gcid_class_method(_, PFSymNameArity),
+                PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, _)
             ;
                 ( GenericCallId = gcid_event_call(_)
                 ; GenericCallId = gcid_cast(_)
@@ -1114,8 +1114,8 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
             NumExtra = 0
         ;
             ModeCallId = mode_call_plain(PredId),
-            mode_info_get_simple_call_id(ModeInfo, PredId, SimpleCallId),
-            CallId = plain_call_id(SimpleCallId),
+            mode_info_get_pf_sym_name_arity(ModeInfo, PredId, PFSymNameArity),
+            CallId = plain_call_id(PFSymNameArity),
 
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_get_orig_arity(PredInfo, OrigArity),
@@ -1757,8 +1757,8 @@ mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
         ModeContext = mode_context_call(ModeCallId, ArgNum),
         (
             ModeCallId = mode_call_plain(PredId),
-            mode_info_get_simple_call_id(ModeInfo, PredId, SimpleCallId),
-            CallId = plain_call_id(SimpleCallId)
+            mode_info_get_pf_sym_name_arity(ModeInfo, PredId, PFSymNameArity),
+            CallId = plain_call_id(PFSymNameArity)
         ;
             ModeCallId = mode_call_generic(GenericCallId),
             CallId = generic_call_id(GenericCallId)

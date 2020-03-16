@@ -2000,7 +2000,8 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
                 WhatPieces = [words("a mode for a predicate")]
             ;
                 IsInClass = decl_is_in_class,
-                WhatPieces = [words("a mode for a type class predicate method")]
+                WhatPieces =
+                    [words("a mode for a type class predicate method")]
             )
         ;
             Kind = vtk_mode_decl_func(IsInClass),

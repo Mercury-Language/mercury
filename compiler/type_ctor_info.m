@@ -1046,7 +1046,8 @@ compute_contains_var_bit_vector_2([ArgType | ArgTypes], ArgNum, !Vector) :-
     ),
     compute_contains_var_bit_vector_2(ArgTypes, ArgNum + 1, !Vector).
 
-:- pred update_contains_var_bit_vector(int::in, uint16::in, uint16::out) is det.
+:- pred update_contains_var_bit_vector(int::in, uint16::in, uint16::out)
+    is det.
 
 update_contains_var_bit_vector(ArgNum, !Vector) :-
     ( if ArgNum >= contains_var_bit_vector_size - 1 then

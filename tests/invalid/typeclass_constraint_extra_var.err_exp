@@ -1,5 +1,4 @@
-typeclass_constraint_extra_var.m:015: In declaration for predicate
-typeclass_constraint_extra_var.m:015:   `typeclass_constraint_extra_var.mg'/2:
+typeclass_constraint_extra_var.m:015: In declaration for predicate `mg'/2:
 typeclass_constraint_extra_var.m:015:   error in type class constraints: type
 typeclass_constraint_extra_var.m:015:   variable `U' occurs in the constraints,
 typeclass_constraint_extra_var.m:015:   but is not determined by the

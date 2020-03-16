@@ -6,7 +6,7 @@ bug487.m:034:   `bug487.construct_solution'/4:
 bug487.m:034:   mode error: variable `STATE_VARIABLE_SS_8' has instantiatedness
 bug487.m:034:   `free',
 bug487.m:034:   expected instantiatedness was `mostly_unique'.
-bug487.m:034: In clause for predicate `bug487.do_reconstruct_route'/2:
+bug487.m:034: In clause for predicate `do_reconstruct_route'/2:
 bug487.m:034:   warning: variable `STATE_VARIABLE_SS_8' occurs only once in
 bug487.m:034:   this scope.
 bug487.m:034: Warning: reference to uninitialized state variable !.SS.

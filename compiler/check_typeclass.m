@@ -1812,9 +1812,9 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
 
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
 
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
     Pieces0 = [words("In declaration for"),
-        simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-        suffix(":"), nl,
+        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
         ++ list_to_quoted_pieces(VarsStrs) ++

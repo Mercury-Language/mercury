@@ -1988,10 +1988,12 @@ output_foreign_proc_input(Info, Input, !IO) :-
                     output_rval_as_type(Info, Rval, lt_float, !IO)
                 ;
                     BuiltinType = builtin_type_int(int_type_int64),
-                    output_rval_as_type(Info, Rval, lt_int(int_type_int64), !IO)
+                    output_rval_as_type(Info, Rval,
+                        lt_int(int_type_int64), !IO)
                 ;
                     BuiltinType = builtin_type_int(int_type_uint64),
-                    output_rval_as_type(Info, Rval, lt_int(int_type_uint64), !IO)
+                    output_rval_as_type(Info, Rval,
+                        lt_int(int_type_uint64), !IO)
                 ;
                     ( BuiltinType = builtin_type_char
                     ; BuiltinType = builtin_type_int(int_type_int)

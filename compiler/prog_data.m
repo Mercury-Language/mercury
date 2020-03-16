@@ -1796,11 +1796,6 @@ valid_trace_grade_name(GradeName) :-
 :- type pf_sym_name_arity
     --->    pf_sym_name_arity(pred_or_func, sym_name, arity).
 
-% XXX CLEANUP
-% XXX Uses of this type should be replaced by pf_sym_name_arity.
-:- type simple_call_id
-    --->    simple_call_id(pred_or_func, sym_name, arity).
-
 :- type arity == int.
 
     % Describes whether an item can be used without an explicit module

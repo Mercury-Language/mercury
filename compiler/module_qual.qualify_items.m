@@ -562,8 +562,9 @@ module_qualify_item_type_repn(InInt, ItemTypeRepnInfo0, ItemTypeRepnInfo,
 % Module qualify type definitions and types.
 %
 
-    % Qualify the data constructors and/or arguments types in a type definition.
-
+    % Qualify the data constructors and/or arguments' types
+    % in a type definition.
+    %
 :- pred qualify_type_defn(mq_in_interface::in, prog_context::in,
     type_ctor::in, type_defn::in, type_defn::out,
     mq_info::in, mq_info::out,
@@ -646,7 +647,8 @@ qualify_type_defn_du(InInt, _Context, TypeCtor, DetailsDu0, DetailsDu,
         MaybeDirectArgCtors0),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
     qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info, !Specs),
-    qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors, !Info, !Specs),
+    qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors,
+        !Info, !Specs),
     OoMCtors = one_or_more(HeadCtor, TailCtors),
     % User-defined equality pred names will be converted into predicate
     % calls and then module-qualified after type analysis (during mode

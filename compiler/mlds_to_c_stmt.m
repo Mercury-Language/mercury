@@ -86,7 +86,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         Stmt = ml_stmt_block(_LocalVarDefns, _FuncDefns, _SubStmts, _Context),
         mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
-        Stmt = ml_stmt_while(_Kind, _Cond, _BodyStmt, _LoopLocalVars, _Context),
+        Stmt = ml_stmt_while(_Kind, _Cond, _BodyStmt, _LoopLocalVars,
+            _Context),
         mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
         Stmt = ml_stmt_if_then_else(_Cond, _Then, _MaybeElse, _Context),

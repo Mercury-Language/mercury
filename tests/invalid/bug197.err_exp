@@ -1,5 +1,5 @@
 bug197.m:023: Error: no clauses for predicate `foo'/4.
-bug197.m:025: Error: clause for predicate `bug197.foo'/3
+bug197.m:025: Error: clause for predicate `foo'/3
 bug197.m:025:   without corresponding `:- pred' declaration.
 bug197.m:025:   However, a predicate of that name does exist with arity 4.
 bug197.m:026: In clause for predicate `foo'/3:
@@ -10,7 +10,7 @@ bug197.m:031: Error: cannot use !:SS here due to the surrounding lambda
 bug197.m:031:   expression; you may only refer to !.SS.
 bug197.m:026:   Here is the surrounding context that makes state variable SS
 bug197.m:026:   readonly.
-bug197.m:031: In clause for predicate `bug197.foo'/3:
+bug197.m:031: In clause for predicate `foo'/3:
 bug197.m:031:   warning: variable `STATE_VARIABLE_SS_20' occurs only once in
 bug197.m:031:   this scope.
 For more information, recompile with `-E'.

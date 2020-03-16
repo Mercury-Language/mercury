@@ -603,7 +603,8 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 replace_in_ancestor_int_spec(ModuleName, TypeEqvMap, InstEqvMap,
-        AncestorIntSpec0, AncestorIntSpec, !RecompInfo, !UsedModules, !Specs) :-
+        AncestorIntSpec0, AncestorIntSpec, !RecompInfo, !UsedModules,
+        !Specs) :-
     AncestorIntSpec0 = ancestor_int0(OrigParseTree0, ReadWhy0),
     replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTree0, ParseTree0, !RecompInfo, !UsedModules, !Specs),

@@ -727,7 +727,8 @@ collect_mq_info_in_item(MQSection, Permissions, Item, !Info) :-
             % This item is not visible in the current module.
             true
         else
-            collect_mq_info_in_item_typeclass(Permissions, ItemTypeClass, !Info)
+            collect_mq_info_in_item_typeclass(Permissions, ItemTypeClass,
+                !Info)
         )
     ;
         Item = item_instance(ItemInstance),

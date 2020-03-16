@@ -2,7 +2,7 @@ unbound_type_vars.m:018: Error: type variable T2 in the superclass constraint
 unbound_type_vars.m:018:   is not a parameter of this type class.
 unbound_type_vars.m:022: Error: unbound type variable T1 in constraints on
 unbound_type_vars.m:022:   instance declaration.
-unbound_type_vars.m:025: In declaration for predicate `unbound_type_vars.p1'/1:
+unbound_type_vars.m:025: In declaration for predicate `p1'/1:
 unbound_type_vars.m:025:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:025:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:025:   the predicate's argument types.
@@ -25,19 +25,19 @@ unbound_type_vars.m:025:   2) The type variable occurs in a type which is fully
 unbound_type_vars.m:025:   determined.
 unbound_type_vars.m:025:   See the "Functional dependencies" section of the
 unbound_type_vars.m:025:   reference manual for details.
-unbound_type_vars.m:028: In declaration for predicate `unbound_type_vars.p2'/2:
+unbound_type_vars.m:028: In declaration for predicate `p2'/2:
 unbound_type_vars.m:028:   error in type class constraints: type variable `T3'
 unbound_type_vars.m:028:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:028:   the predicate's argument types.
-unbound_type_vars.m:032: In declaration for predicate `unbound_type_vars.p3'/1:
+unbound_type_vars.m:032: In declaration for predicate `p3'/1:
 unbound_type_vars.m:032:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:032:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:032:   the predicate's argument types.
-unbound_type_vars.m:035: In declaration for predicate `unbound_type_vars.p4'/1:
+unbound_type_vars.m:035: In declaration for predicate `p4'/1:
 unbound_type_vars.m:035:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:035:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:035:   the predicate's argument types.
-unbound_type_vars.m:038: In declaration for predicate `unbound_type_vars.p5'/1:
+unbound_type_vars.m:038: In declaration for predicate `p5'/1:
 unbound_type_vars.m:038:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:038:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:038:   the predicate's argument types.

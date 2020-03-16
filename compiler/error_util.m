@@ -475,6 +475,14 @@
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes, followed by '/' and the arity.
 
+    ;       qual_pf_sym_name_orig_arity(pf_sym_name_arity)
+    ;       unqual_pf_sym_name_orig_arity(pf_sym_name_arity)
+            % The output should contain the string form of the sym_name,
+            % surrounded by `' quotes, followed by '/' and the arity, but
+            % - precede them with either "predicate" or "function", and
+            % - for functions, use their *original* arity, which does not
+            %   count the function result.
+
     ;       qual_type_ctor(type_ctor)
     ;       unqual_type_ctor(type_ctor)
             % The output should contain the string form of the type_ctor,
@@ -493,9 +501,6 @@
 
     ;       p_or_f(pred_or_func)
             % Output the string "predicate" or "function" as appropriate.
-
-    ;       simple_call(simple_call_id)
-            % Output the identity of the given call.
 
     ;       decl(string)
             % Prefix the string with ":- ", surround with single quotes
@@ -1811,6 +1816,17 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         (
+            Component = qual_pf_sym_name_orig_arity(PFSymNameArity)
+        ;
+            Component = unqual_pf_sym_name_orig_arity(PFSymNameArity0),
+            PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0)),
+            PFSymNameArity = pf_sym_name_arity(PF, SymName, Arity)
+        ),
+        Word = pf_sym_name_orig_arity_to_string(PFSymNameArity),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
+        (
             Component = qual_cons_id_and_maybe_arity(ConsId0),
             strip_builtin_qualifier_from_cons_id(ConsId0, ConsId)
         ;
@@ -1841,10 +1857,6 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
     ;
         Component = p_or_f(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),
-        Str = join_string_and_tail(Word, Components, TailStr)
-    ;
-        Component = simple_call(SimpleCallId),
-        Word = simple_call_id_to_string(SimpleCallId),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = decl(Decl),
@@ -2008,6 +2020,17 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         (
+            Component = qual_pf_sym_name_orig_arity(PFSymNameArity)
+        ;
+            Component = unqual_pf_sym_name_orig_arity(PFSymNameArity0),
+            PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0)),
+            PFSymNameArity = pf_sym_name_arity(PF, SymName, Arity)
+        ),
+        WordsStr = pf_sym_name_orig_arity_to_string(PFSymNameArity),
+        break_into_words(WordsStr, RevWords0, RevWords1)
+    ;
+        (
             Component = qual_cons_id_and_maybe_arity(ConsId0),
             strip_builtin_qualifier_from_cons_id(ConsId0, ConsId)
         ;
@@ -2039,10 +2062,6 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Component = p_or_f(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),
         RevWords1 = [plain_word(Word) | RevWords0]
-    ;
-        Component = simple_call(SimpleCallId),
-        WordsStr = simple_call_id_to_string(SimpleCallId),
-        break_into_words(WordsStr, RevWords0, RevWords1)
     ;
         Component = decl(DeclName),
         Word = add_quotes(":- " ++ DeclName),

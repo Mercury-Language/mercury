@@ -362,7 +362,8 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
     % external_foreign_code_files.
 
     globals.get_target(Globals, CompilationTarget),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports, !Info, !IO),
+    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO),
     (
         MaybeModuleAndImports = yes(ModuleAndImports)
     ;
@@ -552,8 +553,8 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         list.map_foldl2(
             ( pred(ModuleName::in, ForeignFiles::out,
                     MakeInfo0::in, MakeInfo::out, !.IO::di, !:IO::uo) is det :-
-                get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
-                    MakeInfo0, MakeInfo, !IO),
+                get_module_dependencies(Globals, ModuleName,
+                    MaybeModuleAndImports, MakeInfo0, MakeInfo, !IO),
                 (
                     MaybeModuleAndImports = yes(ModuleAndImports),
                     external_foreign_code_files(Globals, PIC, ModuleAndImports,

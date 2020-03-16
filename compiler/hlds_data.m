@@ -1088,7 +1088,8 @@ constructor_cons_ids(TypeCtor, Ctors) = SortedConsIds :-
 
 gather_constructor_cons_ids(_TypeCtor, [], !ConsIds).
 gather_constructor_cons_ids(TypeCtor, [Ctor | Ctors], !ConsIds) :-
-    Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName,
+        _Args, Arity, _Ctxt),
     ConsId = cons(SymName, Arity, TypeCtor),
     !:ConsIds = [ConsId | !.ConsIds],
     gather_constructor_cons_ids(TypeCtor, Ctors, !ConsIds).

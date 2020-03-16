@@ -364,8 +364,8 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
             MaybeUnifyContext = no,
             GoalExpr = plain_call(PredId, ModeId, HeadVars, not_builtin,
                 MaybeUnifyContext, Name),
-            SimpleCallId = simple_call_id(pf_predicate, Name, Arity),
-            CallId = plain_call_id(SimpleCallId)
+            PFSymNameArity = pf_sym_name_arity(pf_predicate, Name, Arity),
+            CallId = plain_call_id(PFSymNameArity)
         ),
         goal_info_init_context_purity(Context, Purity, GoalInfo),
         HLDSGoal0 = hlds_goal(GoalExpr, GoalInfo),
@@ -472,11 +472,11 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         else
             unexpected($pred, "not cons")
         ),
-        SimpleCallId = simple_call_id(pf_function, FuncName, FuncArity),
+        PFSymNameArity = pf_sym_name_arity(pf_function, FuncName, FuncArity),
         % DCG arguments should always be distinct variables,
         % so this context should never be used.
         OutputTermArgNumber = 3,
-        OutputTermArgContext = ac_call(plain_call_id(SimpleCallId))
+        OutputTermArgContext = ac_call(plain_call_id(PFSymNameArity))
     ;
         AccessType = get,
         expand_dcg_field_extraction_goal(Context, umc_explicit, [],
@@ -489,9 +489,9 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         else
             unexpected($pred, "not cons")
         ),
-        SimpleCallId = simple_call_id(pf_function, FuncName, FuncArity),
+        PFSymNameArity = pf_sym_name_arity(pf_function, FuncName, FuncArity),
         FieldArgNumber = 2,
-        FieldArgContext = ac_call(plain_call_id(SimpleCallId)),
+        FieldArgContext = ac_call(plain_call_id(PFSymNameArity)),
         % DCG arguments should always be distinct variables,
         % so this context should never be used.
         OutputTermArgNumber = 3,

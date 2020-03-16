@@ -9,7 +9,7 @@ occurs.m:014:   mode error in unification of `X' and `occurs.f(X)'.
 occurs.m:014:   Variable `X' has instantiatedness `free',
 occurs.m:014:   term `occurs.f(X)' has instantiatedness
 occurs.m:014:   `named inst occurs.f(free)'.
-occurs.m:014: In clause for predicate `occurs.p'/0:
+occurs.m:014: In clause for predicate `p'/0:
 occurs.m:014:   warning: variable `X' occurs only once in this scope.
 occurs.m:014: Warning: the variable `X' is unified with a term containing
 occurs.m:014:   itself.

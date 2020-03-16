@@ -48,8 +48,9 @@
     --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width).
 
     % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
-    %   LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths, ArgModes,
-    %   FirstArgNum, TakeAddr, HowToConstruct, Context, Stmts, !Info):
+    %   LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+    %   ArgModes, FirstArgNum, TakeAddr, HowToConstruct, Context,
+    %   Stmts, !Info):
     %
     % Generate a `new_object' statement, or a static constant, depending on the
     % value of the how_to_construct argument. The `ExtraRvalsTypesWidths'
@@ -2424,7 +2425,8 @@ filled_bitfields_to_packed_word(Info, UseMap,
 find_best_matching_instance(Instances, FilledPackedWord,
         BestMissing, OldWordRval) :-
     Instances = one_or_more(HeadInstance, TailInstances),
-    HeadInstance = packed_word_instance(HeadFilledPackedWord, _HeadOldWordRval),
+    HeadInstance =
+        packed_word_instance(HeadFilledPackedWord, _HeadOldWordRval),
     count_matching_bitfields(HeadFilledPackedWord, FilledPackedWord,
         HeadMatches, HeadNonMatches, HeadMissing),
     find_best_matching_instance_loop(TailInstances, FilledPackedWord,

@@ -104,7 +104,7 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
             Desc = describe_var(VarSet, Var) ++ describe_args(VarSet, Args)
         ;
             GCall = class_method(Var, _, _, Method),
-            Desc = simple_call_id_to_string(Method) ++
+            Desc = pf_sym_name_orig_arity_to_string(Method) ++
                 "[" ++ describe_var(VarSet, Var) ++ "]" ++
                 describe_args(VarSet, Args)
         ;

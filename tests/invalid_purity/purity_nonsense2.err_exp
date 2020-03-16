@@ -6,7 +6,7 @@ purity_nonsense2.m:012: Error: no clauses for predicate `undefined'/0.
 purity_nonsense2.m:014: Error: `:- pragma promise_pure' declaration for
 purity_nonsense2.m:014:   `undefined2'/0 without corresponding `:- pred' or
 purity_nonsense2.m:014:   `:- func' declaration.
-purity_nonsense2.m:016: Error: clause for predicate `purity_nonsense2.e12'/0
+purity_nonsense2.m:016: Error: clause for predicate `e12'/0
 purity_nonsense2.m:016:   without corresponding `:- pred' declaration.
 purity_nonsense2.m:017: In clause for predicate `e12'/0:
 purity_nonsense2.m:017:   error: `impure' marker in an inappropriate place.
@@ -24,7 +24,7 @@ purity_nonsense2.m:017:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense2.m:017:   in argument 1 of functor `\\+/1':
 purity_nonsense2.m:017:   in argument 1 of functor `impure/1':
 purity_nonsense2.m:017:   error: undefined symbol `imp'/0.
-purity_nonsense2.m:018: Error: clause for predicate `purity_nonsense2.e13'/0
+purity_nonsense2.m:018: Error: clause for predicate `e13'/0
 purity_nonsense2.m:018:   without corresponding `:- pred' declaration.
 purity_nonsense2.m:019: In clause for predicate `e13'/0:
 purity_nonsense2.m:019:   error: `semipure' marker in an inappropriate place.

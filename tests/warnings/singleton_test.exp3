@@ -5,27 +5,24 @@ singleton_test.m:013:     L2: V_1
 singleton_test.m:013:     L1: V_1
 singleton_test.m:013:   The unbound type variables will be implicitly bound to
 singleton_test.m:013:   the builtin type `void'.
-singleton_test.m:031: In clause for predicate `singleton_test.my_append'/3:
+singleton_test.m:031: In clause for predicate `my_append'/3:
 singleton_test.m:031:   warning: variable `L2' occurs only once in this scope.
-singleton_test.m:035: In clause for function `singleton_test.my_append_func'/2:
+singleton_test.m:035: In clause for function `my_append_func'/2:
 singleton_test.m:035:   warning: variables `L1, L2' occur only once in this
 singleton_test.m:035:   scope.
-singleton_test.m:036: In clause for function `singleton_test.my_append_func'/2:
+singleton_test.m:036: In clause for function `my_append_func'/2:
 singleton_test.m:036:   warning: variable `T' occurs only once in this scope.
-singleton_test.m:046: In the Java code for predicate
-singleton_test.m:046:   `singleton_test.my_c_pred'/3:
+singleton_test.m:046: In the Java code for predicate `my_c_pred'/3:
 singleton_test.m:046:   warning: variable `Y' does not occur in the Java code.
-singleton_test.m:063: In the Java code for function
-singleton_test.m:063:   `singleton_test.my_c_func'/2:
+singleton_test.m:063: In the Java code for function `my_c_func'/2:
 singleton_test.m:063:   warning: variable `X' does not occur in the Java code.
-singleton_test.m:084: In the Java code for predicate
-singleton_test.m:084:   `singleton_test.c_hello_world'/3:
+singleton_test.m:084: In the Java code for predicate `c_hello_world'/3:
 singleton_test.m:084:   warning: variable `Msg' does not occur in the Java
 singleton_test.m:084:   code.
-singleton_test.m:095: In clause for predicate `singleton_test.test_head'/6:
+singleton_test.m:095: In clause for predicate `test_head'/6:
 singleton_test.m:095:   warning: variable `_D' occurs more than once in this
 singleton_test.m:095:   scope.
-singleton_test.m:095: In clause for predicate `singleton_test.test_head'/6:
+singleton_test.m:095: In clause for predicate `test_head'/6:
 singleton_test.m:095:   warning: variables `A, B' occur only once in this
 singleton_test.m:095:   scope.
 For more information, recompile with `-E'.

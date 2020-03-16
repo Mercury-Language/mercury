@@ -1,4 +1,3 @@
-singleton_test_state_var.m:015: In clause for predicate
-singleton_test_state_var.m:015:   `singleton_test_state_var.foo'/4:
+singleton_test_state_var.m:015: In clause for predicate `foo'/4:
 singleton_test_state_var.m:015:   warning: variable `STATE_VARIABLE_State_10'
 singleton_test_state_var.m:015:   occurs only once in this scope.

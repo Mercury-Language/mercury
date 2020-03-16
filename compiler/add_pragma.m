@@ -534,11 +534,13 @@ add_pragma_require_tail_rec(Pragma, Context, !ModuleInfo, !Specs) :-
             else
                 PredInfo = PredInfo0,
                 PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
-                SimpleCallId = simple_call_id(PredOrFunc, PredSymName, Arity),
+                PFSymNameArity =
+                    pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
                 Pieces = [words("Error:"),
                     pragma_decl("require_tail_recursion"),
                     words("declaration for undeclared mode of"),
-                    simple_call(SimpleCallId), suffix("."), nl],
+                    qual_pf_sym_name_orig_arity(PFSymNameArity),
+                    suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -851,7 +853,8 @@ mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, [PredId | PredIds],
         MaybeObsoleteInFavourOf = yes(ObsoleteInFavourOf)
     ;
         MaybeObsoleteInFavourOf0 = yes(ObsoleteInFavourOf0),
-        MaybeObsoleteInFavourOf = yes(ObsoleteInFavourOf0 ++ ObsoleteInFavourOf)
+        MaybeObsoleteInFavourOf =
+            yes(ObsoleteInFavourOf0 ++ ObsoleteInFavourOf)
     ),
     pred_info_set_obsolete_in_favour_of(MaybeObsoleteInFavourOf,
         PredInfo0, PredInfo),
@@ -887,7 +890,7 @@ mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, Context,
         else
             true
         ),
-        SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
         ProcTransform =
             ( pred(ProcInfo0::in, ProcInfo::out) is det :-
                 proc_info_get_obsolete_in_favour_of(ProcInfo0,
@@ -903,7 +906,7 @@ mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, Context,
                 proc_info_set_obsolete_in_favour_of(MaybeObsoleteInFavourOf,
                     ProcInfo0, ProcInfo)
             ),
-        transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+        transform_selected_mode_of_pred(PredId, PFSymNameArity, Modes,
             "obsolete_proc", Context, ProcTransform, !ModuleInfo, !Specs)
     ;
         MaybePredId = error1(Specs),
@@ -1537,7 +1540,7 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
         PredOrFunc, SymName, Arity, MaybePredId),
     (
         MaybePredId = ok1(PredId),
-        SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
         add_context_to_arg_size_info(MaybePragmaArgSizeInfo, Context,
             MaybeArgSizeInfo),
         add_context_to_termination_info(MaybePragmaTerminationInfo, Context,
@@ -1549,7 +1552,7 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
                 proc_info_set_maybe_termination_info(MaybeTerminationInfo,
                     ProcInfo1, ProcInfo)
             ),
-        transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+        transform_selected_mode_of_pred(PredId, PFSymNameArity, Modes,
             "termination_info", Context, ProcTransform, !ModuleInfo, !Specs)
     ;
         MaybePredId = error1(_Specs)
@@ -1574,24 +1577,24 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
         PredOrFunc, SymName, Arity, MaybePredId),
     (
         MaybePredId = ok1(PredId),
-        SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
         ProcTransform =
             ( pred(ProcInfo0::in, ProcInfo::out) is det :-
                 add_context_to_constr_termination_info(
                     MaybePragmaTerminationInfo, Context, MaybeTerminationInfo),
                 some [!TermInfo] (
                     proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
-                    term2_info_set_import_success(MaybePragmaSuccessArgSizeInfo,
-                        !TermInfo),
-                    term2_info_set_import_failure(MaybePragmaFailureArgSizeInfo,
-                        !TermInfo),
+                    term2_info_set_import_success(
+                        MaybePragmaSuccessArgSizeInfo, !TermInfo),
+                    term2_info_set_import_failure(
+                        MaybePragmaFailureArgSizeInfo, !TermInfo),
                     term2_info_set_term_status(MaybeTerminationInfo,
                         !TermInfo),
                     proc_info_set_termination2_info(!.TermInfo,
                         ProcInfo0, ProcInfo)
                 )
             ),
-        transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+        transform_selected_mode_of_pred(PredId, PFSymNameArity, Modes,
             "termination2_info", Context, ProcTransform, !ModuleInfo, !Specs)
     ;
         MaybePredId = error1(_Specs)
@@ -1617,10 +1620,10 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
             PredOrFunc, SymName, Arity, MaybePredId),
         (
             MaybePredId = ok1(PredId),
-            SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+            PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
             ProcTransform = proc_info_set_imported_structure_sharing(HeadVars,
                 Types, SharingDomain),
-            transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+            transform_selected_mode_of_pred(PredId, PFSymNameArity, Modes,
                 "structure_sharing", Context, ProcTransform,
                 !ModuleInfo, !Specs)
         ;
@@ -1654,10 +1657,10 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
             PredOrFunc, SymName, Arity, MaybePredId),
         (
             MaybePredId = ok1(PredId),
-            SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+            PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
             ProcTransform = proc_info_set_imported_structure_reuse(HeadVars,
                 Types, ReuseDomain),
-            transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+            transform_selected_mode_of_pred(PredId, PFSymNameArity, Modes,
                 "structure_reuse", Context, ProcTransform, !ModuleInfo, !Specs)
         ;
             MaybePredId = error1(Specs),
@@ -1672,13 +1675,13 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
 
 %----------------------------------------------------------------------------%
 
-:- pred transform_selected_mode_of_pred(pred_id::in, simple_call_id::in,
+:- pred transform_selected_mode_of_pred(pred_id::in, pf_sym_name_arity::in,
     list(mer_mode)::in, string::in, prog_context::in,
     pred(proc_info, proc_info)::in(pred(in, out) is det),
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
+transform_selected_mode_of_pred(PredId, PFSymNameArity, Modes,
         PragmaName, Context, ProcTransform, !ModuleInfo, !Specs) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
@@ -1697,7 +1700,7 @@ transform_selected_mode_of_pred(PredId, SimpleCallId, Modes,
     else
         Pieces = [words("Error:"), pragma_decl(PragmaName),
             words("declaration for undeclared mode of"),
-            simple_call(SimpleCallId), suffix("."), nl],
+            qual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
