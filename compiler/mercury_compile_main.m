@@ -63,8 +63,8 @@
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module make.
+:- import_module make.build.
 :- import_module make.options_file.
-:- import_module make.util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.shared_utilities.

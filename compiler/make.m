@@ -19,8 +19,8 @@
 :- module make.
 :- interface.
 
+:- include_module make.build.
 :- include_module make.options_file.
-:- include_module make.util.
 
 :- import_module libs.
 :- import_module libs.file_util.
@@ -63,6 +63,7 @@
 :- include_module make.module_dep_file.
 :- include_module make.module_target.
 :- include_module make.program_target.
+:- include_module make.util.
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
@@ -70,6 +71,7 @@
 :- import_module libs.md4.
 :- import_module libs.options.
 :- import_module libs.timestamp.
+:- import_module make.build.
 :- import_module make.dependencies.
 :- import_module make.deps_set.
 :- import_module make.module_dep_file.
