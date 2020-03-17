@@ -361,7 +361,7 @@ make_code_addr_map_for_java([CodeAddr | CodeAddrs], !Map) :-
 % Code to output imports.
 %
 
-:- pred output_imports(java_out_info::in, mlds_imports::in,
+:- pred output_imports(java_out_info::in, list(mlds_import)::in,
     io::di, io::uo) is det.
 
 output_imports(Info, Imports, !IO) :-
@@ -376,7 +376,7 @@ output_imports(Info, Imports, !IO) :-
 :- pred output_import(mlds_import::in, io::di, io::uo) is det.
 
 output_import(Import, !IO) :-
-    Import = mercury_import(ImportType, ImportName),
+    Import = mlds_import(ImportType, ModuleName),
     (
         ImportType = user_visible_interface,
         unexpected($pred,
@@ -384,8 +384,7 @@ output_import(Import, !IO) :-
     ;
         ImportType = compiler_visible_interface
     ),
-    SymName = mlds_module_name_to_sym_name(ImportName),
-    mangle_sym_name_for_java(SymName, module_qual, "__", ClassFile),
+    mangle_sym_name_for_java(ModuleName, module_qual, "__", ClassFile),
     % There are issues related to using import statements and Java's naming
     % conventions. To avoid these problems, we output dependencies as comments
     % only. This is ok, since we always use fully qualified names anyway.
@@ -534,7 +533,6 @@ output_final_pred_call(Indent, FinalPred, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string(FinalPred, !IO),
     io.write_string("();\n", !IO).
-
 %---------------------------------------------------------------------------%
 %
 % Code to output globals for environment variables.
@@ -561,8 +559,9 @@ output_env_var_definition_for_java(Indent, EnvVarName, !IO) :-
 %
 
 :- pred output_src_start_for_java(java_out_info::in, indent::in,
-    mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
-    list(mlds_function_defn)::in, list(string)::out, io::di, io::uo) is det.
+    mercury_module_name::in, list(mlds_import)::in,
+    list(foreign_decl_code)::in, list(mlds_function_defn)::in,
+    list(string)::out, io::di, io::uo) is det.
 
 output_src_start_for_java(Info, Indent, MercuryModuleName, Imports,
         ForeignDecls, FuncDefns, Errors, !IO) :-

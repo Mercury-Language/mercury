@@ -326,9 +326,9 @@ output_env_var_definition_for_csharp(Indent, EnvVarName, !IO) :-
 %
 
 :- pred output_src_start_for_csharp(csharp_out_info::in, indent::in,
-    mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
-    list(mlds_function_defn)::in, list(string)::out, io::di, io::uo)
-    is det.
+    mercury_module_name::in, list(mlds_import)::in,
+    list(foreign_decl_code)::in, list(mlds_function_defn)::in,
+    list(string)::out, io::di, io::uo) is det.
 
 output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
         ForeignDecls, Defns, Errors, !IO) :-

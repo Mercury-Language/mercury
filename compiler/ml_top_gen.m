@@ -37,7 +37,6 @@
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.      % XXX for handling foreign_procs
 :- import_module backend_libs.rtti.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.globals.
@@ -72,7 +71,7 @@
 ml_code_gen(Target, MLDS, !ModuleInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ml_gen_foreign_code(!.ModuleInfo, ForeignCode),
-    ml_gen_imports(!.ModuleInfo, Target, Imports),
+    ml_gen_imports(!.ModuleInfo, Imports),
 
     ml_gen_types(!.ModuleInfo, Target, TypeDefns),
     ml_gen_table_structs(!.ModuleInfo, TableStructDefns),
@@ -137,39 +136,17 @@ ml_gen_foreign_code_lang(ModuleInfo, ForeignDeclCodes, ForeignBodyCodes,
         WantedForeignImports, MLDSWantedForeignExports),
     map.det_insert(Lang, MLDS_ForeignCode, !Map).
 
-:- pred ml_gen_imports(module_info::in, mlds_target_lang::in,
-    mlds_imports::out) is det.
+:- pred ml_gen_imports(module_info::in, list(mlds_import)::out) is det.
 
-ml_gen_imports(ModuleInfo, Target, MLDS_ImportList) :-
+ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
     % Determine all the mercury imports.
     % XXX This is overly conservative, i.e. we import more than we really need.
     module_info_get_all_deps(ModuleInfo, AllImports0),
     % No module needs to import itself.
     module_info_get_name(ModuleInfo, ThisModule),
     AllImports = set.delete(AllImports0, ThisModule),
-    P = (func(Name) = mercury_import(compiler_visible_interface,
-        mercury_module_name_to_mlds(Name))),
-
-    % For every foreign type determine the import needed to find
-    % the declaration for that type.
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
-    ForeignTypeImports = list.condense(
-        list.map(foreign_type_required_imports(Target), TypeCtorsDefns)), 
-    MLDS_ImportList = ForeignTypeImports ++
-        list.map(P, set.to_sorted_list(AllImports)).
-
-:- func foreign_type_required_imports(mlds_target_lang,
-    pair(type_ctor, hlds_type_defn)) = list(mlds_import).
-
-foreign_type_required_imports(Target, _TypeCtor - _TypeDefn) = Imports :-
-    (
-        ( Target = ml_target_c
-        ; Target = ml_target_java
-        ; Target = ml_target_csharp
-        ),
-        Imports = []
-    ).
+    ImportMLDS = (func(Name) = mlds_import(compiler_visible_interface, Name)),
+    MLDS_ImportList = list.map(ImportMLDS, set.to_sorted_list(AllImports)).
 
 :- pred ml_gen_init_global_data(module_info::in, mlds_target_lang::in,
     ml_global_data::out) is det.

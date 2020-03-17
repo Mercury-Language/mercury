@@ -286,7 +286,7 @@ mlds_output_hdr_file(Opts, Indent, MLDS, Errors, !IO) :-
     io.nl(!IO),
     mlds_output_hdr_end(Opts, Indent, ModuleName, !IO).
 
-:- pred mlds_output_hdr_imports(indent::in, mlds_imports::in,
+:- pred mlds_output_hdr_imports(indent::in, list(mlds_import)::in,
     io::di, io::uo) is det.
 
 % XXX currently we assume all imports are source imports, i.e. that the header
@@ -314,8 +314,7 @@ mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_src_import(Opts, _Indent, Import, !IO) :-
-    Import = mercury_import(ImportType, ImportName),
-    ModuleName0 = mlds_module_name_to_sym_name(ImportName),
+    Import = mlds_import(ImportType, ModuleName0),
     ( ImportType = user_visible_interface, HeaderExt = ".mh"
     ; ImportType = compiler_visible_interface, HeaderExt = ".mih"
     ),
@@ -536,9 +535,8 @@ mlds_output_src_start(Opts, Indent, ModuleName, ForeignCode,
     mlds_output_init_and_final_comments(ModuleName, InitPreds, FinalPreds,
         EnvVarNames, !IO),
 
-    mlds_output_src_import(Opts, Indent,
-        mercury_import(compiler_visible_interface,
-            mercury_module_name_to_mlds(ModuleName)), !IO),
+    CompilerImport = mlds_import(compiler_visible_interface, ModuleName),
+    mlds_output_src_import(Opts, Indent, CompilerImport, !IO),
 
     % If there are `:- pragma foreign_export' declarations,
     % #include the `.mh' file.
@@ -547,9 +545,8 @@ mlds_output_src_start(Opts, Indent, ModuleName, ForeignCode,
         Exports = []
     ;
         Exports = [_ | _],
-        Import = mercury_import(user_visible_interface,
-            mercury_module_name_to_mlds(ModuleName)),
-        mlds_output_src_import(Opts, Indent, Import, !IO)
+        UserImport = mlds_import(user_visible_interface, ModuleName),
+        mlds_output_src_import(Opts, Indent, UserImport, !IO)
     ),
     io.nl(!IO).
 
@@ -1004,9 +1001,8 @@ mlds_output_c_foreign_import_module(Opts, Indent, FIMSpec, !IO) :-
     FIMSpec = fim_spec(Lang, Import),
     (
         Lang = lang_c,
-        mlds_output_src_import(Opts, Indent,
-            mercury_import(user_visible_interface,
-                mercury_module_name_to_mlds(Import)), !IO)
+        UserImport = mlds_import(user_visible_interface, Import),
+        mlds_output_src_import(Opts, Indent, UserImport, !IO)
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java

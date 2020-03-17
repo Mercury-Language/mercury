@@ -467,8 +467,6 @@
 % Module imports.
 %
 
-:- type mlds_imports == list(mlds_import).
-
     % For the C backend, we generate a `.mh' file containing the
     % prototypes for C functions generated for `:- pragma foreign_export'
     % declarations, and a `.mih' file containing the prototypes
@@ -483,12 +481,10 @@
 
     % An mlds_import specifies  FIXME
     % Currently an import just gives the name of the package to be imported.
-    % This might perhaps need to be expanded to cater to different kinds of
-    % imports, e.g. imports with wild-cards ("import java.lang.*").
 :- type mlds_import
-    --->    mercury_import(
+    --->    mlds_import(
                 mercury_mlds_import_type    :: mercury_mlds_import_type,
-                import_name                 :: mlds_module_name
+                import_name                 :: module_name
             ).
 
 %---------------------------------------------------------------------------%
