@@ -269,19 +269,18 @@
 create_type_ctor_checked_map(InsistOnDefn, ModuleName,
         IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
         CheckedMap, !Specs) :-
-    map.sorted_keys(IntTypeDefnMap, IntDefnTypeCtorsList),
-    map.sorted_keys(ImpTypeDefnMap, ImpDefnTypeCtorsList),
-    map.sorted_keys(IntForeignEnumMap, IntEnumTypeCtorsList),
-    map.sorted_keys(ImpForeignEnumMap, ImpEnumTypeCtorsList),
+    map.keys_as_set(IntTypeDefnMap, IntDefnTypeCtors),
+    map.keys_as_set(ImpTypeDefnMap, ImpDefnTypeCtors),
+    map.keys_as_set(IntForeignEnumMap, IntEnumTypeCtors),
+    map.keys_as_set(ImpForeignEnumMap, ImpEnumTypeCtors),
     % This union operation depends on the type_ctors in all four maps
     % being qualified exactly the same way. We could require the type_ctor keys
     % to be all fully qualified or all fully unqualified; we chose the former.
-    TypeCtors = set.to_sorted_list(set.union_list([
-        set.sorted_list_to_set(IntDefnTypeCtorsList),
-        set.sorted_list_to_set(ImpDefnTypeCtorsList),
-        set.sorted_list_to_set(IntEnumTypeCtorsList),
-        set.sorted_list_to_set(ImpEnumTypeCtorsList)
-    ])),
+    TypeCtors = set.to_sorted_list(
+        set.union_list([
+            IntDefnTypeCtors, ImpDefnTypeCtors,
+            IntEnumTypeCtors, ImpEnumTypeCtors
+        ])),
     list.foldl2(
         check_type_ctor_defns(InsistOnDefn, ModuleName,
             IntTypeDefnMap, ImpTypeDefnMap,
