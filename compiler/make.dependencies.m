@@ -319,6 +319,7 @@ compiled_code_dependencies(Globals) = Deps :-
         module_target_source `of` self,
         fact_table_files `files_of` self,
         foreign_include_files `files_of` self,
+        module_target_int1 `of` self,
         map_find_module_deps(imports, self),
         Deps0
     ]),
@@ -364,6 +365,8 @@ imports = combine_deps_list([
         module_target_int1 `of` direct_imports,
         module_target_int2 `of` indirect_imports
     ]).
+
+%-----------------------------------------------------------------------------%
 
 :- func of(module_target_type, find_module_deps(module_index)) =
     find_module_deps(dependency_file_index).

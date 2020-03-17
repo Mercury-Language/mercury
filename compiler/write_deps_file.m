@@ -306,6 +306,11 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         ModuleName, Int0FileName, !IO),
 
     some [TargetGroup, TargetGroups, !SourceGroups] (
+        % The reason for why there is no mention of a date file
+        % for C# or Erlang here is that use mmake with those backends
+        % is not supported. Even support for Java is rudimentary
+        % and may not be complete.
+        % XXX Document the *reason* for the lack of that support.
         TargetGroup = mmake_file_name_group("",
             one_or_more(OptDateFileName,
                 [TransOptDateFileName, ErrFileName,
@@ -313,7 +318,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         TargetGroups = one_or_more(TargetGroup, []),
 
         !:SourceGroups = [make_singleton_file_name_group(SourceFileName)],
-        % If the module contains nested submodules then the `.int0' file
+        % If the module contains nested submodules, then the `.int0' file
         % must first be built.
         ( if set.is_empty(PublicChildren) then
             true
@@ -330,8 +335,12 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         make_module_file_name_group_with_suffix(Globals,
             "short deps", ".int2",
             ShortDeps, ShortDepsSourceGroups, !IO),
+        make_module_file_name_group_with_suffix(Globals,
+            "type_repn self dep", ".int",
+            set.make_singleton_set(ModuleName), TypeRepnSelfDepGroups, !IO),
         !:SourceGroups = !.SourceGroups ++ AncestorSourceGroups ++
-            LongDepsSourceGroups ++ ShortDepsSourceGroups,
+            LongDepsSourceGroups ++ ShortDepsSourceGroups ++
+            TypeRepnSelfDepGroups,
 
         ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
         % This is conservative: a target file for foreign language A
@@ -385,7 +394,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         ".dir/*.$O",
         ".java_date"],
 
-    % If a module contains nested-submodules then we need to build
+    % If a module contains nested submodules, then we need to build
     % the nested children before attempting to build the parent module.
     ( if set.is_empty(NestedDeps) then
         true

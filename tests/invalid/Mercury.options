@@ -26,8 +26,7 @@ MCFLAGS-exported_mode           = --infer-all --no-intermodule-optimization
 MCFLAGS-exported_unify          = --no-intermodule-optimization
 MCFLAGS-fe_unmapped_verbose     = --verbose-error-messages
 MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers \
-                                    --line-numbers-for-c-headers \
-                                    --compile-only
+                                    --line-numbers-for-c-headers
 MCFLAGS-foreign_enum_invalid    = --verbose-error-messages
 MCFLAGS-foreign_type_line_number = --no-errorcheck-only --line-numbers \
                                     --compile-only
