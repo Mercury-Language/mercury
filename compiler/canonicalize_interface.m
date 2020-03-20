@@ -22,6 +22,8 @@
 
 :- import_module parse_tree.prog_item.
 
+:- import_module list.
+
 %---------------------------------------------------------------------------%
 
     % Put the contents of an interface file, as represented by its parse tree,
@@ -88,18 +90,28 @@
     is det.
 
 %---------------------------------------------------------------------------%
+
+:- type pred_or_mode_decl_item
+    --->    pomd_pred(item_pred_decl_info)
+    ;       pomd_mode(item_mode_decl_info).
+
+:- pred order_pred_and_mode_decls(
+    list(item_pred_decl_info)::in, list(item_mode_decl_info)::in,
+    list(pred_or_mode_decl_item)::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module mdbcomp.prim_data.
-:- import_module parse_tree.file_kind.
-:- import_module parse_tree.prog_data.
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.file_kind.
+:- import_module parse_tree.item_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module cord.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -215,6 +227,18 @@ order_items(Items, OrderedItems) :-
 
 %---------------------------------------------------------------------------%
 
+order_pred_and_mode_decls(PredDecls, ModeDecls, PredOrModeDecls) :-
+    some [!PredRelatedMap] (
+        map.init(!:PredRelatedMap),
+        list.foldl(classify_item_pred_decl, PredDecls, !PredRelatedMap),
+        list.foldl(classify_item_mode_decl, ModeDecls, !PredRelatedMap),
+        map.foldl_values(append_pred_related, !.PredRelatedMap,
+            cord.init, PredOrModeDeclsCord)
+    ),
+    PredOrModeDecls = cord.list(PredOrModeDeclsCord).
+
+%---------------------------------------------------------------------------%
+
 :- type sym_name_items_map == map(sym_name_arity, cord(item)).
 :- type pred_related_items_map == map(sym_name, pred_related_items).
 
@@ -240,7 +264,7 @@ order_items(Items, OrderedItems) :-
                 % then we print all the pred and mode declarations
                 % for this sym_name in their original order. This field
                 % contains them in that order.
-                prs_all_items           :: cord(item),
+                prs_all_items           :: cord(pred_or_mode_decl_item),
 
                 % If we know the arity and the pred_or_func for all the
                 % pred_decl and mode_decl items for this sym_name, then
@@ -253,12 +277,12 @@ order_items(Items, OrderedItems) :-
 
 :- type arity_pf_items
     --->    arity_pf_items(
-                apfi_pred_decl_items    :: cord(item),
+                apfi_pred_decl_items    :: cord(item_pred_decl_info),
                 % There should be exactly one item_pred_decl for any
                 % sym_name/arity/pred_or_func combination that has any
                 % item_mode_decl, but using a cord simplifies the code.
 
-                apfi_mode_decl_items    :: cord(item)
+                apfi_mode_decl_items    :: cord(item_mode_decl_info)
                 % There may be any number of item_mode_decls for any
                 % sym_name/arity/pred_or_func combination that has
                 % an item_pred_decl, from zero on up.
@@ -311,112 +335,10 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         add_to_sym_name_items_map(SymNameAndArity, Item, !ModeDefnMap)
     ;
         Item = item_pred_decl(ItemPredDeclInfo),
-        ItemPredDeclInfo = item_pred_decl_info(SymName, PorF, Args,
-            MaybeWithType, MaybeWithInst, _, _, _, _, _, _, _, _, _),
-        ( if
-            MaybeWithType = no,
-            MaybeWithInst = no
-        then
-            list.length(Args, Arity),
-            ArityPf = arity_pf(Arity, PorF),
-            ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
-                PredRelated0 =
-                    pred_related_items(Known, AllItems0, ArityPfMap0),
-                AllItems = cord.snoc(AllItems0, Item),
-                ( if map.search(ArityPfMap0, ArityPf, ArityPfItems0) then
-                    ArityPfItems0 = arity_pf_items(PredItems0, ModeItems),
-                    PredItems = cord.snoc(PredItems0, Item),
-                    ArityPfItems = arity_pf_items(PredItems, ModeItems),
-                    map.det_update(ArityPf, ArityPfItems,
-                        ArityPfMap0, ArityPfMap)
-                else
-                    PredItems = cord.singleton(Item),
-                    ModeItems = cord.init,
-                    ArityPfItems = arity_pf_items(PredItems, ModeItems),
-                    map.det_insert(ArityPf, ArityPfItems,
-                        ArityPfMap0, ArityPfMap)
-                ),
-                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
-                map.det_update(SymName, PredRelated, !PredRelatedMap)
-            else
-                Known = all_arities_pfs_are_known,
-                AllItems = cord.singleton(Item),
-                PredItems = cord.singleton(Item),
-                ModeItems = cord.init,
-                ArityPfItems = arity_pf_items(PredItems, ModeItems),
-                ArityPfMap = map.singleton(ArityPf, ArityPfItems),
-                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
-                map.det_insert(SymName, PredRelated, !PredRelatedMap)
-            )
-        else
-            Known = some_arities_pfs_are_unknown,
-            ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
-                PredRelated0 =
-                    pred_related_items(_Known0, AllItems0, ArityPfMap),
-                AllItems = cord.snoc(AllItems0, Item),
-                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
-                map.det_update(SymName, PredRelated, !PredRelatedMap)
-            else
-                AllItems = cord.singleton(Item),
-                map.init(ArityPfMap),
-                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
-                map.det_insert(SymName, PredRelated, !PredRelatedMap)
-            )
-        )
+        classify_item_pred_decl(ItemPredDeclInfo, !PredRelatedMap)
     ;
         Item = item_mode_decl(ItemModeDeclInfo),
-        ItemModeDeclInfo = item_mode_decl_info(SymName, MaybePorF, Args,
-            MaybeWithInst, _, _, _, _),
-        ( if
-            MaybePorF = yes(PorF),
-            MaybeWithInst = no
-        then
-            list.length(Args, Arity),
-            ArityPf = arity_pf(Arity, PorF),
-            ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
-                PredRelated0 =
-                    pred_related_items(Known, AllItems0, ArityPfMap0),
-                AllItems = cord.snoc(AllItems0, Item),
-                ( if map.search(ArityPfMap0, ArityPf, ArityPfItems0) then
-                    ArityPfItems0 = arity_pf_items(PredItems, ModeItems0),
-                    ModeItems = cord.snoc(ModeItems0, Item),
-                    ArityPfItems = arity_pf_items(PredItems, ModeItems),
-                    map.det_update(ArityPf, ArityPfItems,
-                        ArityPfMap0, ArityPfMap)
-                else
-                    PredItems = cord.init,
-                    ModeItems = cord.singleton(Item),
-                    ArityPfItems = arity_pf_items(PredItems, ModeItems),
-                    map.det_insert(ArityPf, ArityPfItems,
-                        ArityPfMap0, ArityPfMap)
-                ),
-                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
-                map.det_update(SymName, PredRelated, !PredRelatedMap)
-            else
-                Known = all_arities_pfs_are_known,
-                AllItems = cord.singleton(Item),
-                PredItems = cord.init,
-                ModeItems = cord.singleton(Item),
-                ArityPfItems = arity_pf_items(PredItems, ModeItems),
-                ArityPfMap = map.singleton(ArityPf, ArityPfItems),
-                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
-                map.det_insert(SymName, PredRelated, !PredRelatedMap)
-            )
-        else
-            Known = some_arities_pfs_are_unknown,
-            ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
-                PredRelated0 =
-                    pred_related_items(_Known0, AllItems0, ArityPfMap),
-                AllItems = cord.snoc(AllItems0, Item),
-                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
-                map.det_update(SymName, PredRelated, !PredRelatedMap)
-            else
-                AllItems = cord.singleton(Item),
-                map.init(ArityPfMap),
-                PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
-                map.det_insert(SymName, PredRelated, !PredRelatedMap)
-            )
-        )
+        classify_item_mode_decl(ItemModeDeclInfo, !PredRelatedMap)
     ;
         Item = item_impl_pragma(ItemImplPragmaInfo),
         ItemImplPragmaInfo = item_pragma_info(Pragma, _, _),
@@ -479,6 +401,120 @@ add_to_sym_name_items_map(SymNameAndArity, Item, !SymNameItemsMap) :-
         map.det_insert(SymNameAndArity, NewItems, !SymNameItemsMap)
     ).
 
+:- pred classify_item_pred_decl(item_pred_decl_info::in,
+    pred_related_items_map::in, pred_related_items_map::out) is det.
+
+classify_item_pred_decl(ItemPredDeclInfo, !PredRelatedMap) :-
+    ItemPredDeclInfo = item_pred_decl_info(SymName, PorF, Args,
+        MaybeWithType, MaybeWithInst, _, _, _, _, _, _, _, _, _),
+    ( if
+        MaybeWithType = no,
+        MaybeWithInst = no
+    then
+        list.length(Args, Arity),
+        ArityPf = arity_pf(Arity, PorF),
+        ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
+            PredRelated0 =
+                pred_related_items(Known, AllItems0, ArityPfMap0),
+            AllItems = cord.snoc(AllItems0, pomd_pred(ItemPredDeclInfo)),
+            ( if map.search(ArityPfMap0, ArityPf, ArityPfItems0) then
+                ArityPfItems0 = arity_pf_items(PredItems0, ModeItems),
+                PredItems = cord.snoc(PredItems0, ItemPredDeclInfo),
+                ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                map.det_update(ArityPf, ArityPfItems,
+                    ArityPfMap0, ArityPfMap)
+            else
+                PredItems = cord.singleton(ItemPredDeclInfo),
+                ModeItems = cord.init,
+                ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                map.det_insert(ArityPf, ArityPfItems,
+                    ArityPfMap0, ArityPfMap)
+            ),
+            PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+            map.det_update(SymName, PredRelated, !PredRelatedMap)
+        else
+            Known = all_arities_pfs_are_known,
+            AllItems = cord.singleton(pomd_pred(ItemPredDeclInfo)),
+            PredItems = cord.singleton(ItemPredDeclInfo),
+            ModeItems = cord.init,
+            ArityPfItems = arity_pf_items(PredItems, ModeItems),
+            ArityPfMap = map.singleton(ArityPf, ArityPfItems),
+            PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+            map.det_insert(SymName, PredRelated, !PredRelatedMap)
+        )
+    else
+        Known = some_arities_pfs_are_unknown,
+        ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
+            PredRelated0 =
+                pred_related_items(_Known0, AllItems0, ArityPfMap),
+            AllItems = cord.snoc(AllItems0, pomd_pred(ItemPredDeclInfo)),
+            PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+            map.det_update(SymName, PredRelated, !PredRelatedMap)
+        else
+            AllItems = cord.singleton(pomd_pred(ItemPredDeclInfo)),
+            map.init(ArityPfMap),
+            PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+            map.det_insert(SymName, PredRelated, !PredRelatedMap)
+        )
+    ).
+
+:- pred classify_item_mode_decl(item_mode_decl_info::in,
+    pred_related_items_map::in, pred_related_items_map::out) is det.
+
+classify_item_mode_decl(ItemModeDeclInfo, !PredRelatedMap) :-
+    ItemModeDeclInfo = item_mode_decl_info(SymName, MaybePorF, Args,
+        MaybeWithInst, _, _, _, _),
+    ( if
+        MaybePorF = yes(PorF),
+        MaybeWithInst = no
+    then
+        list.length(Args, Arity),
+        ArityPf = arity_pf(Arity, PorF),
+        ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
+            PredRelated0 =
+                pred_related_items(Known, AllItems0, ArityPfMap0),
+            AllItems = cord.snoc(AllItems0, pomd_mode(ItemModeDeclInfo)),
+            ( if map.search(ArityPfMap0, ArityPf, ArityPfItems0) then
+                ArityPfItems0 = arity_pf_items(PredItems, ModeItems0),
+                ModeItems = cord.snoc(ModeItems0, ItemModeDeclInfo),
+                ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                map.det_update(ArityPf, ArityPfItems,
+                    ArityPfMap0, ArityPfMap)
+            else
+                PredItems = cord.init,
+                ModeItems = cord.singleton(ItemModeDeclInfo),
+                ArityPfItems = arity_pf_items(PredItems, ModeItems),
+                map.det_insert(ArityPf, ArityPfItems,
+                    ArityPfMap0, ArityPfMap)
+            ),
+            PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+            map.det_update(SymName, PredRelated, !PredRelatedMap)
+        else
+            Known = all_arities_pfs_are_known,
+            AllItems = cord.singleton(pomd_mode(ItemModeDeclInfo)),
+            PredItems = cord.init,
+            ModeItems = cord.singleton(ItemModeDeclInfo),
+            ArityPfItems = arity_pf_items(PredItems, ModeItems),
+            ArityPfMap = map.singleton(ArityPf, ArityPfItems),
+            PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+            map.det_insert(SymName, PredRelated, !PredRelatedMap)
+        )
+    else
+        Known = some_arities_pfs_are_unknown,
+        ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
+            PredRelated0 =
+                pred_related_items(_Known0, AllItems0, ArityPfMap),
+            AllItems = cord.snoc(AllItems0, pomd_mode(ItemModeDeclInfo)),
+            PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+            map.det_update(SymName, PredRelated, !PredRelatedMap)
+        else
+            AllItems = cord.singleton(pomd_mode(ItemModeDeclInfo)),
+            map.init(ArityPfMap),
+            PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+            map.det_insert(SymName, PredRelated, !PredRelatedMap)
+        )
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pred append_sym_name_map_items(cord(item)::in,
@@ -486,6 +522,8 @@ add_to_sym_name_items_map(SymNameAndArity, Item, !SymNameItemsMap) :-
 
 append_sym_name_map_items(SymNameItemsCord, !ItemsCord) :-
     !:ItemsCord = !.ItemsCord ++ SymNameItemsCord.
+
+%---------------------------------------------------------------------------%
 
 :- pred append_pred_related_items(pred_related_items::in,
     cord(item)::in, cord(item)::out) is det.
@@ -524,15 +562,58 @@ append_pred_related_items(PredRelated, !ItemsCord) :-
         % and/or with_inst annotations are very rare. (With_inst annotations
         % are possible on item_pred_decls that contain a combined predmode
         % declaration.)
-        !:ItemsCord = !.ItemsCord ++ AllItems
+        !:ItemsCord = !.ItemsCord ++
+            cord.map(pred_or_mode_decl_item_to_item, AllItems)
     ).
 
 :- pred append_arity_pf_items(arity_pf_items::in,
     cord(item)::in, cord(item)::out) is det.
 
 append_arity_pf_items(ArityPfItems, !ItemsCord) :-
-    ArityPfItems = arity_pf_items(PredDeclItems, ModeDeclItems),
-    !:ItemsCord = !.ItemsCord ++ PredDeclItems ++ ModeDeclItems.
+    ArityPfItems = arity_pf_items(PredDecls, ModeDecls),
+    !:ItemsCord = !.ItemsCord ++
+        cord.map(wrap_pred_decl_item, PredDecls) ++
+        cord.map(wrap_mode_decl_item, ModeDecls).
+
+:- func pred_or_mode_decl_item_to_item(pred_or_mode_decl_item) = item.
+
+pred_or_mode_decl_item_to_item(PredOrModeDecl) = Item :-
+    (
+        PredOrModeDecl = pomd_pred(PredDecl),
+        Item = item_pred_decl(PredDecl)
+    ;
+        PredOrModeDecl = pomd_mode(ModeDecl),
+        Item = item_mode_decl(ModeDecl)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred append_pred_related(pred_related_items::in,
+    cord(pred_or_mode_decl_item)::in, cord(pred_or_mode_decl_item)::out)
+    is det.
+
+append_pred_related(PredRelated, !PredOrModeDeclsCord) :-
+    PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
+    (
+        Known = all_arities_pfs_are_known,
+        map.foldl_values(append_arity_pf, ArityPfMap,
+            !PredOrModeDeclsCord)
+    ;
+        Known = some_arities_pfs_are_unknown,
+        !:PredOrModeDeclsCord = !.PredOrModeDeclsCord ++ AllItems
+    ).
+
+:- pred append_arity_pf(arity_pf_items::in,
+    cord(pred_or_mode_decl_item)::in, cord(pred_or_mode_decl_item)::out)
+    is det.
+
+append_arity_pf(ArityPfItems, !PredOrModeDeclsCord) :-
+    ArityPfItems = arity_pf_items(PredDecls, ModeDecls),
+    WrapPred = (func(P) = pomd_pred(P)),
+    WrapMode = (func(M) = pomd_mode(M)),
+    !:PredOrModeDeclsCord = !.PredOrModeDeclsCord ++
+        cord.map(WrapPred, PredDecls) ++
+        cord.map(WrapMode, ModeDecls).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.canonicalize_interface.

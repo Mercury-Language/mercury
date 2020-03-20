@@ -34,8 +34,7 @@
     % XXX document me better
     %
 :- pred generate_short_interface_int3(globals::in, raw_compilation_unit::in,
-    parse_tree_int3::out, parse_tree_int::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    parse_tree_int3::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -46,7 +45,7 @@
     % nested inside it.
     %
 :- pred generate_private_interface_int0(aug_compilation_unit::in,
-    parse_tree_int::out, list(error_spec)::in, list(error_spec)::out) is det.
+    parse_tree_int0::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -96,7 +95,7 @@
     % Generate the contents for the .int and .int2 files.
     %
 :- pred generate_interfaces_int1_int2(globals::in, aug_compilation_unit::in,
-    parse_tree_int::out, parse_tree_int::out,
+    parse_tree_int1::out, parse_tree_int2::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -145,8 +144,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_short_interface_int3(Globals, RawCompUnit,
-        ParseTreeInt3, ParseTreeInt, !Specs) :-
+generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt3, !Specs) :-
     RawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
     get_short_interface_int3_from_item_blocks(RawItemBlocks,
@@ -188,9 +186,17 @@ generate_short_interface_int3(Globals, RawCompUnit,
     OrigImpTypeDefns = cord.list(OrigImpTypeDefnsCord),
     OrigImpForeignEnums = cord.list(OrigImpForeignEnumsCord),
 
-    IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
+    IntTypeDefnMap0 = type_ctor_defn_items_to_map(IntTypeDefns),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
+    % get_short_interface_int3_from_item_blocks above will turn
+    % non-abstract type definitions into their abstract forms.
+    % If the type constructor involved already had an abstract definition,
+    % this will add a second one. To avoid writing out more than one
+    % abstract definition to the .int3 file, whose readers would complain
+    % about that, do not keep any duplicate abstract type definitions.
+    map.map_values_only(keep_only_one_abstract_type_defn,
+        IntTypeDefnMap0, IntTypeDefnMap),
 
     OrigIntTypeDefnMap = type_ctor_defn_items_to_map(OrigIntTypeDefns),
     OrigIntForeignEnumMap =
@@ -220,8 +226,30 @@ generate_short_interface_int3(Globals, RawCompUnit,
     % Any Specs this can generate would be better reported
     % when the module is being compiled to target language code.
     module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
-        [], _Specs),
-    ParseTreeInt = convert_parse_tree_int3_to_int(ParseTreeInt3).
+        [], _Specs).
+
+:- pred keep_only_one_abstract_type_defn(type_ctor_all_defns::in,
+    type_ctor_all_defns::out) is det.
+
+keep_only_one_abstract_type_defn(AllDefns0, AllDefns) :-
+    AllDefns0 = type_ctor_all_defns(SolverAbs0, SolverNonAbs,
+        StdAbs0, StdEqv, StdDu, StdForeign),
+    (
+        SolverAbs0 = [HeadSolverAbs | _],
+        SolverAbs = [HeadSolverAbs]
+    ;
+        SolverAbs0 = [],
+        SolverAbs = []
+    ),
+    (
+        StdAbs0 = [HeadStdAbs | _],
+        StdAbs = [HeadStdAbs]
+    ;
+        StdAbs0 = [],
+        StdAbs = []
+    ),
+    AllDefns = type_ctor_all_defns(SolverAbs, SolverNonAbs,
+        StdAbs, StdEqv, StdDu, StdForeign).
 
 :- type need_imports
     --->    do_not_need_imports
@@ -491,7 +519,7 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
     create_type_ctor_checked_map(do_insist_on_defn, ModuleName,
         IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
         _TypeCtorCheckedMap, !Specs),
-    ParseTreeInt0Prime = parse_tree_int0(ModuleName, ModuleNameContext,
+    ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
@@ -500,9 +528,7 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
         IntForeignEnumMap, IntDeclPragmas, IntPromises,
         ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpForeignEnumMap, ImpDeclPragmas, ImpPromises),
-    % XXX CLEANUP We should be able to avoid this unnecessary conversion.
-    ParseTreeInt0 = convert_parse_tree_int0_to_int(ParseTreeInt0Prime).
+        ImpForeignEnumMap, ImpDeclPragmas, ImpPromises).
 
 :- func make_instance_abstract(item_instance_info) = item_instance_info.
 
@@ -653,14 +679,11 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     generate_interface_int1(AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1A, !Specs),
+        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1, !Specs),
     generate_interface_int2(Globals, AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2A),
-    % XXX CLEANUP We should be able to avoid these unnecessary conversions.
-    ParseTreeInt1 = convert_parse_tree_int1_to_int(ParseTreeInt1A),
-    ParseTreeInt2 = convert_parse_tree_int2_to_int(ParseTreeInt2A).
+        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2).
 
 :- pred generate_interface_int1(aug_compilation_unit::in,
     module_names_contexts::out, set(fim_spec)::out, set(fim_spec)::out,

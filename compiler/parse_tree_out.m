@@ -38,9 +38,17 @@
 :- pred output_parse_tree_opt(globals::in, string::in, parse_tree_opt::in,
     io::di, io::uo) is det.
 
+:- pred output_parse_tree_int0(globals::in, string::in,
+    parse_tree_int0::in, io::di, io::uo) is det.
+:- pred output_parse_tree_int1(globals::in, string::in,
+    parse_tree_int1::in, io::di, io::uo) is det.
+:- pred output_parse_tree_int2(globals::in, string::in,
+    parse_tree_int2::in, io::di, io::uo) is det.
+:- pred output_parse_tree_int3(globals::in, string::in,
+    parse_tree_int3::in, io::di, io::uo) is det.
+
 :- pred output_parse_tree_plain_opt(globals::in, string::in,
     parse_tree_plain_opt::in, io::di, io::uo) is det.
-
 :- pred output_parse_tree_trans_opt(globals::in, string::in,
     parse_tree_trans_opt::in, io::di, io::uo) is det.
 
@@ -153,6 +161,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.canonicalize_interface.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
@@ -196,6 +205,26 @@ output_parse_tree_opt(Globals, OutputFileName, ParseTreeOpt, !IO) :-
     output_some_parse_tree(Globals, OutputFileName,
         mercury_output_parse_tree_opt, ParseTreeOpt, !IO).
 
+%---------------------%
+
+output_parse_tree_int0(Globals, OutputFileName, ParseTreeInt0, !IO) :-
+    output_some_parse_tree(Globals, OutputFileName,
+        mercury_output_parse_tree_int0, ParseTreeInt0, !IO).
+
+output_parse_tree_int1(Globals, OutputFileName, ParseTreeInt1, !IO) :-
+    output_some_parse_tree(Globals, OutputFileName,
+        mercury_output_parse_tree_int1, ParseTreeInt1, !IO).
+
+output_parse_tree_int2(Globals, OutputFileName, ParseTreeInt2, !IO) :-
+    output_some_parse_tree(Globals, OutputFileName,
+        mercury_output_parse_tree_int2, ParseTreeInt2, !IO).
+
+output_parse_tree_int3(Globals, OutputFileName, ParseTreeInt3, !IO) :-
+    output_some_parse_tree(Globals, OutputFileName,
+        mercury_output_parse_tree_int3, ParseTreeInt3, !IO).
+
+%---------------------%
+
 output_parse_tree_plain_opt(Globals, OutputFileName, ParseTreePlainOpt, !IO) :-
     output_some_parse_tree(Globals, OutputFileName,
         mercury_output_parse_tree_plain_opt, ParseTreePlainOpt, !IO).
@@ -203,6 +232,8 @@ output_parse_tree_plain_opt(Globals, OutputFileName, ParseTreePlainOpt, !IO) :-
 output_parse_tree_trans_opt(Globals, OutputFileName, ParseTreeTransOpt, !IO) :-
     output_some_parse_tree(Globals, OutputFileName,
         mercury_output_parse_tree_trans_opt, ParseTreeTransOpt, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- type output_parse_tree(PT) == pred(merc_out_info, PT, io, io).
 :- inst output_parse_tree == (pred(in, in, di, uo) is det).
@@ -481,18 +512,17 @@ mercury_output_parse_tree_int0(Info, ParseTreeInt0, !IO) :-
         ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpForeignEnumMap, ImpDeclPragmas, ImpPromises),
-    io.write_string("% .int0 file\n", !IO),
     mercury_output_module_decl("module", ModuleName, !IO),
     mercury_output_maybe_module_version_numbers(ModuleName,
         MaybeVersionNumbers, !IO),
 
     mercury_output_section_marker(ms_interface, !IO),
     list.foldl(mercury_output_module_decl("include_module"),
-        map.keys(IntInclMap), !IO),
+        map.sorted_keys(IntInclMap), !IO),
     list.foldl(mercury_output_module_decl("import_module"),
-        map.keys(IntImportMap), !IO),
+        map.sorted_keys(IntImportMap), !IO),
     list.foldl(mercury_output_module_decl("use_module"),
-        map.keys(IntUseMap), !IO),
+        map.sorted_keys(IntUseMap), !IO),
     set.foldl(mercury_output_fim_spec, IntFIMSpecs, !IO),
     map.foldl_values(mercury_output_type_ctor_all_defns(Info),
         IntTypeDefnMap, !IO),
@@ -500,38 +530,65 @@ mercury_output_parse_tree_int0(Info, ParseTreeInt0, !IO) :-
         IntInstDefnMap, !IO),
     map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
         IntModeDefnMap, !IO),
-    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
-    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
-    list.foldl(mercury_output_item_pred_decl(Info), IntPredDecls, !IO),
-    list.foldl(mercury_output_item_mode_decl(Info), IntModeDecls, !IO),
+    list.foldl(mercury_output_item_typeclass(Info),
+        list.sort(IntTypeClasses), !IO),
+    list.foldl(mercury_output_item_instance(Info),
+        list.sort(IntInstances), !IO),
+    order_pred_and_mode_decls(IntPredDecls, IntModeDecls, IntPredOrModeDecls),
+    mercury_output_pred_or_mode_decls(Info, IntPredOrModeDecls, !IO),
     map.foldl_values(mercury_output_foreign_enums(Info),
         IntForeignEnumMap, !IO),
-    list.foldl(mercury_output_item_decl_pragma(Info), IntDeclPragmas, !IO),
-    list.foldl(mercury_output_item_promise(Info), IntPromises, !IO),
+    list.foldl(mercury_output_item_decl_pragma(Info),
+        list.sort(IntDeclPragmas), !IO),
+    list.foldl(mercury_output_item_promise(Info),
+        list.sort(IntPromises), !IO),
 
-    mercury_output_section_marker(ms_implementation, !IO),
-    list.foldl(mercury_output_module_decl("include_module"),
-        map.keys(ImpInclMap), !IO),
-    list.foldl(mercury_output_module_decl("import_module"),
-        map.keys(ImpImportMap), !IO),
-    list.foldl(mercury_output_module_decl("use_module"),
-        map.keys(ImpUseMap), !IO),
-    set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
-    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
-        ImpTypeDefnMap, !IO),
-    map.foldl_values(mercury_output_inst_ctor_all_defns(Info),
-        ImpInstDefnMap, !IO),
-    map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
-        ImpModeDefnMap, !IO),
-    list.foldl(mercury_output_item_typeclass(Info), ImpTypeClasses, !IO),
-    list.foldl(mercury_output_item_instance(Info), ImpInstances, !IO),
-    list.foldl(mercury_output_item_pred_decl(Info), ImpPredDecls, !IO),
-    list.foldl(mercury_output_item_mode_decl(Info), ImpModeDecls, !IO),
-    map.foldl_values(mercury_output_foreign_enums(Info),
-        ImpForeignEnumMap, !IO),
-    list.foldl(mercury_output_item_decl_pragma(Info), ImpDeclPragmas, !IO),
-    list.foldl(mercury_output_item_promise(Info), ImpPromises, !IO),
-    io.nl(!IO).
+    ( if
+        map.is_empty(ImpInclMap),
+        map.is_empty(ImpImportMap),
+        map.is_empty(ImpUseMap),
+        set.is_empty(ImpFIMSpecs),
+        map.is_empty(ImpTypeDefnMap),
+        map.is_empty(ImpInstDefnMap),
+        map.is_empty(ImpModeDefnMap),
+        ImpTypeClasses = [],
+        ImpInstances = [],
+        ImpPredDecls = [],
+        ImpModeDecls = [],
+        map.is_empty(ImpForeignEnumMap),
+        ImpDeclPragmas = [],
+        ImpPromises = []
+    then
+        true
+    else
+        mercury_output_section_marker(ms_implementation, !IO),
+        list.foldl(mercury_output_module_decl("include_module"),
+            map.sorted_keys(ImpInclMap), !IO),
+        list.foldl(mercury_output_module_decl("import_module"),
+            map.sorted_keys(ImpImportMap), !IO),
+        list.foldl(mercury_output_module_decl("use_module"),
+            map.sorted_keys(ImpUseMap), !IO),
+        set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
+        map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+            ImpTypeDefnMap, !IO),
+        map.foldl_values(mercury_output_inst_ctor_all_defns(Info),
+            ImpInstDefnMap, !IO),
+        map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
+            ImpModeDefnMap, !IO),
+        list.foldl(mercury_output_item_typeclass(Info),
+            list.sort(ImpTypeClasses), !IO),
+        list.foldl(mercury_output_item_instance(Info),
+            list.sort(ImpInstances), !IO),
+        order_pred_and_mode_decls(ImpPredDecls, ImpModeDecls,
+            ImpPredOrModeDecls),
+        mercury_output_pred_or_mode_decls(Info, ImpPredOrModeDecls, !IO),
+        map.foldl_values(mercury_output_foreign_enums(Info),
+            ImpForeignEnumMap, !IO),
+        list.foldl(mercury_output_item_decl_pragma(Info),
+            list.sort(ImpDeclPragmas), !IO),
+        list.foldl(mercury_output_item_promise(Info),
+            list.sort(ImpPromises), !IO)
+    ).
 
 mercury_output_parse_tree_int1(Info, ParseTreeInt1, !IO) :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, _ModuleContext,
@@ -541,16 +598,15 @@ mercury_output_parse_tree_int1(Info, ParseTreeInt1, !IO) :-
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntForeignEnumMap, IntDeclPragmas, IntPromises, IntTypeRepnMap,
         ImpTypeDefnMap, ImpForeignEnumMap, ImpTypeClasses),
-    io.write_string("% .int1 file\n", !IO),
     mercury_output_module_decl("module", ModuleName, !IO),
     mercury_output_maybe_module_version_numbers(ModuleName,
         MaybeVersionNumbers, !IO),
 
     mercury_output_section_marker(ms_interface, !IO),
     list.foldl(mercury_output_module_decl("include_module"),
-        map.keys(IntInclMap), !IO),
+        map.sorted_keys(IntInclMap), !IO),
     list.foldl(mercury_output_module_decl("use_module"),
-        map.keys(IntUseMap), !IO),
+        map.sorted_keys(IntUseMap), !IO),
     set.foldl(mercury_output_fim_spec, IntFIMSpecs, !IO),
     map.foldl_values(mercury_output_type_ctor_all_defns(Info),
         IntTypeDefnMap, !IO),
@@ -558,28 +614,43 @@ mercury_output_parse_tree_int1(Info, ParseTreeInt1, !IO) :-
         IntInstDefnMap, !IO),
     map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
         IntModeDefnMap, !IO),
-    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
-    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
-    list.foldl(mercury_output_item_pred_decl(Info), IntPredDecls, !IO),
-    list.foldl(mercury_output_item_mode_decl(Info), IntModeDecls, !IO),
+    list.foldl(mercury_output_item_typeclass(Info),
+        list.sort(IntTypeClasses), !IO),
+    list.foldl(mercury_output_item_instance(Info),
+        list.sort(IntInstances), !IO),
+    order_pred_and_mode_decls(IntPredDecls, IntModeDecls, IntPredOrModeDecls),
+    mercury_output_pred_or_mode_decls(Info, IntPredOrModeDecls, !IO),
     map.foldl_values(mercury_output_foreign_enums(Info),
         IntForeignEnumMap, !IO),
-    list.foldl(mercury_output_item_decl_pragma(Info), IntDeclPragmas, !IO),
-    list.foldl(mercury_output_item_promise(Info), IntPromises, !IO),
+    list.foldl(mercury_output_item_decl_pragma(Info),
+        list.sort(IntDeclPragmas), !IO),
+    list.foldl(mercury_output_item_promise(Info),
+        list.sort(IntPromises), !IO),
     map.foldl_values(mercury_output_item_type_repn(Info), IntTypeRepnMap, !IO),
 
-    mercury_output_section_marker(ms_implementation, !IO),
-    list.foldl(mercury_output_module_decl("include_module"),
-        map.keys(ImpInclMap), !IO),
-    list.foldl(mercury_output_module_decl("use_module"),
-        map.keys(ImpUseMap), !IO),
-    set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
-    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
-        ImpTypeDefnMap, !IO),
-    map.foldl_values(mercury_output_foreign_enums(Info),
-        ImpForeignEnumMap, !IO),
-    list.foldl(mercury_output_item_typeclass(Info), ImpTypeClasses, !IO),
-    io.nl(!IO).
+    ( if
+        map.is_empty(ImpInclMap),
+        map.is_empty(ImpUseMap),
+        set.is_empty(ImpFIMSpecs),
+        map.is_empty(ImpTypeDefnMap),
+        map.is_empty(ImpForeignEnumMap),
+        ImpTypeClasses = []
+    then
+        true
+    else
+        mercury_output_section_marker(ms_implementation, !IO),
+        list.foldl(mercury_output_module_decl("include_module"),
+            map.sorted_keys(ImpInclMap), !IO),
+        list.foldl(mercury_output_module_decl("use_module"),
+            map.sorted_keys(ImpUseMap), !IO),
+        set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
+        map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+            ImpTypeDefnMap, !IO),
+        map.foldl_values(mercury_output_foreign_enums(Info),
+            ImpForeignEnumMap, !IO),
+        list.foldl(mercury_output_item_typeclass(Info),
+            list.sort(ImpTypeClasses), !IO)
+    ).
 
 mercury_output_parse_tree_int2(Info, ParseTreeInt2, !IO) :-
     ParseTreeInt2 = parse_tree_int2(ModuleName, _ModuleContext,
@@ -588,16 +659,15 @@ mercury_output_parse_tree_int2(Info, ParseTreeInt2, !IO) :-
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap,
         ImpTypeDefnMap),
-    io.write_string("% .int2 file\n", !IO),
     mercury_output_module_decl("module", ModuleName, !IO),
     mercury_output_maybe_module_version_numbers(ModuleName,
         MaybeVersionNumbers, !IO),
 
     mercury_output_section_marker(ms_interface, !IO),
     list.foldl(mercury_output_module_decl("include_module"),
-        map.keys(IntInclMap), !IO),
+        map.sorted_keys(IntInclMap), !IO),
     list.foldl(mercury_output_module_decl("use_module"),
-        map.keys(IntUseMap), !IO),
+        map.sorted_keys(IntUseMap), !IO),
     set.foldl(mercury_output_fim_spec, IntFIMSpecs, !IO),
     map.foldl_values(mercury_output_type_ctor_all_defns(Info),
         IntTypeDefnMap, !IO),
@@ -605,38 +675,46 @@ mercury_output_parse_tree_int2(Info, ParseTreeInt2, !IO) :-
         IntInstDefnMap, !IO),
     map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
         IntModeDefnMap, !IO),
-    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
-    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
+    list.foldl(mercury_output_item_typeclass(Info),
+        list.sort(IntTypeClasses), !IO),
+    list.foldl(mercury_output_item_instance(Info),
+        list.sort(IntInstances), !IO),
     map.foldl_values(mercury_output_item_type_repn(Info), IntTypeRepnMap, !IO),
 
-    mercury_output_section_marker(ms_implementation, !IO),
-    set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
-    map.foldl_values(mercury_output_type_ctor_all_defns(Info),
-        ImpTypeDefnMap, !IO),
-    io.nl(!IO).
+    ( if
+        set.is_empty(ImpFIMSpecs),
+        map.is_empty(ImpTypeDefnMap)
+    then
+        true
+    else
+        mercury_output_section_marker(ms_implementation, !IO),
+        set.foldl(mercury_output_fim_spec, ImpFIMSpecs, !IO),
+        map.foldl_values(mercury_output_type_ctor_all_defns(Info),
+            ImpTypeDefnMap, !IO)
+    ).
 
 mercury_output_parse_tree_int3(Info, ParseTreeInt3, !IO) :-
     ParseTreeInt3 = parse_tree_int3(ModuleName, _ModuleContext,
         IntInclMap, _InclMap, IntImportMap, _ImportUseMap,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
-    io.write_string("% .int3 file\n", !IO),
     mercury_output_module_decl("module", ModuleName, !IO),
     mercury_output_section_marker(ms_interface, !IO),
     list.foldl(mercury_output_module_decl("include_module"),
-        map.keys(IntInclMap), !IO),
+        map.sorted_keys(IntInclMap), !IO),
     list.foldl(mercury_output_module_decl("import_module"),
-        map.keys(IntImportMap), !IO),
+        map.sorted_keys(IntImportMap), !IO),
     map.foldl_values(mercury_output_type_ctor_all_defns(Info),
         IntTypeDefnMap, !IO),
     map.foldl_values(mercury_output_inst_ctor_all_defns(Info),
         IntInstDefnMap, !IO),
     map.foldl_values(mercury_output_mode_ctor_all_defns(Info),
         IntModeDefnMap, !IO),
-    list.foldl(mercury_output_item_typeclass(Info), IntTypeClasses, !IO),
-    list.foldl(mercury_output_item_instance(Info), IntInstances, !IO),
-    map.foldl_values(mercury_output_item_type_repn(Info), IntTypeRepnMap, !IO),
-    io.nl(!IO).
+    list.foldl(mercury_output_item_typeclass(Info),
+        list.sort(IntTypeClasses), !IO),
+    list.foldl(mercury_output_item_instance(Info),
+        list.sort(IntInstances), !IO),
+    map.foldl_values(mercury_output_item_type_repn(Info), IntTypeRepnMap, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1113,6 +1191,28 @@ mercury_output_item(Info, Item, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred mercury_output_pred_or_mode_decls(merc_out_info::in,
+    list(pred_or_mode_decl_item)::in, io::di, io::uo) is det.
+
+mercury_output_pred_or_mode_decls(_, [], !IO).
+mercury_output_pred_or_mode_decls(Info, [Item | Items], !IO) :-
+    mercury_output_pred_or_mode_decl(Info, Item, !IO),
+    mercury_output_pred_or_mode_decls(Info, Items, !IO).
+
+:- pred mercury_output_pred_or_mode_decl(merc_out_info::in,
+    pred_or_mode_decl_item::in, io::di, io::uo) is det.
+
+mercury_output_pred_or_mode_decl(Info, Item, !IO) :-
+    (
+        Item = pomd_pred(ItemPredDecl),
+        mercury_output_item_pred_decl(Info, ItemPredDecl, !IO)
+    ;
+        Item = pomd_mode(ItemModeDecl),
+        mercury_output_item_mode_decl(Info, ItemModeDecl, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred mercury_output_type_ctor_all_defns(merc_out_info::in,
     type_ctor_all_defns::in, io::di, io::uo) is det.
 
@@ -1164,6 +1264,7 @@ mercury_output_type_ctor_all_defns(Info, TypeCtorAllDefns, !IO) :-
     item_type_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
+    % ZZZ TypeVarSet
     ItemTypeDefn = item_type_defn_info(SymName0, TypeParams, TypeDefn,
         TypeVarSet, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, SymName0, SymName),

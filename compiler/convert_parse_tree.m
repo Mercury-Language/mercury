@@ -35,10 +35,14 @@
     % from more restrictive to less restrictive, so they always
     % succeed without any problems.
     %
-    % XXX CLEANUP These conversions should not needed. Once the contents
+    % XXX CLEANUP These conversions should not be needed. Once the contents
     % of an interface file are in the int_file_kind-specific form,
     % there should never be a need to convert it back to the less specific
     % form, losing the more specific invariants.
+    %
+    % However, until recompilation.*.m is converted away from working only
+    % on the generic parse_tree_int representation, these are still being
+    % referred to.
     %
 :- func convert_parse_tree_int0_to_int(parse_tree_int0) = parse_tree_int.
 :- func convert_parse_tree_int1_to_int(parse_tree_int1) = parse_tree_int.

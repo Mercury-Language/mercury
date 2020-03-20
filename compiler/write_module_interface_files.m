@@ -113,15 +113,15 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module parse_tree.canonicalize_interface.
 :- import_module parse_tree.comp_unit_interface.
+:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.grab_modules.           % undesirable dependency
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.module_qual.
-:- import_module parse_tree.grab_modules.           % undesirable dependency
 :- import_module parse_tree.parse_tree_out.
 :- import_module recompilation.
 :- import_module recompilation.version.
@@ -144,14 +144,14 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
-    generate_short_interface_int3(Globals, RawCompUnit, _, ParseTreeInt3,
+    generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt3,
         [], Specs0),
     filter_interface_generation_specs(Globals, Specs0, Specs),
     EffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, Specs),
     (
         EffectivelyErrors = no,
-        actually_write_interface_file(Globals, ParseTreeInt3, "", no, !IO),
+        actually_write_interface_file3(Globals, ParseTreeInt3, "", no, !IO),
         touch_interface_datestamp(Globals, ModuleName, ".date3", !IO)
     ;
         EffectivelyErrors = yes,
@@ -201,7 +201,7 @@ write_private_interface_file_int0(Globals, SourceFileName,
             (
                 GenerateSpecs = [],
                 % Write out the `.int0' file.
-                actually_write_interface_file(Globals, ParseTreeInt0, "",
+                actually_write_interface_file0(Globals, ParseTreeInt0, "",
                     MaybeTimestamp, !IO),
                 touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
             ;
@@ -260,9 +260,9 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
             (
                 GenerateSpecs = [],
                 % Write out the `.int' and `.int2' files.
-                actually_write_interface_file(Globals, ParseTreeInt1, "",
+                actually_write_interface_file1(Globals, ParseTreeInt1, "",
                     MaybeTimestamp, !IO),
-                actually_write_interface_file(Globals, ParseTreeInt2, "",
+                actually_write_interface_file2(Globals, ParseTreeInt2, "",
                     MaybeTimestamp, !IO),
                 touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
             ;
@@ -283,44 +283,116 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
 
 %---------------------------------------------------------------------------%
 
-:- pred actually_write_interface_file(globals::in, parse_tree_int::in,
+:- pred actually_write_interface_file0(globals::in, parse_tree_int0::in,
     string::in, maybe(timestamp)::in, io::di, io::uo) is det.
 
-actually_write_interface_file(Globals, ParseTreeInt0, ExtraSuffix,
+actually_write_interface_file0(Globals, ParseTreeInt0, ExtraSuffix,
         MaybeTimestamp, !IO) :-
-    order_parse_tree_int_contents(ParseTreeInt0, ParseTreeInt1),
+    ModuleName = ParseTreeInt0 ^ pti0_module_name,
+    construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
+        OutputFileName, TmpOutputFileName, !IO),
+    disable_all_line_numbers(Globals, NoLineNumGlobals),
+    maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt0, convert_parse_tree_int0_to_int, MaybeTimestamp,
+        MaybeVersionNumbers, !IO),
+    ParseTreeInt0V = ParseTreeInt0 ^ pti0_maybe_version_numbers
+        := MaybeVersionNumbers,
+    output_parse_tree_int0(NoLineNumGlobals, TmpOutputFileName,
+        ParseTreeInt0V, !IO),
+    update_interface(Globals, OutputFileName, !IO).
 
-    % Create (e.g.) `foo.int.tmp'.
-    ModuleName = ParseTreeInt1 ^ pti_module_name,
-    IntFileKind = ParseTreeInt1 ^ pti_int_file_kind,
+:- pred actually_write_interface_file1(globals::in, parse_tree_int1::in,
+    string::in, maybe(timestamp)::in, io::di, io::uo) is det.
+
+actually_write_interface_file1(Globals, ParseTreeInt1, ExtraSuffix,
+        MaybeTimestamp, !IO) :-
+    ModuleName = ParseTreeInt1 ^ pti1_module_name,
+    construct_int_file_name(Globals, ModuleName, ifk_int1, ExtraSuffix,
+        OutputFileName, TmpOutputFileName, !IO),
+    disable_all_line_numbers(Globals, NoLineNumGlobals),
+    maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt1, convert_parse_tree_int1_to_int, MaybeTimestamp,
+        MaybeVersionNumbers, !IO),
+    ParseTreeInt1V = ParseTreeInt1 ^ pti1_maybe_version_numbers
+        := MaybeVersionNumbers,
+    output_parse_tree_int1(NoLineNumGlobals, TmpOutputFileName,
+        ParseTreeInt1V, !IO),
+    update_interface(Globals, OutputFileName, !IO).
+
+:- pred actually_write_interface_file2(globals::in, parse_tree_int2::in,
+    string::in, maybe(timestamp)::in, io::di, io::uo) is det.
+
+actually_write_interface_file2(Globals, ParseTreeInt2, ExtraSuffix,
+        MaybeTimestamp, !IO) :-
+    ModuleName = ParseTreeInt2 ^ pti2_module_name,
+    construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
+        OutputFileName, TmpOutputFileName, !IO),
+    disable_all_line_numbers(Globals, NoLineNumGlobals),
+    maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt2, convert_parse_tree_int2_to_int, MaybeTimestamp,
+        MaybeVersionNumbers, !IO),
+    ParseTreeInt2V = ParseTreeInt2 ^ pti2_maybe_version_numbers
+        := MaybeVersionNumbers,
+    output_parse_tree_int2(NoLineNumGlobals, TmpOutputFileName,
+        ParseTreeInt2V, !IO),
+    update_interface(Globals, OutputFileName, !IO).
+
+:- pred actually_write_interface_file3(globals::in, parse_tree_int3::in,
+    string::in, maybe(timestamp)::in, io::di, io::uo) is det.
+
+actually_write_interface_file3(Globals, ParseTreeInt3, ExtraSuffix,
+        _MaybeTimestamp, !IO) :-
+    ModuleName = ParseTreeInt3 ^ pti3_module_name,
+    construct_int_file_name(Globals, ModuleName, ifk_int3, ExtraSuffix,
+        OutputFileName, TmpOutputFileName, !IO),
+    disable_all_line_numbers(Globals, NoLineNumGlobals),
+    output_parse_tree_int3(NoLineNumGlobals, TmpOutputFileName,
+        ParseTreeInt3, !IO),
+    update_interface(Globals, OutputFileName, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred construct_int_file_name(globals::in,
+    module_name::in, int_file_kind::in, string::in,
+    string::out, string::out, io::di, io::uo) is det.
+
+construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
+        OutputFileName, TmpOutputFileName, !IO) :-
     Suffix = int_file_kind_to_extension(IntFileKind),
     module_name_to_file_name(Globals, do_create_dirs, Suffix,
         ModuleName, OutputFileName0, !IO),
     OutputFileName = OutputFileName0 ++ ExtraSuffix,
-    TmpOutputFileName = OutputFileName ++ ".tmp",
+    TmpOutputFileName = OutputFileName ++ ".tmp".
 
+:- pred disable_all_line_numbers(globals::in, globals::out) is det.
+
+disable_all_line_numbers(Globals, NoLineNumGlobals) :-
     globals.set_option(line_numbers, bool(no),
         Globals, NoLineNumGlobals0),
     globals.set_option(line_numbers_around_foreign_code, bool(no),
-        NoLineNumGlobals0, NoLineNumGlobals),
-    globals.lookup_bool_option(NoLineNumGlobals, generate_item_version_numbers,
-        GenerateVersionNumbers),
-    io_get_disable_generate_item_version_numbers(DisableVersionNumbers, !IO),
-    ( if
-        GenerateVersionNumbers = yes,
-        DisableVersionNumbers = no
-        % XXX ITEM_LIST We do this for .int2 files as well as .int files.
-        % Should we?
-    then
-        % Find the timestamp of the current module.
-        (
-            MaybeTimestamp = no,
-            unexpected($pred,
-                "with `--smart-recompilation', timestamp not read")
-        ;
-            MaybeTimestamp = yes(Timestamp)
-        ),
+        NoLineNumGlobals0, NoLineNumGlobals).
 
+%---------------------------------------------------------------------------%
+
+:- pred maybe_read_old_int_and_compare_for_smart_recomp(globals::in,
+    T::in, (func(T) = parse_tree_int)::in, maybe(timestamp)::in,
+    maybe_version_numbers::out, io::di, io::uo) is det.
+
+maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeIntN, ParseTreeConvert, MaybeTimestamp,
+        MaybeVersionNumbers, !IO) :-
+    should_generate_item_version_numbers(NoLineNumGlobals,
+        WantVersionNumbers, !IO),
+    (
+        WantVersionNumbers = yes,
+        ParseTreeInt = ParseTreeConvert(ParseTreeIntN),
+        ModuleName = ParseTreeInt ^ pti_module_name,
+        IntFileKind = ParseTreeInt ^ pti_int_file_kind,
+        % XXX ITEM_LIST We do this for .int2 files as well as
+        % .int and .int0 files. Should we?
+
+        % Find the timestamp of the current module.
+        insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
         read_module_int(NoLineNumGlobals,
             "Reading old interface for module", ignore_errors, do_search,
@@ -335,17 +407,39 @@ actually_write_interface_file(Globals, ParseTreeInt0, ExtraSuffix,
             MaybeOldParseTreeInt = no
         ),
         recompilation.version.compute_version_numbers(Timestamp,
-            ParseTreeInt1, MaybeOldParseTreeInt, VersionNumbers),
+            ParseTreeInt, MaybeOldParseTreeInt, VersionNumbers),
         MaybeVersionNumbers = version_numbers(VersionNumbers)
-    else
+    ;
+        WantVersionNumbers = no,
         MaybeVersionNumbers = no_version_numbers
-    ),
-    ParseTreeInt = ParseTreeInt1 ^ pti_maybe_version_numbers
-        := MaybeVersionNumbers,
-    output_parse_tree_int(NoLineNumGlobals, TmpOutputFileName,
-        ParseTreeInt, !IO),
-    % Start using the original globals again.
-    update_interface(Globals, OutputFileName, !IO).
+    ).
+
+:- pred should_generate_item_version_numbers(globals::in, bool::out,
+    io::di, io::uo) is det.
+
+should_generate_item_version_numbers(Globals, ShouldGenVersionNumbers, !IO) :-
+    globals.lookup_bool_option(Globals, generate_item_version_numbers,
+        GenerateVersionNumbers),
+    io_get_disable_generate_item_version_numbers(DisableVersionNumbers, !IO),
+    ( if
+        GenerateVersionNumbers = yes,
+        DisableVersionNumbers = no
+    then
+        ShouldGenVersionNumbers = yes
+    else
+        ShouldGenVersionNumbers = no
+    ).
+
+:- pred insist_on_timestamp(maybe(timestamp)::in, timestamp::out) is det.
+
+insist_on_timestamp(MaybeTimestamp, Timestamp) :-
+    % Find the timestamp of the current module.
+    (
+        MaybeTimestamp = no,
+        unexpected($pred, "timestamp not read with `--smart-recompilation'")
+    ;
+        MaybeTimestamp = yes(Timestamp)
+    ).
 
 %---------------------------------------------------------------------------%
 

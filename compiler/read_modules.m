@@ -214,7 +214,8 @@
     % among the search directories contains the file with that filename.
     %
     % XXX CLEANUP Calls to this predicate should be replaced by calls
-    % to its int_file_kind-specific versions below.
+    % to its int_file_kind-specific versions below. The only such calls
+    % are now used in the implementation of smart recompilation.
     %
 :- pred read_module_int(globals::in, string::in,
     maybe_ignore_errors::in, maybe_search::in,
