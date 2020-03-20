@@ -399,7 +399,8 @@
                 ptms_imp_mutables           :: list(item_mutable_info)
             ).
 
-:- func init_empty_parse_tree_module_src(module_name) = parse_tree_module_src.
+:- func init_empty_parse_tree_module_src(module_name, prog_context)
+    = parse_tree_module_src.
 
     % When comp_unit_interface.m creates the contents of an interface file,
     % it will always set the maybe_version_numbers field of that interface file
@@ -2728,9 +2729,8 @@
 
 %---------------------------------------------------------------------------%
 
-init_empty_parse_tree_module_src(ModuleName) = ParseTreeModuleSrc :-
-    ParseTreeModuleSrc = parse_tree_module_src(ModuleName,
-        term.dummy_context_init,
+init_empty_parse_tree_module_src(ModuleName, ModuleNameContext) =
+    parse_tree_module_src(ModuleName, ModuleNameContext,
         map.init, map.init, map.init,
         map.init, map.init, map.init, map.init, map.init,
         map.init, map.init, maybe.no,

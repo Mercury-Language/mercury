@@ -183,7 +183,7 @@
     module_and_imports::in, module_and_imports::out) is det.
 
     % make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-    %  ModuleName, ModuleNameContext, ParseTreeModuleSrc0,
+    %  ParseTreeModuleSrc,
     %  PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
     %  ForeignExportLangs, HasMain, MaybeTimestampMap,
     %  ModuleAndImports):
@@ -202,8 +202,7 @@
     % module_and_imports structure.
     %
 :- pred make_module_and_imports(globals::in, file_name::in,
-    module_name::in, module_name::in, prog_context::in,
-    parse_tree_module_src::in, module_names_contexts::in,
+    module_name::in, parse_tree_module_src::in, module_names_contexts::in,
     set(module_name)::in, list(string)::in, foreign_include_file_infos::in,
     set(foreign_language)::in, has_main::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
@@ -474,10 +473,14 @@
                 % The module that we are compiling. This may be
                 % mai_source_file_module_name, or it may be one of its
                 % descendant modules (child modules, grandchild modules, etc).
-                mai_module_name         :: module_name,
+                % mai_module_name         :: module_name,
+                % We do not need a separate field for this, as this info
+                % is available in mai_src ^ ptms_module_name.
 
                 % The context of the module declaration of mai_module_name.
-                mai_module_name_context :: prog_context,
+                % mai_module_name_context :: prog_context,
+                % We do not need a separate field for this, as this info
+                % is available in mai_src ^ ptms_module_name_context.
 
                 % XXX CLEANUP The following fields, up to but not including
                 % mai_src, should not be needed, being available in mai_src.
@@ -787,7 +790,8 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
     % XXX ITEM_LIST These fields will be filled in later,
     % per the documentation above.
-    ParseTreeModuleSrc = init_empty_parse_tree_module_src(ModuleName),
+    ParseTreeModuleSrc =
+        init_empty_parse_tree_module_src(ModuleName, ModuleNameContext),
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),
@@ -799,7 +803,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     MaybeTimestampMap = no,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(FileName, dir.this_directory,
-        SourceFileModuleName, ModuleName, ModuleNameContext,
+        SourceFileModuleName,
         set.list_to_set(Ancestors), ChildrenMap, PublicChildrenMap,
         NestedDeps, IntDepsMap, IntImpDepsMap, IndirectDeps,
         SortedFactTables, ForeignImports, ForeignIncludeFilesCord,
@@ -838,9 +842,8 @@ accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
 %---------------------------------------------------------------------------%
 
 make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, ParseTreeModuleSrc,
-        PublicChildrenMap, NestedChildren, FactDeps, ForeignIncludeFiles,
-        ForeignExportLangs, HasMain,
+        ParseTreeModuleSrc, PublicChildrenMap, NestedChildren, FactDeps,
+        ForeignIncludeFiles, ForeignExportLangs, HasMain,
         MaybeTimestampMap, ModuleAndImports) :-
     set.init(Ancestors),
     map.init(IntDeps),
@@ -867,9 +870,10 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     map.init(IntForOptSpecs),
     Specs = [],
     set.init(Errors),
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
-        SourceFileModuleName, ModuleName, ModuleNameContext,
+        SourceFileModuleName,
         Ancestors, ChildrenMap, PublicChildrenMap, NestedChildren,
         IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
@@ -902,7 +906,8 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
     one_or_more_map.init(PublicChildrenContexts),
     list.foldl(add_fim_spec, ForeignImports,
         init_foreign_import_modules, ForeignImportModules),
-    ParseTreeModuleSrc = init_empty_parse_tree_module_src(ModuleName),
+    ParseTreeModuleSrc =
+        init_empty_parse_tree_module_src(ModuleName, ModuleNameContext),
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),
@@ -915,7 +920,7 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
     MaybeTimestamps = no,
     map.init(GrabbedFileMap),
     ModuleAndImports = module_and_imports(SourceFileName, ModuleDir,
-        SourceFileModuleName, ModuleName, ModuleNameContext,
+        SourceFileModuleName,
         set.list_to_set(Ancestors), ChildrenContexts, PublicChildrenContexts,
         set.list_to_set(NestedChildren),
         IntDepsContexts, ImpDepsContexts, IndirectDeps, FactDeps,
@@ -1032,7 +1037,7 @@ module_and_imports_get_module_name(ModuleAndImports, X) :-
             ),
             impure set_accesses(Accesses)
         ),
-        X = ModuleAndImports ^ mai_module_name
+        X = ModuleAndImports ^ mai_src ^ ptms_module_name
     ).
 module_and_imports_get_module_name_context(ModuleAndImports, X) :-
     promise_pure (
@@ -1057,7 +1062,7 @@ module_and_imports_get_module_name_context(ModuleAndImports, X) :-
             ),
             impure set_accesses(Accesses)
         ),
-        X = ModuleAndImports ^ mai_module_name_context
+        X = ModuleAndImports ^ mai_src ^ ptms_module_name_context
     ).
 module_and_imports_get_ancestors(ModuleAndImports, X) :-
     promise_pure (
