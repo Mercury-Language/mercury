@@ -37,27 +37,29 @@
 :- import_module integer.
 :- import_module io.
 
-:- include_module posix.closedir.
-:- include_module posix.dup.
-:- include_module posix.exec.
-:- include_module posix.fork.
-:- include_module posix.getpid.
-:- include_module posix.kill.
-:- include_module posix.lseek.
-:- include_module posix.mkdir.
-:- include_module posix.open.
-:- include_module posix.opendir.
-:- include_module posix.pipe.
-:- include_module posix.read.
-:- include_module posix.readdir.
-:- include_module posix.realpath.
-:- include_module posix.rmdir.
-:- include_module posix.select.
-:- include_module posix.socket.
-:- include_module posix.stat.
-:- include_module posix.wait.
-:- include_module posix.write.
-:- include_module posix.strerror.
+:- include_module chdir.
+:- include_module closedir.
+:- include_module dup.
+:- include_module exec.
+:- include_module fork.
+:- include_module getpid.
+:- include_module kill.
+:- include_module lseek.
+:- include_module mkdir.
+:- include_module open.
+:- include_module opendir.
+:- include_module pipe.
+:- include_module read.
+:- include_module readdir.
+:- include_module realpath.
+:- include_module rmdir.
+:- include_module select.
+:- include_module sleep.
+:- include_module socket.
+:- include_module stat.
+:- include_module wait.
+:- include_module write.
+:- include_module strerror.
 
 %-----------------------------------------------------------------------------%
 
