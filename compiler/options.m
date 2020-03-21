@@ -337,6 +337,7 @@
     ;       line_numbers
     ;       line_numbers_around_foreign_code
     ;       line_numbers_for_c_headers
+    ;       type_repns_for_humans
     ;       auto_comments
     ;       frameopt_comments
     ;       max_error_line_width
@@ -1361,6 +1362,7 @@ option_defaults_2(aux_output_option, [
     line_numbers                        -   bool(no),
     line_numbers_around_foreign_code    -   bool(yes),
     line_numbers_for_c_headers          -   bool(no),
+    type_repns_for_humans               -   bool(no),
     auto_comments                       -   bool(no),
     frameopt_comments                   -   bool(no),
     max_error_line_width                -   maybe_int(yes(79)),
@@ -2329,6 +2331,7 @@ long_option("line-numbers",             line_numbers).
 long_option("line-numbers-around-foreign-code",
                                         line_numbers_around_foreign_code).
 long_option("line-numbers-for-c-headers", line_numbers_for_c_headers).
+long_option("type-repns-for-humans",    type_repns_for_humans).
 long_option("auto-comments",            auto_comments).
 long_option("frameopt-comments",        frameopt_comments).
 long_option("max-error-line-width",     max_error_line_width).
@@ -4442,6 +4445,10 @@ options_help_aux_output -->
         "\trecompilations of other modules if any of these line numbers",
         "\tchanges (e.g. because the location of a predicate declaration",
         "\tchanges in the Mercury source file).",
+% This option is for developers only.
+%       "--type-repns-for-humans",
+%       "\tFormat type_repn items in automatically generated interface files",
+%       "\tto be more easily read by humans.",
         "--auto-comments",
         "\tOutput comments in the generated target language file.",
 % This option is for developers only. Since it can include one C comment inside

@@ -2298,21 +2298,22 @@ mercury_output_fim_spec(FIMSpec, !IO) :-
 :- pred mercury_output_item_type_repn(merc_out_info::in,
     item_type_repn_info::in, io::di, io::uo) is det.
 
-mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
+mercury_output_item_type_repn(Info, ItemTypeRepn, !IO) :-
+    CommaSep = get_human_comma_sep(Info),
     ItemTypeRepn = item_type_repn_info(TypeCtorSymName, ArgTVars, RepnInfo,
         TVarSet, _Context, _SeqNum),
     io.write_string(":- type_representation(", !IO),
     mercury_output_sym_name(TypeCtorSymName, !IO),
     (
-        ArgTVars = [],
-        io.write_string(", ", !IO)
+        ArgTVars = []
     ;
         ArgTVars = [_ | _],
         io.write_string("(", !IO),
-        io.write_list(ArgTVars, ", ",
+        io.write_list(ArgTVars, CommaSep,
             mercury_output_var(TVarSet, print_num_only), !IO),
-        io.write_string("), ", !IO)
+        io.write_string(")", !IO)
     ),
+    io.write_string(CommaSep, !IO),
     (
         RepnInfo = tcrepn_is_direct_dummy,
         io.write_string("is_direct_dummy", !IO)
@@ -2322,11 +2323,8 @@ mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
     ;
         RepnInfo = tcrepn_fits_in_n_bits(NumBits, FillKind),
         fill_kind_string(FillKind, FillKindStr),
-        io.write_string("fits_in_n_bits(", !IO),
-        io.write_int(NumBits, !IO),
-        io.write_string(", ", !IO),
-        io.write_string(FillKindStr, !IO),
-        io.write_string(")", !IO)
+        io.format("fits_in_n_bits(%d%s%s)",
+            [i(NumBits), s(CommaSep), s(FillKindStr)], !IO)
     ;
         RepnInfo = tcrepn_is_eqv_to(EqvType),
         io.write_string("is_eqv_to(", !IO),
@@ -2338,26 +2336,27 @@ mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
     ;
         RepnInfo = tcrepn_has_direct_arg_functors(SymNameAndArities),
         io.write_string("has_direct_arg_functors([", !IO),
-        io.write_list(SymNameAndArities, ", ", write_sym_name_arity, !IO),
+        io.write_list(SymNameAndArities, CommaSep, write_sym_name_arity, !IO),
         io.write_string("])", !IO)
     ;
         RepnInfo = tcrepn_du(DuRepn),
         io.write_string("du_repn(", !IO),
-        mercury_output_du_type_repn(DuRepn, !IO),
+        mercury_output_du_type_repn(CommaSep, DuRepn, !IO),
         io.write_string(")", !IO)
     ;
         RepnInfo = tcrepn_foreign(MaybeCJCsERepn),
         io.write_string("foreign_type_repn(", !IO),
-        mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO),
+        mercury_output_c_j_cs_e_repn(CommaSep, MaybeCJCsERepn, !IO),
         io.write_string(")", !IO)
     ),
     io.write_string(").\n", !IO).
 
 %---------------------%
 
-:- pred mercury_output_du_type_repn(du_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_du_type_repn(string::in, du_repn::in,
+    io::di, io::uo) is det.
 
-mercury_output_du_type_repn(DuRepn, !IO) :-
+mercury_output_du_type_repn(CommaSep, DuRepn, !IO) :-
     % XXX We output the names of types and function symbols as plain atoms.
     % This works when those names follow the usual pattern, and contain
     % only alphanumeric characters and start with a lower case letter,
@@ -2375,16 +2374,17 @@ mercury_output_du_type_repn(DuRepn, !IO) :-
         NotagRepn = notag_repn(FunctorName, MaybeCJCsERepn),
         io.write_string("notag(", !IO),
         term_io.quote_string(FunctorName, !IO),
-        io.write_string(",\n", !IO),
-        mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO),
+        io.write_string(CommaSep, !IO),
+        mercury_output_c_j_cs_e_repn(CommaSep, MaybeCJCsERepn, !IO),
         io.write_string(")", !IO)
     ;
         DuRepn = dur_direct_dummy(DummyRepn),
         DummyRepn = direct_dummy_repn(FunctorName, MaybeCJCsERepnOrEnum),
         io.write_string("direct_dummy(", !IO),
         term_io.quote_string(FunctorName, !IO),
-        io.write_string(",\n", !IO),
-        mercury_output_c_j_cs_e_repn_or_enum(MaybeCJCsERepnOrEnum, !IO),
+        io.write_string(CommaSep, !IO),
+        mercury_output_c_j_cs_e_repn_or_enum(CommaSep,
+            MaybeCJCsERepnOrEnum, !IO),
         io.write_string(")", !IO)
     ;
         DuRepn = dur_enum(EnumRepn),
@@ -2392,38 +2392,41 @@ mercury_output_du_type_repn(DuRepn, !IO) :-
             MaybeCJCsERepnOrEnum),
         io.write_string("enum(", !IO),
         mercury_output_enum_functor_name(Functor1, !IO),
-        io.write_string(",\n", !IO),
+        io.write_string(CommaSep, !IO),
         mercury_output_enum_functor_name(Functor2, !IO),
-        io.write_string(",\n", !IO),
+        io.write_string(CommaSep, !IO),
         (
             OtherFunctors = [],
             io.write_string("[]", !IO)
         ;
             OtherFunctors = [HeadFunctor | TailFunctors],
             io.write_string("[", !IO),
-            mercury_output_enum_functor_names(HeadFunctor, TailFunctors, !IO),
+            mercury_output_enum_functor_names(CommaSep,
+                HeadFunctor, TailFunctors, !IO),
             io.write_string("]", !IO)
         ),
-        io.write_string(",\n", !IO),
-        mercury_output_c_j_cs_e_repn_or_enum(MaybeCJCsERepnOrEnum, !IO),
+        io.write_string(CommaSep, !IO),
+        mercury_output_c_j_cs_e_repn_or_enum(CommaSep,
+            MaybeCJCsERepnOrEnum, !IO),
         io.write_string(")", !IO)
     ;
         DuRepn = dur_gen_more_functors(MoreFunctors),
         MoreFunctors = gen_du_repn_more_functors(Functor1, Functor2,
             OtherFunctors, MaybeCJCsERepn),
-        io.write_string("gen_du(\n", !IO),
-        mercury_output_gen_du_functor(Functor1, ",\n", !IO),
-        mercury_output_gen_du_functor(Functor2, ",\n", !IO),
+        io.write_string("gen_du(", !IO),
+        mercury_output_gen_du_functor(Functor1, CommaSep, !IO),
+        mercury_output_gen_du_functor(Functor2, CommaSep, !IO),
         (
             OtherFunctors = [],
-            io.write_string("[],\n", !IO)
+            io.write_string("[]", !IO)
         ;
             OtherFunctors = [HeadFunctor | TailFunctors],
             io.write_string("[", !IO),
             mercury_output_gen_du_functors(HeadFunctor, TailFunctors, !IO),
-            io.write_string("],\n", !IO)
+            io.write_string("]", !IO)
         ),
-        mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO),
+        io.write_string(CommaSep, !IO),
+        mercury_output_c_j_cs_e_repn(CommaSep, MaybeCJCsERepn, !IO),
         io.write_string(")", !IO)
     ;
         DuRepn = dur_gen_only_functor(OnlyFunctor),
@@ -2431,12 +2434,12 @@ mercury_output_du_type_repn(DuRepn, !IO) :-
             OnlyFunctorArgs64, OnlyFunctorArgs32, MaybeCJCsERepn),
         io.write_string("gen_du_only_functor(", !IO),
         term_io.quote_string(FunctorName, !IO),
-        io.write_string(",\n", !IO),
+        io.write_string(CommaSep, !IO),
         mercury_output_only_functor_args(OnlyFunctorArgs64, !IO),
-        io.write_string(",\n", !IO),
+        io.write_string(CommaSep, !IO),
         mercury_output_only_functor_args(OnlyFunctorArgs32, !IO),
-        io.write_string(",\n", !IO),
-        mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO),
+        io.write_string(CommaSep, !IO),
+        mercury_output_c_j_cs_e_repn(CommaSep, MaybeCJCsERepn, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -2445,24 +2448,24 @@ mercury_output_du_type_repn(DuRepn, !IO) :-
 mercury_output_enum_functor_name(FunctorName, !IO) :-
     term_io.quote_string(FunctorName, !IO).
 
-:- pred mercury_output_enum_functor_names(string::in, list(string)::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_enum_functor_names(string::in,
+    string::in, list(string)::in, io::di, io::uo) is det.
 
-mercury_output_enum_functor_names(FunctorName, FunctorNames, !IO) :-
+mercury_output_enum_functor_names(CommaSep, FunctorName, FunctorNames, !IO) :-
     mercury_output_enum_functor_name(FunctorName, !IO),
     (
         FunctorNames = []
     ;
         FunctorNames = [HeadFunctorName | TailFunctorNames],
-        io.write_string(", ", !IO),
-        mercury_output_enum_functor_names(HeadFunctorName, TailFunctorNames,
-            !IO)
+        io.write_string(CommaSep, !IO),
+        mercury_output_enum_functor_names(CommaSep,
+            HeadFunctorName, TailFunctorNames, !IO)
     ).
 
-:- pred mercury_output_c_j_cs_e_repn_or_enum(c_j_cs_e_enum_repn::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_c_j_cs_e_repn_or_enum(string::in,
+    c_j_cs_e_enum_repn::in, io::di, io::uo) is det.
 
-mercury_output_c_j_cs_e_repn_or_enum(MaybeCJCsERepnOrEnum, !IO) :-
+mercury_output_c_j_cs_e_repn_or_enum(CommaSep, MaybeCJCsERepnOrEnum, !IO) :-
     MaybeCJCsERepnOrEnum = c_java_csharp_erlang(MaybeRepnOrEnumC,
         MaybeRepnOrEnumJava, MaybeRepnOrEnumCsharp, MaybeRepnOrEnumErlang),
     io.write_string("[", !IO),
@@ -2472,42 +2475,43 @@ mercury_output_c_j_cs_e_repn_or_enum(MaybeCJCsERepnOrEnum, !IO) :-
             MaybeRepnOrEnumC = no
         ;
             MaybeRepnOrEnumC = yes(RepnOrEnumC),
-            mercury_output_foreign_lang_type_repn_or_enum(lang_c,
-                RepnOrEnumC, !IO),
-            !:Separator = ",\n"
+            mercury_output_foreign_lang_type_repn_or_enum(CommaSep,
+                lang_c, RepnOrEnumC, !IO),
+            !:Separator = CommaSep
         ),
         (
             MaybeRepnOrEnumJava = no
         ;
             MaybeRepnOrEnumJava = yes(RepnOrEnumJava),
             io.write_string(!.Separator, !IO),
-            mercury_output_foreign_lang_type_repn_or_enum(lang_java,
-                RepnOrEnumJava, !IO), !:Separator = ",\n"
+            mercury_output_foreign_lang_type_repn_or_enum(CommaSep,
+                lang_java, RepnOrEnumJava, !IO),
+            !:Separator = CommaSep
         ),
         (
             MaybeRepnOrEnumCsharp = no
         ;
             MaybeRepnOrEnumCsharp = yes(RepnOrEnumCsharp),
             io.write_string(!.Separator, !IO),
-            mercury_output_foreign_lang_type_repn_or_enum(lang_csharp,
-                RepnOrEnumCsharp, !IO),
-            !:Separator = ",\n"
+            mercury_output_foreign_lang_type_repn_or_enum(CommaSep,
+                lang_csharp, RepnOrEnumCsharp, !IO),
+            !:Separator = CommaSep
         ),
         (
             MaybeRepnOrEnumErlang = no
         ;
             MaybeRepnOrEnumErlang = yes(RepnOrEnumErlang),
             io.write_string(!.Separator, !IO),
-            mercury_output_foreign_lang_type_repn_or_enum(lang_erlang,
-                RepnOrEnumErlang, !IO)
+            mercury_output_foreign_lang_type_repn_or_enum(CommaSep,
+                lang_erlang, RepnOrEnumErlang, !IO)
         )
     ),
     io.write_string("]", !IO).
 
-:- pred mercury_output_c_j_cs_e_repn(c_j_cs_e_repn::in,
+:- pred mercury_output_c_j_cs_e_repn(string::in, c_j_cs_e_repn::in,
     io::di, io::uo) is det.
 
-mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO) :-
+mercury_output_c_j_cs_e_repn(CommaSep, MaybeCJCsERepn, !IO) :-
     MaybeCJCsERepn = c_java_csharp_erlang(MaybeRepnC, MaybeRepnJava,
         MaybeRepnCsharp, MaybeRepnErlang),
     io.write_string("[", !IO),
@@ -2518,7 +2522,7 @@ mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO) :-
         ;
             MaybeRepnC = yes(RepnC),
             mercury_output_foreign_lang_type_repn(lang_c, RepnC, !IO),
-            !:Separator = ",\n"
+            !:Separator = CommaSep
         ),
         (
             MaybeRepnJava = no
@@ -2526,7 +2530,7 @@ mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO) :-
             MaybeRepnJava = yes(RepnJava),
             io.write_string(!.Separator, !IO),
             mercury_output_foreign_lang_type_repn(lang_java, RepnJava, !IO),
-            !:Separator = ",\n"
+            !:Separator = CommaSep
         ),
         (
             MaybeRepnCsharp = no
@@ -2535,7 +2539,7 @@ mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO) :-
             io.write_string(!.Separator, !IO),
             mercury_output_foreign_lang_type_repn(lang_csharp, RepnCsharp,
                 !IO),
-            !:Separator = ",\n"
+            !:Separator = CommaSep
         ),
         (
             MaybeRepnErlang = no
@@ -2547,10 +2551,11 @@ mercury_output_c_j_cs_e_repn(MaybeCJCsERepn, !IO) :-
     ),
     io.write_string("]", !IO).
 
-:- pred mercury_output_foreign_lang_type_repn_or_enum(foreign_language::in,
-    enum_foreign_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_foreign_lang_type_repn_or_enum(string::in,
+    foreign_language::in, enum_foreign_repn::in, io::di, io::uo) is det.
 
-mercury_output_foreign_lang_type_repn_or_enum(Lang, TypeRepnOrEnum, !IO) :-
+mercury_output_foreign_lang_type_repn_or_enum(CommaSep, Lang,
+        TypeRepnOrEnum, !IO) :-
     (
         TypeRepnOrEnum = enum_foreign_type(TypeRepn),
         io.write_string("foreign_type(", !IO),
@@ -2561,7 +2566,7 @@ mercury_output_foreign_lang_type_repn_or_enum(Lang, TypeRepnOrEnum, !IO) :-
         Enums = one_or_more(HeadEnum, TailEnums),
         simple_foreign_language_string(Lang, LangStr),
         io.format("foreign_enum(%s, [", [s(LangStr)], !IO),
-        mercury_output_enum_functor_names(HeadEnum, TailEnums, !IO),
+        mercury_output_enum_functor_names(CommaSep, HeadEnum, TailEnums, !IO),
         io.write_string("])", !IO)
     ).
 

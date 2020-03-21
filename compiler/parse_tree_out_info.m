@@ -88,10 +88,9 @@
 
 :- func get_maybe_qualified_item_names(merc_out_info)
     = maybe_qualified_item_names.
-:- func get_output_line_numbers(merc_out_info)
-    = maybe_output_line_numbers.
-:- func get_output_lang(merc_out_info)
-    = output_lang.
+:- func get_output_line_numbers(merc_out_info) = maybe_output_line_numbers.
+:- func get_output_lang(merc_out_info) = output_lang.
+:- func get_human_comma_sep(merc_out_info) = string.
 
 :- pred maybe_output_line_number(merc_out_info::in, prog_context::in,
     io::di, io::uo) is det.
@@ -148,19 +147,31 @@
     --->    merc_out_info(
                 moi_qualify_item_names      :: maybe_qualified_item_names,
                 moi_output_line_numbers     :: maybe_output_line_numbers,
-                moi_output_lang             :: output_lang
+                moi_output_lang             :: output_lang,
+
+                % When writing out a comma in a type_repn, or some other
+                % output that humans may want to look at, what should
+                % we print to separate it from what follows?
+                %
+                % For humans, ",\n    "; for computers, just ", ".
+                moi_human_comma_sep     :: string
             ).
 
 init_debug_merc_out_info = Info :-
     Info = merc_out_info(qualified_item_names, dont_output_line_numbers,
-        output_debug).
+        output_debug, " ").
 
 init_merc_out_info(Globals, MaybeQualifiedItemNames, Lang) = Info :-
     globals.lookup_bool_option(Globals, line_numbers, LineNumbersOpt),
+    globals.lookup_bool_option(Globals, type_repns_for_humans,
+        TypeRepnsForHumans),
     ( LineNumbersOpt = no, LineNumbers = dont_output_line_numbers
     ; LineNumbersOpt = yes, LineNumbers = do_output_line_numbers
     ),
-    Info = merc_out_info(MaybeQualifiedItemNames, LineNumbers, Lang).
+    ( TypeRepnsForHumans = no, CommaSep = ", "
+    ; TypeRepnsForHumans = yes, CommaSep = ",\n    "
+    ),
+    Info = merc_out_info(MaybeQualifiedItemNames, LineNumbers, Lang, CommaSep).
 
 merc_out_info_disable_line_numbers(Info0) = Info :-
     Info = Info0 ^ moi_output_line_numbers := dont_output_line_numbers.
@@ -168,6 +179,7 @@ merc_out_info_disable_line_numbers(Info0) = Info :-
 get_maybe_qualified_item_names(Info) = Info ^ moi_qualify_item_names.
 get_output_line_numbers(Info) = Info ^ moi_output_line_numbers.
 get_output_lang(Info) = Info ^ moi_output_lang.
+get_human_comma_sep(Info) = Info ^ moi_human_comma_sep.
 
 %---------------------------------------------------------------------------%
 
