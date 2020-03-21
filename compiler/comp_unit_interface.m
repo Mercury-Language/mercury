@@ -216,8 +216,7 @@ generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt3, !Specs) :-
     ;
         Experiment1 = yes,
         decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
-            IntTypeRepnInfos),
-        IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepnInfos)
+            IntTypeRepnMap)
     ),
     OrigParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         IntInclMap, InclMap, IntImportMap, ImportUseMap,
@@ -1810,8 +1809,7 @@ generate_interface_int2(Globals, AugCompUnit, IntImportUseMap,
         % sized and there are few enough of them. (Note that will in general
         % require fully expanding the relevant type equivalence chains.)
         decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
-            ShortIntTypeRepns),
-        ShortIntTypeRepnMap = type_ctor_repn_items_to_map(ShortIntTypeRepns)
+            ShortIntTypeRepnMap)
     ),
 
     % We compute ShortIntUseMap from IntImportUseMap. IntImportUseMap
