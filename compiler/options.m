@@ -3136,6 +3136,8 @@ long_option("unqual-foreign-enums-in-int-files-2019-10-04",
                                     compiler_sufficiently_recent).
 long_option("obsolete-proc-2019-10-23",
                                     compiler_sufficiently_recent).
+long_option("type-repn-int3-2020-03-22",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).

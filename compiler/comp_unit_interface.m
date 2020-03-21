@@ -94,7 +94,7 @@
 
     % Generate the contents for the .int and .int2 files.
     %
-:- pred generate_interfaces_int1_int2(globals::in, aug_compilation_unit::in,
+:- pred generate_interfaces_int1_int2(aug_compilation_unit::in,
     parse_tree_int1::out, parse_tree_int2::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -118,7 +118,6 @@
 
 :- implementation.
 
-:- import_module libs.options.
 :- import_module parse_tree.check_parse_tree_type_defns.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.decide_type_repn.
@@ -209,15 +208,8 @@ generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt3, !Specs) :-
         OrigIntTypeDefnMap, OrigImpTypeDefnMap,
         OrigIntForeignEnumMap, OrigImpForeignEnumMap,
         TypeCtorCheckedMap, !Specs),
-    globals.lookup_bool_option(Globals, experiment1, Experiment1),
-    (
-        Experiment1 = no,
-        map.init(IntTypeRepnMap)
-    ;
-        Experiment1 = yes,
-        decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
-            IntTypeRepnMap)
-    ),
+    decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
+        IntTypeRepnMap),
     OrigParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         IntInclMap, InclMap, IntImportMap, ImportUseMap,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
@@ -673,13 +665,13 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_interfaces_int1_int2(Globals, AugCompUnit,
+generate_interfaces_int1_int2(AugCompUnit,
         ParseTreeInt1, ParseTreeInt2, !Specs) :-
     generate_interface_int1(AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1, !Specs),
-    generate_interface_int2(Globals, AugCompUnit, IntImportUseMap,
+    generate_interface_int2(AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2).
@@ -1740,7 +1732,7 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     % The input arguments should be the relevant parts of the .int1 file
     % computed by our parent.
     %
-:- pred generate_interface_int2(globals::in, aug_compilation_unit::in,
+:- pred generate_interface_int2(aug_compilation_unit::in,
     module_names_contexts::in, set(fim_spec)::in, set(fim_spec)::in,
     list(item_type_defn_info)::in,
     list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
@@ -1748,7 +1740,7 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     list(item_type_defn_info)::in,
     type_ctor_checked_map::in, parse_tree_int2::out) is det.
 
-generate_interface_int2(Globals, AugCompUnit, IntImportUseMap,
+generate_interface_int2(AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2) :-
@@ -1793,24 +1785,17 @@ generate_interface_int2(Globals, AugCompUnit, IntImportUseMap,
     get_int2_items_from_int1_imp_types(ImpTypeDefns,
         set.init, ShortImpImplicitFIMLangs),
 
-    globals.lookup_bool_option(Globals, experiment1, Experiment1),
-    (
-        Experiment1 = no,
-        map.init(ShortIntTypeRepnMap)
-    ;
-        Experiment1 = yes,
-        % XXX We should pass to decide_repns_for_simple_types not just
-        % the type definitions in this module, but also all the type_REPNs
-        % we have read in from the .int3 files of the imported modules.
-        % That would allow decide_repns_for_simple_types to take into
-        % account that an imported type (such as bool) is subword sized,
-        % and that therefore some types that have fields of that type
-        % may themselves be subword sized, if all their arguments are subword
-        % sized and there are few enough of them. (Note that will in general
-        % require fully expanding the relevant type equivalence chains.)
-        decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
-            ShortIntTypeRepnMap)
-    ),
+    % XXX We should pass to decide_repns_for_simple_types not just
+    % the type definitions in this module, but also all the type_REPNs
+    % we have read in from the .int3 files of the imported modules.
+    % That would allow decide_repns_for_simple_types to take into
+    % account that an imported type (such as bool) is subword sized,
+    % and that therefore some types that have fields of that type
+    % may themselves be subword sized, if all their arguments are subword
+    % sized and there are few enough of them. (Note that will in general
+    % require fully expanding the relevant type equivalence chains.)
+    decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
+        ShortIntTypeRepnMap),
 
     % We compute ShortIntUseMap from IntImportUseMap. IntImportUseMap
     % is the set of modules imported *or used* in the interface section

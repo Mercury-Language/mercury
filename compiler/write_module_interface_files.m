@@ -253,7 +253,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
         (
             QualSpecs = [],
             % Construct the `.int' and `.int2' files.
-            generate_interfaces_int1_int2(Globals, AugCompUnit,
+            generate_interfaces_int1_int2(AugCompUnit,
                 ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs0),
             filter_interface_generation_specs(Globals,
                 GenerateSpecs0, GenerateSpecs),
