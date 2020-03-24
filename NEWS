@@ -205,13 +205,13 @@ Changes to the Mercury compiler
 
 ### Changes to warnings
 
-* The compiler will now generate a warning about a disjunct that
-  cannot succeed even if the predicate or function in which that
-  disjunct occurs has other modes in which that disjunct can succeed.
+* [Github issue #85]. The compiler will now generate a warning about
+  a disjunct that cannot succeed even if the predicate or function in which
+  that disjunct occurs has other modes in which that disjunct can succeed.
 
   The generation of such warnings can now be disabled by wrapping
   the whole disjunction, or a larger goal containing it, in a
-  disable_warnings scope, like this:
+  `disable_warnings` scope, like this:
 
         disable_warnings [no_solution_disjunct] (
            Goal
