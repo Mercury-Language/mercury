@@ -267,6 +267,9 @@ disable_simplify_warning(Warning, !Tasks) :-
     ;
         Warning = goal_warning_suspicious_recursion,
         !Tasks ^ do_warn_suspicious_recursion := no
+    ;
+        Warning = goal_warning_no_solution_disjunct,
+        !Tasks ^ do_warn_no_solution_disjunct := no
     ).
 
 %-----------------------------------------------------------------------------%

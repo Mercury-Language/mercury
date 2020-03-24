@@ -93,7 +93,7 @@ MCFLAGS-libs.process_util                 += --no-ansi-c
 MCFLAGS-make.module_dep_file              = --no-ansi-c
 MCFLAGS-make.module_target                = --no-ansi-c
 MCFLAGS-make.program_target               = --no-ansi-c
-MCFLAGS-make.util                         = --no-ansi-c
+MCFLAGS-make.util                         = --no-ansi-c --no-halt-at-warn
 
 # These modules provide general-purpose wrappers around string.format
 # in which the format strings are known only by their callers.

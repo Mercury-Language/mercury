@@ -77,7 +77,7 @@
     ;       simptask_ignore_par_conjs
             % Replace parallel conjunctions with plain conjunctions.
 
-    ;       simptask_warn_suspicious_recursion.
+    ;       simptask_warn_suspicious_recursion
             % With simptask_warn_simple_code, we generate warnings
             % for recursive calls in which all input arguments are
             % the same as in the clause head. These calls are guaranteed
@@ -92,6 +92,9 @@
             % certain, because in some cases, the predicate is recursing
             % on a data structure that the code *does* refer to using
             % state variable notation.
+
+    ;       simptask_warn_no_solution_disjunct.
+            % Warn about disjuncts that can have no solution.
 
     % Each value of this type represents the full set of tasks
     % that simplification should perform. The submodules of simplify.m
@@ -118,7 +121,8 @@
                 do_common_struct                :: bool,
                 do_extra_common_struct          :: bool,
                 do_ignore_par_conjunctions      :: bool,
-                do_warn_suspicious_recursion    :: bool
+                do_warn_suspicious_recursion    :: bool,
+                do_warn_no_solution_disjunct    :: bool
             ).
 
 :- func simplify_tasks_to_list(simplify_tasks) = list(simplify_task).
@@ -142,7 +146,7 @@ simplify_tasks_to_list(SimplifyTasks) = List :-
         MarkCodeModelChanges, AfterFrontEnd, ExcessAssign, TestAfterSwitch,
         ElimRemovableScopes, OptDuplicateCalls, ConstantProp,
         CommonStruct, ExtraCommonStruct, RemoveParConjunctions,
-        WarnSuspiciousRecursion),
+        WarnSuspiciousRecursion, WarnNoSolutionDisjunct),
     List =
         ( WarnSimpleCode = yes -> [simptask_warn_simple_code] ; [] ) ++
         ( WarnDupCalls = yes -> [simptask_warn_duplicate_calls] ; [] ) ++
@@ -163,7 +167,9 @@ simplify_tasks_to_list(SimplifyTasks) = List :-
         ( ExtraCommonStruct = yes -> [simptask_extra_common_struct] ; [] ) ++
         ( RemoveParConjunctions = yes -> [simptask_ignore_par_conjs] ; [] ) ++
         ( WarnSuspiciousRecursion = yes ->
-            [simptask_warn_suspicious_recursion] ; [] ).
+            [simptask_warn_suspicious_recursion] ; [] ) ++
+        ( WarnNoSolutionDisjunct = yes ->
+            [simptask_warn_no_solution_disjunct] ; [] ).
 
 list_to_simplify_tasks(List) =
     simplify_tasks(
@@ -182,7 +188,8 @@ list_to_simplify_tasks(List) =
         ( list.member(simptask_common_struct, List) -> yes ; no ),
         ( list.member(simptask_extra_common_struct, List) -> yes ; no ),
         ( list.member(simptask_ignore_par_conjs, List) -> yes ; no ),
-        ( list.member(simptask_warn_suspicious_recursion, List) -> yes ; no )
+        ( list.member(simptask_warn_suspicious_recursion, List) -> yes ; no ),
+        ( list.member(simptask_warn_no_solution_disjunct, List) -> yes ; no )
     ).
 
 find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
@@ -223,6 +230,9 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         RemoveParConjunctions),
     globals.lookup_bool_option(Globals, warn_suspicious_recursion,
         WarnSuspiciousRecursion),
+    % Warnings about "no solution disjuncts" are a category of warnings
+    % about simple code that happens to have its own disabling mechanism.
+    WarnNoSolutionDisjunct = WarnSimple,
 
     SimplifyTasks = simplify_tasks(
         ( if WarnSimple = yes, WarnThisPass = yes then yes else no),
@@ -241,7 +251,8 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         CommonStruct,
         ExtraCommonStruct,
         RemoveParConjunctions,
-        WarnSuspiciousRecursion
+        WarnSuspiciousRecursion,
+        WarnNoSolutionDisjunct
     ).
 
 %---------------------------------------------------------------------------%

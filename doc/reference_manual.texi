@@ -1078,6 +1078,13 @@ it unifies a variable with a term that contains that same variable.
 @c that are not @emph{tail}-recursive calls.
 @item @code{suspicious_recursion}
 Disable the generation of warnings about suspicious recursive calls.
+@item @code{no_solution_disjunct}
+Disable the generation of warnings about disjuncts that can have no solution.
+This is usually done to shut up such a warning a multi-mode predicate
+where the disjunct in question is a switch arm in another mode.
+(The difference is that a disjunct that cannot succeed has no meaningful use,
+but a switch arm that cannot succeed does have one:
+a switch may need that arm to make it complete.)
 @end table
 
 The keyword starting this scope may be written

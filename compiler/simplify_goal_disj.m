@@ -54,6 +54,7 @@
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
 :- import_module libs.
 :- import_module libs.options.
@@ -62,6 +63,8 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module int.
+:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -266,7 +269,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
         MaxSolns = at_most_zero
     then
         ( if
-            simplify_do_warn_simple_code(!.Info),
+            simplify_do_warn_no_solution_disjunct(!.Info),
             % Don't warn where the initial goal was fail, since that can result
             % from mode analysis pruning away cases in a switch which cannot
             % succeed due to sub-typing in the modes.
@@ -278,11 +281,33 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
             NestedContext0 ^ snc_inside_dupl_for_switch = no
         then
             Context = goal_info_get_context(GoalInfo),
-            Pieces = [words("Warning: this disjunct"),
+            MainPieces = [words("Warning: this disjunct"),
                 words("will never have any solutions.")],
+            simplify_info_get_module_info(!.Info, ModuleInfo),
+            simplify_info_get_pred_proc_id(!.Info, PredProcId),
+            PredProcId = proc(PredId, ProcId),
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            pred_info_get_proc_table(PredInfo, ProcTable),
+            map.to_assoc_list(ProcTable, Procs),
+            (
+                Procs = [],
+                unexpected($pred, "Procs = []")
+            ;
+                Procs = [_],
+                ModePieces = []
+            ;
+                Procs = [_, _ | _],
+                % The compiler starts counting at 0, humans start at 1.
+                ProcIdInt = proc_id_to_int(ProcId) + 1,
+                PorF = pred_info_is_pred_or_func(PredInfo),
+                ModePieces = [words("This warning applies to the"),
+                    nth_fixed(ProcIdInt), words("mode"),
+                    words("of this"), p_or_f(PorF), suffix("."),
+                    words("It may or may not apply to other modes."), nl]
+            ),
             Spec = conditional_spec($pred, warn_simple_code, yes,
-                severity_warning, phase_simplify(report_only_if_in_all_modes),
-                [simplest_msg(Context, Pieces)]),
+                severity_warning, phase_simplify(report_in_any_mode),
+                [simplest_msg(Context, MainPieces ++ ModePieces)]),
             simplify_info_add_message(Spec, !Info)
         else
             true

@@ -526,6 +526,9 @@ make_dependency_list(ModuleNames, TargetType) =
         ModuleNames).
 
 target_extension(Globals, Target) = MaybeExt :-
+    % XXX This line is commented out until compilers that
+    % know about the no_solution_disjunct warning are installed.
+    % disable_warning [no_solution_disjunct]
     (
         Target = module_target_source,
         MaybeExt = yes(".m")

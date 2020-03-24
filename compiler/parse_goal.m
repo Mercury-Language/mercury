@@ -1373,6 +1373,9 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
         ;
             WarningFunctor = "suspicious_recursion",
             Warning = goal_warning_suspicious_recursion
+        ;
+            WarningFunctor = "no_solution_disjunct",
+            Warning = goal_warning_no_solution_disjunct
         )
     then
         MaybeWarning = ok1(Warning)

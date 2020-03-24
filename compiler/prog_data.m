@@ -1710,7 +1710,8 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     --->    goal_warning_singleton_vars
     ;       goal_warning_occurs_check
     ;       goal_warning_non_tail_recursive_calls
-    ;       goal_warning_suspicious_recursion.
+    ;       goal_warning_suspicious_recursion
+    ;       goal_warning_no_solution_disjunct.
 
 :- implementation.
 

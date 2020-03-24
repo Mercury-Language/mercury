@@ -27,6 +27,7 @@ ERRORCHECK_PROGS = \
 	double_underscore \
 	duplicate_call \
 	duplicate_const \
+	gh85 \
 	inconsistent_pred_order \
 	inf_recursion_lambda \
 	inference_test \

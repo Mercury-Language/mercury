@@ -583,17 +583,30 @@ goal_warning_to_string(Warning) = Str :-
     ;
         Warning = goal_warning_suspicious_recursion,
         Str = "suspicious_recursion"
+    ;
+        Warning = goal_warning_no_solution_disjunct,
+        Str = "no_solution_disjunct"
     ).
 
 %-----------------------------------------------------------------------------%
 
 write_string_list([], !IO).
-write_string_list([Name], !IO) :-
-    io.write_string(Name, !IO).
+write_string_list([Name1], !IO) :-
+    io.write_string(Name1, !IO).
 write_string_list([Name1, Name2 | Names], !IO) :-
     io.write_string(Name1, !IO),
     io.write_string(", ", !IO),
-    write_string_list([Name2 | Names], !IO).
+    write_string_list_lag(Name2, Names, !IO).
+
+:- pred write_string_list_lag(string::in, list(string)::in, io::di, io::uo)
+    is det.
+
+write_string_list_lag(Name1, [], !IO) :-
+    io.write_string(Name1, !IO).
+write_string_list_lag(Name1, [Name2 | Names], !IO) :-
+    io.write_string(Name1, !IO),
+    io.write_string(", ", !IO),
+    write_string_list_lag(Name2, Names, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_out.

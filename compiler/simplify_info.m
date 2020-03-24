@@ -210,6 +210,7 @@
 :- pred simplify_do_extra_common_struct(simplify_info::in) is semidet.
 :- pred simplify_do_ignore_par_conjunctions(simplify_info::in) is semidet.
 :- pred simplify_do_warn_suspicious_recursion(simplify_info::in) is semidet.
+:- pred simplify_do_warn_no_solution_disjunct(simplify_info::in) is semidet.
 
     % Succeed if either warn_duplicate_calls or opt_duplicate_calls is set,
     % and return whether opt_duplicate_calls is set.
@@ -239,8 +240,8 @@
     % for efficiency purposes.
     %
     % The simplify_info type contains the most frequently used writeable
-    % fields. The other writeable fields are in the simplify_sub_info, while
-    % all the readonly fields are in the simplify_info_params.
+    % fields. The other writeable fields are in the simplify_sub_info,
+    % while all the readonly fields are in the simplify_info_params.
 
 :- type simplify_info
     --->    simplify_info(
@@ -671,6 +672,9 @@ simplify_do_ignore_par_conjunctions(Info) :-
 simplify_do_warn_suspicious_recursion(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_warn_suspicious_recursion = yes.
+simplify_do_warn_no_solution_disjunct(Info) :-
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_warn_no_solution_disjunct = yes.
 
 simplify_do_warn_or_opt_duplicate_calls(Info, OptDuplicateCalls) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
