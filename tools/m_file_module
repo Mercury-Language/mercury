@@ -1,0 +1,47 @@
+#!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
+#
+# Given the name of a Mercury source file, print the name of the module
+# recorded in Mercury.modules as the name of the Mercury module
+# in that file.
+#
+
+if test "$#" = 1
+then
+    m_file="$1"
+else
+    echo "usage: m_file_module file_name.m"
+    exit 1
+fi
+
+case "${m_file}" in
+    *.m)
+        ;;
+    *)
+        echo "m_file_module: ${m_file} does not end in .m"
+        exit 1
+        ;;
+esac
+
+if test ! -f "Mercury.modules"
+then
+    echo "m_file_module: Mercury.modules does not exist"
+    exit 1
+fi
+
+awk_prog="
+\$2 == \"${m_file}\"    {
+        printf \"%s\\n\", \$1;
+        found = 1;
+    }
+END                     {
+        if (found) {
+            exit 0;
+        } else {
+            printf \"m_file_module: %s is not in Mercury.modules\\n\",
+                \"${m_file}\";
+            exit 1;
+        }
+    }
+"
+awk -e "${awk_prog}" < Mercury.modules
