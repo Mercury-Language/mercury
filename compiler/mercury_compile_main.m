@@ -1109,7 +1109,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         else
             split_into_compilation_units_perform_checks(ParseTreeSrc,
                 RawCompUnits, Specs0, Specs1),
-            filter_interface_generation_specs(Globals, Specs1, Specs),
+            filter_interface_generation_specs(Globals, Specs1, Specs, !IO),
             write_error_specs_ignore(Specs, Globals, !IO),
             maybe_print_delayed_error_messages(Globals, !IO),
             (

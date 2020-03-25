@@ -336,7 +336,7 @@ definitely_write_out_errors(Globals, !HLDS, Specs, !IO) :-
     module_info_incr_num_errors(NumErrors, !HLDS).
 
 maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO) :-
-    % maybe_write_out_errors_no_module in error_util.m is a pre-HLDS version
+    % pre_hlds_maybe_write_out_errors in error_util.m is a pre-HLDS version
     % of this predicate.
     (
         Verbose = no

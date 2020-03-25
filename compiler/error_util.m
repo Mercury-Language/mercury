@@ -327,8 +327,15 @@
 
 %---------------------------------------------------------------------------%
 
+    % Delete all the given error_specs, which are supposed to have been
+    % gathered during the process that generates the contents of an interface
+    % file, if two conditions are both satisfied:
+    %
+    % - print_errors_warnings_when_generating_interface is NOT set, and
+    % - the exit status has NOT been set to indicate an error.
+    %
 :- pred filter_interface_generation_specs(globals::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -1109,7 +1116,7 @@ project_msg_components(Msg) = Components :-
 
 %---------------------------------------------------------------------------%
 
-filter_interface_generation_specs(Globals, Specs, SpecsToPrint) :-
+filter_interface_generation_specs(Globals, Specs, SpecsToPrint, !IO) :-
     globals.lookup_bool_option(Globals,
         print_errors_warnings_when_generating_interface, PrintErrors),
     (
@@ -1117,7 +1124,12 @@ filter_interface_generation_specs(Globals, Specs, SpecsToPrint) :-
         SpecsToPrint = Specs
     ;
         PrintErrors = no,
-        SpecsToPrint = []
+        io.get_exit_status(Status, !IO),
+        ( if Status = 0 then
+            SpecsToPrint = []
+        else
+            SpecsToPrint = Specs
+        )
     ).
 
 %---------------------------------------------------------------------------%

@@ -146,7 +146,7 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
     generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt3,
         [], Specs0),
-    filter_interface_generation_specs(Globals, Specs0, Specs),
+    filter_interface_generation_specs(Globals, Specs0, Specs, !IO),
     EffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, Specs),
     (
@@ -174,8 +174,7 @@ write_private_interface_file_int0(Globals, SourceFileName,
 
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
-        GetSpecs0, GetErrors),
-    filter_interface_generation_specs(Globals, GetSpecs0, GetSpecs),
+        GetSpecs, GetErrors),
     GetSpecsEffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
@@ -189,29 +188,24 @@ write_private_interface_file_int0(Globals, SourceFileName,
         % will throw away, and (b) which don't help the module qualification
         % of the items that it keeps.
         module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _EventSpecMap, "", _, _, _, _, _, [], QualSpecs0),
-        filter_interface_generation_specs(Globals, QualSpecs0, QualSpecs),
+            map.init, _EventSpecMap, "", _, _, _, _, _, [], QualSpecs),
+        filter_interface_generation_specs(Globals,
+            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs, !IO),
         (
-            QualSpecs = [],
+            EffectiveGetQualSpecs = [],
             % Construct the `.int0' file.
             generate_private_interface_int0(AugCompUnit, ParseTreeInt0,
-                [], GenerateSpecs0),
+                [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
-                GenerateSpecs0, GenerateSpecs),
-            (
-                GenerateSpecs = [],
-                % Write out the `.int0' file.
-                actually_write_interface_file0(Globals, ParseTreeInt0, "",
-                    MaybeTimestamp, !IO),
-                touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
-            ;
-                GenerateSpecs = [_ | _],
-                report_file_not_written(Globals, GenerateSpecs, no,
-                    ModuleName, ".int0", no, !IO)
-            )
+                EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
+            write_error_specs_ignore(Specs, Globals, !IO),
+            % Write out the `.int0' file.
+            actually_write_interface_file0(Globals, ParseTreeInt0, "",
+                MaybeTimestamp, !IO),
+            touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
         ;
-            QualSpecs = [_ | _],
-            report_file_not_written(Globals, QualSpecs, no,
+            EffectiveGetQualSpecs = [_ | _],
+            report_file_not_written(Globals, EffectiveGetQualSpecs, no,
                 ModuleName, ".int0", no, !IO)
         )
     else
@@ -238,8 +232,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
 
     % Check whether we succeeded.
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
-        GetSpecs0, GetErrors),
-    filter_interface_generation_specs(Globals, GetSpecs0, GetSpecs),
+        GetSpecs, GetErrors),
     GetSpecsEffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
@@ -248,31 +241,26 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
     then
         % Module-qualify all items.
         module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _, "", _, _, _, _, _, [], QualSpecs0),
-        filter_interface_generation_specs(Globals, QualSpecs0, QualSpecs),
+            map.init, _, "", _, _, _, _, _, [], QualSpecs),
+        filter_interface_generation_specs(Globals,
+            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs, !IO),
         (
-            QualSpecs = [],
+            EffectiveGetQualSpecs = [],
             % Construct the `.int' and `.int2' files.
             generate_interfaces_int1_int2(AugCompUnit,
-                ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs0),
+                ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
-                GenerateSpecs0, GenerateSpecs),
-            (
-                GenerateSpecs = [],
-                % Write out the `.int' and `.int2' files.
-                actually_write_interface_file1(Globals, ParseTreeInt1, "",
-                    MaybeTimestamp, !IO),
-                actually_write_interface_file2(Globals, ParseTreeInt2, "",
-                    MaybeTimestamp, !IO),
-                touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
-            ;
-                GenerateSpecs = [_ | _],
-                report_file_not_written(Globals, GenerateSpecs, no,
-                    ModuleName, ".int", yes(".int2"), !IO)
-            )
+                EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
+            write_error_specs_ignore(Specs, Globals, !IO),
+            % Write out the `.int' and `.int2' files.
+            actually_write_interface_file1(Globals, ParseTreeInt1, "",
+                MaybeTimestamp, !IO),
+            actually_write_interface_file2(Globals, ParseTreeInt2, "",
+                MaybeTimestamp, !IO),
+            touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
         ;
-            QualSpecs = [_ | _],
-            report_file_not_written(Globals, QualSpecs, no,
+            EffectiveGetQualSpecs = [_ | _],
+            report_file_not_written(Globals, EffectiveGetQualSpecs, no,
                 ModuleName, ".int", yes(".int2"), !IO)
         )
     else
