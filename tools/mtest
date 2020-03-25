@@ -1,0 +1,60 @@
+#!/bin/sh
+# vim: ts=4 sw=4 ft=sh expandtab
+#
+# Test whether a single Mercury source file compiles cleanly.
+# If not, show the error messages through a pager.
+#
+# It can be invoked in two ways. The first is simply "mtest file.m",
+# which tests whether file.m compiles cleanly. The second, which is handy
+# if you anticipate having to invoke mtest on the same file many times
+# in a row but don't want to keep typing its name, is to set the
+# environment variable MFILE to file.m, and then just invoke "mtest".
+#
+
+case "$#" in
+    0)
+        if test "${MFILE}" = ""
+        then
+            echo "mtest: the environment variable MFILE must be set"
+            echo "when invoked without arguments."
+            exit 1
+        fi
+        ;;
+    1)
+        MFILE="$1"
+        export MFILE
+        ;;
+    *)
+        echo "usage: mtest [filename.m]"
+        exit 1
+        ;;
+esac
+
+MODULE=`m_file_module ${MFILE}`
+if test $? != 0
+then
+    # Since the exit status indicates that m_file_module failed,
+    # its output will be its error message, not the module name.
+    echo "${MODULE}"
+else
+    # Run the mmake with -j6, unless the user specifies a different level
+    # of parallelism through the environment variable MTEST_JFACTOR.
+    #
+    # Put the output through less, unless the user specifies a different pager
+    # via the standard PAGER environment variable.
+    #
+    # Note that it is important we push the output of mmake, as well as
+    # the .err file, through the pager. If e.g. an error in another module
+    # prevents mmake from successfully generating all the .int* files
+    # that ${MODULE} requires, then what will be in ${MODULE}.err will
+    # NOT reflect the errors attributable to its current contents. Instead,
+    # it will reflect the errors attributable to what its content was
+    # *the last time mmc actually tried to compile it*, which in this case
+    # would be from *before* the invocation of mtest. This shell script
+    # has no simple means to distinguish between (a) errors reported by
+    # mmc when compiling ${MODULE} from (b) errors reported by mmc
+    # *before* it starts compiling ${MODULE}, but the output from mmake
+    # should allow the user to make that distinction.
+    ( mmake -k -j${MTEST_JFACTOR:-6} "${MODULE}.c_date" ; \
+        cat "${MODULE}.err" ) 2>&1 | ${PAGER:-less}
+fi
