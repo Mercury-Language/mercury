@@ -77,6 +77,23 @@
     --->    dont_output_line_numbers
     ;       do_output_line_numbers.
 
+    % Are we generating output that has be able to be read back in as
+    % valid Mercury, e.g. when the output goes to a .int* or .*opt file,
+    % or are we generating output only for humans to read?
+    %
+    % XXX We should split output for humans into two: one for developers,
+    % who won't mind, and will often need, variable numbers, and one
+    % for ordinary users, who don't, and shouldn't have to, know about
+    % the existence of variable numbers.
+    %
+    % XXX Since not all combinations of output_lang and var_name_print
+    % make sense, we shouldn't pass values of the output_lang and
+    % var_name_print types next to each other, as we now do in many places.
+    % Instead, each alternative here should *contain* the var_name_print
+    % value that we now pass next to it, but *only* if there is more than one
+    % var_name_print value that makes sense for the value of output_lang.
+    % This would require putting the two types next to each other.
+    %
 :- type output_lang
     --->    output_mercury
     ;       output_debug.

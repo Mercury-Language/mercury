@@ -1644,6 +1644,80 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     % You can get the effect of printing variable numbers only
     % by passing an empty varset, which effectively makes *all* variables
     % unnamed, but having an explicit option for this is more readable.
+    %
+    % XXX When we are printing variable names for developers in HLDS dumps,
+    % there are no constraints on which of these values we want choose.
+    % But in two other uses cases, there are restrictions.
+    %
+    % The first and more obvious such use case is when we are printing
+    % error messages for users. Since users can't be expected to care about
+    % variable numbers, or even know about them, the only viable choice
+    % in that use case is print_name_only.
+    %
+    % The second and less obvious such use case is when we are generating
+    % Mercury code to be put into .int* or .*opt files. In that case, we have
+    % two conflicting interests.
+    %
+    % The first interest is that we don't want to put variable names into
+    % such files if we can help it, because if we do, and the user changes
+    % a variable name, we will have to recompile every other file that depends
+    % on that .int* or .*opt file.
+    %
+    % The second interest is that sometimes we *do* have to put the variable
+    % name into the .int* or .*opt file in exactly the same form as it has
+    % in the .m file. The root cause of this is that if the type signature
+    % of a predicate or function includes type variable T, then we document
+    % the fact that the type_info for the type bound at runtime to that
+    % type variable will be available in the body of a C foreign_proc that
+    % implements that predicate or function in a variable named TypeInfo_for_T.
+    % Most foreign_procs don't need this access, but the ones that do,
+    % can't do without it.
+    %
+    % This fact has several effects.
+    %
+    % - We have to use print_name_only for the type variables in the
+    %   signatures of predicates and functions that have foreign_procs.
+    %
+    % - If we don't know whether a predicate or function has foreign_procs,
+    %   we still have to use print_name_only.
+    %
+    % - If we *do* know whether a predicate or function has foreign_procs,
+    %   but we have to interoperate with code that doesn't, we still have
+    %   to use print_name_only.
+    %   
+    % - Pragmas that refer to type_infos in predicate and function signatures,
+    %   such as type_spec pragmas, have to follow the same rules.
+    %
+    % - Since typeclass declarations contain declarations of method predicates
+    %   and/or functions, they have to follow the same rules.
+    %
+    % - Instance declarations then have to follow the rules followed by
+    %   typeclass declarations.
+    %
+    % - There may be more consequences, but this is where I (zs) have run
+    %   out of the patience needed to track them down.
+    %
+    % This situation can be fixed in one (or both) of two ways.
+    %
+    % - The first way is to simplify change the convention for the names
+    %   of type_info variables in foreign_procs. We could have an interim
+    %   period where, if the relevant type signature contains type variables
+    %   named e.g. K and V, in that order, then the type type_info for K
+    %   would be available in *two* variables, named TypeInfo_for_K and
+    %   TypeInfo_for_V_1, and similarly the type_info for V would be available
+    %   in TypeInfo_for_V and TypeInfo_for_V_2. People could replace code
+    %   that uses the first of these with code using the second, then
+    %   we could stop defining the old variable names, and then we would be
+    %   free of the compulsion to use print_name_only for all those item types
+    %   listed above.
+    %
+    % - The second way is to change the compiler so that when matching
+    %   variables from two different varsets that both represent the same
+    %   conceptual signature, such as the signature of a predicate, we do
+    %   so using variable numbers, not using variable names.
+    %
+    % The first seems easier.
+    % 
 :- type var_name_print
     --->    print_name_only
     ;       print_name_and_num
