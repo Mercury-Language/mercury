@@ -21,7 +21,19 @@
 % The task of this module differs from that of the (current) du_type_layout.m
 % not just in that it does its work earlier, on the parse tree instead of
 % on the HLDS, but also in that the information it puts into interface files
-% must be grade-independent.
+% must be grade-independent, since interface files are supposed to be
+% grade-independent. This means that while du_type_layout.m computes
+% what type representation *this* compiler invocation should use for each type,
+% this module computes what type representation *every* compiler invocation
+% that generates target language code should use for each type, and puts
+% that information into the .int file of the module defining the type
+% in the form of type_repn items. (The algorithm that does this does bake
+% into those type_repn items the effects of the developer-only options
+% such as --allow-packing-local-sectags that are in effect parameters
+% of that algorithm.) Then, compiler invocations that generate target
+% language code decide which of these representations is applicable
+% to their circumstances, specifically: what the target language is,
+% and how many bits there are in a word on the target.
 %
 %---------------------------------------------------------------------------%
 %
@@ -29,27 +41,29 @@
 % kinds of interface files, in terms of inputs and outputs:
 %
 % .int3 now:
-%   output: type_repns for simple types in interface and all? eqv types
 %   input:  type_defns in source module
+%   output: type_repns for simple types in interface and all? eqv types
 %
 % .int2 now:
-%   output: type_repns for simple types in interface and all? eqv types
 %   input:  type_defns in source module
+%   output: type_repns for simple types in interface and all? eqv types
 %
 % .int2 later:
-%   output: type_repns for simple types in interface and all? eqv types
 %   input:  type_defns in source module
-%   input:  type_repns for simple/eqv types in direct/indirect imported .int3s
+%           type_repns for simple/eqv types in direct/indirect imported .int3s
+%   output: type_repns for simple types in interface and all? eqv types
 %
 % .int1 later:
-%   output: type_repns for all types that appear in interface
 %   input:  type_defns in source module
-%   input:  type_repns for simple/eqv types in direct/indirect imported .int3s
+%           type_repns for simple/eqv types in direct/indirect imported .int3s 
+%   output: type_repns for all types that appear in interface
+%           (possibly for all types, in the interface or not, since
+%           .opt files may expose private types)
 %
 % .int0 later:
-%   output: type_repns for all types
 %   input:  type_defns in source module
-%   input:  type_repns for simple/eqv types in direct/indirect imported .int3s
+%           type_repns for simple/eqv types in direct/indirect imported .int3s
+%   output: type_repns for all types
 %
 %---------------------------------------------------------------------------%
 %
