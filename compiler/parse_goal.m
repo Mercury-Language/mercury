@@ -1382,13 +1382,13 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++
-            [lower_case_next_if_not_first, words("Error:"),
-            words("the"), nth_fixed(WarningNum), words("argument of the"),
-            quote(ScopeFunctor), words("keyword should be"),
-            words("the name of a warning to disable."),
-            words("The term"), quote(TermStr),
-            words("is not the name of a warning."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            [lower_case_next_if_not_first, words("Warning:"),
+            words("the"), nth_fixed(WarningNum), words("element"),
+            words("of the list following the"), quote(ScopeFunctor),
+            words("keyword,"), quote(TermStr), suffix(","),
+            words("is not the name of a warning,"),
+            words("so the compiler cannot act on it."), nl],
+        Spec = simplest_spec($pred, severity_warning, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
         MaybeWarning = error1([Spec])
     ).
