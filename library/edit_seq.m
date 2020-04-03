@@ -230,6 +230,8 @@ init_col_zero_deletes(Params, RowNum, [_HeadSeqA | TailSeqA],
 
 process_rows(_Params, _RowNum, [], _SeqB, !Table).
 process_rows(Params, RowNum, [HeadSeqA | TailSeqA], SeqB, !Table) :-
+    % We need only the current row and the one before it.
+    delete_row(RowNum - 2, !Table),
     process_columns(Params, RowNum, HeadSeqA, 1, SeqB, !Table),
     process_rows(Params, RowNum + 1, TailSeqA, SeqB, !Table).
 
@@ -238,8 +240,6 @@ process_rows(Params, RowNum, [HeadSeqA | TailSeqA], SeqB, !Table) :-
 
 process_columns(_Params, _RowNum, _RowA, _ColNum, [], !Table).
 process_columns(Params, RowNum, RowA, ColNum, [HeadSeqB | TailSeqB], !Table) :-
-    % We need only the current row and the one before it.
-    delete_row(RowNum - 2, !Table),
     process_entry(Params, RowNum, RowA, ColNum, HeadSeqB, !Table),
     process_columns(Params, RowNum, RowA, ColNum + 1, TailSeqB, !Table).
 
