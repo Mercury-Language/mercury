@@ -810,8 +810,8 @@ report_error_functor_type(Info, UnifyContext, Context,
 
     ( if
         Functor = int_const(_),
-        get_type_stuff(TypeAssignSet, Var, TypeStuffList),
-        TypesOfVar = list.map(typestuff_to_type, TypeStuffList),
+        get_all_transformed_type_stuffs(typestuff_to_type, TypeAssignSet,
+            Var, TypesOfVar),
         list.any_true(expected_type_needs_int_constant_suffix, TypesOfVar)
     then
         NoSuffixIntegerPieces = nosuffix_integer_pieces
@@ -956,7 +956,12 @@ find_mismatched_args(_, [], _,
         !RevSubsumesMismatches, !RevNoSubsumeMismatches).
 find_mismatched_args(CurArgNum, [Arg - ExpType | ArgExpTypes], TypeAssignSet,
         !RevSubsumesMismatches, !RevNoSubsumeMismatches) :-
-    get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
+    % XXX When we get a test case in which the quadratic behavior of
+    % get_all_type_stuffs_remove_dups is a performance issue, we should
+    % try switching to get_all_type_stuffs without the remove_dups,
+    % since the call to list.sort_and_remove_dups below should make it
+    % semantically unnecessary.
+    get_all_type_stuffs_remove_dups(TypeAssignSet, Arg, TypeStuffList),
     list.foldl2(substitute_types_check_match(ExpType), TypeStuffList,
         [], TypeMismatches0, no_type_stuff_matches, DoesSomeTypeStuffMatch),
     (
@@ -1173,9 +1178,8 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
-    get_type_stuff(TypeAssignSet, Var, TypeStuffList),
-    ActualExpectedList0 = list.map(type_stuff_to_actual_expected(Type),
-        TypeStuffList),
+    get_all_transformed_type_stuffs(type_stuff_to_actual_expected(Type),
+        TypeAssignSet, Var, ActualExpectedList0),
     list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
 
     TypeErrorPieces = [words("type error:")],
@@ -1328,7 +1332,12 @@ report_error_var_either_type(Info, ClauseContext, GoalContext, Context,
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
-    get_type_stuff(TypeAssignSet, Var, TypeStuffList),
+    % XXX When we get a test case in which the quadratic behavior of
+    % get_all_type_stuffs_remove_dups is a performance issue, we should
+    % try switching to get_all_type_stuffs without the remove_dups,
+    % since the two calls to list.sort_and_remove_dups below make it
+    % semantically unnecessary.
+    get_all_type_stuffs_remove_dups(TypeAssignSet, Var, TypeStuffList),
     ActualExpectedListA0 = list.map(type_stuff_to_actual_expected(TypeA),
         TypeStuffList),
     ActualExpectedListB0 = list.map(type_stuff_to_actual_expected(TypeB),
@@ -1871,8 +1880,8 @@ functor_name_to_pieces(Functor, Arity) = Pieces :-
     = list(format_component).
 
 type_of_var_to_pieces(TypeAssignSet, Var) = Pieces :-
-    get_type_stuff(TypeAssignSet, Var, TypeStuffList),
-    TypeStrs0 = list.map(typestuff_to_typestr, TypeStuffList),
+    get_all_transformed_type_stuffs(typestuff_to_typestr, TypeAssignSet,
+        Var, TypeStrs0),
     list.sort_and_remove_dups(TypeStrs0, TypeStrs),
     ( if TypeStrs = [TypeStr] then
         Pieces = [words("has type"), words(add_quotes(TypeStr))]
@@ -2339,14 +2348,78 @@ error_right_num_args_to_pieces([Arity | Arities]) = Pieces :-
             ).
 
     % Given a type assignment set and a variable, return the list of possible
-    % different types for the variable.
+    % different types for the variable, removing all duplicates.
+    % The check for duplicates makes this algorithm O(N^2), which can be
+    % a problem. In addition, the equality test unifications done by
+    % list.member compare type_stuffs starting with the base_type field,
+    % which (in the extremely limited deep profiling sample consisting
+    % of just one run that motivated this comment) always compares equal,
+    % unlike the second and third fields of type_stuff.
     %
-:- pred get_type_stuff(type_assign_set::in, prog_var::in,
+:- pred get_all_type_stuffs_remove_dups(type_assign_set::in, prog_var::in,
     list(type_stuff)::out) is det.
 
-get_type_stuff([], _Var, []).
-get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
-    get_type_stuff(TypeAssigns, Var, TailTypeStuffs),
+get_all_type_stuffs_remove_dups([], _Var, []).
+get_all_type_stuffs_remove_dups([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
+    get_all_type_stuffs_remove_dups(TypeAssigns, Var, TailTypeStuffs),
+    get_type_stuff(TypeAssign, Var, TypeStuff),
+    ( if list.member(TypeStuff, TailTypeStuffs) then
+        TypeStuffs = TailTypeStuffs
+    else
+        TypeStuffs = [TypeStuff | TailTypeStuffs]
+    ).
+
+    % Given a type assignment set and a variable, return the list of possible
+    % different types for the variable. The returned list may contain
+    % duplicates.
+    %
+:- pred get_all_type_stuffs(type_assign_set::in, prog_var::in,
+    list(type_stuff)::out) is det.
+% Some XXX comments above describe scenarios in which this code
+% could be needed.
+:- pragma consider_used(get_all_type_stuffs/3).
+
+get_all_type_stuffs([], _Var, []).
+get_all_type_stuffs([TypeAssign | TypeAssigns], Var,
+        [TypeStuff | TypeStuffs]) :-
+    get_type_stuff(TypeAssign, Var, TypeStuff),
+    get_all_type_stuffs(TypeAssigns, Var, TypeStuffs).
+
+    % Given a type assignment set and a variable, return the result of
+    % applying the given function to the list of the possible different types
+    % for the variable. The returned list may contain duplicates.
+    %
+    % We *could* eliminate duplicates here piecemeal as they are generated,
+    % as get_all_type_stuffs_remove_dups does, but that is an quadratic
+    % algorithm, and our callers typically call list.sort_and_remove_dups
+    % on the result, which removes duplicates at a linear cost over the
+    % usually O(N log N) cost of the sorting itself.
+    %
+    % However, the much bigger win is that each result is typically
+    % smaller than the type_stuff it is derived from, because
+    %
+    % - the tvarsets in type_stuffs are often big, while
+    % - the result is a type in some form, whose size is typcally small.
+    %
+    % And if the results are smaller than the type_stuffs, then comparing
+    % should be faster as well.
+    %
+:- pred get_all_transformed_type_stuffs((func(type_stuff) = T)::in,
+    type_assign_set::in, prog_var::in, list(T)::out) is det.
+
+get_all_transformed_type_stuffs(_TransformFunc, [], _Var, []).
+get_all_transformed_type_stuffs(TransformFunc, [TypeAssign | TypeAssigns], Var,
+        [Result | Results]) :-
+    get_type_stuff(TypeAssign, Var, TypeStuff),
+    Result = TransformFunc(TypeStuff),
+    get_all_transformed_type_stuffs(TransformFunc, TypeAssigns, Var, Results).
+
+    % Given a type assignment and a variable, return information about
+    % the type of that variable in that type assignment.
+    %
+:- pred get_type_stuff(type_assign::in, prog_var::in, type_stuff::out) is det.
+
+get_type_stuff(TypeAssign, Var, TypeStuff) :-
     type_assign_get_external_type_params(TypeAssign, ExternalTypeParams),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
@@ -2358,12 +2431,7 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
         % assigned a type variable fail to have the correct type?
         Type = defined_type(unqualified("<any>"), [], kind_star)
     ),
-    TypeStuff = type_stuff(Type, TVarSet, TypeBindings, ExternalTypeParams),
-    ( if list.member(TypeStuff, TailTypeStuffs) then
-        TypeStuffs = TailTypeStuffs
-    else
-        TypeStuffs = [TypeStuff | TailTypeStuffs]
-    ).
+    TypeStuff = type_stuff(Type, TVarSet, TypeBindings, ExternalTypeParams).
 
 :- func typestuff_to_type(type_stuff) = mer_type.
 
