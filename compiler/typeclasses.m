@@ -93,6 +93,7 @@
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -112,38 +113,42 @@ perform_context_reduction(Context, TypeAssignSet0, TypeAssignSet, !Info) :-
     ),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    list.foldl2(reduce_type_assign_context(ClassTable, InstanceTable),
-        TypeAssignSet0, [], TypeAssignSet1, [], UnsatTypeAssignSet),
+    list.foldl2(
+        reduce_type_assign_context(ClassTable, InstanceTable),
+        TypeAssignSet0,
+        cord.init, TypeAssignSetCord1, [], UnsatTypeAssignSet),
+    TypeAssignSet1 = cord.list(TypeAssignSetCord1),
     ( if
         % Check that this context reduction hasn't eliminated
-        % all the type assignments.
-        TypeAssignSet0 = [_ | _],
-        TypeAssignSet1 = []
+        % all the type assignments. Put the usually-failing test first.
+        TypeAssignSet1 = [],
+        TypeAssignSet0 = [_ | _]
     then
         Spec = report_unsatisfiable_constraints(ClauseContext, Context,
             UnsatTypeAssignSet),
         typecheck_info_add_error(Spec, !Info),
-        DeleteConstraints = (pred(TA0::in, TA::out) is det :-
-            % Make a new hlds_constraints structure for the type assign,
-            % with the same assumed constraints but all unproven constraints
-            % deleted.
-            type_assign_get_typeclass_constraints(TA0, Constraints0),
-            type_assign_get_typevarset(TA0, TVarSet),
-            make_hlds_constraints(ClassTable, TVarSet, [],
-                Constraints0 ^ hcs_assumed, Constraints),
-            type_assign_set_typeclass_constraints(Constraints, TA0, TA)
-        ),
+        DeleteConstraints =
+            ( pred(TA0::in, TA::out) is det :-
+                % Make a new hlds_constraints structure for the type assign,
+                % with the same assumed constraints but all unproven
+                % constraints deleted.
+                type_assign_get_typeclass_constraints(TA0, Constraints0),
+                type_assign_get_typevarset(TA0, TVarSet),
+                make_hlds_constraints(ClassTable, TVarSet, [],
+                    Constraints0 ^ hcs_assumed, Constraints),
+                type_assign_set_typeclass_constraints(Constraints, TA0, TA)
+            ),
         list.map(DeleteConstraints, TypeAssignSet0, TypeAssignSet)
     else
         TypeAssignSet = TypeAssignSet1
     ).
 
 :- pred reduce_type_assign_context(class_table::in, instance_table::in,
-    type_assign::in, list(type_assign)::in, list(type_assign)::out,
+    type_assign::in, cord(type_assign)::in, cord(type_assign)::out,
     list(type_assign)::in, list(type_assign)::out) is det.
 
 reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
-        !TypeAssignSet, !UnsatTypeAssignSet) :-
+        !TypeAssignCord, !UnsatTypeAssignSet) :-
     type_assign_get_typeclass_constraints(!.TypeAssign, Constraints0),
     ( if
         % Optimize the common case of no typeclass constraints at all.
@@ -154,7 +159,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         map.is_empty(Redundant0),
         map.is_empty(Ancestors0)
     then
-        !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
+        !:TypeAssignCord = cord.snoc(!.TypeAssignCord, !.TypeAssign)
     else
         type_assign_get_external_type_params(!.TypeAssign, ExternalTypeParams),
         type_assign_get_typevarset(!.TypeAssign, TVarSet0),
@@ -172,7 +177,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
 
         Unproven = Constraints ^ hcs_unproven,
         ( if all_constraints_are_satisfiable(Unproven, ExternalTypeParams) then
-            !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
+            !:TypeAssignCord = cord.snoc(!.TypeAssignCord, !.TypeAssign)
         else
             % Remember the unsatisfiable type_assign_set so we can produce more
             % specific error messages.
