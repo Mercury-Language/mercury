@@ -149,6 +149,8 @@
 :- pred typecheck_info_get_pred_id(typecheck_info::in,
     pred_id::out) is det.
 
+:- pred typecheck_info_get_verbose_errors(typecheck_info::in,
+    bool::out) is det.
 :- pred typecheck_info_get_calls_are_fully_qualified(typecheck_info::in,
     is_fully_qualified::out) is det.
 :- pred typecheck_info_get_ambiguity_error_limit(typecheck_info::in,
@@ -237,6 +239,8 @@
 
 :- type typecheck_sub_info
     --->    typecheck_sub_info(
+                tcsi_verbose_errors             :: bool,
+
                 % Are calls from the body of the predicate we are checking
                 % guaranteed to be already fully qualified? In some cases,
                 % such as when the body was read in from a .opt file,
@@ -285,14 +289,15 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
     ),
     OverloadErrors = no,
     module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, verbose_errors, Verbose),
     globals.lookup_int_option(Globals, typecheck_ambiguity_warn_limit,
         AmbiguityWarnLimit),
     globals.lookup_int_option(Globals, typecheck_ambiguity_error_limit,
         AmbiguityErrorLimit),
     NoSuffixIntegerMap = set_tree234.init,
-    SubInfo = typecheck_sub_info(CallsAreFullyQualified, AmbiguityErrorLimit,
-        MaybeFieldAccessFunction, NonOverloadErrors, OverloadErrors,
-        NoSuffixIntegerMap),
+    SubInfo = typecheck_sub_info(Verbose, CallsAreFullyQualified,
+        AmbiguityErrorLimit, MaybeFieldAccessFunction,
+        NonOverloadErrors, OverloadErrors, NoSuffixIntegerMap),
     ClauseNum = 0,
     ClauseContext = type_error_clause_context(ModuleInfo, PredId,
         PredMarkers, ClauseNum, term.context_init, ClauseVarSet),
@@ -321,6 +326,8 @@ typecheck_info_get_module_info(Info, X) :-
 typecheck_info_get_pred_id(Info, X) :-
     X = Info ^ tci_error_clause_context ^ tecc_pred_id.
 
+typecheck_info_get_verbose_errors(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_verbose_errors.
 typecheck_info_get_calls_are_fully_qualified(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_calls_are_fully_qualified.
 typecheck_info_get_ambiguity_error_limit(Info, X) :-

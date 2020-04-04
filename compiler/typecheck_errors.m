@@ -104,11 +104,11 @@
 :- func report_error_too_much_overloading(type_error_clause_context,
     prog_context, overloaded_symbol_map) = error_spec.
 
-:- func report_error_unif_var_var(type_error_clause_context,
+:- func report_error_unif_var_var(typecheck_info, type_error_clause_context,
     unify_context, prog_context, prog_var, prog_var, type_assign_set)
     = error_spec.
 
-:- func report_error_lambda_var(type_error_clause_context,
+:- func report_error_lambda_var(typecheck_info, type_error_clause_context,
     unify_context, prog_context, pred_or_func,
     lambda_eval_method, prog_var, list(prog_var), type_assign_set)
     = error_spec.
@@ -117,8 +117,8 @@
     unify_context, prog_context, prog_var,
     list(cons_type_info), cons_id, int, type_assign_set) = error_spec.
 
-:- func report_error_functor_arg_types(type_error_clause_context,
-    unify_context, prog_context, prog_var,
+:- func report_error_functor_arg_types(typecheck_info,
+    type_error_clause_context, unify_context, prog_context, prog_var,
     list(cons_type_info), cons_id, list(prog_var), args_type_assign_set)
     = error_spec.
 
@@ -154,15 +154,15 @@
                 actual_expected_types
             ).
 
-:- func report_arg_vector_type_errors(type_error_clause_context,
-    prog_context, arg_vector_kind, type_assign_set,
+:- func report_arg_vector_type_errors(typecheck_info,
+    type_error_clause_context, prog_context, arg_vector_kind, type_assign_set,
     list(arg_vector_type_error)) = error_spec.
 
-:- func report_error_var_either_type(type_error_clause_context,
+:- func report_error_var_either_type(typecheck_info, type_error_clause_context,
     type_error_goal_context, prog_context, prog_var, mer_type, mer_type,
     type_assign_set) = error_spec.
 
-:- func report_error_arg_var(type_error_clause_context,
+:- func report_error_arg_var(typecheck_info, type_error_clause_context,
     type_error_goal_context, prog_context, prog_var, args_type_assign_set)
     = error_spec.
 
@@ -699,7 +699,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
 
 %-----------------------------------------------------------------------------%
 
-report_error_unif_var_var(ClauseContext, UnifyContext, Context,
+report_error_unif_var_var(Info, ClauseContext, UnifyContext, Context,
         X, Y, TypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
@@ -713,15 +713,16 @@ report_error_unif_var_var(ClauseContext, UnifyContext, Context,
         type_of_var_to_pieces(TypeAssignSet, X) ++ [suffix(","), nl,
         quote(mercury_var_to_name_only(VarSet, Y))] ++
         type_of_var_to_pieces(TypeAssignSet, Y) ++ [suffix("."), nl],
-    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
+    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
+        VerboseComponents),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(UnifyContextPieces),
-        always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
+        always(MainPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
-report_error_lambda_var(ClauseContext, UnifyContext, Context,
+report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
         PredOrFunc, _EvalMethod, Var, ArgVars, TypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
@@ -778,11 +779,11 @@ report_error_lambda_var(ClauseContext, UnifyContext, Context,
     Pieces4c = [suffix("."), nl],
     Pieces4 = Pieces4a ++ Pieces4b ++ Pieces4c,
 
-    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
+    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
+        VerboseComponents),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
-        always(Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4),
-        verbose_only(verbose_always, VerbosePieces)]),
+        always(Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
@@ -818,17 +819,16 @@ report_error_functor_type(Info, UnifyContext, Context,
         NoSuffixIntegerPieces = []
     ),
 
-    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
-
+    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
+        VerboseComponents),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
-        always(MainPieces ++ NoSuffixIntegerPieces),
-        verbose_only(verbose_always, VerbosePieces)]),
+        always(MainPieces ++ NoSuffixIntegerPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
-report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
+report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
         ConsDefnList, Functor, Args, ArgsTypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
@@ -899,9 +899,8 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
             type_of_functor_to_pieces(Functor, Arity, ConsDefnList) ++
             types_of_vars_to_pieces(Args, VarSet, TypeAssignSet),
         ErrorPieces = ResultTypePieces ++ AllTypesPieces,
-
-        VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
-        VerboseComponents = [verbose_only(verbose_always, VerbosePieces)]
+        type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
+            VerboseComponents)
     ),
 
     (
@@ -1208,19 +1207,19 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
         NoSuffixIntegerPieces = []
     ),
 
-    TypeAssignSetPieces =
-        type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
+    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
+        VerboseComponents),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(GoalContextPieces),
-        always(TypeErrorPieces ++ MismatchPieces ++ NoSuffixIntegerPieces),
-        verbose_only(verbose_always, TypeAssignSetPieces)]),
+        always(TypeErrorPieces ++ MismatchPieces ++ NoSuffixIntegerPieces)
+        | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
 
 %-----------------------------------------------------------------------------%
 
-report_arg_vector_type_errors(ClauseContext, Context, ArgVectorKind,
+report_arg_vector_type_errors(Info, ClauseContext, Context, ArgVectorKind,
         TypeAssignSet, ArgVectorTypeErrors0) = Spec :-
     list.sort(ArgVectorTypeErrors0, ArgVectorTypeErrors),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
@@ -1237,10 +1236,11 @@ report_arg_vector_type_errors(ClauseContext, Context, ArgVectorKind,
     arg_vector_type_errors_to_pieces(VarSet, ArgVectorTypeErrors,
         HeadArgVectorTypeErrors, TailArgVectorTypeErrors,
         ArgErrorPieces),
-    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
+    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
+        VerboseComponents),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(ArgVectorKindPieces),
-        always(ArgErrorPieces), verbose_only(verbose_always, VerbosePieces)]),
+        always(ArgErrorPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- pred arg_vector_type_errors_to_pieces(prog_varset::in,
@@ -1323,7 +1323,7 @@ find_expecteds_matching_actual(VarSet, SearchActualPieces,
 
 %-----------------------------------------------------------------------------%
 
-report_error_var_either_type(ClauseContext, GoalContext, Context,
+report_error_var_either_type(Info, ClauseContext, GoalContext, Context,
         Var, TypeA, TypeB, TypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
@@ -1361,16 +1361,16 @@ report_error_var_either_type(ClauseContext, GoalContext, Context,
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
-    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
+    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
+        VerboseComponents),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
-        always(Pieces1 ++ Pieces2),
-        verbose_only(verbose_always, VerbosePieces)]),
+        always(Pieces1 ++ Pieces2) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
 
-report_error_arg_var(ClauseContext, GoalContext, Context, Var,
+report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
         ArgTypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
@@ -1398,12 +1398,11 @@ report_error_arg_var(ClauseContext, GoalContext, Context, Var,
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
-    VerbosePieces = args_type_assign_set_msg_to_pieces(ArgTypeAssignSet,
-        VarSet),
+    arg_type_assign_set_msg_to_verbose_pieces(Info, ArgTypeAssignSet, VarSet,
+        VerboseComponents),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
-        always(Pieces1 ++ Pieces2),
-        verbose_only(verbose_always, VerbosePieces)]),
+        always(Pieces1 ++ Pieces2) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
@@ -2605,6 +2604,54 @@ nosuffix_integer_pieces = Pieces :-
         words("an"), quote("u8"), suffix(","), quote("u16"), suffix(","),
         quote("u32"), words("or"), quote("u64"), words("suffix"),
         words("if they are unsigned."), nl].
+
+%-----------------------------------------------------------------------------%
+%
+% Converting a type assign set to a part of an error_spec can take
+% a *very* long time if the type assign set is very big, which it can be
+% in large predicates with many ambiguously typed variables.
+% Yet in the common case, the result of the conversion is needed
+% only if the verbose_errors is set. These predicates ensure that we incur
+% the cost of the conversion only when its output is actually needed.
+%
+% We *always* include a verbose_only component in the result to ensure that
+% the compiler output includes the line
+%   For more information, recompile with `-E'.
+% at the end.
+%
+
+:- pred type_assign_set_msg_to_verbose_pieces(typecheck_info::in,
+    type_assign_set::in, prog_varset::in, list(error_msg_component)::out)
+    is det.
+
+type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
+        VerboseComponents) :-
+    typecheck_info_get_verbose_errors(Info, VerboseErrors),
+    (
+        VerboseErrors = no,
+        VerboseComponents = [verbose_only(verbose_always, [])]
+    ;
+        VerboseErrors = yes,
+        VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
+        VerboseComponents = [verbose_only(verbose_always, VerbosePieces)]
+    ).
+
+:- pred arg_type_assign_set_msg_to_verbose_pieces(typecheck_info::in,
+    args_type_assign_set::in, prog_varset::in, list(error_msg_component)::out)
+    is det.
+
+arg_type_assign_set_msg_to_verbose_pieces(Info, ArgTypeAssignSet, VarSet,
+        VerboseComponents) :-
+    typecheck_info_get_verbose_errors(Info, VerboseErrors),
+    (
+        VerboseErrors = no,
+        VerboseComponents = [verbose_only(verbose_always, [])]
+    ;
+        VerboseErrors = yes,
+        VerbosePieces =
+            args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet),
+        VerboseComponents = [verbose_only(verbose_always, VerbosePieces)]
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_errors.

@@ -1935,8 +1935,8 @@ typecheck_var_has_arg_type(GoalContext, Context, Var,
         delete_first_arg_in_each_arg_type_assign(ArgTypeAssignSet0,
             ArgTypeAssignSet),
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_arg_var(ClauseContext, GoalContext, Context,
-            Var, ArgTypeAssignSet0),
+        Spec = report_error_arg_var(!.Info, ClauseContext, GoalContext,
+            Context, Var, ArgTypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     else
         ArgTypeAssignSet = ArgTypeAssignSet1
@@ -2026,8 +2026,8 @@ typecheck_vars_have_types(ArgVectorKind, Context, Vars, Types,
         ArgVectorTypeErrors = [_, _ | _]
     then
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        AllArgsSpec = report_arg_vector_type_errors(ClauseContext, Context,
-            ArgVectorKind, !.TypeAssignSet, ArgVectorTypeErrors),
+        AllArgsSpec = report_arg_vector_type_errors(!.Info, ClauseContext,
+            Context, ArgVectorKind, !.TypeAssignSet, ArgVectorTypeErrors),
         typecheck_info_add_error(AllArgsSpec, !Info)
     else
         list.foldl(typecheck_info_add_error, Specs, !Info)
@@ -2208,8 +2208,8 @@ typecheck_unify_var_var(UnifyContext, Context, X, Y,
     then
         TypeAssignSet = TypeAssignSet0,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_unif_var_var(ClauseContext, UnifyContext, Context,
-            X, Y, TypeAssignSet0),
+        Spec = report_error_unif_var_var(!.Info, ClauseContext, UnifyContext,
+            Context, X, Y, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     else
         TypeAssignSet = TypeAssignSet1
@@ -2383,9 +2383,9 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
                     % message here would be misleading.
                 ;
                     ArgsTypeAssignSet = [_ | _],
-                    ArgSpec = report_error_functor_arg_types(ClauseContext,
-                        UnifyContext, Context, Var, ConsDefns, ConsId, ArgVars,
-                        ArgsTypeAssignSet),
+                    ArgSpec = report_error_functor_arg_types(!.Info,
+                        ClauseContext, UnifyContext, Context, Var,
+                        ConsDefns, ConsId, ArgVars, ArgsTypeAssignSet),
                     typecheck_info_add_error(ArgSpec, !Info)
                 )
             )
@@ -2728,8 +2728,8 @@ typecheck_lambda_var_has_type(UnifyContext, Context, Purity, PredOrFunc,
     then
         TypeAssignSet = TypeAssignSet0,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_lambda_var(ClauseContext, UnifyContext, Context,
-            PredOrFunc, EvalMethod, Var, ArgVars, TypeAssignSet0),
+        Spec = report_error_lambda_var(!.Info, ClauseContext, UnifyContext,
+            Context, PredOrFunc, EvalMethod, Var, ArgVars, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     else
         TypeAssignSet = TypeAssignSet1
