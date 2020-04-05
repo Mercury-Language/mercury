@@ -7956,8 +7956,8 @@ The set of aspects and their alternatives are:
 @cindex .mm (grade modifier)
 @table @asis
 @item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
-@samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, @samp{asm_fast}, @samp{hl}, @samp{hlc}, @samp{csharp},
+@samp{none}, @samp{reg},@samp{asm_fast}, @samp{hlc}, @samp{csharp},
+@c @samp{jump}, @samp{asm_jump}, @samp{fast}, @samp{hl}
 @samp{java} and
 @samp{erlang}
 (the default is system dependent).
