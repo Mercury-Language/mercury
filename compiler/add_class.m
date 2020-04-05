@@ -730,14 +730,15 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         TVarSet = TVarSet0,
         report_illegal_func_svar_result(StateVarContext, CVarSet, StateVar,
             !Specs),
-        !:Specs = get_any_errors1(MaybeBodyGoal) ++ !.Specs
+        !:Specs = get_any_errors_warnings2(MaybeBodyGoal) ++ !.Specs
     else
         (
-            MaybeBodyGoal = error1(BodyGoalSpecs),
+            MaybeBodyGoal = error2(BodyGoalSpecs),
             TVarSet = TVarSet0,
             !:Specs = BodyGoalSpecs ++ !.Specs
         ;
-            MaybeBodyGoal = ok1(BodyGoal),
+            MaybeBodyGoal = ok2(BodyGoal, BodyGoalWarningSpecs),
+            !:Specs = BodyGoalWarningSpecs ++ !.Specs,
             expand_bang_state_pairs_in_terms(HeadTerms0, HeadTerms),
             PredArity = list.length(HeadTerms),
             adjust_func_arity(PredOrFunc, Arity, PredArity),

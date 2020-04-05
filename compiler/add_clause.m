@@ -27,9 +27,9 @@
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_clause(prog_varset::in, pred_or_func::in, sym_name::in,
-    list(prog_term)::in, maybe1(goal)::in, pred_status::in, prog_context::in,
-    maybe(int)::in, goal_type::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    list(prog_term)::in, maybe2(goal, list(warning_spec))::in,
+    pred_status::in, prog_context::in, maybe(int)::in, goal_type::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
@@ -161,10 +161,10 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
     ).
 
 :- pred module_add_clause_2(prog_varset::in, pred_or_func::in, sym_name::in,
-    pred_id::in, list(prog_term)::in, int::in, int::in, maybe1(goal)::in,
-    pred_status::in, prog_context::in, maybe(int)::in, goal_type::in,
-    maybe({prog_var, prog_context})::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    pred_id::in, list(prog_term)::in, int::in, int::in,
+    maybe2(goal, list(warning_spec))::in, pred_status::in, prog_context::in,
+    maybe(int)::in, goal_type::in, maybe({prog_var, prog_context})::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
@@ -266,18 +266,20 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
         maybe_add_default_func_mode(!PredInfo, _),
         (
             !.PredSpecs = [_ | _ ],
-            !:Specs = !.PredSpecs ++ get_any_errors1(MaybeBodyGoal) ++ !.Specs
+            !:Specs = !.PredSpecs ++
+                get_any_errors_warnings2(MaybeBodyGoal) ++ !.Specs
         ;
             !.PredSpecs = [],
             (
-                MaybeBodyGoal = error1(BodyGoalSpecs),
+                MaybeBodyGoal = error2(BodyGoalSpecs),
                 !:Specs = BodyGoalSpecs ++ !.Specs,
                 pred_info_get_clauses_info(!.PredInfo, Clauses0),
                 Clauses = Clauses0 ^ cli_had_syntax_errors :=
                     some_clause_syntax_errors,
                 pred_info_set_clauses_info(Clauses, !PredInfo)
             ;
-                MaybeBodyGoal = ok1(BodyGoal),
+                MaybeBodyGoal = ok2(BodyGoal, BodyGoalWarningSpecs),
+                !:Specs = BodyGoalWarningSpecs ++ !.Specs,
                 pred_info_get_clauses_info(!.PredInfo, Clauses0),
                 pred_info_get_typevarset(!.PredInfo, TVarSet0),
                 select_applicable_modes(MaybeAnnotatedArgTerms, ClauseVarSet,

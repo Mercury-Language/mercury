@@ -819,7 +819,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_add_clause(VarSet, pf_predicate, qualified(ModuleName, Name),
-        HeadVars, ok1(Goal), Status, Context, no,
+        HeadVars, ok2(Goal, []), Status, Context, no,
         goal_type_promise(PromiseType), !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%

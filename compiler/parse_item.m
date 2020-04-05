@@ -867,7 +867,7 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         MaybeIOM = ok1(iom_item(Item))
     ;
         MaybeFunctor = error2(FunctorSpecs),
-        Specs = FunctorSpecs ++ get_any_errors1(MaybeBodyGoal),
+        Specs = FunctorSpecs ++ get_any_errors_warnings2(MaybeBodyGoal),
         MaybeIOM = error1(Specs)
     ).
 
@@ -1729,24 +1729,37 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
         ContextPieces = cord.init,
         parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
         (
-            MaybeGoal0 = ok1(Goal0),
-            PromiseType = promise_type_true,
-            ( if
-                Goal0 = quant_expr(quant_all, quant_ordinary_vars, _,
-                    UnivVars0, AllGoal)
-            then
-                UnivVars0 = UnivVars,
-                Goal = AllGoal
-            else
-                UnivVars = [],
-                Goal = Goal0
-            ),
-            ItemPromise = item_promise_info(PromiseType, Goal, ProgVarSet,
-                UnivVars, Context, SeqNum),
-            Item = item_promise(ItemPromise),
-            MaybeIOM = ok1(iom_item(Item))
+            MaybeGoal0 = ok2(Goal0, GoalWarningSpecs),
+            (
+                GoalWarningSpecs = [],
+                ( if
+                    Goal0 = quant_expr(quant_all, quant_ordinary_vars, _,
+                        UnivVars0, AllGoal)
+                then
+                    UnivVars0 = UnivVars,
+                    Goal = AllGoal
+                else
+                    UnivVars = [],
+                    Goal = Goal0
+                ),
+                ItemPromise = item_promise_info(promise_type_true, Goal,
+                    ProgVarSet, UnivVars, Context, SeqNum),
+                Item = item_promise(ItemPromise),
+                MaybeIOM = ok1(iom_item(Item))
+            ;
+                GoalWarningSpecs = [_ | _],
+                % We *could* try to preserve any warnings for code
+                % inside Goal0, and add the promise to the parse tree
+                % for later addition to the HLDS even in the presence
+                % of such warnings, but there doesn't seem to be any point
+                % in doing that, because at the moment, the only kind
+                % of construct that generates warning_specs is a
+                % disable_warnings scope, and those should NOT be appearing
+                % in any promise.
+                MaybeIOM = error1(GoalWarningSpecs)
+            )
         ;
-            MaybeGoal0 = error1(Specs),
+            MaybeGoal0 = error2(Specs),
             MaybeIOM = error1(Specs)
         )
     else
@@ -1771,27 +1784,41 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
         ContextPieces = cord.init,
         parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
         (
-            MaybeGoal0 = ok1(Goal),
-            % Get universally quantified variables.
-            % XXX We used to try to get a list of universally quantified
-            % variables from attributes, using this code:
-            % get_quant_vars(quant_type_univ, ModuleName, [], _,
-            %     [], UnivVars0),
-            % list.map(term.coerce_var, UnivVars0, UnivVars),
-            % However, passing [] as the list of attributes,
-            % instead of a list of attributes passed to us by our caller,
-            % guaranteed that the value of UnivVars would ALWAYS be [].
-            %
-            % We should allow our caller to process "all [<vars>]" prefixes
-            % before the promise_ex declaration, and give us the terms
-            % containing lists of variables for us to parse.
-            UnivVars = [],
-            ItemPromise = item_promise_info(PromiseType, Goal, ProgVarSet,
-                UnivVars, Context, SeqNum),
-            Item = item_promise(ItemPromise),
-            MaybeIOM = ok1(iom_item(Item))
+            MaybeGoal0 = ok2(Goal, GoalWarningSpecs),
+            (
+                GoalWarningSpecs = [],
+                % Get universally quantified variables.
+                % XXX We used to try to get a list of universally quantified
+                % variables from attributes, using this code:
+                % get_quant_vars(quant_type_univ, ModuleName, [], _,
+                %     [], UnivVars0),
+                % list.map(term.coerce_var, UnivVars0, UnivVars),
+                % However, passing [] as the list of attributes,
+                % instead of a list of attributes passed to us by our caller,
+                % guaranteed that the value of UnivVars would ALWAYS be [].
+                %
+                % We should allow our caller to process "all [<vars>]" prefixes
+                % before the promise_ex declaration, and give us the terms
+                % containing lists of variables for us to parse.
+                UnivVars = [],
+                ItemPromise = item_promise_info(PromiseType, Goal, ProgVarSet,
+                    UnivVars, Context, SeqNum),
+                Item = item_promise(ItemPromise),
+                MaybeIOM = ok1(iom_item(Item))
+            ;
+                GoalWarningSpecs = [_ | _],
+                % We *could* try to preserve any warnings for code
+                % inside Goal0, and add the promise to the parse tree
+                % for later addition to the HLDS even in the presence
+                % of such warnings, but there doesn't seem to be any point
+                % in doing that, because at the moment, the only kind
+                % of construct that generates warning_specs is a
+                % disable_warnings scope, and those should NOT be appearing
+                % in any promise.
+                MaybeIOM = error1(GoalWarningSpecs)
+            )
         ;
-            MaybeGoal0 = error1(Specs),
+            MaybeGoal0 = error2(Specs),
             MaybeIOM = error1(Specs)
         )
     else

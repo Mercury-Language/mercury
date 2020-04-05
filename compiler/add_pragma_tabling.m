@@ -521,7 +521,7 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
             BodyExpr = promise_purity_expr(Context, purity_pure,
                 GetStatsUpdateIOExpr),
             module_add_clause(!.VarSet, pf_predicate, StatsPredSymName, Args,
-                ok1(BodyExpr), PredStatus, Context, no, goal_type_none,
+                ok2(BodyExpr, []), PredStatus, Context, no, goal_type_none,
                 !ModuleInfo, !QualInfo, !Specs)
         )
     ).
@@ -588,7 +588,7 @@ create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
             BodyExpr = unify_expr(Context,
                 variable(IO0, Context), variable(IO, Context), purity_pure),
             module_add_clause(!.VarSet, pf_predicate, ResetPredSymName, Args,
-                ok1(BodyExpr), PredStatus, Context, no, goal_type_none,
+                ok2(BodyExpr, []), PredStatus, Context, no, goal_type_none,
                 !ModuleInfo, !QualInfo, !Specs)
         )
     ).

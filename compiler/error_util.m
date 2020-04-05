@@ -125,6 +125,12 @@
 
 %---------------------------------------------------------------------------%
 
+    % An error_spec that is *intended* to contain a warning,
+    %
+:- type warning_spec == error_spec.
+
+%---------------------------------------------------------------------------%
+
 % Many operations in the compiler may either succeed or fail.
 % When they succeed, they return some result(s); when they don't,
 % they return one or more errors.

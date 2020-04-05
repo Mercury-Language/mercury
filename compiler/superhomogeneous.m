@@ -1042,7 +1042,9 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             parse_some_vars_goal(CondTerm, ContextPieces, MaybeVarsCond,
                 !VarSet),
             (
-                MaybeVarsCond = ok3(Vars, StateVars, CondParseTree),
+                MaybeVarsCond =
+                    ok4(Vars, StateVars, CondParseTree, CondWarningSpecs),
+                !:Specs = CondWarningSpecs ++ !.Specs,
                 BeforeSVarState = !.SVarState,
                 svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
                     BeforeSVarState, BeforeInsideSVarState, !Specs),
@@ -1093,7 +1095,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 Goal = hlds_goal(GoalExpr, GoalInfo),
                 Expansion = expansion(not_fgti, cord.singleton(Goal))
             ;
-                MaybeVarsCond = error3(VarsCondSpecs),
+                MaybeVarsCond = error4(VarsCondSpecs),
                 !:Specs = VarsCondSpecs ++ !.Specs,
                 Expansion = expansion(not_fgti,
                     cord.singleton(true_goal_with_context(Context)))
@@ -1350,13 +1352,21 @@ parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
         (
             LambdaBodyKind = lambda_body_ordinary,
             parse_goal(GenericBodyGoalTerm, ContextPieces,
-                MaybeBodyGoal, !VarSet),
+                MaybeBodyGoal0, !VarSet),
             MaybeDCGVars = no_dcg_vars
         ;
             LambdaBodyKind = lambda_body_dcg,
             parse_dcg_pred_goal(GenericBodyGoalTerm, ContextPieces,
-                MaybeBodyGoal, DCGVar0, DCGVarN, !VarSet),
+                MaybeBodyGoal0, DCGVar0, DCGVarN, !VarSet),
             MaybeDCGVars = dcg_vars(DCGVar0, DCGVarN)
+        ),
+        (
+            MaybeBodyGoal0 = ok2(BodyGoal, BodyGoalWarningSpecs),
+            !:Specs = BodyGoalWarningSpecs ++ !.Specs,
+            MaybeBodyGoal = ok1(BodyGoal)
+        ;
+            MaybeBodyGoal0 = error2(BodyGoalSpecs),
+            MaybeBodyGoal = error1(BodyGoalSpecs)
         )
     ),
     parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
@@ -1368,11 +1378,9 @@ parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
         Expansion = expansion(not_fgti, cord.empty)
     ;
         MaybeLambdaHead = ok1(LambdaHead),
-        build_lambda_expression(XVar, Purity,
-            Context, MainContext, SubContext,
+        build_lambda_expression(XVar, Purity, Context, MainContext, SubContext,
             LambdaHead, MaybeBodyGoal, Expansion,
-            !.SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs)
+            !.SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs)
     ).
 
 :- type maybe_dcg_vars

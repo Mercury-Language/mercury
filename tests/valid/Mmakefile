@@ -260,6 +260,7 @@ OTHER_PROGS = \
 	unify_dummy \
 	uniq_mode_inf_bug \
 	uniq_unify \
+	unknown_warning \
 	unreachable_code \
 	unused_args_test2 \
 	vn_float \

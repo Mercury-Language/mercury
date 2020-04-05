@@ -100,13 +100,13 @@ output_instance_method_clause(MethodName, ItemClause, !IO) :-
             FuncArgTerms, ResultTerm, BodyGoal, !IO)
     ).
 
-:- pred get_clause_body_goal(maybe1(goal)::in, goal::out) is det.
+:- pred get_clause_body_goal(maybe2(goal, T)::in, goal::out) is det.
 
 get_clause_body_goal(MaybeBodyGoal, BodyGoal) :-
     (
-        MaybeBodyGoal = ok1(BodyGoal)
+        MaybeBodyGoal = ok2(BodyGoal, _WarningSpecs)
     ;
-        MaybeBodyGoal = error1(_),
+        MaybeBodyGoal = error2(_),
         PredName = unqualified("there_was_a_syntax_error"),
         BodyGoal = call_expr(term.context_init, PredName, [], purity_pure)
     ).

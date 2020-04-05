@@ -240,10 +240,10 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
 
         ItemClauseInfo = item_clause_info(_, _, _, _, _, MaybeGoal, _, _),
         (
-            MaybeGoal = ok1(Goal),
+            MaybeGoal = ok2(Goal, _GoalWarningSpecs),
             gather_stats_in_goal(Goal, !GoalStats)
         ;
-            MaybeGoal = error1(_)
+            MaybeGoal = error2(_)
         )
     ;
         Item = item_type_defn(_),

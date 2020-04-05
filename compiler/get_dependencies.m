@@ -644,10 +644,10 @@ acc_implicit_avail_needs_in_clause(ItemClause, !ImplicitAvailNeeds) :-
         _Origin, _VarSet, MaybeGoal, _Context, _SeqNum),
     acc_implicit_avail_needs_in_terms(HeadTerms, !ImplicitAvailNeeds),
     (
-        MaybeGoal = ok1(Goal),
+        MaybeGoal = ok2(Goal, _),
         acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds)
     ;
-        MaybeGoal = error1(_)
+        MaybeGoal = error2(_)
     ).
 
 :- pred acc_implicit_avail_needs_in_promise(item_promise_info::in,

@@ -58,6 +58,13 @@
 :- func get_any_errors3(maybe3(T1, T2, T3)) = list(error_spec).
 :- func get_any_errors4(maybe4(T1, T2, T3, T4)) = list(error_spec).
 
+:- func get_any_errors_warnings2(maybe2(T1, list(warning_spec))) =
+    list(error_spec).
+:- func get_any_errors_warnings3(maybe3(T1, T2, list(warning_spec))) =
+    list(error_spec).
+:- func get_any_errors_warnings4(maybe4(T1, T2, T3, list(warning_spec))) =
+    list(error_spec).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -76,6 +83,15 @@ get_any_errors3(error3(Specs)) = Specs.
 
 get_any_errors4(ok4(_, _, _, _)) = [].
 get_any_errors4(error4(Specs)) = Specs.
+
+get_any_errors_warnings2(ok2(_, Specs)) = Specs.
+get_any_errors_warnings2(error2(Specs)) = Specs.
+
+get_any_errors_warnings3(ok3(_, _, Specs)) = Specs.
+get_any_errors_warnings3(error3(Specs)) = Specs.
+
+get_any_errors_warnings4(ok4(_, _, _, Specs)) = Specs.
+get_any_errors_warnings4(error4(Specs)) = Specs.
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.maybe_error.

@@ -50,6 +50,7 @@ ERRORCHECK_PROGS = \
 	table_with_inline \
 	unify_f_g \
 	unify_x_f_x \
+	unknown_warning \
 	unsigned_zero_cmp \
 	unused_args_test \
 	unused_import \

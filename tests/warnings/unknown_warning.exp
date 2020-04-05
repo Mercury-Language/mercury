@@ -1,0 +1,6 @@
+unknown_warning.m:017: Warning: the first element of the list following the
+unknown_warning.m:017:   `disable_warning' keyword, `singleton_varx', is not
+unknown_warning.m:017:   the name of a warning, so the compiler cannot act on
+unknown_warning.m:017:   it.
+unknown_warning.m:020: In clause for predicate `unknown_warning'/3:
+unknown_warning.m:020:   warning: variable `D' occurs only once in this scope.
