@@ -483,8 +483,8 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     % Generate the values of input variables.
     % (NB we need to be careful that the rvals generated here
     % remain valid below.)
-    get_foreign_proc_input_vars(InCArgs, InputDescs, CanOptAwayUnnamedArgs,
-        InputVarsCode, !.CI, !CLD),
+    get_foreign_proc_input_vars(InCArgs, CanOptAwayUnnamedArgs,
+        InputDescs, InputVarsCode, !.CI, !CLD),
 
     % We cannot kill the forward dead input arguments until we have
     % finished generating the code producing the input variables.
@@ -989,13 +989,13 @@ find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
     % a list of the input variables, and the corresponding rvals assigned
     % to those (C) variables.
     %
-:- pred get_foreign_proc_input_vars(list(c_arg)::in,
-    list(foreign_proc_input)::out, bool::in, llds_code::out,
+:- pred get_foreign_proc_input_vars(list(c_arg)::in, bool::in,
+    list(foreign_proc_input)::out, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-get_foreign_proc_input_vars([], [], _, empty, _CI, !CLD).
-get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
-        CI, !CLD) :-
+get_foreign_proc_input_vars([], _, [], empty, _CI, !CLD).
+get_foreign_proc_input_vars([Arg | Args], CanOptAwayUnnamedArgs,
+        Inputs, Code, CI, !CLD) :-
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
     (
@@ -1005,25 +1005,26 @@ get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
         IsDummy = is_type_a_dummy(ModuleInfo, VarType),
         (
             IsDummy = is_not_dummy_type,
-            produce_variable(Var, FirstCode, Rval, CI, !CLD)
+            produce_variable(Var, HeadCode, Rval, CI, !CLD)
         ;
             IsDummy = is_dummy_type,
             % The variable may not have a state.
-            FirstCode = empty,
+            HeadCode = empty,
             Rval = const(llconst_int(0))
         ),
         MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
-        Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, Rval,
+        HeadInput = foreign_proc_input(Name, VarType, IsDummy, OrigType, Rval,
             MaybeForeign, BoxPolicy),
-        get_foreign_proc_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs,
-            RestCode, CI, !CLD),
-        Inputs = [Input | Inputs1],
-        Code = FirstCode ++ RestCode
+
+        get_foreign_proc_input_vars(Args, CanOptAwayUnnamedArgs,
+            TailInputs, TailCode, CI, !CLD),
+        Inputs = [HeadInput | TailInputs],
+        Code = HeadCode ++ TailCode
     ;
         MaybeName = no,
         % Just ignore the argument.
-        get_foreign_proc_input_vars(Args, Inputs, CanOptAwayUnnamedArgs, Code,
-            CI, !CLD)
+        get_foreign_proc_input_vars(Args, CanOptAwayUnnamedArgs,
+            Inputs, Code, CI, !CLD)
     ).
 
 :- func get_maybe_foreign_type_info(module_info, mer_type) =
