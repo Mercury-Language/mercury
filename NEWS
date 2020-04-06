@@ -217,6 +217,10 @@ Changes to the Mercury compiler
            Goal
         )
 
+* [Mantis bug #497]. The compiler will now generate a warning for an
+  unrecognised warning name in a `disable_warnings` scope instead of
+  reporting an error.
+
 ### New warning options
 
 * `--print-errors-warnings-when-generating-interface`
