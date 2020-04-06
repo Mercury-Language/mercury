@@ -7,14 +7,21 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- pred c_write_string(string, io__state, io__state).
-:- mode c_write_string(in, di, uo) is det.
+%---------------------------------------------------------------------------%
+
+main(!IO) :-
+    c_write_string("Hello, world\n", !IO),
+    c_write_string("I am 8 today!\n", !IO),
+    c_write_string(X, !IO),
+    X = "fred\n".
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
+
+:- pred c_write_string(string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     c_write_string(Str::in, IO0::di, IO::uo),
@@ -24,11 +31,6 @@
     IO = IO0;
 ").
 
-c_write_string(Str) -->
-    io__write_string(Str).
-
-main -->
-    c_write_string("Hello, world\n"),
-    c_write_string("I am 8 today!\n"),
-    c_write_string(X),
-    { X = "fred\n" }.
+c_write_string(Str, !IO) :-
+    % For the non-C backends.
+    io.write_string(Str, !IO).
