@@ -94,7 +94,7 @@ $(DEPENDS): Mercury.modules SLICE_FLAGS $(MDBCOMP_MODULES)
 # name doesn't match the file name, so smart recompilation
 # won't work without the Mercury.modules file.
 .PHONY: Mercury.modules
-Mercury.modules: SLICE_FLAGS
+Mercury.modules: SLICE_FLAGS $(MDBCOMP_MODULES)
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: all
