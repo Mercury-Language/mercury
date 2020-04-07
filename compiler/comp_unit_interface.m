@@ -1371,11 +1371,16 @@ accumulate_modules_used_by_type_ctor(TypeCtor, !Modules) :-
         SymName = qualified(ModuleName, _),
         set.insert(ModuleName, !Modules)
     ;
-        SymName = unqualified(_),
+        SymName = unqualified(_)
         % Our ancestor generate_interfaces_int1_int2 should be invoked
         % only *after* the module qualification of the augmented compilation
-        % unit whose contents we are now processing.
-        unexpected($pred, "unqualified type encountered")
+        % unit whose contents we are now processing, and the module
+        % qualification pass would have generated an error message
+        % for this cannot-be-uniquely-qualified name. However, if the option
+        % print_errors_warnings_when_generating_interface is off, as it is
+        % by default, then the compiler ignores that error, and proceeds
+        % to call generate_interfaces_int1_int2 above, which calls us
+        % indirectly.
     ).
 
 %---------------------%
