@@ -500,6 +500,9 @@ default_export_enum_attributes =
                 attr_terminates                 :: proc_terminates,
                 attr_user_annotated_sharing     :: user_annotated_sharing,
                 attr_may_throw_exception        :: proc_may_throw_exception,
+                % The ordinary_despite_detism attribute is not publicly
+                % documented, but it is used in the implementation of
+                % catch_impl for C# and Java in library/exception.m.
                 attr_ordinary_despite_detism    :: bool,
                 attr_may_modify_trail           :: proc_may_modify_trail,
                 attr_may_call_mm_tabled         :: proc_may_call_mm_tabled,
