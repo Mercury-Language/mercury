@@ -682,7 +682,7 @@
     % `Index' is the code unit position in `String' where the first
     % occurrence of `SubString' occurs such that 'Index' is greater than or
     % equal to `BeginAt'. Indices start at zero.
-    % Fails if `BeginAt' is negative or greater than
+    % Fails if either `BeginAt' is negative, or greater than
     % length(String) - length(SubString).
     %
 :- pred sub_string_search_start(string::in, string::in, int::in, int::out)
@@ -692,7 +692,7 @@
     %
     % Same as sub_string_search_start/4 but does not check that `BeginAt'
     % is in range.
-    % WARNING: if `BeginAt' is negative or greater than length(String)
+    % WARNING: if `BeginAt' is either negative, or greater than length(String),
     % then the behaviour is UNDEFINED. Use with care!
     %
 :- pred unsafe_sub_string_search_start(string::in, string::in, int::in,
