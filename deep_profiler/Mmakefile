@@ -118,7 +118,7 @@ $(DEPEND): DEEP_FLAGS $(MDBCOMP_MODULES) Mercury.modules
 # does not match the file name, so smart recompilation won't work
 # without the Mercury.modules file.
 .PHONY: Mercury.modules
-Mercury.modules: DEEP_FLAGS
+Mercury.modules: DEEP_FLAGS $(MDBCOMP_MODULES)
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: all
