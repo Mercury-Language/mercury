@@ -49,14 +49,19 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module parse_tree.builtin_lib_types.
 
 :- import_module bool.
+:- import_module int.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
@@ -97,6 +102,9 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
         ),
         CondRval = ml_binop(Op, RvalA, RvalB)
     ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_foreign_proc(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         ForeignCode, Context, Decls, Stmts, !Info) :-
@@ -179,8 +187,8 @@ ml_gen_foreign_proc(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
-        PredId, _ProcId, Args, ExtraArgs, JavaCode, Context, Decls, Stmts,
-        !Info) :-
+        PredId, _ProcId, OrigArgs, ExtraArgs, CsOrJavaCode, Context,
+        Decls, Stmts, !Info) :-
     Lang = get_foreign_language(Attributes),
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -192,10 +200,11 @@ ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
         MutableSpecial = not_mutable_special_case
     ),
 
-    % Generate <declaration of one local variable for each arg>
-    ml_gen_foreign_proc_csharp_java_decls(!.Info, MutableSpecial, Args,
-        ArgDeclsList),
+    % Generate <declaration of one local variable for each arg>.
     expect(unify(ExtraArgs, []), $pred, "extra args"),
+    Args = OrigArgs,
+    ml_gen_foreign_proc_csharp_java_decls(!.Info, MutableSpecial, CsOrJavaCode,
+        1, 1, Args, ArgDeclsList, CopyTIsInList, _CopyTIsOutList),
 
     % Generate code to set the values of the input variables.
     ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputsList, !Info),
@@ -243,7 +252,8 @@ ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
         ArgDeclsList,
         SucceededDecl,
         AssignInputsList,
-        [user_target_code(JavaCode, yes(Context))]
+        CopyTIsInList,
+        [user_target_code(CsOrJavaCode, yes(Context))]
     ]),
     StartingCode = inline_target_code(TargetLang, StartingFragments),
     StartingCodeStmt = ml_stmt_atomic(StartingCode, Context),
@@ -325,7 +335,8 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
 
     % Generate <declaration of one local variable for each arg>
     Args = OrigArgs ++ ExtraArgs,
-    ml_gen_foreign_proc_c_decls(!.Info, Lang, Args, ArgDeclsList),
+    ml_gen_foreign_proc_c_decls(!.Info, Lang, C_Code, 1, 1, Args,
+        ArgDeclsList, CopyTIsInList, CopyTIsOutList),
 
     % Generate code to set the values of the input variables.
     ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputsList, !Info),
@@ -356,6 +367,7 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
             ArgDeclsList,
             [raw_target_code("\n")],
             AssignInputsList,
+            CopyTIsInList,
             [raw_target_code(ObtainLock),
             raw_target_code("\t\t{\n"),
             user_target_code(C_Code, yes(Context)),
@@ -363,13 +375,14 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
             HashUndefAllocId,
             [raw_target_code("#undef MR_PROC_LABEL\n"),
             raw_target_code(ReleaseLock)],
+            CopyTIsOutList,
             AssignOutputsList
         ]),
         EndingFragments = [raw_target_code("}\n")]
     ;
         OrdinaryKind = kind_failure,
         % We need to treat this case separately, because for these
-        % foreign_procs the C code fragment won't assign anything
+        % foreign_procs the C code fragment won't assign anything to
         % SUCCESS_INDICATOR; the code we generate for CanSucceed = yes
         % would test an undefined value.
         ml_success_lval(SucceededLval, !Info),
@@ -380,6 +393,7 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
             ArgDeclsList,
             [raw_target_code("\n")],
             AssignInputsList,
+            CopyTIsInList,
             [raw_target_code(ObtainLock),
             raw_target_code("\t\t{\n"),
             user_target_code(C_Code, yes(Context)),
@@ -396,14 +410,18 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
     ;
         OrdinaryKind = kind_semi,
         ml_success_lval(SucceededLval, !Info),
-        ( if AssignOutputsList = [], ConvStmts = [] then
+        ( if
+            CopyTIsOutList = [],
+            AssignOutputsList = [],
+            ConvStmts = []
+        then
             IfSuccFragments = [],
             EndIfSuccFragments = []
         else
             IfSuccFragments = [
                 raw_target_code("\tif (SUCCESS_INDICATOR) {\n") |
-                AssignOutputsList
-            ],
+                CopyTIsOutList
+            ] ++ AssignOutputsList,
             EndIfSuccFragments = [
                 raw_target_code("\t}\n")
             ]
@@ -416,6 +434,7 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
             [raw_target_code("\tMR_bool SUCCESS_INDICATOR;\n"),
             raw_target_code("\n")],
             AssignInputsList,
+            CopyTIsInList,
             [raw_target_code(ObtainLock),
             raw_target_code("\t\t{\n"),
             user_target_code(C_Code, yes(Context)),
@@ -518,24 +537,37 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
     % of a foreign_proc.
     %
 :- pred ml_gen_foreign_proc_c_decls(ml_gen_info::in, foreign_language::in,
-    list(foreign_arg)::in, list(target_code_component)::out) is det.
+    string::in, int::in, int::in, list(foreign_arg)::in,
+    list(target_code_component)::out, list(target_code_component)::out,
+    list(target_code_component)::out) is det.
 
-ml_gen_foreign_proc_c_decls(_, _, [], []).
-ml_gen_foreign_proc_c_decls(Info, Lang, [Arg | Args], [Decl | Decls]) :-
-    ml_gen_foreign_proc_c_decl(Info, Lang, Arg, Decl),
-    ml_gen_foreign_proc_c_decls(Info, Lang, Args, Decls).
+ml_gen_foreign_proc_c_decls(_, _, _, _, _, [], [], [], []).
+ml_gen_foreign_proc_c_decls(Info, Lang, Code, !.TIIn, !.TIOut,
+        [HeadArg | TailArgs], Decls, TICopyIns, TICopyOuts) :-
+    ml_gen_foreign_proc_c_decl(Info, Lang, Code, !TIIn, !TIOut,
+        HeadArg, HeadDecls, HeadTICopyIns, HeadTICopyOuts),
+    ml_gen_foreign_proc_c_decls(Info, Lang, Code, !.TIIn, !.TIOut,
+        TailArgs, TailDecls, TailTICopyIns, TailTICopyOuts),
+    Decls = HeadDecls ++ TailDecls,
+    TICopyIns = HeadTICopyIns ++ TailTICopyIns,
+    TICopyOuts = HeadTICopyOuts ++ TailTICopyOuts.
 
     % ml_gen_foreign_proc_c_decl generates C code to declare an argument
     % of a foreign_proc.
     %
 :- pred ml_gen_foreign_proc_c_decl(ml_gen_info::in, foreign_language::in,
-    foreign_arg::in, target_code_component::out) is det.
+    string::in, int::in, int::out, int::in, int::out, foreign_arg::in,
+    list(target_code_component)::out, list(target_code_component)::out,
+    list(target_code_component)::out) is det.
 
-ml_gen_foreign_proc_c_decl(Info, Lang, Arg, Decl) :-
-    Arg = foreign_arg(_Var, MaybeNameAndMode, Type, BoxPolicy),
+ml_gen_foreign_proc_c_decl(Info, Lang, Code, !TIIn, !TIOut,
+        Arg, Decls, TICopyIns, TICopyOuts) :-
+    % Keep the structure of this code in sync with
+    % ml_gen_foreign_proc_csharp_java_decl.
+    Arg = foreign_arg(Var, MaybeNameAndMode, Type, BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ( if
-        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, _Mode)),
+        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName)
     then
         (
@@ -545,13 +577,74 @@ ml_gen_foreign_proc_c_decl(Info, Lang, Arg, Decl) :-
             BoxPolicy = bp_native_if_possible,
             TypeString = exported_type_to_string(ModuleInfo, Lang, Type)
         ),
-        string.format("\t%s %s;\n", [s(TypeString), s(ArgName)], DeclString)
+        string.format("\t%s %s;\n", [s(TypeString), s(ArgName)], ArgDecl),
+        ( if ml_is_comp_gen_type_info_arg(Info, Var, ArgName) then
+            % For a transition period, we make compiler-generate type_info
+            % arguments visible in Code in two variables:
+            %
+            % - ArgName, whose name is given by the HLDS, which (for now)
+            %   uses the old naming scheme (TypeInfo_for_<TypeVarName>), and
+            %
+            % - SeqArgName, whose name is given by the new naming scheme
+            %   (TypeInfo_{In,Out}_<SeqNum>).
+            ( if mode_to_top_functor_mode(ModuleInfo, Mode, Type, top_in) then
+                string.format("TypeInfo_In_%d", [i(!.TIIn)], SeqArgName),
+                !:TIIn = !.TIIn + 1,
+                % For inputs, ml_gen_foreign_proc_ccsj_input_args defines
+                % the name given in the HLDS, i.e. ArgName, so we copy
+                % ArgName to SeqArgName.
+                string.format("\t%s = %s;\n", [s(SeqArgName), s(ArgName)],
+                    TICopyIn),
+                TICopyIns = [raw_target_code(TICopyIn)],
+                TICopyOuts = []
+            else
+                string.format("TypeInfo_Out_%d", [i(!.TIOut)], SeqArgName),
+                !:TIOut = !.TIOut + 1,
+                % For outputs, the value is given by Code. Before the
+                % transition to the new scheme, variable names following
+                % the new naming scheme should not appear in Code.
+                % (Theoretically, they could, but none appear in *our* code,
+                % and if they appear in anyone else's, they qualify as
+                % implementors, which means they are on their own.)
+                % So in this case, we assign the ArgName computed by Code
+                % to SeqArgName, so that a later version of the compiler
+                % could take the value of the corresponding HLDS variable
+                % from there.
+                % 
+                % After Code has been updated to assign to SeqArgName,
+                % we assign it to ArgName, because the later version of
+                % the compiler mentioned above may not have arrived yet.
+                % (For now, updated code will still have to mention ArgName,
+                % probably in a comment, to avoid a singleton variable warning
+                % from report_missing_tvar_in_foreign_code.)
+                ( if string.sub_string_search(Code, SeqArgName, _Index) then
+                    % SeqArgName occurs in Code, so assign it to ArgName.
+                    string.format("\t%s = %s;\n", [s(ArgName), s(SeqArgName)],
+                        TICopyOut)
+                else
+                    % SeqArgName does not occur in Code, so assign ArgName
+                    % to it.
+                    string.format("\t%s = %s;\n", [s(SeqArgName), s(ArgName)],
+                        TICopyOut)
+                ),
+                TICopyIns = [],
+                TICopyOuts = [raw_target_code(TICopyOut)]
+            ),
+            string.format("\t%s %s;\n", [s(TypeString), s(SeqArgName)],
+                SeqArgDecl),
+            Decls = [raw_target_code(ArgDecl ++ SeqArgDecl)]
+        else
+            Decls = [raw_target_code(ArgDecl)],
+            TICopyIns = [],
+            TICopyOuts = []
+        )
     else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
-        DeclString = ""
-    ),
-    Decl = raw_target_code(DeclString).
+        Decls = [],
+        TICopyIns = [],
+        TICopyOuts = []
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -566,27 +659,38 @@ ml_gen_foreign_proc_c_decl(Info, Lang, Arg, Decl) :-
     % to declare the arguments for a foreign_proc.
     %
 :- pred ml_gen_foreign_proc_csharp_java_decls(ml_gen_info::in,
-    mutable_special_case::in, list(foreign_arg)::in,
-    list(target_code_component)::out) is det.
+    mutable_special_case::in, string::in, int::in, int::in,
+    list(foreign_arg)::in, list(target_code_component)::out,
+    list(target_code_component)::out, list(target_code_component)::out) is det.
 
-ml_gen_foreign_proc_csharp_java_decls(_, _, [], []).
-ml_gen_foreign_proc_csharp_java_decls(Info, MutableSpecial, [Arg | Args],
-        Decl ++ Decls) :-
-    ml_gen_foreign_proc_csharp_java_decl(Info, MutableSpecial, Arg, Decl),
-    ml_gen_foreign_proc_csharp_java_decls(Info, MutableSpecial, Args, Decls).
+ml_gen_foreign_proc_csharp_java_decls(_, _, _, _, _, [], [], [], []).
+ml_gen_foreign_proc_csharp_java_decls(Info, MutableSpecial, Code,
+        !.TIIn, !.TIOut, [HeadArg | TailArgs], Decls, TICopyIns, TICopyOuts) :-
+    ml_gen_foreign_proc_csharp_java_decl(Info, MutableSpecial, Code,
+        !TIIn, !TIOut, HeadArg, HeadDecls, HeadTICopyIns, HeadTICopyOuts),
+    ml_gen_foreign_proc_csharp_java_decls(Info, MutableSpecial, Code,
+        !.TIIn, !.TIOut, TailArgs, TailDecls, TailTICopyIns, TailTICopyOuts),
+    Decls = HeadDecls ++ TailDecls,
+    TICopyIns = HeadTICopyIns ++ TailTICopyIns,
+    TICopyOuts = HeadTICopyOuts ++ TailTICopyOuts.
 
     % ml_gen_foreign_proc_csharp_java_decl generates C# or Java code
     % to declare an argument of a foreign_proc.
     %
 :- pred ml_gen_foreign_proc_csharp_java_decl(ml_gen_info::in,
-    mutable_special_case::in, foreign_arg::in,
-    list(target_code_component)::out) is det.
+    mutable_special_case::in, string::in, int::in, int::out, int::in, int::out,
+    foreign_arg::in, list(target_code_component)::out,
+    list(target_code_component)::out, list(target_code_component)::out) is det.
 
-ml_gen_foreign_proc_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
-    Arg = foreign_arg(_Var, MaybeNameAndMode, Type, _BoxPolicy),
+ml_gen_foreign_proc_csharp_java_decl(Info, MutableSpecial, Code,
+        !TIIn, !TIOut, Arg, Decls, TICopyIns, TICopyOuts) :-
+    % Keep the structure of this code in sync with
+    % ml_gen_foreign_proc_c_decl. Any documentation there
+    % applies here as well.
+    Arg = foreign_arg(Var, MaybeNameAndMode, Type, _BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ( if
-        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, _Mode)),
+        MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName)
     then
         (
@@ -604,14 +708,60 @@ ml_gen_foreign_proc_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
             )
         ),
         TypeDecl = target_code_type(MLDS_Type),
-        string.format(" %s;\n", [s(ArgName)], VarDeclString),
-        VarDecl = raw_target_code(VarDeclString),
-        Decl = [TypeDecl, VarDecl]
+        string.format(" %s;\n", [s(ArgName)], ArgDeclStr),
+        ArgDecl = raw_target_code(ArgDeclStr),
+        ( if ml_is_comp_gen_type_info_arg(Info, Var, ArgName) then
+            ( if mode_to_top_functor_mode(ModuleInfo, Mode, Type, top_in) then
+                string.format("TypeInfo_In_%d", [i(!.TIIn)], SeqArgName),
+                !:TIIn = !.TIIn + 1,
+                string.format(" %s;\n", [s(SeqArgName)], SeqDeclStr),
+                SeqDecl = raw_target_code(SeqDeclStr),
+                Decls = [TypeDecl, ArgDecl, TypeDecl, SeqDecl],
+                string.format("\t%s = %s;\n", [s(SeqArgName), s(ArgName)],
+                    TICopyIn),
+                TICopyIns = [raw_target_code(TICopyIn)],
+                TICopyOuts = []
+            else
+                string.format("TypeInfo_Out_%d", [i(!.TIOut)], SeqArgName),
+                !:TIOut = !.TIOut + 1,
+                string.format(" %s;\n", [s(SeqArgName)], SeqDeclStr),
+                SeqDecl = raw_target_code(SeqDeclStr),
+                Decls = [TypeDecl, ArgDecl, TypeDecl, SeqDecl],
+                ( if string.sub_string_search(Code, SeqArgName, _Index) then
+                    string.format("\t%s = %s;\n", [s(ArgName), s(SeqArgName)],
+                        TICopyOut)
+                else
+                    string.format("\t%s = %s;\n", [s(SeqArgName), s(ArgName)],
+                        TICopyOut)
+                ),
+                TICopyIns = [],
+                TICopyOuts = [raw_target_code(TICopyOut)]
+            )
+        else
+            Decls = [TypeDecl, ArgDecl],
+            TICopyIns = [],
+            TICopyOuts = []
+        )
     else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
-        Decl = []
+        Decls = [],
+        TICopyIns = [],
+        TICopyOuts = []
     ).
+
+:- pred ml_is_comp_gen_type_info_arg(ml_gen_info::in, prog_var::in,
+    string::in) is semidet.
+
+ml_is_comp_gen_type_info_arg(Info, Var, ArgName) :-
+    % This predicate and is_comp_gen_type_info_arg should be kept in sync.
+    string.prefix(ArgName, "TypeInfo_for_"),
+    ml_gen_info_get_var_types(Info, VarTypes),
+    lookup_var_type(VarTypes, Var, Type),
+    Type = defined_type(TypeCtorSymName, [], kind_star),
+    TypeCtorSymName = qualified(TypeCtorModuleName, TypeCtorName),
+    TypeCtorModuleName = mercury_private_builtin_module,
+    TypeCtorName = "type_info".
 
 %---------------------------------------------------------------------------%
 
@@ -652,8 +802,8 @@ ml_gen_foreign_proc_ccsj_input_args(Lang, ArgList, AssignInputs, !Info) :-
 ml_gen_foreign_proc_ccsj_input_arg_if_used(Lang, ForeignArg, AssignInput,
         !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ( if
-        ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
         MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName),
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_in)
