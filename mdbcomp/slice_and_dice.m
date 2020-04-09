@@ -542,27 +542,28 @@ compare_path_ports(PathPortA, PathPortB, Result) :-
     builtin.comparison_result::out) is det.
 
 slice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
-    ( if string.first_char(SortStr, C, Rest) then
+    ( if string.first_char(SortStr, C, SortStrTail) then
         ( if C = 'c' then
-            builtin.compare(Result0, ExecCount1 ^ slice_count,
-                ExecCount2 ^ slice_count)
+            builtin.compare(Result0,
+                ExecCount1 ^ slice_count, ExecCount2 ^ slice_count)
         else if C = 'C' then
-            builtin.compare(Result0, ExecCount2 ^ slice_count,
-                ExecCount1 ^ slice_count)
+            builtin.compare(Result0,
+                ExecCount2 ^ slice_count, ExecCount1 ^ slice_count)
         else if C = 't' then
-            builtin.compare(Result0, ExecCount1 ^ slice_tests,
-                ExecCount2 ^ slice_tests)
+            builtin.compare(Result0,
+                ExecCount1 ^ slice_tests, ExecCount2 ^ slice_tests)
         else if C = 'T' then
-            builtin.compare(Result0, ExecCount2 ^ slice_tests,
-                ExecCount1 ^ slice_tests)
+            builtin.compare(Result0,
+                ExecCount2 ^ slice_tests, ExecCount1 ^ slice_tests)
         else
             unexpected($pred, "invalid sort string")
         ),
         ( if
             Result0 = (=),
-            string.length(Rest) > 0
+            string.length(SortStrTail) > 0
         then
-            slice_exec_count_compare(Rest, ExecCount1, ExecCount2, Result)
+            slice_exec_count_compare(SortStrTail,
+                ExecCount1, ExecCount2, Result)
         else
             Result = Result0
         )
@@ -752,21 +753,19 @@ dice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
     builtin.comparison_result::out) is det.
 
 dice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
-    ( if
-        string.first_char(SortStr, C, Rest)
-    then
+    ( if string.first_char(SortStr, C, SortStrTail) then
         ( if C = 'p' then
-            builtin.compare(Result0, ExecCount1 ^ pass_count,
-                ExecCount2 ^ pass_count)
+            builtin.compare(Result0,
+                ExecCount1 ^ pass_count, ExecCount2 ^ pass_count)
         else if C = 'P' then
-            builtin.compare(Result0, ExecCount2 ^ pass_count,
-                ExecCount1 ^ pass_count)
+            builtin.compare(Result0,
+                ExecCount2 ^ pass_count, ExecCount1 ^ pass_count)
         else if C = 'f' then
-            builtin.compare(Result0, ExecCount1 ^ fail_count,
-                ExecCount2 ^ fail_count)
+            builtin.compare(Result0,
+                ExecCount1 ^ fail_count, ExecCount2 ^ fail_count)
         else if C = 'F' then
-            builtin.compare(Result0, ExecCount2 ^ fail_count,
-                ExecCount1 ^ fail_count)
+            builtin.compare(Result0,
+                ExecCount2 ^ fail_count, ExecCount1 ^ fail_count)
         else if C = 's' then
             builtin.compare(Result0,
                 suspicion_ratio(ExecCount1 ^ pass_count,
@@ -798,9 +797,10 @@ dice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
         ),
         ( if
             Result0 = (=),
-            string.length(Rest) > 0
+            string.length(SortStrTail) > 0
         then
-            dice_exec_count_compare(Rest, ExecCount1, ExecCount2, Result)
+            dice_exec_count_compare(SortStrTail,
+                ExecCount1, ExecCount2, Result)
         else
             Result = Result0
         )
@@ -880,12 +880,16 @@ deconstruct_dice_label_count(DiceLabelCount, ProcLabel, PathPort,
 suspicion_ratio(PassCount, FailCount) = R1 :-
     Denominator = PassCount + FailCount,
     ( if Denominator = 0 then
-        % The denominator could be zero if user_all trace counts were
-        % provided.
+        % The denominator could be zero if user_all trace counts were provided.
         R1 = 0.0
     else
         R = float(FailCount) / float(Denominator),
-        ( if R >= 0.20 then
+        % The original threshold here was 0.2. The new value is 3/16, which is
+        % exactly representable in binary. This avoids differences in rounding
+        % between 32 and 64 bit platforms, which can show up as differences
+        % between the stage 2 and 3 versions of the code we generate
+        % for this module during a bootcheck in the C# and Java grades.
+        ( if R >= 0.1875 then
             R1 = R
         else
             R1 = 0.0
