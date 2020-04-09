@@ -49,10 +49,14 @@
     % Generate a uniformly distributed pseudo-random unsigned integer
     % of 8, 16, 32 or 64 bits, respectively.
     %
-:- pred generate_uint8(params::in, uint8::out, ustate::di, ustate::uo) is det.
-:- pred generate_uint16(params::in, uint16::out, ustate::di, ustate::uo) is det.
-:- pred generate_uint32(params::in, uint32::out, ustate::di, ustate::uo) is det.
-:- pred generate_uint64(params::in, uint64::out, ustate::di, ustate::uo) is det.
+:- pred generate_uint8(params::in, uint8::out,
+    ustate::di, ustate::uo) is det.
+:- pred generate_uint16(params::in, uint16::out,
+    ustate::di, ustate::uo) is det.
+:- pred generate_uint32(params::in, uint32::out,
+    ustate::di, ustate::uo) is det.
+:- pred generate_uint64(params::in, uint64::out,
+    ustate::di, ustate::uo) is det.
 
     % Duplicate a 32-bit SFC state.
     %

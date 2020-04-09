@@ -1616,9 +1616,9 @@ public class ML_uva : ML_va {
             return;
         }
 
-        // Rewind elements from the oldest to the newest, undoing their changes.
-        // So that we undo elements in the correct order we use a bitmap to
-        // ensure that we never update an array slot twice.
+        // Rewind elements from the oldest to the newest, undoing their
+        // changes. So that we undo elements in the correct order,
+        // we use a bitmap to ensure that we never update an array slot twice.
         cur = this;
         bitmap = new mercury.runtime.MercuryBitmap(cur.size());
         while (!cur.is_latest()) {

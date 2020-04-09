@@ -476,7 +476,8 @@
     % the lists, the remainder of the nonempty list is appended.
     %
 :- func zip(one_or_more(T), one_or_more(T)) = one_or_more(T).
-:- pred zip(one_or_more(T)::in, one_or_more(T)::in, one_or_more(T)::out) is det.
+:- pred zip(one_or_more(T)::in, one_or_more(T)::in,
+    one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 

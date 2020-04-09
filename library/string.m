@@ -4398,7 +4398,9 @@ skip_to_next_word_start(SepP, String, CurPos, NextWordStartPos) :-
     string::in, int::in, int::out) is det.
 
 skip_to_word_end(SepP, String, CurPos, PastWordEndPos) :-
-    ( if unsafe_index_next_repl(String, CurPos, NextPos, Char, MaybeReplaced) then
+    ( if
+        unsafe_index_next_repl(String, CurPos, NextPos, Char, MaybeReplaced)
+    then
         ( if
             MaybeReplaced = not_replaced,
             SepP(Char)

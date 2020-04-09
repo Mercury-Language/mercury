@@ -770,7 +770,7 @@
     in, in, in, out, in, out) is semidet.
 :- mode foldl2_corresponding(in(pred(in, in, in, out, mdi, muo) is semidet),
     in, in, in, out, mdi, muo) is semidet.
-:- mode foldl2_corresponding(in(pred(in, in,in, out,  di, uo) is semidet),
+:- mode foldl2_corresponding(in(pred(in, in, in, out,  di, uo) is semidet),
     in, in, in, out, di, uo) is semidet.
 
 %---------------------%
@@ -1499,23 +1499,31 @@ ML_array_fill(Object array, int fromIndex, int toIndex, Object Item)
     }
 
     if (array instanceof int[]) {
-        java.util.Arrays.fill(((int []) array), fromIndex, toIndex, (Integer) Item);
+        java.util.Arrays.fill(((int []) array), fromIndex, toIndex,
+            (Integer) Item);
     } else if (array instanceof double[]) {
-        java.util.Arrays.fill(((double []) array), fromIndex, toIndex, (Double) Item);
+        java.util.Arrays.fill(((double []) array), fromIndex, toIndex,
+            (Double) Item);
     } else if (array instanceof byte[]) {
-        java.util.Arrays.fill(((byte []) array), fromIndex, toIndex, (Byte) Item);
+        java.util.Arrays.fill(((byte []) array), fromIndex, toIndex,
+            (Byte) Item);
     } else if (array instanceof short[]) {
-        java.util.Arrays.fill(((short []) array), fromIndex, toIndex,(Short) Item);
+        java.util.Arrays.fill(((short []) array), fromIndex, toIndex,
+            (Short) Item);
     } else if (array instanceof long[]) {
-        java.util.Arrays.fill(((long []) array), fromIndex, toIndex,(Long) Item);
+        java.util.Arrays.fill(((long []) array), fromIndex, toIndex,
+            (Long) Item);
     } else if (array instanceof char[]) {
-        java.util.Arrays.fill(((char []) array), fromIndex, toIndex,(Character) Item);
+        java.util.Arrays.fill(((char []) array), fromIndex, toIndex,
+            (Character) Item);
     } else if (array instanceof boolean[]) {
-        java.util.Arrays.fill(((boolean []) array), fromIndex, toIndex,(Boolean) Item);
+        java.util.Arrays.fill(((boolean []) array), fromIndex, toIndex,
+            (Boolean) Item);
     } else if (array instanceof float[]) {
-        java.util.Arrays.fill(((float []) array), fromIndex, toIndex,(Float) Item);
+        java.util.Arrays.fill(((float []) array), fromIndex, toIndex,
+            (Float) Item);
     } else {
-        java.util.Arrays.fill(((Object []) array), fromIndex, toIndex,Item);
+        java.util.Arrays.fill(((Object []) array), fromIndex, toIndex, Item);
     }
     return array;
 }

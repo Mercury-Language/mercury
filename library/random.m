@@ -813,8 +813,8 @@ io_urandom_gen_uint8(io_urandom(P, V), N, !IO) :-
     generate_uint8(P, N, S1, S),
     impure set_mutvar(V, S).
 
-:- pred io_urandom_gen_uint16(io_urandom(P, S)::in, uint16::out, io::di, io::uo)
-    is det <= urandom(P, S).
+:- pred io_urandom_gen_uint16(io_urandom(P, S)::in, uint16::out,
+    io::di, io::uo) is det <= urandom(P, S).
 :- pragma promise_pure(io_urandom_gen_uint16/4).
 
 io_urandom_gen_uint16(io_urandom(P, V), N, !IO) :-
@@ -823,8 +823,8 @@ io_urandom_gen_uint16(io_urandom(P, V), N, !IO) :-
     generate_uint16(P, N, S1, S),
     impure set_mutvar(V, S).
 
-:- pred io_urandom_gen_uint32(io_urandom(P, S)::in, uint32::out, io::di, io::uo)
-    is det <= urandom(P, S).
+:- pred io_urandom_gen_uint32(io_urandom(P, S)::in, uint32::out,
+    io::di, io::uo) is det <= urandom(P, S).
 :- pragma promise_pure(io_urandom_gen_uint32/4).
 
 io_urandom_gen_uint32(io_urandom(P, V), N, !IO) :-
@@ -833,8 +833,8 @@ io_urandom_gen_uint32(io_urandom(P, V), N, !IO) :-
     generate_uint32(P, N, S1, S),
     impure set_mutvar(V, S).
 
-:- pred io_urandom_gen_uint64(io_urandom(P, S)::in, uint64::out, io::di, io::uo)
-    is det <= urandom(P, S).
+:- pred io_urandom_gen_uint64(io_urandom(P, S)::in, uint64::out,
+    io::di, io::uo) is det <= urandom(P, S).
 :- pragma promise_pure(io_urandom_gen_uint64/4).
 
 io_urandom_gen_uint64(io_urandom(P, V), N, !IO) :-

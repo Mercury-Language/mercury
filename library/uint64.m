@@ -647,7 +647,8 @@ num_zeros(U) = 64 - num_ones(U).
     N = __builtin_popcountl(U);
 #else
     U = U - ((U >> 1) & UINT64_C(0x5555555555555555));
-    U = (U & UINT64_C(0x3333333333333333)) + ((U >> 2) & UINT64_C(0x3333333333333333));
+    U = (U & UINT64_C(0x3333333333333333)) +
+        ((U >> 2) & UINT64_C(0x3333333333333333));
     U = (U + (U >> 4)) & UINT64_C(0x0f0f0f0f0f0f0f0f);
     U = U + (U >> 8);
     U = U + (U >> 16);
