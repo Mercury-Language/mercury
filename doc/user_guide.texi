@@ -121,7 +121,7 @@ how to build and debug Mercury programs.
 * C compilers::     How to use a C compiler other than GNU C.
 * Foreign language interface:: Interfacing to other programming
 		    languages from Mercury.
-* Stand-alone Interfaces:: Calling procedures in Mercury libraries from
+* Stand-alone interfaces:: Calling procedures in Mercury libraries from
                            programs written in other languages.
 * Index::
 @end menu
@@ -474,9 +474,7 @@ mmc --make @var{main-module}
 @noindent
 The usage of Mmake is discouraged.
 
-Mmake is built on top of ordinary or GNU Make @footnote{
-We might eventually add support for ordinary ``Make'' programs,
-but currently only GNU Make is supported.}.
+Mmake is built on top of GNU Make.
 With Mmake, building even a complicated Mercury program
 consisting of a number of modules is as simple as
 
@@ -491,32 +489,35 @@ based on automatically generated dependency information.
 Most of the dependencies are stored in @file{.d} files that are
 automatically recomputed every time you recompile,
 so they are never out-of-date.
-A little bit of the dependency information is stored in @file{.dep}
-and @file{.dv} files which are more expensive to recompute.
-The @samp{mmake @var{main-module}.depend} command which recreates the
-@file{@var{main-module}.dep} and @file{@var{main-module}.dv} files needs
-to be repeated only when you add or remove a module from your program,
-and there is no danger of getting an inconsistent executable if you forget
-this step --- instead you will get a compile or link error.
+A little bit of the dependency information
+is stored in @file{.dep} and @file{.dv} files
+which are more expensive to recompute.
+The @samp{mmake @var{main-module}.depend} command which recreates
+the @file{@var{main-module}.dep} and @file{@var{main-module}.dv} files
+needs to be repeated only when you either
+add a module to your program or remove a module from it.
+There is no danger of getting an inconsistent executable
+if you forget this step ---
+instead you will get a compile or link error.
 
-The @samp{mmc -f} step above is only required if there are any source
-files for which the file name does not match the module name.
-@samp{mmc -f} generates a file @file{Mercury.modules} containing
-a mapping from module name to source file.  The @file{Mercury.modules}
-file must be updated when a source file for which the file name does
-not match the module name is added to or removed from the directory.
+The @samp{mmc -f} step above is only required if there are any source files
+for which the file name does not match the module name.
+@samp{mmc -f} generates a file named @file{Mercury.modules}
+containing a mapping from module name to source file.
+The @file{Mercury.modules} file must be updated
+when a source file for which the file name does not match the module name
+is added to or removed from the directory.
 
 @samp{mmake} allows you to build more than one program in the same directory.
 Each program must have its own @file{.dep} and @file{.dv} files,
-and therefore you must run @samp{mmake @var{program}.depend}
-for each program.  The @samp{Mercury.modules} file is used for
-all programs in the directory.
+and therefore you must run @samp{mmake @var{program}.depend} for each program.
+The @samp{Mercury.modules} file is used for all programs in the directory.
 
-If there is a file called @file{Mmake} or @file{Mmakefile} in the
-current directory,
+If there is a file called @file{Mmake} or @file{Mmakefile}
+in the current directory,
 Mmake will include that file in its automatically generated Makefile.
-The @samp{Mmake} file can override the default values of
-various variables used by Mmake's builtin rules,
+The @samp{Mmake} file can override
+the default values of various variables used by Mmake's builtin rules,
 or it can add additional rules, dependencies, and actions.
 
 Mmake's builtin rules are defined by the file
@@ -4792,7 +4793,7 @@ so there are some limitations in the implementation.
 * Oracle questions::
 * Declarative debugging commands::
 * Diagnoses::
-* Search Modes::
+* Search modes::
 * Improving the search::
 @end menu
 
@@ -5187,8 +5188,8 @@ or they may be asked entirely new questions.
 If the user aborts the diagnosis,
 they are returned to the event at which the @samp{dd} command was given.
 
-@node Search Modes
-@subsection Search Modes
+@node Search modes
+@subsection Search modes
 
 The declarative debugger can operate in one of several modes when
 searching for a bug.
@@ -5199,7 +5200,7 @@ The user can specify which mode to use by giving the
 @ref{Declarative debugging mdb commands}) or with the @samp{mode} declarative
 debugger command (see @ref{Declarative debugging commands}).
 
-@subsubsection Top-down Mode
+@subsubsection Top-down mode
 
 Using this mode the declarative debugger will ask about the children of the
 last question the user answered @samp{no} to.  The child calls will be asked
@@ -5211,7 +5212,7 @@ recursive programs.
 
 This search mode is used by default when no other mode is specified.
 
-@subsubsection Divide and Query Mode
+@subsubsection Divide and query mode
 
 With this search mode the declarative debugger attempts to halve the size
 of the search space with each question.  In many cases this will result in the
@@ -5222,7 +5223,7 @@ where top-down search would require an unreasonably large number of questions
 to be answered.  However, the questions may appear to come from unrelated parts
 of the program which can make them harder to answer.
 
-@subsubsection Suspicion Divide and Query Mode
+@subsubsection Suspicion divide and query mode
 
 In this search mode the declarative debugger assigns a suspicion level to
 each event based on which parts of the program were executed in failing
@@ -5231,7 +5232,7 @@ search space into two areas of equal suspicion with each question.  This tends
 to result in questions about parts of the program executed in a failing test
 case, but not in passing test cases.
 
-@subsubsection Binary Search Mode
+@subsubsection Binary search mode
 
 The user may ask the declarative debugger to do a binary search along the
 path in the call tree between the current question and the question that the
@@ -5442,7 +5443,7 @@ Trace count files
 can be manipulated with the @samp{mtc_union} and @samp{mtc_diff} tools,
 and they can be analysed by the @samp{mslice} and @samp{mdice} tools.
 They can also be used to help direct a declarative debugging search
-(see @ref{Search Modes}).
+(see @ref{Search modes}).
 
 @sp 1
 
@@ -7141,7 +7142,7 @@ Effective only if @samp{--generate-dependencies} is also specified.
 @findex --generate-standalone-interface @var{basename}
 Output a stand-alone interface.  @var{basename} is used as
 the basename of any files generated for the stand-alone interface.
-(See @pxref{Stand-alone Interfaces} for further details.)
+(See @pxref{Stand-alone interfaces} for further details.)
 
 @sp 1
 @item --generate-mmc-deps
@@ -11125,38 +11126,40 @@ This is the only foreign language for back-ends which compile to Java.
 
 @c ----------------------------------------------------------------------------
 
-@node Stand-alone Interfaces
-@chapter Stand-alone Interfaces
+@node Stand-alone interfaces
+@chapter Stand-alone interfaces
 
-Programs written in a language other than Mercury should not make calls
-to foreign exported Mercury procedures unless the Mercury runtime has been
-initialised.
-(In the case where the Mercury runtime has not been initialised the
-behaviour of these calls is undefined.)
-Such programs must also ensure that any module specific initialisation is
-performed before calling foreign exported procedures in Mercury modules.
-Likewise, module specific finalisation may need to be performed after
-all calls to Mercury procedures have been made.
+Programs written in a language other than Mercury
+should not make calls to foreign exported Mercury procedures
+unless the Mercury runtime has been initialised.
+(In the case where the Mercury runtime has not been initialised,
+the behaviour of these calls is undefined.)
+Such programs must also ensure that
+any module specific initialisation is performed
+before calling foreign exported procedures in Mercury modules.
+Likewise, module specific finalisation may need to be performed
+after all calls to Mercury procedures have been made.
 
-A stand-alone interface provides a mechanism by which non-Mercury programs
-may initialise (and shut down) the Mercury runtime plus a specified set
-of Mercury libraries.
+A stand-alone interface provides a mechanism by which
+non-Mercury programs may initialise (and shut down)
+the Mercury runtime plus a specified set of Mercury libraries.
 
-A stand-alone interface is created by invoking the compiler with the
-@samp{--generate-standalone-interface} option.
+A stand-alone interface is created by invoking the compiler
+with the @samp{--generate-standalone-interface} option.
 The set of Mercury libraries to be included in the stand-alone interface
-is given via one of the usual mechanisms for specifying what libraries to link
-against, e.g. the @samp{--ml} and @samp{--mld} options.
-(@pxref{Libraries}).
+is given via one of the usual mechanisms
+for specifying what libraries to link against,
+e.g. the @samp{--ml} and @samp{--mld} options. (@pxref{Libraries}).
 The Mercury standard library is always included in this set.
 
-In C grades, the @samp{--generate-standalone-interface} option causes
-the compiler to generate an object file that should be linked into
-the executable.
+In C grades,
+the @samp{--generate-standalone-interface} option
+causes the compiler to generate
+an object file that should be linked into the executable.
 This object file contains two functions:
 @code{mercury_init()} and @code{mercury_terminate()}.
-The compiler also generates a C header file that contains
-the prototypes of these functions.
+The compiler also generates a C header file
+that contains the prototypes of these functions.
 (This header file may be included in C++ programs.)
 The roles of the two functions are described below.
 
