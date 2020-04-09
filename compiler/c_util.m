@@ -331,6 +331,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module int32.
 :- import_module int64.
 :- import_module integer.
 :- import_module require.
@@ -885,9 +886,13 @@ output_uint16_expr_cur_stream(N, !IO) :-
     output_uint16_expr(Stream, N, !IO).
 
 output_int32_expr(Stream, N, !IO) :-
-    io.write_string(Stream, "INT32_C(", !IO),
-    io.write_int32(Stream, N, !IO),
-    io.write_string(Stream, ")", !IO).
+    ( if N = min_int32 then
+        io.write_string("INT32_MIN", !IO)
+    else
+        io.write_string(Stream, "INT32_C(", !IO),
+        io.write_int32(Stream, N, !IO),
+        io.write_string(Stream, ")", !IO)
+    ).
 
 output_int32_expr_cur_stream(N, !IO) :-
     io.output_stream(Stream, !IO),
