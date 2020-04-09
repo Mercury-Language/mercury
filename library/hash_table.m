@@ -344,9 +344,15 @@ init(HashPred, N, MaxOccupancy) = HT :-
 
 %---------------------------------------------------------------------------%
 
-    % These numbers are picked out of thin air.
+    % The initial numbers 7 and .9 were picked out of thin air.
     %
-init_default(HashPred) = init(HashPred, 7, 0.9).
+    % We now use .875 (7/8) instead .9 because it is exactly representable
+    % in binary. This avoids differences in rounding between 32 and 64 bit
+    % platforms, which can show up as differences between the stage 2 and 3
+    % versions of the code we generate for this module during a bootcheck
+    % in the C# and Java grades.
+    %
+init_default(HashPred) = init(HashPred, 7, 0.875).
 
 %---------------------------------------------------------------------------%
 

@@ -412,7 +412,7 @@ build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
             ShowMakeTimes = yes,
             DiffSecs = float(Time - Time0) / 1000.0,
             % Avoid cluttering the screen with short running times.
-            ( if DiffSecs >= 0.4 then
+            ( if DiffSecs >= 0.5 then
                 io.write_string("Making ", !IO),
                 make_write_target_file(Globals, TargetFile, !IO),
                 io.format(" took %.2fs\n", [f(DiffSecs)], !IO)
