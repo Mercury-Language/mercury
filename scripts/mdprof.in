@@ -15,7 +15,9 @@
 # unprocessed, which is what we want; the web servers breaks up QUERY_STRING
 # on boundaries inappropriate for us when computing the command line arguments.
 
-PATH=@prefix@/bin:$PATH
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+PATH=@bindir@:$PATH
 export PATH
 
 # Use less heap at the expense of increased time spent in the GC.

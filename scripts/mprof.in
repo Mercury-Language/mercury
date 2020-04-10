@@ -12,7 +12,9 @@
 #
 # Environment variables: MERCURY_PROFILER.
 
-MPROF=${MERCURY_PROFILER="@PREFIX@/bin/mercury_profile"}
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+MPROF=${MERCURY_PROFILER="@bindir@/mercury_profile"}
 
 case $# in
 	0) exec $MPROF ;;
