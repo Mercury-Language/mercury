@@ -283,7 +283,8 @@ then
     tmp=Mmake.makefile
 else
     case "$MKTEMP" in
-        "")     old_umask=`umask`
+        "")
+            old_umask=`umask`
             umask 022
             try=0
             until
