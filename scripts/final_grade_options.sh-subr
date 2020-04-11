@@ -1,15 +1,17 @@
 #---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 1998-2002, 2004-2007, 2009-2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
 # final_grade_options.sh-subr:
-#	An `sh' subroutine for handling implications between grade-related
-#	options. Used by the `ml', `mgnuc' and `c2init' scripts.
+#   An `sh' subroutine for handling implications between grade-related
+#   options. Used by the `ml', `mgnuc' and `c2init' scripts.
 #
-#	The code here should be inserted after a script's option-parsing
-#	loop.
+#   The code here should be inserted after a script's option-parsing
+#   loop.
 #
 # IMPORTANT: any changes to the handling of grades here may also require
 # changes to compiler/handle_options.m.
@@ -20,145 +22,144 @@
 #---------------------------------------------------------------------------#
 
 use_minimal_model=false
-case $use_minimal_model_stack_copy in
-	true)
-		use_minimal_model=true
-		;;
+case ${use_minimal_model_stack_copy} in
+    true)
+        use_minimal_model=true
+        ;;
 esac
-case $use_minimal_model_own_stacks in
-	true)
-		use_minimal_model=true
-		;;
+case ${use_minimal_model_own_stacks} in
+    true)
+        use_minimal_model=true
+        ;;
 esac
 
-#
 # .tr grade is not compatible with .*mm*
-#	(see comment in runtime/mercury_tabling.c for rationale)
-#
-case $use_trail,$use_minimal_model in true,true)
-	echo "trailing and minimal model tabling are not compatible" 1>&2
-	exit 1 ;;
+#   (see comment in runtime/mercury_tabling.c for rationale)
+case ${use_trail},${use_minimal_model} in
+    true,true)
+        echo "trailing and minimal model tabling are not compatible" 1>&2
+        exit 1
+        ;;
 esac
 
-#
 # .exts grade is not compatible with .stseg
-#	(they are alternative ways of doing the same thing)
-#
-case $extend_stacks,$stack_segments in true,true)
-	echo "--extend-stacks-when-needed and --stack-segments are not compatible" 1>&2
-	exit 1 ;;
+#   (they are alternative ways of doing the same thing)
+case ${extend_stacks},${stack_segments} in
+    true,true)
+        echo "--extend-stacks-when-needed and --stack-segments are not compatible" 1>&2
+        exit 1
+        ;;
 esac
 
-#
-# stack segments not compatible with high-level code
-#
+# stack segments are not compatible with high-level code
 case $highlevel_code,$stack_segments in true,true)
-	echo "--high-level-code and --stack-segments are not compatible" 1>&2
-	exit 1 ;;
+    echo "--high-level-code and --stack-segments are not compatible" 1>&2
+    exit 1 ;;
 esac
 
-#
 # .debug grades are not compatible with high-level code
-#
-case $highlevel_code,$debug in true,true)
-	echo "--high-level-code and --debug are not compatible" 1>&2
-	exit 1 ;;
+case ${highlevel_code},${debug} in
+    true,true)
+        echo "--high-level-code and --debug are not compatible" 1>&2
+        exit 1
+        ;;
 esac
 
-#
 # .decldebug grades are not compatible with high-level code
-#
-case $highlevel_code,$decl_debug in true,true)
-	echo "--high-level-code and --decl-debug are not compatible" 1>&2
-	exit 1 ;;
+case ${highlevel_code},${decl_debug} in
+    true,true)
+        echo "--high-level-code and --decl-debug are not compatible" 1>&2
+        exit 1
+        ;;
 esac
 
-#
 # .profdeep grades are not compatible with high-level code
-#
-case $highlevel_code,$profile_deep in true,true)
-	echo "--high-level-code and --deep-profiling are not compatible" 1>&2
-	exit 1 ;;
+case ${highlevel_code},${profile_deep} in
+    true,true)
+        echo "--high-level-code and --deep-profiling are not compatible" 1>&2
+        exit 1
+        ;;
 esac
 
-#
-# The none-C backends do not support single-precision floats, time profiling or
-# memory profiling.
-#
-case $target in csharp|java|erlang)
-	case $single_prec_float in true)
-		echo "--single-prec-float and --target $target are not compatible" 1>&2
-		exit 1 ;;
-	esac
-	case $profile_time in true)
-		echo "--profile-time and --target $target are not compatible" 1>&2
-		exit 1 ;;
-	esac
-	case $profile_memory in true)
-		echo "--profile-memory and --target $target are not compatible" 1>&2
-		exit 1 ;;
-	esac
+# The non-C backends do not support single-precision floats, time profiling,
+# memory profiling or deep profiling.
+case ${target} in
+    csharp|java|erlang)
+        case ${single_prec_float} in
+            true)
+                echo "--single-prec-float and --target $target are not compatible" 1>&2
+                exit 1
+                ;;
+        esac
+        case ${profile_time} in
+            true)
+                echo "--profile-time and --target $target are not compatible" 1>&2
+                exit 1
+                ;;
+        esac
+        case ${profile_memory} in
+            true)
+                echo "--profile-memory and --target $target are not compatible" 1>&2
+                exit 1
+                ;;
+        esac
+        case ${profile_deep} in
+            true)
+                echo "--profile-deep and --target $target are not compatible" 1>&2
+                exit 1
+                ;;
+        esac
+        ;;
 esac
 
-#
 # --decl-debug implies --debug
-#
-case $decl_debug in true)
-	debug=true ;;
+case ${decl_debug} in
+    true)
+        debug=true
+        ;;
 esac
 
-#
 # --target C#, Java, Erlang implies --high-level-code
-#
-case $target in csharp|java|erlang)
-	highlevel_code=true ;;
+case ${target} in
+    csharp|java|erlang)
+        highlevel_code=true
+        ;;
 esac
 
-#
-# --target C#, Java, Erlang implies --high-level-data
-#
-case $target in csharp|java|erlang)
-	highlevel_data=true ;;
-esac
-
-#
 # --target C#, Java, Erlang implies --gc automatic.
 # NOTE: the .par grade component is meaningless for the non-C backends,
 # so we set it to false if they are being used.  This avoids having to
 # deal with grades like "java.par".
-#
-case $target in csharp|java|erlang)
-	gc_method=automatic
-	thread_safe=false
-	;;
+case ${target} in
+    csharp|java|erlang)
+        gc_method=automatic
+        thread_safe=false
+        ;;
 esac
 
-#
 # --high-level-code disables the use of low-level gcc extensions
-#
-case $highlevel_code in true)
-	non_local_gotos=false
-	asm_labels=false
-	global_regs=false
-	;;
+case ${highlevel_code} in
+    true)
+        non_local_gotos=false
+        asm_labels=false
+        global_regs=false
+        ;;
 esac
 
-#
 # --use-regions-debug and --use-regions-profiling aren't meaningful
 # without --use-regions
-#
-case $use_regions in false)
-	use_regions_debug=false
-	use_regions_profiling=false
-	;;
+case ${use_regions} in
+    false)
+        use_regions_debug=false
+        use_regions_profiling=false
+        ;;
 esac
 
-#
 # threadscope doesn't make sense in non-parallel grades.
-#
-case $thread_safe in false)
-    threadscope=false
-    ;;
+case ${thread_safe} in
+    false)
+        threadscope=false
+        ;;
 esac
 
 #---------------------------------------------------------------------------#

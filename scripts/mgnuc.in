@@ -1,5 +1,6 @@
 #! /bin/sh
-# vim: ts=4 sw=4 et
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2007, 2010-2012 The University of Melbourne.
@@ -34,7 +35,7 @@ BYTES_PER_WORD="@BYTES_PER_WORD@"
 MKTEMP=@MKTEMP@
 TMPDIR=${TMPDIR=/tmp}
 
-case "$C_COMPILER_TYPE" in
+case "${C_COMPILER_TYPE}" in
     gcc*)
         ANSI_OPTS="@CFLAGS_FOR_ANSI@"
         CHECK_OPTS="
@@ -62,12 +63,12 @@ case "$C_COMPILER_TYPE" in
 
         # Enabling -fomit-frame-pointer causes setjmp/longjmp to misbehave
         # with MinGW on Windows XP.
-        case "$FULLARCH" in
+        case "${FULLARCH}" in
             *mingw*)
-              OPT_OPTS="-O2 $CFLAGS_FOR_NO_STRICT_ALIASING"
+              OPT_OPTS="-O2 ${CFLAGS_FOR_NO_STRICT_ALIASING}"
               ;;
             *)
-              OPT_OPTS="-O2 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
+              OPT_OPTS="-O2 ${CFLAGS_FOR_NO_STRICT_ALIASING} -fomit-frame-pointer"
               ;;
         esac
         DEBUG_OPT="-g"
@@ -78,7 +79,7 @@ case "$C_COMPILER_TYPE" in
     clang*)
         ANSI_OPTS=
         CHECK_OPTS="-w"
-        OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
+        OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ ${CFLAGS_FOR_NO_STRICT_ALIASING} -fomit-frame-pointer"
         DEBUG_OPT="-g"
         DISABLE_OPTS_OPT="-O0"
         COMPILER_HALT_AT_WARN_OPT="-Werror"
@@ -111,13 +112,12 @@ SPLIT_OPTS=""
 INLINE_ALLOC_OPTS=""
 
 verbose=false
-assemble=false
 c_debug=false
 c_optimize=true
 use_activation_counts=false
 preserve_tail_recursion=true
 mercury_config_dir=${MERCURY_STDLIB_DIR-@LIBDIR@}
-mercury_config_dir=${MERCURY_CONFIG_DIR=$mercury_config_dir}
+mercury_config_dir=${MERCURY_CONFIG_DIR=${mercury_config_dir}}
 mercury_stdlib_dir=${MERCURY_STDLIB_DIR=@LIBDIR@}
 do_filter_cc=true
 halt_at_warn_if_possible=false
@@ -156,7 +156,7 @@ Options:
         and (c) the grade is an MLDS grade. (LLDS grades get some warnings
         that cannot be avoided.)
 
-$grade_usage
+${grade_usage}
 
 Description:
     This runs gcc with the appropriate options for compiling Mercury programs.
@@ -174,7 +174,7 @@ Files:
 while : ; do
     case "$1" in
         -h|--help|"-?")
-            echo "$Help"
+            echo "${Help}"
             exit 0
             ;;
 
@@ -213,12 +213,12 @@ if test -r .mgnuc_opts
 then
     for opt in `cat .mgnuc_opts`
     do
-        case "$opt" in
+        case "${opt}" in
 
 @MGNUC_FILE_OPTS@
 
             *)
-                echo "unknown option $opt in .mgnuc_opts"
+                echo "unknown option ${opt} in .mgnuc_opts"
                 exit 1
                 ;;
         esac
@@ -234,14 +234,15 @@ fi
 # include the file `canonical_grade.sh-subr'
 @CANONICAL_GRADE@
 
-case "$mercury_stdlib_dir" in
-    "") MERC_ALL_C_INCL_DIRS=
+case "${mercury_stdlib_dir}" in
+    "")
+        MERC_ALL_C_INCL_DIRS=
         ;;
     *)
         # The option setting code above guarantees that if
         # `--mercury-stdlib-dir' is set, `--mercury-config-dir'
         # is also set.
-        MERC_ALL_C_INCL_DIRS="-I$mercury_config_dir/conf -I$mercury_stdlib_dir/inc -I$mercury_stdlib_dir/lib/$GRADE/inc"
+        MERC_ALL_C_INCL_DIRS="-I${mercury_config_dir}/conf -I${mercury_stdlib_dir}/inc -I${mercury_stdlib_dir}/lib/${GRADE}/inc"
         ;;
 esac
 
@@ -253,17 +254,17 @@ ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=@ALL_LOCAL_C_INCL_DIRS@}
 # IMPORTANT: any changes here will require similar changes to
 # compiler/compile_target_code.m.
 
-case $c_debug in
-    true)       C_DEBUG_OPTS="$DEBUG_OPT" ;;
+case ${c_debug} in
+    true)       C_DEBUG_OPTS="${DEBUG_OPT}" ;;
     false)      C_DEBUG_OPTS="" ;;
 esac
 
-case $c_optimize in
+case ${c_optimize} in
     true)       ;;
     false)      OPT_OPTS="" ;;
 esac
 
-case $low_level_debug in
+case ${low_level_debug} in
     true)       LLDEBUG_OPTS="-DMR_LOWLEVEL_DEBUG" ;;
     false)      LLDEBUG_OPTS="" ;;
 esac
@@ -276,57 +277,62 @@ esac
 #
 
 HALT_AT_WARN_OPT=""
-case $highlevel_code in
-    true)       HLC_OPTS="-DMR_HIGHLEVEL_CODE"
-                case $halt_at_warn_if_possible in
-                true)   HALT_AT_WARN_OPT="$COMPILER_HALT_AT_WARN_OPT" ;;
-                esac
+case ${highlevel_code} in
+    true)
+        HLC_OPTS="-DMR_HIGHLEVEL_CODE"
+        case ${halt_at_warn_if_possible} in
+            true)
+                HALT_AT_WARN_OPT="${COMPILER_HALT_AT_WARN_OPT}"
                 ;;
-    false)      HLC_OPTS="" ;;
+        esac
+        ;;
+    false)
+        HLC_OPTS=""
+        ;;
 esac
 
-case $highlevel_data in
-    true)       HLD_OPTS="-DMR_HIGHLEVEL_DATA" ;;
-    false)      HLD_OPTS="" ;;
-esac
-
-case $asm_labels in
+case ${asm_labels} in
     true)       ASM_OPTS="-DMR_USE_ASM_LABELS" ;;
     false)      ASM_OPTS="" ;;
 esac
 
-case $non_local_gotos in
+case ${non_local_gotos} in
     true)       GOTO_OPTS="-DMR_USE_GCC_NONLOCAL_GOTOS" ;;
     false)      GOTO_OPTS="" ;;
 esac
 
-case $global_regs in
+case ${global_regs} in
     true)       REG_OPTS="-DMR_USE_GCC_GLOBAL_REGISTERS" ;;
     false)      REG_OPTS="" ;;
 esac
 
-case $thread_safe in
-    true)       THREAD_OPTS="-DMR_THREAD_SAFE $CFLAGS_FOR_THREADS"
-                case $FULLARCH in *linux*)
-                    # Don't use -ansi under Linux or we get parse errors
-                    # at sigset_t in the pthreads headers. This doesn't seem
-                    # to be necessary for recent versions of Linux/glibc
-                    # (e.g. glibc 2.1.2), but I've left it in so we can remain
-                    # compatible with older versions.
-                    ANSI_OPTS=""
-                esac ;;
-    false)      THREAD_OPTS="" ;;
+case ${thread_safe} in
+    true)
+        THREAD_OPTS="-DMR_THREAD_SAFE ${CFLAGS_FOR_THREADS}"
+        case ${FULLARCH} in
+            *linux*)
+                # Don't use -ansi under Linux or we get parse errors
+                # at sigset_t in the pthreads headers. This doesn't seem
+                # to be necessary for recent versions of Linux/glibc
+                # (e.g. glibc 2.1.2), but I've left it in so we can remain
+                # compatible with older versions.
+                ANSI_OPTS=""
+        esac
+        ;;
+    false)
+        THREAD_OPTS=""
+        ;;
 esac
 
-case $threadscope in
+case ${threadscope} in
     true)       THREADSCOPE_OPTS="-DMR_THREADSCOPE" ;;
     false)      THREADSCOPE_OPTS="" ;;
 esac
 
 # Set the correct flags if we're to use the MS Visual C runtime.
 use_msvcrt=@USE_MSVCRT@
-if test $use_msvcrt = "yes"; then
-    case $thread_safe in
+if test ${use_msvcrt} = "yes"; then
+    case ${thread_safe} in
         # -MD states that we will use the MSVC runtime, the boehm_gc collector
         # assumes that the collector has been built as a DLL if we are using
         # the MSVC runtime so we need to define GC_NOT_DLL when the collector
@@ -339,133 +345,154 @@ else
 fi
 
 boehm_opts="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC "
-case $gc_method in
+case ${gc_method} in
     accurate)       GC_OPTS="-DMR_NATIVE_GC" ;;
-    boehm)          GC_OPTS="$boehm_opts" ;;
-    boehm_debug)    GC_OPTS="$boehm_opts -DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACK_PTRS" ;;
+    boehm)          GC_OPTS="${boehm_opts}" ;;
+    boehm_debug)    GC_OPTS="${boehm_opts} -DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACK_PTRS" ;;
     hgc)            GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_HGC" ;;
     conservative)   GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC" ;;
     none)           GC_OPTS="" ;;
 esac
 
-case $profile_time in
+case ${profile_time} in
     true)       PROF_TIME_OPTS="-DMR_MPROF_PROFILE_TIME" ;;
     false)      PROF_TIME_OPTS="" ;;
 esac
 
-case $profile_calls in
+case ${profile_calls} in
     true)       PROF_CALLS_OPTS="-DMR_MPROF_PROFILE_CALLS" ;;
     false)      PROF_CALLS_OPTS="" ;;
 esac
 
-case $profile_memory in
+case ${profile_memory} in
     true)       PROF_MEMORY_OPTS="-DMR_MPROF_PROFILE_MEMORY" ;;
     false)      PROF_MEMORY_OPTS="" ;;
 esac
 
-case $use_activation_counts in
+case ${use_activation_counts} in
     true)       ACTIVATION_COUNT_OPT="-DMR_USE_ACTIVATION_COUNTS" ;;
     false)      ACTIVATION_COUNT_OPT="";;
 esac
 
-case $preserve_tail_recursion in
+case ${preserve_tail_recursion} in
     true)       PRESERVE_TAIL_RECURSION_OPT="-DMR_DEEP_PROFILING_TAIL_RECURSION" ;;
     false)      PRESERVE_TAIL_RECURSION_OPT="";;
 esac
 
-case $profile_deep in
-    true)       PROF_DEEP_OPTS="-DMR_DEEP_PROFILING $ACTIVATION_COUNT_OPT $PRESERVE_TAIL_RECURSION_OPT" ;;
+case ${profile_deep} in
+    true)       PROF_DEEP_OPTS="-DMR_DEEP_PROFILING ${ACTIVATION_COUNT_OPT} ${PRESERVE_TAIL_RECURSION_OPT}" ;;
     false)      PROF_DEEP_OPTS="" ;;
 esac
 
-case $record_term_sizes_as_words,$record_term_sizes_as_cells in
-    true,true)      progname=`basename $0`
-                    echo "$progname: we can't record both cell and word sizes"
-                    exit 1 ;;
-    true,false)     RECORD_TERM_SIZE_OPTS="-DMR_RECORD_TERM_SIZES" ;;
-    false,true)     RECORD_TERM_SIZE_OPTS="-DMR_RECORD_TERM_SIZES -DMR_RECORD_TERM_SIZES_AS_CELLS" ;;
-    false,false)    RECORD_TERM_SIZE_OPTS="" ;;
+case ${record_term_sizes_as_words},${record_term_sizes_as_cells} in
+    true,true)
+        progname=`basename $0`
+        echo "${progname}: we can't record both cell and word sizes"
+        exit 1
+        ;;
+    true,false)
+        RECORD_TERM_SIZE_OPTS="-DMR_RECORD_TERM_SIZES" ;;
+    false,true)
+        RECORD_TERM_SIZE_OPTS="-DMR_RECORD_TERM_SIZES -DMR_RECORD_TERM_SIZES_AS_CELLS" ;;
+    false,false)
+        RECORD_TERM_SIZE_OPTS="" ;;
 esac
 
-case $use_trail in
+case ${use_trail} in
     true)
         TRAIL_OPTS="-DMR_USE_TRAIL"
         # See the comment in compile_c_file/7 in compiler/compile_target_code.m
         # for an explanation of this.
-        case $COMPILER in
-            gcc)    FN_ALIGN_OPTS="-falign-functions=$BYTES_PER_WORD" ;;
+        case ${COMPILER} in
+            gcc)    FN_ALIGN_OPTS="-falign-functions=${BYTES_PER_WORD}" ;;
             *)      FN_ALIGN_OPTS="" ;;
         esac
         ;;
-
     false)
-        TRAIL_OPTS="" ;;
+        TRAIL_OPTS=""
+        ;;
 esac
 
-case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks in
-    true,true)      progname=`basename $0`
-                    echo "$progname: can't enable both forms of minimal model tabling at once"
-                    exit 1 ;;
-    true,false)     MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL_STACK_COPY" ;;
-    false,true)     MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL_OWN_STACKS" ;;
-    false,false)    MINIMAL_MODEL_OPTS="" ;;
+case ${use_minimal_model_stack_copy},${use_minimal_model_own_stacks} in
+    true,true)
+        progname=`basename $0`
+        echo "${progname}: can't enable both forms of minimal model tabling at once"
+        exit 1
+        ;;
+    true,false)
+        MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL_STACK_COPY"
+        ;;
+    false,true)
+        MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL_OWN_STACKS"
+        ;;
+    false,false)
+        MINIMAL_MODEL_OPTS=""
+        ;;
 esac
 
-case $use_minimal_model,$minimal_model_debug in
+case ${use_minimal_model},${minimal_model_debug} in
     true,false)     ;; # MINIMAL_MODEL_OPTS is already set
-    true,true)      MINIMAL_MODEL_OPTS="$MINIMAL_MODEL_OPTS -DMR_MINIMAL_MODEL_DEBUG" ;;
+    true,true)      MINIMAL_MODEL_OPTS="${MINIMAL_MODEL_OPTS} -DMR_MINIMAL_MODEL_DEBUG" ;;
     *)              MINIMAL_MODEL_OPTS="" ;;
 esac
 
-case $pregenerated_dist,$single_prec_float in
-    true,true)      progname=`basename $0`
-                    echo "$progname: cannot enable both pregenerated dist and single-prec float"
-                    exit 1 ;;
-    true,false)     PREGEN_SPF_OPTS="-DMR_PREGENERATED_DIST" ;;
-    false,true)     PREGEN_SPF_OPTS="-DMR_USE_SINGLE_PREC_FLOAT" ;;
-    false,false)    PREGEN_SPF_OPTS="" ;;
+case ${pregenerated_dist},${single_prec_float} in
+    true,true)
+        progname=`basename $0`
+        echo "${progname}: cannot enable both pregenerated dist and single-prec float"
+        exit 1
+        ;;
+    true,false)
+        PREGEN_SPF_OPTS="-DMR_PREGENERATED_DIST"
+        ;;
+    false,true)
+        PREGEN_SPF_OPTS="-DMR_USE_SINGLE_PREC_FLOAT"
+        ;;
+    false,false)
+        PREGEN_SPF_OPTS=""
+        ;;
 esac
 
-case $debug in
+case ${debug} in
     true)           TRACE_OPTS="-DMR_EXEC_TRACE" ;;
     false)          TRACE_OPTS="" ;;
 esac
 
-case $decl_debug in
+case ${decl_debug} in
     true)           DECL_DEBUG_OPTS="-DMR_DECL_DEBUG" ;;
     false)          DECL_DEBUG_OPTS="" ;;
 esac
 
-case $ss_debug in
+case ${ss_debug} in
     true)           SS_DEBUG_OPTS="-DMR_SS_DEBUG" ;;
     false)          SS_DEBUG_OPTS="" ;;
 esac
 
-case $ll_debug in
-    true)           LL_DEBUG_OPTS="-DMR_LL_DEBUG $DEBUG_OPT $DISABLE_OPTS_OPT" ;;
+case ${ll_debug} in
+    true)           LL_DEBUG_OPTS="-DMR_LL_DEBUG ${DEBUG_OPT} ${DISABLE_OPTS_OPT}" ;;
     false)          LL_DEBUG_OPTS="" ;;
 esac
 
-case $extend_stacks in
+case ${extend_stacks} in
     true)           EXTEND_STACKS_OPTS="-DMR_EXTEND_STACKS_WHEN_NEEDED" ;;
     false)          EXTEND_STACKS_OPTS="" ;;
 esac
 
-case $stack_segments in
+case ${stack_segments} in
     true)           STACK_SEGMENTS_OPTS="-DMR_STACK_SEGMENTS" ;;
     false)          STACK_SEGMENTS_OPTS="" ;;
 esac
 
-case $use_regions in
+case ${use_regions} in
     true)
         REGION_OPTS_0="-DMR_USE_REGIONS"
-        case $use_regions_debug in
-            true)   REGION_OPTS_1="$REGION_OPTS_0 -DMR_RBMM_DEBUG" ;;
-            false)  REGION_OPTS_1="$REGION_OPTS_0" ;;
+        case ${use_regions_debug} in
+            true)   REGION_OPTS_1="${REGION_OPTS_0} -DMR_RBMM_DEBUG" ;;
+            false)  REGION_OPTS_1="${REGION_OPTS_0}" ;;
         esac
-        case $use_regions_profiling in
-            true)   REGION_OPTS="$REGION_OPTS_1 -DMR_RBMM_PROFILING" ;;
-            false)  REGION_OPTS="$REGION_OPTS_1" ;;
+        case ${use_regions_profiling} in
+            true)   REGION_OPTS="${REGION_OPTS_1} -DMR_RBMM_PROFILING" ;;
+            false)  REGION_OPTS="${REGION_OPTS_1}" ;;
         esac
         ;;
     false)
@@ -473,39 +500,39 @@ case $use_regions in
         ;;
 esac
 
-GCC_OPTS="$ASM_OPTS $GOTO_OPTS $REG_OPTS"
+GCC_OPTS="${ASM_OPTS} ${GOTO_OPTS} ${REG_OPTS}"
 
 # check that special grades are only used with gcc
-case $COMPILER in
+case ${COMPILER} in
     gcc|unknown)
         ;;
-    *)  case "$GCC_OPTS" in
+    *)  case "${GCC_OPTS}" in
             *USE_GCC*)
                 progname=`basename $0`
-                echo "$progname: For compilers other than GNU C, the only" 1>&2
-                echo "$progname: base grade allowed is \`none'" 1>&2
+                echo "${progname}: For compilers other than GNU C, the only" 1>&2
+                echo "${progname}: base grade allowed is \`none'" 1>&2
                 ;;
         esac
         ;;
 esac
 
 # if we're using global registers, add CFLAGS_FOR_REGS
-case $global_regs in
-    true)       GCC_OPTS="$GCC_OPTS $CFLAGS_FOR_REGS" ;;
+case ${global_regs} in
+    true)       GCC_OPTS="${GCC_OPTS} ${CFLAGS_FOR_REGS}" ;;
     false)      ;;
 esac
 
 # if we're using non-local gotos, add CFLAGS_FOR_GOTOS
-case $non_local_gotos in
-    true)       GCC_OPTS="$GCC_OPTS $CFLAGS_FOR_GOTOS" ;;
+case ${non_local_gotos} in
+    true)       GCC_OPTS="${GCC_OPTS} ${CFLAGS_FOR_GOTOS}" ;;
     false)      ;;
 esac
 
 # if sanitizers were enabled at configure time, add CFLAGS_FOR_SANITIZERS
-SANITIZER_OPTS="$CFLAGS_FOR_SANITIZERS"
+SANITIZER_OPTS="${CFLAGS_FOR_SANITIZERS}"
 
 # Use any applicable LTO options
-LTO_OPTS="$CFLAGS_FOR_LTO"
+LTO_OPTS="${CFLAGS_FOR_LTO}"
 
 #
 # Special case hacks for particular architectures
@@ -516,56 +543,63 @@ ARCH_OPTS=""
 
 # XXX gcc generates warnings about possibly uninitialized variables in
 # high-level C code. clang would, too, if we did not suppress all warnings.
-case "$COMPILER,$highlevel_code" in
+case "${COMPILER},${highlevel_code}" in
     gcc,true)
-        CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
+        CHECK_OPTS="${CHECK_OPTS} -Wno-uninitialized"
         ;;
 esac
 
-case "$FULLARCH" in
+case "${FULLARCH}" in
     i*86-*|x86_64*)
         # The use of stack_pointer in the ASM_JUMP macro defined in
         # runtime/mercury_goto.h causes lots of warnings about using possibly
         # uninitialized variables; there's no easy way to suppress them except
         # by disabling the warning.
-        case "$COMPILER,$highlevel_code" in
+        case "${COMPILER},${highlevel_code}" in
             gcc,false)
-                CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
+                CHECK_OPTS="${CHECK_OPTS} -Wno-uninitialized"
                 ;;
         esac
         ;;
     *-solaris*|*-sunos*)
         # The solaris headers for pthreads are not ANSI :-(
-        case $thread_safe in true)
+        case ${thread_safe} in true)
             ANSI_OPTS=""
             ;;
         esac
         ;;
 esac
 
-case $COMPILER in gcc)
-    case "$FULLARCH" in
+case ${COMPILER} in gcc)
+    case "${FULLARCH}" in
         i*86*)
             case "$*" in
             # Workarounds for internal problems with GCC in asm_fast.gc
-            # on i*86.  Reported against gcc 4.4.5 and 4.6.0.
+            # on i*86. Reported against gcc 4.4.5 and 4.6.0.
             *" ml_backend.ml_closure_gen.c "*)
-                ARCH_OPTS="$ARCH_OPTS -O0" ;;
+                ARCH_OPTS="${ARCH_OPTS} -O0"
+                ;;
             *" ml_backend.ml_unify_gen.c "*)
-                ARCH_OPTS="$ARCH_OPTS -O0" ;;
+                ARCH_OPTS="${ARCH_OPTS} -O0"
+                ;;
             *" ml_backend.rtti_to_mlds.c "*)
-                ARCH_OPTS="$ARCH_OPTS -O0" ;;
+                ARCH_OPTS="${ARCH_OPTS} -O0"
+                ;;
             *" display_report.c "*)
-                ARCH_OPTS="$ARCH_OPTS -O0" ;;
+                ARCH_OPTS="${ARCH_OPTS} -O0"
+                ;;
             # Workaround for a internal compiler error with GCC 4.8
             # in grades that use global registers.
             *" mercury_ho_call.c "*)
-                case $global_regs in true)
-                    ARCH_OPTS="$ARCH_OPTS -O0" ;;
+                case ${global_regs} in true)
+                    ARCH_OPTS="${ARCH_OPTS} -O0"
+                    ;;
                 esac
                 ;;
-            esac ;;
-    esac ;;
+            esac
+            ;;
+    esac
+    ;;
 esac
 
 # On sparc-sun-solaris2, we need to use -fPIC rather than -fpic
@@ -573,12 +607,13 @@ esac
 # on the number of "small pic" references.
 # Similarly, on sparc64 OpenBSD, no grades fit into the 13-bit GOT.
 
-case "$FULLARCH" in
+case "${FULLARCH}" in
     sparc-sun-solaris2*|sparc64*-openbsd*)
-        case "$*" in *-fpic*)
-            echo "mgnuc: using -fPIC rather than -fpic"
-            OVERRIDE_OPTS="$OVERRIDE_OPTS -fPIC"
-            ;;
+        case "$*" in
+            *-fpic*)
+                echo "mgnuc: using -fPIC rather than -fpic"
+                OVERRIDE_OPTS="${OVERRIDE_OPTS} -fPIC"
+                ;;
         esac
         ;;
 esac
@@ -590,45 +625,55 @@ esac
 # Changes to this need to be reflected in the predicate
 # gather_c_compiler_flags/3 in compiler/compile_target_code.m.
 
-case "$FULLARCH" in x86_64*)
-    case $global_regs,$debug in true,true)
-        case "$C_COMPILER_TYPE" in gcc_9_*)
-            ARCH_OPTS="$ARCH_OPTS -O0" ;;
-        esac ;;
-    esac ;;
+case "${FULLARCH}" in x86_64*)
+    case ${global_regs},${debug} in
+        true,true)
+            case "${C_COMPILER_TYPE}" in
+                gcc_9_*)
+                    ARCH_OPTS="${ARCH_OPTS} -O0"
+                    ;;
+            esac
+            ;;
+    esac
+    ;;
 esac
 
 # The -floop-optimize option is incompatible with the global register code
 # we generated on Darwin PowerPC. See the hard_coded/ppc_bug test case
 # for an example program which fails with this optimization.
 
-case $FULLARCH in powerpc*apple*darwin*)
-    case $highlevel_code in false)
-        case $global_regs in true)
-            ARCH_OPTS="$ARCH_OPTS -fno-loop-optimize" ;;
+case ${FULLARCH} in
+    powerpc*apple*darwin*)
+        case ${highlevel_code} in
+            false)
+                case ${global_regs} in
+                    true)
+                        ARCH_OPTS="${ARCH_OPTS} -fno-loop-optimize"
+                        ;;
+                esac
+                ;;
         esac
-    esac
+        ;;
 esac
 
 # At -O2 compilation times on Mac OS X are extremely slow for
-# Apple GCC 4.{0,2}.  We must force GCC to use -O0 here in order
+# Apple GCC 4.{0,2}. We must force GCC to use -O0 here in order
 # to get acceptable compilation times.
 # Changes to this need to be reflected in the predicate 
 # gather_c_compiler_flags/3 in compiler/compile_target_code.m.
 
-case $FULLARCH in *apple*darwin*)
-    case $debug in true)
-        case $COMPILER in gcc)
-            OVERRIDE_OPTS="$OVERRIDE_OPTS -O0"
+case ${FULLARCH} in
+    *apple*darwin*)
+        case ${debug} in
+            true)
+                case ${COMPILER} in
+                    gcc)
+                        OVERRIDE_OPTS="${OVERRIDE_OPTS} -O0"
+                        ;;
+                esac
+                ;;
         esac
-    esac
-esac
-
-case $assemble in true)
-    case $verbose in true)
-        echo $AS $AS_OPTS "$@" ;;
-    esac
-    exec $AS $AS_OPTS "$@" ;;
+        ;;
 esac
 
 if test -r .mgnuc_copts
@@ -639,74 +684,81 @@ else
 fi
 
 FILTERCC=""
-case $asm_labels,$do_filter_cc in true,true)
-    # Check if mfiltercc is available as we may be bootstrapping with
-    # an older compiler which did not have it.
-    if test -n "$MKTEMP" && mfiltercc </dev/null 2>/dev/null
-    then
-        FILTERCC="mfiltercc"
-    fi
+case ${asm_labels},${do_filter_cc} in
+    true,true)
+        # Check if mfiltercc is available as we may be bootstrapping with
+        # an older compiler which did not have it.
+        if test -n "${MKTEMP}" && mfiltercc </dev/null 2>/dev/null
+        then
+            FILTERCC="mfiltercc"
+        fi
     ;;
 esac
 
-ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
-    $ANSI_OPTS\
-    $CHECK_OPTS\
-    $OPT_OPTS\
-    $LTO_OPTS\
-    $HLC_OPTS\
-    $HLD_OPTS\
-    $GCC_OPTS\
-    $HALT_AT_WARN_OPT\
-    $MSVCRT_OPTS\
-    $GC_OPTS\
-    $DEFINE_OPTS\
-    $STACK_TRACE_OPTS\
-    $TRACE_OPTS\
-    $DECL_DEBUG_OPTS\
-    $SS_DEBUG_OPTS\
-    $LL_DEBUG_OPTS\
-    $EXTEND_STACKS_OPTS\
-    $STACK_SEGMENTS_OPTS\
-    $LLDEBUG_OPTS\
-    $C_DEBUG_OPTS\
-    $PROF_TIME_OPTS\
-    $PROF_CALLS_OPTS\
-    $PROF_MEMORY_OPTS\
-    $PROF_DEEP_OPTS\
-    $INLINE_ALLOC_OPTS\
-    $TRAIL_OPTS\
-    $RECORD_TERM_SIZE_OPTS\
-    $MINIMAL_MODEL_OPTS\
-    $PREGEN_SPF_OPTS\
-    $SANITIZER_OPTS\
-    $SPLIT_OPTS\
-    $THREAD_OPTS\
-    $THREADSCOPE_OPTS\
-    $REGION_OPTS\
-    $ARCH_OPTS\
-    $ARG_OPTS\
-    $FN_ALIGN_OPTS\
-    $INVISIBLE_OPTS"
+ALL_CC_OPTS="${MERC_ALL_C_INCL_DIRS}\
+    ${ANSI_OPTS}\
+    ${CHECK_OPTS}\
+    ${OPT_OPTS}\
+    ${LTO_OPTS}\
+    ${HLC_OPTS}\
+    ${HLD_OPTS}\
+    ${GCC_OPTS}\
+    ${HALT_AT_WARN_OPT}\
+    ${MSVCRT_OPTS}\
+    ${GC_OPTS}\
+    ${DEFINE_OPTS}\
+    ${STACK_TRACE_OPTS}\
+    ${TRACE_OPTS}\
+    ${DECL_DEBUG_OPTS}\
+    ${SS_DEBUG_OPTS}\
+    ${LL_DEBUG_OPTS}\
+    ${EXTEND_STACKS_OPTS}\
+    ${STACK_SEGMENTS_OPTS}\
+    ${LLDEBUG_OPTS}\
+    ${C_DEBUG_OPTS}\
+    ${PROF_TIME_OPTS}\
+    ${PROF_CALLS_OPTS}\
+    ${PROF_MEMORY_OPTS}\
+    ${PROF_DEEP_OPTS}\
+    ${INLINE_ALLOC_OPTS}\
+    ${TRAIL_OPTS}\
+    ${RECORD_TERM_SIZE_OPTS}\
+    ${MINIMAL_MODEL_OPTS}\
+    ${PREGEN_SPF_OPTS}\
+    ${SANITIZER_OPTS}\
+    ${SPLIT_OPTS}\
+    ${THREAD_OPTS}\
+    ${THREADSCOPE_OPTS}\
+    ${REGION_OPTS}\
+    ${ARCH_OPTS}\
+    ${ARG_OPTS}\
+    ${FN_ALIGN_OPTS}\
+    ${INVISIBLE_OPTS}"
 
 case $# in
-    0)  set $CC $ALL_CC_OPTS $OVERRIDE_OPTS ;;
-    *)  set $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS $ALL_LOCAL_C_INCL_DIRS ;;
+    0)
+        set ${CC} ${ALL_CC_OPTS} ${OVERRIDE_OPTS}
+        ;;
+    *)
+        set ${CC} ${ALL_CC_OPTS} "$@" ${OVERRIDE_OPTS} ${ALL_LOCAL_C_INCL_DIRS}
+        ;;
 esac
 
-case $verbose in true)
-    echo "$@"
+case ${verbose} in
+    true)
+        echo "$@"
+        ;;
 esac
 
-if test -z "$FILTERCC"
+if test -z "${FILTERCC}"
 then
     exec "$@"
 fi
 
 # mktemp should give its own error message.
-tmp=`$MKTEMP $TMPDIR/mgnuc.XXXXXX` || exit 1
-trap 'status=$?; rm -f $tmp; exit $status' 0 1 2 3 13 15
-"$@" 2> $tmp
+tmp=`${MKTEMP} ${TMPDIR}/mgnuc.XXXXXX` || exit 1
+trap 'status=$?; rm -f ${tmp}; exit ${status}' 0 1 2 3 13 15
+"$@" 2> ${tmp}
 status=$?
-"$FILTERCC" < $tmp >&2
-exit $status
+"${FILTERCC}" < ${tmp} >&2
+exit ${status}

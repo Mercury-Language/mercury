@@ -159,9 +159,9 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
@@ -175,8 +175,7 @@
 %---------------------------------------------------------------------------%
 
 ml_gen_types(ModuleInfo, Target, Defns) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    HighLevelData = mlds_target_high_level_data(Target),
     (
         HighLevelData = yes,
         module_info_get_type_table(ModuleInfo, TypeTable),

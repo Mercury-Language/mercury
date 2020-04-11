@@ -817,15 +817,7 @@ get_layout_equiv(_) = _ :-
     get_type_ctor_info(TypeInfo::in) = (TypeCtorInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     TypeCtorInfo = TypeInfo.type_ctor;
-#else
-    try {
-        TypeCtorInfo = (object[]) TypeInfo[0];
-    } catch (System.InvalidCastException) {
-        TypeCtorInfo = TypeInfo;
-    }
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -1150,11 +1142,7 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     Arity = TypeInfo.args.Length;
-#else
-    Arity = (int) TypeInfo[(int) var_arity_ti.arity];
-#endif
 ").
 
 get_var_arity_typeinfo_arity(_) = _ :-
@@ -3440,11 +3428,7 @@ get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo, Index) = Univ :-
     high_level_data,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     SUCCESS_INDICATOR = true;
-#else
-    SUCCESS_INDICATOR = false;
-#endif
 ").
 high_level_data :-
     ( if semidet_succeed then
@@ -3527,12 +3511,7 @@ new_type_info(TypeInfo, _) = NewTypeInfo :-
     new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     NewTypeInfo = OldTypeInfo.copy();
-#else
-    NewTypeInfo = new object[Arity + 1];
-    System.Array.Copy(OldTypeInfo, NewTypeInfo, OldTypeInfo.Length);
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -3576,11 +3555,7 @@ get_pti_from_type_info_index(_, _, _, _) :-
         PTI::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     PTI = TypeInfo.args[Index];
-#else
-    PTI = TypeInfo[Offset + Index];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -3669,7 +3644,6 @@ get_subterm(_, _, _, _, _) = -1 :-
 "
     // Mention TypeInfo_for_U to avoid a warning.
 
-#if MR_HIGHLEVEL_DATA
     if (Term is object[]) {
         int i = Index + ExtraArgs;
         Arg = ((object[]) Term)[i];
@@ -3692,16 +3666,6 @@ get_subterm(_, _, _, _, _) = -1 :-
         }
         Arg = f.GetValue(Term);
     }
-#else
-    int i = Index + ExtraArgs;
-    try {
-        // try low level data
-        Arg = ((object[]) Term)[i];
-    } catch (System.InvalidCastException) {
-        // try high level data
-        Arg = Term.GetType().GetFields()[i].GetValue(Term);
-    }
-#endif
 
     TypeInfo_for_T = SubTermTypeInfo;
 ").
@@ -3796,19 +3760,8 @@ pseudo_type_info_is_variable(_, -1) :-
     pseudo_type_info_is_variable(TypeInfo::in, VarNum::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     VarNum = TypeInfo.variable_number;
     SUCCESS_INDICATOR = (VarNum != -1);
-#else
-    try {
-        VarNum = System.Convert.ToInt32(TypeInfo);
-        SUCCESS_INDICATOR = true;
-    }
-    catch (System.Exception e) {
-        VarNum = -1;
-        SUCCESS_INDICATOR = false;
-    }
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -3852,78 +3805,6 @@ public static final int first_exist_quant_varnum = 513;
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-% XXX We have only implemented the .NET backend for the low-level data case.
-
-:- pragma foreign_code("C#", "
-#if !MR_HIGHLEVEL_DATA
-
-    // The field numbers of the contents of type_infos.
-    enum fixed_arity_ti {
-        type_ctor_info                      = 0,
-        arg_type_infos                      = 1
-    }
-
-    enum var_arity_ti {
-        type_ctor_info                      = 0,
-        arity                               = 1,
-        arg_type_infos                      = 2
-    }
-
-    // The field numbers of the contents of type_ctor_infos.
-    // Fill this in as you add new field accessors.
-
-    enum type_ctor_info_field_nums {
-        type_ctor_arity                     = 0,
-        // type_ctor_version                = 1,
-        type_ctor_num_ptags                 = 2,
-        type_ctor_rep                       = 3,
-        type_ctor_unify_pred                = 4,
-        type_ctor_compare_pred              = 5,
-        type_ctor_module_name               = 6,
-        type_ctor_name                      = 7,
-        type_functors                       = 8,
-        type_layout                         = 9,
-        type_ctor_num_functors              = 10,
-        type_ctor_flags                     = 11
-    }
-
-    enum ptag_layout_field_nums {
-        sectag_sharers                      = 0,
-        sectag_locn                         = 1,
-        sectag_alternatives                 = 2,
-        sectag_num_bits                     = 3
-    }
-
-    enum du_functor_field_nums {
-        du_functor_name                     = 0,
-        du_functor_orig_arity               = 1,
-        du_functor_arg_type_contains_var    = 2,
-        du_functor_sectag_locn              = 3,
-        du_functor_primary                  = 4,
-        du_functor_secondary                = 5,
-        du_functor_ordinal                  = 6,
-        du_functor_arg_types                = 7,
-        du_functor_arg_names                = 8,
-        du_functor_exist_info               = 9,
-        du_functor_subtype                  = 10,
-        du_functor_num_sectag_bits          = 11,
-    }
-
-    enum exist_info_field_nums {
-        typeinfos_plain                     = 0,
-        typeinfos_in_tci                    = 1,
-        tcis                                = 2,
-        typeinfo_locns                      = 3
-    }
-
-    enum exist_locn_field_nums {
-        exist_arg_num                       = 0,
-        exist_offset_in_tci                 = 1
-    }
-
-#endif
-").
 
 :- pred same_pointer_value(T::in, T::in) is semidet.
 :- pred same_pointer_value_untyped(T::in, U::in) is semidet.
@@ -4023,18 +3904,7 @@ get_primary_tag(_) = 0u8 :-
     get_remote_secondary_tag(X::in) = (Tag::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     Tag = (int) X.GetType().GetField(""data_tag"").GetValue(X);
-#else
-    try {
-        // try the low-level data representation
-        object[] data = (object[]) X;
-        Tag = (int) data[0];
-    } catch (System.InvalidCastException) {
-        // try the high-level data representation
-        Tag = (int) X.GetType().GetField(""data_tag"").GetValue(X);
-    }
-#endif
 ").
 :- pragma foreign_proc("Java",
     get_remote_secondary_tag(X::in) = (Tag::out),
@@ -4106,11 +3976,7 @@ ptag_index(_, _) = _ :-
     ptag_index(X::in, TypeLayout::in) = (PtagEntry::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     PtagEntry = TypeLayout.layout_du()[X];
-#else
-    PtagEntry = (object[]) TypeLayout[X];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4129,12 +3995,7 @@ sectag_locn(_) = _ :-
     sectag_locn(PTagEntry::in) = (SectagLocn::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     SectagLocn = (Sectag_locn_0) PTagEntry.sectag_locn;
-#else
-    SectagLocn = mercury.runtime.LowLevelData.make_enum((int)
-        PTagEntry[(int) ptag_layout_field_nums.sectag_locn]);
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4155,14 +4016,7 @@ du_sectag_alternatives(_, _) = _ :-
     du_sectag_alternatives(X::in, PTagEntry::in) = (FunctorDescriptor::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     FunctorDescriptor = PTagEntry.sectag_alternatives[X];
-#else
-    object[] sectag_alternatives;
-    sectag_alternatives = (object [])
-        PTagEntry[(int) ptag_layout_field_nums.sectag_alternatives];
-    FunctorDescriptor = (object []) sectag_alternatives[X];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4181,13 +4035,8 @@ typeinfo_locns_index(_, _) = _ :-
     typeinfo_locns_index(VarNum::in, ExistInfo::in) = (TypeInfoLocn::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     // Variables count from one.
     TypeInfoLocn = ExistInfo.exist_typeinfo_locns[VarNum - 1];
-#else
-    TypeInfoLocn = (object[]) ((object[]) ExistInfo[(int)
-        exist_info_field_nums.typeinfo_locns])[VarNum];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4207,11 +4056,7 @@ exist_info_typeinfos_plain(_) = -1i16 :-
     exist_info_typeinfos_plain(ExistInfo::in) = (TypeInfosPlain::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     TypeInfosPlain = ExistInfo.exist_typeinfos_plain;
-#else
-    TypeInfosPlain = ExistInfo[(int) exist_info_field_nums.typeinfos_plain];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4230,11 +4075,7 @@ exist_info_tcis(_) = -1i16 :-
     exist_info_tcis(ExistInfo::in) = (TCIs::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     TCIs = ExistInfo.exist_tcis;
-#else
-    TCIs = ExistInfo[(int) exist_info_field_nums.tcis];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4253,11 +4094,7 @@ exist_arg_num(_) = -1i16 :-
     exist_arg_num(TypeInfoLocn::in) = (ArgNum::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     ArgNum = TypeInfoLocn.exist_arg_num;
-#else
-    ArgNum = TypeInfoLocn[(int) exist_locn_field_nums.exist_arg_num];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4276,11 +4113,7 @@ exist_offset_in_tci(_) = -1i16 :-
     exist_offset_in_tci(TypeInfoLocn::in) = (ArgNum::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     ArgNum = TypeInfoLocn.exist_offset_in_tci;
-#else
-    ArgNum = TypeInfoLocn[(int) exist_locn_field_nums.exist_offset_in_tci];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4299,7 +4132,6 @@ get_type_info_from_term(_, _) = _ :-
     get_type_info_from_term(Term::in, Index::in) = (TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     if (Term is object[]) {
         TypeInfo = (runtime.TypeInfo_Struct) ((object[]) Term)[Index];
     } else {
@@ -4311,14 +4143,6 @@ get_type_info_from_term(_, _) = _ :-
         }
         TypeInfo = (runtime.TypeInfo_Struct) f.GetValue(Term);
     }
-#else
-    try {
-        TypeInfo = (object[]) ((object[]) Term)[Index];
-    } catch (System.InvalidCastException) {
-        // try high level data
-        TypeInfo = (object[]) Term.GetType().GetFields()[Index].GetValue(Term);
-    }
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4460,11 +4284,7 @@ var_arity_type_info_index_as_pti(TypeInfo, Index) =
     type_info_index_as_ti(TypeInfo::in, VarNum::in) = (TypeInfoAtIndex::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     TypeInfoAtIndex = (runtime.TypeInfo_Struct) TypeInfo.args[VarNum - 1];
-#else
-    TypeInfoAtIndex = (object[]) TypeInfo[VarNum];
-#endif
 ").
 :- pragma foreign_proc("Java",
     type_info_index_as_ti(TypeInfo::in, VarNum::in) = (TypeInfoAtIndex::out),
@@ -4492,11 +4312,7 @@ type_info_index_as_ti(TypeInfo, _) = TypeInfo :-
     type_info_index_as_pti(TypeInfo::in, VarNum::in) = (PseudoTypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     PseudoTypeInfo = TypeInfo.args[VarNum - 1];
-#else
-    PseudoTypeInfo = (object[]) TypeInfo[VarNum];
-#endif
 ").
 :- pragma foreign_proc("Java",
     type_info_index_as_pti(TypeInfo::in, VarNum::in) = (PseudoTypeInfo::out),
@@ -4524,11 +4340,7 @@ type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
         TypeInfo0::di, TypeInfo::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     TypeInfo0.args[Index] = Value;
-#else
-    TypeInfo0[Offset + Index] = Value;
-#endif
     TypeInfo = TypeInfo0;
 ").
 
@@ -4572,12 +4384,7 @@ det_unimplemented(S) :-
     type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     Arity = TypeCtorInfo.arity;
-#else
-    Arity = (int) TypeCtorInfo[
-        (int) type_ctor_info_field_nums.type_ctor_arity];
-#endif
 ").
 :- pragma foreign_proc("Java",
     type_ctor_arity(TypeCtorInfo::in) = (Arity::out),
@@ -4602,12 +4409,7 @@ type_ctor_arity(_) = _ :-
     type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     UnifyPred = TypeCtorInfo.unify_pred;
-#else
-    UnifyPred = TypeCtorInfo[
-        (int) type_ctor_info_field_nums.type_ctor_unify_pred];
-#endif
 ").
 :- pragma foreign_proc("C",
     type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
@@ -4634,12 +4436,7 @@ type_ctor_unify_pred(_) = unify_or_compare_pred :-
     type_ctor_compare_pred(TypeCtorInfo::in) = (ComparePred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     ComparePred = TypeCtorInfo.compare_pred;
-#else
-    ComparePred = TypeCtorInfo[
-        (int) type_ctor_info_field_nums.type_ctor_compare_pred];
-#endif
 ").
 
 :- pragma foreign_proc("C",
@@ -4669,13 +4466,7 @@ type_ctor_compare_pred(_) = unify_or_compare_pred :-
     get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     TypeCtorRep = (Type_ctor_rep_0) TypeCtorInfo.type_ctor_rep;
-#else
-    int rep;
-    rep = (int) TypeCtorInfo[(int) type_ctor_info_field_nums.type_ctor_rep];
-    TypeCtorRep = mercury.runtime.LowLevelData.make_enum(rep);
-#endif
 ").
 :- pragma foreign_proc("Java",
     get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
@@ -4702,12 +4493,7 @@ get_type_ctor_rep(_) = _ :-
     type_ctor_module_name(TypeCtorInfo::in) = (Name::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     Name = TypeCtorInfo.type_ctor_module_name;
-#else
-    Name = (string)
-        TypeCtorInfo[(int) type_ctor_info_field_nums.type_ctor_module_name];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4736,17 +4522,12 @@ type_ctor_module_name(_) = _ :-
     type_ctor_name(TypeCtorInfo::in) = (Name::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     if (TypeCtorInfo.type_ctor_rep
             == runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE) {
         Name = ""{}"";
     } else {
         Name = TypeCtorInfo.type_ctor_name;
     }
-#else
-    Name = (string)
-        TypeCtorInfo[(int) type_ctor_info_field_nums.type_ctor_name];
-#endif
 ").
 :- pragma foreign_proc("Java",
     type_ctor_name(TypeCtorInfo::in) = (Name::out),
@@ -4778,12 +4559,7 @@ type_ctor_name(_) = _ :-
     get_type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     Functors = TypeCtorInfo.type_functors;
-#else
-    Functors = (object[])
-        TypeCtorInfo[(int) type_ctor_info_field_nums.type_functors];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -4823,12 +4599,7 @@ get_type_functors(_) = _ :-
     get_type_layout(TypeCtorInfo::in) = (TypeLayout::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     TypeLayout = TypeCtorInfo.type_layout;
-#else
-    TypeLayout = (object[])
-        TypeCtorInfo[(int) type_ctor_info_field_nums.type_layout];
-#endif
 ").
 :- pragma foreign_proc("Java",
     get_type_layout(TypeCtorInfo::in) = (TypeLayout::out),
@@ -4855,12 +4626,7 @@ get_type_layout(_) = _ :-
     type_ctor_num_functors(TypeCtorInfo::in) = (NumFunctors::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-#if MR_HIGHLEVEL_DATA
     NumFunctors = TypeCtorInfo.type_ctor_num_functors;
-#else
-    NumFunctors = (int) TypeCtorInfo[(int)
-        type_ctor_info_field_nums.type_ctor_num_functors];
-#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -5493,11 +5259,7 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
     unsafe_index(Num::in, Array::in) = (Item::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-#if MR_HIGHLEVEL_DATA
     Item = null;
-#else
-    Item = ((object []) Array)[Num];
-#endif
 ").
 unsafe_index(_, _) = _ :-
     private_builtin.sorry("rtti_implementation.unsafe_index").

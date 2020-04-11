@@ -3155,7 +3155,6 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         AllowPackingMiniTypes),
 
     % Compute MaybeDirectArgs.
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
         Target = target_c,
         globals.lookup_bool_option(Globals, allow_direct_args,
@@ -3167,7 +3166,6 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
             TermSizeCells),
         ( if
             AllowDirectArgs = yes,
-            HighLevelData = no,
             TermSizeWords = no,
             TermSizeCells = no
         then
@@ -3181,13 +3179,8 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         ; Target = target_erlang
         ),
         % Direct arg functors have not (yet) been implemented on these targets.
-        MaybeDirectArgs = direct_args_disabled
-    ),
+        MaybeDirectArgs = direct_args_disabled,
 
-    (
-        HighLevelData = no
-    ;
-        HighLevelData = yes,
         expect(unify(AllowDoubleWords, no), $pred,
             "AllowDoubleWords != no"),
         expect(unify(AllowPackingInts, no), $pred,

@@ -247,18 +247,11 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         GradeStructure = grade_mlds(MLDSTarget, TargetDebug),
         TargetDebugStrs = target_debug_to_strs(TargetDebug),
         (
-            MLDSTarget = mlds_target_c(DataRep, MLDSCThreadSafe, CTrail,
+            MLDSTarget = mlds_target_c(MLDSCThreadSafe, CTrail,
                 MercFile, LowTagBits, MercFloat),
             BinaryCompatStrs =
                 binary_compat_version_to_strs(WhichGradeString),
-            (
-                DataRep = mlds_c_datarep_heap_cells,
-                DataRepStr = "hlc"
-            ;
-                DataRep = mlds_c_datarep_classes,
-                DataRepStr = "hl"
-            ),
-            BaseStr = DataRepStr,
+            BaseStr = "hlc",
             TrailStrs = c_trail_to_strs(CTrail),
             LowTagBitStrs =
                 low_tag_bits_use_to_strs(WhichGradeString, LowTagBits),
@@ -566,77 +559,60 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_conf - svalue_gcc_conf_none,
-            svar_datarep - svalue_datarep_heap_cells]
+            svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "reg",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_conf - svalue_gcc_conf_reg,
-            svar_datarep - svalue_datarep_heap_cells]
+            svar_gcc_conf - svalue_gcc_conf_reg]
     ;
         ComponentStr = "jump",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_conf - svalue_gcc_conf_jump,
-            svar_datarep - svalue_datarep_heap_cells]
+            svar_gcc_conf - svalue_gcc_conf_jump]
     ;
         ComponentStr = "fast",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_conf - svalue_gcc_conf_fast,
-            svar_datarep - svalue_datarep_heap_cells]
+            svar_gcc_conf - svalue_gcc_conf_fast]
     ;
         ComponentStr = "asm_jump",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_conf - svalue_gcc_conf_asm_jump,
-            svar_datarep - svalue_datarep_heap_cells]
+            svar_gcc_conf - svalue_gcc_conf_asm_jump]
     ;
         ComponentStr = "asm_fast",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
             [svar_target - svalue_target_c,
-            svar_gcc_conf - svalue_gcc_conf_asm_fast,
-            svar_datarep - svalue_datarep_heap_cells]
-    ;
-        ComponentStr = "hl",
-        Setting = svar_target - svalue_target_c,
-        Settings =
-            [svar_backend - svalue_backend_mlds,
-            svar_datarep - svalue_datarep_classes,
-            svar_gcc_conf - svalue_gcc_conf_none]
+            svar_gcc_conf - svalue_gcc_conf_asm_fast]
     ;
         ComponentStr = "hlc",
         Setting = svar_target - svalue_target_c,
         Settings =
             [svar_backend - svalue_backend_mlds,
-            svar_datarep - svalue_datarep_heap_cells,
             svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "csharp",
         Setting = svar_target - svalue_target_csharp,
         Settings =
             [svar_backend - svalue_backend_mlds,
-            svar_datarep - svalue_datarep_classes,
             svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "java",
         Setting = svar_target - svalue_target_java,
         Settings =
             [svar_backend - svalue_backend_mlds,
-            svar_datarep - svalue_datarep_classes,
             svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "erlang",
         Setting = svar_target - svalue_target_erlang,
         Settings =
             [svar_backend - svalue_backend_elds,
-            svar_datarep - svalue_datarep_erlang,
             svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "par",

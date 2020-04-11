@@ -98,15 +98,13 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen_deconstruct.
+:- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_out.
@@ -1562,8 +1560,7 @@ construct_ground_term_tagword_initializer_lld(RHSVarTypeWidth,
 %---------------------------------------------------------------------------%
 
 ml_generate_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    HighLevelData = mlds_target_high_level_data(Target),
     Info = ml_const_struct_info(ModuleInfo, Target, HighLevelData),
 
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),

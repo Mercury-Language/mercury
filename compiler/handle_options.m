@@ -879,7 +879,6 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
             !Globals),
         globals.set_option(highlevel_code, bool(yes), !Globals),
-        globals.set_option(highlevel_data, bool(yes), !Globals),
         globals.set_option(unboxed_float, bool(yes), !Globals),
         globals.set_option(unboxed_int64s, bool(yes), !Globals),
         globals.set_option(nondet_copy_out, bool(yes), !Globals),
@@ -921,14 +920,10 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             !Globals),
         globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
             !Globals),
-        globals.set_option(delay_partial_instantiations, bool(yes),
-            !Globals),
-        globals.set_option(can_compare_constants_as_ints, bool(no),
-            !Globals),
-        globals.set_option(can_compare_compound_values, bool(yes),
-            !Globals),
-        globals.set_option(order_constructors_for_erlang, bool(yes),
-            !Globals),
+        globals.set_option(delay_partial_instantiations, bool(yes), !Globals),
+        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
+        globals.set_option(can_compare_compound_values, bool(yes), !Globals),
+        globals.set_option(order_constructors_for_erlang, bool(yes), !Globals),
         globals.set_option(optimize_tailcalls, bool(no), !Globals),
 
         % The following options do not directly affect the Erlang backend,
@@ -937,8 +932,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
         globals.set_option(gcc_global_registers, bool(no), !Globals),
         globals.set_option(asm_labels, bool(no), !Globals),
-        globals.set_option(highlevel_code, bool(no), !Globals),
-        globals.set_option(highlevel_data, bool(no), !Globals)
+        globals.set_option(highlevel_code, bool(no), !Globals)
     ;
         Target = target_c,
 
@@ -1337,18 +1331,14 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         true
     ),
 
-    % Argument packing only works on C back-ends with low-level data.
-    % In the future, we may want to use bit-field syntax on C backends
-    % with high-level data. For the other target languages, implementing
-    % argument packing will require not just a lot of work on RTTI, but also
-    % generalizing field addressing, to allow both single fields and
-    % a group of adjacent fields packed into a single word to be
-    % addressed via a mechanism other than an argument's name.
-    globals.lookup_bool_option(!.Globals, highlevel_data, HighLevelData),
-    ( if
+    % Argument packing only works on C back-ends, which use low-level data.
+    % For the other target languages, implementing argument packing
+    % will require not just a lot of work on RTTI, but also generalizing
+    % field addressing, to allow both single fields and a group of adjacent
+    % fields packed into a single word to be addressed via a mechanism
+    % other than an argument's name.
+    (
         Target = target_c,
-        HighLevelData = no
-    then
         globals.lookup_int_option(!.Globals, arg_pack_bits, ArgPackBits0),
         globals.lookup_int_option(!.Globals, bits_per_word, BitsPerWord),
         % If --arg-pack-bits is negative then it means use all word bits.
@@ -1374,7 +1364,11 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         % Leave the value of allow_double_word_fields as set by the user.
         % Leave the value of allow_packing_dummies as set by the user.
         % Leave the value of allow_packing_ints as set by the user.
-    else
+    ;
+        ( Target = target_java
+        ; Target = target_csharp
+        ; Target = target_erlang
+        ),
         globals.set_option(arg_pack_bits, int(0), !Globals),
         % Leave the value of num_ptag_bits alone. We have set it to zero above
         % for the C# and Java backends, and the C backend with high level data

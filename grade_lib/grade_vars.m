@@ -49,7 +49,6 @@
                 gv_pregen               :: grade_var_pregen,
                 gv_backend              :: grade_var_backend,
                 gv_target               :: grade_var_target,
-                gv_datarep              :: grade_var_datarep,
                 gv_gcc_conf             :: grade_var_gcc_conf,
                 gv_low_tag_bits_use     :: grade_var_low_tag_bits_use,
                 gv_stack_len            :: grade_var_stack_len,
@@ -87,11 +86,6 @@
     ;       grade_var_target_csharp
     ;       grade_var_target_java
     ;       grade_var_target_erlang.
-
-:- type grade_var_datarep
-    --->    grade_var_datarep_heap_cells
-    ;       grade_var_datarep_classes
-    ;       grade_var_datarep_erlang.
 
 :- type grade_var_nested_funcs
     --->    grade_var_nested_funcs_no
@@ -224,7 +218,6 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     map.det_remove(svar_pregen, Pregen, !SuccMap),
     map.det_remove(svar_backend, Backend, !SuccMap),
     map.det_remove(svar_target, Target, !SuccMap),
-    map.det_remove(svar_datarep, DataRep, !SuccMap),
     map.det_remove(svar_gcc_conf, GccConf, !SuccMap),
     map.det_remove(svar_low_tag_bits_use, LowTagBitsUse, !SuccMap),
     map.det_remove(svar_stack_len, StackLen, !SuccMap),
@@ -277,16 +270,6 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         GradeVarTarget = grade_var_target_erlang
     else
         unexpected($pred, "unexpected value of Target")
-    ),
-
-    ( if DataRep = svalue_datarep_heap_cells then
-        GradeVarDataRep = grade_var_datarep_heap_cells
-    else if DataRep = svalue_datarep_classes then
-        GradeVarDataRep = grade_var_datarep_classes
-    else if DataRep = svalue_datarep_erlang then
-        GradeVarDataRep = grade_var_datarep_erlang
-    else
-        unexpected($pred, "unexpected value of DataRep")
     ),
 
     ( if GccConf = svalue_gcc_conf_none then
@@ -491,8 +474,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         unexpected($pred, "unexpected value of MercFloat")
     ),
 
-    GradeVars = grade_vars(GradeVarPregen, GradeVarBackend,
-        GradeVarTarget, GradeVarDataRep,
+    GradeVars = grade_vars(GradeVarPregen, GradeVarBackend, GradeVarTarget,
         GradeVarGccConf, GradeVarLowTagBitsUse, GradeVarStackLen,
         GradeVarTrail,
         GradeVarMinimalModel, GradeVarThreadSafe, GradeVarGc,

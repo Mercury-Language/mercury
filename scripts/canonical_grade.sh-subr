@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# vim: ft=sh
+# vim: ts=4 sw=4 expandtab ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 2000-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -7,177 +7,259 @@
 #---------------------------------------------------------------------------#
 #
 # canonical_grade.sh-subr:
-#	An `sh' subroutine for computing a canonical grade string based on
-#	the values of grade-related options.
-#	It is used by the `ml', `c2init' and `canonical_grade' scripts.
 #
-#	The code here should be inserted after init_grade_options.sh-subr,
-#	parse_grade_options.sh-subr and final_grade_options.sh-subr, which
-#	together define a set of shell variables giving the values of the
-#	various grade options.
+# An `sh' subroutine for computing a canonical grade string based on
+# the values of grade-related options.
+# It is used by the `ml', `c2init' and `canonical_grade' scripts.
 #
-#	Canonical_grade.sh-subr defines the variable GRADE, which will contain
-#	the canonical string for the grade implied by the option values.
+# The code here should be inserted after init_grade_options.sh-subr,
+# parse_grade_options.sh-subr and final_grade_options.sh-subr, which
+# together define a set of shell variables giving the values of the
+# various grade options.
 #
-#	If the option values are inconsistent, this script fragment will
-#	print an error message and exit with failure.
+# Canonical_grade.sh-subr defines the variable GRADE, which will contain
+# the canonical string for the grade implied by the option values.
+#
+# If the option values are inconsistent, this script fragment will print
+# an error message and exit with failure.
 #
 # IMPORTANT: any changes to the handling of grades here may also require
 # changes to all the files indicated by runtime/mercury_grade.h.
 
-case $non_local_gotos,$global_regs in
-	true,true) 	GRADE="fast" ;;
-	true,false)  	GRADE="jump" ;;
-	false,true)  	GRADE="reg" ;;
-	false,false)   	GRADE="none" ;;
-esac
+case ${highlevel_code},${target} in
+    true,*)
+        case ${target} in
+            c)
+                GRADE="hlc"
+                ;;
+            csharp)
+                GRADE="csharp"
+                ;;
+            java)
+                GRADE="java"
+                ;;
+            erlang)
+                GRADE="erlang"
+                ;;
+            *)
+                progname=`basename $0`
+                echo "${progname}: unknown target: ${target}"
+                exit 1
+                ;;
+        esac
 
-case $asm_labels in
-	true)		GRADE="asm_$GRADE" ;;
-	false)		;;
-esac
+        case ${non_local_gotos} in
+            true)
+                echo "${progname}: error: nonlocal gotos are not compatible" 1>&2
+                echo "${progname}: with \'--high-level-code'" 1>&2
+                exit 1
+                ;;
+        esac
 
-case $highlevel_code,$highlevel_data,$GRADE,$target in
-	true,true,none,*)
-		case $target in
-			c|asm)	GRADE="hl" ;;
-			csharp) GRADE="csharp" ;;
-			java)	GRADE="java" ;;
-			erlang) GRADE="erlang" ;;
-			*)
-				progname=`basename $0`
-				echo "$progname: unknown target: $target"
-				exit 1
-				;;
-		esac
-		;;
-	true,false,none,*)
-		case $target in
-			c|asm)	GRADE="hlc" ;;
-			*)
-				progname=`basename $0`
-				echo "$progname: unsupported target: $target"
-				exit 1
-				;;
-		esac
-		;;
-	false,false,*,*)
-		# GRADE was set above
-		;;
-	false,true,*,*)
-		progname=`basename $0`
-		echo "$progname: error: \`--high-level-data' requires \`--high-level-code'" 1>&2
-		exit 1
-		;;
-	*)
-		echo "$progname: error: \`--high-level-code' is incompatible with the use of" 1>&2
-		echo "$progname: error: low-level gcc extensions implied by grade \`$GRADE'" 1>&2
-		exit 1
-		;;
-esac
+        case ${global_regs} in
+            true)
+                echo "${progname}: error: use of global registers is not compatible" 1>&2
+                echo "${progname}: with \'--high-level-code'" 1>&2
+                exit 1
+                ;;
+        esac
 
-case $thread_safe,$threadscope in
-	true,false)	    GRADE="$GRADE.par" ;;
-    true,true)      GRADE="$GRADE.par.threadscope" ;;
-    false,false)    ;;
-	*)
-        echo "$progname: error: The 'threadscope' grade component may only be" 1>&2
-        echo "$progname: error: used in parallel grades"
+        case ${asm_labels} in
+            true)
+                echo "${progname}: error: use of asm labels is not compatible" 1>&2
+                echo "${progname}: with \'--high-level-code'" 1>&2
+                exit 1
+                ;;
+        esac
+        ;;
+    false,*)
+        case ${target} in
+            c)
+                ;;
+            *)
+                echo "${progname}: error: \`--no-high-level-code' is not compatible" 1>&2
+                echo "${progname}: with any target language except C" 1>&2
+                exit 1
+        esac
+
+        case ${non_local_gotos},${global_regs} in
+            true,true)      GRADE="fast" ;;
+            true,false)     GRADE="jump" ;;
+            false,true)     GRADE="reg"  ;;
+            false,false)    GRADE="none" ;;
+        esac
+
+        case ${asm_labels} in
+            true)       GRADE="asm_${GRADE}" ;;
+            false)      ;;
+        esac
+        ;;
+    *)
+        echo "${progname}: internal error: \`--high-level-code' is not set" 1>&2
         exit 1
         ;;
 esac
 
-case $gc_method in
-	conservative)	GRADE="$GRADE.gc" ;;	# deprecated; alias for boehm
-	boehm)		GRADE="$GRADE.gc" ;;
-	boehm_debug)	GRADE="$GRADE.gcd" ;;
-	hgc)		GRADE="$GRADE.hgc" ;;
-	accurate)	GRADE="$GRADE.agc" ;;
+case ${thread_safe},${threadscope} in
+    true,false)
+        GRADE="${GRADE}.par"
+        ;;
+    true,true)
+        GRADE="${GRADE}.par.threadscope"
+        ;;
+    false,false)
+        ;;
+    *)
+        echo "${progname}: error: The 'threadscope' grade component may only be" 1>&2
+        echo "${progname}: error: used in parallel grades"
+        exit 1
+        ;;
 esac
 
-case $profile_time,$profile_calls,$profile_memory,$profile_deep in
-	true,true,false,false)	GRADE="$GRADE.prof" ;;
-	true,false,false,false)	GRADE="$GRADE.proftime" ;;
-	false,true,false,false)	GRADE="$GRADE.profcalls" ;;
-	true,true,true,false)	GRADE="$GRADE.profall" ;;
-	false,true,true,false)	GRADE="$GRADE.memprof" ;;
-	false,false,false,true)	GRADE="$GRADE.profdeep" ;;
-	false,false,false,false)	;;
-	*)			progname=`basename $0`
-				echo "$progname: error: invalid combination of profiling options." 1>&2
-				exit 1
-				;;
+case ${gc_method} in
+    conservative)   GRADE="${GRADE}.gc"  ;;     # deprecated; alias for boehm
+    boehm)          GRADE="${GRADE}.gc"  ;;
+    boehm_debug)    GRADE="${GRADE}.gcd" ;;
+    hgc)            GRADE="${GRADE}.hgc" ;;
+    accurate)       GRADE="${GRADE}.agc" ;;
 esac
 
-case $record_term_sizes_as_words,$record_term_sizes_as_cells in
-	true,false)	GRADE="$GRADE.tsw" ;;
-	false,true)	GRADE="$GRADE.tsc" ;;
-	false,false)	;;
-	*)		progname=`basename $0`
-			echo "$progname: error: invalid combination of term size profiling options." 1>&2
-			exit 1
-			;;
+case ${profile_time},${profile_calls},${profile_memory},${profile_deep} in
+    true,true,false,false)
+        GRADE="${GRADE}.prof"
+        ;;
+    true,false,false,false)
+        GRADE="${GRADE}.proftime"
+        ;;
+    false,true,false,false)
+        GRADE="${GRADE}.profcalls"
+        ;;
+    true,true,true,false)
+        GRADE="${GRADE}.profall"
+        ;;
+    false,true,true,false)
+        GRADE="${GRADE}.memprof"
+        ;;
+    false,false,false,true)
+        GRADE="${GRADE}.profdeep"
+        ;;
+    false,false,false,false)
+        ;;
+    *)
+        progname=`basename $0`
+        echo "${progname}: error: invalid combination of profiling options." 1>&2
+        exit 1
+        ;;
 esac
 
-case $use_trail in
-	true)	GRADE="$GRADE.tr" ;;
-	*)      ;;
+case ${record_term_sizes_as_words},${record_term_sizes_as_cells} in
+    true,false)
+        GRADE="${GRADE}.tsw"
+        ;;
+    false,true)
+        GRADE="${GRADE}.tsc"
+        ;;
+    false,false)
+        ;;
+    *)
+        progname=`basename $0`
+        echo "${progname}: error: invalid combination of term size profiling options." 1>&2
+        exit 1
+        ;;
 esac
 
-case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks,$minimal_model_debug in
-	true,false,false)	GRADE="$GRADE.mmsc" ;;
-	true,false,true)	GRADE="$GRADE.dmmsc" ;;
-	false,true,false)	GRADE="$GRADE.mmos" ;;
-	false,true,true)	GRADE="$GRADE.dmmos" ;;
-	*)	;;
+case ${use_trail} in
+    true)
+        GRADE="${GRADE}.tr" ;;
+    *)
+        ;;
 esac
 
-case $pregenerated_dist,$single_prec_float in
-	true,false)	GRADE="$GRADE.pregen" ;;
-	false,true)	GRADE="$GRADE.spf" ;;
-	false,false)	;;
-	*)		progname=`basename $0`
-			echo "$progname: error: pregenerated dist incompatible with single-prec float." 1>&2
-			exit 1
-			;;
+case ${use_minimal_model_stack_copy},${use_minimal_model_own_stacks},${minimal_model_debug} in
+    true,false,false)
+        GRADE="${GRADE}.mmsc"
+        ;;
+    true,false,true)
+        GRADE="${GRADE}.dmmsc"
+        ;;
+    false,true,false)
+        GRADE="${GRADE}.mmos"
+        ;;
+    false,true,true)
+        GRADE="${GRADE}.dmmos"
+        ;;
+    *)
+        ;;
 esac
 
-case $debug,$decl_debug,$ss_debug in
-	true,true,false)	GRADE="$GRADE.decldebug" ;;
-	true,false,false)	GRADE="$GRADE.debug" ;;
-	false,false,true)	GRADE="$GRADE.ssdebug" ;;
-	false,false,false)	;;
-	*)			progname=`basename $0`
-				echo "$progname: error: invalid combination of debugging options." 1>&2
-				exit 1
-				;;
+case ${pregenerated_dist},${single_prec_float} in
+    true,false)
+        GRADE="${GRADE}.pregen"
+        ;;
+    false,true)
+        GRADE="${GRADE}.spf"
+        ;;
+    false,false)
+        ;;
+    *)
+        progname=`basename $0`
+        echo "${progname}: error: pregenerated dist incompatible with single-prec float." 1>&2
+        exit 1
+        ;;
 esac
 
-case $ll_debug in
-	true)		GRADE="$GRADE.ll_debug" ;;
-	*)		;;
+case ${debug},${decl_debug},${ss_debug} in
+    true,true,false)
+        GRADE="${GRADE}.decldebug"
+        ;;
+    true,false,false)
+        GRADE="${GRADE}.debug"
+        ;;
+    false,false,true)
+        GRADE="${GRADE}.ssdebug"
+        ;;
+    false,false,false)
+        ;;
+    *)
+        progname=`basename $0`
+        echo "${progname}: error: invalid combination of debugging options." 1>&2
+        exit 1
+        ;;
+esac
+
+case ${ll_debug} in
+    true)
+        GRADE="${GRADE}.ll_debug"
+        ;;
+    *)
+        ;;
 esac;
 
-case $extend_stacks,$stack_segments in
-	true,false)	GRADE="$GRADE.exts" ;;
-	false,true)	GRADE="$GRADE.stseg" ;;
-	false,false)	;;
-	*)		progname=`basename $0`
-			echo "$progname: error: invalid combination of stack extension options." 1>&2
-			exit 1
-			;;
+case ${extend_stacks},${stack_segments} in
+    true,false)
+        GRADE="${GRADE}.exts"
+        ;;
+    false,true)
+        GRADE="${GRADE}.stseg"
+        ;;
+    false,false)
+        ;;
+    *)
+        progname=`basename $0`
+        echo "${progname}: error: invalid combination of stack extension options." 1>&2
+        exit 1
+        ;;
 esac
 
-case $use_regions in
-	true)
-		case $use_regions_debug,$use_regions_profiling in
-			false,false)	GRADE="$GRADE.rbmm" ;;
-			false,true)	GRADE="$GRADE.rbmmp" ;;
-			true,false)	GRADE="$GRADE.rbmmd" ;;
-			true,true)	GRADE="$GRADE.rbmmdp" ;;
-		esac
-		;;
-	false)
-		;;
+case ${use_regions} in
+    true)
+        case ${use_regions_debug},${use_regions_profiling} in
+            false,false)    GRADE="${GRADE}.rbmm"   ;;
+            false,true)     GRADE="${GRADE}.rbmmp"  ;;
+            true,false)     GRADE="${GRADE}.rbmmd"  ;;
+            true,true)      GRADE="${GRADE}.rbmmdp" ;;
+        esac
+        ;;
+    false)
+        ;;
 esac
-

@@ -84,13 +84,8 @@
 
 #ifdef MR_HIGHLEVEL_CODE
 
-  #ifdef MR_HIGHLEVEL_DATA
-    #define MR_GRADE_PART_1             MR_PASTE2(MR_GRADE_PART_0, hl)
-    #define MR_GRADE_OPT_PART_1         "hl"
-  #else
-    #define MR_GRADE_PART_1             MR_PASTE2(MR_GRADE_PART_0, hlc)
-    #define MR_GRADE_OPT_PART_1         "hlc"
-  #endif
+  #define MR_GRADE_PART_1               MR_PASTE2(MR_GRADE_PART_0, hlc)
+  #define MR_GRADE_OPT_PART_1           "hlc"
 
   // Grade component 2 used to specify the use/nonuse of gcc nested functions.
 

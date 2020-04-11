@@ -62,7 +62,6 @@
                 m2co_line_numbers           :: bool,
                 m2co_foreign_line_numbers   :: bool,
                 m2co_auto_comments          :: bool,
-                m2co_highlevel_data         :: bool,
                 m2co_single_prec_float      :: bool,
                 m2co_profile_calls          :: bool,
                 m2co_profile_memory         :: bool,
@@ -118,7 +117,6 @@ init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump) = Opts :-
     globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,
         ForeignLineNumbers),
     globals.lookup_bool_option(Globals, auto_comments, Comments),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
     globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
@@ -138,7 +136,7 @@ init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump) = Opts :-
     StdFuncDecls = no,
     BreakContext = bc_none,
     Opts = mlds_to_c_opts(Globals, SourceFileName,
-        LineNumbers, ForeignLineNumbers, Comments, HighLevelData,
+        LineNumbers, ForeignLineNumbers, Comments,
         SinglePrecFloat, ProfileCalls, ProfileMemory, ProfileTime, NeedToInit,
         Target, GCMethod, TargetOrDump, StdFuncDecls, BreakContext).
 

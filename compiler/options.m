@@ -527,7 +527,6 @@
 
     % MLDS back-end compilation model options
     ;       highlevel_code
-    ;       highlevel_data
     ;       det_copy_out
     ;       nondet_copy_out
     ;       put_commit_in_own_func
@@ -1525,7 +1524,6 @@ option_defaults_2(compilation_model_option, [
 
     % MLDS back-end compilation model options
     highlevel_code                      -   bool(no),
-    highlevel_data                      -   bool(no),
     det_copy_out                        -   bool(no),
     nondet_copy_out                     -   bool(no),
     put_commit_in_own_func              -   bool(no),
@@ -2498,8 +2496,6 @@ long_option("allow-packing-remote-sectags", allow_packing_remote_sectags).
 long_option("allow-packing-mini-types",     allow_packing_mini_types).
 long_option("allow-packed-unify-compare",   allow_packed_unify_compare).
 long_option("sync-term-size",       sync_term_size).
-long_option("highlevel-data",       highlevel_data).
-long_option("high-level-data",      highlevel_data).
 % LLDS back-end compilation model options
 long_option("gcc-non-local-gotos",  gcc_non_local_gotos).
 long_option("gcc-global-registers", gcc_global_registers).

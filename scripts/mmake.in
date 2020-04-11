@@ -29,8 +29,7 @@ Options:
         (If the current directory already contains a \`Mercury'
         subdirectory, then this option is the default.)
     --target c:
-        Compile via C, rather than going directly to assembler.
-        This is the default."
+        Compile to C. This is the default."
 Help="$Help
     --mercury-standard-library-directory <directory>
     --mercury-stdlib-dir <directory>:

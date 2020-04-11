@@ -1,6 +1,4 @@
 test_feature_set.m:013: Error: this module must be compiled in a grade that
-test_feature_set.m:013:   supports concurrent execution.
-test_feature_set.m:013: Error: this module must be compiled in a grade that
 test_feature_set.m:013:   supports memoisation.
 test_feature_set.m:013: Error: this module must be compiled in a grade that
 test_feature_set.m:013:   supports trailing.

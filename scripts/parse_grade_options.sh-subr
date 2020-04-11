@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# vim: ts=4 sw=4 expandtab
+# vim: ts=4 sw=4 expandtab ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1997-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -25,13 +25,17 @@
         shift
         case "$1" in
             c|C)
-                target=c ;;
+                target=c
+                ;;
             csharp|'C#')
-                target=csharp ;;
+                target=csharp
+                ;;
             java|Java)
-                target=java ;;
+                target=java
+                ;;
             erlang|Erlang)
-                target=erlang ;;
+                target=erlang
+                ;;
             *)
                 echo "$0: invalid target \`$1'" 1>&2
                 exit 1
@@ -40,44 +44,51 @@
         ;;
 
     --csharp|'--C#'|--csharp-only|'--C#-only')
-        target=csharp ;;
+        target=csharp
+        ;;
 
     --java|--Java|--java-only|--Java-only)
-        target=java ;;
+        target=java
+        ;;
 
     --erlang|--Erlang|--erlang-only|--Erlang-only)
-        target=erlang ;;
+        target=erlang
+        ;;
 
     --high-level-code|-H)
-        highlevel_code=true ;;
+        highlevel_code=true
+        ;;
     --no-high-level-code|-H-)
-        highlevel_code=false ;;
-
-    --high-level-data)
-        highlevel_data=true ;;
-    --no-high-level-data)
-        highlevel_data=false ;;
+        highlevel_code=false
+        ;;
 
     --asm-labels)
-        asm_labels=true ;;
+        asm_labels=true
+        ;;
     --no-asm-labels)
-        asm_labels=false ;;
+        asm_labels=false
+        ;;
 
     --gcc-non-local-gotos)
-        non_local_gotos=true ;;
+        non_local_gotos=true
+        ;;
     --no-gcc-non-local-gotos)
-        non_local_gotos=false ;;
+        non_local_gotos=false
+        ;;
 
     --gcc-global-registers)
-        global_regs=true ;;
+        global_regs=true
+        ;;
     --no-gcc-global-registers)
-        global_regs=false ;;
+        global_regs=false
+        ;;
 
     --gc)
         shift
         case "$1" in
             accurate|conservative|boehm|boehm_debug|hgc|none|automatic)
-                gc_method=$1 ;;
+                gc_method=$1
+                ;;
             *)
                 echo "$0: invalid gc method \`$1'" 1>&2
                 exit 1
@@ -86,7 +97,8 @@
         ;;
 
     --parallel)
-        thread_safe=true ;;
+        thread_safe=true
+        ;;
 
     -p|--profiling|--time-profiling)
         profile_time=true
@@ -113,105 +125,144 @@
         profile_deep=false
         ;;
     --profile-time)
-        profile_time=true ;;
+        profile_time=true
+        ;;
     --no-profile-time)
-        profile_time=false ;;
+        profile_time=false
+        ;;
     --profile-calls)
-        profile_calls=true ;;
+        profile_calls=true
+        ;;
     --no-profile-calls)
-        profile_calls=false ;;
+        profile_calls=false
+        ;;
     --profile-memory)
-        profile_memory=true ;;
+        profile_memory=true
+        ;;
     --no-profile-memory)
-        profile_memory=false ;;
+        profile_memory=false
+        ;;
     --profile-deep)
-        profile_deep=true ;;
+        profile_deep=true
+        ;;
     --no-profile-deep)
-        profile_deep=false ;;
+        profile_deep=false
+        ;;
 
     --record-term-sizes-as-words)
-        record_term_sizes_as_words=true ;;
+        record_term_sizes_as_words=true
+        ;;
     --no-record-term-sizes-as-words)
-        record_term_sizes_as_words=false ;;
+        record_term_sizes_as_words=false
+        ;;
     --record-term-sizes-as-cells)
-        record_term_sizes_as_cells=true ;;
+        record_term_sizes_as_cells=true
+        ;;
     --no-record-term-sizes-as-cells)
-        record_term_sizes_as_cells=false ;;
+        record_term_sizes_as_cells=false
+        ;;
 
     --use-trail)
-        use_trail=true ;;
+        use_trail=true
+        ;;
     --no-use-trail)
-        use_trail=false ;;
+        use_trail=false
+        ;;
 
     --use-minimal-model-stack-copy)
-        use_minimal_model_stack_copy=true ;;
+        use_minimal_model_stack_copy=true
+        ;;
     --no-use-minimal-model-stack-copy)
-        use_minimal_model_stack_copy=false ;;
+        use_minimal_model_stack_copy=false
+        ;;
 
     --use-minimal-model-own-stacks)
-        use_minimal_model_own_stacks=true ;;
+        use_minimal_model_own_stacks=true
+        ;;
     --no-use-minimal-model-own-stacks)
-        use_minimal_model_own_stacks=false ;;
+        use_minimal_model_own_stacks=false
+        ;;
 
     --minimal-model-debug)
-        minimal_model_debug=true ;;
+        minimal_model_debug=true
+        ;;
     --no-minimal-model-debug)
-        minimal_model_debug=false ;;
+        minimal_model_debug=false
+        ;;
 
     --pregenerated-dist)
-        pregenerated_dist=true ;;
+        pregenerated_dist=true
+        ;;
     --no-pregenerated-dist)
-        pregenerated_dist=false ;;
+        pregenerated_dist=false
+        ;;
 
     --single-prec-float)
-        single_prec_float=true ;;
+        single_prec_float=true
+        ;;
     --no-single-prec-float)
-        single_prec_float=false ;;
+        single_prec_float=false
+        ;;
 
     --debug)
-        debug=true ;;
+        debug=true
+        ;;
     --no-debug)
-        debug=false ;;
+        debug=false
+        ;;
 
     --decl-debug)
-        decl_debug=true ;;
+        decl_debug=true
+        ;;
     --no-decl-debug)
-        decl_debug=false ;;
+        decl_debug=false
+        ;;
 
     --ss-debug)
-        ss_debug=true ;;
+        ss_debug=true
+        ;;
     --no-ss-debug)
-        ss_debug=false ;;
+        ss_debug=false
+        ;;
 
     --low-level-debug)
-        ll_debug= true ;;
+        ll_debug= true
+        ;;
     --no-low-level-debug)
-        ll_debug= false ;;
+        ll_debug= false
+        ;;
 
     --extend-stacks-when-needed)
-        extend_stacks=true ;;
+        extend_stacks=true
+        ;;
     --no-extend-stacks-when-needed)
-        extend_stacks=false ;;
+        extend_stacks=false
+        ;;
 
     --stack-segments)
-        stack_segments=true ;;
+        stack_segments=true
+        ;;
     --no-stack-segments)
-        stack_segments=false ;;
+        stack_segments=false
+        ;;
 
     --use-regions)
         use_regions=true;;
     --no-use-regions)
-        use_regions=false ;; 
+        use_regions=false
+        ;; 
 
     --use-regions-debug)
         use_regions_debug=true;;
     --no-use-regions-debug)
-        use_regions_debug=false ;; 
+        use_regions_debug=false
+        ;; 
 
     --use-regions-profiling)
         use_regions_profiling=true;;
     --no-use-regions-profiling)
-        use_regions_profiling=false ;; 
+        use_regions_profiling=false
+        ;; 
 
     -s|--grade)
         shift
@@ -225,7 +276,6 @@
 
         target=c
         highlevel_code=false
-        highlevel_data=false
         asm_labels=false
         non_local_gotos=false
         global_regs=false
@@ -263,7 +313,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    highlevel_data=true
                     ;;
                 java)
                     target=java
@@ -271,7 +320,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    highlevel_data=true
                     ;;
                 erlang)
                     target=erlang
@@ -279,21 +327,12 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    highlevel_data=true
-                    ;;
-                hl)
-                    asm_labels=false
-                    non_local_gotos=false
-                    global_regs=false
-                    highlevel_code=true
-                    highlevel_data=true
                     ;;
                 hlc)
                     asm_labels=false
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    highlevel_data=false
                     ;;
                 asm_fast)
                     target=c
@@ -301,7 +340,6 @@
                     non_local_gotos=true
                     global_regs=true
                     highlevel_code=false
-                    highlevel_data=false
                     ;;
                 asm_jump)
                     target=c
@@ -309,7 +347,6 @@
                     non_local_gotos=true
                     global_regs=false
                     highlevel_code=false
-                    highlevel_data=false
                     ;;
                 fast)
                     target=c
@@ -317,7 +354,6 @@
                     non_local_gotos=true
                     global_regs=true
                     highlevel_code=false
-                    highlevel_data=false
                     ;;
                 jump)
                     target=c
@@ -325,7 +361,6 @@
                     non_local_gotos=true
                     global_regs=false
                     highlevel_code=false
-                    highlevel_data=false
                     ;;
                 reg)
                     target=c
@@ -333,7 +368,6 @@
                     non_local_gotos=false
                     global_regs=true
                     highlevel_code=false
-                    highlevel_data=false
                     ;;
                 none)
                     target=c
@@ -341,7 +375,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=false
-                    highlevel_data=false
                     ;;
 
                 par)
@@ -522,8 +555,12 @@
         # just insert it as `--grade $grade' and then reparse it
         shift
         case $# in
-            0) set - x --grade "$grade" ;;
-            *) set - x --grade "$grade" "$@" ;;
+            0)
+                set - x --grade "$grade"
+                ;;
+            *)
+                set - x --grade "$grade" "$@"
+                ;;
         esac
         ;;
 

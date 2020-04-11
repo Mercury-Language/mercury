@@ -160,6 +160,10 @@
 :- func mlds_maybe_aux_func_id_to_suffix(mlds_maybe_aux_func_id) = string.
 
 %---------------------------------------------------------------------------%
+
+:- func mlds_target_high_level_data(mlds_target_lang) = bool.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -948,6 +952,19 @@ mlds_maybe_aux_func_id_to_suffix(MaybeAux) = Suffix :-
     ;
         MaybeAux = gc_trace_for_proc_aux_func(SeqNum),
         Suffix = string.format("_%d", [i(10001 + SeqNum)])
+    ).
+
+%---------------------------------------------------------------------------%
+
+mlds_target_high_level_data(Target) = HighLevelData :-
+    (
+        Target = ml_target_c,
+        HighLevelData = no
+    ;
+        ( Target = ml_target_java
+        ; Target = ml_target_csharp
+        ),
+        HighLevelData = yes
     ).
 
 %---------------------------------------------------------------------------%

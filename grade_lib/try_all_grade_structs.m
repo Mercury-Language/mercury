@@ -195,9 +195,6 @@ generate_mlds_tests(GradeStructure) :-
 :- pred generate_mlds_c_target(mlds_target::out) is multi.
 
 generate_mlds_c_target(MLDSCTarget) :-
-    ( MLDSCDataRep = mlds_c_datarep_heap_cells
-    ; MLDSCDataRep = mlds_c_datarep_classes
-    ),
     (
         generate_c_gc(CGc),
         (
@@ -223,8 +220,8 @@ generate_mlds_c_target(MLDSCTarget) :-
     MercFile = grade_var_merc_file_no,
     generate_grade_var_low_tag_bits_use(LowTagBitsUse),
     generate_grade_var_merc_float(MercFloat),
-    MLDSCTarget = mlds_target_c(MLDSCDataRep, MLDSCThreadSafe,
-        CTrail, MercFile, LowTagBitsUse, MercFloat).
+    MLDSCTarget = mlds_target_c(MLDSCThreadSafe, CTrail, MercFile,
+        LowTagBitsUse, MercFloat).
 
 %---------------------%
 

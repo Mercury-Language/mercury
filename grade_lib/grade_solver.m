@@ -63,6 +63,7 @@
 
 :- import_module list.
 :- import_module map.
+:- import_module one_or_more.
 
 :- type solve_counts
     --->    solve_counts(

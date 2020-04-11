@@ -44,7 +44,6 @@ solver_var_name("size_of_double",               svar_ac_size_of_double).
 solver_var_name("mercuryfile",                  svar_ac_merc_file).
 
 solver_var_name("backend",                      svar_backend).
-solver_var_name("datarep",                      svar_datarep).
 solver_var_name("target",                       svar_target).
 solver_var_name("gcc_conf",                     svar_gcc_conf).
 solver_var_name("low_tag_bits_use",             svar_low_tag_bits_use).
@@ -91,10 +90,6 @@ solver_var_value_name("mercuryfile",            svalue_ac_merc_file_yes).
 solver_var_value_name("mlds",                   svalue_backend_mlds).
 solver_var_value_name("llds",                   svalue_backend_llds).
 solver_var_value_name("elds",                   svalue_backend_elds).
-
-solver_var_value_name("heap_cells",             svalue_datarep_heap_cells).
-solver_var_value_name("classes",                svalue_datarep_classes).
-solver_var_value_name("erlangdata",             svalue_datarep_erlang).
 
 solver_var_value_name("c",                      svalue_target_c).
 solver_var_value_name("csharp",                 svalue_target_csharp).

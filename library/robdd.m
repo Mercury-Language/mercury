@@ -434,11 +434,7 @@ empty_vars_set = sparse_bitset.init.
 
 #include ""bryant.h""
 
-#ifdef  MR_HIGHLEVEL_DATA
-  typedef   MR_Box  MR_ROBDD_NODE_TYPE;
-#else
-  typedef   MR_Word MR_ROBDD_NODE_TYPE;
-#endif
+typedef   MR_Word MR_ROBDD_NODE_TYPE;
 ").
 
 :- pragma foreign_code("C", "

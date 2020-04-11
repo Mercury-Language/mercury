@@ -3695,17 +3695,12 @@ using System.Security.Principal;
     // since the C# code all gets generated inside a class,
     // but we keep them for consistency with the C code.
 
-#if MR_HIGHLEVEL_DATA
     public static tree234.Tree234_2 ML_io_stream_db =
         new tree234.Tree234_2.Empty_0();
-    public static univ.Univ_0   ML_io_user_globals;
-#else
-    public static object[] ML_io_stream_db;
-    public static object[] ML_io_user_globals;
-#endif
+    public static univ.Univ_0       ML_io_user_globals;
 
     // a counter used to generate unique stream ids
-    static int                          ML_next_stream_id;
+    static int                      ML_next_stream_id;
 
     // This specifies the default encoding used for text files.
     // It must be either ML_OS_text_encoding or ML_Unix_text_encoding.

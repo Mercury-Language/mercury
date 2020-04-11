@@ -53,8 +53,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.rtti.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module parse_tree.
@@ -62,7 +60,6 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
-:- import_module bool.
 :- import_module int.
 :- import_module require.
 :- import_module string.
@@ -79,20 +76,11 @@ mlds_output_type(Opts, Type, !IO) :-
 
 mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
     (
-        MLDS_Type = mercury_nb_type(Type, TypeCategory),
-        mlds_output_mercury_type_prefix(Opts, Type, TypeCategory, !IO)
+        MLDS_Type = mercury_nb_type(_Type, TypeCategory),
+        mlds_output_mercury_type_prefix(TypeCategory, !IO)
     ;
         MLDS_Type = mlds_mercury_array_type(_ElemType),
-        HighLevelData = Opts ^ m2co_highlevel_data,
-        (
-            HighLevelData = yes,
-            mlds_output_mercury_user_type_name(Opts,
-                type_ctor(qualified(unqualified("array"), "array"), 1),
-                ctor_cat_user(cat_user_general), !IO)
-        ;
-            HighLevelData = no,
-            io.write_string("MR_ArrayPtr", !IO)
-        )
+        io.write_string("MR_ArrayPtr", !IO)
     ;
         MLDS_Type = mlds_builtin_type_int(int_type_int),
         io.write_string("MR_Integer", !IO)
@@ -223,16 +211,13 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         unexpected($pred, "prefix has unknown type")
     ).
 
-:- pred mlds_output_mercury_type_prefix(mlds_to_c_opts::in, mer_type::in,
-    type_ctor_category::in, io::di, io::uo) is det.
+:- pred mlds_output_mercury_type_prefix(type_ctor_category::in,
+    io::di, io::uo) is det.
 
-mlds_output_mercury_type_prefix(Opts, Type, CtorCat, !IO) :-
+mlds_output_mercury_type_prefix(CtorCat, !IO) :-
     (
         CtorCat = ctor_cat_builtin(_),
         unexpected($pred, "ctor_cat_builtin")
-    ;
-        CtorCat = ctor_cat_void,
-        io.write_string("MR_Word", !IO)
     ;
         CtorCat = ctor_cat_variable,
         io.write_string("MR_Box", !IO)
@@ -240,38 +225,15 @@ mlds_output_mercury_type_prefix(Opts, Type, CtorCat, !IO) :-
         CtorCat = ctor_cat_tuple,
         io.write_string("MR_Tuple", !IO)
     ;
-        CtorCat = ctor_cat_higher_order,
-        HighLevelData = Opts ^ m2co_highlevel_data,
-        (
-            HighLevelData = yes,
-            io.write_string("MR_ClosurePtr", !IO)
-        ;
-            HighLevelData = no,
-            io.write_string("MR_Word", !IO)
-        )
-    ;
         % runtime/mercury_hlc_types requires typeinfos, typeclass_infos etc
         % to be treated as user defined types.
-        ( CtorCat = ctor_cat_builtin_dummy
+        ( CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_user(_)
         ; CtorCat = ctor_cat_system(_)
         ),
-        mlds_output_mercury_user_type_prefix(Opts, Type, CtorCat, !IO)
-    ).
-
-:- pred mlds_output_mercury_user_type_prefix(mlds_to_c_opts::in, mer_type::in,
-    type_ctor_category::in, io::di, io::uo) is det.
-
-mlds_output_mercury_user_type_prefix(Opts, Type, CtorCat, !IO) :-
-    HighLevelData = Opts ^ m2co_highlevel_data,
-    (
-        HighLevelData = yes,
-        type_to_ctor_det(Type, TypeCtor),
-        mlds_output_mercury_user_type_name(Opts, TypeCtor, CtorCat, !IO)
-    ;
-        HighLevelData = no,
-        % In this case, we just treat everything as `MR_Word'.
         io.write_string("MR_Word", !IO)
     ).
 

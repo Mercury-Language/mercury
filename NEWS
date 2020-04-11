@@ -203,6 +203,11 @@ Changes to the Mercury compiler
   that the `--trail-segments` option now has no effect, and it is therefore
   deprecated.
 
+* `--high-level-data`
+
+  We have deleted the `--high-level-data` option. Its effects are now
+  implied by the target language.
+
 ### Changes to warnings
 
 * [Github issue #85]. The compiler will now generate a warning about

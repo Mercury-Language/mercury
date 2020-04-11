@@ -247,7 +247,7 @@ JAR_CREATE_FLAGS = cf
 
 #-----------------------------------------------------------------------------#
 #
-# Stuff related to linking (for the C and assembler back-ends).
+# Stuff related to linking (for the C back-end).
 #
 
 C2INIT		= c2init

@@ -679,7 +679,7 @@ do_op_mode_query(Globals, OpModeQuery, !IO) :-
     ;
         OpModeQuery = opmq_output_grade_defines,
         io.stdout_stream(StdOut, !IO),
-        output_grade_defines(Globals, StdOut, !IO)
+        output_c_grade_defines(Globals, StdOut, !IO)
     ;
         OpModeQuery = opmq_output_link_command,
         globals.lookup_string_option(Globals, link_executable_command,

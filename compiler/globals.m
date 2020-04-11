@@ -877,11 +877,9 @@ want_return_var_layouts(Globals, WantReturnLayouts) :-
 current_grade_supports_tabling(Globals, TablingSupported) :-
     globals.get_target(Globals, Target),
     globals.get_gc_method(Globals, GC_Method),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     ( if
         Target = target_c,
-        GC_Method \= gc_accurate,
-        HighLevelData = no
+        GC_Method \= gc_accurate
     then
         TablingSupported = yes
     else

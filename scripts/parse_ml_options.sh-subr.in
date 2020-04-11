@@ -1,4 +1,6 @@
 #---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 2001-2007, 2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -18,7 +20,7 @@
 
 # initialize common options
 mercury_config_dir=${MERCURY_STDLIB_DIR-@CONFIG_LIBDIR@}
-mercury_config_dir=${MERCURY_CONFIG_DIR=$mercury_config_dir}
+mercury_config_dir=${MERCURY_CONFIG_DIR=${mercury_config_dir}}
 mercury_stdlib_dir=${MERCURY_STDLIB_DIR=@LIBDIR@}
 
 # initialize ml options
@@ -27,7 +29,7 @@ allow_undef=false
 trace=false
 ssdb=false
 readline=true
-case $FULLARCH in
+case ${FULLARCH} in
 	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin|*mingw*)
 		# `gcc -s' is broken in gnu-win32
 		# XXX actually strip = true is fine for MinGW / GCC, but
@@ -76,7 +78,7 @@ experimental_complexity=""
 @INIT_GRADE_OPTIONS@
 
 Help="\
-$Usage
+${Usage}
 Options:
 	-h, --help
 		Print this help message.
@@ -210,7 +212,7 @@ Threads options:
 		if a C library being linked with uses threads, but the
 		Mercury code being linked doesn't.
 
-$grade_usage
+${grade_usage}
 
 Environment variables:
 		MERCURY_DEFAULT_GRADE, MERCURY_C_COMPILER,
@@ -232,7 +234,7 @@ Environment variables:
 while : ; do
     case "$1" in
 	-h|--help|"-?")
-		echo "$Help"
+		echo "${Help}"
 		exit 0
 		;;
 	-v|--verbose)
@@ -291,9 +293,9 @@ while : ; do
 	--no-libs)
 		progname=`basename $0`
 		cat 1>&2 << EOF
-$progname: Warning: option \`--no-libs' is deprecated --
-$progname:   please use the new option \`--mercury-libs none' instead.
-$progname:   Support for \`--no-libs' may be removed in a future release.
+${progname}: Warning: option \`--no-libs' is deprecated --
+${progname}:   please use the new option \`--mercury-libs none' instead.
+${progname}:   Support for \`--no-libs' may be removed in a future release.
 EOF
 		mercury_libs=none
 		;;
@@ -309,9 +311,9 @@ EOF
 			*)
 				progname=`basename $0`
 				cat 1>&2 << EOF
-$progname: Error: parameter to \`--mercury-libs' option should be either
-$progname:   \`shared', \`static', \`none', or \`default', not \`$2'.
-$progname: Try \`$0 --help' for help.
+${progname}: Error: parameter to \`--mercury-libs' option should be either
+${progname}:   \`shared', \`static', \`none', or \`default', not \`$2'.
+${progname}: Try \`$0 --help' for help.
 EOF
 				exit 1
 				;;
@@ -319,14 +321,18 @@ EOF
 		;;
 	-shared|--shared)
 		all_libs=shared
-		case $mercury_libs in static|default)
-			mercury_libs=shared ;;
+		case ${mercury_libs} in
+            static|default)
+                mercury_libs=shared
+                ;;
 		esac
 		;;
 	-static|--static)
 		all_libs=static
-		case $mercury_libs in shared|default)
-			mercury_libs=static ;;
+		case ${mercury_libs} in
+            shared|default)
+                mercury_libs=static
+                ;;
 		esac
 		;;
 
@@ -348,11 +354,11 @@ EOF
 
 	-L|--lib-dir)
 		dir="$2"
-		user_libdir_opts="$user_libdir_opts @LIB_LIBPATH@$dir"
+		user_libdir_opts="${user_libdir_opts} @LIB_LIBPATH@${dir}"
 		shift
 		;;
 	-L*)
-		user_libdir_opts="$user_libdir_opts $1"
+		user_libdir_opts="${user_libdir_opts} $1"
 		;;
 	--leave-shared-lib-dirs-relative)
 		leave_shlib_dirs_relative=true
@@ -362,26 +368,28 @@ EOF
 		;;
 	-R|--shared-lib-dir)
 		dir="$2"
-		case $leave_shlib_dirs_relative in false)
-			case "$dir" in
-				/*) ;;
-				*)  dir="`pwd`/$dir" ;;
-			esac
-			;;
+		case ${leave_shlib_dirs_relative} in
+            false)
+                case "${dir}" in
+                    /*) ;;
+                    *)  dir="`pwd`/${dir}" ;;
+                esac
+                ;;
 		esac
-		user_shlib_dirs="$user_shlib_dirs $dir"
+		user_shlib_dirs="${user_shlib_dirs} ${dir}"
 		shift
 		;;
 	-R*)
 		dir="` expr X$1 : 'X-R\(.*\)' `"
-		case $leave_shlib_dirs_relative in false)
-			case "$dir" in
-				/*) ;;
-				*)  dir="`pwd`/$dir" ;;
-			esac
-			;;
+		case ${leave_shlib_dirs_relative} in
+            false)
+                case "${dir}" in
+                    /*) ;;
+                    *)  dir="`pwd`/${dir}" ;;
+                esac
+                ;;
 		esac
-		user_shlib_dirs="$user_shlib_dirs $dir"
+		user_shlib_dirs="${user_shlib_dirs} ${dir}"
 		;;
 
 	--use-thread-libs)
@@ -426,68 +434,91 @@ EOF
 	# c2init options.
 	#
 	-A)
-		always_exec_init_opts="$always_exec_init_opts -A $2"; shift;;
+		always_exec_init_opts="${always_exec_init_opts} -A $2"
+        shift
+        ;;
 
 	-c|--max-calls)
-		maxcalls="$2"; shift;;
+		maxcalls="$2"
+        shift
+        ;;
 
 	-i|--include-initialization-code)
-		init_opt="-i";;
+		init_opt="-i"
+        ;;
 
 	--no-main|--library)
-		library_opt="-l";;
+		library_opt="-l"
+        ;;
 
 	--main|--no-library)
-		library_opt="";;
+		library_opt=""
+        ;;
 
 	-I|--init-file-directory)
-		extra_init_dirs="$extra_init_dirs -I $2"; shift;;
+		extra_init_dirs="${extra_init_dirs} -I $2"
+        shift
+        ;;
 
 	--init-c-file)
-		init_c_file="$2"; shift;;
+		init_c_file="$2"
+        shift
+        ;;
 
 	--trace-init-file)
-		trace_init_files="$trace_init_files $2"; shift;;
+		trace_init_files="${trace_init_files} $2"
+        shift
+        ;;
 
 	--ssdb-init-file)
-		ssdb_init_files="$ssdb_init_files $2"; shift;;
+		ssdb_init_files="${ssdb_init_files} $2"
+        shift
+        ;;
 
 	--runtime-flags)
-		runtime_flags="$runtime_flags $2"; shift;;
+		runtime_flags="${runtime_flags} $2"
+        shift
+        ;;
 
 	--experimental-complexity)
-		if test "$experimental_complexity" = ""
+		if test "${experimental_complexity}" = ""
 		then
-			experimental_complexity="$2"; shift
+			experimental_complexity="$2"
+            shift
 		else
 			cat 1>&2 << EOF
-$progname: Error: duplicate --experimental-complexity parameter
+${progname}: Error: duplicate --experimental-complexity parameter
 EOF
 			exit 1
 		fi
 		;;
 
 	-w|--entry-point)
-		defentry_opt="-w$2"; shift;;
+		defentry_opt="-w$2"
+        shift
+        ;;
 
 	-x|--extra-inits)
-		extra_inits_opt="-x";;
+		extra_inits_opt="-x"
+        ;;
 
 	-x-|--no-extra-inits)
-		extra_inits_opt="";;
+		extra_inits_opt=""
+        ;;
 
 	# include the file `parse_grade_options.sh-subr'
 	@PARSE_GRADE_OPTIONS@
 
 	--)
 		shift
-		break ;;
+		break
+        ;;
 	*)
-		break ;;
+		break
+        ;;
     esac
     shift
 done
 
 # include the file `final_grade_options.sh-subr'
 @FINAL_GRADE_OPTIONS@
-

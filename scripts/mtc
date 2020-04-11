@@ -1,9 +1,11 @@
 #!/bin/sh
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 2005-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 #
 # IMPORTANT: the manpage is produced automatically from this help
 # message, so if you change the help message, don't forget to check
@@ -59,7 +61,7 @@ Environment variables:
 	MERCURY_OPTIONS.
 "
 
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 #
 # process the command line options
 #
@@ -77,7 +79,7 @@ do
 			;;
 
 		--help)
-			echo "$Help"
+			echo "${Help}"
 			exit 0
 			;;
 
@@ -134,47 +136,48 @@ do
 done
 
 case $# in
-	0)	echo "Usage: mtc [options] <executable> [<arg> ...]" 1>&2
+	0)
+        echo "Usage: mtc [options] <executable> [<arg> ...]" 1>&2
 		exit 1
 		;;
 esac
 
-if test "$output_file" != "" -a "$summary_file" != ""
+if test "${output_file}" != "" -a "${summary_file}" != ""
 then
 	echo "The options --output-file and --summary-file are incompatible."
 	exit 1
 fi
 
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 #
 # Set the environment variables used by the Mercury runtime to the appropriate
 # values to enable the gathering of trace counts, and then finally use
-# $invoke_cmd to invoke the command.
+# ${invoke_cmd} to invoke the command.
 #
 
-MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
+MERCURY_OPTIONS="${MERCURY_OPTIONS} --trace-count"
 
-if "$coverage_test"
+if "${coverage_test}"
 then
-	MERCURY_OPTIONS="$MERCURY_OPTIONS --coverage-test"
+	MERCURY_OPTIONS="${MERCURY_OPTIONS} --coverage-test"
 fi
 
-if test "$summary_file" != ""
+if test "${summary_file}" != ""
 then
-	MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count-summary-file=$summary_file"
+	MERCURY_OPTIONS="${MERCURY_OPTIONS} --trace-count-summary-file=${summary_file}"
 fi
 
-if test "$summary_limit" != ""
+if test "${summary_limit}" != ""
 then
-	MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count-summary-limit=$summary_limit"
+	MERCURY_OPTIONS="${MERCURY_OPTIONS} --trace-count-summary-limit=${summary_limit}"
 fi
 
-if test "$output_file" != ""
+if test "${output_file}" != ""
 then
-	MERCURY_OPTIONS="$MERCURY_OPTIONS --tc-output-file $output_file"
+	MERCURY_OPTIONS="${MERCURY_OPTIONS} --tc-output-file ${output_file}"
 fi
 
 export MERCURY_OPTIONS
 exec "$@"
 
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#

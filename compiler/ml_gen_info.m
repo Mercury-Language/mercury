@@ -553,6 +553,7 @@
 
 :- import_module libs.options.
 :- import_module ml_backend.ml_target_util.
+:- import_module ml_backend.ml_util.
 
 :- import_module int.
 :- import_module stack.
@@ -962,8 +963,8 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
 
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
+    HighLevelData = mlds_target_high_level_data(Target),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     globals.get_gc_method(Globals, GC),
     globals.lookup_bool_option(Globals, det_copy_out, DetCopyOut),
     globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),

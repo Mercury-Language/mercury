@@ -453,8 +453,19 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
     arg_info.compute_in_and_out_vars(!.ModuleInfo, HeadVars,
         ArgModes, ArgTypes, _InputHeadVars, OutputHeadVars),
     proc_info_get_inferred_determinism(ProcInfo0, CurProcDetism),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        ( Target = target_c
+        ; Target = target_erlang
+        ),
+        HighLevelData = no
+    ;
+        ( Target = target_java
+        ; Target = target_csharp
+        ),
+        HighLevelData = yes
+    ),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
     (
         UnboxedFloat = no,
@@ -1434,16 +1445,20 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     % We changed the scopes of the headvars we now return via pointers.
     requantify_proc_general(ordinary_nonlocals_no_lambda, !VariantProcInfo),
 
-    % The high-level data transformation requires instmap deltas to be
-    % recomputed.
+    % The high-level data transformation requires instmap deltas
+    % to be recomputed.
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    globals.get_target(Globals, Target),
     (
-        HighLevelData = yes,
+        ( Target = target_c
+        ; Target = target_erlang
+        )
+    ;
+        ( Target = target_java
+        ; Target = target_csharp
+        ),
         recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
             !VariantProcInfo, !ModuleInfo)
-    ;
-        HighLevelData = no
     ).
 
 :- pred make_addr_vars(list(prog_var)::in, list(mer_mode)::in,
@@ -1726,14 +1741,18 @@ lco_transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr, InstMap0,
                 Builtin, UnifyContext, VariantSymName),
 
             module_info_get_globals(ModuleInfo, Globals),
-            globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+            globals.get_target(Globals, Target),
             (
-                HighLevelData = no,
+                ( Target = target_c
+                ; Target = target_erlang
+                ),
                 GoalInfo = GoalInfo0
             ;
-                HighLevelData = yes,
-                % The partially instantiated cells will be ground after the
-                % call.
+                ( Target = target_java
+                ; Target = target_csharp
+                ),
+                % The partially instantiated cells will be ground
+                % after the call.
                 list.map(pair.fst, GroundingVarToAddr, GroundVars),
                 map.apply_to_list(GroundVars, Subst, AddrVars),
                 InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),

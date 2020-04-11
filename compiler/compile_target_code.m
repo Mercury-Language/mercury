@@ -206,7 +206,7 @@
     % current compilation grade to the given stream.
     % This predicate is used to implement the `--output-grade-defines' option.
     %
-:- pred output_grade_defines(globals::in, io.output_stream::in,
+:- pred output_c_grade_defines(globals::in, io.output_stream::in,
     io::di, io::uo) is det.
 
     % Output the C compiler flags that specify where the C compiler should
@@ -300,7 +300,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
 
     gather_c_include_dir_flags(Globals, InclOpt),
     get_framework_directories(Globals, FrameworkInclOpt),
-    gather_grade_defines(Globals, GradeDefinesOpts),
+    gather_c_grade_defines(Globals, GradeDefinesOpts),
 
     globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
     (
@@ -510,9 +510,9 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gather_grade_defines(globals::in, string::out) is det.
+:- pred gather_c_grade_defines(globals::in, string::out) is det.
 
-gather_grade_defines(Globals, GradeDefines) :-
+gather_c_grade_defines(Globals, GradeDefines) :-
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
         HighLevelCode = yes,
@@ -520,14 +520,6 @@ gather_grade_defines(Globals, GradeDefines) :-
     ;
         HighLevelCode = no,
         HighLevelCodeOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    (
-        HighLevelData = yes,
-        HighLevelDataOpt = "-DMR_HIGHLEVEL_DATA "
-    ;
-        HighLevelData = no,
-        HighLevelDataOpt = ""
     ),
     globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
     (
@@ -798,13 +790,11 @@ gather_grade_defines(Globals, GradeDefines) :-
     ),
     string.append_list([
         HighLevelCodeOpt,
-        HighLevelDataOpt,
         RegOpt, GotoOpt, AsmOpt,
         ParallelOpt,
         ThreadscopeOpt,
         GC_Opt,
-        ProfileCallsOpt, ProfileTimeOpt,
-        ProfileMemoryOpt, ProfileDeepOpt,
+        ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt, ProfileDeepOpt,
         RecordTermSizesOpt,
         NumPtagBitsOpt,
         ExtendOpt,
@@ -2881,14 +2871,6 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     % NOTE: we use the -option style options in preference to the /option
     % style in order to avoid problems with POSIX style shells.
     globals.lookup_string_option(Globals, csharp_compiler, CSharpCompiler),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    (
-        HighLevelData = yes,
-        HighLevelDataOpt = "-define:MR_HIGHLEVEL_DATA"
-    ;
-        HighLevelData = no,
-        HighLevelDataOpt = ""
-    ),
     globals.lookup_bool_option(Globals, target_debug, Debug),
     (
         Debug = yes,
@@ -2950,7 +2932,6 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
     CmdArgs = string.join_list(" ", [
         NoLogoOpt,
         NoWarnLineNumberOpt,
-        HighLevelDataOpt,
         DebugOpt,
         TargetOption,
         "-out:" ++ OutputFileName,
@@ -3568,9 +3549,9 @@ output_c_compiler_flags(Globals, Stream, !IO) :-
 % Grade defines flags.
 %
 
-output_grade_defines(Globals, Stream, !IO) :-
+output_c_grade_defines(Globals, Stream, !IO) :-
     get_object_code_type(Globals, executable, _PIC),
-    gather_grade_defines(Globals, GradeDefines),
+    gather_c_grade_defines(Globals, GradeDefines),
     io.write_string(Stream, GradeDefines, !IO),
     io.nl(Stream, !IO).
 

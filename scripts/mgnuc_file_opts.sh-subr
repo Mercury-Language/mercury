@@ -1,4 +1,6 @@
 #---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -24,47 +26,58 @@
             verbose=true
             ;;
         -v-|--no-verbose)
-            verbose=false ;;
-
-        --assemble)
-            assemble=true ;;
+            verbose=false
+            ;;
 
         --no-ansi)
             ANSI_OPTS=
             ;;
 
         --no-check)
-            CHECK_OPTS= ;;
+            CHECK_OPTS=
+            ;;
 
         --inline-alloc)
-            INLINE_ALLOC_OPTS="-DMR_INLINE_ALLOC -DSILENT" ;;
+            INLINE_ALLOC_OPTS="-DMR_INLINE_ALLOC -DSILENT"
+            ;;
         --no-inline-alloc)
-            INLINE_ALLOC_OPTS="" ;;
+            INLINE_ALLOC_OPTS=""
+            ;;
 
         -g|--c-debug)
-            c_debug=true ;;
+            c_debug=true
+            ;;
         -g-|--no-c-debug)
-            c_debug=false ;;
+            c_debug=false
+            ;;
 
         --c-optimize)
-            c_optimize=true ;;
+            c_optimize=true
+            ;;
         --no-c-optimize)
-            c_optimize=false ;;
+            c_optimize=false
+            ;;
 
         --low-level-debug)
-            low_level_debug=true ;;
+            low_level_debug=true
+            ;;
         --no-low-level-debug)
-            low_level_debug=false ;;
+            low_level_debug=false
+            ;;
 
         --use-activation-counts)
-            use_activation_counts=true ;;
+            use_activation_counts=true
+            ;;
         --no-use-activation-counts)
-            use_activation_counts=false ;;
+            use_activation_counts=false
+            ;;
 
         --preserve-tail-recursion)
-            preserve_tail_recursion=true ;;
+            preserve_tail_recursion=true
+            ;;
         --no-preserve-tail-recursion)
-            preserve_tail_recursion=false ;;
+            preserve_tail_recursion=false
+            ;;
 
         --no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
             unset mercury_stdlib_dir
@@ -72,7 +85,9 @@
             ;;
 
         --no-filter-cc)
-            do_filter_cc=false ;;
+            do_filter_cc=false
+            ;;
 
         --halt-at-warn-if-possible)
-            halt_at_warn_if_possible=true ;;
+            halt_at_warn_if_possible=true
+            ;;

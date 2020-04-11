@@ -1,4 +1,6 @@
 #---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 1997-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -56,15 +58,11 @@ Grade options:
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide."
 
-# --high-level-data is not yet documented because it is not yet implemented
-# --high-level is not yet documented because --high-level-data is
-#		not yet implemented
 # --use-regions-debug and --use-regions-profiling are not yet documented
 #		since they are not yet stable
 
 target=c
 highlevel_code=false
-highlevel_data=false
 asm_labels=true
 non_local_gotos=true
 global_regs=true
@@ -94,8 +92,12 @@ use_regions_debug=false
 use_regions_profiling=false
 
 case $# in
-	0) set - --grade "$DEFAULT_GRADE" ;;
-	*) set - --grade "$DEFAULT_GRADE" "$@" ;;
+	0)
+        set - --grade "$DEFAULT_GRADE"
+        ;;
+	*)
+        set - --grade "$DEFAULT_GRADE" "$@"
+        ;;
 esac
 
 #---------------------------------------------------------------------------#
