@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab ft=make
+# vim: ts=8 sw=8 noexpandtab ft=make ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2005-2007, 2009-2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -189,17 +189,34 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
+# The documentation of the reason for this set of rules
+# can be found in library/Mmakefile.
+
 .PHONY: os cs css javas
-ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-os: $($(MDBCOMP_LIB_NAME).os)
-cs: $($(MDBCOMP_LIB_NAME).cs)
-css: $($(MDBCOMP_LIB_NAME).css)
-javas: $($(MDBCOMP_LIB_NAME).javas)
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+os:	$(MDBCOMP_LIB_NAME).os
+cs:	$(MDBCOMP_LIB_NAME).cs
+css:	$(MDBCOMP_LIB_NAME).css
+javas:	$(MDBCOMP_LIB_NAME).javas
 else
-os: $(MDBCOMP_LIB_NAME).os
-cs: $(MDBCOMP_LIB_NAME).cs
-css: $(MDBCOMP_LIB_NAME).css
-javas: $(MDBCOMP_LIB_NAME).javas
+ifneq ($(origin $(MDBCOMP_LIB_NAME).os),undefined)
+os:	$($(MDBCOMP_LIB_NAME).os)
+cs:	$($(MDBCOMP_LIB_NAME).cs)
+css:	$($(MDBCOMP_LIB_NAME).css)
+javas:	$($(MDBCOMP_LIB_NAME).javas)
+else
+os:
+	mmake depend; mmake os
+
+cs:
+	mmake depend; mmake cs
+
+css:
+	mmake depend; mmake css
+
+javas:
+	mmake depend; mmake javas
+endif
 endif
 
 #-----------------------------------------------------------------------------#

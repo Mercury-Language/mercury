@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1998-2007, 2009-2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -186,19 +186,32 @@ int3s:	$(INT3S_TARGETS)
 
 #-----------------------------------------------------------------------------#
 
+# We need the shenanigans with .browser_tags to avoid situations in which
+# "mmake tags" in this directory does nothing even in the absence of a tags
+# file in this directory, because mmake uses VPATH to find ../library/tags
+# and believes it to be the tags file we are asking for.
+#
+# We give files in mdbcomp to mtags before the files in this directory
+# because we want references to entities defined in the modules copied from the
+# mdbcomp directory to this directory to go the actual, effective definitions,
+# the definitions which can be changed *without* those changes going away
+# on the next copy.
+
 tags:	.browser_tags
 
-.browser_tags: 	$(MTAGS) $($(BROWSER_LIB_NAME).ms) \
-		$(wildcard $(LIBRARY_DIR)/*.m) \
-                $(wildcard $(MDBCOMP_DIR)/*.m)
-	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m
+.browser_tags: 	$(MTAGS) $(wildcard *.m) \
+                $(wildcard $(MDBCOMP_DIR)/*.m) \
+		$(wildcard $(LIBRARY_DIR)/*.m)
+	$(MTAGS) $(MDBCOMP_DIR)/*.m *.m $(LIBRARY_DIR)/*.m
 	@touch .browser_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m; \
-	touch .browser_tags; \
+	@if test ! -f tags; \
+	then \
+		echo making tags; \
+		$(MTAGS) $(MDBCOMP_DIR)/*.m *.m $(LIBRARY_DIR)/*.m; \
+		touch .browser_tags; \
 	fi
 
 $(BROWSER_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
@@ -214,17 +227,34 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
+# The documentation of the reason for this set of rules
+# can be found in library/Mmakefile.
+
 .PHONY: os cs css javas
-ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-os: $($(BROWSER_LIB_NAME).os)
-cs: $($(BROWSER_LIB_NAME).cs)
-css: $($(BROWSER_LIB_NAME).css)
-javas: $($(BROWSER_LIB_NAME).javas)
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+os:	$(BROWSER_LIB_NAME).os
+cs:	$(BROWSER_LIB_NAME).cs
+css:	$(BROWSER_LIB_NAME).css
+javas:	$(BROWSER_LIB_NAME).javas
 else
-os: $(BROWSER_LIB_NAME).os
-cs: $(BROWSER_LIB_NAME).cs
-css: $(BROWSER_LIB_NAME).css
-javas: $(BROWSER_LIB_NAME).javas
+ifneq ($(origin $(BROWSER_LIB_NAME).os),undefined)
+os:	$($(BROWSER_LIB_NAME).os)
+cs:	$($(BROWSER_LIB_NAME).cs)
+css:	$($(BROWSER_LIB_NAME).css)
+javas:	$($(BROWSER_LIB_NAME).javas)
+else
+os:
+	mmake depend; mmake os
+
+cs:
+	mmake depend; mmake cs
+
+css:
+	mmake depend; mmake css
+
+javas:
+	mmake depend; mmake javas
+endif
 endif
 
 #-----------------------------------------------------------------------------#

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -175,20 +175,41 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
+# The documentation of the reason for this set of rules
+# can be found in library/Mmakefile.
+
 # Note that the cs and os targets don't build mercury_compile_init.{c,o}.
+
 .PHONY: os cs css javas opts
-ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-os: $($(MC_PROG).os)
-cs: $($(MC_PROG).cs)
-css: $($(MC_PROG).css)
-javas: $($(MC_PROG).javas)
-opts: $($(MC_PROG).opts)
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+os:	$(MC_PROG).os
+cs:	$(MC_PROG).cs
+css:	$(MC_PROG).css
+javas:	$(MC_PROG).javas
+opts:	$(MC_PROG).opts
 else
-os: $(MC_PROG).os
-cs: $(MC_PROG).cs
-css: $(MC_PROG).css
-javas: $(MC_PROG).javas
-opts: $(MC_PROG).opts
+ifneq ($(origin $(MC_PROG).os),undefined)
+os:	$($(MC_PROG).os)
+cs:	$($(MC_PROG).cs)
+css:	$($(MC_PROG).css)
+javas:	$($(MC_PROG).javas)
+opts:	$($(MC_PROG).opts)
+else
+os:
+	mmake depend; mmake os
+
+cs:
+	mmake depend; mmake cs
+
+css:
+	mmake depend; mmake css
+
+javas:
+	mmake depend; mmake javas
+
+opts:
+	mmake depend; mmake opts
+endif
 endif
 
 #-----------------------------------------------------------------------------#

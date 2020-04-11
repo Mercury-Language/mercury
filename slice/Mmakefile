@@ -38,7 +38,7 @@ MAIN_TARGET		= all
 
 # If you add more modules, you will also have to modify the os, cs, css
 # and java targets below, as well as ../Mmakefile.
-MERCURY_MAIN_MODULES	= mslice mdice mtc_union mcov mtc_diff
+MERCURY_MAIN_MODULES	= mslice mdice mcov mtc_union mtc_diff
 
 DEPENDS	= $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
 INTS	= $(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
@@ -137,32 +137,27 @@ endif
 
 # Add some additional dependencies, so that Mmake knows to remake the
 # slicer and dicer if one of the libraries changes.
-
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
-mslice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mslice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mslice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
-mdice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 # XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade.
-mtc_union: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mtc_union: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mtc_union: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
-mcov: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mcov: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mcov: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
-mtc_diff: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mtc_diff: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mtc_diff: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+
+RUN_LIB_BROW = \
+	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A \
+	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A \
+	$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+
+ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+mslice:		$(RUN_LIB_BROW)
+mdice:		$(RUN_LIB_BROW)
+mcov:		$(RUN_LIB_BROW)
+mtc_union:	$(RUN_LIB_BROW)
+mtc_diff:	$(RUN_LIB_BROW)
 endif
 
-$(cs_subdir)mslice_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mdice_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mtc_union.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mcov.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mtc_diff.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mslice_init.c:	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mdice_init.c:	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mcov_init.c:	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mtc_union_init.c:	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mtc_diff_init.c:	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 
@@ -174,20 +169,31 @@ ints:	$(INTS)
 
 #-----------------------------------------------------------------------------#
 
+# We need the shenanigans with .slice_tags to avoid situations in which
+# "mmake tags" in this directory does nothing even in the absence of a tags
+# file in this directory, because mmake uses VPATH to find ../library/tags
+# and believes it to be the tags file we are asking for.
+#
+# We give files in mdbcomp to mtags before the files in this directory
+# because we want references to entities defined in the modules copied from the
+# mdbcomp directory to this directory to go the actual, effective definitions,
+# the definitions which can be changed *without* those changes going away
+# on the next copy.
+
 tags:	.slice_tags
 
-.slice_tags: $(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
-		$(mtc_diff.ms) $(wildcard $(LIBRARY_DIR)/*.m)
-	$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) $(mcov.ms) \
-		$(mtc_diff.ms) $(LIBRARY_DIR)/*.m
+.slice_tags: $(MTAGS) $(wildcard *.m) \
+		$(wildcard $(MDBCOMP_DIR)/*.m) \
+		$(wildcard $(LIBRARY_DIR)/*.m)
+	$(MTAGS) $(MDBCOMP_DIR)/*.m *.m $(LIBRARY_DIR)/*.m
 	@touch .slice_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then \
+	@if test ! -f tags; \
+	then \
 		echo making tags; \
-		$(MTAGS) $(mslice.ms) $(mdice.ms) $(mtc_union.ms) \
-			$(mcov.ms) $(mtc_union.ms) $(LIBRARY_DIR)/*.m; \
+		$(MTAGS) $(MDBCOMP_DIR)/*.m *.m $(LIBRARY_DIR)/*.m; \
 		touch .slice_tags; \
 	fi
 
@@ -195,45 +201,89 @@ tags_file_exists:
 
 .PHONY: dates
 dates:
-	touch $(mslice.dates) $(mdice.dates) $(mtc_union.dates) \
-		$(mcov.dates) $(mtc_diff.ms)
+	touch $(mslice.dates) $(mdice.dates) $(mcov.dates) \
+		$(mtc_union.dates) $(mtc_diff.ms)
 
 #-----------------------------------------------------------------------------#
 
+# The documentation of the reason for this set of rules
+# can be found in library/Mmakefile.
+
 .PHONY: os cs css javas
-os:	$(mslice.os) \
+
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+
+os: \
+	mslice.os \
+	mdice.os \
+	mcov.os \
+	mtc_union.os \
+	mtc_diff.os 
+
+cs: \
+	mslice.cs \
+	mdice.cs \
+	mcov.cs \
+	mtc_union.cs \
+	mtc_diff.cs 
+css: \
+	mslice.css \
+	mdice.css \
+	mcov.css \
+	mtc_union.css \
+	mtc_diff.css 
+javas: \
+	mslice.javas \
+	mdice.javas \
+	mcov.javas \
+	mtc_union.javas \
+	mtc_diff.javas 
+
+else
+ifneq ($(origin mslice.os),undefined)
+
+os: \
+	$(mslice.os) \
 	$(mdice.os) \
-	$(mtc_union.os) \
 	$(mcov.os) \
-	$(mtc_diff.os) \
-	$(os_subdir)mslice_init.o \
-	$(os_subdir)mdice_init.o \
-	$(os_subdir)mtc_union.o \
-	$(os_subdir)mcov.o \
-	$(os_subdir)mtc_diff.o
+	$(mtc_union.os) \
+	$(mtc_diff.os) 
 
-cs:	$(mslice.cs) \
+cs: \
+	$(mslice.cs) \
 	$(mdice.cs) \
-	$(mtc_union.cs) \
 	$(mcov.cs) \
-	$(mtc_diff.cs) \
-	$(cs_subdir)mslice_init.c \
-	$(cs_subdir)mdice_init.c \
-	$(cs_subdir)mtc_union.c \
-	$(cs_subdir)mcov.c \
-	$(cs_subdir)mtc_diff.c
-
-css:	$(mslice.css) \
+	$(mtc_union.cs) \
+	$(mtc_diff.cs) 
+css: \
+	$(mslice.css) \
 	$(mdice.css) \
-	$(mtc_union.css) \
 	$(mcov.css) \
-	$(mtc_diff.css)
-
-javas:	$(mslice.javas) \
+	$(mtc_union.css) \
+	$(mtc_diff.css) 
+javas: \
+	$(mslice.javas) \
 	$(mdice.javas) \
-	$(mtc_union.javas) \
 	$(mcov.javas) \
-	$(mtc_diff.javas)
+	$(mtc_union.javas) \
+	$(mtc_diff.javas) 
+
+else
+
+os:
+	mmake depend; mmake os
+
+cs:
+	mmake depend; mmake cs
+
+css:
+	mmake depend; mmake css
+
+javas:
+	mmake depend; mmake javas
+
+endif
+endif
 
 #-----------------------------------------------------------------------------#
 
@@ -256,16 +306,16 @@ install_slicer: mslice mdice mtc_union mcov mtc_diff
 		$(INSTALL_MERC_BIN_DIR)/mslice$(EXT_FOR_EXE)
 	cp `vpath_find mdice$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mdice$(EXT_FOR_EXE)
-	cp `vpath_find mtc_union$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mtc_union$(EXT_FOR_EXE)
 	cp `vpath_find mcov$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mcov$(EXT_FOR_EXE)
+	cp `vpath_find mtc_union$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mtc_union$(EXT_FOR_EXE)
 	cp `vpath_find mtc_diff$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mtc_diff$(EXT_FOR_EXE)
 ifeq ($(findstring java,$(GRADE)),java)
-	cp `vpath_find mcov.jar` $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mdice.jar` $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mslice.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mcov.jar` $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mtc_diff.jar` $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mtc_union.jar` $(INSTALL_MERC_BIN_DIR)
 endif
@@ -276,8 +326,8 @@ endif
 uninstall:
 	-rm -f $(INSTALL_MERC_BIN_DIR)/mslice$(EXT_FOR_EXE)
 	-rm -f $(INSTALL_MERC_BIN_DIR)/mdice$(EXT_FOR_EXE)
-	-rm -f $(INSTALL_MERC_BIN_DIR)/mtc_union$(EXT_FOR_EXE)
 	-rm -f $(INSTALL_MERC_BIN_DIR)/mcov$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mtc_union$(EXT_FOR_EXE)
 	-rm -f $(INSTALL_MERC_BIN_DIR)/mtc_diff$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#

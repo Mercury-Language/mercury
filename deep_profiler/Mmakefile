@@ -151,30 +151,28 @@ $(MDBCOMP_MODULES): %: $(MDBCOMP_DIR)/%
 
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
-
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
-mdprof_cgi:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_cgi:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdprof_test:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_test:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdprof_dump:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_dump:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdprof_create_feedback:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_create_feedback:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdprof_report_feedback:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_report_feedback:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-mdprof_procrep:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mdprof_procrep:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 # XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade.
+
+RUN_LIB = \
+	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A \
+	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+
+ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+mdprof_cgi:		$(RUN_LIB)
+mdprof_test:		$(RUN_LIB)
+mdprof_dump:		$(RUN_LIB)
+mdprof_create_feedback:	$(RUN_LIB)
+mdprof_report_feedback:	$(RUN_LIB)
+mdprof_procrep:		$(RUN_LIB)
 endif
 
-$(cs_subdir)mdprof_cgi_init.c:			$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mdprof_test_init.c:			$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mdprof_dump_init.c:			$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mdprof_create_feedback_init.c: 	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mdprof_report_feedback_init.c: 	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
-$(cs_subdir)mdprof_procrep_init.c:		$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mdprof_cgi_init.c:		   $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mdprof_test_init.c:		   $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mdprof_dump_init.c:		   $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mdprof_create_feedback_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mdprof_report_feedback_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
+$(cs_subdir)mdprof_procrep_init.c:	   $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 
@@ -186,33 +184,32 @@ ints:	DEPEND=$(patsubst %,%.ints,$(ALL_DEEP_MAIN_MODULES))
 
 #-----------------------------------------------------------------------------#
 
-# We need the shenanigans with .deep_tags to avoid situations in which an
+# We need the shenanigans with .deep_tags to avoid situations in which
 # "mmake tags" in this directory does nothing even in the absence of a tags
 # file in this directory, because mmake uses VPATH to find ../library/tags
 # and believes it to be the tags file we are asking for.
+#
+# We give files in mdbcomp to mtags before the files in this directory
+# because we want references to entities defined in the modules copied from the
+# mdbcomp directory to this directory to go the actual, effective definitions,
+# the definitions which can be changed *without* those changes going away
+# on the next copy.
 
 .PHONY: tags
 tags:	.deep_tags
 
-DEEP_MS = \
-	$(mdprof_cgi.ms) \
-	$(mdprof_test.ms) \
-	$(mdprof_dump.ms) \
-	$(mdprof_create_feedback.ms) \
-	$(mdprof_report_feedback.ms) \
-	$(mdprof_procrep.ms)
-
-.deep_tags: $(MTAGS) $(DEEP_MS) \
+.deep_tags: $(MTAGS) $(wildcard *.m) \
 		$(wildcard $(MDBCOMP_DIR)/*.m) \
 		$(wildcard $(LIBRARY_DIR)/*.m)
-	$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(MDBCOMP_DIR)/*.m *.m $(LIBRARY_DIR)/*.m
 	@touch .deep_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then \
+	@if test ! -f tags; \
+	then \
 		echo making tags; \
-		$(MTAGS) $(DEEP_MS) $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m; \
+		$(MTAGS) *.m $(MDBCOMP_DIR)/*.m $(LIBRARY_DIR)/*.m; \
 		touch .deep_tags; \
 	fi
 
@@ -220,7 +217,7 @@ tags_file_exists:
 
 .PHONY: dates
 dates:
-	touch 	$(mdprof_cgi.dates) \
+	touch	$(mdprof_cgi.dates) \
 		$(mdprof_test.dates) \
 		$(mdprof_dump.dates) \
 		$(mdprof_create_feedback.dates) \
@@ -229,31 +226,93 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
+# The documentation of the reason for this set of rules
+# can be found in library/Mmakefile.
+
 .PHONY: os cs css javas
-os: $(mdprof_cgi.os) $(os_subdir)mdprof_cgi_init.o
-os: $(mdprof_test.os) $(os_subdir)mdprof_test_init.o
-os: $(mdprof_dump.os) $(os_subdir)mdprof_dump_init.o
-os: $(mdprof_create_feedback.os) $(os_subdir)mdprof_create_feedback_init.o
-os: $(mdprof_report_feedback.os) $(os_subdir)mdprof_report_feedback_init.o
-os: $(mdprof_procrep.os) $(os_subdir)mdprof_procrep_init.o
-cs: $(mdprof_cgi.cs) $(cs_subdir)mdprof_cgi_init.c
-cs: $(mdprof_test.cs) $(cs_subdir)mdprof_test_init.c
-cs: $(mdprof_dump.cs) $(cs_subdir)mdprof_dump_init.c
-cs: $(mdprof_create_feedback.cs) $(cs_subdir)mdprof_create_feedback_init.c
-cs: $(mdprof_report_feedback.cs) $(cs_subdir)mdprof_report_feedback_init.c
-cs: $(mdprof_procrep.cs) $(cs_subdir)mdprof_procrep_init.c
-css: $(mdprof_cgi.css)
-css: $(mdprof_test.css)
-css: $(mdprof_dump.css)
-css: $(mdprof_create_feedback.css)
-css: $(mdprof_report_feedback.css)
-css: $(mdprof_procrep.css)
-javas: $(mdprof_cgi.javas)
-javas: $(mdprof_test.javas)
-javas: $(mdprof_dump.javas)
-javas: $(mdprof_create_feedback.javas)
-javas: $(mdprof_report_feedback.javas)
-javas: $(mdprof_procrep.javas)
+
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+
+os: \
+	mdprof_cgi.os \
+	mdprof_test.os \
+	mdprof_dump.os \
+	mdprof_create_feedback.os \
+	mdprof_report_feedback.os \
+	mdprof_procrep.os
+
+cs: \
+	mdprof_cgi.cs \
+	mdprof_test.cs \
+	mdprof_dump.cs \
+	mdprof_create_feedback.cs \
+	mdprof_report_feedback.cs \
+	mdprof_procrep.cs
+
+css:  \
+	mdprof_cgi.css \
+	mdprof_test.css \
+	mdprof_dump.css \
+	mdprof_create_feedback.css \
+	mdprof_report_feedback.css \
+	mdprof_procrep.css
+
+javas: \
+	mdprof_cgi.javas \
+	mdprof_test.javas \
+	mdprof_dump.javas \
+	mdprof_create_feedback.javas \
+	mdprof_report_feedback.javas \
+	mdprof_procrep.javas
+
+else
+ifneq ($(origin mdprof_cgi.os),undefined)
+
+os: \
+	$(mdprof_cgi.os) \
+	$(mdprof_test.os) \
+	$(mdprof_dump.os) \
+	$(mdprof_create_feedback.os) \
+	$(mdprof_report_feedback.os) \
+	$(mdprof_procrep.os)
+
+cs: \
+	$(mdprof_cgi.cs) \
+	$(mdprof_test.cs) \
+	$(mdprof_dump.cs) \
+	$(mdprof_create_feedback.cs) \
+	$(mdprof_report_feedback.cs) \
+	$(mdprof_procrep.cs)
+
+css: \
+	$(mdprof_cgi.css) \
+	$(mdprof_test.css) \
+	$(mdprof_dump.css) \
+	$(mdprof_create_feedback.css) \
+	$(mdprof_report_feedback.css) \
+	$(mdprof_procrep.css)
+
+javas: \
+	$(mdprof_cgi.javas) \
+	$(mdprof_test.javas) \
+	$(mdprof_dump.javas) \
+	$(mdprof_create_feedback.javas) \
+	$(mdprof_report_feedback.javas) \
+	$(mdprof_procrep.javas)
+else
+os:
+	mmake depend; mmake os
+
+cs:
+	mmake depend; mmake cs
+
+css:
+	mmake depend; mmake css
+
+javas:
+	mmake depend; mmake javas
+endif
+endif
 
 #-----------------------------------------------------------------------------#
 

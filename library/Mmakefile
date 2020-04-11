@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1997-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -234,13 +234,15 @@ check_doc_undoc: MODULES_DOC MODULES_UNDOC *.m
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $($(STD_LIB_NAME).ms)
-	$(MTAGS) $($(STD_LIB_NAME).ms)
+tags:	$(MTAGS) $(wildcard *.m)
+	$(MTAGS) $(wildcard *.m)
 
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $($(STD_LIB_NAME).ms); \
+	@if test ! -f tags; \
+	then \
+		echo making tags; \
+		$(MTAGS) $($(STD_LIB_NAME).ms); \
 	fi
 
 $(STD_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk $($(STD_LIB_NAME).ms)
@@ -255,18 +257,85 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs javas
-ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-os: $($(STD_LIB_NAME).os)
-cs: $($(STD_LIB_NAME).cs)
-css: $($(STD_LIB_NAME).css)
-javas: $($(STD_LIB_NAME).javas)
+# We have three separate rules for each of the os, cs, css, javas and
+# opts targets, because no single rule can get the job done.
+#
+# 1.	When we are using mmake merely as a wrapper around mmc --make,
+#	we get mmc --make compute the set of .o, .c, .cs, .java or .opt files
+#	to be (re)built. It has the internal rules to do this computation,
+#	and more crucially, when we are using mmc --make, making dependencies
+#	for an executable or library does NOT create a .dv file for that
+#	executable or binary, so the set of .o, .c, .cs, .java or .opt files
+#	required to build that executable or binary is not recorded there.
+#
+# 2.	When we are NOT using mmc --make, then mmc itself won't know what
+#	target language files are needed to create the executable or library,
+#	so it is mmake's job to decide which files to ask mmc to (re)build.
+#	Mmake gets this information from the .dv files it reads. These files
+#	are created by "mmake depend" on an executable or library, and will
+#	define the make variables x.os, x.cs, x.css, x.javas and x.opts
+#	(if the executable or library is named x).
+#
+# 2a.	If e.g. x.os is defined (which we test for as "not undefined"),
+#	that means that "mmake depend" has been run at least on x, and since
+#	we just about always just run "mmake depend" in a directory instead of
+#	running "mmake x.depend" on its executables/libraries individually,
+#	we assume that if one .dv file exists, they all exist. In this case,
+#	we get the set of .o, .c, .cs, .java or .opt files to (re)build
+#	from these variables defined in the .dv files.
+#
+# 2b.	Conversely, if x.os is undefined, we assume that all the related
+#	make variables are also undefined. In this case, we invoke mmake
+#	depend to build the .dv files, and then invoke mmake again to do
+#	the job we were asked to do. We need two separate mmake invocations,
+#	because mmake can read .dv files only when it starts up. And while
+#	the second invocation of mmake looks like a case of infinite tail
+#	recursion, it isn't, because after the mmake depend step, the
+#	recursive invocation will end up using the 2a rule, not the 2b.
+#
+# An additional reason why we want to handle 2a separately from 2b is that
+# the mere existence of an mmake rule such as
+#
+#	os:	$(mslice.os)
+#
+# in the Mmakefile will generate a warning about mslice.os being undefined
+# (if in fact it is undefined) *even if* the mmake invocation does not
+# involve the "os" target in any way, which can be confusing, and even
+# to those to whom it isn't confusing, it *is* annoying.
+
+.PHONY: os cs css javas opts
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+os:	$(STD_LIB_NAME).os
+cs:	$(STD_LIB_NAME).cs
+css:	$(STD_LIB_NAME).css
+javas:	$(STD_LIB_NAME).javas
+opts:	$(STD_LIB_NAME).opts
 else
-os: $(STD_LIB_NAME).os
-cs: $(STD_LIB_NAME).cs
-css: $(STD_LIB_NAME).css
-javas: $(STD_LIB_NAME).javas
+ifneq ($(origin $(STD_LIB_NAME).os),undefined)
+os:	$($(STD_LIB_NAME).os)
+cs:	$($(STD_LIB_NAME).cs)
+css:	$($(STD_LIB_NAME).css)
+javas:	$($(STD_LIB_NAME).javas)
+opts:	$($(STD_LIB_NAME).opts)
+else
+os:
+	mmake depend; mmake os
+
+cs:
+	mmake depend; mmake cs
+
+css:
+	mmake depend; mmake css
+
+javas:
+	mmake depend; mmake javas
+
+opts:
+	mmake depend; mmake opts
 endif
+endif
+
+#-----------------------------------------------------------------------------#
 
 # javac expects to find the sources for symbols named jmercury.runtime.* in
 # jmercury/runtime/*, but in our sources those symbols actually come from

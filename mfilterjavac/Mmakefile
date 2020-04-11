@@ -74,8 +74,9 @@ all:	$(ALL_MODULES) $(TAGS_FILE_EXISTS)
 # profiler if one of the libraries changes.
 
 ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
-mfilterjavac:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
-mfilterjavac:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mfilterjavac: \
+	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A \
+	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 endif
 
 $(cs_subdir)mfilterjavac.c:	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
@@ -98,19 +99,17 @@ ints:	DEPEND=$(patsubst %,%.ints,$(ALL_MODULES))
 .PHONY: tags
 tags:	.mfilterjavac_tags
 
-MS = \
-	$(mfilterjavac.ms)
-
-.mfilterjavac_tags: $(MTAGS) $(MS) \
-		$(wildcard $(LIBRARY_DIR)/*.m)
-	$(MTAGS) $(MS) $(LIBRARY_DIR)/*.m
+.mfilterjavac_tags: $(MTAGS) $(wildcard *.m) $(wildcard $(LIBRARY_DIR)/*.m)
+	$(MTAGS) *.m $(LIBRARY_DIR)/*.m
 	@touch .mfilterjavac_tags
 
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $(MS) $(LIBRARY_DIR)/*.m; \
-	touch .mfilterjavac_tags; \
+	@if test ! -f tags; \
+	then \
+		echo making tags; \
+		$(MTAGS) *.m $(LIBRARY_DIR)/*.m; \
+		touch .mfilterjavac_tags; \
 	fi
 
 #-----------------------------------------------------------------------------#
@@ -121,17 +120,41 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
+# The documentation of the reason for this set of rules
+# can be found in library/Mmakefile.
+
 .PHONY: os cs css javas
-os: $(mfilterjavac.os) $(os_subdir)mfilterjavac_init.o
-cs: $(mfilterjavac.cs) $(cs_subdir)mfilterjavac_init.c
-css: $(mfilterjavac.css)
-javas: $(mfilterjavac.javas)
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+os:     mfilterjavac.os
+cs:     mfilterjavac.cs
+css:    mfilterjavac.css
+javas:  mfilterjavac.javas
+else
+ifneq ($(origin mfilterjavac.os),undefined)
+os:     $(mfilterjavac.os)
+cs:     $(mfilterjavac.cs)
+css:    $(mfilterjavac.css)
+javas:  $(mfilterjavac.javas)
+else
+os:
+	mmake depend; mmake os
+
+cs:
+	mmake depend; mmake cs
+
+css:
+	mmake depend; mmake css
+
+javas:
+	mmake depend; mmake javas
+endif
+endif
 
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f .mfilterjavac_tags tags MFILTERJAVAC_FLAGS MFILTERJAVAC_FLAGS.date
-	rm -f $(PDBS) vc*.pdb
+	rm -f .mfilterjavac_tags tags \
+		MFILTERJAVAC_FLAGS MFILTERJAVAC_FLAGS.date $(PDBS) vc*.pdb
 
 #-----------------------------------------------------------------------------#
 
