@@ -3508,7 +3508,7 @@ new_type_info(TypeInfo, _) = NewTypeInfo :-
     det_unimplemented("new_type_info").
 
 :- pragma foreign_proc("C#",
-    new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo),
+    new_type_info(OldTypeInfo::in, _Arity::in) = (NewTypeInfo::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     NewTypeInfo = OldTypeInfo.copy();
@@ -3551,7 +3551,7 @@ get_pti_from_type_info_index(_, _, _, _) :-
     private_builtin.sorry("get_pti_from_type_info_index").
 
 :- pragma foreign_proc("C#",
-    get_pti_from_type_info_index(TypeInfo::in, Offset::in, Index::in,
+    get_pti_from_type_info_index(TypeInfo::in, _Offset::in, Index::in,
         PTI::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -4336,7 +4336,7 @@ type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
     type_info::di, type_info::uo) is det.
 
 :- pragma foreign_proc("C#",
-    set_type_info_index(Offset::in, Index::in, Value::in,
+    set_type_info_index(_Offset::in, Index::in, Value::in,
         TypeInfo0::di, TypeInfo::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -5256,7 +5256,7 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
     % XXX get rid of this
 :- func unsafe_index(int, T) = U.
 :- pragma foreign_proc("C#",
-    unsafe_index(Num::in, Array::in) = (Item::out),
+    unsafe_index(_Num::in, _Array::in) = (Item::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     Item = null;
