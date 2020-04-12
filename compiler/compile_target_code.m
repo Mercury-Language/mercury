@@ -1339,7 +1339,7 @@ do_make_init_obj_file(Globals, ErrorStream, MustCompile, ModuleName,
     module_name_to_file_name(Globals, do_create_dirs, "_init" ++ ObjExt,
         ModuleName, InitObjFileName, !IO),
     CompileCInitFile =
-        (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
+        ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
             do_compile_c_file(Globals, ErrorStream, PIC, InitTargetFileName,
                 InitObjFileName, Res, IO0, IO)
         ),
@@ -1381,7 +1381,7 @@ make_erlang_program_init_file(Globals, ErrorStream, ModuleName, ModuleNames,
     module_name_to_file_name(Globals, do_create_dirs, "_init.beam",
         ModuleName, InitObjFileName, !IO),
     CompileErlangInitFile =
-        (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
+        ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
             compile_erlang_file(Globals, ErrorStream, InitTargetFileName, Res,
                 IO0, IO)
         ),
@@ -1632,7 +1632,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
     (
         TargetType = executable,
         list.map(
-            (pred(ModuleStr::in, ModuleName::out) is det :-
+            ( pred(ModuleStr::in, ModuleName::out) is det :-
                 file_name_to_module_name(dir.det_basename(ModuleStr),
                     ModuleName)
             ), Modules, ModuleNames),
