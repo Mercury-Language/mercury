@@ -1,0 +1,56 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = invalid_make_int
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
+
+# Note: multi-module tests are listed separately from single-module tests
+# because we need to make dependencies, and make .int3 files for the
+# other modules, only for multi-module tests.
+#
+# Multi-module tests should use *separate* modules, not *nested* modules.
+
+SINGLE_MODULE_PROGS = \
+	missing_interface_import
+
+MULTI_MODULE_PROGS =
+
+#-----------------------------------------------------------------------------#
+
+PROGS = $(SINGLE_MODULE_PROGS) $(MULTI_MODULE_PROGS)
+TESTS = $(sort $(PROGS:%=%-nodepend))
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.int_err_res ;
+
+#-----------------------------------------------------------------------------#
+
+$(SINGLE_MODULE_PROGS:%=%.int_err): %.int_err: %.m
+	if $(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
+		> $*.int_err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+$(MULTI_MODULE_PROGS:%=%.int_err): %.int_err: %.m
+	mmake %.depend
+	mmake %.int3s
+	if $(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
+		> $*.int_err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+clean_local: clean_invalid
+
+clean_invalid:
+	rm -f *.dep_err *.err *.int_err *.int_err_res
+
+#-----------------------------------------------------------------------------#

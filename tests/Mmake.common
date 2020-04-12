@@ -100,6 +100,10 @@ $(TESTS_DIR)/Mmake.params: ;
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
 
+# DIFF_WO stands for "diff with opts". We define it to allow the actions
+# for %.int_exp_res to fit onto one line.
+DIFF_WO = diff $(DIFF_OPTS)
+
 # For some test cases, there is more than one valid output.
 # We try matching the output with the `.exp' file, and if that doesn't succeed,
 # and there are `.exp2', `.exp3', `.exp4' or `.exp5' files, then we try
@@ -110,23 +114,23 @@ $(TESTS_DIR)/Mmake.params: ;
 	@echo "Comparing $*.out with $*.exp*,"
 	@echo "	results in $@"
 	@-rm -f $@ $*.res[1-5]
-	@{ diff $(DIFF_OPTS) $*.exp $*.out > $*.res1 && \
+	@{ $(DIFF_WO) $*.exp $*.out > $*.res1 && \
 		echo "Matched $*.exp" && \
 		cp $*.res1 $@; } || \
 	{ test -f $*.exp2 && \
-		diff $(DIFF_OPTS) $*.exp2 $*.out > $*.res2 && \
+		$(DIFF_WO) $*.exp2 $*.out > $*.res2 && \
 		echo "Matched $*.exp2" && \
 		cp $*.res2 $@; } || \
 	{ test -f $*.exp3 && \
-		diff $(DIFF_OPTS) $*.exp3 $*.out > $*.res3 && \
+		$(DIFF_WO) $*.exp3 $*.out > $*.res3 && \
 		echo "Matched $*.exp3" && \
 		cp $*.res3 $@; } || \
 	{ test -f $*.exp4 && \
-		diff $(DIFF_OPTS) $*.exp4 $*.out > $*.res4 && \
+		$(DIFF_WO) $*.exp4 $*.out > $*.res4 && \
 		echo "Matched $*.exp4" && \
 		cp $*.res4 $@; } || \
 	{ test -f $*.exp5 && \
-		diff $(DIFF_OPTS) $*.exp5 $*.out > $*.res5 && \
+		$(DIFF_WO) $*.exp5 $*.out > $*.res5 && \
 		echo "Matched $*.exp5" && \
 		cp $*.res5 $@; } || \
 	{ shortest=`wc -l $*.res[1-5] | grep -v total | sort -n | \
@@ -137,38 +141,69 @@ $(TESTS_DIR)/Mmake.params: ;
 		cat $@; \
 		exit 1; }
 
-# For some test cases, there is more than one valid output.
-# We try matching the output with the `.err_exp' file, and if that doesn't
-# succeed, and there are `.err_exp2', `.err_exp3', `.err_exp4' or `.err_exp5'
-# files, then we try matching against those too. If none succeed, we put
-# the shortest of the diffs into the `.err_res' file.
+# Likewise, we try matching a .err file with .err_exp, .err_exp2,
+# and so on up to .err_exp5.
 
-%.err_res: %.err %.err_exp
+%.err_res: %.err_exp %.err
 	@echo "Comparing $*.err with $*.err_exp*,"
 	@echo "	results in $@"
 	@-rm -f $@ $*.err_res[1-5]
-	@{ diff $(DIFF_OPTS) $*.err_exp $*.err > $*.err_res1 && \
+	@{ $(DIFF_WO) $*.err_exp $*.err > $*.err_res1 && \
 		echo "Matched $*.err_exp" && \
 		cp $*.err_res1 $@; } || \
 	{ test -f $*.err_exp2 && \
-		diff $(DIFF_OPTS) $*.err_exp2 $*.err > $*.err_res2 && \
+		$(DIFF_WO) $*.err_exp2 $*.err > $*.err_res2 && \
 		echo "Matched $*.err_exp2" && \
 		cp $*.err_res2 $@; } || \
 	{ test -f $*.err_exp3 && \
-		diff $(DIFF_OPTS) $*.err_exp3 $*.err > $*.err_res3 && \
+		$(DIFF_WO) $*.err_exp3 $*.err > $*.err_res3 && \
 		echo "Matched $*.err_exp3" && \
 		cp $*.err_res3 $@; } || \
 	{ test -f $*.err_exp4 && \
-		diff $(DIFF_OPTS) $*.err_exp4 $*.err > $*.err_res4 && \
+		$(DIFF_WO) $*.err_exp4 $*.err > $*.err_res4 && \
 		echo "Matched $*.err_exp4" && \
 		cp $*.err_res4 $@; } || \
 	{ test -f $*.err_exp5 && \
-		diff $(DIFF_OPTS) $*.err_exp5 $*.err > $*.err_res5 && \
+		$(DIFF_WO) $*.err_exp5 $*.err > $*.err_res5 && \
 		echo "Matched $*.err_exp5" && \
 		cp $*.err_res5 $@; } || \
 	{ shortest=`wc -l $*.err_res[1-5] | grep -v total | sort -n | \
 		head -1 | awk '{ print $$2; }' `; \
 		echo "** $*.err did not match the expected error output"; \
+		echo "** (closest match was $$shortest)"; \
+		cp $$shortest $@; \
+		cat $@; \
+		exit 1; }
+
+# Likewise, we try matching a .int_err file with .int_err_exp, .int_err_exp2,
+# and so on up to int_.err_exp5.
+
+%.int_err_res: %.int_err_exp %.int_err
+	@echo "Comparing $*.int_err with $*.int_err_exp*,"
+	@echo "	results in $@"
+	@-rm -f $@ $*.int_err_res[1-5]
+	@{ $(DIFF_WO) $*.int_err_exp $*.int_err > $*.int_err_res1 && \
+		echo "Matched $*.int_err_exp" && \
+		cp $*.int_err_res1 $@; } || \
+	{ test -f $*.int_err_exp2 && \
+		$(DIFF_WO) $*.int_err_exp2 $*.int_err > $*.int_err_res2 && \
+		echo "Matched $*.int_err_exp2" && \
+		cp $*.int_err_res2 $@; } || \
+	{ test -f $*.int_err_exp3 && \
+		$(DIFF_WO) $*.int_err_exp3 $*.int_err > $*.int_err_res3 && \
+		echo "Matched $*.int_err_exp3" && \
+		cp $*.int_err_res3 $@; } || \
+	{ test -f $*.int_err_exp4 && \
+		$(DIFF_WO) $*.int_err_exp4 $*.int_err > $*.int_err_res4 && \
+		echo "Matched $*.int_err_exp4" && \
+		cp $*.int_err_res4 $@; } || \
+	{ test -f $*.int_err_exp5 && \
+		$(DIFF_WO) $*.int_err_exp5 $*.int_err > $*.int_err_res5 && \
+		echo "Matched $*.int_err_exp5" && \
+		cp $*.int_err_res5 $@; } || \
+	{ shortest=`wc -l $*.int_err_res[1-5] | grep -v total | sort -n | \
+		head -1 | awk '{ print $$2; }' `; \
+		echo "** $*.int_err did not match the expected error output"; \
 		echo "** (closest match was $$shortest)"; \
 		cp $$shortest $@; \
 		cat $@; \

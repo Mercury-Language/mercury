@@ -215,7 +215,6 @@ SINGLEMODULE= \
 	method_impl \
 	missing_concrete_instance \
 	missing_det_decls \
-	missing_interface_import \
 	mixed_up_streams \
 	mode_decl_in_wrong_section \
 	mode_inf \

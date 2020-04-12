@@ -1,0 +1,38 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = valid_make_int
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
+
+#-----------------------------------------------------------------------------#
+# Please keep these lists sorted.
+
+SINGLE_MODULE_PROGS = \
+	bug499
+
+#-----------------------------------------------------------------------------#
+
+PROGS = $(SINGLE_MODULE_PROGS)
+TESTS = $(sort $(SINGLE_MODULE_PROGS:%=%-nodepend))
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
+include Mercury.options
+
+$(SINGLE_MODULE_PROGS:%=%.runtest): %.runtest: %.int ;
+
+#-----------------------------------------------------------------------------#
+
+printtests:
+	@echo $(SINGLE_MODULE_PROGS)
+
+clean_local: clean_valid_make_int
+
+clean_valid_make_int:
+	rm -f *.d *.dep *.dep_err *.date *.int*
+
+#-----------------------------------------------------------------------------#

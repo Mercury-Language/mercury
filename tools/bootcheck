@@ -1876,6 +1876,7 @@ then
             grade_subdirs
             hard_coded
             invalid
+            invalid_make_int
             invalid_purity
             invalid_submodules
             misc_tests
@@ -1891,6 +1892,7 @@ then
             trailing
             typeclasses
             valid
+            valid_make_int
             valid_seq
             warnings"
 

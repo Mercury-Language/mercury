@@ -1,0 +1,4 @@
+# vim: ts=8 sw=8 noexpandtab
+# (please keep these lists sorted)
+
+MCFLAGS-missing_interface_import = --print-errors-warnings-when-generating-interface
