@@ -76,10 +76,10 @@ MCFLAGS      += --flags MDB_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
-# Set the install name for Darwin shared libraries.  We disable the
+# Set the install name for Darwin shared libraries. We disable the
 # --shlib-linker-use-install-name mmc option so that the -install_name linker
-# option is not passed in the .dep files.  We do this to avoid a problem when
-# building from the C source distribution:  if the C source distribution is
+# option is not passed in the .dep files. We do this to avoid a problem when
+# building from the C source distribution: if the C source distribution is
 # generated on a non-Darwin system then the -install_name option is not passed
 # in the .dep files, so it must be passed here, however if a C source
 # distribution is generated on a Darwin system then by default the
@@ -200,7 +200,7 @@ int3s:	$(INT3S_TARGETS)
 tags:	.browser_tags
 
 .browser_tags: 	$(MTAGS) $(wildcard *.m) \
-                $(wildcard $(MDBCOMP_DIR)/*.m) \
+		$(wildcard $(MDBCOMP_DIR)/*.m) \
 		$(wildcard $(LIBRARY_DIR)/*.m)
 	$(MTAGS) $(MDBCOMP_DIR)/*.m *.m $(LIBRARY_DIR)/*.m
 	@touch .browser_tags
@@ -299,3 +299,5 @@ install_library:				\
 
 endif
 endif
+
+#-----------------------------------------------------------------------------#
