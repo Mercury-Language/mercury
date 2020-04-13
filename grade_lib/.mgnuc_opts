@@ -1,0 +1,2 @@
+--no-mercury-stdlib-dir
+--halt-at-warn-if-possible

@@ -9,7 +9,7 @@
 MERCURY_DIR=..
 LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
-
+-include ../Mmake.params
 -include Mmake.grade_lib.params
 
 # Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
@@ -20,19 +20,29 @@ Mmake.grade_lib.params:
 # by `mmc --make'.
 -include Mercury.options
 
--include ../Mmake.params
-
 MCFLAGS += --flags GRADE_LIB_FLAGS $(CONFIG_OVERRIDE)
 
+# The main targets are the executables of the utilities that use and test
+# the grade library. The grade "library" itself is not a target, because
+# it is intended to be used *only* by these utilities (and perhaps later,
+# similar utilities) and by the compiler itself. The utilities use the
+# modules of the library in this directory, while we intend to give
+# the compiler access by copying the source files of the grade library,
+# in read-only form, to the compiler directory, just the way we copy
+# the modules of the mdbcomp library to the slice and deep_profiler
+# directories. The source distribution will get those read-only copies
+# as well. This arrangement has the advantage that the grade in which
+# the compiler is compiled is independent of the grade of the utilities.
 MAIN_TARGET = all
 MERCURY_MAIN_MODULES = choose_grade test_grades try_all_grade_structs
 # EXTRA_MCFLAGS = --trace-flag debug_solver
 
 DEPENDS = Mercury.modules $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+DEPS = Mercury.modules $(patsubst %,%.dep,$(MERCURY_MAIN_MODULES))
 
-# This directory contains source files for which the module
-# name doesn't match the file name, so smart recompilation
-# won't work without the Mercury.modules file.
+# This directory contains source files for which the module name
+# doesn't match the file name, so smart recompilation won't work
+# without the Mercury.modules file.
 Mercury.modules: GRADE_LIB_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
@@ -42,11 +52,102 @@ all:	$(MERCURY_MAIN_MODULES)
 .PHONY: depend
 depend:	GRADE_LIB_FLAGS $(DEPENDS)
 
-.PHONY: ints
-ints:	$(patsubst %,%.int,$(MERCURY_MAIN_MODULES))
+.PHONY: dep
+dep:	GRADE_LIB_FLAGS $(DEPS)
 
-tags:	$(wildcard *.m)
-	mtags $(wildcard *.m)
+#-----------------------------------------------------------------------------#
+
+# We need the shenanigans with .grade_tags to avoid situations in which
+# "mmake tags" in this directory does nothing even in the absence of a tags
+# file in this directory, because mmake uses VPATH to find ../library/tags
+# and believes it to be the tags file we are asking for.
+#
+# We give files in mdbcomp to mtags before the files in this directory
+# because we want references to entities defined in the modules copied from the
+# mdbcomp directory to this directory to go the actual, effective definitions,
+# the definitions which can be changed *without* those changes going away
+# on the next copy.
+
+MTAGS = $(SCRIPTS_DIR)/mtags
+
+tags:	.grade_tags
+
+.grade_tags: $(MTAGS) $(wildcard *.m) $(wildcard $(LIBRARY_DIR)/*.m)
+	$(MTAGS) *.m $(LIBRARY_DIR)/*.m
+	@touch .grade_tags
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; \
+	then \
+		echo making tags; \
+		$(MTAGS) *.m $(LIBRARY_DIR)/*.m; \
+		touch .grade_tags; \
+	fi
+
+#-----------------------------------------------------------------------------#
+
+# The documentation of the reason for this set of rules
+# can be found in library/Mmakefile.
+
+.PHONY: os cs css javas
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+os: \
+	choose_grade.os \
+	test_grades.os \
+	try_all_grade_structs.os
+
+cs: \
+	choose_grade.cs \
+	test_grades.cs \
+	try_all_grade_structs.cs
+
+css: \
+	choose_grade.css \
+	test_grades.css \
+	try_all_grade_structs.css
+
+javas: \
+	choose_grade.javas \
+	test_grades.javas \
+	try_all_grade_structs.javas
+
+else
+ifneq ($(origin choose_grade.os),undefined)
+os: \
+	$(choose_grade.os) \
+	$(test_grades.os) \
+	$(try_all_grade_structs.os)
+
+cs: \
+	$(choose_grade.cs) \
+	$(test_grades.cs) \
+	$(try_all_grade_structs.cs)
+
+css: \
+	$(choose_grade.css) \
+	$(test_grades.css) \
+	$(try_all_grade_structs.css)
+
+javas: \
+	$(choose_grade.javas) \
+	$(test_grades.javas) \
+	$(try_all_grade_structs.javas)
+
+else
+os:
+	mmake depend; mmake os
+
+cs:
+	mmake depend; mmake cs
+
+css:
+	mmake depend; mmake css
+
+javas:
+	mmake depend; mmake javas
+endif
+endif
 
 #-----------------------------------------------------------------------------#
 

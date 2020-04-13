@@ -1,0 +1,12 @@
+-I../boehm_gc
+-I../boehm_gc/include
+-I../runtime
+-I../library
+-I../library/Mercury/mihs
+-I../mdbcomp
+-I../mdbcomp/Mercury/mihs
+-I../browser
+-I../browser/Mercury/mihs
+-I../ssdb
+-I../ssdb/Mercury/mihs
+-I../trace

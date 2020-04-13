@@ -380,10 +380,6 @@ NATIVE_SO = Native.$(EXT_FOR_SHARED_LIB)
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: lib_std
-
-#-----------------------------------------------------------------------------#
-
 # For C# we include the runtime module directly into mer_std.dll.
 ifneq ("$(filter csharp%,$(GRADE))","")
 LINK_LIB_OPTS :=
@@ -392,6 +388,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
+.PHONY: lib_std
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 ifeq ("$(findstring csharp,$(GRADE))","csharp")
 $(STD_LIB_NAME).dll: libmer_std
@@ -405,10 +402,7 @@ lib_std: $(STD_LIB_NAME).beams
 endif
 endif
 
-#-----------------------------------------------------------------------------#
-#
-# Some extra rules that we need for the C back-ends
-#
+# Some extra rules that we need for the C back-ends.
 ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
 
 # The following dependency is just there to improve compilation speed;
@@ -421,13 +415,9 @@ endif
 lib_std: lib$(STD_LIB_NAME)
 
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-
 EXTRA_INIT_COMMAND = ./print_extra_inits $($(STD_LIB_NAME).ms)
-
 else
-
 MCFLAGS += --extra-init-command ./print_extra_inits
-
 endif
 
 endif	# GRADE != csharp && GRADE != java && GRADE != erlang
