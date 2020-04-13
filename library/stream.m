@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2010 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -10,9 +10,9 @@
 % Authors: juliensf, maclarty.
 % Stability: low
 %
-% This module provides a family of typeclasses for defining streams
+% This module provides a family of type classes for defining streams
 % in Mercury. It also provides some generic predicates that operate
-% on instances of these typeclasses.
+% on instances of these type classes.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -98,7 +98,7 @@
     %
 :- typeclass input(Stream, State) <= stream(Stream, State) where [].
 
-    % A reader stream is a subclass of specific input stream that can be
+    % A reader stream is a subclass of a specific input stream that can be
     % used to read data of a specific type from that input stream.
     % A single input stream can support multiple reader subclasses.
     %
@@ -194,7 +194,7 @@
     <= output(Stream, State) where
 [
     % Write the next unit to the given stream.
-    % Blocks if the whole unit can't be written to the stream at the time
+    % Blocks if the whole unit cannot be written to the stream at the time
     % of the call (for example because a buffer is full).
     %
     pred put(Stream::in, Unit::in, State::di, State::uo) is det
