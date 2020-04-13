@@ -1,13 +1,11 @@
-The Mercury test suite is (dis)organized into a directory hierarchy.
+# vim: ts=4 sw=4 expandtab
 
-`mmake' will run the tests in the directory it is
-invoked in and all subdirectories of that subdirectory.
-Use `mmake runtests_local' to just run the local tests without
-the subdirectories.
+The Mercury test suite is (dis)organized into a flat set of directories.
 
-To run just the tests that failed in a previous test run,
-use `mmake ERROR_FILE=FILE', where FILE is a copy of the
-runtests.errs file from the previous run.
+`mmake' will run the tests in the directory it is invoked in.
+To run just the tests that failed in a previous test run, use
+`mmake ERROR_FILE=FILE', where FILE is a copy of the runtests.errs file
+from the previous run.
 
 Both the bootcheck script and the nightly script use `mmake'
 to run all the tests.
@@ -16,71 +14,166 @@ Unless otherwise stated, the tests in each directory compile
 the test programs and compare their output against hand-coded
 `.exp' (or `.exp2', `.exp3', etc) files.
 
-NOTE: if you add a new (sub)directory to the test suite then you
-      may need to update the value of the variable `all_test_dirs'
-      in tools/bootcheck.
+NOTE: if you add a new (sub)directory to the test suite then you may
+need to update the value of the variable `all_test_dirs' in tools/bootcheck.
 
-analysis
-	This directory is for testing the intermodule analysis framework.
+analysis*
+    These directories are for testing the intermodule analysis framework.
+    The different directories test different analyses:
+    
+    analysis_ctgc and analysis_sharing tests different aspects of
+    the analyses for compile-time garbage collection.
+
+    analysis_excp tests analysis for what code can throw what exceptions.
+
+    analysis_external tests that even procedures are external (i.e. procedures
+    that don't have Mercury code) have analysis results recorded for them
+    (presumably results that are safe approximation of *anything*).
+
+    analysis_tabling tests analyses for what code contains minimal model
+    tabling.
+
+    analysis_tabling tests analyses for what code contains trailing
+    operations.
+
+    analysis_unused_args tests analyses for what arguments are unused
+    in each procedure.
+
+    analysis itself contains machinery shared between all these directories,
 
 benchmarks
-	This directory contains Mercury versions of the benchmarks.
+    This directory contains Mercury versions of the benchmarks programs
+    from the initial Mercury paper in the Journal of Logic Programming.
 
 debugger
-	This directory is for testing mdb, the Mercury debugger.
-	Programs are compiled with deep tracing turned on.  The
-	tests in this directory are not performed if the base grade
-	is `jump' or `fast'.
+declarative_debugger
+    These directories are for testing mdb, the Mercury debugger.
+    The second is for testing the declarative debugging features of mdb,
+    the first is for testing everything else.
 
-debugger/declarative
-	This directory is for testing the declarative debugging
-	features of mdb.
+    The tests in these directories are performed only in LLDS grades,
+    since execution tracing is supported only in those grades.
+
+dppd
+    This directory contains a Mercury version of the Prolog test suite
+    named "dozens of problems in partial deduction". As its name says,
+    it tests the effectiveness of the compiler's partial deduction
+    (also known as partial evaluation) capabilities.
+
+exceptions
+    This directory contains tests of Mercury's handling of exceptions.
+
+feedback
+    This directory contains tests of whether, given the deep profile
+    of a program and a representation of the program itself, our
+    autoparallelization system generates the expected recommendations
+    about what parts of the program are worth parallelizing,
+    as shown by the generated feedback report.
 
 general
 hard_coded
-	These directories are for general test cases.
+    These directories are for general test cases.
 
-	(It might be a good idea to split this into tests
-	of particular features and regression tests that check
-	for old bugs.  But for the moment, just about everything
-	goes in here.)
+    The historical reason for the separate `general' and `hard_coded'
+    directories was that the tests in `general' worked with NU-Prolog
+    and compared the Mercury output with the NU-Prolog output, but
+    the tests in `hard_coded' didn't work with NU-Prolog, so their
+    expected output needed to be hard-coded. We no longer support
+    compilation with NU-Prolog, so everything goes in hard_coded now.
+    (It might be a good idea to split hard_code into (a) tests of
+    particular features and (b) regression tests that check for old bugs.
+    But for the moment, just about every test for whether a program
+    generates the expected output goes in hard_coded.)
 
-	The historical reason for the separate `general' and `hard_coded'
-	directories was that the tests in `general' worked with NU-Prolog
-	and compared the Mercury output with the NU-Prolog output,
-	but the tests in `hard_coded' didn't work with NU-Prolog, so
-	their expected output needed to be hard-coded. We no longer
-	support compilation with NU-Prolog, so everything goes
-	in hard_coded now.
+grade_subdirs
+    This directory tests the correct handling of --use-grade-subdirs.
+
+invalid*
+    These directories are for test cases that are invalid programs.
+    We check that the files do *not* compile, and check that the errors
+    match those in the hand-written `.err_exp' file.
+
+    invalid_make_int tests errors that occur when executing
+    "mmc --make-interface".
+
+    invalid_purity tests errors involving purity.
+
+    invalid_submodules tests errors involving nested submodules.
+    (Some involve separate submodules as well.)
+
+    invalid itself is for tests of all other kinds of errors.
+
+misc_tests
+    This directory contains tests that don't fit anywhere else.
+    At the moment, it tests symbol name demangling and the
+    compiler's ability to "prettyprint" a Mercury module
+    (whose output goes into an appropriately named .ugly file).
+
+mmc_make
+    As its name says, this directory contains tests of "mmc --make".
+
+par_conj
+    This directory contains tests of parallel conjunctions in the LLDS
+    backend.
+
+purity
+    This directory tests the correct behaviour of code that mixes
+    different levels of purity.
 
 recompilation
-	This directory contains tests of the smart recompilation system.
-	As well as checking for the correct output from the test
-	programs these tests also examine the `.err' files to
-	make sure that all necessary recompilations are performed.
+    This directory contains tests of the smart recompilation system.
+    As well as checking for the correct output from the test programs
+    these tests also examine the `.err' files to make sure that
+    all necessary recompilations are performed.
 
-valid
-	This directory is for test cases that are not complete
-	programs. We just check that the files compile.
+stm
+    This directory contains tests of the compiler's experimental
+    support for software transactional memory. Since that support was
+    never finished, bootcheck doesn't execute the tests in this directory.
 
-invalid
-	This directory is for test cases that are invalid
-	programs. We check that the files do *not* compile,
-	and check that the errors match those in the hand-written
-	`.err_exp' file.
+string_format
+    This directory tests the correct operation of string.format and
+    related predicates.
 
-warnings
-	This directory is for tests of compiler warnings. These work by
-	comparing the warnings emitted by the compiler with those given
-	in the hand-written `.exp' file. 
+structure_reuse
+    This directory tests whether code transformed (optimized)
+    by the structure_reuse package still generates the expected output.
+
+submodules
+    This directory tests whether splitting up code between several
+    submodules, either nested or separate, affects its output.
+
+tabling
+    This directory tests all forms of tabling: memoing, loop detection,
+    and minimal model.
 
 term
-	This directory tests the compiler's termination analyser.  These
-	tests work by comparing the contents of the .trans_opt file emitted
-	by the compiler with the hand-written `.trans_opt_exp' file.
-	This directory is also used for testing the compiler's exception
-	analysis.
+    This directory tests the compiler's termination analyser. These tests
+    work by comparing the contents of the .trans_opt file emitted by the
+    compiler with the hand-written `.trans_opt_exp' file. This directory
+    is also used for testing the compiler's exception analysis.
 
 trailing
-	This directory contains tests that make use of the trail.
-	These tests are only run in trailing grades.
+    This directory contains tests that make use of the trail.
+    These tests are only run in trailing grades.
+
+typeclasses
+    This directory tests the correctness of code that uses typeclasses.
+
+valid*
+    These directories are for test cases that are not complete programs;
+    we just check whether they compile.
+
+    valid_make_int tests whether "mmc --make-interface" succeeds on modules.
+
+    valid_seq contains tests with nested submodules, which should be
+    compiled sequentially. (If the different nested submodules are
+    compiled in parallel, the interface files they want to read
+    may not have been created yet, leading to spurious errors).
+
+    valid contains all other validity tests.
+
+warnings
+    This directory is for tests of compiler warnings. These work by
+    comparing the warnings emitted by the compiler with those given
+    in the hand-written `.exp' file. 
