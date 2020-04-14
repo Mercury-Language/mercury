@@ -161,6 +161,8 @@ touch $TMPDIR/java/runtime/Constants.java.in || exit 1
 touch $TMPDIR/java/runtime/Native.java.in || exit 1
 mkdir $TMPDIR/compiler || exit 1
 touch $TMPDIR/compiler/COMP_FLAGS.in || exit 1
+mkdir $TMPDIR/grade_lib || exit 1
+touch $TMPDIR/grade_lib/GRADE_LIB_FLAGS.in || exit 1
 mkdir $TMPDIR/library || exit 1
 touch $TMPDIR/library/LIB_FLAGS.in || exit 1
 touch $TMPDIR/library/erlang_conf.hrl.in || exit 1
@@ -176,6 +178,11 @@ mkdir $TMPDIR/profiler || exit 1
 touch $TMPDIR/profiler/PROF_FLAGS.in || exit 1
 mkdir $TMPDIR/deep_profiler || exit 1
 touch $TMPDIR/deep_profiler/DEEP_FLAGS.in || exit 1
+mkdir $TMPDIR/tests || exit 1
+touch $TMPDIR/tests/TESTS_FLAGS.in || exit 1
+touch $TMPDIR/tsets/DEFNS_FOR_TESTS.in || exit 1
+mkdir $TMPDIR/mfilterjavac || exit 1
+touch $TMPDIR/mfilterjavac/MFILTERJAVAC_FLAGS.in || exit 1
 
 enable_libgrades=`echo $libgrades | sed 's/ /,/g'`
 
