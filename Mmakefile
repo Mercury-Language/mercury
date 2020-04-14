@@ -150,7 +150,13 @@ compiler/$(deps_subdir)mercury_compile.dep: library/$(deps_subdir)$(STD_LIB_NAME
 	+cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_grade_lib
-dep_grade_lib:
+dep_grade_lib: grade_lib/$(deps_subdir)/choose_grade.dep \
+	grade_lib/$(deps_subdir)/test_grades.dep \
+	grade_lib/$(deps_subdir)/try_all_grade_structs.dep
+
+grade_lib/$(deps_subdir)/choose_grade.dep \
+grade_lib/$(deps_subdir)/test_grades.dep \
+grade_lib/$(deps_subdir)/try_all_grade_structs.dep:
 	+cd grade_lib && $(SUBDIR_MMAKE) dep
 
 .PHONY: dep_slice
@@ -508,6 +514,8 @@ tar: 	$(GENERATED_DOCS)
 	+cd deep_profiler && $(SUBDIR_MMAKE) cs tags
 	+cd mfilterjavac && $(SUBDIR_MMAKE) depend
 	+cd mfilterjavac && $(SUBDIR_MMAKE) cs tags
+	+cd grade_lib && $(SUBDIR_MMAKE) depend
+	+cd grade_lib && $(SUBDIR_MMAKE) cs tags
 	+cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
 	# the following commands might fail on Windows?
 	-cd bindist && $(SUBDIR_MMAKE) bindist.Makefile
@@ -534,7 +542,6 @@ tar: 	$(GENERATED_DOCS)
 	export ROOTNAME;						\
 	cd .. && (							\
 		mkdir stuff-to-exclude;					\
-		mv $$ROOTNAME/grade_lib stuff-to-exclude;		\
 		test -d $$ROOTNAME/bytecode && 				\
 			mv $$ROOTNAME/bytecode stuff-to-exclude; 	\
 		mv $$ROOTNAME/extras/quickcheck stuff-to-exclude;	\
