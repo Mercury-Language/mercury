@@ -2,17 +2,16 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 #
-# This file is included in the Mmakefile of both $(TESTS_DIR)/valid
-# and $(TESTS_DIR)/valid_seq. Both those directories contain test cases
-# for which we check only that compilation succeeds, and don't test
-# what its result is. The difference is that in the valid directory,
-# each test file is self-contained and may be compiled in parallel,
-# while the test cases valid_seq each consist of more than one module
-# (some separate, some nested), and thus must be compiled sequentially,
-# without parallelism.
+# This file is included in the Mmakefile of both ../valid and ../valid_seq.
+# Both those directories contain test cases for which we check only that
+# compilation succeeds, and don't test what its result is. The difference
+# is that in the valid directory, each test file is self-contained and
+# may be compiled in parallel, while the test cases valid_seq each consist of
+# more than one module (some separate, some nested), and thus must be compiled
+# sequentially, without parallelism.
 #
 # The Mmakefiles in both directories should define the following make variables
-# beyond those required by $(TESTS_DIR)/Mmake.common.
+# beyond those required by ../Mmake.common.
 #
 # AGC_PROGS:
 #   The test cases testing the accurate gc system.
@@ -186,7 +185,7 @@ endif
 export GRADEFLAGS_TRAIL
 
 TESTS = $(sort $(PROGS))
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they can be found
 # by `mmc --make'.
