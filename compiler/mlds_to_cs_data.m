@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -77,10 +77,12 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
+:- import_module int32.
 :- import_module map.
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint32.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -799,12 +801,14 @@ output_int_const_for_csharp(N, !IO) :-
     % in mlds_to_java_data.m.
     ( if
         N > 0,
-        N >> 31 = 1
+        not int32.from_int(N, _I32),
+        uint32.from_int(N, U32)
     then
         % The bit pattern fits in 32 bits, but is too big for a positive
-        % integer. The C# compiler will give an error about this, unless we
+        % integer. The C# compiler will report an error about this unless we
         % tell it otherwise.
-        io.format("unchecked((int) 0x%x)", [i(N /\ 0xffffffff)], !IO)
+        N32 = uint32.cast_to_int(U32),
+        io.format("unchecked((int) 0x%x)", [i(N32)], !IO)
     else
         io.write_int(N, !IO)
     ).

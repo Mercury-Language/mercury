@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -112,6 +112,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module uint.
+:- import_module uint32.
 
 %---------------------------------------------------------------------------%
 
@@ -973,11 +974,13 @@ output_int_const_for_java(N, !IO) :-
     % expressed in hexadecimal (nor as the negative decimal -1).
     ( if
         N > 0,
-        N >> 31 = 1
+        not int32.from_int(N, _I32),
+        uint32.from_int(N, U32)
     then
         % The bit pattern fits in 32 bits, but is too large to write as a
         % positive decimal. This branch is unreachable on a 32-bit compiler.
-        io.format("0x%x", [i(N /\ 0xffffffff)], !IO)
+        N32 = uint32.cast_to_int(U32),
+        io.format("0x%x", [i(N32)], !IO)
     else
         io.write_int(N, !IO)
     ).
