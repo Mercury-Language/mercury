@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = accumulator
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
@@ -36,7 +34,7 @@ ACCUMULATOR_PROGS = \
 PROGS = $(ACCUMULATOR_PROGS)
 
 TESTS = $(PROGS)
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
@@ -61,9 +59,6 @@ OPT_FLAGS = \
 # Ensure that the accumulator introduction flags are passed
 # after EXTRA_MCFLAGS, so that we can override things set in EXTRA_MCFLAGS.
 ALL_MCFLAGS += $(OPT_FLAGS) $(ACC_FLAGS)
-
-    # programs which aren't working.
-NOT_WORKING =
 
 EXPS =	$(PROGS:%=%.exp)
 

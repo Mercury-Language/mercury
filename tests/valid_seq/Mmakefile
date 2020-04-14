@@ -3,15 +3,13 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = valid_seq
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 = -j1
 
 #-----------------------------------------------------------------------------#
 
 # Please keep these lists sorted.
 # The documentation of what tests each list should contain (what little
-# there is of it) is in $(TESTS_DIR)/valid/Mmake.valid.common.
+# there is of it) is in ../valid/Mmake.valid.common.
 
 AGC_PROGS =
 
@@ -96,6 +94,6 @@ $(dates_subdir)intermod_nested_module2.date: \
 $(dates_subdir)intermod_user_equality_nested2.date: \
 	$(date0s_subdir)intermod_user_equality_nested2.date0
 
-include $(TESTS_DIR)/valid/Mmake.valid.common
+include ../valid/Mmake.valid.common
 
 clean_local:

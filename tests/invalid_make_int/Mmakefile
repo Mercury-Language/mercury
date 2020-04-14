@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = invalid_make_int
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 # Note: multi-module tests are listed separately from single-module tests
@@ -22,7 +20,7 @@ MULTI_MODULE_PROGS =
 
 PROGS = $(SINGLE_MODULE_PROGS) $(MULTI_MODULE_PROGS)
 TESTS = $(sort $(PROGS:%=%-nodepend))
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they can be found
 # by `mmc --make'.

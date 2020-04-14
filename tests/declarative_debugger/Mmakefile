@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = declarative_debugger
-SUBDIRS=
-TESTS_DIR=..
 MAYBE_J1 = -j1
 # Most test cases share library_forwarding.m. We could allow the tests
 # to be done in parallel if we made a separate copy of that module
@@ -173,7 +171,7 @@ else
 endif
 
 TESTS = $(sort $(PROGS))
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 MCFLAGS += --trace decl
 MLFLAGS += --trace

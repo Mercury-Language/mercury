@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = misc_tests
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 PROGS =
@@ -16,7 +14,7 @@ TESTS = \
 # (util/mdemangle.c doesn't correctly demangle internal labels)
 # TESTS += mdemangle_test_hl-nodepend
 
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.

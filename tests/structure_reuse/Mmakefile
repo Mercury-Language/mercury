@@ -3,11 +3,7 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = structure_reuse
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
-
-# Any program added here should also be added to the `.cvsignore' file.
 
 STRUCTURE_REUSE_PROGS = \
 	if_then_else		\
@@ -22,7 +18,8 @@ else
 endif
 
 TESTS = $(PROGS)
-include $(TESTS_DIR)/Mmake.common
+
+include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
@@ -38,14 +35,10 @@ ACC_FLAGS = --structure-reuse -d structure_reuse --dump-hlds-options sr
 OPT_FLAGS = --no-static-ground-terms
 
 # Ensure that the accumulator introduction flags are passed
-# after EXTRA_MCFLAGS, so that we can override things set in
-# EXTRA_MCFLAGS.
-#ALL_MCDFLAGS+= $(ACC_FLAGS)
-#ALL_MCGFLAGS+= $(OPT_FLAGS) $(ACC_FLAGS)
-EXTRA_MCFLAGS+= $(OPT_FLAGS) $(ACC_FLAGS)
-
-    # programs which aren't working.
-NOT_WORKING =
+# after EXTRA_MCFLAGS, so that we can override things set in EXTRA_MCFLAGS.
+# ALL_MCDFLAGS += $(ACC_FLAGS)
+# ALL_MCGFLAGS += $(OPT_FLAGS) $(ACC_FLAGS)
+EXTRA_MCFLAGS += $(OPT_FLAGS) $(ACC_FLAGS)
 
 realclean_local: clean_hlds_dump
 

@@ -4,15 +4,15 @@
 # Mmake.common - shared Mmake variables and rules for the test directories.
 #
 # The including Mmakefile must set the following variables:
-# THIS_DIR - the name of the directory containing tests
-#		(e.g. benchmarks, hard_coded/typeclasses)
-# TESTS_DIR - the directory containing this file.
-# SUBDIRS - the names of any subdirectories containing tests.
-# PROGS - the names of the main modules of the test programs.
-# TESTS- the names of the tests. For each test there must be targets
-#	test.depend, test.runtest and test.realclean, unless the test ends
-#	in `-nodepend', in which case the `-nodepend' suffix will be stripped
-#	off and the test.depend target is not required.
+#
+# - THIS_DIR: the name of the directory (e.g. benchmarks, hard_coded, etc).
+#
+# - PROGS: The names of the main modules of the test programs.
+#
+# - TESTS: The names of the tests. For each test there must be targets
+#   test.depend, test.runtest and test.realclean, unless the test ends
+#   in `-nodepend', in which case the `-nodepend' suffix will be stripped
+#   off and the test.depend target is not required.
 #
 # If the variable ERROR_FILE is set, only the tests which failed in
 # the test run which produced the specified error log file will be run.
@@ -40,8 +40,12 @@ endif
 # file by setting both GRADEFLAGS-foo.
 
 ifndef DIFF_OPTS
-DIFF_OPTS=-u
+DIFF_OPTS = -u
 endif
+
+# From the perspective of each test subdirectory, this directory,
+# their parent directory, is the top level test directory.
+TESTS_DIR = ..
 
 # Override this with `RUN_RECOMPILATION_TESTS=no' if your compiler
 # cannot run smart recompilation. This is only necessary for compilers
@@ -246,35 +250,21 @@ clean_trace_counts:
 # The `foo' targets make recursively make `foo' in all subdirectories.
 # before making `foo_local' in the current directory.
 
-.PHONY: runtests runtests_local runtests_subdirs
-.PHONY: check check_local check_subdirs
-.PHONY: realclean_subdirs clean_subdirs
+.PHONY: runtests runtests_local check check_local
 
-realclean:      realclean_subdirs
-clean:          clean_subdirs
 all:		runtests
 
 check:		runtests
+
 check_local:	runtests_local
-check_subdirs:	runtests_subdirs
 
 # We want to run all the tests, even if some fail, so run the tests
 # using `mmake -k'.
 
 runtests:
-	+@if mmake -k runtests_local runtests_subdirs; then \
+	+@if mmake -k runtests_local; then \
 		rm -f $(ERROR_OUTPUT_FILE); \
 	else \
-		for subdir in $(SUBDIRS) x; do \
-		    if [ -f $$subdir/$(ERROR_OUTPUT_FILE) ]; then \
-			cat $$subdir/$(ERROR_OUTPUT_FILE) \
-				>> $(ERROR_OUTPUT_FILE); \
-		    fi; \
-		    if [ -f $$subdir/FAILED_TESTS ]; then \
-			sed "s@^@$$subdir/@" $$subdir/FAILED_TESTS \
-				>> FAILED_TESTS; \
-		    fi; \
-		done; \
 		echo SOME TESTS FAILED: see FAILED_TESTS and $(ERROR_OUTPUT_FILE); \
 		exit 1; \
 	fi
@@ -386,39 +376,5 @@ runtests_local:
 	fi
 
 endif	# THIS_DIR_TESTS_TO_RUN != ""
-
-ifeq ($(SUBDIRS),)
-
-runtests_subdirs realclean_subdirs clean_subdirs : ;
-
-else
-
-RUNTESTS_IN_SUBDIRS=$(SUBDIRS:%=runtests_in_%)
-runtests_subdirs: $(RUNTESTS_IN_SUBDIRS)
-
-.PHONY: $(RUNTESTS_IN_SUBDIRS)
-$(RUNTESTS_IN_SUBDIRS): runtests_in_%:
-	+if test -d $* ; then \
-		cd $* && mmake runtests ; \
-	else \
-		echo Could not run tests in directory $* ; \
-		echo Could not run tests in directory $* >> NOMAKE_DIRS ; \
-	fi
-
-realclean_subdirs:
-	+succeeded=true; \
-	for dir in $(SUBDIRS); do \
-	    (cd $$dir && mmake realclean) || succeeded=false; \
-	done
-	case $$succeeded in false) exit 1 ;; esac
-
-clean_subdirs:
-	+succeeded=true; \
-	for dir in $(SUBDIRS); do \
-		(cd $$dir && mmake clean) || succeeded=false; \
-	done; \
-	case $$succeeded in false) exit 1 ;; esac
-
-endif	# SUBDIRS != ""
 
 #-----------------------------------------------------------------------------#

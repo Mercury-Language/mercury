@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = string_format
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 = -j1
 
 #-----------------------------------------------------------------------------#
@@ -50,7 +48,7 @@ else
 endif
 
 TESTS = $(sort $(PROGS))
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they can be found
 # by `mmc --make'.

@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = analysis_ctgc
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 = -j1
 
 # Delete options which are incompatible with --intermodule-analysis.
@@ -20,7 +18,7 @@ else
 TESTS =
 endif
 
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 reuse_m1.runtest:
 	MC=$(MC) ./reuse_runtest.sh

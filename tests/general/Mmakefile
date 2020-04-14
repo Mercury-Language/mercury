@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = general
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
@@ -86,20 +84,20 @@ EXCEPTION_PROGS = \
 	map_corresponding 		\
 	unused_arg_determinism
 
+# dnf.m does not work in non-gc grades, because it uses `pragma memo'
+# (i.e. tabling) and tabling is not yet implemented for non-gc grades.
+#
+# The problem for state_var_trace is lack of needed reordering by the
+# unique mode system.
+
 ifneq "$(findstring profdeep,$(GRADE))" ""
 	PROGS = $(ORDINARY_PROGS)
 else
 	PROGS = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
 endif
 
-# dnf.m does not work in non-gc grades, because it uses `pragma memo'
-# (i.e. tabling) and tabling is not yet implemented for non-gc grades.
-# The problem for state_var_trace is lack of needed reordering by the
-# unique mode system.
-NOT_WORKING = dnf state_var_trace
-
 TESTS = $(sort $(PROGS))
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they can be found
 # by `mmc --make'.

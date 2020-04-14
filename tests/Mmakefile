@@ -50,5 +50,4 @@ SUBDIRS = \
 NOT_YET_READY_SUBDIRS = \
 	stm
 
-TESTS_DIR=.
-include $(TESTS_DIR)/Mmake.common
+include Mmake.common

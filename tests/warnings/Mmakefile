@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = warnings
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
@@ -82,7 +80,7 @@ endif
 PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
 
 TESTS = $(sort $(PROGS))
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.

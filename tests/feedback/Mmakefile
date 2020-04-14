@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = feedback
-TESTS_DIR = ..
-SUBDIRS =
 MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
@@ -16,7 +14,7 @@ AUTOPAR_REPORTS = \
 REPORTS = $(patsubst %,autopar_%,$(AUTOPAR_REPORTS))
 
 TESTS = $(patsubst %,%-nodepend,$(sort $(REPORTS)))
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # Try to use the feedback tools in this workspace if available;
 # otherwise, use the tools in $PATH.

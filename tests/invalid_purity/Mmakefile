@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = invalid_purity
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 PROGS = \
@@ -25,7 +23,7 @@ PROGS = \
 	purity_type_error
 
 TESTS = $(PROGS)
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # These tests all get spurious failures with intermodule optimization,
 # because the errors get detected when creating the `.opt' file rather

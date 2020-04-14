@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = analysis_external
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 = -j1
 
 # Delete options which are incompatible with --intermodule-analysis.
@@ -22,7 +20,7 @@ else
 TESTS = 
 endif
 
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 ext.runtest:
 	MC=$(MC) ./ext_runtest.sh

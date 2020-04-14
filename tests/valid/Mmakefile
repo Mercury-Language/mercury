@@ -3,15 +3,13 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = valid
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
 # Please keep these lists sorted.
 # The documentation of what tests each list should contain (what little
-# there is of it) is in $(TESTS_DIR)/valid/Mmake.valid.common.
+# there is of it) is in ../valid/Mmake.valid.common.
 
 AGC_PROGS = \
 	agc_graph \
@@ -350,4 +348,4 @@ NON_DECLDEBUG_PROGS = \
 #
 #       solver_type_mutable_bug
 
-include $(TESTS_DIR)/valid/Mmake.valid.common
+include ../valid/Mmake.valid.common

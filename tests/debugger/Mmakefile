@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = debugger
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
@@ -237,7 +235,7 @@ else
 endif
 
 TESTS = $(sort $(PROGS))
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 # The minimum trace level in .decldebug grades is --trace decl.
 ifneq "$(findstring decldebug,$(GRADE))" ""

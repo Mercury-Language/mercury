@@ -3,8 +3,6 @@
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = analysis
-SUBDIRS =
-TESTS_DIR = ..
 MAYBE_J1 =
 
 # Delete options which are incompatible with --intermodule-analysis.
@@ -15,6 +13,6 @@ override EXTRA_MCFLAGS := $(patsubst --transitive-%,,$(EXTRA_MCFLAGS))
 #-----------------------------------------------------------------------------#
 
 TESTS =
-include $(TESTS_DIR)/Mmake.common
+include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
