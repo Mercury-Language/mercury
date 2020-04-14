@@ -29,10 +29,6 @@ MMAKE_SUBDIR=	MMAKE_DIR=`pwd`/../scripts ../scripts/mmake $(PARALLEL)
 all:
 	$(MMAKE) MMAKEFLAGS=$(PARALLEL) all
 
-.PHONY: libmmc
-libmmc:
-	$(MMAKE) MMAKEFLAGS=$(PARALLEL) libmmc
-
 .PHONY: install
 install:
 	$(MMAKE) MMAKEFLAGS=$(PARALLEL) DESTDIR=$(DESTDIR) install

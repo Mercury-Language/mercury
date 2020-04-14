@@ -332,11 +332,6 @@ compiler: dep_compiler scripts util boehm_gc runtime library \
 		mdbcomp browser ssdb trace
 	+cd compiler && $(SUBDIR_MMAKE)
 
-.PHONY: libmmc
-libmmc: dep_compiler scripts util boehm_gc runtime library \
-		mdbcomp browser ssdb trace
-	+cd compiler && $(SUBDIR_MMAKE) libmmc
-
 .PHONY: doc
 doc: 	scripts util
 	+cd doc && $(SUBDIR_MMAKE)
