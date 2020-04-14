@@ -9,10 +9,10 @@
 % File: implementation_defined_literals.m.
 % Author: wangp.
 %
-% This module replaces "implementation-defined literals" such as $file and
-% $line by real constants.  We transform clauses rather than procedures
-% because, currently, clauses are written out to `.opt' files and $file and
-% $line need to be substituted beforehand.
+% This module replaces implementation-defined literals such as $file and $line
+% by real constants. We transform clauses rather than procedures because
+% currently, clauses rather than procedures are written out to `.opt' files,
+% and $file and $line must be substituted before being written out.
 %
 %-----------------------------------------------------------------------------%
 

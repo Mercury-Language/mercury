@@ -78,24 +78,58 @@
 
 :- func init_cons_table = cons_table.
 
+    % Insert the given hlds_cons_defn into the cons_table as the definition
+    % for one or more cons_ids. These cons_ids should represent the full range
+    % of possible qualifications of the *same* cons_id, from unqualified
+    % through all forms of possible qualification to fully qualified,
+    % and with both the actual type_ctor and the dummy type_ctor.
+    % The first argument should be the fully qualified version with
+    % the actual type_ctor.
+    %
 :- pred insert_into_cons_table(cons_id::in, list(cons_id)::in,
     hlds_cons_defn::in, cons_table::in, cons_table::out) is det.
 
+    % Does the given cons_id occur in the cons_table? This does the same job
+    % as search_cons_table, but without constructing and returning the list of
+    % possible matching hlds_cons_defns.
+    %
+:- pred is_known_data_cons(cons_table::in, cons_id::in) is semidet.
+
+    % Does the given cons_id occur in the cons_table? If yes, return
+    % the list of possible matching hlds_cons_defns, which will be
+    % for occurrences of the same cons_id in different type definitions.
+    %
 :- pred search_cons_table(cons_table::in, cons_id::in,
     list(hlds_cons_defn)::out) is semidet.
 
+    % Does the given cons_id occur in the definition of the given type
+    % constructor in the cons_table? If yes, return its definition in that
+    % type; otherwise, fail.
+    %
 :- pred search_cons_table_of_type_ctor(cons_table::in, type_ctor::in,
     cons_id::in, hlds_cons_defn::out) is semidet.
 
+    % Does the given cons_id occur in the definition of the given type
+    % constructor in the cons_table? If yes, return its definition in that
+    % type; otherwise, abort.
+    %
 :- pred lookup_cons_table_of_type_ctor(cons_table::in, type_ctor::in,
     cons_id::in, hlds_cons_defn::out) is det.
 
+    % Return all the constructor definitions in the cons_table.
+    %
 :- pred get_all_cons_defns(cons_table::in,
     assoc_list(cons_id, hlds_cons_defn)::out) is det.
 
+    % Return the list of arities with which the given sym_name occurs
+    % in the cons_table.
+    %
 :- pred return_cons_arities(cons_table::in, sym_name::in, list(int)::out)
     is det.
 
+    % Transform every hlds_cons_defn in the cons_table using the
+    % given predicate.
+    %
 :- pred replace_cons_defns_in_cons_table(
     pred(hlds_cons_defn, hlds_cons_defn)::in(pred(in, out) is det),
     cons_table::in, cons_table::out) is det.
@@ -170,7 +204,11 @@
                 ice_cons_defn               :: hlds_cons_defn
             ).
 
+%---------------------------------------------------------------------------%
+
 init_cons_table = map.init.
+
+%---------------------------------------------------------------------------%
 
 insert_into_cons_table(MainConsId, OtherConsIds, ConsDefn, !ConsTable) :-
     ( if MainConsId = cons(MainSymName, _, _) then
@@ -186,6 +224,32 @@ insert_into_cons_table(MainConsId, OtherConsIds, ConsDefn, !ConsTable) :-
     else
         unexpected($pred, "MainConsId is not cons")
     ).
+
+%---------------------------------------------------------------------------%
+
+is_known_data_cons(ConsTable, ConsId) :-
+    ConsId = cons(SymName, _, _),
+    Name = unqualify_name(SymName),
+    map.search(ConsTable, Name, InnerConsTable),
+    is_known_data_cons_inner(InnerConsTable, ConsId).
+
+:- pred is_known_data_cons_inner(list(inner_cons_entry)::in, cons_id::in)
+    is semidet.
+
+is_known_data_cons_inner([Entry | Entries], ConsId) :-
+    ( if
+        (
+            ConsId = Entry ^ ice_fully_qual_cons_id
+        ;
+            list.member(ConsId, Entry ^ ice_other_cons_ids)
+        )
+    then
+        true
+    else
+        is_known_data_cons_inner(Entries, ConsId)
+    ).
+
+%---------------------------------------------------------------------------%
 
 search_cons_table(ConsTable, ConsId, ConsDefns) :-
     ConsId = cons(SymName, _, _),
@@ -249,6 +313,8 @@ search_inner_other_cons_ids([Entry | Entries], ConsId, !:ConsDefns) :-
         true
     ).
 
+%---------------------------------------------------------------------------%
+
 search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn) :-
     ConsId = cons(SymName, _, _),
     Name = unqualify_name(SymName),
@@ -278,6 +344,8 @@ search_inner_cons_ids_type_ctor([Entry | Entries], TypeCtor, ConsId,
         search_inner_cons_ids_type_ctor(Entries, TypeCtor, ConsId, ConsDefn)
     ).
 
+%---------------------------------------------------------------------------%
+
 lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn) :-
     ( if
         search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId,
@@ -287,6 +355,8 @@ lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn) :-
     else
         unexpected($pred, "lookup failed")
     ).
+
+%---------------------------------------------------------------------------%
 
 get_all_cons_defns(ConsTable, AllConsDefns) :-
     map.foldl_values(accumulate_all_inner_cons_defns, ConsTable,
@@ -306,6 +376,8 @@ accumulate_all_inner_cons_defns(InnerConsTable, !AllConsDefns) :-
 project_inner_cons_entry(Entry, Pair) :-
     Entry = inner_cons_entry(MainConsId, _OtherConsIds, ConsDefn),
     Pair = MainConsId - ConsDefn.
+
+%---------------------------------------------------------------------------%
 
 return_cons_arities(ConsTable, SymName, Arities) :-
     Name = unqualify_name(SymName),
@@ -343,6 +415,8 @@ return_cons_arities_inner_cons_ids([ConsId | ConsIds], SymName, !Arities) :-
     ),
     return_cons_arities_inner_cons_ids(ConsIds, SymName, !Arities).
 
+%---------------------------------------------------------------------------%
+
 replace_cons_defns_in_cons_table(Replace, !ConsTable) :-
     map.map_values_only(replace_cons_defns_in_inner_cons_table(Replace),
         !ConsTable).
@@ -362,6 +436,8 @@ replace_cons_defns_in_inner_cons_entry(Replace, !Entry) :-
     ConsDefn0 = !.Entry ^ ice_cons_defn,
     Replace(ConsDefn0, ConsDefn),
     !Entry ^ ice_cons_defn := ConsDefn.
+
+%---------------------------------------------------------------------------%
 
 cons_table_optimize(!ConsTable) :-
     map.optimize(!ConsTable).

@@ -135,6 +135,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.make_goal.
@@ -149,8 +150,8 @@
 :- import_module parse_tree.parse_dcg_goal.
 :- import_module parse_tree.parse_goal.
 :- import_module parse_tree.parse_inst_mode_name.
-:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -690,7 +691,6 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         Context, MainContext, SubContext,
         Purity, Order, !.AncestorVarMap, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    map.search_insert(XVar, Context, _OldContext, !AncestorVarMap),
     substitute_state_var_mappings(YArgTerms0, YArgTerms, !VarSet,
         !SVarState, !Specs),
     ( if
@@ -749,6 +749,8 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         ;
             MaybeQualifiedYArgTerms = [_ | _],
             ArgContext = ac_functor(ConsId, MainContext, SubContext),
+            maybe_add_to_ancestor_var_map(!.ModuleInfo, XVar, ConsId, Context,
+                !AncestorVarMap),
             (
                 Purity = purity_pure,
                 % If we can, we want to add the unifications for the arguments
@@ -791,6 +793,67 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                 Expansion = expansion(not_fgti, cord.singleton(Goal))
             )
         )
+    ).
+
+    % Add the variable on the left side of the var-functor unification
+    % XVar = ConsId(...) to the ancestor var map *if* it can be part of
+    % an occurs check violation we want to report.
+    %
+    % - The occurs check cannot be violated if ConsId is a constant.
+    %
+    % - If ConsId cannot actually a data constructor, then this unification
+    %   cannot be part of an occurs check violation we want to report.
+    %   There are four possibilities:
+    %
+    %   1 ConsId(...) is a full application of a function, which returns
+    %     a piece of data. Even if XVar occurs somewhere inside the
+    %     arguments of ConsId, checking whether XVar is equal to the
+    %     value computed from it is a perfectly legitimate test.
+    %
+    %   2 ConsId(...) is a partial application of a function or a predicate,
+    %     and XVar's type is the higher order type matching the type
+    %     of this closure. This case *would* be a perfectly legitimate
+    %     equality test like case 1, were it not for the fact that unification
+    %     of higher order values is not allowed (because it is an undecidable
+    %     problem). This should therefore be detected as a type error.
+    %
+    %   3 ConsId(...) is a partial application of a function or a predicate,
+    %     and XVar's type is not the higher order type matching the type
+    %     of this closure. This is a more straightforward type error.
+    %
+    %   4 ConsId is not a function or a predicate. This is a straightforward
+    %     "unknown function symbol" error.
+    %
+    %   In case 1, any warning about occurs check violation would be
+    %   misleading. In cases 2, 3 and 4, it would be redundant, since they
+    %   all involve an error which is not really about the occurs check.
+    %
+:- pred maybe_add_to_ancestor_var_map(module_info::in, prog_var::in,
+    cons_id::in, prog_context::in,
+    ancestor_var_map::in, ancestor_var_map::out) is det.
+
+maybe_add_to_ancestor_var_map(ModuleInfo, XVar, ConsId, Context,
+        !AncestorVarMap) :-
+    ( if
+        % The only two kinds of cons_ids that may (a) appear in user
+        % written code, as opposed to compiler-generated code, and
+        % (b) may have nonzero arities, are cons and tuple_cons.
+        % However, the cons_ids of tuples are represented by tuple_cons
+        % only *after* resolve_unify_functor.m has been run as part of
+        % the post_typecheck pass. Until then, they have the form
+        % recognized by the second disjunct.
+        ConsId = cons(SymName, Arity, _TypeCtor),
+        Arity > 0,
+        (
+            module_info_get_cons_table(ModuleInfo, ConsTable),
+            is_known_data_cons(ConsTable, ConsId)
+        ;
+            SymName = unqualified("{}")
+        )
+    then
+        map.search_insert(XVar, Context, _OldContext, !AncestorVarMap)
+    else
+        true
     ).
 
 :- pred parse_ordinary_cons_id(term.const::in, list(prog_term)::in,

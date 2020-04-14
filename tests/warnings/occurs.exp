@@ -1,2 +1,4 @@
-occurs.m:019: Warning: the variable `A' is unified with a term containing
-occurs.m:019:   itself.
+occurs.m:026: Warning: the variable `A' is unified with a term containing
+occurs.m:026:   itself.
+occurs.m:037: Warning: the variable `B' is unified with a term containing
+occurs.m:037:   itself.
