@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -323,6 +323,17 @@
     % Succeeds iff the given string is a valid C identifier.
     %
 :- pred is_valid_c_identifier(string::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Utility predicate to shorten overlong identifiers.
+%
+
+    % Return hexadecimal encoded hash of a string.
+    % The resulting string has a length of 8 characters and will be
+    % consistent across different compiler backends and word sizes.
+    %
+:- func hex_hash32(string) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1118,6 +1129,16 @@ is_valid_c_identifier(S) :-
     string.index(S, 0, Start),
     char.is_alpha_or_underscore(Start),
     string.is_all_alnum_or_underscore(S).
+
+%---------------------------------------------------------------------------%
+
+hex_hash32(S0) = S :-
+    Hash = string.hash(S0),
+    % Mask off the lower 32 bits without using 0xffffffff in the generated
+    % target code, to avoid warnings from the C compiler.
+    Hi = (Hash >> 16) /\ 0xffff,
+    Lo = Hash /\ 0xffff,
+    S = string.format("%04x%04x", [i(Hi), i(Lo)]).
 
 %---------------------------------------------------------------------------%
 :- end_module backend_libs.c_util.

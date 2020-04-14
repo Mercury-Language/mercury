@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -88,6 +88,7 @@
 :- implementation.
 
 :- import_module backend_libs.
+:- import_module backend_libs.c_util.
 :- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
@@ -348,9 +349,9 @@ write_identifier_string_for_csharp(String, !IO) :-
     Length = string.length(String),
     ( if Length > 511 then
         Left = string.left(String, 251),
+        Middle = c_util.hex_hash32(String),
         Right = string.right(String, 250),
-        Hash = string.hash(String) /\ 0xffffffff,
-        io.format("%s_%08x_%s", [s(Left), i(Hash), s(Right)], !IO)
+        io.format("%s_%s_%s", [s(Left), s(Middle), s(Right)], !IO)
     else
         io.write_string(String, !IO)
     ).

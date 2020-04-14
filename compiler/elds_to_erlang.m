@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,6 +47,7 @@
 :- implementation.
 
 :- import_module backend_libs.
+:- import_module backend_libs.c_util.
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
@@ -1052,17 +1053,9 @@ shorten_long_atom_name(Name0) = Name :-
     ( if string.length(Name0) =< 200 then
         Name = Name0
     else
-        % Use only lower 32 bits of the hash value so that the result is the
-        % same on 64-bit machines as 32-bit machines.
-        %
-        % XXX we assume that `int' is at least 32 bits wide
-        %
-        % XXX it would be better to use a cryptographic hash function
-        %
-        Hash = string.hash(Name0) /\ 0xffffffff,
         Left = string.left(Name0, 64),
+        Middle = c_util.hex_hash32(Name0),
         Right = string.right(Name0, 64),
-        Middle = string.int_to_base_string(Hash, 16),
         Name = string.append_list([Left, "...", Middle, "...", Right])
     ).
 

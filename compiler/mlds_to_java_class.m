@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +49,8 @@
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.c_util.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module mdbcomp.
@@ -391,9 +393,9 @@ shorten_class_name(ClassName0) = ClassName :-
         % characters by underscores. The s_ prefix avoids having f_ as the
         % prefix which is used to indicate a mangled name.
         Left = string.left(ClassName0, 44),
+        Middle = c_util.hex_hash32(ClassName0),
         Right = string.right(ClassName0, 44),
-        Hash = string.hash(ClassName0) /\ 0xffffffff,
-        GenName = string.format("s_%s_%08x_%s", [s(Left), i(Hash), s(Right)]),
+        GenName = "s_" ++ Left ++ Middle ++ Right,
         GenList = string.to_char_list(GenName),
         FilterList = list.map(replace_non_alphanum_underscore, GenList),
         ClassName = string.from_char_list(FilterList)
