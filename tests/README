@@ -30,10 +30,10 @@ analysis*
     that don't have Mercury code) have analysis results recorded for them
     (presumably results that are safe approximation of *anything*).
 
-    analysis_tabling tests analyses for what code contains minimal model
+    analysis_table tests analyses for what code contains minimal model
     tabling.
 
-    analysis_tabling tests analyses for what code contains trailing
+    analysis_trail tests analyses for what code contains trailing
     operations.
 
     analysis_unused_args tests analyses for what arguments are unused
