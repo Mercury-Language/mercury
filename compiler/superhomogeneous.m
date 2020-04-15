@@ -58,7 +58,7 @@
     --->    unify_var_term(prog_var, prog_term).
 
     % A variable and a term it is to be unified with, and information
-    % about where the unificationis taking place: the argument number
+    % about where the unification is taking place: the argument number
     % in a call, and the context of that argument.
 :- type unify_var_term_num_context
     --->    unify_var_term_num_context(prog_var, prog_term, int, arg_context).
@@ -107,7 +107,7 @@
     % make_fresh_arg_vars_subst_svars(Args, Vars, VarsArgs,
     %   !VarSet, !SVarState, !Specs):
     %
-    % Allocate a distinct varianble for each term in Args. Return a list of
+    % Allocate a distinct variable for each term in Args. Return a list of
     % these variables in Vars, and return lists of each Var and Arg packaged
     % together in VarsArgs. (Almost all of our callers want both.)
     %
@@ -801,7 +801,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
     %
     % - The occurs check cannot be violated if ConsId is a constant.
     %
-    % - If ConsId cannot actually a data constructor, then this unification
+    % - If ConsId cannot actually be a data constructor, then this unification
     %   cannot be part of an occurs check violation we want to report.
     %   There are four possibilities:
     %

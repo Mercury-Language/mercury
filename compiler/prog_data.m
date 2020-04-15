@@ -491,11 +491,11 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % XXX ARG_PACK document the CellOffset fields.
     % `apw_full(ArgOnlyOffset)' indicates that the argument fully occupies
     % a single word, and this word is ArgOnlyOffset words after the first word
-    % of the memory cell cell that starts storing visible arguments.
+    % of the memory cell that starts storing visible arguments.
     % This means that e.g. if the first argument takes up a full word,
     % it will be at ArgOnlyOffset=0, even though the memory cell of the term
     % may contain a remote secondary tag, and type_infos and/or typeclass_infos
-    % added by polymophism.m, before it. (This is the meaning of "arg only"
+    % added by polymorphism.m, before it. (This is the meaning of "arg only"
     % offsets.)
     %
     % `apw_double(ArgOnlyOffset)' indicates that the argument occupies
