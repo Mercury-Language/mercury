@@ -157,7 +157,7 @@ dep_grade_lib: grade_lib/$(deps_subdir)/choose_grade.dep \
 grade_lib/$(deps_subdir)/choose_grade.dep \
 grade_lib/$(deps_subdir)/test_grades.dep \
 grade_lib/$(deps_subdir)/try_all_grade_structs.dep:
-	+cd grade_lib && $(SUBDIR_MMAKE) dep
+	+cd grade_lib && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_slice
 dep_slice: slice/$(deps_subdir)mcov.dep \
