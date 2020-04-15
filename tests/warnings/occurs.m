@@ -44,7 +44,7 @@ test(A, B, X, Y, Z, MaybeFixpoint) :-
     ( if
         disable_warning [suspected_occurs_check_failure] (
             % We should not get a warning for this occurs check
-            % violatiom because the warnings has been disabled.
+            % violation because the warning has been disabled.
             A = [_A2, _A3, _A4 | A]
         )
     then
@@ -55,7 +55,7 @@ test(A, B, X, Y, Z, MaybeFixpoint) :-
 
     Program = program(0),
     Interpretation = set.make_singleton_set("xyzzy"),
-    % We should not get a warning for this occurs check violatiom
+    % We should not get a warning for this occurs check violation
     % because the function symbol involved is not a *data* constructor.
     ( if Interpretation = tp(Program, Interpretation) then
         MaybeFixpoint = "have reached fixpoint"
