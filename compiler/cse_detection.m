@@ -54,7 +54,10 @@
 % it also has the potential to make error messages about code in the
 % various <arm i> confusing: if the user wrote "p(A2, ...)", he/she will
 % be surprised to see an error message mention "A0" in the call to p.
-% That is why we add unifications instead of doing renaming.
+% That is why we add unifications instead of doing renaming. Once
+% the compiler's semantic checks are done and any error messages
+% have been generated, the simplification pass will try to remove
+% all "excess" unifications, including the ones we insert here, 
 %
 %---------------------------------------------------------------------------%
 %
