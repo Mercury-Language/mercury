@@ -22,6 +22,16 @@ Mmake.grade_lib.params:
 
 MCFLAGS += --flags GRADE_LIB_FLAGS $(CONFIG_OVERRIDE)
 
+#-----------------------------------------------------------------------------#
+
+# Tell the C# compiler where the stdlib assembly is.
+#
+ifneq ("$(filter csharp%,$(GRADE))","")
+CSCFLAGS=-lib:../library -r:mer_std.dll
+endif
+
+#-----------------------------------------------------------------------------#
+
 # The main targets are the executables of the utilities that use and test
 # the grade library. The grade "library" itself is not a target, because
 # it is intended to be used *only* by these utilities (and perhaps later,
