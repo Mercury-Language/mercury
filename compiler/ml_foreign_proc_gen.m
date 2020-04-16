@@ -204,14 +204,14 @@ ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
     expect(unify(ExtraArgs, []), $pred, "extra args"),
     Args = OrigArgs,
     ml_gen_foreign_proc_csharp_java_decls(!.Info, MutableSpecial, CsOrJavaCode,
-        1, 1, Args, ArgDeclsList, CopyTIsInList, _CopyTIsOutList),
+        1, 1, Args, ArgDecls, CopyTIsIn, _CopyTIsOut),
 
     % Generate code to set the values of the input variables.
-    ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputsList, !Info),
+    ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputs, !Info),
 
     % Generate MLDS statements to assign the values of the output variables.
     ml_gen_foreign_proc_csharp_java_output_args(MutableSpecial, Args, Context,
-        AssignOutputsList, ConvDecls, ConvStmts, !Info),
+        AssignOutputs, ConvDecls, ConvStmts, !Info),
 
     % Put it all together.
 
@@ -249,10 +249,10 @@ ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
 
     StartingFragments = list.condense([
         [raw_target_code("{\n")],
-        ArgDeclsList,
+        ArgDecls,
         SucceededDecl,
-        AssignInputsList,
-        CopyTIsInList,
+        AssignInputs,
+        CopyTIsIn,
         [user_target_code(CsOrJavaCode, yes(Context))]
     ]),
     StartingCode = inline_target_code(TargetLang, StartingFragments),
@@ -263,7 +263,7 @@ ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
     EndingCodeStmt = ml_stmt_atomic(EndingCode, Context),
 
     Stmts = [StartingCodeStmt] ++
-        AssignOutputsList ++ ConvStmts ++
+        AssignOutputs ++ ConvStmts ++
         [EndingCodeStmt],
     Decls = ConvDecls.
 
@@ -336,14 +336,14 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
     % Generate <declaration of one local variable for each arg>
     Args = OrigArgs ++ ExtraArgs,
     ml_gen_foreign_proc_c_decls(!.Info, Lang, C_Code, 1, 1, Args,
-        ArgDeclsList, CopyTIsInList, CopyTIsOutList),
+        ArgDecls, CopyTIsIn, CopyTIsOut),
 
     % Generate code to set the values of the input variables.
-    ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputsList, !Info),
+    ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputs, !Info),
 
     % Generate code to assign the values of the output variables.
     ml_gen_foreign_proc_c_output_args(Args, Context,
-        AssignOutputsList, ConvDecls, ConvStmts, !Info),
+        AssignOutputs, ConvDecls, ConvStmts, !Info),
 
     % Generate code fragments to obtain and release the global lock.
     ThreadSafe = get_thread_safe(Attributes),
@@ -364,10 +364,10 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
             [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
-            ArgDeclsList,
+            ArgDecls,
             [raw_target_code("\n")],
-            AssignInputsList,
-            CopyTIsInList,
+            AssignInputs,
+            CopyTIsIn,
             [raw_target_code(ObtainLock),
             raw_target_code("\t\t{\n"),
             user_target_code(C_Code, yes(Context)),
@@ -375,8 +375,8 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
             HashUndefAllocId,
             [raw_target_code("#undef MR_PROC_LABEL\n"),
             raw_target_code(ReleaseLock)],
-            CopyTIsOutList,
-            AssignOutputsList
+            CopyTIsOut,
+            AssignOutputs
         ]),
         EndingFragments = [raw_target_code("}\n")]
     ;
@@ -390,10 +390,10 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
             [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
-            ArgDeclsList,
+            ArgDecls,
             [raw_target_code("\n")],
-            AssignInputsList,
-            CopyTIsInList,
+            AssignInputs,
+            CopyTIsIn,
             [raw_target_code(ObtainLock),
             raw_target_code("\t\t{\n"),
             user_target_code(C_Code, yes(Context)),
@@ -411,8 +411,8 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
         OrdinaryKind = kind_semi,
         ml_success_lval(SucceededLval, !Info),
         ( if
-            CopyTIsOutList = [],
-            AssignOutputsList = [],
+            CopyTIsOut = [],
+            AssignOutputs = [],
             ConvStmts = []
         then
             IfSuccFragments = [],
@@ -420,8 +420,8 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
         else
             IfSuccFragments = [
                 raw_target_code("\tif (SUCCESS_INDICATOR) {\n") |
-                CopyTIsOutList
-            ] ++ AssignOutputsList,
+                CopyTIsOut
+            ] ++ AssignOutputs,
             EndIfSuccFragments = [
                 raw_target_code("\t}\n")
             ]
@@ -430,11 +430,11 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
             [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
-            ArgDeclsList,
+            ArgDecls,
             [raw_target_code("\tMR_bool SUCCESS_INDICATOR;\n"),
             raw_target_code("\n")],
-            AssignInputsList,
-            CopyTIsInList,
+            AssignInputs,
+            CopyTIsIn,
             [raw_target_code(ObtainLock),
             raw_target_code("\t\t{\n"),
             user_target_code(C_Code, yes(Context)),
@@ -787,8 +787,8 @@ var_is_singleton(Name) :-
     list(foreign_arg)::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_foreign_proc_ccsj_input_args(Lang, ArgList, AssignInputs, !Info) :-
-    list.map_foldl(ml_gen_foreign_proc_ccsj_input_arg_if_used(Lang), ArgList,
+ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputs, !Info) :-
+    list.map_foldl(ml_gen_foreign_proc_ccsj_input_arg_if_used(Lang), Args,
         AssignInputsList, !Info),
     list.condense(AssignInputsList, AssignInputs).
 
@@ -851,7 +851,7 @@ ml_gen_foreign_proc_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             MaybeForeignType, TypeString, Cast)
     then
         % In the usual case, we can just use an assignment and perhaps a cast.
-        string.format("\t%s = %s ", [s(ArgName), s(Cast)], AssignToArgName),
+        string.format("\t%s = %s", [s(ArgName), s(Cast)], AssignToArgName),
         AssignInput = [
             raw_target_code(AssignToArgName),
             target_code_input(ArgRval),
@@ -898,7 +898,7 @@ input_arg_assignable_with_cast(Lang, HighLevelData,
         % the types used by --high-level-data, so we always use a cast here.
         % (Strictly speaking the cast is not needed for a few cases like `int',
         % but it doesn't do any harm.)
-        Cast = "(" ++ TypeString ++ ")"
+        Cast = "(" ++ TypeString ++ ") "
     ;
         Lang = lang_c,
         HighLevelData = no,
@@ -906,7 +906,7 @@ input_arg_assignable_with_cast(Lang, HighLevelData,
             % For --no-high-level-data, we only need to use a cast for
             % polymorphic types, which are `MR_Word' in the C interface but
             % `MR_Box' in the MLDS back-end.
-            Cast = "(MR_Word)"
+            Cast = "(MR_Word) "
         else
             (
                 MaybeForeignType = yes(ForeignType),

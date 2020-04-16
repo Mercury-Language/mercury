@@ -793,7 +793,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
             ;
                 ExistQVars0 = [_ | _],
                 list.foldl(
-                    check_existq_clause(TypeVarSet, ExistQVars0),
+                    check_existq_clause(TypeVarSet0, ExistQVars0),
                     Clauses, !Info),
 
                 apply_renaming_in_vars(ExistTypeRenaming,
@@ -833,25 +833,32 @@ check_existq_clause(TypeVarSet, ExistQVars, Clause, !Info) :-
     Goal = Clause ^ clause_body,
     ( if Goal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, Impl), _) then
         Context = Clause ^ clause_context,
-        list.foldl(check_mention_existq_var(Context, TypeVarSet, Impl),
-            ExistQVars, !Info)
+        list.foldl2(check_mention_existq_var(Context, TypeVarSet, Impl),
+            ExistQVars, 1, _N, !Info)
     else
         true
     ).
 
 :- pred check_mention_existq_var(prog_context::in, tvarset::in,
-    pragma_foreign_proc_impl::in, tvar::in,
+    pragma_foreign_proc_impl::in, tvar::in, int::in, int::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-check_mention_existq_var(Context, TypeVarSet, Impl, TVar, !Info) :-
+check_mention_existq_var(Context, TypeVarSet, Impl, TVar, !ExistQVarNum,
+        !Info) :-
     varset.lookup_name(TypeVarSet, TVar, Name),
-    VarName = "TypeInfo_for_" ++ Name,
-    ( if foreign_proc_uses_variable(Impl, VarName) then
+    OldVarName = "TypeInfo_for_" ++ Name,
+    NewVarName = "TypeInfo_Out_" ++ string.int_to_string(!.ExistQVarNum),
+    !:ExistQVarNum = !.ExistQVarNum + 1,
+    ( if
+        ( foreign_proc_uses_variable(Impl, OldVarName)
+        ; foreign_proc_uses_variable(Impl, NewVarName)
+        )
+    then
         true
     else
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
         Spec = report_missing_tvar_in_foreign_code(ClauseContext, Context,
-            VarName),
+            OldVarName),
         typecheck_info_add_error(Spec, !Info)
     ).
 
