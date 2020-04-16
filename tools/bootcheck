@@ -889,6 +889,7 @@ then
             cp $root/profiler/*_FLAGS.in .
             cp $root/profiler/.mgnu* .
             cd $root/$stage2dir
+
             mkdir deep_profiler
             cd deep_profiler
             $LN_S $root/deep_profiler/*.m .
@@ -1010,7 +1011,7 @@ then
                 # will not run if we are using `mmc --make', so run them now.
                 if (cd $stage2dir && \
                     $MMAKE compiler/COMP_FLAGS library/LIB_FLAGS \
-                    mdbcomp/MDBCOMP_FLAGS \
+                    mdbcomp/MDBCOMP_FLAGS grade_lib/GRADE_LIB_FLAGS \
                     profiler/PROF_FLAGS deep_profiler/DEEP_FLAGS)
                 then
                     echo "building of stage 2 flags files successful"
@@ -1514,6 +1515,7 @@ EOF
         dep_browser dep_browser_aux \
         dep_ssdb \
         dep_compiler \
+        dep_grade_lib \
         dep_slice \
         dep_profiler dep_profiler_aux \
         dep_deep_profiler \
