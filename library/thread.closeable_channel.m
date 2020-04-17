@@ -53,11 +53,14 @@
 :- type try_take_result(T)
     --->    ok(T)
     ;       closed
-    ;       empty.
+    ;       would_block.
 
     % Take an item from the start of the channel, but do not block.
     % Returns `ok(Item)' if `Item' was taken from the channel,
-    % `empty' if the channel is empty, or `closed' if the channel is closed.
+    % `closed' if no item was taken because the channel is closed, or
+    % `would_block' if no item could be taken from the channel without
+    % blocking. `would_block' may be returned even if the channel is not
+    % empty.
     %
 :- pred try_take(closeable_channel(T)::in, try_take_result(T)::out,
     io::di, io::uo) is det.
@@ -150,7 +153,7 @@ try_take(channel(Read, _Write), Res, !IO) :-
         )
     ;
         TryRead = no,
-        Res = empty,
+        Res = would_block,
         NewHead = Head
     ),
     mvar.put(Read, NewHead, !IO).

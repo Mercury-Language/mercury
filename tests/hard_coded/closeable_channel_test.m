@@ -191,8 +191,8 @@ trace_try_take(Log, Ch, TakeResult, !IO) :-
         TakeResult = closed,
         log(Log, "try_take - channel closed", !IO)
     ;
-        TakeResult = empty,
-        log(Log, "try_take - empty channel", !IO)
+        TakeResult = would_block,
+        log(Log, "try_take - would block (possibly empty)", !IO)
     ).
 
 %---------------------------------------------------------------------------%
