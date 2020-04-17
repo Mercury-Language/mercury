@@ -75,15 +75,6 @@ run_test(!IO) :-
     % Close open channel.
     trace_close(Log, InCh, !IO),
 
-    % Check is_closed.
-    is_closed(InCh, IsClosed, !IO),
-    (
-        IsClosed = yes
-    ;
-        IsClosed = no,
-        log(Log, "ERROR: channel not closed", !IO)
-    ),
-
     % Wait for threads to exit.
     log(Log, "waiting for worker threads to exit", !IO),
     list.foldl(semaphore.wait, DoneSems, !IO),

@@ -39,17 +39,6 @@
     %
 :- pred close(closeable_channel(T)::in, io::di, io::uo) is det.
 
-    % Return the state of a channel at a point in time. If the return value
-    % is `yes' then the channel is closed, and will remain closed.
-    % If the return value is `no' then the channel was not yet closed,
-    % but by the time you inspect the value the channel could be closed by
-    % another thread.
-    %
-    % We (the Mercury developers) are unsure if this predicate will be useful
-    % in practice. If you do find a use for it, please let us know.
-    %
-:- pred is_closed(closeable_channel(T)::in, bool::out, io::di, io::uo) is det.
-
 :- type take_result(T)
     --->    ok(T)
     ;       closed.
@@ -127,25 +116,10 @@ put(channel(_Read, Write), Val, Success, !IO) :-
 
 close(channel(_Read, Write), !IO) :-
     mvar.take(Write, Hole, !IO),
+    % We have exclusive WRITE access to the hole.
+    % If the channel is open, the hole is empty so this will succeed.
+    % If the channel is closed, the hole is already full with `closed'.
     mvar.try_put(Hole, closed, _Success, !IO),
-    mvar.put(Write, Hole, !IO).
-
-is_closed(channel(_Read, Write), IsClosed, !IO) :-
-    mvar.take(Write, Hole, !IO),
-    mvar.try_read(Hole, HoleFull, !IO),
-    (
-        HoleFull = yes(ItemOrClosed),
-        (
-            ItemOrClosed = closed,
-            IsClosed = yes
-        ;
-            ItemOrClosed = item(_, _),
-            unexpected($pred, "open channel has full hole at write end")
-        )
-    ;
-        HoleFull = no,
-        IsClosed = no
-    ),
     mvar.put(Write, Hole, !IO).
 
 take(channel(Read, _Write), Res, !IO) :-
