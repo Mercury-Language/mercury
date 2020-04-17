@@ -151,6 +151,14 @@ Changes to the Mercury standard library
 
     - pred `untake/4`
 
+### Changes to the `thread.mvar` module
+
+* The documentation of the following predicates has been clarified to match the
+  actual implementation:
+
+    - pred `try_take/4`
+    - pred `try_read/4`
+
 ### Changes to the `tree234` module
 
 * The following predicates have been added:

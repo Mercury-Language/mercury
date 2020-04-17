@@ -60,8 +60,12 @@
 :- pred take(mvar(T)::in, T::out, io::di, io::uo) is det.
 
     % Take the contents of the mvar out, leaving the mvar empty.
-    % Returns immediately with no if the mvar was empty, or yes(X) if
-    % the mvar contained X.
+    % Returns `yes(X)' if the mvar contained X, or `no' if the operation
+    % would block.
+    %
+    % WARNING: a return value of `no' does not necessarily mean the mvar
+    % is or was empty. For example, another thread attempting to read or take
+    % an item out of the mvar may also cause `try_take' to return `no'.
     %
 :- pred try_take(mvar(T)::in, maybe(T)::out, io::di, io::uo) is det.
 
@@ -77,13 +81,18 @@
 
     % Read the contents of mvar without taking it out.
     % If the mvar is empty then block until it is full.
-    % This is similar to mvar.take followed by mvar.put, but atomic.
+    % This is similar to mvar.take followed by mvar.put, but another value
+    % cannot be placed into the mvar between the two operations.
     %
 :- pred read(mvar(T)::in, T::out, io::di, io::uo) is det.
 
     % Try to read the contents of mvar without taking it out.
-    % Returns immediately with no if the mvar was empty, or yes(X) if
-    % the mvar contained X.
+    % Returns `yes(X)' if the mvar contained X, or `no' if the operation
+    % would block.
+    %
+    % WARNING: a return value of `no' does not necessarily mean the mvar
+    % is or was empty. For example, another thread attempting to read or take
+    % an item out of the mvar may also cause `try_read' to return `no'.
     %
 :- pred try_read(mvar(T)::in, maybe(T)::out, io::di, io::uo) is det.
 
