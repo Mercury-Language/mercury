@@ -1949,6 +1949,7 @@
 :- instance stream.stream(text_input_stream, io).
 :- instance stream.input(text_input_stream, io).
 :- instance stream.reader(text_input_stream, char, io, io.error).
+:- instance stream.unboxed_reader(text_input_stream, char, io, io.error).
 :- instance stream.reader(text_input_stream, line, io, io.error).
 :- instance stream.reader(text_input_stream, text_file, io, io.error).
 
@@ -2294,7 +2295,16 @@
 [
     ( get(Stream, Result, !IO) :-
         read_char(Stream, Result0, !IO),
-        Result = io.result_to_stream_result(Result0)
+        Result = io.result1_to_stream_result1(Result0)
+    )
+].
+
+:- instance stream.unboxed_reader(input_stream, char, io, io.error)
+    where
+[
+    ( unboxed_get(Stream, Result, Char, !IO) :-
+        read_char_unboxed(Stream, Result0, Char, !IO),
+        Result = io.result0_to_stream_result0(Result0)
     )
 ].
 
@@ -2336,17 +2346,23 @@
     pred(unget/4) is putback_char
 ].
 
-:- func result_to_stream_result(io.result(T)) = stream.result(T, io.error).
-
-result_to_stream_result(ok(T)) = ok(T).
-result_to_stream_result(eof) = eof.
-result_to_stream_result(error(Error)) = error(Error).
-
 :- instance stream.line_oriented(input_stream, io) where
 [
     pred(get_line/4) is io.get_line_number,
     pred(set_line/4) is io.set_line_number
 ].
+
+:- func result1_to_stream_result1(io.result(T)) = stream.result(T, io.error).
+
+result1_to_stream_result1(ok(T)) = ok(T).
+result1_to_stream_result1(eof) = eof.
+result1_to_stream_result1(error(Error)) = error(Error).
+
+:- func result0_to_stream_result0(io.result) = stream.result(io.error).
+
+result0_to_stream_result0(ok) = ok.
+result0_to_stream_result0(eof) = eof.
+result0_to_stream_result0(error(Error)) = error(Error).
 
 %---------------------%
 %
@@ -2458,7 +2474,7 @@ result_to_stream_result(error(Error)) = error(Error).
 [
     ( get(Stream, Result, !IO) :-
         read_byte(Stream, Result0, !IO),
-        Result = result_to_stream_result(Result0)
+        Result = result1_to_stream_result1(Result0)
     )
 ].
 
@@ -2467,7 +2483,7 @@ result_to_stream_result(error(Error)) = error(Error).
 [
     ( get(Stream, Result, !IO) :-
         read_binary_int8(Stream, Result0, !IO),
-        Result = result_to_stream_result(Result0)
+        Result = result1_to_stream_result1(Result0)
     )
 ].
 
@@ -2476,7 +2492,7 @@ result_to_stream_result(error(Error)) = error(Error).
 [
     ( get(Stream, Result, !IO) :-
         read_binary_uint8(Stream, Result0, !IO),
-        Result = result_to_stream_result(Result0)
+        Result = result1_to_stream_result1(Result0)
     )
 ].
 

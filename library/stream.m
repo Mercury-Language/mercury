@@ -110,15 +110,41 @@
     % The get operation should block until the next unit is available,
     % or the end of the stream or an error is detected.
     %
-    % If a call to get/4 returns `eof', all further calls to get/4 or
-    % bulk_get/9 for that stream return `eof'. If a call to get/4
-    % returns `error(...)', all further calls to get/4 or bulk_get/4 for
-    % that stream return an error, although not necessarily the same one.
+    % If a call to get/4 returns `eof', all further calls to get/4,
+    % unboxed_get/5 or bulk_get/9 for that stream return `eof'. If a call to
+    % get/4 returns `error(...)', all further calls to get/4, unboxed_get/5 or
+    % bulk_get/4 for that stream return an error, although not necessarily the
+    % same one.
     %
     % XXX We should provide an interface to allow the user to reset the
     % error status to try again if an error is transient.
     %
     pred get(Stream::in, result(Unit, Error)::out,
+        State::di, State::uo) is det
+].
+
+    % An unboxed_reader stream is like a reader stream except that it provides
+    % an interface that avoids a memory allocation when there is no error.
+    %
+:- typeclass unboxed_reader(Stream, Unit, State, Error)
+    <= (input(Stream, State), error(Error), (Stream, Unit -> Error)) where
+[
+    % Get the next unit from the given stream. On error or eof an arbitrary
+    % value of type Unit is returned.
+    %
+    % The unboxed_get operation should block until the next unit is available,
+    % or the end of the stream or an error is detected.
+    %
+    % If a call to unboxed_get/5 returns `eof', all further calls to get/4,
+    % unboxed_get/5 or bulk_get/9 for that stream return `eof'. If a call to
+    % unboxed_get/5 returns `error(...)', all further calls to get/4,
+    % unboxed_get/5 or bulk_get/4 for that stream return an error, although not
+    % necessarily the same one.
+    %
+    % XXX We should provide an interface to allow the user to reset the
+    % error status to try again if an error is transient.
+    %
+    pred unboxed_get(Stream::in, result(Error)::out, Unit::out,
         State::di, State::uo) is det
 ].
 
@@ -152,10 +178,10 @@
     % starting at Index will not fit in !Store.
     %
     % If a call to bulk_get/4 returns less than NumItems items, all further
-    % calls to get/4 or bulk_get/4 for that stream return no items. If a call
-    % to bulk_get/9 returns `error(...)', all further calls to get/4 or
-    % bulk_get/9 for that stream return an error, although not necessarily
-    % the same one.
+    % calls to get/4, unboxed_get/5 or bulk_get/4 for that stream return no
+    % items. If a call to bulk_get/9 returns `error(...)', all further calls to
+    % get/4, unboxed_get/5 or bulk_get/9 for that stream return an error,
+    % although not necessarily the same one.
     %
     pred bulk_get(Stream::in, Index::in, int::in,
         Store::bulk_get_di, Store::bulk_get_uo,

@@ -144,6 +144,12 @@ Changes to the Mercury standard library
     - func `keys_as_set/1`
     - pred `keys_as_set/2`
 
+### Changes to the `stream` module
+
+* We have added a new `reader/4` subclass, `unboxed_reader/4`. This subclass
+  allows readers to provide a `get` operation that avoids boxing non-error
+  outputs.
+
 ### Changes to the `thread.channel` module
 
 * The following predicate has been deprecated and will be removed in a future
