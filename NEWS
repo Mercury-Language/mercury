@@ -26,7 +26,7 @@ Changes that may break compatibility
 Changes to the Mercury standard library
 ---------------------------------------
 
-### New module: `kv_list` module
+### New module: `kv_list`
 
 * This module, whose name is short for key-value list, contains the same
   functionality as the existing `assoc_list` module, but stores lists of
@@ -37,14 +37,14 @@ Changes to the Mercury standard library
   kv_lists are not standard lists, and thus cannot be manipulated
   using the functions and predicates of the `list` module.
 
-### New module: `one_or_more` module
+### New module: `one_or_more`
 
 * This module defines the `one_or_more` type, which represents nonempty lists,
   and provides operations on the values of this type. For every operation
   in the `list` module that makes sense for nonempty lists, there is a
   corresponding operation in `one_or_more`.
 
-### New module: `one_or_more_map` module
+### New module: `one_or_more_map`
 
 * This module implements `one_or_more_map`, a map from keys to one or more
   values. Its functionality is very similar to that of the `multi_map` module
@@ -52,7 +52,7 @@ Changes to the Mercury standard library
   but unlike `multi_map`, it uses the type system to enforce the invariant
   that every key in the map must have at least one associated value.
 
-### New module: `thread.closeable_channel` module
+### New module: `thread.closeable_channel`
 
 * This module implements closeable unbounded channels, similar to the unbounded
   channels provided by the `thread.channel` module, but with the addition of a
