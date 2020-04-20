@@ -263,6 +263,9 @@ Changes to the Mercury implementation
 
 * We have upgraded the bundled Boehm GC to v7.6.12 and libatomic_ops to v7.6.8.
 
+* [Mantis bug #461]. We have fixed an assertion failure affecting programs
+  in low-level C parallel grades as they exit.
+
 NEWS for Mercury 20.01.2
 ========================
 

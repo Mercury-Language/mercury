@@ -2279,6 +2279,7 @@ MR_define_entry(MR_do_idle_worksteal);
     MR_Code             *jump_target;
     MR_EngineId         engine_id = MR_ENGINE(MR_eng_id);
     engine_sleep_sync   *esync = get_engine_sleep_sync(engine_id);
+    unsigned            action;
 
     // Only work-stealing engines beyond this point.
     MR_assert(MR_ENGINE(MR_eng_type) == MR_ENGINE_TYPE_SHARED);
@@ -2290,8 +2291,10 @@ MR_define_entry(MR_do_idle_worksteal);
         }
 
         // The compare and swap failed, which means there is a notification.
+        action = esync->d.es_action;
+        esync->d.es_action = MR_ENGINE_ACTION_NONE;
 
-        switch (esync->d.es_action) {
+        switch (action) {
             case MR_ENGINE_ACTION_SHUTDOWN:
                 action_shutdown_ws_engine();
 
