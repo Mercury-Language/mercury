@@ -6,6 +6,9 @@ This is a bug-fix release.
 * We have a fixed bug that prevented the runtime from building correctly
   in C grades on 32-bit platforms when *not* using GCC as the C compiler.
 
+* [Mantis bug #461]. We have fixed an assertion failure affecting programs
+  in low-level C parallel grades as they exit.
+
 NEWS for Mercury 20.01.1
 ========================
 
