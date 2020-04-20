@@ -261,7 +261,7 @@ Changes to the Mercury implementation
   possible to use a fixed size trail.
 
   One consequence of this is that the `trseg` grade component now acts
-  as a synonym for the `tr` component. Since `tr' is shorter, `trseg'
+  as a synonym for the `tr` component. Since `tr` is shorter, `trseg`
   is deprecated in its favor.
 
   Another consequence is that the `--trail-size` and `--trail-size-kwords`
