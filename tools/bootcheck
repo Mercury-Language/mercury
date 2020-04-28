@@ -1,5 +1,5 @@
 #!/bin/sh
-# vim: ts=4 sw=4 et
+# vim: ts=4 sw=4 et ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
