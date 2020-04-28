@@ -222,6 +222,11 @@ Changes to the Mercury compiler
   We have deleted the `--high-level-data` option. Its effects are now
   implied by the target language.
 
+* `--tags`
+
+  We have deleted the `--tags` option. Its effects are now implied
+  by the target language.
+
 ### Changes to warnings
 
 * [Github issue #85]. The compiler will now generate a warning about

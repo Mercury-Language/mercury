@@ -117,10 +117,6 @@
     %
 :- func gc_is_conservative(gc_method) = bool.
 
-:- type tags_method
-    --->    tags_none
-    ;       tags_low.
-
 :- type termination_norm
     --->    norm_simple
     ;       norm_total
@@ -238,7 +234,6 @@
 :- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_foreign_language(string::in, foreign_language::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
-:- pred convert_tags_method(string::in, tags_method::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
 :- pred convert_maybe_thread_safe(string::in, may_be_thread_safe::out)
     is semidet.
@@ -260,7 +255,7 @@
 %
 
 :- pred globals_init(option_table::in, op_mode::in,
-    compilation_target::in, gc_method::in, tags_method::in,
+    compilation_target::in, gc_method::in,
     termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
@@ -274,7 +269,6 @@
 :- pred get_backend_foreign_languages(globals::in,
     list(foreign_language)::out) is det.
 :- pred get_gc_method(globals::in, gc_method::out) is det.
-:- pred get_tags_method(globals::in, tags_method::out) is det.
 :- pred get_termination_norm(globals::in, termination_norm::out) is det.
 :- pred get_termination2_norm(globals::in, termination_norm::out) is det.
 :- pred get_trace_level(globals::in, trace_level::out) is det.
@@ -298,7 +292,6 @@
 :- pred set_options(option_table::in, globals::in, globals::out) is det.
 :- pred set_op_mode(op_mode::in, globals::in, globals::out) is det.
 :- pred set_gc_method(gc_method::in, globals::in, globals::out) is det.
-:- pred set_tags_method(tags_method::in, globals::in, globals::out) is det.
 :- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
 :- pred set_trace_level_none(globals::in, globals::out) is det.
 :- pred set_ssdb_trace_level(ssdb_trace_level::in,
@@ -436,9 +429,6 @@ convert_gc_method("boehm_debug", gc_boehm_debug).
 convert_gc_method("hgc", gc_hgc).
 convert_gc_method("accurate", gc_accurate).
 convert_gc_method("automatic", gc_automatic).
-
-convert_tags_method("none", tags_none).
-convert_tags_method("low", tags_low).
 
 convert_termination_norm("simple", norm_simple).
 convert_termination_norm("total", norm_total).
@@ -700,7 +690,6 @@ gc_is_conservative(gc_automatic) = no.
                 g_csharp_compiler_type      :: csharp_compiler_type,
                 g_target                    :: compilation_target,
                 g_gc_method                 :: gc_method,
-                g_tags_method               :: tags_method,
                 g_termination_norm          :: termination_norm,
                 g_termination2_norm         :: termination_norm,
                 g_trace_level               :: trace_level,
@@ -711,14 +700,14 @@ gc_is_conservative(gc_automatic) = no.
                 g_target_env_type           :: env_type
             ).
 
-globals_init(Options, OpMode, Target, GC_Method, TagsMethod,
+globals_init(Options, OpMode, Target, GC_Method,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
         TargetEnvType, FileInstallCmd, LimitErrorContextsMap, Globals) :-
     Globals = globals(Options, OpMode, TraceSuppress,
         ReuseStrategy, MaybeFeedback, FileInstallCmd, LimitErrorContextsMap,
-        C_CompilerType, CSharp_CompilerType, Target, GC_Method, TagsMethod,
+        C_CompilerType, CSharp_CompilerType, Target, GC_Method,
         TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
         MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType).
 
@@ -726,7 +715,6 @@ get_options(Globals, Globals ^ g_options).
 get_op_mode(Globals, Globals ^ g_op_mode).
 get_target(Globals, Globals ^ g_target).
 get_gc_method(Globals, Globals ^ g_gc_method).
-get_tags_method(Globals, Globals ^ g_tags_method).
 get_termination_norm(Globals, Globals ^ g_termination_norm).
 get_termination2_norm(Globals, Globals ^ g_termination2_norm).
 get_trace_level(Globals, Globals ^ g_trace_level).
@@ -760,9 +748,6 @@ set_op_mode(OpMode, !Globals) :-
 
 set_gc_method(GC_Method, !Globals) :-
     !Globals ^ g_gc_method := GC_Method.
-
-set_tags_method(Tags_Method, !Globals) :-
-    !Globals ^ g_tags_method := Tags_Method.
 
 set_trace_level(TraceLevel, !Globals) :-
     !Globals ^ g_trace_level := TraceLevel.

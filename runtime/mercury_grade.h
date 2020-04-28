@@ -350,7 +350,7 @@
 // and they imply unboxed floats.
 
 #if MR_TAGBITS == 0
-  #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9, _notags)
+  #error "MR_TAGBITS must be greater than zero"
 #else
   #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9,              \
                                         MR_PASTE2(_tags, MR_TAGBITS))

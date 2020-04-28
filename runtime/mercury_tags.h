@@ -101,39 +101,7 @@
         MR_create2_msg((ti_head), (head), (ti_tail), (tail),            \
              alloc_id, "list.list/1")))
 #else
-  // MR_TAGBITS == 0
-  //
-  // In this case, cons cells are represented using three words.
-  // The first word is a secondary tag that we use to distinguish between
-  // empty and non-empty lists.
-
-  #define MR_list_is_empty(list)    (MR_field(MR_mktag(0), (list), 0)   \
-                                        == MR_RAW_TAG_NIL)
-  #define MR_list_head(list)        MR_field(MR_mktag(0), (list), 1)
-  #define MR_list_tail(list)        MR_field(MR_mktag(0), (list), 2)
-  #define MR_list_empty()                                               \
-    ((MR_Word) MR_mkword(MR_mktag(0),                                   \
-        MR_create1((MR_TypeInfo)                                        \
-            &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),                  \
-            MR_RAW_TAG_NIL)))
-
-  #define MR_typed_list_cons(ti_head, head, ti_tail, tail)              \
-    ((MR_Word) MR_mkword(MR_mktag(0),                                   \
-        MR_create3((MR_TypeInfo)                                        \
-            &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),                  \
-            MR_RAW_TAG_CONS, (ti_head), (head), (ti_tail), (tail))))
-
-  #define MR_list_empty_msg(alloc_id)                                   \
-    ((MR_Word) MR_mkword(MR_mktag(0),                                   \
-        MR_create1_msg((MR_TypeInfo)                                    \
-            &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),                  \
-            MR_RAW_TAG_NIL, alloc_id, "list.list/1")))
-  #define MR_typed_list_cons_msg(ti_head, head, ti_tail, tail, alloc_id) \
-    ((MR_Word) MR_mkword(MR_mktag(0),                                    \
-        MR_create3((MR_TypeInfo)                                         \
-            &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),                   \
-            MR_RAW_TAG_CONS, (ti_head), (head), (ti_tail), (tail),       \
-            alloc_id, "list.list/1")))
+  #error "MR_TAGBITS must be greater than zero"
 #endif
 
 // Since these macros are not defined in term size profiling grades,

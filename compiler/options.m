@@ -491,17 +491,14 @@
     ;       link_ssdb_libs
 
     % Data representation compilation model options
-    ;       tags
     ;       num_ptag_bits
     ;       bits_per_word
     ;       bytes_per_word
             % The undocumented conf_low_ptag_bits option is used by the `mmc'
             % script to pass the default value for num_ptag_bits assuming
-            % --tags low. The reason that `mmc' doesn't just pass a default
-            % value for --num-tag-bits is that we want to be able to give an
-            % error message if the user specifies `--tags high' and doesn't
-            % specify `--num-tag-bits'.
-
+            % target_c. The reason that `mmc' doesn't just pass a default
+            % value for --num-ptag-bits is that users need to be able to
+            % override this default when cross compiling.
     ;       conf_low_ptag_bits
     ;       unboxed_float
     ;       unboxed_int64s
@@ -1480,7 +1477,6 @@ option_defaults_2(compilation_model_option, [
     link_ssdb_libs                      -   bool(no),
 
     % Data representation compilation model options
-    tags                                -   string("low"),
     num_ptag_bits                        -   int(-1),
                                         % -1 is a special value which means
                                         % use the value of conf_low_ptag_bits
@@ -2474,7 +2470,6 @@ long_option("minimal-model-debug",  minimal_model_debug).
 long_option("pregenerated-dist",    pregenerated_dist).
 long_option("single-prec-float",    single_prec_float).
 long_option("single-precision-float",   single_prec_float).
-long_option("tags",                 tags).
 long_option("num-tag-bits",         num_ptag_bits). % for historical reasons
 long_option("num-ptag-bits",        num_ptag_bits).
 long_option("bits-per-word",        bits_per_word).
@@ -5079,12 +5074,12 @@ options_help_compilation_model -->
     io.write_string("\n    Developer compilation model options:\n"),
     io.write_string("\n      Data representation\n"),
     write_tabbed_lines([
-        "--tags {none, low, high}      (This option is not for general use.)",
-        "\tSpecify whether to use the low bits or the high bits of",
-        "\teach word as tag bits (default: low).",
-    %   "\t\t`--tags none' implies `--num-tag-bits 0'.",
-        "--num-tag-bits <n>            (This option is not for general use.)",
-        "\tUse <n> tag bits."
+        "--num-ptag-bits <n>           (This option is not for general use.)",
+        "\tUse <n> primary tag bits."
+        % Normally, The --num-tag-bits option is used only by the compiler.
+        % By default, its value is set to the value of the --conf-low-tag-bits
+        % option when targeting C, and to zero when targeting other languages.
+        % Its only legitimate use is for cross-compilation.
 
         % The --conf-low-tag-bits option is reserved for use
         % by the `mmc' script; it is deliberately not documented.
@@ -5105,13 +5100,13 @@ options_help_compilation_model -->
 %       "\t`-DMR_USE_SINGLE_PREC_FLOAT', if double precision",
 %       "\tfloats don't fit into a word."
 
-%        % This is a developer only option.
-%        "--unboxed-int64s",
-%        "(This option is not for general use.)",
-%        "\tDo not box 64-bit integer numbers",
-%        "\tThis assumes that word size of the target machine is at least",
-%        "\t64-bits in size.",
-%        "\tThe C code needs to be compiled with `-UMR_BOXED_INT64S'.",
+%       % This is a developer only option.
+%       "--unboxed-int64s",
+%       "(This option is not for general use.)",
+%       "\tDo not box 64-bit integer numbers",
+%       "\tThis assumes that word size of the target machine is at least",
+%       "\t64-bits in size.",
+%       "\tThe C code needs to be compiled with `-UMR_BOXED_INT64S'.",
 
         % This is a developer only option.
 %       "--no-unboxed-no-tag-types",

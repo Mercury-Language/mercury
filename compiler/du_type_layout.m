@@ -3122,17 +3122,27 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
     ),
 
     % Compute MaybePrimaryTags.
-    globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
-    ( if NumPtagBits = 0 then
+    (
+        Target = target_c,
+        globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
+        % We require the use of two or three primary tags when targeting C.
+        ( if NumPtagBits = 2 then
+            MaybePrimaryTags = max_primary_tag(ptag(3u8), NumPtagBits)
+        else if NumPtagBits = 3 then
+            MaybePrimaryTags = max_primary_tag(ptag(7u8), NumPtagBits)
+        else
+            % handle_options.m should have generated an error if num_ptag_bits
+            % is not 2 or 3, which should have meant that its caller in
+            % mercury_compile_main.m stops execution before
+            % du_type_layout.m is invoked.
+            unexpected($pred, "target_c but NumPtagBits not 2 or 3")
+        )
+    ;
+        ( Target = target_java
+        ; Target = target_csharp
+        ; Target = target_erlang
+        ),
         MaybePrimaryTags = no_primary_tags
-    else if NumPtagBits = 2 then
-        MaybePrimaryTags = max_primary_tag(ptag(3u8), NumPtagBits)
-    else if NumPtagBits = 3 then
-        MaybePrimaryTags = max_primary_tag(ptag(7u8), NumPtagBits)
-    else
-        MaxPtagInt = (1 << NumPtagBits) - 1,
-        MaxPtagUint8 = uint8.det_from_int(MaxPtagInt),
-        MaybePrimaryTags = max_primary_tag(ptag(MaxPtagUint8), NumPtagBits)
     ),
 
     % Compute ArgPackBits.

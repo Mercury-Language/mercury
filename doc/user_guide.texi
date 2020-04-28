@@ -8541,51 +8541,19 @@ ordinary Mercury programmers.
 
 @table @asis
 @sp 1
-@item @code{--tags @{none, low, high@}}
-@findex --tags
-@cindex Tags
-@cindex Data representation
-(This option is not intended for general use.)@*
-Specify whether to use the low bits or the high bits of
-each word as tag bits (default: low).
-
-@sp 1
-@item @code{--num-tag-bits @var{n}}
+@item @code{--num-ptag-bits @var{n}}
+@itemx @code{--num-tag-bits @var{n}}
+@findex --num-ptag-bits
 @findex --num-tag-bits
 @cindex Tags
 @cindex Data representation
 (This option is not intended for general use.)@*
-Use @var{n} tag bits.  This option is required if you specify
-@samp{--tags high}.
-With @samp{--tags low}, the default number of tag bits to use
-is determined by the auto-configuration script.
-
-@sp 1
-@item @code{--num-reserved-addresses @var{n}}
-@findex --reserved-addresses
-@cindex Reserved addresses
-@cindex Addresses, reserved
-@cindex Data representation
-(This option is not intended for general use.)@*
-Treat the integer values from 0 up to @var{n} @minus{} 1 as reserved
-addresses that can be used to represent nullary constructors
-(constants) of discriminated union types.
-
-@sp 1
-@item @code{--num-reserved-objects @var{n}}
-@findex --reserved-addresses
-@cindex Reserved addresses
-@cindex Reserved objects
-@cindex Addresses, reserved
-@cindex Objects, reserved
-@cindex Data representation
-(This option is not intended for general use.)@*
-Allocate up to @var{n} @minus{} 1 global objects for representing nullary
-constructors (constants) of discriminated union types.
-
-Note that reserved objects will only be used if reserved addresses
-(see @code{--num-reserved-addresses}) are not available, since the
-latter are more efficient.
+Use @var{n} primary tag bits.
+The default number of primary tag bits to use
+is determined by the auto-configuration script;
+the only valid reason for overriding this default
+is cross-compilation to an architecture
+where auto-configuration would yield a different value.
 
 @sp 1
 @item @code{--no-type-layout}
@@ -8593,11 +8561,11 @@ latter are more efficient.
 @findex --type-layout
 (This option is not intended for general use.)@*
 Don't output base_type_layout structures or references to them.
-This option will generate smaller executables, but will not allow the
-use of code that uses the layout information (e.g.@: @samp{functor},
-@samp{arg}). Using such code will result in undefined behaviour at
-runtime.  The C code also needs to be compiled with
-@samp{-DNO_TYPE_LAYOUT}.
+This option will generate smaller executables,
+but will not allow the use of code that uses the layout information
+(e.g.@: @samp{functor}, @samp{arg}).
+Using such code will result in undefined behaviour at runtime.
+The C code also needs to be compiled with @samp{-DNO_TYPE_LAYOUT}.
 
 @end table
 
@@ -8627,7 +8595,6 @@ before going on the next phase on all predicates.
 @c @sp 1
 @c @item --parallel-liveness
 @c @item --no-parallel-liveness
-@c @item --parallel-liveness
 @c Use multiple threads when computing liveness.
 @c At the moment this option implies @samp{--no-trad-passes},
 @c and requires the compiler to be built in a
@@ -8636,7 +8603,6 @@ before going on the next phase on all predicates.
 @c @sp 1
 @c @item --parallel-code-gen
 @c @item --no-parallel-code-gen
-@c @item --parallel-code-gen
 @c Use multiple threads when generating code.
 @c At the moment this option implies @samp{--no-trad-passes},
 @c and requires the compiler to be built in a
