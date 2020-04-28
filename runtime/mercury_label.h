@@ -13,6 +13,13 @@
 #ifndef MERCURY_LABEL_H
 #define MERCURY_LABEL_H
 
+// We don't need mercury_conf_param.h itself, but
+// - mercury_types.h includes it, and
+// - if included *after* mercury_conf_param.h, MR_LOW_TAG_BITS get redefined
+//   if MR_PREGENERATED_DIST is defined, which results in the failure of
+//   bootcheck's namespace cleanliness test.
+
+#include "mercury_conf.h"
 #include "mercury_conf_param.h"     // for MR_NEED_ENTRY_LABEL_ARRAY etc
 #include "mercury_types.h"          // for MR_Code, MR_ProcLayout etc
 #include "mercury_dlist.h"          // for MR_Dlist
