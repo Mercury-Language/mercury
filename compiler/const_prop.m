@@ -149,8 +149,8 @@ evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
     % Note that many of these functions have predicate versions as well.
     % In every one of those cases, the code we use to evaluate the function
     % version will also evaluate the predicate version, because all the
-    % library predicates we evaluate here the same argument sequence for
-    % the two versions once the function return values have been put
+    % library predicates we evaluate here have the same argument sequence
+    % for the two versions once the function return values have been put
     % at the end of the argument list. (If the argument orders were different
     % between the two versions for some predicates, we could still evaluate
     % both; we would just need our caller to pass us a pred_or_func
