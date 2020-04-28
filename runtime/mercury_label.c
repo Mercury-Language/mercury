@@ -12,8 +12,6 @@
 #include    <stdio.h>
 #include    <string.h>
 
-#include    "mercury_conf.h"
-
 #include    "mercury_label.h"
 
 #include    "mercury_stack_layout.h"    // for MR_ProcLayout
