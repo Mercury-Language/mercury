@@ -59,7 +59,7 @@
     ;       zip(int, int, int, int)
     ;       zop(float, float)
     ;       moomoo(
-                moo :: int,
+                moo     :: int,
                 'mooo!' :: string
             )
     ;       packed(
