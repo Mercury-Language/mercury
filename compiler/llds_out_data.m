@@ -835,11 +835,14 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             FirstIndent, LaterIndent, !N, !DeclSet, !IO),
 
         % If floats are boxed, and the static ground terms option is enabled,
-        % then for each float constant which we might want to box we declare
+        % then for each float constant which we might want to box, we declare
         % a static const variable holding that constant.
-
-        c_util.binop_category_string(Op, Category, OpStr),
-        ( if Category = float_arith_binop then
+        (
+            ( Op = float_plus,   OpStr = "+"
+            ; Op = float_minus,  OpStr = "-"
+            ; Op = float_times,  OpStr = "*"
+            ; Op = float_divide, OpStr = "/"
+            ),
             UnboxFloat = Info ^ lout_unboxed_float,
             StaticGroundFloats = Info ^ lout_static_ground_floats,
             ( if
@@ -874,8 +877,50 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             else
                 true
             )
-        else
-            true
+        ;
+            ( Op = array_index(_)
+            ; Op = string_unsafe_index_code_unit
+            ; Op = pointer_equal_conservative
+            ; Op = compound_lt
+            ; Op = compound_eq
+            ; Op = str_eq
+            ; Op = str_ne
+            ; Op = str_le
+            ; Op = str_ge
+            ; Op = str_lt
+            ; Op = str_gt
+            ; Op = unsigned_le
+            ; Op = float_eq
+            ; Op = float_ne
+            ; Op = float_le
+            ; Op = float_ge
+            ; Op = float_lt
+            ; Op = float_gt
+            ; Op = int_add(_)
+            ; Op = int_sub(_)
+            ; Op = int_mul(_)
+            ; Op = int_div(_)
+            ; Op = unchecked_left_shift(_, _)
+            ; Op = unchecked_right_shift(_, _)
+            ; Op = bitwise_and(_)
+            ; Op = bitwise_or(_)
+            ; Op = bitwise_xor(_)
+            ; Op = int_mod(_)
+            ; Op = eq(_)
+            ; Op = ne(_)
+            ; Op = logical_and
+            ; Op = logical_or
+            ; Op = int_lt(_)
+            ; Op = int_gt(_)
+            ; Op = int_le(_)
+            ; Op = int_ge(_)
+            ; Op = str_cmp
+            ; Op = offset_str_eq(_)
+            ; Op = body
+            ; Op = float_from_dword
+            ; Op = int64_from_dword
+            ; Op = uint64_from_dword
+            )
         )
     ;
         Rval = mem_addr(MemRef),

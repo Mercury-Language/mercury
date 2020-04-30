@@ -273,27 +273,6 @@
     %
 :- pred unary_prefix_op(unary_op::in, string::out) is det.
 
-    % XXX is this type really necessary?  binop_category_string/3's only caller
-    % only cares about if the operation is a 'float_arith_binop' or not.
-    %
-:- type binop_category
-    --->    array_index_binop
-    ;       string_index_binop
-    ;       pointer_compare_binop
-    ;       compound_compare_binop
-    ;       offset_string_compare_binop(int)
-    ;       general_string_compare_binop
-    ;       string_compare_binop
-    ;       unsigned_compare_binop
-    ;       float_compare_binop
-    ;       float_arith_binop
-    ;       int_or_bool_binary_infix_binop
-    ;       int_macro_binop
-    ;       float_macro_binop.
-
-:- pred binop_category_string(binary_op::in, binop_category::out, string::out)
-    is det.
-
 %---------------------------------------------------------------------------%
 
     % output_c_file_intro_and_grade(SourceFileName, Version, Fullarch, !IO):
@@ -996,72 +975,6 @@ unary_prefix_op(dword_int64_get_word0,  "MR_dword_int64_get_word0").
 unary_prefix_op(dword_int64_get_word1,  "MR_dword_int64_get_word1").
 unary_prefix_op(dword_uint64_get_word0, "MR_dword_uint64_get_word0").
 unary_prefix_op(dword_uint64_get_word1, "MR_dword_uint64_get_word1").
-
-% The operator strings for array_index, compound_lt and compound_eq are
-% dummies; they should never be used.
-
-binop_category_string(array_index(_), array_index_binop, "ARRAY_INDEX").
-binop_category_string(string_unsafe_index_code_unit, string_index_binop,
-    "STRING_UNSAFE_INDEX_CODE_UNIT").
-
-binop_category_string(pointer_equal_conservative, pointer_compare_binop, "==").
-
-binop_category_string(compound_lt, compound_compare_binop, "COMPOUND_LT").
-binop_category_string(compound_eq, compound_compare_binop, "COMPOUND_EQ").
-
-binop_category_string(str_eq, string_compare_binop, "==").
-binop_category_string(str_ne, string_compare_binop, "!=").
-binop_category_string(str_le, string_compare_binop, "<=").
-binop_category_string(str_ge, string_compare_binop, ">=").
-binop_category_string(str_lt, string_compare_binop, "<").
-binop_category_string(str_gt, string_compare_binop, ">").
-
-binop_category_string(unsigned_le, unsigned_compare_binop, "<=").
-
-binop_category_string(float_plus, float_arith_binop, "+").
-binop_category_string(float_minus, float_arith_binop, "-").
-binop_category_string(float_times, float_arith_binop, "*").
-binop_category_string(float_divide, float_arith_binop, "/").
-
-binop_category_string(float_eq, float_compare_binop, "==").
-binop_category_string(float_ne, float_compare_binop, "!=").
-binop_category_string(float_le, float_compare_binop, "<=").
-binop_category_string(float_ge, float_compare_binop, ">=").
-binop_category_string(float_lt, float_compare_binop, "<").
-binop_category_string(float_gt, float_compare_binop, ">").
-
-binop_category_string(int_add(_), int_or_bool_binary_infix_binop, "+").
-binop_category_string(int_sub(_), int_or_bool_binary_infix_binop, "-").
-binop_category_string(int_mul(_), int_or_bool_binary_infix_binop, "*").
-binop_category_string(int_div(_), int_or_bool_binary_infix_binop, "/").
-binop_category_string(unchecked_left_shift(_, _),  int_or_bool_binary_infix_binop,
-    "<<").
-binop_category_string(unchecked_right_shift(_, _), int_or_bool_binary_infix_binop,
-    ">>").
-binop_category_string(bitwise_and(_), int_or_bool_binary_infix_binop, "&").
-binop_category_string(bitwise_or(_), int_or_bool_binary_infix_binop, "|").
-binop_category_string(bitwise_xor(_), int_or_bool_binary_infix_binop, "^").
-binop_category_string(int_mod(_), int_or_bool_binary_infix_binop, "%").
-binop_category_string(eq(_), int_or_bool_binary_infix_binop, "==").
-binop_category_string(ne(_), int_or_bool_binary_infix_binop, "!=").
-binop_category_string(logical_and, int_or_bool_binary_infix_binop, "&&").
-binop_category_string(logical_or, int_or_bool_binary_infix_binop, "||").
-binop_category_string(int_lt(_), int_or_bool_binary_infix_binop, "<").
-binop_category_string(int_gt(_), int_or_bool_binary_infix_binop, ">").
-binop_category_string(int_le(_), int_or_bool_binary_infix_binop, "<=").
-binop_category_string(int_ge(_), int_or_bool_binary_infix_binop, ">=").
-
-binop_category_string(str_cmp, general_string_compare_binop, "MR_strcmp").
-binop_category_string(offset_str_eq(N), offset_string_compare_binop(N),
-    "MR_offset_streq").
-binop_category_string(body, int_macro_binop, "MR_body").
-
-binop_category_string(float_from_dword, float_macro_binop,
-    "MR_float_from_dword").
-binop_category_string(int64_from_dword, int_macro_binop,
-    "MR_int64_from_dword").
-binop_category_string(uint64_from_dword, int_macro_binop,
-    "MR_uint64_from_dword").
 
 %---------------------------------------------------------------------------%
 
