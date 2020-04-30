@@ -734,7 +734,7 @@
 :- type module_sub_info
     --->    module_sub_info(
                 msi_special_pred_maps           :: special_pred_maps,
-                mi_class_table                  :: class_table,
+                msi_class_table                 :: class_table,
                 msi_instance_table              :: instance_table,
 
                 % Data used for user-guided type specialization.
@@ -1242,7 +1242,7 @@ module_info_get_ctor_field_table(MI, X) :-
 module_info_get_special_pred_maps(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_special_pred_maps.
 module_info_get_class_table(MI, X) :-
-    X = MI ^ mi_sub_info ^ mi_class_table.
+    X = MI ^ mi_sub_info ^ msi_class_table.
 module_info_get_instance_table(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_instance_table.
 module_info_get_type_spec_info(MI, X) :-
@@ -1359,7 +1359,7 @@ module_info_set_ctor_field_table(X, !MI) :-
 module_info_set_special_pred_maps(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_special_pred_maps := X.
 module_info_set_class_table(X, !MI) :-
-    !MI ^ mi_sub_info ^ mi_class_table := X.
+    !MI ^ mi_sub_info ^ msi_class_table := X.
 module_info_set_instance_table(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_instance_table := X.
 module_info_set_type_spec_info(X, !MI) :-
