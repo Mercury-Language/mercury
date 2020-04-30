@@ -812,8 +812,8 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        ( Op = unchecked_left_shift(_), OpStr = "<<"
-        ; Op = unchecked_right_shift(_), OpStr = ">>"
+        ( Op = unchecked_left_shift(_, ShiftType), OpStr = "<<"
+        ; Op = unchecked_right_shift(_, ShiftType), OpStr = ">>"
         ),
         io.write_string("(", !IO),
         mlds_output_rval_as_op_arg(Opts, X, !IO),
@@ -824,7 +824,15 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         % is a small constant.
         ( if Y = ml_const(mlconst_int(YInt)) then
             io.write_int(YInt, !IO)
+        else if Y = ml_const(mlconst_uint(YUInt)) then
+            io.write_uint(YUInt, !IO)
         else
+            (
+                ShiftType = shift_by_int
+            ;
+                ShiftType = shift_by_uint,
+                io.write_string("(int) ", !IO)
+            ),
             mlds_output_rval_as_op_arg(Opts, Y, !IO)
         ),
         io.write_string(")", !IO)

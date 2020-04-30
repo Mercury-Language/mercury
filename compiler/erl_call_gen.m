@@ -538,6 +538,10 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = str_cmp
         ; StdBinOp = pointer_equal_conservative     % handled in our caller
         ; StdBinOp = string_unsafe_index_code_unit  % we *could* implement this
+        % XXX I (zs) don't know whether bsl/bsr would work
+        % when the shift amount is a uint.
+        ; StdBinOp = unchecked_left_shift(_, shift_by_uint)
+        ; StdBinOp = unchecked_right_shift(_, shift_by_uint)
         ),
         fail
     ;
@@ -546,8 +550,10 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = int_mul(_),            EldsBinOp = elds.mul
         ; StdBinOp = int_div(_),            EldsBinOp = elds.int_div
         ; StdBinOp = int_mod(_),            EldsBinOp = elds.(rem)
-        ; StdBinOp = unchecked_left_shift(_),  EldsBinOp = elds.bsl
-        ; StdBinOp = unchecked_right_shift(_), EldsBinOp = elds.bsr
+        ; StdBinOp = unchecked_left_shift(_, shift_by_int),
+                                            EldsBinOp = elds.bsl
+        ; StdBinOp = unchecked_right_shift(_, shift_by_int),
+                                            EldsBinOp = elds.bsr
         ; StdBinOp = bitwise_and(_),        EldsBinOp = elds.band
         ; StdBinOp = bitwise_or(_),         EldsBinOp = elds.bor
         ; StdBinOp = bitwise_xor(_),        EldsBinOp = elds.bxor

@@ -1744,8 +1744,8 @@ binop_return_type(int_sub(IntType), lt_int(IntType)).
 binop_return_type(int_mul(IntType), lt_int(IntType)).
 binop_return_type(int_div(IntType), lt_int(IntType)).
 binop_return_type(int_mod(IntType), lt_int(IntType)).
-binop_return_type(unchecked_left_shift(IntType), lt_int(IntType)).
-binop_return_type(unchecked_right_shift(IntType), lt_int(IntType)).
+binop_return_type(unchecked_left_shift(IntType, _), lt_int(IntType)).
+binop_return_type(unchecked_right_shift(IntType, _), lt_int(IntType)).
 binop_return_type(bitwise_and(IntType), lt_int(IntType)).
 binop_return_type(bitwise_or(IntType), lt_int(IntType)).
 binop_return_type(bitwise_xor(IntType), lt_int(IntType)).

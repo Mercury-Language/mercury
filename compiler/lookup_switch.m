@@ -884,8 +884,8 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
         % This is the same as
         % WordNum = binop(int_div, IndexRval, const(llconst_int(WordBits)))
         % except that it can generate more efficient code.
-        WordNum = binop(unchecked_right_shift(int_type_int), IndexRval,
-            const(llconst_int(Log2WordBits))),
+        WordNum = binop(unchecked_right_shift(int_type_int, shift_by_int),
+            IndexRval, const(llconst_int(Log2WordBits))),
 
         Word = lval(field(yes(ptag(0u8)), BitVecRval, WordNum)),
 
@@ -896,7 +896,7 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
             const(llconst_int(WordBits - 1)))
     ),
     HasBit = binop(bitwise_and(int_type_int),
-        binop(unchecked_left_shift(int_type_int),
+        binop(unchecked_left_shift(int_type_int, shift_by_int),
             const(llconst_int(1)), BitNum),
         Word),
     fail_if_rval_is_false(HasBit, CheckCode, !CI, !CLD).

@@ -866,8 +866,14 @@ binop_to_strcord(BinOp) = Cord :-
         ; BinOp = int_mul(IntType), OpStr = "mul"
         ; BinOp = int_div(IntType), OpStr = "div"
         ; BinOp = int_mod(IntType), OpStr = "mod"
-        ; BinOp = unchecked_left_shift(IntType),  OpStr = "raw_left_shift"
-        ; BinOp = unchecked_right_shift(IntType), OpStr = "raw_right_shift"
+        ; BinOp = unchecked_left_shift(IntType, shift_by_int),
+            OpStr = "raw_left_shift"
+        ; BinOp = unchecked_left_shift(IntType, shift_by_uint),
+            OpStr = "raw_left_ushift"
+        ; BinOp = unchecked_right_shift(IntType, shift_by_int),
+            OpStr = "raw_right_shift"
+        ; BinOp = unchecked_right_shift(IntType, shift_by_uint),
+            OpStr = "raw_right_ushift"
         ; BinOp = bitwise_and(IntType), OpStr = "bitwise_and"
         ; BinOp = bitwise_or(IntType),  OpStr = "bitwise_or"
         ; BinOp = bitwise_xor(IntType), OpStr = "bitwise_xor"

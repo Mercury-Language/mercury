@@ -622,8 +622,9 @@ ml_generate_bitvec_test(MLDS_ModuleName, Context, IndexRval, CaseVals,
         % WordNumRval = ml_binop(int_div, IndexRval,
         %   ml_const(mlconst_int(WordBits)))
         % except that it can generate more efficient code.
-        WordNumRval = ml_binop(unchecked_right_shift(int_type_int), IndexRval,
-            ml_const(mlconst_int(Log2WordBits))),
+        WordNumRval =
+            ml_binop(unchecked_right_shift(int_type_int, shift_by_int),
+                IndexRval, ml_const(mlconst_int(Log2WordBits))),
 
         ArrayElemType = array_elem_scalar(scalar_elem_int),
         WordRval = ml_binop(array_index(ArrayElemType),
@@ -637,7 +638,7 @@ ml_generate_bitvec_test(MLDS_ModuleName, Context, IndexRval, CaseVals,
             ml_const(mlconst_int(WordBits - 1)))
     ),
     CheckRval = ml_binop(bitwise_and(int_type_int), WordRval,
-        ml_binop(unchecked_left_shift(int_type_int),
+        ml_binop(unchecked_left_shift(int_type_int, shift_by_int),
             ml_const(mlconst_int(1)), BitNumRval)).
 
     % We generate the bitvector by iterating through the cases marking the bit

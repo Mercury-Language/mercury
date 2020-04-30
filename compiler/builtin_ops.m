@@ -51,6 +51,10 @@
     ;       dword_uint64_get_word0
     ;       dword_uint64_get_word1.
 
+:- type shift_by_type
+    --->    shift_by_int
+    ;       shift_by_uint.
+
 :- type binary_op
     --->    int_add(int_type)
     ;       int_sub(int_type)
@@ -58,8 +62,11 @@
     ;       int_div(int_type) % Assumed to truncate toward zero.
     ;       int_mod(int_type) % Remainder (w.r.t. truncating integer division).
                               % XXX `mod' should be renamed `rem'
-    ;       unchecked_left_shift(int_type)
-    ;       unchecked_right_shift(int_type)
+            % For shifts, the first argument specifies the type of
+            % the value being shifted, while the second specifies
+            % the type of the shift amount.
+    ;       unchecked_left_shift(int_type, shift_by_type)
+    ;       unchecked_right_shift(int_type, shift_by_type)
     ;       bitwise_and(int_type)
     ;       bitwise_or(int_type)
     ;       bitwise_xor(int_type)
@@ -73,6 +80,10 @@
     ;       ne(int_type)      % !=
     ;       body
     ;       array_index(array_elem_type)
+            % The element type does not seem to be used. It could probably
+            % be deleted, but it seems wise to not to delete the code
+            % that currently fills in this slot in case some backend ever
+            % *does* start needing to know the element type.
     ;       string_unsafe_index_code_unit
     ;       str_eq  % string comparisons
     ;       str_ne
@@ -418,9 +429,13 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; PredName = "unchecked_quotient", ArithOp = int_div(IntType)
             ; PredName = "unchecked_rem", ArithOp = int_mod(IntType)
             ; PredName = "unchecked_left_shift",
-                ArithOp = unchecked_left_shift(IntType)
+                ArithOp = unchecked_left_shift(IntType, shift_by_int)
+            ; PredName = "unchecked_left_ushift",
+                ArithOp = unchecked_left_shift(IntType, shift_by_uint)
             ; PredName = "unchecked_right_shift",
-                ArithOp = unchecked_right_shift(IntType)
+                ArithOp = unchecked_right_shift(IntType, shift_by_int)
+            ; PredName = "unchecked_right_ushift",
+                ArithOp = unchecked_right_shift(IntType, shift_by_uint)
             ; PredName = "/\\", ArithOp = bitwise_and(IntType)
             ; PredName = "\\/", ArithOp = bitwise_or(IntType)
             ),

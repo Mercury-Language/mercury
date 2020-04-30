@@ -1178,16 +1178,22 @@ output_rval(Info, Rval, !IO) :-
             output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
             io.write_string(")", !IO)
         ;
-            % The second operand of the shift operatators always has type
-            % `int'.
-            ( Op = unchecked_left_shift(IntType), OpStr = "<<"
-            ; Op = unchecked_right_shift(IntType), OpStr = ">>"
+            % The second operand of the shift operators always has type
+            % `int' in C, but Mercury also allows it to be uint.
+            ( Op = unchecked_left_shift(IntType, ShiftType), OpStr = "<<"
+            ; Op = unchecked_right_shift(IntType, ShiftType), OpStr = ">>"
             ),
             io.write_string("(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_int(IntType), !IO),
             io.write_string(" ", !IO),
             io.write_string(OpStr, !IO),
             io.write_string(" ", !IO),
+            (
+                ShiftType = shift_by_int
+            ;
+                ShiftType = shift_by_uint,
+                io.write_string("(int) ", !IO)
+            ),
             output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
             io.write_string(")", !IO)
         ;

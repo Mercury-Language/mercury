@@ -460,13 +460,16 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         io.write_string(") ", !IO)
     ;
         % XXX Should we abort for some of these?
+        % For shifts, we ignore the distinction between shift_by_int
+        % and shift_by_uint, since when targeting Java, we represent
+        % Mercury uints as Java ints anyway.
         ( Op = int_add(int_type_int)
         ; Op = int_sub(int_type_int)
         ; Op = int_mul(int_type_int)
         ; Op = int_div(int_type_int)
         ; Op = int_mod(int_type_int)
-        ; Op = unchecked_left_shift(int_type_int)
-        ; Op = unchecked_right_shift(int_type_int)
+        ; Op = unchecked_left_shift(int_type_int, _)
+        ; Op = unchecked_right_shift(int_type_int, _)
         ; Op = bitwise_and(int_type_int)
         ; Op = bitwise_or(int_type_int)
         ; Op = bitwise_xor(int_type_int)
@@ -482,24 +485,24 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_and(int_type_int32)
         ; Op = bitwise_or(int_type_int32)
         ; Op = bitwise_xor(int_type_int32)
-        ; Op = unchecked_left_shift(int_type_int32)
-        ; Op = unchecked_right_shift(int_type_int32)
+        ; Op = unchecked_left_shift(int_type_int32, _)
+        ; Op = unchecked_right_shift(int_type_int32, _)
         ; Op = int_add(int_type_uint)
         ; Op = int_sub(int_type_uint)
         ; Op = int_mul(int_type_uint)
         ; Op = bitwise_and(int_type_uint)
         ; Op = bitwise_or(int_type_uint)
         ; Op = bitwise_xor(int_type_uint)
-        ; Op = unchecked_left_shift(int_type_uint)
-        ; Op = unchecked_right_shift(int_type_uint)
+        ; Op = unchecked_left_shift(int_type_uint, _)
+        ; Op = unchecked_right_shift(int_type_uint, _)
         ; Op = int_add(int_type_uint32)
         ; Op = int_sub(int_type_uint32)
         ; Op = int_mul(int_type_uint32)
         ; Op = bitwise_and(int_type_uint32)
         ; Op = bitwise_or(int_type_uint32)
         ; Op = bitwise_xor(int_type_uint32)
-        ; Op = unchecked_left_shift(int_type_uint32)
-        ; Op = unchecked_right_shift(int_type_uint32)
+        ; Op = unchecked_left_shift(int_type_uint32, _)
+        ; Op = unchecked_right_shift(int_type_uint32, _)
         ; Op = int_lt(int_type_int64)
         ; Op = int_gt(int_type_int64)
         ; Op = int_le(int_type_int64)
@@ -512,16 +515,16 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_and(int_type_int64)
         ; Op = bitwise_or(int_type_int64)
         ; Op = bitwise_xor(int_type_int64)
-        ; Op = unchecked_left_shift(int_type_int64)
-        ; Op = unchecked_right_shift(int_type_int64)
+        ; Op = unchecked_left_shift(int_type_int64, _)
+        ; Op = unchecked_right_shift(int_type_int64, _)
         ; Op = int_add(int_type_uint64)
         ; Op = int_sub(int_type_uint64)
         ; Op = int_mul(int_type_uint64)
         ; Op = bitwise_and(int_type_uint64)
         ; Op = bitwise_or(int_type_uint64)
         ; Op = bitwise_xor(int_type_uint64)
-        ; Op = unchecked_left_shift(int_type_uint64)
-        ; Op = unchecked_right_shift(int_type_uint64)
+        ; Op = unchecked_left_shift(int_type_uint64, _)
+        ; Op = unchecked_right_shift(int_type_uint64, _)
         ; Op = logical_and
         ; Op = logical_or
         ; Op = eq(_)
@@ -641,15 +644,15 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_and(int_type_int8)
         ; Op = bitwise_or(int_type_int8)
         ; Op = bitwise_xor(int_type_int8)
-        ; Op = unchecked_left_shift(int_type_int8)
-        ; Op = unchecked_right_shift(int_type_int8)
+        ; Op = unchecked_left_shift(int_type_int8, _)
+        ; Op = unchecked_right_shift(int_type_int8, _)
         ; Op = int_add(int_type_uint8)
         ; Op = int_sub(int_type_uint8)
         ; Op = int_mul(int_type_uint8)
         ; Op = bitwise_and(int_type_uint8)
         ; Op = bitwise_or(int_type_uint8)
         ; Op = bitwise_xor(int_type_uint8)
-        ; Op = unchecked_left_shift(int_type_uint8)
+        ; Op = unchecked_left_shift(int_type_uint8, _)
         ),
         io.write_string("(byte)(", !IO),
         output_rval_for_java(Info, X, !IO),
@@ -659,7 +662,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         output_rval_for_java(Info, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Op = unchecked_right_shift(int_type_uint8),
+        Op = unchecked_right_shift(int_type_uint8, _),
         io.write_string("(byte)(((", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(") & 0xff) ", !IO),
@@ -700,15 +703,15 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_and(int_type_int16)
         ; Op = bitwise_or(int_type_int16)
         ; Op = bitwise_xor(int_type_int16)
-        ; Op = unchecked_left_shift(int_type_int16)
-        ; Op = unchecked_right_shift(int_type_int16)
+        ; Op = unchecked_left_shift(int_type_int16, _)
+        ; Op = unchecked_right_shift(int_type_int16, _)
         ; Op = int_add(int_type_uint16)
         ; Op = int_sub(int_type_uint16)
         ; Op = int_mul(int_type_uint16)
         ; Op = bitwise_and(int_type_uint16)
         ; Op = bitwise_or(int_type_uint16)
         ; Op = bitwise_xor(int_type_uint16)
-        ; Op = unchecked_left_shift(int_type_uint16)
+        ; Op = unchecked_left_shift(int_type_uint16, _)
         ),
         io.write_string("(short)(", !IO),
         output_rval_for_java(Info, X, !IO),
@@ -718,7 +721,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         output_rval_for_java(Info, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Op = unchecked_right_shift(int_type_uint16),
+        Op = unchecked_right_shift(int_type_uint16, _),
         io.write_string("(short)(((", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(") & 0xffff) ", !IO),
@@ -771,7 +774,7 @@ output_binary_op_for_java(Op, !IO) :-
         % See output_binop/6 above.
         ; Op = int_div(_), OpStr = "/"
         ; Op = int_mod(_), OpStr = "%"
-        ; Op = unchecked_left_shift(_), OpStr = "<<"
+        ; Op = unchecked_left_shift(_, _), OpStr = "<<"
         ; Op = bitwise_and(_), OpStr = "&"
         ; Op = bitwise_or(_), OpStr = "|"
         ; Op = bitwise_xor(_), OpStr = "^"
@@ -800,7 +803,7 @@ output_binary_op_for_java(Op, !IO) :-
         ),
         io.write_string(OpStr, !IO)
     ;
-        Op = unchecked_right_shift(IntType),
+        Op = unchecked_right_shift(IntType, _),
         (
             ( IntType = int_type_int
             ; IntType = int_type_int8

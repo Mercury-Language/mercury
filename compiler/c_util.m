@@ -1034,9 +1034,9 @@ binop_category_string(int_add(_), int_or_bool_binary_infix_binop, "+").
 binop_category_string(int_sub(_), int_or_bool_binary_infix_binop, "-").
 binop_category_string(int_mul(_), int_or_bool_binary_infix_binop, "*").
 binop_category_string(int_div(_), int_or_bool_binary_infix_binop, "/").
-binop_category_string(unchecked_left_shift(_),  int_or_bool_binary_infix_binop,
+binop_category_string(unchecked_left_shift(_, _),  int_or_bool_binary_infix_binop,
     "<<").
-binop_category_string(unchecked_right_shift(_), int_or_bool_binary_infix_binop,
+binop_category_string(unchecked_right_shift(_, _), int_or_bool_binary_infix_binop,
     ">>").
 binop_category_string(bitwise_and(_), int_or_bool_binary_infix_binop, "&").
 binop_category_string(bitwise_or(_), int_or_bool_binary_infix_binop, "|").

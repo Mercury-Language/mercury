@@ -730,8 +730,9 @@ ml_left_shift_rval(Rval, Shift, Fill) = ShiftedRval :-
     then
         ShiftedRval = CastRval
     else
-        ShiftedRval = ml_binop(unchecked_left_shift(int_type_uint),
-            CastRval, ml_const(mlconst_int(ShiftInt)))
+        ShiftedRval =
+            ml_binop(unchecked_left_shift(int_type_uint, shift_by_int),
+                CastRval, ml_const(mlconst_int(ShiftInt)))
     ).
 
 ml_right_shift_rval(Rval, Shift) = ShiftedRval :-
@@ -751,8 +752,9 @@ ml_right_shift_rval(Rval, Shift) = ShiftedRval :-
     then
         ShiftedRval = Rval
     else
-        ShiftedRval = ml_binop(unchecked_right_shift(int_type_uint),
-            Rval, ml_const(mlconst_int(ShiftInt)))
+        ShiftedRval =
+            ml_binop(unchecked_right_shift(int_type_uint, shift_by_int),
+                Rval, ml_const(mlconst_int(ShiftInt)))
     ).
 
 %---------------------------------------------------------------------------%
@@ -877,8 +879,8 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
         ;
             % Shifted unsigned constants are also unsigned.
             Rval1 = ml_binop(Binop, ml_const(mlconst_uint(_)), _),
-            ( Binop = unchecked_left_shift(int_type_uint)
-            ; Binop = unchecked_right_shift(int_type_uint)
+            ( Binop = unchecked_left_shift(int_type_uint, _)
+            ; Binop = unchecked_right_shift(int_type_uint, _)
             )
         )
     then

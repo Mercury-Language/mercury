@@ -267,8 +267,9 @@ left_shift_rval(Rval, Shift, Fill) = ShiftedUnsignedRval :-
     then
         ShiftedUnsignedRval = UnsignedRval
     else
-        ShiftedUnsignedRval = binop(unchecked_left_shift(int_type_uint),
-            UnsignedRval, const(llconst_int(ShiftInt)))
+        ShiftedUnsignedRval =
+            binop(unchecked_left_shift(int_type_uint, shift_by_int),
+                UnsignedRval, const(llconst_int(ShiftInt)))
     ).
 
 right_shift_rval(Rval, Shift) = ShiftedRval :-
@@ -278,7 +279,7 @@ right_shift_rval(Rval, Shift) = ShiftedRval :-
     % However, our caller won't give us either a zero shift amount
     % or a constant zero rval to shift.
     % XXX ARG_PACK Should we cast Rval to unsigned like left_shift_rval?
-    ShiftedRval = binop(unchecked_right_shift(int_type_uint),
+    ShiftedRval = binop(unchecked_right_shift(int_type_uint, shift_by_int),
         Rval, const(llconst_int(ShiftInt))).
 
 %---------------------------------------------------------------------------%
