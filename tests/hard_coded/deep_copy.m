@@ -4,13 +4,14 @@
 %
 % Test case for deep_copy
 %
-% Authors: trd, zs
 
 :- module deep_copy.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -22,14 +23,7 @@
 :- import_module term.
 :- import_module univ.
 
-:- pred test_builtins(io__state::di, io__state::uo) is det.
-:- pred test_discriminated(io__state::di, io__state::uo) is det.
-:- pred test_polymorphism(io__state::di, io__state::uo) is det.
-:- pred test_other(io__state::di, io__state::uo) is det.
-
-:- pred newline(io__state::di, io__state::uo) is det.
-
-:- pred test_all(T::in, io__state::di, io__state::uo) is det.
+%---------------------------------------------------------------------------%
 
 :- type enum
     --->    one
@@ -99,9 +93,9 @@
                 int,    % 12
                 int,    % 13
                 int,    % 14
-                T,  % 15
+                T,      % 15
                 int,    % 16
-                T   % 17
+                T       % 17
             )
     ;       tuple_c(
                 int,    % 0
@@ -146,140 +140,146 @@
 
 %---------------------------------------------------------------------------%
 
-main -->
-    test_discriminated,
-    test_polymorphism,
-    test_builtins,
-    test_other.
+main(!IO) :-
+    test_discriminated(!IO),
+    test_polymorphism(!IO),
+    test_builtins(!IO),
+    test_other(!IO).
 
 %---------------------------------------------------------------------------%
 
-test_all(T) -->
-    io__write(T),
-    io__write_string("\n"),
-    { copy(T, T1) },
-    io__write(T),
-    io__write_string("\n"),
-    io__write(T1),
-    newline.
+:- pred test_all(T::in, io::di, io::uo) is det.
+
+test_all(T, !IO) :-
+    io.write(T, !IO),
+    io.write_string("\n", !IO),
+    copy(T, TCopy),
+    io.write(T, !IO),
+    io.write_string("\n", !IO),
+    io.write(TCopy, !IO),
+    io.nl(!IO).
 
 %---------------------------------------------------------------------------%
 
-test_discriminated -->
-    io__write_string("TESTING DISCRIMINATED UNIONS\n"),
+:- pred test_discriminated(io::di, io::uo) is det.
 
-        % test enumerations
-    test_all(two),
-    test_all(one),
-    test_all(three),
+test_discriminated(!IO) :-
+    io.write_string("TESTING DISCRIMINATED UNIONS\n", !IO),
 
-        % test no secondary tags
-    test_all(apple([9, 5, 1])),
-    test_all(banana([three, one, two])),
+    % Test enumerations.
+    test_all(two, !IO),
+    test_all(one, !IO),
+    test_all(three, !IO),
 
-        % test remote secondary tags
-    test_all(zop(3.3, 2.03)),
-    test_all(zip(3, 2)),
-    test_all(zap(3, -2.111)),
+    % Test no secondary tags.
+    test_all(apple([9, 5, 1]), !IO),
+    test_all(banana([three, one, two]), !IO),
 
-        % test local secondary tags
-    test_all(wombat),
-    test_all(foo),
+    % Test remote secondary tags.
+    test_all(zop(3.3, 2.03), !IO),
+    test_all(zip(3, 2), !IO),
+    test_all(zap(3, -2.111), !IO),
 
-        % test the contains_var bit vector
+    % Test local secondary tags.
+    test_all(wombat, !IO),
+    test_all(foo, !IO),
+
+    % Test the contains_var bit vector.
     test_all(tuple_a(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        14, ["a", "b", "c"], 16, 17)),
+        14, ["a", "b", "c"], 16, 17), !IO),
     test_all(tuple_b(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        14, ["a", "b", "c"], 16, ["x", "y", "z"])),
+        14, ["a", "b", "c"], 16, ["x", "y", "z"]), !IO),
     test_all(tuple_c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        14, 15, ["p", "q"], 17)),
+        14, 15, ["p", "q"], 17), !IO),
     test_all(tuple_d(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        ["d", "e", "f"], 15, ["u", "v", "w"], 17)),
+        ["d", "e", "f"], 15, ["u", "v", "w"], 17), !IO),
 
-    newline.
+    io.nl(!IO).
 
-test_polymorphism -->
-    io__write_string("TESTING POLYMORPHISM\n"),
-    test_all(poly_three(3.33, 4, poly_one(9.11))),
-    test_all(poly_two(3)),
-    test_all(poly_one([2399.3])),
+:- pred test_polymorphism(io::di, io::uo) is det.
 
-    newline.
+test_polymorphism(!IO) :-
+    io.write_string("TESTING POLYMORPHISM\n", !IO),
+    test_all(poly_three(3.33, 4, poly_one(9.11)), !IO),
+    test_all(poly_two(3) : poly(int, int), !IO),
+    test_all(poly_one([2399.3]) : poly(list(float), int), !IO),
 
-test_builtins -->
-    io__write_string("TESTING BUILTINS\n"),
+    io.nl(!IO).
 
-        % test strings
-    test_all(""),
-    test_all("Hello, world\n"),
-    test_all("Foo%sFoo"),
-    test_all(""""),
+:- pred test_builtins(io::di, io::uo) is det.
 
-        % test characters
-    test_all('a'),
-    test_all('&'),
+test_builtins(!IO) :-
+    io.write_string("TESTING BUILTINS\n", !IO),
 
-        % test floats
-    test_all(3.14159),
-    test_all(11.28324983E-22),
-    test_all(22.3954899E22),
+    % Test strings.
+    test_all("", !IO),
+    test_all("Hello, world\n", !IO),
+    test_all("Foo%sFoo", !IO),
+    test_all("""", !IO),
 
-        % test integers
-    test_all(-65),
-    test_all(4),
+    % Test characters.
+    test_all('a', !IO),
+    test_all('&', !IO),
 
-    test_all(561u),
+    % Test floats.
+    test_all(3.14159, !IO),
+    test_all(11.28324983E-22, !IO),
+    test_all(22.3954899E22, !IO),
 
-    test_all(-10i8),
-    test_all(11i8),
-    test_all(12u8),
+    % Test integers.
+    test_all(-65, !IO),
+    test_all(4, !IO),
 
-    test_all(-13i16),
-    test_all(14i16),
-    test_all(15i16),
+    test_all(561u, !IO),
 
-    test_all(-16i32),
-    test_all(17i32),
-    test_all(18u32),
+    test_all(-10i8, !IO),
+    test_all(11i8, !IO),
+    test_all(12u8, !IO),
 
-    test_all(-19i64),
-    test_all(20i64),
-    test_all(21u64),
+    test_all(-13i16, !IO),
+    test_all(14i16, !IO),
+    test_all(15i16, !IO),
 
-        % test univ.
-    { type_to_univ(["hi! I'm a univ!"], Univ) },
-    test_all(Univ),
+    test_all(-16i32, !IO),
+    test_all(17i32, !IO),
+    test_all(18u32, !IO),
 
-        % test predicates
-        % XXX we don't deep copy predicates correctly yet
-    %test_all(newline),
+    test_all(-19i64, !IO),
+    test_all(20i64, !IO),
+    test_all(21u64, !IO),
 
-        % test tuples
-    test_all({1, "two", '3', {4, '5', "6"}}),
+    % Test univ.
+    type_to_univ(["hi! I'm a univ!"], Univ),
+    test_all(Univ, !IO),
 
-    newline.
+    % Test predicates.
+    % XXX We don't deep copy predicates correctly yet.
+    % test_all(test_other),
+
+    % Test tuples.
+    test_all({1, "two", '3', {4, '5', "6"}}, !IO),
+
+    io.nl(!IO).
 
     % Note: testing abstract types is always going to have results
     % that are dependent on the implementation. If someone changes
     % the implementation, the results of this test can change.
+    %
+:- pred test_other(io::di, io::uo) is det.
 
-test_other -->
-    io__write_string("TESTING OTHER TYPES\n"),
-    { term__init_var_supply(VarSupply) },
-    { term__create_var(Var, VarSupply, NewVarSupply) },
-    test_all(Var),
-    test_all(VarSupply),
-    test_all(NewVarSupply),
+test_other(!IO) :-
+    io.write_string("TESTING OTHER TYPES\n", !IO),
+    term.init_var_supply(VarSupply : var_supply(int)),
+    term.create_var(Var, VarSupply, NewVarSupply),
+    test_all(Var, !IO),
+    test_all(VarSupply, !IO),
+    test_all(NewVarSupply, !IO),
 
-        % presently, at least, map is an equivalence and
-        % an abstract type.
-    { map__init(Map) },
-    test_all(Map),
+    % Presently, at least, map is an equivalence and an abstract type.
+    map.init(Map : map(int, int)),
+    test_all(Map, !IO),
 
-        % a no tag type
-    test_all(qwerty(4)),
+    % Test a notag type.
+    test_all(qwerty(4), !IO),
 
-    newline.
-
-newline -->
-    io__write_char('\n').
+    io.nl(!IO).
