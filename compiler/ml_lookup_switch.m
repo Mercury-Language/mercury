@@ -464,10 +464,8 @@ ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars, OutTypes,
     ;
         NeedRangeCheck = need_range_check,
         Difference = EndVal - StartVal,
-
         RangeCheckCond = ml_binop(unsigned_le, IndexRval,
             ml_const(mlconst_int(Difference))),
-
         Stmt = ml_stmt_if_then_else(RangeCheckCond, InRangeStmt, no, Context)
     ).
 
