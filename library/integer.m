@@ -131,7 +131,7 @@
 
     % Exponentiation.
     % pow(X, Y) = Z: Z is X raised to the Yth power.
-    % Throws a `math.domain_error' exception if Y is negative.
+    % Throws a `domain_error' exception if Y is negative.
     %
 :- func pow(integer, integer) = integer.
 
@@ -366,7 +366,6 @@
 :- import_module int32.
 :- import_module int64.
 :- import_module list.
-:- import_module math.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
@@ -686,7 +685,7 @@ divide_with_rem(X, Y, Quotient, Remainder) :-
 
 pow(A, N) = P :-
     ( if big_isnegative(N) then
-        throw(math.domain_error("integer.pow: negative exponent"))
+        throw(domain_error("integer.pow: negative exponent"))
     else
         P = big_pow(A, N)
     ).
@@ -946,7 +945,7 @@ big_mod(X, Y) = Mod :-
 
 big_quot_rem(X, Y, Quot, Rem) :-
     ( if is_zero(Y) then
-        throw(math.domain_error("integer.big_quot_rem: division by zero"))
+        throw(domain_error("integer.big_quot_rem: division by zero"))
     else if is_zero(X) then
         Quot = integer.zero,
         Rem  = integer.zero
@@ -1423,7 +1422,7 @@ det_to_int(Integer) = Int :-
     ( if integer.to_int(Integer, IntPrime) then
         Int = IntPrime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_int: domain error (conversion would overflow)"))
     ).
 
@@ -1447,7 +1446,7 @@ det_to_uint(Integer) = UInt :-
     ( if integer.to_uint(Integer, UIntPrime) then
         UInt = UIntPrime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_uint: domain error (conversion would overflow)"))
     ).
 
@@ -1465,7 +1464,7 @@ det_to_int8(Integer) = Int8 :-
     ( if integer.to_int8(Integer, Int8Prime) then
         Int8 = Int8Prime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_int8: domain error (conversion would overflow)"))
     ).
 
@@ -1483,7 +1482,7 @@ det_to_uint8(Integer) = UInt8 :-
     ( if integer.to_uint8(Integer, UInt8Prime) then
         UInt8 = UInt8Prime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_uint8: domain error (conversion would overflow)"))
     ).
 
@@ -1497,7 +1496,7 @@ det_to_int16(Integer) = Int16 :-
     ( if integer.to_int16(Integer, Int16Prime) then
         Int16 = Int16Prime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_int16: domain error (conversion would overflow)"))
     ).
 
@@ -1511,7 +1510,7 @@ det_to_uint16(Integer) = UInt16 :-
     ( if integer.to_uint16(Integer, UInt16Prime) then
         UInt16 = UInt16Prime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_uint16: domain error (conversion would overflow)"))
     ).
 
@@ -1525,7 +1524,7 @@ det_to_int32(Integer) = Int32 :-
     ( if integer.to_int32(Integer, Int32Prime) then
         Int32 = Int32Prime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_int32: domain error (conversion would overflow"))
     ).
 
@@ -1553,7 +1552,7 @@ det_to_uint32(Integer) = UInt32 :-
     ( if integer.to_uint32(Integer, UInt32Prime) then
         UInt32 = UInt32Prime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_uint32: domain error (conversion would overflow"))
     ).
 
@@ -1603,7 +1602,7 @@ det_to_int64(Integer) = Int64 :-
     ( if integer.to_int64(Integer, Int64Prime) then
         Int64 = Int64Prime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_int64: domain error (conversion would overflow"))
     ).
 
@@ -1635,7 +1634,7 @@ det_to_uint64(Integer) = UInt64 :-
     ( if integer.to_uint64(Integer, UInt64Prime) then
         UInt64 = UInt64Prime
     else
-        throw(math.domain_error(
+        throw(domain_error(
             "integer.det_to_uint64: domain error (conversion would overflow"))
     ).
 

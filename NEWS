@@ -23,6 +23,12 @@ Changes that may break compatibility
   need module B, this avoids the need to recompile those child modules
   when the interface of module B changes.
 
+* We have moved the type `domain_error` from the `math` module of the Mercury
+  standard library to the `exception` module. Any module qualified references
+  to the name of either the type or of its one function symbol should have
+  the module qualification either updated or deleted. The reason for the move
+  is that it reduces the cost of some new optimizations.
+
 Changes to the Mercury standard library
 ---------------------------------------
 

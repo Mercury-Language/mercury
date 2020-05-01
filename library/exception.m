@@ -37,6 +37,15 @@
 :- type software_error
     --->    software_error(string).
 
+    % A domain error exception, which indicates that the inputs
+    % to a predicate or function were outside the domain of that
+    % predicate or function. The string indicates where the error occurred.
+    %
+:- type domain_error
+    --->    domain_error(string).
+
+%---------------------------------------------------------------------------%
+
     % throw(Exception):
     %
     % Throw the specified exception.

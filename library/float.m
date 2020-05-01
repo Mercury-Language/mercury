@@ -74,7 +74,7 @@
 :- func (float::in) * (float::in) = (float::uo) is det.
 
     % Division.
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     % See the comments at the top of math.m to find out how to disable
     % this check.
     %
@@ -217,7 +217,7 @@
     % pow(Base, Exponent) returns Base raised to the power Exponent.
     % Fewer domain restrictions than math.pow: works for negative Base,
     % and pow(B, 0) = 1.0 for all B, even B=0.0.
-    % Only pow(0, <negative>) throws a `math.domain_error' exception.
+    % Only pow(0, <negative>) throws a `domain_error' exception.
     %
 :- func pow(float, int) = float.
 
@@ -346,7 +346,6 @@
 
 :- import_module exception.
 :- import_module int.
-:- import_module math.
 :- import_module string.
 
 %
@@ -370,7 +369,7 @@
 :- pragma inline('/'/2).
 X / Y = Z :-
     ( if float_domain_checks, Y = 0.0 then
-        throw(math.domain_error("float.'/': division by zero"))
+        throw(domain_error("float.'/': division by zero"))
     else
         Z = unchecked_quotient(X, Y)
     ).
@@ -888,7 +887,7 @@ pow(Base, Exp) = Ans :-
         Ans = multiply_by_pow(1.0, Base, Exp)
     else
         ( if float_domain_checks, Base = 0.0 then
-            throw(math.domain_error("float.pow: zero base"))
+            throw(domain_error("float.pow: zero base"))
         else
             Ans = unchecked_quotient(1.0,
                 multiply_by_pow(1.0, Base, -Exp))

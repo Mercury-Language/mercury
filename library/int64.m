@@ -198,7 +198,7 @@
     % Flooring integer division.
     % Truncates towards minus infinity, e.g. -10_i64 div 3_i64 = -4_i64.
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int64::in) div (int64::in) = (int64::uo) is det.
 
@@ -207,7 +207,7 @@
     % `div' has nicer mathematical properties for negative operands,
     % but `//' is typically more efficient.
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int64::in) // (int64::in) = (int64::uo) is det.
 
@@ -223,14 +223,14 @@
     % Modulus.
     % X mod Y = X - (X div Y) * Y
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int64::in) mod (int64::in) = (int64::uo) is det.
 
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `math.domain_error/` exception if the right operand is zero.
+    % Throws a `domain_error/` exception if the right operand is zero.
     %
 :- func (int64::in) rem (int64::in) = (int64::uo) is det.
 
@@ -601,7 +601,7 @@ X div Y = Div :-
 :- pragma inline('//'/2).
 X // Y = Div :-
     ( if Y = 0i64 then
-        throw(math.domain_error("int64.'//': division by zero"))
+        throw(domain_error("int64.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
     ).
@@ -616,7 +616,7 @@ X mod Y = X  - (X div Y) * Y.
 :- pragma inline(rem/2).
 X rem Y = Rem :-
     ( if Y = 0i64 then
-        throw(math.domain_error("int64.rem: division by zero"))
+        throw(domain_error("int64.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
     ).
@@ -638,7 +638,7 @@ X << Y = Result :-
         Result = unchecked_left_shift(X, Y)
     else
         Msg = "int64.(<<): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 X >> Y = Result :-
@@ -646,7 +646,7 @@ X >> Y = Result :-
         Result = unchecked_right_shift(X, Y)
     else
         Msg = "int64.(>>): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 % The operations /\, \/, xor and \ are builtins.

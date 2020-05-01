@@ -187,7 +187,7 @@
     % Flooring integer division.
     % Truncates towards minus infinity, e.g. (-10_i32) div 3_i32 = (-4_i32).
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int32::in) div (int32::in) = (int32::uo) is det.
 
@@ -196,7 +196,7 @@
     % `div' has nicer mathematical properties for negative operands,
     % but `//' is typically more efficient.
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int32::in) // (int32::in) = (int32::uo) is det.
 
@@ -212,14 +212,14 @@
     % Modulus.
     % X mod Y = X - (X div Y) * Y
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int32::in) mod (int32::in) = (int32::uo) is det.
 
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `math.domain_error/` exception if the right operand is zero.
+    % Throws a `domain_error/` exception if the right operand is zero.
     %
 :- func (int32::in) rem (int32::in) = (int32::uo) is det.
 
@@ -621,7 +621,7 @@ X div Y = Div :-
 :- pragma inline('//'/2).
 X // Y = Div :-
     ( if Y = 0i32 then
-        throw(math.domain_error("int32.'//': division by zero"))
+        throw(domain_error("int32.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
     ).
@@ -634,7 +634,7 @@ X mod Y = X  - (X div Y) * Y.
 :- pragma inline(rem/2).
 X rem Y = Rem :-
     ( if Y = 0i32 then
-        throw(math.domain_error("int32.rem: division by zero"))
+        throw(domain_error("int32.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
     ).
@@ -656,7 +656,7 @@ X << Y = Result :-
         Result = unchecked_left_shift(X, Y)
     else
         Msg = "int32.(<<): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 X >> Y = Result :-
@@ -664,7 +664,7 @@ X >> Y = Result :-
         Result = unchecked_right_shift(X, Y)
     else
         Msg = "int32.(>>): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 %---------------------------------------------------------------------------%

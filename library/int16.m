@@ -185,7 +185,7 @@
     % Flooring integer division.
     % Truncates towards minus infinity, e.g. (-10_i16) div 3_i16 = (-4_i16).
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int16::in) div (int16::in) = (int16::uo) is det.
 
@@ -194,7 +194,7 @@
     % `div' has nicer mathematical properties for negative operands,
     % but `//' is typically more efficient.
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int16::in) // (int16::in) = (int16::uo) is det.
 
@@ -210,14 +210,14 @@
     % Modulus.
     % X mod Y = X - (X div Y) * Y
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int16::in) mod (int16::in) = (int16::uo) is det.
 
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `math.domain_error/` exception if the right operand is zero.
+    % Throws a `domain_error/` exception if the right operand is zero.
     %
 :- func (int16::in) rem (int16::in) = (int16::uo) is det.
 
@@ -361,7 +361,6 @@
 
 :- import_module exception.
 :- import_module int.
-:- import_module math.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
@@ -581,7 +580,7 @@ X div Y = Div :-
 :- pragma inline('//'/2).
 X // Y = Div :-
     ( if Y = 0i16 then
-        throw(math.domain_error("int16.'//': division by zero"))
+        throw(domain_error("int16.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
     ).
@@ -594,7 +593,7 @@ X mod Y = X - (X div Y) * Y.
 :- pragma inline(rem/2).
 X rem Y = Rem :-
     ( if Y = 0i16 then
-        throw(math.domain_error("int16.rem: division by zero"))
+        throw(domain_error("int16.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
     ).
@@ -616,7 +615,7 @@ X << Y = Result :-
         Result = unchecked_left_shift(X, Y)
     else
         Msg = "int16.(<<): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 X >> Y = Result :-
@@ -624,7 +623,7 @@ X >> Y = Result :-
         Result = unchecked_right_shift(X, Y)
     else
         Msg = "int16.(>>): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 %---------------------------------------------------------------------------%

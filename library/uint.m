@@ -83,13 +83,13 @@
 
     % Truncating integer division.
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (uint::in) div (uint::in) = (uint::uo) is det.
 
     % Truncating integer division.
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (uint::in) // (uint::in) = (uint::uo) is det.
 
@@ -105,14 +105,14 @@
     % Modulus.
     % X mod Y = X - (X div Y) * Y
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (uint::in) mod (uint::in) = (uint::uo) is det.
 
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `math.domain_error/` exception if the right operand is zero.
+    % Throws a `domain_error/` exception if the right operand is zero.
     %
 :- func (uint::in) rem (uint::in) = (uint::uo) is det.
 
@@ -202,7 +202,6 @@
 :- implementation.
 
 :- import_module exception.
-:- import_module math.
 :- import_module require.
 :- import_module string.
 
@@ -312,7 +311,7 @@ X div Y = X // Y.
 :- pragma inline('//'/2).
 X // Y = Div :-
     ( if Y = 0u then
-        throw(math.domain_error("uint.'//': division by zero"))
+        throw(domain_error("uint.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
     ).
@@ -325,7 +324,7 @@ X mod Y = X rem Y.
 :- pragma inline(rem/2).
 X rem Y = Rem :-
     ( if Y = 0u then
-        throw(math.domain_error("uint.rem: division by zero"))
+        throw(domain_error("uint.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
     ).
@@ -337,7 +336,7 @@ X << Y = Result :-
         Result = unchecked_left_shift(X, Y)
     else
         Msg = "uint.(<<): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 X >> Y = Result :-
@@ -345,7 +344,7 @@ X >> Y = Result :-
         Result = unchecked_right_shift(X, Y)
     else
         Msg = "uint.(>>): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 %---------------------------------------------------------------------------%

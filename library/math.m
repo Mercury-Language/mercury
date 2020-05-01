@@ -30,12 +30,6 @@
 :- module math.
 :- interface.
 
-    % A domain error exception, indicates that the inputs to a function
-    % were outside the domain of the function. The string indicates
-    % where the error occurred.
-    %
-:- type domain_error ---> domain_error(string).
-
 %---------------------------------------------------------------------------%
 %
 % Mathematical constants

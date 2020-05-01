@@ -116,7 +116,7 @@
     % Flooring integer division.
     % Truncates towards minus infinity, e.g. (-10) div 3 = (-4).
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     % See the comments at the top of math.m to find out how to disable
     % domain checks.
     %
@@ -127,7 +127,7 @@
     % `div' has nicer mathematical properties for negative operands,
     % but `//' is typically more efficient.
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     % See the comments at the top of math.m to find out how to disable
     % domain checks.
     %
@@ -153,7 +153,7 @@
     % `mod' has nicer mathematical properties for negative X,
     % but `rem' is typically more efficient.
     %
-    % Throws a `math.domain_error' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     % See the comments at the top of math.m to find out how to disable
     % domain checks.
     %
@@ -174,7 +174,7 @@
 
     % Exponentiation.
     % pow(X, Y, Z): Z is X raised to the Yth power.
-    % Throws a `math.domain_error' exception if Y is negative.
+    % Throws a `domain_error' exception if Y is negative.
     %
 :- func pow(int, int) = int.
 :- pred pow(int::in, int::in, int::out) is det.
@@ -182,7 +182,7 @@
     % Base 2 logarithm.
     % log2(X) = N is the least integer such that 2 to the power N
     % is greater than or equal to X.
-    % Throws a `math.domain_error' exception if X is not positive.
+    % Throws a `domain_error' exception if X is not positive.
     %
 :- func log2(int) = int.
 :- pred log2(int::in, int::out) is det.
@@ -543,7 +543,6 @@
 :- implementation.
 
 :- import_module exception.
-:- import_module math.
 :- import_module string.
 :- import_module uint.
 
@@ -679,7 +678,7 @@ X // Y = Div :-
         int_domain_checks,
         Y = 0
     then
-        throw(math.domain_error("int.'//': division by zero"))
+        throw(domain_error("int.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
     ).
@@ -695,7 +694,7 @@ X rem Y = Rem :-
         int_domain_checks,
         Y = 0
     then
-        throw(math.domain_error("int.rem: division by zero"))
+        throw(domain_error("int.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
     ).
@@ -713,7 +712,7 @@ pow(Base, Exp) = Result :-
 
 pow(Base, Exp, Result) :-
     ( if int_domain_checks, Exp < 0 then
-        throw(math.domain_error("int.pow: zero base"))
+        throw(domain_error("int.pow: zero base"))
     else
         Result = multiply_by_pow(1, Base, Exp)
     ).
@@ -740,7 +739,7 @@ log2(X) = CeilLogX :-
 
 log2(X, CeilLogX) :-
     ( if int_domain_checks, X =< 0 then
-        throw(math.domain_error("int.log2: taking logarithm of zero"))
+        throw(domain_error("int.log2: taking logarithm of zero"))
     else
         log2_loop(X, 0, CeilLogX)
     ).
@@ -763,7 +762,7 @@ X << Y = Z :-
         Z = unchecked_left_shift(X, Y)
     else
         Msg = "int.(<<): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 legacy_left_shift(X, Y) = Z :-
@@ -787,7 +786,7 @@ X >> Y = Z :-
         Z = unchecked_right_shift(X, Y)
     else
         Msg = "int.(>>): second operand is out of range",
-        throw(math.domain_error(Msg))
+        throw(domain_error(Msg))
     ).
 
 legacy_right_shift(X, Y) = Z :-
