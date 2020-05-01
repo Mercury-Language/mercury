@@ -94,6 +94,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.
 :- import_module transform_hlds.const_prop.
@@ -107,12 +108,14 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
 
 simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
-        NestedContext, InstMap0, Common0, Common, !Info) :-
+        NestedContext, InstMap0, !Common, !Info) :-
     GoalExpr0 = plain_call(PredId, ProcId, Args, IsBuiltin, _, _),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
@@ -133,7 +136,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         PredInfo, ProcInfo, GoalInfo0, !Info),
     maybe_generate_warning_for_infinite_loop_call(PredId, ProcId,
         Args, IsBuiltin, PredInfo, ProcInfo, GoalInfo0, NestedContext,
-        Common0, !Info),
+        !.Common, !Info),
     maybe_generate_warning_for_useless_comparison(PredInfo,
         InstMap0, Args, GoalInfo0, !Info),
 
@@ -176,12 +179,11 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         then
             GoalExpr = EvaluatedGoalExpr,
             GoalInfo = EvaluatedGoalInfo,
-            Common = Common0,
             simplify_info_set_should_requantify(!Info)
         else
             % Step 2.
             simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0,
-                GoalInfo0, MaybeAssignsGoalExpr, Common0, Common, !Info),
+                GoalInfo0, MaybeAssignsGoalExpr, !Common, !Info),
             (
                 MaybeAssignsGoalExpr = yes(GoalExpr),
                 GoalInfo = GoalInfo0
@@ -193,7 +195,8 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 ( if
                     % Step 3.
                     simplify_improve_library_call(InstMap0,
-                        ModuleName, PredName, ModeNum, Args, ImprovedGoalExpr,
+                        ModuleName, PredName, ModeNum, Args,
+                        GoalExpr0, ImprovedGoalExpr,
                         GoalInfo0, ImprovedGoalInfo, !Info)
                 then
                     % simplify_improve_library_call will have set
@@ -210,7 +213,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % For calls to non-library predicates, steps 1 and 3 above
         % don't apply, so we can do only step 2.
         simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0,
-            GoalInfo0, MaybeAssignsGoalExpr, Common0, Common, !Info),
+            GoalInfo0, MaybeAssignsGoalExpr, !Common, !Info),
         (
             MaybeAssignsGoalExpr = yes(GoalExpr),
             GoalInfo = GoalInfo0
@@ -265,7 +268,7 @@ simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo,
     ).
 
 simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
-        _NestedContext0, InstMap0, Common0, Common, !Info) :-
+        _NestedContext, InstMap0, !Common, !Info) :-
     GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
         Args0, ExtraArgs0, MaybeTraceRuntimeCond, Impl),
     % XXX The logic of this predicate should be based on
@@ -284,11 +287,10 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
         proc_id_to_int(ProcId, ModeNum),
         ArgVars = list.map(foreign_arg_var, Args0),
         simplify_improve_library_call(InstMap0, ModuleName, PredName,
-            ModeNum, ArgVars, ImprovedGoalExpr, !GoalInfo, !Info)
+            ModeNum, ArgVars, GoalExpr0, ImprovedGoalExpr, !GoalInfo, !Info)
     then
-        GoalExpr = ImprovedGoalExpr,
-        Common = Common0
         % simplify_improve_library_call will have set the requantify flag.
+        GoalExpr = ImprovedGoalExpr
     else
         BoxPolicy = get_box_policy(Attributes),
         (
@@ -310,7 +312,7 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
             ArgVars = list.map(foreign_arg_var, Args),
             Purity = goal_info_get_purity(!.GoalInfo),
             common_optimise_call(PredId, ProcId, ArgVars, Purity, !.GoalInfo,
-                GoalExpr1, MaybeAssignsGoalExpr, Common0, Common, !Info),
+                GoalExpr1, MaybeAssignsGoalExpr, !Common, !Info),
             ( if
                 MaybeAssignsGoalExpr = yes(AssignsGoalExpr),
                 OptDuplicateCalls = yes
@@ -320,8 +322,7 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
                 GoalExpr = GoalExpr1
             )
         else
-            GoalExpr = GoalExpr1,
-            Common = Common0
+            GoalExpr = GoalExpr1
         )
     ).
 
@@ -955,12 +956,14 @@ simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0, GoalInfo0,
     % before we get here.
     %
 :- pred simplify_improve_library_call(instmap::in,
-    string::in, string::in, int::in, list(prog_var)::in, hlds_goal_expr::out,
+    string::in, string::in, int::in, list(prog_var)::in,
+    hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is semidet.
 
 simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
-        ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info) :-
+        GoalExpr0, ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo,
+        !Info) :-
     (
         ModuleName = "builtin",
         (
@@ -1033,7 +1036,8 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
             % This also optimizes away tautological comparisons, but does
             % other optimizations as well.
             simplify_improve_arith_shift_cmp_ops(IntType, InstMap0,
-                ModuleName, PredName, ModeNum, Args, ImprovedGoalExpr,
+                ModuleName, PredName, ModeNum, Args,
+                GoalExpr0, ImprovedGoalExpr,
                 GoalInfo0, ImprovedGoalInfo, !Info)
         )
     ),
@@ -1307,14 +1311,24 @@ simplify_make_cmp_goal_expr(Info, ModuleSymName, Op, IsBuiltin, X, Y,
     simplify_info::in, simplify_info::out) is det.
 
 simplify_make_int_const(IntConst, ConstVar, Goal, !Info) :-
-    simplify_info_get_varset(!.Info, VarSet0),
-    simplify_info_get_var_types(!.Info, VarTypes0),
-    varset.new_var(ConstVar, VarSet0, VarSet),
-    add_var_type(ConstVar, int_type, VarTypes0, VarTypes),
-    simplify_info_set_varset(VarSet, !Info),
-    simplify_info_set_var_types(VarTypes, !Info),
-
     ConstConsId = int_const(IntConst),
+    simplify_make_const(int_type, ConstConsId, ConstVar, Goal, !Info).
+
+:- pred simplify_make_string_const(string::in, prog_var::out, hlds_goal::out,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_make_string_const(StringConst, ConstVar, Goal, !Info) :-
+    ConstConsId = string_const(StringConst),
+    simplify_make_const(string_type, ConstConsId, ConstVar, Goal, !Info).
+
+%---------------------%
+
+:- pred simplify_make_const(mer_type::in, cons_id::in,
+    prog_var::out, hlds_goal::out,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_make_const(Type, ConstConsId, ConstVar, Goal, !Info) :-
+    simplify_make_var(Type, ConstVar, !Info),
     Unification = construct(ConstVar, ConstConsId, [], [],
         construct_dynamically, cell_is_shared, no_construct_sub_info),
     RHS = rhs_functor(ConstConsId, is_not_exist_constr, []),
@@ -1328,15 +1342,27 @@ simplify_make_int_const(IntConst, ConstVar, Goal, !Info) :-
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
+:- pred simplify_make_var(mer_type::in, prog_var::out,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_make_var(Type, Var, !Info) :-
+    simplify_info_get_varset(!.Info, VarSet0),
+    simplify_info_get_var_types(!.Info, VarTypes0),
+    varset.new_var(Var, VarSet0, VarSet),
+    add_var_type(Var, Type, VarTypes0, VarTypes),
+    simplify_info_set_varset(VarSet, !Info),
+    simplify_info_set_var_types(VarTypes, !Info).
+
 %---------------------%
 
 :- pred simplify_improve_arith_shift_cmp_ops(int_type::in, instmap::in,
-    string::in, string::in, int::in, list(prog_var)::in, hlds_goal_expr::out,
+    string::in, string::in, int::in, list(prog_var)::in,
+    hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is semidet.
 
 simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
-        _ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info) :-
+        _ModeNum, Args, GoalExpr0, ImprovedGoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     (
@@ -1365,21 +1391,174 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         ),
         Args = [X, Y, Z],
         instmap_lookup_var(InstMap0, Y, InstY),
-        InstY = bound(_, _, [bound_functor(ConsY, [])]),
-        is_non_zero_const(IntType, ConsY),
-        simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
-            inline_builtin, X, Y, Z, ImprovedGoalExpr)
+        ( if InstY = bound(_, _, [bound_functor(ConsY, [])]) then
+            ( if is_zero_const(IntType, ConsY) then
+                ImprovedGoalExpr = GoalExpr0,
+                Context = goal_info_get_context(!.GoalInfo),
+                SymName = qualified(unqualified(ModuleName), PredName),
+                Pieces = [words("Error: call to"), qual_sym_name(SymName),
+                    words("with a zero divisor."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_simplify(report_in_any_mode), Context, Pieces),
+                simplify_info_add_message(Spec, !Info)
+            else if is_int_const(IntType, ConsY) then
+                simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
+                    inline_builtin, X, Y, Z, ImprovedGoalExpr)
+            else
+                fail
+            )
+        else
+            % XXX See the comments at the end of the code handling shifts.
+            fail
+        )
     ;
         ( PredName = "<<", Op = "unchecked_left_shift"
         ; PredName = ">>", Op = "unchecked_right_shift"
+        % XXX These two predicates do not exist yet.
+        ; PredName = "<<u", Op = "unchecked_left_ushift"
+        ; PredName = ">>u", Op = "unchecked_right_ushift"
         ),
         Args = [X, Y, Z],
+        NumTargetBits = int_type_target_bits(Globals, IntType),
         instmap_lookup_var(InstMap0, Y, InstY),
-        InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
-        YVal >= 0,
-        YVal < int_type_target_bits(Globals, IntType),
-        simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
-            inline_builtin, X, Y, Z, ImprovedGoalExpr)
+        ( if
+            InstY = bound(_, _, [bound_functor(YConst, [])]),
+            ( YConst = int_const(_)     % for << and >>
+            ; YConst = uint_const(_)    % for <<u and >>u
+            )
+        then
+            (
+                YConst = int_const(YIntVal),
+                ( if 0 =< YIntVal, YIntVal < NumTargetBits then
+                    simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
+                        inline_builtin, X, Y, Z, ImprovedGoalExpr)
+                else
+                    ImprovedGoalExpr = GoalExpr0,
+                    Context = goal_info_get_context(!.GoalInfo),
+                    SymName = qualified(unqualified(ModuleName), PredName),
+                    Pieces = [words("Error: call to"), qual_sym_name(SymName),
+                        words("with a shift amount that is outside"),
+                        words("of the range 0 (inclusive) to"),
+                        int_fixed(NumTargetBits), words("(exclusive)."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_simplify(report_in_any_mode), Context, Pieces),
+                    simplify_info_add_message(Spec, !Info)
+                )
+            ;
+                YConst = uint_const(YUintVal),
+                ( if YUintVal < uint.det_from_int(NumTargetBits) then
+                    simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
+                        inline_builtin, X, Y, Z, ImprovedGoalExpr)
+                else
+                    ImprovedGoalExpr = GoalExpr0,
+                    Context = goal_info_get_context(!.GoalInfo),
+                    SymName = qualified(unqualified(ModuleName), PredName),
+                    Pieces = [words("Error: call to"), qual_sym_name(SymName),
+                        words("with a shift amount that is equal to"),
+                        words("or greater than"), int_fixed(NumTargetBits),
+                        suffix("."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_simplify(report_in_any_mode), Context, Pieces),
+                    simplify_info_add_message(Spec, !Info)
+                )
+            )
+        else
+            % XXX We could replace the checked shift with the code of the check
+            % and the unchecked shift, but doing that would require getting
+            % access to three things:
+            %
+            % 1. the predicate declaration for unsigned_lt, which currently
+            %    is a private predicate in int.m, and
+            %
+            % 2. the definition of the wrapper we put around the text of
+            %    the exception message, which currently is math.domain error.
+            %
+            % 3. the definition of "throw" in exception.m
+            %
+            % Even if ModuleName is "int", we can't currently access the
+            % first. Since math.m is never imported implicitly, we cannot
+            % count on math.domain_error being available either. And while
+            % exception.m *is* currently imported implicitly if the module
+            % being compiled contains a try_expr or an atomic_expr, a module
+            % that does not contain either may nevertheless contain a checked
+            % shift operation.
+            %
+            % We should consider making unsigned_lt an exported predicate
+            % in private_builtin.m, and math_domain_error a type in the
+            % same module. The latter would be a user-visible breaking change,
+            % but the required fix for any code that looks for that wrapper
+            % in try/catch construct would be replacing math.domain_error(...)
+            % with math_domain_error(...), which is as minimal a change as
+            % it is possible to be.
+            %
+            % As for the third point, we could make get_dependencies.m
+            % import exception.m implicitly if the module being compiled
+            % contains a call to a shift operation. We already do something
+            % very similar for calls to functions/predicates named "format".
+            %
+            % The semidet_fail must stay until everything above has been done.
+            semidet_fail,
+
+            % The code we want to construct looks like this:
+            %
+            % ( if
+            %   NumTargetBitsConstVar = ...,
+            %   unsigned_lt(Y, NumTargetBitsConstVar)
+            % then
+            %   unchecked_{left,right}_shift(X, Y, Z)
+            % else
+            %   ErrorMsgStrVar = "...",
+            %   ExceptionVar = math_domain_error(ErrorMsgStrVar),
+            %   throw(ExceptionVar)
+            % )
+
+            Context = goal_info_get_context(!.GoalInfo),
+            simplify_make_int_const(NumTargetBits, NumTargetBitsConstVar,
+                NumTargetBitsConstGoal, !Info),
+            PrivateBuiltin = mercury_private_builtin_module,
+            % XXX This assumes that unsigned_lt works when Y is uint,
+            % as well as when it is int. If this assumption is wrong,
+            % it should be simple to replace the predicate name with "<"
+            % in that case.
+            simplify_make_cmp_goal_expr(!.Info, PrivateBuiltin, "unsigned_lt",
+                inline_builtin, Y, NumTargetBitsConstVar, Context,
+                InRangeTestGoal),
+            goal_info_init(set_of_var.make_singleton(Y),
+                instmap_delta_bind_no_var, detism_semi, purity_pure, Context,
+                TestConjGoalInfo), 
+            conj_list_to_goal([NumTargetBitsConstGoal, InRangeTestGoal],
+                TestConjGoalInfo, TestConjGoal),
+
+            simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
+                inline_builtin, X, Y, Z, UncheckedShiftGoalExpr),
+            UncheckedShiftGoal = hlds_goal(UncheckedShiftGoalExpr, !.GoalInfo),
+
+            string.format("%s.(%s): second operand is out of range",
+                [s(ModuleName), s(PredName)], NotInRangeStr),
+            simplify_make_string_const(NotInRangeStr, ErrorMsgStrVar,
+                ErrorMsgStrGoal, !Info),
+            % XXX ExceptionType should be the type of math_domain_error.
+            ExceptionType = void_type,
+            simplify_make_var(ExceptionType, ExceptionVar, !Info),
+            type_to_ctor_det(ExceptionType, ExceptionTypeCtor),
+            ExceptionWrapperCtorSymName =
+                qualified(PrivateBuiltin, "math_domain_error"),
+            ExceptionWrapperCtorConsId =
+                cons(ExceptionWrapperCtorSymName, 1, ExceptionTypeCtor),
+            construct_functor(ExceptionVar, ExceptionWrapperCtorConsId,
+                [ErrorMsgStrVar], WrapErrorMsgGoal),
+            generate_simple_call(ModuleInfo, mercury_exception_module,
+                "throw", pf_predicate, only_mode, detism_erroneous,
+                purity_pure, [ExceptionVar], [], instmap_delta_bind_no_var,
+                term.dummy_context_init, ThrowGoal),
+            goal_info_init(set_of_var.init, instmap_delta_bind_no_var,
+                detism_erroneous, purity_pure, Context, ThrowConjGoalInfo), 
+            conj_list_to_goal([ErrorMsgStrGoal, WrapErrorMsgGoal, ThrowGoal],
+                ThrowConjGoalInfo, ThrowConjGoal),
+
+            ImprovedGoalExpr = if_then_else([], TestConjGoal,
+                UncheckedShiftGoal, ThrowConjGoal)
+        )
     ;
         ( PredName = "<"
         ; PredName = ">"
@@ -1414,50 +1593,86 @@ replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr) :-
 % of the predicates above.
 %
 
-:- pred is_non_zero_const(int_type::in, cons_id::in) is semidet.
+:- pred is_zero_const(int_type::in, cons_id::in) is semidet.
 
-is_non_zero_const(IntType, ConsId) :-
-    require_complete_switch[ IntType]
+is_zero_const(IntType, ConsId) :-
+    require_complete_switch [IntType]
     (
         IntType = int_type_int,
         ConsId = int_const(Val),
-        Val \= 0
+        Val = 0
     ;
         IntType = int_type_uint,
         ConsId = uint_const(Val),
-        Val \= 0u
+        Val = 0u
     ;
         IntType = int_type_int8,
         ConsId = int8_const(Val),
-        Val \= 0i8
+        Val = 0i8
     ;
         IntType = int_type_uint8,
         ConsId = uint8_const(Val),
-        Val \= 0u8
+        Val = 0u8
     ;
         IntType = int_type_int16,
         ConsId = int16_const(Val),
-        Val \= 0i16
+        Val = 0i16
     ;
         IntType = int_type_uint16,
         ConsId = uint16_const(Val),
-        Val \= 0u16
+        Val = 0u16
     ;
         IntType = int_type_int32,
         ConsId = int32_const(Val),
-        Val \= 0i32
+        Val = 0i32
     ;
         IntType = int_type_uint32,
         ConsId = uint32_const(Val),
-        Val \= 0u32
+        Val = 0u32
     ;
         IntType = int_type_int64,
         ConsId = int64_const(Val),
-        Val \= 0i64
+        Val = 0i64
     ;
         IntType = int_type_uint64,
         ConsId = uint64_const(Val),
-        Val \= 0u64
+        Val = 0u64
+    ).
+
+:- pred is_int_const(int_type::in, cons_id::in) is semidet.
+
+is_int_const(IntType, ConsId) :-
+    require_complete_switch [IntType]
+    (
+        IntType = int_type_int,
+        ConsId = int_const(_Val)
+    ;
+        IntType = int_type_uint,
+        ConsId = uint_const(_Val)
+    ;
+        IntType = int_type_int8,
+        ConsId = int8_const(_Val)
+    ;
+        IntType = int_type_uint8,
+        ConsId = uint8_const(_Val)
+    ;
+        IntType = int_type_int16,
+        ConsId = int16_const(_Val)
+    ;
+        IntType = int_type_uint16,
+        ConsId = uint16_const(_Val)
+    ;
+        IntType = int_type_int32,
+        ConsId = int32_const(_Val)
+    ;
+        IntType = int_type_uint32,
+        ConsId = uint32_const(_Val)
+    ;
+        IntType = int_type_int64,
+        ConsId = int64_const(_Val)
+    ;
+        IntType = int_type_uint64,
+        ConsId = uint64_const(_Val)
     ).
 
 :- func int_type_target_bits(globals, int_type) = int.
