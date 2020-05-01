@@ -7917,93 +7917,205 @@ them in @samp{MCFLAGS}, @samp{MGNUCFLAGS} and @samp{MLFLAGS}.
 @findex -s
 @findex --grade
 Select the compilation model.
-The @var{grade} should be a @samp{.} separated list of the
-grade options to set. The grade options may be given in any order.
-The available options each belong to a set of mutually
-exclusive alternatives governing a single aspect of the compilation model.
-The set of aspects and their alternatives are:
+The @var{grade} should be a @samp{.} separated list
+in which the first element is a @samp{base grade},
+and each following element (if any) is a @samp{grade modifier}.
 
+@cindex csharp (compilation grade)
+@cindex erlang (compilation grade)
+@cindex java (compilation grade)
+
+@cindex hlc (compilation grade)
+
+@cindex asm_fast (compilation grade)
 @cindex none (compilation grade)
 @cindex reg (compilation grade)
-@c @cindex jump (compilation grade)
+
+The base grade specifies
+what target language to compile the Mercury program to,
+and if that the compiler can do this in several different ways,
+selects one of those ways.
+The available base grades are the following.
+
+@c What target language to use (C, C#, Java or Erlang),
+@c for C, whether to generate idiomatic C or assembly-like code,
+@c and if the latter, what combination of GNU C extensions to use.
+@c The options are 
+@c which each specify the named language as the target,
+@c and @samp{none}, @samp{reg}, and @samp{asm_fast},
+@c which call for assembly-like C code,
+@c with @samp{reg} and @samp{asm_fast} both calling for
+@c the use of GNU C's extension for storing global variables in registers,
+@c and @samp{asm_fast} calling for the use of two GNU C extensions
+@c that together allow direct gotos to labels in other functions,
+@c even in other modules.
+
+@table @asis
+
+@item @samp{hlc}
+This base grade calls for generating idiomatic C,
+which we call high level C.
+
+@item @samp{none}, @samp{reg}, and @samp{asm_fast}
+These base grades calls for generating assembly-like C code,
+which we call low level C.
+@samp{none} calls for generating standard C without using any GNU C extensions.
+@samp{reg} and @samp{asm_fast} both call for
+the use of GNU C's extension for storing global variables in registers,
+while @samp{asm_fast} also calls for the use of two GNU C extensions
+that together allow direct gotos to labels in other functions,
+even in other modules.
+In general, the more GNU C extensions are used,
+the faster the programmer will be,
+but some platforms, compilers or compiler versions
+do not support specific extensions.
+
+@item @samp{csharp}
+This base grade calls for generating C#.
+
+@item @samp{java}
+This base grade calls for generating Java.
+
+@item @samp{erlang}
+This base grade calls for generating Erlang.
+Note that support for generating Erlang is experimental.
+@end table
+
+The default base grade is system dependent,
+but will be either @samp{hlc} or @samp{asm_fast},
+as these are the two fastest.
+
+@c @cindex hl (compilation grade)
 @c @cindex asm_jump (compilation grade)
 @c @cindex fast (compilation grade)
-@c @cindex asm_fast (compilation grade)
-@c @cindex hl (compilation grade)
-@cindex hlc (compilation grade)
-@cindex csharp (compilation grade)
-@cindex java (compilation grade)
-@cindex erlang (compilation grade)
-@cindex .prof (grade modifier)
-@cindex .memprof (grade modifier)
-@cindex .profdeep (grade modifier)
-@cindex .tr (grade modifier)
-@cindex .trseg (grade modifier)
-@cindex .gc (grade modifier)
-@cindex .agc (grade modifier)
-@cindex .spf (grade modifier)
-@cindex .stseg (grade modifier)
-@cindex .debug (grade modifier)
-@cindex .decldebug (grade modifier)
-@c @cindex .ssdebug (grade modifier)
-@cindex .par (grade modifier)
-@cindex .threadscope (grade modifier)
-@cindex .prof (grade modifier)
-@cindex .memprof (grade modifier)
-@cindex .profdeep (grade modifier)
-@cindex .tr (grade modifier)
-@cindex .trseg (grade modifier)
-@cindex .gc (grade modifier)
+@c @cindex jump (compilation grade)
+
 @c @cindex .agc (grade modifier)
-@cindex .spf (grade modifier)
-@cindex .stseg (grade modifier)
+@c @cindex .ssdebug (grade modifier)
 @cindex .debug (grade modifier)
 @cindex .decldebug (grade modifier)
-@c @cindex .ssdebug (grade modifier)
-@cindex .par (grade modifier)
-@cindex .threadscope (grade modifier)
+@cindex .gc (grade modifier)
+@cindex .memprof (grade modifier)
 @cindex .mm (grade modifier)
+@cindex .par (grade modifier)
+@cindex .prof (grade modifier)
+@cindex .profdeep (grade modifier)
+@cindex .spf (grade modifier)
+@cindex .stseg (grade modifier)
+@cindex .threadscope (grade modifier)
+@cindex .tr (grade modifier)
+@cindex .trseg (grade modifier)
+
+The grade modifiers may be given in any order.
+Each grade modifier sets one or more compilation model options.
+The available options each belong to a set of mutually exclusive alternatives
+governing a single aspect of the compilation model.
+The set of aspects and their alternatives are as follows.
+Note that not all grade modifiers are applicable to all grades
+(most apply only when targeting C),
+and not all grade modifiers are compatible with each other.
+
 @table @asis
-@item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
-@samp{none}, @samp{reg},@samp{asm_fast}, @samp{hlc}, @samp{csharp},
-@c @samp{jump}, @samp{asm_jump}, @samp{fast}, @samp{hl}
-@samp{java} and
-@samp{erlang}
-(the default is system dependent).
+@item garbage collection
+The default is no garbage collection beyond what the target language provides.
+C#, Java and Erlang have their own builtin garbage collectors, but C does not.
+Since gc is essential for all programs
+other than those with @emph{very} short runtimes,
+base grades that target C
+are usually followed by the @samp{.gc} grade modifier, which calls for
+the use of the Boehm-Demers-Weiser conservative collector for C.
+@c @samp{.agc}
 
-@item What garbage collection strategy to use:
-@c @samp{agc}
-@samp{gc} (the default is no garbage collection).
+@item profiling
+The default is no profiling.
+The grade modifier @samp{.prof} calls for gprof-style profiling;
+the grade modifier @samp{.memprof} calls for profiling of memory usage;
+while the grade modifier @samp{.profdeep} calls for deep profiling.
+See @ref{Profiling} for an explanation
+of the differences between these forms of profiling.
 
-@item What kind of profiling to use:
-@samp{prof},
-@c @samp{proftime}, @samp{profcalls},
-@samp{memprof}, and @samp{profdeep}
-(the default is no profiling).
+@item trailing
+The default is no trailing.
+Applications that need trailing should specify the grade modifier @samp{.tr}.
+@samp{.trseg} is currently accepted as synonym for @samp{.tr}.
 
-@item Whether to enable the trail:
-@samp{tr} (the default is no trailing).  @samp{trseg} is currently
-accepted as synonym for @samp{tr}.
+@item floating point precision
+By default, the Mercury @samp{float} is implemented as
+a double-precision floating point number,
+which occupies 64 bits of space on virtually all platforms.
+On platforms whose word size is 32 bits,
+users whose programmers do not require double precision
+may improve memory consumption and therefore speed by specifying
+the grade modifier @samp{.spf} (short for single-precision float),
+which calls for implementing all Mercury floats
+as single-precision, 32 bit floating point numbers.
+Note that on 64 bit platforms,
+using single-precision floats
+definitely will @emph{not} improve memory consumption,
+and probably will not improve speed.
+On the other hand, it may simplify the use of C APIs
+that exclusively use single precision floats.
 
-@item Whether to use single-precision representation of floating point values:
-@samp{spf} (the default is to use double-precision floats)
+@item stack size
+When generating assembly-like C code,
+Mercury implements its own stacks (two of them).
+The default is to make each stack a fixed size
+(usually a relatively large size,
+though the size of each stack can be controlled using runtime options).
+We make the page(s) at the tops of the stacks inaccessible,
+so that a stack overflow,
+instead of accessing and overwriting memory effectively randomly,
+causes the operating system to send a signal to the program.
+If not caught and handled, this signal will abort the program,
+minimizing the damage.
 
-@item Whether to use dynamically sized stacks that are composed of
-small segments: @samp{stseg} (the default is to used fixed size stacks)
+However, for programs for which this is not acceptable,
+users can specify the @samp{.stseg} grade component.
+This calls for each stack to be composed of
+small memory segments chained together in a list.
+When there is no room in the current segment for a new stack frame,
+we simply allocate a new segment and add it to the list.
+This approach has higher overhead,
+since calls to and returns from procedures we must execute more code,
+but it avoids imposing any limit on stack size
+other than the size of available memory.
 
-@item What debugging features to enable:
-@samp{debug} and @samp{decldebug} (the default is no debugging features).
-@c XXX and @samp{ssdebug}
+@item debugging
+The default is to generate executables that do not support debugging.
+However, when generating low level C code,
+specifying one of the grade modifiers @samp{.debug} and @samp{.decldebug}
+will cause the compiler to generate executables
+that can be debugged using the Mercury debugger @samp{mdb}.
+The difference between them is that
+the declarative debugging aspects of @samp{mdb}
+will work only with @samp{.decldebug}.
+The price of this is that @samp{.decldebug} will result
+in significantly larger executable files.
+@c @samp{.ssdebug}
 
-@item Whether to use a thread-safe version of the runtime environment:
-@samp{par} (the default is a non-thread-safe environment).
+@item threads
+The default is whatever thread support is given by the target language.
+When targeting C,
+thread support can be enabled by specifying the grade modifier @samp{.par}.
+When targeting low level C,
+this also enables the use of the parallel conjunction operator @samp{&}.
+Since Mercury implements parallel conjunctions
+only in low level C grades with the @samp{.par} grade modifier,
+in every other situation, the compiler silently converts
+every occurrence of @samp{&} to a comma,
+the usual @emph{sequential} conjunctions operator.
 
-@item Whether to include support for profiling of parallel programs:
-@samp{threadscope} (the default is no support for profiling parallel programs).
-@c See also the @samp{--profile-parallel-execution} runtime option.
+@item thread profiling
+In low level C grades with the grade modifier @samp{.par},
+users can enable support for ThreadScope-style thread profiling
+by also specifying the grade module @samp{.threadscope}.
+The default is no support for profiling.
+Note that support for this form of profiling is experimental.
 
-@item Whether to include support for minimal model evaluation of procedures:
-@samp{mm} (the default is no support for minimal model evaluation).
+@item minimal model tabling
+The default is no support for minimal model evaluation.
+When targeting low level C, users can specify the grade modifier @samp{.mm},
+which enables support for minimal model tabled evaluation of procedures.
 
 @end table
 
@@ -8048,6 +8160,9 @@ and grade modifier; they are followed by descriptions of those options.
 @findex --single-prec-float
 @findex --stack-segments
 
+@item @samp{hlc}
+@code{--target c --high-level-code}.
+
 @item @samp{none}
 @code{--target c --no-gcc-global-registers --no-gcc-nonlocal-gotos --no-asm-labels}.
 
@@ -8065,9 +8180,6 @@ and grade modifier; they are followed by descriptions of those options.
 
 @item @samp{asm_fast}
 @code{--target c --gcc-global-registers --gcc-nonlocal-gotos --asm-labels}.
-
-@item @samp{hlc}
-@code{--target c --high-level-code}.
 
 @item @samp{csharp}
 @code{--target csharp --high-level-code}.
