@@ -459,7 +459,6 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = int_gt(_)
         ; Op = int_le(_)
         ; Op = int_ge(_)
-        ; Op = unsigned_le
         ; Op = int_add(int_type_uint)
         ; Op = int_sub(int_type_uint)
         ; Op = int_mul(int_type_uint)
@@ -500,10 +499,10 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_and(int_type_uint64)
         ; Op = bitwise_or(int_type_uint64)
         ; Op = bitwise_xor(int_type_uint64)
-        ; Op = float_plus
-        ; Op = float_minus
-        ; Op = float_times
-        ; Op = float_divide
+        ; Op = float_add
+        ; Op = float_sub
+        ; Op = float_mul
+        ; Op = float_div
         ; Op = float_eq
         ; Op = float_ne
         ; Op = float_lt
@@ -521,6 +520,20 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
         io.write_string(" ", !IO),
+        output_rval_for_csharp(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Op = unsigned_lt,
+        io.write_string("((uint) ", !IO),
+        output_rval_for_csharp(Info, X, !IO),
+        io.write_string(" < (uint) ", !IO),
+        output_rval_for_csharp(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Op = unsigned_le,
+        io.write_string("((uint) ", !IO),
+        output_rval_for_csharp(Info, X, !IO),
+        io.write_string(" <= (uint) ", !IO),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
     ;
@@ -729,10 +742,10 @@ output_binary_op_for_csharp(Op, !IO) :-
         ; Op = float_lt, OpStr = "<"
         ; Op = float_gt, OpStr = ">"
 
-        ; Op = float_plus, OpStr = "+"
-        ; Op = float_minus, OpStr = "-"
-        ; Op = float_times, OpStr = "*"
-        ; Op = float_divide, OpStr = "/"
+        ; Op = float_add, OpStr = "+"
+        ; Op = float_sub, OpStr = "-"
+        ; Op = float_mul, OpStr = "*"
+        ; Op = float_div, OpStr = "/"
         ),
         io.write_string(OpStr, !IO)
     ;
@@ -751,6 +764,7 @@ output_binary_op_for_csharp(Op, !IO) :-
         ; Op = str_ne
         ; Op = string_unsafe_index_code_unit
         ; Op = pointer_equal_conservative
+        ; Op = unsigned_lt
         ; Op = unsigned_le
         ; Op = compound_eq
         ; Op = compound_lt

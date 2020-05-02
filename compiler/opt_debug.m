@@ -878,11 +878,12 @@ dump_binop(str_le) = "str<=".
 dump_binop(str_ge) = "str>=".
 dump_binop(str_lt) = "str<".
 dump_binop(str_gt) = "str>".
+dump_binop(unsigned_lt) = "unsigned<".
 dump_binop(unsigned_le) = "unsigned<=".
-dump_binop(float_plus) = "fl+".
-dump_binop(float_minus) = "fl-".
-dump_binop(float_times) = "fl*".
-dump_binop(float_divide) = "fl/".
+dump_binop(float_add) = "fl+".
+dump_binop(float_sub) = "fl-".
+dump_binop(float_mul) = "fl*".
+dump_binop(float_div) = "fl/".
 dump_binop(float_eq) = "fl==".
 dump_binop(float_ne) = "fl!=".
 dump_binop(float_le) = "fl<=".

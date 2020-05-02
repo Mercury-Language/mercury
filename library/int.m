@@ -758,7 +758,7 @@ log2_loop(CurX, CurLogXSoFar, CeilLogX) :-
 %---------------------------------------------------------------------------%
 
 X << Y = Z :-
-    ( if Y `unsigned_lt` bits_per_int then
+    ( if Y `int.unsigned_lt` bits_per_int then
         Z = unchecked_left_shift(X, Y)
     else
         Msg = "int.(<<): second operand is out of range",
@@ -782,7 +782,7 @@ legacy_left_shift(X, Y) = Z :-
     ).
 
 X >> Y = Z :-
-    ( if Y `unsigned_lt` bits_per_int then
+    ( if Y `int.unsigned_lt` bits_per_int then
         Z = unchecked_right_shift(X, Y)
     else
         Msg = "int.(>>): second operand is out of range",

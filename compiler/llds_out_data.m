@@ -838,10 +838,10 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
         % then for each float constant which we might want to box, we declare
         % a static const variable holding that constant.
         (
-            ( Op = float_plus,   OpStr = "+"
-            ; Op = float_minus,  OpStr = "-"
-            ; Op = float_times,  OpStr = "*"
-            ; Op = float_divide, OpStr = "/"
+            ( Op = float_add, OpStr = "+"
+            ; Op = float_sub, OpStr = "-"
+            ; Op = float_mul, OpStr = "*"
+            ; Op = float_div, OpStr = "/"
             ),
             UnboxFloat = Info ^ lout_unboxed_float,
             StaticGroundFloats = Info ^ lout_static_ground_floats,
@@ -889,6 +889,7 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             ; Op = str_ge
             ; Op = str_lt
             ; Op = str_gt
+            ; Op = unsigned_lt
             ; Op = unsigned_le
             ; Op = float_eq
             ; Op = float_ne
@@ -1075,10 +1076,10 @@ output_rval(Info, Rval, !IO) :-
             ; Op = float_ge, OpStr = ">="
             ; Op = float_lt, OpStr = "<"
             ; Op = float_gt, OpStr = ">"
-            ; Op = float_plus, OpStr = "+"
-            ; Op = float_minus, OpStr = "-"
-            ; Op = float_times, OpStr = "*"
-            ; Op = float_divide, OpStr = "/"
+            ; Op = float_add, OpStr = "+"
+            ; Op = float_sub, OpStr = "-"
+            ; Op = float_mul, OpStr = "*"
+            ; Op = float_div, OpStr = "/"
             ),
             io.write_string("(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_float, !IO),
@@ -1086,6 +1087,13 @@ output_rval(Info, Rval, !IO) :-
             io.write_string(OpStr, !IO),
             io.write_string(" ", !IO),
             output_rval_as_type(Info, SubRvalB, lt_float, !IO),
+            io.write_string(")", !IO)
+        ;
+            Op = unsigned_lt,
+            io.write_string("(", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_int(int_type_uint), !IO),
+            io.write_string(" < ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(int_type_uint), !IO),
             io.write_string(")", !IO)
         ;
             Op = unsigned_le,
@@ -2122,10 +2130,10 @@ float_literal_name(Float, FloatName) :-
     %
 :- pred float_op_name(binary_op::in, string::out) is semidet.
 
-float_op_name(float_plus, "plus").
-float_op_name(float_minus, "minus").
-float_op_name(float_times, "times").
-float_op_name(float_divide, "divide").
+float_op_name(float_add, "fadd").
+float_op_name(float_sub, "fsub").
+float_op_name(float_mul, "fmul").
+float_op_name(float_div, "fdiv").
 
 %----------------------------------------------------------------------------%
 

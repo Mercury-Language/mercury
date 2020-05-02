@@ -1120,10 +1120,10 @@ binop_code(int_lt(int_type_int),    21).
 binop_code(int_gt(int_type_int),    22).
 binop_code(int_le(int_type_int),    23).
 binop_code(int_ge(int_type_int),    24).
-binop_code(float_plus,              25).
-binop_code(float_minus,             26).
-binop_code(float_times,             27).
-binop_code(float_divide,            28).
+binop_code(float_add,               25).
+binop_code(float_sub,               26).
+binop_code(float_mul,               27).
+binop_code(float_div,               28).
 binop_code(float_eq,                29).
 binop_code(float_ne,                30).
 binop_code(float_lt,                31).
@@ -1306,6 +1306,7 @@ binop_code(unchecked_left_shift(int_type_int64, shift_by_uint), 207).
 binop_code(unchecked_right_shift(int_type_int64, shift_by_uint), 208).
 binop_code(unchecked_left_shift(int_type_uint64, shift_by_uint), 209).
 binop_code(unchecked_right_shift(int_type_uint64, shift_by_uint), 210).
+binop_code(unsigned_lt,               211).
 
 :- pred binop_debug(binary_op, string).
 :- mode binop_debug(in, out) is det.
@@ -1341,10 +1342,10 @@ binop_debug(int_lt(int_type_int),   "<").
 binop_debug(int_gt(int_type_int),   ">").
 binop_debug(int_le(int_type_int),   "<=").
 binop_debug(int_ge(int_type_int),   ">=").
-binop_debug(float_plus,             "float_plus").
-binop_debug(float_minus,            "float_minus").
-binop_debug(float_times,            "float_times").
-binop_debug(float_divide,           "float_divide").
+binop_debug(float_add,              "float_add").
+binop_debug(float_sub,              "float_sub").
+binop_debug(float_mul,              "float_mul").
+binop_debug(float_div,              "float_div").
 binop_debug(float_eq,               "float_eq").
 binop_debug(float_ne,               "float_ne").
 binop_debug(float_lt,               "float_lt").
@@ -1352,6 +1353,7 @@ binop_debug(float_gt,               "float_gt").
 binop_debug(float_le,               "float_le").
 binop_debug(float_ge,               "float_ge").
 binop_debug(body,                   "body").
+binop_debug(unsigned_lt,            "unsigned_lt").
 binop_debug(unsigned_le,            "unsigned_le").
 binop_debug(compound_eq,            "compound_eq").
 binop_debug(compound_lt,            "compound_lt").

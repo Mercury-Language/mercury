@@ -712,10 +712,10 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         ; Op = float_ge, OpStr = ">="
         ; Op = float_lt, OpStr = "<"
         ; Op = float_gt, OpStr = ">"
-        ; Op = float_plus, OpStr = "+"
-        ; Op = float_minus, OpStr = "-"
-        ; Op = float_times, OpStr = "*"
-        ; Op = float_divide, OpStr = "/"
+        ; Op = float_add, OpStr = "+"
+        ; Op = float_sub, OpStr = "-"
+        ; Op = float_mul, OpStr = "*"
+        ; Op = float_div, OpStr = "/"
         ),
         io.write_string("(", !IO),
         mlds_output_bracketed_rval(Opts, X, !IO),
@@ -725,10 +725,12 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_bracketed_rval(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Op = unsigned_le,
+        ( Op = unsigned_lt, OpStr = "<"
+        ; Op = unsigned_le, OpStr = "<="
+        ),
         io.write_string("(((MR_Unsigned) ", !IO),
         mlds_output_rval_as_unsigned_op_arg(Opts, 2147483647, X, !IO),
-        io.write_string(") <= ((MR_Unsigned) ", !IO),
+        io.format(") %s ((MR_Unsigned) ", [s(OpStr)], !IO),
         mlds_output_rval_as_unsigned_op_arg(Opts, 2147483647, Y, !IO),
         io.write_string("))", !IO)
     ;

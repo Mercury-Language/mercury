@@ -103,22 +103,23 @@
             % or equivalent code on backends which support this, and code
             % equivalent to "strcmp(SA, SB) == 0" on backends which don't.
 
-    ;       int_lt(int_type)  % signed integer comparisons
+    ;       int_lt(int_type)  % integer comparisons
     ;       int_gt(int_type)
     ;       int_le(int_type)
     ;       int_ge(int_type)
 
-    ;       unsigned_le % unsigned integer comparison (for signed values)
-            % Note that the arguments to `unsigned_le' are just ordinary
-            % (signed) Mercury ints, but it does the comparison as
-            % if they were first cast to an unsigned type, so e.g.
+    ;       unsigned_lt % less than
+    ;       unsigned_le % less than or equal
+            % The arguments to `unsigned_lt/le' are just ordinary (signed)
+            % Mercury ints, but the comparison is done *after* casting both
+            % arguments to the uint type. This means that e.g. the expression
             % binary(unsigned_le, int_const(1), int_const(-1)) returns true,
             % since (MR_Unsigned) 1 <= (MR_Unsigned) -1.
 
-    ;       float_plus      %  XXX the integer versions use different names.
-    ;       float_minus     %  E.g add instead of plus etc.
-    ;       float_times
-    ;       float_divide
+    ;       float_add
+    ;       float_sub
+    ;       float_mul
+    ;       float_div
     ;       float_eq
     ;       float_ne
     ;       float_lt
@@ -325,6 +326,8 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; PredName = "builtin_uint32_lt", CmpOp = int_lt(int_type_uint32)
             ; PredName = "builtin_uint64_gt", CmpOp = int_gt(int_type_uint64)
             ; PredName = "builtin_uint64_lt", CmpOp = int_lt(int_type_uint64)
+            ; PredName = "unsigned_lt",       CmpOp = unsigned_lt
+            ; PredName = "unsigned_le",       CmpOp = unsigned_le
             ),
             ProcNum = 0, Args = [X, Y],
             Code = test(binary(CmpOp, leaf(X), leaf(Y)))
@@ -464,7 +467,7 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ;
                 Args = [X, Y, Z],
                 ProcNum = 0,
-                Code = assign(Z, binary(float_plus, leaf(X), leaf(Y)))
+                Code = assign(Z, binary(float_add, leaf(X), leaf(Y)))
             )
         ;
             PredName = "-",
@@ -472,15 +475,15 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
                 Args = [X, Y],
                 ProcNum = 0,
                 Code = assign(Y,
-                    binary(float_minus, float_const(0.0), leaf(X)))
+                    binary(float_sub, float_const(0.0), leaf(X)))
             ;
                 Args = [X, Y, Z],
                 ProcNum = 0,
-                Code = assign(Z, binary(float_minus, leaf(X), leaf(Y)))
+                Code = assign(Z, binary(float_sub, leaf(X), leaf(Y)))
             )
         ;
-            ( PredName = "*", ArithOp = float_times
-            ; PredName = "unchecked_quotient", ArithOp = float_divide
+            ( PredName = "*", ArithOp = float_mul
+            ; PredName = "unchecked_quotient", ArithOp = float_div
             ),
             ProcNum = 0, Args = [X, Y, Z],
             Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))

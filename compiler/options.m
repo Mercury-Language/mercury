@@ -3135,6 +3135,8 @@ long_option("foreign-proc-typeinfo-2020-04-08",
                                     compiler_sufficiently_recent).
 long_option("ushift-2020-04-30",
                                     compiler_sufficiently_recent).
+long_option("unsigned_lt-2020-05-02",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).

@@ -536,11 +536,10 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = int_gt(int_type_int)
         ; Op = int_le(int_type_int)
         ; Op = int_ge(int_type_int)
-        ; Op = unsigned_le
-        ; Op = float_plus
-        ; Op = float_minus
-        ; Op = float_times
-        ; Op = float_divide
+        ; Op = float_add
+        ; Op = float_sub
+        ; Op = float_mul
+        ; Op = float_div
         ; Op = float_eq
         ; Op = float_ne
         ; Op = float_lt
@@ -577,6 +576,31 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
             io.write_string(" ", !IO),
             output_rval_for_java(Info, Y, !IO),
             io.write_string(")", !IO)
+        )
+    ;
+        ( Op = unsigned_lt, OpStr = "<"
+        ; Op = unsigned_le, OpStr = "<="
+        ),
+        ( if rval_is_enum_object(X) then
+            % The bit masking won't be needed in the vast majority of cases,
+            % but I (zs) believe that it *could* be possible for a
+            % foreign_enum pragma to assign a negative value to
+            % a functor in an enum type.
+            io.write_string("((", !IO),
+            output_rval_for_java(Info, X, !IO),
+            io.write_string(".MR_value & 0xffffffffL) ", !IO),
+            io.write_string(OpStr, !IO),
+            io.write_string(" (", !IO),
+            output_rval_for_java(Info, Y, !IO),
+            io.write_string(".MR_value) & 0xffffffffL)", !IO)
+        else
+            io.write_string("((", !IO),
+            output_rval_for_java(Info, X, !IO),
+            io.write_string(" & 0xffffffffL) ", !IO),
+            io.write_string(OpStr, !IO),
+            io.write_string(" (", !IO),
+            output_rval_for_java(Info, Y, !IO),
+            io.write_string(" & 0xffffffffL))", !IO)
         )
     ;
         ( Op = int_lt(int_type_uint)
@@ -796,10 +820,10 @@ output_binary_op_for_java(Op, !IO) :-
         ; Op = float_lt, OpStr = "<"
         ; Op = float_gt, OpStr = ">"
 
-        ; Op = float_plus, OpStr = "+"
-        ; Op = float_minus, OpStr = "-"
-        ; Op = float_times, OpStr = "*"
-        ; Op = float_divide, OpStr = "/"
+        ; Op = float_add, OpStr = "+"
+        ; Op = float_sub, OpStr = "-"
+        ; Op = float_mul, OpStr = "*"
+        ; Op = float_div, OpStr = "/"
         ),
         io.write_string(OpStr, !IO)
     ;
@@ -838,6 +862,7 @@ output_binary_op_for_java(Op, !IO) :-
         ; Op = str_ne
         ; Op = string_unsafe_index_code_unit
         ; Op = pointer_equal_conservative
+        ; Op = unsigned_lt
         ; Op = unsigned_le
         ; Op = compound_eq
         ; Op = compound_lt
