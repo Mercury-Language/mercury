@@ -485,14 +485,21 @@ output_format(Format, Items, Str0, Str) :-
     string::di, string::uo) is det.
 
 output_list([], _, _, !Str).
-output_list([Item | Items], Sep, Pred, !Str) :-
-    Pred(Item, !Str),
+output_list([Item | Items], Sep, OutputPred, !Str) :-
+    output_list_lag(Item, Items, Sep, OutputPred, !Str).
+
+:- pred output_list_lag(T::in, list(T)::in, string::in,
+    pred(T, string, string)::in(pred(in, di, uo) is det),
+    string::di, string::uo) is det.
+
+output_list_lag(Item1, Items, Sep, OutputPred, !Str) :-
+    OutputPred(Item1, !Str),
     (
         Items = []
     ;
-        Items = [_ | _],
+        Items = [Item2 | Items3plus],
         output_string(Sep, !Str),
-        output_list(Items, Sep, Pred, !Str)
+        output_list_lag(Item2, Items3plus, Sep, OutputPred, !Str)
     ).
 
 %---------------------------------------------------------------------------%
