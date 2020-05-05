@@ -3509,8 +3509,12 @@ esac
 #
 case "$C_COMPILER_TYPE" in
     gcc_4_1_*|gcc_4_2_*)
-        case "$host" in x86_64*apple*darwin*) BEST_LLDS_BASE_GRADE=none ;;
-    esac
+        case "$host" in
+            x86_64*apple*darwin*)
+                BEST_LLDS_BASE_GRADE=none
+                ;;
+        esac
+        ;;
 esac
 
 # Force the use of the none grade on x86/Darwin systems.
@@ -3533,10 +3537,10 @@ BEST_DEBUG_BASE_GRADE=$BEST_LLDS_BASE_GRADE
 # efficiency too much.
 
 case $BEST_LLDS_BASE_GRADE in
-    none|fast|jump|reg)
+    none|fast|jump|reg|asm_jump)
         DEFAULT_BASE_GRADE=hlc
         ;;
-    asm_fast|asm_jump)
+    asm_fast)
         DEFAULT_BASE_GRADE=$BEST_LLDS_BASE_GRADE
         ;;
     *)
@@ -4611,14 +4615,14 @@ if test "$mercury_cv_enable_shared_libs" = "yes"; then
                     LINK_SHARED_OBJ_SH="$CC -multiply_defined \
                         suppress -dynamiclib -single_module"
                     ALLOW_UNDEFINED="-undefined dynamic_lookup"
-                ;;
+                    ;;
     
                 *)
                     CFLAGS_FOR_PIC=
                     EXT_FOR_PIC_OBJECTS=o
                     DEFAULT_LINKAGE=static
                     AC_MSG_RESULT(no)
-                ;;
+                    ;;
             esac
             ;;
         arm*-linux|arm*-linux-gnu)
@@ -4698,9 +4702,9 @@ case "$mercury_cv_cc_type" in
                 case "$C_COMPILER_TYPE" in
                     gcc_4_2_*)
                         CFLAGS_FOR_OPT="$CFLAGS_FOR_OPT -fno-tree-vrp"
-                    ;;
+                        ;;
                 esac
-            ;;
+                ;;
         esac
 
         CFLAGS_FOR_DEBUG="-g"
