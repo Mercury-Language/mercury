@@ -6230,7 +6230,7 @@ or conjunctions of type variables separated by commas.
 
 Each type variable must appear in the parameter list of the typeclass.
 Abstract typeclass declarations must have
-exactly the same functional dependencies as in the implementation.
+exactly the same functional dependencies as their concrete forms.
 
 Mutually recursive functional dependencies are allowed,
 so the following examples are legal:
@@ -6661,18 +6661,15 @@ For example:
     --->    some [T] (s(T) => showable(T)).
 :- type list_of_showable == list(showable).
 
-% Here's an arbitrary example involving multiple
-% type variables and multiple constraints.
+% Here is an arbitrary example involving multiple type variables
+% and multiple constraints.
 :- typeclass foo(T1, T2) where [ /* @dots{} */ ].
 :- type bar(T)
     --->    f1
     ;       f2(T)
-    ;       some [T]
-            f4(T)
-    ;       some [T1, T2]
-            (f4(T1, T2, T) => showable(T1), showable(T2))
-    ;       some [T1, T2]
-            (f5(list(T1), T2) => fooable(T1, list(T2))).
+    ;       some [T1] f3(T1)
+    ;       some [T1, T2] f4(T1, T2, T) => (showable(T1), showable(T2))
+    ;       some [T1, T2] f5(list(T1), T2) => fooable(T1, T2).
 @end example
 
 Construction and deconstruction of existentially quantified data types
@@ -6730,6 +6727,54 @@ to the values in such a list.
 process_list(nil) = "".
 process_list(cons(Head, Tail)) = [show(Head) | process_list(Tail)].
 @end example
+
+@noindent
+There are some restrictions on the forms that
+existentially typed data constructors can take.
+
+One restriction is that no type variable may be quantified
+both universally, by being listed as an argument of the type constructor,
+and existentially, by being listed in the existential type quantifier
+before the data constructor.
+The type @samp{t12} violates this restriction:
+
+@example
+:- type t12(T)
+    --->    f1(T)
+    ;       some [T] f2(T).
+@end example
+
+@noindent
+The reason for the restriction is simple:
+without it, how can one decide whether
+the argument of @samp{f2} is universally or existentially quantified?
+
+The other restriction is that every existentially quantified type variable
+must occur
+@itemize
+@item either in one of the argument types of the data constructor,
+@item or in one of the type class constraints on the data constructor,
+in the range of a functional dependency.
+@end itemize
+
+@noindent
+This means that the type @samp{t3} in
+@example
+:- type t3
+    --->    some [T1, T2] f5(T1) => xable(T1, T2).
+@end example
+@noindent
+violates this restriction
+@emph{unless} the type class @samp{xable} has a functional dependency
+that determines the type bound to its second argument
+from the type bound to its first.
+
+The reason for this restriction is that
+the identity of the type bound to the existential type variable
+must somehow be decided at runtime.
+It can either be given by the type of an argument,
+or determined through a functional dependency
+from the types bound to one or more other existential type variables.
 
 @node Some idioms using existentially quantified types
 @section Some idioms using existentially quantified types

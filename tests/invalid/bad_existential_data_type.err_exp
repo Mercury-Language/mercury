@@ -1,0 +1,36 @@
+bad_existential_data_type.m:028: Error: since there are no arguments,
+bad_existential_data_type.m:028:   (existentially quantified or otherwise),
+bad_existential_data_type.m:028:   there should be no constraints on them.
+bad_existential_data_type.m:031: Error: the existentially quantified type
+bad_existential_data_type.m:031:   variable `V' does not occur either in the
+bad_existential_data_type.m:031:   arguments or in the constraints of the
+bad_existential_data_type.m:031:   constructor.
+bad_existential_data_type.m:034: Error: the existentially quantified type
+bad_existential_data_type.m:034:   variables `U' and `V' do not occur either in
+bad_existential_data_type.m:034:   the arguments or in the constraints of the
+bad_existential_data_type.m:034:   constructor.
+bad_existential_data_type.m:037: Error: type variable `T' has overlapping
+bad_existential_data_type.m:037:   scopes (the explicit existential type
+bad_existential_data_type.m:037:   quantifier shadows the universal
+bad_existential_data_type.m:037:   quantification implicit in it being a type
+bad_existential_data_type.m:037:   parameter).
+bad_existential_data_type.m:040: Error: type variables `T' and `U' have
+bad_existential_data_type.m:040:   overlapping scopes (the explicit existential
+bad_existential_data_type.m:040:   type quantifier shadows the universal
+bad_existential_data_type.m:040:   quantification implicit in them being type
+bad_existential_data_type.m:040:   parameters).
+bad_existential_data_type.m:043: Error: the type variable `U' occurs in a class
+bad_existential_data_type.m:043:   constraint without being explicitly
+bad_existential_data_type.m:043:   existentially quantified using `some'.
+bad_existential_data_type.m:046: Error: the type variables `U' and `V' occur in
+bad_existential_data_type.m:046:   a class constraint without being explicitly
+bad_existential_data_type.m:046:   existentially quantified using `some'.
+bad_existential_data_type.m:048: In declaration for type
+bad_existential_data_type.m:048:   `bad_existential_data_type.bad_quant_8'/0:
+bad_existential_data_type.m:048:   error in type class constraints: type
+bad_existential_data_type.m:048:   variable `U' occurs in the constraints, but
+bad_existential_data_type.m:048:   is not determined by the constructor's
+bad_existential_data_type.m:048:   argument types.
+bad_existential_data_type.m:052: Sorry, not implemented: constraints may only
+bad_existential_data_type.m:052:   constrain type variables and ground types.
+For more information, recompile with `-E'.

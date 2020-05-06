@@ -757,7 +757,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
 parse_class_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
     Pieces = [words("Sorry, not implemented:"),
         words("constraints may only constrain type variables"),
-        words("and ground types"), nl],
+        words("and ground types."), nl],
     parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm, Pieces,
         Result).
 

@@ -345,10 +345,9 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
             )
         ;
             ExistQVars = [_ | _],
-            list.map(
-                ( pred(C::in, Ts::out) is det :-
-                    C = constraint(_, Ts)
-                ), Constraints, ConstrainedTypeLists),
+            GetConstraintArgTypes = (func(constraint(_, Ts)) = Ts),
+            ConstrainedTypeLists =
+                list.map(GetConstraintArgTypes, Constraints),
             list.condense(ConstrainedTypeLists, ConstrainedTypes),
             % We compute ConstrainedQVars in this roundabout way to give it
             % the same ordering as ExistQVars. Also, the list returned
@@ -380,45 +379,41 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
         parse_implicitly_qualified_sym_name_and_args(ModuleName, MainTerm,
             VarSet, ContextPieces, MaybeFunctorAndArgTerms),
         (
-            MaybeFunctorAndArgTerms = error2(Specs),
-            MECSpecs = get_any_errors1(MaybeMaybeExistConstraints),
-            MaybeConstructor = error1(MECSpecs ++ Specs)
+            MaybeFunctorAndArgTerms = error2(FAASpecs),
+            Functor = unqualified(""),  % won't be used due to the other errors
+            MaybeConstructorArgs = error1(FAASpecs)
         ;
             MaybeFunctorAndArgTerms = ok2(Functor, ArgTerms),
             MaybeConstructorArgs = convert_constructor_arg_list(ModuleName,
-                VarSet, ArgTerms),
-            (
-                MaybeConstructorArgs = error1(Specs),
-                MECSpecs = get_any_errors1(MaybeMaybeExistConstraints),
-                MaybeConstructor = error1(MECSpecs ++ Specs)
-            ;
-                MaybeConstructorArgs = ok1(ConstructorArgs),
-                (
-                    MaybeMaybeExistConstraints = error1(Specs),
-                    MaybeConstructor = error1(Specs)
-                ;
-                    MaybeMaybeExistConstraints = ok1(MaybeExistConstraints),
-                    MainTermContext = get_term_context(MainTerm),
-                    ( if
-                        ConstructorArgs = [],
-                        MaybeExistConstraints = exist_constraints(_)
-                    then
-                        ECPieces = [words("Error: since there are no"),
-                            words("arguments, (existentially quantified"),
-                            words("or otherwise), there should be"),
-                            words("no constraints on them."), nl],
-                        ECSpec = simplest_spec($pred, severity_error,
-                            phase_term_to_parse_tree,
-                            MainTermContext, ECPieces),
-                        MaybeConstructor = error1([ECSpec])
-                    else
-                        list.length(ConstructorArgs, Arity),
-                        Ctor = ctor(Ordinal, MaybeExistConstraints,
-                            Functor, ConstructorArgs, Arity, MainTermContext),
-                        MaybeConstructor = ok1(Ctor)
-                    )
-                )
-            )
+                VarSet, ArgTerms)
+        ),
+        MainTermContext = get_term_context(MainTerm),
+        ( if
+            MaybeMaybeExistConstraints = ok1(exist_constraints(_)),
+            MaybeConstructorArgs = ok1([])
+        then
+            NoArgsPieces = [words("Error: since there are no arguments,"),
+                words("(existentially quantified or otherwise),"),
+                words("there should be no constraints on them."), nl],
+            NoArgsSpecs = [simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(MainTerm),
+                NoArgsPieces)]
+        else
+            NoArgsSpecs = []
+        ),
+        ( if
+            MaybeMaybeExistConstraints = ok1(MaybeExistConstraints),
+            MaybeConstructorArgs = ok1(ConstructorArgs),
+            NoArgsSpecs = []
+        then
+            list.length(ConstructorArgs, Arity),
+            Ctor = ctor(Ordinal, MaybeExistConstraints,
+                Functor, ConstructorArgs, Arity, MainTermContext),
+            MaybeConstructor = ok1(Ctor)
+        else
+            Specs = get_any_errors1(MaybeMaybeExistConstraints) ++
+                get_any_errors1(MaybeConstructorArgs) ++ NoArgsSpecs,
+            MaybeConstructor = error1(Specs)
         )
     ).
 
@@ -519,7 +514,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
     ),
     ( if
         % Check that all type variables in the ctor are either explicitly
-        % existentially quantified or occur in the head of the type.
+        % existentially quantified, or occur in the head of the type.
 
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
         type_vars_list(CtorArgTypes, VarsInCtorArgTypes0),
@@ -542,10 +537,9 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
             get_term_context(BodyTerm), Pieces),
         !:Specs = [Spec | !.Specs]
     else if
-        % Check that all type variables in existential quantifiers do not
-        % occur in the head (maybe this should just be a warning,
-        % not an error? If we were to allow it, we would need
-        % to rename them apart.)
+        % Check that no type variables in existential quantifiers occur
+        % in the head. (Maybe this should just be a warning, not an error?
+        % If we were to allow it, we would need to rename them apart.)
 
         set.list_to_set(ExistQVars, ExistQVarsSet),
         set.list_to_set(Params, ParamsSet),
@@ -563,13 +557,23 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
             list_to_quoted_pieces(ExistQParamVarsStrs) ++
             [words(choose_number(ExistQParams, "has", "have")),
             words("overlapping scopes"),
-            words("(explicit type quantifier shadows argument type)."), nl],
+            words("(the explicit existential type quantifier shadows"),
+            words("the universal quantification implicit in"),
+            words(choose_number(ExistQParams,
+                "it being a type parameter", "them being type parameters")),
+                suffix(")."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(BodyTerm), Pieces),
         !:Specs = [Spec | !.Specs]
     else if
         % Check that all type variables in existential quantifiers occur
         % somewhere in the constructor argument types or constraints.
+        % XXX The actual check we would *want* to do is that they occur
+        % somewhere in the constructor argument types or *in the range of
+        % a functional dependency* in a constraint, since both of those
+        % would bind a concrete type to the existential type variable,
+        % but obviously this predicate has no access to the definitions
+        % of the typeclasses mentioned in the constraints.
 
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
         type_vars_list(CtorArgTypes, VarsInCtorArgTypes0),
@@ -584,14 +588,14 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         NotOccursExistQVarStrs =
             list.map(mercury_var_to_name_only(GenericVarSet),
             NotOccursExistQVars),
-        Pieces = [words("Error:"),
+        Pieces = [words("Error: the existentially quantified"),
             words(choose_number(NotOccursExistQVars,
                 "type variable", "type variables"))] ++
             list_to_quoted_pieces(NotOccursExistQVarStrs) ++
-            [words("in existential quantifier"),
-            words(choose_number(NotOccursExistQVars,
+            [words(choose_number(NotOccursExistQVars,
                 "does not occur", "do not occur")),
-            words("in arguments or constraints of constructor."), nl],
+            words("either in the arguments or in the constraints"),
+            words("of the constructor."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(BodyTerm), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -611,15 +615,13 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         varset.coerce(VarSet, GenericVarSet),
         NotExistQArgTypeStrs = list.map(
             mercury_var_to_name_only(GenericVarSet), NotExistQArgTypes),
-        Pieces = [words("Error:"),
+        Pieces = [words("Error: the"),
             words(choose_number(NotExistQArgTypes,
                 "type variable", "type variables"))]
             ++ list_to_quoted_pieces(NotExistQArgTypeStrs) ++
-            [words("in class constraints,"),
-            words(choose_number(NotExistQArgTypes,
-                "which was", "which were")),
-            words("introduced with"), quote("=>"),
-            words("must be explicitly existentially quantified"),
+            [words(choose_number(NotExistQArgTypeStrs, "occurs", "occur")),
+            words("in a class constraint"),
+            words("without being explicitly existentially quantified"),
             words("using"), quote("some"), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(BodyTerm), Pieces),

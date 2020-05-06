@@ -51,6 +51,7 @@ SINGLEMODULE= \
 	bad_detism \
 	bad_detism_category \
 	bad_end_module \
+	bad_existential_data_type \
 	bad_finalise_decl \
 	bad_foreign_code \
 	bad_foreign_decl \
