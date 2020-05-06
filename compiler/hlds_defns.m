@@ -32,15 +32,24 @@
 :- pred write_hlds_defns(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
 
-    % For each predicate (or function) in the module, print the number of lines
-    % in its definition.
+    % For each predicate (or function) in the module, print its file name
+    % and the number of lines in its definition. Order the output by
+    % predicate or function name and arity.
     %
     % (Since information such as the presence of a lone close parenthesis
     % on the last line of a clause is not preserved in the HLDS, this
     % line count will be approximate, but it is still useful for e.g.
-    % finding excessively-long predicates that should be split up.
+    % finding excessively-long predicates that should be split up.)
     %
 :- pred write_hlds_defn_line_counts(io.text_output_stream::in, module_info::in,
+    io::di, io::uo) is det.
+
+    % For each predicate (or function) in the module, print its approximate
+    % first and last line numbers. (See the comment above about why
+    % the "approximate" part is unavoidable.) Order the output by first
+    % line number.
+    %
+:- pred write_hlds_defn_extents(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -334,13 +343,36 @@ write_hlds_defn_line_counts(Stream, ModuleInfo, !IO) :-
     list.foldl(gather_pred_line_counts(ModuleName), PredInfos,
         [], PredLineCounts),
 
-    list.sort(PredLineCounts, SortedPredLineCounts),
-    list.foldl(write_pred_line_count(Stream), SortedPredLineCounts, !IO).
+    list.sort(compare_pred_line_counts_by_pred_name,
+        PredLineCounts, SortedPredLineCounts),
+    list.foldl(acc_max_predname_arity_str_len, SortedPredLineCounts,
+        0, MaxLen),
+    list.foldl(write_pred_line_count(Stream, MaxLen + 1),
+        SortedPredLineCounts, !IO).
+
+write_hlds_defn_extents(Stream, ModuleInfo, !IO) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+
+    module_info_get_preds(ModuleInfo, Preds),
+    map.values(Preds, PredInfos),
+    list.foldl(gather_pred_line_counts(ModuleName), PredInfos,
+        [], PredLineCounts),
+
+    list.sort(compare_pred_line_counts_by_start_line_number,
+        PredLineCounts, SortedPredLineCounts),
+    list.foldl(acc_max_predname_arity_str_len, SortedPredLineCounts,
+        0, MaxLen),
+    list.foldl(write_pred_extent(Stream, MaxLen + 1),
+        SortedPredLineCounts, !IO).
+
+%-----------------------------------------------------------------------------%
 
 :- type pred_line_count
     --->    pred_line_count(
-                plc_name_arity      :: name_arity,
+                plc_name_arity_str  :: string,
                 plc_file_name       :: string,
+                plc_first_line      :: int,
+                plc_last_line       :: int,
                 plc_line_count      :: int
             ).
 
@@ -369,21 +401,29 @@ gather_pred_line_counts(ModuleName, PredInfo, !PredLineCounts) :-
             ),
             find_first_context(FirstClause ^ clause_body, FirstContext),
             find_last_context(LastClause ^ clause_body, LastContext),
-            FirstContext = context(FirstFileName, FirstLineNumber),
-            LastContext = context(LastFileName, LastLineNumber),
+            FirstContext = context(FirstFileName, FirstLineNumber0),
+            LastContext = context(LastFileName, LastLineNumber0),
+            % In some rare cases, the "last" part of the goal
+            % appears *before* the "first" part.
+            ( if FirstLineNumber0 > LastLineNumber0 then
+                FirstLineNumber = LastLineNumber0,
+                LastLineNumber = FirstLineNumber0
+            else
+                FirstLineNumber = FirstLineNumber0,
+                LastLineNumber = LastLineNumber0
+            ),
             ( if FirstFileName = LastFileName then
                 pred_info_get_name(PredInfo, PredName),
                 PredArity = pred_info_orig_arity(PredInfo),
-                PredNameArity = name_arity(PredName, PredArity),
-                Extent = LastLineNumber - FirstLineNumber + 1,
-                % In some rare cases, the "last" part of the goal
-                % appears *before* the "first" part.
-                LineCount = int.abs(Extent),
-                PLC = pred_line_count(PredNameArity, FirstFileName, LineCount),
+                string.format("%s/%d", [s(PredName), i(PredArity)],
+                    PredNameArityStr),
+                LineCount = LastLineNumber - FirstLineNumber + 1,
+                PLC = pred_line_count(PredNameArityStr, FirstFileName,
+                    FirstLineNumber, LastLineNumber, LineCount),
                 !:PredLineCounts = [PLC | !.PredLineCounts]
             else
-                % We don't have the information we need to compute
-                % a line count.
+                % We don't have the consistent information we need
+                % to compute anything useful.
                 true
             )
         )
@@ -505,15 +545,57 @@ find_last_context(Goal, FirstContext) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_pred_line_count(io.text_output_stream::in,
+:- pred compare_pred_line_counts_by_pred_name(
+    pred_line_count::in, pred_line_count::in, comparison_result::out) is det.
+
+compare_pred_line_counts_by_pred_name(PredLineCountA, PredLineCountB,
+        Result) :-
+    PredLineCountA = pred_line_count(PredNameArityStrA, _FileNameA,
+        _FirstLineA, _LastLineA, _LineCountA),
+    PredLineCountB = pred_line_count(PredNameArityStrB, _FileNameB,
+        _FirstLineB, _LastLineB, _LineCountB),
+    compare(Result, PredNameArityStrA, PredNameArityStrB).
+
+:- pred compare_pred_line_counts_by_start_line_number(
+    pred_line_count::in, pred_line_count::in, comparison_result::out) is det.
+
+compare_pred_line_counts_by_start_line_number(PredLineCountA, PredLineCountB,
+        Result) :-
+    PredLineCountA = pred_line_count(_PredNameArityStrA, _FileNameA,
+        FirstLineA, _LastLineA, _LineCountA),
+    PredLineCountB = pred_line_count(_PredNameArityStrB, _FileNameB,
+        FirstLineB, _LastLineB, _LineCountB),
+    compare(Result, FirstLineA, FirstLineB).
+
+%-----------------------------------------------------------------------------%
+
+:- pred acc_max_predname_arity_str_len(pred_line_count::in,
+    int::in, int::out) is det.
+
+acc_max_predname_arity_str_len(PredLineCount, !MaxLen) :-
+    PredLineCount = pred_line_count(PredNameArityStr, _, _, _, _),
+    string.length(PredNameArityStr, Len),
+    int.max(Len, !MaxLen).
+
+%-----------------------------------------------------------------------------%
+
+:- pred write_pred_line_count(io.text_output_stream::in, int::in,
     pred_line_count::in, io::di, io::uo) is det.
 
-write_pred_line_count(Stream, PredLineCount, !IO) :-
-    PredLineCount = pred_line_count(PredNameArity, FileName, LineCount),
-    PredNameArity = name_arity(PredName, PredArity),
-    string.format("%s/%d", [s(PredName), i(PredArity)], PredNameArityStr),
-    io.format(Stream, "%-40s %-30s %6d\n",
-        [s(PredNameArityStr), s(FileName), i(LineCount)], !IO).
+write_pred_line_count(Stream, NameWidth, PredLineCount, !IO) :-
+    PredLineCount = pred_line_count(PredNameArityStr, FileName,
+        _FirstLine, _LastLine, LineCount),
+    io.format(Stream, "%-*s %-30s %6d\n",
+        [i(NameWidth), s(PredNameArityStr), s(FileName), i(LineCount)], !IO).
+
+:- pred write_pred_extent(io.text_output_stream::in, int::in,
+    pred_line_count::in, io::di, io::uo) is det.
+
+write_pred_extent(Stream, NameWidth, PredLineCount, !IO) :-
+    PredLineCount = pred_line_count(PredNameArityStr, _FileName,
+        FirstLine, LastLine, _LineCount),
+    io.format(Stream, "%-*s %6d to %6d\n",
+        [i(NameWidth), s(PredNameArityStr), i(FirstLine), i(LastLine)], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_defns.

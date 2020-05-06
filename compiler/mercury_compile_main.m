@@ -1842,6 +1842,7 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
         FoundSemanticError, !Specs, !IO),
     maybe_write_definitions(Verbose, Stats, HLDS0, !IO),
     maybe_write_definition_line_counts(Verbose, Stats, HLDS0, !IO),
+    maybe_write_definition_extents(Verbose, Stats, HLDS0, !IO),
 
     ( if
         MQUndefTypes = did_not_find_undef_type,
@@ -2186,7 +2187,7 @@ maybe_write_definition_line_counts(Verbose, Stats, HLDS, !IO) :-
     (
         LineCounts = yes,
         maybe_write_string(Verbose,
-            "% Writing definition line coints...", !IO),
+            "% Writing definition line counts...", !IO),
         module_info_get_name(HLDS, ModuleName),
         module_name_to_file_name(Globals, do_create_dirs, ".defn_line_counts",
             ModuleName, FileName, !IO),
@@ -2205,6 +2206,36 @@ maybe_write_definition_line_counts(Verbose, Stats, HLDS, !IO) :-
         maybe_report_stats(Stats, !IO)
     ;
         LineCounts = no
+    ).
+
+:- pred maybe_write_definition_extents(bool::in, bool::in,
+    module_info::in, io::di, io::uo) is det.
+
+maybe_write_definition_extents(Verbose, Stats, HLDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, show_definition_extents, Extents),
+    (
+        Extents = yes,
+        maybe_write_string(Verbose,
+            "% Writing definition extents...", !IO),
+        module_info_get_name(HLDS, ModuleName),
+        module_name_to_file_name(Globals, do_create_dirs, ".defn_extents",
+            ModuleName, FileName, !IO),
+        io.open_output(FileName, Res, !IO),
+        (
+            Res = ok(FileStream),
+            hlds.hlds_defns.write_hlds_defn_extents(FileStream, HLDS, !IO),
+            io.close_output(FileStream, !IO),
+            maybe_write_string(Verbose, " done.\n", !IO)
+        ;
+            Res = error(IOError),
+            ErrorMsg = "unable to write definition extents: " ++
+                io.error_message(IOError),
+            report_error(ErrorMsg, !IO)
+        ),
+        maybe_report_stats(Stats, !IO)
+    ;
+        Extents = no
     ).
 
 %---------------------------------------------------------------------------%

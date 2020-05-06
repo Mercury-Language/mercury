@@ -265,6 +265,16 @@ Changes to the Mercury compiler
   this behavior has the advantage that the rebuild, which would fail anyway,
   fails sooner.
 
+### New auxiliary output options
+
+* `--show-definition-extents`
+
+  When this option is specified, the compiler will write out a list
+  of the predicates and functions defined in the module, together with
+  the approximate line numbers of their first and last lines,
+  to `module.defn_extents`. The list will be ordered on the starting
+  line numbers of the predicates and functions.
+
 Changes to the Mercury implementation
 -------------------------------------
 

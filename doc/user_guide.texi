@@ -7497,6 +7497,17 @@ typeclasses and instances defined in the module to @file{@var{module}.defns}.
 Write out a list of the predicates and functions defined in the module,
 together with the names of the files containing them
 and their approximate line counts, to @file{@var{module}.defn_line_counts}.
+The list will be ordered on the names and arities of the
+predicates and functions.
+
+@sp 1
+@item --show-definition-extents
+@findex --show-definition-extents
+Write out a list of the predicates and functions defined in
+the module, together with the approximate line numbers of their
+first and last lines, to @file{@var{module}.defn_extents}.
+The list will be ordered on the starting line numbers
+of the predicates and functions.
 
 @sp 1
 @item --show-local-type-representations

@@ -343,6 +343,7 @@
     ;       max_error_line_width
     ;       show_definitions
     ;       show_definition_line_counts
+    ;       show_definition_extents
     ;       show_local_type_repns
     ;       show_all_type_repns
     ;       show_developer_type_repns
@@ -1364,6 +1365,7 @@ option_defaults_2(aux_output_option, [
     max_error_line_width                -   maybe_int(yes(79)),
     show_definitions                    -   bool(no),
     show_definition_line_counts         -   bool(no),
+    show_definition_extents             -   bool(no),
     show_local_type_repns               -   bool(no),
     show_all_type_repns                 -   bool(no),
     show_developer_type_repns           -   bool(no),
@@ -2331,6 +2333,7 @@ long_option("frameopt-comments",        frameopt_comments).
 long_option("max-error-line-width",     max_error_line_width).
 long_option("show-definitions",         show_definitions).
 long_option("show-definition-line-counts",  show_definition_line_counts).
+long_option("show-definition-extents",  show_definition_extents).
 long_option("show-all-type-repns",              show_all_type_repns).
 long_option("show-all-type-representations",    show_all_type_repns).
 long_option("show-local-type-repns",            show_local_type_repns).
@@ -4470,6 +4473,14 @@ options_help_aux_output -->
         "\tWrite out a list of the predicates and functions defined in",
         "\tthe module, together with the names of the files containing them",
         "\tand their approximate line counts, to `<module>.defn_line_counts'.",
+        "\tThe list will be ordered on the names and arities of the",
+        "\tpredicates and functions.",
+        "--show-definition-extents",
+        "\tWrite out a list of the predicates and functions defined in",
+        "\tthe module, together with the approximate line numbers of their",
+        "\tfirst and last lines, to `<module>.defn_extents'.",
+        "\tThe list will be ordered on the starting line numbers",
+        "\tof the predicates and functions.",
         "--show-local-type-representations",
         "\tWrite out information about the representations of all types",
         "\tdefined in the module being compiled to `<module>.type_repns'.",
