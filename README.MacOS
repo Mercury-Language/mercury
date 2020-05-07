@@ -202,6 +202,11 @@ QA118 <http://developer.apple.com/qa/qa2001/qa1118.html> for further details.)
 This restriction only applies to system libraries.  Statically linking against
 Mercury libraries is fine.
 
+Versions of Xcode 11 prior to Xcode 11.4 have bugs that cause the programs
+they generate to crash. A discussion of this issue can be found at
+https://forums.developer.apple.com/thread/121887. The github post
+https://github.com/Mercury-Language/mercury/issues/88#issuecomment-624329679.
+describes a way that has been found to fix the problem.
 
 --------------------------
 Deep profiling on Mac OS X

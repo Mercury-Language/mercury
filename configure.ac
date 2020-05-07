@@ -132,7 +132,7 @@ esac
 
 #-----------------------------------------------------------------------------#
 #
-# Determine what C compiler to use
+# Determine what C compiler to use.
 #
 
 # The code in config.guess that distinguishes between the i*86 and x86_64
@@ -165,23 +165,23 @@ case "$mercury_cv_cc_type" in
         MERCURY_HAVE_CLANG=yes
         MERCURY_CLANG_VERSION
         C_COMPILER_TYPE="clang_${mercury_cv_clang_version}"
-    ;;
+        ;;
 
     gcc)
         MERCURY_HAVE_GCC=yes
         MERCURY_GCC_VERSION
         C_COMPILER_TYPE="gcc_${mercury_cv_gcc_version}"
-    ;;
+        ;;
 
     msvc)
         MERCURY_HAVE_MSVC=yes
         MERCURY_MSVC_VERSION
         C_COMPILER_TYPE="msvc_${mercury_cv_msvc_version}"
-    ;;
+        ;;
 
     *)
         C_COMPILER_TYPE="unknown"
-    ;;
+        ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -251,9 +251,23 @@ then
 **** See README.MacOS for further details.])
             exit 1
             fi
-        ;;
+            ;;
     esac
 fi
+
+#-----------------------------------------------------------------------------#
+
+# Warn about using Xcode 11 on Mac OS X.
+
+case "$host" in
+    *apple*darwin*)
+        AC_MSG_WARN(
+[
+**** Note that versions of Xcode 11 prior to Xcode 11.4 have bugs
+**** that prevent Mercury programs from working correctly.
+**** See README.MacOS for further details.])
+        ;;
+esac
 
 #-----------------------------------------------------------------------------#
 
