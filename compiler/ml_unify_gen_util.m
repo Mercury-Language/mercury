@@ -511,8 +511,6 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, Ptag, FieldGen) :-
             FieldVia = field_via_offset
         else if ConsId = cons(ConsSymName, ConsArity, TypeCtor) then
             ml_gen_info_get_target(Info, Target),
-            ConsName = ml_gen_du_ctor_name(Target, TypeCtor,
-                ConsSymName, ConsArity),
             % XXX ARG_PACK Delete this sanity test after it has been tested
             % for a while.
             type_to_ctor_det(VarType, VarTypeCtor),
@@ -533,6 +531,8 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, Ptag, FieldGen) :-
             ;
                 UsesBaseClass = tag_does_not_use_base_class,
                 % The class name is determined by the constructor.
+                ConsName = ml_gen_du_ctor_name(Target, TypeCtor,
+                    ConsSymName, ConsArity),
                 QualConsName =
                     qual_class_name(TypeQualifier, type_qual, ConsName),
                 ClassId = mlds_class_id(QualConsName, ConsArity, mlds_class),
