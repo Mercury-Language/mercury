@@ -7944,7 +7944,7 @@ and each following element (if any) is a @samp{grade modifier}.
 
 The base grade specifies
 what target language to compile the Mercury program to,
-and if that the compiler can do this in several different ways,
+and if the compiler can do this in several different ways,
 selects one of those ways.
 The available base grades are the following.
 
@@ -7965,11 +7965,11 @@ The available base grades are the following.
 
 @item @samp{hlc}
 This base grade calls for generating idiomatic C,
-which we call high level C.
+which we call high-level C.
 
 @item @samp{none}, @samp{reg}, and @samp{asm_fast}
 These base grades calls for generating assembly-like C code,
-which we call low level C.
+which we call low-level C.
 @samp{none} calls for generating standard C without using any GNU C extensions.
 @samp{reg} and @samp{asm_fast} both call for
 the use of GNU C's extension for storing global variables in registers,
@@ -7977,7 +7977,7 @@ while @samp{asm_fast} also calls for the use of two GNU C extensions
 that together allow direct gotos to labels in other functions,
 even in other modules.
 In general, the more GNU C extensions are used,
-the faster the programmer will be,
+the faster the program will be,
 but some platforms, compilers or compiler versions
 do not support specific extensions.
 
@@ -7996,7 +7996,6 @@ The default base grade is system dependent,
 but will be either @samp{hlc} or @samp{asm_fast},
 as these are the two fastest.
 
-@c @cindex hl (compilation grade)
 @c @cindex asm_jump (compilation grade)
 @c @cindex fast (compilation grade)
 @c @cindex jump (compilation grade)
@@ -8030,7 +8029,7 @@ and not all grade modifiers are compatible with each other.
 @item garbage collection
 The default is no garbage collection beyond what the target language provides.
 C#, Java and Erlang have their own builtin garbage collectors, but C does not.
-Since gc is essential for all programs
+Since garbage collection is essential for all programs
 other than those with @emph{very} short runtimes,
 base grades that target C
 are usually followed by the @samp{.gc} grade modifier, which calls for
@@ -8051,24 +8050,24 @@ Applications that need trailing should specify the grade modifier @samp{.tr}.
 @samp{.trseg} is currently accepted as synonym for @samp{.tr}.
 
 @item floating point precision
-By default, the Mercury @samp{float} is implemented as
-a double-precision floating point number,
-which occupies 64 bits of space on virtually all platforms.
-On platforms whose word size is 32 bits,
-users whose programmers do not require double precision
-may improve memory consumption and therefore speed by specifying
-the grade modifier @samp{.spf} (short for single-precision float),
-which calls for implementing all Mercury floats
-as single-precision, 32 bit floating point numbers.
-Note that on 64 bit platforms,
-using single-precision floats
-definitely will @emph{not} improve memory consumption,
-and probably will not improve speed.
-On the other hand, it may simplify the use of C APIs
-that exclusively use single precision floats.
+By default when targeting C, the Mercury @samp{float} type is implemented as an
+IEEE 754 double-precision floating point number, which occupies 64 bits of
+space.
+On platforms whose word size is 32 bits, users whose programs do not require
+double precision may improve memory consumption and speed by specifying the
+grade modifier @samp{.spf} (short for single-precision float), which calls for
+implementing all Mercury floats as IEEE 754 single-precision floating point
+numbers.
+Note that on 64 bit platforms, using single-precision floats definitely will
+@emph{not} improve memory consumption, and will probably not improve speed.
+On the other hand, it may simplify the use of C APIs that exclusively use
+single precision floats.
+For target languages other than C, the Mercury @samp{float} type is always
+implemented as a double-precision floating point number and the
+@samp{.spf} modifier is not supported.
 
 @item stack size
-When generating assembly-like C code,
+When generating low-level C,
 Mercury implements its own stacks (two of them).
 The default is to make each stack a fixed size
 (usually a relatively large size,
@@ -8087,37 +8086,37 @@ small memory segments chained together in a list.
 When there is no room in the current segment for a new stack frame,
 we simply allocate a new segment and add it to the list.
 This approach has higher overhead,
-since calls to and returns from procedures we must execute more code,
+since calls to, and returns from, procedures must execute more code,
 but it avoids imposing any limit on stack size
 other than the size of available memory.
 
 @item debugging
 The default is to generate executables that do not support debugging.
-However, when generating low level C code,
+However, when generating low-level C code,
 specifying one of the grade modifiers @samp{.debug} and @samp{.decldebug}
 will cause the compiler to generate executables
 that can be debugged using the Mercury debugger @samp{mdb}.
 The difference between them is that
 the declarative debugging aspects of @samp{mdb}
 will work only with @samp{.decldebug}.
-The price of this is that @samp{.decldebug} will result
+The price of this is that @samp{.decldebug} results
 in significantly larger executable files.
 @c @samp{.ssdebug}
 
 @item threads
-The default is whatever thread support is given by the target language.
+The default is whatever thread support is provided by the target language.
 When targeting C,
 thread support can be enabled by specifying the grade modifier @samp{.par}.
-When targeting low level C,
+When targeting low-level C,
 this also enables the use of the parallel conjunction operator @samp{&}.
 Since Mercury implements parallel conjunctions
-only in low level C grades with the @samp{.par} grade modifier,
+only in low-level C grades with the @samp{.par} grade modifier,
 in every other situation, the compiler silently converts
 every occurrence of @samp{&} to a comma,
 the usual @emph{sequential} conjunctions operator.
 
 @item thread profiling
-In low level C grades with the grade modifier @samp{.par},
+In low-level C grades with the grade modifier @samp{.par},
 users can enable support for ThreadScope-style thread profiling
 by also specifying the grade module @samp{.threadscope}.
 The default is no support for profiling.
@@ -8125,7 +8124,7 @@ Note that support for this form of profiling is experimental.
 
 @item minimal model tabling
 The default is no support for minimal model evaluation.
-When targeting low level C, users can specify the grade modifier @samp{.mm},
+When targeting low-level C, users can specify the grade modifier @samp{.mm},
 which enables support for minimal model tabled evaluation of procedures.
 
 @end table
@@ -10654,7 +10653,7 @@ grade.
 @c @findex --profile-parallel-execution
 @c Tells the runtime to collect and write out parallel execution profiling
 @c information to a file named @file{parallel_execution_profile.txt}.
-@c This only has an effect if the executable was built in a low level c,
+@c This only has an effect if the executable was built in a low-level C,
 @c parallel, threadscope grade.
 @c
 @c @sp 1
