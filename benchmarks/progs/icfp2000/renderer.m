@@ -31,7 +31,7 @@
 :- import_module transform_object, gml, op.
 :- import_module precompute_lights.
 :- import_module map, array, exception, require, math.
-:- import_module int, float, list, std_util, string.
+:- import_module int, float, std_util, string.
 
 render(Params1) -->
 	{ Wid = Params1 ^ wid },

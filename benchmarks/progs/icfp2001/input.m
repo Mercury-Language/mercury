@@ -76,7 +76,7 @@
 
 :- implementation.
 
-:- import_module int, list, char, exception, string, bool.
+:- import_module int, exception, string, bool.
 :- import_module maybe.
 :- import_module pair.
 

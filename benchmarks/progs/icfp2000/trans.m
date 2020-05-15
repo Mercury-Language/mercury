@@ -198,7 +198,7 @@
 
 :- implementation.
 
-:- import_module exception, string, math, list, std_util.
+:- import_module exception, string, math, std_util.
 
     % NOTE 1: points and vectors are represented using the point/3 type
     % defined in eval.m.  For the purposes, a point (x, y, z) is

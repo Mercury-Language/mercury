@@ -1,5 +1,5 @@
 
-:- module fib_plain_par.
+:- module fib_par_plain.
 
 :- interface.
 

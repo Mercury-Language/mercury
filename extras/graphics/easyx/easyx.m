@@ -386,7 +386,6 @@
 :- import_module exception.
 :- import_module float.
 :- import_module int.
-:- import_module list.
 :- import_module math.
 :- import_module store.
 :- import_module string.

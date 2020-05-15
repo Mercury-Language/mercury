@@ -200,7 +200,7 @@
 :- func invmod(gmp_int, gmp_int) = gmp_int.
 
     % Exponentiation.
-    % Throws exception `math.domain_error` if Y is negative.
+    % Throws exception `exception.domain_error` if Y is negative.
     %
 :- func pow(gmp_int, gmp_int) = gmp_int.
 
@@ -296,7 +296,6 @@
 
 :- import_module exception.
 :- import_module int.
-:- import_module math.
 :- import_module require.
 
 %---------------------------------------------------------------------------%
@@ -523,7 +522,7 @@ det_to_int(A) = Res :-
     ( to_int(A, Res0) ->
         Res0 = Res
     ;
-        throw(math.domain_error("gmp_int.det_to_int: not in int range"))
+        throw(domain_error("gmp_int.det_to_int: not in int range"))
     ).
 
 :- pred fits_in_long(gmp_int::in) is semidet.
@@ -556,7 +555,7 @@ to_base_string(A, R) = S :-
     ( ( R >= 2, R =< 62 ) ->
         S = gmp_to_base_string(A, R)
     ;
-        throw(math.domain_error("gmp_int.to_base_string: base must be between 2 and 62"))
+        throw(domain_error("gmp_int.to_base_string: base must be between 2 and 62"))
     ).
 
 :- func gmp_to_base_string(gmp_int, int) = string.
@@ -785,7 +784,7 @@ det_sqrt(A) = Res :-
     ( sqrt(A, Root) ->
         Res = Root
     ;
-        throw(math.domain_error("gmp_int.det_sqrt: number must be non-negative"))
+        throw(domain_error("gmp_int.det_sqrt: number must be non-negative"))
     ).
 
 :- pred gmp_sqrt(gmp_int::in, gmp_int::out) is det.
@@ -809,7 +808,7 @@ det_nthroot(A, N) = Res :-
     ( nthroot(A, N, Root) ->
         Res = Root
     ;
-        throw(math.domain_error("gmp_int.det_sqrt: number must be non-negative"))
+        throw(domain_error("gmp_int.det_sqrt: number must be non-negative"))
     ).
 
 :- pred gmp_nthroot(gmp_int::in, int::in, gmp_int::out) is det.
@@ -835,7 +834,7 @@ legendre(A, B, Res) :-
 
 pow(A, N) = Res :-
     ( is_negative(N) ->
-        throw(math.domain_error("gmp_int.pow: cannot handle negative exponent"))
+        throw(domain_error("gmp_int.pow: cannot handle negative exponent"))
     ;
         Res = pow2(A, N)
     ).

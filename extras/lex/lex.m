@@ -27,7 +27,6 @@
 :- import_module char.
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 :- import_module pair.
 :- import_module string.
 :- import_module sparse_bitset.
@@ -270,11 +269,11 @@
 
 :- import_module array.
 :- import_module bool.
-:- import_module char.
 :- import_module exception.
 :- import_module require.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 
 :- import_module lex.automata.
 :- import_module lex.buf.

@@ -86,7 +86,7 @@
 
 :- implementation.
 
-:- import_module require, string.
+:- import_module require.
 
 colour(R1, G1, B1) + colour(R2, G2, B2) = colour(R1 + R2, G1 + G2, B1 + B2).
 
