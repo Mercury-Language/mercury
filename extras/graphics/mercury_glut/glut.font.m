@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2018, 2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -16,6 +16,8 @@
 
 :- module glut.font.
 :- interface.
+
+:- import_module char.
 
 %----------------------------------------------------------------------------%
 %
@@ -99,11 +101,10 @@ font.bitmap_character(Font, Char, !IO) :-
 
 :- pred bitmap_character_2(font_ptr::in, char::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    bitmap_character_2(FntPtr::in, C::in, IO0::di, IO::uo),
+    bitmap_character_2(FntPtr::in, C::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutBitmapCharacter(FntPtr, (int) C);
-    IO = IO0;
 ").
 
 font.bitmap_width(Font, Char) = Width :-

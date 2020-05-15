@@ -31,15 +31,10 @@
 :- include_module overlay.
 :- include_module window.
 
-:- import_module glut.window.
-
 :- import_module bool.
-:- import_module char.
-:- import_module float.
 :- import_module int.
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
