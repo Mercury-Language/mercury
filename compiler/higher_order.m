@@ -1779,7 +1779,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
         Constraint = constraint(_ClassName, ClassArgTypes),
         % Find out what tvars the typeclass-info contains the type-infos for.
         list.filter_map(
-            (pred(ClassArgType::in, ClassTVar::out) is semidet :-
+            ( pred(ClassArgType::in, ClassTVar::out) is semidet :-
                 ClassArgType = type_variable(ClassTVar, _)
             ), ClassArgTypes, ClassTVars),
         !:TVars = ClassTVars ++ !.TVars
@@ -3079,12 +3079,13 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     list.foldl_corresponding(rtti_det_insert_type_info_type,
         ExtraTypeInfoVars, ExtraTypeInfoTVarTypes,
         RttiVarMaps1, RttiVarMaps2),
-    Pred = (pred(TVar::in, Var::in, !.R::in, !:R::out) is det :-
+    SetTypeInfoVarLocn =
+        ( pred(TVar::in, Var::in, !.R::in, !:R::out) is det :-
             Locn = type_info(Var),
             rtti_set_type_info_locn(TVar, Locn, !R)
         ),
-    list.foldl_corresponding(Pred, ExtraTypeInfoTVars, ExtraTypeInfoVars,
-        RttiVarMaps2, RttiVarMaps),
+    list.foldl_corresponding(SetTypeInfoVarLocn,
+        ExtraTypeInfoTVars, ExtraTypeInfoVars, RttiVarMaps2, RttiVarMaps),
 
     proc_info_set_rtti_varmaps(RttiVarMaps, !NewProcInfo),
 
@@ -3286,7 +3287,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
     assoc_list.from_corresponding_lists(CurriedArgs, CurriedHeadVars1,
         CurriedRenaming),
     list.foldl(
-        (pred(VarPair::in, !.Map::in, !:Map::out) is det :-
+        ( pred(VarPair::in, !.Map::in, !:Map::out) is det :-
             VarPair = Var1 - Var2,
             map.set(Var1, Var2, !Map)
         ), CurriedRenaming, !Renaming),
