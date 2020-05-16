@@ -1264,7 +1264,12 @@ mercury_output_type_ctor_all_defns(Info, TypeCtorAllDefns, !IO) :-
     item_type_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
-    % ZZZ TypeVarSet
+    % XXX We should not use the tvar names in TypeVarSet; we should be
+    % using standard tvar names such as TV1, TV2 etc. This should allow
+    % any automatically generated interface files to remain unchanged
+    % when the names of the type variables change in the source code,
+    % thus avoiding the cascade of module recompilations that would
+    % otherwise result.
     ItemTypeDefn = item_type_defn_info(SymName0, TypeParams, TypeDefn,
         TypeVarSet, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, SymName0, SymName),
@@ -2300,19 +2305,15 @@ mercury_output_fim_spec(FIMSpec, !IO) :-
 
 mercury_output_item_type_repn(Info, ItemTypeRepn, !IO) :-
     CommaSep = get_human_comma_sep(Info),
-    ItemTypeRepn = item_type_repn_info(TypeCtorSymName, ArgTVars, RepnInfo,
-        TVarSet, _Context, _SeqNum),
+    ItemTypeRepn = item_type_repn_info(TypeCtorSymName0, TypeParams, RepnInfo,
+        TypeVarSet, Context, _SeqNum),
     io.write_string(":- type_representation(", !IO),
-    mercury_output_sym_name(TypeCtorSymName, !IO),
-    (
-        ArgTVars = []
-    ;
-        ArgTVars = [_ | _],
-        io.write_string("(", !IO),
-        io.write_list(ArgTVars, CommaSep,
-            mercury_output_var(TVarSet, print_num_only), !IO),
-        io.write_string(")", !IO)
-    ),
+    maybe_unqualify_sym_name(Info, TypeCtorSymName0, TypeCtorSymName),
+    Args = list.map((func(V) = term.variable(V, Context)), TypeParams),
+    construct_qualified_term_with_context(TypeCtorSymName, Args, Context,
+        TypeTerm),
+    mercury_output_term_nq(TypeVarSet, print_num_only, next_to_graphic_token,
+        TypeTerm, !IO),
     io.write_string(CommaSep, !IO),
     (
         RepnInfo = tcrepn_is_direct_dummy,
@@ -2328,7 +2329,7 @@ mercury_output_item_type_repn(Info, ItemTypeRepn, !IO) :-
     ;
         RepnInfo = tcrepn_is_eqv_to(EqvType),
         io.write_string("is_eqv_to(", !IO),
-        mercury_output_type(TVarSet, print_num_only, EqvType, !IO),
+        mercury_output_type(TypeVarSet, print_num_only, EqvType, !IO),
         io.write_string(")", !IO)
     ;
         RepnInfo = tcrepn_is_word_aligned_ptr,
