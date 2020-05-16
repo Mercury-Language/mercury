@@ -32,7 +32,7 @@
 :- import_module transform_object, gml, op.
 :- import_module precompute_lights.
 :- import_module map, array, exception, require, math.
-:- import_module int, float, list, std_util, string.
+:- import_module int, float, std_util, string.
 
 do_rendering(State, !IO) :-
     RenderCommands = State ^ s_render_commands,

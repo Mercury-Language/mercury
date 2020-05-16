@@ -26,7 +26,7 @@
 :- implementation.
 
 :- import_module exception, float, int.
-:- import_module space_partition, renderer.
+:- import_module renderer.
 :- import_module maybe.
 :- import_module pair.
 %------------------------------------------------------------------------------%

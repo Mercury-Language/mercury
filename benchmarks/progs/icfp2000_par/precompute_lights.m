@@ -34,7 +34,6 @@
 :- implementation.
 
 :- import_module renderer.
-:- import_module space_partition.
 
 :- import_module exception.
 :- import_module float.

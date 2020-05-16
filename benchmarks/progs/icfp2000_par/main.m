@@ -31,7 +31,7 @@
 
 main(!IO) :-
     io.command_line_arguments(AllArgs, !IO),
-    OptionOps = option_ops(short_option, long_option, option_defaults),
+    OptionOps = option_ops_multi(short_option, long_option, option_defaults),
     getopt.process_options(OptionOps, AllArgs, _OptionArgs, NonOptionArgs,
         OptionResult),
     (
@@ -102,7 +102,7 @@ short_option('f', time_filename).
 long_option("target-parallelism",   target_parallelism).
 long_option("time_filename",        time_filename).
 
-:- pred option_defaults(option::out, option_data::out) is nondet.
+:- pred option_defaults(option::out, option_data::out) is multi.
 
 option_defaults(target_parallelism, int(0)).
 option_defaults(time_filename, string("")).

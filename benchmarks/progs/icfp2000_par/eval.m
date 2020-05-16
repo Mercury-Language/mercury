@@ -156,7 +156,6 @@
 
 :- import_module int.
 :- import_module float.
-:- import_module maybe.
 :- import_module pair.
 :- import_module exception.
 :- import_module string.
@@ -613,8 +612,6 @@ next_object_id(Id, global_object_counter(Id), global_object_counter(Id + 1)).
 
 :- pred extra_operator_mode(extra_operator::in,
     extra_operator::out(extra_operator_inst)) is det.
-
-:- pragma promise_pure(extra_operator_mode/2).
 
 :- pragma foreign_proc("C",
     extra_operator_mode(A::in, B::out(extra_operator_inst)),

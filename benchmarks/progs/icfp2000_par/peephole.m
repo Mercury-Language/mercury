@@ -13,7 +13,6 @@
 
 :- implementation.
 
-:- import_module eval.
 :- import_module gml.
 :- import_module op.
 :- import_module vector.

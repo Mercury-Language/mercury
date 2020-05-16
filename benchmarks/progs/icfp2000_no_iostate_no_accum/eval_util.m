@@ -19,7 +19,7 @@
 
 :- implementation.
 
-:- import_module int, list, exception, map, string, gml.
+:- import_module int, list, exception, map, string.
 :- import_module pprint.
 
 write_nice_exception(E) -->

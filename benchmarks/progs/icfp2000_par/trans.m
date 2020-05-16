@@ -179,7 +179,6 @@
 :- implementation.
 
 :- import_module exception.
-:- import_module list.
 :- import_module math.
 :- import_module std_util.
 :- import_module string.

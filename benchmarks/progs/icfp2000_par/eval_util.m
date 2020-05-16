@@ -24,8 +24,6 @@
 
 :- implementation.
 
-:- import_module gml.
-
 :- import_module exception.
 :- import_module int.
 :- import_module list.

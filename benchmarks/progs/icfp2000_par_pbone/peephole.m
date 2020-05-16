@@ -9,7 +9,7 @@
 
 :- implementation.
 
-:- import_module eval, gml, op, vector.
+:- import_module gml, op, vector.
 :- import_module bool, float, int, list, io, map, string.
 :- import_module maybe.
 
