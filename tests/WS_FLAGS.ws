@@ -2,6 +2,7 @@
 -I@WORKSPACE@/library
 -I@WORKSPACE@/browser
 -I@WORKSPACE@/mdbcomp
+-I@WORKSPACE@/ssdb
 --c-include-directory @WORKSPACE@/boehm_gc
 --c-include-directory @WORKSPACE@/boehm_gc/include
 --c-include-directory @WORKSPACE@/runtime

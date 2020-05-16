@@ -54,6 +54,9 @@ MCFLAGS-exists_cast_bug		= --trace rep -O0 --optimize-saved-vars-const
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-foreign_underscore_var	= --halt-at-warn
 MCFLAGS-fzn_debug_abort		= --trace rep
+# XXX we should pass --ssdb-trace deep or --ss-debug to gh89
+# but that currently doesn't work in non ssdb grades.
+MCFLAGS-gh89 = --intermodule-optimization -O3 --no-warn-missing-opt-files
 MCFLAGS-higher_order4		= -O3
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-ho_and_type_spec_bug	= -O4

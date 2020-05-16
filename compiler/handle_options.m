@@ -1635,8 +1635,32 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
         add_error(phase_options, TraceHLSpec, !Specs)
     ),
 
+    % Source-to-source debugging requires disabling many HLDS->HLDS
+    % optimizations. This is so that the trace being generated relates to the
+    % source code and also because the SSDB transformation cannot (yet) handle
+    % the specialised predicates introduced by many optimizations.
+    (
+        ( SSTraceLevel = shallow
+        ; SSTraceLevel = deep
+        ),
+        globals.set_option(allow_inlining, bool(no), !Globals),
+        globals.set_option(optimize_unused_args, bool(no), !Globals),
+        globals.set_option(optimize_higher_order, bool(no), !Globals),
+        globals.set_option(type_specialization, bool(no), !Globals),
+        globals.set_option(user_guided_type_specialization, bool(no),
+            !Globals),
+        globals.set_option(deforestation, bool(no), !Globals),
+        globals.set_option(constraint_propagation, bool(no), !Globals),
+        globals.set_option(local_constraint_propagation, bool(no), !Globals),
+        globals.set_option(optimize_duplicate_calls, bool(no), !Globals),
+        globals.set_option(optimize_constructor_last_call, bool(no), !Globals)
+    ;
+        SSTraceLevel = none
+    ),
+
     % The pthreads headers on some architectures (Solaris, Linux)
     % don't work with -ansi.
+    % XXX we don't pass -ansi to the C compiler anymore.
     option_implies(parallel, ansi_c, bool(no), !Globals),
 
     option_neg_implies(inline_builtins, constant_propagation, bool(no),

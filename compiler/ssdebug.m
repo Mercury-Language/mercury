@@ -1035,6 +1035,8 @@ ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
     list(prog_var)::out, list(prog_var)::out, list(mer_mode)::out) is det.
 
 get_stripped_headvars(PredInfo, ProcInfo, FullHeadVars, HeadVars, ArgModes) :-
+    % XXX using orig_arity here does not work when the predicate is one
+    % produced by higher-order specialization. See tests/valid/gh89.m.
     PredArity = pred_info_orig_arity(PredInfo),
     proc_info_get_headvars(ProcInfo, FullHeadVars),
     proc_info_get_argmodes(ProcInfo, FullArgModes),
