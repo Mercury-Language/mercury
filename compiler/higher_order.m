@@ -274,6 +274,11 @@ recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
 
                 % Should the interface of the specialized procedure
                 % use typeinfo liveness?
+                % XXX Unfortunately, this field is not doing its job.
+                % First, it is only ever set to "yes", so it is redundant.
+                % Second, its value is only ever used for one thing, which
+                % is to set the value of the np_typeinfo_liveness field
+                % in the new_pred type, which is itself never used.
                 rq_typeinfo_liveness    :: bool,
 
                 % Is this a user-requested specialization?
@@ -416,6 +421,8 @@ recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
 
                 % Does the interface of the specialized version use type-info
                 % liveness?
+                % XXX Unfortunately, this field is not doing its job;
+                % its value is never used for anything.
                 np_typeinfo_liveness    :: bool,
 
                 % Is this a user-specified type specialization?
@@ -3017,7 +3024,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
 
     apply_rec_subst_to_tvar_list(KindMap, TypeSubn, ExistQVars1, ExistQTypes),
     ExistQVars = list.filter_map(
-        (func(ExistQType) = ExistQVar is semidet :-
+        ( func(ExistQType) = ExistQVar is semidet :-
             ExistQType = type_variable(ExistQVar, _)
         ), ExistQTypes),
 
