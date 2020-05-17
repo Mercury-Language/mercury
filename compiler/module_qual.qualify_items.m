@@ -195,7 +195,7 @@ module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         IntTypeClasses0, IntTypeClasses, !Info, !Specs),
     list.map_foldl2(module_qualify_item_instance(InInt),
         IntInstances0, IntInstances, !Info, !Specs),
-    map.map_values_foldl2(module_qualify_item_type_repn(InInt),
+    map.map_values_foldl2(module_qualify_item_type_repn(ModuleName, InInt),
         IntTypeRepns0, IntTypeRepns, !Info, !Specs),
 
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
@@ -527,15 +527,26 @@ module_qualify_item_impl_pragma(InInt, ItemImplPragma0, ItemImplPragma,
 
 % Generated pragmas are always generated fully qualified.
 
-:- pred module_qualify_item_type_repn(mq_in_interface::in,
+:- pred module_qualify_item_type_repn(module_name::in, mq_in_interface::in,
     item_type_repn_info::in, item_type_repn_info::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_item_type_repn(InInt, ItemTypeRepnInfo0, ItemTypeRepnInfo,
-        !Info, !Specs) :-
-    ItemTypeRepnInfo0 = item_type_repn_info(TypeCtorSymName, ArgTVars,
+module_qualify_item_type_repn(ModuleName, InInt,
+        ItemTypeRepnInfo0, ItemTypeRepnInfo, !Info, !Specs) :-
+    ItemTypeRepnInfo0 = item_type_repn_info(TypeCtorSymName0, ArgTVars,
         RepInfo0, TVarSet, Context, SeqNum),
+    % We currently put type constructors names into type_repn items
+    % in unqualified form because (a) the module name is implicit in the
+    % identity of the module whose interface file the type_repn item
+    % appears in, and therefore *can* be omitted; and (b) actually omitting
+    % the module qualification makes the interface file smaller. However,
+    % since we previously module qualified type constructors names, we accept
+    % that form as well.
+    ( TypeCtorSymName0 = qualified(_, TypeCtorName)
+    ; TypeCtorSymName0 = unqualified(TypeCtorName)
+    ),
+    TypeCtorSymName = qualified(ModuleName, TypeCtorName),
     (
         ( RepInfo0 = tcrepn_is_direct_dummy
         ; RepInfo0 = tcrepn_is_notag
