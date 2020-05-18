@@ -165,7 +165,7 @@ write_tokenss(Str, Attrss, Exts, I, Off0, Off, [Ts | Tss]) -->
 
     write_tokens(Ts),
     { Ext0 = Exts ^ elem(I) },
-    io__write_string(string__substring(Str, Off0, Ext0)),
+    io__write_string(string__between(Str, Off0, Off0 + Ext0)),
 
  % io__print(StdErr, string__substring(Str, Off0, Ext0) `with_type` string),
  % io__nl(StdErr),
