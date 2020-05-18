@@ -57,7 +57,7 @@
 	;	difference(object, object)	% Tier 3
 	.
 
-:- inst basic_object_inst == bound( basic_object(ground, ground, ground)).
+:- inst basic_object_inst for object/0 == bound( basic_object(ground, ground, ground)).
 
 :- type basic_object	
 	--->	sphere(surface)

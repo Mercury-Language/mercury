@@ -128,7 +128,7 @@
 % XXX this is not used anywhere and gets in the way of parallelisation --pw
 %   ;       mercury_closure(pred(env, env, stack, stack, io, io)).
 
-:- inst extra_operator_inst ==
+:- inst extra_operator_inst for extra_operator/0 ==
     bound(  popn(ground)
     ;       dup
     ;       constant_sphere(ground)

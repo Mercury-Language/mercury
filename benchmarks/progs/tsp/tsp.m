@@ -145,7 +145,7 @@ cost([_], _, Cost0, Cost1) :- Cost0 = Cost1.
 cost([V1,V2|Vs], Matrix, Cost, Cost0) :-
         list.det_index1(Matrix, V1) = Row,
 	list.det_index1(Row, V2) = C,
-	Cost1 is Cost0+C,
+	Cost1 = Cost0+C,
 	cost([V2|Vs], Matrix, Cost, Cost1).
 
 :- pred delete_vertex(list(int)::in, int::in, list(int)::out) is det.
@@ -200,7 +200,7 @@ update_minimum3(C, W, MinC, MinW, MinC1, MinW1) :-
 :- pred random_matrix(int::in, matrix::out, int::in, int::out) is det.
 
 random_matrix(N,Matrix,S0,S1) :-
-	Limit is (N+N/2)//1,
+	Limit = (N+N/2)//1,
 	random_rows(N,N,Limit,MatrixRows,S0,S1),
 	Matrix = MatrixRows.
 
@@ -244,8 +244,8 @@ append_once([A|X], Y, [A|Z]) :- append_once(X, Y, Z).
 :- pred random(int::in, int::out, int::in, int::out) is det.
 
 random(Limit, N, S, S1) :-
-        N is (S `mod` Limit)+1,
-        S1 is (125*S+1) `mod` 4096.
+        N = (S `mod` Limit)+1,
+        S1 = (125*S+1) `mod` 4096.
 
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sts=8 sw=8 et

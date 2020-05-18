@@ -126,7 +126,7 @@
 		)
 	.
 
-:- inst extra_operator_inst ==
+:- inst extra_operator_inst for extra_operator/0 ==
 	bound( 	popn(ground) 
 	;	dup
 	; 	constant_sphere(ground)
