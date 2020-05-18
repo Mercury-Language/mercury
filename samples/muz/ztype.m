@@ -65,9 +65,7 @@
 :- func givenEntry(ident) = entry.
 :- func branchEntry(ident, ztype) = entry.
 
-
 %%%
-:- import_module zabstract.
 
 % :- type ptype == pair(int, ztype).
 :- type ptypes.
