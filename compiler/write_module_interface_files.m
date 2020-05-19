@@ -264,7 +264,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
                 ModuleName, ".int", yes(".int2"), !IO)
         )
     else
-        PrefixMsg = "Error reading short interface files.\n",
+        PrefixMsg = "Error reading .int3 files.\n",
         report_file_not_written(Globals, GetSpecs, yes(PrefixMsg),
             ModuleName, ".int", yes(".int2"), !IO)
     ).

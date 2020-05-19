@@ -55,7 +55,6 @@
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
 :- import_module libs.check_libgrades.
-:- import_module libs.compiler_util.
 :- import_module libs.compute_grade.
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
@@ -1103,13 +1102,14 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ),
         read_module_or_file(Globals0, Globals, FileOrModule,
             ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
-            ParseTreeSrc, Specs0, Errors, !HaveReadModuleMaps, !IO),
-        ( if halt_at_module_error(Globals, Errors) then
-            true
+            ParseTreeSrc, ReadSpecs, ReadErrors, !HaveReadModuleMaps, !IO),
+        ( if halt_at_module_error(Globals, ReadErrors) then
+            write_error_specs_ignore(ReadSpecs, Globals, !IO)
         else
             split_into_compilation_units_perform_checks(ParseTreeSrc,
-                RawCompUnits, Specs0, Specs1),
-            filter_interface_generation_specs(Globals, Specs1, Specs, !IO),
+                RawCompUnits, ReadSpecs, ReadSplitSpecs),
+            filter_interface_generation_specs(Globals,
+                ReadSplitSpecs, Specs, !IO),
             write_error_specs_ignore(Specs, Globals, !IO),
             maybe_print_delayed_error_messages(Globals, !IO),
             (
@@ -1464,6 +1464,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
                 "Reading file", do_not_search,
                 always_read_module(ReturnTimestamp), MaybeTimestamp,
                 ParseTreeSrc, Specs, Errors, !IO),
+            ParseTreeSrc = parse_tree_src(ModuleName, _, _),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
                 DisableSmart = yes,
@@ -1472,41 +1473,6 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             ;
                 DisableSmart = no,
                 Globals = Globals0
-            ),
-
-            % XXX If the module name doesn't match the file name, the compiler
-            % won't be able to find the `.used' file (the name of the `.used'
-            % file is derived from the module name not the file name).
-            % This will be fixed when mmake functionality is moved into
-            % the compiler.
-
-            globals.lookup_bool_option(Globals, smart_recompilation, Smart),
-            ParseTreeSrc = parse_tree_src(ModuleName, _, _),
-            ( if
-                Smart = yes,
-                ModuleName \= DefaultModuleName
-                % We want to give this warning even if smart recompilation
-                % was disabled before this.
-            then
-                globals.lookup_bool_option(Globals, warn_smart_recompilation,
-                    Warn),
-                (
-                    Warn = yes,
-                    Pieces = [words("Warning:"),
-                        words("module name does not match file name: "), nl,
-                        fixed(FileNameDotM), words("contains module"),
-                        qual_sym_name(ModuleName), suffix("."), nl,
-                        words("Smart recompilation will not work unless"),
-                        words("a module name to file name mapping is created"),
-                        words("using"), quote("mmc -f *.m"), suffix("."), nl],
-                    write_error_pieces_plain(Globals, Pieces, !IO),
-                    record_warning(Globals, !IO)
-                ;
-                    Warn = no
-                ),
-                io_set_disable_smart_recompilation(yes, !IO)
-            else
-                true
             )
         ),
         globals.lookup_bool_option(Globals, detailed_statistics, Stats),
