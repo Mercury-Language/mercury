@@ -52,11 +52,11 @@ main(!IO) :-
     ;
         Res = ok(Line0),
         list.delete_all(Line0, ' ', Line),
-        ( fullexpr(X, Line, []) ->
+        ( if fullexpr(X, Line, []) then
             Num = evalexpr(X),
             io.write_int(Num, !IO),
             io.write_string("\n", !IO)
-        ;
+        else
             io.write_string("Syntax error\n", !IO)
         ),
         main(!IO) % recursively call ourself for the next line(s)

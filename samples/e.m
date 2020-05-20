@@ -58,7 +58,7 @@ columns = 78.
     --->    [int | int_stream]
     ;       closure((func) = int_stream).
 
-:- inst int_stream ==
+:- inst int_stream for int_stream/0 ==
     bound([ground | int_stream] ; closure((func) = is_out is det)).
 
 :- mode is_in  == in(int_stream).

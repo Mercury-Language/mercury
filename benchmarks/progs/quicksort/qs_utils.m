@@ -7,7 +7,7 @@
 :- import_module list.
 :- import_module string.
 
-:- inst list_skel_unique == unique(
+:- inst list_skel_unique for list/1 == unique(
         [] ;
         [ground | list_skel_unique]
     ).

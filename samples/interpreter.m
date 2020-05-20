@@ -302,7 +302,7 @@ unify_term_pair(TermX, TermY, !VarSet) :-
         unify_term_pairs(ArgTermsX, ArgTermsY, !VarSet)
     ).
 
-:- inst term_functor
+:- inst term_functor for term/1
     --->    functor(ground, ground, ground).
 
     % Unify a variable with a term that is known to be a functor

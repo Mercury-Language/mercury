@@ -725,32 +725,32 @@ tree234x__update(Tin, K, V, Tout) :-
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
-:- inst two(K, V, T) ==
+:- inst two(K, V, T) for tree234x/2  ==
 	bound(
 		two(K, V, T, T)
 	).
 
-:- inst uniq_two(K, V, T) ==
+:- inst uniq_two(K, V, T) for tree234x/2 ==
 	unique(
 		two(K, V, T, T)
 	).
 
-:- inst three(K, V, T) ==
+:- inst three(K, V, T) for tree234x/2 ==
 	bound(
 		three(K, V, K, V, T, T, T)
 	).
 
-:- inst uniq_three(K, V, T) ==
+:- inst uniq_three(K, V, T) for tree234x/2 ==
 	unique(
 		three(K, V, K, V, T, T, T)
 	).
 
-:- inst four(K, V, T) ==
+:- inst four(K, V, T) for tree234x/2 ==
 	bound(
 		four(K, V, K, V, K, V, T, T, T, T)
 	).
 
-:- inst uniq_four(K, V, T) ==
+:- inst uniq_four(K, V, T) for tree234x/2 ==
 	unique(
 		four(K, V, K, V, K, V, T, T, T, T)
 	).
