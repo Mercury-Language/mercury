@@ -32,6 +32,12 @@ endif
 
 #-----------------------------------------------------------------------------#
 
+ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+MLOBJS =
+endif
+
+#-----------------------------------------------------------------------------#
+
 # The main targets are the executables of the utilities that use and test
 # the grade library. The grade "library" itself is not a target, because
 # it is intended to be used *only* by these utilities (and perhaps later,
