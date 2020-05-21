@@ -285,6 +285,7 @@ SINGLEMODULE= \
 	try_bad_params \
 	try_detism \
 	try_io_else \
+	type_arity \
 	type_error_ambiguous \
 	type_error_in_arg \
 	type_inf_loop \
