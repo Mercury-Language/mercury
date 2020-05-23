@@ -476,7 +476,11 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 
 classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
     ( if
-        yes(Suffix) = target_extension(Globals, ModuleTargetType)
+        yes(Suffix) = target_extension(Globals, ModuleTargetType),
+        % The .cs extension was used to build all C target files, but .cs is
+        % also the file name extension for a C# file. The former use is being
+        % migrated over to the .all_cs target but we still accept it for now.
+        Suffix \= ".cs"
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
