@@ -13,7 +13,6 @@
 :- implementation.
 
 :- import_module assoc_list.
-:- import_module bitmap.
 :- import_module bit_buffer.
 :- import_module bit_buffer.read.
 :- import_module bit_buffer.write.
