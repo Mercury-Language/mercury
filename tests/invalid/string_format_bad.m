@@ -61,3 +61,4 @@ p(s(S)) = t(string.format("%s", [s(S)])).
 p(c(C)) = t(string.format("%c", [c(C)])).
 p(i(I)) = t(string.format("%d", [i(I)])).
 p(f(F)) = t(string.format("%f", [f(F)])).
+p(u(U)) = t(string.format("%u", [u(U)])).

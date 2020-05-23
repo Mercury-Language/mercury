@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -78,6 +78,7 @@
     --->    poly_kind_char
     ;       poly_kind_str
     ;       poly_kind_int
+    ;       poly_kind_uint
     ;       poly_kind_float.
 
 :- type string_format_error
@@ -282,6 +283,7 @@ specifier_char(SpecChar) =
 poly_kind_desc(poly_kind_char) = "a character".
 poly_kind_desc(poly_kind_str) = "a string".
 poly_kind_desc(poly_kind_int) = "an integer".
+poly_kind_desc(poly_kind_uint) = "an unsigned integer".
 poly_kind_desc(poly_kind_float) = "a float".
 
 %---------------------------------------------------------------------------%

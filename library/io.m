@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2019 The Mercury team.
+% Copyright (C) 2013-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -9797,6 +9797,9 @@ write_many(Stream, [c(C) | Rest], !IO) :-
     write_many(Stream, Rest, !IO).
 write_many(Stream, [i(I) | Rest], !IO) :-
     write_int(Stream, I, !IO),
+    write_many(Stream, Rest, !IO).
+write_many(Stream, [u(U) | Rest], !IO) :-
+    write_uint(Stream, U, !IO),
     write_many(Stream, Rest, !IO).
 write_many(Stream, [s(S) | Rest], !IO) :-
     write_string(Stream, S, !IO),

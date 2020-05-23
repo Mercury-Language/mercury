@@ -2,7 +2,7 @@
 % vim:ts=4 sw=4 expandtab ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2010-2011 The University of Melbourne
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -252,8 +252,8 @@
     %
 :- func group(T)            = doc <= (doc(T)).
 
-    % This function can be used to convert strings, chars, ints and floats
-    % to their text doc equivalents.
+    % This function can be used to convert strings, chars, ints, uints and
+    % floats to their text doc equivalents.
     %
     % NOTE: since these types are now instances of the doc/1 type class,
     % it is simpler to just apply the doc/1 method to these types.
@@ -463,6 +463,9 @@ group(X)                = 'GROUP'(doc(X)).
 poly(s(S))              = text(string.format("%s", [s(S)])).
 poly(c(C))              = text(string.format("%c", [c(C)])).
 poly(i(I))              = text(string.format("%d", [i(I)])).
+% XXX FIXME: replace the following line after the bootstrap compiler
+% understands how to specialise format calls with uints.
+poly(u(U))              = text(uint_to_string(U)).
 poly(f(F))              = text(string.format("%f", [f(F)])).
 
 %---------------------------------------------------------------------------%

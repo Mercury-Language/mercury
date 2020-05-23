@@ -18,5 +18,5 @@
 
 main(!IO) :-
      io.stdout_stream(Stdout, !IO),
-     stream.string_writer.format(Stdout, "%s%d%c%f\n",
-          [s("foo"), i(561), c('a'), f(3.141)], !IO).
+     stream.string_writer.format(Stdout, "%s %d %c %f %u\n",
+          [s("foo"), i(561), c('a'), f(3.141), u(1111u)], !IO).

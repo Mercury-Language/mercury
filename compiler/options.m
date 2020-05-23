@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2019 The Mercury team.
+% Copyright (C) 2013-2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -3139,6 +3139,8 @@ long_option("foreign-proc-typeinfo-2020-04-08",
 long_option("ushift-2020-04-30",
                                     compiler_sufficiently_recent).
 long_option("unsigned_lt-2020-05-02",
+                                    compiler_sufficiently_recent).
+long_option("format-uint-2020-05-23",
                                     compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).

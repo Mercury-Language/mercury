@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2017-2018 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -65,6 +65,16 @@
 :- pred format_unsigned_int_component_width_prec(string_format_flags::in,
     int::in, int::in, string_format_int_base::in, int::in, string::out) is det.
 
+:- pred format_uint_component_nowidth_noprec(string_format_flags::in,
+    string_format_int_base::in, uint::in, string::out) is det.
+:- pred format_uint_component_nowidth_prec(string_format_flags::in,
+    int::in, string_format_int_base::in, uint::in, string::out) is det.
+:- pred format_uint_component_width_noprec(string_format_flags::in,
+    int::in, string_format_int_base::in, uint::in, string::out) is det.
+:- pred format_uint_component_width_prec(string_format_flags::in,
+    int::in, int::in, string_format_int_base::in, uint::in, string::out)
+    is det.
+
 :- pred format_float_component_nowidth_noprec(string_format_flags::in,
     string_format_float_kind::in, float::in, string::out) is det.
 :- pred format_float_component_nowidth_prec(string_format_flags::in,
@@ -86,6 +96,7 @@
 :- import_module integer.
 :- import_module require.
 :- import_module string.parse_runtime.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -157,6 +168,10 @@ spec_to_string(Spec, String) :-
         % Unsigned int conversion specifiers.
         Spec = spec_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int),
         format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
+            String)
+    ;
+        Spec = spec_uint(Flags, MaybeWidth, MaybePrec, Base, UInt),
+        format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
             String)
     ;
         % Float conversion specifiers.
@@ -256,6 +271,33 @@ format_unsigned_int_component_width_prec(Flags, Width, Prec, Base, Int,
 
 %---------------------------------------------------------------------------%
 
+format_uint_component_nowidth_noprec(Flags, Base, UInt, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = no_specified_prec,
+    format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
+        String).
+
+format_uint_component_nowidth_prec(Flags, Prec, Base, UInt, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = specified_prec(Prec),
+    format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
+        String).
+
+format_uint_component_width_noprec(Flags, Width, Base, UInt, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = no_specified_prec,
+    format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
+        String).
+
+format_uint_component_width_prec(Flags, Width, Prec, Base, UInt,
+        String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = specified_prec(Prec),
+    format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
+        String).
+
+%---------------------------------------------------------------------------%
+
 format_float_component_nowidth_noprec(Flags, Kind, Float, String) :-
     MaybeWidth = no_specified_width,
     MaybePrec = no_specified_prec,
@@ -344,6 +386,25 @@ format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
         String = native_format_int(FormatStr, Int)
     else
         String = format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int)
+    ).
+
+:- pred format_uint_component(string_format_flags::in,
+    string_format_maybe_width::in, string_format_maybe_prec::in,
+    string_format_int_base::in, uint::in, string::out) is det.
+
+format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt, String) :-
+    ( if using_sprintf then
+        ( Base = base_octal,   SpecChar = "o"
+        ; Base = base_decimal, SpecChar = "u"
+        ; Base = base_hex_lc,  SpecChar = "x"
+        ; Base = base_hex_uc,  SpecChar = "X"
+        ; Base = base_hex_p,   SpecChar = "p"
+        ),
+        FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
+            int_length_modifier, SpecChar),
+        String = native_format_uint(FormatStr, UInt)
+    else
+        String = format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt)
     ).
 
 :- pred format_float_component(string_format_flags::in,
@@ -601,6 +662,28 @@ native_format_int(_, _) = _ :-
     % by default.
     error("string.native_format_int/2 not defined").
 
+    % Create a string from a uint using the format string.
+    % Note it is the responsibility of the caller to ensure that the
+    % format string is valid.
+    %
+:- func native_format_uint(string, uint) = string.
+:- pragma no_determinism_warning(native_format_uint/2).
+
+:- pragma foreign_proc("C",
+    native_format_uint(FormatStr::in, Val::in) = (Str::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"{
+    MR_save_transient_hp();
+    Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
+    MR_restore_transient_hp();
+}").
+
+native_format_uint(_, _) = _ :-
+    % This predicate is only called if using_sprintf/0, so we produce an error
+    % by default.
+    error("string.native_format_uint/2 not defined").
+
     % Create a string from a string using the format string.
     % Note it is the responsibility of the caller to ensure that the
     % format string is valid.
@@ -738,6 +821,9 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
 
     % Format an unsigned int, unsigned octal, or unsigned hexadecimal
     % (u,o,x,X,p).
+    %
+    % XXX we should replace most of this with a version that operates directly
+    % on uints.
     %
 :- func format_unsigned_int(string_format_flags, string_format_maybe_width,
     string_format_maybe_prec, string_format_int_base, int) = string.
@@ -891,6 +977,15 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
     ),
 
     String = justify_string(Flags, MaybeWidth, FieldModStr).
+
+%---------------------------------------------------------------------------%
+
+:- func format_uint(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string_format_int_base, uint) = string.
+
+format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt) = String :-
+    Int = cast_to_int(UInt),
+    String = format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int).
 
 %---------------------------------------------------------------------------%
 

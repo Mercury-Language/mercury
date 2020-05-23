@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury team.
+% Copyright (C) 2014-2015, 2019-2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -36,6 +36,7 @@
 :- type abstract_poly_type
     --->    apt_f(prog_var, prog_context)
     ;       apt_i(prog_var, prog_context)
+    ;       apt_u(prog_var, prog_context)
     ;       apt_s(prog_var, prog_context)
     ;       apt_c(prog_var, prog_context).
 
@@ -75,6 +76,14 @@
                 prog_var
             )
     ;       compiler_spec_unsigned_int(
+                prog_context,
+                string_format_flags,
+                compiler_format_maybe_width,
+                compiler_format_maybe_prec,
+                string_format_int_base,
+                prog_var
+            )
+    ;       compiler_spec_uint(
                 prog_context,
                 string_format_flags,
                 compiler_format_maybe_width,
@@ -154,6 +163,7 @@ merge_adjacent_const_strs([HeadSpec | TailSpecs], MergedSpecs) :-
         ; HeadSpec = compiler_spec_string(_, _, _, _, _)
         ; HeadSpec = compiler_spec_signed_int(_, _, _, _, _)
         ; HeadSpec = compiler_spec_unsigned_int(_, _, _, _, _, _)
+        ; HeadSpec = compiler_spec_uint(_, _, _, _, _, _)
         ; HeadSpec = compiler_spec_float(_, _, _, _, _, _)
         ),
         MergedSpecs = [HeadSpec | TailMergedSpecs]
@@ -389,6 +399,10 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
                     SpecPrime = compiler_spec_unsigned_int(PolyContext,
                         !.Flags, MaybeWidth, MaybePrec, Base, IntVar),
                     ErrorsPrime = []
+                else if SpecPolyType = apt_u(UIntVar, PolyContext) then
+                    SpecPrime = compiler_spec_uint(PolyContext,
+                        !.Flags, MaybeWidth, MaybePrec, Base, UIntVar),
+                    ErrorsPrime = []
                 else
                     Error = error_wrong_polytype(SpecNum, SpecChar,
                         abstract_poly_type_to_kind(SpecPolyType)),
@@ -497,6 +511,7 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
 abstract_poly_type_to_kind(apt_c(_, _)) = poly_kind_char.
 abstract_poly_type_to_kind(apt_s(_, _)) = poly_kind_str.
 abstract_poly_type_to_kind(apt_i(_, _)) = poly_kind_int.
+abstract_poly_type_to_kind(apt_u(_, _)) = poly_kind_uint.
 abstract_poly_type_to_kind(apt_f(_, _)) = poly_kind_float.
 
 %---------------------------------------------------------------------------%

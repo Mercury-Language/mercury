@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -49,6 +49,13 @@
                 string_format_maybe_prec,
                 string_format_int_base,
                 int
+            )
+    ;       spec_uint(
+                string_format_flags,
+                string_format_maybe_width,
+                string_format_maybe_prec,
+                string_format_int_base,
+                uint
             )
     ;       spec_float(
                 string_format_flags,
@@ -294,6 +301,10 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
                     SpecPrime = spec_unsigned_int(!.Flags,
                         MaybeWidth, MaybePrec, Base, Int),
                     ErrorsPrime = []
+                else if SpecPolyType = u(UInt) then
+                    SpecPrime = spec_uint(!.Flags,
+                        MaybeWidth, MaybePrec, Base, UInt),
+                    ErrorsPrime = []
                 else
                     Error = error_wrong_polytype(SpecNum, SpecChar,
                         poly_type_to_kind(SpecPolyType)),
@@ -399,6 +410,7 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
 poly_type_to_kind(c(_)) = poly_kind_char.
 poly_type_to_kind(s(_)) = poly_kind_str.
 poly_type_to_kind(i(_)) = poly_kind_int.
+poly_type_to_kind(u(_)) = poly_kind_uint.
 poly_type_to_kind(f(_)) = poly_kind_float.
 
 %---------------------------------------------------------------------------%

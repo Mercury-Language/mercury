@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -986,6 +986,9 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
                             Functor = "i",
                             VarPolyTypePrime = apt_i(ArgVar, Context)
                         ;
+                            Functor = "u",
+                            VarPolyTypePrime = apt_u(ArgVar, Context)
+                        ;
                             Functor = "s",
                             VarPolyTypePrime = apt_s(ArgVar, Context)
                         ;
@@ -1861,6 +1864,28 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         build_int_base_arg(Base, BaseVar, BaseGoal, !VarSet, !VarTypes),
         generate_simple_call(ModuleInfo, mercury_string_format_module,
             "format_unsigned_int_component" ++ WidthSuffix ++ PrecSuffix,
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [FlagsVar] ++ WidthVars ++ PrecVars ++
+                [BaseVar, ValueVar, ResultVar], [],
+            instmap_delta_from_assoc_list(
+                [ResultVar - ground(unique, none_or_default_func)]),
+            Context, CallGoal),
+        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [BaseGoal, CallGoal]
+    ;
+        Spec = compiler_spec_uint(Context, Flags,
+            MaybeWidth, MaybePrec, Base, ValueVar),
+        set_of_var.insert(ValueVar, !ValueVars),
+        make_result_var_if_needed(MaybeResultVar, ResultVar,
+            !VarSet, !VarTypes),
+        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
+            !VarSet, !VarTypes),
+        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
+            !VarSet, !VarTypes),
+        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
+            !VarSet, !VarTypes),
+        build_int_base_arg(Base, BaseVar, BaseGoal, !VarSet, !VarTypes),
+        generate_simple_call(ModuleInfo, mercury_string_format_module,
+            "format_uint_component" ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [BaseVar, ValueVar, ResultVar], [],

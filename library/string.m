@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2019 The Mercury team.
+% Copyright (C) 2013-2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1553,6 +1553,7 @@
 :- type poly_type
     --->    f(float)
     ;       i(int)
+    ;       u(uint)
     ;       s(string)
     ;       c(char).
 
@@ -1570,20 +1571,20 @@
     % Valid conversion character types are {dioxXucsfeEgGp%}. %n is not
     % supported. format will not return the length of the string.
     %
-    % conv  var     output form.        effect of '#'.
-    % char. type.
+    % conv  var         output form.      effect of '#'.
+    % char. type(s).
     %
-    % d     int     signed integer
-    % i     int     signed integer
-    % o     int     unsigned octal      with '0' prefix
-    % x,X   int     unsigned hex        with '0x', '0X' prefix
-    % u     int     unsigned integer
-    % c     char    character
-    % s     string  string
-    % f     float   rational number     with '.', if precision 0
-    % e,E   float   [-]m.dddddE+-xx     with '.', if precision 0
-    % g,G   float   either e or f       with trailing zeros.
-    % p     int     integer
+    % d     int         signed integer
+    % i     int         signed integer
+    % o     int, uint   unsigned octal    with '0' prefix
+    % x,X   int, uint   unsigned hex      with '0x', '0X' prefix
+    % u     int, uint   unsigned integer
+    % c     char        character
+    % s     string      string
+    % f     float       rational number   with '.', if precision 0
+    % e,E   float       [-]m.dddddE+-xx   with '.', if precision 0
+    % g,G   float       either e or f     with trailing zeros.
+    % p     int, uint   integer
     %
     % An option of zero will cause any padding to be zeros rather than spaces.
     % A '-' will cause the output to be left-justified in its 'space'.

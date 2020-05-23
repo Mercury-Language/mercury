@@ -29,6 +29,10 @@ Changes that may break compatibility
   the module qualification either updated or deleted. The reason for the move
   is that it reduces the cost of some new optimizations.
 
+* We have added an additional constructor to the `poly_type` type from
+  the `string` module. Existing code that uses that type may need to be
+  updated.
+
 Changes to the Mercury standard library
 ---------------------------------------
 
@@ -114,6 +118,15 @@ Changes to the Mercury standard library
     - func `hash/1`
     - pred `hash/2`
 
+### Changes to the `io` module
+
+* The predicates `write_many/3` and `write_many/4` now work directly
+  with values of type `uint`.
+
+* The predicates `format/4` and `format/5` now work directly with values
+  of type `uint`. (See the changes to the `string` module for further
+  details.)
+
 ### Changes to the `list` module
 
 * The following predicate has been added:
@@ -150,11 +163,22 @@ Changes to the Mercury standard library
     - func `keys_as_set/1`
     - pred `keys_as_set/2`
 
+### Changes to the `string` module
+
+* Formatting of `uint` values is now directly supported by `format/2` and
+  `format/3`. The `poly_type/0` type has been extended with a new
+  alternative, `u/1`, to allow this.
+
 ### Changes to the `stream` module
 
 * We have added a new `reader/4` subclass, `unboxed_reader/4`. This subclass
   allows readers to provide a `get` operation that avoids boxing non-error
   outputs.
+
+### Changes to the `stream.string_writer` module
+
+* The predicate `format/5` now work directly with values of type `uint`.
+  (See the changes to the `string` module for further details.)
 
 ### Changes to the `thread.channel` module
 
