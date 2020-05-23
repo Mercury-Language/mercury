@@ -35,19 +35,11 @@ endif
 # sprintf implementation.
 SOLARIS_FAILURES = string_format_o
 
-# On Dec OSF 5.1 the floating point tests fail because
-# the denormal floats aren't being printed correctly.
-OSF1_FAILURES = string_format_e string_format_f string_format_g
-
 UNAME := $(shell uname -r -s)
 ifeq "$(filter-out SunOS 5.7 5.8,$(UNAME))" ""
 	PROGS = $(filter-out $(SOLARIS_FAILURES),$(PROGS0))
 else
-  ifneq "$(findstring OSF1 V5.1,$(UNAME))" ""
-	PROGS = $(filter-out $(OSF1_FAILURES),$(PROGS0))
-  else
 	PROGS = $(PROGS0)
-  endif
 endif
 
 TESTS = $(sort $(PROGS))
