@@ -129,7 +129,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
@@ -142,16 +141,11 @@
 
 decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     module_info_get_type_repn_dec(!.ModuleInfo, TypeRepnDec),
-    TypeRepnDec = type_repn_decision_data(TypeRepns, DirectArgMap,
+    TypeRepnDec = type_repn_decision_data(_TypeRepns, DirectArgMap,
         ForeignEnums, ForeignExportEnums),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     setup_decide_du_params(Globals, DirectArgMap, Params),
-
-    % XXX TYPE_REPN The compiler does not yet generate type_repn items,
-    % so for now, TypeRepns will be the empty list, which makes _TypeRepnMap
-    % not yet useful.
-    build_type_repn_map(TypeRepns, map.init, _TypeRepnMap),
 
     list.foldl2(add_pragma_foreign_enum(!.ModuleInfo), ForeignEnums,
         map.init, TypeCtorToForeignEnumMap, !Specs),
@@ -215,21 +209,6 @@ add_special_pred_decl_defns_for_types_maybe_lazily(
         TypeCtor, TypeDefn, !ModuleInfo),
     add_special_pred_decl_defns_for_types_maybe_lazily(
         TypeCtorsTypeDefns, !ModuleInfo).
-
-%---------------------------------------------------------------------------%
-
-:- type type_repn_map == multi_map(type_ctor, item_type_repn_info).
-
-:- pred build_type_repn_map(list(item_type_repn_info)::in,
-    type_repn_map::in, type_repn_map::out) is det.
-
-build_type_repn_map([], !TypeRepnMap).
-build_type_repn_map([TypeRepn | TypeRepns], !TypeRepnMap) :-
-    TypeRepn = item_type_repn_info(TypeCtorSymName, ArgTVars, _, _, _, _),
-    list.length(ArgTVars, Arity),
-    TypeCtor = type_ctor(TypeCtorSymName, Arity),
-    multi_map.add(TypeCtor, TypeRepn, !TypeRepnMap),
-    build_type_repn_map(TypeRepns, !TypeRepnMap).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -79,7 +79,7 @@
     ims_list(item_initialise_info)::out,
     ims_list(item_finalise_info)::out,
     sec_list(item_mutable_info)::out,
-    list(item_type_repn_info)::out,
+    type_ctor_repn_map::out,
     ims_tuple_list(item_foreign_enum_info)::out,
     list(item_foreign_export_enum_info)::out,
     ims_list(item_decl_pragma_info)::out,
@@ -95,6 +95,11 @@
 :- import_module parse_tree.convert_parse_tree. % XXX Undesirable dependency.
 :- import_module parse_tree.file_kind.          % XXX Undesirable dependency.
 :- import_module parse_tree.item_util.
+
+:- import_module assoc_list.
+:- import_module cord.
+:- import_module int.
+:- import_module pair.
 
 %---------------------------------------------------------------------------%
 
@@ -156,6 +161,12 @@ int_for_opt_module_section_status(IntForOptSection, SectionInfo) :-
 
 %---------------------------------------------------------------------------%
 
+:- type int_type_ctor_repns
+    --->    int_type_ctor_repns(int_file_kind, type_ctor_repn_map).
+
+:- type module_int_type_ctor_repns ==
+    assoc_list(module_name, int_type_ctor_repns).
+
 :- type item_accumulator
     --->    item_accumulator(
                 ia_avails           :: ims_list(list(item_avail)),
@@ -179,7 +190,7 @@ int_for_opt_module_section_status(IntForOptSection, SectionInfo) :-
                 ia_initialises      :: ims_list(item_initialise_info),
                 ia_finalises        :: ims_list(item_finalise_info),
                 ia_mutables         :: sec_list(item_mutable_info),
-                ia_type_repns       :: list(item_type_repn_info)
+                ia_type_repns       :: module_int_type_ctor_repns
             ).
 
 separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
@@ -187,7 +198,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
         InstDefns, ModeDefns, PredDecls, ModeDecls,
         Promises, Typeclasses, Instances,
         Initialises, Finalises, Mutables,
-        TypeRepns, ForeignEnums, ForeignExportEnums,
+        TypeRepnMap, ForeignEnums, ForeignExportEnums,
         PragmasDecl, PragmasImpl, PragmasGen, Clauses, IntBadPreds) :-
     AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
         _ModuleVersionNumbers, ParseTreeModuleSrc,
@@ -239,9 +250,62 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
             InstDefns, ModeDefns, Typeclasses, Instances,
             PredDecls, ModeDecls, Clauses, ForeignEnums, ForeignExportEnums,
             PragmasDecl, PragmasImpl, PragmasGen, Promises,
-            Initialises, Finalises, Mutables, TypeRepns)
+            Initialises, Finalises, Mutables, ModuleIntTypeRepns)
     ),
+    list.foldl(acc_int_type_repn_map, ModuleIntTypeRepns,
+        map.init, ModuleIntTypeRepnMap),
+    map.foldl_values(acc_type_repn_map, ModuleIntTypeRepnMap,
+        cord.init, TypeCtorRepnsCord),
+    map.from_sorted_assoc_list(cord.list(TypeCtorRepnsCord), TypeRepnMap),
     IntBadPreds = ParseTreeModuleSrc ^ ptms_int_bad_clauses.
+
+:- pred acc_int_type_repn_map(pair(module_name, int_type_ctor_repns)::in,
+    map(module_name, int_type_ctor_repns)::in,
+    map(module_name, int_type_ctor_repns)::out) is det.
+
+acc_int_type_repn_map(ModuleName - IntTypeRepns, !ModuleMap) :-
+    IntTypeRepns = int_type_ctor_repns(IntFileKind, _TypeCtorRepnMap),
+    ( if map.search(!.ModuleMap, ModuleName, OldIntTypeRepns) then
+        OldIntTypeRepns =
+            int_type_ctor_repns(OldIntFileKind, _OldTypeCtorRepnMap),
+        Content = type_repn_content(IntFileKind),
+        OldContent = type_repn_content(OldIntFileKind),
+        ( if Content > OldContent then
+            map.det_update(ModuleName, IntTypeRepns, !ModuleMap)
+        else
+            true
+        )
+    else
+        map.det_insert(ModuleName, IntTypeRepns, !ModuleMap)
+    ).
+
+    % How much type_repn information does each kind of interface file have,
+    % relatively speaking? A higher number indicates more.
+    %
+    % .int0 files contain no type_repns at all. .int files contain a
+    % type_repn item for every type defined in the module. .int2 and .int3
+    % files both contain the same information: a type_repn item for only
+    % (a) the simple types defined in the module (direct dummy, enum and
+    % notag types) and (b) the non-simple types that have a property
+    % (such as word alignment) that can useful in the representations
+    % of other types. To make the choice deterministic, we break the tie
+    % in favor of .int2 files.
+    %
+:- func type_repn_content(int_file_kind) = int.
+
+type_repn_content(ifk_int0) = 0.
+type_repn_content(ifk_int1) = 3.
+type_repn_content(ifk_int2) = 2.
+type_repn_content(ifk_int3) = 1.
+
+:- pred acc_type_repn_map(int_type_ctor_repns::in,
+    cord(pair(type_ctor, item_type_repn_info))::in,
+    cord(pair(type_ctor, item_type_repn_info))::out) is det.
+
+acc_type_repn_map(IntTypeRepns, !Cord) :-
+    IntTypeRepns = int_type_ctor_repns(_IntFileKind, TypeCtorRepnMap),
+    map.to_sorted_assoc_list(TypeCtorRepnMap, TypeCtorRepnPairs),
+    !:Cord = !.Cord ++ cord.from_list(TypeCtorRepnPairs).
 
 %---------------------------------------------------------------------------%
 
@@ -690,8 +754,8 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     acc_ims_list(IntItemMercuryStatus, IntDeclPragmas,
         AccDeclPragmas0, AccDeclPragmas),
     acc_ims_list(IntItemMercuryStatus, IntPromises, AccPromises0, AccPromises),
-    TypeRepns = type_ctor_repn_map_to_type_repns(IntTypeRepnMap),
-    AccTypeRepns = TypeRepns ++ AccTypeRepns0,
+    AccTypeRepns = [ModuleName - int_type_ctor_repns(ifk_int1, IntTypeRepnMap)
+        | AccTypeRepns0],
 
     !Acc ^ ia_avails := AccAvails,
     !Acc ^ ia_fims := AccFIMs,
@@ -795,8 +859,8 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
         AccTypeClasses0, AccTypeClasses),
     acc_ims_list(IntItemMercuryStatus, IntInstances,
         AccInstances0, AccInstances),
-    TypeRepns = type_ctor_repn_map_to_type_repns(IntTypeRepnMap),
-    AccTypeRepns = TypeRepns ++ AccTypeRepns0,
+    AccTypeRepns = [ModuleName - int_type_ctor_repns(ifk_int2, IntTypeRepnMap)
+        | AccTypeRepns0],
 
     !Acc ^ ia_avails := AccAvails,
     !Acc ^ ia_fims := AccFIMs,
@@ -890,8 +954,8 @@ acc_parse_tree_int3(ParseTreeInt3, ReadWhy3, !Acc) :-
         AccTypeClasses0, AccTypeClasses),
     acc_ims_list(IntItemMercuryStatus, IntInstances,
         AccInstances0, AccInstances),
-    TypeRepns = type_ctor_repn_map_to_type_repns(IntTypeRepnMap),
-    AccTypeRepns = TypeRepns ++ AccTypeRepns0,
+    AccTypeRepns = [ModuleName - int_type_ctor_repns(ifk_int3, IntTypeRepnMap)
+        | AccTypeRepns0],
 
     !Acc ^ ia_avails := AccAvails,
     !Acc ^ ia_type_defns_abs := AccTypeDefnsAbs,

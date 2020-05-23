@@ -635,7 +635,7 @@
                 % The contents of type_repn items read in from the interface
                 % files of other modules, containing information about the
                 % representations of the types defined in those modules.
-                trdd_type_repns         :: list(item_type_repn_info),
+                trdd_type_repns         :: type_ctor_repn_map,
 
                 % The contents of direct_arg clauses in type definitions
                 % read in from the interface files of other modules,
@@ -1092,7 +1092,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     set.init(OISUProcs),
     TSStringTableSize = 0,
     TSRevStringTable = [],
-    TypeRepnDecision = type_repn_decision_data([], map.init, [], []),
+    TypeRepnDecision = type_repn_decision_data(map.init, map.init, [], []),
 
     ModuleRareInfo = module_rare_info(
         ModuleName,
