@@ -480,6 +480,8 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
         % The .cs extension was used to build all C target files, but .cs is
         % also the file name extension for a C# file. The former use is being
         % migrated over to the .all_cs target but we still accept it for now.
+        % NOTE This workaround is still in use as of 2020 may 23, even though
+        % it was added in 2010,
         Suffix \= ".cs"
     then
         ModuleNameStr = ModuleNameStr0,
