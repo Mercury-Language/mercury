@@ -28,14 +28,8 @@
 %---------------------------------------------------------------------------%
 
     % output_parse_tree_*(Globals, OutputFileName, ParseTree, !IO).
-    % XXX output_parse_tree_opt is unused. intermod.m should be updated
-    % to use it.
     %
 :- pred output_parse_tree_src(globals::in, string::in, parse_tree_src::in,
-    io::di, io::uo) is det.
-:- pred output_parse_tree_int(globals::in, string::in, parse_tree_int::in,
-    io::di, io::uo) is det.
-:- pred output_parse_tree_opt(globals::in, string::in, parse_tree_opt::in,
     io::di, io::uo) is det.
 
 :- pred output_parse_tree_int0(globals::in, string::in,
@@ -69,8 +63,6 @@
 :- pred mercury_output_int_for_opt_spec(merc_out_info::in,
     int_for_opt_spec::in, io::di, io::uo) is det.
 
-:- pred mercury_output_parse_tree_int(merc_out_info::in,
-    parse_tree_int::in, io::di, io::uo) is det.
 :- pred mercury_output_parse_tree_int0(merc_out_info::in,
     parse_tree_int0::in, io::di, io::uo) is det.
 :- pred mercury_output_parse_tree_int1(merc_out_info::in,
@@ -80,8 +72,6 @@
 :- pred mercury_output_parse_tree_int3(merc_out_info::in,
     parse_tree_int3::in, io::di, io::uo) is det.
 
-:- pred mercury_output_parse_tree_opt(merc_out_info::in,
-    parse_tree_opt::in, io::di, io::uo) is det.
 :- pred mercury_output_parse_tree_plain_opt(merc_out_info::in,
     parse_tree_plain_opt::in, io::di, io::uo) is det.
 :- pred mercury_output_parse_tree_trans_opt(merc_out_info::in,
@@ -196,14 +186,6 @@
 output_parse_tree_src(Globals, OutputFileName, ParseTreeSrc, !IO) :-
     output_some_parse_tree(Globals, OutputFileName,
         mercury_output_parse_tree_src, ParseTreeSrc, !IO).
-
-output_parse_tree_int(Globals, OutputFileName, ParseTreeInt, !IO) :-
-    output_some_parse_tree(Globals, OutputFileName,
-        mercury_output_parse_tree_int, ParseTreeInt, !IO).
-
-output_parse_tree_opt(Globals, OutputFileName, ParseTreeOpt, !IO) :-
-    output_some_parse_tree(Globals, OutputFileName,
-        mercury_output_parse_tree_opt, ParseTreeOpt, !IO).
 
 %---------------------%
 
@@ -469,38 +451,6 @@ mercury_output_int_for_opt_spec(Info, ForOptIntSpec, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
-    ParseTree = parse_tree_int(ModuleName, _IntFileKind, _ModuleContext,
-        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntFIMs, ImpFIMs, IntItems, ImpItems),
-    mercury_output_module_decl("module", ModuleName, !IO),
-    mercury_output_maybe_module_version_numbers(ModuleName,
-        MaybeVersionNumbers, !IO),
-    ( if
-        IntIncls = [],
-        IntAvails = [],
-        IntFIMs = [],
-        IntItems = []
-    then
-        true
-    else
-        IntItemBlock = item_block(ModuleName, ms_interface,
-            IntIncls, IntAvails, IntFIMs, IntItems),
-        mercury_output_raw_item_block(Info, IntItemBlock, !IO)
-    ),
-    ( if
-        ImpIncls = [],
-        ImpAvails = [],
-        ImpFIMs = [],
-        ImpItems = []
-    then
-        true
-    else
-        ImpItemBlock = item_block(ModuleName, ms_implementation,
-            ImpIncls, ImpAvails, ImpFIMs, ImpItems),
-        mercury_output_raw_item_block(Info, ImpItemBlock, !IO)
-    ).
-
 mercury_output_parse_tree_int0(Info, ParseTreeInt0, !IO) :-
     ParseTreeInt0 = parse_tree_int0(ModuleName, _ModuleContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, _InclMap,
@@ -717,15 +667,6 @@ mercury_output_parse_tree_int3(Info, ParseTreeInt3, !IO) :-
     map.foldl_values(mercury_output_item_type_repn(Info), IntTypeRepnMap, !IO).
 
 %---------------------------------------------------------------------------%
-
-mercury_output_parse_tree_opt(Info, ParseTree, !IO) :-
-    ParseTree = parse_tree_opt(ModuleName, _OptFileKind, _Context,
-        Use, FIMs, Items),
-    io.write_string("% generic optimization file\n", !IO),
-    mercury_output_module_decl("module", ModuleName, !IO),
-    list.foldl(mercury_output_item_use(Info), Use, !IO),
-    list.foldl(mercury_output_item_foreign_import_module, FIMs, !IO),
-    mercury_output_items(Info, Items, !IO).
 
 mercury_output_parse_tree_plain_opt(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_plain_opt(ModuleName, _Context,
@@ -1099,15 +1040,6 @@ mercury_output_item_avail(Info, Avail, !IO) :-
         Avail = avail_use(avail_use_info(ModuleName, Context, _SeqNum)),
         Decl = "use_module"
     ),
-    maybe_output_line_number(Info, Context, !IO),
-    mercury_output_module_decl(Decl, ModuleName, !IO).
-
-:- pred mercury_output_item_use(merc_out_info::in,
-    avail_use_info::in, io::di, io::uo) is det.
-
-mercury_output_item_use(Info, Use, !IO) :-
-    Use = avail_use_info(ModuleName, Context, _SeqNum),
-    Decl = "use_module",
     maybe_output_line_number(Info, Context, !IO),
     mercury_output_module_decl(Decl, ModuleName, !IO).
 
