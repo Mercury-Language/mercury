@@ -33,6 +33,9 @@
     % are specified, we can avoid requiring the compiler to generate code
     % that allocates memory on the heap.
     %
+    % NOTE: if you add new predicates here then you must also update the
+    % predicate simplify_may_introduce_calls/3 in compiler/simplify_proc.m.
+    %
 :- pred format_char_component_nowidth(string_format_flags::in,
     char::in, string::out) is det.
 :- pred format_char_component_width(string_format_flags::in,
