@@ -54,15 +54,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Pass over the item_block list collecting all defined module, type,
-    % inst, mode and class ids, together with their permissions.
-    %
-:- pred collect_mq_info_in_item_blocks(
-    section_mq_info(MS)::in(section_mq_info), list(item_block(MS))::in,
-    mq_info::in, mq_info::out) is det.
-
-%---------------------------------------------------------------------------%
-
 :- implementation.
 
 :- import_module parse_tree.module_qual.id_set.
@@ -521,68 +512,6 @@ sym_name_arity_to_mq_id(SNA) = Id :-
 
 %---------------------------------------------------------------------------%
 
-collect_mq_info_in_item_blocks(_, [], !Info).
-collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks], !Info) :-
-    ItemBlock = item_block(_, Section, Incls, Avails, _FIMs, Items),
-    SectionInfo(Section, MQSection, Permissions),
-
-    trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
-        io.write_string("collect_mq_info_in_item_block:\n", !IO),
-        io.write_string("    ", !IO),
-        io.write(Section, !IO),
-        io.nl(!IO),
-        io.write_string("    ", !IO),
-        io.write(MQSection, !IO),
-        io.nl(!IO),
-        io.write_string("    ", !IO),
-        io.write(Permissions, !IO),
-        io.nl(!IO),
-        io.nl(!IO)
-    ),
-
-    % The usual case is Incls = []; optimize for it.
-    (
-        Incls = []
-    ;
-        Incls = [_ | _],
-        mq_info_get_modules(!.Info, Modules0),
-        list.foldl(collect_mq_info_in_item_include(Permissions), Incls,
-            Modules0, Modules),
-        mq_info_set_modules(Modules, !Info)
-    ),
-
-    % The usual case is Avails = [_ | _]. Testing for that would be
-    % unnecessary overhead in most cases.
-    mq_info_get_imported_modules(!.Info, ImportedModules0),
-    mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedIntModules0),
-    list.foldl2(collect_mq_info_in_item_avail(MQSection), Avails,
-        ImportedModules0, ImportedModules,
-        UnusedIntModules0, UnusedIntModules),
-    mq_info_set_imported_modules(ImportedModules, !Info),
-    mq_info_set_as_yet_unused_interface_modules(UnusedIntModules, !Info),
-
-    collect_mq_info_in_items(MQSection, Permissions, Items, !Info),
-    collect_mq_info_in_item_blocks(SectionInfo, ItemBlocks, !Info).
-
-    % For submodule definitions (whether nested or separate,
-    % i.e. either `:- module foo.' or `:- include_module foo.'),
-    % add the module id to the module_id_set.
-    %
-    % We don't actually handle nested submodules here. Nested submodules
-    % were separated out and replaced with the internal representation of
-    % the `:- include_module' declaration that would correspond to it
-    % by the code that created the module's raw_compilation_unit, which
-    % was later transformed into the aug_compilation_unit whose items
-    % we process here.
-    %
-:- pred collect_mq_info_in_item_include(module_permissions::in,
-    item_include::in, module_id_set::in, module_id_set::out) is det.
-
-collect_mq_info_in_item_include(Permissions, Incl, !Modules) :-
-    Incl = item_include(IncludedModuleName, _Context, _SeqNum),
-    Arity = 0,
-    id_set_insert(Permissions, mq_id(IncludedModuleName, Arity), !Modules).
-
 :- pred collect_mq_info_in_included_module_info(module_permissions::in,
     module_name::in, include_module_info::in,
     module_id_set::in, module_id_set::out) is det.
@@ -600,63 +529,6 @@ collect_mq_info_in_included_module_info(IntPermissions, ModuleName, InclInfo,
         id_set_insert(IntPermissions, mq_id(ModuleName, Arity), !Modules)
     ).
 
-    % For import declarations (`:- import_module' or `:- use_module'),
-    % if we are currently in the interface section, then add the
-    % imported modules to the as_yet_unused_interface_modules list.
-    %
-    % XXX Why do we base this decision on the status we get
-    % from the mq_info, instead of directly on the current section's
-    % section kind?
-    % Probably partial answer: when module qualifying a .int3 file,
-    % we want to treat that .int3 file as if it were the source file,
-    % because it is directly and immediately derived from the source file.
-    %
-:- pred collect_mq_info_in_item_avail(mq_section::in,
-    item_avail::in, set(module_name)::in, set(module_name)::out,
-    module_names_contexts::in, module_names_contexts::out) is det.
-
-collect_mq_info_in_item_avail(MQSection, Avail,
-        !ImportedModules, !UnusedIntModules) :-
-    % Modules imported from the proper private interface of ancestors of
-    % the current module are treated as if they were directly imported
-    % by the current module.
-    %
-    % We check that all modules imported in the interface are used
-    % in the interface.
-    ( Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum))
-    ; Avail = avail_use(avail_use_info(ModuleName, Context, _SeqNum))
-    ),
-    (
-        ( MQSection = mq_section_local
-        ; MQSection = mq_section_imported(
-            import_locn_ancestor_int0_interface)
-        ; MQSection = mq_section_imported(
-            import_locn_ancestor_int0_implementation)
-        ),
-        set.insert(ModuleName, !ImportedModules)
-    ;
-        MQSection = mq_section_exported,
-        set.insert(ModuleName, !ImportedModules),
-        % Most of the time, ModuleName does not occur in !.UnusedIntModules.
-        % We therefore try the insertion first, and only if the insertion
-        % fails do we look up and update the existing entry (OldContexts)
-        % that caused that failure.
-        OnlyNewContexts = one_or_more(Context, []),
-        ( if map.insert(ModuleName, OnlyNewContexts, !UnusedIntModules) then
-            true
-        else
-            map.lookup(!.UnusedIntModules, ModuleName, OldContexts),
-            NewContexts = one_or_more.cons(Context, OldContexts),
-            map.det_update(ModuleName, NewContexts, !UnusedIntModules)
-        )
-    ;
-        ( MQSection = mq_section_imported(import_locn_interface)
-        ; MQSection = mq_section_imported(import_locn_implementation)
-        ; MQSection = mq_section_imported(import_locn_import_by_ancestor)
-        ; MQSection = mq_section_abstract_imported
-        )
-    ).
-
 :- pred collect_mq_info_in_int0_import_or_use(module_name::in,
     set(module_name)::in, set(module_name)::out) is det.
 
@@ -668,95 +540,6 @@ collect_mq_info_in_int0_import_or_use(ModuleName, !ImportedModules) :-
 
 collect_mq_info_in_int3_import(ModuleName, !ImportedModules) :-
     set.insert(ModuleName, !ImportedModules).
-
-    % Pass over the item list collecting all defined module, type, mode and
-    % inst ids, all module synonym definitions, and the names of all
-    % modules imported in the interface.
-    %
-:- pred collect_mq_info_in_items(mq_section::in, module_permissions::in,
-    list(item)::in, mq_info::in, mq_info::out) is det.
-
-collect_mq_info_in_items(_, _, [], !Info).
-collect_mq_info_in_items(MQSection, Permissions, [Item | Items], !Info) :-
-    collect_mq_info_in_item(MQSection, Permissions, Item, !Info),
-    collect_mq_info_in_items(MQSection, Permissions, Items, !Info).
-
-:- pred collect_mq_info_in_item(mq_section::in, module_permissions::in,
-    item::in, mq_info::in, mq_info::out) is det.
-
-collect_mq_info_in_item(MQSection, Permissions, Item, !Info) :-
-    (
-        Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
-        ( if MQSection = mq_section_abstract_imported then
-            % This item is not visible in the current module.
-            true
-        else
-            list.length(Params, Arity),
-            mq_info_get_types(!.Info, Types0),
-            id_set_insert(Permissions, mq_id(SymName, Arity), Types0, Types),
-            mq_info_set_types(Types, !Info)
-        )
-    ;
-        Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(SymName, Params, _, _, _, _, _),
-        ( if MQSection = mq_section_abstract_imported then
-            % This item is not visible in the current module.
-            true
-        else
-            list.length(Params, Arity),
-            mq_info_get_insts(!.Info, Insts0),
-            id_set_insert(Permissions, mq_id(SymName, Arity), Insts0, Insts),
-            mq_info_set_insts(Insts, !Info)
-        )
-    ;
-        Item = item_mode_defn(ItemModeDefn),
-        ItemModeDefn = item_mode_defn_info(SymName, Params, _, _, _, _),
-        ( if MQSection = mq_section_abstract_imported then
-            % This item is not visible in the current module.
-            true
-        else
-            list.length(Params, Arity),
-            mq_info_get_modes(!.Info, Modes0),
-            id_set_insert(Permissions, mq_id(SymName, Arity), Modes0, Modes),
-            mq_info_set_modes(Modes, !Info)
-        )
-    ;
-        Item = item_typeclass(ItemTypeClass),
-        ( if MQSection = mq_section_abstract_imported then
-            % This item is not visible in the current module.
-            true
-        else
-            collect_mq_info_in_item_typeclass(Permissions, ItemTypeClass,
-                !Info)
-        )
-    ;
-        Item = item_instance(ItemInstance),
-        ( if MQSection = mq_section_imported(_) then
-            collect_mq_info_in_item_instance(ItemInstance, !Info)
-        else
-            true
-        )
-    ;
-        Item = item_promise(ItemPromise),
-        InInt = mq_section_to_in_interface(MQSection),
-        collect_mq_info_in_item_promise(InInt, ItemPromise, !Info)
-    ;
-        ( Item = item_clause(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_foreign_enum(_)
-        ; Item = item_foreign_export_enum(_)
-        ; Item = item_decl_pragma(_)
-        ; Item = item_impl_pragma(_)
-        ; Item = item_generated_pragma(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        ; Item = item_type_repn(_)
-        )
-        % Do nothing.
-    ).
 
 :- func item_type_defn_info_to_mq_id(item_type_defn_info) = mq_id.
 
@@ -815,16 +598,6 @@ collect_mq_info_in_item_promise(InInt, ItemPromise, !Info) :-
         map.init(UnusedModules),
         mq_info_set_as_yet_unused_interface_modules(UnusedModules, !Info)
     ).
-
-%---------------------%
-
-:- func mq_section_to_in_interface(mq_section) = mq_in_interface.
-
-mq_section_to_in_interface(mq_section_exported) = mq_used_in_interface.
-mq_section_to_in_interface(mq_section_local) = mq_not_used_in_interface.
-mq_section_to_in_interface(mq_section_imported(_)) = mq_not_used_in_interface.
-mq_section_to_in_interface(mq_section_abstract_imported) =
-    mq_not_used_in_interface.
 
 %---------------------%
 
