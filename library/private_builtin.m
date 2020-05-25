@@ -147,6 +147,9 @@
 :- pred builtin_uint64_lt(uint64::in, uint64::in) is semidet.
 :- pred builtin_uint64_gt(uint64::in, uint64::in) is semidet.
 
+:- pred unsigned_lt(int::in, int::in) is semidet.
+:- pred unsigned_le(int::in, int::in) is semidet.
+
     % These should never be called -- the compiler replaces calls to these
     % predicates with inline code. These predicates are declared not to take
     % type_infos.

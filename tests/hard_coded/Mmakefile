@@ -451,6 +451,7 @@ ORDINARY_PROGS = \
 	unify_expression \
 	unify_typeinfo_bug \
 	uniq_duplicate_call \
+	unsigned_lt_le \
 	unsorted_agg2 \
 	unused_float_box_test \
 	unusual_name_mutable \

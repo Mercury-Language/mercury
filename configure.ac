@@ -595,8 +595,7 @@ EOF
             --grade none.gc \
             --warn-insts-without-matching-type \
             --warn-known-bad-format-calls \
-            --obsolete-proc-2019-10-23 \
-            --github-85--2020-03-24 \
+            --unsigned_lt-2020-05-02 \
             --no-detect-libgrades \
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \

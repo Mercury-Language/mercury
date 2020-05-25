@@ -3144,6 +3144,8 @@ long_option("format-uint-2020-05-23",
                                     compiler_sufficiently_recent).
 long_option("mmake-all-2020-05-25",
                                     compiler_sufficiently_recent).
+long_option("unsigned-lt-2020-05-25",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).

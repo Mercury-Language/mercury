@@ -758,7 +758,7 @@ log2_loop(CurX, CurLogXSoFar, CeilLogX) :-
 %---------------------------------------------------------------------------%
 
 X << Y = Z :-
-    ( if Y `int.unsigned_lt` bits_per_int then
+    ( if Y `private_builtin.unsigned_lt` bits_per_int then
         Z = unchecked_left_shift(X, Y)
     else
         Msg = "int.(<<): second operand is out of range",
@@ -782,7 +782,7 @@ legacy_left_shift(X, Y) = Z :-
     ).
 
 X >> Y = Z :-
-    ( if Y `int.unsigned_lt` bits_per_int then
+    ( if Y `private_builtin.unsigned_lt` bits_per_int then
         Z = unchecked_right_shift(X, Y)
     else
         Msg = "int.(>>): second operand is out of range",
@@ -806,37 +806,6 @@ legacy_right_shift(X, Y) = Z :-
             Z = unchecked_left_shift(X, -Y)
         )
     ).
-
-% We define unsigned less than as a foreign_proc here in order to avoid this
-% module having to import uint.
-% XXX we should probably provide unsigned_lt as a builtin for ints.
-%
-:- pred unsigned_lt(int::in, int::in) is semidet.
-:- pragma no_determinism_warning(unsigned_lt/2).
-
-:- pragma foreign_proc("C",
-    unsigned_lt(A::in, B::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    SUCCESS_INDICATOR = (MR_Unsigned)A < (MR_Unsigned)B;
-").
-
-:- pragma foreign_proc("C#",
-    unsigned_lt(A::in, B::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (uint)A < (uint)B;
-").
-
-:- pragma foreign_proc("Java",
-    unsigned_lt(A::in, B::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (A & 0xffffffffL) < (B & 0xffffffffL);
-").
-
-unsigned_lt(_, _) :-
-    private_builtin.sorry("int.unsigned_lt/2 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
