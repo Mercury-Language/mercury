@@ -239,7 +239,7 @@
 :- include_module parse_tree.module_qual.qualify_items.
 
 :- import_module libs.options.
-:- import_module parse_tree.get_dependencies.
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.module_qual.collect_mq_info.
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.module_qual.qual_errors.
@@ -261,13 +261,8 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         ModuleVersionNumbers, ParseTreeModuleSrc0, AncestorIntSpecs,
         DirectIntSpecs, IndirectIntSpecs,
         PlainOptSpecs, TransOptSpecs, IntForOptSpecs),
-    get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit0,
-        ImplicitlyImportedModules, ImplicitlyUsedModules),
-    set.union(ImplicitlyImportedModules, ImplicitlyUsedModules,
-        ImplicitlyImportedOrUsedModules),
 
-    init_mq_info(Globals, ModuleName, ImplicitlyImportedOrUsedModules,
-        should_report_errors, !:Info),
+    init_mq_info(Globals, ModuleName, should_report_errors, !:Info),
     collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc0, !Info),
     list.foldl(collect_mq_info_in_ancestor_int_spec,
         map.values(AncestorIntSpecs), !Info),
@@ -337,10 +332,8 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
 
 module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
         !Specs) :-
-    set.init(ImplicitlyImportedOrUsedModules),
     ModuleName = OrigParseTreeInt3 ^ pti3_module_name,
-    init_mq_info(Globals, ModuleName, ImplicitlyImportedOrUsedModules,
-        should_not_report_errors, Info0),
+    init_mq_info(Globals, ModuleName, should_not_report_errors, Info0),
     collect_mq_info_in_parse_tree_int3(int3_as_src, OrigParseTreeInt3,
         Info0, Info1),
     module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
@@ -479,7 +472,11 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
 
                 % Modules which have been imported or used, i.e. the ones
                 % for which there was a `:- import_module' or `:- use_module'
-                % declaration in this module.
+                % declaration in this module, plus the implicitly imported
+                % module builtin.m. We use the contents of this field
+                % to decide whether to add "No module named xyz has been
+                % imported" to error messages when we find a reference
+                % to an undefined type, inst, mode, pred etc.
                 mqsi_imported_modules           :: set(module_name),
 
                 % Modules from which `:- instance' declarations have
@@ -534,13 +531,10 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
                 mqi_maybe_recompilation_info    :: maybe(recompilation_info)
             ).
 
-:- pred init_mq_info(globals::in, module_name::in, set(module_name)::in,
+:- pred init_mq_info(globals::in, module_name::in,
     maybe_should_report_errors::in, mq_info::out) is det.
 
-init_mq_info(Globals, ModuleName, ImplicitlyImportedOrUsedModules,
-        ReportErrors, Info) :-
-    % XXX ITEM_LIST Given that our caller starts with an aug_compilation_unit,
-    % shouldn't we know the implicit dependencies already?
+init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
     set.init(InstanceModules),
     ExportedInstancesFlag = no,
     globals.lookup_bool_option(Globals, warn_interface_imports_in_parents,
@@ -555,7 +549,18 @@ init_mq_info(Globals, ModuleName, ImplicitlyImportedOrUsedModules,
         WarnInterfaceImportsInParents = yes,
         WarnUnusedImportsInParents = should_warn_unused_imports_in_parents
     ),
-    SubInfo = mq_sub_info(ModuleName, ImplicitlyImportedOrUsedModules,
+    % This module is always implicitly imported into every module,
+    % and users may use the entities it defines without qualification.
+    % Users shouldn't write code that refers to entities defined in
+    % other implicitly imported modules without explicitly importing them,
+    % since the implicit import mechanism is to give *compiler writers*
+    % access to those modules, not the users directly. Therefore I (zs) think
+    % that if users write code that refers to entities defined in other
+    % implicitly imported modules, including private_builtin, but get
+    % the names of those entities wrong, it is ok to tell them that the
+    % affected module hasn't been (explicitly) imported.
+    set.list_to_set([mercury_public_builtin_module], ImportedOrUsedModules),
+    SubInfo = mq_sub_info(ModuleName, ImportedOrUsedModules,
         InstanceModules, ExportedInstancesFlag,
         did_not_find_undef_type, did_not_find_undef_inst,
         did_not_find_undef_mode, did_not_find_undef_typeclass,
