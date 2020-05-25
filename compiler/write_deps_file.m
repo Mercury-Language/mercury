@@ -275,10 +275,18 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         MmakeVarFactTablesOs = mmake_var_defn(
             ModuleMakeVarName ++ ".fact_tables.os",
             "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
+        MmakeVarFactTablesAllOs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.all_os",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
         MmakeVarFactTablesCs = mmake_var_defn(
             ModuleMakeVarName ++ ".fact_tables.cs",
             "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
-        MmakeVarsFactTables = [MmakeVarFactTablesOs, MmakeVarFactTablesCs],
+        MmakeVarFactTablesAllCs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.all_cs",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
+        MmakeVarsFactTables =
+            [MmakeVarFactTablesOs, MmakeVarFactTablesAllOs,
+            MmakeVarFactTablesCs, MmakeVarFactTablesAllCs],
         add_mmake_entries(MmakeVarsFactTables, !MmakeFile)
     ;
         FactDeps = []
@@ -311,7 +319,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         % is not supported. Even support for Java is rudimentary
         % and may not be complete.
         % XXX Document the *reason* for the lack of that support.
-        TargetGroup = mmake_file_name_group("",
+        TargetGroup = mmake_file_name_group("dates_and_err",
             one_or_more(OptDateFileName,
                 [TransOptDateFileName, ErrFileName,
                 CDateFileName, JavaDateFileName])),
@@ -413,7 +421,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         IntermodDirs),
 
     % If intermodule_optimization is enabled, then all the .mh files
-    % must exist because it is possible that the .c file imports them
+    % must exist, because it is possible that the .c file imports them
     % directly or indirectly.
     (
         Intermod = yes,
@@ -554,7 +562,8 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     add_mmake_entry(MmakeRuleMhMihOnC, !MmakeFile),
 
     % The `.module_dep' file is made as a side effect of
-    % creating the `.c', `.s', or `.java'.
+    % creating the `.c' or `.java'.
+    % XXX What about C# and Erlang?
 
     module_name_to_file_name(Globals, do_not_create_dirs, ".java",
         ModuleName, JavaFileName, !IO),
@@ -618,7 +627,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     MmakeRuleParentDate0s = mmake_general_rule("self_and_parent_date0_deps",
         mmake_rule_is_not_phony,
         one_or_more(
-            mmake_file_name_group("",
+            mmake_file_name_group("date0s",
                 one_or_more(Date0FileName, AncestorDate0FileNames)),
             []),
         [make_singleton_file_name_group(SourceFileName)] ++
@@ -777,17 +786,23 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     % and pattern rules works in Make.
 
     MmakeRulesInstallShadows = [
-        mmake_simple_rule("", mmake_rule_is_not_phony,
+        mmake_simple_rule("int0_on_date0",
+            mmake_rule_is_not_phony,
             Int0FileName, [Date0FileName], [silent_noop_action]),
-        mmake_simple_rule("", mmake_rule_is_not_phony,
+        mmake_simple_rule("int_on_date",
+            mmake_rule_is_not_phony,
             IntFileName, [DateFileName], [silent_noop_action]),
-        mmake_simple_rule("", mmake_rule_is_not_phony,
+        mmake_simple_rule("int2_on_date",
+            mmake_rule_is_not_phony,
             Int2FileName, [DateFileName], [silent_noop_action]),
-        mmake_simple_rule("", mmake_rule_is_not_phony,
+        mmake_simple_rule("int3_on_date3",
+            mmake_rule_is_not_phony,
             Int3FileName, [Date3FileName], [silent_noop_action]),
-        mmake_simple_rule("", mmake_rule_is_not_phony,
+        mmake_simple_rule("opt_on_opt_date",
+            mmake_rule_is_not_phony,
             OptFileName, [OptDateFileName], [silent_noop_action]),
-        mmake_simple_rule("", mmake_rule_is_not_phony,
+        mmake_simple_rule("trans_opt_on_trans_opt_date",
+            mmake_rule_is_not_phony,
             TransOptFileName, [TransOptDateFileName], [silent_noop_action])
     ],
     add_mmake_entries(MmakeRulesInstallShadows, !MmakeFile),
@@ -822,27 +837,34 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         % scripts/Mmake.rules. See that file for documentation on these rules.
 
         MmakeRulesPattern = [
-            mmake_simple_rule("", mmake_rule_is_not_phony,
+            mmake_simple_rule("date0_on_src",
+                mmake_rule_is_not_phony,
                 Date0FileName, [SourceFileName],
                 ["$(MCPI) $(ALL_GRADEFLAGS) $(ALL_MCPIFLAGS) " ++ ModuleArg]),
-            mmake_simple_rule("", mmake_rule_is_not_phony,
+            mmake_simple_rule("date_on_src",
+                mmake_rule_is_not_phony,
                 DateFileName, [SourceFileName],
                 ["$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) " ++ ModuleArg]),
-            mmake_simple_rule("", mmake_rule_is_not_phony,
+            mmake_simple_rule("date3_on_src",
+                mmake_rule_is_not_phony,
                 Date3FileName, [SourceFileName],
                 ["$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) " ++ ModuleArg]),
-            mmake_simple_rule("", mmake_rule_is_not_phony,
+            mmake_simple_rule("opt_date_on_src",
+                mmake_rule_is_not_phony,
                 OptDateFileName, [SourceFileName],
                 ["$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) " ++ ModuleArg]),
-            mmake_simple_rule("", mmake_rule_is_not_phony,
+            mmake_simple_rule("trans_opt_date_on_src",
+                mmake_rule_is_not_phony,
                 TransOptDateFileName, [SourceFileName],
                 ["$(MCTOI) $(ALL_GRADEFLAGS) $(ALL_MCTOIFLAGS) " ++
                     ModuleArg]),
-            mmake_simple_rule("", mmake_rule_is_not_phony,
+            mmake_simple_rule("c_date_on_src",
+                mmake_rule_is_not_phony,
                 CDateFileName, [SourceFileName],
                 ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) " ++ ModuleArg ++
                     " $(ERR_REDIRECT)"]),
-            mmake_simple_rule("", mmake_rule_is_not_phony,
+            mmake_simple_rule("java_date_on_src",
+                mmake_rule_is_not_phony,
                 JavaDateFileName, [SourceFileName],
                 ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --java-only " ++
                     ModuleArg ++ " $(ERR_REDIRECT)"])
@@ -1266,6 +1288,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
             [s(ModuleMakeVarName)])),
     add_mmake_entry(MmakeVarInitCs, !MmakeFile),
 
+    MmakeVarAllCs = mmake_var_defn(ModuleMakeVarName ++ ".all_cs",
+        string.format("$(%s.mods:%%=$(cs_subdir)%%.c)",
+            [s(ModuleMakeVarName)])),
+    add_mmake_entry(MmakeVarAllCs, !MmakeFile),
+
     get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs),
 
     get_extra_link_dependencies(Globals, ".c",
@@ -1313,6 +1340,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
             [s(ModuleMakeVarName)])),
     add_mmake_entry(MmakeVarJavas, !MmakeFile),
 
+    MmakeVarAllJavas = mmake_var_defn(ModuleMakeVarName ++ ".all_javas",
+        string.format("$(%s.mods:%%=$(javas_subdir)%%.java)",
+            [s(ModuleMakeVarName)])),
+    add_mmake_entry(MmakeVarAllJavas, !MmakeFile),
+
     % The Java compiler creates a .class file for each class within the
     % original .java file. The filenames of all these can be matched with
     % `module\$*.class', hence the "\\$$*.class" below.
@@ -1330,6 +1362,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         string.format("$(%s.mods:%%=$(css_subdir)%%.cs)",
             [s(ModuleMakeVarName)])),
     add_mmake_entry(MmakeVarCss, !MmakeFile),
+
+    MmakeVarAllCss = mmake_var_defn(ModuleMakeVarName ++ ".all_css",
+        string.format("$(%s.mods:%%=$(css_subdir)%%.cs)",
+            [s(ModuleMakeVarName)])),
+    add_mmake_entry(MmakeVarAllCss, !MmakeFile),
 
     MmakeVarDirs = mmake_var_defn(ModuleMakeVarName ++ ".dirs",
         string.format("$(%s.mods:%%=$(dirs_subdir)%%.dir)",
