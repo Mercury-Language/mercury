@@ -304,6 +304,8 @@
     ;       (=/=)
     ;       andalso     % short circuiting
     ;       orelse      % short circuiting
+    ;       erl_unsigned_lt
+    ;       erl_unsigned_le
     .
 
 %-----------------------------------------------------------------------------%

@@ -531,8 +531,6 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
     (
         ( StdBinOp = body
         ; StdBinOp = array_index(_)
-        ; StdBinOp = unsigned_lt
-        ; StdBinOp = unsigned_le
         ; StdBinOp = float_from_dword
         ; StdBinOp = int64_from_dword
         ; StdBinOp = uint64_from_dword
@@ -573,6 +571,8 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = int_gt(_),             EldsBinOp = elds.(>)
         ; StdBinOp = int_le(_),             EldsBinOp = elds.(=<)
         ; StdBinOp = int_ge(_),             EldsBinOp = elds.(>=)
+        ; StdBinOp = unsigned_lt,           EldsBinOp = elds.erl_unsigned_lt
+        ; StdBinOp = unsigned_le,           EldsBinOp = elds.erl_unsigned_le
         ; StdBinOp = float_add,             EldsBinOp = elds.add
         ; StdBinOp = float_sub,             EldsBinOp = elds.sub
         ; StdBinOp = float_mul,             EldsBinOp = elds.mul

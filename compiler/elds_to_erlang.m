@@ -1272,6 +1272,10 @@ elds_binop_to_string(=:=)       = "=:=".
 elds_binop_to_string(=/=)       = "=/=".
 elds_binop_to_string(andalso)   = "andalso".
 elds_binop_to_string(orelse)    = "orelse".
+% XXX these next two are actually NYI, but we need to generate something in
+% order for the standrard library to compile in the Erlang grade at all.
+elds_binop_to_string(erl_unsigned_lt) = "<".
+elds_binop_to_string(erl_unsigned_le) = ">=".
 
 %-----------------------------------------------------------------------------%
 
