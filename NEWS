@@ -94,13 +94,6 @@ Changes to the Mercury standard library
 
     - pred `hash/2`
 
-### Changes to the `integer` module
-
-* The following functions have been added:
-
-   - func `eight/0`
-   - func `sixteen/0`
-
 ### Changes to the `hash_table` module
 
 * The following predicates have been deprecated and will be removed in a future
@@ -124,6 +117,13 @@ Changes to the Mercury standard library
 
     - func `hash/1`
     - pred `hash/2`
+
+### Changes to the `integer` module
+
+* The following functions have been added:
+
+   - func `eight/0`
+   - func `sixteen/0`
 
 ### Changes to the `io` module
 
