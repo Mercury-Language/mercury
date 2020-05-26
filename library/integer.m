@@ -51,9 +51,17 @@
     %
 :- func two = integer.
 
+    % Equivalent to integer(8).
+    %
+:- func eight = integer.
+
     % Equivalent to integer(10).
     %
 :- func ten = integer.
+
+    % Equivalent to integer(16).
+    %
+:- func sixteen = integer.
 
 %---------------------------------------------------------------------------%
 
@@ -614,7 +622,11 @@ one = i(1, [1]).
 
 two = i(1, [2]).
 
+eight = i(1, [8]).
+
 ten = i(1, [10]).
+
+sixteen = i(1, [16]).
 
 %---------------------------------------------------------------------------%
 

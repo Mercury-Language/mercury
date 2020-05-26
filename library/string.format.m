@@ -868,7 +868,7 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
                 AbsIntStr = abs_int_to_hex_uc(Int)
             )
         else
-            Div = integer.pow(integer(2), integer(int.bits_per_int)),
+            Div = integer.pow(integer.two, integer(int.bits_per_int)),
             UnsignedInteger = integer(Int) mod Div,
             (
                 Base = base_octal,
@@ -1219,8 +1219,8 @@ justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
 :- func abs_int_to_octal(int) = string.
 
 abs_integer_to_octal(Num) = NumStr :-
-    ( if Num > integer(0) then
-        Integer8 = integer(8),
+    ( if Num > integer.zero then
+        Integer8 = integer.eight,
         FrontDigitsStr = abs_int_to_octal(det_to_int(Num // Integer8)),
         LastDigitStr = get_octal_digit(det_to_int(Num rem Integer8)),
         NumStr = append(FrontDigitsStr, LastDigitStr)
@@ -1243,8 +1243,8 @@ abs_int_to_octal(Num) = NumStr :-
 :- func abs_int_to_decimal(int) = string.
 
 abs_integer_to_decimal(Num) = NumStr :-
-    ( if Num > integer(0) then
-        Integer10 = integer(10),
+    ( if Num > integer.zero then
+        Integer10 = integer.ten,
         FrontDigitsStr = abs_int_to_decimal(det_to_int(Num // Integer10)),
         LastDigitStr = get_decimal_digit(det_to_int(Num rem Integer10)),
         NumStr = append(FrontDigitsStr, LastDigitStr)
@@ -1270,8 +1270,8 @@ abs_int_to_decimal(Num) = NumStr :-
 :- func abs_int_to_hex_uc(int) = string.
 
 abs_integer_to_hex_lc(Num) = NumStr :-
-    ( if Num > integer(0) then
-        Integer16 = integer(16),
+    ( if Num > integer.zero then
+        Integer16 = integer.sixteen,
         FrontDigitsStr = abs_int_to_hex_lc(det_to_int(Num // Integer16)),
         LastDigitStr = get_hex_digit_lc(det_to_int(Num rem Integer16)),
         NumStr = append(FrontDigitsStr, LastDigitStr)
@@ -1280,8 +1280,8 @@ abs_integer_to_hex_lc(Num) = NumStr :-
     ).
 
 abs_integer_to_hex_uc(Num) = NumStr :-
-    ( if Num > integer(0) then
-        Integer16 = integer(16),
+    ( if Num > integer.zero then
+        Integer16 = integer.sixteen,
         FrontDigitsStr = abs_int_to_hex_uc(det_to_int(Num // Integer16)),
         LastDigitStr = get_hex_digit_uc(det_to_int(Num rem Integer16)),
         NumStr = append(FrontDigitsStr, LastDigitStr)
