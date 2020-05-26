@@ -64,7 +64,7 @@
 
     % A version of io.format that works for arbitrary string writers.
     %
-:- pred format(Stream::in, string::in, list(string.poly_type)::in,
+:- pred format(Stream::in, string::in, list(poly_type)::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
 :- pred nl(Stream::in, State::di, State::uo) is det

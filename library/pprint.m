@@ -258,7 +258,7 @@
     % NOTE: since these types are now instances of the doc/1 type class,
     % it is simpler to just apply the doc/1 method to these types.
     %
-:- func poly(string.poly_type) = doc.
+:- func poly(poly_type) = doc.
 
     % Shorthand for doc ++ line ++ doc.
     %

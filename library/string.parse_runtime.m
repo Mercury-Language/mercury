@@ -79,7 +79,7 @@
     % format string will be long enough to make us consume too much stack.
     %
 :- pred parse_format_string(list(char)::in,
-    list(string.poly_type)::in, int::in,
+    list(poly_type)::in, int::in,
     list(string_format_spec)::out, list(string_format_error)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -138,7 +138,7 @@ parse_format_string(!.Chars, !.PolyTypes, SpecNum, Specs, Errors) :-
     % minimum field width, and an optional precision.
     %
 :- pred parse_conversion_specification(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
+    list(poly_type)::in, list(poly_type)::out, int::in,
     string_format_spec::out, list(string_format_error)::out) is det.
 
 parse_conversion_specification(!Chars, !PolyTypes, SpecNum, Spec, Errors) :-
@@ -154,7 +154,7 @@ parse_conversion_specification(!Chars, !PolyTypes, SpecNum, Spec, Errors) :-
     % Do we have a minimum field width? If yes, get it.
     %
 :- pred get_optional_width(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
+    list(poly_type)::in, list(poly_type)::out, int::in,
     string_format_maybe_width::out, list(string_format_error)::out) is det.
 
 get_optional_width(!Chars, !PolyTypes, SpecNum, MaybeWidth, Errors) :-
@@ -185,7 +185,7 @@ get_optional_width(!Chars, !PolyTypes, SpecNum, MaybeWidth, Errors) :-
     % Do we have a precision? If yes, get it.
     %
 :- pred get_optional_prec(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
+    list(poly_type)::in, list(poly_type)::out, int::in,
     string_format_maybe_prec::out, list(string_format_error)::out) is det.
 
 get_optional_prec(!Chars, !PolyTypes, SpecNum, MaybePrec, Errors) :-
@@ -234,7 +234,7 @@ get_optional_prec(!Chars, !PolyTypes, SpecNum, MaybePrec, Errors) :-
     % if there is one.
     %
 :- pred get_first_spec(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out,
+    list(poly_type)::in, list(poly_type)::out,
     string_format_flags::in, string_format_maybe_width::in,
     string_format_maybe_prec::in, int::in,
     string_format_spec::out, list(string_format_error)::out) is det.
