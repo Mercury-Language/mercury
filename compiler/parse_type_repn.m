@@ -38,7 +38,7 @@
 :- implementation.
 
 :- import_module libs.
-:- import_module libs.globals.                  % for foreign_language
+:- import_module libs.globals.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_pragma.
 :- import_module parse_tree.parse_sym_name.
@@ -58,6 +58,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module uint.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 
@@ -113,8 +114,8 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         MaybeDuRepn = ok1(DuRepn),
                         MaybeRepn = ok1(tcrepn_du(DuRepn))
                     ;
-                        MaybeDuRepn = error1(Specs),
-                        MaybeRepn = error1(Specs)
+                        MaybeDuRepn = error1(DuRepnSpecs),
+                        MaybeRepn = error1(DuRepnSpecs)
                     )
                 ;
                     ( RepnArgs = []
@@ -123,7 +124,7 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     DuPieces = [words("Error: in second argument of a"),
                         decl("type_representation"), words("item:"),
                         quote(AtomStr), words("should have"),
-                        words("exactly one argument."), nl],
+                        words("one argument."), nl],
                     DuSpec = simplest_spec($pred, severity_error,
                         phase_term_to_parse_tree, RepnContext, DuPieces),
                     MaybeRepn = error1([DuSpec])
@@ -163,12 +164,15 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             Item = item_type_repn(ItemRepnInfo),
             MaybeIOM = ok1(iom_item(Item))
         else
-            MaybeIOM = error1([])
+            Specs =
+                get_any_errors2(MaybeTypeSymNameAndArgs) ++
+                get_any_errors1(MaybeRepn),
+            MaybeIOM = error1(Specs)
         )
     else
         Pieces = [words("Error: a"),
             decl("type_representation"), words("item"),
-            words("should have exactly two arguments: the type,"),
+            words("should have two arguments: the type,"),
             words("and a description of its representation."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             Context, Pieces),
@@ -189,7 +193,7 @@ parse_no_arg_type_repn(RepnStr, RepnArgs, RepnContext,
     ;
         RepnArgs = [_ | _],
         Pieces = [words("Error:"), quote(RepnStr),
-            words("should not have any arguments."), nl],
+            words("should have zero arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             RepnContext, Pieces),
         MaybeRepn = error1([Spec])
@@ -219,7 +223,7 @@ parse_type_repn_eqv_to(VarSet, RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         ; RepnArgs = [_, _ | _]
         ),
         Pieces = [words("Error:"), quote(RepnStr),
-            words("should have exactly one argument, a type."), nl],
+            words("should have one argument, a type."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             RepnContext, Pieces),
         MaybeRepn = error1([Spec])
@@ -272,7 +276,7 @@ parse_type_repn_fits_in_n_bits(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         ; RepnArgs = [_, _, _ | _]
         ),
         Pieces = [words("Error:"), quote(RepnStr),
-            words("should have exactly two arguments,"),
+            words("should have two arguments,"),
             words("an integer and a fill kind."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             RepnContext, Pieces),
@@ -311,7 +315,7 @@ parse_type_repn_has_direct_arg_functors(RepnStr, RepnArgs, RepnContext,
         ; RepnArgs = [_, _ | _]
         ),
         Pieces = [words("Error:"), quote(RepnStr),
-            words("should have exactly one argument,"),
+            words("should have one argument,"),
             words("a list of function symbols with arities."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             RepnContext, Pieces),
@@ -353,18 +357,14 @@ parse_functor_with_arities(RepnStr, Nth, [Term | Terms], MaybeFunctors) :-
 parse_type_repn_du(VarSet, Term, MaybeDuRepn) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "notag"
-        ; AtomStr = "direct_dummy"
+        ( AtomStr = "direct_dummy"
         ; AtomStr = "enum"
-        ; AtomStr = "gen_du"
+        ; AtomStr = "notag"
+        ; AtomStr = "gen_du_more_functors"
         ; AtomStr = "gen_du_only_functor"
         )
     then
         (
-            AtomStr = "notag",
-            parse_type_repn_du_notag(VarSet, TermContext, ArgTerms,
-                MaybeDuRepn)
-        ;
             AtomStr = "direct_dummy",
             parse_type_repn_du_direct_dummy(VarSet, TermContext, ArgTerms,
                 MaybeDuRepn)
@@ -372,65 +372,33 @@ parse_type_repn_du(VarSet, Term, MaybeDuRepn) :-
             AtomStr = "enum",
             parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn)
         ;
-            AtomStr = "gen_du",
-            parse_type_repn_du_gen_du(VarSet, TermContext, ArgTerms,
+            AtomStr = "notag",
+            parse_type_repn_du_notag(VarSet, TermContext, ArgTerms,
                 MaybeDuRepn)
         ;
             AtomStr = "gen_du_only_functor",
             parse_type_repn_du_gen_du_only_functor(VarSet, TermContext,
-                ArgTerms, MaybeDuRepn)
+                AtomStr, ArgTerms, MaybeDuRepn)
+        ;
+            AtomStr = "gen_du_more_functors",
+            parse_type_repn_du_gen_du_more_functors(VarSet, TermContext,
+                AtomStr, ArgTerms, MaybeDuRepn)
         )
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Expected one of"),
-            quote("notag(...)"), suffix(","),
+        Pieces = [words("Error: expected one of"),
             quote("direct_dummy(...)"), suffix(","),
             quote("enum(...)"), suffix(","),
-            quote("gen_du"),  words("and"),
-            quote("gen_du_only_functor"), suffix(","),
+            quote("notag(...)"), suffix(","),
+            quote("gen_du_only_functor(...)"),  words("and"),
+            quote("gen_du_more_functors(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), malformed_du_prefix ++ Pieces),
+            get_term_context(Term), Pieces),
         MaybeDuRepn = error1([Spec])
     ).
 
-:- pred parse_type_repn_du_notag(varset::in, prog_context::in, list(term)::in,
-    maybe1(du_repn)::out) is det.
-
-parse_type_repn_du_notag(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
-    (
-        ArgTerms = [ArgTerm1, ArgTerm2],
-        ContextPieces1 = [words("In first argument of"),
-            quote("notag"), suffix(":"), nl],
-        parse_string(VarSet, ContextPieces1, "function symbol",
-            ArgTerm1, MaybeFunctorName),
-        DescPieces2 = [words("the second argument of"), quote("notag")],
-        parse_c_j_cs_e_repn(VarSet, DescPieces2, min_list_length_0,
-            ArgTerm2, MaybeCJCsERepn),
-        ( if
-            MaybeFunctorName = ok1(FunctorName),
-            MaybeCJCsERepn = ok1(CJCsERepn)
-        then
-            NotagRepn = notag_repn(FunctorName, CJCsERepn),
-            DuRepn = dur_notag(NotagRepn),
-            MaybeDuRepn = ok1(DuRepn)
-        else
-            Specs =
-                get_any_errors1(MaybeFunctorName) ++
-                get_any_errors1(MaybeCJCsERepn),
-            MaybeDuRepn = error1(Specs)
-        )
-    ;
-        ( ArgTerms = []
-        ; ArgTerms = [_]
-        ; ArgTerms = [_, _, _ | _]
-        ),
-        Pieces = [quote("notag"),
-            words("should have exactly two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, malformed_du_prefix ++ Pieces),
-        MaybeDuRepn = error1([Spec])
-    ).
+%-----------------------------------------------------------------------------e
 
 :- pred parse_type_repn_du_direct_dummy(varset::in, prog_context::in,
     list(term)::in, maybe1(du_repn)::out) is det.
@@ -443,8 +411,8 @@ parse_type_repn_du_direct_dummy(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         parse_string(VarSet, ContextPieces1, "function symbol",
             ArgTerm1, MaybeFunctorName),
         DescPieces2 = [words("the second argument of"), quote("direct_dummy")],
-        parse_c_j_cs_e_repn_or_enum(VarSet, DescPieces2, min_list_length_0,
-            ArgTerm2, MaybeCJCsERepnOrEnum),
+        parse_c_j_cs_e_repn_or_enum(DescPieces2, VarSet, ArgTerm2,
+            MaybeCJCsERepnOrEnum),
         ( if
             MaybeFunctorName = ok1(FunctorName),
             MaybeCJCsERepnOrEnum = ok1(CJCsERepnOrEnum)
@@ -463,12 +431,14 @@ parse_type_repn_du_direct_dummy(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         ; ArgTerms = [_]
         ; ArgTerms = [_, _, _ | _]
         ),
-        Pieces = [quote("direct_dummy"),
-            words("should have exactly one argument."), nl],
+        Pieces = [words("Error:"), quote("direct_dummy"),
+            words("should have two arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, malformed_du_prefix ++ Pieces),
+            TermContext, Pieces),
         MaybeDuRepn = error1([Spec])
     ).
+
+%-----------------------------------------------------------------------------e
 
 :- pred parse_type_repn_du_enum(varset::in, prog_context::in, list(term)::in,
     maybe1(du_repn)::out) is det.
@@ -487,7 +457,7 @@ parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         ( if list_term_to_term_list(ArgTerm3, LaterEnumFunctorTerms) then
             ContextPieces = [words("third argument of"), quote("enum"),
                 suffix(":")],
-            parse_strings(VarSet, ContextPieces, "function symbol", 1,
+            parse_strings(ContextPieces, 1, VarSet,
                 LaterEnumFunctorTerms, LaterEnumFunctorNames, LaterEnumSpecs)
         else
             LaterEnumFunctorNames = [],
@@ -500,8 +470,8 @@ parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
             LaterEnumSpecs = [LaterEnumSpec]
         ),
         DescPieces4 = [words("the fourth argument of"), quote("enum")],
-        parse_c_j_cs_e_repn_or_enum(VarSet, DescPieces4, min_list_length_0,
-            ArgTerm4, MaybeCJCsERepnOrEnum),
+        parse_c_j_cs_e_repn_or_enum(DescPieces4, VarSet, ArgTerm4,
+            MaybeCJCsERepnOrEnum),
         ( if
             MaybeEnumFunctorName1 = ok1(EnumFunctorName1),
             MaybeEnumFunctorName2 = ok1(EnumFunctorName2),
@@ -526,16 +496,145 @@ parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         ; ArgTerms = [_, _, _]
         ; ArgTerms = [_, _, _, _, _ | _]
         ),
-        Pieces = [quote("enum"), words("should have four arguments."), nl],
+        Pieces = [words("Error:"), quote("enum"),
+            words("should have four arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, malformed_du_prefix ++ Pieces),
+            TermContext, Pieces),
         MaybeDuRepn = error1([Spec])
     ).
 
-:- pred parse_type_repn_du_gen_du(varset::in, prog_context::in, list(term)::in,
+%-----------------------------------------------------------------------------e
+
+:- pred parse_type_repn_du_notag(varset::in, prog_context::in, list(term)::in,
     maybe1(du_repn)::out) is det.
 
-parse_type_repn_du_gen_du(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
+parse_type_repn_du_notag(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
+    (
+        % We used to use output notag_repns that did not specify
+        % the argument type. Accept such type_repn items, with a
+        % dummy value in place of the missing information. Code using
+        % such dummy values won't compute correct answers, but this ok,
+        % because for now, the only thing we use the argument type for
+        % is computing a description of the representations of complex types
+        % to put into .int files, and those descriptions are themselves
+        % ignored.
+        %
+        % XXX Before we can start using those descriptions, we will
+        % have to insist on ArgTerm2 being present.
+        (
+            ArgTerms = [ArgTerm1, ArgTerm3],
+            ArgTerm2 = term.functor(atom("void"), [], dummy_context_init)
+        ;
+            ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3]
+        ),
+        ContextPieces1 = [words("In first argument of"),
+            quote("notag"), suffix(":"), nl],
+        parse_string(VarSet, ContextPieces1, "function symbol",
+            ArgTerm1, MaybeFunctorName),
+        ContextPieces2 = cord.from_list([words("In second argument of"),
+            quote("notag"), suffix(":"), nl]),
+        parse_type(allow_ho_inst_info, VarSet, ContextPieces2,
+            ArgTerm2, MaybeArgType),
+        DescPieces3 = [words("the third argument of"), quote("notag")],
+        parse_c_j_cs_e_repn(DescPieces3, VarSet, ArgTerm3, MaybeCJCsERepn),
+        ( if
+            MaybeFunctorName = ok1(FunctorName),
+            MaybeArgType = ok1(ArgType),
+            MaybeCJCsERepn = ok1(CJCsERepn)
+        then
+            NotagRepn = notag_repn(FunctorName, ArgType, CJCsERepn),
+            DuRepn = dur_notag(NotagRepn),
+            MaybeDuRepn = ok1(DuRepn)
+        else
+            Specs =
+                get_any_errors1(MaybeFunctorName) ++
+                get_any_errors1(MaybeArgType) ++
+                get_any_errors1(MaybeCJCsERepn),
+            MaybeDuRepn = error1(Specs)
+        )
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_]
+        ; ArgTerms = [_, _, _, _ | _]
+        ),
+        Pieces = [words("Error:"), quote("notag"),
+            words("should have three arguments."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            TermContext, Pieces),
+        MaybeDuRepn = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------e
+
+:- pred parse_type_repn_du_gen_du_only_functor(varset::in, prog_context::in,
+    string::in, list(term)::in, maybe1(du_repn)::out) is det.
+
+parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, AtomStr, ArgTerms,
+        MaybeDuRepn) :-
+    (
+        ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
+        ContextPieces1 = [words("In first argument of"),
+            quote(AtomStr), suffix(":")],
+        parse_string(VarSet, ContextPieces1, "function symbol",
+            ArgTerm1, MaybeFunctorName),
+        ( if list_term_to_term_list(ArgTerm2, TypeTerms) then
+            ContextPieces2 = cord.from_list([words("In the"),
+                words("second argument of"), quote(AtomStr), suffix(":")]),
+            parse_types(allow_ho_inst_info, VarSet, ContextPieces2,
+                TypeTerms, MaybeArgTypes)
+        else
+            ArgTypePieces = [words("Error: the second argument of"),
+                quote(AtomStr), words("should be a list of types."), nl],
+            ArgTypeSpec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(ArgTerm2),
+                ArgTypePieces),
+            MaybeArgTypes = error1([ArgTypeSpec])
+        ),
+        DescPieces3 = [words("third argument of"),
+            quote(AtomStr)],
+        parse_c_repns(DescPieces3, parse_nonconstant_repn, VarSet,
+            ArgTerm3, MaybeCRepns),
+        DescPieces4 = [words("fourth argument of"),
+            quote(AtomStr)],
+        parse_c_j_cs_e_repn(DescPieces4, VarSet, ArgTerm4, MaybeCJCsERepn),
+        ( if
+            MaybeFunctorName = ok1(FunctorName),
+            MaybeCRepns = ok1(CRepns),
+            MaybeArgTypes = ok1(ArgTypes),
+            MaybeCJCsERepn = ok1(CJCsERepn)
+        then
+            OnlyFunctor = gen_du_only_functor_repn(FunctorName, ArgTypes,
+                CRepns, CJCsERepn),
+            MaybeDuRepn = ok1(dur_gen_only_functor(OnlyFunctor))
+        else
+            Specs =
+                get_any_errors1(MaybeFunctorName) ++
+                get_any_errors1(MaybeArgTypes) ++
+                get_any_errors1(MaybeCRepns) ++
+                get_any_errors1(MaybeCJCsERepn),
+            MaybeDuRepn = error1(Specs)
+        )
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_]
+        ; ArgTerms = [_, _]
+        ; ArgTerms = [_, _, _]
+        ; ArgTerms = [_, _, _, _, _ | _]
+        ),
+        Pieces = [words("Error:"), quote("gen_du_only_functor"),
+            words("should have four arguments."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            TermContext, Pieces),
+        MaybeDuRepn = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------e
+
+:- pred parse_type_repn_du_gen_du_more_functors(varset::in, prog_context::in,
+    string::in, list(term)::in, maybe1(du_repn)::out) is det.
+
+parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
+        MaybeDuRepn) :-
     (
         ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
         parse_du_functor(VarSet, ArgTerm1, MaybeFunctor1),
@@ -551,27 +650,28 @@ parse_type_repn_du_gen_du(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
                 MaybeOtherFunctors = error1(OtherFunctorSpecs)
             )
         else
-            Pieces = [words("Error: the third argument of"), quote("gen_du"),
+            Pieces = [words("Error: the third argument of"), quote(AtomStr),
                 words("should be a list of function symbol representations."),
                 nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, get_term_context(ArgTerm3), Pieces),
             MaybeOtherFunctors = error1([Spec])
         ),
-        DescPieces4 = [words("fourth argument of"), quote("gen_du")],
-        parse_c_j_cs_e_repn(VarSet, DescPieces4, min_list_length_0,
-            ArgTerm4, MaybeCJCsERepn),
+        DescPieces4 = [words("fourth argument of"),
+            quote(AtomStr)],
+        parse_c_j_cs_e_repn(DescPieces4, VarSet, ArgTerm4, MaybeCJCsERepn),
         ( if
             MaybeFunctor1 = ok1(Functor1),
             MaybeFunctor2 = ok1(Functor2),
             MaybeOtherFunctors = ok1(OtherFunctors),
             MaybeCJCsERepn = ok1(CJCsERepn)
         then
-            MoreFunctors = gen_du_repn_more_functors(Functor1, Functor2,
+            MoreFunctors = gen_du_more_functors_repn(Functor1, Functor2,
                 OtherFunctors, CJCsERepn),
             MaybeDuRepn = ok1(dur_gen_more_functors(MoreFunctors))
         else
-            Specs = get_any_errors1(MaybeFunctor1) ++
+            Specs =
+                get_any_errors1(MaybeFunctor1) ++
                 get_any_errors1(MaybeFunctor2) ++
                 get_any_errors1(MaybeOtherFunctors) ++
                 get_any_errors1(MaybeCJCsERepn),
@@ -584,235 +684,17 @@ parse_type_repn_du_gen_du(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         ; ArgTerms = [_, _, _]
         ; ArgTerms = [_, _, _, _, _ | _]
         ),
-        Pieces = [words("Error:"), quote("gen_du"),
-            words("should have exactly four arguments."), nl],
+        Pieces = [words("Error:"), quote(AtomStr),
+            words("should have four arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             TermContext, Pieces),
         MaybeDuRepn = error1([Spec])
-    ).
-
-:- pred parse_type_repn_du_gen_du_only_functor(varset::in, prog_context::in,
-    list(term)::in, maybe1(du_repn)::out) is det.
-
-parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, ArgTerms,
-        MaybeDuRepn) :-
-    (
-        ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
-        ContextPieces1 = [words("In first argument of"),
-            quote("gen_du_only_functor"), suffix(":")],
-        parse_string(VarSet, ContextPieces1, "function symbol",
-            ArgTerm1, MaybeFunctorName),
-        parse_only_functor_args(63u, VarSet, ArgTerm2,
-            MaybeOnlyFunctorArgs64),
-        parse_only_functor_args(31u, VarSet, ArgTerm3,
-            MaybeOnlyFunctorArgs32),
-        DescPieces4 = [words("fourth argument of"),
-            quote("gen_du_only_functor")],
-        parse_c_j_cs_e_repn(VarSet, DescPieces4, min_list_length_0,
-            ArgTerm4, MaybeCJCsERepn),
-        ( if
-            MaybeFunctorName = ok1(FunctorName),
-            MaybeOnlyFunctorArgs64 = ok1(OnlyFunctorArgs64),
-            MaybeOnlyFunctorArgs32 = ok1(OnlyFunctorArgs32),
-            MaybeCJCsERepn = ok1(CJCsERepn)
-        then
-            OnlyFunctor = gen_du_repn_only_functor(FunctorName,
-                OnlyFunctorArgs64, OnlyFunctorArgs32, CJCsERepn),
-            MaybeDuRepn = ok1(dur_gen_only_functor(OnlyFunctor))
-        else
-            Specs = get_any_errors1(MaybeFunctorName) ++
-                get_any_errors1(MaybeOnlyFunctorArgs64) ++
-                get_any_errors1(MaybeOnlyFunctorArgs32) ++
-                get_any_errors1(MaybeCJCsERepn),
-            MaybeDuRepn = error1(Specs)
-        )
-    ;
-        ( ArgTerms = []
-        ; ArgTerms = [_]
-        ; ArgTerms = [_, _]
-        ; ArgTerms = [_, _, _]
-        ; ArgTerms = [_, _, _, _, _ | _]
-        ),
-        Pieces = [words("Error:"), quote("gen_du_only_functor"),
-            words("should have exactly four arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
-        MaybeDuRepn = error1([Spec])
-    ).
-
-%---------------------%
-
-:- func malformed_du_prefix = list(format_component).
-
-malformed_du_prefix =
-    [words("Error: malformed du type representation"),
-    words("inside the only argument of"), quote("du_repn"), suffix("."), nl].
-
-%---------------------%
-
-:- pred parse_only_functor_args(uint::in, varset::in, term::in,
-    maybe1(gen_du_only_functor_args)::out) is det.
-
-parse_only_functor_args(MaxNumBits, VarSet, Term, MaybeOnlyFunctorArgs) :-
-    ( if
-        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "local_args"
-        ; AtomStr = "remote_args"
-        )
-    then
-        (
-            ArgTerms = [ArgTerm],
-            ( if
-                list_term_to_term_list(ArgTerm, ElementTerms),
-                ElementTerms = [HeadElementTerm | TailElementTerms]
-            then
-                (
-                    AtomStr = "local_args",
-                    parse_local_pos_size(MaxNumBits, VarSet,
-                        HeadElementTerm, MaybeHeadArg),
-                    parse_local_pos_sizes(MaxNumBits, VarSet,
-                        TailElementTerms, TailArgs, TailSpecs),
-                    ( if
-                        MaybeHeadArg = ok1(HeadArg),
-                        TailSpecs = []
-                    then
-                        OnlyFunctorArgs = gen_du_only_functor_local_args(
-                            one_or_more(HeadArg, TailArgs)),
-                        MaybeOnlyFunctorArgs = ok1(OnlyFunctorArgs)
-                    else
-                        Specs = get_any_errors1(MaybeHeadArg) ++ TailSpecs,
-                        MaybeOnlyFunctorArgs = error1(Specs)
-                    )
-                ;
-                    AtomStr = "remote_args",
-                    parse_arg_pos_size(MaxNumBits, VarSet,
-                        HeadElementTerm, MaybeHeadArg),
-                    parse_arg_pos_sizes(MaxNumBits, VarSet,
-                        TailElementTerms, TailArgs, TailSpecs),
-                    ( if
-                        MaybeHeadArg = ok1(HeadArg),
-                        TailSpecs = []
-                    then
-                        OnlyFunctorArgs = gen_du_only_functor_remote_args(
-                            one_or_more(HeadArg, TailArgs)),
-                        MaybeOnlyFunctorArgs = ok1(OnlyFunctorArgs)
-                    else
-                        Specs = get_any_errors1(MaybeHeadArg) ++ TailSpecs,
-                        MaybeOnlyFunctorArgs = error1(Specs)
-                    )
-                )
-            else
-                ( AtomStr = "local_args", LR = "local"
-                ; AtomStr = "remote_args", LR = "remote"
-                ),
-                Pieces = [words("Error: the argument of"), quote(AtomStr),
-                    words("should be a nonempty list of"),
-                    words(LR), words("argument representations."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeOnlyFunctorArgs = error1([Spec])
-            )
-        ;
-            ( ArgTerms = []
-            ; ArgTerms = [_, _ | _]
-            ),
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error:"),
-                quote(AtomStr), words("should have exactly one argument."),
-                quote("remote_args"), suffix(","),
-                words("got"), quote(TermStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, TermContext, Pieces),
-            MaybeOnlyFunctorArgs = error1([Spec])
-        )
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected one of"),
-            quote("local_args"), words("and"),
-            quote("remote_args"), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeOnlyFunctorArgs = error1([Spec])
-    ).
-
-:- pred parse_local_pos_sizes(uint::in, varset::in, list(term)::in,
-    list(local_pos_size)::out, list(error_spec)::out) is det.
-
-parse_local_pos_sizes(_, _, [], [], []).
-parse_local_pos_sizes(MaxNumBits, VarSet, [Term | Terms],
-        !:LocalPosSizes, !:Specs) :-
-    parse_local_pos_sizes(MaxNumBits, VarSet, Terms,
-        !:LocalPosSizes, !:Specs),
-    parse_local_pos_size(MaxNumBits, VarSet, Term, MaybeLocalPosSize),
-    (
-        MaybeLocalPosSize = ok1(LocalPosSize),
-        !:LocalPosSizes = [LocalPosSize | !.LocalPosSizes]
-    ;
-        MaybeLocalPosSize = error1(Specs),
-        !:Specs = Specs ++ !.Specs
-    ).
-
-:- pred parse_arg_pos_sizes(uint::in, varset::in, list(term)::in,
-    list(arg_pos_size)::out, list(error_spec)::out) is det.
-
-parse_arg_pos_sizes(_, _, [], [], []).
-parse_arg_pos_sizes(MaxNumBits, VarSet, [Term | Terms],
-        !:ArgPosSizes, !:Specs) :-
-    parse_arg_pos_sizes(MaxNumBits, VarSet, Terms,
-        !:ArgPosSizes, !:Specs),
-    parse_arg_pos_size(MaxNumBits, VarSet, Term, MaybeArgPosSize),
-    (
-        MaybeArgPosSize = ok1(ArgPosSize),
-        !:ArgPosSizes = [ArgPosSize | !.ArgPosSizes]
-    ;
-        MaybeArgPosSize = error1(Specs),
-        !:Specs = Specs ++ !.Specs
-    ).
-
-%---------------------%
-
-:- pred parse_strings(varset::in, list(format_component)::in, string::in,
-    int::in, list(term)::in, list(string)::out, list(error_spec)::out) is det.
-
-parse_strings(_, _, _, _, [], [], []).
-parse_strings(VarSet, ContextPieces, Desc, Nth, [Term | Terms],
-        !:Strs, !:Specs) :-
-    parse_strings(VarSet, ContextPieces, Desc, Nth + 1, Terms,
-        !:Strs, !:Specs),
-    ( if Term = term.functor(term.string(Str), [], _) then
-        !:Strs = [Str | !.Strs]
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: in the"), nth_fixed(Nth),
-            words("element of the list in")] ++ ContextPieces ++
-            [words("expected"), words(Desc), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        !:Specs = [Spec | !.Specs]
-    ).
-
-:- pred parse_string(varset::in, list(format_component)::in,
-    string::in, term::in, maybe1(string)::out) is det.
-
-parse_string(VarSet, ContextPieces, Desc, Term, MaybeFunctorName) :-
-    ( if Term = term.functor(term.string(FunctorName), [], _) then
-        MaybeFunctorName = ok1(FunctorName)
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-            words("Error: expected"), words(Desc), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeFunctorName = error1([Spec])
     ).
 
 %---------------------%
 
 :- pred parse_du_functors(varset::in, list(term)::in,
-    list(gen_du_functor)::out, list(error_spec)::out) is det.
+    list(gen_du_functor_repn)::out, list(error_spec)::out) is det.
 
 parse_du_functors(_, [], [], []).
 parse_du_functors(VarSet, [Term | Terms], !:DuFunctors, !:Specs) :-
@@ -826,8 +708,8 @@ parse_du_functors(VarSet, [Term | Terms], !:DuFunctors, !:Specs) :-
         !:Specs = Specs ++ !.Specs
     ).
 
-:- pred parse_du_functor(varset::in, term::in, maybe1(gen_du_functor)::out)
-    is det.
+:- pred parse_du_functor(varset::in, term::in,
+    maybe1(gen_du_functor_repn)::out) is det.
 
 parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
     ( if
@@ -839,25 +721,78 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
         (
             AtomStr = "constant_functor",
             (
-                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3],
-                ContextPieces = [words("In first argument of"),
+                ArgTerms = [ArgTerm1, ArgTerm2],
+                ContextPieces1 = [words("In first argument of"),
                     quote("constant_functor"), suffix(":")],
-                parse_string(VarSet, ContextPieces, "function symbol",
+                parse_string(VarSet, ContextPieces1, "function symbol",
                     ArgTerm1, MaybeFunctorName),
-                parse_sectag_size(63u, VarSet, ArgTerm2, MaybeSectagSize64),
-                parse_sectag_size(31u, VarSet, ArgTerm3, MaybeSectagSize32),
+                DescPieces2 = [words("second argument of"),
+                    quote("constant_functor")],
+                parse_c_repns(DescPieces2, parse_constant_repn,
+                    VarSet, ArgTerm2, MaybeConstantCRepns),
                 ( if
                     MaybeFunctorName = ok1(FunctorName),
-                    MaybeSectagSize64 = ok1(SectagSize64),
-                    MaybeSectagSize32 = ok1(SectagSize32)
+                    MaybeConstantCRepns = ok1(ConstantCRepns)
                 then
-                    DuFunctor = gen_du_constant_functor(FunctorName,
-                        SectagSize64, SectagSize32),
+                    DuFunctor = gen_du_constant_functor_repn(FunctorName,
+                        ConstantCRepns),
                     MaybeDuFunctor = ok1(DuFunctor)
                 else
-                    Specs = get_any_errors1(MaybeFunctorName) ++
-                        get_any_errors1(MaybeSectagSize64) ++
-                        get_any_errors1(MaybeSectagSize32),
+                    Specs =
+                        get_any_errors1(MaybeFunctorName) ++
+                        get_any_errors1(MaybeConstantCRepns),
+                    MaybeDuFunctor = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _, _ | _]
+                ),
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have two arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeDuFunctor = error1([Spec])
+            )
+        ;
+            AtomStr = "nonconstant_functor",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3],
+                ContextPieces = [words("In first argument of"),
+                    quote(AtomStr), suffix(":")],
+                parse_string(VarSet, ContextPieces, "function symbol",
+                    ArgTerm1, MaybeFunctorName),
+                ( if list_term_to_term_list(ArgTerm2, TypeTerms) then
+                    ContextPieces2 = cord.from_list([words("In the"),
+                        words("second argument of"), quote(AtomStr),
+                        suffix(":")]),
+                    parse_types(allow_ho_inst_info, VarSet, ContextPieces2,
+                        TypeTerms, MaybeArgTypes)
+                else
+                    ArgTypePieces = [words("Error: the second argument of"),
+                        quote(AtomStr),
+                        words("should be a list of types."), nl],
+                    ArgTypeSpec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, get_term_context(ArgTerm2),
+                        ArgTypePieces),
+                    MaybeArgTypes = error1([ArgTypeSpec])
+                ),
+                DescPieces3 = [words("third argument of"), quote(AtomStr)],
+                parse_c_repns(DescPieces3, parse_nonconstant_repn,
+                    VarSet, ArgTerm3, MaybeNonConstantCRepns),
+                ( if
+                    MaybeFunctorName = ok1(FunctorName),
+                    MaybeArgTypes = ok1(ArgTypes),
+                    MaybeNonConstantCRepns = ok1(NonConstantCRepns)
+                then
+                    DuFunctor = gen_du_nonconstant_functor_repn(FunctorName,
+                        ArgTypes, NonConstantCRepns),
+                    MaybeDuFunctor = ok1(DuFunctor)
+                else
+                    Specs =
+                        get_any_errors1(MaybeFunctorName) ++
+                        get_any_errors1(MaybeArgTypes) ++
+                        get_any_errors1(MaybeNonConstantCRepns),
                     MaybeDuFunctor = error1(Specs)
                 )
             ;
@@ -867,56 +802,7 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                 ; ArgTerms = [_, _, _, _ | _]
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
-                    words("should have exactly three arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeDuFunctor = error1([Spec])
-            )
-        ;
-            AtomStr = "nonconstant_functor",
-            (
-                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4, ArgTerm5],
-                ContextPieces = [words("In first argument of"),
-                    quote("nonconstant_functor"), suffix(":")],
-                parse_string(VarSet, ContextPieces, "function symbol",
-                    ArgTerm1, MaybeFunctorName),
-                parse_ptag_sectag(7u, 63u, VarSet, ArgTerm2,
-                    MaybePtagSectag64),
-                parse_ptag_sectag(3u, 31u, VarSet, ArgTerm3,
-                    MaybePtagSectag32),
-                parse_maybe_direct_args(7u, 63u, VarSet, AtomStr, ArgTerm4,
-                    MaybeMaybeDirectArgs64),
-                parse_maybe_direct_args(3u, 31u, VarSet, AtomStr, ArgTerm5,
-                    MaybeMaybeDirectArgs32),
-                ( if
-                    MaybeFunctorName = ok1(FunctorName),
-                    MaybePtagSectag64 = ok1(PtagSectag64),
-                    MaybePtagSectag32 = ok1(PtagSectag32),
-                    MaybeMaybeDirectArgs64 = ok1(MaybeDirectArgs64),
-                    MaybeMaybeDirectArgs32 = ok1(MaybeDirectArgs32)
-                then
-                    DuFunctor = gen_du_nonconstant_functor(FunctorName,
-                        PtagSectag64, PtagSectag32,
-                        MaybeDirectArgs64, MaybeDirectArgs32),
-                    MaybeDuFunctor = ok1(DuFunctor)
-                else
-                    Specs = get_any_errors1(MaybeFunctorName) ++
-                        get_any_errors1(MaybePtagSectag64) ++
-                        get_any_errors1(MaybePtagSectag32) ++
-                        get_any_errors1(MaybeMaybeDirectArgs64) ++
-                        get_any_errors1(MaybeMaybeDirectArgs32),
-                    MaybeDuFunctor = error1(Specs)
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_]
-                ; ArgTerms = [_, _]
-                ; ArgTerms = [_, _, _]
-                ; ArgTerms = [_, _, _, _]
-                ; ArgTerms = [_, _, _, _, _, _ | _]
-                ),
-                Pieces = [words("Error:"), quote(AtomStr),
-                    words("should have exactly five arguments."), nl],
+                    words("should have three arguments."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
                 MaybeDuFunctor = error1([Spec])
@@ -933,18 +819,369 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
         MaybeDuFunctor = error1([Spec])
     ).
 
-:- pred parse_sectag_size(uint::in, varset::in, term::in,
-    maybe1(sectag_size)::out) is det.
+:- pred parse_constant_repn(varset::in, term::in,
+    maybe1(constant_repn)::out) is det.
 
-parse_sectag_size(MaxNumBits, VarSet, Term, MaybeSectagSize) :-
+parse_constant_repn(VarSet, Term, MaybeConstantRepn) :-
+    ( if Term = term.functor(term.atom("constant"), ArgTerms, TermContext) then
+        (
+            ArgTerms = [ArgTerm1, ArgTerm2],
+            parse_unlimited_uint(VarSet, ArgTerm1, MaybeSectag),
+            parse_sectag_word_or_size(VarSet, ArgTerm2, MaybeSectagSize),
+            ( if
+                MaybeSectag = ok1(Sectag),
+                MaybeSectagSize = ok1(SectagSize)
+            then
+                ConstantRepn = constant_repn(Sectag, SectagSize),
+                MaybeConstantRepn = ok1(ConstantRepn)
+            else
+                Specs =
+                    get_any_errors1(MaybeSectag) ++
+                    get_any_errors1(MaybeSectagSize),
+                MaybeConstantRepn = error1(Specs)
+            )
+        ;
+            ( ArgTerms = []
+            ; ArgTerms = [_]
+            ; ArgTerms = [_, _, _ | _]
+            ),
+            Pieces = [words("Error:"), quote("constant"),
+                words("should have two arguments."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, TermContext, Pieces),
+            MaybeConstantRepn = error1([Spec])
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected"),
+            quote("constant(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeConstantRepn = error1([Spec])
+    ).
+
+:- pred parse_nonconstant_repn(varset::in, term::in,
+    maybe1(nonconstant_repn)::out) is det.
+
+parse_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "sectag_rest_of_word"
-        ; AtomStr = "sectag_bits"
+        ( AtomStr = "local_cell"
+        ; AtomStr = "remote_cell"
+        ; AtomStr = "direct_arg"
         )
     then
         (
-            AtomStr = "sectag_rest_of_word",
+            AtomStr = "local_cell",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2],
+                parse_local_sectag(VarSet, ArgTerm1, MaybeLocalSectag),
+                ( if
+                    list_term_to_term_list(ArgTerm2, ElementTerms),
+                    ElementTerms = [HeadElementTerm | TailElementTerms]
+                then
+                    parse_local_arg_repn(VarSet, HeadElementTerm,
+                        MaybeHeadLocalArg),
+                    parse_local_arg_repns(VarSet, TailElementTerms,
+                        TailLocalArgs, TailLocalArgSpecs),
+                    ( if
+                        MaybeLocalSectag = ok1(LocalSectag),
+                        MaybeHeadLocalArg = ok1(HeadLocalArg),
+                        TailLocalArgSpecs = []
+                    then
+                        OoMLocalArgs =
+                            one_or_more(HeadLocalArg, TailLocalArgs),
+                        NonConstantRepn =
+                            ncr_local_cell(LocalSectag, OoMLocalArgs),
+                        MaybeNonConstantRepn = ok1(NonConstantRepn)
+                    else
+                        Specs =
+                            get_any_errors1(MaybeLocalSectag) ++
+                            get_any_errors1(MaybeHeadLocalArg) ++
+                            TailLocalArgSpecs,
+                        MaybeNonConstantRepn = error1(Specs)
+                    )
+                else
+                    Pieces = [words("Error: the second argument of"),
+                        quote(AtomStr), words("should be a nonempty list"),
+                        words("of local cell argument representations."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, TermContext, Pieces),
+                    Specs = [Spec | get_any_errors1(MaybeLocalSectag)],
+                    MaybeNonConstantRepn = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _, _ | _]
+                ),
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have two arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeNonConstantRepn = error1([Spec])
+            )
+        ;
+            AtomStr = "remote_cell",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3],
+                parse_ptag(VarSet, ArgTerm1, MaybePtag),
+                parse_remote_sectag(VarSet, ArgTerm2, MaybeRemoteSectag),
+                ( if
+                    list_term_to_term_list(ArgTerm3, ElementTerms),
+                    ElementTerms = [HeadElementTerm | TailElementTerms]
+                then
+                    parse_remote_arg_repn(VarSet, HeadElementTerm,
+                        MaybeHeadRemoteArg),
+                    parse_remote_arg_repns(VarSet, TailElementTerms,
+                        TailRemoteArgs, TailRemoteArgSpecs),
+                    ( if
+                        MaybePtag = ok1(Ptag),
+                        MaybeRemoteSectag = ok1(RemoteSectag),
+                        MaybeHeadRemoteArg = ok1(HeadRemoteArg),
+                        TailRemoteArgSpecs = []
+                    then
+                        OoMRemoteArgs =
+                            one_or_more(HeadRemoteArg, TailRemoteArgs),
+                        NonConstantRepn =
+                            ncr_remote_cell(Ptag, RemoteSectag, OoMRemoteArgs),
+                        MaybeNonConstantRepn = ok1(NonConstantRepn)
+                    else
+                        Specs =
+                            get_any_errors1(MaybePtag) ++
+                            get_any_errors1(MaybeRemoteSectag) ++
+                            get_any_errors1(MaybeHeadRemoteArg) ++
+                            TailRemoteArgSpecs,
+                        MaybeNonConstantRepn = error1(Specs)
+                    )
+                else
+                    Pieces = [words("Error: the second argument of"),
+                        quote(AtomStr), words("should be a nonempty list"),
+                        words("of remote cell argument representations."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, TermContext, Pieces),
+                    Specs = [Spec] ++
+                        get_any_errors1(MaybePtag) ++
+                        get_any_errors1(MaybeRemoteSectag),
+                    MaybeNonConstantRepn = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _]
+                ; ArgTerms = [_, _, _, _ | _]
+                ),
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have three arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeNonConstantRepn = error1([Spec])
+            )
+        ;
+            AtomStr = "direct_arg",
+            (
+                ArgTerms = [ArgTerm1],
+                parse_ptag(VarSet, ArgTerm1, MaybePtag),
+                (
+                    MaybePtag = ok1(Ptag),
+                    NonConstantRepn = ncr_direct_arg(Ptag),
+                    MaybeNonConstantRepn = ok1(NonConstantRepn)
+                ;
+                    MaybePtag = error1(Specs),
+                    MaybeNonConstantRepn = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_, _ | _]
+                ),
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have one argument."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeNonConstantRepn = error1([Spec])
+            )
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected one of"),
+            quote("local_cell(...)"), suffix(","),
+            quote("remote_cell(...)"), words("and"),
+            quote("direct_arg"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeNonConstantRepn = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------e
+
+:- pred parse_ptag(varset::in, term::in, maybe1(ptag)::out) is det.
+
+parse_ptag(VarSet, Term, MaybePtag) :-
+    parse_unlimited_uint(VarSet, Term, MaybeUint),
+    (
+        MaybeUint = ok1(Uint),
+        ( if Uint =< 7u then
+            Uint8 = uint8.det_from_int(uint.cast_to_int(Uint)),
+            Ptag = ptag(Uint8),
+            MaybePtag = ok1(Ptag)
+        else
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = [words("Error: expected a ptag value"),
+                words("in the range [0 .. 7],"),
+                words("got"), quote(TermStr), suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            MaybePtag = error1([Spec])
+        )
+    ;
+        MaybeUint = error1(Specs),
+        MaybePtag = error1(Specs)
+    ).
+
+:- pred parse_local_sectag(varset::in, term::in,
+    maybe1(cell_local_sectag)::out) is det.
+
+parse_local_sectag(VarSet, Term, MaybeLocalSectag) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "local_no_sectag"
+        ; AtomStr = "local_sectag"
+        )
+    then
+        (
+            AtomStr = "local_no_sectag",
+            (
+                ArgTerms = [],
+                MaybeLocalSectag = ok1(cell_local_no_sectag)
+            ;
+                ArgTerms = [_ | _],
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have no arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeLocalSectag = error1([Spec])
+            )
+        ;
+            AtomStr = "local_sectag",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2],
+                parse_unlimited_uint(VarSet, ArgTerm1, MaybeSectag),
+                parse_unlimited_uint(VarSet, ArgTerm2, MaybeSectagNumBits),
+                ( if
+                    MaybeSectag = ok1(Sectag),
+                    MaybeSectagNumBits = ok1(SectagNumBits)
+                then
+                    LocalSectag = cell_local_sectag(Sectag, SectagNumBits),
+                    MaybeLocalSectag = ok1(LocalSectag)
+                else
+                    Specs =
+                        get_any_errors1(MaybeSectag) ++
+                        get_any_errors1(MaybeSectagNumBits),
+                    MaybeLocalSectag = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _, _ | _]
+                ),
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have two arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeLocalSectag = error1([Spec])
+            )
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected one of"),
+            quote("local_no_sectag"), words("and"),
+            quote("local_sectag(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeLocalSectag = error1([Spec])
+    ).
+
+:- pred parse_remote_sectag(varset::in, term::in,
+    maybe1(cell_remote_sectag)::out) is det.
+
+parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "remote_no_sectag"
+        ; AtomStr = "remote_sectag"
+        )
+    then
+        (
+            AtomStr = "remote_no_sectag",
+            (
+                ArgTerms = [],
+                MaybeRemoteSectag = ok1(cell_remote_no_sectag)
+            ;
+                ArgTerms = [_ | _],
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have no arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeRemoteSectag = error1([Spec])
+            )
+        ;
+            AtomStr = "remote_sectag",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2],
+                parse_unlimited_uint(VarSet, ArgTerm1, MaybeSectag),
+                parse_sectag_word_or_size(VarSet, ArgTerm2,
+                    MaybeSectagWordOrSize),
+                ( if
+                    MaybeSectag = ok1(Sectag),
+                    MaybeSectagWordOrSize = ok1(SectagWordOrSize)
+                then
+                    RemoteSectag =
+                        cell_remote_sectag(Sectag, SectagWordOrSize),
+                    MaybeRemoteSectag = ok1(RemoteSectag)
+                else
+                    Specs =
+                        get_any_errors1(MaybeSectag) ++
+                        get_any_errors1(MaybeSectagWordOrSize),
+                    MaybeRemoteSectag = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _, _ | _]
+                ),
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have two arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeRemoteSectag = error1([Spec])
+            )
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected one of"),
+            quote("remote_no_sectag"), words("and"),
+            quote("remote_sectag(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeRemoteSectag = error1([Spec])
+    ).
+
+:- pred parse_sectag_word_or_size(varset::in, term::in,
+    maybe1(sectag_word_or_size)::out) is det.
+
+parse_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "rest"
+        ; AtomStr = "part"
+        )
+    then
+        (
+            AtomStr = "rest",
             (
                 ArgTerms = [],
                 MaybeSectagSize = ok1(sectag_rest_of_word)
@@ -957,14 +1194,14 @@ parse_sectag_size(MaxNumBits, VarSet, Term, MaybeSectagSize) :-
                 MaybeSectagSize = error1([Spec])
             )
         ;
-            AtomStr = "sectag_bits",
+            AtomStr = "part",
             (
                 ArgTerms = [ArgTerm1],
-                parse_uint_in_range(MaxNumBits, VarSet, ArgTerm1,
+                parse_uint_in_range(63u, VarSet, ArgTerm1,
                     MaybeSectagNumBits),
                 (
                     MaybeSectagNumBits = ok1(SectagNumBits),
-                    MaybeSectagSize = ok1(sectag_bits(SectagNumBits))
+                    MaybeSectagSize = ok1(sectag_part_of_word(SectagNumBits))
                 ;
                     MaybeSectagNumBits = error1(Specs),
                     MaybeSectagSize = error1(Specs)
@@ -974,7 +1211,7 @@ parse_sectag_size(MaxNumBits, VarSet, Term, MaybeSectagSize) :-
                 ; ArgTerms = [_, _ | _]
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
-                    words("should have exactly one argument."), nl],
+                    words("should have one argument."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
                 MaybeSectagSize = error1([Spec])
@@ -983,305 +1220,130 @@ parse_sectag_size(MaxNumBits, VarSet, Term, MaybeSectagSize) :-
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected one of"),
-            quote("sectag_rest_of_word"), words("and"),
-            quote("sectag_bits(...)"), suffix(","),
+            quote("rest"), words("and"),
+            quote("part(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
         MaybeSectagSize = error1([Spec])
     ).
 
-:- pred parse_ptag_sectag(uint::in, uint::in, varset::in, term::in,
-    maybe1(ptag_sectag)::out) is det.
+%-----------------------------------------------------------------------------e
 
-parse_ptag_sectag(MaxPtag, MaxNumBits, VarSet, Term, MaybePtagSectag) :-
-    ( if
-        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "ptag_only"
-        ; AtomStr = "ptag_local_sectag"
-        ; AtomStr = "ptag_local_sectag_bits"
-        ; AtomStr = "ptag_remote_sectag"
-        ; AtomStr = "ptag_remote_sectag_bits"
-        )
-    then
-        (
-            AtomStr = "ptag_only",
-            (
-                ArgTerms = [ArgTerm1],
-                parse_uint_in_range(MaxPtag, VarSet, ArgTerm1, MaybePtag),
-                (
-                    MaybePtag = ok1(Ptag),
-                    MaybePtagSectag = ok1(ptag_sectag(Ptag, no_sectag))
-                ;
-                    MaybePtag = error1(Specs),
-                    MaybePtagSectag = error1(Specs)
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_, _ | _]
-                ),
-                Pieces = [words("Error:"), quote(AtomStr),
-                    words("should have exactly one argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybePtagSectag = error1([Spec])
-            )
-        ;
-            ( AtomStr = "ptag_local_sectag"
-            ; AtomStr = "ptag_remote_sectag"
-            ),
-            (
-                ArgTerms = [ArgTerm1, ArgTerm2],
-                parse_uint_in_range(MaxPtag, VarSet, ArgTerm1, MaybePtag),
-                parse_unlimited_uint(VarSet, ArgTerm2, MaybeSectag),
-                ( if
-                    MaybePtag = ok1(Ptag),
-                    MaybeSectag = ok1(Sectag)
-                then
-                    (
-                        AtomStr = "ptag_local_sectag",
-                        MaybePtagSectag = ok1(ptag_sectag(Ptag,
-                            local_sectag(Sectag, sectag_rest_of_word)))
-                    ;
-                        AtomStr = "ptag_remote_sectag",
-                        MaybePtagSectag = ok1(ptag_sectag(Ptag,
-                            remote_sectag(Sectag, sectag_rest_of_word)))
-                    )
-                else
-                    Specs = get_any_errors1(MaybePtag) ++
-                        get_any_errors1(MaybeSectag),
-                    MaybePtagSectag = error1(Specs)
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_]
-                ; ArgTerms = [_, _, _ | _]
-                ),
-                Pieces = [words("Error:"), quote(AtomStr),
-                    words("should have exactly two arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybePtagSectag = error1([Spec])
-            )
-        ;
-            ( AtomStr = "ptag_local_sectag_bits"
-            ; AtomStr = "ptag_remote_sectag_bits"
-            ),
-            (
-                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3],
-                parse_uint_in_range(MaxPtag, VarSet, ArgTerm1, MaybePtag),
-                parse_unlimited_uint(VarSet, ArgTerm2, MaybeSectag),
-                parse_uint_in_range(MaxNumBits, VarSet, ArgTerm3,
-                    MaybeSectagNumBits),
-                ( if
-                    MaybePtag = ok1(Ptag),
-                    MaybeSectag = ok1(Sectag),
-                    MaybeSectagNumBits = ok1(SectagNumBits)
-                then
-                    SectagSize = sectag_bits(SectagNumBits),
-                    (
-                        AtomStr = "ptag_local_sectag_bits",
-                        MaybePtagSectag = ok1(ptag_sectag(Ptag,
-                            local_sectag(Sectag, SectagSize)))
-                    ;
-                        AtomStr = "ptag_remote_sectag_bits",
-                        MaybePtagSectag = ok1(ptag_sectag(Ptag,
-                            remote_sectag(Sectag, SectagSize)))
-                    )
-                else
-                    Specs = get_any_errors1(MaybePtag) ++
-                        get_any_errors1(MaybeSectag) ++
-                        get_any_errors1(MaybeSectagNumBits),
-                    MaybePtagSectag = error1(Specs)
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_]
-                ; ArgTerms = [_, _]
-                ; ArgTerms = [_, _, _, _ | _]
-                ),
-                Pieces = [words("Error:"), quote(AtomStr),
-                    words("should have exactly three arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybePtagSectag = error1([Spec])
-            )
-        )
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected one of"),
-            quote("ptag_only(...)"), suffix(","),
-            quote("ptag_local_sectag(...)"), suffix(","),
-            quote("ptag_local_sectag_bits(...)"), suffix(","),
-            quote("ptag_remote_sectag(...)"), words("and"),
-            quote("ptag_remote_sectag_bits(...)"), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybePtagSectag = error1([Spec])
-    ).
+:- pred parse_local_arg_repns(varset::in, list(term)::in,
+    list(local_arg_repn)::out, list(error_spec)::out) is det.
 
-%---------------------%
-
-:- pred parse_local_pos_size(uint::in, varset::in, term::in,
-    maybe1(local_pos_size)::out) is det.
-
-parse_local_pos_size(MaxNumBits, VarSet, Term, MaybeLocalPosSize) :-
-    ( if
-        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        AtomStr = "local"
-    then
-        (
-            ArgTerms = [ArgTerm1, ArgTerm2],
-            parse_uint_in_range(MaxNumBits, VarSet, ArgTerm1, MaybeShift),
-            parse_fill_kind_size(MaxNumBits, VarSet, ArgTerm2,
-                MaybeFillKindSize),
-            ( if
-                MaybeShift = ok1(Shift),
-                MaybeFillKindSize = ok1(FillKindSize)
-            then
-                LocalPosSize = local_pos_size(Shift, FillKindSize),
-                MaybeLocalPosSize = ok1(LocalPosSize)
-            else
-                Specs = get_any_errors1(MaybeShift) ++
-                    get_any_errors1(MaybeFillKindSize),
-                MaybeLocalPosSize = error1(Specs)
-            )
-        ;
-            ( ArgTerms = []
-            ; ArgTerms = [_]
-            ; ArgTerms = [_, _, _ | _]
-            ),
-            Pieces = [words("Error:"), quote(AtomStr),
-                words("should have exactly two arguments."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, TermContext, Pieces),
-            MaybeLocalPosSize = error1([Spec])
-        )
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Expected"), quote("local(...)"), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeLocalPosSize = error1([Spec])
-    ).
-
-%---------------------%
-
-:- pred parse_maybe_direct_args(uint::in, uint::in, varset::in, string::in,
-    term::in, maybe1(one_or_more(maybe_direct_arg))::out) is det.
-
-parse_maybe_direct_args(MaxPtag, MaxNumBits, VarSet, AtomStr, Term,
-        MaybeMaybeDirectArgs) :-
-    ( if
-        list_term_to_term_list(Term, MaybeDirectArgTerms),
-        MaybeDirectArgTerms =
-            [HeadMaybeDirectArgTerm | TailMaybeDirectArgTerms]
-    then
-        parse_maybe_direct_arg(MaxPtag, MaxNumBits, VarSet,
-            HeadMaybeDirectArgTerm, MaybeHeadMaybeDirectArg),
-        parse_maybe_direct_args_loop(MaxPtag, MaxNumBits, VarSet,
-            TailMaybeDirectArgTerms, TailMaybeDirectArgs, TailSpecs),
-        ( if
-            MaybeHeadMaybeDirectArg = ok1(HeadMaybeDirectArg),
-            TailSpecs = []
-        then
-            MaybeMaybeDirectArgs = ok1(
-                one_or_more(HeadMaybeDirectArg, TailMaybeDirectArgs))
-        else
-            Specs = get_any_errors1(MaybeHeadMaybeDirectArg) ++ TailSpecs,
-            MaybeMaybeDirectArgs = error1(Specs)
-        )
-    else
-        Pieces = [words("Error: the argument of"), quote(AtomStr),
-            words("should be a nonempty list of"),
-            words("argument representations."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeMaybeDirectArgs = error1([Spec])
-    ).
-
-:- pred parse_maybe_direct_args_loop(uint::in, uint::in, varset::in,
-    list(term)::in, list(maybe_direct_arg)::out, list(error_spec)::out) is det.
-
-parse_maybe_direct_args_loop(_, _, _, [], [], []).
-parse_maybe_direct_args_loop(MaxPtag, MaxNumBits, VarSet, [Term | Terms],
-        !:MaybeDirectArgs, !:Specs) :-
-    parse_maybe_direct_args_loop(MaxPtag, MaxNumBits, VarSet, Terms,
-        !:MaybeDirectArgs, !:Specs),
-    parse_maybe_direct_arg(MaxPtag, MaxNumBits, VarSet, Term,
-        MaybeMaybeDirectArg),
+parse_local_arg_repns(_VarSet, [], [], []).
+parse_local_arg_repns(VarSet, [HeadTerm | TailTerms], LocalArgRepns, Specs) :-
+    parse_local_arg_repns(VarSet, TailTerms, TailLocalArgRepns, TailSpecs),
+    parse_local_arg_repn(VarSet, HeadTerm, MaybeHeadLocalArgRepn),
     (
-        MaybeMaybeDirectArg = ok1(MaybeDirectArg),
-        !:MaybeDirectArgs = [MaybeDirectArg | !.MaybeDirectArgs]
+        MaybeHeadLocalArgRepn = ok1(HeadLocalArgRepn),
+        LocalArgRepns = [HeadLocalArgRepn | TailLocalArgRepns],
+        Specs = TailSpecs
     ;
-        MaybeMaybeDirectArg = error1(Specs),
-        !:Specs = Specs ++ !.Specs
+        MaybeHeadLocalArgRepn = error1(HeadSpecs),
+        LocalArgRepns = TailLocalArgRepns,
+        Specs = HeadSpecs ++ TailSpecs
     ).
 
-:- pred parse_maybe_direct_arg(uint::in, uint::in, varset::in, term::in,
-    maybe1(maybe_direct_arg)::out) is det.
+:- pred parse_local_arg_repn(varset::in, term::in,
+    maybe1(local_arg_repn)::out) is det.
 
-parse_maybe_direct_arg(MaxPtag, MaxNumBits, VarSet, Term,
-        MaybeMaybeDirectArg) :-
+parse_local_arg_repn(VarSet, Term, MaybeLocalArgRepn) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "direct_arg"
-        ; AtomStr = "nondirect_arg"
+        ( AtomStr = "local_partial"
+        ; AtomStr = "local_none"
         )
     then
         (
-            ArgTerms = [ArgTerm1],
-            (
-                AtomStr = "direct_arg",
-                parse_uint_in_range(MaxPtag, VarSet, ArgTerm1, MaybePtag),
-                (
-                    MaybePtag = ok1(Ptag),
-                    MaybeMaybeDirectArg = ok1(direct_arg(Ptag))
-                ;
-                    MaybePtag = error1(Specs),
-                    MaybeMaybeDirectArg = error1(Specs)
-                )
-            ;
-                AtomStr = "nondirect_arg",
-                parse_arg_pos_size(MaxNumBits, VarSet, ArgTerm1,
-                    MaybeArgPosSize),
-                (
-                    MaybeArgPosSize = ok1(ArgPosSize),
-                    MaybeMaybeDirectArg = ok1(nondirect_arg(ArgPosSize))
-                ;
-                    MaybeArgPosSize = error1(Specs),
-                    MaybeMaybeDirectArg = error1(Specs)
-                )
-            )
+            AtomStr = "local_partial",
+            parse_local_arg_repn_partial(VarSet, AtomStr, ArgTerms,
+                TermContext, MaybeLocalArgRepn)
         ;
-            ( ArgTerms = []
-            ; ArgTerms = [_, _ | _]
-            ),
-            Pieces = [words("Error:"), quote(AtomStr),
-                words("should have exactly one argument."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, TermContext, Pieces),
-            MaybeMaybeDirectArg = error1([Spec])
+            AtomStr = "local_none",
+            (
+                ArgTerms = [],
+                MaybeLocalArgRepn = ok1(local_none)
+            ;
+                ArgTerms = [_ | _],
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have no arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeLocalArgRepn = error1([Spec])
+            )
         )
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected one of"),
-            quote("direct_arg(...)"), words("and"),
-            quote("nondirect_arg(...)"), suffix(","),
+            quote("local_partial(...)"),  words("and"),
+            quote("local_none"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
-        MaybeMaybeDirectArg = error1([Spec])
+        MaybeLocalArgRepn = error1([Spec])
     ).
 
-%---------------------%
+:- pred parse_local_arg_repn_partial(varset::in,
+    string::in, list(term)::in, term.context::in,
+    maybe1(local_arg_repn)::out) is det.
 
-:- pred parse_arg_pos_size(uint::in, varset::in, term::in,
-    maybe1(arg_pos_size)::out) is det.
+parse_local_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
+        MaybeLocalArgRepn) :-
+    (
+        ArgTerms = [ArgTerm1, ArgTerm2],
+        parse_unlimited_uint(VarSet, ArgTerm1, MaybeShift),
+        parse_fill_kind_size(VarSet, ArgTerm2, MaybeFillKindSize),
+        ( if
+            MaybeShift = ok1(Shift),
+            MaybeFillKindSize = ok1(FillKindSize)
+        then
+            LocalArgRepn = local_partial(Shift, FillKindSize),
+            MaybeLocalArgRepn = ok1(LocalArgRepn)
+        else
+            Specs =
+                get_any_errors1(MaybeShift) ++
+                get_any_errors1(MaybeFillKindSize),
+            MaybeLocalArgRepn = error1(Specs)
+        )
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_]
+        ; ArgTerms = [_, _, _ | _]
+        ),
+        Pieces = [words("Error:"), quote(AtomStr),
+            words("should have two arguments."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            TermContext, Pieces),
+        MaybeLocalArgRepn = error1([Spec])
+    ).
 
-parse_arg_pos_size(MaxNumBits, VarSet, Term, MaybeArgPosSize) :-
+%-----------------------------------------------------------------------------e
+
+:- pred parse_remote_arg_repns(varset::in, list(term)::in,
+    list(remote_arg_repn)::out, list(error_spec)::out) is det.
+
+parse_remote_arg_repns(_VarSet, [], [], []).
+parse_remote_arg_repns(VarSet, [HeadTerm | TailTerms],
+        RemoteArgRepns, Specs) :-
+    parse_remote_arg_repns(VarSet, TailTerms, TailRemoteArgRepns, TailSpecs),
+    parse_remote_arg_repn(VarSet, HeadTerm, MaybeHeadRemoteArgRepn),
+    (
+        MaybeHeadRemoteArgRepn = ok1(HeadRemoteArgRepn),
+        RemoteArgRepns = [HeadRemoteArgRepn | TailRemoteArgRepns],
+        Specs = TailSpecs
+    ;
+        MaybeHeadRemoteArgRepn = error1(HeadSpecs),
+        RemoteArgRepns = TailRemoteArgRepns,
+        Specs = HeadSpecs ++ TailSpecs
+    ).
+
+:- pred parse_remote_arg_repn(varset::in, term::in,
+    maybe1(remote_arg_repn)::out) is det.
+
+parse_remote_arg_repn(VarSet, Term, MaybeRemoteArgRepn) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
         ( AtomStr = "full"
@@ -1294,39 +1356,39 @@ parse_arg_pos_size(MaxNumBits, VarSet, Term, MaybeArgPosSize) :-
     then
         (
             AtomStr = "full",
-            parse_arg_pos_size_full_or_none(VarSet, AtomStr, ArgTerms,
-                TermContext, MaybeArgPosSize)
+            parse_remote_arg_repn_full_or_none(VarSet, AtomStr, ArgTerms,
+                TermContext, MaybeRemoteArgRepn)
         ;
             AtomStr = "double",
-            parse_arg_pos_size_double(VarSet, AtomStr, ArgTerms, TermContext,
-                MaybeArgPosSize)
+            parse_remote_arg_repn_double(VarSet, AtomStr, ArgTerms,
+                TermContext, MaybeRemoteArgRepn)
         ;
             ( AtomStr = "partial_first"
             ; AtomStr = "partial_shifted"
             ),
-            parse_arg_pos_size_partial(MaxNumBits, VarSet, AtomStr, ArgTerms,
-                TermContext, MaybeArgPosSize)
+            parse_remote_arg_repn_partial(VarSet, AtomStr, ArgTerms,
+                TermContext, MaybeRemoteArgRepn)
         ;
             AtomStr = "none_shifted",
-            parse_arg_pos_size_full_or_none(VarSet, AtomStr, ArgTerms,
-                TermContext, MaybeArgPosSize)
+            parse_remote_arg_repn_full_or_none(VarSet, AtomStr, ArgTerms,
+                TermContext, MaybeRemoteArgRepn)
         ;
             AtomStr = "none_nowhere",
             (
                 ArgTerms = [],
-                MaybeArgPosSize = ok1(pos_none_nowhere)
+                MaybeRemoteArgRepn = ok1(remote_none_nowhere)
             ;
                 ArgTerms = [_ | _],
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have no arguments."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeArgPosSize = error1([Spec])
+                MaybeRemoteArgRepn = error1([Spec])
             )
         )
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Expected one of"),
+        Pieces = [words("Error: expected one of"),
             quote("full(...)"), suffix(","),
             quote("double(...)"), suffix(","),
             quote("partial_first(...)"), suffix(","),
@@ -1336,19 +1398,19 @@ parse_arg_pos_size(MaxNumBits, VarSet, Term, MaybeArgPosSize) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
-        MaybeArgPosSize = error1([Spec])
+        MaybeRemoteArgRepn = error1([Spec])
     ).
 
 :- inst full_none_kind for string/0
     --->    "full"
     ;       "none_shifted".
 
-:- pred parse_arg_pos_size_full_or_none(varset::in,
+:- pred parse_remote_arg_repn_full_or_none(varset::in,
     string::in(full_none_kind), list(term)::in, term.context::in,
-    maybe1(arg_pos_size)::out) is det.
+    maybe1(remote_arg_repn)::out) is det.
 
-parse_arg_pos_size_full_or_none(VarSet, AtomStr, ArgTerms, TermContext,
-        MaybeArgPosSize) :-
+parse_remote_arg_repn_full_or_none(VarSet, AtomStr, ArgTerms, TermContext,
+        MaybeRemoteArgRepn) :-
     (
         ArgTerms = [ArgTerm1, ArgTerm2],
         parse_arg_only_offset(VarSet, ArgTerm1, MaybeArgOnlyOffset),
@@ -1359,16 +1421,17 @@ parse_arg_pos_size_full_or_none(VarSet, AtomStr, ArgTerms, TermContext,
         then
             (
                 AtomStr = "full",
-                ArgPosSize = pos_full(ArgOnlyOffset, CellOffset)
+                RemoteArgRepn = remote_full(ArgOnlyOffset, CellOffset)
             ;
                 AtomStr = "none_shifted",
-                ArgPosSize = pos_none_shifted(ArgOnlyOffset, CellOffset)
+                RemoteArgRepn = remote_none_shifted(ArgOnlyOffset, CellOffset)
             ),
-            MaybeArgPosSize = ok1(ArgPosSize)
+            MaybeRemoteArgRepn = ok1(RemoteArgRepn)
         else
-            Specs = get_any_errors1(MaybeArgOnlyOffset) ++
+            Specs =
+                get_any_errors1(MaybeArgOnlyOffset) ++
                 get_any_errors1(MaybeCellOffset),
-            MaybeArgPosSize = error1(Specs)
+            MaybeRemoteArgRepn = error1(Specs)
         )
     ;
         ( ArgTerms = []
@@ -1376,17 +1439,17 @@ parse_arg_pos_size_full_or_none(VarSet, AtomStr, ArgTerms, TermContext,
         ; ArgTerms = [_, _, _ | _]
         ),
         Pieces = [words("Error:"), quote(AtomStr),
-            words("should have exactly two arguments."), nl],
+            words("should have two arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             TermContext, Pieces),
-        MaybeArgPosSize = error1([Spec])
+        MaybeRemoteArgRepn = error1([Spec])
     ).
 
-:- pred parse_arg_pos_size_double(varset::in, string::in, list(term)::in,
-    term.context::in, maybe1(arg_pos_size)::out) is det.
+:- pred parse_remote_arg_repn_double(varset::in, string::in, list(term)::in,
+    term.context::in, maybe1(remote_arg_repn)::out) is det.
 
-parse_arg_pos_size_double(VarSet, AtomStr, ArgTerms, TermContext,
-        MaybeArgPosSize) :-
+parse_remote_arg_repn_double(VarSet, AtomStr, ArgTerms, TermContext,
+        MaybeRemoteArgRepn) :-
     (
         ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3],
         parse_arg_only_offset(VarSet, ArgTerm1, MaybeArgOnlyOffset),
@@ -1412,12 +1475,14 @@ parse_arg_pos_size_double(VarSet, AtomStr, ArgTerms, TermContext,
             MaybeCellOffset = ok1(CellOffset),
             MaybeDW = ok1(DoubleWordKind)
         then
-            ArgPosSize = pos_double(ArgOnlyOffset, CellOffset, DoubleWordKind),
-            MaybeArgPosSize = ok1(ArgPosSize)
+            RemoteArgRepn =
+                remote_double(ArgOnlyOffset, CellOffset, DoubleWordKind),
+            MaybeRemoteArgRepn = ok1(RemoteArgRepn)
         else
-            Specs = get_any_errors1(MaybeArgOnlyOffset) ++
+            Specs =
+                get_any_errors1(MaybeArgOnlyOffset) ++
                 get_any_errors1(MaybeCellOffset),
-            MaybeArgPosSize = error1(Specs)
+            MaybeRemoteArgRepn = error1(Specs)
         )
     ;
         ( ArgTerms = []
@@ -1426,28 +1491,28 @@ parse_arg_pos_size_double(VarSet, AtomStr, ArgTerms, TermContext,
         ; ArgTerms = [_, _, _, _ | _]
         ),
         Pieces = [words("Error:"), quote(AtomStr),
-            words("should have exactly three arguments."), nl],
+            words("should have three arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             TermContext, Pieces),
-        MaybeArgPosSize = error1([Spec])
+        MaybeRemoteArgRepn = error1([Spec])
     ).
 
-:- inst partial_kind for string/0
+:- inst remote_partial_kind for string/0
     --->    "partial_first"
     ;       "partial_shifted".
 
-:- pred parse_arg_pos_size_partial(uint::in, varset::in,
-    string::in(partial_kind), list(term)::in, term.context::in,
-    maybe1(arg_pos_size)::out) is det.
+:- pred parse_remote_arg_repn_partial(varset::in,
+    string::in(remote_partial_kind), list(term)::in, term.context::in,
+    maybe1(remote_arg_repn)::out) is det.
 
-parse_arg_pos_size_partial(MaxNumBits, VarSet, AtomStr, ArgTerms, TermContext,
-        MaybeArgPosSize) :-
+parse_remote_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
+        MaybeRemoteArgRepn) :-
     (
         ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
         parse_arg_only_offset(VarSet, ArgTerm1, MaybeArgOnlyOffset),
         parse_cell_offset(VarSet, ArgTerm2, MaybeCellOffset),
-        parse_uint_in_range(MaxNumBits, VarSet, ArgTerm3, MaybeShift),
-        parse_fill_kind_size(MaxNumBits, VarSet, ArgTerm4, MaybeFillKindSize),
+        parse_unlimited_uint(VarSet, ArgTerm3, MaybeShift),
+        parse_fill_kind_size(VarSet, ArgTerm4, MaybeFillKindSize),
         ( if
             MaybeArgOnlyOffset = ok1(ArgOnlyOffset),
             MaybeCellOffset = ok1(CellOffset),
@@ -1456,20 +1521,21 @@ parse_arg_pos_size_partial(MaxNumBits, VarSet, AtomStr, ArgTerms, TermContext,
         then
             (
                 AtomStr = "partial_first",
-                ArgPosSize = pos_partial_first(ArgOnlyOffset, CellOffset,
-                    Shift, FillKindSize)
+                RemoteArgRepn = remote_partial_first(ArgOnlyOffset,
+                    CellOffset, Shift, FillKindSize)
             ;
                 AtomStr = "partial_shifted",
-                ArgPosSize = pos_partial_shifted(ArgOnlyOffset, CellOffset,
-                    Shift, FillKindSize)
+                RemoteArgRepn = remote_partial_shifted(ArgOnlyOffset,
+                    CellOffset, Shift, FillKindSize)
             ),
-            MaybeArgPosSize = ok1(ArgPosSize)
+            MaybeRemoteArgRepn = ok1(RemoteArgRepn)
         else
-            Specs = get_any_errors1(MaybeArgOnlyOffset) ++
+            Specs =
+                get_any_errors1(MaybeArgOnlyOffset) ++
                 get_any_errors1(MaybeCellOffset) ++
                 get_any_errors1(MaybeShift) ++
                 get_any_errors1(MaybeFillKindSize),
-            MaybeArgPosSize = error1(Specs)
+            MaybeRemoteArgRepn = error1(Specs)
         )
     ;
         ( ArgTerms = []
@@ -1479,69 +1545,79 @@ parse_arg_pos_size_partial(MaxNumBits, VarSet, AtomStr, ArgTerms, TermContext,
         ; ArgTerms = [_, _, _, _, _ | _]
         ),
         Pieces = [words("Error:"), quote(AtomStr),
-            words("should have exactly four arguments."), nl],
+            words("should have four arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             TermContext, Pieces),
-        MaybeArgPosSize = error1([Spec])
+        MaybeRemoteArgRepn = error1([Spec])
     ).
+
+%-----------------------------------------------------------------------------e
 
 :- pred parse_arg_only_offset(varset::in, term::in,
     maybe1(arg_only_offset)::out) is det.
 
 parse_arg_only_offset(VarSet, Term, MaybeArgOnlyOffset) :-
-    ( if
-        Term = term.functor(term.integer(Base, N, Signedness, Size), [], _),
-        Base = base_10,
-        Signedness = signed,
-        Size = size_word,
-        integer.to_int(N, IntN),
-        IntN >= 0
-    then
-        MaybeArgOnlyOffset = ok1(arg_only_offset(IntN))
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected nonnegative integer, got"),
-            quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeArgOnlyOffset = error1([Spec])
+    parse_unlimited_int(VarSet, Term, MaybeInt),
+    (
+        MaybeInt = ok1(Int),
+        ( if Int >= -2 then
+            MaybeArgOnlyOffset = ok1(arg_only_offset(Int))
+        else
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = [words("Error: expected an integer that is"),
+                words("at least -2, got"), quote(TermStr), suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            MaybeArgOnlyOffset = error1([Spec])
+        )
+    ;
+        MaybeInt = error1(Specs),
+        MaybeArgOnlyOffset = error1(Specs)
     ).
 
 :- pred parse_cell_offset(varset::in, term::in,
     maybe1(cell_offset)::out) is det.
 
 parse_cell_offset(VarSet, Term, MaybeCellOffset) :-
-    ( if
-        Term = term.functor(term.integer(Base, N, Signedness, Size), [], _),
-        Base = base_10,
-        Signedness = signed,
-        Size = size_word,
-        integer.to_int(N, IntN),
-        IntN >= 0
-    then
-        MaybeCellOffset = ok1(cell_offset(IntN))
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected nonnegative integer, got"),
-            quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeCellOffset = error1([Spec])
+    parse_unlimited_int(VarSet, Term, MaybeInt),
+    (
+        MaybeInt = ok1(Int),
+        ( if Int >= -2 then
+            MaybeCellOffset = ok1(cell_offset(Int))
+        else
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = [words("Error: expected an integer that is"),
+                words("at least -2, got"), quote(TermStr), suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            MaybeCellOffset = error1([Spec])
+        )
+    ;
+        MaybeInt = error1(Specs),
+        MaybeCellOffset = error1(Specs)
     ).
 
-:- pred parse_fill_kind_size(uint::in, varset::in, term::in,
+:- pred parse_fill_kind_size(varset::in, term::in,
     maybe1(fill_kind_size)::out) is det.
 
-parse_fill_kind_size(MaxNumBits, VarSet, Term, MaybeFillKindSize) :-
+parse_fill_kind_size(VarSet, Term, MaybeFillKindSize) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        fill_kind_string(FillKind, AtomStr)
+        ( AtomStr = "enum"
+        ; AtomStr = "int8"
+        ; AtomStr = "int16"
+        ; AtomStr = "int32"
+        ; AtomStr = "uint8"
+        ; AtomStr = "uint16"
+        ; AtomStr = "uint32"
+        ; AtomStr = "char21"
+        )
     then
         (
-            FillKind = fill_enum,
+            AtomStr = "enum",
             (
                 ArgTerms = [ArgTerm],
-                parse_uint_in_range(MaxNumBits, VarSet, ArgTerm, MaybeUint),
+                parse_uint_in_range(63u, VarSet, ArgTerm, MaybeUint),
                 (
                     MaybeUint = ok1(Uint),
                     MaybeFillKindSize = ok1(fk_enum(Uint))
@@ -1554,37 +1630,37 @@ parse_fill_kind_size(MaxNumBits, VarSet, Term, MaybeFillKindSize) :-
                 ; ArgTerms = [_, _ | _]
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
-                    words("must have exactly one argument."), nl],
+                    words("should have one argument."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
                 MaybeFillKindSize = error1([Spec])
             )
         ;
-            FillKind = fill_int8,
+            AtomStr = "int8",
             ok_if_arity_zero(AtomStr, TermContext, ArgTerms, fk_int8,
                 MaybeFillKindSize)
         ;
-            FillKind = fill_int16,
+            AtomStr = "int16",
             ok_if_arity_zero(AtomStr, TermContext, ArgTerms, fk_int16,
                 MaybeFillKindSize)
         ;
-            FillKind = fill_int32,
+            AtomStr = "int32",
             ok_if_arity_zero(AtomStr, TermContext, ArgTerms, fk_int32,
                 MaybeFillKindSize)
         ;
-            FillKind = fill_uint8,
+            AtomStr = "uint8",
             ok_if_arity_zero(AtomStr, TermContext, ArgTerms, fk_uint8,
                 MaybeFillKindSize)
         ;
-            FillKind = fill_uint16,
+            AtomStr = "uint16",
             ok_if_arity_zero(AtomStr, TermContext, ArgTerms, fk_uint16,
                 MaybeFillKindSize)
         ;
-            FillKind = fill_uint32,
+            AtomStr = "uint32",
             ok_if_arity_zero(AtomStr, TermContext, ArgTerms, fk_uint32,
                 MaybeFillKindSize)
         ;
-            FillKind = fill_char21,
+            AtomStr = "char21",
             ok_if_arity_zero(AtomStr, TermContext, ArgTerms, fk_char21,
                 MaybeFillKindSize)
         )
@@ -1615,6 +1691,360 @@ ok_if_arity_zero(AtomStr, TermContext, ArgTerms, FillKindSize,
     ).
 
 %-----------------------------------------------------------------------------e
+%
+% We used to write out information about foreign type representations
+% (including foreign enums) in the form of a list, with each element of
+% that list having a function symbol that is the name of a foreign language
+% wrapped around a term that specifies the representation in that language.
+% This is reasonably simple, but it does not encode the invariant that
+% a type must have at most one representation in each each foreign language.
+%
+% We now therefore generate this information in a another form that *does*
+% encode this invariant. Specifically, we now generate either
+%
+%   no_c_j_cs_e
+%
+% or a term of the form
+%
+%   c_j_cs_e(MaybeC, MaybeJava, MaybeCsharp, MaybeErlang)
+%
+% where all of the MaybeXs have the same structure and none of them mention
+% what foreign language they are for, that information being implicit
+% in their position inside c_j_cs_e.
+%
+% However, while installed compilers still generate the old style descriptions,
+% we accept the old form as well, though we don't bother generating useful
+% error messages for them. Instead, if there is any error, we generate
+% an error about the deviation from the *new* description style.
+%
+
+:- pred parse_c_j_cs_e_repn_or_enum(list(format_component)::in,
+    varset::in, term::in, maybe1(c_j_cs_e_enum_repn)::out) is det.
+
+parse_c_j_cs_e_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsERepnOrEnum) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "no_c_j_cs_e"
+        ; AtomStr = "c_j_cs_e"
+        )
+    then
+        (
+            AtomStr = "no_c_j_cs_e",
+            (
+                ArgTerms = [],
+                CJCsERepnOrEnum = c_java_csharp_erlang(no, no, no, no),
+                MaybeCJCsERepnOrEnum = ok1(CJCsERepnOrEnum)
+            ;
+                ArgTerms = [_ | _],
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have zero arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeCJCsERepnOrEnum = error1([Spec])
+            )
+        ;
+            AtomStr = "c_j_cs_e",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
+                parse_maybe_enum_foreign_repn(DescPieces, 1,
+                    VarSet, ArgTerm1, MaybeMaybeRepnOrEnumC),
+                parse_maybe_enum_foreign_repn(DescPieces, 2,
+                    VarSet, ArgTerm2, MaybeMaybeRepnOrEnumJava),
+                parse_maybe_enum_foreign_repn(DescPieces, 3,
+                    VarSet, ArgTerm3, MaybeMaybeRepnOrEnumCsharp),
+                parse_maybe_enum_foreign_repn(DescPieces, 4,
+                    VarSet, ArgTerm4, MaybeMaybeRepnOrEnumErlang),
+                ( if
+                    MaybeMaybeRepnOrEnumC = ok1(MaybeRepnOrEnumC),
+                    MaybeMaybeRepnOrEnumJava = ok1(MaybeRepnOrEnumJava),
+                    MaybeMaybeRepnOrEnumCsharp = ok1(MaybeRepnOrEnumCsharp),
+                    MaybeMaybeRepnOrEnumErlang = ok1(MaybeRepnOrEnumErlang)
+                then
+                    CJCsERepnOrEnum = c_java_csharp_erlang(
+                        MaybeRepnOrEnumC, MaybeRepnOrEnumJava,
+                        MaybeRepnOrEnumCsharp, MaybeRepnOrEnumErlang),
+                    MaybeCJCsERepnOrEnum = ok1(CJCsERepnOrEnum)
+                else
+                    Specs =
+                        get_any_errors1(MaybeMaybeRepnOrEnumC) ++
+                        get_any_errors1(MaybeMaybeRepnOrEnumJava) ++
+                        get_any_errors1(MaybeMaybeRepnOrEnumCsharp) ++
+                        get_any_errors1(MaybeMaybeRepnOrEnumErlang),
+                    MaybeCJCsERepnOrEnum = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _]
+                ; ArgTerms = [_, _, _]
+                ; ArgTerms = [_, _, _, _, _ | _]
+                ),
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have four arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeCJCsERepnOrEnum = error1([Spec])
+            )
+        )
+    else if
+        list_term_to_term_list(Term, ForeignTerms),
+        parse_old_style_foreign_type_repn_or_enums(VarSet, ForeignTerms,
+            ForeignPairs, ForeignSpecs),
+        ForeignSpecs = [],
+        assoc_list_to_c_j_cs_e(ForeignPairs, MaybeOldStyleCJCsERepnOrEnum),
+        MaybeOldStyleCJCsERepnOrEnum = ok1(_)
+    then
+        MaybeCJCsERepnOrEnum = MaybeOldStyleCJCsERepnOrEnum
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+            words("error: expected either"),
+            quote("no_c_j_cs_e"), words("or"),
+            quote("c_j_cs_e(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeCJCsERepnOrEnum = error1([Spec])
+    ).
+
+:- pred parse_c_j_cs_e_repn(list(format_component)::in,
+    varset::in, term::in, maybe1(c_j_cs_e_repn)::out) is det.
+
+parse_c_j_cs_e_repn(DescPieces, VarSet, Term, MaybeCJCsERepn) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "no_c_j_cs_e"
+        ; AtomStr = "c_j_cs_e"
+        )
+    then
+        (
+            AtomStr = "no_c_j_cs_e",
+            (
+                ArgTerms = [],
+                CJCsERepn = c_java_csharp_erlang(no, no, no, no),
+                MaybeCJCsERepn = ok1(CJCsERepn)
+            ;
+                ArgTerms = [_ | _],
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have zero arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeCJCsERepn = error1([Spec])
+            )
+        ;
+            AtomStr = "c_j_cs_e",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
+                parse_maybe_foreign_repn(DescPieces, 1,
+                    VarSet, ArgTerm1, MaybeMaybeRepnC),
+                parse_maybe_foreign_repn(DescPieces, 2,
+                    VarSet, ArgTerm2, MaybeMaybeRepnJava),
+                parse_maybe_foreign_repn(DescPieces, 3,
+                    VarSet, ArgTerm3, MaybeMaybeRepnCsharp),
+                parse_maybe_foreign_repn(DescPieces, 4,
+                    VarSet, ArgTerm4, MaybeMaybeRepnErlang),
+                ( if
+                    MaybeMaybeRepnC = ok1(MaybeRepnC),
+                    MaybeMaybeRepnJava = ok1(MaybeRepnJava),
+                    MaybeMaybeRepnCsharp = ok1(MaybeRepnCsharp),
+                    MaybeMaybeRepnErlang = ok1(MaybeRepnErlang)
+                then
+                    CJCsERepn = c_java_csharp_erlang(
+                        MaybeRepnC, MaybeRepnJava,
+                        MaybeRepnCsharp, MaybeRepnErlang),
+                    MaybeCJCsERepn = ok1(CJCsERepn)
+                else
+                    Specs =
+                        get_any_errors1(MaybeMaybeRepnC) ++
+                        get_any_errors1(MaybeMaybeRepnJava) ++
+                        get_any_errors1(MaybeMaybeRepnCsharp) ++
+                        get_any_errors1(MaybeMaybeRepnErlang),
+                    MaybeCJCsERepn = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _]
+                ; ArgTerms = [_, _, _]
+                ; ArgTerms = [_, _, _, _, _ | _]
+                ),
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have four arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeCJCsERepn = error1([Spec])
+            )
+        )
+    else if
+        list_term_to_term_list(Term, ForeignTerms),
+        parse_old_style_foreign_type_repns(VarSet, ForeignTerms,
+            ForeignPairs, ForeignSpecs),
+        ForeignSpecs = [],
+        assoc_list_to_c_j_cs_e(ForeignPairs, MaybeOldStyleCJCsERepn),
+        MaybeOldStyleCJCsERepn = ok1(_)
+    then
+        MaybeCJCsERepn = MaybeOldStyleCJCsERepn
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+            words("error: expected either"),
+            quote("no_c_j_cs_e"), words("or"),
+            quote("c_j_cs_e(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeCJCsERepn = error1([Spec])
+    ).
+
+%---------------------%
+
+:- pred parse_maybe_enum_foreign_repn(list(format_component)::in, int::in,
+    varset::in, term::in, maybe1(maybe(enum_foreign_repn))::out) is det.
+
+parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
+        MaybeMaybeRepnOrEnum) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "no_foreign"
+        ; AtomStr = "foreign_enum"
+        ; AtomStr = "foreign_type"
+        )
+    then
+        (
+            AtomStr = "no_foreign",
+            (
+                ArgTerms = [],
+                MaybeRepnOrEnum = no,
+                MaybeMaybeRepnOrEnum = ok1(MaybeRepnOrEnum)
+            ;
+                ArgTerms = [_ | _],
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("in the"), nth_fixed(Nth), words("argument of"),
+                    quote("c_j_cs_e"), suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have zero arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeMaybeRepnOrEnum = error1([Spec])
+            )
+        ;
+            AtomStr = "foreign_enum",
+            EnumDescPieces = DescPieces ++ [suffix(":"),
+                words("in the"), nth_fixed(Nth), words("argument of"),
+                quote("c_j_cs_e")],
+            (
+                ArgTerms = [ArgTerm1],
+                parse_one_or_more_strings(EnumDescPieces, VarSet, ArgTerm1,
+                    MaybeForeignEnumRepn),
+                (
+                    MaybeForeignEnumRepn = ok1(ForeignEnumRepn),
+                    MaybeRepnOrEnum = yes(enum_foreign_enum(ForeignEnumRepn)),
+                    MaybeMaybeRepnOrEnum = ok1(MaybeRepnOrEnum)
+                ;
+                    MaybeForeignEnumRepn = error1(Specs),
+                    MaybeMaybeRepnOrEnum = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_, _ | _]
+                ),
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("in the"), nth_fixed(Nth), words("argument of"),
+                    quote("c_j_cs_e"), suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have one argument."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeMaybeRepnOrEnum = error1([Spec])
+            )
+        ;
+            AtomStr = "foreign_type",
+            parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
+                TermContext, MaybeForeignTypeRepn),
+            (
+                MaybeForeignTypeRepn = ok1(ForeignTypeRepn),
+                MaybeRepnOrEnum = yes(enum_foreign_type(ForeignTypeRepn)),
+                MaybeMaybeRepnOrEnum = ok1(MaybeRepnOrEnum)
+            ;
+                MaybeForeignTypeRepn = error1(Specs),
+                MaybeMaybeRepnOrEnum = error1(Specs)
+            )
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+            words("in the"), nth_fixed(Nth), words("argument of"),
+            quote("c_j_cs_e"), suffix(":"),
+            words("error: expected one of"),
+            quote("no_foreign"), suffix(","),
+            quote("foreign_enum(...)"), words("and"),
+            quote("foreign_type(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeMaybeRepnOrEnum = error1([Spec])
+    ).
+
+:- pred parse_maybe_foreign_repn(list(format_component)::in, int::in,
+    varset::in, term::in, maybe1(maybe(foreign_type_repn))::out) is det.
+
+parse_maybe_foreign_repn(DescPieces, Nth, VarSet, Term,
+        MaybeMaybeRepnOrEnum) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "no_foreign"
+        ; AtomStr = "foreign_type"
+        )
+    then
+        (
+            AtomStr = "no_foreign",
+            (
+                ArgTerms = [],
+                MaybeRepnOrEnum = no,
+                MaybeMaybeRepnOrEnum = ok1(MaybeRepnOrEnum)
+            ;
+                ArgTerms = [_ | _],
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("in the"), nth_fixed(Nth), words("argument of"),
+                    quote("c_j_cs_e"), suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have zero arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeMaybeRepnOrEnum = error1([Spec])
+            )
+        ;
+            AtomStr = "foreign_type",
+            parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
+                TermContext, MaybeForeignTypeRepn),
+            (
+                MaybeForeignTypeRepn = ok1(ForeignTypeRepn),
+                MaybeRepnOrEnum = yes(ForeignTypeRepn),
+                MaybeMaybeRepnOrEnum = ok1(MaybeRepnOrEnum)
+            ;
+                MaybeForeignTypeRepn = error1(Specs),
+                MaybeMaybeRepnOrEnum = error1(Specs)
+            )
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+            words("in the"), nth_fixed(Nth), words("argument of"),
+            quote("c_j_cs_e"), suffix(":"),
+            words("error: expected one of"),
+            quote("no_foreign"), words("and"),
+            quote("foreign_type(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeMaybeRepnOrEnum = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------e
 
 :- pred parse_type_repn_foreign_type(varset::in, string::in,
     list(term)::in, term.context::in, maybe1(type_ctor_repn_info)::out) is det.
@@ -1624,8 +2054,7 @@ parse_type_repn_foreign_type(VarSet, RepnStr, RepnArgs, RepnContext,
     (
         RepnArgs = [RepnArg1],
         DescPieces = [words("the argument of"), quote(RepnStr)],
-        parse_c_j_cs_e_repn(VarSet, DescPieces, min_list_length_1,
-            RepnArg1, MaybeCJCsERepn),
+        parse_c_j_cs_e_repn(DescPieces, VarSet, RepnArg1, MaybeCJCsERepn),
         (
             MaybeCJCsERepn = ok1(CJCsERepn),
             MaybeRepn = ok1(tcrepn_foreign(CJCsERepn))
@@ -1638,412 +2067,79 @@ parse_type_repn_foreign_type(VarSet, RepnStr, RepnArgs, RepnContext,
         ; RepnArgs = [_, _ | _]
         ),
         Pieces = [words("Error:"), quote(RepnStr),
-            words("should have exactly one argument,"),
-            words("which should be a nonempty list of foreign language names"),
-            words("wrapped around type names and assertions."), nl],
+            words("should have one argument."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             RepnContext, Pieces),
         MaybeRepn = error1([Spec])
     ).
 
-:- type min_list_length
-    --->    min_list_length_0
-    ;       min_list_length_1.
-
-:- pred parse_c_j_cs_e_repn(varset::in, list(format_component)::in,
-    min_list_length::in, term::in, maybe1(c_j_cs_e_repn)::out) is det.
-
-parse_c_j_cs_e_repn(VarSet, DescPieces, MinLength, Term, MaybeCJCsERepn) :-
-    ( if list_term_to_term_list(Term, ForeignTerms) then
-        parse_foreign_language_type_repns(VarSet, DescPieces, 1,
-            ForeignTerms, ForeignPairs, ForeignSpecs),
-        (
-            MinLength = min_list_length_0,
-            MinSpecs = []
-        ;
-            MinLength = min_list_length_1,
-            (
-                ForeignPairs = [_ | _],
-                MinSpecs = []
-            ;
-                ForeignPairs = [],
-                MinSpec = require_foreign_repn_list_spec(DescPieces,
-                    [words("nonempty")], Term),
-                MinSpecs = [MinSpec]
-            )
-        )
-    else
-        ForeignPairs = [],
-        (
-            MinLength = min_list_length_0,
-            NonEmptyPieces = []
-        ;
-            MinLength = min_list_length_1,
-            NonEmptyPieces = [words("nonempty")]
-        ),
-        ForeignSpec =
-            require_foreign_repn_list_spec(DescPieces, NonEmptyPieces, Term),
-        ForeignSpecs = [ForeignSpec],
-        MinSpecs = []
-    ),
-    assoc_list_to_c_j_cs_e(get_term_context(Term), DescPieces, ForeignPairs,
-        MaybeCJCsERepn0),
-    ( if
-        ForeignSpecs = [],
-        MinSpecs = [],
-        MaybeCJCsERepn0 = ok1(CJCsE)
-    then
-        MaybeCJCsERepn = ok1(CJCsE)
-    else
-        Specs = ForeignSpecs ++ MinSpecs ++ get_any_errors1(MaybeCJCsERepn0),
-        MaybeCJCsERepn = error1(Specs)
-    ).
-
 %---------------------%
 
-:- pred parse_c_j_cs_e_repn_or_enum(varset::in, list(format_component)::in,
-    min_list_length::in, term::in, maybe1(c_j_cs_e_enum_repn)::out) is det.
+:- pred parse_foreign_type_repn(list(format_component)::in, int::in,
+    varset::in, string::in, list(term)::in, term.context::in,
+    maybe1(foreign_type_repn)::out) is det.
 
-parse_c_j_cs_e_repn_or_enum(VarSet, DescPieces, MinLength, Term,
-        MaybeCJCsERepnOrEnum) :-
-    ( if list_term_to_term_list(Term, ForeignTerms) then
-        parse_foreign_language_type_repn_or_enums(VarSet, DescPieces, 1,
-            ForeignTerms, ForeignPairs, ForeignSpecs),
-        (
-            MinLength = min_list_length_0,
-            MinSpecs = []
-        ;
-            MinLength = min_list_length_1,
-            (
-                ForeignPairs = [_ | _],
-                MinSpecs = []
-            ;
-                ForeignPairs = [],
-                MinSpec = require_foreign_repn_or_enum_list_spec(DescPieces,
-                    [words("nonempty")], Term),
-                MinSpecs = [MinSpec]
-            )
-        )
-    else
-        ForeignPairs = [],
-        (
-            MinLength = min_list_length_0,
-            NonEmptyPieces = []
-        ;
-            MinLength = min_list_length_1,
-            NonEmptyPieces = [words("nonempty")]
-        ),
-        ForeignSpec = require_foreign_repn_or_enum_list_spec(DescPieces,
-            NonEmptyPieces, Term),
-        ForeignSpecs = [ForeignSpec],
-        MinSpecs = []
-    ),
-    assoc_list_to_c_j_cs_e(get_term_context(Term), DescPieces, ForeignPairs,
-        MaybeCJCsERepnOrEnum0),
-    ( if
-        ForeignSpecs = [],
-        MinSpecs = [],
-        MaybeCJCsERepnOrEnum0 = ok1(CJCsE)
-    then
-        MaybeCJCsERepnOrEnum = ok1(CJCsE)
-    else
-        Specs = ForeignSpecs ++ MinSpecs ++
-            get_any_errors1(MaybeCJCsERepnOrEnum0),
-        MaybeCJCsERepnOrEnum = error1(Specs)
-    ).
-
-%---------------------%
-
-:- func require_foreign_repn_list_spec(list(format_component),
-    list(format_component), term) = error_spec.
-
-require_foreign_repn_list_spec(DescPieces, NonEmptyPieces, Term) = Spec :-
-    Pieces = [words("Error:")] ++ DescPieces ++
-        [words("should be a")] ++ NonEmptyPieces ++ [words("list"),
-        words("of foreign_language names wrapped around"),
-        words("foreign type names and assertions."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        get_term_context(Term), Pieces).
-
-:- func require_foreign_repn_or_enum_list_spec(list(format_component),
-    list(format_component), term) = error_spec.
-
-require_foreign_repn_or_enum_list_spec(DescPieces, NonEmptyPieces, Term)
-        = Spec :-
-    Pieces = [words("Error:")] ++ DescPieces ++
-        [words("should be a")] ++ NonEmptyPieces ++ [words("list"),
-        words("of foreign_language names wrapped around"),
-        words("foreign type names and assertions."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        get_term_context(Term), Pieces).
-
-%---------------------%
-
-:- pred parse_foreign_language_type_repns(varset::in,
-    list(format_component)::in, int::in,
-    list(term)::in, assoc_list(foreign_language, foreign_type_repn)::out,
-    list(error_spec)::out) is det.
-
-parse_foreign_language_type_repns(_, _, _, [], [], []).
-parse_foreign_language_type_repns(VarSet, BasePieces, ElementNum,
-        [Term | Terms], !:ForeignPairs, !:Specs) :-
-    parse_foreign_language_type_repns(VarSet, BasePieces, ElementNum + 1,
-        Terms, !:ForeignPairs, !:Specs),
-    ContextPiecesFunc = ((func) = nth_element_of(BasePieces, ElementNum)),
-    parse_foreign_language_type_repn(VarSet, ContextPiecesFunc, Term,
-        MaybeForeignLangRepn),
+parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
+        TermContext, MaybeForeignTypeRepn) :-
     (
-        MaybeForeignLangRepn = ok2(Lang, Repn),
-        !:ForeignPairs = [Lang - Repn | !.ForeignPairs]
-    ;
-        MaybeForeignLangRepn = error2(Specs),
-        !:Specs = Specs ++ !.Specs
-    ).
-
-:- pred parse_foreign_language_type_repn_or_enums(varset::in,
-    list(format_component)::in, int::in,
-    list(term)::in, assoc_list(foreign_language, enum_foreign_repn)::out,
-    list(error_spec)::out) is det.
-
-parse_foreign_language_type_repn_or_enums(_, _, _, [], [], []).
-parse_foreign_language_type_repn_or_enums(VarSet, BasePieces, ElementNum,
-        [Term | Terms], !:ForeignPairs, !:Specs) :-
-    parse_foreign_language_type_repn_or_enums(VarSet, BasePieces,
-        ElementNum + 1, Terms, !:ForeignPairs, !:Specs),
-    ContextPiecesFunc = ((func) = nth_element_of(BasePieces, ElementNum)),
-    parse_foreign_language_type_or_enum_repn(VarSet, ContextPiecesFunc, Term,
-        MaybeForeignLangRepnOrEnum),
-    (
-        MaybeForeignLangRepnOrEnum = ok2(Lang, RepnOrEnum),
-        !:ForeignPairs = [Lang - RepnOrEnum | !.ForeignPairs]
-    ;
-        MaybeForeignLangRepnOrEnum = error2(Specs),
-        !:Specs = Specs ++ !.Specs
-    ).
-
-%---------------------%
-
-:- pred parse_foreign_language_type_or_enum_repn(varset::in,
-    ((func) = list(format_component))::in,
-    term::in, maybe2(foreign_language, enum_foreign_repn)::out) is det.
-
-parse_foreign_language_type_or_enum_repn(VarSet, ContextPiecesFunc, Term,
-        MaybeForeignLangRepnOrEnum) :-
-    ( if
-        Term = term.functor(term.atom(FunctorStr), ArgTerms, TermContext),
-        ( FunctorStr = "foreign_type"
-        ; FunctorStr = "foreign_enum"
-        )
-    then
-        (
-            FunctorStr = "foreign_type",
-            (
-                ArgTerms = [ArgTerm1],
-                parse_foreign_language_type_repn(VarSet, ContextPiecesFunc,
-                    ArgTerm1, MaybeForeignLangRepn),
-                (
-                    MaybeForeignLangRepn = ok2(Lang, ForeignRepn),
-                    MaybeForeignLangRepnOrEnum =
-                        ok2(Lang, enum_foreign_type(ForeignRepn))
-                ;
-                    MaybeForeignLangRepn = error2(Specs),
-                    MaybeForeignLangRepnOrEnum = error2(Specs)
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_, _ | _]
-                ),
-                Pieces = [words("In") | apply(ContextPiecesFunc)] ++
-                    [suffix(":"), words("error:"),
-                    quote("foreign_type"), words("should have"),
-                    words("exactly one argument, which should be"),
-                    words("a foreign_language name wrapped around"),
-                    words("a foreign type name and a list of assertions."),
-                    nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeForeignLangRepnOrEnum = error2([Spec])
-            )
-        ;
-            FunctorStr = "foreign_enum",
-            (
-                ArgTerms = [ArgTerm1, ArgTerm2],
-                ( if
-                    ArgTerm1 = term.functor(term.atom(LangStr), [], _),
-                    ( LangStr = "c", Lang0 = lang_c
-                    ; LangStr = "csharp", Lang0 = lang_csharp
-                    ; LangStr = "java", Lang0 = lang_java
-                    ; LangStr = "erlang", Lang0 = lang_erlang
-                    )
-                then
-                    MaybeLang = ok1(Lang0)
-                else
-                    ArgTermStr1 = describe_error_term(VarSet, ArgTerm1),
-                    Pieces = [words("In") | apply(ContextPiecesFunc)] ++
-                        [suffix(":"), words("error: in the first argument of"),
-                        quote("foreign_enum"), suffix(","),
-                        words("expected one of"),
-                        words("one of"), quote("c"), suffix(","),
-                        quote("csharp"), suffix(","), quote("java"),
-                        words("and"), quote("erlang"), suffix(";"),
-                        words("got"), quote(ArgTermStr1), suffix("."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
-                        get_term_context(ArgTerm1), Pieces),
-                    MaybeLang = error1([Spec])
-                ),
-                parse_one_or_more_strings(VarSet, apply(ContextPiecesFunc),
-                    "enum values", ArgTerm2, MaybeOoMStrings),
-                ( if
-                    MaybeLang = ok1(Lang),
-                    MaybeOoMStrings = ok1(OoMStrings)
-                then
-                    MaybeForeignLangRepnOrEnum =
-                        ok2(Lang, enum_foreign_enum(OoMStrings))
-                else
-                    Specs =
-                        get_any_errors1(MaybeLang) ++
-                        get_any_errors1(MaybeOoMStrings),
-                    MaybeForeignLangRepnOrEnum = error2(Specs)
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_]
-                ; ArgTerms = [_, _, _ | _]
-                ),
-                Pieces = [words("In") | apply(ContextPiecesFunc)] ++
-                    [suffix(":"), words("error:"),
-                    quote("foreign_enum"), words("should have"),
-                    words("exactly two arguments,"),
-                    words("the name of a foreign language and"),
-                    words("a list of the names of the enum values"),
-                    words("in that language."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeForeignLangRepnOrEnum = error2([Spec])
-            )
-        )
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("In") | apply(ContextPiecesFunc)] ++
-            [suffix(":"), words("error: expected either"),
-            quote("foreign_type(...)"), words("or"),
-            quote("foreign_num(..., ...)"), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeForeignLangRepnOrEnum = error2([Spec])
-    ).
-
-%---------------------%
-
-:- pred parse_foreign_language_type_repn(varset::in,
-    ((func) = list(format_component))::in,
-    term::in, maybe2(foreign_language, foreign_type_repn)::out) is det.
-
-parse_foreign_language_type_repn(VarSet, ContextPiecesFunc, Term,
-        MaybeForeignLangRepn) :-
-    ( if
-        Term = term.functor(term.atom(FunctorStr), ArgTerms, _),
-        ( FunctorStr = "c", Lang = lang_c
-        ; FunctorStr = "csharp", Lang = lang_csharp
-        ; FunctorStr = "java", Lang = lang_java
-        ; FunctorStr = "erlang", Lang = lang_erlang
+        ArgTerms = [TypeNameTerm, AssertionTerm],
+        ( if
+            TypeNameTerm = term.functor(term.string(TypeNameStr0), [], _)
+        then
+            MaybeTypeName = ok1(TypeNameStr0)
+        else
+            TermStr = describe_error_term(VarSet, TypeNameTerm),
+            TypeNamePieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                words("in the"), nth_fixed(Nth), words("argument of"),
+                quote("c_j_cs_e"), suffix(":"),
+                words("error: expected the first argument of"), quote(AtomStr),
+                words("to be a string, got"), quote(TermStr), suffix("."), nl],
+            TypeNameSpec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(TypeNameTerm),
+                TypeNamePieces),
+            MaybeTypeName = error1([TypeNameSpec])
         ),
-        ArgTerms = [TypeNameTerm, AssertionTerm]
-    then
-        parse_foreign_type_repn(VarSet, ContextPiecesFunc, Lang,
-            TypeNameTerm, AssertionTerm, MaybeForeignLangRepn)
-    else
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error:")] ++ apply(ContextPiecesFunc) ++
-            [words("is"), quote(TermStr), suffix(","),
-            words("which matches none of the permitted forms."),
-            words("The permitted forms are"), nl_indent_delta(1),
-            quote("c(type_name, assertions_list)"), suffix(","), nl,
-            quote("java(type_name, assertions_list)"), suffix(","), nl,
-            quote("csharp(type_name, assertions_list)"), words("and"), nl,
-            quote("erlang("", assertions_list)"), suffix("."),
-                nl_indent_delta(-1)],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeForeignLangRepn = error2([Spec])
-    ).
-
-:- pred parse_foreign_type_repn(varset::in,
-    ((func) = list(format_component))::in,
-    foreign_language::in, term::in, term::in,
-    maybe2(foreign_language, foreign_type_repn)::out) is det.
-
-parse_foreign_type_repn(VarSet, ContextPiecesFunc, Lang,
-        TypeNameTerm, AssertionTerm, MaybeForeignLangRepn) :-
-    ( if
-        TypeNameTerm = term.functor(term.string(TypeNameStr), [],
-            TypeNameContext)
-    then
-        (
-            ( Lang = lang_c
-            ; Lang = lang_csharp
-            ; Lang = lang_java
-            ),
-            MaybeTypeName = ok1(TypeNameStr)
-        ;
-            Lang = lang_erlang,
-            ( if TypeNameStr = "" then
-                MaybeTypeName = ok1(TypeNameStr)
-            else
-                TypeNameTermStr = describe_error_term(VarSet, TypeNameTerm),
-                ErlangPieces = [words("Error: expected the empty string"),
-                    words("for the Erlang type name, got"),
-                    quote(TypeNameTermStr), suffix("."), nl],
-                ErlangSpec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TypeNameContext, ErlangPieces),
-                MaybeTypeName = error1([ErlangSpec])
-            )
+        ContextPieces2 = [words("In")] ++ DescPieces ++ [suffix(":"),
+            words("in the"), nth_fixed(Nth), words("argument of"),
+            quote("c_j_cs_e"), suffix(":"),
+            words("in the second argument of"), quote(AtomStr), suffix(":")],
+        ContextPiecesCord2 = cord.from_list(ContextPieces2),
+        parse_foreign_type_assertions(ContextPiecesCord2, VarSet,
+            AssertionTerm, set.init, AssertionSet, [], AssertionSpecs),
+        ( if
+            MaybeTypeName = ok1(TypeName),
+            AssertionSpecs = []
+        then
+            Assertions = foreign_type_assertions(AssertionSet),
+            Repn = foreign_type_repn(TypeName, Assertions),
+            MaybeForeignTypeRepn = ok1(Repn)
+        else
+            Specs = get_any_errors1(MaybeTypeName) ++ AssertionSpecs,
+            MaybeForeignTypeRepn = error1(Specs)
         )
-    else
-        TypeNameTermStr = describe_error_term(VarSet, TypeNameTerm),
-        TypeNamePieces = [words("Error: the type name in")] ++
-            apply(ContextPiecesFunc) ++
-            [words("is"), quote(TypeNameTermStr), suffix(","),
-            words("which is not a string"),
-            words("and therefore not valid type name."), nl],
-        TypeNameSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree,
-            get_term_context(TypeNameTerm), TypeNamePieces),
-        MaybeTypeName = error1([TypeNameSpec])
-    ),
-    AssertionContextPieces = cord.from_list([
-        words("In the second argument of")] ++ apply(ContextPiecesFunc) ++
-        [suffix(":")]),
-    parse_foreign_type_assertions(AssertionContextPieces, VarSet,
-        AssertionTerm, set.init, AssertionSet, [], AssertionSpecs),
-    ( if
-        MaybeTypeName = ok1(TypeName),
-        AssertionSpecs = []
-    then
-        Assertions = foreign_type_assertions(AssertionSet),
-        Repn = foreign_type_repn(TypeName, Assertions),
-        MaybeForeignLangRepn = ok2(Lang, Repn)
-    else
-        Specs = get_any_errors1(MaybeTypeName) ++ AssertionSpecs,
-        MaybeForeignLangRepn = error2(Specs)
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_]
+        ; ArgTerms = [_, _, _ | _]
+        ),
+        Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+            words("in the"), nth_fixed(Nth), words("argument of"),
+            quote("c_j_cs_e"), suffix(":"),
+            words("error:"), quote(AtomStr),
+            words("should have zero arguments."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, TermContext, Pieces),
+        MaybeForeignTypeRepn = error1([Spec])
     ).
-
-:- func nth_element_of(list(format_component), int) = list(format_component).
-
-nth_element_of(BasePieces, Nth) =
-    [words("the"), nth_fixed(Nth), words("element of the list")] ++ BasePieces.
 
 %---------------------%
 
-:- pred parse_one_or_more_strings(varset::in, list(format_component)::in,
-    string::in, term::in, maybe1(one_or_more(string))::out) is det.
+:- pred parse_one_or_more_strings(list(format_component)::in,
+    varset::in, term::in, maybe1(one_or_more(string))::out) is det.
 
-parse_one_or_more_strings(VarSet, ContextPieces, Desc, Term,
-        MaybeOoMStrings) :-
+parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
     ( if list_term_to_term_list(Term, StringTerms) then
-        parse_strings(VarSet, ContextPieces, Desc, 1, StringTerms,
+        parse_strings(DescPieces, 1, VarSet, StringTerms,
             Strings, StringSpecs),
         (
             Strings = [],
@@ -2051,7 +2147,7 @@ parse_one_or_more_strings(VarSet, ContextPieces, Desc, Term,
                 StringTerms = [],
                 expect(unify(StringSpecs, []), $pred,
                     "StringTerms = [] but StringSpecs != []"),
-                Pieces = [words("In") | ContextPieces] ++ [suffix(":"),
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
                     words("error: expected a nonempty list of strings,"),
                     words("got an empty list."), nl],
                 Spec = simplest_spec($pred, severity_error,
@@ -2078,7 +2174,7 @@ parse_one_or_more_strings(VarSet, ContextPieces, Desc, Term,
         )
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("In") | ContextPieces] ++ [suffix(":"),
+        Pieces = [words("In") | DescPieces] ++ [suffix(":"),
             words("error: expected a list of strings, got"),
             quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
@@ -2086,13 +2182,190 @@ parse_one_or_more_strings(VarSet, ContextPieces, Desc, Term,
         MaybeOoMStrings = error1([Spec])
     ).
 
+%-----------------------------------------------------------------------------e
+%
+% XXX The code in this section should be needed only during a changeover
+% period while installed compilers may generate old-style terms for describing
+% foreign language type representations.
+%
+
+:- pred parse_old_style_foreign_type_repn_or_enums(varset::in, list(term)::in,
+    assoc_list(foreign_language, enum_foreign_repn)::out,
+    list(error_spec)::out) is det.
+
+parse_old_style_foreign_type_repn_or_enums(_, [], [], []).
+parse_old_style_foreign_type_repn_or_enums(VarSet, [Term | Terms],
+        !:ForeignPairs, !:Specs) :-
+    parse_old_style_foreign_type_repn_or_enums(VarSet, Terms,
+        !:ForeignPairs, !:Specs),
+    parse_old_style_foreign_language_type_repn_or_enum(VarSet, Term,
+        MaybeForeignLangRepn),
+    (
+        MaybeForeignLangRepn = ok2(Lang, Repn),
+        !:ForeignPairs = [Lang - Repn | !.ForeignPairs]
+    ;
+        MaybeForeignLangRepn = error2(Specs),
+        !:Specs = Specs ++ !.Specs
+    ).
+
 %---------------------%
 
-:- pred assoc_list_to_c_j_cs_e(prog_context::in, list(format_component)::in,
-    assoc_list(foreign_language, T)::in,
+:- pred parse_old_style_foreign_language_type_repn_or_enum(varset::in,
+    term::in, maybe2(foreign_language, enum_foreign_repn)::out) is det.
+
+parse_old_style_foreign_language_type_repn_or_enum(VarSet, Term,
+        MaybeForeignLangRepnOrEnum) :-
+    ( if
+        Term = term.functor(term.atom(FunctorStr), ArgTerms, _),
+        ( FunctorStr = "foreign_type"
+        ; FunctorStr = "foreign_enum"
+        )
+    then
+        (
+            FunctorStr = "foreign_type",
+            (
+                ArgTerms = [ArgTerm1],
+                parse_old_style_foreign_language_type_repn(VarSet, ArgTerm1,
+                    MaybeForeignLangRepn),
+                (
+                    MaybeForeignLangRepn = ok2(Lang, ForeignRepn),
+                    MaybeForeignLangRepnOrEnum =
+                        ok2(Lang, enum_foreign_type(ForeignRepn))
+                ;
+                    MaybeForeignLangRepn = error2(Specs),
+                    MaybeForeignLangRepnOrEnum = error2(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_, _ | _]
+                ),
+                MaybeForeignLangRepnOrEnum = error2([])
+            )
+        ;
+            FunctorStr = "foreign_enum",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2],
+                ( if
+                    ArgTerm1 = term.functor(term.atom(LangStr), [], _),
+                    ( LangStr = "c",      Lang0 = lang_c
+                    ; LangStr = "csharp", Lang0 = lang_csharp
+                    ; LangStr = "java",   Lang0 = lang_java
+                    ; LangStr = "erlang", Lang0 = lang_erlang
+                    )
+                then
+                    MaybeLang = ok1(Lang0)
+                else
+                    MaybeLang = error1([])
+                ),
+                parse_one_or_more_strings([], VarSet, ArgTerm2,
+                    MaybeOoMStrings),
+                ( if
+                    MaybeLang = ok1(Lang),
+                    MaybeOoMStrings = ok1(OoMStrings)
+                then
+                    MaybeForeignLangRepnOrEnum =
+                        ok2(Lang, enum_foreign_enum(OoMStrings))
+                else
+                    MaybeForeignLangRepnOrEnum = error2([])
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _, _ | _]
+                ),
+                MaybeForeignLangRepnOrEnum = error2([])
+            )
+        )
+    else
+        MaybeForeignLangRepnOrEnum = error2([])
+    ).
+
+%---------------------%
+
+:- pred parse_old_style_foreign_type_repns(varset::in, list(term)::in,
+    assoc_list(foreign_language, foreign_type_repn)::out,
+    list(error_spec)::out) is det.
+
+parse_old_style_foreign_type_repns(_, [], [], []).
+parse_old_style_foreign_type_repns(VarSet, [Term | Terms],
+        !:ForeignPairs, !:Specs) :-
+    parse_old_style_foreign_type_repns(VarSet, Terms,
+        !:ForeignPairs, !:Specs),
+    parse_old_style_foreign_language_type_repn(VarSet, Term,
+        MaybeForeignLangRepn),
+    (
+        MaybeForeignLangRepn = ok2(Lang, Repn),
+        !:ForeignPairs = [Lang - Repn | !.ForeignPairs]
+    ;
+        MaybeForeignLangRepn = error2(Specs),
+        !:Specs = Specs ++ !.Specs
+    ).
+
+:- pred parse_old_style_foreign_language_type_repn(varset::in, term::in,
+    maybe2(foreign_language, foreign_type_repn)::out) is det.
+
+parse_old_style_foreign_language_type_repn(VarSet, Term,
+        MaybeForeignLangRepn) :-
+    ( if
+        Term = term.functor(term.atom(FunctorStr), ArgTerms, _),
+        ( FunctorStr = "c", Lang = lang_c
+        ; FunctorStr = "csharp", Lang = lang_csharp
+        ; FunctorStr = "java", Lang = lang_java
+        ; FunctorStr = "erlang", Lang = lang_erlang
+        ),
+        ArgTerms = [TypeNameTerm, AssertionTerm]
+    then
+        parse_old_style_foreign_type_repn(VarSet, Lang,
+            TypeNameTerm, AssertionTerm, MaybeForeignLangRepn)
+    else
+        MaybeForeignLangRepn = error2([])
+    ).
+
+:- pred parse_old_style_foreign_type_repn(varset::in,
+    foreign_language::in, term::in, term::in,
+    maybe2(foreign_language, foreign_type_repn)::out) is det.
+
+parse_old_style_foreign_type_repn(VarSet, Lang,
+        TypeNameTerm, AssertionTerm, MaybeForeignLangRepn) :-
+    ( if TypeNameTerm = term.functor(term.string(TypeNameStr), [], _) then
+        (
+            ( Lang = lang_c
+            ; Lang = lang_csharp
+            ; Lang = lang_java
+            ),
+            MaybeTypeName = ok1(TypeNameStr)
+        ;
+            Lang = lang_erlang,
+            ( if TypeNameStr = "" then
+                MaybeTypeName = ok1(TypeNameStr)
+            else
+                MaybeTypeName = error1([])
+            )
+        )
+    else
+        MaybeTypeName = error1([])
+    ),
+    AssertionContextPieces = cord.from_list([]),
+    parse_foreign_type_assertions(AssertionContextPieces, VarSet,
+        AssertionTerm, set.init, AssertionSet, [], AssertionSpecs),
+    ( if
+        MaybeTypeName = ok1(TypeName),
+        AssertionSpecs = []
+    then
+        Assertions = foreign_type_assertions(AssertionSet),
+        Repn = foreign_type_repn(TypeName, Assertions),
+        MaybeForeignLangRepn = ok2(Lang, Repn)
+    else
+        Specs = get_any_errors1(MaybeTypeName) ++ AssertionSpecs,
+        MaybeForeignLangRepn = error2(Specs)
+    ).
+
+%---------------------%
+
+:- pred assoc_list_to_c_j_cs_e(assoc_list(foreign_language, T)::in,
     maybe1(c_java_csharp_erlang(maybe(T)))::out) is det.
 
-assoc_list_to_c_j_cs_e(TermContext, Desc, !.Pairs, MaybeCJCsE) :-
+assoc_list_to_c_j_cs_e(!.Pairs, MaybeCJCsE) :-
     ( if !.Pairs = [lang_c - ValueC | !:Pairs] then
         MaybeValueC = yes(ValueC)
     else
@@ -2120,18 +2393,198 @@ assoc_list_to_c_j_cs_e(TermContext, Desc, !.Pairs, MaybeCJCsE) :-
         MaybeCJCsE = ok1(CJCsE)
     ;
         !.Pairs = [_ | _],
-        Pieces = [words("Error: the list of foreign languages in")] ++ Desc ++
-            [words("does not follow the required order, which is"),
-            words("first c, then java, then csharp, then erlang."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
-        MaybeCJCsE = error1([Spec])
+        MaybeCJCsE = error1([])
     ).
 
 %-----------------------------------------------------------------------------e
 
-:- pred parse_unlimited_uint(varset::in, term::in,
-    maybe1(uint)::out) is det.
+:- pred parse_c_repns(list(format_component)::in,
+    pred(varset, term, maybe1(T))::in(pred(in, in, out) is det),
+    varset::in, term::in, maybe1(c_repns(T))::out) is det.
+
+parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
+    % XXX Each call to ParseRepn should extend and pass DescPieces.
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, _),
+        ( AtomStr = "c_repns_same"
+        ; AtomStr = "c_repns_64_32"
+        ; AtomStr = "c_repns_all"
+        )
+    then
+        (
+            AtomStr = "c_repns_same",
+            (
+                ArgTerms = [ArgTerm1],
+                ParseRepn(VarSet, ArgTerm1, MaybeRepn1),
+                ( if
+                    MaybeRepn1 = ok1(Repn1)
+                then
+                    MaybeCRepns = ok1(c_repns_same(Repn1))
+                else
+                    Specs = get_any_errors1(MaybeRepn1),
+                    MaybeCRepns = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_, _ | _]
+                ),
+                Pieces = [words("In") | DescPieces] ++ [suffix(":"),
+                    quote("c_repns_same"),
+                    words("should have one argument."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                MaybeCRepns = error1([Spec])
+            )
+        ;
+            AtomStr = "c_repns_64_32",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2],
+                ParseRepn(VarSet, ArgTerm1, MaybeRepn1),
+                ParseRepn(VarSet, ArgTerm2, MaybeRepn2),
+                ( if
+                    MaybeRepn1 = ok1(Repn1),
+                    MaybeRepn2 = ok1(Repn2)
+                then
+                    MaybeCRepns = ok1(c_repns_64_32(Repn1, Repn2))
+                else
+                    Specs =
+                        get_any_errors1(MaybeRepn1) ++
+                        get_any_errors1(MaybeRepn2),
+                    MaybeCRepns = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _, _ | _]
+                ),
+                Pieces = [words("In") | DescPieces] ++ [suffix(":"),
+                    quote("c_repns_64_32"),
+                    words("should have two arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                MaybeCRepns = error1([Spec])
+            )
+        ;
+            AtomStr = "c_repns_all",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4,
+                    ArgTerm5, ArgTerm6],
+                ParseRepn(VarSet, ArgTerm1, MaybeRepn1),
+                ParseRepn(VarSet, ArgTerm2, MaybeRepn2),
+                ParseRepn(VarSet, ArgTerm3, MaybeRepn3),
+                ParseRepn(VarSet, ArgTerm4, MaybeRepn4),
+                ParseRepn(VarSet, ArgTerm5, MaybeRepn5),
+                ParseRepn(VarSet, ArgTerm6, MaybeRepn6),
+                ( if
+                    MaybeRepn1 = ok1(Repn1),
+                    MaybeRepn2 = ok1(Repn2),
+                    MaybeRepn3 = ok1(Repn3),
+                    MaybeRepn4 = ok1(Repn4),
+                    MaybeRepn5 = ok1(Repn5),
+                    MaybeRepn6 = ok1(Repn6)
+                then
+                    MaybeCRepns = ok1(c_repns_all(Repn1, Repn2, Repn3,
+                        Repn4, Repn5, Repn6))
+                else
+                    Specs =
+                        get_any_errors1(MaybeRepn1) ++
+                        get_any_errors1(MaybeRepn2) ++
+                        get_any_errors1(MaybeRepn3) ++
+                        get_any_errors1(MaybeRepn4) ++
+                        get_any_errors1(MaybeRepn5) ++
+                        get_any_errors1(MaybeRepn6),
+                    MaybeCRepns = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _]
+                ; ArgTerms = [_, _, _]
+                ; ArgTerms = [_, _, _, _]
+                ; ArgTerms = [_, _, _, _, _]
+                ; ArgTerms = [_, _, _, _, _, _, _ | _]
+                ),
+                Pieces = [words("In") | DescPieces] ++ [suffix(":"),
+                    quote("c_repns_all"),
+                    words("should have six arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                MaybeCRepns = error1([Spec])
+            )
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("In") | DescPieces] ++ [suffix(":"),
+            words("error: expected one of"),
+            quote("c_repns_same(...),"),
+            quote("c_repns_64_32(...)"), words("or"),
+            quote("c_repns_all(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeCRepns = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------e
+
+:- pred parse_strings(list(format_component)::in, int::in, varset::in,
+    list(term)::in, list(string)::out, list(error_spec)::out) is det.
+
+parse_strings(_, _, _, [], [], []).
+parse_strings(DescPieces, Nth, VarSet, [Term | Terms], !:Strs, !:Specs) :-
+    parse_strings(DescPieces, Nth + 1, VarSet, Terms, !:Strs, !:Specs),
+    ( if Term = term.functor(term.string(Str), [], _) then
+        !:Strs = [Str | !.Strs]
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+            words("in the"), nth_fixed(Nth), words("element of the list:"),
+            words("error: expected a string, got"),
+            quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred parse_string(varset::in, list(format_component)::in,
+    string::in, term::in, maybe1(string)::out) is det.
+
+parse_string(VarSet, ContextPieces, Desc, Term, MaybeFunctorName) :-
+    ( if Term = term.functor(term.string(FunctorName), [], _) then
+        MaybeFunctorName = ok1(FunctorName)
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            words("Error: expected"), words(Desc), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeFunctorName = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------e
+
+:- pred parse_unlimited_int(varset::in, term::in, maybe1(int)::out) is det.
+
+parse_unlimited_int(VarSet, Term, MaybeInt) :-
+    ( if
+        Term = term.functor(term.integer(Base, N, Signedness, Size), [], _),
+        Base = base_10,
+        Signedness = signed,
+        Size = size_word,
+        integer.to_int(N, IntN)
+    then
+        MaybeInt = ok1(IntN)
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected an integer,"),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeInt = error1([Spec])
+    ).
+
+:- pred parse_unlimited_uint(varset::in, term::in, maybe1(uint)::out) is det.
 
 parse_unlimited_uint(VarSet, Term, MaybeUint) :-
     ( if
@@ -2145,7 +2598,7 @@ parse_unlimited_uint(VarSet, Term, MaybeUint) :-
         MaybeUint = ok1(UintN)
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected nonnegative integer,"),
+        Pieces = [words("Error: expected a nonnegative integer,"),
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),

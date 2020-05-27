@@ -87,7 +87,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module ll_backend.code_gen.

@@ -581,6 +581,14 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- mode double_word_kind_string(in, out) is det.
 :- mode double_word_kind_string(out, in) is semidet.
 
+    % The type `ptag' holds a primary tag value.
+    % It consists of 2 bits on 32 bit machines and 3 bits on 64 bit machines.
+    % If we are not using primary tags to distinguish function symbols
+    % from each other, the ptag will always be 0u8.
+    %
+:- type ptag
+    --->    ptag(uint8).
+
 :- type arg_only_offset
     --->    arg_only_offset(int).
             % The offset of the word from the first part of the memory cell
@@ -588,6 +596,17 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % is at offset 0, even if it is preceded in the memory cell
             % by a remote secondary tag, or by type_infos and/or
             % typeclass_infos added by polymorphism.
+            %
+            % Although the offset is almost always non-negative, there are
+            % two negative values that are permitted for the offset.
+            %
+            % - The special negative value -1 means that the argument is
+            %   stored in the heap cell in the same word as the remote
+            %   secondary tag.
+            %
+            % - The special negative value -2 means that the argument is
+            %   stored not in a heap cell, but in the same word as the
+            %   primary tag.
             %
             % The arg_only_offsets of any remote secondary tags and of any
             % type_infos and/or typeclass_infos added by polymorphism are

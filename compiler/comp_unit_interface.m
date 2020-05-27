@@ -94,7 +94,7 @@
 
     % Generate the contents for the .int and .int2 files.
     %
-:- pred generate_interfaces_int1_int2(aug_compilation_unit::in,
+:- pred generate_interfaces_int1_int2(globals::in, aug_compilation_unit::in,
     parse_tree_int1::out, parse_tree_int2::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -118,6 +118,7 @@
 
 :- implementation.
 
+:- import_module libs.options.
 :- import_module parse_tree.check_parse_tree_type_defns.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.decide_type_repn.
@@ -665,9 +666,9 @@ generate_pre_grab_pre_qual_items_imp([Item | Items], !ImpItemsCord) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_interfaces_int1_int2(AugCompUnit,
+generate_interfaces_int1_int2(Globals, AugCompUnit,
         ParseTreeInt1, ParseTreeInt2, !Specs) :-
-    generate_interface_int1(AugCompUnit, IntImportUseMap,
+    generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1, !Specs),
@@ -676,7 +677,7 @@ generate_interfaces_int1_int2(AugCompUnit,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2).
 
-:- pred generate_interface_int1(aug_compilation_unit::in,
+:- pred generate_interface_int1(globals::in, aug_compilation_unit::in,
     module_names_contexts::out, set(fim_spec)::out, set(fim_spec)::out,
     list(item_type_defn_info)::out,
     list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
@@ -685,14 +686,14 @@ generate_interfaces_int1_int2(AugCompUnit,
     type_ctor_checked_map::out, parse_tree_int1::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-generate_interface_int1(AugCompUnit, IntImportUseMap,
+generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1, !Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
     AugCompUnit = aug_compilation_unit(_, _, _, ParseTreeModuleSrc,
-        _, _, _, _, _, _),
+        _, DirectIntSpecs, IndirectIntSpecs, _, _, _),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
@@ -828,7 +829,6 @@ generate_interface_int1(AugCompUnit, IntImportUseMap,
     % XXX CLEANUP Foreign enums are not allowed in the interface section,
     % so create_type_ctor_checked_map should not take them as an input.
     map.init(IntForeignEnumMap),
-    IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns),
     OrigImpTypeDefnMap = type_ctor_defn_items_to_map(OrigImpTypeDefns),
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
     ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums),
@@ -837,9 +837,20 @@ generate_interface_int1(AugCompUnit, IntImportUseMap,
         IntTypeDefnMap, OrigImpTypeDefnMap,
         IntForeignEnumMap, ImpForeignEnumMap, TypeCtorCheckedMap, !Specs),
 
+    globals.lookup_bool_option(Globals, experiment1, Experiment1),
+    (
+        Experiment1 = no,
+        map.init(IntTypeRepnMap)
+    ;
+        Experiment1 = yes,
+        decide_repns_for_all_types_for_int1(Globals, ModuleName,
+            TypeCtorCheckedMap, DirectIntSpecs, IndirectIntSpecs,
+            IntTypeRepnMap, RepnSpecs),
+        !:Specs = !.Specs ++ RepnSpecs
+    ),
+
     DummyMaybeVersionNumbers = no_version_numbers,
     % XXX TODO
-    IntTypeRepns = [],
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
         DummyMaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntImportUseMap, ImpImportUseMap, ImportUseMap,

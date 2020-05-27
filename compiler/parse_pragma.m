@@ -458,17 +458,13 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-parse_foreign_type_assertions(ContextPieces, VarSet, Term, !Assertions,
-        !Specs) :-
+parse_foreign_type_assertions(ContextPieces, VarSet, Term,
+        !Assertions, !Specs) :-
     ( if Term = term.functor(term.atom("[]"), [], _) then
         true
     else if Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) then
-        ( if
-            parse_foreign_type_assertion(HeadTerm, HeadAssertion)
-        then
-            ( if
-                set.insert_new(HeadAssertion, !Assertions)
-            then
+        ( if parse_foreign_type_assertion(HeadTerm, HeadAssertion) then
+            ( if set.insert_new(HeadAssertion, !Assertions) then
                 true
             else
                 HeadTermStr = mercury_term_to_string(VarSet, print_name_only,

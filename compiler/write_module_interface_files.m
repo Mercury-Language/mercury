@@ -247,7 +247,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
         (
             EffectiveGetQualSpecs = [],
             % Construct the `.int' and `.int2' files.
-            generate_interfaces_int1_int2(AugCompUnit,
+            generate_interfaces_int1_int2(Globals, AugCompUnit,
                 ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),

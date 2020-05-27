@@ -45,7 +45,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.switch_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module libs.
 :- import_module libs.globals.

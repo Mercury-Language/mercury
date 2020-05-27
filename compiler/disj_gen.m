@@ -43,7 +43,6 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.vartypes.
 :- import_module libs.

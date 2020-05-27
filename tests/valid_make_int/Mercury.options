@@ -1,3 +1,5 @@
 # vim: ts=8 sw=8 noexpandtab
 # (please keep these lists sorted)
 
+MCFLAGS-test_repn += 		--experiment1 --pack-everything --type-repns-for-humans
+MCFLAGS-test_repn_sub += 	--experiment1 --pack-everything --type-repns-for-humans

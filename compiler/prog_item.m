@@ -993,6 +993,12 @@
                 rci_raw_item_blocks             :: list(raw_item_block)
             ).
 
+% XXX CLEANUP We fill in the module_and_imports structure, from which
+% aug_compilation_unit is quite directly derived, differently when
+% the compiler is invoked to generate .int[012] files than when it is
+% invoked to generate target language code. We should consider splitting
+% both the module_and_imports and aug_compilation_unit types into
+% two types, each specific to one of these invocation kinds.
 :- type aug_compilation_unit
     --->    aug_compilation_unit(
                 % The name of the module.
@@ -1623,7 +1629,12 @@
                 mut_seq_num                     :: int
             ).
 
+:- type item_type_repn_info_eqv
+    == item_type_repn_info_general(mer_type).
 :- type item_type_repn_info
+    == item_type_repn_info_general(type_ctor_repn_info).
+
+:- type item_type_repn_info_general(T)
     --->    item_type_repn_info(
                 % `:- type_representation ...':
                 % An item added by the compiler to a .int3 file
@@ -1636,7 +1647,7 @@
                 % The sym_name should be fully qualified.
                 tr_ctor                         :: sym_name,
                 tr_ctor_arg_tvars               :: list(tvar),
-                tr_ctor_repn_info               :: type_ctor_repn_info,
+                tr_ctor_repn_info               :: T,
                 tr_tvarset                      :: tvarset,
                 tr_context                      :: prog_context,
                 tr_seq_num                      :: int
@@ -1947,8 +1958,56 @@
     --->    dur_direct_dummy(direct_dummy_repn)
     ;       dur_enum(enum_repn)
     ;       dur_notag(notag_repn)
-    ;       dur_gen_only_functor(gen_du_repn_only_functor)
-    ;       dur_gen_more_functors(gen_du_repn_more_functors).
+    ;       dur_gen_only_functor(gen_du_only_functor_repn)
+    ;       dur_gen_more_functors(gen_du_more_functors_repn).
+
+    % When targeting C, many argument packing decisions depend on
+    % three properties of the target platform, i.e. on the combination
+    % of the target hardware and the target grade:
+    %
+    % - whether the target is 64 or 32 bit;
+    % - whether the grade is an spf (single-precision float) grade; and
+    % - whether the grade allows the direct arg optimization.
+    %
+    % These have eight combinations, but the spf grade component has
+    % no effect on argument packing on 64 bit targets (a float is one word
+    % either way), so only six are meaningful.
+    %
+    % If the decision represented by the T parameter happens to be the same
+    % on all six platforms, that decision can be represented by c_repns_same.
+    %
+    % If they are different on 64 vs 32 bit platforms, but are consistent
+    % for each word size, then they can be represented by c_repns_64_32.
+    %
+    % If neither is the case, we can record all six decisions using
+    % c_repns_all.
+    %
+    % XXX We should look for other partitions of the set of six platforms
+    % which often have identical decision results; one could be da vs noda.
+    %
+    % The name of this type is c_repns because argument packing applies
+    % only to the low level data representation, which is applicable only
+    % when targeting C.
+:- type c_repns(T)
+    --->    c_repns_same(
+                c_repn_same             :: T
+            )
+    ;       c_repns_64_32(
+                c_repn_all_64           :: T,
+                c_repn_all_32           :: T
+            )
+    ;       c_repns_all(
+                c_repn_64_nospf_noda    :: T,
+                c_repn_64_nospf_da      :: T,
+                % c_repn_64_spf_noda    :: T,   % not needed; see above
+                % c_repn_64_spf_da      :: T,   % not needed; see above
+                c_repn_32_nospf_noda    :: T,
+                c_repn_32_nospf_da      :: T,
+                c_repn_32_spf_noda      :: T,
+                c_repn_32_spf_da        :: T
+            ).
+
+%---------------------%
 
 :- type direct_dummy_repn
     --->    direct_dummy_repn(
@@ -1957,11 +2016,13 @@
 
                 % The name of the one functor in the type, which must be
                 % arity 0. Its representation will be dummy_tag.
-                dummy_functor_name          :: string,
+                dummy_functor_name      :: string,
 
                 % Any foreign type or foreign enum definitions for the type.
-                dummy_foreign               :: c_j_cs_e_enum_repn
+                dummy_foreign           :: c_j_cs_e_enum_repn
             ).
+
+%---------------------%
 
 :- type enum_repn
     --->    enum_repn(
@@ -1979,13 +2040,15 @@
                 % because the definition of an enum type with more than 2^32
                 % function symbols will cause a compiler to run out of memory
                 % for a *very* long time to come.
-                enum_functor1               :: string,
-                enum_functor2               :: string,
-                enum_functors3plus          :: list(string),
+                enum_functor1           :: string,
+                enum_functor2           :: string,
+                enum_functors3plus      :: list(string),
 
                 % Any foreign type or foreign enum definitions for the type.
                 enum_foreign            :: c_j_cs_e_enum_repn
             ).
+
+%---------------------%
 
 :- type notag_repn
     --->    notag_repn(
@@ -1995,62 +2058,171 @@
                 % as a full word at offset 0, but this should never be
                 % looked up, since the argument will actually be stored
                 % wherever the whole term is stored.
-                notag_functor_name          :: string,
+                notag_functor_name      :: string,
 
-                notag_foreign               :: c_j_cs_e_repn
+                % The type of the one functor's one argument.
+                % We record this because without this information,
+                % we cannot recognize that a notag type whose argument size
+                % is less than one word can itself be stored in less than
+                % one word.
+                notag_functor_arg_type  :: mer_type,
+
+                % The foreign language definitions for this type, if any.
+                notag_foreign           :: c_j_cs_e_repn
             ).
 
-:- type gen_du_repn_only_functor
-    --->    gen_du_repn_only_functor(
-                % The name of the data constructor. The arity is implicit
-                % in the length of the argument list, which must be the same
-                % in the 64 and 32 bit versions.
-                gdrof_functor           :: string,
-                gdrof_args64            :: gen_du_only_functor_args,
-                gdrof_args32            :: gen_du_only_functor_args,
-                gdrof_foreign           :: c_j_cs_e_repn
+%---------------------%
+
+:- type gen_du_only_functor_repn
+    --->    gen_du_only_functor_repn(
+                % The name of the data constructor. The arity is given by
+                % the length of list of argument types. The lists of argument
+                % representations in all of the nonconstant_repns inside
+                % the c_repns must also ave this length.
+                only_functor            :: string,
+
+                % The types of the constructor's arguments, after
+                % the expansion of both equivalence types and notag types.
+                only_deref_arg_types    :: list(mer_type),
+
+                % The representation of this functor for each possible
+                % target platform with the low level data representation.
+                % The nonconstant_repn cannot be ncr_direct_arg.
+                only_arg_repns          :: c_repns(nonconstant_repn),
+
+                % The foreign language definitions for this type, if any.
+                only_foreign            :: c_j_cs_e_repn
             ).
 
-:- type gen_du_repn_more_functors
-    --->    gen_du_repn_more_functors(
-                gdrmf_functor_1         :: gen_du_functor,
-                gdrmf_functor_2         :: gen_du_functor,
-                gdrmf_other_functors    :: list(gen_du_functor),
-                gdrmf_foreign           :: c_j_cs_e_repn
+:- type gen_du_more_functors_repn
+    --->    gen_du_more_functors_repn(
+                % The first, second and any later functors in the type,
+                % in declaration order, i.e. ordered on the functors'
+                % original ordinal numbers.
+                more_functor1           :: gen_du_functor_repn,
+                more_functor2           :: gen_du_functor_repn,
+                more_functors3plus      :: list(gen_du_functor_repn),
+
+                % The foreign language definitions for this type, if any.
+                more_foreign            :: c_j_cs_e_repn
             ).
 
-:- type gen_du_only_functor_args
-    --->    gen_du_only_functor_local_args(
-                % The cons_tag is local_args_tag(local_args_only_functor).
-                % The ptag is 0. The local sectag is 0 bits.
-                % For all args, ArgOnlyOffset and CellOffset are both -2.
-                gduofl_args             :: one_or_more(local_pos_size)
-            )
-    ;       gen_du_only_functor_remote_args(
-                % The cons_tag is remote_args_tag(remote_args_only_functor).
-                % The ptag is 0. The remote sectag size is 0 bits.
-                gduofr_args             :: one_or_more(arg_pos_size)
-            ).
+%---------------------%
 
-:- type gen_du_functor
-    --->    gen_du_constant_functor(
-                % The name of the data constructor. The arity is 0.
-                % The ptag is 0. The local sectag is 0. The *size*
-                % of the local sectag may depend on the word size.
+:- type gen_du_functor_repn
+    --->    gen_du_constant_functor_repn(
+                % The name of the data constructor. The arity is zero.
                 gducf_functor           :: string,
-                gducf_sectag_size_64    :: sectag_size,
-                gducf_sectag_size_32    :: sectag_size
+
+                % The representation of this functor for each possible
+                % target platform with the low level data representation.
+                gducf_functor_repn      :: c_repns(constant_repn)
             )
-    ;       gen_du_nonconstant_functor(
-                % The name of the data constructor. The arity is implicit
-                % in the length of the argument list, which must be the same
-                % in the 64 and 32 bit versions.
+    ;       gen_du_nonconstant_functor_repn(
+                % The name of the data constructor. The arity is given by
+                % the length of list of argument types. The lists of argument
+                % representations in all of the nonconstant_repns inside
+                % the c_repns must also ave this length.
                 gduncf_functor          :: string,
-                gduncf_tags_64          :: ptag_sectag,
-                gduncf_tags_32          :: ptag_sectag,
-                gduncf_args_64          :: one_or_more(maybe_direct_arg),
-                gduncf_args_32          :: one_or_more(maybe_direct_arg)
+
+                % The types of the constructor's arguments, after
+                % the expansion of both equivalence types and notag types.
+                gduncf_deref_arg_types  :: list(mer_type),
+
+                % The representation of this functor for each possible
+                % target platform with the low level data representation.
+                gduncf_functor_repn     :: c_repns(nonconstant_repn)
             ).
+
+:- type constant_repn
+    --->    constant_repn(
+                % The ptag is 0. The next two fields specify the value
+                % and the size of the local secondary tag.
+                cr_sectag               :: uint,
+                cr_sectag_size          :: sectag_word_or_size
+            ).
+
+:- type nonconstant_repn
+    --->    ncr_local_cell(
+                % The ptag is implicitly 0u.
+                ncrlc_sectag            :: cell_local_sectag,
+                ncrlc_arg_repns         :: one_or_more(local_arg_repn)
+            )
+    ;       ncr_remote_cell(
+                ncrrc_ptag              :: ptag,
+                ncrrc_sectag            :: cell_remote_sectag,
+                ncrrc_arg_repns         :: one_or_more(remote_arg_repn)
+            )
+    ;       ncr_direct_arg(
+                ncrdc_ptag              :: ptag
+            ).
+
+:- type cell_local_sectag
+    --->    cell_local_no_sectag
+    ;       cell_local_sectag(
+                clss_sectag             :: uint,
+                clss_sectag_size        :: uint
+            ).
+
+:- type cell_remote_sectag
+    --->    cell_remote_no_sectag
+    ;       cell_remote_sectag(
+                crss_sectag             :: uint,
+                crss_sectag_size        :: sectag_word_or_size
+            ).
+
+:- type sectag_word_or_size
+    --->    sectag_rest_of_word
+    ;       sectag_part_of_word(uint).
+
+:- type local_arg_repn
+    --->    local_partial(
+                lp_shift                :: uint,
+                lp_fill                 :: fill_kind_size
+            )
+    ;       local_none.
+
+:- type remote_arg_repn
+    --->    remote_full(
+                rf_arg_only_offset      :: arg_only_offset,
+                rf_cell_offset          :: cell_offset
+            )
+    ;       remote_double(
+                rd_arg_only_offset      :: arg_only_offset,
+                rd_cell_offset          :: cell_offset,
+                rd_kind                 :: double_word_kind
+            )
+    ;       remote_partial_first(
+                rpf_arg_only_offset     :: arg_only_offset,
+                rpf_cell_offset         :: cell_offset,
+                rpf_shift               :: uint,
+                rpf_fill                :: fill_kind_size
+            )
+    ;       remote_partial_shifted(
+                rps_arg_only_offset     :: arg_only_offset,
+                rps_cell_offset         :: cell_offset,
+                rps_shift               :: uint,
+                rps_fill                :: fill_kind_size
+            )
+    ;       remote_none_shifted(
+                rns_arg_only_offset     :: arg_only_offset,
+                rns_cell_offset         :: cell_offset
+            )
+    ;       remote_none_nowhere.
+
+:- type fill_kind_size
+    --->    fk_enum(uint)
+    ;       fk_int8
+    ;       fk_int16
+    ;       fk_int32
+    ;       fk_uint8
+    ;       fk_uint16
+    ;       fk_uint32
+    ;       fk_char21.
+
+:- func fill_kind_size_num_bits(fill_kind_size) = uint.
+
+%---------------------%
 
 :- type foreign_type_lang_repn
     --->    foreign_type_lang_repn(
@@ -2071,69 +2243,6 @@
 :- type enum_foreign_repn
     --->    enum_foreign_type(foreign_type_repn)
     ;       enum_foreign_enum(one_or_more(string)).
-
-:- type ptag_sectag
-    --->    ptag_sectag(
-                gdu_ptag                :: uint,
-                gdu_maybe_sectag        :: maybe_sectag
-            ).
-
-:- type maybe_sectag
-    --->    no_sectag
-    ;       local_sectag(uint, sectag_size)
-    ;       remote_sectag(uint, sectag_size).
-
-:- type sectag_size
-    --->    sectag_rest_of_word
-    ;       sectag_bits(uint).
-
-:- type maybe_direct_arg
-    --->    nondirect_arg(arg_pos_size)
-    ;       direct_arg(uint).   % The ptag.
-
-:- type local_pos_size
-    --->    local_pos_size(
-                lps_shift               :: uint,
-                lps_fill                :: fill_kind_size
-            ).
-
-:- type arg_pos_size
-    --->    pos_full(
-                pf_arg_only_offset      :: arg_only_offset,
-                pf_cell_offset          :: cell_offset
-            )
-    ;       pos_double(
-                pd_arg_only_offset      :: arg_only_offset,
-                pd_cell_offset          :: cell_offset,
-                pd_kind                 :: double_word_kind
-            )
-    ;       pos_partial_first(
-                ppf_arg_only_offset     :: arg_only_offset,
-                ppf_cell_offset         :: cell_offset,
-                ppf_shift               :: uint,
-                ppf_fill                :: fill_kind_size
-            )
-    ;       pos_partial_shifted(
-                pps_arg_only_offset     :: arg_only_offset,
-                pps_cell_offset         :: cell_offset,
-                pps_shift               :: uint,
-                pps_fill                :: fill_kind_size
-            )
-    ;       pos_none_shifted(
-                pns_arg_only_offset     :: arg_only_offset,
-                pns_cell_offset         :: cell_offset
-            )
-    ;       pos_none_nowhere.
-
-:- type fill_kind_size
-    --->    fk_enum(uint)
-    ;       fk_int8
-    ;       fk_int16
-    ;       fk_int32
-    ;       fk_uint8
-    ;       fk_uint16
-    ;       fk_uint32
-    ;       fk_char21.
 
 %---------------------------------------------------------------------------%
 %
@@ -2792,6 +2901,31 @@ set_mutable_var_constant(Constant, !Attributes) :-
     !Attributes ^ mutable_constant := Constant.
 set_mutable_var_thread_local(ThreadLocal, !Attributes) :-
     !Attributes ^ mutable_thread_local := ThreadLocal.
+
+%---------------------------------------------------------------------------%
+
+fill_kind_size_num_bits(FillKindSize) = NumBits :-
+    (
+        FillKindSize = fk_enum(NumBits)
+    ;
+        ( FillKindSize = fk_int8
+        ; FillKindSize = fk_uint8
+        ),
+        NumBits = 8u
+    ;
+        ( FillKindSize = fk_int16
+        ; FillKindSize = fk_uint16
+        ),
+        NumBits = 16u
+    ;
+        ( FillKindSize = fk_int32
+        ; FillKindSize = fk_uint32
+        ),
+        NumBits = 32u
+    ;
+        FillKindSize = fk_char21,
+        NumBits = 21u
+    ).
 
 %---------------------------------------------------------------------------%
 

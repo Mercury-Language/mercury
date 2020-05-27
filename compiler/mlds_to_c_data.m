@@ -13,10 +13,10 @@
 :- module ml_backend.mlds_to_c_data.
 :- interface.
 
-:- import_module hlds.
-:- import_module hlds.hlds_data.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_util.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 
@@ -64,8 +64,6 @@
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_type.
 :- import_module ml_backend.mlds_to_target_util.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 

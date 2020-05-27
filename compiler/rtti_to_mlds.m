@@ -55,7 +55,6 @@
 :- implementation.
 
 :- import_module backend_libs.type_ctor_info.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.

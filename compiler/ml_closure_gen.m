@@ -81,7 +81,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.mark_tail_calls.          % for ntrcr_program
 :- import_module libs.

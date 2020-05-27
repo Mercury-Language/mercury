@@ -19,10 +19,11 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.llds_out_util.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -172,8 +173,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module int.

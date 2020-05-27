@@ -77,6 +77,10 @@
     --->    dont_output_line_numbers
     ;       do_output_line_numbers.
 
+:- type type_repn_for
+    --->    type_repn_for_machines
+    ;       type_repn_for_humans.
+
     % Are we generating output that has be able to be read back in as
     % valid Mercury, e.g. when the output goes to a .int* or .*opt file,
     % or are we generating output only for humans to read?
@@ -107,6 +111,7 @@
     = maybe_qualified_item_names.
 :- func get_output_line_numbers(merc_out_info) = maybe_output_line_numbers.
 :- func get_output_lang(merc_out_info) = output_lang.
+:- func get_type_repn_for(merc_out_info) = type_repn_for.
 :- func get_human_comma_sep(merc_out_info) = string.
 
 :- pred maybe_output_line_number(merc_out_info::in, prog_context::in,
@@ -171,12 +176,13 @@
                 % we print to separate it from what follows?
                 %
                 % For humans, ",\n    "; for computers, just ", ".
-                moi_human_comma_sep     :: string
+                moi_type_repn_for           :: type_repn_for,
+                moi_human_comma_sep         :: string
             ).
 
 init_debug_merc_out_info = Info :-
     Info = merc_out_info(qualified_item_names, dont_output_line_numbers,
-        output_debug, " ").
+        output_debug, type_repn_for_machines, ", ").
 
 init_merc_out_info(Globals, MaybeQualifiedItemNames, Lang) = Info :-
     globals.lookup_bool_option(Globals, line_numbers, LineNumbersOpt),
@@ -185,10 +191,11 @@ init_merc_out_info(Globals, MaybeQualifiedItemNames, Lang) = Info :-
     ( LineNumbersOpt = no, LineNumbers = dont_output_line_numbers
     ; LineNumbersOpt = yes, LineNumbers = do_output_line_numbers
     ),
-    ( TypeRepnsForHumans = no, CommaSep = ", "
-    ; TypeRepnsForHumans = yes, CommaSep = ",\n    "
+    ( TypeRepnsForHumans = no, For = type_repn_for_machines, CommaSep = ", "
+    ; TypeRepnsForHumans = yes, For = type_repn_for_humans, CommaSep = ",\n    "
     ),
-    Info = merc_out_info(MaybeQualifiedItemNames, LineNumbers, Lang, CommaSep).
+    Info = merc_out_info(MaybeQualifiedItemNames, LineNumbers, Lang,
+        For, CommaSep).
 
 merc_out_info_disable_line_numbers(Info0) = Info :-
     Info = Info0 ^ moi_output_line_numbers := dont_output_line_numbers.
@@ -196,6 +203,7 @@ merc_out_info_disable_line_numbers(Info0) = Info :-
 get_maybe_qualified_item_names(Info) = Info ^ moi_qualify_item_names.
 get_output_line_numbers(Info) = Info ^ moi_output_line_numbers.
 get_output_lang(Info) = Info ^ moi_output_lang.
+get_type_repn_for(Info) = Info ^ moi_type_repn_for.
 get_human_comma_sep(Info) = Info ^ moi_human_comma_sep.
 
 %---------------------------------------------------------------------------%

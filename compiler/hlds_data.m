@@ -206,14 +206,6 @@
     ;       int_tag_int64(int64)
     ;       int_tag_uint64(uint64).
 
-    % The type `ptag' holds a primary tag value.
-    % It consists of 2 bits on 32 bit machines and 3 bits on 64 bit machines.
-    % If we are not using primary tags to distinguish function symbols
-    % from each other, the ptag will always be 0u8.
-    %
-:- type ptag
-    --->    ptag(uint8).
-
 :- type local_args_tag_info
     --->    local_args_only_functor
             % There are no other function symbols in the type.

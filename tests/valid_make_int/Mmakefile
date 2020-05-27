@@ -12,7 +12,8 @@ SINGLE_MODULE_PROGS = \
 	bug499
 
 MULTI_MODULE_PROGS = \
-	bug506
+	bug506 \
+	test_repn
 
 #-----------------------------------------------------------------------------#
 
