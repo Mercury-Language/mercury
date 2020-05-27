@@ -130,6 +130,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.comp_unit_interface.    % undesirable dependency
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
@@ -353,8 +354,8 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         map.keys_as_set(ImpUsesMap, ImpUses),
         % XXX SECTION
         compute_implicit_avail_needs(Globals, IntImpImplicitImportNeeds,
-            ImplicitIntImports, ImplicitIntUses),
-        set.union(ImplicitIntImports, IntImports0, IntImports),
+            ImplicitIntUses),
+        set.insert(mercury_public_builtin_module, IntImports0, IntImports),
         set.union(ImplicitIntUses, IntUses0, IntUses),
 
         ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_implicit_fim_langs
@@ -2006,8 +2007,8 @@ read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
     pre_hlds_maybe_write_out_errors(VeryVerbose, Globals, !Specs, !IO),
     (
         ReadOptFilesTransitively = yes,
-        get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(
-            Globals, [ParseTreePlainOpt], ParseTreePlainOptDeps),
+        get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(Globals,
+            [ParseTreePlainOpt], ParseTreePlainOptDeps),
         set.difference(ParseTreePlainOptDeps, DontQueueOptModules0, NewDeps),
         ModuleNames1 = set.to_sorted_list(NewDeps) ++ ModuleNames0,
         set.union(NewDeps, DontQueueOptModules0, DontQueueOptModules1)

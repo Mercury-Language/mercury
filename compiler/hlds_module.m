@@ -667,6 +667,7 @@
 :- implementation.
 
 :- import_module libs.op_mode.
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
 :- import_module transform_hlds.
@@ -1061,9 +1062,9 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     % the explicit imported was requested, or the implicit import was required.
 
     get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
-        ImplicitlyImportedModules, ImplicitlyUsedModules),
+        ImplicitlyUsedModules),
     map.init(AvailModuleMap0),
-    set.fold(add_implicit_avail_module(import_decl), ImplicitlyImportedModules,
+    add_implicit_avail_module(import_decl, mercury_public_builtin_module,
         AvailModuleMap0, AvailModuleMap1),
     set.fold(add_implicit_avail_module(use_decl), ImplicitlyUsedModules,
         AvailModuleMap1, AvailModuleMap),

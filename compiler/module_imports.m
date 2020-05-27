@@ -404,6 +404,7 @@
 
 :- implementation.
 
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
@@ -759,23 +760,19 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         "bad ContainsForeignExport"),
 
     get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
-    get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
+    get_imports_uses_maps(ImpAvails, ImpImportsMap, ImpUsesMap0),
 
     compute_implicit_avail_needs(Globals, IntImplicitImportNeeds,
-        ImplicitIntImports, ImplicitIntUses),
+        ImplicitIntUses),
     compute_implicit_avail_needs(Globals, IntImpImplicitImportNeeds,
-        ImplicitIntImpImports, ImplicitIntImpUses),
-    set.difference(ImplicitIntImpImports, ImplicitIntImports,
-        ImplicitImpImports),
+        ImplicitIntImpUses),
     set.difference(ImplicitIntImpUses, ImplicitIntUses,
         ImplicitImpUses),
 
-    set.fold(one_or_more_map.reverse_set(term.dummy_context_init),
-        ImplicitIntImports, IntImportsMap0, IntImportsMap),
+    one_or_more_map.reverse_set(term.dummy_context_init,
+        mercury_public_builtin_module, IntImportsMap0, IntImportsMap),
     set.fold(one_or_more_map.reverse_set(term.dummy_context_init),
         ImplicitIntUses, IntUsesMap0, IntUsesMap),
-    set.fold(one_or_more_map.reverse_set(term.dummy_context_init),
-        ImplicitImpImports, ImpImportsMap0, ImpImportsMap),
     set.fold(one_or_more_map.reverse_set(term.dummy_context_init),
         ImplicitImpUses, ImpUsesMap0, ImpUsesMap),
 
