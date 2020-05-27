@@ -2532,8 +2532,7 @@ output_sized_packable_functor(Stream, PrintArgSizes, PackableCtor, !IO) :-
     PackableCtor = packable_constructor(Ctor, PackableArgs, NumBits),
     Ctor = ctor(_Ordinal, _MaybeExist, SymName, _Args, NumArgs, _Context),
     Name = unqualify_name(SymName),
-    io.format(Stream, "%2d: %s/%d",
-        [i(uint.cast_to_int(NumBits)), s(Name), i(NumArgs)], !IO),
+    io.format(Stream, "%2u: %s/%d", [u(NumBits), s(Name), i(NumArgs)], !IO),
     (
         PrintArgSizes = no,
         io.nl(Stream, !IO)

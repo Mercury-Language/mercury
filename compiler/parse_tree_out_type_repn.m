@@ -65,7 +65,6 @@
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
-:- import_module uint.
 :- import_module uint8.
 :- import_module varset.
 
@@ -436,9 +435,8 @@ mercury_output_gen_du_functor_repn(TypeRepnFor, Indent, TVarSet,
 
 mercury_output_constant_repn(TypeRepnFor, Indent, ConstantRepn, !IO) :-
     NlI = nl_indent_for_humans_space_for_machines(TypeRepnFor, Indent),
-    ConstantRepn = constant_repn(SectagUint, SectagWordOrSize),
-    Sectag = uint.cast_to_int(SectagUint),
-    io.format("%sconstant(%d, ", [s(NlI), i(Sectag)], !IO),
+    ConstantRepn = constant_repn(Sectag, SectagWordOrSize),
+    io.format("%sconstant(%u, ", [s(NlI), u(Sectag)], !IO),
     mercury_output_sectag_word_or_size(SectagWordOrSize, !IO),
     io.write_string(")", !IO).
 
@@ -477,10 +475,10 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn, !IO) :-
         NonConstantRepn =
             ncr_remote_cell(Ptag, CellRemoteSectag, OoMRemoteArgRepns),
         Ptag = ptag(PtagUint8),
-        PtagInt = uint8.cast_to_int(PtagUint8),
+        PtagUint = uint8.cast_to_uint(PtagUint8),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.format("remote_cell(%d, ", [i(PtagInt)], !IO),
+            io.format("remote_cell(%u, ", [u(PtagUint)], !IO),
             mercury_output_cell_remote_sectag(CellRemoteSectag, !IO),
             io.write_string(", [", !IO),
             OoMRemoteArgRepns =
@@ -491,7 +489,7 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn, !IO) :-
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("\n%sremote_cell(%d, ", [s(I), i(PtagInt)], !IO),
+            io.format("\n%sremote_cell(%u, ", [s(I), u(PtagUint)], !IO),
             mercury_output_cell_remote_sectag(CellRemoteSectag, !IO),
             io.write_string(",", !IO),
             OoMRemoteArgRepns =
@@ -504,14 +502,14 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn, !IO) :-
     ;
         NonConstantRepn = ncr_direct_arg(Ptag),
         Ptag = ptag(PtagUint8),
-        PtagInt = uint8.cast_to_int(PtagUint8),
+        PtagUint = uint8.cast_to_uint(PtagUint8),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.format("direct_arg(%d)", [i(PtagInt)], !IO)
+            io.format("direct_arg(%u)", [u(PtagUint)], !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             NlI = nl_indent(Indent),
-            io.format("%sdirect_arg(%d)", [s(NlI), i(PtagInt)], !IO)
+            io.format("%sdirect_arg(%u)", [s(NlI), u(PtagUint)], !IO)
         )
     ).
 
@@ -525,10 +523,8 @@ mercury_output_cell_local_sectag(CellLocalSectag, !IO) :-
         CellLocalSectag = cell_local_no_sectag,
         io.write_string("local_no_sectag", !IO)
     ;
-        CellLocalSectag = cell_local_sectag(SectagUint, SectagNumBitsUint),
-        Sectag = uint.cast_to_int(SectagUint),
-        SectagNumBits = uint.cast_to_int(SectagNumBitsUint),
-        io.format("local_sectag(%d, %d)", [i(Sectag), i(SectagNumBits)], !IO)
+        CellLocalSectag = cell_local_sectag(Sectag, SectagNumBits),
+        io.format("local_sectag(%u, %u)", [u(Sectag), u(SectagNumBits)], !IO)
     ).
 
 :- pred mercury_output_cell_remote_sectag(cell_remote_sectag::in,
@@ -539,9 +535,8 @@ mercury_output_cell_remote_sectag(CellLocalSectag, !IO) :-
         CellLocalSectag = cell_remote_no_sectag,
         io.write_string("remote_no_sectag", !IO)
     ;
-        CellLocalSectag = cell_remote_sectag(SectagUint, SectagWordOrSize),
-        Sectag = uint.cast_to_int(SectagUint),
-        io.format("remote_sectag(%d, ", [i(Sectag)], !IO),
+        CellLocalSectag = cell_remote_sectag(Sectag, SectagWordOrSize),
+        io.format("remote_sectag(%u, ", [u(Sectag)], !IO),
         mercury_output_sectag_word_or_size(SectagWordOrSize, !IO),
         io.format(")", [], !IO)
     ).
@@ -554,9 +549,8 @@ mercury_output_sectag_word_or_size(SectagWordOrSize, !IO) :-
         SectagWordOrSize = sectag_rest_of_word,
         io.write_string("rest", !IO)
     ;
-        SectagWordOrSize = sectag_part_of_word(NumBitsUint),
-        NumBits = uint.cast_to_int(NumBitsUint),
-        io.format("part(%d)", [i(NumBits)], !IO)
+        SectagWordOrSize = sectag_part_of_word(NumBits),
+        io.format("part(%u)", [u(NumBits)], !IO)
     ).
 
 %---------------------%
@@ -568,9 +562,8 @@ mercury_output_local_arg_repn(TypeRepnFor, Indent, LocalArgRepn, !IO) :-
     NlI = nl_indent_for_humans(TypeRepnFor, Indent),
     (
         LocalArgRepn = local_partial(Shift, FillKindSize),
-        io.format("%slocal_partial(%d, %s)",
-            [s(NlI), i(uint.cast_to_int(Shift)),
-            s(fill_kind_size_to_string(FillKindSize))], !IO)
+        io.format("%slocal_partial(%u, %s)",
+            [s(NlI), u(Shift), s(fill_kind_size_to_string(FillKindSize))], !IO)
     ;
         LocalArgRepn = local_none,
         io.format("%slocal_none", [s(NlI)], !IO)
@@ -606,10 +599,9 @@ mercury_output_remote_arg_repn(TypeRepnFor, Indent, RemoteArgRepn, !IO) :-
         ),
         ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
         CellOffset = cell_offset(CellOffsetInt),
-        io.format("%spartial_%s(%d, %d, %d, %s)",
+        io.format("%spartial_%s(%d, %d, %u, %s)",
             [s(NlI), s(FirstOrShifted), i(ArgOnlyOffsetInt), i(CellOffsetInt),
-            i(uint.cast_to_int(Shift)),
-            s(fill_kind_size_to_string(FillKindSize))], !IO)
+            u(Shift), s(fill_kind_size_to_string(FillKindSize))], !IO)
     ;
         RemoteArgRepn = remote_none_shifted(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
@@ -626,7 +618,7 @@ mercury_output_remote_arg_repn(TypeRepnFor, Indent, RemoteArgRepn, !IO) :-
 fill_kind_size_to_string(FillKindSize) = Str :-
     (
         FillKindSize = fk_enum(NumBits),
-        string.format("enum(%d)", [i(uint.cast_to_int(NumBits))], Str)
+        string.format("enum(%u)", [u(NumBits)], Str)
     ;
         ( FillKindSize = fk_int8,   Str = "int8"
         ; FillKindSize = fk_int16,  Str = "int16"
