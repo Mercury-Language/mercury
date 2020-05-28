@@ -4,17 +4,20 @@ string_format_unknown.m:023: Mismatched format and values in call to
 string_format_unknown.m:023:   `string.format'/3:
 string_format_unknown.m:023:   The first conversion specifier uses the
 string_format_unknown.m:023:   specifier character `d', but the corresponding
-string_format_unknown.m:023:   input is a string.
+string_format_unknown.m:023:   input is a string. The only specifier applicable
+string_format_unknown.m:023:   to strings is %s.
 string_format_unknown.m:026: Mismatched format and values in call to
 string_format_unknown.m:026:   `io.format'/4:
 string_format_unknown.m:026:   The first conversion specifier uses the
 string_format_unknown.m:026:   specifier character `d', but the corresponding
-string_format_unknown.m:026:   input is a string.
+string_format_unknown.m:026:   input is a string. The only specifier applicable
+string_format_unknown.m:026:   to strings is %s.
 string_format_unknown.m:027: Mismatched format and values in call to
 string_format_unknown.m:027:   `io.format'/5:
 string_format_unknown.m:027:   The first conversion specifier uses the
 string_format_unknown.m:027:   specifier character `d', but the corresponding
-string_format_unknown.m:027:   input is a string.
+string_format_unknown.m:027:   input is a string. The only specifier applicable
+string_format_unknown.m:027:   to strings is %s.
 string_format_unknown.m:028: Mismatched format and values in call to
 string_format_unknown.m:028:   `io.format'/4:
 string_format_unknown.m:028:   The first conversion specifier uses the unknown
@@ -26,4 +29,5 @@ string_format_unknown.m:044: Mismatched format and values in call to
 string_format_unknown.m:044:   `io.format'/5:
 string_format_unknown.m:044:   The first conversion specifier uses the
 string_format_unknown.m:044:   specifier character `d', but the corresponding
-string_format_unknown.m:044:   input is a float.
+string_format_unknown.m:044:   input is a float. The specifiers applicable to
+string_format_unknown.m:044:   floats are %f, %e, %E, %g and %G.

@@ -195,7 +195,8 @@ string_format_error_to_msg(Error) = Msg :-
         Msg = nth_specifier(SpecNum) ++ " uses the "
             ++ specifier_char(SpecChar)
             ++ ", but the corresponding input is "
-            ++ poly_kind_desc(PolyKind) ++ "."
+            ++ poly_kind_desc(PolyKind) ++ ". " ++
+            acceptable_specifier_chars_for_poly_kind_msg(PolyKind)
     ;
         Error = error_no_polytype(SpecNum, SpecChar),
         Msg = nth_specifier(SpecNum)
@@ -285,6 +286,28 @@ poly_kind_desc(poly_kind_str) = "a string".
 poly_kind_desc(poly_kind_int) = "an integer".
 poly_kind_desc(poly_kind_uint) = "an unsigned integer".
 poly_kind_desc(poly_kind_float) = "a float".
+
+:- func acceptable_specifier_chars_for_poly_kind_msg(poly_kind) = string.
+
+acceptable_specifier_chars_for_poly_kind_msg(Kind) = Msg :-
+    (
+        Kind = poly_kind_char,
+        Msg = "The only specifier applicable to characters is %c."
+    ;
+        Kind = poly_kind_str,
+        Msg = "The only specifier applicable to strings is %s."
+    ;
+        Kind = poly_kind_int,
+        Msg = "The specifiers applicable to ints are " ++
+            "%d, %i, %o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_uint,
+        Msg = "The specifiers applicable to uints are " ++
+            "%o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_float,
+        Msg = "The specifiers applicable to floats are %f, %e, %E, %g and %G."
+    ).
 
 %---------------------------------------------------------------------------%
 

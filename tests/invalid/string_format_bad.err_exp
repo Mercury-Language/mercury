@@ -6,28 +6,34 @@ string_format_bad.m:022: Mismatched format and values in call to
 string_format_bad.m:022:   `string.format'/3:
 string_format_bad.m:022:   The first conversion specifier uses the specifier
 string_format_bad.m:022:   character `d', but the corresponding input is a
-string_format_bad.m:022:   string.
+string_format_bad.m:022:   string. The only specifier applicable to strings is
+string_format_bad.m:022:   %s.
 string_format_bad.m:025: Mismatched format and values in call to `io.format'/4:
 string_format_bad.m:025:   The first conversion specifier uses the specifier
 string_format_bad.m:025:   character `d', but the corresponding input is a
-string_format_bad.m:025:   string.
+string_format_bad.m:025:   string. The only specifier applicable to strings is
+string_format_bad.m:025:   %s.
 string_format_bad.m:026: Mismatched format and values in call to `io.format'/5:
 string_format_bad.m:026:   The first conversion specifier uses the specifier
 string_format_bad.m:026:   character `d', but the corresponding input is a
-string_format_bad.m:026:   string.
+string_format_bad.m:026:   string. The only specifier applicable to strings is
+string_format_bad.m:026:   %s.
 string_format_bad.m:027: Mismatched format and values in call to
 string_format_bad.m:027:   `stream.string_writer.format'/5:
 string_format_bad.m:027:   The first conversion specifier uses the specifier
 string_format_bad.m:027:   character `d', but the corresponding input is a
-string_format_bad.m:027:   string.
+string_format_bad.m:027:   string. The only specifier applicable to strings is
+string_format_bad.m:027:   %s.
 string_format_bad.m:028: Mismatched format and values in call to `io.format'/4:
 string_format_bad.m:028:   The first conversion specifier uses the unknown
 string_format_bad.m:028:   specifier character `w'.
 string_format_bad.m:037: Mismatched format and values in call to `io.format'/5:
 string_format_bad.m:037:   The second conversion specifier uses the specifier
 string_format_bad.m:037:   character `f', but the corresponding input is an
-string_format_bad.m:037:   integer.
+string_format_bad.m:037:   integer. The specifiers applicable to ints are %d,
+string_format_bad.m:037:   %i, %o, %x, %X, %u, and %p.
 string_format_bad.m:042: Mismatched format and values in call to `io.format'/5:
 string_format_bad.m:042:   The first conversion specifier uses the specifier
 string_format_bad.m:042:   character `d', but the corresponding input is a
-string_format_bad.m:042:   float.
+string_format_bad.m:042:   float. The specifiers applicable to floats are %f,
+string_format_bad.m:042:   %e, %E, %g and %G.
