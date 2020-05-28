@@ -43,10 +43,11 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(
-    globals::in, list(parse_tree_plain_opt)::in, set(module_name)::out) is det.
+:- pred get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opt(
+    parse_tree_plain_opt::in,
+    set(module_name)::out, implicit_avail_needs::out) is det.
 
-    % get_implicit_avail_needs_in_*(Globals, AugCompUnit,
+    % get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
     %   ImplicitlyUsedModules):
     %
     % Get the list of builtin modules (e.g. profiling_builtin.m,
@@ -116,6 +117,9 @@
             ).
 
 :- func init_implicit_avail_needs = implicit_avail_needs.
+
+:- pred combine_implicit_needs(list(implicit_avail_needs)::in,
+    implicit_avail_needs::out) is det.
 
 %---------------------%
 
@@ -206,30 +210,17 @@
 
 %---------------------------------------------------------------------------%
 
-get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(Globals,
-        ParseTreePlainOpts, AvailModules) :-
-    ImplicitAvailNeeds0 = init_implicit_avail_needs,
-    list.foldl2(acc_avail_needs_in_parse_tree_plain_opt, ParseTreePlainOpts,
-        set.init, ExplicitModules, ImplicitAvailNeeds0, ImplicitAvailNeeds),
-    compute_implicit_avail_needs(Globals, ImplicitAvailNeeds,
-        ImplicitUseModules),
-    AvailModules = set.union_list([ExplicitModules, ImplicitUseModules]).
-
-:- pred acc_avail_needs_in_parse_tree_plain_opt(parse_tree_plain_opt::in,
-    set(module_name)::in, set(module_name)::out,
-    implicit_avail_needs::in, implicit_avail_needs::out) is det.
-
-acc_avail_needs_in_parse_tree_plain_opt(ParseTreePlainOpt,
-        !ExplicitModules, !ImplicitAvailNeeds) :-
+get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opt(
+        ParseTreePlainOpt, ExplicitModules, ImplicitAvailNeeds) :-
     ParseTreePlainOpt = parse_tree_plain_opt(_ModuleName, _ModuleNameContext,
         UseMap, _FIMSpecs, _TypeDefns, _ForeignEnums,
         _InstDefns, _ModeDefns, _TypeClasses, _Instances,
         _PredDecls, _ModeDecls, _Clauses, _ForeignProcs, _Promises,
         _MarkerPragmas, _TypeSpecs, _UnusedArgs, _TermInfos, _Term2Infos,
         _Exceptions, _Trailings, _MMTablings, _Sharings, _Reuses),
-    set.union(map.keys_as_set(UseMap), !ExplicitModules),
+    map.keys_as_set(UseMap, ExplicitModules),
     acc_implicit_avail_needs_in_parse_tree_plain_opt(ParseTreePlainOpt,
-        !ImplicitAvailNeeds).
+        init_implicit_avail_needs, ImplicitAvailNeeds).
 
 %---------------------------------------------------------------------------%
 
@@ -247,6 +238,87 @@ init_implicit_avail_needs = ImplicitAvailNeeds :-
     ImplicitAvailNeeds = implicit_avail_needs(dont_need_tabling,
         dont_need_tabling_statistics, dont_need_stm, dont_need_exception,
         dont_need_string_format, dont_need_stream_format, dont_need_io).
+
+%---------------------------------------------------------------------------%
+
+combine_implicit_needs(ImplicitNeedsList, ImplicitNeeds) :-
+    combine_implicit_needs_acc(ImplicitNeedsList,
+        dont_need_tabling, NeedTabling,
+        dont_need_tabling_statistics, NeedTablingStatistics,
+        dont_need_stm, NeedStm,
+        dont_need_exception, NeedException,
+        dont_need_string_format, NeedStringFormat,
+        dont_need_stream_format, NeedStreamFormat,
+        dont_need_io, NeedIO),
+    ImplicitNeeds = implicit_avail_needs(NeedTabling, NeedTablingStatistics,
+        NeedStm, NeedException, NeedStringFormat, NeedStreamFormat, NeedIO).
+
+:- pred combine_implicit_needs_acc(list(implicit_avail_needs)::in,
+    maybe_need_tabling::in, maybe_need_tabling::out,
+    maybe_need_tabling_statistics::in, maybe_need_tabling_statistics::out,
+    maybe_need_stm::in, maybe_need_stm::out,
+    maybe_need_exception::in, maybe_need_exception::out,
+    maybe_need_string_format::in, maybe_need_string_format::out,
+    maybe_need_stream_format::in, maybe_need_stream_format::out,
+    maybe_need_io::in, maybe_need_io::out) is det.
+
+combine_implicit_needs_acc([], !NeedTabling,
+        !NeedTablingStatistics, !NeedStm, !NeedException,
+        !NeedStringFormat, !NeedStreamFormat, !NeedIO).
+combine_implicit_needs_acc([Head | Tail], !NeedTabling,
+        !NeedTablingStatistics, !NeedStm, !NeedException,
+        !NeedStringFormat, !NeedStreamFormat, !NeedIO) :-
+    Head = implicit_avail_needs(NeedTabling, NeedTablingStatistics,
+        NeedStm, NeedException, NeedStringFormat, NeedStreamFormat, NeedIO),
+    % XXX ARGPACK
+    % If argument packing is enabled, it *should* be possible for the compiler
+    % to replace this sequence of seven switches with a *single* bitwise OR
+    % operation. Check whether this is the case.
+    (
+        NeedTabling = dont_need_tabling
+    ;
+        NeedTabling = do_need_tabling,
+        !:NeedTabling = do_need_tabling
+    ),
+    (
+        NeedTablingStatistics = dont_need_tabling_statistics
+    ;
+        NeedTablingStatistics = do_need_tabling_statistics,
+        !:NeedTablingStatistics = do_need_tabling_statistics
+    ),
+    (
+        NeedStm = dont_need_stm
+    ;
+        NeedStm = do_need_stm,
+        !:NeedStm = do_need_stm
+    ),
+    (
+        NeedException = dont_need_exception
+    ;
+        NeedException = do_need_exception,
+        !:NeedException = do_need_exception
+    ),
+    (
+        NeedStringFormat = dont_need_string_format
+    ;
+        NeedStringFormat = do_need_string_format,
+        !:NeedStringFormat = do_need_string_format
+    ),
+    (
+        NeedStreamFormat = dont_need_stream_format
+    ;
+        NeedStreamFormat = do_need_stream_format,
+        !:NeedStreamFormat = do_need_stream_format
+    ),
+    (
+        NeedIO = dont_need_io
+    ;
+        NeedIO = do_need_io,
+        !:NeedIO = do_need_io
+    ),
+    combine_implicit_needs_acc(Tail, !NeedTabling,
+        !NeedTablingStatistics, !NeedStm, !NeedException,
+        !NeedStringFormat, !NeedStreamFormat, !NeedIO).
 
 %---------------------------------------------------------------------------%
 

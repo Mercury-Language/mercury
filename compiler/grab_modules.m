@@ -1854,8 +1854,8 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
     set.insert(ModuleName, OptModules, DontQueueOptModules),
     read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
         set.to_sorted_list(OptModules), DontQueueOptModules,
-        cord.empty, ParseTreePlainOptsCord0,
-        [], OptSpecs0, no, OptError0, !IO),
+        cord.empty, ParseTreePlainOptsCord0, set.init, ExplicitDeps,
+        cord.empty, ImplicitNeedsCord, [], OptSpecs0, no, OptError0, !IO),
     ParseTreePlainOpts0 = cord.list(ParseTreePlainOptsCord0),
 
     % Get the :- pragma unused_args(...) declarations created when writing
@@ -1914,15 +1914,11 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
         set.init, OptAncestorImports, set.init, OptAncestorUses,
         !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
-    % Figure out which .int files are needed by the .opt files.
-    % XXX CLEANUP Since ReadOptFilesTransitively = yes by default,
-    % the call to read_plain_opt_files above *should* have computed
-    % these dependencies. It should be possible to ensure that the
-    % dependencies of a given plain_opt file are never computed
-    % more than once.
-    get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(Globals,
-        ParseTreePlainOpts, NewDeps0),
-    NewDeps = set.union_list([NewDeps0, OptAncestorImports, OptAncestorUses]),
+    % Figure out which .int files are implicitly needed by the .opt files.
+    combine_implicit_needs(cord.list(ImplicitNeedsCord), AllImplicitNeeds),
+    compute_implicit_avail_needs(Globals, AllImplicitNeeds, ImplicitDeps),
+    NewDeps = set.union_list([ExplicitDeps, ImplicitDeps,
+        OptAncestorImports, OptAncestorUses]),
 
     % Read in the .int, and .int2 files needed by the .opt files.
     grab_module_int1_files(Globals,
@@ -1982,18 +1978,25 @@ keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
 :- pred read_plain_opt_files(globals::in, bool::in, bool::in,
     list(module_name)::in, set(module_name)::in,
     cord(parse_tree_plain_opt)::in, cord(parse_tree_plain_opt)::out,
+    set(module_name)::in, set(module_name)::out,
+    cord(implicit_avail_needs)::in, cord(implicit_avail_needs)::out,
     list(error_spec)::in, list(error_spec)::out,
     bool::in, bool::out, io::di, io::uo) is det.
 
 read_plain_opt_files(_, _, _, [], _,
-        !ParseTreePlainOptsCord, !Specs, !Error, !IO).
+        !ParseTreePlainOptsCord, !ExplicitDeps, !ImplicitNeeds,
+        !Specs, !Error, !IO).
 read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
         [ModuleName | ModuleNames0], DontQueueOptModules0,
-        !ParseTreePlainOptsCord, !Specs, !Error, !IO) :-
+        !ParseTreePlainOptsCord, !ExplicitDeps, !ImplicitNeeds,
+        !Specs, !Error, !IO) :-
     read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
         ParseTreePlainOpt, OptSpecs, OptError, !IO),
-
     cord.snoc(ParseTreePlainOpt, !ParseTreePlainOptsCord),
+    get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opt(
+        ParseTreePlainOpt, ParseTreeExplicitDeps, ParseTreeImplicitNeeds),
+    set.union(ParseTreeExplicitDeps, !ExplicitDeps),
+    cord.snoc(ParseTreeImplicitNeeds, !ImplicitNeeds),
     % We could add OptSpecs to !Specs, but with the option combination
     % --intermodule-analysis --no-intermodule-optimization, not finding
     % a .opt file for ModuleName is not an error, and update_opt_error_status
@@ -2007,9 +2010,10 @@ read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
     pre_hlds_maybe_write_out_errors(VeryVerbose, Globals, !Specs, !IO),
     (
         ReadOptFilesTransitively = yes,
-        get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opts(Globals,
-            [ParseTreePlainOpt], ParseTreePlainOptDeps),
-        set.difference(ParseTreePlainOptDeps, DontQueueOptModules0, NewDeps),
+        compute_implicit_avail_needs(Globals, ParseTreeImplicitNeeds,
+            ParseTreeImplicitDeps),
+        set.union(ParseTreeExplicitDeps, ParseTreeImplicitDeps, ParseTreeDeps),
+        set.difference(ParseTreeDeps, DontQueueOptModules0, NewDeps),
         ModuleNames1 = set.to_sorted_list(NewDeps) ++ ModuleNames0,
         set.union(NewDeps, DontQueueOptModules0, DontQueueOptModules1)
     ;
@@ -2017,10 +2021,10 @@ read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
         ModuleNames1 = ModuleNames0,
         DontQueueOptModules1 = DontQueueOptModules0
     ),
-
     read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
         ModuleNames1, DontQueueOptModules1,
-        !ParseTreePlainOptsCord, !Specs, !Error, !IO).
+        !ParseTreePlainOptsCord, !ExplicitDeps, !ImplicitNeeds,
+        !Specs, !Error, !IO).
 
 :- pred read_plain_opt_file(globals::in, bool::in,
     module_name::in, string::out, parse_tree_plain_opt::out,
