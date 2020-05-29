@@ -226,10 +226,10 @@
         ;;
 
     --low-level-debug)
-        ll_debug= true
+        ll_debug=true
         ;;
     --no-low-level-debug)
-        ll_debug= false
+        ll_debug=false
         ;;
 
     --extend-stacks-when-needed)

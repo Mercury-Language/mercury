@@ -207,7 +207,6 @@ keep_stage_3=false
 stop_after_stage_2=false
 windows=false
 use_cp=false
-A=a     # the extension for libraries
 if test -d compiler/Mercury; then
     use_subdirs=${MMAKE_USE_SUBDIRS=yes}
 else
@@ -252,7 +251,7 @@ fi
 
 # If you change these, you will also need to change the files indicated
 # in scripts/c2init.in.
-RT_LIB_NAME=mer_rt
+# RT_LIB_NAME=mer_rt            # not used in this script
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
@@ -397,7 +396,7 @@ while test $# -gt 0; do
         coverage_test=true ;;
 
     -W|--windows)
-        windows=true; use_cp=true; A=lib ;;
+        windows=true; use_cp=true ;;
 
     --use-cp)
         use_cp=true ;;
@@ -557,9 +556,9 @@ fi
 # in user interaction every time we invoke any version of the compiler
 # that was compiled with tracing. This has happened to me accidentally
 # one too many times - zs.
-if echo $MERCURY_OPTIONS | grep '\-Di' > /dev/null
+if echo "${MERCURY_OPTIONS}" | grep '\-Di' > /dev/null
 then
-    MERCURY_OPTIONS=`echo $MERCURY_OPTIONS | sed -e 's/-Di//'`
+    MERCURY_OPTIONS=`echo "${MERCURY_OPTIONS}" | sed -e 's/-Di//'`
     export MERCURY_OPTIONS
 fi
 
@@ -1102,8 +1101,8 @@ then
         then
             /bin/rm $stage2dir/browser/lib$BROWSER_LIB_NAME.a
             ar cr $stage2dir/browser/lib$BROWSER_LIB_NAME.a
-            /bin/rm $stage2dir/ssdb/lib$ssdb_LIB_NAME.a
-            ar cr $stage2dir/ssdb/lib$ssdb_LIB_NAME.a
+            /bin/rm $stage2dir/ssdb/lib$SSDB_LIB_NAME.a
+            ar cr $stage2dir/ssdb/lib$SSDB_LIB_NAME.a
             /bin/rm $stage2dir/trace/lib$TRACE_LIB_NAME.a
             ar cr $stage2dir/trace/lib$TRACE_LIB_NAME.a
         fi
@@ -2023,8 +2022,8 @@ then
         esac
 
         cd $root/${tests_prefix}tests
-        > FAILED_TESTS_SUMMARY
-        > NOMAKE_DIRS
+        true > FAILED_TESTS_SUMMARY
+        true > NOMAKE_DIRS
 
         /bin/rm -fr PASSED_TC_DIR FAILED_TC_DIR > /dev/null 2>&1
         mkdir -p PASSED_TC_DIR FAILED_TC_DIR
@@ -2254,38 +2253,38 @@ fi
 
 if test -s $tests_dir/FAILED_TESTS_SUMMARY
 then
-    num_expected_failures=`cat $tests_dir/EXPECTED_FAILED_TESTS | wc -l`
+    num_expected_failures=`wc -l $tests_dir/EXPECTED_FAILED_TESTS`
     case "${num_expected_failures}" in
         0)
             ;;
         1)
             echo "one expected test case failure:"
             echo
-            cat $tests_dir/EXPECTED_FAILED_TESTS | sed -e 's/^/    /'
+            sed -e 's/^/    /' < $tests_dir/EXPECTED_FAILED_TESTS
             echo
             ;;
         *)
             echo "${num_expected_failures} expected test case failures:"
             echo
-            cat $tests_dir/EXPECTED_FAILED_TESTS | sed -e 's/^/    /'
+            sed -e 's/^/    /' < $tests_dir/EXPECTED_FAILED_TESTS
             echo
             ;;
     esac
 
-    num_unexpected_failures=`cat $tests_dir/UNEXPECTED_FAILED_TESTS | wc -l`
+    num_unexpected_failures=`wc -l < $tests_dir/UNEXPECTED_FAILED_TESTS`
     case "${num_unexpected_failures}" in
         0)
             ;;
         1)
             echo "one unexpected test case failure:"
             echo
-            cat $tests_dir/UNEXPECTED_FAILED_TESTS | sed -e 's/^/    /'
+            sed -e 's/^/    /' < $tests_dir/UNEXPECTED_FAILED_TESTS
             echo
             ;;
         *)
             echo "${num_unexpected_failures} unexpected test case failures:"
             echo
-            cat $tests_dir/UNEXPECTED_FAILED_TESTS | sed -e 's/^/    /'
+            sed -e 's/^/    /' < $tests_dir/UNEXPECTED_FAILED_TESTS
             echo
             ;;
     esac

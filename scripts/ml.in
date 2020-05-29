@@ -33,7 +33,6 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 
 # add /usr/local/lib to the default search path, if needed
 ALL_LOCAL_C_LIB_DIRS=${MERCURY_ALL_LOCAL_C_LIB_DIRS=@ALL_LOCAL_C_LIB_DIRS@}
-NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
 CC=${MERCURY_C_COMPILER="@CC@"}
 C_COMPILER_TYPE=${MERCURY_C_COMPILER_TYPE="@C_COMPILER_TYPE@"}
@@ -73,11 +72,6 @@ SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS_SH@"}
 # XXX at some stage this should become an option to ml
 LINK=${LINK=/stack:10485760}   # 10 Mb
 export LINK
-
-# On some systems we need -ldl (libdl.so) for dlopen() etc.
-# The name of the needed library is determined by autoconf and passed through
-# this variable.
-DL_LIBRARY="@DL_LIBRARY@"
 
 # Likewise for -lreadline -l{termcap,curses,ncurses}
 READLINE_LIBRARIES="@READLINE_LIBRARIES@"

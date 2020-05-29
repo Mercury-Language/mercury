@@ -18,7 +18,6 @@
 # *************************************************************************
 
 FULLARCH=@FULLARCH@
-NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
@@ -30,14 +29,13 @@ CFLAGS_FOR_LTO="@CFLAGS_FOR_LTO@"
 CFLAGS_FOR_NO_STRICT_ALIASING="@CFLAGS_FOR_NO_STRICT_ALIASING@"
 CFLAGS_FOR_ANSI="@CFLAGS_FOR_ANSI@"
 CFLAGS_FOR_SANITIZERS="@CFLAGS_FOR_SANITIZERS@"
-AS="@AS@"
 BYTES_PER_WORD="@BYTES_PER_WORD@"
 MKTEMP=@MKTEMP@
 TMPDIR=${TMPDIR=/tmp}
 
 case "${C_COMPILER_TYPE}" in
     gcc*)
-        ANSI_OPTS="@CFLAGS_FOR_ANSI@"
+        ANSI_OPTS="${CFLAGS_FOR_ANSI}"
         CHECK_OPTS="
             -Wall -Wwrite-strings
             -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
@@ -71,7 +69,7 @@ case "${C_COMPILER_TYPE}" in
               OPT_OPTS="-O2 ${CFLAGS_FOR_NO_STRICT_ALIASING} -fomit-frame-pointer"
               ;;
         esac
-        DEBUG_OPT="-g"
+        DEBUG_OPTS="-g"
         DISABLE_OPTS_OPT="-O0"
         COMPILER_HALT_AT_WARN_OPT="-Werror"
         COMPILER=gcc
@@ -80,7 +78,7 @@ case "${C_COMPILER_TYPE}" in
         ANSI_OPTS=
         CHECK_OPTS="-w"
         OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ ${CFLAGS_FOR_NO_STRICT_ALIASING} -fomit-frame-pointer"
-        DEBUG_OPT="-g"
+        DEBUG_OPTS="-g"
         DISABLE_OPTS_OPT="-O0"
         COMPILER_HALT_AT_WARN_OPT="-Werror"
         COMPILER=clang
@@ -100,14 +98,13 @@ case "${C_COMPILER_TYPE}" in
         ANSI_OPTS=
         CHECK_OPTS=
         OPT_OPTS="-O"
-        DEBUG_OPT="-g"
+        DEBUG_OPTS="-g"
         DISABLE_OPTS_OPT="-O0"
         COMPILER_HALT_AT_WARN_OPT=""
         COMPILER=unknown
         ;;
 esac
 
-AS_OPTS=""
 SPLIT_OPTS=""
 INLINE_ALLOC_OPTS=""
 
@@ -255,7 +252,7 @@ ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=@ALL_LOCAL_C_INCL_DIRS@}
 # compiler/compile_target_code.m.
 
 case ${c_debug} in
-    true)       C_DEBUG_OPTS="${DEBUG_OPT}" ;;
+    true)       C_DEBUG_OPTS="${DEBUG_OPTS}" ;;
     false)      C_DEBUG_OPTS="" ;;
 esac
 
@@ -469,7 +466,7 @@ case ${ss_debug} in
 esac
 
 case ${ll_debug} in
-    true)           LL_DEBUG_OPTS="-DMR_LL_DEBUG ${DEBUG_OPT} ${DISABLE_OPTS_OPT}" ;;
+    true)           LL_DEBUG_OPTS="-DMR_LL_DEBUG ${DEBUG_OPTS} ${DISABLE_OPTS_OPT}" ;;
     false)          LL_DEBUG_OPTS="" ;;
 esac
 
@@ -701,7 +698,6 @@ ALL_CC_OPTS="${MERC_ALL_C_INCL_DIRS}\
     ${OPT_OPTS}\
     ${LTO_OPTS}\
     ${HLC_OPTS}\
-    ${HLD_OPTS}\
     ${GCC_OPTS}\
     ${HALT_AT_WARN_OPT}\
     ${MSVCRT_OPTS}\
@@ -731,7 +727,6 @@ ALL_CC_OPTS="${MERC_ALL_C_INCL_DIRS}\
     ${THREADSCOPE_OPTS}\
     ${REGION_OPTS}\
     ${ARCH_OPTS}\
-    ${ARG_OPTS}\
     ${FN_ALIGN_OPTS}\
     ${INVISIBLE_OPTS}"
 

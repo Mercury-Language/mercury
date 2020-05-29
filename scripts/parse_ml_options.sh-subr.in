@@ -187,7 +187,7 @@ Initialization options:
 		Mercury runtime.  Flags can also be passed at runtime
 		in the MERCURY_OPTIONS environment variable.
 		For the list of available flags, see the documentation
-		for MERCURY_OPTIONS in the "Environment" chapter
+		for MERCURY_OPTIONS in the \"Environment\" chapter
 		of the Mercury User's Guide.
 	--experimental-complexity <filename>
 		Set up for the experimental determination of the complexity
