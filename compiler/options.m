@@ -310,7 +310,6 @@
             % has been done.
 
     ;       generate_mmc_make_module_dependencies
-    ;       assume_gmake
     ;       trace_level
     ;       trace_optimized
     ;       trace_prof
@@ -1338,7 +1337,6 @@ option_defaults_2(aux_output_option, [
     smart_recompilation                 -   bool(no),
     generate_item_version_numbers       -   bool(no),
     generate_mmc_make_module_dependencies - bool(no),
-    assume_gmake                        -   bool(yes),
     trace_level                         -   string("default"),
     trace_optimized                     -   bool(no),
     trace_prof                          -   bool(no),
@@ -2298,7 +2296,6 @@ long_option("output-class-dir",         only_opmode_output_class_dir).
 
 % aux output options
 long_option("smart-recompilation",      smart_recompilation).
-long_option("assume-gmake",             assume_gmake).
 long_option("generate-mmc-make-module-dependencies",
                                         generate_mmc_make_module_dependencies).
 long_option("generate-mmc-deps",        generate_mmc_make_module_dependencies).
@@ -4341,13 +4338,6 @@ options_help_aux_output -->
         "\timported module's interface changes in a way which does",
         "\tnot invalidate the compiled code. `--smart-recompilation'",
         "\tdoes not yet work with `--intermodule-optimization'.",
-        "--no-assume-gmake",
-        "\tWhen generating `.dep' files, generate Makefile",
-        "\tfragments that use only the features of standard make;",
-        "\tdo not assume the availability of GNU Make extensions.",
-        "\tWhen generating `.dep' files, generate dependencies",
-        "\tfor use by `mmc --make' in addition to the dependencies",
-        "\tused by mmake.",
         "--generate-mmc-deps",
         "--generate-mmc-make-module-dependencies",
         "\tGenerate dependencies for use by `mmc --make' even",

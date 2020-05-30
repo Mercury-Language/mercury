@@ -95,6 +95,8 @@ ENDINIT
 size_t      MR_detstack_size =            64 * sizeof(MR_Word);
 size_t      MR_nondetstack_size =         16 * sizeof(MR_Word);
 #else
+// If you change these, you should also change the description of the
+// default stack sizes in doc/user_guide.texi.
 size_t      MR_detstack_size =          4096 * sizeof(MR_Word);
 size_t      MR_nondetstack_size =         64 * sizeof(MR_Word);
 size_t      MR_small_detstack_size =     512 * sizeof(MR_Word);

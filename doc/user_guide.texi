@@ -256,14 +256,9 @@ have a similar meaning to that in other Unix compilers.
 Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
 or module names, with @samp{.} (rather than @samp{__} or @samp{:})
 as the module qualifier.  For a module name such as @samp{foo.bar.baz},
-the compiler will look for the source in files @file{foo.bar.baz.m},
-@file{bar.baz.m}, and @file{baz.m}, in that order.
-Note that if the file name does not include all the module
-qualifiers (e.g.@: if it is @file{bar.baz.m} or @file{baz.m}
-rather than @file{foo.bar.baz.m}), then the module name in the
-@samp{:- module} declaration for that module must be fully qualified.
-To make the compiler look in another file for a module, use
-@samp{mmc -f @var{sources-files}} to generate a mapping from module name
+the compiler will look for the source in the file named @file{foo.bar.baz.m}.
+To make the compiler look for a module in another file,
+use @samp{mmc -f @var{sources-files}} to generate a mapping from module name
 to file name, where @var{sources-files} is the list of source files in
 the directory (@pxref{Output options}).
 
@@ -306,13 +301,15 @@ use the command
 mmc -c @var{filename}.m
 @end example
 
-@samp{mmc} will put the object code into a file called @file{@var{module}.o},
-where @var{module} is the name of the Mercury module defined in
-@file{@var{filename}.m}.
-It also will leave the intermediate C code in a file called
-@file{@var{module}.c}.
-If the source file contains nested modules, then each submodule will get
-compiled to separate C and object files.
+Since targeting C is the default,
+this tells @samp{mmc} to generate C code,
+and then invoke the configured C compiler to translate that to object code.
+@samp{mmc} puts the generated C code into a file called @file{@var{module}.c}
+and the generated object code into a file called @file{@var{module}.o},
+where @var{module} is the name of the Mercury module
+defined in @file{@var{filename}.m}.
+If the source file contains nested modules,
+then each submodule will get compiled to separate C and object files.
 
 Before you can compile a module,
 you must make the interface files
@@ -399,7 +396,7 @@ ml -o @var{main-module} @var{module1}.o @var{module2}.o @dots{} @var{main_module
 that invokes a C compiler with options appropriate for Mercury,
 this time for linking.  @samp{ml} also pipes any error messages
 from the linker through @samp{mdemangle}, the Mercury symbol demangler,
-so that error messages refer to predicate and function names from
+so that any error messages refer to predicate and function names from
 the Mercury source code rather than to the names used in the intermediate
 C code.
 
@@ -426,9 +423,18 @@ The most useful of these are the options that set the size of the stacks.
 (For the full list of available options, see @ref{Environment}.)
 
 @c XXX FIXME This is wrong for the case when --high-level-code is enabled.
-@c Note: The definition for these defaults is in runtime/mercury_wrapper.c
-The det stack and the nondet stack
-are allocated fixed sizes at program start-up.
+When targeting Java, C# or Erlang,
+and when targeting high level C (@samp{mmc --high-level-code}),
+stack management is the responsibility of the target language's compiler.
+When targeting low level C (@samp{mmc} without --high-level code),
+stack management is the responsibility of @samp{mmc}
+and of the C runtime system.
+This backend uses two stacks, the det stack and the nondet stack.
+With @samp{mmc --stack-segments}, 
+both of these stacks will grow and shrink automatically as needed.
+Without @samp{--stack-segments}, 
+their size is fixed at program start-up.
+@c Note: The definitions for these defaults are in runtime/mercury_wrapper.c.
 The default size is 4096k times the word size (in bytes) for the det stack
 and 64k times the word size (in bytes) for the nondet stack,
 but these can be overridden with the
@@ -945,6 +951,7 @@ and, on many platforms, it supports shared object libraries.
 * Building with mmc --make::
 * Building with Mmake::
 * Libraries and the Java grade::
+@c * Libraries and the C# grade::
 * Libraries and the Erlang grade::
 @end menu
 
@@ -1137,8 +1144,8 @@ mmc @dots{} --use-grade-subdirs \
 @cindex PIC (position independent code)
 
 Generally Mmake will do most of the work of building
-libraries automatically.  Here's a sample @code{Mmakefile} for
-creating a library.
+libraries automatically.
+Here is a sample @code{Mmakefile} for creating a library.
 
 @example
 MAIN_TARGET = libmypackage
@@ -1204,7 +1211,7 @@ the library, while the @samp{MLLIBS} variable should contain a list of
 @samp{MLPICOBJS} is described below.)
 
 Note that to use a library, as well as the shared or static object library,
-you also need the interface files.  That's why the
+you also need the interface files.  That is why the
 @samp{libmypackage} target builds @samp{$(mypackage.ints)} and
 @samp{$(mypackage.int3s)}.
 If the people using the library are going to use intermodule
@@ -1335,7 +1342,8 @@ EXTRA_LIBRARIES-foo = mylib4foo
 
 Libraries are handled a little differently for the Java grade.  Instead of
 compiling object code into a static or shared library, the class files are
-added to a jar (Java ARchive) file of the form @file{@var{library-name}.jar}.
+added to a jar (Java ARchive) file
+whose name has the form @file{@var{library-name}.jar}.
 
 To create or install a Java library, simply specify that you want to use the
 java grade, either by setting @samp{GRADE=java} in your Mmakefile, or by
@@ -1348,6 +1356,16 @@ addition to the instructions above, you will need to include the installed jar
 file in your @samp{CLASSPATH}, which you can set using
 @samp{--java-classpath @var{jarfile}} in @samp{MCFLAGS}.
 
+@c Mmake does not support Java targets.
+
+@c @node Libraries and the C# grade
+@c @section Libraries and the C# grade
+@c @cindex C# libraries
+
+@c To create or install a C# "library", specify that you want to use
+@c the csharp grade and use @samp{mmc --make}.
+@c Mmake does not support C# targets.
+
 @node Libraries and the Erlang grade
 @section Libraries and the Erlang grade
 @cindex .beams directories
@@ -1358,7 +1376,7 @@ compiler puts all the @file{.beam} files for a single Mercury library into a
 directory named @file{lib@var{library-name}.beams}.
 
 To create or install an Erlang "library", specify that you want to use
-the erlang grade and use @samp{mmc --make}.  Mmake does not, at present,
+the erlang grade and use @samp{mmc --make}.  Mmake does not
 support Erlang targets.
 
 @c ----------------------------------------------------------------------------
@@ -1405,7 +1423,7 @@ in your @file{Mmakefile}.
 bash$ mmc --debug hello.m
 @end example
 
-Once you've compiled with debugging enabled, you can use the @samp{mdb}
+Once you have compiled with debugging enabled, you can use the @samp{mdb}
 command to invoke your program under the debugger:
 
 @pindex mdb
@@ -1549,7 +1567,7 @@ and you can use the command @kbd{C-x 2} to split a window into two
 windows.  You can use the ``Buffers'' menu to select which buffer is
 displayed in each window.
 
-If you're using X-Windows, then it is a good idea
+If you are using X-Windows, then it is a good idea
 to set the Emacs variable @samp{pop-up-frames} to @samp{t}
 before starting mdb, since this will cause each buffer to be
 displayed in a new ``frame'' (i.e.@: a new X window).
@@ -1967,10 +1985,10 @@ If you are not using a debugging grade, but you compile some modules with
 a trace level other than none,
 then you must also pass the @samp{--trace} (or @samp{-t}) option
 to c2init and to the Mercury linker.
-If you're using Mmake, then you can do this by including @samp{--trace}
+If you are using Mmake, then you can do this by including @samp{--trace}
 in the @samp{MLFLAGS} variable.
 
-If you're using Mmake, then you can also set the compilation options
+If you are using Mmake, then you can also set the compilation options
 for a single module named @var{Module} by setting the Mmake variable
 @samp{MCFLAGS-@var{Module}}.  For example, to compile the file
 @file{foo.m} with deep tracing, @file{bar.m} with shallow tracing,
@@ -2341,7 +2359,7 @@ Besides the builtin set of events,
 the Mercury debugger also supports events defined by the user.
 The intention is that users can define one kind of event
 for each semantically important event in the program
-that isn't captured by the standard builtin events,
+that is not captured by the standard builtin events,
 and can then generate those events at the appropriate point in the source code.
 Each event appears in the source code
 as a call prefixed by the keyword @samp{event},
@@ -3661,7 +3679,7 @@ if the term specified by @var{varname} (and @var{pathspec}, if present)
 doesn't match @var{term}.
 @var{term} may contain integers and strings
 (as long as the strings don't contain double quotes),
-but floats and characters aren't supported (yet),
+but floats and characters are not supported (yet),
 and neither is any special syntax for operators.
 Operators can be specified in prefix form
 by quoting them with escaped single quotes,
@@ -5001,8 +5019,8 @@ in a web browser.
 Browse the @var{n}'th I/O action.
 @sp 1
 @item print [@var{n}]
-Print the @var{n}'th argument of the current question.  If no
-argument is given then display the current question.
+Print the @var{n}'th argument of the current question.
+If no argument is given, then display the current question.
 @sp 1
 @item print io @var{n}
 Print the @var{n}'th I/O action.
@@ -5162,7 +5180,7 @@ more of the children of the call that resulted in the incorrect EXIT, FAIL or
 EXCP event is inadmissible, while all the other calls are correct, then an
 ``inadmissible call'' bug has been found.  This is a call that behaved
 incorrectly (by producing the incorrect output, failing or throwing an
-exception) because it passed unexpected input to one of it's children.
+exception) because it passed unexpected input to one of its children.
 The guilty call is displayed as well as the inadmissible child.
 
 After the diagnosis is displayed, the user is asked to confirm
@@ -7364,14 +7382,6 @@ imported module's interface changes in a way which does
 not invalidate the compiled code. @samp{--smart-recompilation} does
 not yet work with @samp{--intermodule-optimization}.
 
-@item --no-assume-gmake
-@findex --no-assume-gmake
-@findex --assume-gmake
-When generating @file{.d}, @file{.dep} and @file{.dv} files,
-generate Makefile fragments that use only the features of standard make;
-do not assume the availability of GNU Make extensions.
-This can make these files significantly larger.
-
 @item --trace-level @var{level}
 @findex --trace-level @var{level}
 Generate code that includes the specified level of execution tracing.
@@ -8809,7 +8819,7 @@ The default values of these options will be whatever is appropriate
 for the host architecture that the Mercury compiler was installed on,
 so normally there is no need to set these options manually.  They might
 come in handy if you are cross-compiling.  But even when cross-compiling,
-it's probably not worth bothering to set these unless efficiency is
+it is probably not worth bothering to set these unless efficiency is
 absolutely paramount.
 
 @table @asis
@@ -9825,7 +9835,7 @@ Erlang header files (.hrl).
 @findex --erlang-native-code
 @cindex Erlang compiler options
 Add @samp{+native} to the start of flags passed to the Erlang compiler.
-Cancelled out by @samp{--no-erlang-native-code} so it's useful when you
+Cancelled out by @samp{--no-erlang-native-code} so it is useful when you
 wish to enable native code generation for all modules except for
 a select few.
 
@@ -10508,7 +10518,7 @@ which may currently only be processed for automatic parallelism.
 @c @item --no-par-loop-control-preserve-tail-recursion
 @c @findex --no-par-loop-control-preserve-tail-recursion
 @c Do not attempt to preserve tail recursion in the loop control transformation.
-@c This option causes all code spawned off using loop control to access it's
+@c This option causes all code spawned off using loop control to access its
 @c parent stack frame through the parent stack pointer.
 @c Rather than copying (parts) of the stack frame into the child's stack frame and
 @c reading it from there.
@@ -10937,7 +10947,7 @@ Redirect all three debugger I/O streams
 --- input, output, and error messages ---
 to the file or device specified by @var{filename}.
 
-@c --mdb-in-window is for use only by the mdb script, so it's
+@c --mdb-in-window is for use only by the mdb script, so it is
 @c not documented here.
 
 @c The documentation of --mdb-benchmark-silent is commented out because
@@ -11140,7 +11150,7 @@ The Mercury compiler takes special advantage of certain extensions
 provided by GNU C to generate much more efficient code.  We therefore
 recommend that you use GNU C for compiling Mercury programs.
 However, if for some reason you wish to use another compiler,
-it is possible to do so.  Here's what you need to do.
+it is possible to do so.  Here is what you need to do.
 
 @itemize @bullet
 @item Create a new configuration for the Mercury system using the
