@@ -571,15 +571,6 @@ root=`$CYGPATH $root`
 PATH=$root/tools:$PATH
 export PATH
 
-# Try the command given by the environment variable RMSTAGECMD to delete
-# stage directories. Since this command may not always work due to
-# security considerations (.rhost files), we execute /bin/rm -fr afterwards
-# in any case.
-if test "$RMSTAGECMD" = ""
-then
-    RMSTAGECMD="/bin/rm -fr"
-fi
-
 #-----------------------------------------------------------------------------#
 
 if test "$use_gradedir" = "true"; then
@@ -690,14 +681,8 @@ then
     then
         echo keeping existing stage2
     else
-        # We try to do the removal of the stage 2 directory in parallel
-        # since recursive rm's across NFS can be quite slow ...
-        $RMSTAGECMD $root/$stage2dir/compiler < /dev/null &
-        $RMSTAGECMD $root/$stage2dir/library < /dev/null &
-        wait
-        $RMSTAGECMD $root/$stage2dir/* < /dev/null
-        /bin/rm -fr $root/$stage2dir/* < /dev/null
-        /bin/rm -fr $root/$stage2dir/.[a-zA-Z]* < /dev/null
+        /bin/rm -fr $root/$stage2dir < /dev/null
+        mkdir $root/$stage2dir
     fi
 
     if $mmake_stage_2
@@ -1325,7 +1310,7 @@ EOF
        export MERCURY_OPTIONS
     fi
 
-    # In the csharp grade we also need to replace generated mercury_compile
+    # In the csharp grade we also need to replace the generated mercury_compile
     # wrapper script.
     # XXX the following only works with Mono.
     if test "$grade" = "csharp"
@@ -1347,14 +1332,8 @@ EOF
     then
         echo keeping existing stage3
     else
-        # We try to do the removal of the stage 3 directory in parallel
-        # since recursive rm's across NFS can be quite slow ...
-        $RMSTAGECMD $root/$stage3dir/compiler < /dev/null &
-        $RMSTAGECMD $root/$stage3dir/library < /dev/null &
-        wait
-        $RMSTAGECMD $root/$stage3dir/* < /dev/null
-        /bin/rm -fr $root/$stage3dir/* < /dev/null
-        /bin/rm -fr $root/$stage3dir/.[a-zA-Z]* < /dev/null
+        /bin/rm -fr $root/$stage3dir < /dev/null
+        mkdir $root/$stage3dir
     fi
 
     echo linking stage 3... 1>&2
@@ -1760,14 +1739,7 @@ EOF
         fi
 
         echo "removing stage 3..."
-        # We try to do the removal of the stage 3 directory in parallel
-        # since recursive rm's across NFS can be quite slow ...
-        $RMSTAGECMD $root/$stage3dir/compiler < /dev/null &
-        $RMSTAGECMD $root/$stage3dir/library < /dev/null &
-        wait
-        $RMSTAGECMD $root/$stage3dir/* < /dev/null
-        /bin/rm -fr $root/$stage3dir/* < /dev/null
-        /bin/rm -fr $root/$stage3dir/.[a-zA-Z]* < /dev/null
+        /bin/rm -fr $root/$stage3dir < /dev/null
 
         if $keep_objs
         then
