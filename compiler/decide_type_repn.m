@@ -673,13 +673,8 @@ record_type_repn_in_parse_tree_int3(ModuleName, TypeCtor0, ItemTypeRepnInfo,
             EqvType, TVarSet, term.dummy_context_init, -1),
         map.det_insert(TypeCtor, EqvRepnItem, !EqvRepnMap)
     ;
-        ( RepnInfo = tcrepn_is_direct_dummy
-        ; RepnInfo = tcrepn_is_notag
-        ; RepnInfo = tcrepn_fits_in_n_bits(_, _)
-        ; RepnInfo = tcrepn_has_direct_arg_functors(_)
-        ; RepnInfo = tcrepn_foreign(_)
-        ),
-        unexpected($pred, "unexpected tc_repn")
+        RepnInfo = tcrepn_foreign(_),
+        unexpected($pred, "unexpected tc_repn_foreign")
     ).
 
 %---------------------------------------------------------------------------%

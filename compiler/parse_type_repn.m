@@ -71,40 +71,20 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             TypeTerm, MaybeTypeSymNameAndArgs),
         ( if
             RepnTerm = term.functor(term.atom(AtomStr), RepnArgs, RepnContext),
-            ( AtomStr = "is_direct_dummy"
-            ; AtomStr = "is_notag"
-            ; AtomStr = "is_eqv_to"
-            ; AtomStr = "fits_in_n_bits"
+            ( AtomStr = "is_eqv_to"
             ; AtomStr = "is_word_aligned_ptr"
-            ; AtomStr = "has_direct_arg_functors"
             ; AtomStr = "du_repn"
             ; AtomStr = "foreign_type_repn"
             )
         then
             (
-                AtomStr = "is_direct_dummy",
-                parse_no_arg_type_repn(AtomStr, RepnArgs, RepnContext,
-                    tcrepn_is_direct_dummy, MaybeRepn)
-            ;
-                AtomStr = "is_notag",
-                parse_no_arg_type_repn(AtomStr, RepnArgs, RepnContext,
-                    tcrepn_is_notag, MaybeRepn)
-            ;
                 AtomStr = "is_eqv_to",
                 parse_type_repn_eqv_to(VarSet, AtomStr, RepnArgs,
-                    RepnContext, MaybeRepn)
-            ;
-                AtomStr = "fits_in_n_bits",
-                parse_type_repn_fits_in_n_bits(AtomStr, RepnArgs,
                     RepnContext, MaybeRepn)
             ;
                 AtomStr = "is_word_aligned_ptr",
                 parse_no_arg_type_repn(AtomStr, RepnArgs, RepnContext,
                     tcrepn_is_word_aligned_ptr, MaybeRepn)
-            ;
-                AtomStr = "has_direct_arg_functors",
-                parse_type_repn_has_direct_arg_functors(AtomStr, RepnArgs,
-                    RepnContext, MaybeRepn)
             ;
                 AtomStr = "du_repn",
                 (
@@ -227,127 +207,6 @@ parse_type_repn_eqv_to(VarSet, RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             RepnContext, Pieces),
         MaybeRepn = error1([Spec])
-    ).
-
-%-----------------------------------------------------------------------------e
-
-:- pred parse_type_repn_fits_in_n_bits(string::in, list(term)::in,
-    term.context::in, maybe1(type_ctor_repn_info)::out) is det.
-
-parse_type_repn_fits_in_n_bits(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
-    (
-        RepnArgs = [RepnArg1, RepnArg2],
-        ( if decimal_term_to_int(RepnArg1, N0) then
-            MaybeNumBits = ok1(N0)
-        else
-            NumBitsPieces = [words("Error: the first argument of"),
-                quote(RepnStr), words("should be an integer."), nl],
-            NumBitsSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
-                get_term_context(RepnArg1), NumBitsPieces),
-            MaybeNumBits = error1([NumBitsSpec])
-        ),
-        ( if
-            RepnArg2 = term.functor(term.atom(AtomStr2), [], _),
-            fill_kind_string(FillKind2, AtomStr2)
-        then
-            MaybeFillKind = ok1(FillKind2)
-        else
-            FillKindPieces = [words("Error: the second argument of"),
-                quote(RepnStr), words("should be a fill kind."), nl],
-            FillKindSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
-                get_term_context(RepnArg2), FillKindPieces),
-            MaybeFillKind = error1([FillKindSpec])
-        ),
-        ( if
-            MaybeNumBits = ok1(N),
-            MaybeFillKind = ok1(FillKind)
-        then
-            MaybeRepn = ok1(tcrepn_fits_in_n_bits(N, FillKind))
-        else
-            Specs = get_any_errors1(MaybeNumBits) ++
-                get_any_errors1(MaybeFillKind),
-            MaybeRepn = error1(Specs)
-        )
-    ;
-        ( RepnArgs = []
-        ; RepnArgs = [_]
-        ; RepnArgs = [_, _, _ | _]
-        ),
-        Pieces = [words("Error:"), quote(RepnStr),
-            words("should have two arguments,"),
-            words("an integer and a fill kind."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            RepnContext, Pieces),
-        MaybeRepn = error1([Spec])
-    ).
-
-%-----------------------------------------------------------------------------e
-
-:- pred parse_type_repn_has_direct_arg_functors(string::in, list(term)::in,
-    term.context::in, maybe1(type_ctor_repn_info)::out) is det.
-
-parse_type_repn_has_direct_arg_functors(RepnStr, RepnArgs, RepnContext,
-        MaybeRepn) :-
-    (
-        RepnArgs = [RepnArg],
-        ( if list_term_to_term_list(RepnArg, FunctorTerms) then
-            parse_functor_with_arities(RepnStr, 1, FunctorTerms,
-                MaybeFunctors),
-            (
-                MaybeFunctors = ok1(Functors),
-                MaybeRepn = ok1(tcrepn_has_direct_arg_functors(Functors))
-            ;
-                MaybeFunctors = error1(Specs),
-                MaybeRepn = error1(Specs)
-            )
-        else
-            Pieces = [words("Error: the argument of"), quote(RepnStr),
-                words("should be a list of function symbols with arities."),
-                nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(RepnArg), Pieces),
-            MaybeRepn = error1([Spec])
-        )
-    ;
-        ( RepnArgs = []
-        ; RepnArgs = [_, _ | _]
-        ),
-        Pieces = [words("Error:"), quote(RepnStr),
-            words("should have one argument,"),
-            words("a list of function symbols with arities."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            RepnContext, Pieces),
-        MaybeRepn = error1([Spec])
-    ).
-
-:- pred parse_functor_with_arities(string::in, int::in, list(term)::in,
-    maybe1(list(sym_name_arity))::out) is det.
-
-parse_functor_with_arities(_, _, [], ok1([])).
-parse_functor_with_arities(RepnStr, Nth, [Term | Terms], MaybeFunctors) :-
-    ( if parse_unqualified_name_and_arity(Term, SymName, Arity) then
-        MaybeHeadFunctor = ok1(sym_name_arity(SymName, Arity))
-    else
-        Pieces = [words("Error: the"), nth_fixed(Nth), words("element"),
-            words("of the list in the second argument of"), quote(RepnStr),
-            words("should have the form"),
-            quote("functorname/arity"), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeHeadFunctor = error1([Spec])
-    ),
-    parse_functor_with_arities(RepnStr, Nth + 1, Terms, MaybeTailFunctors),
-    ( if
-        MaybeHeadFunctor = ok1(HeadFunctor),
-        MaybeTailFunctors = ok1(TailFunctors)
-    then
-        MaybeFunctors = ok1([HeadFunctor | TailFunctors])
-    else
-        Specs = get_any_errors1(MaybeHeadFunctor) ++
-            get_any_errors1(MaybeTailFunctors),
-        MaybeFunctors = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------e

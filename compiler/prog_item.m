@@ -1920,11 +1920,6 @@
     %   allowed or not; the only use of values of this type is to help
     %   compute type representations.
     %
-    % - Only the last four of the function symbols of this type are
-    %   now intended to be the used. The others are part of a discarded
-    %   attempt to redesign that ancient system.
-    %   XXX TYPE_REPN Delete the others.
-    %
     % - Only this type needs to contain representation information.
     %   A value of the type_ctor_checked_defn type needs to contain *part*
     %   of the information from which this representation information is
@@ -1940,11 +1935,7 @@
     % is possible.
     %
 :- type type_ctor_repn_info
-    --->    tcrepn_is_direct_dummy
-    ;       tcrepn_is_notag
-    ;       tcrepn_fits_in_n_bits(int, fill_kind)
-    ;       tcrepn_has_direct_arg_functors(list(sym_name_arity))
-    ;       tcrepn_is_word_aligned_ptr
+    --->    tcrepn_is_word_aligned_ptr
     ;       tcrepn_is_eqv_to(mer_type)
     ;       tcrepn_du(du_repn)
     ;       tcrepn_foreign(c_j_cs_e_repn).

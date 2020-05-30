@@ -548,11 +548,7 @@ module_qualify_item_type_repn(ModuleName, InInt,
     ),
     TypeCtorSymName = qualified(ModuleName, TypeCtorName),
     (
-        ( RepInfo0 = tcrepn_is_direct_dummy
-        ; RepInfo0 = tcrepn_is_notag
-        ; RepInfo0 = tcrepn_fits_in_n_bits(_, _)
-        ; RepInfo0 = tcrepn_is_word_aligned_ptr
-        ; RepInfo0 = tcrepn_has_direct_arg_functors(_)
+        ( RepInfo0 = tcrepn_is_word_aligned_ptr
         ; RepInfo0 = tcrepn_du(_)
         ; RepInfo0 = tcrepn_foreign(_)
         ),

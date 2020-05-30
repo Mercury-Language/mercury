@@ -1129,11 +1129,7 @@ replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         ),
         TypeRepn = tcrepn_is_eqv_to(Type)
     ;
-        ( TypeRepn0 = tcrepn_is_direct_dummy        % XXX should not generate
-        ; TypeRepn0 = tcrepn_is_notag               % XXX should not generate
-        ; TypeRepn0 = tcrepn_fits_in_n_bits(_, _)   % XXX should not generate
-        ; TypeRepn0 = tcrepn_is_word_aligned_ptr    % XXX should not generate
-        ; TypeRepn0 = tcrepn_has_direct_arg_functors(_)
+        ( TypeRepn0 = tcrepn_is_word_aligned_ptr
         ; TypeRepn0 = tcrepn_du(_)
         ; TypeRepn0 = tcrepn_foreign(_)
         ),

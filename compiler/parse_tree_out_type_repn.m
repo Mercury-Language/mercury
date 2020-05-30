@@ -56,7 +56,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
@@ -82,16 +81,6 @@ mercury_output_item_type_repn(Info, ItemTypeRepn, !IO) :-
         TypeTerm, !IO),
     io.write_string(",", !IO),
     (
-        RepnInfo = tcrepn_is_direct_dummy,
-        io.write_string(" is_direct_dummy", !IO)
-    ;
-        RepnInfo = tcrepn_is_notag,
-        io.write_string(" is_notag", !IO)
-    ;
-        RepnInfo = tcrepn_fits_in_n_bits(NumBits, FillKind),
-        fill_kind_string(FillKind, FillKindStr),
-        io.format(" fits_in_n_bits(%d, %s)", [i(NumBits), s(FillKindStr)], !IO)
-    ;
         RepnInfo = tcrepn_is_eqv_to(EqvType),
         io.write_string(" is_eqv_to(", !IO),
         mercury_output_type(TVarSet, print_num_only, EqvType, !IO),
@@ -99,11 +88,6 @@ mercury_output_item_type_repn(Info, ItemTypeRepn, !IO) :-
     ;
         RepnInfo = tcrepn_is_word_aligned_ptr,
         io.write_string(" is_word_aligned_ptr", !IO)
-    ;
-        RepnInfo = tcrepn_has_direct_arg_functors(SymNameAndArities),
-        io.write_string(" has_direct_arg_functors([", !IO),
-        io.write_list(SymNameAndArities, ", ", write_sym_name_arity, !IO),
-        io.write_string("])", !IO)
     ;
         RepnInfo = tcrepn_du(DuRepn),
         TypeRepnFor = get_type_repn_for(Info),
