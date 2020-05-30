@@ -533,7 +533,7 @@ read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
 read_module_end_module(Globals, IgnoreErrors, VeryVerbose,
         MaybeFileNameAndStream, FileName0, FileName,
         MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO) :-
-    % The code of read_module_end_module and read_module_end_module_file
+    % The code of read_module_end_module and read_module_end_file
     % should be kept in sync.
     (
         MaybeFileNameAndStream = ok(path_name_and_stream(FileName, _))
@@ -568,7 +568,7 @@ read_module_end_module(Globals, IgnoreErrors, VeryVerbose,
 read_module_end_file(Globals, VeryVerbose, FileName,
         MaybeTimestampRes, MaybeTimestamp,
         ModuleSpecs, Specs, Errors, !IO) :-
-    % The code of read_module_end_module and read_module_end_module_file
+    % The code of read_module_end_module and read_module_end_file
     % should be kept in sync.
     %
     % Unlike read_module_end_module, we assume do_not_ignore_errors.
