@@ -8282,7 +8282,7 @@ and grade modifier; they are followed by descriptions of those options.
 @cindex Target options
 
 @table @asis
-@c @item @code{--target c} (grades: none, reg, jump, fast, asm_jump, asm_fast, hl, hlc)
+@c @item @code{--target c} (grades: none, reg, jump, fast, asm_jump, asm_fast, hlc)
 @item @code{--target c} (grades: none, reg, asm_fast, hlc)
 @itemx @code{--csharp}, @code{--target csharp} (grades: csharp)
 @itemx @code{--java}, @code{--target java} (grades: java)
@@ -8376,7 +8376,7 @@ This option is not supported by the @samp{--high-level-code} back-ends.
 @cindex MLDS back-end compilation model options
 
 @table @asis
-@c @item @code{-H}, @code{--high-level-code} (grades: hl, hlc, csharp, java)
+@c @item @code{-H}, @code{--high-level-code} (grades: hlc, csharp, java)
 @item @code{-H}, @code{--high-level-code} (grades: hlc, csharp, java)
 @findex -H
 @findex --high-level-code
@@ -11161,7 +11161,7 @@ it is possible to do so.  Here is what you need to do.
 of your PATH.
 
 @item
-You must use a grade beginning with @samp{none}, @samp{hlc} or @samp{hl}
+You must use a grade beginning with @samp{none} or @samp{hlc}
 (e.g.@: @samp{hlc.gc}).
 You can specify the grade in one of three ways: by setting the
 @env{MERCURY_DEFAULT_GRADE} environment variable, by adding a line
