@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % The .exp file is for when int is 64-bit.
-% The .exp2 file is for when in is 32-bit.
+% The .exp2 file is for when int is 32-bit.
 %---------------------------------------------------------------------------%
 
 :- module unsigned_lt_le.
