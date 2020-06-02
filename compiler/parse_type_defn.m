@@ -241,7 +241,7 @@ du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
         MaybeWhereTerm = no
     ).
 
-    % Convert a list of terms separated by semi-colons (known as a
+    % Convert a list of terms separated by semicolons (known as a
     % "disjunction", even thought the terms aren't goals in this case)
     % into a list of constructors.
     %

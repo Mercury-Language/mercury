@@ -2269,7 +2269,7 @@ it names a monomorphic type.
 Otherwise, it names a polymorphic type;
 the arguments of the functor must be distinct type variables.
 The @var{body} term is defined as
-a sequence of constructor definitions separated by semi-colons.
+a sequence of constructor definitions separated by semicolons.
 
 Ordinarily, each constructor definition
 must be a functor whose arguments (if any) are types.
@@ -2326,10 +2326,10 @@ Here are some examples of discriminated union definitions:
 
 If the body of a discriminated union type definition
 contains a term whose top-level functor is @code{';'/2},
-the semi-colon is normally assumed to be a separator.
+the semicolon is normally assumed to be a separator.
 This makes it difficult to define a type
 whose constructors include @code{';'/2}.
-To allow this, curly braces can be used to quote the semi-colon.
+To allow this, curly braces can be used to quote the semicolon.
 It is then also necessary to quote curly braces.
 The following example illustrates this:
 

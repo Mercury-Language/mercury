@@ -423,7 +423,7 @@ mlds_output_switch_default(Opts, Indent, FuncInfo, Context, Default, !IO) :-
 mlds_output_stmt_label(Indent, Stmt, !IO) :-
     Stmt = ml_stmt_label(LabelName, _Context),
     % Note: MLDS allows labels at the end of blocks. C does not.
-    % Hence we need to insert a semi-colon after the colon to ensure that
+    % Hence we need to insert a semicolon after the colon to ensure that
     % there is a statement to attach the label to.
 
     output_n_indents(Indent - 1, !IO),
