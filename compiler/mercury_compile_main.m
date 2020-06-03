@@ -1084,95 +1084,17 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_make_interface(InterfaceFile),
-        (
-            InterfaceFile = omif_int3,
-            ReturnTimestamp = dont_return_timestamp
-        ;
-            InterfaceFile = omif_int0,
-            globals.lookup_bool_option(Globals0, generate_item_version_numbers,
-                GenerateVersionNumbers),
-            ReturnTimestamp =
-                version_numbers_return_timestamp(GenerateVersionNumbers)
-        ;
-            InterfaceFile = omif_int1_int2,
-            globals.lookup_bool_option(Globals0, generate_item_version_numbers,
-                GenerateVersionNumbers),
-            ReturnTimestamp =
-                version_numbers_return_timestamp(GenerateVersionNumbers)
-        ),
-        read_module_or_file(Globals0, Globals, FileOrModule,
-            ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
-            ParseTreeSrc, ReadSpecs, ReadErrors, !HaveReadModuleMaps, !IO),
-        ( if halt_at_module_error(Globals, ReadErrors) then
-            write_error_specs_ignore(ReadSpecs, Globals, !IO)
-        else
-            split_into_compilation_units_perform_checks(ParseTreeSrc,
-                RawCompUnits, ReadSpecs, ReadSplitSpecs),
-            filter_interface_generation_specs(Globals,
-                ReadSplitSpecs, Specs, !IO),
-            write_error_specs_ignore(Specs, Globals, !IO),
-            maybe_print_delayed_error_messages(Globals, !IO),
-            (
-                InterfaceFile = omif_int0,
-                list.foldl2(
-                    write_private_interface_file_int0(Globals0,
-                        FileName, ModuleName, MaybeTimestamp),
-                    RawCompUnits, !HaveReadModuleMaps, !IO)
-            ;
-                InterfaceFile = omif_int1_int2,
-                list.foldl2(
-                    write_interface_file_int1_int2(Globals0,
-                        FileName, ModuleName, MaybeTimestamp),
-                    RawCompUnits, !HaveReadModuleMaps, !IO)
-            ;
-                InterfaceFile = omif_int3,
-                list.foldl(
-                    write_short_interface_file_int3(Globals0, FileName),
-                    RawCompUnits, !IO)
-            )
-        ),
+        do_process_compiler_arg_make_interface(Globals0, InterfaceFile,
+            FileOrModule, !HaveReadModuleMaps, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_augment(OpModeAugment),
-        globals.lookup_bool_option(Globals0, smart_recompilation, Smart0),
-        io_get_disable_smart_recompilation(DisableSmart, !IO),
-        (
-            DisableSmart = yes,
-            globals.set_option(smart_recompilation, bool(no),
-                Globals0, Globals),
-            Smart = no
-        ;
-            DisableSmart = no,
-            Globals = Globals0,
-            Smart = Smart0
-        ),
-        (
-            Smart = yes,
-            (
-                FileOrModule = fm_module(ModuleName)
-            ;
-                FileOrModule = fm_file(FileName),
-                % XXX This won't work if the module name doesn't match
-                % the file name -- such modules will always be recompiled.
-                %
-                % This problem will be fixed when mmake functionality
-                % is moved into the compiler. The file_name->module_name
-                % mapping will be explicitly recorded.
-                file_name_to_module_name(FileName, ModuleName)
-            ),
-            find_smart_recompilation_target_files(Globals, FindTargetFiles),
-            find_timestamp_files(Globals, FindTimestampFiles),
-            recompilation.check.should_recompile(Globals, ModuleName,
-                FindTargetFiles, FindTimestampFiles, ModulesToRecompile,
-                !HaveReadModuleMaps, !IO)
-        ;
-            Smart = no,
-            ModulesToRecompile = all_modules
-        ),
+        find_modules_to_recompile(Globals0, Globals, FileOrModule,
+            ModulesToRecompile, !HaveReadModuleMaps, !IO),
         ( if ModulesToRecompile = some_modules([]) then
             % XXX Currently smart recompilation is disabled if mmc is linking
-            % the executable because it doesn't know how to check whether
+            % the executable, because it doesn't know how to check whether
             % all the necessary intermediate files are present and up-to-date.
             ModulesToLink = [],
             ExtraObjFiles = []
@@ -1181,6 +1103,103 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
                 FileOrModule, ModulesToRecompile,
                 ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
         )
+    ).
+
+:- pred do_process_compiler_arg_make_interface(globals::in,
+    op_mode_interface_file::in, file_or_module::in,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+
+do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
+        !HaveReadModuleMaps, !IO) :-
+    (
+        InterfaceFile = omif_int3,
+        ReturnTimestamp = dont_return_timestamp
+    ;
+        InterfaceFile = omif_int0,
+        globals.lookup_bool_option(Globals0, generate_item_version_numbers,
+            GenerateVersionNumbers),
+        ReturnTimestamp =
+            version_numbers_return_timestamp(GenerateVersionNumbers)
+    ;
+        InterfaceFile = omif_int1_int2,
+        globals.lookup_bool_option(Globals0, generate_item_version_numbers,
+            GenerateVersionNumbers),
+        ReturnTimestamp =
+            version_numbers_return_timestamp(GenerateVersionNumbers)
+    ),
+    read_module_or_file(Globals0, Globals, FileOrModule,
+        ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
+        ParseTreeSrc, ReadSpecs, ReadErrors, !HaveReadModuleMaps, !IO),
+    ( if halt_at_module_error(Globals, ReadErrors) then
+        write_error_specs_ignore(ReadSpecs, Globals, !IO)
+    else
+        split_into_compilation_units_perform_checks(ParseTreeSrc,
+            RawCompUnits, ReadSpecs, ReadSplitSpecs),
+        filter_interface_generation_specs(Globals, ReadSplitSpecs, Specs, !IO),
+        write_error_specs_ignore(Specs, Globals, !IO),
+        maybe_print_delayed_error_messages(Globals, !IO),
+        (
+            InterfaceFile = omif_int0,
+            list.foldl2(
+                write_private_interface_file_int0(Globals0,
+                    FileName, ModuleName, MaybeTimestamp),
+                RawCompUnits, !HaveReadModuleMaps, !IO)
+        ;
+            InterfaceFile = omif_int1_int2,
+            list.foldl2(
+                write_interface_file_int1_int2(Globals0,
+                    FileName, ModuleName, MaybeTimestamp),
+                RawCompUnits, !HaveReadModuleMaps, !IO)
+        ;
+            InterfaceFile = omif_int3,
+            list.foldl(
+                write_short_interface_file_int3(Globals0, FileName),
+                RawCompUnits, !IO)
+        )
+    ).
+
+:- pred find_modules_to_recompile(globals::in, globals::out,
+    file_or_module::in, modules_to_recompile::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+
+find_modules_to_recompile(Globals0, Globals, FileOrModule, ModulesToRecompile,
+        !HaveReadModuleMaps, !IO) :-
+    globals.lookup_bool_option(Globals0, smart_recompilation, Smart0),
+    io_get_disable_smart_recompilation(DisableSmart, !IO),
+    (
+        DisableSmart = yes,
+        globals.set_option(smart_recompilation, bool(no),
+            Globals0, Globals),
+        Smart = no
+    ;
+        DisableSmart = no,
+        Globals = Globals0,
+        Smart = Smart0
+    ),
+    (
+        Smart = yes,
+        (
+            FileOrModule = fm_module(ModuleName)
+        ;
+            FileOrModule = fm_file(FileName),
+            % XXX This won't work if the module name doesn't match
+            % the file name -- such modules will always be recompiled.
+            %
+            % This problem will be fixed when mmake functionality
+            % is moved into the compiler. The file_name->module_name
+            % mapping will be explicitly recorded.
+            file_name_to_module_name(FileName, ModuleName)
+        ),
+        find_smart_recompilation_target_files(Globals, FindTargetFiles),
+        find_timestamp_files(Globals, FindTimestampFiles),
+        recompilation.check.should_recompile(Globals, ModuleName,
+            FindTargetFiles, FindTimestampFiles, ModulesToRecompile,
+            !HaveReadModuleMaps, !IO)
+    ;
+        Smart = no,
+        ModulesToRecompile = all_modules
     ).
 
 %---------------------%
