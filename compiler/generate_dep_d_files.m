@@ -125,7 +125,7 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     parse_tree_src_to_module_and_imports_list(Globals, FileNameDotM,
         ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
         _RawCompUnits, ModuleAndImportsList),
-    write_error_specs_ignore(Specs, Globals, !IO),
+    write_error_specs_ignore(Globals, Specs, !IO),
     map.init(DepsMap0),
     list.foldl(insert_into_deps_map, ModuleAndImportsList, DepsMap0, DepsMap).
 

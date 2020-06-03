@@ -153,7 +153,7 @@ llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
         TradPasses = yes,
         llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, [], Specs)
     ),
-    write_error_specs_ignore(Specs, Globals, !IO).
+    write_error_specs_ignore(Globals, Specs, !IO).
 
 %---------------------------------------------------------------------------%
 

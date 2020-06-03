@@ -84,7 +84,7 @@ apply_implicit_parallelism_transformation(!ModuleInfo, !IO) :-
     ),
     do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
         !ModuleInfo),
-    write_error_specs(Specs, Globals, 0, _, 0, NumErrors, !IO),
+    write_error_specs(Globals, Specs, 0, _, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%

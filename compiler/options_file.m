@@ -190,7 +190,7 @@ read_args_file(Globals, OptionsFile, MaybeMCFlags, !IO) :-
         ;
             FlagsResult = var_result_error(ErrorSpec),
             MaybeMCFlags = no,
-            write_error_spec_ignore(ErrorSpec, Globals, !IO)
+            write_error_spec_ignore(Globals, ErrorSpec, !IO)
         )
     ;
         MaybeVariables = no,
@@ -302,8 +302,8 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
                 ErrorSpec = error_spec($pred, severity_error, phase_read_files,
                     [error_msg(no, do_not_treat_as_first, 0,
                         [always([words("Error reading options file"),
-                            quote(ErrorFile), suffix(".")])])]),
-                write_error_spec_ignore(ErrorSpec, Globals, !IO)
+                            quote(ErrorFile), suffix("."), nl])])]),
+                write_error_spec_ignore(Globals, ErrorSpec, !IO)
             ;
                 ErrorIfNotExist = no_error
             )
@@ -1141,11 +1141,11 @@ lookup_options_variable(Globals, Vars, OptionsVariableClass, FlagsVar, Result,
                     quote("-l"), words("options, found") |
                     list_to_pieces(
                         list.map(func(Lib) = add_quotes(Lib), BadLibs))]
-                    ++ [suffix(".")],
+                    ++ [suffix("."), nl],
                 ErrorSpec = error_spec($pred, severity_error, phase_read_files,
                     [error_msg(no, do_not_treat_as_first, 0,
                         [always(Pieces)])]),
-                write_error_spec_ignore(ErrorSpec, Globals, !IO),
+                write_error_spec_ignore(Globals, ErrorSpec, !IO),
                 Result = var_result_error(ErrorSpec)
             )
         else
@@ -1175,7 +1175,7 @@ lookup_variable_words_report_error(Globals, Vars, VarName, Result, !IO) :-
     lookup_variable_words(Vars, VarName, Result, !IO),
     (
         Result = var_result_error(ErrorSpec),
-        write_error_spec_ignore(ErrorSpec, Globals, !IO)
+        write_error_spec_ignore(Globals, ErrorSpec, !IO)
     ;
         Result = var_result_set(_)
     ;

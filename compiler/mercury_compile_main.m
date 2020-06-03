@@ -1072,7 +1072,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, _,
             dont_return_timestamp, _, ParseTreeSrc, Specs, Errors,
             !HaveReadModuleMaps, !IO),
-        write_error_specs_ignore(Specs, Globals, !IO),
+        write_error_specs_ignore(Globals, Specs, !IO),
         ( if halt_at_module_error(Globals, Errors) then
             true
         else
@@ -1132,12 +1132,12 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
         ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
         ParseTreeSrc, ReadSpecs, ReadErrors, !HaveReadModuleMaps, !IO),
     ( if halt_at_module_error(Globals, ReadErrors) then
-        write_error_specs_ignore(ReadSpecs, Globals, !IO)
+        write_error_specs_ignore(Globals, ReadSpecs, !IO)
     else
         split_into_compilation_units_perform_checks(ParseTreeSrc,
             RawCompUnits, ReadSpecs, ReadSplitSpecs),
         filter_interface_generation_specs(Globals, ReadSplitSpecs, Specs, !IO),
-        write_error_specs_ignore(Specs, Globals, !IO),
+        write_error_specs_ignore(Globals, Specs, !IO),
         maybe_print_delayed_error_messages(Globals, !IO),
         (
             InterfaceFile = omif_int0,
@@ -1296,7 +1296,7 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
         !HaveReadModuleMaps, !IO),
 
     ( if halt_at_module_error(Globals, Errors) then
-        write_error_specs_ignore(Specs0, Globals, !IO),
+        write_error_specs_ignore(Globals, Specs0, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     else
@@ -1528,7 +1528,7 @@ augment_and_process_all_submodules(Globals, OpModeAugment,
             FileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
             FindTimestampFiles),
         RawCompUnits, ExtraObjFileLists, !Specs, !HaveReadModuleMaps, !IO),
-    write_error_specs_ignore(!.Specs, Globals, !IO),
+    write_error_specs_ignore(Globals, !.Specs, !IO),
     list.map(module_to_link, RawCompUnits, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
@@ -2053,7 +2053,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
                     [always(Pieces)]),
                 Spec = error_spec($pred, severity_warning, phase_read_files,
                     [Msg]),
-                write_error_spec_ignore(Spec, Globals, !IO)
+                write_error_spec_ignore(Globals, Spec, !IO)
             ;
                 WarnNoTransOptDeps = no
             )

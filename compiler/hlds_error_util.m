@@ -331,7 +331,7 @@ find_pred_arities_set(PredTable, [PredId | PredIds], AritiesSet) :-
 %-----------------------------------------------------------------------------%
 
 definitely_write_out_errors(Globals, !HLDS, Specs, !IO) :-
-    write_error_specs(Specs, Globals,
+    write_error_specs(Globals, Specs,
         0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !HLDS).
 
@@ -342,7 +342,7 @@ maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO) :-
         Verbose = no
     ;
         Verbose = yes,
-        write_error_specs(!.Specs, Globals,
+        write_error_specs(Globals, !.Specs,
             0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
         !:Specs = []

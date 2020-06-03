@@ -258,7 +258,7 @@ read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
         ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs,
         _RawCompUnits, ModuleAndImportsList),
     % XXX Why do we print out these error messages?
-    write_error_specs_ignore(Specs, Globals, !IO).
+    write_error_specs_ignore(Globals, Specs, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.deps_map.

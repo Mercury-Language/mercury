@@ -135,7 +135,7 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
         MaybeModuleName = yes(ModuleName),
         % XXX We don't check whether ModuleName was actually read
         % from the named file; it could just be DefaultModuleName.
-        write_error_specs_ignore(Specs, Globals, !IO)
+        write_error_specs_ignore(Globals, Specs, !IO)
     ;
         OpenRes = error(Error),
         ErrorMsg = io.error_message(Error),
@@ -144,7 +144,7 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
             quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
         Spec = error_spec($pred, severity_error, phase_read_files,
             [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
-        write_error_spec_ignore(Spec, Globals, !IO),
+        write_error_spec_ignore(Globals, Spec, !IO),
         MaybeModuleName = no
     ).
 

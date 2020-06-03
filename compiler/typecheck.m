@@ -209,7 +209,7 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
             construct_type_inference_messages(!.ModuleInfo, NewValidPredIdSet,
                 OrigValidPredIds, [], ProgressSpecs),
             trace [io(!IO)] (
-                write_error_specs_ignore(ProgressSpecs, Globals, !IO)
+                write_error_specs_ignore(Globals, ProgressSpecs, !IO)
             )
         ;
             DebugTypes = no

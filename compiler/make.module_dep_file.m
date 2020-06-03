@@ -812,7 +812,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         (
             FatalReadError = yes,
             io.set_output_stream(ErrorStream, _, !IO),
-            write_error_specs_ignore(Specs0, Globals, !IO),
+            write_error_specs_ignore(Globals, Specs0, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
             (
                 DisplayErrorReadingFile = yes,
@@ -851,7 +851,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.set_output_stream(ErrorStream, _, !IO),
             % XXX Why are we ignoring all previously reported errors?
             io.set_exit_status(0, !IO),
-            write_error_specs_ignore(Specs, Globals, !IO),
+            write_error_specs_ignore(Globals, Specs, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
             list.foldl(make_info_add_module_and_imports_as_dep,

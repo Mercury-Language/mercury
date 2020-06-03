@@ -351,7 +351,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
                     trace [io(!IO)] (
                         io.write_string("Inferences by current iteration:\n",
                             !IO),
-                        write_error_specs_ignore(InferenceSpecs, Globals, !IO),
+                        write_error_specs_ignore(Globals, InferenceSpecs, !IO),
                         io.write_string("End of inferences.\n", !IO)
                     )
                 ;

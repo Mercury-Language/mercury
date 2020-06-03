@@ -198,7 +198,7 @@ write_private_interface_file_int0(Globals, SourceFileName,
                 [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
-            write_error_specs_ignore(Specs, Globals, !IO),
+            write_error_specs_ignore(Globals, Specs, !IO),
             % Write out the `.int0' file.
             actually_write_interface_file0(Globals, ParseTreeInt0, "",
                 MaybeTimestamp, !IO),
@@ -251,7 +251,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
                 ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
-            write_error_specs_ignore(Specs, Globals, !IO),
+            write_error_specs_ignore(Globals, Specs, !IO),
             % Write out the `.int' and `.int2' files.
             actually_write_interface_file1(Globals, ParseTreeInt1, "",
                 MaybeTimestamp, !IO),
@@ -437,7 +437,7 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 
 report_file_not_written(Globals, Specs, MaybePrefixMsg,
         ModuleName, SuffixA, MaybeSuffixB, !IO) :-
-    write_error_specs_ignore(Specs, Globals, !IO),
+    write_error_specs_ignore(Globals, Specs, !IO),
     (
         MaybePrefixMsg = no
     ;
@@ -463,7 +463,7 @@ report_file_not_written(Globals, Specs, MaybePrefixMsg,
         [always(NotWrittenPieces)]),
     NotWrittenSpec = error_spec($pred, severity_informational,
         phase_read_files, [NotWrittenMsg]),
-    write_error_spec_ignore(NotWrittenSpec, Globals, !IO).
+    write_error_spec_ignore(Globals, NotWrittenSpec, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.

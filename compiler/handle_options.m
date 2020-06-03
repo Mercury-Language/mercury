@@ -2445,13 +2445,11 @@ disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
 
 usage_errors(Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
-    io.write_string(ProgName, !IO),
-    io.write_string(":", !IO),
-    io.nl(!IO),
+    io.format("%s:\n", [s(ProgName)], !IO),
     % If _NumErrors > 0, this will set the exit status to 1.
     % It will also set the exit status to 1 if  _NumWarnings > 0
     % and --halt-at-warn was specified.
-    write_error_specs_ignore(Specs, Globals, !IO).
+    write_error_specs_ignore(Globals, Specs, !IO).
 
 display_compiler_version(!IO) :-
     library.version(Version, Fullarch),

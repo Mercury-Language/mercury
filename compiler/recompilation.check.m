@@ -1547,7 +1547,7 @@ write_recompile_reason(Globals, ModuleName, Reason, !IO) :-
     recompile_reason_message(Globals, PrefixPieces, Reason, Spec),
     % Since these messages are informational, there should be no warnings
     % or errors.
-    write_error_spec_ignore(Spec, Globals, !IO).
+    write_error_spec_ignore(Globals, Spec, !IO).
 
 :- pred recompile_reason_message(globals::in, list(format_component)::in,
     recompile_reason::in, error_spec::out) is det.
