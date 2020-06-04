@@ -1208,8 +1208,10 @@ find_erlang_library_path(Globals, MercuryLibDirs, LibName, LibPath, !IO) :-
     ;
         MaybeDirName = error(Error),
         LibPath = "",
-        write_error_pieces_maybe_with_context(Globals, no, 0, [words(Error)],
-            !IO)
+        Spec = error_spec($pred, severity_error, phase_read_files,
+            [error_msg(no, treat_as_first, 0,
+                [always([words(Error), suffix(".\n")])])]),
+        write_error_spec_ignore(Globals, Spec, !IO)
     ).
 
 :- func pa_option(bool, bool, dir_name) = string.

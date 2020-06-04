@@ -1063,7 +1063,9 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
                     qual_pf_sym_name_orig_arity(OtherPredCallId), suffix("."),
                     words("You need to use an explicit module qualifier."),
                     nl],
-                write_error_pieces(Globals, Context, 0, Pieces, !IO)
+                Spec = simplest_spec($pred, severity_error, phase_type_check,
+                    Context, Pieces),
+                write_error_spec_ignore(Globals, Spec, !IO)
             ),
             unexpected($pred, "unresolvable predicate overloading")
         else

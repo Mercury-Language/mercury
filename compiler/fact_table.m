@@ -1211,12 +1211,13 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
             )
         else
             io.progname_base("mercury_compile", ProgName, !IO),
-            string.format(
-                "%s: an error occurred in the `sort' program "
-                ++ "during fact table determinism inference.",
-                [s(ProgName)], Msg),
-            write_error_pieces_plain(Globals, [words(Msg)], !IO),
-            io.set_exit_status(1, !IO),
+            Pieces =
+                [fixed(ProgName), suffix(":"), words("an error occurred"),
+                words("in the"), quote("sort"), words("program"),
+                words("during fact table determinism inference."), nl],
+            Spec = error_spec($pred, severity_error, phase_fact_table_check,
+                [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+            write_error_spec_ignore(Globals, Spec, !IO),
             Determinism = detism_erroneous
         )
     ;
@@ -1399,10 +1400,11 @@ maybe_append_data_table(Globals, yes, OutputFileName, DataFileName, !IO) :-
         ( if ExitStatus = 0 then
             true
         else
-            Msg = "An error occurred while concatenating " ++
-                "fact table output files.",
-            write_error_pieces_plain(Globals, [words(Msg)], !IO),
-            io.set_exit_status(1, !IO)
+            Pieces = [words("An error occurred while concatenating"),
+                words("fact table output files."), nl],
+            Spec = error_spec($pred, severity_error, phase_fact_table_check,
+                [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+            write_error_spec_ignore(Globals, Spec, !IO)
         )
     ;
         Result = error(ErrorCode),
@@ -1565,11 +1567,13 @@ read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, MaybeSortFileLine,
         Result = error(ErrorCode),
         io.error_message(ErrorCode, ErrorMessage),
         io.input_stream_name(FileName, !IO),
-        string.format("Error reading file `%s':", [s(FileName)], Msg),
+        Pieces =
+            [words("Error reading file"), quote(FileName), suffix(":"), nl,
+            words(ErrorMessage), nl],
+        Spec = error_spec($pred, severity_error, phase_fact_table_check,
+            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
         module_info_get_globals(ModuleInfo, Globals),
-        write_error_pieces_plain(Globals,
-            [words(Msg), nl, words(ErrorMessage)], !IO),
-        io.set_exit_status(1, !IO),
+        write_error_spec_ignore(Globals, Spec, !IO),
         MaybeSortFileLine = no
     ).
 
@@ -3371,11 +3375,12 @@ delete_temporary_file(Globals, FileName, !IO) :-
         Result = error(ErrorCode),
         io.error_message(ErrorCode, ErrorMsg),
         io.progname_base("mercury_compile", ProgName, !IO),
-        string.format("%s: error deleting file `%s:",
-            [s(ProgName), s(FileName)], Msg),
-        Pieces = [words(Msg), nl, words(ErrorMsg), nl],
-        write_error_pieces_plain(Globals, Pieces, !IO),
-        io.set_exit_status(1, !IO)
+        Pieces = [fixed(ProgName), suffix(":"), words("error deleting file"),
+            quote(FileName), suffix(":"), nl,
+            words(ErrorMsg), suffix("."), nl],
+        Spec = error_spec($pred, severity_error, phase_fact_table_check,
+            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        write_error_spec_ignore(Globals, Spec, !IO)
     ).
 
 :- pred write_call_system_error_msg(globals::in, string::in, io.error::in,
@@ -3384,10 +3389,12 @@ delete_temporary_file(Globals, FileName, !IO) :-
 write_call_system_error_msg(Globals, Cmd, ErrorCode, !IO) :-
     io.error_message(ErrorCode, ErrorMsg),
     io.progname_base("mercury_compile", ProgName, !IO),
-    string.format("%s: error executing system command `%s:",
-        [s(ProgName), s(Cmd)], Msg),
-    write_error_pieces_plain(Globals, [words(Msg), nl, words(ErrorMsg)], !IO),
-    io.set_exit_status(1, !IO).
+    Pieces = [fixed(ProgName), suffix(":"),
+        words("error executing system command"), quote(Cmd), suffix(":"), nl,
+        words(ErrorMsg), suffix("."), nl],
+    Spec = error_spec($pred, severity_error, phase_fact_table_check,
+        [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+    write_error_spec_ignore(Globals, Spec, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -3421,14 +3428,9 @@ print_error_reports(Globals, RevErrors, !IO) :-
     is det.
 
 print_error_report(Globals, MaybeContext - Pieces, !IO) :-
-    (
-        MaybeContext = yes(Context),
-        write_error_pieces(Globals, Context, 0, Pieces, !IO)
-    ;
-        MaybeContext = no,
-        write_error_pieces_plain(Globals, Pieces, !IO)
-    ),
-    io.set_exit_status(1, !IO).
+    Spec = error_spec($pred, severity_error, phase_fact_table_check,
+        [error_msg(MaybeContext, treat_as_first, 0, [always(Pieces)])]),
+    write_error_spec_ignore(Globals, Spec, !IO).
 
 :- pred print_file_open_error(globals::in, maybe(context)::in, string::in,
     string::in, io.error::in, io::di, io::uo) is det.

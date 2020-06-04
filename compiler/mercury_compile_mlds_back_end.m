@@ -75,6 +75,7 @@
 :- import_module top_level.mercury_compile_llds_back_end.
 
 :- import_module getopt_io.
+:- import_module maybe.
 :- import_module pprint.
 :- import_module require.
 :- import_module string.
@@ -306,12 +307,15 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     else
-        Msg = "Sorry, not implemented: `--high-level-code' and just one of " ++
-            "`--reclaim-heap-on-semidet-failure' and " ++
-            "`--reclaim-heap-on-nondet-failure'. " ++
-            "Use `--(no-)reclaim-heap-on-failure' instead.",
-        write_error_pieces_plain(Globals, [words(Msg)], !IO),
-        io.set_exit_status(1, !IO)
+        Pieces = [words("Sorry, not implemented:"),
+            quote("--high-level-code"), words("and just one of"),
+            quote("--reclaim-heap-on-semidet-failure"), words("and"),
+            quote("--reclaim-heap-on-nondet-failure"), suffix("."),
+            words("Use"), quote("--(no-)reclaim-heap-on-failure"),
+            words("instead."), nl],
+        Spec = error_spec($pred, severity_error, phase_read_files,
+            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        write_error_spec_ignore(Globals, Spec, !IO)
     ).
 
 :- pred maybe_mark_tail_rec_calls_hlds(bool::in, bool::in,

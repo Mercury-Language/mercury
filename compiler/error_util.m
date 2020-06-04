@@ -188,6 +188,7 @@
     ;       phase_mode_check(mode_report_control)
     ;       phase_purity_check
     ;       phase_detism_check
+    ;       phase_fact_table_check
     ;       phase_oisu_check
     ;       phase_simplify(mode_report_control)
     ;       phase_style
@@ -1197,6 +1198,7 @@ get_maybe_mode_report_control(phase_polymorphism) = no.
 get_maybe_mode_report_control(phase_mode_check(Control)) = yes(Control).
 get_maybe_mode_report_control(phase_purity_check) = no.
 get_maybe_mode_report_control(phase_detism_check) = no.
+get_maybe_mode_report_control(phase_fact_table_check) = no.
 get_maybe_mode_report_control(phase_oisu_check) = no.
 get_maybe_mode_report_control(phase_simplify(Control)) = yes(Control).
 get_maybe_mode_report_control(phase_style) = no.
