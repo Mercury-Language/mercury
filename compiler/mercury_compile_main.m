@@ -249,10 +249,14 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                 "extra arguments with --arg-file: " ++ string(ExtraArgs))
         ),
 
-        % Read_args_file may attempt to look up options, so we need
-        % to initialize the globals.
+        % read_args_file may attempt to look up options, so we need to
+        % initialize the globals.
+        % XXX Why would read_args_file, a predicate that is only ever invoked
+        % to *find out* what the user intended the argument vector to be,
+        % trying to look *anything* up in data structure that its output
+        % is intended to construct?
         generate_default_globals(DummyGlobals, !IO),
-        options_file.read_args_file(DummyGlobals, ArgFile, MaybeArgs1, !IO),
+        read_args_file(DummyGlobals, ArgFile, MaybeArgs1, !IO),
         (
             MaybeArgs1 = yes(Args1),
             separate_option_args(Args1, OptionArgs, NonOptionArgs, !IO)
@@ -268,9 +272,14 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         % Find out which options files to read.
         % Don't report errors yet, as the errors may no longer exist
         % after we have read in options files.
+        %
+        % XXX Doing every task in handle_given_options is wasteful.
+        % in the very likely case of their being an option file.
+        % We should do just enough to find the setting of the --options-file
+        % option.
         handle_given_options(CmdLineArgs, OptionArgs, NonOptionArgs,
             _Errors0, ArgsGlobals, !IO),
-        read_options_files(ArgsGlobals, options_variables_init,
+        read_options_files_named_in_options_file_option(ArgsGlobals,
             MaybeVariables0, !IO),
         (
             MaybeVariables0 = yes(Variables0),
@@ -294,7 +303,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                         config_file, MaybeConfigFile),
                     (
                         MaybeConfigFile = yes(ConfigFile),
-                        read_options_file(FlagsArgsGlobals, ConfigFile,
+                        read_named_options_file(FlagsArgsGlobals, ConfigFile,
                             Variables0, MaybeVariables, !IO),
                         (
                             MaybeVariables = yes(Variables),

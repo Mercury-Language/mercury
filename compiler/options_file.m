@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: options_file.m.
 % Main author: stayl.
@@ -12,7 +12,7 @@
 % Code to deal with options for `mmc --make', including code to parse
 % Mercury.options files.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module make.options_file.
 :- interface.
@@ -24,7 +24,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type options_variables.
 
@@ -32,15 +32,16 @@
 
     % Read all options files specified by `--options-file' options.
     %
-:- pred read_options_files(globals::in, options_variables::in,
+:- pred read_options_files_named_in_options_file_option(globals::in,
     maybe(options_variables)::out, io::di, io::uo) is det.
 
     % Read a single options file, without searching
     % --options-search-directories.
     % This is used to read the configuration file.
     %
-:- pred read_options_file(globals::in, file_name::in, options_variables::in,
-    maybe(options_variables)::out, io::di, io::uo) is det.
+:- pred read_named_options_file(globals::in, file_name::in,
+    options_variables::in, maybe(options_variables)::out,
+    io::di, io::uo) is det.
 
     % Read a single options file. No searching will be done. The result is
     % the value of the variable MCFLAGS obtained from the file, ignoring
@@ -53,7 +54,7 @@
 :- pred read_args_file(globals::in, file_name::in, maybe(list(string))::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Look up $(MAIN_TARGET).
     %
@@ -81,8 +82,8 @@
 :- pred lookup_mmc_module_options(globals::in, options_variables::in,
     module_name::in, maybe(list(string))::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -104,7 +105,7 @@
 :- import_module term.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type options_variable == string.
 
@@ -130,11 +131,13 @@
 
 options_variables_init = map.init.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-read_options_files(Globals, Variables0, MaybeVariables, !IO) :-
+read_options_files_named_in_options_file_option(Globals, MaybeVariables,
+        !IO) :-
     promise_equivalent_solutions [OptionsFileResult, !:IO] (
-        try_io(read_options_file_lookup_params(Globals, Variables0),
+        try_io(
+            do_read_options_files_named_in_options_file_option(Globals),
             OptionsFileResult, !IO)
     ),
     (
@@ -149,10 +152,36 @@ read_options_files(Globals, Variables0, MaybeVariables, !IO) :-
         )
     ).
 
-read_options_file(Globals, OptionsFile, Variables0, MaybeVariables, !IO) :-
+:- pred do_read_options_files_named_in_options_file_option(globals::in,
+    options_variables::out, io::di, io::uo) is det.
+
+do_read_options_files_named_in_options_file_option(Globals, Variables, !IO) :-
+    globals.lookup_accumulating_option(Globals, options_files, OptionsFiles),
+    Variables0 = options_variables_init,
+    list.foldl2(read_options_file_set_params(Globals), OptionsFiles,
+        Variables0, Variables, !IO).
+
+:- pred read_options_file_set_params(globals::in, string::in,
+    options_variables::in, options_variables::out, io::di, io::uo) is det.
+
+read_options_file_set_params(Globals, OptionsFile, !Vars, !IO) :-
+    ( if OptionsFile = "Mercury.options" then
+        ErrorIfNotExist = no_error,
+        Search = no_search
+    else
+        ErrorIfNotExist = error,
+        Search = search
+    ),
+    read_options_file_params(Globals, ErrorIfNotExist, Search, no, OptionsFile,
+        !Vars, !IO).
+
+%---------------------%
+
+read_named_options_file(Globals, OptionsFile, Variables0, MaybeVariables,
+        !IO) :-
     promise_equivalent_solutions [OptionsFileResult, !:IO] (
         try_io(
-            ( pred((Variables1)::out, !.IO::di, !:IO::uo) is det :-
+            ( pred(Variables1::out, !.IO::di, !:IO::uo) is det :-
                 read_options_file_params(Globals, error, no_search, no,
                     OptionsFile, Variables0, Variables1, !IO)
             ),
@@ -170,9 +199,11 @@ read_options_file(Globals, OptionsFile, Variables0, MaybeVariables, !IO) :-
         )
     ).
 
+%---------------------%
+
 read_args_file(Globals, OptionsFile, MaybeMCFlags, !IO) :-
-    read_options_file(Globals, OptionsFile, options_variables_init,
-        MaybeVariables, !IO),
+    read_named_options_file(Globals, OptionsFile,
+        options_variables_init, MaybeVariables, !IO),
     (
         MaybeVariables = yes(Variables),
         % Ignore settings in the environment -- the parent mmc process
@@ -197,27 +228,7 @@ read_args_file(Globals, OptionsFile, MaybeMCFlags, !IO) :-
         MaybeMCFlags = no
     ).
 
-:- pred read_options_file_lookup_params(globals::in,
-    options_variables::in, options_variables::out, io::di, io::uo) is det.
-
-read_options_file_lookup_params(Globals, !Variables, !IO) :-
-    globals.lookup_accumulating_option(Globals, options_files, OptionsFiles),
-    list.foldl2(read_options_file_set_params(Globals), OptionsFiles,
-        !Variables, !IO).
-
-:- pred read_options_file_set_params(globals::in, string::in,
-    options_variables::in, options_variables::out, io::di, io::uo) is det.
-
-read_options_file_set_params(Globals, OptionsFile, !Vars, !IO) :-
-    ( if OptionsFile = "Mercury.options" then
-        ErrorIfNotExist = no_error,
-        Search = no_search
-    else
-        ErrorIfNotExist = error,
-        Search = search
-    ),
-    read_options_file_params(Globals, ErrorIfNotExist, Search, no, OptionsFile,
-        !Vars, !IO).
+%---------------------------------------------------------------------------%
 
 :- type error_if_not_exist
     --->    error
@@ -232,14 +243,15 @@ read_options_file_set_params(Globals, OptionsFile, !Vars, !IO) :-
     options_variables::out, io::di, io::uo) is det.
 
 read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
-        OptionsFile0, !Variables, !IO) :-
-    ( if OptionsFile0 = "-" then
+        OptionsPathName, !Variables, !IO) :-
+    ( if OptionsPathName = "-" then
         % Read from standard input.
         debug_make_msg(Globals, write_reading_options_file_stdin, !IO),
         read_options_lines(Globals, dir.this_directory, !Variables, !IO),
         debug_make_msg(Globals, write_done, !IO)
     else
-        debug_make_msg(Globals, write_reading_options_file(OptionsFile0), !IO),
+        debug_make_msg(Globals,
+            write_reading_options_file(OptionsPathName), !IO),
         (
             Search = search,
             globals.lookup_accumulating_option(Globals,
@@ -248,7 +260,7 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
             Search = no_search,
             SearchDirs = [dir.this_directory]
         ),
-        ( if dir.split_name(OptionsFile0, OptionsDir, OptionsFile) then
+        ( if dir.split_name(OptionsPathName, OptionsDir, OptionsFile) then
             ( if dir.path_name_is_absolute(OptionsDir) then
                 FileToFind = OptionsFile,
                 Dirs = [OptionsDir]
@@ -260,12 +272,12 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
                 ;
                     MaybeDirName = no,
                     Dirs = SearchDirs,
-                    FileToFind = OptionsFile0
+                    FileToFind = OptionsPathName
                 )
             )
         else
             Dirs = SearchDirs,
-            FileToFind = OptionsFile0
+            FileToFind = OptionsPathName
         ),
         search_for_file_returning_dir_and_stream(Dirs, FileToFind,
             MaybeDirAndStream, !IO),
@@ -282,9 +294,6 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
             % for which it is not at all clear whether they *intend*
             % to read from a current standard input that originates as
             % FoundStream, or they just *happen* to do so.
-            %
-            % XXX The changeover would also be simpler if there was an easy way
-            % to detect calls that read from the current input stream.
 
             io.set_input_stream(FoundStream, OldInputStream, !IO),
             read_options_lines(Globals, FoundDir, !Variables, !IO),
@@ -302,7 +311,7 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
                 ErrorSpec = error_spec($pred, severity_error, phase_read_files,
                     [error_msg(no, do_not_treat_as_first, 0,
                         [always([words("Error reading options file"),
-                            quote(ErrorFile), suffix("."), nl])])]),
+                            quote(ErrorFile), suffix(".")])])]),
                 write_error_spec_ignore(Globals, ErrorSpec, !IO)
             ;
                 ErrorIfNotExist = no_error
@@ -319,14 +328,14 @@ write_reading_options_file_stdin(!IO) :-
 :- pred write_reading_options_file(string::in, io::di, io::uo) is det.
 
 write_reading_options_file(FileName, !IO) :-
-    io.write_string("Reading options file ", !IO),
-    io.write_string(FileName, !IO),
-    io.nl(!IO).
+    io.format("Reading options file %s", [s(FileName)], !IO).
 
 :- pred write_done(io::di, io::uo) is det.
 
 write_done(!IO) :-
     io.write_string("done.\n", !IO).
+
+%---------------------------------------------------------------------------%
 
 :- func maybe_add_path_name(dir_name, file_name) = file_name.
 
@@ -355,10 +364,12 @@ read_options_lines(Globals, Dir, !Variables, !IO) :-
         )
     ;
         LineResult = exception(Exception),
-        ( if Exception = univ(options_file_error(Error)) then
+        ( if Exception = univ(options_file_error(ErrorMsg)) then
             io.input_stream_name(FileName, !IO),
             Context = term.context_init(FileName, LineNumber),
-            write_error_pieces(Globals, Context, 0, [words(Error)], !IO),
+            Spec = simplest_spec($pred, severity_error, phase_read_files,
+                Context, [words(ErrorMsg), nl]),
+            write_error_spec_ignore(Globals, Spec, !IO),
 
             % This will be caught by `read_options_files'. The open options
             % files aren't closed on the way up, but we will be exiting
@@ -602,7 +613,7 @@ report_undefined_variables_2(Globals, [_ | Rest] @ UndefVars, !IO) :-
         Warn = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type options_file_line
     --->    define_variable(
@@ -747,7 +758,7 @@ read_item_or_eof(Pred, MaybeItem, !IO) :-
         throw(options_file_error(io.error_message(Error)))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func checked_split_into_words(list(char)) = maybe_error(list(string)).
 
@@ -825,7 +836,7 @@ get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
         get_word_2([Char | RevWord0], RevWord, Chars0, Chars)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lookup_main_target(Globals, Vars, MaybeMainTarget, !IO) :-
     lookup_variable_words_report_error(Globals, Vars, "MAIN_TARGET",
@@ -841,7 +852,7 @@ lookup_main_target(Globals, Vars, MaybeMainTarget, !IO) :-
         MaybeMainTarget = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lookup_mercury_stdlib_dir(Globals, Vars, MaybeMerStdlibDir, !IO) :-
     lookup_variable_words_report_error(Globals, Vars, "MERCURY_STDLIB_DIR",
@@ -857,7 +868,7 @@ lookup_mercury_stdlib_dir(Globals, Vars, MaybeMerStdlibDir, !IO) :-
         MaybeMerStdlibDir = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lookup_default_options(Globals, Vars, Result, !IO) :-
     lookup_mmc_maybe_module_options(Globals, Vars, default, Result, !IO).
@@ -1062,7 +1073,7 @@ mmc_option_type(config_dir) = option([], "--mercury-config-dir").
 mmc_option_type(linkage) = option([], "--linkage").
 mmc_option_type(mercury_linkage) = option([], "--mercury-linkage").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type variable_result(T)
     --->    var_result_set(T)
@@ -1141,7 +1152,7 @@ lookup_options_variable(Globals, Vars, OptionsVariableClass, FlagsVar, Result,
                     quote("-l"), words("options, found") |
                     list_to_pieces(
                         list.map(func(Lib) = add_quotes(Lib), BadLibs))]
-                    ++ [suffix("."), nl],
+                    ++ [suffix(".")],
                 ErrorSpec = error_spec($pred, severity_error, phase_read_files,
                     [error_msg(no, do_not_treat_as_first, 0,
                         [always(Pieces)])]),
@@ -1246,6 +1257,6 @@ lookup_variable_chars(Variables, Var, Value, !Undef, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module make.options_file.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
