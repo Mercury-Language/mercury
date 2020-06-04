@@ -410,11 +410,18 @@ read_options_lines_3(Globals, Dir, !.Variables, !:Variables - FoundEOF, !IO) :-
             expand_variables(!.Variables,
                 IncludedFilesChars0, IncludedFilesChars, UndefVars, !IO),
             report_undefined_variables(Globals, UndefVars, !IO),
-            IncludedFileNames = split_into_words(IncludedFilesChars),
-            list.foldl2(
-                read_options_file_params(Globals, ErrorIfNotExist, search,
-                    yes(Dir)),
-                IncludedFileNames, !Variables, !IO)
+            split_into_words(IncludedFilesChars, IncludedFileNames,
+                MaybeError0),
+            (
+                MaybeError0 = no,
+                list.foldl2(
+                    read_options_file_params(Globals, ErrorIfNotExist, search,
+                        yes(Dir)),
+                    IncludedFileNames, !Variables, !IO)
+            ;
+                MaybeError0 = yes(Error0),
+                throw(Error0)
+            )
         )
     ).
 
@@ -474,45 +481,58 @@ read_options_line_2(FoundEOF, !Chars, !IO) :-
 update_variable(Globals, VarName, AddToValue, NewValue0, !Variables, !IO) :-
     expand_variables(!.Variables, NewValue0, NewValue1, Undef, !IO),
     report_undefined_variables(Globals, Undef, !IO),
-    Words1 = split_into_words(NewValue1),
-    io.get_environment_var(VarName, MaybeEnvValue, !IO),
+    split_into_words(NewValue1, Words1, MaybeError1),
     (
-        MaybeEnvValue = yes(EnvValue),
-        Value = string.to_char_list(EnvValue),
-        Words = split_into_words(Value),
-        OptVarValue = options_variable_value(string.to_char_list(EnvValue),
-            Words, environment),
-        map.set(VarName, OptVarValue, !Variables)
-    ;
-        MaybeEnvValue = no,
-        ( if
-            map.search(!.Variables, VarName,
-                options_variable_value(OldValue, OldWords, Source))
-        then
+        MaybeError1 = no,
+        io.get_environment_var(VarName, MaybeEnvValue, !IO),
+        (
+            MaybeEnvValue = yes(EnvValue),
+            Value = string.to_char_list(EnvValue),
+            split_into_words(Value, Words, MaybeError),
             (
-                Source = environment
+                MaybeError = no,
+                OptVarValue = options_variable_value(
+                    string.to_char_list(EnvValue),
+                    Words, environment),
+                map.set(VarName, OptVarValue, !Variables)
             ;
-                Source = command_line
-            ;
-                Source = options_file,
+                MaybeError = yes(Error),
+                throw(Error)
+            )
+        ;
+            MaybeEnvValue = no,
+            ( if
+                map.search(!.Variables, VarName,
+                    options_variable_value(OldValue, OldWords, Source))
+            then
                 (
-                    AddToValue = yes,
-                    NewValue = OldValue ++ [' ' |  NewValue1],
-                    Words = OldWords ++ Words1
+                    Source = environment
                 ;
-                    AddToValue = no,
-                    NewValue = NewValue1,
-                    Words = Words1
-                ),
-                OptVarValue = options_variable_value(NewValue, Words,
+                    Source = command_line
+                ;
+                    Source = options_file,
+                    (
+                        AddToValue = yes,
+                        NewValue = OldValue ++ [' ' |  NewValue1],
+                        Words = OldWords ++ Words1
+                    ;
+                        AddToValue = no,
+                        NewValue = NewValue1,
+                        Words = Words1
+                    ),
+                    OptVarValue = options_variable_value(NewValue, Words,
+                        options_file),
+                    map.set(VarName, OptVarValue, !Variables)
+                )
+            else
+                OptVarValue = options_variable_value(NewValue1, Words1,
                     options_file),
                 map.set(VarName, OptVarValue, !Variables)
             )
-        else
-            OptVarValue = options_variable_value(NewValue1, Words1,
-                options_file),
-            map.set(VarName, OptVarValue, !Variables)
         )
+    ;
+        MaybeError1 = yes(Error1),
+        throw(Error1)
     ).
 
 :- pred expand_variables(options_variables::in, list(char)::in,
@@ -699,32 +719,6 @@ parse_variable_2(IsFirst, Var0, Var, [Char | Chars0], Chars) :-
         Chars = [Char | Chars0]
     ).
 
-:- pred parse_string_chars(list(char)::in, list(char)::out,
-    list(char)::in, list(char)::out) is det.
-
-parse_string_chars(_, _, [], _) :-
-    throw(options_file_error("unterminated string")).
-parse_string_chars(String0, String, [Char | Chars0], Chars) :-
-    ( if Char = '"' then
-        Chars = Chars0,
-        String = String0
-    else if Char = ('\\') then
-        (
-            Chars0 = [Char2 | Chars1],
-            ( if Char2 = '"' then
-                String1 = [Char2 | String0]
-            else
-                String1 = [Char2, Char | String0]
-            ),
-            parse_string_chars(String1, String, Chars1, Chars)
-        ;
-            Chars0 = [],
-            throw(options_file_error("unterminated string"))
-        )
-    else
-        parse_string_chars([Char | String0], String, Chars0, Chars)
-    ).
-
 :- pred skip_comment_line(bool::out, io::di, io::uo) is det.
 
 skip_comment_line(FoundEOF, !IO) :-
@@ -763,63 +757,95 @@ read_item_or_eof(Pred, MaybeItem, !IO) :-
 :- func checked_split_into_words(list(char)) = maybe_error(list(string)).
 
 checked_split_into_words(Chars) = Result :-
-    promise_equivalent_solutions [TryResult] (
-        try(
-            ( pred(Words0::out) is det :-
-                Words0 = split_into_words(Chars)
-            ), TryResult)
-    ),
+    split_into_words(Chars, Words, MaybeError),
     (
-        TryResult = succeeded(Words),
+        MaybeError = no,
         Result = ok(Words)
     ;
-        TryResult = exception(Exception),
-        ( if Exception = univ(options_file_error(Msg)) then
-            Result = error(Msg)
-        else
-            rethrow(TryResult)
-        )
+        MaybeError = yes(options_file_error(Msg)),
+        Result = error(Msg)
     ).
 
-:- func split_into_words(list(char)) = list(string).
+:- pred split_into_words(list(char)::in, list(string)::out,
+    maybe(options_file_error)::out) is det.
 
-split_into_words(Chars) = list.reverse(split_into_words_2(Chars, [])).
+split_into_words(Chars, Words, MaybeError) :-
+    split_into_words_2(Chars, [], RevWords, MaybeError),
+    list.reverse(RevWords, Words).
 
-:- func split_into_words_2(list(char), list(string)) = list(string).
+:- pred split_into_words_2(list(char)::in,
+    list(string)::in, list(string)::out,
+    maybe(options_file_error)::out) is det.
 
-split_into_words_2(Chars0, RevWords0) = RevWords :-
+split_into_words_2(Chars0, RevWords0, RevWords, MaybeError) :-
     list.drop_while(char.is_whitespace, Chars0, Chars1),
     (
         Chars1 = [],
-        RevWords = RevWords0
+        RevWords = RevWords0,
+        MaybeError = no
     ;
         Chars1 = [_ | _],
-        get_word(Word, Chars1, Chars),
-        RevWords = split_into_words_2(Chars, [Word | RevWords0])
+        get_word(Chars1, Chars, Word, MaybeError0),
+        (
+            MaybeError0 = no,
+            split_into_words_2(Chars, [Word | RevWords0], RevWords, MaybeError)
+        ;
+            MaybeError0 = yes(_),
+            RevWords = RevWords0,
+            MaybeError = MaybeError0
+        )
     ).
 
-:- pred get_word(string::out, list(char)::in, list(char)::out) is det.
+%---------------------%
 
-get_word(Word, Chars0, Chars) :-
-    get_word_2([], RevWord, Chars0, Chars),
+    % get_word(Chars0, Chars, Word, MaybeError):
+    %
+    % Read one word from Chars0, returning the remaining characters in Chars
+    % and the word itself in Word, if MaybeError = no. If MaybeError is
+    % yes(Error), then Error will describe the error, abd the none of
+    % the other return values will be meaningful.
+    %
+    % A word is defined as a sequence of either
+    % - non-whitespace characters,
+    % - characters escaped with a backslash (which may be whitespace chars), or
+    % - strings starting and ending with unescaped double quotes (which may
+    %   also contain whitespace chars).
+    %
+:- pred get_word(list(char)::in, list(char)::out,
+    string::out, maybe(options_file_error)::out) is det.
+
+get_word(Chars0, Chars, Word, MaybeError) :-
+    get_word_acc(Chars0, Chars, [], RevWord, MaybeError),
     Word = string.from_rev_char_list(RevWord).
 
-:- pred get_word_2(list(char)::in, list(char)::out,
-    list(char)::in, list(char)::out) is det.
+:- pred get_word_acc(list(char)::in, list(char)::out,
+    list(char)::in, list(char)::out,
+    maybe(options_file_error)::out) is det.
 
-get_word_2(RevWord, RevWord, [], []).
-get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
+get_word_acc([], [], RevWord, RevWord, no).
+get_word_acc([Char | Chars0], Chars, RevWord0, RevWord, MaybeError) :-
     ( if char.is_whitespace(Char) then
         Chars = Chars0,
-        RevWord = RevWord0
+        RevWord = RevWord0,
+        MaybeError = no
     else if Char = '"' then
-        parse_string_chars([], RevStringChars, Chars0, Chars1),
-        get_word_2(RevStringChars ++ RevWord0, RevWord, Chars1, Chars)
+        get_string_acc(Chars0, Chars1, [], RevStringChars, MaybeError0),
+        (
+            MaybeError0 = no,
+            get_word_acc(Chars1, Chars, RevStringChars ++ RevWord0, RevWord,
+                MaybeError)
+        ;
+            MaybeError0 = yes(_),
+            Chars = Chars0,
+            RevWord = RevWord0,
+            MaybeError = MaybeError0
+        )
     else if Char = ('\\') then
         (
             Chars0 = [],
+            Chars = [],
             RevWord = [Char | RevWord0],
-            Chars = []
+            MaybeError = no
         ;
             Chars0 = [Char2 | Chars1],
             ( if
@@ -827,13 +853,53 @@ get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
                 ; Char2 = ('\\')
                 )
             then
-                get_word_2([Char2 | RevWord0], RevWord, Chars1, Chars)
+                RevWord1 = [Char2 | RevWord0]
             else
-                get_word_2([Char2, Char | RevWord0], RevWord, Chars1, Chars)
-            )
+                RevWord1 = [Char2, Char | RevWord0]
+            ),
+            get_word_acc(Chars1, Chars, RevWord1, RevWord, MaybeError)
         )
     else
-        get_word_2([Char | RevWord0], RevWord, Chars0, Chars)
+        get_word_acc(Chars0, Chars, [Char | RevWord0], RevWord, MaybeError)
+    ).
+
+    % get_string_acc(Chars0, Chars, RevString0, RevString, MaybeError):
+    %
+    % Read the part of a double-quoted string from Chars0 that occurs
+    % after the initial double quote, returning the remaining characters
+    % in Chars and adding the characters of the string itself in reverse
+    % to RevString0 yielding RevString, if MaybeError = no. If MaybeError is
+    % yes(Error), then Error will describe the error, abd the none of
+    % the other return values will be meaningful.
+    %
+:- pred get_string_acc(list(char)::in, list(char)::out,
+    list(char)::in, list(char)::out, maybe(options_file_error)::out) is det.
+
+get_string_acc([], [], RevString0, RevString0, MaybeError) :-
+    MaybeError = yes(options_file_error("unterminated string")).
+get_string_acc([Char | Chars0], Chars, RevString0, RevString, MaybeError) :-
+    ( if Char = '"' then
+        Chars = Chars0,
+        RevString = RevString0,
+        MaybeError = no
+    else if Char = ('\\') then
+        (
+            Chars0 = [Char2 | Chars1],
+            ( if Char2 = '"' then
+                RevString1 = [Char2 | RevString0]
+            else
+                RevString1 = [Char2, Char | RevString0]
+            ),
+            get_string_acc(Chars1, Chars, RevString1, RevString, MaybeError)
+        ;
+            Chars0 = [],
+            Chars = Chars0,
+            RevString = RevString0,
+            MaybeError = yes(options_file_error("unterminated string"))
+        )
+    else
+        get_string_acc(Chars0, Chars, [Char | RevString0], RevString,
+            MaybeError)
     ).
 
 %---------------------------------------------------------------------------%
