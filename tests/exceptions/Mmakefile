@@ -9,6 +9,7 @@
 # These rules define the main targets: depend, all, check.
 #
 
+TESTS_DIR = ..
 THIS_DIR = exceptions
 MAYBE_J1 =
 

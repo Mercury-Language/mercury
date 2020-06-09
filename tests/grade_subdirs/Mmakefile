@@ -4,6 +4,7 @@
 #
 # The tests in this directory are always run with `--use-grade-subdirs'.
 
+TESTS_DIR = ..
 THIS_DIR = grade_subdirs
 MAYBE_J1 =
 

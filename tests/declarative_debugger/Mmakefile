@@ -2,6 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
+TESTS_DIR = ..
 THIS_DIR = declarative_debugger
 MAYBE_J1 = -j1
 # Most test cases share library_forwarding.m. We could allow the tests
