@@ -3,19 +3,40 @@
 #-----------------------------------------------------------------------------#
 # Mmake.common - shared Mmake variables and rules for the test directories.
 #
-# The including Mmakefile must set the following variables:
+# The Mmakefile in each test directory must set several make variables.
 #
-# - THIS_DIR: the name of the directory (e.g. benchmarks, hard_coded, etc).
+# - It must set TESTS_DIR to ".." in order to allow Mmake.common to find
+#   files such as DEFNS_FOR_TESTS. (The Mmakefile in the top test direcory
+#   sets TESTS_DIR to ".", which refers to the same directory from a different
+#   starting point.)
 #
-# - PROGS: The names of the main modules of the test programs.
+# - It must set THIS_DIR to the name of the specific test directory,
+#   e.g. benchmarks, hard_coded, etc.
 #
-# - TESTS: The names of the tests. For each test there must be targets
-#   test.depend, test.runtest and test.realclean, unless the test ends
-#   in `-nodepend', in which case the `-nodepend' suffix will be stripped
-#   off and the test.depend target is not required.
+# - It must set PROGS to the names of the main modules of the test programs.
+#
+# - It must set TESTS to the names of the tests. For each test, there must be
+#   targets test.depend, test.runtest and test.realclean, unless the test ends
+#   in `-nodepend', in which case the `-nodepend' suffix will be stripped off
+#   and the test.depend target is not required.
 #
 # If the variable ERROR_FILE is set, only the tests which failed in
 # the test run which produced the specified error log file will be run.
+#
+# The main targets defined here are runtests_dir and runtests_local:
+#
+# runtests_dir:
+#   The target that tools/bootcheck invokes by default.
+#
+# runtests_local:
+#   The target that runtests_dir invokes to do the work, and which
+#   tools/bootcheck invokes directly if it is asked to run only a selected
+#   subset of the tests.
+#
+# Both of these execute the test cases in one directory. There is also a
+# "runtests" target in tests/Mmakefile, which is there to be invoked manually
+# (it is never invoked by tools/bootcheck), which invokes "mmake runtests_dir"
+# in *all* the test directories.
 #
 #-----------------------------------------------------------------------------#
 
@@ -42,10 +63,6 @@ endif
 ifndef DIFF_OPTS
 DIFF_OPTS = -u
 endif
-
-# From the perspective of each test subdirectory, this directory,
-# their parent directory, is the top level test directory.
-TESTS_DIR = ..
 
 # Override this with `RUN_RECOMPILATION_TESTS=no' if your compiler
 # cannot run smart recompilation. This is only necessary for compilers
@@ -247,21 +264,15 @@ clean_errors:
 clean_trace_counts:
 	rm -f *.pass1 *.pass2 *.pass3 *.fail
 
-# The `foo' targets make recursively make `foo' in all subdirectories.
-# before making `foo_local' in the current directory.
+.PHONY: runtests_dir runtests_local check_dir check_local
 
-.PHONY: runtests runtests_local check check_local
+all:		runtests_dir
 
-all:		runtests
-
-check:		runtests
+check_dir:	runtests_dir
 
 check_local:	runtests_local
 
-# We want to run all the tests, even if some fail, so run the tests
-# using `mmake -k'.
-
-runtests:
+runtests_dir:
 	+@if mmake -k runtests_local; then \
 		rm -f $(ERROR_OUTPUT_FILE); \
 	else \
@@ -356,6 +367,9 @@ start_runtests_local:
 #
 # Test directories which have such shared targets should set MAYBE_J1 to -j1.
 # Other test directories should set it to the empty string.
+#
+# We want to run all the tests, even if some fail, so run the tests
+# using `mmake -k'.
 
 TEST_LOGS = $(THIS_DIR_TESTS_TO_RUN:%=%.log)
 runtests_local:

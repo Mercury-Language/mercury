@@ -2035,7 +2035,7 @@ then
             do
                 cd $root/${tests_prefix}tests/$testdir
                 mmake $mmake_opts $target_opt $jfactor $test_grade_opt \
-                    $test_log_opt runtests
+                    $test_log_opt runtests_dir
                 if test "$?" -ne 0
                 then
                     test_status=1
@@ -2139,8 +2139,6 @@ then
     mv "$type_stats".save.$$ "$type_stats"
 fi
 
-exitstatus=0
-
 tests_dir="$root/${tests_prefix}tests"
 
 cat /dev/null > $tests_dir/EXPECT_FAIL_TESTS
@@ -2183,6 +2181,8 @@ then
 fi
 
 echo "-----------------------------------------------------------------------"
+
+exitstatus=0
 
 if test "$diff_status" != 0
 then

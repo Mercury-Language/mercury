@@ -7,6 +7,7 @@
 #
 #-----------------------------------------------------------------------------#
 
+TESTS_DIR = ..
 THIS_DIR = submodules
 MAYBE_J1 = -j1
 # Currently these test cases do not reliably pass if you use parallel make.

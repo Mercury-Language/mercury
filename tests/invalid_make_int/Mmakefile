@@ -2,6 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
+TESTS_DIR = ..
 THIS_DIR = invalid_make_int
 MAYBE_J1 =
 

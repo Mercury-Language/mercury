@@ -50,4 +50,63 @@ SUBDIRS = \
 NOT_YET_READY_SUBDIRS = \
 	stm
 
+TESTS_DIR = .
 include Mmake.common
+
+.PHONY: check
+check: runtests
+
+.PHONY: runtests
+runtests:
+	+@if mmake -k runtests_subdirs; then \
+		rm -f $(ERROR_OUTPUT_FILE); \
+	else \
+	for subdir in $(SUBDIRS); do \
+		if test -f $$subdir/$(ERROR_OUTPUT_FILE); then \
+			cat $$subdir/$(ERROR_OUTPUT_FILE) \
+				>> $(ERROR_OUTPUT_FILE); \
+		fi; \
+		if test -f $$subdir/FAILED_TESTS; then \
+			sed "s@^@$$subdir/@" $$subdir/FAILED_TESTS \
+				>> FAILED_TESTS; \
+		fi; \
+	done; \
+        echo SOME TESTS FAILED: see FAILED_TESTS and $(ERROR_OUTPUT_FILE); \
+        exit 1; \
+    fi
+
+RUNTESTS_IN_SUBDIRS=$(SUBDIRS:%=runtests_in_%)
+
+.PHONY: runtests_subdirs
+runtests_subdirs: $(RUNTESTS_IN_SUBDIRS)
+
+.PHONY: runtests_in_subdirs
+$(RUNTESTS_IN_SUBDIRS): runtests_in_%:
+	+if test -d $* ; then \
+		cd $* && mmake runtests_dir ; \
+	else \
+		echo Could not run tests in directory $* ; \
+		echo Could not run tests in directory $* >> NOMAKE_DIRS ; \
+	fi
+
+realclean_subdirs:
+	+succeeded=true; \
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && mmake realclean) || succeeded=false; \
+	done
+	case $$succeeded in \
+		false) \
+			exit 1 \
+			;; \
+	esac
+
+clean_subdirs:
+	+succeeded=true; \
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && mmake clean) || succeeded=false; \
+	done; \
+	case $$succeeded in \
+		false) \
+			exit 1 \
+			;; \
+	esac
