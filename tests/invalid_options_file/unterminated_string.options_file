@@ -1,0 +1,2 @@
+# Unterminated string.
+MCFLAGS-global = --dump-hlds-pred-name="abc

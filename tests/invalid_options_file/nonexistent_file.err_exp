@@ -1,0 +1,3 @@
+nonexistent_file.options_file:002: Cannot open options file
+nonexistent_file.options_file:002:   `/nonexistent.xyzzy': cannot find
+nonexistent_file.options_file:002:   `nonexistent.xyzzy' in directory /.

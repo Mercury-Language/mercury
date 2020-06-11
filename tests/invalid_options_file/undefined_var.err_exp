@@ -1,0 +1,3 @@
+undefined_var.options_file:002: Warning: variable `TYPE_SPEC_FLAGS' is
+undefined_var.options_file:002:   undefined.
+undefined_var.options_file:003: Warning: variable `X' is undefined.

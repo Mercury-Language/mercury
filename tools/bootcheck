@@ -1921,10 +1921,12 @@ then
             hard_coded
             invalid
             invalid_make_int
+            invalid_options_file
             invalid_purity
             invalid_submodules
             misc_tests
             mmc_make
+            options_file
             par_conj
             purity
             recompilation
@@ -2225,7 +2227,7 @@ fi
 
 if test -s $tests_dir/FAILED_TESTS_SUMMARY
 then
-    num_expected_failures=`wc -l $tests_dir/EXPECTED_FAILED_TESTS`
+    num_expected_failures=`wc -l < $tests_dir/EXPECTED_FAILED_TESTS`
     case "${num_expected_failures}" in
         0)
             ;;

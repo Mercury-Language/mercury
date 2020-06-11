@@ -197,7 +197,7 @@ DIFF_WO = diff $(DIFF_OPTS)
 		exit 1; }
 
 # Likewise, we try matching a .int_err file with .int_err_exp, .int_err_exp2,
-# and so on up to int_.err_exp5.
+# and so on up to .int_err_exp5.
 
 %.int_err_res: %.int_err_exp %.int_err
 	@echo "Comparing $*.int_err with $*.int_err_exp*,"
@@ -225,6 +225,40 @@ DIFF_WO = diff $(DIFF_OPTS)
 	{ shortest=`wc -l $*.int_err_res[1-5] | grep -v total | sort -n | \
 		head -1 | awk '{ print $$2; }' `; \
 		echo "** $*.int_err did not match the expected error output"; \
+		echo "** (closest match was $$shortest)"; \
+		cp $$shortest $@; \
+		cat $@; \
+		exit 1; }
+
+# Likewise, we try matching a .optfile_out file with .optfile_exp,
+# .optfile_exp2, and so on up to .optfile_exp5.
+
+%.optfile_res: %.optfile_exp %.optfile_out
+	@echo "Comparing $*.optfile_out with $*.optfile_exp*,"
+	@echo "	results in $@"
+	@-rm -f $@ $*.optfile_res[1-5]
+	@{ $(DIFF_WO) $*.optfile_exp $*.optfile_out > $*.optfile_res1 && \
+		echo "Matched $*.optfile_exp" && \
+		cp $*.optfile_res1 $@; } || \
+	{ test -f $*.optfile_exp2 && \
+		$(DIFF_WO) $*.optfile_exp2 $*.out > $*.optfile_res2 && \
+		echo "Matched $*.optfile_exp2" && \
+		cp $*.optfile_res2 $@; } || \
+	{ test -f $*.optfile_exp3 && \
+		$(DIFF_WO) $*.optfile_exp3 $*.optfile_out > $*.optfile_res3 && \
+		echo "Matched $*.exp3" && \
+		cp $*.optfile_res3 $@; } || \
+	{ test -f $*.optfile_exp4 && \
+		$(DIFF_WO) $*.optfile_exp4 $*.optfile_out > $*.optfile_res4 && \
+		echo "Matched $*.optfile_exp4" && \
+		cp $*.optfile_res4 $@; } || \
+	{ test -f $*.optfile_exp5 && \
+		$(DIFF_WO) $*.optfile_exp5 $*.optfile_out > $*.optfile_res5 && \
+		echo "Matched $*.optfile_exp5" && \
+		cp $*.optfile_res5 $@; } || \
+	{ shortest=`wc -l $*.optfile_res[1-5] | grep -v total | sort -n | \
+		head -1 | awk '{ print $$2; }' `; \
+		echo "** $*.optfile_out did not match the expected output"; \
 		echo "** (closest match was $$shortest)"; \
 		cp $$shortest $@; \
 		cat $@; \

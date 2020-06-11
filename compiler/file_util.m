@@ -306,9 +306,18 @@ search_for_file_mod_time_loop(AllDirs, Dirs, FileName, MaybeModTime, !IO) :-
 
 :- func cannot_find_in_dirs_msg(file_name, list(dir_name)) = string.
 
-cannot_find_in_dirs_msg(FileName, Dirs) =
-    "cannot find `" ++ FileName ++ "' in directories " ++
-        string.join_list(", ", Dirs).
+cannot_find_in_dirs_msg(FileName, Dirs) = Msg :-
+    Prefix = "cannot find `" ++ FileName ++ "' ",
+    (
+        Dirs = [],
+        Msg = Prefix ++ "in the empty list of directories"
+    ;
+        Dirs = [SingleDir],
+        Msg = Prefix ++ "in directory " ++ SingleDir
+    ;
+        Dirs = [_, _ | _],
+        Msg = Prefix ++ "in directories " ++ string.join_list(", ", Dirs)
+    ).
 
 :- pred make_path_name_noncanon(dir_name::in, file_name::in, file_name::out)
     is det.

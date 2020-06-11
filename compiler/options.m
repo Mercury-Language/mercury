@@ -363,6 +363,7 @@
     ;       dump_mlds
     ;       dump_mlds_pred_name
     ;       verbose_dump_mlds
+    ;       dump_options_file
     ;       mode_constraints
     ;       simple_mode_constraints
     ;       prop_mode_constraints
@@ -1385,6 +1386,7 @@ option_defaults_2(aux_output_option, [
     dump_mlds                           -   accumulating([]),
     dump_mlds_pred_name                 -   accumulating([]),
     verbose_dump_mlds                   -   accumulating([]),
+    dump_options_file                   -   bool(no),
     mode_constraints                    -   bool(no),
     simple_mode_constraints             -   bool(no),
     prop_mode_constraints               -   bool(no),
@@ -2359,6 +2361,7 @@ long_option("dump-mlds-pred-name",      dump_mlds_pred_name).
 long_option("mlds-dump",                dump_mlds).
 long_option("verbose-dump-mlds",        verbose_dump_mlds).
 long_option("verbose-mlds-dump",        verbose_dump_mlds).
+long_option("dump-options-file",        dump_options_file).
 long_option("mode-constraints",         mode_constraints).
 long_option("simple-mode-constraints",  simple_mode_constraints).
 long_option("prop-mode-constraints",    prop_mode_constraints).
@@ -4564,6 +4567,10 @@ options_help_aux_output -->
         "--verbose-dump-mlds <stage number or name>",
         "\tDump the internal compiler representation of the MLDS, after",
         "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'."
+% This option is only intended to be used for debugging the compiler.
+%       "--dump-options-file",
+%       "\tDump the internal compiler representation of files named in",
+%       "\t--options-file options."
 % The mode constraints code is still experimental so these options are
 % currently commented out.
 %       "--mode-constraints"

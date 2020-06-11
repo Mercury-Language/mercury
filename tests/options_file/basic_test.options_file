@@ -1,0 +1,34 @@
+# Define something to be redefined later.
+MCFLAGS-global = --no-warn-nothing-exported --no-warn-interface-imports
+
+# Here is that redefinition.
+MCFLAGS-global = --warn-nothing-exported --warn-interface-imports
+
+# Test adding to previously-nonexistent variables.
+MCFLAGS += --libgrades-exclude-component java
+MCFLAGS += --libgrades-exclude-component csharp
+
+# Test the escaping of newlines.
+MCFLAGSX = \
+	--libgrades-exclude java \
+	--libgrades-exclude csharp
+
+# Test the handling of quotes, including escaped quotes.
+MCFLAGS-set := --dump-hlds-pred-name "ab \" cd"
+
+# Test the handling of $$.
+MCFLAGS-map := --dump-hlds-pred-name $$
+
+# Test the handling of variable references in definitions, with both
+# single-character and multi-character variable names.
+X = --warn-unused-imports
+TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
+MCFLAGS-list += $(X) $(TYPE_SPEC_FLAGS) $X
+MCFLAGS-one_or_more += $X$(X)$(TYPE_SPEC_FLAGS)
+
+# Test the handling of variable references in includes, with both
+# single-character and multi-character variable names.
+S0 = sub0
+S = sub1
+include basic_test.options_file.$(S0)
+include basic_test.options_file.$S

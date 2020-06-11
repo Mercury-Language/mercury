@@ -1,0 +1,2 @@
+# Delete the variable name.
+= --warn-nothing-exported --warn-interface-imports

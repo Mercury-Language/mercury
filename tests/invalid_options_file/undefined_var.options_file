@@ -1,0 +1,3 @@
+# References to undefined variables.
+MCFLAGS-list += $(TYPE_SPEC_FLAGS)
+MCFLAGS-list += $X

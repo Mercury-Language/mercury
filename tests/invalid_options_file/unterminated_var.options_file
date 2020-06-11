@@ -1,0 +1,3 @@
+# Unterminated variable references.
+MCFLAGS-list += abc $(TYPE_SPEC_FLAGS
+MCFLAGS-list += def$

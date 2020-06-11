@@ -1,0 +1,2 @@
+# Replace = with >.
+MCFLAGS-global > --no-warn-nothing-exported --no-warn-interface-imports

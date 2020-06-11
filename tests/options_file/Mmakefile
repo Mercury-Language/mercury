@@ -1,0 +1,44 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
+
+TESTS_DIR = ..
+THIS_DIR = options_file
+MAYBE_J1 = -j1
+# Since mmc --dump-options-file puts the output into a file with a fixed name,
+# we have to run tests one at a time if we don't want two tests to overwrite
+# each others' data.
+
+#-----------------------------------------------------------------------------#
+
+PROGS = \
+	basic_test
+
+#-----------------------------------------------------------------------------#
+
+TESTS = $(patsubst %,%-nodepend,$(sort $(PROGS)))
+include ../Mmake.common
+
+%.runtest: %.optfile_res ;
+
+%.optfile_out: %.m %.options_file
+	if $(MC) -V --errorcheck-only --options-file $*.options_file \
+		--dump-options-file $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* ; \
+	then \
+		mv DUMP_OPTIONS_FILE $*.optfile_out; \
+	else \
+		cat DUMP_OPTIONS_FILE > $*.optfile_out; \
+		echo COMPILATION FAILED >> $*.optfile_out; \
+	fi
+
+#-----------------------------------------------------------------------------#
+
+clean_local: clean_options_file
+
+clean_options_file:
+
+realclean_local: realclean_options_file
+
+realclean_options_file:
+
+#-----------------------------------------------------------------------------#

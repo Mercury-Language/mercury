@@ -194,15 +194,16 @@ build_with_module_options_args(Globals, ModuleName,
 build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
         DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions, Build,
         Succeeded, Info0, MaybeInfo, !IO) :-
-    lookup_mmc_module_options(Globals, OptionVariables, ModuleName,
-        OptionsResult, !IO),
+    lookup_mmc_module_options(OptionVariables, ModuleName, ModuleOptionArgs,
+        LookupSpecs, !IO),
+    write_error_specs_ignore(Globals, LookupSpecs, !IO),
+    LookupErrors = contains_errors(Globals, LookupSpecs),
     (
-        OptionsResult = no,
+        LookupErrors = yes,
         MaybeInfo = no,
         Succeeded = no
     ;
-        OptionsResult = yes(ModuleOptionArgs),
-
+        LookupErrors = no,
         % --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS from the
         % environment (DEFAULT_MCFLAGS is included in OptionArgs) and
         % generation of `.d' files. --use-subdirs is needed because

@@ -294,22 +294,31 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         Targets0, !IO) :-
     (
         Targets0 = [],
-        lookup_main_target(Globals, Variables, MaybeMAIN_TARGET, !IO),
+        lookup_main_target(Variables, MaybeTargets, LookupSpecs, !IO),
+        write_error_specs_ignore(Globals, LookupSpecs, !IO),
+        LookupErrors = contains_errors(Globals, LookupSpecs),
         (
-            MaybeMAIN_TARGET = yes(Targets),
-            (
-                Targets = [_ | _],
-                Continue0 = yes
-            ;
-                Targets = [],
-                Continue0 = no,
-                io.write_string("** Error: no targets specified " ++
-                    "and `MAIN_TARGET' not defined.\n", !IO)
-            )
-        ;
-            MaybeMAIN_TARGET = no,
+            LookupErrors = yes,
             Targets = [],
             Continue0 = no
+        ;
+            LookupErrors = no,
+            (
+                MaybeTargets = no,
+                Targets = [],
+                Continue0 = no
+            ;
+                MaybeTargets = yes(Targets),
+                (
+                    Targets = [_ | _],
+                    Continue0 = yes
+                ;
+                    Targets = [],
+                    Continue0 = no,
+                    io.write_string("** Error: no targets specified " ++
+                        "and `MAIN_TARGET' not defined.\n", !IO)
+                )
+            )
         )
     ;
         Targets0 = [_ | _],
@@ -639,10 +648,12 @@ make_track_flags_files(Globals, ModuleName, Success, !Info, !IO) :-
 
 make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
         !IO) :-
-    lookup_mmc_module_options(Globals, !.Info ^ options_variables, ModuleName,
-        OptionsResult, !IO),
+    lookup_mmc_module_options(!.Info ^ options_variables, ModuleName,
+        ModuleOptionArgs, LookupSpecs, !IO),
+    write_error_specs_ignore(Globals, LookupSpecs, !IO),
+    LookupErrors = contains_errors(Globals, LookupSpecs),
     (
-        OptionsResult = yes(ModuleOptionArgs),
+        LookupErrors = no,
         DetectedGradeFlags = !.Info ^ detected_grade_flags,
         OptionArgs = !.Info ^ option_args,
         AllOptionArgs = DetectedGradeFlags ++ ModuleOptionArgs ++ OptionArgs,
@@ -669,7 +680,7 @@ make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
             write_hash_file(HashFileName, Hash, Success, !IO)
         )
     ;
-        OptionsResult = no,
+        LookupErrors = yes,
         Success = no
     ).
 

@@ -1,0 +1,4 @@
+unterminated_var.options_file:002: Error: unterminated reference to a variable
+unterminated_var.options_file:002:   after `abc '.
+unterminated_var.options_file:003: Error: unterminated reference to a variable
+unterminated_var.options_file:003:   after `def'.

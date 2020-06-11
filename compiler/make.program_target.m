@@ -1428,14 +1428,16 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
             io.nl(!IO)
         ), !IO),
 
-    lookup_mmc_options(Globals, !.Info ^ options_variables, MaybeMCFlags, !IO),
+    lookup_mmc_options(!.Info ^ options_variables, MCFlags, LookupSpecs, !IO),
+    write_error_specs_ignore(Globals, LookupSpecs, !IO),
+    LookupErrors = contains_errors(Globals, LookupSpecs),
     (
-        MaybeMCFlags = yes(MCFlags),
+        LookupErrors = no,
         DetectedGradeFlags = !.Info ^ detected_grade_flags,
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
         handle_given_options(AllFlags, _, _, OptionsSpecs, LibGlobals, !IO)
     ;
-        MaybeMCFlags = no,
+        LookupErrors = yes,
         % Errors should have been caught before.
         unexpected($pred, "bad DEFAULT_MCFLAGS")
     ),

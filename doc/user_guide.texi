@@ -7684,6 +7684,12 @@ Dump the internal compiler representation of the MLDS,
 after the specified stage number or stage name, to
 @file{@var{module}.mlds_dump.@var{num}-@var{name}}.
 
+@c @sp 1
+@c @item --dump-options-file
+@c @findex --dump-options-file
+@c Dump the internal compiler representation of files named in
+@c --options-file options.
+
 @sp 1
 @item --mode-constraints
 @findex --mode-constraints

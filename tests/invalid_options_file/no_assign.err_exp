@@ -1,0 +1,1 @@
+no_assign.options_file:002: expected `=', `:=' or `+=' after `MCFLAGS-global'.

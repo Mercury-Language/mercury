@@ -1,0 +1,45 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
+
+TESTS_DIR = ..
+THIS_DIR = invalid_options_file
+MAYBE_J1 =
+
+PROGS = \
+	no_assign \
+	no_var \
+	nonexistent_file \
+	undefined_var \
+	unterminated_string \
+	unterminated_var
+
+TESTS = $(patsubst %,%-nodepend,$(sort $(PROGS)))
+include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+%.runtest: %.err_res ;
+
+%.err: %.m %.options_file
+	if $(MC) --errorcheck-only --options-file $*.options_file \
+		--halt-at-warn $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
+		> $*.err 2>&1; \
+	then \
+		false; \
+	else \
+		true; \
+	fi
+
+#-----------------------------------------------------------------------------#
+
+clean_local: clean_invalid_options_file
+
+clean_invalid_options_file:
+
+realclean_local: realclean_invalid_options_file
+
+realclean_invalid_options_file:
+	rm -f *.err *.err_res
+
+#-----------------------------------------------------------------------------#
