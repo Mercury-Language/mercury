@@ -1,0 +1,3 @@
+inf_incl_direct.options_file:002: Error: options file
+inf_incl_direct.options_file:002:   `./inf_incl_direct.options_file' includes
+inf_incl_direct.options_file:002:   itself.

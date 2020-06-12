@@ -1,0 +1,2 @@
+MCFLAGS += -V
+include inf_incl_direct.options_file

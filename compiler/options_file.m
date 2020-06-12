@@ -130,12 +130,14 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module dir.
 :- import_module int.
 :- import_module one_or_more.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
@@ -195,17 +197,15 @@ read_options_file_set_params(OptionSearchDirs, OptionsFile,
         IsOptionsFileOptional = options_file_must_exist
     ),
     SearchInfo = search_info(MaybeDirName, MaybeSearch),
-    MaybeContext = no,
-    read_options_file_params(SearchInfo, MaybeContext, IsOptionsFileOptional,
+    read_options_file_params(SearchInfo, pre_stack_base, IsOptionsFileOptional,
         OptionsFile, !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO).
 
 %---------------------%
 
 read_named_options_file(OptionsPathName, !Variables, Specs, UndefSpecs, !IO) :-
     SearchInfo = search_info(no, no_search),
-    MaybeContext = no,
-    read_options_file_params(SearchInfo, MaybeContext, options_file_must_exist,
-        OptionsPathName, !Variables,
+    read_options_file_params(SearchInfo, pre_stack_base,
+        options_file_must_exist, OptionsPathName, !Variables,
         [], IOSpecs, [], ParseSpecs, [], UndefSpecs, !IO),
     Specs = IOSpecs ++ ParseSpecs.
 
@@ -261,25 +261,63 @@ read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
     --->    options_file_need_not_exist
     ;       options_file_must_exist.
 
+    % The inclusion stack records, for the options file being processed,
+    % which other options files, if any, contained the include directives
+    % that lead to it being read. We use it to detect circular inclusions.
+:- type incl_stack
+    --->    incl_stack_base(
+                % The file named here is either read automatically by
+                % the compiler (e.g. Mercury.options) or its reading
+                % was requested by the user via an --options-file
+                % compiler option.
+                file_name
+            )
+    ;       incl_stack_nested(
+                % We read the file named here in response to an "include"
+                % directive.
+                file_name,
+
+                % The context of that include directive.
+                term.context,
+
+                % The "provenance" of the file that contains that include
+                % directive.
+                incl_stack
+            ).
+
+    % The pre_incl_stack is a version of the incl_stack *before* file_util.m
+    % finds the full pathname of a possibly-searched-for options file for us.
+:- type pre_incl_stack
+    --->    pre_stack_base
+    ;       pre_stack_nested(term.context, incl_stack).
+
 :- pred read_options_file_params(search_info::in,
-    maybe(term.context)::in, is_options_file_optional::in,
+    pre_incl_stack::in, is_options_file_optional::in,
     string::in, options_variables::in, options_variables::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-read_options_file_params(SearchInfo, MaybeContext, IsOptionsFileOptional,
+read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         OptionsPathName, !Variables,
         !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
     ( if OptionsPathName = "-" then
-        % Read from standard input.
-        trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-            io.write_string("Reading options file from stdin...", !TIO)
-        ),
-        SearchInfo = search_info(_MaybeDirName, Search),
-        SubSearchInfo = search_info(yes(dir.this_directory), Search),
-        read_options_lines(SubSearchInfo, io.stdin_stream, "stdin", 1,
-            !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO)
+        check_include_for_infinite_recursion(PreStack0, "-", CheckResult),
+        (
+            CheckResult = include_ok(InclStack0),
+            % Read from standard input.
+            trace [compiletime(flag("options_file_debug")), io(!TIO)] (
+                io.write_string("Reading options file from stdin...", !TIO)
+            ),
+            SearchInfo = search_info(_MaybeDirName, Search),
+            SubSearchInfo = search_info(yes(dir.this_directory), Search),
+            read_options_lines(SubSearchInfo, InclStack0,
+                io.stdin_stream, "stdin", 1, !Variables,
+                !IOSpecs, !ParseSpecs, !UndefSpecs, !IO)
+        ;
+            CheckResult = include_error(CheckSpec),
+            !:ParseSpecs = [CheckSpec | !.ParseSpecs]
+        )
     else
         trace [compiletime(flag("options_file_debug")), io(!TIO)] (
             io.format("Searching for options file %s",
@@ -329,22 +367,31 @@ read_options_file_params(SearchInfo, MaybeContext, IsOptionsFileOptional,
         (
             MaybeDirAndStream =
                 ok(path_name_and_stream(FoundDir, FoundStream)),
-            trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                io.format("Reading options file %s",
-                    [s(FoundDir/FileToFind)], !TIO)
+            check_include_for_infinite_recursion(PreStack0,
+                FoundDir / FileToFind, CheckResult),
+            (
+                CheckResult = include_ok(InclStack0),
+                trace [compiletime(flag("options_file_debug")), io(!TIO)] (
+                    io.format("Reading options file %s",
+                        [s(FoundDir/FileToFind)], !TIO)
+                ),
+
+                % XXX Instead of setting and unsetting the input stream,
+                % we should simply pass FoundStream to read_options_lines.
+                % However, when I (zs) tried that, I quickly found that
+                % the call tree of read_options_lines includes many predicates
+                % for which it is not at all clear whether they *intend*
+                % to read from a current standard input that originates as
+                % FoundStream, or they just *happen* to do so.
+
+                SubSearchInfo = search_info(yes(FoundDir), Search),
+                read_options_lines(SubSearchInfo, InclStack0,
+                    FoundStream, FileToFind, 1, !Variables,
+                    !IOSpecs, !ParseSpecs, !UndefSpecs, !IO)
+            ;
+                CheckResult = include_error(CheckSpec),
+                !:ParseSpecs = [CheckSpec | !.ParseSpecs]
             ),
-
-            % XXX Instead of setting and unsetting the input stream,
-            % we should simply pass FoundStream to read_options_lines.
-            % However, when I (zs) tried that, I quickly found that
-            % the call tree of read_options_lines includes many predicates
-            % for which it is not at all clear whether they *intend*
-            % to read from a current standard input that originates as
-            % FoundStream, or they just *happen* to do so.
-
-            SubSearchInfo = search_info(yes(FoundDir), Search),
-            read_options_lines(SubSearchInfo, FoundStream, FileToFind, 1,
-                !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO),
             io.close_input(FoundStream, !IO)
         ;
             MaybeDirAndStream = error(Error),
@@ -358,6 +405,13 @@ read_options_file_params(SearchInfo, MaybeContext, IsOptionsFileOptional,
                     )
                 else
                     ErrorFile = FileToFind
+                ),
+                (
+                    PreStack0 = pre_stack_base,
+                    MaybeContext = no
+                ;
+                    PreStack0 = pre_stack_nested(Context, _),
+                    MaybeContext = yes(Context)
                 ),
                 Spec = error_spec($pred, severity_error, phase_read_files,
                     [error_msg(MaybeContext, treat_as_first, 0,
@@ -374,6 +428,99 @@ read_options_file_params(SearchInfo, MaybeContext, IsOptionsFileOptional,
         io.write_string("done.\n", !TIO)
     ).
 
+%---------------------%
+
+:- type include_check_result
+    --->    include_ok(incl_stack)
+    ;       include_error(error_spec).
+
+:- pred check_include_for_infinite_recursion(pre_incl_stack::in,
+    file_name::in, include_check_result::out) is det.
+
+check_include_for_infinite_recursion(PreStack0, PathName, Result) :-
+    (
+        PreStack0 = pre_stack_base,
+        InclStack = incl_stack_base(PathName),
+        Result = include_ok(InclStack)
+    ;
+        PreStack0 = pre_stack_nested(Context, InclStack0),
+        ( if
+            pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec)
+        then
+            Result = include_error(Spec)
+        else
+            InclStack = incl_stack_nested(PathName, Context, InclStack0),
+            Result = include_ok(InclStack)
+        )
+    ).
+
+:- pred pathname_occurs_in_incl_stack(incl_stack::in, file_name::in,
+    term.context::in, error_spec::out) is semidet.
+
+pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec) :-
+    (
+        InclStack0 = incl_stack_base(StackPathName0),
+        ( if PathName = StackPathName0 then
+            Pieces = [words("Error: options file"), quote(PathName),
+                words("includes itself."), nl],
+            Spec = simplest_spec($pred, severity_error, phase_read_files,
+                Context, Pieces)
+        else
+            fail
+        )
+    ;
+        InclStack0 = incl_stack_nested(StackPathName0, Context0, InclStack1),
+        ( if PathName = StackPathName0 then
+            Pieces = [words("Error: options file"), quote(PathName),
+                words("includes itself."), nl],
+            Spec = simplest_spec($pred, severity_error, phase_read_files,
+                Context, Pieces)
+        else
+            ( if
+                pathname_occurs_in_incl_stack_2(InclStack1, PathName,
+                    [StackPathName0 - Context0], TopDownIncludes)
+            then
+                TopPathName - TopContext = list.det_head(TopDownIncludes),
+                MainPieces = [words("Error: options file"), quote(TopPathName),
+                    words("indirectly includes itself through"),
+                    words("the following chain of include directives."), nl],
+                MainMsg = simplest_msg(TopContext, MainPieces),
+                InclMsgs = list.map(include_context_msg, TopDownIncludes),
+                LastMsg = include_context_msg(PathName - Context),
+                Spec = error_spec($pred, severity_error, phase_read_files,
+                    [MainMsg | InclMsgs] ++ [LastMsg])
+            else
+                fail
+            )
+        )
+    ).
+
+:- pred pathname_occurs_in_incl_stack_2(incl_stack::in, file_name::in,
+    assoc_list(file_name, term.context)::in,
+    assoc_list(file_name, term.context)::out) is semidet.
+
+pathname_occurs_in_incl_stack_2(InclStack0, PathName, !TopDownIncludes) :-
+    (
+        InclStack0 = incl_stack_base(StackPathName0),
+        PathName = StackPathName0
+    ;
+        InclStack0 = incl_stack_nested(StackPathName0, Context0, InclStack1),
+        !:TopDownIncludes = [StackPathName0 - Context0 | !.TopDownIncludes],
+        ( if PathName = StackPathName0 then
+            true
+        else
+            pathname_occurs_in_incl_stack_2(InclStack1, PathName,
+                !TopDownIncludes)
+        )
+    ).
+
+:- func include_context_msg(pair(file_name, term.context)) = error_msg.
+
+include_context_msg(FileName - Context) = Msg :-
+    Pieces = [words("The include directive for"), quote(FileName),
+        words("here."), nl],
+    Msg = simplest_msg(Context, Pieces).
+
 %---------------------------------------------------------------------------%
 
 :- type maybe_is_first
@@ -387,15 +534,15 @@ read_options_file_params(SearchInfo, MaybeContext, IsOptionsFileOptional,
 
 %---------------------------------------------------------------------------%
 
-:- pred read_options_lines(search_info::in,
+:- pred read_options_lines(search_info::in, incl_stack::in,
     io.text_input_stream::in, file_name::in, int::in,
     options_variables::in, options_variables::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-read_options_lines(SearchInfo, InStream, FileName, LineNumber0, !Variables,
-        !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
+read_options_lines(SearchInfo, InclStack0, InStream, FileName, LineNumber0,
+        !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
     read_options_line(InStream, FileName, LineNumber0, LineNumber1,
         LineResult, !IO),
     (
@@ -425,9 +572,10 @@ read_options_lines(SearchInfo, InStream, FileName, LineNumber0, !Variables,
                     (
                         MaybeIncludedFileNames = ok(IncludedFileNames),
                         Context = term.context(FileName, LineNumber0),
+                        PreStack1 = pre_stack_nested(Context, InclStack0),
                         list.foldl5(
                             read_options_file_params(SearchInfo,
-                                yes(Context), IsOptionsFileOptional),
+                                PreStack1, IsOptionsFileOptional),
                             IncludedFileNames, !Variables,
                             !IOSpecs, !ParseSpecs, !UndefSpecs, !IO)
                     ;
@@ -443,8 +591,9 @@ read_options_lines(SearchInfo, InStream, FileName, LineNumber0, !Variables,
             )
         ),
         LineNumber2 = LineNumber1 + 1,
-        read_options_lines(SearchInfo, InStream, FileName, LineNumber2,
-            !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO)
+        read_options_lines(SearchInfo, InclStack0, InStream,
+            FileName, LineNumber2, !Variables,
+            !IOSpecs, !ParseSpecs, !UndefSpecs, !IO)
     ;
         LineResult = pr_error(Spec),
         !:IOSpecs = [Spec | !.IOSpecs]

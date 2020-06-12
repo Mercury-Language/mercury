@@ -1,0 +1,3 @@
+MCFLAGS += -V
+include inf_incl_indirect.options_file_a
+include inf_incl_indirect.options_file_b
