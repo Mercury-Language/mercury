@@ -560,70 +560,6 @@ io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_read_files,
         Context, Pieces).
 
-:- pred update_variable(file_name::in, int::in,
-    set_or_add::in, options_variable::in, list(char)::in,
-    options_variables::in, options_variables::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
-
-update_variable(FileName, LineNumber, SetOrAdd, VarName, NewValue0,
-        !Variables, !ParseSpecs, !UndefSpecs, !IO) :-
-    expand_any_var_references(!.Variables, FileName, LineNumber,
-        NewValue0, NewValue1, !ParseSpecs, !UndefSpecs, !IO),
-    MaybeWords1 = split_into_words(NewValue1),
-    (
-        MaybeWords1 = ok(Words1),
-        io.get_environment_var(VarName, MaybeEnvValue, !IO),
-        (
-            MaybeEnvValue = yes(EnvValue),
-            Value = string.to_char_list(EnvValue),
-            MaybeWords = split_into_words(Value),
-            (
-                MaybeWords = ok(Words),
-                EnvValueChars = string.to_char_list(EnvValue),
-                Entry = options_variable_value(EnvValueChars, Words,
-                    environment),
-                map.set(VarName, Entry, !Variables)
-            ;
-                MaybeWords = error(WordsError),
-                Spec = report_split_error(FileName, LineNumber, WordsError),
-                !:ParseSpecs = [Spec | !.ParseSpecs]
-            )
-        ;
-            MaybeEnvValue = no,
-            ( if map.search(!.Variables, VarName, OldEntry) then
-                OldEntry = options_variable_value(OldValue, OldWords, Source),
-                (
-                    Source = environment
-                ;
-                    Source = command_line
-                ;
-                    Source = options_file,
-                    (
-                        SetOrAdd = soa_set,
-                        NewValue = NewValue1,
-                        Words = Words1
-                    ;
-                        SetOrAdd = soa_add,
-                        NewValue = OldValue ++ [' ' |  NewValue1],
-                        Words = OldWords ++ Words1
-                    ),
-                    Entry = options_variable_value(NewValue, Words,
-                        options_file),
-                    map.det_update(VarName, Entry, !Variables)
-                )
-            else
-                Entry = options_variable_value(NewValue1, Words1,
-                    options_file),
-                map.det_insert(VarName, Entry, !Variables)
-            )
-        )
-    ;
-        MaybeWords1 = error(WordsError1),
-        Spec = report_split_error(FileName, LineNumber, WordsError1),
-        !:ParseSpecs = [Spec | !.ParseSpecs]
-    ).
-
 :- func report_split_error(file_name, int, string) = error_spec.
 
 report_split_error(FileName, LineNumber, Msg) = Spec :-
@@ -632,129 +568,26 @@ report_split_error(FileName, LineNumber, Msg) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_read_files,
         Context, Pieces).
 
-:- pred expand_any_var_references(options_variables::in,
-    file_name::in, int::in, list(char)::in, list(char)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
-expand_any_var_references(Variables, FileName, LineNumber, Chars0, Chars,
-        !ParseSpecs, !UndefSpecs, !IO) :-
-    expand_any_var_references_loop(Variables, FileName, LineNumber,
-        Chars0, [], RevChars, !ParseSpecs, [], UndefVarNames, !IO),
-    list.reverse(RevChars, Chars),
-    report_any_undefined_variables(FileName, LineNumber, UndefVarNames,
-        !UndefSpecs).
+:- pred skip_comment_line(io.text_input_stream::in, io.result::out,
+    io::di, io::uo) is det.
 
-:- pred expand_any_var_references_loop(options_variables::in,
-    file_name::in, int::in, list(char)::in, list(char)::in, list(char)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(string)::in, list(string)::out, io::di, io::uo) is det.
-
-expand_any_var_references_loop(_, _, _,
-        [], !RevChars, !ParseSpecs, !UndefVarNames, !IO).
-expand_any_var_references_loop(Variables, FileName, LineNumber,
-        [Char | Chars], !RevChars, !ParseSpecs, !UndefVarNames, !IO) :-
-    ( if Char = '$' then
-        (
-            Chars = [],
-            Spec = report_unterminated_variable_reference(FileName, LineNumber,
-                !.RevChars),
-            !:ParseSpecs = [Spec | !.ParseSpecs]
-        ;
-            Chars = [Char2 | Chars1],
-            ( if Char2 = '$' then
-                !:RevChars = ['$' | !.RevChars],
-                expand_any_var_references_loop(Variables, FileName, LineNumber,
-                    Chars1, !RevChars, !ParseSpecs, !UndefVarNames, !IO)
-            else
-                ( if
-                    ( Char2 = '(', EndChar = ')'
-                    ; Char2 = '{', EndChar = '}'
-                    )
-                then
-                    parse_variable_name(FileName, LineNumber, Chars1, Chars2,
-                        MaybeVarName0),
-                    (
-                        MaybeVarName0 = ovos_spec(_),
-                        MaybeVarName = MaybeVarName0,
-                        ( if Chars2 = [EndChar | Chars3] then
-                            Chars4 = Chars3
-                        else
-                            Chars4 = Chars2
-                        )
-                    ;
-                        MaybeVarName0 = ovos_var_name(_),
-                        ( if Chars2 = [EndChar | Chars3] then
-                            Chars4 = Chars3,
-                            MaybeVarName = MaybeVarName0
-                        else
-                            Chars4 = Chars2,
-                            RefSpec = report_unterminated_variable_reference(
-                                FileName, LineNumber, !.RevChars),
-                            MaybeVarName = ovos_spec(RefSpec)
-                        )
-                    )
-                else
-                    Chars4 = Chars1,
-                    VarName0 = string.char_to_string(Char2),
-                    MaybeVarName = ovos_var_name(VarName0)
-                ),
-                (
-                    MaybeVarName = ovos_var_name(VarName),
-                    lookup_variable_value(Variables, VarName, VarValueChars,
-                        !UndefVarNames, !IO),
-                    !:RevChars = list.reverse(VarValueChars) ++ !.RevChars
-                ;
-                    MaybeVarName = ovos_spec(ParseSpec),
-                    % There is no well-formed variable name to look up.
-                    % We could try to put the characters that compose
-                    % the malformed variable name to !RevChars, but I (zs)
-                    % don't see any point.
-                    !:ParseSpecs = [ParseSpec | !.ParseSpecs]
-                ),
-                expand_any_var_references_loop(Variables, FileName, LineNumber,
-                    Chars4, !RevChars, !ParseSpecs, !UndefVarNames, !IO)
-            )
-        )
-    else
-        !:RevChars = [Char | !.RevChars],
-        expand_any_var_references_loop(Variables, FileName, LineNumber,
-            Chars, !RevChars, !ParseSpecs, !UndefVarNames, !IO)
-    ).
-
-:- func report_unterminated_variable_reference(file_name, int, list(char))
-    = error_spec.
-
-report_unterminated_variable_reference(FileName, LineNumber, RevChars)
-        = Spec :-
-    Context = term.context_init(FileName, LineNumber),
-    Pieces = [words("Error: unterminated reference to a variable after"),
-        quote(string.from_rev_char_list(RevChars)), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_read_files,
-        Context, Pieces).
-
-:- pred report_any_undefined_variables(file_name::in, int::in,
-    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-report_any_undefined_variables(FileName, LineNumber, UndefVarNames0,
-        !UndefSpecs) :-
+skip_comment_line(InStream, Result, !IO) :-
+    io.read_char_unboxed(InStream, CharResult, Char, !IO),
     (
-        UndefVarNames0 = []
+        CharResult = ok,
+        ( if Char = '\n' then
+            Result = ok
+        else
+            skip_comment_line(InStream, Result, !IO)
+        )
     ;
-        UndefVarNames0 = [_ | _],
-        list.sort_and_remove_dups(UndefVarNames0, UndefVarNames),
-
-        UndefVarNamesPieces = list_to_quoted_pieces(UndefVarNames),
-        ( UndefVarNames = [], unexpected($pred, "UndefVarNames = []")
-        ; UndefVarNames = [_],        VarVars = "variable",  IsAre = "is"
-        ; UndefVarNames = [_, _ | _], VarVars = "variables", IsAre = "are"
-        ),
-        Context = term.context_init(FileName, LineNumber),
-        Pieces = [words("Warning:"), words(VarVars) | UndefVarNamesPieces] ++
-            [words(IsAre), words("undefined."), nl],
-        Spec = simplest_spec($pred, severity_warning, phase_read_files,
-            Context, Pieces),
-        !:UndefSpecs = [Spec | !.UndefSpecs]
+        CharResult = eof,
+        Result = eof
+    ;
+        CharResult = error(Error),
+        Result = error(Error)
     ).
 
 %---------------------------------------------------------------------------%
@@ -874,26 +707,6 @@ do_parse_variable_name([Char | Chars0], Chars, IsFirst, !RevVarNameChars) :-
         do_parse_variable_name(Chars0, Chars, is_not_first, !RevVarNameChars)
     else
         Chars = [Char | Chars0]
-    ).
-
-:- pred skip_comment_line(io.text_input_stream::in, io.result::out,
-    io::di, io::uo) is det.
-
-skip_comment_line(InStream, Result, !IO) :-
-    io.read_char_unboxed(InStream, CharResult, Char, !IO),
-    (
-        CharResult = ok,
-        ( if Char = '\n' then
-            Result = ok
-        else
-            skip_comment_line(InStream, Result, !IO)
-        )
-    ;
-        CharResult = eof,
-        Result = eof
-    ;
-        CharResult = error(Error),
-        Result = error(Error)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1035,6 +848,200 @@ get_string_acc([Char | Chars0], Chars, RevString0, RevString, MaybeError) :-
     else
         get_string_acc(Chars0, Chars, [Char | RevString0], RevString,
             MaybeError)
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred update_variable(file_name::in, int::in,
+    set_or_add::in, options_variable::in, list(char)::in,
+    options_variables::in, options_variables::out,
+    list(error_spec)::in, list(error_spec)::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+update_variable(FileName, LineNumber, SetOrAdd, VarName, NewValue0,
+        !Variables, !ParseSpecs, !UndefSpecs, !IO) :-
+    expand_any_var_references(!.Variables, FileName, LineNumber,
+        NewValue0, NewValue1, !ParseSpecs, !UndefSpecs, !IO),
+    MaybeWords1 = split_into_words(NewValue1),
+    (
+        MaybeWords1 = ok(Words1),
+        io.get_environment_var(VarName, MaybeEnvValue, !IO),
+        (
+            MaybeEnvValue = yes(EnvValue),
+            Value = string.to_char_list(EnvValue),
+            MaybeWords = split_into_words(Value),
+            (
+                MaybeWords = ok(Words),
+                EnvValueChars = string.to_char_list(EnvValue),
+                Entry = options_variable_value(EnvValueChars, Words,
+                    environment),
+                map.set(VarName, Entry, !Variables)
+            ;
+                MaybeWords = error(WordsError),
+                Spec = report_split_error(FileName, LineNumber, WordsError),
+                !:ParseSpecs = [Spec | !.ParseSpecs]
+            )
+        ;
+            MaybeEnvValue = no,
+            ( if map.search(!.Variables, VarName, OldEntry) then
+                OldEntry = options_variable_value(OldValue, OldWords, Source),
+                (
+                    Source = environment
+                ;
+                    Source = command_line
+                ;
+                    Source = options_file,
+                    (
+                        SetOrAdd = soa_set,
+                        NewValue = NewValue1,
+                        Words = Words1
+                    ;
+                        SetOrAdd = soa_add,
+                        NewValue = OldValue ++ [' ' |  NewValue1],
+                        Words = OldWords ++ Words1
+                    ),
+                    Entry = options_variable_value(NewValue, Words,
+                        options_file),
+                    map.det_update(VarName, Entry, !Variables)
+                )
+            else
+                Entry = options_variable_value(NewValue1, Words1,
+                    options_file),
+                map.det_insert(VarName, Entry, !Variables)
+            )
+        )
+    ;
+        MaybeWords1 = error(WordsError1),
+        Spec = report_split_error(FileName, LineNumber, WordsError1),
+        !:ParseSpecs = [Spec | !.ParseSpecs]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred expand_any_var_references(options_variables::in,
+    file_name::in, int::in, list(char)::in, list(char)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+expand_any_var_references(Variables, FileName, LineNumber, Chars0, Chars,
+        !ParseSpecs, !UndefSpecs, !IO) :-
+    expand_any_var_references_loop(Variables, FileName, LineNumber,
+        Chars0, [], RevChars, !ParseSpecs, [], UndefVarNames, !IO),
+    list.reverse(RevChars, Chars),
+    report_any_undefined_variables(FileName, LineNumber, UndefVarNames,
+        !UndefSpecs).
+
+:- pred expand_any_var_references_loop(options_variables::in,
+    file_name::in, int::in, list(char)::in, list(char)::in, list(char)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    list(string)::in, list(string)::out, io::di, io::uo) is det.
+
+expand_any_var_references_loop(_, _, _,
+        [], !RevChars, !ParseSpecs, !UndefVarNames, !IO).
+expand_any_var_references_loop(Variables, FileName, LineNumber,
+        [Char | Chars], !RevChars, !ParseSpecs, !UndefVarNames, !IO) :-
+    ( if Char = '$' then
+        (
+            Chars = [],
+            Spec = report_unterminated_variable_reference(FileName, LineNumber,
+                !.RevChars),
+            !:ParseSpecs = [Spec | !.ParseSpecs]
+        ;
+            Chars = [Char2 | Chars1],
+            ( if Char2 = '$' then
+                !:RevChars = ['$' | !.RevChars],
+                expand_any_var_references_loop(Variables, FileName, LineNumber,
+                    Chars1, !RevChars, !ParseSpecs, !UndefVarNames, !IO)
+            else
+                ( if
+                    ( Char2 = '(', EndChar = ')'
+                    ; Char2 = '{', EndChar = '}'
+                    )
+                then
+                    parse_variable_name(FileName, LineNumber, Chars1, Chars2,
+                        MaybeVarName0),
+                    (
+                        MaybeVarName0 = ovos_spec(_),
+                        MaybeVarName = MaybeVarName0,
+                        ( if Chars2 = [EndChar | Chars3] then
+                            Chars4 = Chars3
+                        else
+                            Chars4 = Chars2
+                        )
+                    ;
+                        MaybeVarName0 = ovos_var_name(_),
+                        ( if Chars2 = [EndChar | Chars3] then
+                            Chars4 = Chars3,
+                            MaybeVarName = MaybeVarName0
+                        else
+                            Chars4 = Chars2,
+                            RefSpec = report_unterminated_variable_reference(
+                                FileName, LineNumber, !.RevChars),
+                            MaybeVarName = ovos_spec(RefSpec)
+                        )
+                    )
+                else
+                    Chars4 = Chars1,
+                    VarName0 = string.char_to_string(Char2),
+                    MaybeVarName = ovos_var_name(VarName0)
+                ),
+                (
+                    MaybeVarName = ovos_var_name(VarName),
+                    lookup_variable_value(Variables, VarName, VarValueChars,
+                        !UndefVarNames, !IO),
+                    !:RevChars = list.reverse(VarValueChars) ++ !.RevChars
+                ;
+                    MaybeVarName = ovos_spec(ParseSpec),
+                    % There is no well-formed variable name to look up.
+                    % We could try to put the characters that compose
+                    % the malformed variable name to !RevChars, but I (zs)
+                    % don't see any point.
+                    !:ParseSpecs = [ParseSpec | !.ParseSpecs]
+                ),
+                expand_any_var_references_loop(Variables, FileName, LineNumber,
+                    Chars4, !RevChars, !ParseSpecs, !UndefVarNames, !IO)
+            )
+        )
+    else
+        !:RevChars = [Char | !.RevChars],
+        expand_any_var_references_loop(Variables, FileName, LineNumber,
+            Chars, !RevChars, !ParseSpecs, !UndefVarNames, !IO)
+    ).
+
+:- func report_unterminated_variable_reference(file_name, int, list(char))
+    = error_spec.
+
+report_unterminated_variable_reference(FileName, LineNumber, RevChars)
+        = Spec :-
+    Context = term.context_init(FileName, LineNumber),
+    Pieces = [words("Error: unterminated reference to a variable after"),
+        quote(string.from_rev_char_list(RevChars)), suffix("."), nl],
+    Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Context, Pieces).
+
+:- pred report_any_undefined_variables(file_name::in, int::in,
+    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_any_undefined_variables(FileName, LineNumber, UndefVarNames0,
+        !UndefSpecs) :-
+    (
+        UndefVarNames0 = []
+    ;
+        UndefVarNames0 = [_ | _],
+        list.sort_and_remove_dups(UndefVarNames0, UndefVarNames),
+
+        UndefVarNamesPieces = list_to_quoted_pieces(UndefVarNames),
+        ( UndefVarNames = [], unexpected($pred, "UndefVarNames = []")
+        ; UndefVarNames = [_],        VarVars = "variable",  IsAre = "is"
+        ; UndefVarNames = [_, _ | _], VarVars = "variables", IsAre = "are"
+        ),
+        Context = term.context_init(FileName, LineNumber),
+        Pieces = [words("Warning:"), words(VarVars) | UndefVarNamesPieces] ++
+            [words(IsAre), words("undefined."), nl],
+        Spec = simplest_spec($pred, severity_warning, phase_read_files,
+            Context, Pieces),
+        !:UndefSpecs = [Spec | !.UndefSpecs]
     ).
 
 %---------------------------------------------------------------------------%
