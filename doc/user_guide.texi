@@ -245,6 +245,7 @@ act like a library archive.
 
 @node Using mmc
 @chapter Using the Mercury compiler
+@cindex Microsoft Management Console
 
 Following a long Unix tradition,
 the Mercury compiler is called @samp{mmc}
@@ -253,8 +254,15 @@ the Mercury compiler is called @samp{mmc}
 Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in other Unix compilers.
 
+(Note that on Microsoft Windows systems the name @samp{mmc} is also used by the
+executable for the Microsoft Management Console.
+To avoid the name clash on these systems you can either invoke the
+Mercury compiler by the alternative name @samp{mercury} or adjust your
+@env{PATH} to ensure that the @file{bin} directory precedes the Windows system
+directory.)
+
 Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
-or module names, with @samp{.} (rather than @samp{__} or @samp{:})
+or module names, with @samp{.} (rather than @samp{__})
 as the module qualifier.  For a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in the file named @file{foo.bar.baz.m}.
 To make the compiler look for a module in another file,

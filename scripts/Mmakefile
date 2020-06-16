@@ -26,6 +26,7 @@ CONF_SCRIPTS = \
 	mdb \
 	mdb.bat \
 	mdprof \
+	mercury \
 	mercury.bat \
 	mercury_config \
 	mercury_update_interface \

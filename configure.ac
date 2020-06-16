@@ -5701,6 +5701,7 @@ export had_old_conf_h
 
 executable_output_files='
 scripts/mmc
+scripts/mercury
 scripts/mercury.bat
 scripts/mprof
 scripts/mprof.bat

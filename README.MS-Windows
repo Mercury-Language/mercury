@@ -41,3 +41,12 @@ Building Mercury for Windows on Linux
 
 Alternatively, you can cross-compile Mercury on Linux with a MinGW
 cross-compiler.  See README.MinGW-cross.
+
+------------------------
+Using Mercury on Windows
+------------------------
+
+On Windows systems the usual name for the Mercury compiler, mmc, conflicts with
+the name of the executable for the Microsoft Management Console.  See the
+"Using the Mercury compiler" chapter of the Mercury Users's Guide for how to
+deal with this.

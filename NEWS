@@ -239,6 +239,12 @@ Changes to the Mercury standard library
 Changes to the Mercury compiler
 -------------------------------
 
+### Alternative script to invoke the compiler
+
+* We have added an alternative script, `mercury`, to use when invoking the
+  compiler on systems where the usual name, `mmc`, clashes with other
+  executables.
+
 ### Changes to the treatment of unused imports
 
 * The compiler now generates warnings for `:- import_module` and
