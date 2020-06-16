@@ -1,7 +1,7 @@
 @echo off
 rem @configure_input@
 rem ---------------------------------------------------------------------------
-rem Copyright (C) 1994-1998, 2000-2001, 2003, 2005, 2011 The University of Melbourne.
+rem Copyright (C) 2001, 2003, 2005, 2011 The University of Melbourne.
 rem This file may only be copied under the terms of the GNU General
 rem Public License - see the file COPYING in the Mercury distribution.
 rem ---------------------------------------------------------------------------
