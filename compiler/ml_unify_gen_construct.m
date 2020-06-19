@@ -10,7 +10,6 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.ml_gen_info.
@@ -96,6 +95,7 @@
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
