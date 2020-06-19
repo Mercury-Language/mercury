@@ -2221,6 +2221,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 %---------------------------------------------------------------------------%
 
 :- pred semidet_unimplemented(string::in) is semidet.
+:- pragma consider_used(semidet_unimplemented/1).
 
 semidet_unimplemented(S) :-
     ( if semidet_succeed then
@@ -2230,6 +2231,7 @@ semidet_unimplemented(S) :-
     ).
 
 :- pred det_unimplemented(string::in) is det.
+:- pragma consider_used(det_unimplemented/1).
 
 det_unimplemented(S) :-
     ( if semidet_succeed then

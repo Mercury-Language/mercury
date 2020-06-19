@@ -532,7 +532,7 @@ clk_tck = Ret :-
     ).
 
 :- func c_clk_tck = int.
-
+:- pragma consider_used(c_clk_tck/0).
 :- pragma foreign_proc("C",
     c_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],

@@ -4360,6 +4360,7 @@ set_type_info_index(_, _, _, !TypeInfo) :-
 %---------------------%
 
 :- pred semidet_unimplemented(string::in) is semidet.
+:- pragma consider_used(semidet_unimplemented/1).
 
 semidet_unimplemented(S) :-
     ( if semidet_succeed then
@@ -4369,6 +4370,7 @@ semidet_unimplemented(S) :-
     ).
 
 :- pred det_unimplemented(string::in) is det.
+:- pragma consider_used(det_unimplemented/1).
 
 det_unimplemented(S) :-
     ( if semidet_succeed then
@@ -5182,6 +5184,7 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
 
     % XXX get rid of this
 :- func unsafe_index(int, T) = U.
+:- pragma consider_used(unsafe_index/2).
 :- pragma foreign_proc("C#",
     unsafe_index(_Num::in, _Array::in) = (Item::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -5195,6 +5198,7 @@ unsafe_index(_, _) = _ :-
 
 :- pred null(T::in) is semidet.
 :- pragma no_determinism_warning(null/1).
+:- pragma consider_used(null/1).
 
 :- pragma foreign_proc("C",
     null(S::in),

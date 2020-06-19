@@ -10125,6 +10125,7 @@ read_file_as_string_2(Stream, String, NumCUs, Error, NullCharError, !IO) :-
 :- pred read_file_as_string_loop(input_stream::in, buffer::buffer_di,
     buffer::buffer_uo, int::in, int::out, int::in, int::out, system_error::out,
     io::di, io::uo) is det.
+:- pragma consider_used(read_file_as_string_loop/10).
 
 read_file_as_string_loop(Stream, !Buffer, BufferSize0, BufferSize,
         !NumCUs, Error, !IO) :-
@@ -10261,6 +10262,7 @@ read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
     % XXX FIXME this should return an int64.
 :- pred input_stream_file_size(io.input_stream::in, int::out,
     io::di, io::uo) is det.
+:- pragma consider_used(input_stream_file_size/4).
 
 input_stream_file_size(input_stream(Stream), Size, !IO) :-
     stream_file_size(Stream, Size64, !IO),
@@ -10354,6 +10356,7 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
 :- mode buffer_uo == out(uniq_buffer).
 
 :- pred alloc_buffer(int::in, buffer::buffer_uo) is det.
+:- pragma consider_used(alloc_buffer/2).
 
 :- pragma foreign_proc("C",
     alloc_buffer(Size::in, Buffer::buffer_uo),
@@ -10416,6 +10419,7 @@ resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     array.resize(NewSize, Char, Array0, Array).
 
 :- pred buffer_to_string(buffer::buffer_di, int::in, string::uo) is semidet.
+:- pragma consider_used(buffer_to_string/3).
 
 :- pragma foreign_proc("C",
     buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
@@ -13799,6 +13803,7 @@ typedef struct {
 
 :- pred compare_file_id(comparison_result::uo, file_id::in, file_id::in)
     is det.
+:- pragma consider_used(compare_file_id/3).
 
 compare_file_id(Result, FileId1, FileId2) :-
     compare_file_id_2(Result0, FileId1, FileId2),
@@ -13844,12 +13849,8 @@ compare_file_id(Result, FileId1, FileId2) :-
     }
 ").
 
-:- pragma foreign_proc("Java",
-    compare_file_id_2(_Res::out, _FileId1::in, _FileId2::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    throw new RuntimeException(""File IDs are not supported by Java."");
-").
+compare_file_id_2(_, _, _) :-
+    unexpected($pred, "File IDs are not supported by Java").
 
 :- pragma foreign_proc("Erlang",
     compare_file_id_2(Res::out, FileId1::in, FileId2::in),
