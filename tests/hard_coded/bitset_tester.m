@@ -4,6 +4,7 @@
 %
 % Test operations on bitsets by comparing the output with the output
 % from an ordinary set.
+
 :- module bitset_tester.
 
 :- interface.
@@ -55,8 +56,8 @@
 
 :- func foldl(func(T, U) = U, bitset_tester(T), U) = U <= enum(T).
 
-:- pred empty(bitset_tester(T)).
-:- mode empty(in) is semidet.
+:- pred is_empty(bitset_tester(T)).
+:- mode is_empty(in) is semidet.
 
 :- pred contains(bitset_tester(T)::in, T::in) is semidet <= enum(T).
 
@@ -88,14 +89,13 @@
 :- import_module bool.
 :- import_module exception.
 :- import_module int.
-:- import_module list.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module sparse_bitset.
 :- import_module string.
 
-:- type bitset_tester(T) == pair(sparse_bitset(T), set__set(T)).
+:- type bitset_tester(T) == pair(sparse_bitset(T), set.set(T)).
 
 %---------------------------------------------------------------------------%
 
@@ -104,12 +104,12 @@ init = init - init.
 singleton_set(A) = make_singleton_set(A) - make_singleton_set(A).
 
 init(init).
-empty(A - B) :-
-    ( empty(A) -> EmptyA = yes; EmptyA = no),
-    ( empty(B) -> EmptyB = yes; EmptyB = no),
-    ( EmptyA = EmptyB ->
+is_empty(A - B) :-
+    ( if is_empty(A) then EmptyA = yes else EmptyA = no),
+    ( if is_empty(B) then EmptyB = yes else EmptyB = no),
+    ( if EmptyA = EmptyB then
         EmptyA = yes
-    ;
+    else
         error("empty failed")
     ).
 singleton_set(singleton_set(A), A).
@@ -128,48 +128,48 @@ difference(A, B, difference(A, B)).
 
 to_sorted_list(A - B) = List :-
     ListA = to_sorted_list(A),
-    ListB = set__to_sorted_list(B),
-    ( ListA = ListB ->
+    ListB = set.to_sorted_list(B),
+    ( if ListA = ListB then
         List = ListB
-    ;
+    else
         error("to_sorted_list failed")
     ).
 
 %---------------------------------------------------------------------------%
 
 delete(SetA - SetB, Var) =
-    check("delete", SetA - SetB, delete(SetA, Var) - set__delete(SetB, Var)).
+    check("delete", SetA - SetB, delete(SetA, Var) - set.delete(SetB, Var)).
 
 delete_list(SetA - SetB, List) =
     check("delete_list", SetA - SetB,
-        delete_list(SetA, List) - set__delete_list(SetB, List)).
+        delete_list(SetA, List) - set.delete_list(SetB, List)).
 
 remove(SetA0 - SetB0, Elem) = Result :-
-    ( remove(Elem, SetA0, SetA1) ->
-        ( remove(Elem, SetB0, SetB1) ->
+    ( if remove(Elem, SetA0, SetA1) then
+        ( if remove(Elem, SetB0, SetB1) then
             SetA = SetA1,
             SetB = SetB1
-        ;
+        else
             error("remove succeeded unexpectedly")
         )
-    ; set__remove(Elem, SetB0, _) ->
+    else if set.remove(Elem, SetB0, _) then
         error("remove failed unexpectedly")
-    ;
+    else
         fail
     ),
     Result = check("remove", SetA0 - SetB0, SetA - SetB).
 
 remove_list(SetA0 - SetB0, List) = Result :-
-    ( remove_list(List, SetA0, SetA1) ->
-        ( set__remove_list(List, SetB0, SetB1) ->
+    ( if remove_list(List, SetA0, SetA1) then
+        ( if set.remove_list(List, SetB0, SetB1) then
             SetA = SetA1,
             SetB = SetB1
-        ;
+        else
             error("remove succeeded unexpectedly")
         )
-    ; set__remove_list(List, SetB0, _) ->
+    else if set.remove_list(List, SetB0, _) then
         error("remove failed unexpectedly")
-    ;
+    else
         fail
     ),
     Result = check("remove_list", SetA0 - SetB0, SetA - SetB).
@@ -177,32 +177,32 @@ remove_list(SetA0 - SetB0, List) = Result :-
 %---------------------------------------------------------------------------%
 
 insert(SetA - SetB, Var) =
-    check("insert", SetA - SetB, insert(SetA, Var) - set__insert(SetB, Var)).
+    check("insert", SetA - SetB, insert(SetA, Var) - set.insert(SetB, Var)).
 
 %---------------------------------------------------------------------------%
 
 insert_list(SetA - SetB, Vars) =
     check("insert_list", SetA - SetB,
-        insert_list(SetA, Vars) - set__insert_list(SetB, Vars)).
+        insert_list(SetA, Vars) - set.insert_list(SetB, Vars)).
 
 %---------------------------------------------------------------------------%
 
 list_to_set(List) =
     check("list_to_set", init - init,
-        list_to_set(List) - set__list_to_set(List)).
+        list_to_set(List) - set.list_to_set(List)).
 
 sorted_list_to_set(List) =
     check("sorted_list_to_set", init - init,
-        sorted_list_to_set(List) - set__sorted_list_to_set(List)).
+        sorted_list_to_set(List) - set.sorted_list_to_set(List)).
 
 %---------------------------------------------------------------------------%
 
 contains(SetA - SetB, Var) :-
-    ( contains(SetA, Var) -> InSetA = yes ; InSetA = no),
-    ( set__contains(SetB, Var) -> InSetB = yes ; InSetB = no),
-    ( InSetA = InSetB ->
+    ( if contains(SetA, Var) then InSetA = yes else InSetA = no),
+    ( if set.contains(SetB, Var) then InSetB = yes else InSetB = no),
+    ( if InSetA = InSetB then
         InSetA = yes
-    ;
+    else
         error("contains failed")
     ).
 
@@ -211,9 +211,9 @@ contains(SetA - SetB, Var) :-
 foldl(F, SetA - SetB, Acc0) = Acc :-
     AccA = foldl(F, SetA, Acc0),
     AccB = fold(F, SetB, Acc0),
-    ( AccA = AccB ->
+    ( if AccA = AccB then
         Acc = AccA
-    ;
+    else
         error("bitset_tester: fold failed")
     ).
 
@@ -222,37 +222,37 @@ foldl(F, SetA - SetB, Acc0) = Acc :-
 count(SetA - SetB) = Count :-
     CountA = count(SetA),
     CountB = count(SetB),
-    ( CountA = CountB ->
+    ( if CountA = CountB then
         Count = CountA
-    ;
+    else
         error("bitset_tester: count failed")
     ).
 
 %---------------------------------------------------------------------------%
 
 subset(SetA1 - SetB1, SetA2 - SetB2) :-
-    ( subset(SetA1, SetA2) ->
-        ( subset(SetB1, SetB2) ->
+    ( if subset(SetA1, SetA2) then
+        ( if subset(SetB1, SetB2) then
             true
-        ;
+        else
             error("bitset_tester: subset succeeded unexpectedly")
         )
-    ; subset(SetB1, SetB2) ->
+    else if subset(SetB1, SetB2) then
         error("bitset_tester: subset failed unexpectedly")
-    ;
+    else
         fail
     ).
 
 superset(SetA1 - SetB1, SetA2 - SetB2) :-
-    ( superset(SetA1, SetA2) ->
-        ( superset(SetB1, SetB2) ->
+    ( if superset(SetA1, SetA2) then
+        ( if superset(SetB1, SetB2) then
             true
-        ;
+        else
             error("bitset_tester: superset succeeded unexpectedly")
         )
-    ; superset(SetB1, SetB2) ->
+    else if superset(SetB1, SetB2) then
         error("bitset_tester: superset failed unexpectedly")
-    ;
+    else
         fail
     ).
 
@@ -260,38 +260,38 @@ superset(SetA1 - SetB1, SetA2 - SetB2) :-
 
 union(SetA1 - SetB1, SetA2 - SetB2) =
     check2("union", SetA1 - SetB1, SetA2 - SetB2,
-        union(SetA1, SetA2) - set__union(SetB1, SetB2)).
+        union(SetA1, SetA2) - set.union(SetB1, SetB2)).
 
 %---------------------------------------------------------------------------%
 
 intersect(SetA1 - SetB1, SetA2 - SetB2) =
     check2("intersect", SetA1 - SetB1, SetA2 - SetB2,
-        intersect(SetA1, SetA2) - set__intersect(SetB1, SetB2)).
+        intersect(SetA1, SetA2) - set.intersect(SetB1, SetB2)).
 
 %---------------------------------------------------------------------------%
 
 difference(SetA1 - SetB1, SetA2 - SetB2) =
     check2("difference", SetA1 - SetB1, SetA2 - SetB2,
-        difference(SetA1, SetA2) - set__difference(SetB1, SetB2)).
+        difference(SetA1, SetA2) - set.difference(SetB1, SetB2)).
 
 %---------------------------------------------------------------------------%
 
 remove_least(SetA0 - SetB0, Least, SetA - SetB) :-
-    ( remove_least(LeastA, SetA0, SetA1) ->
-        ( remove_least(LeastB, SetB0, SetB1) ->
-            ( LeastA = LeastB ->
+    ( if remove_least(LeastA, SetA0, SetA1) then
+        ( if remove_least(LeastB, SetB0, SetB1) then
+            ( if LeastA = LeastB then
                 SetA = SetA1,
                 SetB = SetB1,
                 Least = LeastA
-            ;
+            else
                 error("remove_least: wrong least element")
             )
-        ;
+        else
             error("remove_least: should be no least value")
         )
-    ; remove_least(_, SetB0, _) ->
+    else if remove_least(_, SetB0, _) then
         error("remove_least: failed")
-    ;
+    else
         fail
     ).
 
@@ -303,12 +303,12 @@ remove_least(SetA0 - SetB0, Least, SetA - SetB) :-
 check(Op, Tester1, Tester) = Tester :-
     Tester1 = BitSet1 - Set1,
     BitSetSet1 =
-        sparse_bitset__sorted_list_to_set(set__to_sorted_list(Set1)),
+        sparse_bitset.sorted_list_to_set(set.to_sorted_list(Set1)),
     Tester = BitSet - Set,
-    BitSetSet = sparse_bitset__sorted_list_to_set(set__to_sorted_list(Set)),
-    ( BitSetSet1 = BitSet1, BitSet = BitSetSet ->
+    BitSetSet = sparse_bitset.sorted_list_to_set(set.to_sorted_list(Set)),
+    ( if BitSetSet1 = BitSet1, BitSet = BitSetSet then
         true
-    ;
+    else
         throw(one_argument(Op, Tester1, Tester))
     ).
 
@@ -318,17 +318,17 @@ check(Op, Tester1, Tester) = Tester :-
 check2(Op, Tester1, Tester2, Tester) = Result :-
     Tester1 = BitSet1 - Set1,
     BitSetSet1 =
-        sparse_bitset__sorted_list_to_set(set__to_sorted_list(Set1)),
+        sparse_bitset.sorted_list_to_set(set.to_sorted_list(Set1)),
     Tester2 = BitSet2 - Set2,
     BitSetSet2 = sorted_list_to_set(
-        set__to_sorted_list(Set2)),
+        set.to_sorted_list(Set2)),
 
     Tester = BitSet - Set,
-    BitSetSet = sparse_bitset__sorted_list_to_set(set__to_sorted_list(Set)),
+    BitSetSet = sparse_bitset.sorted_list_to_set(set.to_sorted_list(Set)),
 
-    ( BitSetSet1 = BitSet1, BitSetSet2 = BitSet2, BitSet = BitSetSet ->
+    ( if BitSetSet1 = BitSet1, BitSetSet2 = BitSet2, BitSet = BitSetSet then
         Result = Tester
-    ;
+    else
         throw(two_arguments(Op, Tester1, Tester2, Tester))
     ).
 
