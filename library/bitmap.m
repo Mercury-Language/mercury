@@ -1480,6 +1480,7 @@ unsafe_copy_bytes(SameBM, SrcBM, SrcFirstByteIndex,
 %    bitmap_di, in, in, in) = bitmap_uo is det.
 :- mode unsafe_do_copy_bytes(in, in,
     bitmap_di, in, in, in) = bitmap_uo is det.
+:- pragma consider_used(unsafe_do_copy_bytes/6).
 
 unsafe_do_copy_bytes(SrcBM, SrcByteIndex, DestBM, DestByteIndex,
         NumBytes, AddForNext) =
@@ -1884,6 +1885,7 @@ bitmap_equal(BM1, BM2) :-
 
 :- pred bytes_equal(byte_index::in, byte_index::in,
     bitmap::in, bitmap::in) is semidet.
+:- pragma consider_used(bytes_equal/4).
 
 bytes_equal(Index, MaxIndex, BM1, BM2) :-
     ( if Index =< MaxIndex then
@@ -1990,9 +1992,9 @@ bitmap_compare(Result, BM1, BM2) :-
         Result = Result0
     ).
 
-:- pred bytes_compare(comparison_result, byte_index, byte_index,
-    bitmap, bitmap).
-:- mode bytes_compare(uo, in, in, in, in) is det.
+:- pred bytes_compare(comparison_result::uo, byte_index::in, byte_index::in,
+    bitmap::in, bitmap::in) is det.
+:- pragma consider_used(bytes_compare/5).
 
 bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
     ( if Index =< MaxIndex then

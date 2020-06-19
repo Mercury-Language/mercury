@@ -1075,6 +1075,7 @@ limited_deconstruct_idcc(Term, _MaxArity, Functor, Arity, Arguments) :-
 :- mode local_deconstruct(in, in(include_details_cc), out, out, out, out)
     is cc_multi.
 :- mode local_deconstruct(in, in, out, out, out, out) is cc_multi.
+:- pragma consider_used(local_deconstruct/6).
 
 local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
     ( if erlang_rtti_implementation.is_erlang_backend then
@@ -1092,6 +1093,7 @@ local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
 :- mode local_univ_named_arg(in, in(canonicalize), in, out) is semidet.
 :- mode local_univ_named_arg(in, in(include_details_cc), in, out)
     is semidet. % conceptually committed-choice
+:- pragma consider_used(local_univ_named_arg/4).
 
 local_univ_named_arg(Term, NonCanon, Name, Argument) :-
     ( if erlang_rtti_implementation.is_erlang_backend then

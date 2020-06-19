@@ -1170,11 +1170,6 @@ restrict_true_false_vars_2(TrueVars0, FalseVars0, R0, R, Seen0, Seen) :-
         Seen = det_insert(Seen2, R0, R)
     ).
 
-:- pred robdd_hash(robdd(T)::in, int::out) is det.
-
-robdd_hash(R, H) :-
-    int.hash(node_num(R), H).
-
 restrict_filter(P, F0) =
     restrict_filter(P, (pred(_::in) is semidet :- true), F0).
 

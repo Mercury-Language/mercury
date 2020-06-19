@@ -10473,6 +10473,7 @@ read_into_buffer(Stream, buffer(Array0), buffer(Array), BufferSize,
 :- pred read_into_array(input_stream::in,
     array(char)::array_di, array(char)::array_uo, int::in, int::in, int::out,
     system_error::out, io::di, io::uo) is det.
+:- pragma consider_used(read_into_array/9).
 
 read_into_array(Stream, !Array, ArraySize, !Pos, Error, !IO) :-
     ( if !.Pos >= ArraySize then
@@ -14152,18 +14153,6 @@ get_io_stream_info(StreamDB, Stream) = StreamInfo :-
         fail
     ),
     StreamInfo = io.maybe_stream_info(StreamDB, IOStream).
-
-:- func maybe_source_name(maybe(stream_info)) = string.
-
-maybe_source_name(MaybeInfo) = Name :-
-    (
-        MaybeInfo = yes(Info),
-        Info = stream(_, _, _, Source),
-        Name = source_name(Source)
-    ;
-        MaybeInfo = no,
-        Name = "<stream name unavailable>"
-    ).
 
 :- func source_name(stream_source) = string.
 

@@ -512,6 +512,7 @@ unsafe_get_float_between(Str, Start, End, FloatStr) :-
     ).
 
 :- pred is_underscore(char::in) is semidet.
+:- pragma consider_used(is_underscore/1).
 
 is_underscore('_').
 
