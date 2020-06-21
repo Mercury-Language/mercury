@@ -135,7 +135,7 @@ how to build and debug Mercury programs.
 This document describes the compilation environment of Mercury.
 It describes how to use @samp{mmc}, the Mercury compiler;
 a build tool integrated into the compiler called @samp{mmc --make};
-an older tool, @samp{mmake}, built on top of ordinary or GNU make
+an older tool, @samp{mmake}, built on top of GNU make
 to simplify the handling of Mercury programs;
 how to use @samp{mdb}, the Mercury debugger;
 and how to use @samp{mprof}, the Mercury profiler.
@@ -234,8 +234,10 @@ by the Mercury compiler. The non-standard extensions are necessary
 to avoid conflicts with system header files.
 @file{.java}, @file{.class} and @file{.jar} files are Java source code,
 Java bytecode and Java archives respectively.
-@file{.cs} files are C# source code.
-@c XXX mention .dll and .exe?
+@c when we support shared libraries on Windows .dll will also be used for them.
+@file{.cs} files are C# source code, @file{.dll} files are library
+assemblies and, when compiling to C#, @file{.exe} files are process
+assemblies.
 @file{.erl} and @file{.beam} files are Erlang source code and
 bytecode (object) files respectively.
 @file{.beams} directories are collections of @file{.beam} files which
@@ -247,14 +249,13 @@ act like a library archive.
 @chapter Using the Mercury compiler
 @cindex Microsoft Management Console
 
-Following a long Unix tradition,
-the Mercury compiler is called @samp{mmc}
+The Mercury compiler is called @samp{mmc}
 (for ``Melbourne Mercury Compiler'').
 @pindex mmc
 Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
-have a similar meaning to that in other Unix compilers.
+have a similar meaning to that in other compilers.
 
-(Note that on Microsoft Windows systems the name @samp{mmc} is also used by the
+(Note that on Microsoft Windows systems, the name @samp{mmc} is also used by the
 executable for the Microsoft Management Console.
 To avoid the name clash on these systems you can either invoke the
 Mercury compiler by the alternative name @samp{mercury} or adjust your
@@ -277,27 +278,60 @@ This argument processing is done recursively.
 The contents of the @samp{@@file} is split into arguments
 one per line in the file.
 
-To compile a program which consists of just a single source file,
-use the command
+To compile a program that consists of a single source file, use the command
 
 @example
 mmc @var{filename}.m
 @end example
 
-Unlike traditional Unix compilers, however,
-@samp{mmc} will put the executable into a file called @file{@var{filename}},
-not @file{a.out}.
+Note that compiling a single source file as above only works when targeting C;
+if you are generating C#, Java or Erlang you must use the @samp{--make} option.
 
-For programs that consist of more than one source file, you can use Mmake
-(@pxref{Using Mmake}) or the @samp{--make} option to @samp{mmc}. Currently, the
-use of @samp{mmc --make} is recommended:
+For programs that consist of more than one source file, you can use 
+@samp{--make} option to @samp{mmc}, or Mmake (@pxref{Using Mmake}).
+Note that Mmake only works when targeting C; if you are generating C#, Java or
+Erlang you must use the @samp{--make} option.
+
+The use of @samp{mmc --make} is recommended.
+
+To compile a program using @samp{mmc --make}, use the command
 
 @example
 mmc --make @var{filename}
 @end example
 
+When targeting C on systems that do not require an executable file extension,
+@samp{mmc} will put the executable into a file called @file{@var{filename}}; on
+systems (such as Windows) that use @file{.exe} as the file extension for executables,
+@samp{mmc} will put the executable into a file called @file{@var{filename}.exe}.
+
+When targeting C#, @samp{mmc} will generate a process assembly called
+@file{@var{filename}.exe}.
+On non-Windows systems, @samp{mmc} will also generate a shell script called
+@file{@var{filename}} that invokes the CLI execution environment
+on the process assembly.
+On Windows, this process assembly can be run directly.
+(See the file @file{README.CSharp} included in the Mercury distribution for
+further details.)
+
+When targeting Java, @samp{mmc} will package up all of the class files for the
+executable into a Java archive (JAR) named @file{@var{filename}.jar}.
+It will also generate a shell script called @file{@var{filename}} that invokes
+the program using the Java interpreter.
+If you are using the Windows command line interpreter, @samp{cmd.exe}, then
+instead of a shell script, @samp{mmc} will generate a batch file called
+@file{@var{filename}.bat} that invokes the program using the Java interpreter.
+
+When targeting Erlang, @samp{mmc} will place all of the object files for
+the executable into the subdirectory @file{Mercury/beams}.
+It will also generate a shell script named @file{@var{filename}} that starts
+the Erlang runtime system and runs the program.  If you are using the Windows
+command line interpreter, @samp{cmd.exe}, then instead of a shell script,
+@samp{mmc} will generate a batch file called @file{@var{filename}.bat} that
+starts the Erlang runtime system and runs the program.
+
 @noindent
-If you use Mmake or @samp{mmc --make}, then you don't need to understand the
+If you use Mmake or @samp{mmc --make}, then you do not need to understand the
 details
 of how the Mercury implementation goes about building programs.
 Thus you may wish to skip the rest of this chapter.
@@ -387,10 +421,11 @@ The @samp{c2init} command line must contain
 the name of the C file of every module in the program.
 The order of the arguments is not important.
 The @samp{mgnuc} command is the Mercury GNU C compiler;
-it is a shell script that invokes the GNU C compiler @samp{gcc}
-@c (or some other C compiler if GNU C is not available)
-with the options appropriate for compiling
-the C programs generated by Mercury.
+it is a shell script that invokes the configured C compiler with the options
+appropriate for compiling the C programs generated by Mercury.
+(In the early days of the Mercury project, the configured C compiler
+was almost always GCC, which is why the name of the script is what it is,
+but the script itself will work with clang or MSVC as well.)
 
 You then link the object code of each module
 with the object code of the initialization file to yield the executable:
@@ -618,6 +653,7 @@ for the program as a whole ---
 @samp{@var{main-module}},
 @samp{lib@var{main-module}.a},
 @samp{lib@var{main-module}.so},
+@samp{lib@var{main-module}.dylib},
 @samp{@var{main-module}.init},
 @samp{@var{main-module}.dep}
 and
@@ -959,7 +995,7 @@ and, on many platforms, it supports shared object libraries.
 * Building with mmc --make::
 * Building with Mmake::
 * Libraries and the Java grade::
-@c * Libraries and the C# grade::
+* Libraries and the C# grade::
 * Libraries and the Erlang grade::
 @end menu
 
@@ -1041,6 +1077,8 @@ library should be created: @samp{shared} or @samp{static}. The
 @samp{--lib-linkage} option can be specified multiple times.
 In our example, the files @samp{libmypackage.a} and @samp{libmypackage.so}
 should appear in the current directory.
+(On macOS @samp{libmypackage.dylib} will appear instead of
+@samp{libmypackage.so}.)
 
 Other programs can more easily use a library that is installed.
 To install the library, issue the following command:
@@ -1348,31 +1386,23 @@ EXTRA_LIBRARIES-foo = mylib4foo
 @cindex jar files
 @cindex Java libraries
 
-Libraries are handled a little differently for the Java grade.  Instead of
-compiling object code into a static or shared library, the class files are
-added to a jar (Java ARchive) file
-whose name has the form @file{@var{library-name}.jar}.
+To create or install a library in the Java grade, specify that you want to
+use the Java grade and use @samp{mmc --make}.
+Mmake does @emph{not} support Java targets.
 
-To create or install a Java library, simply specify that you want to use the
-java grade, either by setting @samp{GRADE=java} in your Mmakefile, or by
-including @samp{--java} or @samp{--grade java} in your @samp{GRADEFLAGS}, then
-follow the instructions as above.
+Libraries are compiled to class files that are added to a Java archive (JAR)
+file whose name has the form @file{@var{library-name}.jar}.
 
-Java libraries are installed to the directory
-@file{@var{prefix}/lib/mercury/lib/java}.  To include them in a program, in
-addition to the instructions above, you will need to include the installed jar
-file in your @samp{CLASSPATH}, which you can set using
-@samp{--java-classpath @var{jarfile}} in @samp{MCFLAGS}.
+@node Libraries and the C# grade
+@section Libraries and the C# grade
+@cindex C# libraries
 
-@c Mmake does not support Java targets.
+To create or install a library in the C# grade, specify that you want to use the
+C# grade and use @samp{mmc --make}.
+Mmake does @emph{not} support C# targets.
 
-@c @node Libraries and the C# grade
-@c @section Libraries and the C# grade
-@c @cindex C# libraries
-
-@c To create or install a C# "library", specify that you want to use
-@c the csharp grade and use @samp{mmc --make}.
-@c Mmake does not support C# targets.
+Libraries are complied to a dynamic link library assembly whose name has the
+form @file{@var{library-name}.dll}.
 
 @node Libraries and the Erlang grade
 @section Libraries and the Erlang grade
@@ -1384,8 +1414,8 @@ compiler puts all the @file{.beam} files for a single Mercury library into a
 directory named @file{lib@var{library-name}.beams}.
 
 To create or install an Erlang "library", specify that you want to use
-the erlang grade and use @samp{mmc --make}.  Mmake does not
-support Erlang targets.
+the erlang grade and use @samp{mmc --make}.
+Mmake does @emph{not} support Erlang targets.
 
 @c ----------------------------------------------------------------------------
 
