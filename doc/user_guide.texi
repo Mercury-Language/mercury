@@ -232,12 +232,15 @@ contain position-independent code themselves.
 @file{.mh} and @file{.mih} files are C header files generated
 by the Mercury compiler. The non-standard extensions are necessary
 to avoid conflicts with system header files.
+
 @file{.java}, @file{.class} and @file{.jar} files are Java source code,
 Java bytecode and Java archives respectively.
+
 @c when we support shared libraries on Windows .dll will also be used for them.
 @file{.cs} files are C# source code, @file{.dll} files are library
 assemblies and, when compiling to C#, @file{.exe} files are process
 assemblies.
+
 @file{.erl} and @file{.beam} files are Erlang source code and
 bytecode (object) files respectively.
 @file{.beams} directories are collections of @file{.beam} files which
