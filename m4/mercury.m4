@@ -606,7 +606,7 @@ then
 	mercury_cv_javac_flags_for_heap_size_mmake="-J\"-Xmx1024m\""
 	mercury_cv_javac_flags_for_heap_size_config="-J\\\"-Xmx1024m\\\""
 	if "$JAVAC" "$mercury_cv_javac_flags_for_heap_size_test" -version \
-                2> /dev/null
+                2>&1 > /dev/null
         then
 		AC_MSG_RESULT(yes)
 	else
