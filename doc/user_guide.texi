@@ -133,16 +133,30 @@ how to build and debug Mercury programs.
 @chapter Introduction
 
 This document describes the compilation environment of Mercury.
-It describes how to use @samp{mmc}, the Mercury compiler;
-a build tool integrated into the compiler called @samp{mmc --make};
-an older tool, @samp{mmake}, built on top of GNU make
-to simplify the handling of Mercury programs;
+It describes
+@itemize
+@item
+how to use @samp{mmc}, the Mercury compiler;
+@item
+how to use @samp{mmc --make}, a build tool integrated into @samp{mmc};
+@item
+how to use an older build tool, @samp{mmake}, built on top of GNU make;
+@item
 how to use @samp{mdb}, the Mercury debugger;
-and how to use @samp{mprof}, the Mercury profiler.
+@item
+how to use @samp{mprof}, a @samp{gprof}-style profiler for Mercury; and
+@item
+how to use @samp{mdprof}, a more detailed profiler for Mercury
+that uses a web interface.
+@end itemize
 
-We strongly recommend that programmers use @samp{mmc --make} rather
-than invoking @samp{mmc} directly, because @samp{mmc --make} is generally
-easier to use and avoids unnecessary recompilation.
+Mercury programs can be compiled to executables
+via any one of four target languages: C, Java, C#, and Erlang.
+The most frequently used target language is C, for two main reasons.
+The first is that several important parts of the Mercury system,
+such as @samp{mdb}, @samp{mprof} and @samp{mdprof},
+are implemented only when targeting C.
+The second is that targeting C yields the fastest executables.
 
 @c ----------------------------------------------------------------------------
 
@@ -153,28 +167,32 @@ easier to use and avoids unnecessary recompilation.
 
 Mercury source files must be named @file{*.m}.
 Each Mercury source file should contain a single Mercury module
-whose module name should be the same as the filename without
-the @samp{.m} extension.
+whose module name should be (although it does not have to be)
+the same as the filename without the @samp{.m} extension.
 
-The Mercury implementation uses a variety of intermediate files, which
-are described below.  But all you really need to know is how to name
-source files.  For historical reasons, the default behaviour is for
-intermediate files to be created in the current directory, but if you
-use the @samp{--use-subdirs} option to @samp{mmc} or @samp{mmake}, all
+The Mercury implementation uses a variety of intermediate files,
+which are described below.
+But all you really need to know is how to name source files.
+For historical reasons, the default behaviour
+is for intermediate files to be created in the current directory,
+but if you use the @samp{--use-subdirs} option to @samp{mmc} or @samp{mmake},
 @findex --use-subdirs
-these intermediate files will be created in a @file{Mercury}
-subdirectory, where you can happily ignore them.
+all these intermediate files will be created in a @file{Mercury} subdirectory,
+where you can happily ignore them.
 Thus you may wish to skip the rest of this chapter.
 
 In cases where the source file name and module name don't match,
 the names for intermediate files are based on the name of the
 module from which they are derived, not on the source file name.
 
-Files ending in @file{.int}, @file{.int0}, @file{.int2} and @file{.int3}
+Files whose names end in
+@file{.int}, @file{.int2}, @file{.int0} and @file{.int3}
 are interface files; these are generated automatically by the compiler,
 using the @samp{--make-interface} (or @samp{--make-int}),
 @samp{--make-private-interface} (or @samp{--make-priv-int}),
 @samp{--make-short-interface} (or @samp{--make-short-int}) options.
+(Invoking the compiler with @samp{--make-interface}
+generates both @file{.int} and @file{.int2} files.)
 @findex --make-int
 @findex --make-interface
 @findex --make-short-int
@@ -184,36 +202,24 @@ using the @samp{--make-interface} (or @samp{--make-int}),
 @findex --make-optimization-interface
 @findex --make-transitive-optimization-interface
 @findex --make-trans-opt-int
-Files ending in @file{.opt} are
-interface files used in inter-module optimization,
+Files whose names end in @file{.opt} are used for inter-module optimization,
 and are created using the @samp{--make-optimization-interface}
 (or @samp{--make-opt-int}) option.
-Similarly, files ending in @file{.trans_opt} are interface files used in
-transitive inter-module optimization, and are created using the
-@samp{--make-transitive-optimization-interface}
+Similarly, files whose name ends in @file{.trans_opt}
+are used for transitive inter-module optimization,
+and are created using the @samp{--make-transitive-optimization-interface}
 (or @samp{--make-trans-opt-int}) option.
 
 Since the interface of a module changes less often than its implementation,
 the @file{.int}, @file{.int0}, @file{.int2}, @file{.int3}, @file{.opt},
-and @file{.trans_opt} files will remain unchanged on many compilations.
+and @file{.trans_opt} files will often remain unchanged when they are rebuilt.
 To avoid unnecessary recompilations of the clients of the module,
-the timestamps on the these files are updated only if their contents change.
-@file{.date}, @file{.date0}, @file{.date3}, @file{.optdate},
-and @file{.trans_opt_date}
-files associated with the module are used as timestamp files;
-they are used when deciding whether the interface files need to be regenerated.
-
-@file{.c_date}, @file{.cs_date}, @file{.java_date} and @file{.erl_date} files
-perform a similar function for @file{.c}, @file{.cs}, @file{.java} and
-@file{.erl}, files respectively.
-When smart recompilation (@pxref{Auxiliary output options}) works out that a
-module does not need to be recompiled, the timestamp file for the target file
-is updated, and the timestamp of the target file is left unchanged.
-@findex --smart-recompilation
-
-@file{.used} files contain dependency information for smart recompilation
-(@pxref{Auxiliary output options}).
-@findex --smart-recompilation
+the timestamps on these files are updated only if their contents change.
+Files with the suffixes @file{.date}, @file{.date0}, @file{.date3},
+@file{.optdate}, and @file{.trans_opt_date} serve as timestamp files,
+to be used when deciding whether the interface files need to be regenerated:
+they each record the last time when when the file or files it represents
+has last been checked for being up to date.
 
 Files ending in @file{.d} are automatically generated Makefile fragments
 which contain the dependencies for a module.
@@ -226,25 +232,42 @@ As usual, @file{.c} files are C source code,
 and @file{.o} files are object code.
 In addition, @file{.pic_o} files are object code files
 that contain position-independent code (PIC).
-@file{.lpic_o} files are object code files that can be
-linked with shared libraries, but don't necessarily
-contain position-independent code themselves.
-@file{.mh} and @file{.mih} files are C header files generated
-by the Mercury compiler. The non-standard extensions are necessary
+@file{.lpic_o} files are object code files
+that can be linked with shared libraries,
+but don't necessarily contain position-independent code themselves.
+@file{.mh} and @file{.mih} files are C header files
+generated by the Mercury compiler.
+Their non-standard extensions are necessary
 to avoid conflicts with system header files.
 
-@file{.java}, @file{.class} and @file{.jar} files are Java source code,
-Java bytecode and Java archives respectively.
+@file{.java} files are Java source code,
+@file{.class} files are Java bytecode, and
+@file{.jar} files are Java archives.
 
 @c when we support shared libraries on Windows .dll will also be used for them.
-@file{.cs} files are C# source code, @file{.dll} files are library
-assemblies and, when compiling to C#, @file{.exe} files are process
-assemblies.
+@file{.cs} files are C# source code,
+@file{.dll} files are library assemblies and,
+when compiling to C#, @file{.exe} files are process assemblies.
 
-@file{.erl} and @file{.beam} files are Erlang source code and
-bytecode (object) files respectively.
-@file{.beams} directories are collections of @file{.beam} files which
-act like a library archive.
+@file{.erl} files are Erlang source code, and
+@file{.beam} files are Erlang bytecode (object) files.
+@file{.beams} directories are collections of @file{.beam} files,
+and as such they act like a library archive.
+
+When smart recompilation (@pxref{Auxiliary output options}) is enabled,
+@file{.c_date}, @file{.cs_date}, @file{.java_date} and @file{.erl_date} files
+perform the same function for
+@file{.c}, @file{.cs}, @file{.java} and @file{.erl} files respectively
+as e.g. @file{.date3} files do for @file{.int3} files:
+when smart recompilation works out
+that a module does not need to be recompiled,
+it updates the timestamp of the @emph{timestamp file} for the target file,
+but leaves the timestamp of the target file itself unchanged.
+@findex --smart-recompilation
+
+@file{.used} files contain dependency information for smart recompilation
+(@pxref{Auxiliary output options}).
+@findex --smart-recompilation
 
 @c ----------------------------------------------------------------------------
 
@@ -258,12 +281,14 @@ The Mercury compiler is called @samp{mmc}
 Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in other compilers.
 
-(Note that on Microsoft Windows systems, the name @samp{mmc} is also used by the
-executable for the Microsoft Management Console.
-To avoid the name clash on these systems you can either invoke the
-Mercury compiler by the alternative name @samp{mercury} or adjust your
-@env{PATH} to ensure that the @file{bin} directory precedes the Windows system
-directory.)
+(Note that on Microsoft Windows systems,
+the name @samp{mmc} is also used by the executable
+for the Microsoft Management Console.
+To avoid the name clash on these systems,
+you can either invoke the Mercury compiler
+by the alternative name @samp{mercury},
+or adjust your @env{PATH} to ensure that
+the @file{bin} directory precedes the Windows system directory.)
 
 Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
 or module names, with @samp{.} (rather than @samp{__})
@@ -281,65 +306,71 @@ This argument processing is done recursively.
 The contents of the @samp{@@file} is split into arguments
 one per line in the file.
 
-To compile a program that consists of a single source file, use the command
+There are two ways to compile a program that consists of a single source file.
+The first way, which works only when targeting C,
+is to issue the command
 
 @example
 mmc @var{filename}.m
 @end example
 
-Note that compiling a single source file as above only works when targeting C;
-if you are generating C#, Java or Erlang you must use the @samp{--make} option.
-
-For programs that consist of more than one source file, you can use 
-@samp{--make} option to @samp{mmc}, or Mmake (@pxref{Using Mmake}).
-Note that Mmake only works when targeting C; if you are generating C#, Java or
-Erlang you must use the @samp{--make} option.
-
-The use of @samp{mmc --make} is recommended.
-
-To compile a program using @samp{mmc --make}, use the command
+The second way, which works regardless of target language,
+is to issue the command
 
 @example
 mmc --make @var{filename}
 @end example
 
+There are also two ways to build programs
+that consist of more than one source file:
+using Mmake (@pxref{Using Mmake}), which only works when targeting C,
+or using @samp{mmc --make}.
+
+We strongly recommend that programmers use @samp{mmc --make}
+rather than invoking @samp{mmc} directly,
+because @samp{mmc --make} is generally easier to use
+and avoids unnecessary recompilation.
+
 When targeting C on systems that do not require an executable file extension,
-@samp{mmc} will put the executable into a file called @file{@var{filename}}; on
-systems (such as Windows) that use @file{.exe} as the file extension for executables,
-@samp{mmc} will put the executable into a file called @file{@var{filename}.exe}.
+@samp{mmc} will put the executable into a file called @file{@var{filename}};
+on systems (such as Windows)
+that use @file{.exe} as the file extension for executables,
+@samp{mmc} will put the executable
+into a file called @file{@var{filename}.exe}.
 
-When targeting C#, @samp{mmc} will generate a process assembly called
-@file{@var{filename}.exe}.
-On non-Windows systems, @samp{mmc} will also generate a shell script called
-@file{@var{filename}} that invokes the CLI execution environment
-on the process assembly.
+When targeting C#,
+@samp{mmc} will generate a process assembly called @file{@var{filename}.exe}.
 On Windows, this process assembly can be run directly.
-(See the file @file{README.CSharp} included in the Mercury distribution for
-further details.)
+On non-Windows systems,
+@samp{mmc} will also generate a shell script called @file{@var{filename}}
+that invokes the CLI execution environment on they process assembly.
+(See the file @file{README.CSharp} included in the Mercury distribution
+for further details.)
 
-When targeting Java, @samp{mmc} will package up all of the class files for the
-executable into a Java archive (JAR) named @file{@var{filename}.jar}.
-It will also generate a shell script called @file{@var{filename}} that invokes
-the program using the Java interpreter.
-If you are using the Windows command line interpreter, @samp{cmd.exe}, then
-instead of a shell script, @samp{mmc} will generate a batch file called
-@file{@var{filename}.bat} that invokes the program using the Java interpreter.
+When targeting Java,
+@samp{mmc} will package up all of the class files for the executable
+into a Java archive (JAR) named @file{@var{filename}.jar}.
+If you are using the Windows command line interpreter @samp{cmd.exe},
+@samp{mmc} will generate a batch file called @file{@var{filename}.bat}
+that invokes the program using the Java interpreter.
+Otherwise, it will also a shell script called @file{@var{filename}}
+that also invokes the program using the Java interpreter.
 
-When targeting Erlang, @samp{mmc} will place all of the object files for
-the executable into the subdirectory @file{Mercury/beams}.
-It will also generate a shell script named @file{@var{filename}} that starts
-the Erlang runtime system and runs the program.  If you are using the Windows
-command line interpreter, @samp{cmd.exe}, then instead of a shell script,
-@samp{mmc} will generate a batch file called @file{@var{filename}.bat} that
-starts the Erlang runtime system and runs the program.
+When targeting Erlang,
+@samp{mmc} will place all of the object files for the executable
+into the subdirectory @file{Mercury/beams}.
+If you are using the Windows command line interpreter @samp{cmd.exe},
+@samp{mmc} will generate a batch file called @file{@var{filename}.bat}
+that starts the Erlang runtime system and runs the program.
+Otherwise, it will generate a shell script named @file{@var{filename}}
+that also starts the Erlang runtime system and runs the program.
 
-@noindent
-If you use Mmake or @samp{mmc --make}, then you do not need to understand the
-details
+If you use Mmake or @samp{mmc --make},
+then you do not need to understand the details
 of how the Mercury implementation goes about building programs.
 Thus you may wish to skip the rest of this chapter.
 
-To compile a source file to object code without creating an executable,
+To compile a source file to object code via C without creating an executable,
 use the command
 
 @example
@@ -371,6 +402,15 @@ mmc --make-int @var{filename1}.m @var{filename2}.m @dots{}
 @findex --make-priv-int
 @findex --make-int
 
+The first command builds (or rebuilds)
+the @samp{.int3} file of each module contained in the named source files.
+The second command builds (or rebuilds)
+the @samp{.int0} file of each module contained in the named source files.
+(Note that only modules that have submodules need @samp{.int0} files.)
+The third command builds (or rebuilds)
+both the @samp{.int} and @samp{.int2} file
+of each module contained in the named source files.
+
 If you are going to compile with @samp{--intermodule-optimization} enabled,
 then you also need to create the optimization interface files.
 
@@ -388,7 +428,7 @@ mmc --make-trans-opt @var{filename1}.m @var{filename2}.m @dots{}
 @end example
 @findex --make-trans-opt
 
-Given that you have made all the interface files,
+After you have made all the interface files,
 one way to create an executable for a multi-module program
 is to compile all the modules at the same time
 using the command
@@ -398,8 +438,8 @@ mmc @var{filename1}.m @var{filename2}.m @dots{}
 @end example
 
 This will by default put the resulting executable in @file{@var{filename1}},
-but you can use the @samp{-o @var{filename}} option to specify a different
-name for the output file, if you so desire.
+though you can use the @samp{-o @var{filename}} option
+to specify a different name for the output file, if you so desire.
 @findex -o
 
 The other way to create an executable for a multi-module program
@@ -438,13 +478,14 @@ ml -o @var{main-module} @var{module1}.o @var{module2}.o @dots{} @var{main_module
 @end example
 @pindex ml
 
-@samp{ml}, the Mercury linker, is another shell script
-that invokes a C compiler with options appropriate for Mercury,
-this time for linking.  @samp{ml} also pipes any error messages
-from the linker through @samp{mdemangle}, the Mercury symbol demangler,
-so that any error messages refer to predicate and function names from
-the Mercury source code rather than to the names used in the intermediate
-C code.
+@samp{ml}, the Mercury linker,
+is another shell script that invokes a C compiler
+with options appropriate for Mercury, this time for linking.
+@samp{ml} also pipes any error messages from the linker
+through @samp{mdemangle}, the Mercury symbol demangler,
+so that any error messages refer to
+predicate and function names from the Mercury source code
+rather than to the names used in the intermediate C code.
 
 The above command puts the executable in the file @file{@var{main-module}}.
 The same command line without the @samp{-o} option
@@ -460,8 +501,8 @@ For the full set of options of @samp{mmc}, see @ref{Invocation}.
 @chapter Running programs
 
 Once you have created an executable for a Mercury program,
-you can go ahead and execute it.  You may however wish to specify
-certain options to the Mercury runtime system.
+you can go ahead and execute it.
+You may however wish to specify certain options to the Mercury runtime system.
 The Mercury runtime accepts
 options via the @env{MERCURY_OPTIONS} environment variable.
 @vindex MERCURY_OPTIONS
@@ -524,7 +565,8 @@ mmc --make @var{main-module}
 @end example
 
 @noindent
-The usage of Mmake is discouraged.
+The usage of Mmake is discouraged,
+not least because it works only when targeting C.
 
 Mmake is built on top of GNU Make.
 With Mmake, building even a complicated Mercury program
