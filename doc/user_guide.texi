@@ -343,7 +343,7 @@ When targeting C#,
 On Windows, this process assembly can be run directly.
 On non-Windows systems,
 @samp{mmc} will also generate a shell script called @file{@var{filename}}
-that invokes the CLI execution environment on they process assembly.
+that invokes the CLI execution environment on the process assembly.
 (See the file @file{README.CSharp} included in the Mercury distribution
 for further details.)
 
@@ -353,7 +353,7 @@ into a Java archive (JAR) named @file{@var{filename}.jar}.
 If you are using the Windows command line interpreter @samp{cmd.exe},
 @samp{mmc} will generate a batch file called @file{@var{filename}.bat}
 that invokes the program using the Java interpreter.
-Otherwise, it will also a shell script called @file{@var{filename}}
+Otherwise, it will generate a shell script called @file{@var{filename}}
 that also invokes the program using the Java interpreter.
 
 When targeting Erlang,
