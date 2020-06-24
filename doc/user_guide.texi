@@ -218,7 +218,7 @@ the timestamps on these files are updated only if their contents change.
 Files with the suffixes @file{.date}, @file{.date0}, @file{.date3},
 @file{.optdate}, and @file{.trans_opt_date} serve as timestamp files,
 to be used when deciding whether the interface files need to be regenerated:
-they each record the last time when when the file or files it represents
+they each record the last time when the file or files it represents
 has last been checked for being up to date.
 
 Files ending in @file{.d} are automatically generated Makefile fragments
