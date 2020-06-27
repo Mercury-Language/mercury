@@ -235,5 +235,5 @@ Versions of MacOS starting with 10.8 do not include the Apache web server
 by default. On such machines, you will need to
 
 - select and install a web server, and
-- install and enable the mdprof_cgi script according to the rules of that
+- install and enable the `mdprof_cgi` script according to the rules of that
   web server.
