@@ -17,6 +17,7 @@ sicstus_conv
 Mmake.vars
 mdb mdbrc test_mdbrc
 canonical_grade
+mercury
 mercury.bat
 mdprof
 parse_ml_options.sh-subr
