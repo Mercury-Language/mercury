@@ -257,17 +257,26 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-# Warn about using Xcode 11 on Mac OS X.
+# Versions of Xcode 11 up until 11.4 ship with a broken version of clang.
+# NOTE: what we are checking for below is Apple version for clang, Xcode 11.4
+# has Apple clang version 11.0.3.
 
-case "$host" in
-    *apple*darwin*)
-        AC_MSG_WARN(
+if test "$MERCURY_HAVE_CLANG" = yes
+then
+    case "$host" in *apple*darwin*)
+        $CC -v 2>&1 | grep Apple | {
+            read apple llvm version versionnum rest
+            case versionnum in 11.0.[012])
+               AC_MSG_WARN(
 [
-**** Note that versions of Xcode 11 prior to Xcode 11.4 have bugs
-**** that prevent Mercury programs from working correctly.
+**** Note that this version of Xcode 11 has bugs that prevent Mercury programs
+**** from working correctly.  Please use Xcode 11.4 or later.
 **** See README.MacOS for further details.])
-        ;;
-esac
+            ;;
+            esac }
+         ;;
+    esac
+fi
 
 #-----------------------------------------------------------------------------#
 

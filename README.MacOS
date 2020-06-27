@@ -1,11 +1,14 @@
-This file documents the port of Mercury to Mac OS X / OS X / macOS,
-i.e. the "*-apple-darwin*" configuration. 
+Mercury on macOS
+================
 
---------
+This file documents the port of Mercury to Mac OS X / OS X / macOS,
+i.e. the `*-apple-darwin*` configuration. 
+
 Contents
 --------
 
-* Mercury on Mac OS X 10.5 to 10.9
+* Mercury on Intel Macs
+* Note for users of Xcode 11
 * Note for users of Xcode 5
 * Note for users of Xcode 4
 * Mercury on Mac OS X 10.4 and 10.3
@@ -15,33 +18,30 @@ Contents
 * Known bugs and unsupported features
 * Deep profiling on Mac OS X
 
---------------------------------
-Mercury on Mac OS X 10.5 to 10.9
---------------------------------
+Mercury on Intel Macs
+----------------------
 
-Mercury should build and install "out-of-the-box" on Intel Mac OS X systems
-from version 10.5 or later.  For information about installing Mercury on
-versions of Mac OS X before 10.5, including on PowerPC systems, see the
-sections below.
+Mercury should build and install "out-of-the-box" on Intel Macs using Mac OS X
+10.5 onwards.
 
-The 'asm_fast*' and 'reg*' grades are only available on 64-bit Intel Mac OS X
-systems and only when using GCC version 4.3 or later as the C compiler.
-(This has only been tested with the MacPorts builds of GCC however.)
+The `asm_fast*` and `reg*` grades are only available on 64-bit Intel systems
+and only when using GCC version 4.3 or later as the C compiler.
 
-If clang is being used as the C compiler then the only low-level C grades
-available are the 'none*' grades.  The high-level C, Java, Erlang and C# grades
-all work.  The 'erlang' grade requires an Erlang installation to be available
+If `clang` is being used as the C compiler then the only low-level C grades
+available are the `none*` grades.  The high-level C, Java, Erlang and C# grades
+all work.  The `erlang` grade requires an Erlang installation to be available
 and the C# grades require the Mono .NET implementation.  (See README.Erlang and
 README.CSharp for further details.)
 
-If the 'asm_fast.gc' grade is not available and unless otherwise directed, the
-'hlc.gc' grade will be used as the default grade for compiling applications.
+If the `asm_fast.gc` grade is not available, and unless otherwise directed,
+then the `hlc.gc` grade will be used as the default grade for compiling
+applications.
 
 By default, 64-bit versions of the executables and libraries in the Mercury
 system will be installed on x86-64 machines running Mac OS X 10.6 or later.  To
 build a 32-bit installation on such a machine, you need to arrange to have the
-option "-m32" passed to clang or gcc.  This can be done by invoking Mercury's
-configure script with the option:
+option `-m32` passed to `clang` or `gcc`.  This can be done by invoking Mercury's
+`configure` script with the option:
 
     --with-cc="clang -m32"
 
@@ -49,38 +49,51 @@ or:
 
     --with-cc="gcc -m32"
 
+Obviously, the above only works with versions of macOS that support 32-bit
+code.  32-bit Mercury installations are not supported at all from macOS 10.15
+onwards.
+
 By default, 32-bit versions of the executables and libraries are installed on
 x86-64 machines running Mac OS X 10.5.  To build and install 64-bit Mercury on
-such a system you must pass the "-m64" option to the C compiler.
+such a system you must pass the `-m64` option to the C compiler.
 
-Mercury cannot be compiled with llvm-gcc on Mac OS X.
+Mercury cannot be compiled with `llvm-gcc` on Mac OS X.
 
-If, after installing Mercury, you encounter errors about missing .mih files,
+If, after installing Mercury, you encounter errors about missing `.mih` files,
 and you have fink installed, then try removing the fink components from your
-PATH (these usually start with /sw) and reinstalling.
+`PATH` (these usually start with `/sw`) and reinstalling.
 
+Note for users of Xcode 11
+--------------------------
 
--------------------------
+Versions of Xcode 11 prior to 11.4 ship with a broken version of `clang`
+that *cannot* be used to compile Mercury.  The `configure` script will print
+a warning if it detects that you are using the broken version.
+
+A discussion of this issue can be found at
+<https://forums.developer.apple.com/thread/121887>.    
+The github post
+<https://github.com/Mercury-Language/mercury/issues/88#issuecomment-624329679>
+describes a way that has been found to fix the problem.
+
 Note for users of Xcode 5
 -------------------------
 
-With Xcode 5.* the executable named "gcc" is actually just a synonym for clang.
-Mercury's configure script is aware of this and it should not cause any
-problems.  If you wish to use actual GCC instead of clang you will need to
+With Xcode 5.* the executable named `gcc` is actually just a synonym for `clang`.
+Mercury's `configure` script is aware of this and it should not cause any
+problems.  If you wish to use actual GCC instead of `clang` you will need to
 install GCC (see the following section for further information).
 
-
--------------------------
 Note for users of Xcode 4
 -------------------------
 
-The default C compiler provided with Xcode 4.* is llvm-gcc.
-Mercury does NOT work with llvm-gcc.  Note that with Xcode 4.* the executable
-named "gcc" is actually a symbolic link for llvm-gcc.
+The default C compiler provided with Xcode 4.* is `llvm-gcc`.
+Mercury does NOT work with `llvm-gcc`.  Note that with Xcode 4.* the executable
+named `gcc` is actually a symbolic link for `llvm-gcc`.
 
 In order to build Mercury you will need to use a C compiler other than
-llvm-gcc, for example clang (See README.clang for further details) or actual
-GCC.  From version 4.2 Xcode no longer includes actual GCC, so if you wish to
+`llvm-gcc`, for example `clang` (See README.clang for further details) or actual
+GCC.  From version 4.2, Xcode no longer includes actual GCC, so if you wish to
 use that you will need to install it yourself.  Mac OS X packages for GCC are
 provided by:
 
@@ -88,78 +101,70 @@ provided by:
    * Homebrew             <http://brew.sh>
    * The Fink project     <http://www.finkproject.org>
 
-As llvm-gcc is no longer supported as of version 3.0 of LLVM, we have no
+As `llvm-gcc` is no longer supported as of version 3.0 of LLVM, we have no
 intention of ever supporting Mercury with it.
 
-
----------------------------------
 Mercury on Mac OS X 10.3 and 10.4
 ---------------------------------
 
 Mercury should work on Mac OS X 10.3 (PowerPC) and 10.4 (both PowerPC and
-Intel), although it has not been tested with either of these for some time.
+Intel), although it has not been tested with either for a very long time.
 
-Apple gcc 2.95 does not work with Mercury because it cannot handle the length
+Apple GCC 2.95 does not work with Mercury because it cannot handle the length
 of some of the identifier names that the Mercury compiler generates.
 
-Apple gcc 3.3 works with Mercury and there are no known issues (other than the
+Apple GCC 3.3 works with Mercury and there are no known issues (other than the
 problem with gcc's powerpc backend described below).  We recommend that users
 of Mac OS X 10.3 and 10.4 use this version.
 
-Apple gcc 4.0 does not work with Mercury.  Users of Mac OS X 10.4 should note
-that this version of gcc is the default one on their systems.
+Apple GCC 4.0 does not work with Mercury.  Users of Mac OS X 10.4 should note
+that this version of GCC is the default one on their systems.
 
-On 10.3 and 10.4, if you are using an Apple build of gcc then you must use the
-gcc_select command to set the system's default gcc to that version of gcc.  It
-is not sufficient to just point Mercury to a version of gcc using the configure
-script's `--with-cc' option.  This restriction applies only to the builds of
-gcc supplied by Apple.
+On Mac OS X 10.3 and 10.4, if you are using an Apple build of GCC then you must use the
+`gcc_select` command to set the system's default `gcc` to that version of `gcc`.
+It is not sufficient to just point Mercury to a version of GCC using the `configure`
+script's `--with-cc` option.  This restriction applies only to the builds of
+GCC supplied by Apple.
 
-Mainline gcc 3.3.X and 3.4.X are known to work with Mercury on 10.3.
-Mainline gcc 4.0.X does not.
+Mainline GCC 3.3.X and 3.4.X are known to work with Mercury on Mac OS X 10.3.
+Mainline GCC 4.0.X does not.
 
-
--------------------------------------
 Mercury on older versions of Mac OS X
 -------------------------------------
 
-There may be problems with building Mercury on versions of Mac OS X less than
+There may be problems with building Mercury on versions of Mac OS X prior to
 10.3.  In particular, building shared libraries with Mercury on these systems
 is not supported.
 
-The version of tar in /usr/bin/tar on some older versions of Mac OS X (e.g.
+The version of `tar` in `/usr/bin/tar` on some older versions of Mac OS X (e.g.
 10.1) doesn't work properly -- it truncates long path names.  Make sure you
-use GNU tar, which is available in /sw/bin/gtar, when unpacking the Mercury
+use GNU tar, which is available in `/sw/bin/gtar`, when unpacking the Mercury
 source or binary distributions.  (Also, make sure to use GNU tar if/when
-*building* such distributions!) The version of tar that comes with Mac OS X
+*building* such distributions!) The version of `tar` that comes with Mac OS X
 10.3.3 does not have this problem.
 
-Also, Apple's version of gcc includes support for precompiled headers.
+Also, Apple's version of GCC includes support for precompiled headers.
 Unfortunately this support seems to be somewhat buggy, causing it to sometimes
 crash with mysterious errors when building Mercury.  Furthermore, for the
 kinds of C code that the Mercury compiler generates, it results in a very big
 slow-down, rather than any speedup.  Fortunately this can be disabled by using
-the `--traditional-cpp' option.  The Mercury configure script should enable
+the `--traditional-cpp` option.  The Mercury `configure` script should enable
 this option automatically if it is needed.
 
-
---------------------------
 Deployment Target Settings
 --------------------------
 
 By default, the Mercury compiler is configured so that the Mac OS X deployment
-target (i.e. the value of the MACOSX_DEPLOYMENT_TARGET environment variable)
+target (i.e. the value of the `MACOSX_DEPLOYMENT_TARGET` environment variable)
 for code generated by the Mercury compiler is set to the same version as that
 of the host system.
 
 You can specify a different deployment target at configuration time using
-the configure script's `--with-macosx-deployment-target' option.
+the `configure` script's `--with-macosx-deployment-target` option.
 
-(See the ``SDK Compatibility Guide'' in the Apple developer documentation
+(See the "SDK Compatibility Guide" in the Apple developer documentation
 for further information about the deployment target setting.)
 
-
-------------------------
 PowerPC Linking Problems
 ------------------------
 
@@ -167,33 +172,31 @@ On PowerPC machines, the linker may have problems linking large executables
 (particularly in debug grades; technically when the program requires a branch
 larger than +/- 32 MB). It complains about relocation displacements being too
 large. The only known workaround for this problem is to replace the
-system-provided versions of crt1.o (Darwin module 'Csu') and crt2.o (part of
-gcc) with versions that are compiled with the gcc options `-mlongcall' and (if
-using gcc < ~ 3.4) `-mlong-branch'. C code generated by the Mercury compiler
+system-provided versions of `crt1.o` (Darwin module `Csu`) and `crt2.o` (part of
+gcc) with versions that are compiled with the gcc options `-mlongcall` and (if
+using gcc < ~ 3.4) `-mlong-branch`. C code generated by the Mercury compiler
 will also need to be compiled with the above options. This can be achieved by
 adding:
 
     EXTRA_CFLAGS=-mlongcall -mlong-branch
 
-to your Mercury.options or Mmakefile.
+to your `Mercury.options` or `Mmakefile`.
 
-
------------------------------------
 Known bugs and unsupported features
 -----------------------------------
 
-The 'asm_fast' grades will not work on *-apple-darwin machines, primarily
-because of a (long-standing) bug in gcc (GCC bug #10901).  By default, 
-the configure script will choose either 'reg' or 'none' as the default base
-grade.  If you do not intend to use debugging (e.g. with production code), then
-you will probably get better performance by using the hlc.gc grade.
+The `asm_fast` grades will not work on `powerc-apple-darwin*` machines,
+primarily because of a (long-standing) bug in gcc (GCC bug #10901).  By
+default, the `configure` script will choose either `reg` or `none` as the default
+base grade.  If you do not intend to use debugging (e.g. with production code),
+then you will probably get better performance by using the `hlc.gc` grade.
 
 Executables created by the Mercury compiler cannot be statically linked against
-the system libraries, on Mac OS X.  Setting `MLFLAGS=-static' or invoking mmc
-with the `--linkage static' option will result in an error message like the
+the system libraries, on Mac OS X.  Setting `MLFLAGS=-static` or invoking `mmc`
+with the `--linkage static` option will result in an error message like the
 following from the linker:
 	
-	ld: can't locate file for: -lcrt0.o
+    ld: can't locate file for: -lcrt0.o
  
 The reason that this does not work is that static version of the system
 libraries are not installed on OS X systems by default.  (See Technical Q&A
@@ -202,34 +205,32 @@ QA118 <http://developer.apple.com/qa/qa2001/qa1118.html> for further details.)
 This restriction only applies to system libraries.  Statically linking against
 Mercury libraries is fine.
 
-Versions of Xcode 11 prior to Xcode 11.4 have bugs that cause the programs
-they generate to crash. A discussion of this issue can be found at
-https://forums.developer.apple.com/thread/121887. The github post
-https://github.com/Mercury-Language/mercury/issues/88#issuecomment-624329679.
-describes a way that has been found to fix the problem.
-
---------------------------
 Deep profiling on Mac OS X
 --------------------------
 
+NOTE: the instructions in this section apply to versions of Mac OS X prior
+to 10.8 since the `Personal Web Sharing` feature was removed in that version.
+To use deep profiling with OS X 10.8 and later you will need to install your
+own web server.
+
 The following discussion assumes a standard installation of Mac OS X.  By
-default Apache should have been installed as the default webserver.
+default Apache should have been installed as the default web server.
 
 In order to use the deep profiler you need to ensure that the deep profiling
 CGI "script" is installed and that the webserver is running.
 
-The deep profiling CGI script, mdprof_cgi, should be installed in the
-directory /Library/WebServer/CGI-Executables.  Mercury's normal installation
+The deep profiling CGI script, `mdprof_cgi`, should be installed in the
+directory `/Library/WebServer/CGI-Executables`.  Mercury's normal installation
 process should take care of this if deep profiling is enabled.
 
 To ensure the webserver is running:
 
-- Open the Apple Menu and open the System Preferences window.
-- In the `System Preferences' window, click on the icon labelled `Sharing'.
-- Make sure that `Personal Web Sharing' is enabled.  If it is then
-  the webserver should be running.
+- Open the `Apple Menu` and open the `System Preferences` window.
+- In the `System Preferences` window, click on the icon labelled `Sharing`.
+- Make sure that `Personal Web Sharing` is enabled.  If it is then
+  the web server should be running.
 
 The remaining instructions for using the deep profiler are the same as those
-found in the ``Mercury User's Guide''.  We recommend against using Safari 1.5
+found in the "Mercury User's Guide".  We recommend against using Safari 1.5
 as it has been found to be somewhat unstable with the deep profiler.  Later
 versions of Safari are fine. 
