@@ -46,7 +46,7 @@ else
 	MLLIBS=-lodbc -lpthread -lltdl -ldl
 
 	# for iODBC
-	# MLLIBS=-liodbc l-pthread -ldl
+	# MLLIBS=-liodbc -lpthread -ldl
 	# note: on a DEC Alpha using OSF1 remove the -ldl.
 endif
 
