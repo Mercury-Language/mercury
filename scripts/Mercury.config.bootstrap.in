@@ -128,6 +128,7 @@ DEFAULT_MCFLAGS=\
 		--sync-term-size "@SYNC_TERM_SIZE@" \
 		--host-env-type "@HOST_ENV_TYPE@" \
 		--target-env-type "@TARGET_ENV_TYPE@" \
+		@RESTRICTED_COMMAND_LINE_OPT@ \
 		@HAVE_DELAY_SLOT@ \
 		@HAVE_BOXED_FLOATS@ \
 		@HAVE_BOXED_INT64S@ \
