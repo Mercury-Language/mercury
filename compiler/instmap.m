@@ -1113,7 +1113,7 @@ get_reachable_instmaps([ArmInstMap | ArmInstMaps], Reachables) :-
     %
 :- pred merge_insts_of_vars(list(prog_var)::in, list(arm_instmap)::in,
     vartypes::in, instmapping::in, instmapping::out,
-    module_info::in, module_info::out, merge_errors::out) is det.
+    module_info::in, module_info::out, list(merge_error)::out) is det.
 
 merge_insts_of_vars([], _, _, !InstMap, !ModuleInfo, []).
 merge_insts_of_vars([Var | Vars], ArmInstMaps, VarTypes, !InstMapping,

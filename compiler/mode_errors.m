@@ -44,8 +44,6 @@
 :- type merge_error
     --->    merge_error(prog_var, assoc_list(prog_context, mer_inst)).
 
-:- type merge_errors == list(merge_error).
-
 :- type delayed_goal
     --->    delayed_goal(
                 set_of_progvar,     % The vars the goal is waiting on.
@@ -62,11 +60,11 @@
     --->    pred_var_multimode_pred_error(pred_id, var_multimode_pred_error).
 
 :- type mode_error
-    --->    mode_error_disj(merge_context, merge_errors)
+    --->    mode_error_disj(merge_context, list(merge_error))
             % Different arms of a disjunction result in different insts
             % for some non-local variables.
 
-    ;       mode_error_par_conj(merge_errors)
+    ;       mode_error_par_conj(list(merge_error))
             % Different arms of a parallel conj result in mutually exclusive
             % bindings - i.e. the process of unifying the instmaps from the end
             % of each branch failed.
@@ -794,7 +792,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_disj_to_spec(mode_info, merge_context, merge_errors)
+:- func mode_error_disj_to_spec(mode_info, merge_context, list(merge_error))
     = error_spec.
 
 mode_error_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
@@ -809,7 +807,7 @@ mode_error_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
         phase_mode_check(report_in_any_mode),
         [simplest_msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
-:- func mode_error_par_conj_to_spec(mode_info, merge_errors) = error_spec.
+:- func mode_error_par_conj_to_spec(mode_info, list(merge_error)) = error_spec.
 
 mode_error_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -825,11 +823,15 @@ mode_error_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
         phase_mode_check(report_in_any_mode),
         [simplest_msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
+%---------------------%
+
 :- func merge_context_to_string(merge_context) = string.
 
 merge_context_to_string(merge_disj) = "disjunction".
 merge_context_to_string(merge_if_then_else) = "if-then-else".
 merge_context_to_string(merge_stm_atomic) = "atomic".
+
+%---------------------%
 
 :- func merge_error_to_msgs(mode_info, prog_context, bool, merge_error)
     = list(error_msg).
@@ -883,6 +885,8 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         Msgs = [VarMsg | InstMsgs]
     ).
 
+%---------------------%
+
 :- pred count_ground_insts(module_info::in,
     assoc_list(prog_context, mer_inst)::in,
     int::in, int::out, int::in, int::out) is det.
@@ -899,6 +903,58 @@ count_ground_insts(ModuleInfo, [ContextInst | ContextsInsts],
     !:NumAllInsts = !.NumAllInsts + 1,
     count_ground_insts(ModuleInfo, ContextsInsts,
         !NumGroundInsts, !NumAllInsts).
+
+%---------------------%
+
+:- type maybe_report_is_ground
+    --->    dont_report_is_ground
+    ;       report_is_ground_v_and_nonv.
+
+:- func report_inst_in_context(mode_info, format_component,
+    maybe_report_is_ground, pair(prog_context, mer_inst)) = error_msg.
+
+report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
+        = Msg :-
+    (
+        ReportIsGround = dont_report_is_ground,
+        IntroPieces = [words("In this branch,"), VarNamePiece,
+            words("has instantiatedness")],
+        Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst),
+        Msg = simple_msg(Context, [always(Pieces)])
+    ;
+        ReportIsGround = report_is_ground_v_and_nonv,
+        mode_info_get_module_info(ModeInfo, ModuleInfo),
+        ( if inst_is_ground(ModuleInfo, Inst) then
+            ( if Inst = ground(shared, none_or_default_func) then
+                Pieces = [words("In this branch,"), VarNamePiece,
+                    words("is ground."), nl]
+            else
+                IntroPieces = [words("In this branch,"), VarNamePiece,
+                    words("has the ground instantiatedness")],
+                Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst)
+            ),
+            Msg = simple_msg(Context, [verbose_and_nonverbose(Pieces, [])])
+        else
+            ( if ( Inst = free ; Inst = free(_) ) then
+                Pieces = [words("In this branch,"), VarNamePiece,
+                    words("is free."), nl]
+            else
+                IntroPieces = [words("In this branch,"), VarNamePiece,
+                    words("has the non-ground instantiatedness")],
+                Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst)
+            ),
+            Msg = simple_msg(Context, [always(Pieces)])
+        )
+    ).
+
+:- func report_inst_in_branch(mode_info, list(format_component), mer_inst)
+    = list(format_component).
+
+report_inst_in_branch(ModeInfo, IntroPieces, Inst) = Pieces :-
+    Pieces = [nl_indent_delta(1) | IntroPieces] ++ [nl_indent_delta(1) |
+        report_inst(ModeInfo, fixed_short_inst,
+            [suffix("."), nl_indent_delta(-2)],
+            [], [suffix("."), nl_indent_delta(-2)], Inst)].
 
 %---------------------------------------------------------------------------%
 
@@ -1921,56 +1977,6 @@ expected_inst_was(ModeInfo, Inst) =
             [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)], Inst)].
 
 %---------------------------------------------------------------------------%
-
-:- type maybe_report_is_ground
-    --->    dont_report_is_ground
-    ;       report_is_ground_v_and_nonv.
-
-:- func report_inst_in_context(mode_info, format_component,
-    maybe_report_is_ground, pair(prog_context, mer_inst)) = error_msg.
-
-report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
-        = Msg :-
-    (
-        ReportIsGround = dont_report_is_ground,
-        IntroPieces = [words("In this branch,"), VarNamePiece,
-            words("has instantiatedness")],
-        Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst),
-        Msg = simple_msg(Context, [always(Pieces)])
-    ;
-        ReportIsGround = report_is_ground_v_and_nonv,
-        mode_info_get_module_info(ModeInfo, ModuleInfo),
-        ( if inst_is_ground(ModuleInfo, Inst) then
-            ( if Inst = ground(shared, none_or_default_func) then
-                Pieces = [words("In this branch,"), VarNamePiece,
-                    words("is ground."), nl]
-            else
-                IntroPieces = [words("In this branch,"), VarNamePiece,
-                    words("has the ground instantiatedness")],
-                Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst)
-            ),
-            Msg = simple_msg(Context, [verbose_and_nonverbose(Pieces, [])])
-        else
-            ( if ( Inst = free ; Inst = free(_) ) then
-                Pieces = [words("In this branch,"), VarNamePiece,
-                    words("is free."), nl]
-            else
-                IntroPieces = [words("In this branch,"), VarNamePiece,
-                    words("has the non-ground instantiatedness")],
-                Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst)
-            ),
-            Msg = simple_msg(Context, [always(Pieces)])
-        )
-    ).
-
-:- func report_inst_in_branch(mode_info, list(format_component), mer_inst)
-    = list(format_component).
-
-report_inst_in_branch(ModeInfo, IntroPieces, Inst) = Pieces :-
-    Pieces = [nl_indent_delta(1) | IntroPieces] ++ [nl_indent_delta(1) |
-        report_inst(ModeInfo, fixed_short_inst,
-            [suffix("."), nl_indent_delta(-2)],
-            [], [suffix("."), nl_indent_delta(-2)], Inst)].
 
 :- func report_inst(mode_info, short_inst,
     list(format_component), list(format_component), list(format_component),
