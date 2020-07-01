@@ -4,12 +4,10 @@ multimode_dcg.m:031:   syntax error: some but not all arguments have mode
 multimode_dcg.m:031:   annotations.
 multimode_dcg.m:033: In clause for `test1(out, di, uo)':
 multimode_dcg.m:033:   mode mismatch in disjunction.
-multimode_dcg.m:033:   The variable `HeadVar__1' has the following
-multimode_dcg.m:033:   instantiation states.
-multimode_dcg.m:031:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:031:       free.
-multimode_dcg.m:033:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:033:       unique(0).
+multimode_dcg.m:033:   The variable `HeadVar__1' is ground in some branches but
+multimode_dcg.m:033:   not others.
+multimode_dcg.m:031:     In this branch, `HeadVar__1' is free.
+multimode_dcg.m:033:     In this branch, `HeadVar__1' is ground.
 multimode_dcg.m:033: In the head of a clause for
 multimode_dcg.m:033:   predicate `multimode_dcg.test1'/3:
 multimode_dcg.m:033:   syntax error: some but not all arguments have mode
@@ -28,50 +26,34 @@ multimode_dcg.m:045:   syntax error: some but not all arguments have mode
 multimode_dcg.m:045:   annotations.
 multimode_dcg.m:047: In clause for `test2(in, out, di, uo)':
 multimode_dcg.m:047:   mode mismatch in disjunction.
-multimode_dcg.m:047:   The variable `HeadVar__2' has the following
-multimode_dcg.m:047:   instantiation states.
-multimode_dcg.m:041:     In this branch, `HeadVar__2' has instantiatedness
-multimode_dcg.m:041:       free.
-multimode_dcg.m:043:     In this branch, `HeadVar__2' has instantiatedness
-multimode_dcg.m:043:       unique(0).
-multimode_dcg.m:045:     In this branch, `HeadVar__2' has instantiatedness
-multimode_dcg.m:045:       free.
-multimode_dcg.m:047:     In this branch, `HeadVar__2' has instantiatedness
-multimode_dcg.m:047:       unique(0).
+multimode_dcg.m:047:   The variable `HeadVar__2' is ground in some branches but
+multimode_dcg.m:047:   not others.
+multimode_dcg.m:041:     In this branch, `HeadVar__2' is free.
+multimode_dcg.m:043:     In this branch, `HeadVar__2' is ground.
+multimode_dcg.m:045:     In this branch, `HeadVar__2' is free.
+multimode_dcg.m:047:     In this branch, `HeadVar__2' is ground.
 multimode_dcg.m:047: In clause for `test2(out, in, di, uo)':
 multimode_dcg.m:047:   mode mismatch in disjunction.
-multimode_dcg.m:047:   The variable `HeadVar__1' has the following
-multimode_dcg.m:047:   instantiation states.
-multimode_dcg.m:041:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:041:       free.
-multimode_dcg.m:043:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:043:       free.
-multimode_dcg.m:045:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:045:       unique(0).
-multimode_dcg.m:047:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:047:       unique(0).
+multimode_dcg.m:047:   The variable `HeadVar__1' is ground in some branches but
+multimode_dcg.m:047:   not others.
+multimode_dcg.m:041:     In this branch, `HeadVar__1' is free.
+multimode_dcg.m:043:     In this branch, `HeadVar__1' is free.
+multimode_dcg.m:045:     In this branch, `HeadVar__1' is ground.
+multimode_dcg.m:047:     In this branch, `HeadVar__1' is ground.
 multimode_dcg.m:047: In clause for `test2(out, out, di, uo)':
 multimode_dcg.m:047:   mode mismatch in disjunction.
-multimode_dcg.m:047:   The variable `HeadVar__1' has the following
-multimode_dcg.m:047:   instantiation states.
-multimode_dcg.m:041:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:041:       free.
-multimode_dcg.m:043:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:043:       free.
-multimode_dcg.m:045:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:045:       unique(0).
-multimode_dcg.m:047:     In this branch, `HeadVar__1' has instantiatedness
-multimode_dcg.m:047:       unique(0).
-multimode_dcg.m:047:   The variable `HeadVar__2' has the following
-multimode_dcg.m:047:   instantiation states.
-multimode_dcg.m:041:     In this branch, `HeadVar__2' has instantiatedness
-multimode_dcg.m:041:       free.
-multimode_dcg.m:043:     In this branch, `HeadVar__2' has instantiatedness
-multimode_dcg.m:043:       unique(0).
-multimode_dcg.m:045:     In this branch, `HeadVar__2' has instantiatedness
-multimode_dcg.m:045:       free.
-multimode_dcg.m:047:     In this branch, `HeadVar__2' has instantiatedness
-multimode_dcg.m:047:       unique(0).
+multimode_dcg.m:047:   The variable `HeadVar__1' is ground in some branches but
+multimode_dcg.m:047:   not others.
+multimode_dcg.m:041:     In this branch, `HeadVar__1' is free.
+multimode_dcg.m:043:     In this branch, `HeadVar__1' is free.
+multimode_dcg.m:045:     In this branch, `HeadVar__1' is ground.
+multimode_dcg.m:047:     In this branch, `HeadVar__1' is ground.
+multimode_dcg.m:047:   The variable `HeadVar__2' is ground in some branches but
+multimode_dcg.m:047:   not others.
+multimode_dcg.m:041:     In this branch, `HeadVar__2' is free.
+multimode_dcg.m:043:     In this branch, `HeadVar__2' is ground.
+multimode_dcg.m:045:     In this branch, `HeadVar__2' is free.
+multimode_dcg.m:047:     In this branch, `HeadVar__2' is ground.
 multimode_dcg.m:047: In the head of a clause for
 multimode_dcg.m:047:   predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:047:   syntax error: some but not all arguments have mode

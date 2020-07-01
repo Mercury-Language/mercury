@@ -3,24 +3,19 @@ merge_inst_error.m:060:   mode mismatch in disjunction.
 merge_inst_error.m:060:   The variable `S' is ground in 4 out of 6 branches.
 merge_inst_error.m:060:   It has non-ground instantiation states in the
 merge_inst_error.m:060:   following branches.
-merge_inst_error.m:047:   In this branch, `S' is free.
-merge_inst_error.m:053:   In this branch, `S' is free.
+merge_inst_error.m:047:     In this branch, `S' is free.
+merge_inst_error.m:053:     In this branch, `S' is free.
 merge_inst_error.m:093: In clause for `switch2(in, out)':
 merge_inst_error.m:093:   mode mismatch in disjunction.
 merge_inst_error.m:093:   The variable `S' is ground in 5 out of 6 branches.
-merge_inst_error.m:077:   In this branch, `S' is free.
+merge_inst_error.m:077:     In this branch, `S' is free.
 merge_inst_error.m:124: In clause for `switch3(in, out)':
 merge_inst_error.m:124:   mode mismatch in disjunction.
-merge_inst_error.m:124:   The variable `S' has the following instantiation
-merge_inst_error.m:124:   states.
-merge_inst_error.m:111:     In this branch, `S' has instantiatedness
-merge_inst_error.m:111:       unique("tab").
-merge_inst_error.m:114:     In this branch, `S' has instantiatedness
-merge_inst_error.m:114:       unique("tc").
-merge_inst_error.m:118:     In this branch, `S' has instantiatedness
-merge_inst_error.m:118:       free.
-merge_inst_error.m:121:     In this branch, `S' has instantiatedness
-merge_inst_error.m:121:       free.
-merge_inst_error.m:124:     In this branch, `S' has instantiatedness
-merge_inst_error.m:124:       free.
+merge_inst_error.m:124:   The variable `S' is ground in some branches but not
+merge_inst_error.m:124:   others.
+merge_inst_error.m:111:     In this branch, `S' is ground.
+merge_inst_error.m:114:     In this branch, `S' is ground.
+merge_inst_error.m:118:     In this branch, `S' is free.
+merge_inst_error.m:121:     In this branch, `S' is free.
+merge_inst_error.m:124:     In this branch, `S' is free.
 For more information, recompile with `-E'.

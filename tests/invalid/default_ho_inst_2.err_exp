@@ -10,6 +10,5 @@ default_ho_inst_2.m:031:             in
 default_ho_inst_2.m:031:           ) = out is semidet)
 default_ho_inst_2.m:031:         )
 default_ho_inst_2.m:031:       ).
-default_ho_inst_2.m:033:     In this branch, `F' has instantiatedness
-default_ho_inst_2.m:033:       ground.
+default_ho_inst_2.m:033:     In this branch, `F' is ground.
 For more information, recompile with `-E'.
