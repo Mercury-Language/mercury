@@ -73,6 +73,11 @@
     %
 :- func det_tail(list(T)) = list(T).
 
+    % det_head_tail(List, Head, Tail) returns the head and the tail of List,
+    % calling error/1 if List is empty.
+    %
+:- pred det_head_tail(list(T)::in, T::out, list(T)::out) is det.
+
     % cons(X, Y) = Z <=> Z = [X | Y].
     %
 :- func cons(T, list(T)) = list(T).
@@ -1938,17 +1943,21 @@ is_not_empty([_ | _]).
 
 %---------------------------------------------------------------------------%
 
-head([X | _]) = X.
+head([H | _]) = H.
 
 det_head([]) = _ :-
     unexpected($pred, "empty list").
-det_head([X | _]) = X.
+det_head([H | _]) = H.
 
-tail([_ | Xs]) = Xs.
+tail([_ | T]) = T.
 
 det_tail([]) = _ :-
     unexpected($pred, "empty list").
-det_tail([_ | Xs]) = Xs.
+det_tail([_ | T]) = T.
+
+det_head_tail([], _, _) :-
+    unexpected($pred, "empty list").
+det_head_tail([H | T], H, T).
 
 cons(H, T) = [H | T].
 

@@ -329,7 +329,6 @@
     list(arm_instmap)::out) is det.
 
 %---------------------------------------------------------------------------%
-% ZZZ
 
     % instmap_merge(NonLocalVars, ArmInstMaps, MergeContext, !ModeInfo):
     %
@@ -848,8 +847,8 @@ bind_inst_to_functors(Type, MainConsId, OtherConsIds, InitInst, FinalInst,
         MainFinalInst, !ModuleInfo),
     bind_inst_to_functors_others(Type, OtherConsIds, InitInst,
         OtherFinalInsts, !ModuleInfo),
-    merge_var_insts([MainFinalInst | OtherFinalInsts], yes(Type), !ModuleInfo,
-        MaybeMergedInst),
+    merge_var_insts(yes(Type), MainFinalInst, OtherFinalInsts, MaybeMergedInst,
+        !ModuleInfo),
     (
         MaybeMergedInst = yes(FinalInst)
     ;
@@ -858,7 +857,7 @@ bind_inst_to_functors(Type, MainConsId, OtherConsIds, InitInst, FinalInst,
         % switches are being or have been introduced into the HLDS, which
         % should come only after mode checking has been done without finding
         % any errors. Finding an error now would mean that some compiler pass
-        % executed between mode checking and how has screwed up.
+        % executed between mode checking and now has screwed up.
         unexpected($pred, "no MaybeMergedInst")
     ).
 
@@ -1121,12 +1120,14 @@ merge_insts_of_vars([Var | Vars], ArmInstMaps, VarTypes, !InstMapping,
     merge_insts_of_vars(Vars, ArmInstMaps, VarTypes, !InstMapping,
         !ModuleInfo, !:ErrorList),
     lookup_var_type(VarTypes, Var, VarType),
-    list.map(lookup_var_in_arm_instmap(Var), ArmInstMaps, InstList),
-    merge_var_insts(InstList, yes(VarType), !ModuleInfo, MaybeInst),
+    list.map(lookup_var_in_arm_instmap(Var), ArmInstMaps, VarInsts),
+    det_head_tail(VarInsts, HeadVarInst, TailVarInsts), 
+    merge_var_insts(yes(VarType), HeadVarInst, TailVarInsts, MaybeInst,
+        !ModuleInfo),
     (
         MaybeInst = no,
         list.map(arm_instmap_project_context, ArmInstMaps, Contexts),
-        assoc_list.from_corresponding_lists(Contexts, InstList, ContextsInsts),
+        assoc_list.from_corresponding_lists(Contexts, VarInsts, ContextsInsts),
         !:ErrorList = [merge_error(Var, ContextsInsts) | !.ErrorList],
         map.set(Var, not_reached, !InstMapping)
     ;
@@ -1171,12 +1172,13 @@ arm_instmap_project_context(ArmErrorInfo, Context) :-
     % number of insts by four by merging groups of four adjacent insts.
     % The overall complexity is thus closer to N log N than N^2.
     %
-:- pred merge_var_insts(list(mer_inst)::in, maybe(mer_type)::in,
-    module_info::in, module_info::out, maybe(mer_inst)::out) is det.
+:- pred merge_var_insts(maybe(mer_type)::in, mer_inst::in, list(mer_inst)::in,
+    maybe(mer_inst)::out, module_info::in, module_info::out) is det.
 
-merge_var_insts(Insts, MaybeType, !ModuleInfo, MaybeMergedInst) :-
-    merge_var_insts_pass(Insts, MaybeType, [], MergedInsts, !ModuleInfo,
-        no, Error),
+merge_var_insts(MaybeType, HeadInst, TailInsts, MaybeMergedInst,
+        !ModuleInfo) :-
+    merge_var_insts_pass(MaybeType, HeadInst, TailInsts,
+        [], MergedInsts, no, Error, !ModuleInfo),
     (
         Error = yes,
         MaybeMergedInst = no
@@ -1184,29 +1186,34 @@ merge_var_insts(Insts, MaybeType, !ModuleInfo, MaybeMergedInst) :-
         Error = no,
         (
             MergedInsts = [],
-            MaybeMergedInst = yes(not_reached)
+            % merge_var_insts_pass can return MergedInsts = [], but only
+            % together with Error = yes.
+            unexpected($pred, "MergedInsts = []")
         ;
-            MergedInsts = [MergedInst],
-            MaybeMergedInst = yes(MergedInst)
-        ;
-            MergedInsts = [_, _ | _],
-            merge_var_insts(MergedInsts, MaybeType, !ModuleInfo,
-                MaybeMergedInst)
+            MergedInsts = [MergedInst1 | MergedInsts2Plus],
+            (
+                MergedInsts2Plus = [],
+                MaybeMergedInst = yes(MergedInst1)
+            ;
+                MergedInsts2Plus = [_ | _],
+                merge_var_insts(MaybeType, MergedInst1, MergedInsts2Plus,
+                    MaybeMergedInst, !ModuleInfo)
+            )
         )
     ).
 
-:- pred merge_var_insts_pass(list(mer_inst)::in, maybe(mer_type)::in,
-    list(mer_inst)::in, list(mer_inst)::out, module_info::in, module_info::out,
-    bool::in, bool::out) is det.
+:- pred merge_var_insts_pass(maybe(mer_type)::in,
+    mer_inst::in, list(mer_inst)::in,
+    list(mer_inst)::in, list(mer_inst)::out,
+    bool::in, bool::out, module_info::in, module_info::out) is det.
 
-merge_var_insts_pass(Insts, MaybeType, !MergedInsts, !ModuleInfo, !Error) :-
+merge_var_insts_pass(MaybeType, Inst1, Insts2Plus, !MergedInsts, !Error,
+        !ModuleInfo) :-
     (
-        Insts = []
-    ;
-        Insts = [Inst1],
+        Insts2Plus = [],
         !:MergedInsts = [Inst1 | !.MergedInsts]
     ;
-        Insts = [Inst1, Inst2],
+        Insts2Plus = [Inst2],
         ( if
             inst_merge(Inst1, Inst2, MaybeType, Inst12, !ModuleInfo)
         then
@@ -1215,7 +1222,7 @@ merge_var_insts_pass(Insts, MaybeType, !MergedInsts, !ModuleInfo, !Error) :-
             !:Error = yes
         )
     ;
-        Insts = [Inst1, Inst2, Inst3],
+        Insts2Plus = [Inst2, Inst3],
         ( if
             inst_merge(Inst1, Inst2, MaybeType, Inst12, !ModuleInfo),
             inst_merge(Inst12, Inst3, MaybeType, Inst123, !ModuleInfo)
@@ -1225,15 +1232,20 @@ merge_var_insts_pass(Insts, MaybeType, !MergedInsts, !ModuleInfo, !Error) :-
             !:Error = yes
         )
     ;
-        Insts = [Inst1, Inst2, Inst3, Inst4 | MoreInsts],
+        Insts2Plus = [Inst2, Inst3, Inst4 | Insts5Plus],
         ( if
             inst_merge(Inst1, Inst2, MaybeType, Inst12, !ModuleInfo),
             inst_merge(Inst3, Inst4, MaybeType, Inst34, !ModuleInfo),
             inst_merge(Inst12, Inst34, MaybeType, Inst1234, !ModuleInfo)
         then
             !:MergedInsts = [Inst1234 | !.MergedInsts],
-            merge_var_insts_pass(MoreInsts, MaybeType, !MergedInsts,
-                !ModuleInfo, !Error)
+            (
+                Insts5Plus = []
+            ;
+                Insts5Plus = [Inst5 | Insts6Plus],
+                merge_var_insts_pass(MaybeType, Inst5, Insts6Plus,
+                    !MergedInsts, !Error, !ModuleInfo)
+            )
         else
             !:Error = yes
         )
