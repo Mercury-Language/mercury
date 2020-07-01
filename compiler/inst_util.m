@@ -97,10 +97,23 @@
 
     % inst_merge(InstA, InstB, MaybeType, InstC, !ModuleInfo):
     %
-    % Combine the insts found in different arms of a disjunction (or
-    % if-then-else). The information in InstC is the minimum of the information
+    % Combine the insts found in different arms of a disjunction, switch, or
+    % if-then-else. The information in InstC is the minimum of the information
     % in InstA and InstB. Where InstA and InstB specify a binding (free or
     % bound), it must be the same in both.
+    %
+    % In the vast majority of cases, our caller knows the type of variable
+    % whose insts InstA and InstB represent. The reason why we take only
+    % a maybe(type) here instead is that this variable may contain, directly or
+    % indirectly, some existentially typed arguments, and when inst_merge
+    % recurses down to those arguments, we won't be able to figure out the
+    % types of those argunents from the type of the function symbol(s) wrapped
+    % around them. We could figure it out from the types of the variables
+    % that were used to construct that tern, but since that construction
+    % could have taken place in another predicate, we can't count on
+    % having access to that information.
+    % XXX Consider whether we could just use type variables as the types
+    % of such existentially typed arguments.
     %
 :- pred inst_merge(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
     mer_inst::out, module_info::in, module_info::out) is semidet.
