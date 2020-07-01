@@ -109,7 +109,7 @@
     % recurses down to those arguments, we won't be able to figure out the
     % types of those argunents from the type of the function symbol(s) wrapped
     % around them. We could figure it out from the types of the variables
-    % that were used to construct that tern, but since that construction
+    % that were used to construct that term, but since that construction
     % could have taken place in another predicate, we can't count on
     % having access to that information.
     % XXX Consider whether we could just use type variables as the types
