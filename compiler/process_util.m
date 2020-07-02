@@ -102,21 +102,24 @@
 :- pred start_in_forked_process(io_pred::in(io_pred), maybe(pid)::out,
     io::di, io::uo) is det.
 
-    % wait_pid(Pid, ExitCode, !IO)
+    % wait_pid(Pid, Res, !IO)
     %
-    % Block until the child process with process id Pid exited.
-    % Return the exit code of the child.
+    % Block until the child process with process id Pid has exited,
+    % and return the exit code of the child process or the signal that the
+    % child process received. The system call may return an error if
+    % interrupted by a signal, or if there are no child processes to wait for,
+    % or other reasons.
     %
 :- pred wait_pid(pid::in, io.res(io.system_result)::out, io::di, io::uo)
     is det.
 
-    % wait_any(Pid, ExitCode, !IO)
+    % wait_any(MaybePid, Res, !IO)
     %
-    % Block until a child process has exited. Return the process ID
-    % of the child and its exit code.
+    % Block until a child process has exited, and return the exit code of the
+    % child process or the signal that the child process received.
     %
-:- pred wait_any(pid::out, io.res(io.system_result)::out, io::di, io::uo)
-    is det.
+:- pred wait_any(maybe(pid)::out, io.res(io.system_result)::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -355,9 +358,18 @@ call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
         start_in_forked_process(P, MaybePid, !IO),
         (
             MaybePid = yes(Pid),
-            do_wait(Pid, _, CallStatus, !IO),
-            Status = decode_system_command_exit_code(CallStatus),
-            Success = ( if Status = ok(exited(0)) then yes else no )
+            wait_pid(Pid, WaitRes, !IO),
+            (
+                WaitRes = ok(Status),
+                ( if Status = exited(0) then
+                    Success = yes
+                else
+                    Success = no
+                )
+            ;
+                WaitRes = error(_Error),
+                Success = no
+            )
         ;
             MaybePid = no,
             Success = no
@@ -427,22 +439,26 @@ call_child_process_io_pred(P, Status, !IO) :-
         Status = 1
     ).
 
-    % do_wait(Pid, WaitedPid, Status, !IO)
+    % do_wait(Pid, Error, WaitedPid, Status, !IO)
     %
     % Wait until Pid exits and return its status.
     % If Pid is -1 then wait for any child process to exit.
     %
-:- pred do_wait(pid::in, pid::out, int::out, io::di, io::uo) is det.
-:- pragma no_determinism_warning(do_wait/5).
+:- pred do_wait(pid::in, string::out, pid::out, int::out, io::di, io::uo)
+    is det.
+:- pragma no_determinism_warning(do_wait/6).
 
 :- pragma foreign_proc("C",
-    do_wait(Pid::in, WaitedPid::out, Status::out, _IO0::di, _IO::uo),
+    do_wait(Pid::in, Error::out, MaybeWaitedPid::out, Status::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
 #ifdef MC_CAN_FORK
     {
-        int     child_status;
-        pid_t   wait_status;
+        pid_t       rc;
+        int         wstatus;
+        char        errbuf[MR_STRERROR_BUF_SIZE];
+        const char  *errno_msg;
 
         /*
         ** Make sure the wait() is interrupted by the signals
@@ -458,13 +474,20 @@ call_child_process_io_pred(P, Status, !IO) :-
 #endif
 
         while (1) {
-            wait_status = waitpid((pid_t)Pid, &child_status, 0);
-            if (wait_status != -1) {
-                WaitedPid = wait_status;
-                Status = child_status;
-                break;
-            } else if (MR_is_eintr(errno)) {
-                if (MC_signalled) {
+            rc = waitpid((pid_t) Pid, &wstatus, 0);
+            if (rc != -1) {
+                Error = MR_make_string_const("""");
+                MaybeWaitedPid = rc;
+                Status = wstatus;
+            } else {
+                errno_msg = MR_strerror(errno, errbuf, sizeof(errbuf));
+                MR_make_aligned_string_copy_msg(Error, errno_msg, MR_ALLOC_ID);
+                MaybeWaitedPid = -1;
+                Status = wstatus;
+                if (MR_is_eintr(errno)) {
+                    if (!MC_signalled) {
+                        continue;
+                    }
                     /*
                     ** A normally fatal signal has been received, so kill the
                     ** child immediately.  Use SIGTERM, not MC_signal_received,
@@ -475,16 +498,9 @@ call_child_process_io_pred(P, Status, !IO) :-
                     if (Pid != -1) {
                         kill((pid_t)Pid, SIGTERM);
                     }
-                    break;
                 }
-            } else {
-                /*
-                ** This should never happen.
-                */
-                MR_perror(""error in wait(): "");
-                Status = 1;
-                break;
             }
+            break;
         }
 
         /*
@@ -501,21 +517,36 @@ call_child_process_io_pred(P, Status, !IO) :-
     }
 
 #else /* ! MC_CAN_FORK */
-    MR_perror(""cannot wait() when fork() is unavailable: "");
+    Error = MR_make_string_const(""cannot wait() when fork() is unavailable"");
+    MaybeWaitedPid = -1;
     Status = 1;
 #endif /* ! MC_CAN_FORK */
 ").
 
-do_wait(_, _, _, _, _) :-
+do_wait(_, _, _, _, _, _) :-
     sorry($file, $pred).
 
-wait_pid(Pid, Status, !IO) :-
-    do_wait(Pid, _Pid, Status0, !IO),
-    Status = decode_system_command_exit_code(Status0).
+wait_pid(Pid, Res, !IO) :-
+    do_wait(Pid, Error, _MaybeWaitedPid, WStatus, !IO),
+    ( if Error = "" then
+        Res = decode_system_command_exit_code(WStatus)
+    else
+        Res = error(io.make_io_error(Error))
+    ).
 
-wait_any(Pid, Status, !IO) :-
-    do_wait(-1, Pid, Status0, !IO),
-    Status = decode_system_command_exit_code(Status0).
+wait_any(MaybeWaitedPid, Res, !IO) :-
+    do_wait(-1, Error, MaybeWaitedPid0, WStatus, !IO),
+    ( if Error = "" then
+        ( if MaybeWaitedPid0 = -1 then
+            MaybeWaitedPid = no
+        else
+            MaybeWaitedPid = yes(MaybeWaitedPid0)
+        ),
+        Res = decode_system_command_exit_code(WStatus)
+    else
+        MaybeWaitedPid = no,
+        Res = error(io.make_io_error(Error))
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.process_util.
