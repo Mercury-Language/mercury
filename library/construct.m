@@ -480,7 +480,8 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
         case MR_TYPECTOR_REP_UNUSED2:
         case MR_TYPECTOR_REP_UNKNOWN:
             success = MR_FALSE;
-
+            Ordinal = 0;
+            break;
         }
     }
     SUCCESS_INDICATOR = success;

@@ -1138,6 +1138,7 @@ static  TypeInInstCacheEntry  type_in_inst_cache[TYPE_IN_INST_CACHE_SIZE];
         MayOccur = type_in_inst_cache[hash].tice_may_occur;
     } else {
         Found = MR_BOOL_NO;
+        MayOccur = MR_BOOL_NO;
     }
 ").
 
