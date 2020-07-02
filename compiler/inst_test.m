@@ -302,6 +302,7 @@ static  InstIsGroundCacheEntry
         IsGround = inst_is_ground_cache[hash].iig_is_ground;
     } else {
         Found = MR_BOOL_NO;
+        IsGround = MR_NO;
     }
 ").
 

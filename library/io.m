@@ -6114,11 +6114,12 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
         if (MR_FERROR(*Stream)) {
             ResultCode = ML_RESULT_CODE_ERROR;
             Error = errno;
+            Char = 0;
         } else {
             ResultCode = ML_RESULT_CODE_EOF;
             Error = 0;
+            Char = 0;
         }
-        Char = 0;
     } else {
         if ((uc & 0xE0) == 0xC0) {
             nbytes = 2;
@@ -14236,24 +14237,23 @@ decode_system_command_exit_code(Code0) = Status :-
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, no_sharing],
 "
+    Exited = MR_NO;
+    Status = 0;
+    Signalled = MR_NO;
+    Signal = 0;
+
     #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
             defined (WIFSIGNALED) && defined (WTERMSIG)
         if (WIFEXITED(Status0)) {
             Exited = MR_YES;
-            Signalled = MR_NO;
             Status = WEXITSTATUS(Status0);
         } else if (WIFSIGNALED(Status0)) {
-            Exited = MR_NO;
             Signalled = MR_YES;
             Signal = -WTERMSIG(Status0);
-        } else {
-            Exited = MR_NO;
-            Signalled = MR_NO;
         }
     #else
         Exited = MR_YES;
         Status = Status0;
-        Signalled = MR_NO;
     #endif
 ").
 

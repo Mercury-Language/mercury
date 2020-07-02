@@ -96,7 +96,7 @@ trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
     % which only works for will_not_call_mercury foreign_procs.
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    char        *line;
+    char        *line = NULL;
     MercuryFile *mdb_in = (MercuryFile *) MdbIn;
     MercuryFile *mdb_out = (MercuryFile *) MdbOut;
 
