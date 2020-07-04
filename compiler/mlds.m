@@ -1906,7 +1906,7 @@
             %
             % - nothing, if the target language is C,
             % - TargetPrefixes ^ java_prefix, if the target language is Java,
-            % - TargetPrefixes ^ charp_prefix, if the target language is C#.
+            % - TargetPrefixes ^ csharp_prefix, if the target language is C#.
             %
             % It is the responsibility of the code that creates named constants
             % to ensure that the constant's name is meaningful for the target
@@ -2332,7 +2332,7 @@
             % change in the HLDS.
 
     ;       lvnc_out_param(int)
-            % This MLDS variable represents the Nth putput parameter of an MLDS
+            % This MLDS variable represents the Nth output parameter of an MLDS
             % function being compiled to C#, where N is the given integer,
             % and N > 1. (The C# backend returns the first output parameter
             % as the return value, but returns the others as the "out"
