@@ -122,44 +122,49 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         !:GlobalInfo = higher_order_global_info(Requests0, NewPredMap0,
             VersionInfo0, !.ModuleInfo, GoalSizes0, Params, counter.init(1)),
 
-        module_info_get_valid_pred_ids(!.ModuleInfo, PredIds0),
+        module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
-        TypeSpecInfo = type_spec_info(_, UserSpecPreds, _, _),
+        TypeSpecInfo = type_spec_info(_, UserSpecPredIdSet, _, _),
 
         % Make sure the user requested specializations are processed first,
         % since we don't want to create more versions if one of these matches.
         % We need to process these even if specialization is not being
-        % performed in case any of the specialized versions are called
+        % performed, in case any of the specialized versions are called
         % from other modules.
 
-        ( if set.is_empty(UserSpecPreds) then
-            PredIds = PredIds0,
-            UserSpecPredList = []
-        else
-            set.list_to_set(PredIds0, PredIdSet0),
-            set.difference(PredIdSet0, UserSpecPreds, PredIdSet),
-            set.to_sorted_list(PredIdSet, PredIds),
+        set.to_sorted_list(UserSpecPredIdSet, UserSpecPredIds),
+        (
+            UserSpecPredIds = [],
+            NonUserSpecPredIds = ValidPredIds
+        ;
+            UserSpecPredIds = [_ | _],
+            set.list_to_set(ValidPredIds, ValidPredIdSet),
+            set.difference(ValidPredIdSet, UserSpecPredIdSet,
+                NonUserSpecPredIdSet),
+            set.to_sorted_list(NonUserSpecPredIdSet, NonUserSpecPredIds),
 
-            set.to_sorted_list(UserSpecPreds, UserSpecPredList),
             !GlobalInfo ^ hogi_params ^ param_do_user_type_spec := yes,
-            list.foldl(get_specialization_requests, UserSpecPredList,
+            list.foldl(get_specialization_requests, UserSpecPredIds,
                 !GlobalInfo),
             process_ho_spec_requests(!GlobalInfo, !IO)
         ),
 
-        ( if bool.or_list([HigherOrder, TypeSpec, UserTypeSpec], yes) then
+        bool.or_list([HigherOrder, TypeSpec, UserTypeSpec], AnySpec),
+        (
+            AnySpec = yes,
             % Process all other specializations until no more requests
             % are generated.
-            list.foldl(get_specialization_requests, PredIds, !GlobalInfo),
+            list.foldl(get_specialization_requests, NonUserSpecPredIds,
+                !GlobalInfo),
             recursively_process_ho_spec_requests(!GlobalInfo, !IO)
-        else
-            true
+        ;
+            AnySpec = no
         ),
 
         % Remove the predicates which were used to force the production of
         % user-requested type specializations, since they are not called
         % from anywhere and are no longer needed.
-        list.foldl(module_info_remove_predicate, UserSpecPredList,
+        list.foldl(module_info_remove_predicate, UserSpecPredIds,
             !.GlobalInfo ^ hogi_module_info, !:ModuleInfo)
     ).
 
@@ -170,14 +175,17 @@ specialize_higher_order(!ModuleInfo, !IO) :-
     higher_order_global_info::out, io::di, io::uo) is det.
 
 process_ho_spec_requests(!GlobalInfo, !IO) :-
-    filter_requests(Requests, LoopRequests, !GlobalInfo, !IO),
+    Requests0 = set.to_sorted_list(!.GlobalInfo ^ hogi_requests),
+    !GlobalInfo ^ hogi_requests := set.init,
+    list.foldl3(filter_request(!.GlobalInfo), Requests0,
+        [], Requests, [], LoopRequests, !IO),
     (
         Requests = []
     ;
         Requests = [_ | _],
         some [!PredProcsToFix] (
             set.init(!:PredProcsToFix),
-            create_new_preds(Requests, [], NewPredList, !PredProcsToFix,
+            maybe_create_new_preds(Requests, [], NewPredList, !PredProcsToFix,
                 !GlobalInfo, !IO),
             list.foldl(check_loop_request(!.GlobalInfo), LoopRequests,
                 !PredProcsToFix),
@@ -580,9 +588,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
             maybe_specialize_higher_order_call(Var, Args, Goal0, Goal, !Info)
         ;
             GenericCall = class_method(Var, Method, _, _),
-            maybe_specialize_method_call(Var, Method, Args, Goal0, Goals,
-                !Info),
-            conj_list_to_goal(Goals, GoalInfo0, Goal)
+            maybe_specialize_method_call(Var, Method, Args, Goal0, Goal, !Info)
         ;
             ( GenericCall = event_call(_)
             ; GenericCall = cast(_)
@@ -652,6 +658,8 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
         unexpected($pred, "shorthand")
     ).
 
+%-----------------------------------------------------------------------------%
+
     % To process a parallel conjunction, we process each conjunct with the
     % specialization information before the conjunct, then merge the
     % results to give the specialization information after the conjunction.
@@ -666,25 +674,25 @@ ho_traverse_parallel_conj(Goals0, Goals, !Info) :-
     ;
         Goals0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
-        ho_traverse_parallel_conj_2(PreInfo, Goals0, Goals, [], PostInfos,
-            !Info),
+        ho_traverse_parallel_conj_loop(PreInfo, Goals0, Goals,
+            [], PostInfos, !Info),
         merge_post_branch_infos_into_one(PostInfos, PostInfo),
         set_post_branch_info(PostInfo, !Info)
     ).
 
-:- pred ho_traverse_parallel_conj_2(pre_branch_info::in,
+:- pred ho_traverse_parallel_conj_loop(pre_branch_info::in,
     hlds_goals::in, hlds_goals::out,
     list(post_branch_info)::in, list(post_branch_info)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-ho_traverse_parallel_conj_2(_, [], [], !PostInfos, !Info).
-ho_traverse_parallel_conj_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
+ho_traverse_parallel_conj_loop(_, [], [], !PostInfos, !Info).
+ho_traverse_parallel_conj_loop(PreInfo, [Goal0 | Goals0], [Goal | Goals],
         !PostInfos, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     ho_traverse_goal(Goal0, Goal, !Info),
     get_post_branch_info_for_goal(!.Info, Goal, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
-    ho_traverse_parallel_conj_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
+    ho_traverse_parallel_conj_loop(PreInfo, Goals0, Goals, !PostInfos, !Info).
 
     % To process a disjunction, we process each disjunct with the
     % specialization information before the goal, then merge the
@@ -702,24 +710,24 @@ ho_traverse_disj(Goals0, Goals, !Info) :-
     ;
         Goals0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
-        ho_traverse_disj_2(PreInfo, Goals0, Goals, [], PostInfos, !Info),
+        ho_traverse_disj_loop(PreInfo, Goals0, Goals, [], PostInfos, !Info),
         merge_post_branch_infos_into_one(PostInfos, PostInfo),
         set_post_branch_info(PostInfo, !Info)
     ).
 
-:- pred ho_traverse_disj_2(pre_branch_info::in,
+:- pred ho_traverse_disj_loop(pre_branch_info::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(post_branch_info)::in, list(post_branch_info)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-ho_traverse_disj_2(_, [], [], !PostInfos, !Info).
-ho_traverse_disj_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
+ho_traverse_disj_loop(_, [], [], !PostInfos, !Info).
+ho_traverse_disj_loop(PreInfo, [Goal0 | Goals0], [Goal | Goals],
         !PostInfos, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     ho_traverse_goal(Goal0, Goal, !Info),
     get_post_branch_info_for_goal(!.Info, Goal, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
-    ho_traverse_disj_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
+    ho_traverse_disj_loop(PreInfo, Goals0, Goals, !PostInfos, !Info).
 
     % Switches are treated in exactly the same way as disjunctions.
     %
@@ -735,18 +743,18 @@ ho_traverse_cases(Cases0, Cases, !Info) :-
     ;
         Cases0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
-        ho_traverse_cases_2(PreInfo, Cases0, Cases, [], PostInfos, !Info),
+        ho_traverse_cases_loop(PreInfo, Cases0, Cases, [], PostInfos, !Info),
         merge_post_branch_infos_into_one(PostInfos, PostInfo),
         set_post_branch_info(PostInfo, !Info)
     ).
 
-:- pred ho_traverse_cases_2(pre_branch_info::in,
+:- pred ho_traverse_cases_loop(pre_branch_info::in,
     list(case)::in, list(case)::out,
     list(post_branch_info)::in, list(post_branch_info)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-ho_traverse_cases_2(_, [], [], !PostInfos, !Info).
-ho_traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
+ho_traverse_cases_loop(_, [], [], !PostInfos, !Info).
+ho_traverse_cases_loop(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
         !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
@@ -754,7 +762,9 @@ ho_traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
     Case = case(MainConsId, OtherConsIds, Goal),
     get_post_branch_info_for_goal(!.Info, Goal, GoalPostInfo),
     !:PostInfos = [GoalPostInfo | !.PostInfos],
-    ho_traverse_cases_2(PreInfo, Cases0, Cases, !PostInfos, !Info).
+    ho_traverse_cases_loop(PreInfo, Cases0, Cases, !PostInfos, !Info).
+
+%-----------------------------------------------------------------------------%
 
 :- type pre_branch_info
     --->    pre_branch_info(known_var_map).
@@ -801,25 +811,68 @@ set_post_branch_info(post_branch_info(KnownVarMap, _), !Info) :-
 :- pred merge_post_branch_infos_into_one(list(post_branch_info)::in,
     post_branch_info::out) is det.
 
-merge_post_branch_infos_into_one([], _) :-
-    unexpected($pred, "empty list").
-merge_post_branch_infos_into_one([PostInfo], PostInfo).
-merge_post_branch_infos_into_one(PostInfos @ [_, _ | _], PostInfo) :-
-    merge_post_branch_info_pass(PostInfos, [], MergedPostInfos),
-    merge_post_branch_infos_into_one(MergedPostInfos, PostInfo).
+merge_post_branch_infos_into_one(PostInfos, MergedPostInfo) :-
+    (
+        PostInfos = [],
+        unexpected($pred, "PostInfos = []")
+    ;
+        PostInfos = [_ | _],
+        IsReachable =
+            ( pred(PostInfo::in, VarMap::out) is semidet :-
+                PostInfo = post_branch_info(VarMap, reachable)
+            ),
+        list.filter_map(IsReachable, PostInfos, ReachableVarMaps),
+        (
+            ReachableVarMaps = [],
+            MergedPostInfo = post_branch_info(map.init, unreachable)
+        ;
+            ReachableVarMaps = [HeadVarMap | TailVarMaps],
+            merge_post_branch_var_maps_passes(HeadVarMap, TailVarMaps,
+                MergedVarMap),
+            MergedPostInfo = post_branch_info(MergedVarMap, reachable)
+        )
+    ).
 
-:- pred merge_post_branch_info_pass(list(post_branch_info)::in,
-    list(post_branch_info)::in, list(post_branch_info)::out) is det.
+:- pred merge_post_branch_var_maps_passes(known_var_map::in,
+    list(known_var_map)::in, known_var_map::out) is det.
 
-merge_post_branch_info_pass([], !MergedPostInfos).
-merge_post_branch_info_pass([PostInfo], !MergedPostInfos) :-
-    !:MergedPostInfos = [PostInfo | !.MergedPostInfos].
-merge_post_branch_info_pass([PostInfo1, PostInfo2 | Rest], !MergedPostInfos) :-
-    merge_post_branch_infos(PostInfo1, PostInfo2, PostInfo12),
-    !:MergedPostInfos = [PostInfo12 | !.MergedPostInfos],
-    merge_post_branch_info_pass(Rest, !MergedPostInfos).
+merge_post_branch_var_maps_passes(VarMap1, VarMaps2Plus, MergedVarMap) :-
+    merge_post_branch_var_maps_pass(VarMap1, VarMaps2Plus,
+        HeadMergedVarMap, TailMergedVarMaps),
+    (
+        TailMergedVarMaps = [],
+        MergedVarMap = HeadMergedVarMap
+    ;
+        TailMergedVarMaps = [_ | _],
+        merge_post_branch_var_maps_passes(HeadMergedVarMap, TailMergedVarMaps,
+            MergedVarMap)
+    ).
 
-    % Merge two post_branch_infos.
+:- pred merge_post_branch_var_maps_pass(known_var_map::in,
+    list(known_var_map)::in,
+    known_var_map::out, list(known_var_map)::out) is det.
+
+merge_post_branch_var_maps_pass(VarMap1, VarMaps2Plus,
+        HeadMergedVarMap, TailMergedVarMaps) :-
+    (
+        VarMaps2Plus = [],
+        HeadMergedVarMap = VarMap1,
+        TailMergedVarMaps = []
+    ;
+        VarMaps2Plus = [VarMap2 | VarMaps3Plus],
+        merge_post_branch_known_var_maps(VarMap1, VarMap2, HeadMergedVarMap),
+        (
+            VarMaps3Plus = [],
+            TailMergedVarMaps = []
+        ;
+            VarMaps3Plus = [VarMap3 | VarMaps4Plus],
+            merge_post_branch_var_maps_pass(VarMap3, VarMaps4Plus,
+                HeadTailMergedVarMap, TailTailMergedVarMaps),
+            TailMergedVarMaps = [HeadTailMergedVarMap | TailTailMergedVarMaps]
+        )
+    ).
+
+    % Merge two the known_var_maps of post_branch_infos.
     %
     % If a variable appears in one post_branch_info, but not the other,
     % it is dropped. Such a variable is either local to the branch arm,
@@ -829,6 +882,21 @@ merge_post_branch_info_pass([PostInfo1, PostInfo2 | Rest], !MergedPostInfos) :-
     % is that the branch without the variable is unreachable. In that case
     % we include the variable in the result.
     %
+:- pred merge_post_branch_known_var_maps(known_var_map::in,
+    known_var_map::in, known_var_map::out) is det.
+
+merge_post_branch_known_var_maps(VarConstMapA, VarConstMapB, VarConstMapAB) :-
+    map.keys_as_set(VarConstMapA, VarsA),
+    map.keys_as_set(VarConstMapB, VarsB),
+    set.intersect(VarsA, VarsB, CommonVars),
+    VarConstCommonMapA = map.select(VarConstMapA, CommonVars),
+    VarConstCommonMapB = map.select(VarConstMapB, CommonVars),
+    map.to_assoc_list(VarConstCommonMapA, VarConstCommonListA),
+    map.to_assoc_list(VarConstCommonMapB, VarConstCommonListB),
+    merge_common_var_const_list(VarConstCommonListA, VarConstCommonListB,
+        [], VarConstCommonList),
+    map.from_assoc_list(VarConstCommonList, VarConstMapAB).
+
 :- pred merge_post_branch_infos(post_branch_info::in,
     post_branch_info::in, post_branch_info::out) is det.
 
@@ -836,19 +904,9 @@ merge_post_branch_infos(PostA, PostB, Post) :-
     (
         PostA = post_branch_info(VarConstMapA, reachable),
         PostB = post_branch_info(VarConstMapB, reachable),
-        map.keys(VarConstMapA, VarListA),
-        map.keys(VarConstMapB, VarListB),
-        set.sorted_list_to_set(VarListA, VarsA),
-        set.sorted_list_to_set(VarListB, VarsB),
-        set.intersect(VarsA, VarsB, CommonVars),
-        VarConstCommonMapA = map.select(VarConstMapA, CommonVars),
-        VarConstCommonMapB = map.select(VarConstMapB, CommonVars),
-        map.to_assoc_list(VarConstCommonMapA, VarConstCommonListA),
-        map.to_assoc_list(VarConstCommonMapB, VarConstCommonListB),
-        merge_common_var_const_list(VarConstCommonListA, VarConstCommonListB,
-            [], VarConstCommonList),
-        map.from_assoc_list(VarConstCommonList, FinalVarConstMap),
-        Post = post_branch_info(FinalVarConstMap, reachable)
+        merge_post_branch_known_var_maps(VarConstMapA, VarConstMapB,
+            VarConstMapAB),
+        Post = post_branch_info(VarConstMapAB, reachable)
     ;
         PostA = post_branch_info(_, unreachable),
         PostB = post_branch_info(_, reachable),
@@ -882,6 +940,8 @@ merge_common_var_const_list([VarA - ValueA | ListA], [VarB - ValueB | ListB],
         !:MergedList = !.MergedList
     ),
     merge_common_var_const_list(ListA, ListB, !MergedList).
+
+%-----------------------------------------------------------------------------%
 
 :- pred check_unify(unification::in,
     higher_order_info::in, higher_order_info::out) is det.
@@ -985,12 +1045,12 @@ maybe_specialize_higher_order_call(PredVar, Args, Goal0, Goal, !Info) :-
     % Process a class_method_call to see if it could possibly be specialized.
     %
 :- pred maybe_specialize_method_call(prog_var::in, int::in,
-    list(prog_var)::in, hlds_goal::in, list(hlds_goal)::out,
+    list(prog_var)::in, hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goals,
+maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goal,
         !Info) :-
-    Goal0 = hlds_goal(_GoalExpr0, GoalInfo),
+    Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
     ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
     % We can specialize calls to class_method_call/N if the typeclass_info
     % has a known value.
@@ -1025,8 +1085,7 @@ maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goals,
         list.det_index1(ClassInterface, Method, proc(PredId, ProcId)),
         AllArgs = InstanceConstraintArgs ++ Args,
         construct_specialized_higher_order_call(PredId, ProcId, AllArgs,
-            GoalInfo, Goal, !Info),
-        Goals = [Goal]
+            GoalInfo0, Goal, !Info)
     else if
         % Handle a class method call where we know which instance is being
         % used, but we haven't seen a construction for the typeclass_info.
@@ -1080,11 +1139,11 @@ maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goals,
         !Info ^ hoi_pred_info := CallerPredInfo,
         !Info ^ hoi_proc_info := CallerProcInfo,
         construct_specialized_higher_order_call(PredId, ProcId,
-            AllArgs, GoalInfo, Goal, !Info),
-        Goals =  ExtraGoals ++ [Goal]
+            AllArgs, GoalInfo0, SpecGoal, !Info),
+        conj_list_to_goal(ExtraGoals ++ [SpecGoal], GoalInfo0, Goal)
     else
         % Non-specializable class_method_call/N.
-        Goals = [Goal0]
+        Goal = Goal0
     ).
 
 :- pred find_matching_instance_method(list(hlds_instance_defn)::in, int::in,
@@ -1179,18 +1238,18 @@ get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
     lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
         PredName, pf_predicate, 3, only_mode, ExtractArgPredId,
         ExtractArgProcId),
-    get_typeclass_info_args_2(TypeClassInfoVar,
+    get_typeclass_info_args_loop(TypeClassInfoVar,
         ExtractArgPredId, ExtractArgProcId,
         qualified(mercury_private_builtin_module, PredName),
         MakeResultType, Args, Index, Goals, Vars, !ProcInfo).
 
-:- pred get_typeclass_info_args_2(prog_var::in, pred_id::in, proc_id::in,
+:- pred get_typeclass_info_args_loop(prog_var::in, pred_id::in, proc_id::in,
     sym_name::in, pred(T, mer_type)::(pred(in, out) is det),
     list(T)::in, int::in, list(hlds_goal)::out,
     list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
-get_typeclass_info_args_2(_, _, _, _, _, [], _, [], [], !ProcInfo).
-get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
+get_typeclass_info_args_loop(_, _, _, _, _, [], _, [], [], !ProcInfo).
+get_typeclass_info_args_loop(TypeClassInfoVar, PredId, ProcId, SymName,
         MakeResultType, [Arg | Args], Index, [IndexGoal, CallGoal | Goals],
         [ResultVar | Vars], !ProcInfo) :-
     MakeResultType(Arg, ResultType),
@@ -1208,7 +1267,7 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
     CallGoalExpr = plain_call(PredId, ProcId, CallArgs, not_builtin,
         MaybeContext, SymName),
     CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
-    get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
+    get_typeclass_info_args_loop(TypeClassInfoVar, PredId, ProcId, SymName,
         MakeResultType, Args, Index + 1, Goals, Vars, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
@@ -2592,24 +2651,14 @@ unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg,
     % too large. Maybe we could allow programmers to declare which predicates
     % they want specialized, as with inlining? Don't create specialized
     % versions of specialized versions, since for some fairly contrived
-    % examples involving recursively building up lambda expressions
+    % examples involving recursively building up lambda expressions,
     % this can create ridiculous numbers of versions.
     %
-:- pred filter_requests(list(ho_request)::out, list(ho_request)::out,
-    higher_order_global_info::in, higher_order_global_info::out,
-    io::di, io::uo) is det.
-
-filter_requests(FilteredRequests, LoopRequests, !Info, !IO) :-
-    Requests0 = set.to_sorted_list(!.Info ^ hogi_requests),
-    !Info ^ hogi_requests := set.init,
-    list.foldl3(filter_requests_2(!.Info), Requests0,
-        [], FilteredRequests, [], LoopRequests, !IO).
-
-:- pred filter_requests_2(higher_order_global_info::in, ho_request::in,
+:- pred filter_request(higher_order_global_info::in, ho_request::in,
     list(ho_request)::in, list(ho_request)::out,
     list(ho_request)::in, list(ho_request)::out, io::di, io::uo) is det.
 
-filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
+filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
     ModuleInfo = Info ^ hogi_module_info,
     Request = ho_request(CallingPredProcId, CalledPredProcId, _, _, HOArgs,
         _, _, _, IsUserTypeSpec, Context),
@@ -2687,13 +2736,14 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
         )
     ).
 
-:- pred create_new_preds(list(ho_request)::in, list(new_pred)::in,
+:- pred maybe_create_new_preds(list(ho_request)::in, list(new_pred)::in,
     list(new_pred)::out, set(pred_proc_id)::in, set(pred_proc_id)::out,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
-create_new_preds([], !NewPreds, !PredsToFix, !Info, !IO).
-create_new_preds([Request | Requests], !NewPreds, !PredsToFix, !Info, !IO) :-
+maybe_create_new_preds([], !NewPreds, !PredsToFix, !Info, !IO).
+maybe_create_new_preds([Request | Requests], !NewPreds, !PredsToFix,
+        !Info, !IO) :-
     Request = ho_request(CallingPredProcId, CalledPredProcId, _HOArgs,
         _CallArgs, _, _CallerArgTypes, _, _, _, _),
     set.insert(CallingPredProcId, !PredsToFix),
@@ -2712,7 +2762,7 @@ create_new_preds([Request | Requests], !NewPreds, !PredsToFix, !Info, !IO) :-
         create_new_pred(Request, NewPred, !Info, !IO),
         !:NewPreds = [NewPred | !.NewPreds]
     ),
-    create_new_preds(Requests, !NewPreds, !PredsToFix, !Info, !IO).
+    maybe_create_new_preds(Requests, !NewPreds, !PredsToFix, !Info, !IO).
 
     % If we weren't allowed to create a specialized version because the
     % loop check failed, check whether the version was created for another
