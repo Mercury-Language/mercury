@@ -56,7 +56,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module ml_backend.ml_type_gen.
 :- import_module parse_tree.java_names.
 
 :- import_module int.
@@ -91,10 +90,10 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
 
         % Create the member variable.
         CtorArgName = lvn_field_var_as_local(fvn_ptr_num),
+        Flags = mlds_field_var_decl_flags(per_instance, const),
         FieldVarDefn = mlds_field_var_defn(
             fvn_env_field_from_local_var(CtorArgName), Context,
-            ml_gen_const_member_data_decl_flags, IntType,
-            no_initializer, gc_no_stmt),
+            Flags, IntType, no_initializer, gc_no_stmt),
         FieldVarDefns = [FieldVarDefn],
 
         % Create the constructor function.
@@ -217,7 +216,7 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
     MethodRets = [MethodRetType],
 
     % Put it all together.
-    MethodFlags = ml_gen_member_decl_flags,
+    MethodFlags = mlds_function_decl_flags(func_public, per_instance),
     MethodParams = mlds_func_params(MethodArgs, MethodRets),
     MethodMaybeId = no,
     MethodEnvVarNames = set.init,

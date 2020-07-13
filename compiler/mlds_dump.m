@@ -1294,9 +1294,6 @@ mlds_field_var_name_to_strcord(FieldVarName) = Cord :-
         FieldVarName = fvn_enum_const(ConstName),
         Cord = strcord("enum_const ") ++ strcord(ConstName)
     ;
-        FieldVarName = fvn_sectag_const(ConstName),
-        Cord = strcord("sectag_const ") ++ strcord(ConstName)
-    ;
         FieldVarName = fvn_ptr_num,
         Cord = strcord("ptr_num")
     ;

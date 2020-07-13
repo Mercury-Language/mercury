@@ -78,26 +78,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Return the declaration flags appropriate for a type.
-    %
-:- func ml_gen_type_decl_flags = mlds_class_decl_flags.
-
-    % Return the declaration flags appropriate for a member variable.
-    %
-:- func ml_gen_member_decl_flags = mlds_function_decl_flags.
-:- func ml_gen_member_data_decl_flags = mlds_field_var_decl_flags.
-
-    % Return the declaration flags appropriate for a member variable
-    % which is read-only after initialisation.
-    %
-:- func ml_gen_const_member_data_decl_flags = mlds_field_var_decl_flags.
-
-    % Return the declaration flags appropriate for an enumeration constant.
-    %
-:- func ml_gen_enum_constant_data_decl_flags = mlds_field_var_decl_flags.
-
-%---------------------------------------------------------------------------%
-
     % ctors_with_and_without_secondary_tag(CtorRepns, NumWith, NumWithout):
     %
     % Return the number of constructors with and without secondary tags.
@@ -174,17 +154,17 @@
 
 %---------------------------------------------------------------------------%
 
-ml_gen_types(ModuleInfo, Target, Defns) :-
+ml_gen_types(ModuleInfo, Target, ClassDefns) :-
     HighLevelData = mlds_target_high_level_data(Target),
     (
         HighLevelData = yes,
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
         list.foldl(ml_gen_hld_type_defn_if_local(ModuleInfo, Target),
-            TypeCtorDefns, [], Defns)
+            TypeCtorDefns, [], ClassDefns)
     ;
         HighLevelData = no,
-        Defns = []
+        ClassDefns = []
     ).
 
 :- pred ml_gen_hld_type_defn_if_local(module_info::in, mlds_target_lang::in,
@@ -192,12 +172,13 @@ ml_gen_types(ModuleInfo, Target, Defns) :-
     list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
 
 ml_gen_hld_type_defn_if_local(ModuleInfo, Target, TypeCtor - TypeDefn,
-        !Defns) :-
+        !ClassDefns) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     DefinedThisModule = type_status_defined_in_this_module(TypeStatus),
     (
         DefinedThisModule = yes,
-        ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns)
+        ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn,
+            !ClassDefns)
     ;
         DefinedThisModule = no
     ).
@@ -206,7 +187,7 @@ ml_gen_hld_type_defn_if_local(ModuleInfo, Target, TypeCtor - TypeDefn,
     type_ctor::in, hlds_type_defn::in,
     list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
 
-ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns) :-
+ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
         ( TypeBody = hlds_abstract_type(_)
@@ -235,20 +216,21 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns) :-
             ; DuTypeKind = du_type_kind_foreign_enum(_)
             ),
             ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
-                MaybeEqualityMembers, !Defns)
+                MaybeEqualityMembers, ClassDefn)
         ;
             DuTypeKind = du_type_kind_direct_dummy,
             % XXX We shouldn't have to generate an MLDS type for these types,
             % but it is not easy to ensure that we never refer to that type.
             ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
-                MaybeEqualityMembers, !Defns)
+                MaybeEqualityMembers, ClassDefn)
         ;
             ( DuTypeKind = du_type_kind_notag(_, _, _)
             ; DuTypeKind = du_type_kind_general
             ),
             ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn,
-                CtorRepns, MaybeEqualityMembers, !Defns)
-        )
+                CtorRepns, MaybeEqualityMembers, ClassDefn)
+        ),
+        !:ClassDefns = [ClassDefn | !.ClassDefns]
     ).
 
 %---------------------------------------------------------------------------%
@@ -274,11 +256,10 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns) :-
     %
 :- pred ml_gen_hld_enum_type(mlds_target_lang::in, type_ctor::in,
     hlds_type_defn::in, list(constructor_repn)::in,
-    list(mlds_field_var_defn)::in,
-    list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
+    list(mlds_field_var_defn)::in, mlds_class_defn::out) is det.
 
 ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
-        MaybeEqualityMembers, !ClassDefns) :-
+        MaybeEqualityMembers, ClassDefn) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Generate the class name.
@@ -286,7 +267,9 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
     QualifiedClassName = qual_class_name(_, _, MLDS_ClassName),
 
     % Generate the class members.
-    ValueMember = ml_gen_hld_enum_value_member(Context),
+    ValueMember = mlds_field_var_defn(fvn_mr_value, Context,
+        ml_gen_member_data_decl_flags, mlds_builtin_type_int(int_type_int),
+        no_initializer, gc_no_stmt),
     MLDS_Type = mlds_class_type(
         mlds_class_id(QualifiedClassName, MLDS_ClassArity, mlds_enum)),
     EnumConstMembers = list.map(ml_gen_hld_enum_constant(Context, MLDS_Type),
@@ -310,22 +293,11 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
         Implements = []
     ),
 
-    get_type_defn_tparams(TypeDefn, TypeVars),
-
     % Put it all together.
-    ClassFlags = ml_gen_type_decl_flags,
+    get_type_defn_tparams(TypeDefn, TypeVars),
     ClassDefn = mlds_class_defn(MLDS_ClassName, MLDS_ClassArity, Context,
-        ClassFlags, mlds_enum, Imports, Inherits, Implements,
-        TypeVars, Members, [], [], []),
-
-    !:ClassDefns = [ClassDefn | !.ClassDefns].
-
-:- func ml_gen_hld_enum_value_member(prog_context) = mlds_field_var_defn.
-
-ml_gen_hld_enum_value_member(Context) =
-    mlds_field_var_defn(fvn_mr_value, Context, ml_gen_member_data_decl_flags,
-        mlds_builtin_type_int(int_type_int),
-        no_initializer, gc_no_stmt).
+        ml_gen_type_decl_flags, mlds_enum, Imports, Inherits, Implements,
+        TypeVars, Members, [], [], []).
 
 :- func ml_gen_hld_enum_constant(prog_context, mlds_type, constructor_repn)
     = mlds_field_var_defn.
@@ -339,10 +311,9 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     % Generate an MLDS definition for this enumeration constant.
     Name = unqualify_name(QualSymName),
     VarName = fvn_enum_const(Name),
-    FieldVarDefn = mlds_field_var_defn(VarName, Context,
-        ml_gen_enum_constant_data_decl_flags,
-        mlds_builtin_type_int(int_type_int),
-        init_obj(ConstRval), gc_no_stmt).
+    VarFlags = mlds_field_var_decl_flags(one_copy, const),
+    FieldVarDefn = mlds_field_var_defn(VarName, Context, VarFlags,
+        mlds_builtin_type_int(int_type_int), init_obj(ConstRval), gc_no_stmt).
 
 %---------------------------------------------------------------------------%
 %
@@ -420,11 +391,10 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     %
 :- pred ml_gen_hld_du_type(module_info::in, mlds_target_lang::in,
     type_ctor::in, hlds_type_defn::in, list(constructor_repn)::in,
-    list(mlds_field_var_defn)::in,
-    list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
+    list(mlds_field_var_defn)::in, mlds_class_defn::out) is det.
 
 ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
-        MaybeEqualityMembers, !ClassDefns) :-
+        MaybeEqualityMembers, ClassDefn) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Generate the class name.
@@ -507,40 +477,7 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
     MLDS_ClassFlags = ml_gen_type_decl_flags,
     ClassDefn = mlds_class_defn(BaseClassName, BaseClassArity, Context,
         MLDS_ClassFlags, mlds_class, Imports, Inherits, Implements, TypeParams,
-        MemberFields, MemberClasses, [], BaseClassCtorMethods),
-
-    !:ClassDefns = [ClassDefn | !.ClassDefns].
-
-%---------------------------------------------------------------------------%
-
-:- func ml_gen_hld_tag_constant(prog_context, constructor_repn)
-    = list(mlds_field_var_defn).
-:- pragma consider_used(ml_gen_hld_tag_constant/2).
-
-ml_gen_hld_tag_constant(Context, CtorRepn) = Defns :-
-    TagVal = CtorRepn ^ cr_tag,
-    MaybeSecondaryTag = get_maybe_secondary_tag(TagVal),
-    (
-        MaybeSecondaryTag = yes(SecondaryTag),
-        % Generate an MLDS definition for this secondary tag constant.
-        % We do this mainly for readability and interoperability. Note that
-        % we don't do the same thing for primary tags, so this is most useful
-        % in the `--tags none' case, where there will be no primary tags.
-
-        CtorRepn = ctor_repn(_Ordinal, _MaybeExistConstraints, Name, _Tag,
-            _ArgRepns, _Arity, _Ctxt),
-        UnqualifiedName = unqualify_name(Name),
-        VarName = fvn_sectag_const(UnqualifiedName),
-        ConstValue = ml_const(mlconst_int(SecondaryTag)),
-        Defn = mlds_field_var_defn(VarName, Context,
-            ml_gen_enum_constant_data_decl_flags,
-            mlds_builtin_type_int(int_type_int),
-            init_obj(ConstValue), gc_no_stmt),
-        Defns = [Defn]
-    ;
-        MaybeSecondaryTag = no,
-        Defns = []
-    ).
+        MemberFields, MemberClasses, [], BaseClassCtorMethods).
 
 %---------------------------------------------------------------------------%
 
@@ -843,6 +780,13 @@ gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
         FieldId, mlds_builtin_type_int(int_type_int)),
     Stmt = ml_stmt_atomic(assign(FieldLval, Rval), Context).
 
+%---------------------%
+%
+% Wrappers around ml_gen_hld_du_ctor_field_gen that each generate definitions
+% for particular kinds of fields. They increment the current argument number
+% because they are called from folds over lists of arguments.
+%
+
 :- pred ml_gen_hld_du_ctor_typeclass_info_field(module_info::in,
     prog_context::in, prog_constraint::in,
     mlds_field_var_defn::out, mlds_field_info::out, int::in, int::out) is det.
@@ -850,8 +794,9 @@ gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
 ml_gen_hld_du_ctor_typeclass_info_field(ModuleInfo, Context, Constraint,
         Defn, FieldInfo, !ArgNum) :-
     polymorphism.build_typeclass_info_type(Constraint, Type),
-    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, no, Type, aw_full_word,
-        Defn, FieldInfo, !ArgNum).
+    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
+        no, Type, aw_full_word, Defn, FieldInfo),
+    !:ArgNum = !.ArgNum + 1.
 
 :- pred ml_gen_hld_du_ctor_type_info_field(module_info::in,
     prog_context::in, tvar::in,
@@ -864,27 +809,31 @@ ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context, TypeVar,
     % and won't be used in any other way.
     Kind = kind_star,
     polymorphism.build_type_info_type(type_variable(TypeVar, Kind), Type),
-    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, no, Type, aw_full_word,
-        Defn, FieldInfo, !ArgNum).
+    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
+        no, Type, aw_full_word, Defn, FieldInfo),
+    !:ArgNum = !.ArgNum + 1.
 
 :- pred ml_gen_hld_du_ctor_field(module_info::in, prog_context::in,
-    constructor_arg_repn::in, mlds_field_var_defn::out, mlds_field_info::out,
-    int::in, int::out) is det.
+    constructor_arg_repn::in,
+    mlds_field_var_defn::out, mlds_field_info::out, int::in, int::out) is det.
 
 ml_gen_hld_du_ctor_field(ModuleInfo, Context, ArgRepn, Defn, FieldInfo,
         !ArgNum) :-
     ArgRepn = ctor_arg_repn(MaybeFieldName, Type, PosWidth, _Context),
     Width = arg_pos_width_to_width_only(PosWidth),
-    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName,
-        Type, Width, Defn, FieldInfo, !ArgNum).
+    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
+        MaybeFieldName, Type, Width, Defn, FieldInfo),
+    !:ArgNum = !.ArgNum + 1.
+
+%---------------------%
 
 :- pred ml_gen_hld_du_ctor_field_gen(module_info::in, prog_context::in,
-    maybe(ctor_field_name)::in, mer_type::in, arg_width::in,
-    mlds_field_var_defn::out, mlds_field_info::out, int::in, int::out) is det.
+    int::in, maybe(ctor_field_name)::in, mer_type::in, arg_width::in,
+    mlds_field_var_defn::out, mlds_field_info::out) is det.
 
-ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName, Type, Width,
-        FieldVarDefn, FieldInfo, !ArgNum) :-
-    FieldVarName = ml_gen_hld_field_name(MaybeFieldName, !.ArgNum),
+ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, ArgNum,
+        MaybeFieldName, Type, Width, FieldVarDefn, FieldInfo) :-
+    FieldVarName = ml_gen_hld_field_name(MaybeFieldName, ArgNum),
     DeclFlags = ml_gen_public_field_decl_flags,
     ( if ml_must_box_field_type(ModuleInfo, Type, Width) then
         MLDS_Type = mlds_generic_type
@@ -896,10 +845,7 @@ ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName, Type, Width,
     % XXX MLDS_DEFN
     FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, DeclFlags,
         MLDS_Type, no_initializer, GcStmt),
-
-    FieldInfo = mlds_field_info(FieldVarName, MLDS_Type, GcStmt, Context),
-
-    !:ArgNum = !.ArgNum + 1.
+    FieldInfo = mlds_field_info(FieldVarName, MLDS_Type, GcStmt, Context).
 
 %---------------------------------------------------------------------------%
 %
@@ -959,20 +905,19 @@ ml_gen_equality_members(_, []).
 % Routines for generating declaration flags.
 %
 
+    % Return the declaration flags appropriate for a type.
+    %
+:- func ml_gen_type_decl_flags = mlds_class_decl_flags.
+
 ml_gen_type_decl_flags =
     mlds_class_decl_flags(class_public, overridable, modifiable).
 
-ml_gen_member_decl_flags =
-    mlds_function_decl_flags(func_public, per_instance).
+    % Return the declaration flags appropriate for a member variable.
+    %
+:- func ml_gen_member_data_decl_flags = mlds_field_var_decl_flags.
 
 ml_gen_member_data_decl_flags =
     mlds_field_var_decl_flags(per_instance, modifiable).
-
-ml_gen_const_member_data_decl_flags =
-    mlds_field_var_decl_flags(per_instance, const).
-
-ml_gen_enum_constant_data_decl_flags =
-    mlds_field_var_decl_flags(one_copy, const).
 
 %---------------------------------------------------------------------------%
 
