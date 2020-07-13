@@ -20,8 +20,6 @@ TYPECLASS_PROGS = \
 	func_class \
 	tc_map_lookup
 
-NO_SPECIAL_PREDS_PROGS =
-
 C_PROGS =
 
 C_INTERFACE_PROGS = \
@@ -39,8 +37,6 @@ TABLE_PROGS =
 PAR_CONJ_PROGS =
 
 CTGC_PROGS =
-
-RESERVE_TAG_PROGS =
 
 CONSTRAINT_TYPECHECK_PROGS = \
 	ambig_high_level \

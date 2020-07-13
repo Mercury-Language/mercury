@@ -10,10 +10,9 @@
 :- import_module map.
 
 :- type t
-    ---> t(map(int, string), list(int)).
+    --->    t(map(int, string), list(int)).
 
-:- pred unify_t(t, t).
-:- mode unify_t(in, in) is semidet.
+:- pred unify_t(t::in, t::in) is semidet.
 
 :- implementation.
 
@@ -23,8 +22,7 @@ unify_t(t(A1, B1), t(A2, B2)) :-
     unify_map(A1, A2),
     B1 = B2.
 
-:- pred unify_map(map(int, string), map(int, string)).
-:- mode unify_map(in, in) is semidet.
+:- pred unify_map(map(int, string)::in, map(int, string)::in) is semidet.
 
 unify_map(A, B) :-
     univ(A) = univ(B).

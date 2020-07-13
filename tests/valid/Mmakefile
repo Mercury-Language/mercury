@@ -58,9 +58,6 @@ TYPECLASS_PROGS = \
 	typeclass_det_warning \
 	use_import_only_for_instance
 
-NO_SPECIAL_PREDS_PROGS = \
-	unify_typeinfo_bug
-
 C_PROGS = \
 	bug109 \
 	bug485
@@ -130,6 +127,7 @@ OTHER_PROGS = \
 	explicit_quant \
 	export_before_func \
 	fail_ite \
+	unify_typeinfo_bug \
 	file_stream_instances \
 	followcode_det_problem \
 	foreign_underscore_var \
@@ -304,9 +302,6 @@ CTGC_PROGS = \
 	sharing_loop2 \
 	sharing_loop3 \
 	table_no_attr
-
-# RESERVE_TAG_PROGS = \
-# 	reserve_tag
 
 CONSTRAINT_TYPECHECK_PROGS = \
 	ambig_functor \

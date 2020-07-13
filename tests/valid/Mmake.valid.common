@@ -19,8 +19,6 @@
 #   The test cases that only work in trailing grades.
 # TYPECLASS_PROGS:
 #   The test cases testing the handling of typeclasses.
-# NO_SPECIAL_PREDS_PROGS:
-#   The test cases testing the handling of --no-special-preds.
 # C_PROGS:
 #   The test cases for which we should only produce a `.c' file.
 # C_INTERFACE_PROGS:
@@ -40,9 +38,6 @@
 # CTGC_PROGS:
 #   The test cases that only work in grades that support compile-time
 #   garbage collection. Debugging is incompatible with ctgc.
-# RESERVE_TAG_PROGS::
-#   The test cases that require num_tag_bits >= 1.
-#   XXX We don't support reserving tags anymore.
 # CONSTRAINT_TYPECHECK_PROGS::
 #   Tests that use constraint based type checking.
 #   XXX These are never enabled.
@@ -55,30 +50,15 @@
 # except hl*.agc*, because they require grade-specific header
 # files to be installed.
 ifeq "$(findstring hl,$(GRADE))$(findstring .agc,$(GRADE))" "hl"
-	PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
+	PROGS1 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 else
 	# The agc.* tests don't work in the java, csharp or erlang grades.
 	# The agc.* tests also don't work in minimal model grades,
 	# because the collector doesn't scan the copied areas of the stacks.
 	ifneq "$(filter java% csharp% erlang%,$(GRADE))$(findstring mm,$(GRADE))" ""
-		PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
+		PROGS1 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 	else
-		PROGS0 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
-	endif
-endif
-
-# Base grades `jump' and `fast' cannot be used with `--no-special-preds'.
-ifneq "$(findstring asm_,$(GRADE))" ""
-	PROGS1 = $(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
-else
-	ifneq "$(findstring jump,$(GRADE))" ""
-		PROGS1 = $(PROGS0)
-	else
-		ifneq "$(findstring fast,$(GRADE))" ""
-			PROGS1 = $(PROGS0)
-		else
-			PROGS1 = $(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
-		endif
+		PROGS1 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
 	endif
 endif
 
@@ -124,12 +104,6 @@ else
 endif
 
 OBJ_PROGS = $(PROGS7)
-# We don't support reserving tags anymore.
-# ifeq "$(filter java% csharp% erlang%,$(GRADE))" ""
-# 	OBJ_PROGS = $(PROGS7) $(RESERVE_TAG_PROGS)
-# else
-# 	OBJ_PROGS = $(PROGS7)
-# endif
 
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
 	PROGS = $(OBJ_PROGS) $(C_PROGS)

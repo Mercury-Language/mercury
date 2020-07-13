@@ -4,6 +4,7 @@
 %
 % Test that we can write out and read back in `no_sharing', `unknown_sharing'
 % and `sharing' annotations on foreign_procs.
+%
 
 :- module intermod_user_sharing.
 :- interface.
@@ -18,7 +19,6 @@
 :- implementation.
 
 :- import_module intermod_user_sharing_2.
-:- import_module io.
 
 %---------------------------------------------------------------------------%
 
