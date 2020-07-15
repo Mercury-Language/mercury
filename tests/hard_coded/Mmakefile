@@ -43,6 +43,7 @@ ORDINARY_PROGS = \
 	bug392 \
 	bug452 \
 	bug455_mod_a \
+	bug513 \
 	bug_pack_bits \
 	bulk_compare_packed \
 	c89_neg_int \
