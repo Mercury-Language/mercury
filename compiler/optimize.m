@@ -775,7 +775,7 @@ escape_dir_char(Char, !Str) :-
 
                 lopt_debug_opt                      :: bool,
 
-                lopt_auto_comments                  :: bool,
+                lopt_auto_comments                  :: maybe_auto_comments,
                 lopt_frameopt_comments              :: bool,
                 lopt_detailed_statistics            :: bool,
                 lopt_very_verbose                   :: bool,
@@ -811,7 +811,10 @@ init_llds_opt_info(Globals) = Info :-
 
     globals.lookup_bool_option(Globals, debug_opt, DebugOpt),
 
-    globals.lookup_bool_option(Globals, auto_comments, AutoComments),
+    globals.lookup_bool_option(Globals, auto_comments, AutoCommentsOption),
+    ( AutoCommentsOption = no, AutoComments = no_auto_comments
+    ; AutoCommentsOption = yes, AutoComments = auto_comments
+    ),
     globals.lookup_bool_option(Globals, frameopt_comments, FrameOptComments),
     globals.lookup_bool_option(Globals, detailed_statistics,
         DetailedStatistics),

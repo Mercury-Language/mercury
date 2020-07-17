@@ -606,11 +606,11 @@ write_llds_code_gen_info(Info, GoalInfo, VarSet, VarNamePrint, Indent, !IO) :-
                 Locs = resume_locs_stack_only,
                 io.write_string("stack only ", !IO)
             ;
-                Locs = resume_locs_orig_and_stack,
-                io.write_string("orig and stack ", !IO)
+                Locs = resume_locs_orig_then_stack,
+                io.write_string("orig then stack ", !IO)
             ;
-                Locs = resume_locs_stack_and_orig,
-                io.write_string("stack and orig ", !IO)
+                Locs = resume_locs_stack_then_orig,
+                io.write_string("stack then orig ", !IO)
             ),
             mercury_output_vars(VarSet, VarNamePrint, ResumeVarList, !IO),
             io.write_string("\n", !IO)

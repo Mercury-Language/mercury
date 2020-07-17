@@ -367,7 +367,7 @@ output_instruction_list_while(Info, Label, [Instr | Instrs], AfterWhileInstrs,
         io.write_string(")\n\t\tcontinue;\n", !IO),
         AutoComments = Info ^ lout_auto_comments,
         ( if
-            AutoComments = yes,
+            AutoComments = auto_comments,
             Comment \= ""
         then
             io.write_string("\t\t/* ", !IO),
@@ -411,7 +411,7 @@ output_instruction_list_while_block(Info, [Instr | Instrs], Label,
         io.write_string(")\n\t\tcontinue;\n", !IO),
         AutoComments = Info ^ lout_auto_comments,
         ( if
-            AutoComments = yes,
+            AutoComments = auto_comments,
             Comment \= ""
         then
             io.write_string("\t\t/* ", !IO),
@@ -460,10 +460,10 @@ output_float_dword_assignment(Info, Lval, Rval, !IO) :-
     io.write_string(";\n", !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.write_string("\t\t/* assigning float dword */\n", !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ).
 
 %----------------------------------------------------------------------------%
@@ -516,7 +516,7 @@ output_debug_instruction(Info, Instr, !IO) :-
 output_instruction_and_comment(Info, Instr, Comment, LabelOutputInfo, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         ( if
             ( Instr = comment(_)
             ; Instr = livevals(_)
@@ -527,7 +527,7 @@ output_instruction_and_comment(Info, Instr, Comment, LabelOutputInfo, !IO) :-
             output_instruction(Info, Instr, LabelOutputInfo, !IO)
         )
     ;
-        AutoComments = yes,
+        AutoComments = auto_comments,
         output_instruction(Info, Instr, LabelOutputInfo, !IO),
         ( if Comment = "" then
             true
@@ -1257,13 +1257,13 @@ output_call(Info, Target, Continuation, CallerLabel, !IO) :-
 output_gc_livevals(Info, LiveVals, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.write_string("/*\n", !IO),
         io.write_string("* Garbage collection livevals info\n", !IO),
         output_gc_livevals_2(Info, LiveVals, !IO),
         io.write_string("*/\n", !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ).
 
 :- pred output_gc_livevals_2(llds_out_info::in, list(liveinfo)::in,

@@ -2252,7 +2252,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     expect(unify(Label, BlockLabel), $pred, "label mismatch"),
     YesProcLabel = yes(ProcLabel),
     LabelStr = dump_label(YesProcLabel, Label),
-    BlockInstrsStr = dump_fullinstrs(YesProcLabel, yes, BlockInstrs),
+    BlockInstrsStr = dump_fullinstrs(YesProcLabel, auto_comments, BlockInstrs),
     Heading = "\nBLOCK " ++ LabelStr ++ "\n\n",
     ( if map.search(PredMap, Label, PredLabel) then
         PredStr = "previous label " ++
@@ -2343,11 +2343,11 @@ describe_det_entry(det_entry(Size, Msg, Kind)) =
 
 describe_det_exit(MaybeProcLabel, det_exit(RestoreSuccip, Livevals, Goto)) =
     "restore:  "
-    ++ dump_fullinstrs(MaybeProcLabel, yes, RestoreSuccip)
+    ++ dump_fullinstrs(MaybeProcLabel, auto_comments, RestoreSuccip)
     ++ "livevals: "
-    ++ dump_fullinstrs(MaybeProcLabel, yes, Livevals)
+    ++ dump_fullinstrs(MaybeProcLabel, auto_comments, Livevals)
     ++ "goto:     "
-    ++ dump_fullinstr(MaybeProcLabel, yes, Goto).
+    ++ dump_fullinstr(MaybeProcLabel, auto_comments, Goto).
 
 :- func describe_nondet_entry(nondet_entry_info) = string.
 
@@ -2364,21 +2364,21 @@ describe_nondet_entry(nondet_entry(Msg, Size, Redoip)) =
 
 describe_nondet_exit(MaybeProcLabel, nondet_plain_exit(Livevals, Goto)) =
     "livevals: "
-    ++ dump_fullinstrs(MaybeProcLabel, yes, Livevals)
+    ++ dump_fullinstrs(MaybeProcLabel, auto_comments, Livevals)
     ++ "goto:     "
-    ++ dump_fullinstr(MaybeProcLabel, yes, Goto).
+    ++ dump_fullinstr(MaybeProcLabel, auto_comments, Goto).
 describe_nondet_exit(MaybeProcLabel, nondet_teardown_exit(Succip, Maxfr, Curfr,
         Livevals, Goto)) =
     "succip: "
-    ++ dump_fullinstr(MaybeProcLabel, yes, Succip)
+    ++ dump_fullinstr(MaybeProcLabel, auto_comments, Succip)
     ++ "maxfr: "
-    ++ dump_fullinstr(MaybeProcLabel, yes, Maxfr)
+    ++ dump_fullinstr(MaybeProcLabel, auto_comments, Maxfr)
     ++ "curfr: "
-    ++ dump_fullinstr(MaybeProcLabel, yes, Curfr)
+    ++ dump_fullinstr(MaybeProcLabel, auto_comments, Curfr)
     ++ "livevals: "
-    ++ dump_fullinstrs(MaybeProcLabel, yes, Livevals)
+    ++ dump_fullinstrs(MaybeProcLabel, auto_comments, Livevals)
     ++ "goto:     "
-    ++ dump_fullinstr(MaybeProcLabel, yes, Goto).
+    ++ dump_fullinstr(MaybeProcLabel, auto_comments, Goto).
 
 %-----------------------------------------------------------------------------%
 

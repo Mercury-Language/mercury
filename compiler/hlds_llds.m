@@ -93,8 +93,8 @@
 :- type resume_locs
     --->    resume_locs_orig_only
     ;       resume_locs_stack_only
-    ;       resume_locs_orig_and_stack
-    ;       resume_locs_stack_and_orig.
+    ;       resume_locs_orig_then_stack
+    ;       resume_locs_stack_then_orig.
 
     % When code in live_vars.m finds out what variables need to be saved
     % across calls (including generic calls and foreign_procs that can call
