@@ -46,16 +46,16 @@
     % Use the value of the auto_comments option to decide whether
     % to include comments in the output.
     %
-:- pred maybe_write_instrs(bool::in, bool::in, maybe(proc_label)::in,
-    list(instruction)::in, io::di, io::uo) is det.
+:- pred maybe_write_instrs(bool::in, maybe_auto_comments::in,
+    maybe(proc_label)::in, list(instruction)::in, io::di, io::uo) is det.
 
     % write_instrs(MaybeProcLabel, Instrs, AutoComments, !IO):
     %
     % Write out the given list of instructions, together with comments if
-    % AutoComments = yes.
+    % AutoComments = auto_comments.
     %
-:- pred write_instrs(list(instruction)::in, maybe(proc_label)::in, bool::in,
-    io::di, io::uo) is det.
+:- pred write_instrs(list(instruction)::in, maybe(proc_label)::in,
+    maybe_auto_comments::in, io::di, io::uo) is det.
 
     % Return a string representation of a list of instructions; the string
     % is the same as what write_instrs would print. Returning it as a string
@@ -63,7 +63,8 @@
     % so dump_instrs should only be used for printing instruction sequences
     % whose size should be naturally limited.
     %
-:- func dump_instrs(maybe(proc_label), bool, list(instruction)) = string.
+:- func dump_instrs(maybe(proc_label), maybe_auto_comments, list(instruction))
+    = string.
 
 :- func dump_intlist(list(int)) = string.
 
@@ -133,11 +134,13 @@
 
 :- func dump_stack_incr_kind(stack_incr_kind) = string.
 
-:- func dump_instr(maybe(proc_label), bool, instr) = string.
+:- func dump_instr(maybe(proc_label), maybe_auto_comments, instr) = string.
 
-:- func dump_fullinstr(maybe(proc_label), bool, instruction) = string.
+:- func dump_fullinstr(maybe(proc_label), maybe_auto_comments, instruction)
+    = string.
 
-:- func dump_fullinstrs(maybe(proc_label), bool, list(instruction)) = string.
+:- func dump_fullinstrs(maybe(proc_label), maybe_auto_comments,
+    list(instruction)) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -204,7 +207,7 @@ write_instrs([Instr | Instrs], MaybeProcLabel, AutoComments, !IO) :-
         io.write_string(dump_instr(MaybeProcLabel, AutoComments, Uinstr), !IO)
     ),
     ( if
-        AutoComments = yes,
+        AutoComments = auto_comments,
         Comment \= ""
     then
         io.write_string("\n\t\t" ++ Comment, !IO)
@@ -226,7 +229,7 @@ dump_instrs(MaybeProcLabel, AutoComments, [Instr | Instrs]) = Str :-
         InstrStr0 = "\t" ++ dump_instr(MaybeProcLabel, AutoComments, Uinstr)
     ),
     ( if
-        AutoComments = yes,
+        AutoComments = auto_comments,
         Comment \= ""
     then
         InstrStr = InstrStr0 ++ "\n\t\t" ++ Comment ++ "\n"
@@ -1536,10 +1539,10 @@ dump_maybe_dummy(is_dummy_type) = " (dummy)".
 dump_fullinstr(MaybeProcLabel, AutoComments, llds_instr(Uinstr, Comment))
         = Str :-
     (
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         Str = dump_instr(MaybeProcLabel, AutoComments, Uinstr) ++ "\n"
     ;
-        AutoComments = yes,
+        AutoComments = auto_comments,
         Str = dump_instr(MaybeProcLabel, AutoComments, Uinstr) ++
             " - " ++ Comment ++ "\n"
     ).

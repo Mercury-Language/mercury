@@ -1513,7 +1513,7 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
         then
             CondResumeLocs = resume_locs_stack_only
         else
-            CondResumeLocs = resume_locs_stack_and_orig
+            CondResumeLocs = resume_locs_stack_then_orig
         ),
 
         % Attach the set of variables needed after the condition
@@ -1545,7 +1545,7 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
         else if cannot_fail_before_stack_flush(SubGoal1) then
             ResumeLocs = resume_locs_stack_only
         else
-            ResumeLocs = resume_locs_stack_and_orig
+            ResumeLocs = resume_locs_stack_then_orig
         ),
 
         % Attach the set of variables alive after the negation
@@ -1699,7 +1699,7 @@ detect_resume_points_in_non_last_disjunct(Goal0, Goal, MayUseOrigOnly,
     then
         ResumeLocs = resume_locs_stack_only
     else
-        ResumeLocs = resume_locs_stack_and_orig
+        ResumeLocs = resume_locs_stack_then_orig
     ),
 
     % Attach the set of variables needed in the following disjuncts

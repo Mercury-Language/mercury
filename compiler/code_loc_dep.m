@@ -41,6 +41,8 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.llds.
@@ -70,9 +72,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.vartypes.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_debug.
@@ -373,8 +373,8 @@ current_resume_point_vars(CLD) = ResumeVars :-
     FailInfo = fail_info(ResumePointStack, _, _, _, _),
     stack.det_top(ResumePointStack, ResumePointInfo),
     pick_first_resume_point(ResumePointInfo, ResumeMap, _),
-    map.keys(ResumeMap, ResumeMapVarList),
-    ResumeVars = set_of_var.list_to_set(ResumeMapVarList).
+    map.keys_as_set(ResumeMap, ResumeVarsSet),
+    ResumeVars = set_of_var.set_to_bitset(ResumeVarsSet).
 
 %---------------------------------------------------------------------------%
 
@@ -743,7 +743,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, !CI) :-
     % The ResumeVars passed as the first arguments should be a sorted list
     % without duplicates.
     %
-:- pred make_resume_point(list(prog_var)::in, resume_locs::in, resume_map::in,
+:- pred make_resume_point(set_of_progvar::in, resume_locs::in, resume_map::in,
     resume_point_info::out, code_info::in, code_info::out) is det.
 
     % Generate the code for a resume point.
@@ -794,8 +794,8 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, !CI) :-
 :- type resume_point_info
     --->    orig_only(resume_map, code_addr)
     ;       stack_only(resume_map, code_addr)
-    ;       orig_and_stack(resume_map, code_addr, resume_map, code_addr)
-    ;       stack_and_orig(resume_map, code_addr, resume_map, code_addr).
+    ;       orig_then_stack(resume_map, code_addr, resume_map, code_addr)
+    ;       stack_then_orig(resume_map, code_addr, resume_map, code_addr).
 
     % A resume map maps the variables that will be needed at a resumption
     % point to the locations in which they will be.
@@ -1787,11 +1787,9 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CLD) :-
     ( if stack.top(ResumePoints0, OldResumePoint) then
         pick_first_resume_point(OldResumePoint, OldMap, _),
         pick_first_resume_point(ResumePoint, NewMap, _),
-        map.keys(OldMap, OldKeys),
-        map.keys(NewMap, NewKeys),
-        set.list_to_set(OldKeys, OldKeySet),
-        set.list_to_set(NewKeys, NewKeySet),
-        expect(set.subset(OldKeySet, NewKeySet), $pred,
+        map.keys_as_set(OldMap, OldKeys),
+        map.keys_as_set(NewMap, NewKeys),
+        expect(set.subset(OldKeys, NewKeys), $pred,
             "non-nested resume point variable sets")
     else
         true
@@ -1957,34 +1955,35 @@ may_use_nondet_tailcall(CLD, TailCallStatus) :-
 pick_matching_resume_addr(CLD, ResumeMaps, Addr) :-
     variable_locations(CLD, CurLocs),
     (
-        ResumeMaps = orig_only(Map1, Addr1),
-        ( if match_resume_loc(Map1, CurLocs) then
-            Addr = Addr1
+        ResumeMaps = orig_only(OrigMap, OrigAddr),
+        ( if match_resume_loc(OrigMap, CurLocs) then
+            Addr = OrigAddr
         else
             fail
         )
     ;
-        ResumeMaps = stack_only(Map1, Addr1),
-        ( if match_resume_loc(Map1, CurLocs) then
-            Addr = Addr1
+        ResumeMaps = stack_only(StackMap, StackAddr),
+        ( if match_resume_loc(StackMap, CurLocs) then
+            Addr = StackAddr
         else
             fail
         )
     ;
-        ResumeMaps = orig_and_stack(Map1, Addr1, Map2, Addr2),
-        ( if match_resume_loc(Map1, CurLocs) then
-            Addr = Addr1
-        else if match_resume_loc(Map2, CurLocs) then
-            Addr = Addr2
+        ResumeMaps = orig_then_stack(OrigMap, OrigAddr, StackMap, StackAddr),
+        ( if match_resume_loc(OrigMap, CurLocs) then
+            Addr = OrigAddr
+        else if match_resume_loc(StackMap, CurLocs) then
+            Addr = StackAddr
         else
             fail
         )
     ;
-        ResumeMaps = stack_and_orig(Map1, Addr1, Map2, Addr2),
-        ( if match_resume_loc(Map1, CurLocs) then
-            Addr = Addr1
-        else if match_resume_loc(Map2, CurLocs) then
-            Addr = Addr2
+        ResumeMaps = stack_then_orig(StackMap, StackAddr, OrigMap, OrigAddr),
+        % XXX Why do we pick StackAddr even if we could pick OrigAddr?
+        ( if match_resume_loc(StackMap, CurLocs) then
+            Addr = StackAddr
+        else if match_resume_loc(OrigMap, CurLocs) then
+            Addr = OrigAddr
         else
             fail
         )
@@ -1993,8 +1992,7 @@ pick_matching_resume_addr(CLD, ResumeMaps, Addr) :-
 :- pred match_resume_loc(resume_map::in, resume_map::in) is semidet.
 
 match_resume_loc(Map, Locations0) :-
-    map.keys(Map, KeyList),
-    set.list_to_set(KeyList, Keys),
+    map.keys_as_set(Map, Keys),
     map.select(Locations0, Keys, Locations),
     map.to_assoc_list(Locations, List),
     all_vars_match_resume_map(Map, List).
@@ -2013,8 +2011,8 @@ all_vars_match_resume_map(Map, [Var - Actual | VarsActuals]) :-
 
 pick_first_resume_point(orig_only(Map, Addr), Map, Addr).
 pick_first_resume_point(stack_only(Map, Addr), Map, Addr).
-pick_first_resume_point(orig_and_stack(Map, Addr, _, _), Map, Addr).
-pick_first_resume_point(stack_and_orig(Map, Addr, _, _), Map, Addr).
+pick_first_resume_point(orig_then_stack(Map, Addr, _, _), Map, Addr).
+pick_first_resume_point(stack_then_orig(Map, Addr, _, _), Map, Addr).
 
 :- pred pick_stack_resume_point(resume_point_info::in,
     resume_map::out, code_addr::out) is det.
@@ -2031,8 +2029,8 @@ pick_stack_resume_point(ResumePoint, Map, Addr) :-
     resume_map::out, code_addr::out) is semidet.
 
 maybe_pick_stack_resume_point(stack_only(Map, Addr), Map, Addr).
-maybe_pick_stack_resume_point(orig_and_stack(_, _, Map, Addr), Map, Addr).
-maybe_pick_stack_resume_point(stack_and_orig(Map, Addr, _, _), Map, Addr).
+maybe_pick_stack_resume_point(orig_then_stack(_, _, Map, Addr), Map, Addr).
+maybe_pick_stack_resume_point(stack_then_orig(Map, Addr, _, _), Map, Addr).
 
 %---------------------------------------------------------------------------%
 
@@ -2042,7 +2040,7 @@ produce_vars([Var | Vars], Map, Code, CI, !CLD) :-
     produce_vars(Vars, Map0, CodeVars, CI, !CLD),
     produce_variable_in_reg_or_stack(Var, CodeVar, Lval, CI, !CLD),
     Lvals = set.make_singleton_set(Lval),
-    map.set(Var, Lvals, Map0, Map),
+    map.det_insert(Var, Lvals, Map0, Map),
     Code = CodeVars ++ CodeVar.
 
 flush_resume_vars_to_stack(Code, CI, !CLD) :-
@@ -2120,7 +2118,7 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI, !CLD) :-
 
 make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
     get_stack_slots(!.CI, StackSlots),
-    map.select_sorted_list(FullMap, ResumeVars, OrigMap),
+    map.select(FullMap, set_of_var.bitset_to_set(ResumeVars), OrigMap),
     (
         ResumeLocs = resume_locs_orig_only,
         get_next_label(OrigLabel, !CI),
@@ -2129,7 +2127,7 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
-                io.write_string("orig_only\n", !IO),
+                io.write_string("make_resume_point orig_only\n", !IO),
                 output_resume_map(VarSet, OrigMap, !IO),
                 io.flush_output(!IO)
             else
@@ -2145,7 +2143,7 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
-                io.write_string("stack_only\n", !IO),
+                io.write_string("make_resume_point stack_only\n", !IO),
                 output_resume_map(VarSet, StackMap, !IO),
                 io.flush_output(!IO)
             else
@@ -2153,20 +2151,20 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             )
         )
     ;
-        ResumeLocs = resume_locs_orig_and_stack,
+        ResumeLocs = resume_locs_orig_then_stack,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(OrigLabel, !CI),
         OrigAddr = code_label(OrigLabel),
         get_next_label(StackLabel, !CI),
         StackAddr = code_label(StackLabel),
-        ResumePoint = orig_and_stack(OrigMap, OrigAddr, StackMap, StackAddr),
+        ResumePoint = orig_then_stack(OrigMap, OrigAddr, StackMap, StackAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
-                io.write_string("stack_and_orig\n", !IO),
-                io.write_string("orig:\n", !IO),
+                io.write_string("make_resume_point orig_then_stack\n", !IO),
+                io.write_string("  orig:\n", !IO),
                 output_resume_map(VarSet, OrigMap, !IO),
-                io.write_string("stack:\n", !IO),
+                io.write_string("  stack:\n", !IO),
                 output_resume_map(VarSet, StackMap, !IO),
                 io.flush_output(!IO)
             else
@@ -2174,20 +2172,20 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             )
         )
     ;
-        ResumeLocs = resume_locs_stack_and_orig,
+        ResumeLocs = resume_locs_stack_then_orig,
         make_stack_resume_map(ResumeVars, StackSlots, StackMap),
         get_next_label(StackLabel, !CI),
         StackAddr = code_label(StackLabel),
         get_next_label(OrigLabel, !CI),
         OrigAddr = code_label(OrigLabel),
-        ResumePoint = stack_and_orig(StackMap, StackAddr, OrigMap, OrigAddr),
+        ResumePoint = stack_then_orig(StackMap, StackAddr, OrigMap, OrigAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
-                io.write_string("stack_and_orig\n", !IO),
-                io.write_string("stack:\n", !IO),
+                io.write_string("make_resume_point stack_then_orig\n", !IO),
+                io.write_string("  stack:\n", !IO),
                 output_resume_map(VarSet, StackMap, !IO),
-                io.write_string("orig:\n", !IO),
+                io.write_string("  orig:\n", !IO),
                 output_resume_map(VarSet, OrigMap, !IO),
                 io.flush_output(!IO)
             else
@@ -2196,11 +2194,11 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         )
     ).
 
-:- pred make_stack_resume_map(list(prog_var)::in, stack_slots::in,
+:- pred make_stack_resume_map(set_of_progvar::in, stack_slots::in,
     map(prog_var, set(lval))::out) is det.
 
 make_stack_resume_map(ResumeVars, StackSlots, StackMap) :-
-    map.select_sorted_list(StackSlots, ResumeVars, StackMap0),
+    map.select(StackSlots, set_of_var.bitset_to_set(ResumeVars), StackMap0),
     map.to_assoc_list(StackMap0, AbsStackList),
     StackList0 = assoc_list.map_values_only(stack_slot_to_lval, AbsStackList),
     make_singleton_sets(StackList0, StackList),
@@ -2229,19 +2227,19 @@ clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
         Addr1 = code_label(Label1),
         ResumePoint = stack_only(Map1, Addr1)
     ;
-        ResumePoint0 = stack_and_orig(Map1, _, Map2, _),
+        ResumePoint0 = stack_then_orig(Map1, _, Map2, _),
         get_next_label(Label1, !CI),
         Addr1 = code_label(Label1),
         get_next_label(Label2, !CI),
         Addr2 = code_label(Label2),
-        ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2)
+        ResumePoint = stack_then_orig(Map1, Addr1, Map2, Addr2)
     ;
-        ResumePoint0 = orig_and_stack(Map1, _, Map2, _),
+        ResumePoint0 = orig_then_stack(Map1, _, Map2, _),
         get_next_label(Label2, !CI),
         Addr2 = code_label(Label2),
         get_next_label(Label1, !CI),
         Addr1 = code_label(Label1),
-        ResumePoint = stack_and_orig(Map2, Addr2, Map1, Addr1)
+        ResumePoint = stack_then_orig(Map2, Addr2, Map1, Addr1)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2291,7 +2289,7 @@ generate_resume_point(ResumePoint, Code, !CI, !CLD) :-
         set_var_locations(Map1, !CLD),
         maybe_generate_resume_layout(Label1, Map1, !CI, !.CLD)
     ;
-        ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2),
+        ResumePoint = stack_then_orig(Map1, Addr1, Map2, Addr2),
         extract_label_from_code_addr(Addr1, Label1),
         extract_label_from_code_addr(Addr2, Label2),
         Label1Code = singleton(
@@ -2307,7 +2305,7 @@ generate_resume_point(ResumePoint, Code, !CI, !CLD) :-
         set_var_locations(Map2, !CLD),
         Code = Label1Code ++ PlaceCode ++ Label2Code
     ;
-        ResumePoint = orig_and_stack(Map1, Addr1, Map2, Addr2),
+        ResumePoint = orig_then_stack(Map1, Addr1, Map2, Addr2),
         extract_label_from_code_addr(Addr1, Label1),
         extract_label_from_code_addr(Addr2, Label2),
         Label1Code = singleton(
@@ -2592,6 +2590,10 @@ pickup_zombies(Zombies, !CLD) :-
 :- pred restore_and_release_hp(lval::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
+:- pred ite_maybe_save_hp(option::in, hlds_goal::in,
+    llds_code::out, maybe(lval)::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
+
 :- pred maybe_save_hp(bool::in, llds_code::out, maybe(lval)::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
@@ -2678,6 +2680,25 @@ restore_and_release_hp(HpSlot, Code, !CI, !CLD) :-
     release_hp(HpSlot, !CI, !CLD).
 
 %---------------------------------------------------------------------------%
+
+ite_maybe_save_hp(ReclaimOption, CondGoal, SaveHpCode, MaybeHpSlot,
+        !CI, !CLD) :-
+    get_globals(!.CI, Globals),
+    globals.lookup_bool_option(Globals, ReclaimOption, ReclaimOptionValue),
+    (
+        ReclaimOptionValue = no,
+        SaveHpCode = cord.empty,
+        MaybeHpSlot = no
+    ;
+        ReclaimOptionValue = yes,
+        ( if goal_may_allocate_heap(CondGoal) then
+            save_hp(SaveHpCode, HpSlot, !CI, !CLD),
+            MaybeHpSlot = yes(HpSlot)
+        else
+            SaveHpCode = cord.empty,
+            MaybeHpSlot = no
+        )
+    ).
 
 maybe_save_hp(Maybe, Code, MaybeHpSlot, !CI, !CLD) :-
     (
@@ -3932,13 +3953,11 @@ output_resume_map(VarSet, ResumeMap, !IO) :-
     pair(prog_var, set(lval))::in, io::di, io::uo) is det.
 
 output_resume_map_element(VarSet, Var - LvalSet, !IO) :-
-    io.write_string(describe_var(VarSet, Var), !IO),
-    io.write_string(": ", !IO),
+    VarDesc = describe_var(VarSet, Var),
     Lvals = set.to_sorted_list(LvalSet),
     LvalDescs = list.map(dump_lval(no), Lvals),
-    SpaceLvalDescs = list.map(string.append(" "), LvalDescs),
-    io.write_string(string.append_list(SpaceLvalDescs), !IO),
-    io.nl(!IO).
+    LvalsDesc = string.join_list(" ", LvalDescs),
+    io.format("  %s: %s\n", [s(VarDesc), s(LvalsDesc)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.code_loc_dep.

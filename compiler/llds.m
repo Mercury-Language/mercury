@@ -257,6 +257,10 @@
                 llds_comment    :: string
             ).
 
+:- type maybe_auto_comments
+    --->    no_auto_comments
+    ;       auto_comments.
+
 :- type nondet_tail_call
     --->    no_tail_call
             % At the point of the call, the procedure has more alternatives.

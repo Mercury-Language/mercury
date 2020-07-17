@@ -65,7 +65,6 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
 
-:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module io.
@@ -196,7 +195,7 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             ( if should_trace_code_gen(!.CI) then
                 io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
                 Instrs = cord.list(Code),
-                write_instrs(Instrs, no, yes, !IO)
+                write_instrs(Instrs, no, auto_comments, !IO)
             else
                 true
             )

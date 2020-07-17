@@ -68,15 +68,14 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
-:- import_module bool.
 :- import_module counter.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
 :- pred use_local_vars_proc(list(instruction)::in, list(instruction)::out,
-    int::in, int::in, bool::in, proc_label::in, counter::in, counter::out)
-    is det.
+    int::in, int::in, maybe_auto_comments::in, proc_label::in,
+    counter::in, counter::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -94,6 +93,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data_foreign.
 
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -122,7 +122,7 @@ use_local_vars_proc(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
 
         ( if
             MaybeLiveMap = yes(LiveMap),
-            AutoComments = yes
+            AutoComments = auto_comments
         then
             NewComment = "\n" ++ dump_livemap(yes(ProcLabel), LiveMap),
             NewCommentInstr = llds_instr(comment(NewComment), ""),
@@ -191,7 +191,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
     Instr0 = llds_instr(Uinstr0, _Comment0),
     ( if
         (
-            % We don't optimize keep_assign instructions.
+            % We do not optimize keep_assign instructions.
             (
                 Uinstr0 = assign(ToLval, _FromRval)
             ;
@@ -363,7 +363,7 @@ find_compulsory_lvals([Instr | Instrs], MaybeLiveMap, MaybeFallThrough,
             NonLabelCodeAddrs = [],
             (
                 Labels = [],
-                % Optimize the common case
+                % Optimize the common case.
                 find_compulsory_lvals(Instrs, MaybeLiveMap, MaybeFallThrough,
                     no, !:MaybeCompulsoryLvals)
             ;
@@ -604,7 +604,7 @@ substitute_lval_in_defn_outputs(OldLval, NewLval,
 
     % Substitute NewLval for OldLval in an instruction sequence
     % until we come an instruction that may define OldLval.
-    % We don't worry about instructions that define a variable that
+    % We do not worry about instructions that define a variable that
     % occurs in the access path to OldLval (and which therefore indirectly
     % modifies the value that OldLval refers to), because our caller will
     % call us only with OldLvals (and NewLvals for that matter) that have

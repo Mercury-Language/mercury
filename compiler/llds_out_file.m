@@ -952,7 +952,7 @@ output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
     AutoComments = Info ^ lout_auto_comments,
     ForeignLineNumbers = Info ^ lout_foreign_line_numbers,
     ( if
-        AutoComments = yes,
+        AutoComments = auto_comments,
         ForeignLineNumbers = yes
     then
         io.write_string("/* ", !IO),

@@ -561,10 +561,10 @@ output_pseudo_type_info_array_defn(Info, PTIs, !IO) :-
     io.format("[%d] = {", [i(NumPTIs)], !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         output_ptis_outer_loop_ac(Info, PTIs, 0, _, !IO)
     ;
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         output_ptis_outer_loop_noac(Info, PTIs, 0, _, !IO)
     ),
     io.write_string("\n};\n\n", !IO).
@@ -627,10 +627,10 @@ output_hlds_var_nums_array_defn(Info, VarNums, !IO) :-
     io.format("[%d] = {", [i(NumVarNums)], !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         output_numbers_in_vector_ac(VarNums, 0, !IO)
     ;
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         output_numbers_in_vector_noac(VarNums, 0, !IO)
     ),
     io.write_string("\n};\n\n", !IO).
@@ -652,10 +652,10 @@ output_short_locns_array_defn(Info, ShortLocns, !IO) :-
     io.format("[%d] = {", [i(NumShortLocns)], !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         output_numbers_in_vector_ac(ShortLocns, 0, !IO)
     ;
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         output_numbers_in_vector_noac(ShortLocns, 0, !IO)
     ),
     io.write_string("\n};\n\n", !IO).
@@ -677,10 +677,10 @@ output_long_locns_array_defn(Info, LongLocns, !IO) :-
     io.format("[%d] = {", [i(NumLongLocns)], !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         output_numbers_in_vector_ac(LongLocns, 0, !IO)
     ;
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         output_numbers_in_vector_noac(LongLocns, 0, !IO)
     ),
     io.write_string("\n};\n\n", !IO).
@@ -749,10 +749,10 @@ output_user_event_slot(Info, UserEvent, !Slot, !IO) :-
     io.write_string("{ ", !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* slot %d */ ", [i(!.Slot)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     io.write_int(UserEventNumber, !IO),
     io.write_string(", (MR_LongLval *) ", !IO),
@@ -796,10 +796,10 @@ output_no_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
     io.write_string("{ ", !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d, %d */\n  ", [i(!.Slot), i(LabelNum)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     output_basic_label_layout_slot(Info, ModuleName, BasicLabelLayout, !IO),
     io.write_string(" },\n", !IO),
@@ -837,10 +837,10 @@ output_short_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
     io.write_string("{ ", !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d, %d */\n  ", [i(!.Slot), i(LabelNum)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     output_basic_label_layout_slot(Info, ModuleName, BasicLabelLayout, !IO),
     io.write_string(",\n  ", !IO),
@@ -933,10 +933,10 @@ output_long_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
     io.write_string("{ ", !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d, %d */\n  ", [i(!.Slot), i(LabelNum)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     output_basic_label_layout_slot(Info, ModuleName, BasicLabelLayout, !IO),
     io.write_string(",\n  ", !IO),
@@ -1127,10 +1127,10 @@ output_call_site_static_slot(Info, CallSiteStatic, !Slot, !IO) :-
     io.write_string("{ ", !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d */ ", [i(!.Slot)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     (
         CallSiteStatic = normal_call(Callee, TypeSubst, FileName, LineNumber,
@@ -1192,17 +1192,17 @@ output_proc_static_cp_static_array(Info, CoveragePoints, NumCoveragePoints,
         CoveragePoints, 0, _, !IO),
     io.write_string("};\n\n", !IO).
 
-:- pred output_proc_static_cp_static_slot(bool::in,
+:- pred output_proc_static_cp_static_slot(maybe_auto_comments::in,
     coverage_point_info::in, int::in, int::out, io::di, io::uo) is det.
 
 output_proc_static_cp_static_slot(AutoComments, CoveragePoint, !Slot, !IO) :-
     CoveragePoint = coverage_point_info(RevGoalPath, CPType),
     io.write_string("{ ", !IO),
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d */ ", [i(!.Slot)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     io.write_string("""", !IO),
     GoalPathString = rev_goal_path_to_string(RevGoalPath),
@@ -1257,10 +1257,10 @@ output_proc_static_slot(Info, ProcStatic, !Slot, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     MangledModuleName = Info ^ lout_mangled_module_name,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d */ ", [i(!.Slot)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     quote_and_write_string(FileName, !IO),
     io.write_string(",", !IO),
@@ -1345,10 +1345,10 @@ output_proc_head_var_nums_array(Info, HeadVarNums, !IO) :-
     io.format("[%d] = {", [i(NumHeadVarNums)], !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         output_numbers_in_vector_ac(HeadVarNums, 0, !IO)
     ;
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         output_numbers_in_vector_noac(HeadVarNums, 0, !IO)
     ),
     io.write_string("\n};\n\n", !IO).
@@ -1370,10 +1370,10 @@ output_proc_var_names_array(Info, VarNames, !IO) :-
     io.format("[%d] = {", [i(NumVarNames)], !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         output_numbers_in_vector_ac(VarNames, 0, !IO)
     ;
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         output_numbers_in_vector_noac(VarNames, 0, !IO)
     ),
     io.write_string("\n};\n\n", !IO).
@@ -1395,10 +1395,10 @@ output_proc_body_bytecodes_array(Info, Bytecodes, !IO) :-
     io.format("[%d] = {\n", [i(NumBytecodes)], !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         output_numbers_in_vector_ac(Bytecodes, 0, !IO)
     ;
-        AutoComments = no,
+        AutoComments = no_auto_comments,
         output_numbers_in_vector_noac(Bytecodes, 0, !IO)
     ),
     io.write_string("};\n\n", !IO).
@@ -1429,10 +1429,10 @@ output_table_io_entry_slot(Info, TableIoEntry, !Slot, !IO) :-
     io.write_string("{ ", !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d */\n  ", [i(!.Slot)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     io.write_string("(const MR_ProcLayout *) &", !IO),
     output_layout_name(ProcLayoutName, !IO),
@@ -1502,10 +1502,10 @@ output_exec_trace_slot(Info, ExecTrace, !Slot, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     io.write_string("{ ", !IO),
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d */ ", [i(!.Slot)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
 
     MangledModuleName = Info ^ lout_mangled_module_name,
@@ -1663,10 +1663,10 @@ output_threadscope_string_table_array(Info, TSStringTable, !IO) :-
 output_threadscope_string_table_slot(Info, String, !Slot, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     (
-        AutoComments = yes,
+        AutoComments = auto_comments,
         io.format("/* %d */ ", [i(!.Slot)], !IO)
     ;
-        AutoComments = no
+        AutoComments = no_auto_comments
     ),
     io.write_string("{ ", !IO),
     quote_and_write_string(String, !IO),
@@ -3185,10 +3185,10 @@ output_file_layout_line_number_vector_defn(Info, ModuleName, FileNum,
         LineNumbers = [_ | _],
         AutoComments = Info ^ lout_auto_comments,
         (
-            AutoComments = yes,
+            AutoComments = auto_comments,
             output_numbers_in_vector_ac(LineNumbers, 0, !IO)
         ;
-            AutoComments = no,
+            AutoComments = no_auto_comments,
             output_numbers_in_vector_noac(LineNumbers, 0, !IO)
         )
     ),

@@ -246,8 +246,8 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
 
     remember_position(!.CLD, DisjEntry),
 
-    make_resume_point(set_of_var.to_sorted_list(ResumeVars),
-        resume_locs_stack_only, ResumeMap, ResumePoint, !CI),
+    make_resume_point(ResumeVars, resume_locs_stack_only, ResumeMap,
+        ResumePoint, !CI),
     effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CLD),
     generate_offset_assigns(OutVars, 0, BaseReg, !.CI, !CLD),
     flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !.CI, !CLD),
@@ -564,8 +564,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 BranchStart = BranchStart0
             ),
 
-            make_resume_point(set_of_var.to_sorted_list(ResumeVars),
-                ResumeLocs, FullResumeMap, NextResumePoint, !CI),
+            make_resume_point(ResumeVars, ResumeLocs, FullResumeMap,
+                NextResumePoint, !CI),
             effect_resume_point(NextResumePoint, CodeModel, ModContCode, !CLD),
 
             maybe_generate_internal_event_code(Goal, DisjGoalInfo, TraceCode,

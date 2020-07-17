@@ -659,8 +659,8 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
 
             % Generate code for the non-last disjunct.
 
-            make_resume_point(set_of_var.to_sorted_list(ResumeVars),
-                resume_locs_stack_only, ResumeMap, ResumePoint, !CI),
+            make_resume_point(ResumeVars, resume_locs_stack_only, ResumeMap,
+                ResumePoint, !CI),
             effect_resume_point(ResumePoint, model_non, UpdateRedoipCode,
                 !CLD),
             generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,

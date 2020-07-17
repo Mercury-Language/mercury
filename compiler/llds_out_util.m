@@ -49,7 +49,7 @@
                                                     layout_slot_name),
                 lout_alloc_site_map             :: map(alloc_site_id,
                                                     layout_slot_name),
-                lout_auto_comments              :: bool,
+                lout_auto_comments              :: maybe_auto_comments,
                 lout_foreign_line_numbers       :: bool,
                 lout_emit_c_loops               :: bool,
                 lout_generate_bytecode          :: bool,
@@ -130,7 +130,10 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoEntryMap,
         AllocSiteMap) = Info :-
     MangledModuleName = sym_name_mangle(ModuleName),
-    globals.lookup_bool_option(Globals, auto_comments, AutoComments),
+    globals.lookup_bool_option(Globals, auto_comments, AutoCommentsOption),
+    ( AutoCommentsOption = no, AutoComments = no_auto_comments
+    ; AutoCommentsOption = yes, AutoComments = auto_comments
+    ),
     globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,
         ForeignLineNumbers),
     globals.lookup_bool_option(Globals, emit_c_loops, EmitCLoops),

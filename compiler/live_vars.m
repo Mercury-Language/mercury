@@ -220,8 +220,8 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
 
 resume_locs_include_stack(resume_locs_orig_only, no).
 resume_locs_include_stack(resume_locs_stack_only, yes).
-resume_locs_include_stack(resume_locs_orig_and_stack, yes).
-resume_locs_include_stack(resume_locs_stack_and_orig, yes).
+resume_locs_include_stack(resume_locs_orig_then_stack, yes).
+resume_locs_include_stack(resume_locs_stack_then_orig, yes).
 
 %-----------------------------------------------------------------------------%
 
