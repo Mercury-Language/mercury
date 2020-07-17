@@ -408,7 +408,7 @@ get_active_temps_data(CI, CLD, Temps) :-
     code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred generate_branch_end(abs_store_map::in, branch_end::in, branch_end::out,
-    llds_code::out, code_info::in, code_loc_dep::in) is det.
+    llds_code::out, code_loc_dep::in) is det.
 
 :- pred after_all_branches(abs_store_map::in, branch_end::in,
     code_info::in, code_loc_dep::out) is det.
@@ -452,7 +452,7 @@ reset_resume_known(BranchStart, !CLD) :-
         CurCondEnv, CurHijack),
     set_fail_info(NewFailInfo, !CLD).
 
-generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, CI, !.CLD) :-
+generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !.CLD) :-
     % The code generator generates better code if it knows in advance where
     % each variable should go. We don't need to reset the follow_vars
     % afterwards, since every goal following a branched control structure
@@ -464,7 +464,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, CI, !.CLD) :-
     get_instmap(!.CLD, InstMap),
     ( if instmap_is_reachable(InstMap) then
         VarLocs = assoc_list.map_values_only(abs_locn_to_lval, AbsVarLocs),
-        place_vars(VarLocs, Code, CI, !CLD)
+        place_vars(VarLocs, Code, !CLD)
     else
         % With --opt-no-return-call, the variables that we would have saved
         % across a call that cannot return have had the last of their
@@ -731,13 +731,13 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, !CI) :-
     % Materialize the given variables into registers or stack slots.
     %
 :- pred produce_vars(list(prog_var)::in, resume_map::out, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
     % Put the variables needed in enclosing failure continuations
     % into their stack slots.
     %
 :- pred flush_resume_vars_to_stack(llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
     % Set up the resume_point_info structure.
     % The ResumeVars passed as the first arguments should be a sorted list
@@ -1248,7 +1248,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI, !CLD) :-
 
 %---------------------------------------------------------------------------%
 
-:- type simple_neg_info ==  fail_info.
+:- type simple_neg_info == fail_info.
 
 enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CLD) :-
     get_fail_info(!.CLD, FailInfo0),
@@ -1676,8 +1676,7 @@ maybe_save_region_commit_frame(AddRegionOps, _ForwardLiveVarsBeforeGoal,
                     " region slot")
             ]),
             save_unprotected_live_regions(NumRegLval, AddrRegLval,
-                EmbeddedStackFrame, RemovedRegionVarList, FillCode,
-                !.CI, !CLD),
+                EmbeddedStackFrame, RemovedRegionVarList, FillCode, !CLD),
             SetCode = singleton(
                 llds_instr(
                     region_set_fixed_slot(region_set_commit_num_entries,
@@ -1697,12 +1696,12 @@ maybe_save_region_commit_frame(AddRegionOps, _ForwardLiveVarsBeforeGoal,
 
 :- pred save_unprotected_live_regions(lval::in, lval::in,
     embedded_stack_frame_id::in, list(prog_var)::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-save_unprotected_live_regions(_, _, _, [], empty, _CI, !CLD).
+save_unprotected_live_regions(_, _, _, [], cord.empty, !CLD).
 save_unprotected_live_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        [RegionVar | RegionVars], Code ++ Codes, CI, !CLD) :-
-    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, CI, !CLD),
+        [RegionVar | RegionVars], Code ++ Codes, !CLD) :-
+    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CLD),
     SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_commit, EmbeddedStackFrame,
@@ -1711,7 +1710,7 @@ save_unprotected_live_regions(NumLval, AddrLval, EmbeddedStackFrame,
     ),
     Code = ProduceVarCode ++ SaveCode,
     save_unprotected_live_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        RegionVars, Codes, CI, !CLD).
+        RegionVars, Codes, !CLD).
 
 :- pred maybe_restore_region_commit_frame(maybe(region_commit_stack_frame)::in,
     llds_code::out, llds_code::out,
@@ -1861,8 +1860,7 @@ generate_failure(Code, !CI, !.CLD) :-
         else
             pick_first_resume_point(TopResumePoint, Map, FailureAddress),
             map.to_assoc_list(Map, AssocList),
-            pick_and_place_vars(AssocList, _, PlaceCode, !.CI,
-                !.CLD, _AfterPlaceCLD)
+            pick_and_place_vars(AssocList, _, PlaceCode, !.CLD, _AfterPlaceCLD)
         ),
         BranchCode = singleton(llds_instr(goto(FailureAddress), "fail")),
         Code = PlaceCode ++ BranchCode
@@ -1890,7 +1888,7 @@ fail_if_rval_is_false(Rval0, Code, !CI, !CLD) :-
             map.to_assoc_list(Map, AssocList),
             get_next_label(SuccessLabel, !CI),
             remember_position(!.CLD, CurPos),
-            pick_and_place_vars(AssocList, _, PlaceCode, !.CI,
+            pick_and_place_vars(AssocList, _, PlaceCode,
                 !.CLD, _AfterPlaceCLD),
             reset_to_position(CurPos, !.CI, !:CLD),
             SuccessAddress = code_label(SuccessLabel),
@@ -2034,18 +2032,18 @@ maybe_pick_stack_resume_point(stack_then_orig(Map, Addr, _, _), Map, Addr).
 
 %---------------------------------------------------------------------------%
 
-produce_vars([], Map, empty, _CI, !CLD) :-
+produce_vars([], Map, empty, !CLD) :-
     map.init(Map).
-produce_vars([Var | Vars], Map, Code, CI, !CLD) :-
-    produce_vars(Vars, Map0, CodeVars, CI, !CLD),
-    produce_variable_in_reg_or_stack(Var, CodeVar, Lval, CI, !CLD),
+produce_vars([Var | Vars], Map, Code, !CLD) :-
+    produce_vars(Vars, Map0, CodeVars, !CLD),
+    produce_variable_in_reg_or_stack(Var, CodeVar, Lval, !CLD),
     Lvals = set.make_singleton_set(Lval),
     map.det_insert(Var, Lvals, Map0, Map),
     Code = CodeVars ++ CodeVar.
 
-flush_resume_vars_to_stack(Code, CI, !CLD) :-
+flush_resume_vars_to_stack(Code, !CLD) :-
     compute_resume_var_stack_locs(!.CLD, VarLocs),
-    place_vars(VarLocs, Code, CI, !CLD).
+    place_vars(VarLocs, Code, !CLD).
 
 :- pred compute_resume_var_stack_locs(code_loc_dep::in,
     assoc_list(prog_var, lval)::out) is det.
@@ -2128,7 +2126,7 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
                 io.write_string("make_resume_point orig_only\n", !IO),
-                output_resume_map(VarSet, OrigMap, !IO),
+                output_resume_map(VarSet, "orig", OrigMap, OrigLabel, !IO),
                 io.flush_output(!IO)
             else
                 true
@@ -2144,7 +2142,7 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
                 io.write_string("make_resume_point stack_only\n", !IO),
-                output_resume_map(VarSet, StackMap, !IO),
+                output_resume_map(VarSet, "stack", StackMap, StackLabel, !IO),
                 io.flush_output(!IO)
             else
                 true
@@ -2162,10 +2160,8 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
                 io.write_string("make_resume_point orig_then_stack\n", !IO),
-                io.write_string("  orig:\n", !IO),
-                output_resume_map(VarSet, OrigMap, !IO),
-                io.write_string("  stack:\n", !IO),
-                output_resume_map(VarSet, StackMap, !IO),
+                output_resume_map(VarSet, "orig", OrigMap, OrigLabel, !IO),
+                output_resume_map(VarSet, "stack", StackMap, StackLabel, !IO),
                 io.flush_output(!IO)
             else
                 true
@@ -2183,10 +2179,8 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
                 io.write_string("make_resume_point stack_then_orig\n", !IO),
-                io.write_string("  stack:\n", !IO),
-                output_resume_map(VarSet, StackMap, !IO),
-                io.write_string("  orig:\n", !IO),
-                output_resume_map(VarSet, OrigMap, !IO),
+                output_resume_map(VarSet, "stack", StackMap, StackLabel, !IO),
+                output_resume_map(VarSet, "orig", OrigMap, OrigLabel, !IO),
                 io.flush_output(!IO)
             else
                 true
@@ -2298,7 +2292,7 @@ generate_resume_point(ResumePoint, Code, !CI, !CLD) :-
         set_var_locations(Map1, !CLD),
         maybe_generate_resume_layout(Label1, Map1, !CI, !.CLD),
         map.to_assoc_list(Map2, AssocList2),
-        place_resume_vars(AssocList2, PlaceCode, !.CI, !CLD),
+        place_resume_vars(AssocList2, PlaceCode, !CLD),
         Label2Code = singleton(
             llds_instr(label(Label2), "orig failure continuation after stack")
         ),
@@ -2313,7 +2307,7 @@ generate_resume_point(ResumePoint, Code, !CI, !CLD) :-
         ),
         set_var_locations(Map1, !CLD),
         map.to_assoc_list(Map2, AssocList2),
-        place_resume_vars(AssocList2, PlaceCode, !.CI, !CLD),
+        place_resume_vars(AssocList2, PlaceCode, !CLD),
         Label2Code = singleton(
             llds_instr(label(Label2), "stack failure continuation after orig")
         ),
@@ -2331,23 +2325,23 @@ extract_label_from_code_addr(CodeAddr, Label) :-
         unexpected($pred, "non-label")
     ).
 
-:- pred place_resume_vars(assoc_list(prog_var, set(lval))::in,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred place_resume_vars(assoc_list(prog_var, set(lval))::in, llds_code::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-place_resume_vars([], empty, _CI, !CLD).
-place_resume_vars([Var - TargetSet | Rest], Code, CI, !CLD) :-
+place_resume_vars([], cord.empty, !CLD).
+place_resume_vars([Var - TargetSet | Rest], Code, !CLD) :-
     set.to_sorted_list(TargetSet, Targets),
-    place_resume_var(Var, Targets, FirstCode, CI, !CLD),
-    place_resume_vars(Rest, RestCode, CI, !CLD),
+    place_resume_var(Var, Targets, FirstCode, !CLD),
+    place_resume_vars(Rest, RestCode, !CLD),
     Code = FirstCode ++ RestCode.
 
-:- pred place_resume_var(prog_var::in, list(lval)::in,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred place_resume_var(prog_var::in, list(lval)::in, llds_code::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-place_resume_var(_Var, [], empty, _CI, !CLD).
-place_resume_var(Var, [Target | Targets], Code, CI, !CLD) :-
-    place_var(Var, Target, FirstCode, CI, !CLD),
-    place_resume_var(Var, Targets, RestCode, CI, !CLD),
+place_resume_var(_Var, [], cord.empty, !CLD).
+place_resume_var(Var, [Target | Targets], Code, !CLD) :-
+    place_var(Var, Target, FirstCode, !CLD),
+    place_resume_var(Var, Targets, RestCode, !CLD),
     Code = FirstCode ++ RestCode.
 
     % Reset the code generator's database of what is where.
@@ -2894,8 +2888,8 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
 :- pred reassign_mkword_hole_var(prog_var::in, ptag::in, rval::in,
     llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred reassign_tagword_var(prog_var::in, uint::in, rval::in,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred reassign_tagword_var(prog_var::in, uint::in, rval::in, llds_code::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred assign_field_lval_expr_to_var(prog_var::in, list(lval)::in, rval::in,
     llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
@@ -2909,28 +2903,27 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
     maybe(alloc_site_id)::in, may_use_atomic_alloc::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred save_reused_cell_fields(prog_var::in, lval::in, llds_code::out,
-    list(lval)::out, code_info::in,
+:- pred save_reused_cell_fields(prog_var::in, lval::in,
+    llds_code::out, list(lval)::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred place_var(prog_var::in, lval::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred produce_variable(prog_var::in, llds_code::out, rval::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred produce_variable_in_reg(prog_var::in, llds_code::out,
-    lval::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred produce_variable_in_reg(prog_var::in, llds_code::out, lval::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred produce_variable_in_reg_or_stack(prog_var::in,
-    llds_code::out, lval::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    llds_code::out, lval::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred materialize_vars_in_lval(lval::in, lval::out,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred materialize_vars_in_lval(lval::in, lval::out, llds_code::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred materialize_vars_in_rval(rval::in, rval::out,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred acquire_reg_for_var(prog_var::in, reg_type::in, lval::out,
     code_loc_dep::in, code_loc_dep::out) is det.
@@ -2943,7 +2936,7 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
 
 :- pred release_reg(lval::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred reserve_r1(llds_code::out, code_info::in,
+:- pred reserve_r1(llds_code::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred clear_r1(llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
@@ -2974,7 +2967,7 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
     %
 :- pred setup_return(assoc_list(prog_var, arg_info)::in,
     set(lval)::out, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred lock_regs(int::in, int::in, assoc_list(prog_var, lval)::in,
     code_loc_dep::in, code_loc_dep::out) is det.
@@ -3025,11 +3018,10 @@ assign_var_to_var(Var, AssignedVar, !CLD) :-
     set_var_locn_info(VarLocnInfo, !CLD).
 
 assign_lval_to_var(Var, Lval, Code, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
     get_static_cell_info(CI, StaticCellInfo),
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_assign_lval_to_var(ModuleInfo, Var, Lval,
-        StaticCellInfo, Code, VarLocnInfo0, VarLocnInfo),
+    var_locn_assign_lval_to_var(Var, Lval, StaticCellInfo, Code,
+        VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
 assign_const_to_var(Var, ConstRval, CI, !CLD) :-
@@ -3065,14 +3057,13 @@ reassign_mkword_hole_var(Var, Ptag, Rval, Code, !CLD) :-
     ),
     set_var_locn_info(VarLocnInfo, !CLD).
 
-reassign_tagword_var(Var, ToOrMask, ToOrRval, Code, CI, !CLD) :-
+reassign_tagword_var(Var, ToOrMask, ToOrRval, Code, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
     Lvals = lvals_in_rval(ToOrRval),
     (
         Lvals = [],
-        get_module_info(CI, ModuleInfo),
-        var_locn_reassign_tagword_var(ModuleInfo, Var, ToOrMask, ToOrRval,
-            Code, VarLocnInfo0, VarLocnInfo)
+        var_locn_reassign_tagword_var(Var, ToOrMask, ToOrRval, Code,
+            VarLocnInfo0, VarLocnInfo)
     ;
         Lvals = [_ | _],
         unexpected($pred, "non-var lvals")
@@ -3110,41 +3101,38 @@ is_var_field(MaybeTag, Var, field(MaybeTag, var(Var), _)).
 
 assign_cell_to_var(Var, ReserveWordAtStart, Ptag, CellArgs, HowToConstruct,
         MaybeSize, MaybeAllocId, MayUseAtomic, Code, !CI, !CLD) :-
-    get_module_info(!.CI, ModuleInfo),
     get_next_label(Label, !CI),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_exprn_opts(!.CI, ExprnOpts),
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
+    var_locn_assign_cell_to_var(ExprnOpts, Var, ReserveWordAtStart,
         Ptag, CellArgs, HowToConstruct, MaybeSize, MaybeAllocId, MayUseAtomic,
         Label, Code, StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
     set_var_locn_info(VarLocnInfo, !CLD).
 
-save_reused_cell_fields(Var, Lval, Code, Regs, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
+save_reused_cell_fields(Var, Lval, Code, Regs, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_save_cell_fields(ModuleInfo, Var, Lval, Code, Regs,
+    var_locn_save_cell_fields(Var, Lval, Code, Regs,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
-place_var(Var, Lval, Code, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
+place_var(Var, Lval, Code, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_place_var(ModuleInfo, Var, Lval, Code,
+    var_locn_place_var(Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
 :- pred pick_and_place_vars(assoc_list(prog_var, set(lval))::in,
     set(lval)::out, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-pick_and_place_vars(VarLocSets, LiveLocs, Code, CI, !CLD) :-
+pick_and_place_vars(VarLocSets, LiveLocs, Code, !CLD) :-
     pick_var_places(VarLocSets, VarLocs),
     assoc_list.values(VarLocs, Locs),
     set.list_to_set(Locs, LiveLocs),
-    place_vars(VarLocs, Code, CI, !CLD).
+    place_vars(VarLocs, Code, !CLD).
 
 :- pred pick_var_places(assoc_list(prog_var, set(lval))::in,
     assoc_list(prog_var, lval)::out) is det.
@@ -3162,46 +3150,38 @@ pick_var_places([Var - LvalSet | VarLvalSets], VarLvals) :-
     ).
 
 :- pred place_vars(assoc_list(prog_var, lval)::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-place_vars(VarLocs, Code, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
+place_vars(VarLocs, Code, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_place_vars(ModuleInfo, VarLocs, Code, VarLocnInfo0, VarLocnInfo),
+    var_locn_place_vars(VarLocs, Code, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
-produce_variable(Var, Code, Rval, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
+produce_variable(Var, Code, Rval, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_produce_var(ModuleInfo, Var, Rval, Code,
+    var_locn_produce_var(Var, Rval, Code, VarLocnInfo0, VarLocnInfo),
+    set_var_locn_info(VarLocnInfo, !CLD).
+
+produce_variable_in_reg(Var, Code, Lval, !CLD) :-
+    get_var_locn_info(!.CLD, VarLocnInfo0),
+    var_locn_produce_var_in_reg(Var, Lval, Code, VarLocnInfo0, VarLocnInfo),
+    set_var_locn_info(VarLocnInfo, !CLD).
+
+produce_variable_in_reg_or_stack(Var, Code, Lval, !CLD) :-
+    get_var_locn_info(!.CLD, VarLocnInfo0),
+    var_locn_produce_var_in_reg_or_stack(Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
-produce_variable_in_reg(Var, Code, Lval, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
+materialize_vars_in_lval(Lval0, Lval, Code, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_produce_var_in_reg(ModuleInfo, Var, Lval, Code,
+    var_locn_materialize_vars_in_lval(Lval0, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
-produce_variable_in_reg_or_stack(Var, Code, Lval, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
+materialize_vars_in_rval(Rval0, Rval, Code, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code,
-        VarLocnInfo0, VarLocnInfo),
-    set_var_locn_info(VarLocnInfo, !CLD).
-
-materialize_vars_in_lval(Lval0, Lval, Code, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
-    get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code,
-        VarLocnInfo0, VarLocnInfo),
-    set_var_locn_info(VarLocnInfo, !CLD).
-
-materialize_vars_in_rval(Rval0, Rval, Code, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
-    get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_materialize_vars_in_rval(ModuleInfo, Rval0, Rval, Code,
+    var_locn_materialize_vars_in_rval(Rval0, Rval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
@@ -3267,10 +3247,9 @@ release_reg(Lval, !CLD) :-
     var_locn_release_reg(Lval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
-reserve_r1(Code, CI, !CLD) :-
-    get_module_info(CI, ModuleInfo),
+reserve_r1(Code, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_clear_r1(ModuleInfo, Code, VarLocnInfo0, VarLocnInfo1),
+    var_locn_clear_r1(Code, VarLocnInfo0, VarLocnInfo1),
     var_locn_acquire_reg_require_given(reg(reg_r, 1),
         VarLocnInfo1, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
@@ -3282,8 +3261,8 @@ clear_r1(empty, !CLD) :-
 
 %---------------------------------------------------------------------------%
 
-setup_return(VarArgInfos, OutLocs, Code, CI, !CLD) :-
-    setup_call_args(VarArgInfos, callee, OutLocs, Code, CI, !CLD).
+setup_return(VarArgInfos, OutLocs, Code, !CLD) :-
+    setup_call_args(VarArgInfos, callee, OutLocs, Code, !CLD).
 
 setup_call(GoalInfo, ArgInfos, LiveLocs, Code, CI, !CLD) :-
     partition_args(ArgInfos, InArgInfos, OutArgInfos, _UnusedArgInfos),
@@ -3330,7 +3309,7 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, CI, !CLD) :-
     var_arg_info_to_lval(RealInArgInfos, RealInArgLocs),
     AllRealLocs = RealStackVarLocs ++ RealInArgLocs,
     AllLocs = DummyStackVarLocs ++ AllRealLocs,
-    var_locn_place_vars(ModuleInfo, AllLocs, Code, VarLocnInfo0, VarLocnInfo),
+    var_locn_place_vars(AllLocs, Code, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD),
     assoc_list.values(AllRealLocs, LiveLocList),
     set.list_to_set(LiveLocList, LiveLocs).
@@ -3361,15 +3340,13 @@ valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
 
 :- pred setup_call_args(assoc_list(prog_var, arg_info)::in,
     call_direction::in, set(lval)::out, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, CI, !CLD) :-
+setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CLD) :-
     list.filter(call_arg_in_selected_dir(Direction), AllArgsInfos, ArgsInfos),
     var_arg_info_to_lval(ArgsInfos, ArgsLocns),
-    get_module_info(CI, ModuleInfo),
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    var_locn_place_vars(ModuleInfo, ArgsLocns, Code,
-        VarLocnInfo0, VarLocnInfo1),
+    var_locn_place_vars(ArgsLocns, Code, VarLocnInfo0, VarLocnInfo1),
     set_var_locn_info(VarLocnInfo1, !CLD),
     assoc_list.values(ArgsLocns, LiveLocList),
     set.list_to_set(LiveLocList, LiveLocs),
@@ -3440,11 +3417,11 @@ save_variables(OutArgs, SavedLocs, Code, CI, !CLD) :-
     compute_forward_live_var_saves(CI, !.CLD, OutArgs, VarLocs),
     assoc_list.values(VarLocs, SavedLocList),
     set.list_to_set(SavedLocList, SavedLocs),
-    place_vars(VarLocs, Code, CI, !CLD).
+    place_vars(VarLocs, Code, !CLD).
 
 save_variables_on_stack(Vars, Code, CI, !CLD) :-
     list.map(associate_stack_slot(CI), Vars, VarLocs),
-    place_vars(VarLocs, Code, CI, !CLD).
+    place_vars(VarLocs, Code, !CLD).
 
 :- pred compute_forward_live_var_saves(code_info::in, code_loc_dep::in,
     set_of_progvar::in, assoc_list(prog_var, lval)::out) is det.
@@ -3942,10 +3919,17 @@ output_code_info(Components, CI, CLD, !IO) :-
         true
     ).
 
-:- pred output_resume_map(prog_varset::in, map(prog_var, set(lval))::in,
-    io::di, io::uo) is det.
+:- pred output_resume_map(prog_varset::in, string::in,
+    map(prog_var, set(lval))::in, label::in, io::di, io::uo) is det.
 
-output_resume_map(VarSet, ResumeMap, !IO) :-
+output_resume_map(VarSet, Desc, ResumeMap, ResumeLabel, !IO) :-
+    (
+        ResumeLabel = internal_label(LabelNumber, _ProcLabel)
+    ;
+        ResumeLabel = entry_label(_, _),
+        unexpected($pred, "resume label is an entry label")
+    ),
+    io.format("  %s: local label %d\n", [s(Desc), i(LabelNumber)], !IO),
     map.to_assoc_list(ResumeMap, ResumeAssocList),
     list.foldl(output_resume_map_element(VarSet), ResumeAssocList, !IO).
 
@@ -3957,7 +3941,7 @@ output_resume_map_element(VarSet, Var - LvalSet, !IO) :-
     Lvals = set.to_sorted_list(LvalSet),
     LvalDescs = list.map(dump_lval(no), Lvals),
     LvalsDesc = string.join_list(" ", LvalDescs),
-    io.format("  %s: %s\n", [s(VarDesc), s(LvalsDesc)], !IO).
+    io.format("    %s: %s\n", [s(VarDesc), s(LvalsDesc)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.code_loc_dep.

@@ -167,7 +167,7 @@ generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo, Code,
     NumNewArgs_Rval = const(llconst_int(NumNewArgs)),
     NumNewArgsPlusThree = NumNewArgs + 3,
     NumNewArgsPlusThree_Rval = const(llconst_int(NumNewArgsPlusThree)),
-    produce_variable(CallPred, OldClosureCode, OldClosure, !.CI, !CLD),
+    produce_variable(CallPred, OldClosureCode, OldClosure, !CLD),
     Context = goal_info_get_context(GoalInfo),
     maybe_add_alloc_site_info(Context, "closure", NumNewArgsPlusThree,
         MaybeAllocId, !CI),
@@ -302,7 +302,7 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
         )
     ;
         IsDummy = is_not_dummy_type,
-        produce_variable(Var, ProduceCode, Value, CI, !CLD),
+        produce_variable(Var, ProduceCode, Value, !CLD),
         AssignCode = singleton(
             llds_instr(assign(FieldLval, Value),
                 "set new argument field")

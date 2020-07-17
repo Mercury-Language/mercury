@@ -453,7 +453,7 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness.
     set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
-        BranchEndCode, !.CI, !.CLD),
+        BranchEndCode, !.CLD),
     Code = CheckBitVecCode ++ BaseRegInitCode ++ BranchEndCode.
 
 %-----------------------------------------------------------------------------%
@@ -616,7 +616,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
                 !.CI, !CLD),
             set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-                BranchEndCode, !.CI, !.CLD)
+                BranchEndCode, !.CLD)
         ),
         GotoEndCode = cord.singleton(
             llds_instr(goto(code_label(EndLabel)),
@@ -634,7 +634,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             % specialized for the situation here.
 
             produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
-                FlushCode, !.CI, !CLD),
+                FlushCode, !CLD),
             MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
             MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
             SaveSlotsCode = cord.from_list([
@@ -665,7 +665,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
                 !CLD),
             generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
                 !.CI, !CLD),
-            flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !.CI, !CLD),
+            flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CLD),
 
             % Forget the variables that are needed only at the resumption point
             % at the start of the next disjunct, so that we don't generate
@@ -676,7 +676,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             make_vars_forward_dead(FirstZombies, !CLD),
 
             set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-                FirstBranchEndCode, !.CI, !.CLD)
+                FirstBranchEndCode, !.CLD)
         ),
 
         GotoEndCode = cord.singleton(
@@ -732,7 +732,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
                 _LaterUpdateRedoipCode, !CLD),
 
             generate_offset_assigns(OutVars, 0, LaterBaseReg, !.CI, !CLD),
-            flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !.CI, !CLD),
+            flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CLD),
 
             % Forget the variables that are needed only at the resumption point
             % at the start of the next disjunct, so that we don't generate
@@ -743,7 +743,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             make_vars_forward_dead(LaterZombies, !CLD),
 
             set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-                LaterBranchEndCode, !.CI, !.CLD)
+                LaterBranchEndCode, !.CLD)
         ),
 
         KindCode = FlushCode ++ SaveSlotsCode ++

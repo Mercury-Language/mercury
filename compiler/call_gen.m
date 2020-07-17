@@ -352,7 +352,7 @@ generate_event_attributes([Attribute | Attributes], !.Vars,
         SynthCall = no,
         (
             !.Vars = [Var | !:Vars],
-            produce_variable(Var, Code, Rval, CI, !CLD),
+            produce_variable(Var, Code, Rval, !CLD),
             UserAttr = user_attribute(Rval, Var),
             MaybeUserAttr = yes(UserAttr)
         ;
@@ -694,8 +694,8 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI, !CLD) :-
             generate_assign_builtin(Var, AssignExpr, Code, !CLD)
         ;
             SimpleCode = ref_assign(AddrVar, ValueVar),
-            produce_variable(AddrVar, AddrVarCode, AddrRval, !.CI, !CLD),
-            produce_variable(ValueVar, ValueVarCode, ValueRval, !.CI, !CLD),
+            produce_variable(AddrVar, AddrVarCode, AddrRval, !CLD),
+            produce_variable(ValueVar, ValueVarCode, ValueRval, !CLD),
             StoreInstr = llds_instr(assign(mem_ref(AddrRval), ValueRval), ""),
             StoreCode = singleton(StoreInstr),
             Code = AddrVarCode ++ ValueVarCode ++ StoreCode
@@ -711,7 +711,7 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI, !CLD) :-
         CodeModel = model_semi,
         (
             SimpleCode = test(TestExpr),
-            generate_simple_test(TestExpr, Rval, ArgCode, !.CI, !CLD),
+            generate_simple_test(TestExpr, Rval, ArgCode, !CLD),
             fail_if_rval_is_false(Rval, TestCode, !CI, !CLD),
             Code = ArgCode ++ TestCode
         ;
@@ -760,32 +760,31 @@ convert_simple_expr(binary(BinOp, Expr1, Expr2)) =
     binop(BinOp, convert_simple_expr(Expr1), convert_simple_expr(Expr2)).
 
 :- pred generate_simple_test(simple_expr(prog_var)::in(simple_test_expr),
-    rval::out, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    rval::out, llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_simple_test(TestExpr, Rval, ArgCode, CI, !CLD) :-
+generate_simple_test(TestExpr, Rval, ArgCode, !CLD) :-
     (
         TestExpr = binary(BinOp, X0, Y0),
         X1 = convert_simple_expr(X0),
         Y1 = convert_simple_expr(Y0),
-        generate_builtin_arg(X1, X, CodeX, CI, !CLD),
-        generate_builtin_arg(Y1, Y, CodeY, CI, !CLD),
+        generate_builtin_arg(X1, X, CodeX, !CLD),
+        generate_builtin_arg(Y1, Y, CodeY, !CLD),
         Rval = binop(BinOp, X, Y),
         ArgCode = CodeX ++ CodeY
     ;
         TestExpr = unary(UnOp, X0),
         X1 = convert_simple_expr(X0),
-        generate_builtin_arg(X1, X, ArgCode, CI, !CLD),
+        generate_builtin_arg(X1, X, ArgCode, !CLD),
         Rval = unop(UnOp, X)
     ).
 
 :- pred generate_builtin_arg(rval::in, rval::out, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_builtin_arg(Rval0, Rval, Code, CI, !CLD) :-
+generate_builtin_arg(Rval0, Rval, Code, !CLD) :-
     (
         Rval0 = var(Var),
-        produce_variable(Var, Code, Rval, CI, !CLD)
+        produce_variable(Var, Code, Rval, !CLD)
     ;
         ( Rval0 = const(_)
         ; Rval0 = cast(_, _)

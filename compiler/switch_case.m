@@ -107,7 +107,7 @@ represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
             !CI, !CLD),
         generate_goal(CodeModel, Goal, GoalCode, !CI, !CLD),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CI, !.CLD),
+        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CLD),
         GotoEndCode = singleton(
             llds_instr(goto(code_label(EndLabel)),
                 "goto end of switch on " ++ SwitchVarName)

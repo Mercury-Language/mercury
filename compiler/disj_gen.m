@@ -170,7 +170,7 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Disjuncts, DisjGoalInfo,
     lookup_var_types(VarTypes, OutVars, OutTypes),
 
     produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
-        FlushCode, !.CI, !CLD),
+        FlushCode, !CLD),
 
     % We cannot release this stack slot anywhere within the disjunction,
     % since it will be needed after backtracking to later disjuncts.
@@ -250,7 +250,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
         ResumePoint, !CI),
     effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CLD),
     generate_offset_assigns(OutVars, 0, BaseReg, !.CI, !CLD),
-    flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !.CI, !CLD),
+    flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CLD),
 
     % Forget the variables that are needed only at the resumption point at
     % the start of the next disjunct, so that we don't generate exceptions
@@ -261,7 +261,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     make_vars_forward_dead(FirstZombies, !CLD),
 
     set_liveness_and_end_branch(StoreMap, Liveness, MaybeEnd0, MaybeEnd1,
-        FirstBranchEndCode, !.CI, !.CLD),
+        FirstBranchEndCode, !.CLD),
 
     GotoEndCode = singleton(
         llds_instr(goto(code_label(EndLabel)), "goto end of lookup disj")
@@ -310,7 +310,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     effect_resume_point(ResumePoint, model_non, _LaterUpdateRedoipCode, !CLD),
 
     generate_offset_assigns(OutVars, 0, LaterBaseReg, !.CI, !CLD),
-    flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !.CI, !CLD),
+    flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CLD),
 
     % Forget the variables that are needed only at the resumption point at
     % the start of the next disjunct, so that we don't generate exceptions
@@ -321,7 +321,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     make_vars_forward_dead(LaterZombies, !CLD),
 
     set_liveness_and_end_branch(StoreMap, Liveness, MaybeEnd1, MaybeEnd,
-        LaterBranchEndCode, !.CI, !.CLD),
+        LaterBranchEndCode, !.CLD),
 
     after_all_branches(StoreMap, MaybeEnd, !.CI, !:CLD),
 
@@ -367,7 +367,7 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
     % to any disjunct are materialized into registers or stack slots. Their
     % locations are recorded in ResumeMap.
     produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
-        FlushCode, !.CI, !CLD),
+        FlushCode, !CLD),
 
     % If we are using a trail, save the current trail state before the
     % first disjunct.
@@ -407,15 +407,15 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
         % and allocating a stack slot for the saved hp as long as possible.
         globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
             ReclaimHeap),
-        SaveHpCode = empty,
+        SaveHpCode = cord.empty,
         MaybeHpSlot = no,
 
         MaybeRbmmInfo = goal_info_get_maybe_rbmm(DisjGoalInfo),
         (
             MaybeRbmmInfo = no,
-            BeforeEnterRegionCode = empty,
-            LaterRegionCode = empty,
-            LastRegionCode = empty,
+            BeforeEnterRegionCode = cord.empty,
+            LaterRegionCode = cord.empty,
+            LastRegionCode = cord.empty,
             RegionStackVarsToRelease = [],
             RegionCommitDisjCleanup = no_commit_disj_region_cleanup
         ;
@@ -428,9 +428,9 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
                 set.is_empty(DisjRemovedRegionVars),
                 set.is_empty(DisjAllocRegionVars)
             then
-                BeforeEnterRegionCode = empty,
-                LaterRegionCode = empty,
-                LastRegionCode = empty,
+                BeforeEnterRegionCode = cord.empty,
+                LaterRegionCode = cord.empty,
+                LastRegionCode = cord.empty,
                 RegionStackVarsToRelease = [],
                 RegionCommitDisjCleanup = no_commit_disj_region_cleanup
             else
@@ -501,7 +501,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 !CI, !CLD)
         ;
             MaybeEntryResumePoint = no,
-            EntryResumePointCode = empty
+            EntryResumePointCode = cord.empty
         ),
 
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
@@ -523,9 +523,9 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 ThisDisjunctRegionCode = LaterRegionCode
             ;
                 MaybeEntryResumePoint = no,
-                RestoreHpCode = empty,
-                RestoreTicketCode = empty,
-                ThisDisjunctRegionCode = empty
+                RestoreHpCode = cord.empty,
+                RestoreTicketCode = cord.empty,
+                ThisDisjunctRegionCode = cord.empty
             ),
 
             % The pre_goal_update sanity check insists on no_resume_point,
@@ -559,7 +559,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 expect(unify(HpSlot, BranchHpSlot), $pred,
                     "cannot allocate same slot for saved hp")
             else
-                SaveHpCode = empty,
+                SaveHpCode = cord.empty,
                 MaybeHpSlot = MaybeHpSlot0,
                 BranchStart = BranchStart0
             ),
@@ -579,18 +579,18 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 % We can backtrack to the next disjunct from outside,
                 % so we make sure every variable in the resume set
                 % is in its stack slot.
-                flush_resume_vars_to_stack(ResumeVarsCode, !.CI, !CLD),
+                flush_resume_vars_to_stack(ResumeVarsCode, !CLD),
 
                 % We hang onto any temporary slots holding saved heap pointers
                 % and/or tickets, thus ensuring that they will still be
                 % reserved after the disjunction.
-                PruneTicketCode = empty
+                PruneTicketCode = cord.empty
             ;
                 ( CodeModel = model_det
                 ; CodeModel = model_semi
                 ),
 
-                ResumeVarsCode = empty,
+                ResumeVarsCode = cord.empty,
 
                 maybe_release_hp(MaybeHpSlot, !CI, !CLD),
                 % We are committing to this disjunct if it succeeds.
@@ -613,7 +613,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             % the code_info state at the ends of the branches so far.
             goal_info_get_store_map(DisjGoalInfo, StoreMap),
             generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1, SaveCode,
-                !.CI, !.CLD),
+                !.CLD),
 
             (
                 RegionCommitDisjCleanup = no_commit_disj_region_cleanup,
@@ -669,11 +669,11 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             code_gen.generate_goal(CodeModel, Goal0, GoalCode, !CI, !CLD),
             goal_info_get_store_map(DisjGoalInfo, StoreMap),
             generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode,
-                !.CI, !.CLD),
+                !.CLD),
 
             (
                 RegionCommitDisjCleanup = no_commit_disj_region_cleanup,
-                RegionCleanupCode = empty
+                RegionCleanupCode = cord.empty
             ;
                 RegionCommitDisjCleanup =
                     commit_disj_region_cleanup(CleanupLabel, CleanupCode),
@@ -722,9 +722,9 @@ maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,
         BeforeEnterCode, LaterCode, LastCode, !CI, !CLD) :-
     (
         DisjRegionOps = do_not_add_region_ops,
-        BeforeEnterCode = empty,
-        LaterCode = empty,
-        LastCode = empty
+        BeforeEnterCode = cord.empty,
+        LaterCode = cord.empty,
+        LastCode = cord.empty
     ;
         DisjRegionOps = add_region_ops,
         get_forward_live_vars(!.CLD, ForwardLiveVars),
@@ -772,7 +772,7 @@ maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,
         ]),
         disj_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
             EmbeddedStackFrame, SnapshotRegionVarList, SnapshotRegionCode,
-            !.CI, !CLD),
+            !CLD),
         SetCode = singleton(
             llds_instr(
                 region_set_fixed_slot(region_set_disj_num_snapshots,
@@ -807,9 +807,9 @@ maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
         RegionCommitDisjCleanup, !CI, !CLD) :-
     (
         DisjRegionOps = do_not_add_region_ops,
-        BeforeEnterCode = empty,
-        LaterCode = empty,
-        LastCode = empty,
+        BeforeEnterCode = cord.empty,
+        LaterCode = cord.empty,
+        LastCode = cord.empty,
         StackVars = [],
         RegionCommitDisjCleanup = no_commit_disj_region_cleanup
     ;
@@ -873,10 +873,10 @@ maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
         ]),
         disj_protect_regions(ProtectNumRegLval, AddrRegLval,
             EmbeddedStackFrame, ProtectRegionVarList, ProtectRegionCode,
-            !.CI, !CLD),
+            !CLD),
         disj_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
             EmbeddedStackFrame, SnapshotRegionVarList, SnapshotRegionCode,
-            !.CI, !CLD),
+            !CLD),
         SetCode = from_list([
             llds_instr(
                 region_set_fixed_slot(region_set_disj_num_protects,
@@ -919,12 +919,12 @@ maybe_create_disj_region_frame_semi(DisjRegionOps, DisjRemovedRegionVars,
 
 :- pred disj_protect_regions(lval::in, lval::in, embedded_stack_frame_id::in,
     list(prog_var)::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-disj_protect_regions(_, _, _, [], empty, _CI, !CLD).
+disj_protect_regions(_, _, _, [], cord.empty, !CLD).
 disj_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        [RegionVar | RegionVars], Code ++ Codes, CI, !CLD) :-
-    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, CI, !CLD),
+        [RegionVar | RegionVars], Code ++ Codes, !CLD) :-
+    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CLD),
     SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_semi_disj_protect,
@@ -933,16 +933,16 @@ disj_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
     ),
     Code = ProduceVarCode ++ SaveCode,
     disj_protect_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        RegionVars, Codes, CI, !CLD).
+        RegionVars, Codes, !CLD).
 
 :- pred disj_alloc_snapshot_regions(lval::in, lval::in,
     embedded_stack_frame_id::in, list(prog_var)::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-disj_alloc_snapshot_regions(_, _, _, [], empty, _CI, !CLD).
+disj_alloc_snapshot_regions(_, _, _, [], cord.empty, !CLD).
 disj_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        [RegionVar | RegionVars], Code ++ Codes, CI, !CLD) :-
-    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, CI, !CLD),
+        [RegionVar | RegionVars], Code ++ Codes, !CLD) :-
+    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CLD),
     SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_disj_snapshot,
@@ -951,7 +951,7 @@ disj_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
     ),
     Code = ProduceVarCode ++ SaveCode,
     disj_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrame,
-        RegionVars, Codes, CI, !CLD).
+        RegionVars, Codes, !CLD).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.disj_gen.

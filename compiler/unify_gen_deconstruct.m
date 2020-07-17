@@ -81,10 +81,9 @@ generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     (
         CanCGC = can_cgc,
         LHSVarName = variable_name(!.CI, LHSVar),
-        produce_variable(LHSVar, ProduceVarCode, VarRval, !.CI, !CLD),
+        produce_variable(LHSVar, ProduceVarCode, VarRval, !CLD),
         ( if VarRval = lval(VarLval) then
-            save_reused_cell_fields(LHSVar, VarLval, SaveArgsCode, Regs,
-                !.CI, !CLD),
+            save_reused_cell_fields(LHSVar, VarLval, SaveArgsCode, Regs, !CLD),
             % This seems to be fine.
             list.foldl(release_reg, Regs, !CLD),
             % XXX avoid strip_tag when we know what ptag it will have
@@ -115,7 +114,7 @@ generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
 
 generate_semi_deconstruction(LHSVar, ConsId, RHSVars, Modes, Code,
         !CI, !CLD) :-
-    produce_variable(LHSVar, LHSVarCode, LHSVarRval, !.CI, !CLD),
+    produce_variable(LHSVar, LHSVarCode, LHSVarRval, !CLD),
     LHSVarName = variable_name(!.CI, LHSVar),
     LHSVarType = variable_type(!.CI, LHSVar),
     CheaperTagTest = lookup_cheaper_tag_test(!.CI, LHSVarType),
@@ -245,7 +244,7 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
                     ToOrRval0 =
                         bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
                     materialize_vars_in_rval(ToOrRval0, ToOrRval,
-                        ToOrRvalCode, CI, !CLD),
+                        ToOrRvalCode, !CLD),
                     ComplementMask = const(llconst_uint(\ ToOrMask)),
                     MaskedOldSectagWordRval = binop(bitwise_and(int_type_uint),
                         lval(LHSSectagWordLval), ComplementMask),
@@ -282,7 +281,7 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
             ToOrRvals = [HeadToOrRval | TailToOrRvals],
             ToOrRval = bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
             reassign_tagword_var(LHSVar, ToOrMask, ToOrRval, AssignLeftCode,
-                CI, !CLD),
+                !CLD),
             Code = AssignRightCode ++ AssignLeftCode
         )
     ).
@@ -332,7 +331,7 @@ generate_deconstruct_unify_arg(LHSPtag, LHSBaseRval, LHSArgPosWidth,
         Dir = assign_left,
         % Fields are always considered forward live.
         generate_deconstruct_assign_left(LHSPtag, LHSBaseRval, LHSArgPosWidth,
-            RHSVar, Code, CI, !CLD)
+            RHSVar, Code, !CLD)
     ;
         Dir = assign_unused,
         % XXX This will have to change if we start to support aliasing.
@@ -505,15 +504,15 @@ generate_deconstruct_tagword_assign_right(LHSRval, RHSVar, ArgPosWidth,
 
 :- pred generate_deconstruct_assign_left(ptag::in, rval::in, arg_pos_width::in,
     prog_var::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_deconstruct_assign_left(LHSPtag, LHSBaseRval0, LHSArgPosWidth,
-        RHSVar, Code, CI, !CLD) :-
+        RHSVar, Code, !CLD) :-
     % Assignment from a variable to an field in a memory cell;
     % we cannot cache this, so generate code for it immediately.
-    produce_variable(RHSVar, ProduceRHSVarCode, RHSRval, CI, !CLD),
+    produce_variable(RHSVar, ProduceRHSVarCode, RHSRval, !CLD),
     materialize_vars_in_rval(LHSBaseRval0, LHSBaseRval,
-        MaterializeLHSBaseCode, CI, !CLD),
+        MaterializeLHSBaseCode, !CLD),
     (
         LHSArgPosWidth = apw_full(_, cell_offset(LHSCellOffset)),
         LHSLval = field(yes(LHSPtag), LHSBaseRval,

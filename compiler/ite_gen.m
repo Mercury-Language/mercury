@@ -100,7 +100,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     % to the else part are materialized into registers or stack slots.
     % Their locations are recorded in ResumeMap.
     produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
-        FlushCode, !.CI, !CLD),
+        FlushCode, !CLD),
 
     % Maybe save the heap state current before the condition.
     % This is after produce_vars, since code that flushes the cache
@@ -210,8 +210,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         code_gen.generate_goal(CodeModel, ThenGoal, ThenCode, !CI, !CLD),
         BranchEndStoreMap = StoreMap
     ),
-    generate_branch_end(BranchEndStoreMap, no, MaybeEnd0, ThenSaveCode,
-        !.CI, !.CLD),
+    generate_branch_end(BranchEndStoreMap, no, MaybeEnd0, ThenSaveCode, !.CLD),
 
     % Generate the entry to the else branch.
     reset_to_position(BranchStart, !.CI, !:CLD),
@@ -236,8 +235,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     maybe_generate_internal_event_code(ElseGoal, IteGoalInfo, ElseTraceCode,
         !CI, !CLD),
     code_gen.generate_goal(CodeModel, ElseGoal, ElseCode, !CI, !CLD),
-    generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, ElseSaveCode,
-        !.CI, !.CLD),
+    generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, ElseSaveCode, !.CLD),
 
     trace [compiletime(flag("codegen_goal")), io(!S)] (
         ( if should_trace_code_gen(!.CI) then
@@ -323,8 +321,8 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
 
         enter_simple_neg(set_of_var.to_sorted_list(ResumeVars), GoalInfo,
             SimpleNeg, !CLD),
-        produce_variable(L, CodeL, ValL, !.CI, !CLD),
-        produce_variable(R, CodeR, ValR, !.CI, !CLD),
+        produce_variable(L, CodeL, ValL, !CLD),
+        produce_variable(R, CodeR, ValR, !CLD),
         Type = variable_type(!.CI, L),
         ( if Type = builtin_type(BuiltinType) then
             ( if BuiltinType = builtin_type_string then
@@ -361,7 +359,7 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
 generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
         Code, !CI, !CLD) :-
     produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
-        FlushCode, !.CI, !CLD),
+        FlushCode, !CLD),
 
     % Maybe save the heap state current before the condition. This ought to be
     % after we make the failure continuation, because that causes the cache to
@@ -711,10 +709,10 @@ create_ite_region_frame(CondGoal, ElseGoals, CondCode, ThenCode, ElseCode,
             ]),
             ite_protect_regions(ProtectNumRegLval, AddrRegLval,
                 EmbeddedStackFrameId, ProtectRegionVarList,
-                ProtectRegionCode, !.CI, !CLD),
+                ProtectRegionCode, !CLD),
             ite_alloc_snapshot_regions(SnapshotNumRegLval, AddrRegLval,
                 EmbeddedStackFrameId, RemovedAtStartOfElse,
-                SnapshotRegionVarList, SnapshotRegionCode, !.CI, !CLD),
+                SnapshotRegionVarList, SnapshotRegionCode, !CLD),
             SetCode = from_list([
                 llds_instr(
                     region_set_fixed_slot(region_set_ite_num_protects,
@@ -793,12 +791,12 @@ find_regions_removed_at_start_of_goals([Goal | Goals], ModuleInfo, !Removed) :-
 
 :- pred ite_protect_regions(lval::in, lval::in, embedded_stack_frame_id::in,
     list(prog_var)::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-ite_protect_regions(_, _, _, [], cord.empty, _CI, !CLD).
+ite_protect_regions(_, _, _, [], cord.empty, !CLD).
 ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrameId,
-        [RegionVar | RegionVars], Code ++ Codes, CI, !CLD) :-
-    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, CI, !CLD),
+        [RegionVar | RegionVars], Code ++ Codes, !CLD) :-
+    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CLD),
     SaveCode = singleton(
         llds_instr(
             region_fill_frame(region_fill_ite_protect,
@@ -807,17 +805,17 @@ ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrameId,
     ),
     Code = ProduceVarCode ++ SaveCode,
     ite_protect_regions(NumLval, AddrLval, EmbeddedStackFrameId,
-        RegionVars, Codes, CI, !CLD).
+        RegionVars, Codes, !CLD).
 
 :- pred ite_alloc_snapshot_regions(lval::in, lval::in,
     embedded_stack_frame_id::in, set(prog_var)::in,
     list(prog_var)::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-ite_alloc_snapshot_regions(_, _, _, _, [], cord.empty, _CI, !CLD).
+ite_alloc_snapshot_regions(_, _, _, _, [], cord.empty, !CLD).
 ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
-        RemovedVars, [RegionVar | RegionVars], Code ++ Codes, CI, !CLD) :-
-    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, CI, !CLD),
+        RemovedVars, [RegionVar | RegionVars], Code ++ Codes, !CLD) :-
+    produce_variable(RegionVar, ProduceVarCode, RegionVarRval, !CLD),
     ( if set.member(RegionVar, RemovedVars) then
         RemovedAtStartOfElse = removed_at_start_of_else
     else
@@ -831,7 +829,7 @@ ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
     ),
     Code = ProduceVarCode ++ SaveCode,
     ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
-        RemovedVars, RegionVars, Codes, CI, !CLD).
+        RemovedVars, RegionVars, Codes, !CLD).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.ite_gen.

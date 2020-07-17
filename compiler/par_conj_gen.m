@@ -316,8 +316,7 @@ generate_det_par_conjuncts(ConjunctStartPos, InitialInstMap, EndLabel,
         set.list_to_set(Variables, LiveVars),
         map.select(AllSlots, LiveVars, StoreMap0),
         StoreMap = map.map_values_only(stack_slot_to_abs_locn, StoreMap0),
-        generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode0,
-            !.CI, !.CLD),
+        generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode0, !.CLD),
         replace_stack_vars_by_parent_sv(SaveCode0, SaveCode)
     ),
 

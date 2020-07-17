@@ -722,13 +722,13 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
                     )
                 ;
                     MaybeTailRecInfo = no,
-                    TailRecLabelCode = empty
+                    TailRecLabelCode = cord.empty
                 )
             ;
                 MaybeTraceInfo = no,
                 MaybeTraceCallLabel = no,
-                TraceCallCode = empty,
-                TailRecLabelCode = empty
+                TraceCallCode = cord.empty,
+                TailRecLabelCode = cord.empty
             ),
             generate_goal(model_det, Goal, BodyCode, !CI, !CLD),
             generate_entry(!.CI, model_det, Goal, ResumePoint, ProcFrameSlots,
@@ -760,7 +760,7 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
                 )
             ;
                 MaybeTailRecInfo = no,
-                TailRecLabelCode = empty
+                TailRecLabelCode = cord.empty
             ),
             generate_goal(model_semi, Goal, BodyCode, !CI, !CLD),
             generate_entry(!.CI, model_semi, Goal, ResumePoint,
@@ -783,7 +783,7 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
                 FailExternalInfo = external_event_info(_, _, TraceFailCode)
             ;
                 MaybeFailExternalInfo = no,
-                TraceFailCode = empty
+                TraceFailCode = cord.empty
             ),
             Code = EntryCode ++ TraceCallCode ++ TailRecLabelCode ++
                 BodyCode ++ ExitCode ++ ResumeCode ++ TraceFailCode ++
@@ -835,7 +835,7 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
                 FailExternalInfo = external_event_info(_, _, TraceFailCode)
             ;
                 MaybeFailExternalInfo = no,
-                TraceFailCode = empty
+                TraceFailCode = cord.empty
             ),
             MaybeTrailSlot = TraceSlotInfo ^ slot_trail,
             (
@@ -865,7 +865,7 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
                 )
             ;
                 MaybeTrailSlot = no,
-                DiscardTraceTicketCode = empty
+                DiscardTraceTicketCode = cord.empty
             ),
             FailCode = singleton(
                 llds_instr(goto(do_fail), "fail after fail trace port")
@@ -902,7 +902,7 @@ generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel, TraceCallCode,
         MaybeCallExternalInfo = no,
         % This can happen for procedures containing user events
         % in shallow traced modules.
-        TraceCallCode = empty,
+        TraceCallCode = cord.empty,
         MaybeTraceCallLabel = no
     ).
 
@@ -962,7 +962,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, ProcFrameSlots,
         TotalSlots = SuccipSlot,
         MaybeSuccipSlot = yes(SuccipSlot)
     else
-        SaveSuccipCode = empty,
+        SaveSuccipCode = cord.empty,
         TotalSlots = maybe_round_frame_size(CI, CodeModel, MainSlots),
         MaybeSuccipSlot = no
     ),
@@ -972,7 +972,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, ProcFrameSlots,
         generate_slot_fill_code(CI, TraceInfo, TraceFillCode)
     ;
         MaybeTraceInfo = no,
-        TraceFillCode = empty
+        TraceFillCode = cord.empty
     ),
 
     PushMsg = push_msg(ModuleInfo, PredId, ProcId),
@@ -1002,7 +1002,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, ProcFrameSlots,
                     "Allocate stack frame")
             )
         else
-            AllocCode = empty
+            AllocCode = cord.empty
         )
     ),
     ProcFrameSlots = proc_frame_slots(TotalSlots, MaybeSuccipSlot),
@@ -1075,9 +1075,9 @@ generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
     ( if instmap_is_unreachable(InstMap) then
         OutLvals = set.init,
-        FlushCode = empty
+        FlushCode = cord.empty
     else
-        setup_return(Args, OutLvals, FlushCode, !.CI, !CLD)
+        setup_return(Args, OutLvals, FlushCode, !CLD)
     ),
     (
         MaybeSuccipSlot = yes(SuccipSlot),
@@ -1087,14 +1087,14 @@ generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
         )
     ;
         MaybeSuccipSlot = no,
-        RestoreSuccipCode = empty
+        RestoreSuccipCode = cord.empty
     ),
     ( if
         ( TotalSlots = 0
         ; CodeModel = model_non
         )
     then
-        DeallocCode = empty
+        DeallocCode = cord.empty
     else
         DeallocCode = singleton(
            llds_instr(decr_sp(TotalSlots), "Deallocate stack frame")
@@ -1142,8 +1142,8 @@ generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
             PruneTraceTicketCodeCopy = PruneTraceTicketCode
         )
     else
-        PruneTraceTicketCode = empty,
-        PruneTraceTicketCodeCopy = empty
+        PruneTraceTicketCode = cord.empty,
+        PruneTraceTicketCodeCopy = cord.empty
     ),
 
     RestoreDeallocCode = RestoreSuccipCode ++
@@ -1166,11 +1166,11 @@ generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
         ;
             MaybeExitExternalInfo = no,
             LiveLvals = OutLvals,
-            TraceExitCode = empty
+            TraceExitCode = cord.empty
         )
     ;
         MaybeTraceInfo = no,
-        TraceExitCode = empty,
+        TraceExitCode = cord.empty,
         LiveLvals = OutLvals
     ),
 
@@ -1202,7 +1202,7 @@ generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
             maybe_setup_redo_event(TraceInfo2, SetupRedoCode)
         ;
             MaybeTraceInfo = no,
-            SetupRedoCode = empty
+            SetupRedoCode = cord.empty
         ),
         (
             MaybeSpecialReturn = yes(SpecialReturn),

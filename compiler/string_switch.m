@@ -322,7 +322,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     % of cases. We have to do this explicitly because generating a `fail'
     % slot last would yield the wrong liveness.
     set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
-        !.CI, !.CLD),
+        !.CLD),
 
     GotoEndLabelCode = singleton(
         llds_instr(goto(code_label(EndLabel)),
@@ -860,7 +860,7 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     % of cases. We have to do this explicitly because generating a `fail'
     % slot last would yield the wrong liveness.
     set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
-        BranchEndCode, !.CI, !.CLD),
+        BranchEndCode, !.CLD),
 
     EndLabelCode = singleton(
         llds_instr(label(EndLabel), "end of binary string switch")

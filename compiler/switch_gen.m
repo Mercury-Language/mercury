@@ -142,7 +142,7 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
     list.sort_and_remove_dups(TaggedCases0, TaggedCases),
 
     SwitchVarName = variable_name(!.CI, SwitchVar),
-    produce_variable(SwitchVar, SwitchVarCode, SwitchVarRval, !.CI, !CLD),
+    produce_variable(SwitchVar, SwitchVarCode, SwitchVarRval, !CLD),
 
     find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
         MayUseSmartIndexing),
@@ -595,7 +595,7 @@ generate_if_then_else_chain_cases(BranchStart, Cases, VarRval, VarType,
             maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
                 !CI, !CLD),
             generate_goal(CodeModel, Goal, GoalCode, !CI, !CLD),
-            generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CI, !.CLD)
+            generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CLD)
         ),
         HeadCaseCode = TestCode ++ TraceCode ++ GoalCode ++ SaveCode ++
             ElseCode,

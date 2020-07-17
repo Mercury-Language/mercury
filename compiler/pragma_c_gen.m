@@ -465,7 +465,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     MayCallMercury = get_may_call_mercury(Attributes),
     (
         MayCallMercury = proc_will_not_call_mercury,
-        SaveVarsCode = empty
+        SaveVarsCode = cord.empty
     ;
         MayCallMercury = proc_may_call_mercury,
         % The C code might call back Mercury code which clobbers the succip.
@@ -713,7 +713,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             generate_failure(FailureCode, !CI, !.CLD),
             reset_to_position(BeforeFailure, !.CI, !:CLD)
         else
-            FailureCode = empty
+            FailureCode = cord.empty
         )
     ),
 
@@ -1070,7 +1070,7 @@ find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
     list(foreign_proc_input)::out, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-get_foreign_proc_input_vars([], [], empty, _CI, !CLD).
+get_foreign_proc_input_vars([], [], cord.empty, _CI, !CLD).
 get_foreign_proc_input_vars([Arg | Args], Inputs, Code, CI, !CLD) :-
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     MaybeName = var_should_be_passed(MaybeArgName),
@@ -1081,11 +1081,11 @@ get_foreign_proc_input_vars([Arg | Args], Inputs, Code, CI, !CLD) :-
         IsDummy = is_type_a_dummy(ModuleInfo, VarType),
         (
             IsDummy = is_not_dummy_type,
-            produce_variable(Var, HeadCode, Rval, CI, !CLD)
+            produce_variable(Var, HeadCode, Rval, !CLD)
         ;
             IsDummy = is_dummy_type,
             % The variable may not have a state.
-            HeadCode = empty,
+            HeadCode = cord.empty,
             Rval = const(llconst_int(0))
         ),
         MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),

@@ -224,7 +224,7 @@ generate_dense_case(BranchStart, VarName, CodeModel, SwitchGoalInfo, EndLabel,
                 "branch to end of dense switch")
         ),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CI, !.CLD)
+        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CLD)
     ),
     Code = LabelCode ++ TraceCode ++ GoalCode ++ SaveCode ++ BranchToEndCode.
 

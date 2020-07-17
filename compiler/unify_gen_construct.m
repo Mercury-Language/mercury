@@ -229,7 +229,7 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
                 list.reverse(RevToOrRvals, ToOrRvals),
                 TagwordRval0 = bitwise_or_rvals(ToOrRvals),
                 materialize_vars_in_rval(TagwordRval0, TagwordRval,
-                    TagwordCode, !.CI, !CLD)
+                    TagwordCode, !CLD)
             ),
             TagwordArg = cell_arg_full_word(TagwordRval, complete),
             generate_and_pack_construct_args(
@@ -528,7 +528,7 @@ generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
         RHSRval = const(llconst_uint(0u))    % Dummy.
     ;
         IsReal = real_input_arg,
-        produce_variable(RHSVar, RHSVarCode, RHSRval, CI, !CLD),
+        produce_variable(RHSVar, RHSVarCode, RHSRval, !CLD),
         !:Code = !.Code ++ RHSVarCode
     ).
 

@@ -1286,7 +1286,7 @@ trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 trace_produce_var(Var, VarSet, _InstMap, !Tvars, VarInfo, VarCode, CI, !CLD) :-
-    produce_variable_in_reg_or_stack(Var, VarCode, Lval, CI, !CLD),
+    produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CLD),
     Type = variable_type(CI, Var),
     ( if varset.search_name(VarSet, Var, SearchName) then
         Name = SearchName

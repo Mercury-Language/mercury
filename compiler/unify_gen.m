@@ -171,8 +171,8 @@ generate_simple_test_unification(VarA, VarB, Code, !CI, !CLD) :-
             % The else branch handles enumerations.
             EqOp = eq(int_type_int)
         ),
-        produce_variable(VarA, VarCodeA, VarRvalA, !.CI, !CLD),
-        produce_variable(VarB, VarCodeB, VarRvalB, !.CI, !CLD),
+        produce_variable(VarA, VarCodeA, VarRvalA, !CLD),
+        produce_variable(VarB, VarCodeB, VarRvalB, !CLD),
         fail_if_rval_is_false(binop(EqOp, VarRvalA, VarRvalB), FailCode,
             !CI, !CLD),
         Code = VarCodeA ++ VarCodeB ++ FailCode

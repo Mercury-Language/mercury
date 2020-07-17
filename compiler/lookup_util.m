@@ -74,8 +74,7 @@
     % !MaybeEnd in the process.
     %
 :- pred set_liveness_and_end_branch(abs_store_map::in, set_of_progvar::in,
-    branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_loc_dep::in) is det.
+    branch_end::in, branch_end::out, llds_code::out, code_loc_dep::in) is det.
 
 :- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
@@ -142,7 +141,7 @@ do_generate_constants_for_arm(BranchStart, Goal, Vars, StoreMap, SetToUnknown,
         get_forward_live_vars(!.CLD, Liveness),
 
         get_exprn_opts(!.CI, ExprnOpts),
-        get_arm_rvals(Vars, CaseRvals, !.CI, !CLD, ExprnOpts),
+        get_arm_rvals(Vars, CaseRvals, !CLD, ExprnOpts),
         (
             SetToUnknown = no
         ;
@@ -153,7 +152,7 @@ do_generate_constants_for_arm(BranchStart, Goal, Vars, StoreMap, SetToUnknown,
         % locations dictated by StoreMap, and thus does not have to be empty.
         % (The array lookup code will put those variables in those locations
         % directly.)
-        generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !.CI, !.CLD)
+        generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !.CLD)
     ).
 
 generate_constants_for_disjunct(BranchStart, Disjunct0, Vars, StoreMap, Soln,
@@ -179,15 +178,14 @@ generate_constants_for_disjuncts(StartPos, [Disjunct0 | Disjuncts0], Vars,
 %---------------------------------------------------------------------------%
 
 :- pred get_arm_rvals(list(prog_var)::in, list(rval)::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out, exprn_opts::in)
-    is semidet.
+    code_loc_dep::in, code_loc_dep::out, exprn_opts::in) is semidet.
 
-get_arm_rvals([], [], _CI, !CLD, _ExprnOpts).
-get_arm_rvals([Var | Vars], [Rval | Rvals], CI, !CLD, ExprnOpts) :-
-    produce_variable(Var, Code, Rval, CI, !CLD),
+get_arm_rvals([], [], !CLD, _ExprnOpts).
+get_arm_rvals([Var | Vars], [Rval | Rvals], !CLD, ExprnOpts) :-
+    produce_variable(Var, Code, Rval, !CLD),
     cord.is_empty(Code),
     rval_is_constant(Rval, ExprnOpts),
-    get_arm_rvals(Vars, Rvals, CI, !CLD, ExprnOpts).
+    get_arm_rvals(Vars, Rvals, !CLD, ExprnOpts).
 
     % rval_is_constant(Rval, ExprnOpts) is true iff Rval is a constant.
     % This depends on the options governing nonlocal gotos, asm labels enabled
@@ -208,7 +206,7 @@ rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
 %---------------------------------------------------------------------------%
 
 set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
-        CI, !.CLD) :-
+        !.CLD) :-
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness. Also, by killing the variables
@@ -218,7 +216,7 @@ set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
     set_forward_live_vars(Liveness, !CLD),
     set_of_var.difference(OldLiveness, Liveness, DeadVars),
     maybe_make_vars_forward_dead(DeadVars, no, !CLD),
-    generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, CI, !.CLD).
+    generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, !.CLD).
 
 generate_offset_assigns([], _, _, _CI, !CLD).
 generate_offset_assigns([Var | Vars], Offset, BaseReg, CI, !CLD) :-
