@@ -1,3 +1,13 @@
+NEWS since Mercury 20.06
+========================
+
+Changes to the Mercury implementation
+-------------------------------------
+
+* We have enabled support for unmapping of unused memory pages in Boehm GC
+  by default. If this should cause a problem on your platform, it can be
+  disabled by passing `--disable-gc-munmap` to configure.
+
 NEWS for Mercury 20.06
 ======================
 
