@@ -1,5 +1,15 @@
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-% Require tail recursion pragma tests with --warn-non-tail-recursive-self
+%
+% Tests of `pragma require_tail_recursion' with
+% `--warn-non-tail-recursion self'.
+%
+% The .exp file is for non-deep-profiling LLDS grades.
+% The .exp3 file is for deep profiling LLDS grades.
+% The .exp2 file is for MLDS grades.
+%
+%---------------------------------------------------------------------------%
+
 :- module require_tailrec_2.
 
 :- interface.
