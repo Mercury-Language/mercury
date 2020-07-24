@@ -1303,11 +1303,11 @@ extern  int             MR_find_start_of_num_suffix(const char *str);
         succip_locn, pf, module, name, arity, mode, NULL)
 
 #define MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(mod, n, a)                       \
-    const MR_ProcLayoutUCI                                                  \
+    extern const MR_ProcLayoutUCI                                           \
         MR_proc_layout_uci_name(mod, __Unify__, n, a, 0);                   \
-    const MR_ProcLayoutUCI                                                  \
+    extern const MR_ProcLayoutUCI                                           \
         MR_proc_layout_uci_name(mod, __Compare__, n, a, 0);                 \
-    const MR_ProcLayoutUCI                                                  \
+    extern const MR_ProcLayoutUCI                                           \
         MR_proc_layout_uci_name(mod, __CompareRep__, n, a, 0);
 
 // In procedures compiled with execution tracing, three items are stored

@@ -829,7 +829,7 @@ start_label:
                 result = MR_compare_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-                return_compare_answer(private_builtin, type_info, 1, result);
+                return_compare_answer(private_builtin, type_info, 0, result);
 #else
                 MR_bool result;
 
@@ -837,7 +837,7 @@ start_label:
                 result = MR_unify_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-                return_unify_answer(private_builtin, type_info, 1, result);
+                return_unify_answer(private_builtin, type_info, 0, result);
 #endif
             }
 
@@ -895,7 +895,7 @@ start_label:
                 result = MR_compare_type_ctor_info(
                     (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
                 MR_restore_transient_registers();
-                return_compare_answer(private_builtin, type_ctor_info, 1,
+                return_compare_answer(private_builtin, type_ctor_info, 0,
                     result);
 #else
                 MR_bool result;
@@ -904,7 +904,7 @@ start_label:
                 result = MR_unify_type_ctor_info(
                     (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
                 MR_restore_transient_registers();
-                return_unify_answer(private_builtin, type_ctor_info, 1,
+                return_unify_answer(private_builtin, type_ctor_info, 0,
                     result);
 #endif
             }
