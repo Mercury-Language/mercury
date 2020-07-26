@@ -207,10 +207,10 @@ output_single_c_file(Globals, CFile, Errors, !DeclSet, !IO) :-
         ProcEventLayouts, ExecTraces, TSStringTable, AllocSites,
         !DeclSet, !IO),
 
-    list.foldl2(output_annotated_c_module(Info), AnnotatedModules,
-        !DeclSet, !IO),
     list.map_foldl(output_foreign_body_code(Info), ForeignBodyCodes,
         ForeignCodeResults, !IO),
+    list.foldl2(output_annotated_c_module(Info), AnnotatedModules,
+        !DeclSet, !IO),
     WriteForeignExportDefn =
         (pred(ForeignExportDefn::in, IO0::di, IO::uo) is det :-
             ForeignExportDefn = foreign_export_defn(ForeignExportCode),

@@ -141,6 +141,7 @@ ORDINARY_PROGS = \
 	follow_code_bug \
 	follow_code_bug_2 \
 	foreign_and_mercury \
+	foreign_code_before_proc \
 	foreign_enum_rtti \
 	foreign_enum_switch \
 	foreign_import_module \
