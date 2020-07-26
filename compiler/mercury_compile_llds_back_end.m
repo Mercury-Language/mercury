@@ -226,8 +226,8 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
     ),
     % The dependency information used to warn about mutual tail recursion
     % cannot be shared with the information used to remove duplicate
-    % procedures, they're based on different nodes (predicates versus
-    % procs).
+    % procedures, they are use different nodes in tbe dependency graph
+    % (predicates versus procedures).
     module_info_rebuild_dependency_info(!HLDS, ProcDepInfo),
     SCCMap = dependency_info_make_scc_map(ProcDepInfo),
     generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),
@@ -680,7 +680,6 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
     CModuleName = MangledModuleName ++ "_module",
 
     % Split the code up into bite-size chunks for the C compiler.
-    %
     globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
     ( if ProcsPerFunc = 0 then
         % ProcsPerFunc = 0 really means infinity -
@@ -693,15 +692,15 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
     list.map_foldl(make_foreign_import_header_code(Globals), C_Includes,
         C_IncludeHeaderCodes, !IO),
 
-    % We don't want to put C_LocalHeaderCodes between Start and End, because
-    % C_IncludeHeaderCodes may include our own header file, which defines
-    % the module's guard macro, which in turn #ifdefs out the stuff between
-    % Start and End.
+    make_decl_guards(ModuleSymName, DeclGuardStart, DeclGuardEnd),
+    % We don't want to put C_LocalHeaderCodes between DeclGuardStart and
+    % DeclGuardEnd, because C_IncludeHeaderCodes may include our own
+    % header file, which defines the module's guard macro, which in turn
+    % #ifdefs out the stuff between DeclGuardStart and DeclGuardEnd.
     list.filter(foreign_decl_code_is_local, C_HeaderCodes0,
         C_LocalHeaderCodes, C_ExportedHeaderCodes),
-    make_decl_guards(ModuleSymName, Start, End),
     C_HeaderCodes = C_IncludeHeaderCodes ++ C_LocalHeaderCodes ++
-        [Start | C_ExportedHeaderCodes] ++ [End],
+        [DeclGuardStart | C_ExportedHeaderCodes] ++ [DeclGuardEnd],
 
     module_info_user_init_pred_c_names(HLDS, UserInitPredCNames),
     module_info_user_final_pred_c_names(HLDS, UserFinalPredCNames),
