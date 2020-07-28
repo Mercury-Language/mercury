@@ -89,7 +89,8 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
 
             ( if should_trace_code_gen(!.CI) then
-                io.format("\nGOAL START: %s\n", [s(GoalDesc)], !IO)
+                io.format("\nGOAL START: %s\n", [s(GoalDesc)], !IO),
+                io.flush_output(!IO)
             else
                 true
             )
@@ -195,7 +196,8 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             ( if should_trace_code_gen(!.CI) then
                 io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
                 Instrs = cord.list(Code),
-                write_instrs(Instrs, no, auto_comments, !IO)
+                write_instrs(Instrs, no, auto_comments, !IO),
+                io.flush_output(!IO)
             else
                 true
             )

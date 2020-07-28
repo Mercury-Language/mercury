@@ -579,7 +579,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 % We can backtrack to the next disjunct from outside,
                 % so we make sure every variable in the resume set
                 % is in its stack slot.
-                flush_resume_vars_to_stack(ResumeVarsCode, !.CI, !CLD),
+                flush_resume_vars_to_stack(FlushResumeVarsCode, !CLD),
 
                 % We hang onto any temporary slots holding saved heap pointers
                 % and/or tickets, thus ensuring that they will still be
@@ -590,7 +590,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 ; CodeModel = model_semi
                 ),
 
-                ResumeVarsCode = empty,
+                FlushResumeVarsCode = cord.empty,
 
                 maybe_release_hp(MaybeHpSlot, !CI, !CLD),
                 % We are committing to this disjunct if it succeeds.
@@ -645,15 +645,14 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 ThisDisjunctRegionCode ++
                 ModContCode ++
                 TraceCode ++
+                FlushResumeVarsCode ++
                 GoalCode ++
-                ResumeVarsCode ++
                 PruneTicketCode ++
                 SaveCode ++
                 BranchCode ++
                 RestCode
-            ;
-                Resume = no_resume_point,
-
+        ;
+            Resume = no_resume_point,
             % Emit code for the last disjunct.
 
             % Restore the heap pointer and solver state if necessary.
