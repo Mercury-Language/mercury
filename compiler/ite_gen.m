@@ -149,11 +149,12 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     make_resume_point(ResumeVars, ResumeLocs, ResumeMap, ResumePoint, !CI),
     effect_resume_point(ResumePoint, EffCodeModel, EffectResumeCode, !CLD),
 
-    trace [compiletime(flag("codegen_goal")), io(!S)] (
+    trace [compiletime(flag("codegen_goal")), io(!IO)] (
         ( if should_trace_code_gen(!.CI) then
             EffectResumeInstrs = cord.list(EffectResumeCode),
-            io.write_string("\nEFFECT RESUME INSTRS:\n", !S),
-            write_instrs(EffectResumeInstrs, no, auto_comments, !S)
+            io.write_string("\nEFFECT RESUME INSTRS:\n", !IO),
+            write_instrs(EffectResumeInstrs, no, auto_comments, !IO),
+            io.flush_output(!IO)
         else
             true
         )
@@ -216,11 +217,12 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     reset_to_position(BranchStart, !.CI, !:CLD),
     generate_resume_point(ResumePoint, ResumeCode, !CI, !CLD),
 
-    trace [compiletime(flag("codegen_goal")), io(!S)] (
+    trace [compiletime(flag("codegen_goal")), io(!IO)] (
         ( if should_trace_code_gen(!.CI) then
             ResumeInstrs = cord.list(ResumeCode),
-            io.write_string("\nRESUME INSTRS:\n", !S),
-            write_instrs(ResumeInstrs, no, auto_comments, !S)
+            io.write_string("\nRESUME INSTRS:\n", !IO),
+            write_instrs(ResumeInstrs, no, auto_comments, !IO),
+            io.flush_output(!IO)
         else
             true
         )
@@ -237,11 +239,12 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     code_gen.generate_goal(CodeModel, ElseGoal, ElseCode, !CI, !CLD),
     generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, ElseSaveCode, !.CLD),
 
-    trace [compiletime(flag("codegen_goal")), io(!S)] (
+    trace [compiletime(flag("codegen_goal")), io(!IO)] (
         ( if should_trace_code_gen(!.CI) then
             ElseSaveInstrs = cord.list(ElseSaveCode),
-            io.write_string("\nBRANCH END INSTRS:\n", !S),
-            write_instrs(ElseSaveInstrs, no, auto_comments, !S)
+            io.write_string("\nBRANCH END INSTRS:\n", !IO),
+            write_instrs(ElseSaveInstrs, no, auto_comments, !IO),
+            io.flush_output(!IO)
         else
             true
         )

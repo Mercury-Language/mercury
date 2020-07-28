@@ -198,64 +198,55 @@ write_instrs([], _MaybeProcLabel, _AutoComments, !IO).
 write_instrs([Instr | Instrs], MaybeProcLabel, AutoComments, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( if Uinstr = label(_) then
-        io.write_string(dump_instr(MaybeProcLabel, AutoComments, Uinstr), !IO)
+        InstrStr = dump_instr(MaybeProcLabel, AutoComments, Uinstr),
+        io.format("%s\n", [s(InstrStr)], !IO)
     else if Uinstr = comment(InstrComment) then
-        io.write_string("\t% ", !IO),
-        string.foldl(print_comment_char, InstrComment, !IO)
+        InstrCommentLines0 = string.split_at_char('\n', InstrComment),
+        InstrCommentLines =
+            list.map(add_instr_comment_prefix, InstrCommentLines0),
+        io.write_list(InstrCommentLines, "", io.write_string, !IO)
     else
-        io.write_string("\t", !IO),
-        io.write_string(dump_instr(MaybeProcLabel, AutoComments, Uinstr), !IO)
+        InstrStr = dump_instr(MaybeProcLabel, AutoComments, Uinstr),
+        io.format("    %s\n", [s(InstrStr)], !IO)
     ),
     ( if
         AutoComments = auto_comments,
         Comment \= ""
     then
-        io.write_string("\n\t\t" ++ Comment, !IO)
+        io.format("         %% %s\n", [s(Comment)], !IO)
     else
         true
     ),
-    io.nl(!IO),
     write_instrs(Instrs, MaybeProcLabel, AutoComments, !IO).
 
 dump_instrs(_MaybeProcLabel, _AutoComments, []) = "".
 dump_instrs(MaybeProcLabel, AutoComments, [Instr | Instrs]) = Str :-
     Instr = llds_instr(Uinstr, Comment),
     ( if Uinstr = label(_) then
-        InstrStr0 = dump_instr(MaybeProcLabel, AutoComments, Uinstr)
+        InstrStr0 = dump_instr(MaybeProcLabel, AutoComments, Uinstr) ++ "\n"
     else if Uinstr = comment(InstrComment) then
-        string.foldl(dump_comment_char, InstrComment, "", InstrCommentStr),
-        InstrStr0 = "\t% " ++ InstrCommentStr
+        InstrCommentLines0 = string.split_at_char('\n', InstrComment),
+        InstrCommentLines =
+            list.map(add_instr_comment_prefix, InstrCommentLines0),
+        InstrStr0 = string.append_list(InstrCommentLines)
     else
-        InstrStr0 = "\t" ++ dump_instr(MaybeProcLabel, AutoComments, Uinstr)
+        InstrStr0 = "    " ++ dump_instr(MaybeProcLabel, AutoComments, Uinstr)
+            ++ "\n"
     ),
     ( if
         AutoComments = auto_comments,
         Comment \= ""
     then
-        InstrStr = InstrStr0 ++ "\n\t\t" ++ Comment ++ "\n"
+        InstrStr = InstrStr0 ++ "        % " ++ Comment ++ "\n"
     else
-        InstrStr = InstrStr0 ++ "\n"
+        InstrStr = InstrStr0
     ),
     InstrsStr = dump_instrs(MaybeProcLabel, AutoComments, Instrs),
     Str = InstrStr ++ InstrsStr.
 
-:- pred print_comment_char(char::in, io::di, io::uo) is det.
+:- func add_instr_comment_prefix(string) = string.
 
-print_comment_char(C, !IO) :-
-    ( if C = '\n' then
-        io.write_string("\n\t% ", !IO)
-    else
-        io.write_char(C, !IO)
-    ).
-
-:- pred dump_comment_char(char::in, string::in, string::out) is det.
-
-dump_comment_char(C, !Str) :-
-    ( if C = '\n' then
-        !:Str = !.Str ++ "\n\t% "
-    else
-        !:Str = !.Str ++ string.char_to_string(C)
-    ).
+add_instr_comment_prefix(CommentLine) = "    % " ++ CommentLine ++ "\n".
 
 dump_intlist([]) = "".
 dump_intlist([H | T]) =

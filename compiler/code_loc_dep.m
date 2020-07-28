@@ -1133,7 +1133,7 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
             ),
             MaybeRegionInfo = no
         ),
-        inside_non_condition(!CLD)
+        set_inside_non_condition(!CLD)
     ),
     HijackInfo = ite_info(ResumeKnown, CondEnv, HijackType, MaybeRegionInfo).
 
@@ -1744,9 +1744,9 @@ maybe_restore_region_commit_frame(MaybeRegionCommitFrameInfo,
 
 %---------------------------------------------------------------------------%
 
-:- pred inside_non_condition(code_loc_dep::in, code_loc_dep::out) is det.
+:- pred set_inside_non_condition(code_loc_dep::in, code_loc_dep::out) is det.
 
-inside_non_condition(!CLD) :-
+set_inside_non_condition(!CLD) :-
     get_fail_info(!.CLD, FailInfo0),
     FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, _, Allow),
     FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
@@ -1867,6 +1867,17 @@ generate_failure(Code, !CI, !.CLD) :-
     ;
         ResumeKnown = resume_point_unknown,
         Code = singleton(llds_instr(goto(do_redo), "fail"))
+    ),
+    trace [compiletime(flag("codegen_goal")), io(!IO)] (
+        ( if should_trace_code_gen(!.CI) then
+            io.write_string("failure code\n", !IO),
+            Instrs = cord.list(Code),
+            write_instrs(Instrs, no, auto_comments, !IO),
+            io.write_string("end failure code\n", !IO),
+            io.flush_output(!IO)
+        else
+            true
+        )
     ).
 
 fail_if_rval_is_false(Rval0, Code, !CI, !CLD) :-
@@ -1989,20 +2000,20 @@ pick_matching_resume_addr(CLD, ResumeMaps, Addr) :-
 
 :- pred match_resume_loc(resume_map::in, resume_map::in) is semidet.
 
-match_resume_loc(Map, Locations0) :-
-    map.keys_as_set(Map, Keys),
-    map.select(Locations0, Keys, Locations),
-    map.to_assoc_list(Locations, List),
-    all_vars_match_resume_map(Map, List).
+match_resume_loc(ResumeMap, ActualLocationMap) :-
+    map.keys_as_set(ResumeMap, ResumeVars),
+    map.select(ActualLocationMap, ResumeVars, ResumeVarActualLocationMap),
+    map.to_assoc_list(ResumeVarActualLocationMap, ResumeVarActualLocations),
+    all_vars_match_resume_map(ResumeMap, ResumeVarActualLocations).
 
 :- pred all_vars_match_resume_map(resume_map::in,
     assoc_list(prog_var, set(lval))::in) is semidet.
 
-all_vars_match_resume_map(_Map, []).
-all_vars_match_resume_map(Map, [Var - Actual | VarsActuals]) :-
-    map.search(Map, Var, Lvals),
-    set.subset(Lvals, Actual),
-    all_vars_match_resume_map(Map, VarsActuals).
+all_vars_match_resume_map(_ResumeMap, []).
+all_vars_match_resume_map(ResumeMap, [Var - ActualLvals | VarsActualLvals]) :-
+    map.search(ResumeMap, Var, ResumeLvals),
+    set.subset(ResumeLvals, ActualLvals),
+    all_vars_match_resume_map(ResumeMap, VarsActualLvals).
 
 :- pred pick_first_resume_point(resume_point_info::in,
     resume_map::out, code_addr::out) is det.
@@ -2126,7 +2137,7 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
                 io.write_string("make_resume_point orig_only\n", !IO),
-                output_resume_map(VarSet, "orig", OrigMap, OrigLabel, !IO),
+                output_resume_map(VarSet, "orig:", OrigMap, OrigLabel, !IO),
                 io.flush_output(!IO)
             else
                 true
@@ -2142,7 +2153,7 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
                 io.write_string("make_resume_point stack_only\n", !IO),
-                output_resume_map(VarSet, "stack", StackMap, StackLabel, !IO),
+                output_resume_map(VarSet, "stack:", StackMap, StackLabel, !IO),
                 io.flush_output(!IO)
             else
                 true
@@ -2160,8 +2171,8 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
                 io.write_string("make_resume_point orig_then_stack\n", !IO),
-                output_resume_map(VarSet, "orig", OrigMap, OrigLabel, !IO),
-                output_resume_map(VarSet, "stack", StackMap, StackLabel, !IO),
+                output_resume_map(VarSet, "orig:", OrigMap, OrigLabel, !IO),
+                output_resume_map(VarSet, "stack:", StackMap, StackLabel, !IO),
                 io.flush_output(!IO)
             else
                 true
@@ -2179,8 +2190,8 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
                 io.write_string("make_resume_point stack_then_orig\n", !IO),
-                output_resume_map(VarSet, "stack", StackMap, StackLabel, !IO),
-                output_resume_map(VarSet, "orig", OrigMap, OrigLabel, !IO),
+                output_resume_map(VarSet, "stack:", StackMap, StackLabel, !IO),
+                output_resume_map(VarSet, "orig:", OrigMap, OrigLabel, !IO),
                 io.flush_output(!IO)
             else
                 true
@@ -3929,7 +3940,7 @@ output_resume_map(VarSet, Desc, ResumeMap, ResumeLabel, !IO) :-
         ResumeLabel = entry_label(_, _),
         unexpected($pred, "resume label is an entry label")
     ),
-    io.format("  %s: local label %d\n", [s(Desc), i(LabelNumber)], !IO),
+    io.format("  %-6s local label %d\n", [s(Desc), i(LabelNumber)], !IO),
     map.to_assoc_list(ResumeMap, ResumeAssocList),
     list.foldl(output_resume_map_element(VarSet), ResumeAssocList, !IO).
 
