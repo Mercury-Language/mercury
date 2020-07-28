@@ -147,14 +147,19 @@ Several kinds of goals want to get control on failure.
 
 <ul>
 <li>
-disjunctions want control when
-a nonlast disjunct or something executed to its right fails
+Disjunctions want control
+    <ul>
+    <li>
+    when a nonlast disjunct fails, and
+    <li>
+    when something executed to the right of the disjunction fails.
+    </ul>
 <li>
-if-then-elses want control when the condition fails
+If-then-elses want control when the condition fails.
 <li>
-negations are a special case of if-then-elses
+Negations are a special case of if-then-elses.
 <li>
-commits want control when the committed goal fails
+Commits want control when the committed goal fails.
 </ul>
 
 <p>
@@ -243,7 +248,7 @@ at the end of the goal.
 (Since a model_non procedure can remove its own stack frame
 just before it succeeds for the last time,
 we can't say that after a call to such a procedure
-maxfr *will* be different from curfr.
+maxfr *will* be different from curfr.)
 <p>
 When the code generator processes branched structures (if-then-elses,
 switches or disjunctions), if resume_point_known is unknown at the end of
@@ -323,7 +328,7 @@ if it exploits the available information.
 <p>
 
 It may be that no-hijack case yields better code than worst case;
-this should be investigated XXX.
+this should be investigated TODO.
 
 <h2>Handling disjunctions</h2>
 
@@ -331,85 +336,144 @@ this should be investigated XXX.
 
 <ul>
 <li> No-hijack case.
-Before entering the disjunction,
-the code generator creates a temporary nondet stack frame.
-When the code generator enters a nonlast disjunct,
-it pushes a new entry on the resume point stack
-indicating the resume point at the start of the next disjunct,
-and sets the redoip slot of the top frame (which is the temporary frame)
-to the stack continuation in that resume point.
-When the code generator enters the last disjunct,
-it does not push any entry on the resume point stack,
-and sets maxfr to the value
-in the prevfr slot of the top frame (which is the temporary frame),
-which pops the temporary frame off the stack.
-<p>
-<li> Best case.
-When the code generator enters a nonlast disjunct,
-it pushes a new entry on the resume point stack
-indicating the resume point at the start of the next disjunct,
-and sets the redoip slot of the top frame (which is this frame)
-to the stack continuation in that resume point.
-When the code generator enters the last disjunct,
-it does not push any entry on the resume point stack,
-and sets the redoip slot of the top frame (which is this frame)
-to the main continuation of the resume point
-that was initially on top of the stack.
-In this case, the disjunction hijacks its own frame
-without having to save the value in the hijacked slot;
-we call this a quarter hijack,
-since it involves one restore.
-<p>
-<li> Middle case.
-Before entering the disjunction,
-the code generator saves in a stack slot
-the contents of the redoip slot of the top frame
-(which is this frame, and whose redofr slot must point to this frame).
-When the code generator enters a nonlast disjunct,
-it pushes a new entry on the resume point stack
-indicating the resume point at the start of the next disjunct,
-and sets the redoip slot of the top frame (which is this frame)
-to the stack continuation in that resume point.
-When the code generator enters the last disjunct,
-it does not push any entry on the resume point stack,
-and sets the redoip slot of the top frame (which is this frame)
-to its old, saved value.
-In this case, the disjunction hijacks its own frame
-while having to save the value in the hijacked slot;
-we call this a half hijack,
-since it involves one save and one restore.
-<p>
+    <ul>
+    <li>
+    Before entering the disjunction, the code generator
+        <ul>
+        <li>
+        creates a temporary nondet stack frame.
+        </ul>
+    <li>
+    When the code generator enters a nonlast disjunct,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack
+        indicating the resume point at the start of the next disjunct, and
+        <li>
+        sets the redoip slot of the top frame (which is the temporary frame)
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    When the code generator enters the last disjunct,
+        <ul>
+        <li>
+        it does not push any entry on the resume point stack, and
+        <li>
+        sets maxfr to the value in the prevfr slot of the top frame
+        (which is the temporary frame),
+        which pops the temporary frame off the stack.
+        </ul>
+    </ul>
+    <p>
 <li> Worst case.
-Before entering the disjunction,
-the code generator saves in two stack slots
-the contents of the redoip and redofr slots of the top frame,
-(which may be different from this frame),
-and sets the redofr slot of the top frame from curfr,
-so that backtracking through the redoip slot of that frame
-will set curfr to point to this frame.
-When the code generator enters a nonlast disjunct,
-it pushes a new entry on the resume point stack
-indicating the resume point at the start of the next disjunct,
-and sets the redoip slot of the top frame
-to the stack continuation in that resume point.
-When the code generator enters the last disjunct,
-it does not push any entry on the resume point stack,
-and restores the redoip and redofr slots of the top frame
-(which may be different from this frame),
-to their old, saved values.
-In this case, the disjunction hijacks a frame that may not be its own;
-we call this a full hijack,
-since it involves two saves and two restores.
+    <ul>
+    Before entering the disjunction, the code generator
+        <ul>
+        <li>
+        saves in two stack slots
+        the contents of the redoip and redofr slots of the top frame,
+        (which may be different from this frame), and
+        <li>
+        sets the redofr slot of the top frame from curfr,
+        so that backtracking through the redoip slot of that frame
+        will set curfr to point to this frame.
+        </ul>
+    <li>
+    When the code generator enters a nonlast disjunct,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack
+        indicating the resume point at the start of the next disjunct, and
+        <li>
+        sets the redoip slot of the top frame
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    When the code generator enters the last disjunct,
+        <ul>
+        <li>
+        it does not push any entry on the resume point stack, and
+        <li>
+        restores the redoip and redofr slots of the top frame
+        (which may be different from this frame),
+        to their old, saved values.
+        </ul>
+    </ul>
+    In this case, the disjunction hijacks a frame that may not be its own.
+    We call this a full hijack; it involves two saves and two restores.
+<li> Middle case.
+    <ul>
+    <li>
+    Before entering the disjunction, the code generator
+        <ul>
+        <li>
+        saves in a stack slot the contents of the redoip slot of the top frame
+        (which is this frame, and whose redofr slot must point to this frame).
+        </ul>
+    <li>
+    When the code generator enters a nonlast disjunct,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack
+        indicating the resume point at the start of the next disjunct, and
+        <li>
+        sets the redoip slot of the top frame (which is this frame)
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    When the code generator enters the last disjunct,
+        <ul>
+        <li>
+        it does not push any entry on the resume point stack, and
+        <li>
+        sets the redoip slot of the top frame (which is this frame)
+        to its old, saved value.
+        </ul>
+    </ul>
+    In this case, the disjunction hijacks its own frame
+    while having to save the value in the hijacked slot.
+    We call this a half hijack,
+    since it involves one save and one restore.
+    <p>
+<li> Best case.
+    <ul>
+    <li>
+    When the code generator enters a nonlast disjunct,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack
+        indicating the resume point at the start of the next disjunct, and
+        <li>
+        and sets the redoip slot of the top frame (which is this frame)
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    When the code generator enters the last disjunct,
+        <ul>
+        <li>
+        it does not push any entry on the resume point stack, and
+        <li>
+        sets the redoip slot of the top frame (which is this frame)
+        to the main continuation of the resume point
+        that was initially on top of the stack.
+        </ul>
+    </ul>
+    In this case, the disjunction hijacks its own frame
+    without having to save the value in the hijacked slot.
+    We call this a quarter hijack, since it involves one restore.
+    <p>
 </ul>
 
 <p>
-For all the hijacking cases, the choices represented by the hijacked
-redoip and maybe redofr slots cannot be backtracked to until the disjunction
-that we are generating code for has failed. This cannot happen until the
-last disjunct has failed, by which time the slots must have been restored.
-This maintains the invariant that for any nondet stack frame whose address
-is frame_addr, redofr_slot(frame_addr) == frame_addr whenever curfr ==
-frame_addr.
+For all the hijacking cases,
+the choices represented by the hijacked redoip and maybe redofr slots
+cannot be backtracked to
+until the disjunction that we are generating code for has failed.
+This cannot happen until the last disjunct has failed,
+by which time the slots must have been restored.
+This maintains the invariant that
+for any nondet stack frame whose address is frame_addr,
+redofr_slot(frame_addr) == frame_addr whenever curfr == frame_addr.
 
 <h3>Handling semi or det disjunctions</h3>
 
@@ -425,82 +489,157 @@ it does not push any entry on the resume point stack.
 
 <ul>
 <li> No-hijack case.
-Before the code generator enters the condition,
-the code generator creates a temporary nondet stack frame,
-and saves the address of this temporary frame in a stack slot.
-It also pushes a new entry on the resume point stack
-indicating the resume point at the start of the else part,
-and sets the redoip slot of the top frame (which must be the temporary frame)
-to the stack continuation in that resume point.
-After the code generator emerges from the condition,
-it pops the new entry off the resume point stack.
-Before entry to the then part or to the else part,
-it assigns do_fail to the redoip slot of the temporary frame
-(pointed to by the stack slot), effectively removing the temporary frame.
-(We cannot generate code to pop the frame off the stack,
-since it may not be on top.)
-<p>
-<li> Best case.
-Before the code generator enters the condition,
-it pushes a new entry on the resume point stack
-indicating the resume point at the start of the else part,
-and sets the redoip slot of the top frame (which must be this frame)
-to the stack continuation in that resume point.
-After the code generator emerges from the condition,
-it pops the new entry off the resume point stack.
-Before entry to the then part or to the else part,
-it resets the redoip slot of the frame it hijacked (pointed to by curfr)
-to the stack label of the exposed top entry of the resume point stack.
-If that entry has no stack label, then that resume point will never
-be reached via redo() and thus we do not need to reset the redoip slot.
-<p>
-<li> Middle case.
-Before entering the if-then-else,
-the code generator saves in a stack slot
-the contents of the redoip of the top frame (which must be this frame).
-Before the code generator enters the condition,
-it pushes a new entry on the resume point stack
-indicating the resume point at the start of the else part,
-and sets the redoip slot of the top frame
-to the stack continuation in that resume point.
-After the code generator emerges from the condition,
-it pops the new entry off the resume point stack.
-Before entry to the then part or to the else part,
-it resets the redoip slot of the frame it hijacked (pointed to by curfr)
-to its saved value.
+    <ul>
+    <li>
+    Before the code generator enters the condition, the code generator
+        <ul>
+        <li>
+        creates a temporary nondet stack frame, and
+        <li>
+        saves the address of this temporary frame in a stack slot.
+        <li>
+        It also pushes a new entry on the resume point stack
+        indicating the resume point at the start of the else part, and
+        <li>
+        sets the redoip slot of the top frame
+        (which must be the temporary frame)
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    After the code generator emerges from the condition,
+        <ul>
+        <li>
+        it pops the new entry off the resume point stack.
+        </ul>
+    <li>
+    Before entry to the then part or to the else part, the code generator
+        <ul>
+        <li>
+        assigns do_fail to the redoip slot of the temporary frame
+        (pointed to by the stack slot),
+        effectively removing the temporary frame.
+        (We cannot generate code to pop the frame off the stack,
+        since it may not be on top.)
+        </ul>
+    </ul>
 <p>
 <li> Worst case.
-Before entering the if-then-else,
-the code generator saves in three stack slots
-the address of the top frame (which is in maxfr),
-and the contents of the redoip and redofr slots of the top frame
-(which may be different from this frame).
-It also sets the redofr slot of the top frame from curfr,
-so that backtracking through the redoip slot of that frame
-will set curfr to point to this frame.
-Before the code generator enters the condition,
-it pushes a new entry on the resume point stack
-indicating the resume point at the start of the else part,
-and sets the redoip slot of the top frame
-to the stack continuation in that resume point.
-After the code generator emerges from the condition,
-it pops the new entry off the resume point stack.
-Before entry to the then part or to the else part,
-it resets the redoip and redofr slots
-of the frame it hijacked to their saved values.
-Since maxfr may have been changed by the condition pushing new frames,
-the address of the frame in which the restoration is to be performed
-is given by the saved original value of maxfr
-(although on entry to the else part maxfr will be equal to its value
-on entry to the if-then-else, which may be different from curfr).
+    <ul>
+    <li>
+    Before entering the if-then-else, the code generator
+        <ul>
+        <li>
+        saves in three stack slots
+        the address of the top frame (which is in maxfr),
+        and the contents of the redoip and redofr slots of the top frame
+        (which may be different from this frame).
+        <li>
+        It also sets the redofr slot of the top frame from curfr,
+        so that backtracking through the redoip slot of that frame
+        will set curfr to point to this frame.
+        </ul>
+    <li>
+    Before the code generator enters the condition,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack
+        indicating the resume point at the start of the else part, and
+        <li>
+        sets the redoip slot of the top frame
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    After the code generator emerges from the condition,
+        <ul>
+        <li>
+        it pops the new entry off the resume point stack.
+        </ul>
+    <li>
+    Before entry to the then part or to the else part, the code generator
+        <ul>
+        <li>
+        resets the redoip and redofr slots
+        of the frame it hijacked to their saved values.
+        Since maxfr may have been changed by the condition pushing new frames,
+        the address of the frame in which the restoration is to be performed
+        is given by the saved original value of maxfr
+        (although on entry to the else part maxfr will be equal to its value
+        on entry to the if-then-else, which may be different from curfr).
+        </ul>
+    </ul>
+<p>
+<li> Middle case.
+    <ul>
+    <li>
+    Before entering the if-then-else, the code generator
+        <ul>
+        <li>
+        saves in a stack slot
+        the contents of the redoip of the top frame (which must be this frame).
+        </ul>
+    <li>
+    Before the code generator enters the condition,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack
+        indicating the resume point at the start of the else part, and
+        <li>
+        sets the redoip slot of the top frame
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    After the code generator emerges from the condition,
+        <ul>
+        <li>
+        it pops the new entry off the resume point stack.
+        </ul>
+    <li>
+    Before entry to the then part or to the else part, the code generator
+        <ul>
+        <li>
+        resets the redoip slot of the frame it hijacked (pointed to by curfr)
+        to its saved value.
+        </ul>
+    </ul>
+<p>
+<li> Best case.
+    <ul>
+    <li>
+    Before the code generator enters the condition,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack
+        indicating the resume point at the start of the else part, and
+        <li>
+        sets the redoip slot of the top frame (which must be this frame)
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    After the code generator emerges from the condition, the code generator
+        <ul>
+        <li>
+        pops the new entry off the resume point stack.
+        </ul>
+    <li>
+    Before entry to the then part or to the else part, the code generator
+        <ul>
+        <li>
+        resets the redoip slot of the frame it hijacked (pointed to by curfr)
+        to the stack label of the exposed top entry of the resume point stack.
+        If that entry has no stack label,
+        then that resume point will never be reached via redo(),
+        and thus we do not need to reset the redoip slot.
+        </ul>
+    </ul>
 </ul>
 
 <p>
 All these four manipulate the redoip slot of the nondet stack frame
 that is on top of the nondet stack when execution enters the condition.
-On entry to the condition, we set it to point the start of the else part;
-on exit from the condition, we reset it to some other value to prevent
-backtracking to the else part.
+On entry to the condition,
+we set it to point the start of the else part;
+on exit from the condition,
+we reset it to some other value to prevent backtracking to the else part.
 If the condition hijacks this slot, this scheme will not work.
 (Although the code that hijacks the slot
 will restore it to its original value before finally failing,
@@ -510,14 +649,17 @@ the code generator sets condition_environment to inside_non_condition;
 on exit from the condition, it restores the original value.
 (These are the only times the value of condition_environment is ever changed.)
 <p>
-Before entering the condition, the code generator will set resume_point_known
-to known, since the resumption point to go to on failure of the condition is
-known (it is the start of the else part). However, this resumption point
-does not apply to failures in the then part. Therefore before entering the
-then part, the code generator will reset resume_point_known to the value
-it had before entering the if-then-else, except if resume_point_known
-has become unknown during the generation of code for the condition, in which
-case it will continue to be unknown.
+Before entering the condition,
+the code generator will set resume_point_known to known,
+since the resumption point to go to on failure of the condition is known
+(it is the start of the else part).
+However, this resumption point does not apply to failures in the then part.
+Therefore before entering the then
+part, the code generator will reset resume_point_known
+to the value it had before entering the if-then-else,
+except if resume_point_known has become unknown
+during the generation of code for the condition,
+in which case it will continue to be unknown.
 <p>
 A failure inside the condition should cause
 a branch to the start of the else case
@@ -527,6 +669,7 @@ may branch directly to the start of the else case
 only up to the first goal that can succeed more than once;
 any other goal following such a goal should branch through the redoip slot
 on which the if-then-else performs the soft cut.
+<p>
 There are only two kinds of constructs that can succeed more than once:
 calls (including higher order and method calls) and disjunctions.
 When the code generator processes a call that can succeed more than once,
@@ -577,80 +720,148 @@ We handle not(G) as (if G then fail else true).
 
 <ul>
 <li> No-hijack case.
-Before the code generator enters a goal that is being committed across,
-it saves the value of maxfr in a stack slot,
-and then it creates a temporary nondet stack frame
-whose redoip slot points to the resume point
-for getting control back if the goal has no solutions.
-It also pushes a new entry on the resume point stack
-indicating this resume point.
-The code at this resume point will perform a failure in the manner
-appropriate for whatever entry was originally on top of the resume point stack.
-Both continuations will reset maxfr
-to the value it had originally, which is in that stack slot.
-<p>
-<li> Best case.
-Before the code generator enters a goal that is being committed across,
-it pushes a new entry on the resume point stack indicating
-the resume point for getting control back if the goal has no solutions
-and sets the redoip slot of the top frame (which is this frame)
-to the stack continuation in that resume point.
-The code at this resume point will perform a failure in the manner
-appropriate for whatever entry was originally on top of the resume point stack.
-The code after the goal in the success continuation
-will reset maxfr to the value it had originally, which is in curfr.
-Both continuations will reset the redoip slot of the current frame
-to its original value,
-which is the address of the stack label
-in the originally top failure continuation.
-<p>
-<li> Middle case.
-Before the code generator enters a goal that is being committed across,
-it pushes a new entry on the resume point stack indicating
-the resume point for getting control back if the goal has no solutions,
-saves the value of the redoip slot of the top frame (which is this frame)
-and overrides this redoip slot to make it point
-to the stack continuation in the resume point.
-The success continuation will reset maxfr to curfr;
-the failure continuation doesn't have to
-(since the resume point can only be reached
-if all other frames above the one hijacked have failed.)
-Both continuations will reset the redoip slot of the top frame
-to the saved value.
-The failure continuation will then perform a failure in the manner
-appropriate for the values of the resume point stack and left context
-that were current before the commit.
-The order of actions in the success continuation is important,
-since resetting maxfr affects which frame is top.
+    <ul>
+    <li>
+    Before the code generator enters a goal that is being committed across,
+        <ul>
+        <li>
+        it saves the value of maxfr in a stack slot, and then
+        <li>
+        it creates a temporary nondet stack frame
+        whose redoip slot points to the resume point
+        for getting control back if the goal has no solutions.
+        <li>
+        It also pushes a new entry on the resume point stack
+        indicating this resume point.
+        </ul>
+    <li>
+    As for the success and failure continuations:
+        <ul>
+        <li>
+        The code at the resume point created above
+        will perform a failure in the manner appropriate
+        for whatever entry was originally on top of the resume point stack.
+        <li>
+        Both continuations will reset maxfr
+        to the value it had originally, which is in that stack slot.
+        </ul>
+    </ul>
 <p>
 <li> Worst case.
-Before the code generator enters a goal that is being committed across,
-it saves the value of maxfr,
-pushes a new entry on the resume point stack indicating
-the resume point for getting control back if the goal has no solutions,
-saves the values of the redoip and redofr slots of the top frame
-(which may be different from this frame),
-overrides the redoip slot to make it point
-to the stack continuation in the resume point
-and the redofr slot to point to this frame.
-The success continuation will reset maxfr;
-the failure continuation doesn't have to
-(since the resume point can only be reached
-if all other frames above the one hijacked have failed.)
-Both continuations will reset the redoip and redofr slots of the top frame
-to their saved values.
-The failure continuation will then perform a failure in the manner
-appropriate for the values of the resume point stack and left context
-that were current before the commit.
-The order of actions in the success continuation is important,
-since resetting maxfr affects which frame is top.
+    <ul>
+    <li>
+    Before the code generator enters a goal that is being committed across,
+        <ul>
+        <li>
+        it saves the value of maxfr,
+        <li>
+        pushes a new entry on the resume point stack indicating
+        the resume point for getting control back if the goal has no solutions,
+        <li>
+        saves the values of the redoip and redofr slots of the top frame
+        (which may be different from this frame),
+        <li>
+        overrides the redoip slot to make it point
+        to the stack continuation in the resume point, and
+        <li>
+        also overrides the redofr slot to point to this frame.
+        </ul>
+    <li>
+    As for the success and failure continuations:
+        <ul>
+        <li>
+        The success continuation will reset maxfr;
+        the failure continuation doesn't have to
+        (since the resume point can only be reached
+        if all other frames above the one hijacked have failed.)
+        <li>
+        Both continuations will reset
+        the redoip and redofr slots of the top frame to their saved values.
+        <li>
+        The failure continuation will then perform a failure in the manner
+        appropriate for the values of the resume point stack and left context
+        that were current before the commit.
+        </ul>
+        The order of actions in the success continuation is important,
+        since resetting maxfr affects which frame is top.
+    </ul>
+<p>
+<li> Middle case.
+    <ul>
+    <li>
+    Before the code generator enters a goal that is being committed across,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack,
+        indicating the resume point for getting control back
+        if the goal has no solutions,
+        <li>
+        saves the value of the redoip slot of the top frame
+        (which is this frame), and
+        <li>
+        overrides this redoip slot to make it point
+        to the stack continuation in the resume point.
+        </ul>
+    As for the success and failure continuations:
+        <ul>
+        <li>
+        The success continuation will reset maxfr to curfr;
+        the failure continuation doesn't have to
+        (since the resume point can only be reached
+        if all other frames above the one hijacked have failed.)
+        <li>
+        Both continuations will reset the redoip slot of the top frame
+        to the saved value.
+        <li>
+        The failure continuation will then
+        perform a failure in the manner appropriate
+        for the values of the resume point stack and left context
+        that were current before the commit.
+        </ul>
+        The order of actions in the success continuation is important,
+        since resetting maxfr affects which frame is top.
+    </ul>
+<p>
+<li> Best case.
+    <ul>
+    <li>
+    Before the code generator enters a goal that is being committed across,
+        <ul>
+        <li>
+        it pushes a new entry on the resume point stack
+        indicating the resume point for getting control back
+        if the goal has no solutions, and
+        <li>
+        sets the redoip slot of the top frame (which is this frame)
+        to the stack continuation in that resume point.
+        </ul>
+    <li>
+    As for the success and failure continuations:
+        <ul>
+        <li>
+        The code at the resume point created above
+        will perform a failure in the manner appropriate
+        for whatever entry was originally on top of the resume point stack.
+        <li>
+        The code after the goal in the success continuation
+        will reset maxfr to the value it had originally, which is in curfr.
+        <li>
+        Both continuations will reset the redoip slot of the current frame
+        to its original value,
+        which is the address of the stack label
+        in the originally top failure continuation.
+        </ul>
+    </ul>
 </ul>
 
 <p>
-Since we are cutting away any frames created by the goal being committed
-across, and since any resumption points established in that goal cannot
-survive across the commit, at the end of processing the commit we can reset
-both curfr_maxfr and resume_point_known to their values before the commit.
+Since we are cutting away any frames
+created by the goal being committed across,
+and since any resumption points established in that goal
+cannot survive across the commit,
+at the end of processing the commit
+we can reset both curfr_maxfr and resume_point_known
+to their values before the commit.
 <p>
 We do not need to push a junk frame
 when entering the goal to be committed across
@@ -675,8 +886,9 @@ The code after the goal will reset maxfr to the saved value.
 </ul>
 
 <p>
-This is the way the code generator handles commits across nondet goals except
-that we do not need to handle failure of the goal being committed across,
+This is the way the code generator handles commits across nondet goals,
+except that we do not need to handle
+any failure of the goal being committed across,
 and thus do not need to set any redoips or hijack anything.
 
 </body>
