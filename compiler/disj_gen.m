@@ -579,7 +579,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 % We can backtrack to the next disjunct from outside,
                 % so we make sure every variable in the resume set
                 % is in its stack slot.
-                flush_resume_vars_to_stack(FlushResumeVarsCode, !CLD),
+                flush_resume_vars_to_stack(FlushResumeVarsCode, !.CI, !CLD),
 
                 % We hang onto any temporary slots holding saved heap pointers
                 % and/or tickets, thus ensuring that they will still be

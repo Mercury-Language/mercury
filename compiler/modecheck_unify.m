@@ -45,8 +45,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
@@ -69,6 +69,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
@@ -525,10 +526,15 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDetism,
 
 modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
         UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal0),
     % Find out the predicate called in the lambda goal.
-    ( if pred_ids_args_called_from_goal(Goal0, [{PredId, ArgVars}]) then
-        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    ( if
+        pred_ids_args_called_from_goal(Goal0, PredIdsArgs0),
+        list.filter(is_added_by_polymorphism(ModuleInfo),
+            PredIdsArgs0, _, PredIdsArgs),
+        PredIdsArgs = [{PredId, ArgVars}]
+    then
         mode_info_get_instmap(!.ModeInfo, InstMap),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -574,6 +580,17 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
         )
     else
         unexpected($pred, "expecting single call")
+    ).
+
+:- pred is_added_by_polymorphism(module_info::in, {pred_id, T}::in)
+    is semidet.
+
+is_added_by_polymorphism(ModuleInfo, {PredId, _}) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    mercury_private_builtin_module = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    ( PredName = "type_info_from_typeclass_info"
+    ; PredName = "superclass_from_typeclass_info"
     ).
 
 %-----------------------------------------------------------------------------%
