@@ -226,7 +226,7 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
     ),
     % The dependency information used to warn about mutual tail recursion
     % cannot be shared with the information used to remove duplicate
-    % procedures, they are use different nodes in tbe dependency graph
+    % procedures, they use different nodes in the dependency graph
     % (predicates versus procedures).
     module_info_rebuild_dependency_info(!HLDS, ProcDepInfo),
     SCCMap = dependency_info_make_scc_map(ProcDepInfo),
