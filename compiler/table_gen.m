@@ -148,7 +148,7 @@ table_gen_process_preds(TraceTableIO, [PredId | PredIds],
 
 table_gen_process_pred(TraceTableIO, PredId, !ModuleInfo, !GenMap, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_valid_procids(PredInfo),
     table_gen_process_procs(TraceTableIO, PredId, ProcIds,
         !ModuleInfo, !GenMap, !Specs).
 

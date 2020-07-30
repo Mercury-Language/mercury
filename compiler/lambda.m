@@ -178,7 +178,7 @@ expand_lambdas_in_module(!ModuleInfo) :-
 
 expand_lambdas_in_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_valid_procids(PredInfo),
     list.foldl(expand_lambdas_in_proc(PredId), ProcIds, !ModuleInfo).
 
 :- pred expand_lambdas_in_proc(pred_id::in, proc_id::in,

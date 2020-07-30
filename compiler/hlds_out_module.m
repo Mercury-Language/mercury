@@ -1491,7 +1491,7 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
                 % only print them if we are using a local mode for them.
                 not string.contains_char(DumpOptions, 'I'),
                 pred_info_is_pseudo_imported(PredInfo),
-                ProcIds = pred_info_procids(PredInfo),
+                ProcIds = pred_info_all_procids(PredInfo),
                 hlds_pred.in_in_unification_proc_id(ProcId),
                 ProcIds = [ProcId]
             ;

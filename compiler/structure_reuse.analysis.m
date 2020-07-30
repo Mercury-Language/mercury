@@ -498,7 +498,7 @@ process_imported_reuse_in_pred(PredId, !ModuleInfo) :-
 process_imported_reuse_in_procs(!PredInfo) :-
     some [!ProcTable] (
         pred_info_get_proc_table(!.PredInfo, !:ProcTable),
-        ProcIds = pred_info_procids(!.PredInfo),
+        ProcIds = pred_info_valid_procids(!.PredInfo),
         list.foldl(process_imported_reuse_in_proc(!.PredInfo),
             ProcIds, !ProcTable),
         pred_info_set_proc_table(!.ProcTable, !PredInfo)
@@ -567,7 +567,7 @@ process_intermod_analysis_reuse_pred(PredId, !ModuleInfo, !ReuseTable,
         !ExternalRequests, !MustHaveReuseVersions) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_valid_procids(PredInfo),
     ( if
         PredStatus = pred_status(status_imported(_))
     then

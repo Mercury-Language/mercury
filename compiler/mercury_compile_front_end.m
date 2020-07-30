@@ -1306,7 +1306,7 @@ simplify_pred(SimplifyTasks0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
         write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo,
             !IO)
     ),
-    ProcIds = pred_info_non_imported_procids(!.PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(!.PredInfo),
     % Don't warn for compiler-generated procedures.
     ( if is_unify_index_or_compare_pred(!.PredInfo) then
         SimplifyTasks = SimplifyTasks0 ^ do_warn_simple_code := no

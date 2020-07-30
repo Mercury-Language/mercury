@@ -991,7 +991,7 @@ load_structure_reuse_table(ModuleInfo) = ReuseTable :-
 
 load_structure_reuse_table_2(ModuleInfo, PredId, !ReuseTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_valid_procids(PredInfo),
     list.foldl(load_structure_reuse_table_3(ModuleInfo, PredId),
         ProcIds, !ReuseTable).
 

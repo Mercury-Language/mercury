@@ -208,7 +208,7 @@ apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
     make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName0,
         NewPredIdGranularity, NewCallSymName),
 
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     apply_dg_to_procs(PredId, ProcIds, Distance, NewPredId, NewCallSymName,
         PredInfo, PredInfoClone0, no, Specialized, !ModuleInfo),
     (

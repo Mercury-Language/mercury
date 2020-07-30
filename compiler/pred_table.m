@@ -276,7 +276,7 @@
     % Given a pred_id, return the single proc_id, aborting
     % if there are no modes or more than one mode.
     %
-:- pred get_proc_id(module_info::in, pred_id::in, proc_id::out) is det.
+:- pred get_single_proc_id(module_info::in, pred_id::in, proc_id::out) is det.
 
 :- type mode_no
     --->    only_mode           % The pred must have exactly one mode.
@@ -1136,11 +1136,11 @@ get_pred_id_and_proc_id_by_types(IsFullyQualified, SymName, PredOrFunc,
             "\n`", NameStr, "/", ArityString, "'"], Msg),
         unexpected($pred, Msg)
     ),
-    get_proc_id(ModuleInfo, PredId, ProcId).
+    get_single_proc_id(ModuleInfo, PredId, ProcId).
 
-get_proc_id(ModuleInfo, PredId, ProcId) :-
+get_single_proc_id(ModuleInfo, PredId, ProcId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_all_procids(PredInfo),
     ( if ProcIds = [ProcId0] then
         ProcId = ProcId0
     else
@@ -1209,7 +1209,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
                 [s(sym_name_to_string(ModuleName)), s(ProcName), i(Arity)]))
     ),
     module_info_pred_info(Module, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_all_procids(PredInfo),
     (
         ModeNo = only_mode,
         ( if ProcIds = [ProcId0] then

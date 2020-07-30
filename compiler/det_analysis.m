@@ -2139,7 +2139,7 @@ determinism_declarations_preds(_PredTable, [],
 determinism_declarations_preds(PredTable, [PredId | PredIds],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
     map.lookup(PredTable, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_valid_procids(PredInfo),
     determinism_declarations_procs(PredId, PredInfo, ProcIds,
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs),
     determinism_declarations_preds(PredTable, PredIds,

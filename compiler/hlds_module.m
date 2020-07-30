@@ -1799,7 +1799,7 @@ get_unique_pred_proc_id_for_symname_and_arity(MI,
     predicate_table_lookup_pred_sym_arity(PredTable,
         may_be_partially_qualified, SymName, Arity, PredIds),
     ( if PredIds = [PredId] then
-        pred_table.get_proc_id(MI, PredId, ProcId),
+        pred_table.get_single_proc_id(MI, PredId, ProcId),
         PredProcId = proc(PredId, ProcId)
     else
         unexpected($pred, "lookup failed")

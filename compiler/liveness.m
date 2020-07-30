@@ -370,7 +370,7 @@ detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS) :-
 
 detect_liveness_pred(ModuleInfo, PredId, PredInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo0),
-    ProcIds = pred_info_non_imported_procids(PredInfo0),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
     list.foldl(detect_liveness_pred_proc(ModuleInfo, PredId), ProcIds,
         PredInfo0, PredInfo).
 

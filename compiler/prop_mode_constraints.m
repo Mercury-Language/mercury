@@ -174,10 +174,10 @@ do_prop_mode_constraints_in_pred(ModuleInfo, PredId, !PredInfo, !VarInfo,
     % If mode inference requested, just add constraints for the clause body,
     % otherwise, process the predicate for each of the procedures.
 
-    ( pred_info_infer_modes(!.PredInfo) ->
+    ( if pred_info_infer_modes(!.PredInfo) then
         add_clauses_constraints(ModuleInfo, PredId, !.PredInfo, !VarInfo,
             init_pred_p_c_constraints, BodyConstraints)
-    ;
+    else
         prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId,
             !.PredInfo, !VarInfo, BodyConstraints)
     ),
@@ -400,9 +400,9 @@ flatten_conjunction(!Goals) :-
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 add_to_before_conjunction(Goal, !Goals) :-
-    ( Goal = hlds_goal(conj(plain_conj, SubGoals), _) ->
+    ( if Goal = hlds_goal(conj(plain_conj, SubGoals), _) then
         !:Goals = SubGoals ++ !.Goals
-    ;
+    else
         !:Goals = [Goal | !.Goals]
     ).
 
@@ -436,7 +436,7 @@ make_unifications(Context, Unifications, !Args, !SeenSoFar,
 
 make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !VarSet,
         !VarTypes) :-
-    ( set_of_var.contains(!.SeenSoFar, Var0) ->
+    ( if set_of_var.contains(!.SeenSoFar, Var0) then
         % Make new variable.
         OldVarName = varset.lookup_name(!.VarSet, Var0),
         lookup_var_type(!.VarTypes, Var0, OldVarType),
@@ -455,7 +455,7 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !VarSet,
         UnificationGoal =
             hlds_goal(UnificationGoalExpr, UnificationGoalInfo),
         !:Unifications = [UnificationGoal | !.Unifications]
-    ;
+    else
         Var = Var0
     ),
     set_of_var.insert(Var, !SeenSoFar).

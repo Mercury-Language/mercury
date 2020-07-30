@@ -148,7 +148,7 @@ detect_cse_in_preds([PredId | PredIds], !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 detect_cse_in_pred(PredId, PredInfo, !ModuleInfo) :-
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     detect_cse_in_procs(PredId, ProcIds, !ModuleInfo).
 
 :- pred detect_cse_in_procs(pred_id::in, list(proc_id)::in,
@@ -205,7 +205,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         ;
             VeryVerbose = no
         ),
-        modecheck_proc(ProcId, PredId, !ModuleInfo, ModeSpecs, _Changed),
+        modecheck_proc(PredId, ProcId, !ModuleInfo, _Changed, ModeSpecs),
         trace [io(!IO)] (
             maybe_report_stats(Statistics, !IO)
         ),

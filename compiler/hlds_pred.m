@@ -736,7 +736,7 @@
     % This does not include candidate modes that were generated during mode
     % inference but which mode inference found were not valid modes.
     %
-:- func pred_info_procids(pred_info) = list(proc_id).
+:- func pred_info_valid_procids(pred_info) = list(proc_id).
 
     % Return a list of the proc_ids for all the modes of this predicate,
     % including invalid modes.
@@ -746,7 +746,7 @@
     % Return a list of the proc_ids for all the valid modes of this predicate
     % that are not imported.
     %
-:- func pred_info_non_imported_procids(pred_info) = list(proc_id).
+:- func pred_info_valid_non_imported_procids(pred_info) = list(proc_id).
 
     % Return a list of the proc_ids for all the modes of this predicate
     % that are not imported (including invalid modes).
@@ -759,7 +759,7 @@
     % Return a list of the proc_ids for all the valid modes of this predicate
     % that are exported.
     %
-:- func pred_info_exported_procids(pred_info) = list(proc_id).
+:- func pred_info_valid_exported_procids(pred_info) = list(proc_id).
 
     % Remove a procedure from the pred_info.
     %
@@ -1496,7 +1496,7 @@ pred_info_set_proc_table(X, !PI) :-
 
 % The non-trivial access predicates.
 
-pred_info_procids(PredInfo) = ValidProcIds :-
+pred_info_valid_procids(PredInfo) = ValidProcIds :-
     AllProcIds = pred_info_all_procids(PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     IsValid =
@@ -1510,7 +1510,10 @@ pred_info_all_procids(PredInfo) = ProcIds :-
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.keys(ProcTable, ProcIds).
 
-pred_info_non_imported_procids(PredInfo) = ProcIds :-
+pred_info_valid_non_imported_procids(PredInfo) = ProcIds :-
+    % The codes of pred_info_{valid,all}_non_imported_procids
+    % should be kept identical, except for the calls to
+    % pred_info_{valid,all}_procids respectively.
     pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
         ( OldImportStatus = status_imported(_)
@@ -1519,8 +1522,8 @@ pred_info_non_imported_procids(PredInfo) = ProcIds :-
         ProcIds = []
     ;
         OldImportStatus = status_pseudo_imported,
-        ProcIds0 = pred_info_procids(PredInfo),
-        % for pseudo_imported preds, procid 0 is imported
+        ProcIds0 = pred_info_valid_procids(PredInfo),
+        % For pseudo_imported preds, procid 0 is imported.
         list.delete_all(ProcIds0, 0, ProcIds)
     ;
         ( OldImportStatus = status_opt_imported
@@ -1532,13 +1535,13 @@ pred_info_non_imported_procids(PredInfo) = ProcIds :-
         ; OldImportStatus = status_exported_to_submodules
         ; OldImportStatus = status_local
         ),
-        ProcIds = pred_info_procids(PredInfo)
+        ProcIds = pred_info_valid_procids(PredInfo)
     ).
 
 pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
-    % XXX The documentation of this predicate says that the job it does
-    % is different from the job of pred_info_non_imported_procids, but
-    % the code is identical.
+    % The codes of pred_info_{valid,all}_non_imported_procids
+    % should be kept identical, except for the calls to
+    % pred_info_{valid,all}_procids respectively.
     pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
         ( OldImportStatus = status_imported(_)
@@ -1547,8 +1550,8 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
         ProcIds = []
     ;
         OldImportStatus = status_pseudo_imported,
-        ProcIds0 = pred_info_procids(PredInfo),
-        % for pseudo_imported preds, procid 0 is imported
+        ProcIds0 = pred_info_all_procids(PredInfo),
+        % For pseudo_imported preds, procid 0 is imported
         list.delete_all(ProcIds0, 0, ProcIds)
     ;
         ( OldImportStatus = status_opt_imported
@@ -1560,17 +1563,17 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
         ; OldImportStatus = status_exported_to_submodules
         ; OldImportStatus = status_local
         ),
-        ProcIds = pred_info_procids(PredInfo)
+        ProcIds = pred_info_all_procids(PredInfo)
     ).
 
-pred_info_exported_procids(PredInfo) = ProcIds :-
+pred_info_valid_exported_procids(PredInfo) = ProcIds :-
     pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
         ( OldImportStatus = status_exported
         ; OldImportStatus = status_opt_exported
         ; OldImportStatus = status_exported_to_submodules
         ),
-        ProcIds = pred_info_procids(PredInfo)
+        ProcIds = pred_info_valid_procids(PredInfo)
     ;
         OldImportStatus = status_pseudo_exported,
         ProcIds = [0]

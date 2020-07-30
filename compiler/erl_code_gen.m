@@ -175,9 +175,9 @@ erl_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
             % Generate ELDS definitions for all the predicate's
             % non-imported procedures.
             ( if PredStatus = pred_status(status_external(_)) then
-                ProcIds = pred_info_procids(PredInfo)
+                ProcIds = pred_info_valid_procids(PredInfo)
             else
-                ProcIds = pred_info_non_imported_procids(PredInfo)
+                ProcIds = pred_info_valid_non_imported_procids(PredInfo)
             ),
             erl_gen_pred(ModuleInfo, PredId, PredInfo, ProcIds, !Defns, !IO)
         ),

@@ -201,7 +201,7 @@ insert_reg_wrappers(!ModuleInfo, Specs) :-
 
 %---------------------------------------------------------------------------%
 %
-% First phase
+% First phase.
 %
 
 :- pred add_arg_regs_in_pred(pred_id::in, module_info::in, module_info::out)
@@ -209,7 +209,7 @@ insert_reg_wrappers(!ModuleInfo, Specs) :-
 
 add_arg_regs_in_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    ProcIds = pred_info_procids(PredInfo0),
+    ProcIds = pred_info_valid_procids(PredInfo0),
     list.foldl(add_arg_regs_in_proc(!.ModuleInfo), ProcIds,
         PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
@@ -492,7 +492,7 @@ ho_arg_reg_for_type(Type, RegType) :-
 
 insert_reg_wrappers_pred(PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_valid_procids(PredInfo),
     list.foldl2(insert_reg_wrappers_proc(PredId), ProcIds,
         !ModuleInfo, !Specs).
 

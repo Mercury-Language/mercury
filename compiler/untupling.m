@@ -206,7 +206,7 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
         ExistQVars = [],
         at_least_one_expandable_type(ArgTypes, TypeTable)
     then
-        ProcIds = pred_info_non_imported_procids(PredInfo),
+        ProcIds = pred_info_valid_non_imported_procids(PredInfo),
         list.foldl3(expand_args_in_proc(PredId), ProcIds,
             !ModuleInfo, !TransformMap, !Counter)
     else
@@ -481,7 +481,7 @@ fix_calls_to_expanded_procs(TransformMap, !ModuleInfo) :-
 
 fix_calls_in_pred(TransformMap, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl(fix_calls_in_proc(TransformMap, PredId), ProcIds, !ModuleInfo).
 
 :- pred fix_calls_in_proc(transform_map::in, pred_id::in, proc_id::in,

@@ -1491,7 +1491,7 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
 
 match_modes_by_higher_order_insts(ModuleInfo, VarTypes, InstMap, ArgVars,
         CalleePredInfo, Result) :-
-    CalleeProcIds = pred_info_procids(CalleePredInfo),
+    CalleeProcIds = pred_info_valid_procids(CalleePredInfo),
     match_modes_by_higher_order_insts_2(ModuleInfo, VarTypes, InstMap,
         ArgVars, CalleePredInfo, CalleeProcIds, [], [], Result).
 

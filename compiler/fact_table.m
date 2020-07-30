@@ -819,7 +819,7 @@ infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         ExistsAllInMode, WriteHashTables, WriteDataTable,
         !FactArgInfos, !Errors) :-
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
-    ProcIDs = pred_info_procids(!.PredInfo),
+    ProcIDs = pred_info_all_procids(!.PredInfo),
     (
         ProcIDs = [],
         % There are no declared modes, so report an error.

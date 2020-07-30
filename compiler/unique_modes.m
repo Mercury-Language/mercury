@@ -56,7 +56,7 @@
 
     % Just check a single procedure.
     %
-:- pred unique_modes_check_proc(proc_id::in, pred_id::in,
+:- pred unique_modes_check_proc(pred_id::in, proc_id::in,
     module_info::in, module_info::out, bool::out, list(error_spec)::out)
     is det.
 
@@ -112,9 +112,9 @@ unique_modes_check_module(!ModuleInfo, Specs) :-
     check_pred_modes(check_unique_modes, may_change_called_proc,
         !ModuleInfo, _SafeToContinue, Specs).
 
-unique_modes_check_proc(ProcId, PredId, !ModuleInfo, Changed, Specs) :-
-    modecheck_proc_general(ProcId, PredId, check_unique_modes,
-        may_change_called_proc, !ModuleInfo, Specs, Changed).
+unique_modes_check_proc(PredId, ProcId, !ModuleInfo, Changed, Specs) :-
+    modecheck_proc_general(check_unique_modes, may_change_called_proc,
+        PredId, ProcId, !ModuleInfo, Changed, Specs).
 
 unique_modes_check_goal(Goal0, Goal, !ModeInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),

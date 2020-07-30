@@ -172,7 +172,7 @@ collect_non_local_and_in_cond_regions_pred(ModuleInfo, RptaInfoTable,
         ResurRenamingAnnoTable, PredId, !NonLocalRegionsTable,
         !InCondRegionsTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl2(collect_non_local_and_in_cond_regions_proc(ModuleInfo,
         PredId, RptaInfoTable, LRBeforeTable, LRAfterTable,
         ResurRenamingTable, ResurRenamingAnnoTable), ProcIds,

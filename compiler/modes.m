@@ -105,18 +105,19 @@
     % Returns the number of errs found and a bool `Changed'
     % which is true iff another pass of fixpoint analysis may be needed.
     %
-:- pred modecheck_proc(proc_id::in, pred_id::in,
-    module_info::in, module_info::out, list(error_spec)::out,
-    bool::out) is det.
+:- pred modecheck_proc(pred_id::in, proc_id::in,
+    module_info::in, module_info::out, bool::out,
+    list(error_spec)::out) is det.
 
     % Mode-check or unique-mode-check the code for the given predicate
     % in a given mode.
     % Returns the number of errs found and a bool `Changed'
     % which is true iff another pass of fixpoint analysis may be needed.
     %
-:- pred modecheck_proc_general(proc_id::in, pred_id::in, how_to_check_goal::in,
-    may_change_called_proc::in, module_info::in, module_info::out,
-    list(error_spec)::out, bool::out) is det.
+:- pred modecheck_proc_general(how_to_check_goal::in,
+    may_change_called_proc::in, pred_id::in, proc_id::in,
+    module_info::in, module_info::out, bool::out,
+    list(error_spec)::out) is det.
 
     % Check that the final insts of the head vars of a lambda goal
     % matches their expected insts.
@@ -577,83 +578,97 @@ do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
     % Note that we use pred_info_procids rather than pred_info_all_procids
     % here, which means that we don't process modes that have already been
     % inferred as invalid.
-    ProcIds = pred_info_procids(PredInfo0),
-    modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, init_error_spec_accumulator, SpecsAcc),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    ProcIds = pred_info_valid_procids(PredInfo0),
+    modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
+        ProcIds, !ModuleInfo, !Changed, init_error_spec_accumulator, SpecsAcc),
     ProcSpecs = error_spec_accumulator_to_list(SpecsAcc).
 
     % Iterate over the list of modes for a predicate.
     %
-:- pred modecheck_procs(list(proc_id)::in, pred_id::in, how_to_check_goal::in,
-    may_change_called_proc::in, module_info::in, module_info::out,
-    bool::in, bool::out,
+:- pred modecheck_procs(how_to_check_goal::in, may_change_called_proc::in,
+    pred_id::in, proc_table::in, list(proc_id)::in,
+    module_info::in, module_info::out, bool::in, bool::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
-modecheck_procs([], _PredId, _, _, !ModuleInfo, !Changed, !Specs).
-modecheck_procs([ProcId | ProcIds], PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, !SpecsAcc) :-
+modecheck_procs(_, _, _, _, [], !ModuleInfo, !Changed, !Specs).
+modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
+        [ProcId | ProcIds], !ModuleInfo, !Changed, !SpecsAcc) :-
     % Mode-check that mode of the predicate.
-    maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, ProcSpecs),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
+    maybe_modecheck_proc(WhatToCheck, MayChangeCalledProc,
+        PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, ProcSpecs),
     accumulate_error_specs_for_proc(ProcSpecs, !SpecsAcc),
     % Recursively process the remaining modes.
-    modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, !SpecsAcc).
+    modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
+        ProcIds, !ModuleInfo, !Changed, !SpecsAcc).
 
 %-----------------------------------------------------------------------------%
 
-modecheck_proc(ProcId, PredId, !ModuleInfo, Specs, Changed) :-
-    modecheck_proc_general(ProcId, PredId, check_modes, may_change_called_proc,
-        !ModuleInfo, Specs, Changed).
+modecheck_proc(PredId, ProcId, !ModuleInfo, Changed, Specs) :-
+    modecheck_proc_general(check_modes, may_change_called_proc,
+        PredId, ProcId, !ModuleInfo, Changed, Specs).
 
-modecheck_proc_general(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, Specs, Changed) :-
-    maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, no, Changed, Specs).
-
-:- pred maybe_modecheck_proc(proc_id::in, pred_id::in, how_to_check_goal::in,
-    may_change_called_proc::in, module_info::in, module_info::out,
-    bool::in, bool::out, list(error_spec)::out) is det.
-
-maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, Specs) :-
+modecheck_proc_general(WhatToCheck, MayChangeCalledProc, PredId, ProcId,
+        !ModuleInfo, Changed, Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-        PredInfo0, ProcInfo0),
+        _PredInfo, ProcInfo),
+    maybe_modecheck_proc(WhatToCheck, MayChangeCalledProc,
+        PredId, ProcId, ProcInfo, !ModuleInfo, no, Changed, Specs).
+
+:- pred maybe_modecheck_proc(how_to_check_goal::in, may_change_called_proc::in,
+    pred_id::in, proc_id::in, proc_info::in,
+    module_info::in, module_info::out, bool::in, bool::out,
+    list(error_spec)::out) is det.
+
+maybe_modecheck_proc(WhatToCheck, MayChangeCalledProc,
+        PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, Specs) :-
     proc_info_get_can_process(ProcInfo0, CanProcess),
     (
         CanProcess = cannot_process_yet,
         Specs = []
     ;
         CanProcess = can_process_now,
-        do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-            !ModuleInfo, PredInfo0, ClausesInfo, ProcInfo0, ProcInfo,
-            !Changed, Specs),
-
-        % We get the pred_info from the ModuleInfo *again*, because
-        % while we are doing mode inference on one procedure of a predicate,
-        % we can add new mode declarations to that predicate. If we didn't
-        % refetch the pred_info, we would be implicitly undoing the addition
-        % of those new entries to the predicate's proc table.
-        module_info_pred_info(!.ModuleInfo, PredId, PredInfo1),
-        pred_info_get_proc_table(PredInfo1, ProcMap1),
-        map.det_update(ProcId, ProcInfo, ProcMap1, ProcMap),
-        pred_info_set_proc_table(ProcMap, PredInfo1, PredInfo2),
-
-        pred_info_set_clauses_info(ClausesInfo, PredInfo2, PredInfo),
-
-        module_info_get_preds(!.ModuleInfo, PredMap1),
-        map.det_update(PredId, PredInfo, PredMap1, PredMap),
-        module_info_set_preds(PredMap, !ModuleInfo)
+        definitely_modecheck_proc(WhatToCheck, MayChangeCalledProc,
+            PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, Specs)
     ).
 
-:- pred do_modecheck_proc(proc_id::in, pred_id::in, how_to_check_goal::in,
-    may_change_called_proc::in, module_info::in, module_info::out,
-    pred_info::in, clauses_info::out, proc_info::in, proc_info::out,
+:- pred definitely_modecheck_proc(how_to_check_goal::in,
+    may_change_called_proc::in, pred_id::in, proc_id::in, proc_info::in,
+    module_info::in, module_info::out, bool::in, bool::out,
+    list(error_spec)::out) is det.
+
+definitely_modecheck_proc(WhatToCheck, MayChangeCalledProc,
+        PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, Specs) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
+        PredId, PredInfo0, ProcId, ProcInfo0, ProcInfo, ClausesInfo,
+        !ModuleInfo, !Changed, Specs),
+
+    % We get the pred_info from the ModuleInfo *again*, because
+    % while we are doing mode inference on one procedure of a predicate,
+    % we can add new mode declarations to that predicate. If we didn't
+    % refetch the pred_info, we would be implicitly undoing the addition
+    % of those new entries to the predicate's proc table.
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo1),
+    pred_info_get_proc_table(PredInfo1, ProcMap1),
+    map.det_update(ProcId, ProcInfo, ProcMap1, ProcMap),
+    pred_info_set_proc_table(ProcMap, PredInfo1, PredInfo2),
+
+    pred_info_set_clauses_info(ClausesInfo, PredInfo2, PredInfo),
+
+    module_info_get_preds(!.ModuleInfo, PredMap1),
+    map.det_update(PredId, PredInfo, PredMap1, PredMap),
+    module_info_set_preds(PredMap, !ModuleInfo).
+
+:- pred do_modecheck_proc(how_to_check_goal::in, may_change_called_proc::in,
+    pred_id::in, pred_info::in, proc_id::in, proc_info::in, proc_info::out,
+    clauses_info::out, module_info::in, module_info::out,
     bool::in, bool::out, list(error_spec)::out) is det.
 
-do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, PredInfo0, ClausesInfo, !ProcInfo,
-        !Changed, ErrorAndWarningSpecs) :-
+do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
+        PredId, PredInfo0, ProcId, !ProcInfo, ClausesInfo,
+        !ModuleInfo, !Changed, ErrorAndWarningSpecs) :-
     pred_info_get_markers(PredInfo0, Markers),
     ( if check_marker(Markers, marker_infer_modes) then
         InferModes = yes
@@ -1057,7 +1072,8 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
     module_info_set_preds(Preds1, !ModuleInfo),
 
     % Modecheck the procedure.
-    modecheck_proc(ProcId, PredId, !ModuleInfo, ModeSpecs, !:Changed),
+    definitely_modecheck_proc(check_modes, may_change_called_proc,
+        PredId, ProcId, ProcInfo1, !ModuleInfo, no, !:Changed, ModeSpecs),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     ModeErrors = contains_errors(Globals, ModeSpecs),
@@ -1087,7 +1103,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
             determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
             expect(unify(DetismSpecs, []), $pred, "found detism error"),
             save_proc_info(ProcId, PredId, !.ModuleInfo, !OldPredTable),
-            unique_modes_check_proc(ProcId, PredId, !ModuleInfo,
+            unique_modes_check_proc(PredId, ProcId, !ModuleInfo,
                 NewChanged, UniqueSpecs),
             bool.or(NewChanged, !Changed),
             Specs = ModeSpecs ++ UniqueSpecs
@@ -1409,16 +1425,17 @@ pred_check_eval_methods(_, [], !Specs).
 pred_check_eval_methods(ModuleInfo, [PredId | PredIds], !Specs) :-
     module_info_get_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
-    proc_check_eval_methods(ModuleInfo, PredId, ProcIds, !Specs),
+    ProcIds = pred_info_valid_procids(PredInfo),
+    proc_check_eval_methods(ModuleInfo, PredInfo, ProcIds, !Specs),
     pred_check_eval_methods(ModuleInfo, PredIds, !Specs).
 
-:- pred proc_check_eval_methods(module_info::in, pred_id::in,
+:- pred proc_check_eval_methods(module_info::in, pred_info::in,
     list(proc_id)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 proc_check_eval_methods(_, _, [], !Specs).
-proc_check_eval_methods(ModuleInfo, PredId, [ProcId | ProcIds], !Specs) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+proc_check_eval_methods(ModuleInfo, PredInfo, [ProcId | ProcIds], !Specs) :-
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
     proc_info_get_argmodes(ProcInfo, Modes),
     ( if
@@ -1450,7 +1467,7 @@ proc_check_eval_methods(ModuleInfo, PredId, [ProcId | ProcIds], !Specs) :-
     else
         true
     ),
-    proc_check_eval_methods(ModuleInfo, PredId, ProcIds, !Specs).
+    proc_check_eval_methods(ModuleInfo, PredInfo, ProcIds, !Specs).
 
 :- pred only_fully_in_out_modes(list(mer_mode)::in, module_info::in)
     is semidet.

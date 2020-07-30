@@ -441,7 +441,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
         pred_info_set_markers(Markers, !PredInfo)
     else if
         less_pure(OldPurity, Bodypurity),
-        [_] = pred_info_procids(!.PredInfo)
+        [_] = pred_info_valid_procids(!.PredInfo)
     then
         % If there is only one procedure, update the purity in the pred_info
         % if the purity improved.
@@ -508,7 +508,7 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
             ;
                 ApplicableProcIds = selected_modes(ClauseProcIds),
                 list.sort(ClauseProcIds, SortedClauseProcIds),
-                AllProcIds = pred_info_procids(PredInfo),
+                AllProcIds = pred_info_all_procids(PredInfo),
                 % Clauses that apply in some modes pose a purity problem
                 % only if the *some* modes are not actually *all* the modes.
                 % (The list returned by pred_info_procids is always sorted.)

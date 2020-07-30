@@ -563,7 +563,7 @@ write_clause(Info, Lang, ModuleInfo,PredId, PredOrFunc, VarSet, TypeQual,
         io.nl(!IO)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    AllProcIds = pred_info_procids(PredInfo),
+    AllProcIds = pred_info_all_procids(PredInfo),
     ( if
         ApplicableModes = selected_modes(SelectedProcIds),
         SelectedProcIds \= AllProcIds

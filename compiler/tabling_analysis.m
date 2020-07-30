@@ -908,7 +908,7 @@ search_mm_tabling_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus,
 
 maybe_record_mm_tabling_result(ModuleInfo, PredId, !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_valid_procids(PredInfo),
     list.foldl(maybe_record_mm_tabling_result_2(ModuleInfo, PredId, PredInfo),
         ProcIds, !AnalysisInfo).
 

@@ -276,7 +276,7 @@ expand_try_goals_in_module(!ModuleInfo, !Specs) :-
 
 expand_try_goals_in_pred(PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl2(expand_try_goals_in_proc(PredId), ProcIds,
         !ModuleInfo, !Specs).
 
@@ -316,7 +316,7 @@ update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
         !ModuleInfo),
 
-    modecheck_proc(ProcId, PredId, !ModuleInfo, ModeSpecs, _Changed),
+    modecheck_proc(PredId, ProcId, !ModuleInfo, _Changed, ModeSpecs),
     module_info_get_globals(!.ModuleInfo, Globals),
     HasModeErrors = contains_errors(Globals, ModeSpecs),
     (

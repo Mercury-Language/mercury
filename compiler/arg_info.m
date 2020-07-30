@@ -169,7 +169,7 @@ generate_pred_arg_info([], !ModuleInfo).
 generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    generate_proc_list_arg_info(PredId, pred_info_procids(PredInfo),
+    generate_proc_list_arg_info(PredId, pred_info_valid_procids(PredInfo),
         !ModuleInfo),
     generate_pred_arg_info(PredIds, !ModuleInfo).
 

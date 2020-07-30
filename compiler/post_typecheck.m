@@ -567,7 +567,7 @@ setup_vartypes_in_clauses_for_imported_pred(!PredInfo) :-
 propagate_types_into_modes(ModuleInfo, ErrorProcIds, !PredInfo) :-
     pred_info_get_arg_types(!.PredInfo, ArgTypes),
     pred_info_get_proc_table(!.PredInfo, Procs0),
-    ProcIds = pred_info_procids(!.PredInfo),
+    ProcIds = pred_info_all_procids(!.PredInfo),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
         [], RevErrorProcIds, Procs0, Procs),
     ErrorProcIds = list.reverse(RevErrorProcIds),
@@ -665,7 +665,7 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs) :-
     then
         true
     else
-        ProcIds = pred_info_procids(!.PredInfo),
+        ProcIds = pred_info_all_procids(!.PredInfo),
         check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId,
             ProcIds, [], !PredInfo, !Specs)
     ).

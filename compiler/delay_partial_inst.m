@@ -202,7 +202,7 @@ delay_partial_inst_preds_acc([PredId | PredIds], !RevChangedPredIds,
         !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
-    ProcIds = pred_info_non_imported_procids(PredInfo0),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
     list.foldl(delay_partial_inst_proc(!.ModuleInfo, PredId, ProcTable0),
         ProcIds, [], ChangedProcs),
     (

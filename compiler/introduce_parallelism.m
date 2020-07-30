@@ -216,7 +216,7 @@ cpc_proc_is_in_module(ModuleName, ProcLabel - CPC, IMProcLabel - CPC) :-
 maybe_parallelise_pred(ParallelismInfo, PredId, !PredTable,
         !AnyPredIntroducedParallelism, !ModuleInfo, !Specs) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
-    ProcIds = pred_info_non_imported_procids(PredInfo0),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     list.foldl4(maybe_parallelise_proc(ParallelismInfo, PredInfo0, PredId),
         ProcIds, ProcTable0, ProcTable,

@@ -1218,7 +1218,7 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
             module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
             pred_info_get_proc_table(PredInfo, ProcTable),
             pred_info_get_arg_types(PredInfo, ArgTypes),
-            ProcIds = pred_info_procids(PredInfo),
+            ProcIds = pred_info_all_procids(PredInfo),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             adjust_func_arity(PredOrFunc, Arity, NumArgs),
 

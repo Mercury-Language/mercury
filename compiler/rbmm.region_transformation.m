@@ -180,12 +180,14 @@ region_transform_pred(RptaInfoTable, FormalRegionArgTable,
         RegionInstructionTable, ResurRenamingAnnoTable, IteRenamingAnnoTable,
         PredId, !NameToVarTable, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
-    list.foldl2(region_transform_proc(RptaInfoTable,
-        FormalRegionArgTable, ActualRegionArgTable,
-        ResurRenamingTable, IteRenamingTable,
-        RegionInstructionTable, ResurRenamingAnnoTable, IteRenamingAnnoTable,
-        PredId), ProcIds, !NameToVarTable, !ModuleInfo).
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    list.foldl2(
+        region_transform_proc(RptaInfoTable,
+            FormalRegionArgTable, ActualRegionArgTable,
+            ResurRenamingTable, IteRenamingTable,
+            RegionInstructionTable, ResurRenamingAnnoTable,
+            IteRenamingAnnoTable, PredId),
+        ProcIds, !NameToVarTable, !ModuleInfo).
 
     % This predicate updates the proc_info data structure, representing
     % a procedure.
@@ -1011,7 +1013,7 @@ make_assignment_goal(LeftRegVar, RightRegVar, Context, AssignmentGoal) :-
 
 update_instmap_delta_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl(update_instmap_delta_proc(PredId), ProcIds, !ModuleInfo).
 
 :- pred update_instmap_delta_proc(pred_id::in, proc_id::in,
@@ -1034,7 +1036,7 @@ update_instmap_delta_proc(PredId, ProcId, !ModuleInfo) :-
 
 recheck_purity_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl(recheck_purity_proc(PredId), ProcIds, !ModuleInfo).
 
     % Recheck purity of the procedure.

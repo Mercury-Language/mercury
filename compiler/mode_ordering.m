@@ -83,19 +83,19 @@ mode_ordering_pred(PredConstraintMap, _SCC, PredId, !ModuleInfo) :-
 
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     lookup_pred_constraint(PredConstraintMap, PredId, ModeConstraint0, MCI),
-    ( pred_info_infer_modes(PredInfo0) ->
-        ( map.search(RequestedProcsMap0, PredId, RequestedProcs) ->
+    ( if pred_info_infer_modes(PredInfo0) then
+        ( if map.search(RequestedProcsMap0, PredId, RequestedProcs) then
             list.foldl(
                 mode_ordering_infer_proc(!.ModuleInfo, PredConstraintMap,
                     PredId, MCI, ModeConstraint0),
                 RequestedProcs, PredInfo0, PredInfo)
-        ;
+        else
             % XXX Maybe we should remove the predicate from the
             % module_info here since it is not used.
             PredInfo = PredInfo0
         )
-    ;
-        ProcIds = pred_info_non_imported_procids(PredInfo0),
+    else
+        ProcIds = pred_info_all_non_imported_procids(PredInfo0),
         list.foldl(
             mode_ordering_check_proc(!.ModuleInfo, PredConstraintMap,
                 PredId, MCI, ModeConstraint0),
@@ -235,29 +235,29 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         (
             RHS0 = rhs_var(VarB),
             RHS = RHS0,
-            ( set_of_var.contains(ProdVars, VarA) ->
+            ( if set_of_var.contains(ProdVars, VarA) then
                 Unification = assign(VarA, VarB),
                 MakeVisibleVars = set_of_var.make_singleton(VarA),
                 NeedVisibleVars = set_of_var.make_singleton(VarB)
-            ; set_of_var.contains(ProdVars, VarB) ->
+            else if set_of_var.contains(ProdVars, VarB) then
                 Unification = assign(VarB, VarA),
                 MakeVisibleVars = set_of_var.make_singleton(VarB),
                 NeedVisibleVars = set_of_var.make_singleton(VarA)
-            ;
+            else
                 Unification = simple_test(VarA, VarB),
                 % XXX may be complicated unify -- need to check.
                 MakeVisibleVars = set_of_var.init,
                 NeedVisibleVars = set_of_var.list_to_set([VarA, VarB])
             ),
             ConsumingVarsList = solutions.solutions(
-                (pred(Var::out) is nondet :-
+                ( pred(Var::out) is nondet :-
                     inst_graph.same_graph_corresponding_nodes(InstGraph,
                         VarA, VarB, VarC, VarD),
-                    ( set_of_var.contains(ProdVars, VarC) ->
+                    ( if set_of_var.contains(ProdVars, VarC) then
                         Var = VarD
-                    ; set_of_var.contains(ProdVars, VarD) ->
+                    else if set_of_var.contains(ProdVars, VarD) then
                         Var = VarC
-                    ;
+                    else
                         fail
                     )
                 )
@@ -266,14 +266,14 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         ;
             RHS0 = rhs_functor(_ConsId, _IsExistConstruct, ArgVars),
             RHS = RHS0,
-            ( set_of_var.contains(ProdVars, VarA) ->
+            ( if set_of_var.contains(ProdVars, VarA) then
                 % Unification = construct(VarA, ConsId, ArgVars,
                 %   _UniModes, _HowTo, _CellUniq, _MaybeRLExprId),
                 Unification = Unification0, % XXX
                 ConsumingVars = set_of_var.init,
                 MakeVisibleVars = set_of_var.list_to_set([VarA | ArgVars]),
                 NeedVisibleVars = set_of_var.init
-            ;
+            else
                 % Unification = deconstruct(VarA, ConsId, ArgVars,
                 %   _UniModes, _CanFail, _CanCGC),
                 Unification = Unification0, % XXX
@@ -426,58 +426,67 @@ goal_info_copy_mode_var_sets(GI, !GoalInfo) :-
     hlds_goals::in, hlds_goals::out) is det.
 
 mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
-    GoalMap = list.foldl((func(G, GM) = map.det_insert(GM, Index, G) :-
-        G = hlds_goal(_, GI),
-        GoalId = goal_info_get_goal_id(GI),
-        map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
-        (
-            goal_path_get_last(GoalPath, LastStep),
-            LastStep = step_conj(Index0)
-        ->
-            Index = Index0
-        ;
-            unexpected($pred, "goal_path error")
-        )), Goals0, map.init),
+    GoalMap = list.foldl(
+        ( func(G, GM) = map.det_insert(GM, Index, G) :-
+            G = hlds_goal(_, GI),
+            GoalId = goal_info_get_goal_id(GI),
+            map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
+            ( if
+                goal_path_get_last(GoalPath, LastStep),
+                LastStep = step_conj(Index0)
+            then
+                Index = Index0
+            else
+                unexpected($pred, "goal_path error")
+            )
+        ), Goals0, map.init),
 
     ProdMap =
-        map.foldl((func(I, G, PM0) =
-            list.foldl((func(V, PM1) = map.det_insert(PM1, V, I)),
-                set_of_var.to_sorted_list(G ^ hg_info ^ producing_vars),
-                PM0)
-        ), GoalMap, map.init),
+        map.foldl(
+            ( func(I, G, PM0) =
+                list.foldl(
+                    (func(V, PM1) = map.det_insert(PM1, V, I)),
+                    set_of_var.to_sorted_list(G ^ hg_info ^ producing_vars),
+                    PM0)
+            ), GoalMap, map.init),
 
     MakeVisMap =
-        map.foldl((func(I, G, MVM0) =
-            list.foldl((func(V, MVM1) = map.set(MVM1, V, I)),
-            % XXX disjunction required!
-                set_of_var.to_sorted_list(G ^ hg_info ^ make_visible_vars),
-                MVM0)
-        ), GoalMap, map.init),
+        map.foldl(
+            ( func(I, G, MVM0) =
+                list.foldl(
+                    (func(V, MVM1) = map.set(MVM1, V, I)),
+                    % XXX disjunction required!
+                    set_of_var.to_sorted_list(G ^ hg_info ^ make_visible_vars),
+                    MVM0)
+            ), GoalMap, map.init),
 
-    Graph = map.foldl((func(I, G, !.R) = !:R :-
-        GI = G ^ hg_info,
-        digraph.add_vertex(I, Key0, !R),
-        !:R = list.foldl((func(V, !.R1) = !:R1 :-
-                ( Index1 = map.search(ProdMap, V) ->
-                    digraph.add_vertex(Index1, Key1, !R1),
-                    digraph.add_edge(Key1, Key0, !R1)
-                ;
-                    true
-                )
-            ), set_of_var.to_sorted_list(GI ^ consuming_vars), !.R),
-        !:R = list.foldl((func(V, !.R2) = !:R2 :-
-                ( Index2 = map.search(MakeVisMap, V) ->
-                    digraph.add_vertex(Index2, Key2, !R2),
-                    digraph.add_edge(Key2, Key0, !R2)
-                ;
-                    true
-                )
-            ), set_of_var.to_sorted_list(GI ^ need_visible_vars), !.R)
+    Graph = map.foldl(
+        ( func(I, G, !.R) = !:R :-
+            GI = G ^ hg_info,
+            digraph.add_vertex(I, Key0, !R),
+            !:R = list.foldl(
+                (func(V, !.R1) = !:R1 :-
+                    ( if Index1 = map.search(ProdMap, V) then
+                        digraph.add_vertex(Index1, Key1, !R1),
+                        digraph.add_edge(Key1, Key0, !R1)
+                    else
+                        true
+                    )
+                ), set_of_var.to_sorted_list(GI ^ consuming_vars), !.R),
+            !:R = list.foldl(
+                ( func(V, !.R2) = !:R2 :-
+                    ( if Index2 = map.search(MakeVisMap, V) then
+                        digraph.add_vertex(Index2, Key2, !R2),
+                        digraph.add_edge(Key2, Key0, !R2)
+                    else
+                        true
+                    )
+                ), set_of_var.to_sorted_list(GI ^ need_visible_vars), !.R)
         ), GoalMap, digraph.init),
 
-    ( digraph.tsort(Graph, TSort) ->
+    ( if digraph.tsort(Graph, TSort) then
         Goals = map.apply_to_list(TSort, GoalMap)
-    ;
+    else
         % XXX Report a mode error for this.
         unexpected($pred, "tsort failed")
     ).
@@ -490,12 +499,12 @@ set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI) :-
     LambdaNesting = !.MOI ^ moi_lambda_nesting,
     AtomicProdVars = !.MOI ^ moi_prodvars_map,
     GoalId = goal_info_get_goal_id(!.GoalInfo),
-    (
+    ( if
         map.search(AtomicProdVars, stack.push(LambdaNesting, GoalId),
             ProdVars0)
-    ->
+    then
         ProdVars = ProdVars0
-    ;
+    else
         ProdVars = set_of_var.init
     ),
     goal_info_set_producing_vars(ProdVars, !GoalInfo).
@@ -505,10 +514,10 @@ set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI) :-
 
 pred_info_create_proc_info_for_mode_decl_constraint(_ModeDeclConstraint,
         ProcId, !PredInfo) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         % XXX
         sorry($pred, "NYI")
-    ;
+    else
         % XXX keep det checker happy.
         ProcId = initial_proc_id
     ).
@@ -528,19 +537,19 @@ find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
     CalleeInstGraph = CalleeInstGraphInfo ^ interface_inst_graph,
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
-    (
+    ( if
         find_matching_proc_2(ProcList, ProdVars, Args,
             CallerInstGraph, CalleeInstGraph, MCInfo, ProcId0, ConsumingVars0)
-    ->
+    then
         ProcId = ProcId0,
         ConsumingVars = ConsumingVars0
-    ;
+    else if
         pred_info_infer_modes(PredInfo)
-    ->
+    then
         % XXX We are inferring modes for the called predicate. Need to add
         % a new mode to the requested procs map.
         unexpected($pred, "infer_modes NYI")
-    ;
+    else
         % If we get here, it means there is a mode error which should have been
         % picked up by the constraints pass but was missed some how.
         unexpected($pred, "unexpected mode error")
@@ -555,33 +564,38 @@ find_matching_proc_2([ProcId0 - ProcInfo | ProcList], ProdVars, Args,
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_head_modes_constraint(ProcInfo, Constraint0),
     Constraint = ensure_normalised(Constraint0),
-    (
+    ( if
         (
-            all [X, Y] inst_graph.corresponding_nodes_from_lists(
-                CallerInstGraph, CalleeInstGraph, Args, HeadVars, X, Y)
+            all [X, Y] (
+                inst_graph.corresponding_nodes_from_lists(
+                    CallerInstGraph, CalleeInstGraph, Args, HeadVars, X, Y)
+            )
         =>
             (
                 set_of_var.contains(ProdVars, X)
             <=>
                 (
                     var_entailed(Constraint,
-                    mode_constraint_var(MCInfo, out(Y))),
-                    \+ var_entailed(Constraint,
-                    mode_constraint_var(MCInfo, in(Y)))
+                        mode_constraint_var(MCInfo, out(Y))),
+                    not var_entailed(Constraint,
+                        mode_constraint_var(MCInfo, in(Y)))
                 )
             )
         )
-    ->
+    then
         ProcId = ProcId0,
-        ConsumingVarsList = solutions.solutions(pred(X::out) is nondet :-
-            some [Y] (
-                inst_graph.corresponding_nodes_from_lists(CallerInstGraph,
-                CalleeInstGraph, Args, HeadVars, X, Y),
-                var_entailed(Constraint, mode_constraint_var(MCInfo, in(Y)))
-            )
-        ),
+        GenPred =
+            ( pred(X::out) is nondet :-
+                some [Y] (
+                    inst_graph.corresponding_nodes_from_lists(CallerInstGraph,
+                    CalleeInstGraph, Args, HeadVars, X, Y),
+                    var_entailed(Constraint,
+                        mode_constraint_var(MCInfo, in(Y)))
+                )
+            ),
+        ConsumingVarsList = solutions.solutions(GenPred),
         set_of_var.sorted_list_to_set(ConsumingVarsList, ConsumingVars)
-    ;
+    else
         find_matching_proc_2(ProcList, ProdVars, Args, CallerInstGraph,
         CalleeInstGraph, MCInfo, ProcId, ConsumingVars)
     ).

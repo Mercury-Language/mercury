@@ -164,7 +164,7 @@ process_imported_pred(PredId, !ModuleInfo) :-
 process_imported_procs(!PredInfo) :-
     some [!ProcTable] (
         pred_info_get_proc_table(!.PredInfo, !:ProcTable),
-        ProcIds = pred_info_procids(!.PredInfo),
+        ProcIds = pred_info_valid_procids(!.PredInfo),
         list.foldl(process_imported_proc, ProcIds, !ProcTable),
         pred_info_set_proc_table(!.ProcTable, !PredInfo)
     ).
@@ -289,7 +289,7 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
     pred_info_get_context(!.PredInfo, Context),
     some [!ProcTable] (
         pred_info_get_proc_table(!.PredInfo, !:ProcTable),
-        ProcIds = pred_info_procids(!.PredInfo),
+        ProcIds = pred_info_valid_procids(!.PredInfo),
         ( if
             set_compiler_gen_terminates(!.PredInfo, ProcIds, PredId,
                 ModuleInfo, !ProcTable)

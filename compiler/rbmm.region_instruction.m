@@ -145,7 +145,7 @@ introduce_region_instructions_pred(ModuleInfo, RptaInfoTable, ExecPathTable,
         !BecomeLiveTable, !BecomeDeadBeforeTable, !BecomeDeadAfterTable,
         !RegionInstructionTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_non_imported_procids(PredInfo) = ProcIds,
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl4(introduce_region_instructions_proc(ModuleInfo, PredId,
         RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
         VoidVarRegionTable, BornRTable, DeadRTable, LocalRTable),
@@ -168,9 +168,9 @@ introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
         !BecomeLiveTable, !BecomeDeadBeforeTable, !BecomeDeadAfterTable,
         !RegionInstructionTable) :-
     PPId = proc(PredId, ProcId),
-    ( some_are_special_preds([PPId], ModuleInfo) ->
+    ( if some_are_special_preds([PPId], ModuleInfo) then
         true
-    ;
+    else
         module_info_proc_info(ModuleInfo, PPId, ProcInfo),
         map.lookup(RptaInfoTable, PPId, RptaInfo),
         map.lookup(BornRTable, PPId, BornR),
@@ -321,16 +321,15 @@ annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
         RptaInfo, BornRTable, DeadRTable, ModuleInfo, ProcInfo,
         CreatedBeforeProgPoint, RemovedAfterProgPoint) :-
     (
-        Expr = plain_call(CalleePredId, CalleeProcId, _, _, _, _)
-    ->
+        Expr = plain_call(CalleePredId, CalleeProcId, _, _, _, _),
         CalleePPId = proc(CalleePredId, CalleeProcId),
         RptaInfo = rpta_info(_CallerGraph, AlphaMapping),
-        (
+        ( if
             % Currently we do not collect BornR for non-defined-in-module
             % procedure, so if we cannot find one here then q is an
             % imported.
             map.search(BornRTable, CalleePPId, _)
-        ->
+        then
             map.lookup(AlphaMapping, ProgPoint, AlphaAtProgPoint),
 
             % Rule 1: if an output region of q is not live, not created by q,
@@ -348,7 +347,7 @@ annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
             map.lookup(DeadRTable, CalleePPId, CalleeDeadR),
             map.foldl(process_mapping_rule_3(BecomeDead, CalleeDeadR),
                 AlphaAtProgPoint, set.init, RemovedAfterProgPoint)
-        ;
+        else
             % XXX q is from an imported module. We do not support module
             % system yet.
             % For now we consider BornR and DeadR of q empty,
@@ -358,8 +357,7 @@ annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
             RemovedAfterProgPoint = BecomeDead
         )
     ;
-        Expr = unify(X, _, _, Kind, _)
-    ->
+        Expr = unify(X, _, _, Kind, _),
         RptaInfo = rpta_info(Graph, _AlphaMapping),
         (
             Kind = construct(_, _, _, _, _, _, _),
@@ -384,26 +382,37 @@ annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
         % Rule 4: if a region is live before a unification but
         % it is not live after and p is allowed to remove it,
         % then it is removed after the unification.
-        %
         RemovedAfterProgPoint = BecomeDead
     ;
-        Expr = switch(_, _, _)
-    ->
+        Expr = switch(_, _, _),
         % Special treatment for an atomic switch, i.e. a deconstruction
         % unification that has been removed by MMC. We record the remove
         % annotations after the program point.
-        %
         CreatedBeforeProgPoint = set.init,
         RemovedAfterProgPoint = BecomeDead
     ;
         ( Expr = conj(_, [])
         ; Expr = disj([])
-        )
-    ->
+        ),
         CreatedBeforeProgPoint = set.init,
         RemovedAfterProgPoint = set.init
     ;
+        Expr = generic_call(_, _, _, _, _),
+        unexpected($pred, "generic_call NYI")
+    ;
+        Expr = call_foreign_proc(_, _, _, _, _, _, _),
+        unexpected($pred, "call_foreign_proc NYI")
+    ;
+        ( Expr = conj(_, [_ | _])
+        ; Expr = disj([_ | _])
+        ; Expr = if_then_else(_, _, _, _)
+        ; Expr = negation(_)
+        ; Expr = scope(_, _)
+        ),
         unexpected($pred, "non-atomic goal")
+    ;
+        Expr = shorthand(_),
+        unexpected($pred, "shorthand")
     ).
 
     % This predicate ensures that, out of the regions that become live at

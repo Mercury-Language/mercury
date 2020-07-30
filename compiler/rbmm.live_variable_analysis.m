@@ -79,7 +79,7 @@ live_variable_analysis(ModuleInfo, ExecPathTable, LVBeforeTable,
 live_variable_analysis_pred(ModuleInfo, ExecPathTable, PredId,
         !LVBeforeTable, !LVAfterTable, !VoidVarTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_non_imported_procids(PredInfo) = ProcIds,
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl3(
         live_variable_analysis_proc(ModuleInfo, ExecPathTable, PredId),
         ProcIds, !LVBeforeTable, !LVAfterTable, !VoidVarTable).
@@ -93,9 +93,9 @@ live_variable_analysis_pred(ModuleInfo, ExecPathTable, PredId,
 live_variable_analysis_proc(ModuleInfo, ExecPathTable, PredId, ProcId,
         !LVBeforeTable, !LVAfterTable, !VoidVarTable) :-
     PPId = proc(PredId, ProcId),
-    ( some_are_special_preds([PPId], ModuleInfo) ->
+    ( if some_are_special_preds([PPId], ModuleInfo) then
         true
-    ;
+    else
         module_info_proc_info(ModuleInfo, PPId, ProcInfo),
         find_input_output_args(ModuleInfo, ProcInfo, Inputs, Outputs),
         map.lookup(ExecPathTable, PPId, ExecPaths),
@@ -123,10 +123,10 @@ live_variable_analysis_exec_paths([], _, _, _, _, !ProcLVBefore,
 live_variable_analysis_exec_paths([ExecPath0 | ExecPaths], Inputs, Outputs,
         ModuleInfo, ProcInfo, !ProcLVBefore, !ProcLVAfter, !ProcVoidVar) :-
     list.reverse(ExecPath0, ExecPath),
-    ( list.length(ExecPath) = 1 ->
+    ( if list.length(ExecPath) = 1 then
         live_variable_analysis_singleton_exec_path(ExecPath, Inputs, Outputs,
             ModuleInfo, ProcInfo, !ProcLVBefore, !ProcLVAfter, !ProcVoidVar)
-    ;
+    else
         % Start with the last program point.
         live_variable_analysis_exec_path(ExecPath, Inputs, Outputs,
             ModuleInfo, ProcInfo, yes, set.init, !ProcLVBefore, !ProcLVAfter,
@@ -151,9 +151,9 @@ live_variable_analysis_exec_path([], _, _, _, _,_, _, !ProcLVBefore,
 live_variable_analysis_exec_path([(LastProgPoint - Goal) | ProgPointGoals],
         Inputs, Outputs, ModuleInfo, ProcInfo, yes, _LVBeforeNext,
         !ProcLVBefore, !ProcLVAfter, !ProcVoidVar) :-
-    ( map.search(!.ProcLVAfter, LastProgPoint, LVAfterLast0) ->
+    ( if map.search(!.ProcLVAfter, LastProgPoint, LVAfterLast0) then
         LVAfterLast = LVAfterLast0
-    ;
+    else
         LVAfterLast = set.list_to_set(Outputs),
         map.set(LastProgPoint, LVAfterLast, !ProcLVAfter)
     ),
@@ -202,9 +202,9 @@ live_variable_analysis_exec_path(
 live_variable_analysis_exec_path([FirstProgPoint - Goal], Inputs, _Outputs,
         ModuleInfo, ProcInfo, no, LVBeforeNext, !ProcLVBefore,
         !ProcLVAfter, !ProcVoidVar) :-
-    ( map.search(!.ProcLVBefore, FirstProgPoint, _LVBeforeFirst) ->
+    ( if map.search(!.ProcLVBefore, FirstProgPoint, _LVBeforeFirst) then
         true
-    ;
+    else
         LVBeforeFirst = set.list_to_set(Inputs),
         map.set(FirstProgPoint, LVBeforeFirst, !ProcLVBefore)
     ),
@@ -248,9 +248,9 @@ live_variable_analysis_singleton_exec_path([], _, _, _, _,
     pp_varset_table::in, pp_varset_table::out) is det.
 
 record_live_vars_at_prog_point(ProgPoint, LV, !ProcLV) :-
-    ( map.search(!.ProcLV, ProgPoint, ExistingLV) ->
+    ( if map.search(!.ProcLV, ProgPoint, ExistingLV) then
         map.set(ProgPoint, set.union(ExistingLV, LV), !ProcLV)
-    ;
+    else
         map.set(ProgPoint, LV, !ProcLV)
     ).
 
@@ -266,31 +266,31 @@ compute_useds_produceds(ModuleInfo, Goal, UsedSet, ProducedSet) :-
     ( if
         % a removed switch
         Goal = hlds_goal(switch(Var, _, _), _SwitchInfo)
-      then
+    then
         Useds = [Var],
         Produceds = []
-      else
+    else
         Goal = hlds_goal(Expr, _Info),
-        (
+        ( if
             Expr = plain_call(CalleePredId, CalleeProcId, Args,
                 _BuiltIn, _Context, _Name)
-        ->
+        then
             get_inputs_outputs_proc_call(Args,
                 proc(CalleePredId, CalleeProcId), ModuleInfo,
                 Useds, Produceds)
-        ;
+        else if
             Expr = unify(_, _, _, Unification, _)
-        ->
+        then
             get_inputs_outputs_unification(Unification, Useds,
                 Produceds)
-        ;
+        else if
             ( Expr = conj(_, [])
             ; Expr = disj([])
             )
-        ->
+        then
             Useds = [],
             Produceds = []
-        ;
+        else
             unexpected($pred,
                 "the expression must be either call, unify, true, or fail")
         )
@@ -342,17 +342,17 @@ get_inputs_outputs_proc_call_2([_ | _], [], _, _, !ActualInputs,
 get_inputs_outputs_proc_call_2([FormalArg | FormalArgs],
         [ActualArg | ActualArgs], Inputs, Outputs, !ActualInputs,
         !ActualOutputs) :-
-    ( list.member(FormalArg, Inputs) ->
+    ( if list.member(FormalArg, Inputs) then
         % This formal argument is an input, so the correspondig argument
         % is an actual input argument.
         ActualInputs1 = [ActualArg | !.ActualInputs],
         ActualOutputs1 = !.ActualOutputs
-    ; list.member(FormalArg, Outputs) ->
+    else if list.member(FormalArg, Outputs) then
         % This formal argument is an output, so the corresponding argument
         % is an actual output argument.
         ActualOutputs1 = [ActualArg | !.ActualOutputs],
         ActualInputs1 = !.ActualInputs
-    ;
+    else
         % This formal param is neither an output nor an input, so ignore
         % the corresponding arg.
         ActualInputs1 = !.ActualInputs,
@@ -369,9 +369,9 @@ get_inputs_outputs_proc_call_2([FormalArg | FormalArgs],
     pp_varset_table::in, pp_varset_table::out) is det.
 
 collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
-    ( map.search(!.ProcVoidVar, ProgPoint, _DeadVars) ->
+    ( if map.search(!.ProcVoidVar, ProgPoint, _DeadVars) then
         true
-    ;
+    else
         proc_info_get_varset(ProcInfo, VarSet),
         set.fold(void_var(VarSet), ProducedSet, set.init, VoidVars),
         map.set(ProgPoint, VoidVars, !ProcVoidVar)
@@ -385,9 +385,9 @@ collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
 
 void_var(VarSet, Var, !VoidVars) :-
     VarName = mercury_var_to_name_only(VarSet, Var),
-    ( string.index(VarName, 0, '_') ->
+    ( if string.index(VarName, 0, '_') then
         set.insert(Var, !VoidVars)
-    ;
+    else
         true
     ).
 

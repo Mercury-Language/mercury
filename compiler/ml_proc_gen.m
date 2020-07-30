@@ -144,9 +144,9 @@ ml_find_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
         % is imported, but any other procedures are not.
 
         ( if PredStatus = pred_status(status_external(_)) then
-            ProcIds = pred_info_procids(PredInfo0)
+            ProcIds = pred_info_valid_procids(PredInfo0)
         else
-            ProcIds = pred_info_non_imported_procids(PredInfo0)
+            ProcIds = pred_info_valid_non_imported_procids(PredInfo0)
         ),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
         list.foldl(requantify_codegen_proc, ProcIds, ProcTable0, ProcTable),

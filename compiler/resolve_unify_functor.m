@@ -188,7 +188,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             ModuleInfo, Context, PredId)
     then
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        ProcIds = pred_info_procids(PredInfo),
+        ProcIds = pred_info_all_procids(PredInfo),
         (
             ProcIds = [ProcId0],
             MaybeProcId = yes(ProcId0)

@@ -108,7 +108,7 @@ live_region_analysis_pred(ModuleInfo, RptaInfoTable, LVBeforeTable,
         !VoidVarRegionTable, !InputRTable, !OutputRTable, !BornRTable,
         !DeadRTable, !LocalRTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_non_imported_procids(PredInfo) = ProcIds,
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
 
     foldl8(
         live_region_analysis_proc(ModuleInfo, RptaInfoTable,
@@ -134,7 +134,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
         !LRAfterTable, !VoidVarRegionTable, !InputRTable, !OutputRTable,
         !BornRTable, !DeadRTable, !LocalRTable) :-
     PPId = proc(PredId, ProcId),
-    ( some_are_special_preds([PPId], ModuleInfo) ->
+    ( if some_are_special_preds([PPId], ModuleInfo) then
         % XXX: This action seems to be overkilled, it never goes in this
         % branch.
         % XXX: For the time being just ignore special predicates
@@ -143,9 +143,11 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
         % modules analysed and their tables will be integrated.
         % But it is not the case at the moment.
         true
-    ;
+    else
         % This test is just a cautious check.
-        ( RptaInfo = rpta_info_table_search_rpta_info(PPId, RptaInfoTable) ->
+        ( if
+            RptaInfo = rpta_info_table_search_rpta_info(PPId, RptaInfoTable)
+        then
             % Compute region sets.
             RptaInfo = rpta_info(Graph, _ALpha),
             module_info_proc_info(ModuleInfo, PPId, ProcInfo),
@@ -187,7 +189,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
                 proc_lv_to_proc_lr(Graph, ModuleInfo, ProcInfo),
                 ProcVoidVar, map.init, ProcVoidVarRegion),
             map.set(PPId, ProcVoidVarRegion, !VoidVarRegionTable)
-        ;
+        else
             unexpected($pred, "no rpta_info")
         )
     ).
@@ -221,9 +223,9 @@ foldl8(P, [H|T], !A, !B, !C, !D, !E, !F, !G, !H) :-
     proc_info::in, region_set::out) is det.
 
 lv_to_lr(LVSet, Graph, ModuleInfo, ProcInfo, LRSet) :-
-    ( set.is_empty(LVSet) ->
+    ( if set.is_empty(LVSet) then
         set.init(LRSet)
-    ;
+    else
         % Collect reachable regions at this program point.
         set.init(LRSet0),
         set.fold(rptg_reach_from_a_variable(Graph, ModuleInfo, ProcInfo),

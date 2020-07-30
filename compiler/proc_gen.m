@@ -221,15 +221,18 @@ pred_list_chunk_size = 50.
 type_num_skip = 10000.
 
 :- pred interleave(list(T)::in, list(T)::out, list(T)::out) is det.
-:- pred interleave_2(list(T)::in, list(T)::in, list(T)::out,
+
+interleave(L, As, Bs) :-
+    interleave_loop(L, [], RevAs, [], RevBs),
+    list.reverse(RevAs, As),
+    list.reverse(RevBs, Bs).
+
+:- pred interleave_loop(list(T)::in, list(T)::in, list(T)::out,
     list(T)::in, list(T)::out) is det.
 
-interleave(L, reverse(As), reverse(Bs)) :-
-    interleave_2(L, [], As, [], Bs).
-
-interleave_2([], !As, !Bs).
-interleave_2([H | T], As0, As, Bs0, Bs) :-
-    interleave_2(T, Bs0, Bs, [H | As0], As).
+interleave_loop([], !As, !Bs).
+interleave_loop([H | T], RevAs0, RevAs, RevBs0, RevBs) :-
+    interleave_loop(T, RevBs0, RevBs, [H | RevAs0], RevAs).
 
 %-----------------------------------------------------------------------------%
 
@@ -246,7 +249,7 @@ generate_pred_code_seq(ModuleInfo, VeryVerbose, Statistics, ConstStructMap,
 
     module_info_get_preds(ModuleInfo, PredInfos),
     map.lookup(PredInfos, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     (
         ProcIds = []
     ;
@@ -278,7 +281,7 @@ generate_pred_code_par(ModuleInfo, ConstStructMap, PredId,
         !CProcsCord, !GlobalData) :-
     module_info_get_preds(ModuleInfo, PredInfos),
     map.lookup(PredInfos, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
         ProcIds, !CProcsCord, !GlobalData).
 

@@ -99,7 +99,7 @@ record_actual_region_arguments_pred(ModuleInfo, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, PredId,
         !FormalRegionArgTable, !ActualRegionArgTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl2(record_region_arguments_proc(ModuleInfo, PredId,
         RptaInfoTable, ConstantRTable, DeadRTable, BornRTable), ProcIds,
         !FormalRegionArgTable, !ActualRegionArgTable).
@@ -116,9 +116,9 @@ record_region_arguments_proc(ModuleInfo, PredId, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, ProcId,
         !FormalRegionArgTable, !ActualRegionArgTable) :-
     PPId = proc(PredId, ProcId),
-    ( some_are_special_preds([PPId], ModuleInfo) ->
+    ( if some_are_special_preds([PPId], ModuleInfo) then
         true
-    ;
+    else
         record_formal_region_arguments_proc(ModuleInfo, PPId,
             RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
             !FormalRegionArgTable),
@@ -140,9 +140,9 @@ record_region_arguments_proc(ModuleInfo, PredId, RptaInfoTable,
 
 record_formal_region_arguments_proc(ModuleInfo, PPId, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, !FormalRegionArgTable) :-
-    ( map.search(!.FormalRegionArgTable, PPId, _) ->
+    ( if map.search(!.FormalRegionArgTable, PPId, _) then
         true
-    ;
+    else
         map.lookup(ConstantRTable, PPId, ConstantR),
         map.lookup(DeadRTable, PPId, DeadR),
         map.lookup(BornRTable, PPId, BornR),
@@ -205,9 +205,9 @@ record_actual_region_arguments_expr(ModuleInfo, GoalExpr, GoalInfo, CallerPPId,
     (
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
         CalleePPId = proc(PredId, ProcId),
-        ( some_are_special_preds([CalleePPId], ModuleInfo) ->
+        ( if some_are_special_preds([CalleePPId], ModuleInfo) then
             true
-        ;
+        else
             CallSite = program_point_init(GoalInfo),
             record_actual_region_arguments_call_site(ModuleInfo, CallerPPId,
                 CallSite, CalleePPId, RptaInfoTable, ConstantRTable,
@@ -298,7 +298,9 @@ record_actual_region_arguments_case(ModuleInfo, PPId, RptaInfoTable,
 record_actual_region_arguments_call_site(ModuleInfo, CallerPPId, CallSite,
         CalleePPId, RptaInfoTable, ConstantRTable, DeadRTable,
         BornRTable, !FormalRegionArgTable, !ActualRegionArgProc) :-
-    ( map.search(!.FormalRegionArgTable, CalleePPId, FormalRegionArgCallee) ->
+    ( if
+        map.search(!.FormalRegionArgTable, CalleePPId, FormalRegionArgCallee)
+    then
         % If the formal region arguments of the called procedure have been
         % computed, the corresponding actual ones can be straightforwardly
         % derived using the call site's alpha mapping.
@@ -316,7 +318,7 @@ record_actual_region_arguments_call_site(ModuleInfo, CallerPPId, CallSite,
         map.det_insert(CallSite,
             region_args(ActualConstants, ActualDeads, ActualBorns),
             !ActualRegionArgProc)
-    ;
+    else
         % The formal region arguments of the called procedure haven't been
         % recorded, so do it now.
         record_formal_region_arguments_proc(ModuleInfo, CalleePPId,

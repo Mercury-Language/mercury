@@ -258,7 +258,7 @@ stm_process_module(!ModuleInfo) :-
 
 stm_process_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
+    ProcIds = pred_info_valid_procids(PredInfo),
     list.foldl(stm_process_proc(PredId), ProcIds, !ModuleInfo).
 
 :- pred stm_process_proc(pred_id::in, proc_id::in,

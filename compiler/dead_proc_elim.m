@@ -280,9 +280,9 @@ dead_proc_initialize_preds([PredId | PredIds], PredTable, !Queue, !Needed) :-
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_markers(PredInfo, PredMarkers),
     ( if check_marker(PredMarkers, marker_consider_used) then
-        LiveProcIds = pred_info_all_procids(PredInfo)
+        LiveProcIds = pred_info_valid_procids(PredInfo)
     else
-        LiveProcIds = pred_info_exported_procids(PredInfo)
+        LiveProcIds = pred_info_valid_exported_procids(PredInfo)
     ),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, Procs),
@@ -583,7 +583,7 @@ dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
     ( if
         module_info_get_preds(ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
-        ProcIds = pred_info_non_imported_procids(PredInfo),
+        ProcIds = pred_info_valid_non_imported_procids(PredInfo),
         list.member(ProcId, ProcIds),
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo)
@@ -987,7 +987,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
             Keep = yes(InitProcId)
         )
     then
-        ProcIds = pred_info_procids(PredInfo0),
+        ProcIds = pred_info_valid_procids(PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
         list.foldl2(dead_proc_eliminate_proc(PredId, Keep, !.ProcElimInfo),
             ProcIds, ProcTable0, ProcTable, Changed0, Changed),
@@ -1004,7 +1004,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         PredStatus = pred_status(status_opt_imported)
     then
         Changed = yes,
-        ProcIds = pred_info_procids(PredInfo0),
+        ProcIds = pred_info_valid_procids(PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
 
         % Reduce memory usage by replacing the goals with "true".
@@ -1131,7 +1131,7 @@ dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings, Needed,
         % type specialization.
         not string.prefix(PredName, "TypeSpecOf__")
     then
-        ProcIds = pred_info_procids(PredInfo),
+        ProcIds = pred_info_valid_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, ProcTable),
         list.foldl(
             dead_proc_maybe_warn_proc(ModuleInfo, Needed, PredId, PredInfo,

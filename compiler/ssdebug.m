@@ -281,7 +281,7 @@ ssdebug_first_pass(!ModuleInfo) :-
 
 ssdebug_first_pass_in_pred(PredId, !ProxyMap, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     list.foldl2(ssdebug_first_pass_in_proc(PredId), ProcIds,
         !ProxyMap, !ModuleInfo).
 
@@ -439,7 +439,7 @@ create_proxy_pred(PredId, NewPredId, !ModuleInfo) :-
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         pred_info_set_status(pred_status(status_local), !PredInfo),
 
-        ProcIds = pred_info_procids(!.PredInfo),
+        ProcIds = pred_info_valid_procids(!.PredInfo),
         list.foldl2(create_proxy_proc(PredId), ProcIds, !PredInfo,
             !ModuleInfo),
 

@@ -209,11 +209,11 @@ scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
 
 pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    ( pred_info_infer_modes(PredInfo0) ->
+    ( if pred_info_infer_modes(PredInfo0) then
         % XXX GIVE UP FOR NOW!!!! In reality, execution shouldn't reach here
         % if the pred is to be mode inferred, should it?
         sorry($pred, "mode inference constraints")
-    ;
+    else
         % XXX Maybe move this outside of this predicate - then
         % the predicate can assume that the correct procedures
         % have been created and that they have the correct bodies.
@@ -304,15 +304,15 @@ proc_reordering(ContainingGoalMap, PredConstraints, VarMap, PredId, ProcId,
 
 solve_proc_reordering(ContainingGoalMap, VarMap, PredId, ProcId,
         SolverConstraints, !Errors, !Goal) :-
-    (
+    ( if
         mcsolver.solve(SolverConstraints, Bindings),
         goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, !Goal)
-    ->
+    then
         true
-    ;
-        ( mcsolver.solve(SolverConstraints, _) ->
+    else
+        ( if mcsolver.solve(SolverConstraints, _) then
             list.cons(conjunct_ordering_failed(proc(PredId, ProcId)), !Errors)
-        ;
+        else
             list.cons(no_producer_consumer_sols(proc(PredId, ProcId)), !Errors)
         )
     ).
@@ -417,9 +417,9 @@ ordering_init(ContainingGoalMap, N) =
 %-----------------------------------------------------------------------------%
 
 add_ordering_constraint(Constraint, !OCI) :-
-    ( set.member(Constraint, !.OCI ^ oci_constraints) ->
+    ( if set.member(Constraint, !.OCI ^ oci_constraints) then
         true
-    ;
+    else
         constraint_transitive_closure(!.OCI, Constraint, NewConstraints),
 
         % No cycles. (lt(X, X) is a contradiction)
@@ -653,9 +653,10 @@ add_complete_order_constraints([Conjunct | Conjuncts], !MOCs) :-
 
 constrain_if_possible([], !OCI).
 constrain_if_possible([Constraint | Constraints], !OCI) :-
-    ( add_ordering_constraint(Constraint, !OCI) ->
+    ( if add_ordering_constraint(Constraint, !OCI) then
         constrain_if_possible(Constraints, !OCI)
-    ;
+    else
+        % XXX This action contradicts the comment above.
         constrain_if_possible(Constraints, !OCI)
     ).
 
@@ -673,7 +674,7 @@ topological_sort_min_reordering(Constraints0, Conjuncts0, Ordering) :-
     NotFirst = set.map(func(lt(_From, To)) = To, Constraints0),
     CandidatesForFirst = set.difference(Conjuncts0, NotFirst),
 
-    ( set.remove_least(First, CandidatesForFirst, _) ->
+    ( if set.remove_least(First, CandidatesForFirst, _) then
         % Remove First from the system.
         set.remove(First, Conjuncts0, Conjuncts),
         Constraints = set.filter(
@@ -683,7 +684,7 @@ topological_sort_min_reordering(Constraints0, Conjuncts0, Ordering) :-
         % Order the rest, then put First at the head.
         topological_sort_min_reordering(Constraints, Conjuncts, Ordering0),
         Ordering = [First | Ordering0]
-    ;
+    else
         % No cantidates for First, so we are only done if there were
         % no nodes (conjuncts) left to begin with.
         set.is_empty(Conjuncts0),

@@ -379,7 +379,7 @@ gather_opt_export_preds_in_list([PredId | PredIds], ProcessLocalPreds,
             DoWrite = yes,
             ( if pred_info_pragma_goal_type(PredInfo) then
                 % The foreign code of this predicate may refer to entities
-                % in the foreign language that defined in a foreign module
+                % in the foreign language that are defined in a foreign module
                 % that is imported by a foreign_import_module declaration.
                 intermod_info_set_need_foreign_import_modules(!IntermodInfo)
             else
@@ -753,7 +753,6 @@ intermod_do_add_proc(PredId, DoWrite, !IntermodInfo) :-
     intermod_info_get_module_info(!.IntermodInfo, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
-    ProcIds = pred_info_procids(PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if
         % Calling compiler-generated procedures is fine; we don't need
@@ -783,6 +782,7 @@ intermod_do_add_proc(PredId, DoWrite, !IntermodInfo) :-
             check_marker(Markers, marker_infer_modes)
         ;
             pred_info_get_proc_table(PredInfo, Procs),
+            ProcIds = pred_info_all_procids(PredInfo),
             list.member(ProcId, ProcIds),
             map.lookup(Procs, ProcId, ProcInfo),
             proc_info_get_declared_determinism(ProcInfo, no)
