@@ -432,16 +432,16 @@
 init_option_table(OptionDefaultsPred, OptionTable) :-
     solutions(
         ( pred(OptionDataPair::out) is nondet :-
-            OptionDataPair = Option - OptionData,
-            OptionDefaultsPred(Option, OptionData)
+            OptionDefaultsPred(Option, OptionData),
+            OptionDataPair = Option - OptionData
         ), OptionDefaultsList),
     map.from_sorted_assoc_list(OptionDefaultsList, OptionTable).
 
 init_option_table_multi(OptionDefaultsPred, OptionTable) :-
     solutions(
         ( pred(OptionDataPair::out) is multi :-
-            OptionDataPair = Option - OptionData,
-            OptionDefaultsPred(Option, OptionData)
+            OptionDefaultsPred(Option, OptionData),
+            OptionDataPair = Option - OptionData
         ), OptionDefaultsList),
     map.from_sorted_assoc_list(OptionDefaultsList, OptionTable).
 
