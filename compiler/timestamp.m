@@ -91,10 +91,10 @@ time_t_to_timestamp(Time) = gmtime_to_timestamp(time.gmtime(Time)).
 :- func gmtime_to_timestamp(tm) = timestamp.
 
 gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
-    timestamp(gmtime_to_timestamp_2(Year, Month, MD, Hrs, Min, Sec,
+    timestamp(gmtime_to_timestamp_string(Year, Month, MD, Hrs, Min, Sec,
         YD, WD, maybe_dst_to_int(DST))).
 
-:- func gmtime_to_timestamp_2(int, int, int, int, int, int, int, int, int)
+:- func gmtime_to_timestamp_string(int, int, int, int, int, int, int, int, int)
     = string.
 
 :- pragma foreign_decl("C", "
@@ -102,7 +102,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
     #include <time.h>
 ").
 :- pragma foreign_proc("C",
-    gmtime_to_timestamp_2(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
+    gmtime_to_timestamp_string(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
         Sec::in, YD::in, WD::in, N::in) = (Result::out),
     [will_not_call_mercury, promise_pure],
 "{
@@ -126,7 +126,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
 }").
 
 :- pragma foreign_proc("C#",
-    gmtime_to_timestamp_2(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
+    gmtime_to_timestamp_string(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
         Sec::in, _YD::in, _WD::in, _N::in) = (Result::out),
     [will_not_call_mercury, promise_pure],
 "{
@@ -138,7 +138,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
 }").
 
 :- pragma foreign_proc("Java",
-    gmtime_to_timestamp_2(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
+    gmtime_to_timestamp_string(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
         Sec::in, _YD::in, _WD::in, _N::in) = (Result::out),
     [will_not_call_mercury, promise_pure],
 "
@@ -150,7 +150,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
     Result = sdf.format(date);
 ").
 
-gmtime_to_timestamp_2(_, _, _, _, _, _, _, _, _) = _ :-
+gmtime_to_timestamp_string(_, _, _, _, _, _, _, _, _) = _ :-
     sorry($file, $pred).
 
 :- func maybe_dst_to_int(maybe(dst)) = int.

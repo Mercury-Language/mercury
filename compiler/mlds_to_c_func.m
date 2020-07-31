@@ -54,16 +54,13 @@
 :- import_module hlds.hlds_pred.            % for pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module ml_backend.ml_type_gen.    % for ml_gen_type_name
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_stmt.
-:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module char.
 :- import_module int.
 :- import_module maybe.
-:- import_module solutions.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -92,70 +89,6 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     ),
     mlds_output_func_decl(Opts, Indent, QualFuncName, Context, Params, !IO),
     io.write_string(";\n", !IO).
-
-%---------------------%
-
-:- pred mlds_output_type_forward_decls(mlds_to_c_opts::in, indent::in,
-    list(mlds_type)::in, io::di, io::uo) is det.
-
-mlds_output_type_forward_decls(Opts, Indent, ParamTypes, !IO) :-
-    % Output forward declarations for all struct types
-    % that are contained in the parameter types.
-    solutions.aggregate(mlds_type_list_contains_type(ParamTypes),
-        mlds_output_type_forward_decl(Opts, Indent), !IO).
-
-    % mlds_type_list_contains_type(Types, SubType):
-    %
-    % True iff the type SubType occurs (directly or indirectly) in the
-    % specified list of Types.
-    %
-:- pred mlds_type_list_contains_type(list(mlds_type)::in, mlds_type::out)
-    is nondet.
-
-mlds_type_list_contains_type(Types, SubType) :-
-    list.member(Type, Types),
-    mlds_type_contains_type(Type, SubType).
-
-    % mlds_type_contains_type(Type, SubType):
-    %
-    % True iff the type Type contains the type SubType.
-    %
-:- pred mlds_type_contains_type(mlds_type::in, mlds_type::out) is multi.
-
-mlds_type_contains_type(Type, Type).
-mlds_type_contains_type(mlds_mercury_array_type(Type), Type).
-mlds_type_contains_type(mlds_array_type(Type), Type).
-mlds_type_contains_type(mlds_ptr_type(Type), Type).
-mlds_type_contains_type(mlds_func_type(Parameters), Type) :-
-    Parameters = mlds_func_params(Arguments, RetTypes),
-    ( list.member(mlds_argument(_Name, Type, _GCStmt), Arguments)
-    ; list.member(Type, RetTypes)
-    ).
-
-:- pred mlds_output_type_forward_decl(mlds_to_c_opts::in, indent::in,
-    mlds_type::in, io::di, io::uo) is det.
-
-mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
-    ( if
-        (
-            Type = mlds_class_type(ClassId),
-            ClassId = mlds_class_id(_Name, _Arity, Kind),
-            Kind \= mlds_enum,
-            ClassType = Type
-        ;
-            Type = mercury_nb_type(MercuryType, ctor_cat_user(_)),
-            type_to_ctor(MercuryType, TypeCtor),
-            ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-            ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
-            ClassType = mlds_class_type(ClassId)
-        )
-    then
-        output_n_indents(Indent, !IO),
-        mlds_output_type(Opts, ClassType, !IO),
-        io.write_string(";\n", !IO)
-    else
-        true
-    ).
 
 %---------------------%
 

@@ -155,7 +155,8 @@ build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
         Succeeded = Succeeded0
     ).
 
-:- type signal_action ---> signal_action.
+:- type signal_action
+    --->    signal_action.
 :- pragma foreign_type("C", signal_action, "MR_signal_action").
 
 :- pragma foreign_decl("C",
@@ -214,7 +215,7 @@ MC_mercury_compile_signal_handler(int sig)
 
 :- pred setup_signal_handlers(signal_action::out, io::di, io::uo) is det.
 
-setup_signal_handlers(signal_action::out, IO::di, IO::uo).
+setup_signal_handlers(signal_action, !IO).
 
 :- pragma foreign_proc("C",
     setup_signal_handlers(SigintHandler::out, _IO0::di, _IO::uo),
@@ -240,7 +241,7 @@ setup_signal_handlers(signal_action::out, IO::di, IO::uo).
 
 :- pred restore_signal_handlers(signal_action::in, io::di, io::uo) is det.
 
-restore_signal_handlers(_::in, IO::di, IO::uo).
+restore_signal_handlers(_, !IO).
 
 :- pragma foreign_proc("C",
     restore_signal_handlers(SigintHandler::in, _IO0::di, _IO::uo),
@@ -267,7 +268,7 @@ setup_child_signal_handlers(!IO) :-
 
 :- func sig_dfl = signal_action.
 
-sig_dfl = (signal_action::out).
+sig_dfl = signal_action.
 
 :- pragma foreign_proc("C",
     sig_dfl = (Result::out),
@@ -278,7 +279,7 @@ sig_dfl = (signal_action::out).
 
 :- pred check_for_signal(int::out, int::out, io::di, io::uo) is det.
 
-check_for_signal(0::out, 0::out, IO::di, IO::uo).
+check_for_signal(0, 0, !IO).
 
 :- pragma foreign_proc("C",
     check_for_signal(Signalled::out, Signal::out, _IO0::di, _IO::uo),
@@ -294,7 +295,7 @@ check_for_signal(0::out, 0::out, IO::di, IO::uo).
 
     % If this aborted it would cause partially built files
     % to be left lying around with `--make'.
-raise_signal(_::in, IO::di, IO::uo).
+raise_signal(_, !IO).
 
 :- pragma foreign_proc("C",
     raise_signal(Signal::in, _IO0::di, _IO::uo),
@@ -351,7 +352,8 @@ sigint = _ :-
 #endif
 ").
 
-can_fork :- semidet_fail.
+can_fork :-
+    semidet_fail.
 
 call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
     ( if can_fork then

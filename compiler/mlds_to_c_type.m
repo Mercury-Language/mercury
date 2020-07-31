@@ -53,7 +53,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.rtti.
-:- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -236,31 +235,6 @@ mlds_output_mercury_type_prefix(CtorCat, !IO) :-
         ),
         io.write_string("MR_Word", !IO)
     ).
-
-:- pred mlds_output_mercury_user_type_name(mlds_to_c_opts::in, type_ctor::in,
-    type_ctor_category::in, io::di, io::uo) is det.
-
-mlds_output_mercury_user_type_name(Opts, TypeCtor, CtorCat, !IO) :-
-    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-    (
-        CtorCat = ctor_cat_enum(_),
-        ClassId = mlds_class_id(ClassName, ClassArity, mlds_enum),
-        MLDS_Type = mlds_class_type(ClassId)
-    ;
-        ( CtorCat = ctor_cat_builtin(_)
-        ; CtorCat = ctor_cat_higher_order
-        ; CtorCat = ctor_cat_tuple
-        ; CtorCat = ctor_cat_builtin_dummy
-        ; CtorCat = ctor_cat_variable
-        ; CtorCat = ctor_cat_void
-        ; CtorCat = ctor_cat_system(_)
-        ; CtorCat = ctor_cat_user(_)
-        ),
-        ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
-        Type = mlds_class_type(ClassId),
-        MLDS_Type = mlds_ptr_type(Type)
-    ),
-    mlds_output_type_prefix(Opts, MLDS_Type, !IO).
 
 mlds_output_type_suffix_no_size(Opts, Type, !IO) :-
     mlds_output_type_suffix(Opts, Type, no_size, !IO).

@@ -8,6 +8,7 @@
 --warn-unused-imports
 --warn-insts-with-functors-without-type
 --warn-suspicious-foreign-code
+--warn-dead-preds
 --halt-at-warn
 --no-mercury-stdlib-dir
 --no-detect-libgrades

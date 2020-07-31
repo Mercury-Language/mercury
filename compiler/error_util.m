@@ -521,11 +521,11 @@
             % Output the string "predicate" or "function" as appropriate.
 
     ;       decl(string)
-            % Prefix the string with ":- ", surround with single quotes
+            % Prefix the string with ":- ", surround it with single quotes,
             % and then treat as fixed.
 
     ;       pragma_decl(string)
-            % As above but prefix the string with ":- pragma ".
+            % As above, but prefix the string with ":- pragma ".
 
     ;       nl
             % Insert a line break if there has been text output since

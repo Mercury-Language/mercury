@@ -814,13 +814,6 @@ mercury_output_foreign_type_repn(TypeRepnFor, Indent, TypeRepn, !IO) :-
     ),
     io.format("\n%s)", [s(I)], !IO).
 
-:- pred mercury_output_prefix_foreign_type_assertion(string::in,
-    foreign_type_assertion::in, io::di, io::uo) is det.
-
-mercury_output_prefix_foreign_type_assertion(Prefix, Assertion, !IO) :-
-    io.write_string(Prefix, !IO),
-    mercury_output_foreign_type_assertion(Assertion, !IO).
-
 mercury_output_foreign_type_assertion(Assertion, !IO) :-
     (
         Assertion = foreign_type_can_pass_as_mercury_type,

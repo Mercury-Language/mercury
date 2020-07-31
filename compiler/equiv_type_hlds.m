@@ -912,6 +912,7 @@ replace_in_unify_mode(TypeEqvMap, UnifyMode0, UnifyMode, Changed, !Info) :-
 :- pred replace_in_from_to_insts(type_eqv_map::in,
     from_to_insts::in, from_to_insts::out, maybe_changed::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
+:- pragma consider_used(replace_in_from_to_insts/8).
 
 replace_in_from_to_insts(TypeEqvMap, FromToInsts0, FromToInsts, Changed,
         !TVarSet, !Cache) :-
