@@ -259,6 +259,9 @@
   #include ""mercury_ho_call.h""
   #include <stdio.h>
 
+  MR_declare_entry(mercury__profiling_builtin__prepare_for_normal_call_1_0);
+  MR_declare_entry(mercury__profiling_builtin__prepare_for_ho_call_2_0);
+
   #endif    // MR_DEEP_PROFILING
 
 #endif  // MR_DEEP_PROFILING_GUARD

@@ -571,8 +571,6 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             maybe_generate_internal_event_code(Goal, DisjGoalInfo, TraceCode,
                 !CI, !CLD),
             GoalCodeModel = goal_info_get_code_model(GoalInfo),
-            code_gen.generate_goal(GoalCodeModel, Goal, GoalCode, !CI, !CLD),
-
             (
                 CodeModel = model_non,
 
@@ -580,6 +578,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 % so we make sure every variable in the resume set
                 % is in its stack slot.
                 flush_resume_vars_to_stack(FlushResumeVarsCode, !.CI, !CLD),
+                code_gen.generate_goal(GoalCodeModel, Goal, GoalCode,
+                    !CI, !CLD),
 
                 % We hang onto any temporary slots holding saved heap pointers
                 % and/or tickets, thus ensuring that they will still be
@@ -591,6 +591,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 ),
 
                 FlushResumeVarsCode = cord.empty,
+                code_gen.generate_goal(GoalCodeModel, Goal, GoalCode,
+                    !CI, !CLD),
 
                 maybe_release_hp(MaybeHpSlot, !CI, !CLD),
                 % We are committing to this disjunct if it succeeds.

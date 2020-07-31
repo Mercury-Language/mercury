@@ -1060,6 +1060,11 @@ catch_impl(Pred, Handler, T) :-
         MR_Pred handler_pred, MR_Box *output,
         MR_CONT_PARAMS);
 
+  #else  // MR_HIGHLEVEL_CODE
+    #ifdef MR_DEEP_PROFILING
+      #include ""mercury_profiling_builtin.h""
+      #include ""profiling_builtin.mh""
+    #endif
   #endif // MR_HIGHLEVEL_CODE
 
 #endif // ML_HLC_EXCEPTION_GUARD
