@@ -1,13 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
 
 :- module mode_inference_reorder.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -23,41 +22,51 @@
     ;       expr_times(expr, expr)
     ;       expr_div(expr, expr).
 
-main -->
-    main2.
+main(!IO) :-
+    main2(!IO).
 
-main2 -->
-    io__write_string("calculator> "),
-    io__flush_output,
-    io__read_line(Res),
-    ( { Res = error(_) },
-        io__write_string("Error reading from stdin\n")
-    ; { Res = eof },
-        io__write_string("EOF\n")
-    ; { Res = ok(Line0) },
-        { list__delete_all(Line0, ' ', Line) },
-        ( { fullexpr(X, Line, []) } ->
-            { Num = evalexpr(X) },
-            io__write_int(Num),
-            io__write_string("\n")
-        ;
-            io__write_string("Syntax error\n")
+% This is separate from main/2 so that we can require the compiler
+% to infer its mode.
+main2(!IO) :-
+    io.write_string("calculator> ", !IO),
+    io.flush_output(!IO),
+    io.read_line(Res, !IO),
+    (
+        Res = error(_),
+        io.write_string("Error reading from stdin\n", !IO)
+    ;
+        Res = eof,
+        io.write_string("EOF\n", !IO)
+    ;
+        Res = ok(Line0),
+        list.delete_all(Line0, ' ', Line),
+        ( if full_expr(X, Line, []) then
+            Num = eval_expr(X),
+            io.write_int(Num, !IO),
+            io.write_string("\n", !IO)
+        else
+            io.write_string("Syntax error\n", !IO)
         ),
-        main    % recursively call ourself for the next line(s)
+        main(!IO)    % recursively call ourself for the next line(s)
     ).
 
-:- func evalexpr(expr) = int.
+:- func eval_expr(expr) = int.
 
-evalexpr(expr_number(Num)) = Num.
-evalexpr(expr_plus(X, Y)) = evalexpr(X) + evalexpr(Y).
-evalexpr(expr_minus(X, Y)) = evalexpr(X) - evalexpr(Y).
-evalexpr(expr_times(X, Y)) = evalexpr(X) * evalexpr(Y).
-evalexpr(expr_div(X, Y)) = evalexpr(X) // evalexpr(Y).
+eval_expr(expr_number(Num)) = Num.
+eval_expr(expr_plus(X, Y)) =  eval_expr(X) + eval_expr(Y).
+eval_expr(expr_minus(X, Y)) = eval_expr(X) - eval_expr(Y).
+eval_expr(expr_times(X, Y)) = eval_expr(X) * eval_expr(Y).
+eval_expr(expr_div(X, Y)) =   eval_expr(X) // eval_expr(Y).
 
-% Simple recursive-descent parser.
+% Simple recursive-descent parser for expressions.
+% Note: this code uses the two terms "factor" and "term" ass backwards.
+% People usually name the nonterminal for identifiers and parenthesized
+% expressions "factor", but this parser calls it "term". On the other hand,
+% people usually call one or more such entities connected by multiply and/or
+% divide operations "terms", but this parser calls them "factors".
 
-% :- pred fullexpr(expr::out, list(char)::in, list(char)::out) is semidet.
-fullexpr(X) -->
+% :- pred full_expr(expr::out, list(char)::in, list(char)::out) is semidet.
+full_expr(X) -->
     ord_expr(X),
     ['\n'].
 
@@ -71,13 +80,15 @@ ord_expr(Expr, DCG0, DCG) :-
 %   is semidet.
 % :- pred expr2(expr::out(free), expr::out(free), list(char)::out(free),
 %   list(char)::out(free)) is semidet.
-expr2(Factor, Expr) -->
-    ( [('+') `with_type` char] ->
-        factor(Factor2), expr2(expr_plus( Factor, Factor2), Expr)
-    ; [('-') `with_type` char] ->
-        factor(Factor2), expr2(expr_minus(Factor, Factor2), Expr)
-    ;
-        { Expr = Factor }
+expr2(Factor1, Expr) -->
+    ( if [('+') `with_type` char] then
+        factor(Factor2),
+        expr2(expr_plus(Factor1, Factor2), Expr)
+    else if [('-') `with_type` char] then
+        factor(Factor2),
+        expr2(expr_minus(Factor1, Factor2), Expr)
+    else
+        { Expr = Factor1 }
     ).
 
 % :- pred factor(expr::out, list(char)::in, list(char)::out) is semidet.
@@ -87,35 +98,37 @@ factor(Factor) -->
 
 % :- pred factor2(expr::in, expr::out, list(char)::in, list(char)::out)
 %   is semidet.
-factor2(Term, Factor) -->
-    ( [('*') `with_type` char] ->
-        term(Term2), factor2(expr_times(Term, Term2), Factor)
-    ; [('/') `with_type` char] ->
-        term(Term2), factor2(expr_div(  Term, Term2), Factor)
-    ;
-        { Factor = Term }
+factor2(Term1, Factor) -->
+    ( if [('*') `with_type` char] then
+        term(Term2),
+        factor2(expr_times(Term1, Term2), Factor)
+    else if [('/') `with_type` char] then
+        term(Term2),
+        factor2(expr_div(Term1, Term2), Factor)
+    else
+        { Factor = Term1 }
     ).
 
 % :- pred term(expr::out, list(char)::in, list(char)::out) is semidet.
-term(Term)  -->
-    ( const(Const) ->
-        { string__from_char_list(Const, ConstString) },
-        { string__to_int(ConstString, Num) },
+term(Term) -->
+    ( if const(Const) then
+        { string.from_char_list(Const, ConstString) },
+        { string.to_int(ConstString, Num) },
         { Term = expr_number(Num) }
-    ;
+    else
         ['('], ord_expr(Term), [')']
     ).
 
 % :- pred const(list(char)::out, list(char)::in, list(char)::out) is semidet.
 const([Digit | Rest]) -->
     digit(Digit),
-    ( const(Const) ->
+    ( if const(Const) then
         { Rest = Const }
-    ;
+    else
         { Rest = [] }
     ).
 
 % :- pred digit(char::out, list(char)::in, list(char)::out) is semidet.
 digit(Char) -->
     [Char],
-    { char__is_digit(Char) }.
+    { char.is_digit(Char) }.

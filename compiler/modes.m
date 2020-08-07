@@ -35,9 +35,9 @@
 % For mode checking, we then just compare the inferred final insts
 % with the declared final insts, and that is about all there is to it.
 %
-% For mode inference, it's a little bit trickier. When we see a call to
-% a predicate for which the modes weren't declared, we first check whether
-% the call matches any of the modes we've already inferred. If not,
+% For mode inference, it is a little bit trickier. When we see a call to
+% a predicate for which the modes were not declared, we first check whether
+% the call matches any of the modes we have already inferred. If not,
 % we create a new mode for the predicate, with the initial insts
 % set to a "normalised" version of the insts of the call arguments.
 % For a first approximation, we set the final insts to `not_reached'.
@@ -55,7 +55,7 @@
 %           Normalise the final insts of the head variables,
 %           record the newly inferred normalised final insts
 %           in the proc_info, and check whether they changed
-%           (so that we know when we've reached the fixpoint).
+%           (so that we know when we have reached the fixpoint).
 %
 % How to mode-analyse a goal is documented at the top of modecheck_goal.
 %
@@ -199,7 +199,7 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
         WhatToCheck = check_unique_modes,
         report_mode_inference_messages_for_preds(!.ModuleInfo,
             include_detism_on_modes, PredIds, !Specs),
-        check_eval_methods(!.ModuleInfo, !Specs),
+        module_check_eval_methods_and_main(!.ModuleInfo, !Specs),
         SafeToContinue = SafeToContinue0
     ;
         WhatToCheck = check_modes,
@@ -300,20 +300,97 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
     ).
 
     % Iterate over the list of pred_ids in a module.
+    % XXX Document this predicate rather better than that.
+    % 
+    % XXX I, zs, see three nontrivial problems with our current approach
+    % to fixpoint iteration in the presence of predicates that have
+    % no mode declarations.
+    %
+    % The first and most serious problem is that I see no attempt
+    % to catch and diagnose a scenario that could lead to the compiler
+    % generating incomplete code. This scenario goes like this:
+    %
+    % (a) Predicate A calls predicate B. Predicate B has no mode declaration,
+    %     so we queue a request to add a mode to it, with the initial insts
+    %     of its arguments being the insts of the corresponding arguments
+    %     at the time of the call.
+    %
+    % (b) Mode inference of predicate B finds finds that there is no way
+    %     to schedule the goals of the body of B with those initial insts.
+    %     We record a mode error for this mode of B, making that mode of B
+    %     invalid in the sense of proc_info_is_valid_mode. However:
+    %
+    %     (b1) Since B has marker_infer_modes, we don't add the B's mode error
+    %          to the list of mode errors we intend to print, because a later
+    %          iteration in the fixpoint could cure the error (e.g. by
+    %          inferring a new mode for a predicate C that B calls).
+    %
+    %     (b2) The proc_id recorded for the call from A to B is *not*
+    %          invalid_proc_id, but a *real* proc_id, that just happens
+    %          to refer to an proc_info that is not valid. This means that
+    %          we don't get a more error from A either.
+    %
+    %     While this situation would be extremely likely to change in the
+    %     next iteration, I see no correctness argument that would guarantee
+    %     would guarantee this. We could thus arrive at a fixpoint in which 
+    %     a valid procedure in A would contain a call to an invalid procedure
+    %     in B. Since we generate target language code for valid procedures
+    %     but obviously not for invalid procedures, we would be generating
+    %     a call to an undefined callee.
+    %
+    %     (Note that modecheck_call.m *does* ensure that if a call has
+    %     invalid_proc_id as its proc_id, then we *will* generate an error
+    %     when we are analysing the caller. That is distinct from the problem
+    %     above, in which the callee procedure is invalid but its proc_id
+    %     is *not* invalid_proc_id.)
+    %
+    % The second problem is that proc_infos created during mode inference
+    % stick around (as proc_infos for which proc_info_is_valid_mode fails)
+    % even if there are no calls to them from proc_infos that *are* valid.
+    % For example, during mode inference of the mode_inference_reorder test
+    % case in tests/general, many of the predicates that have no mode
+    % declarations in the source code get two procedures created, of which
+    % one ends up valid and one ends up invalid. As it happens, there are
+    % dangling calls (i.e. the first problem above does not arise), because
+    % all the calls to the invalid procedures are from *other* invalid
+    % procedures. Having these invalid procedures hanging around for the
+    % rest of the compiler invocation is pure overhead, since they
+    % (a) are still in their predicates' proc tables, so their  memory
+    % can't be garbage collected, and (b) all traversals of their predicates'
+    % valid procedures have to step over them. And yet we can't just delete
+    % all procedures that end up invalid from their predicates' proc table
+    % at the end of mode analysis, since there *may* be references to them
+    % from valid procedures (see the first problem above), and in that case
+    % such deletion would probably lead to a compiler abort (e.g. when
+    % the compiler wanted to look up some info about a deleted callee),
+    % which is an even worse failure more than generating incomplete code.
+    %
+    % The third problem is that in the presence of intermodule optimization,
+    % the predicate table may contains hundreds of predicates whose bodies
+    % the compiler has access to, and whose bodies it therefore must modecheck.
+    % The vast majority of these, the ones from .opt files, are known to be
+    % mode correct, since if they weren't, their .opt file wouldn't have been
+    % created in the first place. In the usual case, many if not most of
+    % those .opt files will be from modules that do not import the module
+    % currently being compiled, and whose contents thus cannot be affected
+    % by any new modes we infer to the predicates in the current module.
+    % Reanalysing such predicates on every iteration is also a waste of time,
+    % *especially* given that it is also likely that many of those predicates
+    % will end up not being called from anywhere at all during this compiler
+    % invocation.
     %
 :- pred modecheck_to_fixpoint(list(pred_id)::in, int::in,
     how_to_check_goal::in, may_change_called_proc::in,
     module_info::in, module_info::out, maybe_safe_to_continue::out,
     list(error_spec)::out) is det.
 
-modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, SafeToContinue, !:Specs) :-
-    % Save the old procedure bodies so that we can restore them for the
-    % next pass.
+modecheck_to_fixpoint(PredIds, NumIterationsLeft, WhatToCheck,
+        MayChangeCalledProc, !ModuleInfo, SafeToContinue, !:Specs) :-
+    % Save the old procedure bodies, so that we can restore any procedure body 
+    % for the next pass if necessary.
     module_info_get_preds(!.ModuleInfo, OldPredTable0),
 
-    % Analyze every procedure that has its "CanProcess" flag
-    % set to `can_process_now'.
+    % Analyze every procedure whose "CanProcess" flag is `can_process_now'.
     list.foldl3(maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc),
         PredIds, !ModuleInfo, no, Changed1, [], !:Specs),
 
@@ -336,7 +413,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
             SafeToContinue = unsafe_to_continue
         ;
             ErrorsSoFar = no,
-            ( if MaxIterations =< 1 then
+            ( if NumIterationsLeft =< 1 then
                 % Stop if we have exceeded the iteration limit.
                 MaxIterSpec = report_max_iterations_exceeded(!.ModuleInfo),
                 !:Specs = [MaxIterSpec | !.Specs],
@@ -361,11 +438,11 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 
                 % Mode analysis may have modified the procedure bodies,
                 % since it does some optimizations such as deleting unreachable
-                % code. But since we didn't reach a fixpoint yet, the mode
+                % code. But since we have not reached a fixpoint yet, the mode
                 % information is not yet correct, and so those optimizations
-                % will have been done based on incomplete information, and so
-                % they may produce incorrect results. We thus need to restore
-                % the old procedure bodies.
+                % will have been done based on incomplete information, and
+                % therefore they may produce incorrect results. We thus
+                % have to restore the old procedure bodies.
 
                 (
                     WhatToCheck = check_modes,
@@ -383,9 +460,9 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
                     copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo)
                 ),
 
-                MaxIterations1 = MaxIterations - 1,
-                modecheck_to_fixpoint(PredIds, MaxIterations1, WhatToCheck,
-                    MayChangeCalledProc, !ModuleInfo, SafeToContinue, !:Specs)
+                modecheck_to_fixpoint(PredIds, NumIterationsLeft - 1,
+                    WhatToCheck, MayChangeCalledProc,
+                    !ModuleInfo, SafeToContinue, !:Specs)
             )
         )
     ).
@@ -575,32 +652,30 @@ do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
         WhatToCheck = check_unique_modes,
         DeclSpecs = []
     ),
-    % Note that we use pred_info_procids rather than pred_info_all_procids
-    % here, which means that we don't process modes that have already been
-    % inferred as invalid.
+    % Note that we use pred_info_valid_procids, rather than
+    % pred_info_all_procids here, which means that we don't process modes
+    % that have already been inferred as invalid.
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     ProcIds = pred_info_valid_procids(PredInfo0),
-    modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
+    maybe_modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
         ProcIds, !ModuleInfo, !Changed, init_error_spec_accumulator, SpecsAcc),
     ProcSpecs = error_spec_accumulator_to_list(SpecsAcc).
 
     % Iterate over the list of modes for a predicate.
     %
-:- pred modecheck_procs(how_to_check_goal::in, may_change_called_proc::in,
-    pred_id::in, proc_table::in, list(proc_id)::in,
+:- pred maybe_modecheck_procs(how_to_check_goal::in,
+    may_change_called_proc::in, pred_id::in, proc_table::in, list(proc_id)::in,
     module_info::in, module_info::out, bool::in, bool::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
-modecheck_procs(_, _, _, _, [], !ModuleInfo, !Changed, !Specs).
-modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
+maybe_modecheck_procs(_, _, _, _, [], !ModuleInfo, !Changed, !Specs).
+maybe_modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
         [ProcId | ProcIds], !ModuleInfo, !Changed, !SpecsAcc) :-
-    % Mode-check that mode of the predicate.
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     maybe_modecheck_proc(WhatToCheck, MayChangeCalledProc,
         PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, ProcSpecs),
     accumulate_error_specs_for_proc(ProcSpecs, !SpecsAcc),
-    % Recursively process the remaining modes.
-    modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
+    maybe_modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
         ProcIds, !ModuleInfo, !Changed, !SpecsAcc).
 
 %-----------------------------------------------------------------------------%
@@ -749,13 +824,16 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
             else
                 AllErrorSpecs = list.map(mode_error_info_to_spec(!.ModeInfo),
                     ModeErrors),
-
-                % We only return the first error, because there could be a
-                % large number of mode errors and usually only one is needed to
-                % diagnose the problem.
-
                 (
                     AllErrorSpecs = [ErrorSpec | _],
+                    % We only return the first error, because
+                    % (1) there could be a large number of mode errors;
+                    % (2) most of the errors after the first are usually
+                    %     "avalanche" errors caused by previous errors; and
+                    % (3) the first is virtually always enough to diagnose
+                    %     the problem, and if not, it is enough to diagnose
+                    %     *one* problem, after whose fix we will report
+                    %     another error.
                     ErrorSpecs = [ErrorSpec],
                     proc_info_get_statevar_warnings(!.ProcInfo,
                         StateVarWarningSpecs)
@@ -828,7 +906,6 @@ modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers, IsUnifyPred,
             % to be unique for mode analysis to succeed, we will call copy
             % after all three. Fixing this would require a significantly more
             % complicated approach.
-
             mode_info_set_make_ground_terms_unique(make_ground_terms_unique,
                 ModeInfo0, ModeInfo2),
             do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes,
@@ -1001,10 +1078,12 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
         set_req_queue(RequestQueue1, Requests0, Requests1),
         module_info_set_proc_requests(Requests1, !ModuleInfo),
 
-        % Check that the procedure is valid before attempt to do mode analysis
-        % on it. This check is necessary to avoid internal errors caused by
-        % (a) doing mode analysis on type-incorrect code, and (b) doing mode
-        % inference on predicates that have higher order arguments.
+        % Check that the procedure is valid before we attempt to do
+        % mode analysis on it. This check is necessary to avoid
+        % internal errors caused by
+        % (a) doing mode analysis on type-incorrect code, and
+        % (b) doing mode inference on predicates that have higher order
+        % arguments.
 
         PredProcId = proc(PredId, _ProcId),
         module_info_get_valid_pred_id_set(!.ModuleInfo, ValidPredIds),
@@ -1243,8 +1322,8 @@ modecheck_lambda_final_insts(HeadVars, ArgFinalInsts, !Goal, !ModeInfo) :-
     % For lambda expressions, modes must always be declared;
     % we never infer them.
     InferModes = no,
-    modecheck_final_insts(HeadVars, InferModes, ArgFinalInsts,
-        _NewFinalInsts, !Goal, !ModeInfo).
+    modecheck_final_insts(HeadVars, InferModes, ArgFinalInsts, _NewFinalInsts,
+        !Goal, !ModeInfo).
 
     % Check that the final insts of the head vars match their expected insts.
     %
@@ -1411,29 +1490,30 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
     % Check that the evaluation method is OK for the given mode(s).
     % We also check the mode of main/2 here.
     %
-:- pred check_eval_methods(module_info::in,
+:- pred module_check_eval_methods_and_main(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_eval_methods(ModuleInfo, !Specs) :-
+module_check_eval_methods_and_main(ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    pred_check_eval_methods(ModuleInfo, PredIds, !Specs).
+    pred_check_eval_methods_and_main(ModuleInfo, PredIds, !Specs).
 
-:- pred pred_check_eval_methods(module_info::in, list(pred_id)::in,
+:- pred pred_check_eval_methods_and_main(module_info::in, list(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-pred_check_eval_methods(_, [], !Specs).
-pred_check_eval_methods(ModuleInfo, [PredId | PredIds], !Specs) :-
+pred_check_eval_methods_and_main(_, [], !Specs).
+pred_check_eval_methods_and_main(ModuleInfo, [PredId | PredIds], !Specs) :-
     module_info_get_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     ProcIds = pred_info_valid_procids(PredInfo),
-    proc_check_eval_methods(ModuleInfo, PredInfo, ProcIds, !Specs),
-    pred_check_eval_methods(ModuleInfo, PredIds, !Specs).
+    proc_check_eval_methods_and_main(ModuleInfo, PredInfo, ProcIds, !Specs),
+    pred_check_eval_methods_and_main(ModuleInfo, PredIds, !Specs).
 
-:- pred proc_check_eval_methods(module_info::in, pred_info::in,
+:- pred proc_check_eval_methods_and_main(module_info::in, pred_info::in,
     list(proc_id)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-proc_check_eval_methods(_, _, [], !Specs).
-proc_check_eval_methods(ModuleInfo, PredInfo, [ProcId | ProcIds], !Specs) :-
+proc_check_eval_methods_and_main(_, _, [], !Specs).
+proc_check_eval_methods_and_main(ModuleInfo, PredInfo, [ProcId | ProcIds],
+        !Specs) :-
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
@@ -1460,20 +1540,20 @@ proc_check_eval_methods(ModuleInfo, PredInfo, [ProcId | ProcIds], !Specs) :-
         pred_info_name(PredInfo) = "main",
         pred_info_orig_arity(PredInfo) = 2,
         pred_info_is_exported(PredInfo),
-        not check_mode_of_main(Modes, ModuleInfo)
+        not modes_are_valid_for_main(ModuleInfo, Modes)
     then
         MainSpec = report_wrong_mode_for_main(ProcInfo),
         !:Specs = [MainSpec | !.Specs]
     else
         true
     ),
-    proc_check_eval_methods(ModuleInfo, PredInfo, ProcIds, !Specs).
+    proc_check_eval_methods_and_main(ModuleInfo, PredInfo, ProcIds, !Specs).
 
 :- pred only_fully_in_out_modes(list(mer_mode)::in, module_info::in)
     is semidet.
 
 only_fully_in_out_modes([], _).
-only_fully_in_out_modes([Mode | Rest], ModuleInfo) :-
+only_fully_in_out_modes([Mode | Modes], ModuleInfo) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     (
         inst_is_ground(ModuleInfo, InitialInst)
@@ -1485,7 +1565,7 @@ only_fully_in_out_modes([Mode | Rest], ModuleInfo) :-
             inst_is_ground(ModuleInfo, FinalInst)
         )
     ),
-    only_fully_in_out_modes(Rest, ModuleInfo).
+    only_fully_in_out_modes(Modes, ModuleInfo).
 
 :- pred only_nonunique_modes(list(mer_mode)::in, module_info::in) is semidet.
 
@@ -1496,19 +1576,16 @@ only_nonunique_modes([Mode | Rest], ModuleInfo) :-
     inst_is_not_partly_unique(ModuleInfo, FinalInst),
     only_nonunique_modes(Rest, ModuleInfo).
 
-:- pred check_mode_of_main(list(mer_mode)::in, module_info::in) is semidet.
+:- pred modes_are_valid_for_main(module_info::in, list(mer_mode)::in)
+    is semidet.
 
-check_mode_of_main([Di, Uo], ModuleInfo) :-
+modes_are_valid_for_main(ModuleInfo, [Di, Uo]) :-
     mode_get_insts(ModuleInfo, Di, DiInitialInst, DiFinalInst),
     mode_get_insts(ModuleInfo, Uo, UoInitialInst, UoFinalInst),
-    %
-    % Note that we hard-code these tests,
-    % rather than using `inst_is_free', `inst_is_unique', etc.,
-    % since for main/2 we're looking for an exact match
-    % (modulo inst synonyms) with what the language reference
-    % manual specifies, rather than looking for a particular
-    % abstract property.
-    %
+    % Note that we hard-code these tests, rather than using `inst_is_free',
+    % `inst_is_unique', etc., since for main/2, we are looking for
+    % an exact match (modulo inst synonyms) with what the language reference
+    % manual specifies, rather than looking for a particular abstract property.
     Unique = ground(unique, none_or_default_func),
     Clobbered = ground(clobbered, none_or_default_func),
     inst_expand(ModuleInfo, DiInitialInst, Unique),

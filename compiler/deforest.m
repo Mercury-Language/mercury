@@ -107,7 +107,7 @@ deforestation(!ModuleInfo) :-
     % Find out which arguments of each procedure are switched on at the top
     % level or are constructed in a way which is possibly deforestable.
     Task0 = update_module_cookie(get_branch_vars_proc_univ, UnivProcArgInfo0),
-    process_all_nonimported_procs_update(Task0, Task, !ModuleInfo),
+    process_valid_nonimported_procs_update(Task0, Task, !ModuleInfo),
     ( if
         Task = update_module_cookie(_, UnivProcArgInfo),
         univ_to_type(UnivProcArgInfo, ProcArgInfo1)

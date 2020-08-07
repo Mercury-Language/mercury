@@ -213,15 +213,10 @@ find_filled_in_procs([ProcIdInfo | ProcIdsInfos], FilledInProcIdsInfos) :-
     ProcIdInfo = _ProcId - ProcInfo,
     proc_info_get_goal(ProcInfo, Goal),
     Goal = hlds_goal(GoalExpr, _),
-    ( if
-        proc_info_is_valid_mode(ProcInfo),
-        not (
-            GoalExpr = conj(plain_conj, [])
-        )
-    then
-        FilledInProcIdsInfos = [ProcIdInfo | TailFilledInProcIdsInfos]
-    else
+    ( if GoalExpr = conj(plain_conj, []) then
         FilledInProcIdsInfos = TailFilledInProcIdsInfos
+    else
+        FilledInProcIdsInfos = [ProcIdInfo | TailFilledInProcIdsInfos]
     ).
 
 :- pred write_pred_markers(pred_markers::in, io::di, io::uo) is det.
@@ -911,8 +906,13 @@ write_proc(Info, Indent, VarNamePrint, ModuleInfo, PredId, PredInfo,
         io.format("%% pred id %d: %s\n",
             [i(PredIdInt), s(PredIdStr)], !IO),
         write_indent(Indent1, !IO),
-        io.format("%% mode number %d (%s)\n",
-            [i(ProcIdInt), s(DetismStr)], !IO),
+        ( if proc_info_is_valid_mode(ProcInfo) then
+            io.format("%% mode number %d (%s)\n",
+                [i(ProcIdInt), s(DetismStr)], !IO)
+        else
+            io.format("%% mode number %d (%s) INVALID MODE\n",
+                [i(ProcIdInt), s(DetismStr)], !IO)
+        ),
 
         write_indent(Indent, !IO),
         write_var_types(VarSet, TVarSet, VarNamePrint, Indent, VarTypes, !IO),

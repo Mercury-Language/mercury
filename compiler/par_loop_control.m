@@ -137,7 +137,7 @@
 
 maybe_par_loop_control_module(!ModuleInfo) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
-    process_all_nonimported_procs(
+    process_valid_nonimported_procs(
         update_module(maybe_par_loop_control_proc(DepInfo)),
         !ModuleInfo).
 

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: passes_aux.m.
 % Author: zs
@@ -12,7 +12,7 @@
 % This file contains auxiliary routines for the passes of the front and back
 % ends of the compiler.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.passes_aux.
 :- interface.
@@ -30,7 +30,7 @@
 :- import_module maybe.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type pred_error_task ==
     pred(pred_id, module_info, module_info, pred_info, pred_info,
@@ -46,11 +46,11 @@
 
 :- mode update_pred_task == update_pred_task >> update_pred_task.
 
-:- pred process_all_nonimported_preds_errors(
+:- pred process_valid_nonimported_preds_errors(
     update_pred_task::update_pred_task, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Note that update_module_cookie causes some difficulties.
 % Ideally, it should be implemented using existential types:
@@ -115,7 +115,7 @@
 :- inst module_pred_cookie_task ==
     (pred(in, in, in, out, in, out, in, out) is det).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type update_proc_task
     --->    update_proc(proc_task)
@@ -137,17 +137,17 @@
 
 :- mode update_proc_task == update_proc_task >> update_proc_task.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred process_all_nonimported_procs(update_proc_task::update_proc_task,
+:- pred process_valid_nonimported_procs(update_proc_task::update_proc_task,
     module_info::in, module_info::out) is det.
 
-:- pred process_all_nonimported_procs_update(
+:- pred process_valid_nonimported_procs_update(
     update_proc_task::update_proc_task,
     update_proc_task::out(update_proc_task),
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred write_pred_progress_message(string::in, pred_id::in, module_info::in,
     io::di, io::uo) is det.
@@ -177,7 +177,7 @@
 :- pred report_pred_name_mode(pred_or_func::in, string::in, list(mer_mode)::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % should_dump_stage(StageNum, StageNumStr, StageName, DumpStages):
     %
@@ -201,8 +201,8 @@
 :- pred maybe_dump_hlds(module_info::in, int::in, string::in,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -231,17 +231,18 @@
 :- import_module string.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-process_all_nonimported_preds_errors(Task, !ModuleInfo, !Specs, !IO) :-
+process_valid_nonimported_preds_errors(Task, !ModuleInfo, !Specs, !IO) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    list.foldl2(process_nonimported_pred(Task), PredIds, !ModuleInfo, !Specs).
+    list.foldl2(process_valid_nonimported_pred(Task), PredIds,
+        !ModuleInfo, !Specs).
 
-:- pred process_nonimported_pred(update_pred_task::in(update_pred_task),
+:- pred process_valid_nonimported_pred(update_pred_task::in(update_pred_task),
     pred_id::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-process_nonimported_pred(Task, PredId, !ModuleInfo, !Specs) :-
+process_valid_nonimported_pred(Task, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     ( if pred_info_is_imported(PredInfo0) then
         true
@@ -251,7 +252,7 @@ process_nonimported_pred(Task, PredId, !ModuleInfo, !Specs) :-
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst par_proc_task for update_proc_task/0
     --->    update_proc(proc_task)
@@ -268,10 +269,10 @@ process_nonimported_pred(Task, PredId, !ModuleInfo, !Specs) :-
 
 :- mode seq_proc_task == seq_proc_task >> seq_proc_task.
 
-process_all_nonimported_procs(Task, !ModuleInfo) :-
-    process_all_nonimported_procs_update(Task, _, !ModuleInfo).
+process_valid_nonimported_procs(Task, !ModuleInfo) :-
+    process_valid_nonimported_procs_update(Task, _, !ModuleInfo).
 
-process_all_nonimported_procs_update(!Task, !ModuleInfo) :-
+process_valid_nonimported_procs_update(!Task, !ModuleInfo) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     (
         ( !.Task = update_proc(_)
@@ -281,7 +282,7 @@ process_all_nonimported_procs_update(!Task, !ModuleInfo) :-
         ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
         module_info_get_preds(!.ModuleInfo, PredMap0),
         map.to_assoc_list(PredMap0, PredIdsInfos0),
-        par_process_nonimported_procs_in_preds(!.ModuleInfo, !.Task,
+        par_process_valid_nonimported_procs_in_preds(!.ModuleInfo, !.Task,
             ValidPredIdSet, PredIdsInfos0, PredIdsInfos),
         map.from_sorted_assoc_list(PredIdsInfos, PredMap),
         module_info_set_preds(PredMap, !ModuleInfo)
@@ -291,45 +292,45 @@ process_all_nonimported_procs_update(!Task, !ModuleInfo) :-
         ; !.Task = update_module_cookie(_, _)
         ; !.Task = update_module_pred_cookie(_, _)
         ),
-        seq_process_nonimported_procs_in_preds(ValidPredIds, !Task,
+        seq_process_valid_nonimported_procs_in_preds(ValidPredIds, !Task,
             !ModuleInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred par_process_nonimported_procs_in_preds(module_info::in,
+:- pred par_process_valid_nonimported_procs_in_preds(module_info::in,
     update_proc_task::par_proc_task, set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out)
     is det.
 
-par_process_nonimported_procs_in_preds(_, _, _, [], []).
-par_process_nonimported_procs_in_preds(ModuleInfo, Task, ValidPredIdSet,
+par_process_valid_nonimported_procs_in_preds(_, _, _, [], []).
+par_process_valid_nonimported_procs_in_preds(ModuleInfo, Task, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
     PredIdInfo0 = PredId - PredInfo0,
     ( if
         set_tree234.contains(ValidPredIdSet, PredId),
-        ProcIds = pred_info_all_non_imported_procids(PredInfo0),
+        ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
         ProcIds = [_ | _]
     then
         % Potential parallelization site.
-        par_process_nonimported_procs(ModuleInfo, Task, PredId, ProcIds,
+        par_process_valid_nonimported_procs(ModuleInfo, Task, PredId, ProcIds,
             PredInfo0, PredInfo),
         PredIdInfo = PredId - PredInfo,
-        par_process_nonimported_procs_in_preds(ModuleInfo, Task,
+        par_process_valid_nonimported_procs_in_preds(ModuleInfo, Task,
             ValidPredIdSet, PredIdsInfos0, PredIdsInfos)
     else
         PredIdInfo = PredIdInfo0,
-        par_process_nonimported_procs_in_preds(ModuleInfo, Task,
+        par_process_valid_nonimported_procs_in_preds(ModuleInfo, Task,
             ValidPredIdSet, PredIdsInfos0, PredIdsInfos)
     ).
 
-:- pred par_process_nonimported_procs(module_info::in,
+:- pred par_process_valid_nonimported_procs(module_info::in,
     update_proc_task::par_proc_task, pred_id::in, list(proc_id)::in,
     pred_info::in, pred_info::out) is det.
 
-par_process_nonimported_procs(_, _, _, [], !PredInfo).
-par_process_nonimported_procs(ModuleInfo, Task, PredId, [ProcId | ProcIds],
-        !PredInfo) :-
+par_process_valid_nonimported_procs(_, _, _, [], !PredInfo).
+par_process_valid_nonimported_procs(ModuleInfo, Task, PredId,
+        [ProcId | ProcIds], !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, ProcMap0),
     map.lookup(ProcMap0, ProcId, Proc0),
 
@@ -348,30 +349,30 @@ par_process_nonimported_procs(ModuleInfo, Task, PredId, [ProcId | ProcIds],
     map.det_update(ProcId, Proc, ProcMap0, ProcMap),
     pred_info_set_proc_table(ProcMap, !PredInfo),
 
-    par_process_nonimported_procs(ModuleInfo, Task, PredId, ProcIds,
+    par_process_valid_nonimported_procs(ModuleInfo, Task, PredId, ProcIds,
         !PredInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred seq_process_nonimported_procs_in_preds(list(pred_id)::in,
+:- pred seq_process_valid_nonimported_procs_in_preds(list(pred_id)::in,
     update_proc_task::seq_proc_task, update_proc_task::out(seq_proc_task),
     module_info::in, module_info::out) is det.
 
-seq_process_nonimported_procs_in_preds([], !Task, !ModuleInfo).
-seq_process_nonimported_procs_in_preds([PredId | PredIds], !Task,
+seq_process_valid_nonimported_procs_in_preds([], !Task, !ModuleInfo).
+seq_process_valid_nonimported_procs_in_preds([PredId | PredIds], !Task,
         !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo),
-    seq_process_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo),
-    seq_process_nonimported_procs_in_preds(PredIds, !Task, !ModuleInfo).
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    seq_process_valid_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo),
+    seq_process_valid_nonimported_procs_in_preds(PredIds, !Task, !ModuleInfo).
 
-:- pred seq_process_nonimported_procs(pred_id::in, list(proc_id)::in,
+:- pred seq_process_valid_nonimported_procs(pred_id::in, list(proc_id)::in,
     update_proc_task::seq_proc_task, update_proc_task::out(seq_proc_task),
     module_info::in, module_info::out) is det.
 
-seq_process_nonimported_procs(_PredId, [], !Task, !ModuleInfo).
-seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
+seq_process_valid_nonimported_procs(_PredId, [], !Task, !ModuleInfo).
+seq_process_valid_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
         !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, Pred0),
@@ -407,9 +408,9 @@ seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
     map.det_update(PredId, Pred, Preds8, Preds),
     module_info_set_preds(Preds, !ModuleInfo),
 
-    seq_process_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo).
+    seq_process_valid_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -438,7 +439,7 @@ write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
         VeryVerbose = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_report_sizes(HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
@@ -465,7 +466,7 @@ report_sizes(ModuleInfo, !IO) :-
     io.format("Constructor table size = %d\n",
         [i(list.length(CtorDefns))], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -522,7 +523,7 @@ report_pred_name_mode(pf_function, FuncName, ArgModes, !IO) :-
     io.write_string(" = ", !IO),
     mercury_output_mode(output_debug, InstVarSet, FuncRetMode, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) :-
     some [DumpStage] (
@@ -657,6 +658,6 @@ dump_hlds(DumpFile, HLDS, !IO) :-
         report_error(Msg, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.passes_aux.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

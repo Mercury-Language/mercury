@@ -339,7 +339,7 @@ structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
 :- pred annotate_liveness(module_info::in, module_info::out) is det.
 
 annotate_liveness(!ModuleInfo) :-
-    process_all_nonimported_procs(
+    process_valid_nonimported_procs(
         update_module(simplify_and_detect_liveness_proc), !ModuleInfo).
 
 :- pred simplify_and_detect_liveness_proc(pred_proc_id::in,

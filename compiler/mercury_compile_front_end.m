@@ -1261,8 +1261,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             then
                 list.cons(simptask_constant_prop, !SimpList)
             else
-                !:SimpList =
-                    list.delete_all(!.SimpList, simptask_constant_prop)
+                list.delete_all(!.SimpList, simptask_constant_prop, !:SimpList)
             ),
             list.cons(simptask_mark_code_model_changes, !SimpList),
             list.cons(simptask_elim_removable_scopes, !SimpList)
@@ -1276,7 +1275,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         SimplifyTasks = list_to_simplify_tasks(SimpList),
-        process_all_nonimported_preds_errors(
+        process_valid_nonimported_preds_errors(
             update_pred_error(simplify_pred(SimplifyTasks)),
             !HLDS, [], SimplifySpecs, !IO),
         (

@@ -479,7 +479,7 @@ maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Minimizing variable saves using constants...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module(saved_vars_proc), !HLDS),
+        process_valid_nonimported_procs(update_module(saved_vars_proc), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -497,7 +497,7 @@ maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Minimizing variable saves using cells...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module(stack_opt_cell), !HLDS),
+        process_valid_nonimported_procs(update_module(stack_opt_cell), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -514,7 +514,7 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
         FollowCode = yes,
         maybe_write_string(Verbose, "% Migrating branch code...", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module(move_follow_code_in_proc),
+        process_valid_nonimported_procs(update_module(move_follow_code_in_proc),
             !HLDS),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -537,7 +537,7 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
     then
         detect_liveness_preds_parallel(!HLDS)
     else
-        process_all_nonimported_procs(update_proc_ids(detect_liveness_proc),
+        process_valid_nonimported_procs(update_proc_ids(detect_liveness_proc),
             !HLDS)
     ),
     maybe_write_string(Verbose, "% done.\n", !IO),
@@ -553,7 +553,7 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO) :-
     maybe_flush_output(Verbose, !IO),
     module_info_rebuild_dependency_info(!HLDS, DepInfo),
     SCCMap = dependency_info_make_scc_map(DepInfo),
-    process_all_nonimported_preds_errors(
+    process_valid_nonimported_preds_errors(
         update_pred_error(
             mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap)),
         !HLDS, !Specs, !IO),
@@ -566,7 +566,7 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO) :-
 compute_stack_vars(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Computing stack vars...", !IO),
     maybe_flush_output(Verbose, !IO),
-    process_all_nonimported_procs(
+    process_valid_nonimported_procs(
         update_proc_ids(allocate_stack_slots_in_proc), !HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
@@ -577,7 +577,7 @@ compute_stack_vars(Verbose, Stats, !HLDS, !IO) :-
 allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Allocating store map...", !IO),
     maybe_flush_output(Verbose, !IO),
-    process_all_nonimported_procs(
+    process_valid_nonimported_procs(
         update_proc_ids(allocate_store_maps(final_allocation)), !HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).

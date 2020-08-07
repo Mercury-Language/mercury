@@ -251,13 +251,13 @@ ssdebug_transform_module(SSTraceLevel, !ModuleInfo, !IO) :-
         % With the shallow trace level, the parent of a library procedure
         % will also be have trace level shallow, thus we don't need to proxy
         % the library methods.
-        process_all_nonimported_procs(
+        process_valid_nonimported_procs(
             update_module(ssdebug_process_proc_if_needed(SSTraceLevel)),
             !ModuleInfo)
     ;
         SSTraceLevel = deep,
         ssdebug_first_pass(!ModuleInfo),
-        process_all_nonimported_procs(
+        process_valid_nonimported_procs(
             update_module(ssdebug_process_proc_if_needed(SSTraceLevel)),
             !ModuleInfo)
     ).

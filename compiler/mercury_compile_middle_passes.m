@@ -909,7 +909,7 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_flush_output(Verbose, !IO),
         type_to_univ([] : list(error_spec), Cookie0),
         Task0 = update_module_pred_cookie(accu_transform_proc, Cookie0),
-        process_all_nonimported_procs_update(Task0, Task, !HLDS),
+        process_valid_nonimported_procs_update(Task0, Task, !HLDS),
         ( if
             Task = update_module_pred_cookie(_, Cookie),
             univ_to_type(Cookie, AccSpecs)
@@ -972,7 +972,7 @@ maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
 
         maybe_write_string(Verbose, "% Hoisting loop invariants...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(
+        process_valid_nonimported_procs(
             update_module_pred(hoist_loop_invariants), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -1036,7 +1036,7 @@ maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Delaying construction unifications ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_proc_ids(delay_construct_proc),
+        process_valid_nonimported_procs(update_proc_ids(delay_construct_proc),
             !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -1139,8 +1139,8 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Removing unneeded code from procedure bodies...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module(unneeded_process_proc_msg),
-            !HLDS),
+        process_valid_nonimported_procs(
+            update_module(unneeded_process_proc_msg), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1288,7 +1288,7 @@ maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
         current_grade_supports_par_conj(Globals, SupportsParConj),
         (
             SupportsParConj = no,
-            process_all_nonimported_procs(
+            process_valid_nonimported_procs(
                 update_proc_ids(parallel_to_plain_conjs), !HLDS)
         ;
             SupportsParConj = yes,
@@ -1377,7 +1377,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Applying term size profiling transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(
+        process_valid_nonimported_procs(
             update_module(size_prof_process_proc_msg(Transform)), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -1419,7 +1419,7 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Applying complexity experiment transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(
+        process_valid_nonimported_procs(
             update_module(complexity_process_proc_msg(NumProcs, ProcMap)),
             !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),

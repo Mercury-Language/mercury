@@ -220,7 +220,7 @@ maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
         SGCells = yes,
         maybe_write_string(Verbose, "% Marking static ground terms...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_proc(mark_static_terms), !HLDS),
+        process_valid_nonimported_procs(update_proc(mark_static_terms), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -268,7 +268,7 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
         ),
         maybe_write_string(Verbose, "% Adding trailing operations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(
+        process_valid_nonimported_procs(
             update_proc(add_trail_ops(OptTrailUse, GenerateInline)), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -303,7 +303,7 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Adding heap reclamation operations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_proc(add_heap_ops), !HLDS),
+        process_valid_nonimported_procs(update_proc(add_heap_ops), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     else
