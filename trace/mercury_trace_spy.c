@@ -23,6 +23,7 @@
 #include "mdb.cterm.mh"
 
 #include <stdlib.h>
+#include <limits.h>
 
 const char      *MR_spy_when_names[] =
 {
@@ -700,6 +701,8 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
     char            *filename;
     int             num_file_matches = 0;
     int             num_line_matches = 0;
+    int             next_lower;
+    int             next_higher;
 
     *problem = NULL;
     if (ignore_when != MR_SPY_DONT_IGNORE) {
@@ -717,7 +720,7 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
     old_size = MR_spied_label_next;
     MR_process_file_line_layouts(filename, linenumber,
         MR_add_line_spy_point_callback, point_slot,
-        &num_file_matches, &num_line_matches);
+        &num_file_matches, &num_line_matches, &next_lower, &next_higher);
     new_size = MR_spied_label_next;
 
     if (new_size == old_size) {
@@ -731,9 +734,40 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
             MR_snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
                 "there is no debuggable source file named %s", filename);
         } else {
-            MR_snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
-                "there is no event at line %d in %s",
-                linenumber, filename);
+            // The next_higher sentinel, INT_MAX, must match the corresponding
+            // value in mercury_trace_tables.c.
+            //
+            // NOTE: Theoretically, users *could* write source_file pragmas
+            // that specify line numbers *above* INT_MAX. Anyone who does so
+            // may find that such line numbers are effectively invisible
+            // to the code below. But then again, I (zs) would argue that
+            // they deserve this, and worse ;-)
+            if (next_lower >= 0 && next_higher < INT_MAX) {
+                MR_snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+                    "there is no event at line %d in %s\n"
+                    "(next lower line number: %d, next higher line number: %d)",
+                    linenumber, filename, next_lower, next_higher);
+            } else if (next_lower >= 0) {
+                MR_snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+                    "there is no event at line %d in %s\n"
+                    "(next lower line number: %d, none higher)",
+                    linenumber, filename, next_lower);
+            } else if (next_higher < INT_MAX) {
+                MR_snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+                    "there is no event at line %d in %s\n"
+                    "(no lower line number, next higher: %d)",
+                    linenumber, filename, next_higher);
+            } else {
+                // If there is line number that is either lower than, equal to,
+                // or higher than the one we are looking for, then there are
+                // no line numbers at all in the file structure we matched.
+                // The compiler shouldn't generate such file structures,
+                // but there is no point in insisting on that here.
+                MR_snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+                    "there is no event at line %d in %s\n"
+                    "(no lower line number, and none higher)",
+                    linenumber, filename);
+            }
         }
         *problem = MR_error_msg_buf;
         return -1;

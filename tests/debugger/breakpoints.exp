@@ -248,7 +248,14 @@ mdb> break_print -b0 *
 mdb> break nonexistent.m:1000
 mdb: there is no debuggable source file named nonexistent.m.
 mdb> break breakpoints.m:1000
-mdb: there is no event at line 1000 in breakpoints.m.
+mdb: there is no event at line 1000 in breakpoints.m
+(next lower line number: 103, none higher).
+mdb> break breakpoints.m:2
+mdb: there is no event at line 2 in breakpoints.m
+(no lower line number, next higher: 35).
+mdb> break breakpoints.m:82
+mdb: there is no event at line 82 in breakpoints.m
+(next lower line number: 80, next higher line number: 84).
 mdb> continue
      E15:     C9 EXIT func breakpoints.a.testmod.test_in_a/0-0 (det) breakpoints.a.testmod.m:14 (breakpoints.m:38)
        HeadVar__1             	"a"

@@ -72,15 +72,21 @@ extern  int                 MR_trace_event_sets_max_num_attr;
 // callback function with a pointer to the label's layout structure and
 // with the supplied integer callback argument.
 //
-// Each time this function finds a file with the specified name, it increments
-// *num_file_matches_ptr; each time it finds a line with the specified number
-// in such a file, it increments *num_line_matches_ptr.
+// We return the number of times we find a file with the specified name
+// in *num_file_matches_ptr, and the number of times we find a line
+// with the specified number in such a file in *num_line_matches_ptr.
+// If we find files with the specified name that do *not* contain
+// the specified line number, we set *next_lower and *next_higher
+// to the nearest lower and higher line numbers that the file *does*
+// contain. If there are multiple such files, then we return only
+// the highest next_lower and the lowest next_higher line number.
 
 typedef void        (*MR_file_line_callback)(const MR_LabelLayout *, int);
 
 extern  void        MR_process_file_line_layouts(const char *file, int line,
                         MR_file_line_callback callback_func, int callback_arg,
-                        int *num_file_matches_ptr, int *num_line_matches_ptr);
+                        int *num_file_matches_ptr, int *num_line_matches_ptr,
+                        int *next_lower, int *next_higher);
 
 // These functions print (parts of) the module info table.
 //

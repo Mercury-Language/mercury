@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 
 MR_TraceEventSet    *MR_trace_event_sets = NULL;
 int                 MR_trace_event_set_next = 0;
@@ -68,7 +69,8 @@ static  void            MR_process_matching_procedures_in_module(
 static  void            MR_process_line_layouts(const MR_ModuleFileLayout
                             *file_layout, int line,
                             MR_file_line_callback callback_func,
-                            int callback_arg, int *num_line_matches_ptr);
+                            int callback_arg, int *num_line_matches_ptr,
+                            int *next_lower, int *next_higher);
 
 static  MR_bool         MR_module_in_arena(const char *name, char **names,
                             int num_names);
@@ -326,19 +328,27 @@ MR_insert_module_info(const MR_ModuleLayout *module)
 void
 MR_process_file_line_layouts(const char *file, int line,
     MR_file_line_callback callback_func, int callback_arg,
-    int *num_file_matches_ptr, int *num_line_matches_ptr)
+    int *num_file_matches_ptr, int *num_line_matches_ptr,
+    int *next_lower, int *next_higher)
 {
     const MR_ModuleFileLayout   *file_layout;
     size_t                      i;
     int                         j;
 
+    *num_file_matches_ptr = 0;
+    *num_line_matches_ptr = 0;
+    *next_lower = -1;
+    *next_higher = INT_MAX;
+    // The next_higher sentinel, INT_MAX must match the corresponding value
+    // in mercury_trace_spy.c.
     for (i = 0; i < MR_module_info_next; i++) {
         for (j = 0; j < MR_module_infos[i]->MR_ml_filename_count; j++) {
             file_layout = MR_module_infos[i]->MR_ml_module_file_layout[j];
             if (MR_streq(file_layout->MR_mfl_filename, file)) {
                 *num_file_matches_ptr = *num_file_matches_ptr + 1;
                 MR_process_line_layouts(file_layout, line, callback_func,
-                    callback_arg, num_line_matches_ptr);
+                    callback_arg, num_line_matches_ptr,
+                    next_lower, next_higher);
             }
         }
     }
@@ -347,7 +357,7 @@ MR_process_file_line_layouts(const char *file, int line,
 static void
 MR_process_line_layouts(const MR_ModuleFileLayout *file_layout, int line,
     MR_file_line_callback callback_func, int callback_arg,
-    int *num_line_matches_ptr)
+    int *num_line_matches_ptr, int *next_lower, int *next_higher)
 {
     int         k;
     MR_bool     found;
@@ -372,6 +382,41 @@ MR_process_line_layouts(const MR_ModuleFileLayout *file_layout, int line,
                 callback_arg);
             k++;
             *num_line_matches_ptr = *num_line_matches_ptr + 1;
+        }
+    } else {
+        // It would be nice if we could ask MR_bsearch to tell us
+        // which parts of the array cannot contain the next lower
+        // and next higher line numbers, but since we cannot,
+        // a binary search will have to do.
+
+        // These variables hold the next lower and higher line numbers
+        // (if any) *in this file*. *next_lower and *next_higher apply
+        // to *all file structures* with the specified name. (Theoretically,
+        // there may be more than one, especially in the presence of
+        // nested submodules and/or #line directives.)
+        int lower = -1;
+        int higher = INT_MAX;
+
+        k = 0;
+        while (k < file_layout->MR_mfl_label_count) {
+            if (file_layout->MR_mfl_label_lineno[k] < line) {
+                lower = file_layout->MR_mfl_label_lineno[k];
+                k++;
+            } else {
+                break;
+            }
+        }
+
+        if (k < file_layout->MR_mfl_label_count) {
+            higher = file_layout->MR_mfl_label_lineno[k];
+        }
+
+        if (lower > *next_lower) {
+            *next_lower = lower;
+        }
+
+        if (higher < *next_higher) {
+            *next_higher = higher;
         }
     }
 }
