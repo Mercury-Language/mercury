@@ -1476,20 +1476,19 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     MmakeVarMhs = mmake_var_defn_list(ModuleMakeVarName ++ ".mhs", MhSources),
     add_mmake_entry(MmakeVarMhs, !MmakeFile),
 
-    % The `<module>.all_mihs' variable is like `<module>.mihs' except
-    % that it contains header files for all the modules, regardless
-    % of the grade or --target option. It is used by the rule for
-    % `mmake realclean', which should remove anything that could have
-    % been automatically generated, even if the grade or --target option
-    % has changed.
+    % The `<module>.all_mihs' variable is like `<module>.mihs' except that
+    % it contains header files for all the modules, regardless of the grade
+    % or --target option. It is used by the rule for `mmake realclean',
+    % which should remove anything that could have been automatically
+    % generated, even if the grade or --target option has changed.
     MmakeVarAllMihs = mmake_var_defn(ModuleMakeVarName ++ ".all_mihs",
         string.format("$(%s.mods:%%=$(mihs_subdir)%%.mih)",
             [s(ModuleMakeVarName)])),
     add_mmake_entry(MmakeVarAllMihs, !MmakeFile),
 
-    % The `<module>.all_mhs' variable is like `<module>.mhs' except
-    % that it contains header files for all the modules, as for
-    % `<module>.all_mihs' above.
+    % The `<module>.all_mhs' variable is like `<module>.mhs' except that
+    % it contains header files for all the modules, as for `<module>.all_mihs'
+    % above.
     MmakeVarAllMhs = mmake_var_defn(ModuleMakeVarName ++ ".all_mhs",
         string.format("$(%s.mods:%%=%%.mh)",
             [s(ModuleMakeVarName)])),
