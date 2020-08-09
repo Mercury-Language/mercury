@@ -19,8 +19,6 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module io.
-:- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -59,6 +57,8 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
+:- import_module list.
+:- import_module maybe.
 :- import_module one_or_more.
 :- import_module set.
 :- import_module string.

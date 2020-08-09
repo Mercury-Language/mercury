@@ -15,8 +15,6 @@
 
 :- import_module parse_tree.prog_item.
 
-:- import_module list.
-
 %---------------------------------------------------------------------------%
 
 :- type mq_section
@@ -59,6 +57,7 @@
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.parse_sym_name.
 
+:- import_module list.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module require.
