@@ -558,9 +558,9 @@ debug_reg(byte_reg_r, N, !IO) :-
 :- pred output_is_func(byte_is_func::in, io::di, io::uo) is det.
 
 output_is_func(IsFunc, !IO) :-
-    ( ( IsFunc = 1 ; IsFunc = 0 ) ->
+    ( if ( IsFunc = 1 ; IsFunc = 0 ) then
         output_byte(IsFunc, !IO)
-    ;
+    else
         unexpected($pred,
             "invalid predicate or function specified in bytecode")
     ).
@@ -568,11 +568,11 @@ output_is_func(IsFunc, !IO) :-
 :- pred debug_is_func(byte_is_func::in, io::di, io::uo) is det.
 
 debug_is_func(IsFunc, !IO) :-
-    ( IsFunc = 1 ->
+    ( if IsFunc = 1 then
         debug_string("func", !IO)
-    ; IsFunc = 0 ->
+    else if IsFunc = 0 then
         debug_string("pred", !IO)
-    ;
+    else
         unexpected($pred,
             "invalid predicate or function specifier in bytecode.")
     ).

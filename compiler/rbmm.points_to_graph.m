@@ -525,9 +525,9 @@ rptg_get_node_by_vars(Graph, Vars, Node) :-
 get_node_by_vars_from_list(Graph, List, Vars, Node) :-
     List = [ANode | Rest],
     NodeContent = rptg_get_node_content(Graph, ANode),
-    ( set.subset(Vars, NodeContent ^ rptg_nc_vars) ->
+    ( if set.subset(Vars, NodeContent ^ rptg_nc_vars) then
         Node = ANode
-    ;
+    else
         get_node_by_vars_from_list(Graph, Rest, Vars, Node)
     ).
 
@@ -539,14 +539,14 @@ rptg_get_node_by_variable(Graph, Var, Node) :-
 
 rptg_get_node_by_node(Graph, Node, MergedNode) :-
     NodeMap = rptg_get_nodes(Graph),
-    ( map.search(NodeMap, Node, _NodeContent) ->
+    ( if map.search(NodeMap, Node, _NodeContent) then
         MergedNode = Node
-    ;
+    else
         % Not directly in the NodeMap, checked if it has been merged.
         AllNodes = rptg_get_nodes_as_list(Graph),
-        ( get_node_by_node_from_list(Graph, AllNodes, Node, MergedNode0) ->
+        ( if get_node_by_node_from_list(Graph, AllNodes, Node, MergedNode0) then
             MergedNode = MergedNode0
-        ;
+        else
             unexpected($pred, "node not found")
         )
     ).
@@ -556,9 +556,9 @@ rptg_get_node_by_node(Graph, Node, MergedNode) :-
 
 get_node_by_node_from_list(Graph, [N | Ns], Node, MergedNode) :-
     NodeContent = rptg_get_node_content(Graph, N),
-    ( set.member(Node, NodeContent ^ rptg_nc_merged_from) ->
+    ( if set.member(Node, NodeContent ^ rptg_nc_merged_from) then
         MergedNode = N
-    ;
+    else
         get_node_by_node_from_list(Graph, Ns, Node, MergedNode)
     ).
 
@@ -697,9 +697,9 @@ transfer_out_edges(Node1, Node2, !Graph) :-
 transfer_out_edges_2([], _, !Graph).
 transfer_out_edges_2([Edge | Edges], Node1, !Graph) :-
     rptg_get_edge_contents(!.Graph, Edge, _Node2, Node, EdgeContent),
-    ( rptg_edge_in_graph(Node1, EdgeContent, Node, !.Graph) ->
+    ( if rptg_edge_in_graph(Node1, EdgeContent, Node, !.Graph) then
         true
-    ;
+    else
         % Not existed, copy the Edge as an out-edge of Node1.
         rptg_set_edge(Node1, Node, EdgeContent, _Edge, !Graph)
     ),
@@ -737,9 +737,9 @@ rptg_get_in_edges(Graph, Node, InEdges) :-
 
 edge_points_to_node(End, Edge, EdgeInfo, !L) :-
     EdgeInfo = rptg_edge_info(_S, E, _C),
-    ( E = End ->
+    ( if E = End then
         !:L = [Edge | !.L]
-    ;
+    else
         true
     ).
 
@@ -752,9 +752,9 @@ edge_points_to_node(End, Edge, EdgeInfo, !L) :-
 transfer_in_edges_2([], _, !Graph).
 transfer_in_edges_2([Edge | Edges], Node1, !Graph) :-
     rptg_get_edge_contents(!.Graph, Edge, Node, _Node2, EdgeContent),
-    ( rptg_edge_in_graph(Node, EdgeContent, Node1, !.Graph) ->
+    ( if rptg_edge_in_graph(Node, EdgeContent, Node1, !.Graph) then
         true
-    ;
+    else
         % No, copy the Edge as an in-edge of Node1.
         rptg_set_edge(Node, Node1, EdgeContent, _Edge, !Graph)
     ),
@@ -845,9 +845,9 @@ rptg_find_edge_from_node_with_same_content(N, EdgeContent, G, M) :-
 
 find_edge_with_same_content(EdgeContent, [Edge | Edges], G, M) :-
     rptg_get_edge_contents(G, Edge, _N, M0, EdgeContent0),
-    ( EdgeContent0 = EdgeContent ->
+    ( if EdgeContent0 = EdgeContent then
         M = M0
-    ;
+    else
         find_edge_with_same_content(EdgeContent, Edges, G, M)
     ).
 
@@ -996,17 +996,17 @@ update_remembered_list(Selector0, HLDS, TypeX, Graph, Processed, OutEdge,
     rptg_get_edge_contents(Graph, OutEdge, _Start, End, EdgeContent),
     EdgeSelector = rptg_edge_content_get_label(EdgeContent),
     Selector = Selector0 ++ EdgeSelector,
-    ( check_type_of_node(HLDS, TypeX, Selector) ->
+    ( if check_type_of_node(HLDS, TypeX, Selector) then
         % The edge's selector is a valid one.
-        ( list.member(End, Processed) ->
+        ( if list.member(End, Processed) then
             % Already processed, ignore.
             true
-        ;
+        else
             % A non-processed node and can be reached from X by a
             % valid selector, so it is remembered.
             !:List = !.List ++ [pair(End, Selector)]
         )
-    ;
+    else
         % Selector is not valid, ignore.
         true
     ).

@@ -285,11 +285,12 @@ mc_process_scc(Simple, SCC, !PredConstraintMap, !ModuleInfo) :-
         !:ModeConstraint = ensure_normalised(!.ModeConstraint),
         mc_process_scc_pass_2(SCC, !.ModeConstraint, !.MCI, !ModuleInfo),
 
-        Insert = (pred(PredId::in, PCM0::in, PCM::out) is det :-
-            NewPCI = pci(!.ModeConstraint,
-                mci_set_pred_id(!.MCI, PredId)),
-            map.det_insert(PredId, NewPCI, PCM0, PCM)
-        ),
+        Insert =
+            ( pred(PredId::in, PCM0::in, PCM::out) is det :-
+                NewPCI = pci(!.ModeConstraint,
+                    mci_set_pred_id(!.MCI, PredId)),
+                map.det_insert(PredId, NewPCI, PCM0, PCM)
+            ),
         list.foldl(Insert, SCC, !PredConstraintMap)
         % clear_caches(!IO).
     ).
@@ -390,20 +391,20 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
             mode_constraint_var(V `at` goal_id(0), _, S2, S)
         ), InstGraph, HeadVars, !MCI),
 
-    ( pred_info_is_imported(PredInfo1) ->
+    ( if pred_info_is_imported(PredInfo1) then
         true
-    ;
+    else
         clauses_info_clauses(Clauses2, ItemNumbers,
             ClausesInfo1, ClausesInfo2),
         NRInfo0 = number_robdd_info(!.MCI, !.ModuleInfo, VarTypes),
 
         list.map_foldl(
-            (pred(Clause0::in, Clause::out, S0::in, S::out) is det :-
+            ( pred(Clause0::in, Clause::out, S0::in, S::out) is det :-
                 Goal0 = Clause0 ^ clause_body,
                 number_robdd_variables_in_goal(InstGraph,
                     set_of_var.init, _, Goal0, Goal, S0, S),
                 Clause = Clause0 ^ clause_body := Goal
-        ), Clauses2, Clauses, NRInfo0, NRInfo),
+            ), Clauses2, Clauses, NRInfo0, NRInfo),
 
         !:MCI = NRInfo ^ mc_info,
         set_clause_list(Clauses, ClausesRep),
@@ -626,15 +627,15 @@ mc_process_pred(PredId, SCC, !ModeConstraint, !MCI,
     clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
 
     HOModes0 = map.init,
-    (
+    ( if
         ( map.is_empty(ProcTable0)
         ; pred_info_infer_modes(PredInfo0)
         )
-    ->
+    then
         DeclConstraint = one,
         HOModes = HOModes0,
         PredInfo1 = PredInfo0
-    ;
+    else
         ModeDeclInfo0 = mode_decl_info(!.MCI, HOModes0),
         map.map_foldl2(
             mode_decl_to_constraint(!.ModuleInfo, InstGraph, HeadVars,
@@ -656,9 +657,9 @@ mc_process_pred(PredId, SCC, !ModeConstraint, !MCI,
     %   format("mode_constraint1_%d.dot", [i(PredIdInt)]), !IO),
     % io.flush_output(!IO),
 
-    ( pred_info_is_imported(PredInfo1) ->
+    ( if pred_info_is_imported(PredInfo1) then
         PredInfo = PredInfo1
-    ;
+    else
         process_clauses_info(!.ModuleInfo, SCC, ClausesInfo0, ClausesInfo,
             InstGraph, HOModes, !ModeConstraint, !MCI),
         pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo)
@@ -924,10 +925,10 @@ call_in(Path, Var, !C, !MCI) :-
 call_out(Path, Var, C0, C, !MCI) :-
     mode_constraint_var(Var `at` Path, VarGP, !MCI),
     C1 = C0 ^ var(VarGP),
-    ( C1 \= zero ->
-        C = C1
-    ;
+    ( if C1 = zero then
         C = C0
+    else
+        C = C1
     ).
 
 :- type constrain_var == pred(prog_var, mode_constraint, mode_constraint,
@@ -942,14 +943,14 @@ call_out(Path, Var, C0, C, !MCI) :-
 
 process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO, Inst,
         Seen, Var, !Constraint, !MDI) :-
-    ( set_of_var.member(Seen, Var) ->
+    ( if set_of_var.member(Seen, Var) then
         true
-    ;
-        ( Inst = defined_inst(InstName) ->
+    else
+        ( if Inst = defined_inst(InstName) then
             inst_lookup(ModuleInfo, InstName, Inst1),
             process_inst(ModuleInfo, InstGraph,
                 Free, Bound, DoHO, Inst1, Seen, Var, !Constraint, !MDI)
-        ;
+        else
             do_process_inst(ModuleInfo, InstGraph,
                 Free, Bound, DoHO, Inst, Seen, Var, !Constraint, !MDI)
         )
@@ -963,59 +964,63 @@ process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO, Inst,
 
 do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
         Inst, Seen, Var, !Constraint, !MDI) :-
-    update_mc_info_t((pred(C::out, S0::in, S::out) is det :-
-        (
-            ( Inst = any(_, _)
-            ; Inst = bound(_, _, _)
-            ; Inst = ground(_, _)
+    update_mc_info_t(
+        ( pred(C::out, S0::in, S::out) is det :-
+            ( if
+                ( Inst = any(_, _)
+                ; Inst = bound(_, _, _)
+                ; Inst = ground(_, _)
+                )
+            then
+                Bound(Var, !.Constraint, C, S0, S)
+            else if
+                ( Inst = free
+                ; Inst = free(_)
+                )
+            then
+                Free(Var, !.Constraint, C, S0, S)
+            else
+                C = !.Constraint,
+                S = S0
             )
-        ->
-            Bound(Var, !.Constraint, C, S0, S)
-        ;
-            ( Inst = free
-            ; Inst = free(_)
-            )
-        ->
-            Free(Var, !.Constraint, C, S0, S)
-        ;
-            C = !.Constraint,
-            S = S0
-        )), !:Constraint, !MDI),
+        ), !:Constraint, !MDI),
 
     map.lookup(InstGraph, Var, node(Functors, _)),
     map.foldl2(
-        (pred(ConsId::in, Vs::in, C0::in, C::out, S0::in, S::out) is det :-
-            ( Inst = bound(_, _, BIs) ->
-                ( cons_id_in_bound_insts(ConsId, BIs, Insts) ->
+        ( pred(ConsId::in, Vs::in, C0::in, C::out, S0::in, S::out) is det :-
+            ( if Inst = bound(_, _, BIs) then
+                ( if cons_id_in_bound_insts(ConsId, BIs, Insts) then
                     assoc_list.from_corresponding_lists(Vs, Insts, VarInsts),
-                    list.foldl2((pred((V - I)::in, C1::in, C2::out,
-                            T0::in, T::out) is det :-
-                        set_of_var.insert(Var, Seen, SeenVar),
-                        process_inst(ModuleInfo, InstGraph,
-                            Free, Bound, DoHO, I, SeenVar,
-                            V, C1, C2, T0, T)
+                    list.foldl2(
+                        ( pred((V - I)::in, C1::in, C2::out,
+                                T0::in, T::out) is det :-
+                            set_of_var.insert(Var, Seen, SeenVar),
+                            process_inst(ModuleInfo, InstGraph,
+                                Free, Bound, DoHO, I, SeenVar,
+                                V, C1, C2, T0, T)
                         ), VarInsts, C0, C, S0, S)
-                ;
+                else
                     C = C0,
                     S = S0
                 )
-            ;
+            else
                 set_of_var.insert(Var, Seen, SeenVar),
                 list.foldl2(
                     process_inst(ModuleInfo, InstGraph,
                         Free, Bound, DoHO, Inst, SeenVar),
                     Vs, C0, C, S0, S)
-            )), Functors, !Constraint, !MDI),
-    (
+            )
+        ), Functors, !Constraint, !MDI),
+    ( if
         DoHO = yes,
         Inst = ground(_, higher_order(pred_inst_info(_, ArgModes, _, _)))
-    ->
+    then
         HoModes0 = !.MDI ^ ho_modes,
         MCI = !.MDI ^ mc_info,
         get_prog_var_level(MCI, Var, VarLevel),
         multi_map.set(VarLevel, ArgModes, HoModes0, HoModes),
         !MDI ^ ho_modes := HoModes
-    ;
+    else
         true
     ).
 
@@ -1087,11 +1092,11 @@ input_output_constraints(HeadVars, InstGraph, V, Node, !Constraint, !MCI) :-
     mode_constraint_var(in(V), V_in, !MCI),
     mode_constraint_var(out(V), V_out, !MCI),
     mode_constraint_var(V `at` whole_body_goal_id, V_, !MCI),
-    ( TopLevel `list.member` HeadVars ->
+    ( if TopLevel `list.member` HeadVars then
         % For each variable V in the instantiation graph, add
         %   (Vout = Vin + V), ~(Vin * V).
         !:Constraint = !.Constraint ^ io_constraint(V_in, V_out, V_)
-    ;
+    else
         !:Constraint = !.Constraint ^ not_var(V_in) ^ eq_vars(V_out, V_)
     ),
 
@@ -1109,9 +1114,9 @@ input_output_constraints(HeadVars, InstGraph, V, Node, !Constraint, !MCI) :-
     mode_constraint_info::in, mode_constraint_info::out) is det.
 
 add_in_and_out_implications(V, V_in, V_out, W, !Cs, !MCI) :-
-    ( W = V ->
+    ( if W = V then
         true
-    ;
+    else
         mode_constraint_var(in(W), W_in, !MCI),
         mode_constraint_var(out(W), W_out, !MCI),
         !:Cs = !.Cs ^ imp_vars(W_out, V_out) ^ imp_vars(W_in, V_in)
@@ -1139,7 +1144,8 @@ goal_constraints(ParentNonLocals, CanSucceed, Goal0, Goal,
 
     % Number the vars we want to keep for this goal.
     % XXX
-    list.foldl((pred(V::in, S0::in, S::out) is det :-
+    list.foldl(
+        ( pred(V::in, S0::in, S::out) is det :-
             get_var(V `at` GoalId, _, S0, S)
         ), set_of_var.to_sorted_list(Vars), !GCInfo),
     save_threshold(!.GCInfo ^ mc_info, Threshold),
@@ -1152,13 +1158,13 @@ goal_constraints(ParentNonLocals, CanSucceed, Goal0, Goal,
     set_of_var.sorted_list_to_set(NonLocalReachableList, NonLocalReachable),
     LocalVars = Vars `set_of_var.difference` NonLocalReachable,
 
-    ( using_simple_mode_constraints(!.GCInfo ^ g_mc_info) ->
+    ( if using_simple_mode_constraints(!.GCInfo ^ g_mc_info) then
         % With simple mode constraints, it is more efficient to do this
         % constraint before doing the goal constraints.
         constrain_local_vars(LocalVars, GoalId, !Constraint, !GCInfo),
         goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0,
             GoalExpr, !Constraint, !GCInfo)
-    ;
+    else
         goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0,
             GoalExpr, !Constraint, !GCInfo),
         % Without simple mode constraints, it is more efficient to do this
@@ -1246,13 +1252,15 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
         GoalExpr0 = disj(Goals0),
         disj_constraints(NonLocals, CanSucceed, !Constraint, Goals0, Goals,
             [], DisjunctPaths, !GCInfo),
-        list.foldl2((pred(V::in, Cons0::in, Cons::out, in, out) is det -->
-            get_var(V `at` GoalId, Vgp),
-            list.foldl2((pred(I::in, C0::in, C::out, in, out) is det -->
-                get_var(V `at` I, VI),
-                { C = C0 ^ eq_vars(Vgp, VI) }
-            ), DisjunctPaths, Cons0, Cons)
-        ), set_of_var.to_sorted_list(Vars), !Constraint, !GCInfo),
+        list.foldl2(
+            ( pred(V::in, Cons0::in, Cons::out, in, out) is det -->
+                get_var(V `at` GoalId, Vgp),
+                list.foldl2(
+                    ( pred(I::in, C0::in, C::out, in, out) is det -->
+                        get_var(V `at` I, VI),
+                        { C = C0 ^ eq_vars(Vgp, VI) }
+                    ), DisjunctPaths, Cons0, Cons)
+            ), set_of_var.to_sorted_list(Vars), !Constraint, !GCInfo),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = unify(Var, RHS0, _, _, _),
@@ -1268,7 +1276,7 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
 
         CanSucceed = ( pred_can_succeed(PredInfo) -> bool.yes ; bool.no ),
 
-        ( PredId `list.member` SCC ->
+        ( if list.member(PredId, SCC) then
             % This is a recursive call.
             % XXX we currently assume that all recursive calls are to the
             % same mode of the predicate.
@@ -1276,24 +1284,24 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
             clauses_info_get_headvar_list(ClausesInfo, HeadVars),
             call_constraints(GoalId, PredId, HeadVars, Args,
                 !Constraint, !GCInfo)
-        ;
+        else
             % This is a non-recursive call.
-            ( pred_has_mode_decl(ModuleInfo, PredId) ->
+            ( if pred_has_mode_decl(ModuleInfo, PredId) then
                 % The predicate has mode declarations so use them
                 % to obtain the constraints for the call.
 
                 pred_info_get_proc_table(PredInfo, ProcTable),
                 map.values(ProcTable, ProcInfos),
-                update_md_info((pred(C::out, S0::in, S::out) is det :-
-                    list.foldl2(
-                        process_mode_decl_for_proc(ModuleInfo,
-                            InstGraph, Args, ignore, call_in(GoalId), bool.no,
-                            false_var(var_at_goal_id(GoalId)),
-                            call_out(GoalId), yes),
-                        ProcInfos, zero, C, S0, S)),
-                    CallConstraint, !GCInfo)
-
-            ;
+                update_md_info(
+                    ( pred(C::out, S0::in, S::out) is det :-
+                        list.foldl2(
+                            process_mode_decl_for_proc(ModuleInfo,
+                                InstGraph, Args, ignore, call_in(GoalId),
+                                bool.no, false_var(var_at_goal_id(GoalId)),
+                                call_out(GoalId), yes),
+                            ProcInfos, zero, C, S0, S)
+                    ), CallConstraint, !GCInfo)
+            else
                 % The called predicate is from a lower (i.e. already
                 % mode-analysed) SCC, but does not have any mode declarations.
                 pred_info_get_arg_modes_maps(PredInfo, ArgModes),
@@ -1301,27 +1309,30 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
                 PredInstGraph = InstGraphInfo ^ interface_inst_graph,
                 pred_info_get_clauses_info(PredInfo, PredClausesInfo),
                 clauses_info_get_headvar_list(PredClausesInfo, PredHeadVars),
-                solutions((pred((V - W)::out) is nondet :-
-                    inst_graph.corresponding_nodes_from_lists(
-                        PredInstGraph, InstGraph, PredHeadVars, Args, V, W)
+                solutions(
+                    ( pred((V - W)::out) is nondet :-
+                        inst_graph.corresponding_nodes_from_lists(
+                            PredInstGraph, InstGraph, PredHeadVars, Args, V, W)
                     ), CorrespondingNodes),
-                list.foldl2((pred(ArgMap::in, Cn0::in, Cn::out,
-                        S0::in, S::out) is det :-
-                    ArgMap = InArgs - OutArgs,
-                    list.foldl2((pred((V - W)::in, C0::in, C::out,
-                            T0::in, T::out) is det :-
-                        get_var(W `at` GoalId, Wgp, T0, T1),
-                        get_var(out(W), Wout, T1, T),
-                        ( map.lookup(InArgs, V, yes) ->
-                            C = C0 ^ var(Wout) ^ not_var(Wgp)
-                        ; map.lookup(OutArgs, V, yes) ->
-                            C = C0 ^ var(Wgp)
-                        ;
-                            C = C0 ^ not_var(Wgp)
-                        )
-                    ), CorrespondingNodes, one, Cn1, S0, S),
-                    Cn = Cn0 + Cn1
-                ), ArgModes, zero, CallConstraint, !GCInfo)
+                list.foldl2(
+                    ( pred(ArgMap::in, Cn0::in, Cn::out,
+                            S0::in, S::out) is det :-
+                        ArgMap = InArgs - OutArgs,
+                        list.foldl2(
+                            ( pred((V - W)::in, C0::in, C::out,
+                                    T0::in, T::out) is det :-
+                                get_var(W `at` GoalId, Wgp, T0, T1),
+                                get_var(out(W), Wout, T1, T),
+                                ( if map.lookup(InArgs, V, yes) then
+                                    C = C0 ^ var(Wout) ^ not_var(Wgp)
+                                else if map.lookup(OutArgs, V, yes) then
+                                    C = C0 ^ var(Wgp)
+                                else
+                                    C = C0 ^ not_var(Wgp)
+                                )
+                            ), CorrespondingNodes, one, Cn1, S0, S),
+                        Cn = Cn0 + Cn1
+                    ), ArgModes, zero, CallConstraint, !GCInfo)
                 % XXX ArgModes is [] for `odd' - why?
             ),
             !:Constraint = !.Constraint * CallConstraint
@@ -1365,7 +1376,8 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
 
         CanSucceed = yes,
 
-        list.foldl2((pred(V::in, C0::in, C::out, in, out) is det -->
+        list.foldl2(
+            ( pred(V::in, C0::in, C::out, in, out) is det -->
                 get_var(V `at` GoalId, Vgp),
                 get_var(V `at` get_goal_id(SubGoal), Vneg),
                 { C = C0 ^ eq_vars(Vgp, Vneg) }
@@ -1379,7 +1391,8 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
         goal_constraints(NonLocals, CanSucceed, SubGoal0, SubGoal, !Constraint,
             !GCInfo),
 
-        list.foldl2((pred(V::in, C0::in, C::out, in, out) is det -->
+        list.foldl2(
+            ( pred(V::in, C0::in, C::out, in, out) is det -->
                 get_var(V `at` GoalId, Vgp),
                 get_var(V `at` get_goal_id(SubGoal), Vexist),
                 { C = C0 ^ eq_vars(Vgp, Vexist) }
@@ -1409,7 +1422,8 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
 
         % Make sure variables have the same bindings in both the then and else
         % branches.
-        list.foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
+        list.foldl2(
+            ( pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
                 get_var(V `at` GoalId, Vgp, S0, S1),
                 get_var(V `at` get_goal_id(Then0), Vthen, S1, S2),
                 get_var(V `at` get_goal_id(Else0), Velse, S2, S),
@@ -1418,7 +1432,8 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
 
         % Make sure variables are bound in at most one of the cond and then
         % goals.
-        list.foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
+        list.foldl2(
+            ( pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
                 get_var(V `at` get_goal_id(Cond0), Vcond, S0, S1),
                 get_var(V `at` get_goal_id(Then0), Vthen, S1, S),
                 C = C0 ^ not_both(Vcond, Vthen)
@@ -1434,7 +1449,8 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
         set_of_var.difference(Vars, NonLocalReachableSet,
             NotNonLocalReachableVars),
         set_of_var.to_sorted_list(NotNonLocalReachableVars, Locals),
-        list.foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
+        list.foldl2(
+            ( pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
                 get_var(V `at` get_goal_id(Cond), Vcond, S0, S1),
                 get_var(V `at` get_goal_id(Then), Vthen, S1, S2),
                 get_var(V `at` get_goal_id(Else), Velse, S2, S3),
@@ -1495,23 +1511,24 @@ conj_constraints(UseKnownVars, KnownTrue, KnownFalse, GoalId, UsageMap,
 
 conj_constraints_process_var(UseKnownVars, KnownTrue, KnownFalse, GoalId,
         Var - Ids, !Constraint, !GCInfo) :-
-    list.map_foldl((pred(I::in, CV::out, in, out) is det -->
-        mode_constraints.get_var(Var `at` I, CV)
-    ), Ids, ConstraintVars, !GCInfo),
+    list.map_foldl(
+        ( pred(I::in, CV::out, in, out) is det -->
+            mode_constraints.get_var(Var `at` I, CV)
+        ), Ids, ConstraintVars, !GCInfo),
     mode_constraints.get_var(Var `at` GoalId, VConj, !GCInfo),
     ConstraintVarSet = sparse_bitset.list_to_set(ConstraintVars),
 
     % If UseKnownVars = yes we want to only generate the constraints
     % which are 2-sat. If UseKnownVars = no, we generate the other
     % constraints.
-    ( sparse_bitset.contains(KnownFalse, VConj) ->
+    ( if sparse_bitset.contains(KnownFalse, VConj) then
         (
             UseKnownVars = bool.yes,
             !:Constraint = !.Constraint ^ conj_not_vars(ConstraintVarSet)
         ;
             UseKnownVars = bool.no
         )
-    ; sparse_bitset.contains(KnownTrue, VConj) ->
+    else if sparse_bitset.contains(KnownTrue, VConj) then
         (
             ConstraintVars = [],
             !:Constraint = zero
@@ -1543,7 +1560,7 @@ conj_constraints_process_var(UseKnownVars, KnownTrue, KnownFalse, GoalId,
                     ^ disj_vars_eq(ConstraintVarSet, VConj)
             )
         )
-    ;
+    else
         (
             UseKnownVars = bool.yes
         ;
@@ -1594,12 +1611,12 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
         RHS0 = rhs_var(RHSVar),
         InstGraph = !.GCInfo ^ inst_graph,
         Generator =
-            (pred((V - W)::out) is multi :-
+            ( pred((V - W)::out) is multi :-
                 inst_graph.same_graph_corresponding_nodes(InstGraph,
                     LHSVar, RHSVar, V, W)
             ),
         Accumulator =
-            (pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
+            ( pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
                 mode_constraints.get_var(out(V), Vout, S0, S1),
                 mode_constraints.get_var(out(W), Wout, S1, S2),
                 mode_constraints.get_var(V `at` GoalId, Vgi, S2, S3),
@@ -1619,7 +1636,7 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
         RHS0 = rhs_functor(_ConsId, _IsExistConstruct, Args),
         get_var(out(LHSVar), LHSVarOut, !GCInfo),
         !:Constraint = !.Constraint ^ var(LHSVarOut),
-        ( using_simple_mode_constraints(!.GCInfo ^ g_mc_info) ->
+        ( if using_simple_mode_constraints(!.GCInfo ^ g_mc_info) then
             % In the simple system a var-functor unification must be either
             % a construction or a deconstruction.
             list.map_foldl(
@@ -1629,26 +1646,26 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
                 ), Args, ArgsGi0, !GCInfo),
             set_of_var.list_to_set(ArgsGi0, ArgsGi),
             get_var(LHSVar `at` GoalId, LHSVargi, !GCInfo),
-            ( set_of_var.remove_least(Arg1gi, ArgsGi, ArgsGi1) ->
+            ( if set_of_var.remove_least(Arg1gi, ArgsGi, ArgsGi1) then
                 !:Constraint = neq_vars(Arg1gi, LHSVargi, !.Constraint),
                 set_of_var.fold_func(eq_vars(Arg1gi), ArgsGi1, !Constraint)
-            ;
+            else
                 !:Constraint = !.Constraint
             )
             % Constraint = Constraint1 *
             %   ( one ^ var(Agp) ^ conj_not_vars(ArgsGp)
             %   + one ^ not_var(Agp) ^ conj_vars(ArgsGp)
             %   )
-        ;
+        else
             InstGraph = !.GCInfo ^ inst_graph,
             inst_graph.foldl_reachable_from_list2(
                 ( pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
-                    ( V \= LHSVar ->
-                        mode_constraints.get_var(V `at` GoalId, Vgp, S0, S),
-                        C = C0 ^ not_var(Vgp)
-                    ;
+                    ( if V = LHSVar then
                         C = C0,
                         S = S0
+                    else
+                        mode_constraints.get_var(V `at` GoalId, Vgp, S0, S),
+                        C = C0 ^ not_var(Vgp)
                     )
                 ), InstGraph, Args, !Constraint, !GCInfo)
         ),
@@ -1705,7 +1722,7 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
         %   [i(NumNodes3), i(Depth3)])),
 
         update_mc_info_t(
-            (pred(C::out, S0::in, S::out) is det :-
+            ( pred(C::out, S0::in, S::out) is det :-
                 map.foldl2(input_output_constraints(LambdaHeadVars, InstGraph),
                     InstGraph, !.Constraint, C, S0, S)
             ), !:Constraint, !GCInfo),
@@ -1737,12 +1754,12 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
 call_constraints(GoalId, PredId, HeadVars, Args, !Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
     Generator =
-        (pred((V - W)::out) is nondet :-
+        ( pred((V - W)::out) is nondet :-
             corresponding_members(HeadVars, Args, X, Y),
             inst_graph.same_graph_corresponding_nodes(InstGraph, X, Y, V, W)
         ),
     Accumulator =
-        (pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
+        ( pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
             get_var_in_pred(PredId, V `at` whole_body_goal_id, V_, S0, S1),
             get_var(W `at` GoalId, Wgi, S1, S2),
             get_var_in_pred(PredId, in(V), Vin, S2, S3),
@@ -1761,28 +1778,28 @@ higher_order_call_constraints(Constraint0, Constraint, !GCInfo) :-
     ModuleInfo = !.GCInfo ^ module_info,
     InstGraph = !.GCInfo ^ inst_graph,
     update_md_info(
-        (pred(Constraint1::out, in, out) is det -->
-        map.foldl2(
-            (pred(HoVarLevel::in, Calls::in, Cons0::in, Cons::out,
-                    in, out) is det -->
-                update_mc_info(set_level_from_var(HoVarLevel)),
-                ( { map.search(HoModes, HoVarLevel, ArgModesList) } ->
-                    list.foldl2(
-                        (pred((GoalId - Args)::in, C0::in, C::out,
-                                in, out) is det -->
-                            list.foldl2(
-                                process_mode_decl(ModuleInfo, InstGraph,
-                                    Args, ignore, call_in(GoalId), no,
-                                    false_var(var_at_goal_id(GoalId)),
-                                    call_out(GoalId), no
-                                ), ArgModesList, zero, C1),
-                            { C = C0 * C1 } ),
-                        Calls, Cons0, Cons)
-                ;
-                    { Cons = Cons0 }
-                )
-            ), HoCalls, Constraint0, Constraint1)),
-        Constraint, !GCInfo).
+        ( pred(Constraint1::out, in, out) is det -->
+            map.foldl2(
+                ( pred(HoVarLevel::in, Calls::in, Cons0::in, Cons::out,
+                        in, out) is det -->
+                    update_mc_info(set_level_from_var(HoVarLevel)),
+                    ( if { map.search(HoModes, HoVarLevel, ArgModesList) } then
+                        list.foldl2(
+                            ( pred((GoalId - Args)::in, C0::in, C::out,
+                                    in, out) is det -->
+                                list.foldl2(
+                                    process_mode_decl(ModuleInfo, InstGraph,
+                                        Args, ignore, call_in(GoalId), no,
+                                        false_var(var_at_goal_id(GoalId)),
+                                        call_out(GoalId), no),
+                                    ArgModesList, zero, C1),
+                                { C = C0 * C1 }
+                            ), Calls, Cons0, Cons)
+                    else
+                        { Cons = Cons0 }
+                    )
+                ), HoCalls, Constraint0, Constraint1)
+        ), Constraint, !GCInfo).
 
 :- pred negation_constraints(goal_id::in, set_of_progvar::in,
     mode_constraint::in, mode_constraint::out,
@@ -1791,7 +1808,7 @@ higher_order_call_constraints(Constraint0, Constraint, !GCInfo) :-
 negation_constraints(GoalId, NonLocals, !Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
     inst_graph.foldl_reachable_from_list2(
-        (pred(V::in, C0::in, C::out, in, out) is det -->
+        ( pred(V::in, C0::in, C::out, in, out) is det -->
             get_var(V `at` GoalId, Vgp),
             { C = C0 ^ not_var(Vgp) }
         ), InstGraph, set_of_var.to_sorted_list(NonLocals),
@@ -1919,7 +1936,7 @@ pred_has_mode_decl(ModuleInfo, PredId) :-
 add_imported_preds(ModuleInfo, SCCs0, SCCs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.filter_map(
-        (pred(PredId::in, [PredId]::out) is semidet :-
+        ( pred(PredId::in, [PredId]::out) is semidet :-
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_is_imported(PredInfo)
         ), PredIds, ImportedPredIds),
@@ -1930,9 +1947,9 @@ add_imported_preds(ModuleInfo, SCCs0, SCCs) :-
 
 cons_id_in_bound_insts(ConsId, [bound_functor(ConsId0, Insts0) | BIs],
         Insts) :-
-    ( equivalent_cons_ids(ConsId0, ConsId) ->
+    ( if equivalent_cons_ids(ConsId0, ConsId) then
         Insts = Insts0
-    ;
+    else
         cons_id_in_bound_insts(ConsId, BIs, Insts)
     ).
 
@@ -1955,11 +1972,11 @@ constrain_local_vars(Locals, GoalId, !Constraint, !GCInfo) :-
 do_constrain_local_vars(GoalId, Var, !Constraint, !GCInfo) :-
     get_var(Var `at` GoalId, Vgp, !GCInfo),
     get_var(out(Var), Vout, !GCInfo),
-    ( using_simple_mode_constraints(!.GCInfo ^ g_mc_info) ->
+    ( if using_simple_mode_constraints(!.GCInfo ^ g_mc_info) then
         % For simple_mode_constraints, local variables must all be bound
         % within the goal.
         !:Constraint = !.Constraint ^ var(Vgp) ^ var(Vout)
-    ;
+    else
         !:Constraint = !.Constraint ^ eq_vars(Vgp, Vout)
     ).
 
@@ -1973,13 +1990,13 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalId,
         !Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
     Generator =
-        (pred(V::out) is nondet :-
+        ( pred(V::out) is nondet :-
             set_of_var.member(ParentNonLocals, U),
             inst_graph.reachable(InstGraph, U, V),
             not set_of_var.member(OccurringVars, V)
         ),
     Accumulator =
-        (pred(V::in, Vs0::in, Vs::out, in, out) is det -->
+        ( pred(V::in, Vs0::in, Vs::out, in, out) is det -->
             get_var(V `at` GoalId, VGP),
             { Vs = Vs0 `insert` VGP }
         ),
@@ -2004,17 +2021,17 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalId,
 share_ho_modes(VarA, VarB, HoModes0, HoModes, !MCI) :-
     get_prog_var_level(!.MCI, VarA, A),
     get_prog_var_level(!.MCI, VarB, B),
-    ( map.search(HoModes0, A, AModes) ->
-        ( map.search(HoModes0, B, BModes) ->
+    ( if map.search(HoModes0, A, AModes) then
+        ( if map.search(HoModes0, B, BModes) then
             Modes = list.sort_and_remove_dups(AModes ++ BModes),
             map.det_update(A, Modes, HoModes0, HoModes1),
             map.det_update(B, Modes, HoModes1, HoModes)
-        ;
+        else
             map.det_insert(B, AModes, HoModes0, HoModes)
         )
-    ; map.search(HoModes0, B, BModes) ->
+    else if map.search(HoModes0, B, BModes) then
         map.det_insert(A, BModes, HoModes0, HoModes)
-    ;
+    else
         HoModes = HoModes0
     ).
 
@@ -2027,18 +2044,23 @@ share_ho_modes(VarA, VarB, HoModes0, HoModes, !MCI) :-
 arg_modes_map(HeadVars, InstGraph, Constraint0, Info0, ArgModes) :-
     solutions.solutions(inst_graph.reachable_from_list(InstGraph, HeadVars),
         Vars),
-    list.map_foldl((pred(PV::in, (MV - in(PV))::out, in, out) is det -->
-        mode_constraint_var(in(PV), MV)), Vars, InVars, Info0, Info1),
-    list.map_foldl((pred(PV::in, (MV - out(PV))::out, in, out) is det -->
-        mode_constraint_var(out(PV), MV)), Vars, OutVars, Info0, Info1),
+    list.map_foldl(
+        ( pred(PV::in, (MV - in(PV))::out, in, out) is det -->
+            mode_constraint_var(in(PV), MV)
+        ), Vars, InVars, Info0, Info1),
+    list.map_foldl(
+        ( pred(PV::in, (MV - out(PV))::out, in, out) is det -->
+            mode_constraint_var(out(PV), MV)
+        ), Vars, OutVars, Info0, Info1),
     MVars = list.sort_and_remove_dups(InVars ++ OutVars),
     MVarKeys = assoc_list.keys(MVars),
     Constraint = restrict_filter(
-        (pred(V::in) is semidet :- list.member(V, MVarKeys)),
+        ( pred(V::in) is semidet :-
+            list.member(V, MVarKeys)
+        ),
         ensure_normalised(Constraint0)),
     ArgModes0 = map.init - map.init,
-    list.foldl2(arg_modes_map_2, MVars, Constraint, _,
-        ArgModes0, ArgModes).
+    list.foldl2(arg_modes_map_2, MVars, Constraint, _, ArgModes0, ArgModes).
 
 :- pred arg_modes_map_2(pair(mode_constraint_var, rep_var)::in,
     mode_constraint::in, mode_constraint::out,

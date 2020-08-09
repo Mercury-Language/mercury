@@ -126,9 +126,9 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
 
     (
         CalleeExistQVars = [],
-        ( type_list_subsumes(CalleeArgTypes, ActualTypes, TypeSubst0) ->
+        ( if type_list_subsumes(CalleeArgTypes, ActualTypes, TypeSubst0) then
             TypeSubst1 = TypeSubst0
-        ;
+        else
             % See comment in inlining.get_type_substitution.
             TypeSubst1 = map.init
         )
@@ -138,13 +138,13 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
         % "For calls to existentially type preds, we may need to bind
         % type variables in the caller, not just those in the callee."
         % We don't do that (yet?).
-        (
+        ( if
             map.init(TypeSubstPrime),
             type_unify_list(CalleeArgTypes, ActualTypes,
                 CallerExternalTypeParams, TypeSubstPrime, TypeSubst0)
-        ->
+        then
             TypeSubst1 = TypeSubst0
-        ;
+        else
             unexpected($pred, "type unification failed")
         )
     ),

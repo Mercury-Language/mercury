@@ -134,9 +134,9 @@ region_transform(RptaInfoTable, FormalRegionArgTable, ActualRegionArgTable,
 
 annotate_pred(PPId, FormalRegionArgs, !Processed, !ModuleInfo) :-
     PPId = proc(PredId, _),
-    ( list.member(PredId, !.Processed) ->
+    ( if list.member(PredId, !.Processed) then
         true
-    ;
+    else
         some [!PredInfo] (
             module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
             FormalRegionArgs = region_args(Constants, Deads, Borns),
@@ -225,17 +225,17 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
     map.lookup(RptaInfoTable, PPId, rpta_info(Graph, _)),
     map.lookup(FormalRegionArgTable, PPId, FormalRegionArgProc),
     map.lookup(ActualRegionArgTable, PPId, ActualRegionArgProc),
-    ( map.search(ResurRenamingTable, PPId, ResurRenamingProc0) ->
+    ( if map.search(ResurRenamingTable, PPId, ResurRenamingProc0) then
         ResurRenamingProc = ResurRenamingProc0,
         map.lookup(ResurRenamingAnnoTable, PPId, ResurRenamingAnnoProc)
-    ;
+    else
         ResurRenamingProc = map.init,
         ResurRenamingAnnoProc = map.init
     ),
-    ( map.search(IteRenamingTable, PPId, IteRenamingProc0) ->
+    ( if map.search(IteRenamingTable, PPId, IteRenamingProc0) then
         IteRenamingProc = IteRenamingProc0,
         map.lookup(IteRenamingAnnoTable, PPId, IteRenamingAnnoProc)
-    ;
+    else
         IteRenamingProc = map.init,
         IteRenamingAnnoProc = map.init
     ),
@@ -371,10 +371,10 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
             !NameToVar, !VarSet, !VarTypes, [], IteRenamingAssignments),
 
         % Region instructions before and after this program point.
-        (
+        ( if
             map.search(RegionInstructionProc, ProgPoint,
                 instrs_before_after(Before, After))
-        ->
+        then
             % Region instructions before this program point.
             list.foldl4(region_instruction_to_conj_before(ModuleInfo, Context,
                 ResurRenaming, IteRenaming), Before, !NameToVar,
@@ -387,7 +387,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
             list.foldl4(region_instruction_to_conj(ModuleInfo, Context,
                 ResurRenaming, IteRenaming), After, !NameToVar,
                 !VarSet, !VarTypes, Conjs2, Conjs3)
-        ;
+        else
             % The goal at this program point itself.
             Conjs3 = IteRenamingAssignments ++ [hlds_goal(GoalExpr, GoalInfo)]
         ),
@@ -397,9 +397,9 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
             ProgPoint, IteRenaming, !NameToVar, !VarSet, !VarTypes,
             Conjs3, Conjs),
 
-        ( Conjs = [_, _ | _] ->
+        ( if Conjs = [_, _ | _] then
             !:Goal = hlds_goal(conj(plain_conj, Conjs), GoalInfo)
-        ;
+        else
             !:Goal = hlds_goal(GoalExpr, GoalInfo)
         )
     ;
@@ -426,9 +426,9 @@ region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming, IteRenaming,
         Context, Name),
     % XXX Callee may be a builtin or an imported procedure that we have
     % not analysed, we just ignore such a call for now.
-    ( map.search(ActualRegionArgProc, ProgPoint, ActualNodes0) ->
+    ( if map.search(ActualRegionArgProc, ProgPoint, ActualNodes0) then
         ActualNodes = ActualNodes0
-    ;
+    else
         ActualNodes = region_args([], [], [])
     ),
     ActualNodes = region_args(Constants, Ins, Outs),
@@ -549,9 +549,9 @@ region_transform_compound_goal(ModuleInfo, Graph,
         % construct STATIC ground terms. Since these are not created
         % dynamically, they cannot possibly refer to any dynamically created
         % region, so RBMM transformations should ignore them.
-        ( Reason0 = from_ground_term(Var, _Kind) ->
+        ( if Reason0 = from_ground_term(Var, _Kind) then
             Reason = from_ground_term(Var, from_ground_term_other)
-        ;
+        else
             Reason = Reason0
         ),
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
@@ -603,9 +603,9 @@ annotate_constructions_unification(ModuleInfo, Graph, ResurRenaming,
         IsUnique, SubInfo),
     rptg_get_node_by_variable(Graph, Var, Node),
     NodeType = rptg_lookup_node_type(Graph, Node),
-    ( type_not_stored_in_region(NodeType, ModuleInfo) ->
+    ( if type_not_stored_in_region(NodeType, ModuleInfo) then
         true
-    ;
+    else
         Name = rptg_lookup_region_name(Graph, Node),
         region_name_to_var_with_both_renamings(Name, ResurRenaming,
             IteRenaming, RegVar, !NameToVar, !VarSet, !VarTypes),
@@ -651,7 +651,7 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
         case(MainConsId, OtherConsIds, !:Goal),
         !NameToVar, !VarSet, !VarTypes) :-
     expect(unify(OtherConsIds, []), $pred, "NYI: multi-cons-id cases"),
-    (
+    ( if
         ( MainConsId = cons(_, 0, _)
         ; MainConsId = int_const(_)
         ; MainConsId = float_const(_)
@@ -659,7 +659,7 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
         ; MainConsId = string_const(_)
         ),
         Switch = hlds_goal(switch(_, _, _), Info)
-    ->
+    then
         ProgPoint = program_point_init(Info),
         ProgPoint = pp(Context, _),
         find_renamings_at_prog_point(ResurRenamingProc, IteRenamingProc,
@@ -670,10 +670,10 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
             !NameToVar, !VarSet, !VarTypes, [], IteRenamingAssignments),
 
         % Region instructions before and after this program point.
-        (
+        ( if
             map.search(RegionInstructionProc, ProgPoint,
                 instrs_before_after(Before, After))
-        ->
+        then
             % Region instructions before this program point.
             list.foldl4(
                 region_instruction_to_conj_before(ModuleInfo, Context,
@@ -686,7 +686,7 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
                 region_instruction_to_conj(ModuleInfo, Context, ResurRenaming,
                     IteRenaming),
                 After, !NameToVar, !VarSet, !VarTypes, Conjs1, Conjs2)
-        ;
+        else
             Conjs2 = IteRenamingAssignments
         ),
 
@@ -695,7 +695,7 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
             IteRenaming, !NameToVar, !VarSet, !VarTypes, Conjs2, Conjs),
 
         RemovedGoal = hlds_goal(conj(plain_conj, Conjs), Info)
-    ;
+    else
         Switch = hlds_goal(_, Info),
         RemovedGoal = hlds_goal(conj(plain_conj, []), Info)
     ),
@@ -713,14 +713,14 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
 
 find_renamings_at_prog_point(ResurRenamingProc, IteRenamingProc, ProgPoint,
         ResurRenaming, IteRenaming) :-
-    ( map.search(ResurRenamingProc, ProgPoint, ResurRenaming0) ->
+    ( if map.search(ResurRenamingProc, ProgPoint, ResurRenaming0) then
         ResurRenaming = ResurRenaming0
-    ;
+    else
         ResurRenaming = map.init
     ),
-    ( map.search(IteRenamingProc, ProgPoint, IteRenaming0) ->
+    ( if map.search(IteRenamingProc, ProgPoint, IteRenaming0) then
         IteRenaming = IteRenaming0
-    ;
+    else
         IteRenaming = map.init
     ).
 
@@ -732,10 +732,10 @@ find_renamings_at_prog_point(ResurRenamingProc, IteRenamingProc, ProgPoint,
 assignments_from_ite_renaming_anno(IteRenamingAnnoProc, ProgPoint,
         !NameToVar, !VarSet, !VarTypes, !IteRenamingAssignments) :-
     % Assignment unifications due to ite renaming.
-    ( map.search(IteRenamingAnnoProc, ProgPoint, IteRenamingAnnos) ->
+    ( if map.search(IteRenamingAnnoProc, ProgPoint, IteRenamingAnnos) then
         list.foldl4(ite_renaming_annotation_to_assignment, IteRenamingAnnos,
             !NameToVar, !VarSet, !VarTypes, !IteRenamingAssignments)
-    ;
+    else
         true
     ).
 
@@ -746,10 +746,10 @@ assignments_from_ite_renaming_anno(IteRenamingAnnoProc, ProgPoint,
 
 assignments_from_resur_renaming_anno(ResurRenamingAnnoProc, ProgPoint,
         IteRenaming, !NameToVar, !VarSet, !VarTypes, !Conjs) :-
-    ( map.search(ResurRenamingAnnoProc, ProgPoint, ResurRenamingAnnos) ->
+    ( if map.search(ResurRenamingAnnoProc, ProgPoint, ResurRenamingAnnos) then
         list.foldl4(resur_renaming_annotation_to_assignment(IteRenaming),
             ResurRenamingAnnos, !NameToVar, !VarSet, !VarTypes, !Conjs)
-    ;
+    else
         true
     ).
 
@@ -775,9 +775,9 @@ node_to_var(Graph, Node, RegVar, !NameToVar, !VarSet, !VarTypes) :-
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes) :-
-    ( map.search(!.NameToVar, Name, RegVar0) ->
+    ( if map.search(!.NameToVar, Name, RegVar0) then
         RegVar = RegVar0
-    ;
+    else
         varset.new_named_var(Name, RegVar, !VarSet),
         add_var_type(RegVar, region_type, !VarTypes),
         map.det_insert(Name, RegVar, !NameToVar)
@@ -810,11 +810,11 @@ node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming,
 
 region_name_to_var_with_both_renamings(Name0, ResurRenaming, IteRenaming,
         RegVar, !NameToVar, !VarSet, !VarTypes) :-
-    ( map.search(ResurRenaming, Name0, ResurNameList) ->
+    ( if map.search(ResurRenaming, Name0, ResurNameList) then
         list.det_last(ResurNameList, Name)
-    ; map.search(IteRenaming, Name0, IteNameList) ->
+    else if map.search(IteRenaming, Name0, IteNameList) then
         list.det_last(IteNameList, Name)
-    ;
+    else
         Name = Name0
     ),
     region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes).
@@ -831,11 +831,11 @@ region_name_to_var_with_both_renamings(Name0, ResurRenaming, IteRenaming,
 
 region_name_to_var_with_both_renamings_before(Name0, ResurRenaming,
         IteRenaming, RegVar, !NameToVar, !VarSet, !VarTypes) :-
-    ( map.search(ResurRenaming, Name0, ResurNameList) ->
+    ( if map.search(ResurRenaming, Name0, ResurNameList) then
         Name = list.det_index0(ResurNameList, 0)
-    ; map.search(IteRenaming, Name0, IteNameList) ->
+    else if map.search(IteRenaming, Name0, IteNameList) then
         Name = list.det_index0(IteNameList, 0)
-    ;
+    else
         Name = Name0
     ),
     region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes).
@@ -849,9 +849,9 @@ region_name_to_var_with_both_renamings_before(Name0, ResurRenaming,
 
 region_name_to_var_with_renaming(Name0, ResurRenaming, RegVar,
         !NameToVar, !VarSet, !VarTypes) :-
-    ( map.search(ResurRenaming, Name0, ResurNameList) ->
+    ( if map.search(ResurRenaming, Name0, ResurNameList) then
         Name = list.det_last(ResurNameList)
-    ;
+    else
         Name = Name0
     ),
     region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes).

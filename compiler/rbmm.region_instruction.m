@@ -424,12 +424,12 @@ annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
 
 process_mapping_rule_1(BecomeLive, CalleeBornR,
         SourceRegion, TargetRegion, !CreatedBeforeProgPoint) :-
-    (
+    ( if
         set.contains(BecomeLive, TargetRegion),
         not set.contains(CalleeBornR, SourceRegion)
-    ->
+    then
         set.insert(TargetRegion, !CreatedBeforeProgPoint)
-    ;
+    else
         true
     ).
 
@@ -442,12 +442,12 @@ process_mapping_rule_1(BecomeLive, CalleeBornR,
 
 process_mapping_rule_3(BecomeDead, CalleeDeadR, SourceRegion,
         TargetRegion, !RemovedAfterProgPoint) :-
-    (
+    ( if
         set.contains(BecomeDead, TargetRegion),
         not set.contains(CalleeDeadR, SourceRegion)
-    ->
+    then
         set.insert(TargetRegion, !RemovedAfterProgPoint)
-    ;
+    else
         true
     ).
 
@@ -461,19 +461,19 @@ record_instruction_after_prog_point(RegionInstType, ProgPoint, Graph, Region,
     make_create_or_remove_instruction(RegionInstType, RegionName,
         RegionInstruction),
     % Attach the instruction to after the program point.
-    (
+    ( if
         map.search(!.RegionInstructionProc, ProgPoint,
             instrs_before_after(InstsBefore, InstsAfter))
-    ->
-        ( list.member(RegionInstruction, InstsAfter) ->
+    then
+        ( if list.member(RegionInstruction, InstsAfter) then
             true
-        ;
+        else
             map.set(ProgPoint,
                 instrs_before_after(InstsBefore,
                     [RegionInstruction | InstsAfter]),
                 !RegionInstructionProc)
         )
-    ;
+    else
         map.set(ProgPoint,
             instrs_before_after([], [RegionInstruction]),
             !RegionInstructionProc)
@@ -493,26 +493,26 @@ record_instruction_before_prog_point(RegionInstrType, ProgPoint, Graph, Region,
     make_create_or_remove_instruction(RegionInstrType, RegionName,
         RegionInstruction),
     % Attach the instruction to before the program point.
-    (
+    ( if
         map.search(!.RegionInstructionProc, ProgPoint,
             instrs_before_after(InstrsBefore, InstrsAfter))
-    ->
-        ( list.member(RegionInstruction, InstrsBefore) ->
+    then
+        ( if list.member(RegionInstruction, InstrsBefore) then
             true
-        ;
+        else
             % It is only safe to add create intructions after remove
             % instructions before a program point because we allow
             % remove(R1), create(R1), p(..., R1, ...).
-            ( RegionInstrType = create_region_instr ->
+            ( if RegionInstrType = create_region_instr then
                 NewInstrsBefore = InstrsBefore ++ [RegionInstruction]
-            ;
+            else
                 NewInstrsBefore = [RegionInstruction | InstrsBefore]
             ),
             map.set(ProgPoint,
                 instrs_before_after(NewInstrsBefore, InstrsAfter),
                 !RegionInstructionProc)
         )
-    ;
+    else
         map.set(ProgPoint,
             instrs_before_after([RegionInstruction], []),
             !RegionInstructionProc)

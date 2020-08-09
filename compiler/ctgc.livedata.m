@@ -164,11 +164,9 @@ livedata_subsumes_topcell(LiveData, TopCell) :-
     ).
 
 livedata_subsumes_datastruct(ModuleInfo, ProcInfo, LiveData, Datastruct):-
-    (
-        datastruct_refers_to_topcell(Datastruct)
-    ->
+    ( if datastruct_refers_to_topcell(Datastruct) then
         livedata_subsumes_topcell(LiveData, Datastruct)
-    ;
+    else
         livedata_subsumes_datastruct_with_selector(ModuleInfo, ProcInfo,
             LiveData, Datastruct)
     ).
@@ -218,25 +216,25 @@ livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, SharingAs) = LiveData :-
     Lfu = goal_info_get_lfu(GoalInfo),
     Lbu = goal_info_get_lbu(GoalInfo),
     Lu = set_of_var.to_sorted_list(set_of_var.union(Lfu, Lbu)),
-    (
+    ( if
         % When there are no data structure in forward nor backward use,
         % then the livedata set is empty.
         Lu = []
-    ->
+    then
         LiveData = livedata_init
-    ;
+    else if
         % If Lu is not empty, and sharing is top, then all possible
         % datastructures might possibly be live.
         sharing_as_is_top(SharingAs)
-    ->
+    then
         LiveData = livedata_init_as_top
-    ;
+    else if
         % Lu not empty, and sharing is bottom... then only the
         % datastructures in local use are live.
         sharing_as_is_bottom(SharingAs)
-    ->
+    then
         LiveData = livedata_init_from_vars(Lu)
-    ;
+    else
         % Otherwise we have the most general case: Lu not empty, Sharing
         % not top nor bottom.
         SharingDomain = to_structure_sharing_domain(SharingAs),
@@ -320,17 +318,17 @@ one_of_vars_is_live(ModuleInfo, ProcInfo, Datastructs0, PairXY,
 one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :-
 	Pair = Xsx - Ysy,
 	list.filter(datastruct_same_vars(Ysy), List, Y_List),
-	(
+	( if
 		% First try to find one of the found datastructs which is
 		% fully alive: so that Ysy is less or equal to at least one
 		% Ys1 in Y_List (sy = s1.s2)
 		list.filter(datastruct_subsumed_by(ModuleInfo, ProcInfo, Ysy),
             Y_List, FY_List),
 		FY_List = [_ | _]
-	->
+	then
 		Xsx1 = Xsx,
 		List_Xsx1 = [Xsx1]
-	;
+	else
 		% Find all datastructs from Y_List which are less or
 		% equal to Ysy. Select the one with the shortest selector
 		% (Note that there should be only one solution. If more
@@ -341,23 +339,23 @@ one_of_vars_is_live_ordered(ModuleInfo, ProcInfo, List, Pair, List_Xsx1) :-
             Y_List, SelectorList),
 		% Each sx1 = sx.s2, where s2 is one of SelectorList.
 		list.map(
-            (pred(S2::in, Xsx1::out) is det :-
+            ( pred(S2::in, Xsx1::out) is det :-
                 datastruct_termshift(ModuleInfo, ProcInfo, S2, Xsx) = Xsx1
             ), SelectorList, List_Xsx1)
 	).
 
 livedata_add_liveness(ModuleInfo, ProcInfo, LuData, LocalSharing, LiveData0)
         = LiveData :-
-    (
+    ( if
         sharing_as_is_top(LocalSharing)
-    ->
+    then
         LiveData = livedata_init_as_top
-    ;
+    else if
         sharing_as_is_bottom(LocalSharing)
-    ->
+    then
         LiveData = livedata_least_upper_bound(ModuleInfo, ProcInfo,
             LiveData0, livedata_init_from_datastructs(LuData))
-    ;
+    else
         % most general case: normal sharing.
         ExtendLuData = extend_datastructs(ModuleInfo, ProcInfo,
             LocalSharing, LuData),

@@ -441,7 +441,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
         % The predicate we are in now is the caller.
         CallerPredId = PredId,
-        ( pred_info_infer_modes(CalleePredInfo) ->
+        ( if pred_info_infer_modes(CalleePredInfo) then
             % No modes declared so just constrain the hearvars
             pred_info_get_clauses_info(CalleePredInfo, CalleeClausesInfo),
             clauses_info_get_headvar_list(CalleeClausesInfo, CalleeHeadVars),
@@ -449,7 +449,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             add_call_headvar_constraints(ProgVarset, Context, GoalId,
                 CallerPredId, Args, CalleePredId, CalleeHeadVars,
                 !VarInfo, !Constraints)
-        ;
+        else
             % At least one declared mode
             pred_info_get_proc_table(CalleePredInfo, CalleeProcTable),
             map.values(CalleeProcTable, CalleeProcInfos),
@@ -647,14 +647,14 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         CallArgs = list.map(foreign_arg_var, ForeignArgs),
         module_info_pred_proc_info(ModuleInfo, CalledPred, ProcId, _,
             ProcInfo),
-        ( proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) ->
+        ( if proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) then
             proc_info_get_argmodes(ProcInfo, Decl),
 
             % This pred should strip the disj(conj()) for the single
             % declaration.
             add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
                 PredId, [Decl], GoalId, CallArgs, !VarInfo, !Constraints)
-        ;
+        else
             unexpected($pred, "no mode declaration for foreign proc")
         )
     ;
@@ -695,9 +695,9 @@ mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
         mode_decl_constraints(ModuleInfo), HeadVarsMCVars, Decls),
 
     Constraints0 = list.condense(ConstraintsList),
-    ( Constraints0 = [mc_conj(OneModeOnlyConstraints)] ->
+    ( if Constraints0 = [mc_conj(OneModeOnlyConstraints)] then
         Constraints = OneModeOnlyConstraints
-    ;
+    else
         Constraints = [mc_disj(Constraints0)]
     ).
 
@@ -740,8 +740,8 @@ add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
     % mode. If, according to the mode declaration, a variable is not
     % initially free then it cannot be produced by a call to this
     % goal; If a variable is initially free and becomes not free
-    % then it is produced by the predicate. Otherwise it is free ->
-    % free and is not produced.
+    % then it is produced by the predicate. Otherwise it is free -> free
+    % and is not produced.
     %
 :- pred add_call_mode_decls_constraints(module_info::in,
     prog_varset::in, prog_context::in, pred_id::in, list(list(mer_mode))::in,
@@ -755,10 +755,10 @@ add_call_mode_decls_constraints(ModuleInfo, ProgVarset, CallContext,
     ModeSpecificConstraints = list.condense(list.map(
         mode_decl_constraints(ModuleInfo, CallArgsHere),
         Decls)),
-    ( ModeSpecificConstraints = [mc_conj(OneModeOnlyConstraints)] ->
+    ( if ModeSpecificConstraints = [mc_conj(OneModeOnlyConstraints)] then
         list.foldl(add_constraint(!.VarInfo ^ mc_varset, CallContext),
             OneModeOnlyConstraints, !Constraints)
-    ;
+    else
         add_constraint(!.VarInfo ^ mc_varset, CallContext,
             mc_disj(ModeSpecificConstraints), !Constraints)
     ).
@@ -818,17 +818,17 @@ mode_decl_constraints(ModuleInfo, ConstraintVars, ArgModes) =
 
 single_mode_constraints(ModuleInfo, MCVar, Mode) = Constraint :-
     mode_util.mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-    (
+    ( if
         % Already produced?
         not inst_is_free(ModuleInfo, InitialInst)
-    ->
+    then
         IsProduced = no     % Not produced here.
-    ;
+    else if
         % free -> non-free
         not inst_is_free(ModuleInfo, FinalInst)
-    ->
+    then
         IsProduced = yes    % Produced here.
-    ;
+    else
         % free -> free
         IsProduced = no     % Not produced here.
     ),
@@ -1001,12 +1001,11 @@ prog_var_at_paths(ProgVarset, PredID, ProgVar, GoalIds, MCVars, !VarInfo) :-
     % ProgVarset).
     %
 :- pred prog_vars_at_path(prog_varset::in, pred_id::in, list(prog_var)::in,
-    goal_id::in, list(mc_var)::out, mc_var_info::in, mc_var_info::out)
-    is det.
+    goal_id::in, list(mc_var)::out, mc_var_info::in, mc_var_info::out) is det.
 
 prog_vars_at_path(ProgVarset, PredId, ProgVars, GoalId, MCVars, !VarInfo) :-
     list.map_foldl(
-        (pred(ProgVar::in, MCVar::out, !.VarInfo::in, !:VarInfo::out) is det :-
+        ( pred(ProgVar::in, MCVar::out, !.VarInfo::in, !:VarInfo::out) is det :-
             prog_var_at_path(ProgVarset, PredId, ProgVar, GoalId, MCVar,
                 !VarInfo)
         ), ProgVars, MCVars, !VarInfo).
@@ -1026,9 +1025,9 @@ prog_vars_at_path(ProgVarset, PredId, ProgVars, GoalId, MCVars, !VarInfo) :-
 ensure_prog_var_at_path(ProgVarset, PredId, GoalId, ProgVar,
         !Varset, !VarMap) :-
     RepVar = (ProgVar `in` PredId) `at` GoalId,
-    ( bimap.search(!.VarMap, RepVar, _) ->
+    ( if bimap.search(!.VarMap, RepVar, _) then
         true
-    ;
+    else
         MCVarName = rep_var_to_string(ProgVarset, RepVar),
         varset.new_named_var(MCVarName, NewMCVar, !Varset),
         bimap.det_insert(RepVar, NewMCVar, !VarMap)
@@ -1078,7 +1077,7 @@ nonlocals_at_path_and_subpaths(ProgVarset, PredId, GoalId, SubIds,
     prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalId,
         NonlocalsAtId, !VarInfo),
     list.map_foldl(
-        (pred(Nl::in, NlAtSubIds::out, !.VInfo::in, !:VInfo::out) is det :-
+        ( pred(Nl::in, NlAtSubIds::out, !.VInfo::in, !:VInfo::out) is det :-
             prog_var_at_paths(ProgVarset, PredId, Nl, SubIds, NlAtSubIds,
                 !VInfo)
         ), NonlocalsList, NonlocalsAtSubIds, !VarInfo),

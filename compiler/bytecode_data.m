@@ -86,27 +86,27 @@ string_to_byte_list(Val, List) :-
     list.append(List0, [0], List).
 
 output_byte(Val, !IO) :-
-    ( Val < 256 ->
+    ( if Val < 256 then
         io.write_byte(Val, !IO)
-    ;
+    else
         unexpected($pred, "byte does not fit in eight bits")
     ).
 
 output_int(IntVal, !IO) :-
     int.bits_per_int(IntBits),
-    ( IntBits > bytecode_int_bits ->
+    ( if IntBits > bytecode_int_bits then
         unexpected($pred,
             "size of int is larger than size of bytecode integer.")
-    ;
+    else
         output_int(bytecode_int_bits, IntVal, !IO)
     ).
 
 int_to_byte_list(IntVal, Bytes) :-
     int.bits_per_int(IntBits),
-    ( IntBits > bytecode_int_bits ->
+    ( if IntBits > bytecode_int_bits then
         unexpected($pred,
             "size of int is larger than size of bytecode integer.")
-    ;
+    else
         int_to_byte_list(bytecode_int_bits, IntVal, Bytes)
     ).
 
@@ -139,21 +139,21 @@ int_to_byte_list(Bits, IntVal, Bytes) :-
 
 output_int(Writer, Bits, IntVal, !IO) :-
     int.bits_per_int(IntBits),
-    (
+    ( if
         Bits < IntBits,
         int.pow(2, Bits - 1, MaxVal),
         ( IntVal >= MaxVal
         ; IntVal < -MaxVal
         )
-    ->
+    then
         string.format("%d does not fit in %d bits", [i(IntVal), i(Bits)], Msg),
         unexpected($pred, Msg)
-    ;
+    else
         true
     ),
-    ( Bits > IntBits ->
+    ( if Bits > IntBits then
         ZeroPadBytes = (Bits - IntBits) // bits_per_byte
-    ;
+    else
         ZeroPadBytes = 0
     ),
     output_padding_zeros(Writer, ZeroPadBytes, !IO),
@@ -178,11 +178,11 @@ bits_per_byte = 8.
 :- mode output_padding_zeros(pred(in, di, uo) is det, in, di, uo) is det.
 
 output_padding_zeros(Writer, NumBytes, !IO) :-
-    ( NumBytes > 0 ->
+    ( if NumBytes > 0 then
         call(Writer, 0, !IO),
         NumBytes1 = NumBytes - 1,
         output_padding_zeros(Writer, NumBytes1, !IO)
-    ;
+    else
         true
     ).
 
@@ -191,13 +191,13 @@ output_padding_zeros(Writer, NumBytes, !IO) :-
 :- mode output_int_bytes(pred(in, di, uo) is det, in, in, di, uo) is det.
 
 output_int_bytes(Writer, ByteNum, IntVal, !IO) :-
-    ( ByteNum >= 0 ->
+    ( if ByteNum >= 0 then
         BitShifts = ByteNum * bits_per_byte,
         Byte = (IntVal >> BitShifts) mod (1 << bits_per_byte),
         ByteNum1 = ByteNum - 1,
         call(Writer, Byte, !IO),
         output_int_bytes(Writer, ByteNum1, IntVal, !IO)
-    ;
+    else
         true
     ).
 

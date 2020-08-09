@@ -69,9 +69,9 @@ execution_path_analysis_pred(ModuleInfo, PredId, !ExecPathTable) :-
 
 execution_path_analysis_proc(ModuleInfo, PredId, ProcId, !ExecPathTable) :-
     PPId = proc(PredId, ProcId),
-    ( some_are_special_preds([PPId], ModuleInfo) ->
+    ( if some_are_special_preds([PPId], ModuleInfo) then
         true
-    ;
+    else
         module_info_proc_info(ModuleInfo, PPId, ProcInfo),
         compute_execution_paths(ProcInfo, ModuleInfo, ExecPaths),
         map.set(PPId, ExecPaths, !ExecPathTable)
@@ -99,18 +99,18 @@ execution_paths_covered_goal(ProcInfo, Goal, !ExecPaths) :-
     HasSubGoals = goal_expr_has_subgoals(GoalExpr),
     (
         HasSubGoals = does_not_have_subgoals,
-        (
+        ( if
             ( GoalExpr = unify(_, _, _, _, _)
             ; GoalExpr = plain_call(_, _, _, _, _, _)
             ; GoalExpr = conj(_ConjType, [])
             ; GoalExpr = disj([])
             )
-        ->
+        then
             % Retrieve the program point of this goal.
             ProgPoint = program_point_init(GoalInfo),
             append_to_each_execution_path(!.ExecPaths,
                 [[pair(ProgPoint, Goal)]], !:ExecPaths)
-        ;
+        else
             % XXX: other kinds of atomic calls (generic_call,
             % foreign_proc), TEMPORARILY ignored their corresponding pps.
             % XXX: handle event_call and unsafe_cast generic_calls
@@ -220,10 +220,10 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
     % We add a dummy program point for this unification.
     (
         MainConsId = cons(_SymName, Arity, _),
-        ( Arity = 0 ->
+        ( if Arity = 0 then
             append_to_each_execution_path(!.ExecPaths,
                 [[pair(ProgPoint, Switch)]], ExecPathsBeforeCase)
-        ;
+        else
                 ExecPathsBeforeCase = !.ExecPaths
         )
     ;

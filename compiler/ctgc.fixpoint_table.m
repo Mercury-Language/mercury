@@ -126,10 +126,11 @@ fp_entry_init(Elem) = entry(is_unstable, Elem).
 fp_entry_init_with_stability(IsStable, Elem) = entry(IsStable, Elem).
 
 init_fixpoint_table(InitFunction, Ks) = FT :-
-    InsertElement = (pred(K::in, !.Map::in, !:Map::out) is det :-
-        E = InitFunction(K),
-        map.det_insert(K, fp_entry_init(E), !Map)
-    ),
+    InsertElement =
+        ( pred(K::in, !.Map::in, !:Map::out) is det :-
+            E = InitFunction(K),
+            map.det_insert(K, fp_entry_init(E), !Map)
+        ),
     list.foldl(InsertElement, Ks, map.init, Map),
     Run = 0,
     FT = fixpoint_table(Ks, Run, is_not_recursive, Map).
@@ -163,9 +164,9 @@ accumulate_instability(_Key, Entry, S0, S) :-
     ).
 
 description(T) =
-    ( fixpoint_reached(T) ->
+    ( if fixpoint_reached(T) then
         "stable"
-    ;
+    else
         "unstable"
     ).
 
@@ -173,9 +174,9 @@ add_to_fixpoint_table(IsLessOrEqualTest, Index, Elem, !T) :-
     Map0 = !.T ^ mapping,
     map.lookup(Map0, Index, Entry),
     TabledElem = Entry ^ entry_elem,
-    ( IsLessOrEqualTest(Elem, TabledElem) ->
+    ( if IsLessOrEqualTest(Elem, TabledElem) then
         IsStable = is_stable
-    ;
+    else
         IsStable = is_unstable
     ),
     %
@@ -201,9 +202,9 @@ get_from_fixpoint_table(Index, Elem, !T) :-
     !T ^ recursive := is_recursive.
 
 get_from_fixpoint_table_final(Index, T) = Elem :-
-    ( get_from_fixpoint_table_final_semidet(Index, T, TabledElem) ->
+    ( if get_from_fixpoint_table_final_semidet(Index, T, TabledElem) then
         Elem = TabledElem
-    ;
+    else
         unexpected($pred, "key not in map.")
     ).
 

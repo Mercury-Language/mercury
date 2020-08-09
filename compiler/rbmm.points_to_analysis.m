@@ -1040,9 +1040,10 @@ init_rpta_fixpoint_table(Keys, InfoTable) = Table :-
     rpta_fixpoint_table::in, rpta_fixpoint_table::out) is det.
 
 rpta_fixpoint_table_new_rpta_info(PPId, RptaInfo, !Table) :-
-    EqualityTest = (pred(TabledElem::in, Elem::in) is semidet :-
-        rpta_info_equal(Elem, TabledElem)
-    ),
+    EqualityTest =
+        ( pred(TabledElem::in, Elem::in) is semidet :-
+            rpta_info_equal(Elem, TabledElem)
+        ),
     add_to_fixpoint_table(EqualityTest, PPId, RptaInfo, !Table).
 
 :- func wrapped_init(rpta_info_table, pred_proc_id) = rpta_info.

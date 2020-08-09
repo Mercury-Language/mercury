@@ -191,23 +191,23 @@ collect_non_local_and_in_cond_regions_proc(ModuleInfo, PredId,
         ResurRenamingAnnoTable, ProcId,
         !NonLocalRegionsTable, !InCondRegionsTable) :-
     PPId = proc(PredId, ProcId),
-    ( some_are_special_preds([PPId], ModuleInfo) ->
+    ( if some_are_special_preds([PPId], ModuleInfo) then
         true
-    ;
+    else
         module_info_proc_info(ModuleInfo, PPId, ProcInfo0),
         fill_goal_path_slots_in_proc(ModuleInfo, ProcInfo0, ProcInfo),
         proc_info_get_goal(ProcInfo, Goal),
         map.lookup(RptaInfoTable, PPId, rpta_info(Graph, _)),
         map.lookup(LRBeforeTable, PPId, LRBeforeProc),
         map.lookup(LRAfterTable, PPId, LRAfterProc),
-        ( map.search(ResurRenamingTable, PPId, ResurRenamingProc0) ->
+        ( if map.search(ResurRenamingTable, PPId, ResurRenamingProc0) then
             ResurRenamingProc = ResurRenamingProc0
-        ;
+        else
             ResurRenamingProc = map.init
         ),
-        ( map.search(ResurRenamingAnnoTable, PPId, ResurRenamingAnnoProc0) ->
+        ( if map.search(ResurRenamingAnnoTable, PPId, ResurRenamingAnnoProc0) then
             ResurRenamingAnnoProc = ResurRenamingAnnoProc0
-        ;
+        else
             ResurRenamingAnnoProc = map.init
         ),
         collect_non_local_and_in_cond_regions_goal(Graph,
@@ -215,14 +215,14 @@ collect_non_local_and_in_cond_regions_proc(ModuleInfo, PredId,
             ResurRenamingAnnoProc, Goal,
             map.init, NonLocalRegionsProc,
             map.init, InCondRegionsProc),
-        ( map.count(NonLocalRegionsProc) = 0 ->
+        ( if map.count(NonLocalRegionsProc) = 0 then
             true
-        ;
+        else
             map.set(PPId, NonLocalRegionsProc, !NonLocalRegionsTable)
         ),
-        ( map.count(InCondRegionsProc) = 0 ->
+        ( if map.count(InCondRegionsProc) = 0 then
             true
-        ;
+        else
             map.set(PPId, InCondRegionsProc, !InCondRegionsTable)
         )
     ).
@@ -364,9 +364,9 @@ collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
         % Apply resurrection renaming to those sets.
         % For each renaming annotation, the left one is put into CreatedBefore,
         % and the right one is put into RemovedAfter.
-        ( map.search(ResurRenamingProc, ProgPoint, ResurRenaming0) ->
+        ( if map.search(ResurRenamingProc, ProgPoint, ResurRenaming0) then
             ResurRenaming = ResurRenaming0
-        ;
+        else
             ResurRenaming = map.init
         ),
         set.fold(apply_region_renaming(Graph, ResurRenaming),
@@ -374,9 +374,11 @@ collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
         set.fold(apply_region_renaming(Graph, ResurRenaming),
             CreatedBeforeNodes, set.init, CreatedBeforeRegions0),
 
-        ( map.search(ResurRenamingAnnoProc, ProgPoint, ResurRenamingAnnos0) ->
+        ( if
+            map.search(ResurRenamingAnnoProc, ProgPoint, ResurRenamingAnnos0)
+        then
             ResurRenamingAnnos = ResurRenamingAnnos0
-        ;
+        else
             ResurRenamingAnnos = []
         ),
         list.foldl2(renaming_annotation_to_regions,
@@ -398,10 +400,10 @@ collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
 
 apply_region_renaming(Graph, Renaming, Node, !Regions) :-
     RegionName = rptg_lookup_region_name(Graph, Node),
-    ( map.search(Renaming, RegionName, RenamedRegionNameList) ->
+    ( if map.search(Renaming, RegionName, RenamedRegionNameList) then
         RenamedRegionName = list.det_last(RenamedRegionNameList),
         set.insert(RenamedRegionName, !Regions)
-    ;
+    else
         set.insert(RegionName, !Regions)
     ).
 
@@ -449,26 +451,26 @@ renaming_annotation_to_regions(RenameAnnotation, !LeftRegions,
 record_non_local_regions(RevPath, Created, Removed, !NonLocalRegionProc) :-
     (
         RevPath = rgp_cons(RevInitialPath, LastStep),
-        ( LastStep = step_ite_else ->
+        ( if LastStep = step_ite_else then
             % The current NonLocalRegions are attached to the goal path
             % to the corresponding condition.
             RevPathToCond = rgp_cons(RevInitialPath, step_ite_cond),
-            (
+            ( if
                 map.search(!.NonLocalRegionProc, RevPathToCond,
                     NonLocalRegions0)
-            ->
+            then
                 set.union(NonLocalRegions0, Created, NonLocalRegions1),
                 set.difference(NonLocalRegions1, Removed, NonLocalRegions)
-            ;
+            else
                 set.difference(Created, Removed, NonLocalRegions)
             ),
             % Only record if some non-local region(s) exist.
-            ( set.is_empty(NonLocalRegions) ->
+            ( if set.is_empty(NonLocalRegions) then
                 true
-            ;
+            else
                 map.set(RevPathToCond, NonLocalRegions, !NonLocalRegionProc)
             )
-        ;
+        else
             true
         ),
 
@@ -594,17 +596,19 @@ collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
         % We need to apply renaming to this CreatedNodes set and look up
         % the renaming annotations after this program point. For each renaming
         % annotation the left one is created and the right is removed.
-        ( map.search(ResurRenamingProc, ProgPoint, ResurRenaming0) ->
+        ( if map.search(ResurRenamingProc, ProgPoint, ResurRenaming0) then
             ResurRenaming = ResurRenaming0
-        ;
+        else
             ResurRenaming = map.init
         ),
         set.fold(apply_region_renaming(Graph, ResurRenaming),
             CreatedNodes, set.init, CreatedRegions0),
 
-        ( map.search(ResurRenamingAnnoProc, ProgPoint, ResurRenamingAnnos0) ->
+        ( if
+            map.search(ResurRenamingAnnoProc, ProgPoint, ResurRenamingAnnos0)
+        then
             ResurRenamingAnnos = ResurRenamingAnnos0
-        ;
+        else
             ResurRenamingAnnos = []
         ),
         list.foldl2(renaming_annotation_to_regions, ResurRenamingAnnos,
@@ -635,20 +639,20 @@ collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
 record_regions_created_in_condition(RevPath, Created, !InCondRegionsProc) :-
     (
         RevPath = rgp_cons(RevInitialPath, LastStep),
-        ( LastStep = step_ite_cond  ->
-            ( map.search(!.InCondRegionsProc, RevPath, InCondRegions0) ->
+        ( if LastStep = step_ite_cond then
+            ( if map.search(!.InCondRegionsProc, RevPath, InCondRegions0) then
                 set.union(InCondRegions0, Created, InCondRegions)
-            ;
+            else
                 InCondRegions = Created
             ),
             % Only record if some regions are actually created inside
             % the condition.
-            ( set.is_empty(InCondRegions) ->
+            ( if set.is_empty(InCondRegions) then
                 true
-            ;
+            else
                 map.set(RevPath, InCondRegions, !InCondRegionsProc)
             )
-        ;
+        else
             true
         ),
         record_regions_created_in_condition(RevInitialPath, Created,
@@ -760,15 +764,15 @@ collect_ite_renamed_regions(InCondRegionsTable, NonLocalRegionsTable,
 
 collect_ite_renamed_regions_proc(NonLocalRegionsTable, PPId,
         InCondRegionsProc, !IteRenamedRegionTable) :-
-    ( map.search(NonLocalRegionsTable, PPId, NonLocalRegionsProc) ->
+    ( if map.search(NonLocalRegionsTable, PPId, NonLocalRegionsProc) then
         map.foldl(collect_ite_renamed_regions_ite(NonLocalRegionsProc),
             InCondRegionsProc, map.init, IteRenamedRegionProc),
-        ( map.count(IteRenamedRegionProc) = 0 ->
+        ( if map.count(IteRenamedRegionProc) = 0 then
             true
-        ;
+        else
             map.set(PPId, IteRenamedRegionProc, !IteRenamedRegionTable)
         )
-    ;
+    else
         true
     ).
 
@@ -778,14 +782,14 @@ collect_ite_renamed_regions_proc(NonLocalRegionsTable, PPId,
 
 collect_ite_renamed_regions_ite(NonLocalRegionsProc, PathToCond,
         InCondRegions, !IteRenamedRegionProc) :-
-    ( map.search(NonLocalRegionsProc, PathToCond, NonLocalRegions) ->
+    ( if map.search(NonLocalRegionsProc, PathToCond, NonLocalRegions) then
         set.intersect(NonLocalRegions, InCondRegions, RenamedRegions),
-        ( set.is_empty(RenamedRegions) ->
+        ( if set.is_empty(RenamedRegions) then
             true
-        ;
+        else
             map.set(PathToCond, RenamedRegions, !IteRenamedRegionProc)
         )
-    ;
+    else
         true
     ).
 
@@ -892,13 +896,13 @@ collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Cond,
         ProgPoint = pp(_, RevGoalPath),
         get_closest_condition_in_goal_path(RevGoalPath, RevPathToClosestCond,
             0, HowMany),
-        (
+        ( if
             map.search(IteRenamedRegionProc, RevPathToClosestCond,
                 RenamedRegions)
-        ->
+        then
             set.fold(record_ite_renaming(ProgPoint, HowMany, Graph),
                 RenamedRegions, !IteRenamingProc)
-        ;
+        else
             % No region needs to be renamed due to if-then-else covering
             % this program point.
             true
@@ -916,9 +920,9 @@ collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Cond,
 
 record_ite_renaming(ProgPoint, HowMany, _Graph, RegName, !IteRenamingProc) :-
     NewName = RegName ++ "_ite_" ++ string.int_to_string(HowMany),
-    ( map.search(!.IteRenamingProc, ProgPoint, IteRenaming0) ->
+    ( if map.search(!.IteRenamingProc, ProgPoint, IteRenaming0) then
         map.set(RegName, [NewName], IteRenaming0, IteRenaming)
-    ;
+    else
         map.set(RegName, [NewName], map.init, IteRenaming)
     ),
     map.set(ProgPoint, IteRenaming, !IteRenamingProc).
@@ -1004,11 +1008,11 @@ collect_ite_renaming_in_condition_case(IteRenamedRegionProc, Graph, Case,
 get_closest_condition_in_goal_path(RevPath, RevPathToCond, !HowMany) :-
     (
         RevPath = rgp_cons(RevInitialPath, LastStep),
-        ( LastStep = step_ite_cond ->
+        ( if LastStep = step_ite_cond then
             RevPathToCond = RevPath,
             get_closest_condition_in_goal_path(RevInitialPath, _, !HowMany),
             !:HowMany = !.HowMany + 1
-        ;
+        else
             get_closest_condition_in_goal_path(RevInitialPath, RevPathToCond,
                 !HowMany)
         )
@@ -1103,20 +1107,20 @@ collect_ite_annotation_exec_path_2(Graph, RevPathToThen,
     list.reverse(RevGoalPathSteps, GoalPathSteps),
     reverse_goal_path_to_steps(RevPathToThen, RevPathToThenSteps),
     list.reverse(RevPathToThenSteps, PathToThenSteps),
-    ( list.append(PathToThenSteps, FromThenSteps, GoalPathSteps) ->
-        ( list.member(step_ite_cond, FromThenSteps) ->
+    ( if list.append(PathToThenSteps, FromThenSteps, GoalPathSteps) then
+        ( if list.member(step_ite_cond, FromThenSteps) then
             % We cannot introduce reverse renaming in the condition of
             % an if-then-else. So we need to maintain the ite renaming
             % from the previous point to this point.
-            ( map.search(!.IteRenamingProc, PrevPoint, PrevIteRenaming) ->
+            ( if map.search(!.IteRenamingProc, PrevPoint, PrevIteRenaming) then
                 map.set(ProgPoint, PrevIteRenaming, !IteRenamingProc)
-            ;
+            else
                 true
             ),
             collect_ite_annotation_exec_path_2(Graph, RevPathToThen,
                 RenamedRegions, HowMany, ProgPoint, ProgPointGoals,
                 !IteRenamingProc, !IteAnnotationProc)
-        ;
+        else
             % This is the first point in the corresponding then branch, which
             % is not in the condition of another if-then-else, we need
             % to introduce reverse renaming at this point.
@@ -1125,7 +1129,7 @@ collect_ite_annotation_exec_path_2(Graph, RevPathToThen,
                     HowMany),
                 RenamedRegions, !IteAnnotationProc)
         )
-    ;
+    else
         collect_ite_annotation_exec_path_2(Graph, RevPathToThen,
             RenamedRegions, HowMany, ProgPoint, ProgPointGoals,
             !IteRenamingProc, !IteAnnotationProc)
@@ -1153,18 +1157,18 @@ reverse_goal_path_to_steps(rgp_cons(EarlierPath, LaterStep),
 introduce_reverse_renaming(ProgPoint, IteRenamingProc, HowMany, RegName,
         !IteAnnotationProc) :-
     CurrentName = RegName ++ "_ite_" ++ string.int_to_string(HowMany),
-    ( map.search(IteRenamingProc, ProgPoint, Renaming) ->
-        ( map.search(Renaming, RegName, RenameToList) ->
-            ( list.length(RenameToList) = 1 ->
+    ( if map.search(IteRenamingProc, ProgPoint, Renaming) then
+        ( if map.search(Renaming, RegName, RenameToList) then
+            ( if list.length(RenameToList) = 1 then
                 RenameTo = list.det_last(RenameToList),
                 make_renaming_instruction(CurrentName, RenameTo, Annotation)
-            ;
+            else
                 unexpected($pred, "more than one renaming")
             )
-        ;
+        else
             make_renaming_instruction(CurrentName, RegName, Annotation)
         )
-    ;
+    else
         % No renaming exists at this program point.
         make_renaming_instruction(CurrentName, RegName, Annotation)
     ),
