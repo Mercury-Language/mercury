@@ -177,8 +177,8 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
 
     Context = term.context_init,
 
-    % If there is more than one original method, then we need to switch on the
-    % ptr_num member variable.
+    % If there is more than one original method, then we need to switch
+    % on the fvn_ptr_num member variable.
     (
         CodeAddrStmts = [],
         unexpected($pred, "no statements")
@@ -252,7 +252,6 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
         generate_call_method_args_from_array(OrigArgTypes, ArrayVarName, 0,
             [], CallArgs)
     ),
-
 
     % Create a temporary variable to store the result of the call to the
     % original method.
