@@ -183,7 +183,8 @@ mmake_opts="-k"
 outfile=""
 runtests=true
 do_bootcheck=true
-if test -f /bin/cygwin1.dll; then
+if test -f /bin/cygwin1.dll
+then
     # Don't run check_namespace on Cygwin, unless explicitly asked,
     # because the `-nostdinc' option doesn't work with gcc 2.95 on Cygwin.
     # (This has been fixed in later versions of gcc, e.g. 3.2, so
@@ -207,7 +208,8 @@ keep_stage_3=false
 stop_after_stage_2=false
 windows=false
 use_cp=false
-if test -d compiler/Mercury; then
+if test -d compiler/Mercury
+then
     use_subdirs=${MMAKE_USE_SUBDIRS=yes}
 else
     use_subdirs=${MMAKE_USE_SUBDIRS=no}
@@ -258,180 +260,258 @@ BROWSER_LIB_NAME=mer_browser
 SSDB_LIB_NAME=mer_ssdb
 MDBCOMP_LIB_NAME=mer_mdbcomp
 
-while test $# -gt 0; do
+while test $# -gt 0
+do
     case "$1" in
 
-    -b-|--no-bootcheck)
-        do_bootcheck=false ;;
+        -b-|--no-bootcheck)
+            do_bootcheck=false
+            ;;
 
-    -d|--test-dir)
-        testdirs="${testdirs} $2"; shift ;;
-    -d*)
-        testdirs="${testdirs} ` expr X$1 : 'X-d\(.*\)' `"; ;;
+        -d|--test-dir)
+            testdirs="${testdirs} $2"
+            shift
+            ;;
+        -d*)
+            testdirs="${testdirs} ` expr X$1 : 'X-d\(.*\)' `";
+            ;;
 
-    -e|--extras)
-        extras=true ;;
+        -e|--extras)
+            extras=true
+            ;;
 
-    -s|--specified-tests)
-        specified_tests_only="${specified_tests_only} $2"; shift ;;
+        -s|--specified-tests)
+            specified_tests_only="${specified_tests_only} $2"
+            shift
+            ;;
 
-    -f|--failing-tests)
-        failing_tests_only=true ;;
+        -f|--failing-tests)
+            failing_tests_only=true
+            ;;
 
-    --error-file)
-        error_file_only=true ;;
+        --error-file)
+            error_file_only=true
+            ;;
 
-    --expect-no-failures)
-        expect_listed_failures=false ;;
+        --expect-no-failures)
+            expect_listed_failures=false
+            ;;
 
-    -h|--help)
-        echo "${usage}"
-        exit 0 ;;
+        -h|--help)
+            echo "${usage}"
+            exit 0
+            ;;
 
-    -j|--jobs)
-        jfactor="-j$2"; shift ;;
-    -j*)
-        jfactor="-j` expr X$1 : X'-j\(.*\)' `" ;;
-    --jobs*)
-        jfactor="--jobs` expr X$1 : 'X--jobs\(.*\)' `" ;;
+        -j|--jobs)
+            jfactor="-j$2"
+            shift
+            ;;
+        -j*)
+            jfactor="-j` expr X$1 : X'-j\(.*\)' `"
+            ;;
+        --jobs*)
+            jfactor="--jobs` expr X$1 : 'X--jobs\(.*\)' `"
+            ;;
 
-    -k|--keep-objs)
-        keep_objs=true ;;
+        -k|--keep-objs)
+            keep_objs=true
+            ;;
 
-    -m|--mmake|--mmake-opts)
-        mmake_opts="${mmake_opts} $2"; shift ;;
+        -m|--mmake|--mmake-opts)
+            mmake_opts="${mmake_opts} $2"
+            shift
+            ;;
 
-    -o|--output-file)
-        outfile="$2"; shift ;;
-    -o*)
-        outfile="` expr X$1 : 'X-o\(.*\)' `"; ;;
+        -o|--output-file)
+            outfile="$2"
+            shift
+            ;;
+        -o*)
+            outfile="` expr X$1 : 'X-o\(.*\)' `"
+            ;;
 
-    --target)
-        case "$2" in
-        c|java|csharp)  target="$2"; shift ;;
-        *)  echo "unknown target \`$2'" 1>&2; exit 1 ;;
-        esac
-        ;;
+        --target)
+            case "$2" in
+                c|java|csharp)
+                    target="$2"
+                    shift
+                    ;;
+                *)
+                    echo "unknown target \`$2'" 1>&2
+                    exit 1
+                    ;;
+            esac
+            ;;
 
-    -G|--grade)
-        grade="$2"; shift ;;
-    -G*)
-        grade="` expr X$1 : 'X-G\(.*\)' `"; ;;
+        -G|--grade)
+            grade="$2"
+            shift
+            ;;
+        -G*)
+            grade="` expr X$1 : 'X-G\(.*\)' `"
+            ;;
 
-    --gradedir)
-        use_gradedir=true; grade="$2"; shift ;;
+        --gradedir)
+            use_gradedir=true
+            grade="$2"
+            shift
+            ;;
 
-    --test-grade)
-        test_grade="$2"; shift ;;
+        --test-grade)
+            test_grade="$2"
+            shift
+            ;;
 
-    --mercury-options)
-        MERCURY_OPTIONS="$2"; export MERCURY_OPTIONS; shift ;;
+        --mercury-options)
+            MERCURY_OPTIONS="$2"
+            export MERCURY_OPTIONS
+            shift
+            ;;
 
-    -r|--copy-runtime)
-        copy_runtime=true ;;
+        -r|--copy-runtime)
+            copy_runtime=true
+            ;;
 
-    -g|--copy-boehm-gc)
-        copy_boehm_gc=true ;;
+        -g|--copy-boehm-gc)
+            copy_boehm_gc=true
+            ;;
 
-    -p-|-no-copy-profilers)
-        copy_profilers=false ;;
+        -p-|-no-copy-profilers)
+            copy_profilers=false
+            ;;
 
-    --no-copy-slice)
-        copy_slice=false ;;
+        --no-copy-slice)
+            copy_slice=false
+            ;;
 
-    --check-namespace)
-        check_namespace=true ;;
-    --no-check-namespace)
-        check_namespace=false ;;
+        --check-namespace)
+            check_namespace=true
+            ;;
+        --no-check-namespace)
+            check_namespace=false
+            ;;
 
-    -t-|--no-test-suite)
-        runtests=false ;;
+        -t-|--no-test-suite)
+            runtests=false
+            ;;
 
-    --skip-stage-2)
-        keep_stage_2=true
-        mmake_stage_2=false ;;
+        --skip-stage-2)
+            keep_stage_2=true
+            mmake_stage_2=false
+            ;;
 
-    -2|--keep-stage-2)
-        keep_stage_2=true ;;
+        -2|--keep-stage-2)
+            keep_stage_2=true
+            ;;
 
-    -3|--keep-stage-3)
-        keep_stage_3=true ;;
+        -3|--keep-stage-3)
+            keep_stage_3=true
+            ;;
 
-    --test-params)
-        test_params=true ;;
+        --test-params)
+            test_params=true
+            ;;
 
-    --keep-success-log-files)
-        KEEP_SUCCESS_LOG_FILES=keep_success_log_files
-        export KEEP_SUCCESS_LOG_FILES
-        ;;
+        --keep-success-log-files)
+            KEEP_SUCCESS_LOG_FILES=keep_success_log_files
+            export KEEP_SUCCESS_LOG_FILES
+            ;;
 
-    --stop-after-stage-2)
-        stop_after_stage_2=true ;;
+        --stop-after-stage-2)
+            stop_after_stage_2=true
+            ;;
 
-    --use-subdirs)
-        use_subdirs=yes ;;
-    --no-use-subdirs)
-        use_subdirs=no ;;
+        --use-subdirs)
+            use_subdirs=yes
+            ;;
+        --no-use-subdirs)
+            use_subdirs=no
+            ;;
 
-    --use-mmc-make)
-        use_mmc_make=yes; use_subdirs=yes ;;
-    --no-use-mmc-make)
-        use_mmc_make=no ;;
+        --use-mmc-make)
+            use_mmc_make=yes
+            use_subdirs=yes
+            ;;
+        --no-use-mmc-make)
+            use_mmc_make=no
+            ;;
 
-    --compile-times)
-        compile_times=true ;;
-    --no-compile-times)
-        compile_times=false ;;
+        --compile-times)
+            compile_times=true
+            ;;
+        --no-compile-times)
+            compile_times=false
+            ;;
 
-    --no-write-out-profile-data)
-        write_out_profile_data=false ;;
+        --no-write-out-profile-data)
+            write_out_profile_data=false
+            ;;
 
-    --type-stats)
-        type_stats="$2"; shift ;;
+        --type-stats)
+            type_stats="$2"
+            shift
+            ;;
 
-    --trace-count|--trace-counts)
-        trace_count=true ;;
+        --trace-count|--trace-counts)
+            trace_count=true
+            ;;
 
-    --coverage-test)
-        coverage_test=true ;;
+        --coverage-test)
+            coverage_test=true
+            ;;
 
-    -W|--windows)
-        windows=true; use_cp=true ;;
+        -W|--windows)
+            windows=true
+            use_cp=true
+            ;;
 
-    --use-cp)
-        use_cp=true ;;
+        --use-cp)
+            use_cp=true
+            ;;
 
-    --no-sym-links)
-        use_cp=true ;;
+        --no-sym-links)
+            use_cp=true
+            ;;
 
-    --disable-debug-libs)
-        disable_debug_libs=true ;;
+        --disable-debug-libs)
+            disable_debug_libs=true
+            ;;
 
-    --delete-deep-data)
-        delete_deep_data=true ;;
+        --delete-deep-data)
+            delete_deep_data=true
+            ;;
 
-    --deep-all-write)
-        deep_write_sample=false ;;
+        --deep-all-write)
+            deep_write_sample=false
+            ;;
 
-    --deep-debug)
-        deep_debug=true ;;
+        --deep-debug)
+            deep_debug=true
+            ;;
 
-    --progress)
-        progress=true ;;
+        --progress)
+            progress=true
+            ;;
 
-    --)
-        shift; break ;;
-    -*)
-        echo "$0: unknown option \`$1'" 1>&2
-        echo "${usage}" 1>&2
-        exit 1 ;;
-    *)
-        break ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            echo "$0: unknown option \`$1'" 1>&2
+            echo "${usage}" 1>&2
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+
     esac
     shift
 done
 
-if test $# -ne 0; then
+if test $# -ne 0
+then
     echo "$0: unexpected argument(s) \`$*'" 1>&2
     echo "${usage}" 1>&2
     exit 1
@@ -573,7 +653,8 @@ export PATH
 
 #-----------------------------------------------------------------------------#
 
-if test "${use_gradedir}" = "true"; then
+if test "${use_gradedir}" = "true"
+then
     stage2dir=stage2.${grade}
     stage3dir=stage3.${grade}
 else
@@ -1706,7 +1787,8 @@ EOF
         # `mmake cs' in the compiler directory doesn't build
         # `mercury_compile_init.c', so we only compare the `.c'
         # files present in the stage 3 directory.
-        for file in ${stage3dir}/${dir}/${target_subdir}*.${target_ext}; do
+        for file in ${stage3dir}/${dir}/${target_subdir}*.${target_ext}
+        do
             diff -u ${stage2dir}/${dir}/${target_subdir}`basename ${file}` \
                 ${file} \
             || diff_status=1
