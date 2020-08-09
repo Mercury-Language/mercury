@@ -123,7 +123,8 @@ CLASSES_SUBDIR = $(classes_subdir)
 endif
 
 ifeq ($(findstring csharp,$(GRADE)),csharp)
-	# XXX we should produce DLLs but currently that invokes the IL backend
+	# XXX We should produce DLLs but currently that invokes the IL backend.
+	# XXX The above comment is long obsolete.
 	TARGET_OBJ_EXT = cs
 	TARGET_OBJ_SUBDIR = $(DLLS_SUBDIR)
 else
