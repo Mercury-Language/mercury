@@ -372,7 +372,7 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         phase_mode_check(report_in_any_mode),
         [simple_msg(NewContext,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-        simple_msg(OldContext, [always(OldPieces)])]).
+        simplest_msg(OldContext, OldPieces)]).
 
 %---------------------------------------------------------------------------%
 
@@ -887,7 +887,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     then
         VarPieces = [words("The variable"), VarNamePiece,
             words("is ground in some branches but not others."), nl],
-        VarMsg = simple_msg(MainContext, [always(VarPieces)]),
+        VarMsg = simplest_msg(MainContext, VarPieces),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, VarNamePiece,
                 report_ground_vs_nonground_only),
@@ -896,7 +896,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     else
         VarPieces = [words("The variable"), VarNamePiece,
             words("has the following instantiation states."), nl],
-        VarMsg = simple_msg(MainContext, [always(VarPieces)]),
+        VarMsg = simplest_msg(MainContext, VarPieces),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, VarNamePiece, report_inst_only),
             ContextsInsts),
@@ -1561,7 +1561,7 @@ mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst,
 
 mode_error_implied_mode_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
     % This "error" message is really a "sorry, not implemented" message.
-    % We only print the message if we will actually generating code.
+    % We only print the message if we will actually generate code.
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_op_mode(Globals, OpMode),

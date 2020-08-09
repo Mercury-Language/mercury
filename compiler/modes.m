@@ -1639,9 +1639,8 @@ report_wrong_mode_for_main(ProcInfo) = Spec :-
     Pieces = [words("Error:"),
         unqual_sym_name_arity(sym_name_arity(unqualified("main"), 2)),
         words("must have mode"), quote("(di, uo)"), suffix("."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), [Msg]).
+    Spec = simplest_spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode), Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.modes.

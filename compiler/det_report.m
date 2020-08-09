@@ -558,7 +558,7 @@ report_determinism_problem(PredProcId, ModuleInfo, MessagePieces,
         quote(determinism_to_string(DeclaredDetism)), suffix(","),
         words("inferred"),
         quote(determinism_to_string(InferredDetism)), suffix("."), nl],
-    Msgs = [simple_msg(Context, [always(Pieces)])].
+    Msgs = [simplest_msg(Context, Pieces)].
 
 %-----------------------------------------------------------------------------%
 
@@ -613,7 +613,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
                 NestingPieces),
             DisjPieces = [lower_case_next_if_not_first,
                 words("Disjunction has multiple clauses with solutions."), nl],
-            Msg = simple_msg(Context, [always(NestingPieces ++ DisjPieces)]),
+            Msg = simplest_msg(Context, NestingPieces ++ DisjPieces),
             Msgs = [Msg] ++ Msgs1
         else
             Msgs = Msgs1
@@ -685,7 +685,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         Pieces = [words("Determinism declaration not satisfied."),
             words("Desired determinism is"), words(DesiredStr),
             suffix("."), nl],
-        Msgs = [simple_msg(Context, [always(Pieces)])]
+        Msgs = [simplest_msg(Context, Pieces)]
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         determinism_components(Desired, _DesiredCanFail, DesiredSolns),
@@ -718,14 +718,14 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         then
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Negated goal can succeed."), nl],
-            Msgs = [simple_msg(Context, [always(Pieces)])]
+            Msgs = [simplest_msg(Context, Pieces)]
         else if
             DesiredSolns = at_most_zero,
             ActualSolns \= at_most_zero
         then
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Negated goal can fail."), nl],
-            Msgs = [simple_msg(Context, [always(Pieces)])]
+            Msgs = [simplest_msg(Context, Pieces)]
         else
             Msgs = []
         )
@@ -818,7 +818,7 @@ det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
             words("while actual determinism is"),
             fixed(determinism_to_string(Actual)), suffix("."), nl]
     ),
-    Msgs = [simple_msg(Context, [always(StartingPieces ++ Pieces)])].
+    Msgs = [simplest_msg(Context, StartingPieces ++ Pieces)].
 
 det_diagnose_conj([], _InstMap0, _Desired, _SwitchContexts, !DetInfo, []).
 det_diagnose_conj([Goal | Goals], InstMap0, Desired, SwitchContexts, !DetInfo,
@@ -1504,7 +1504,7 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
                 words("of the arm for")] ++ ConsIdsPieces ++
                 [words("is"), quote(ActualDetismStr), suffix("."), nl]
         ),
-        Msg = simple_msg(Context, [always(Pieces)]),
+        Msg = simplest_msg(Context, Pieces),
         det_diagnose_goal(Goal, InstMap0, RequiredDetism, [], !DetInfo,
             SubMsgs),
         Spec = error_spec($pred, severity_error, phase_detism_check,
@@ -1904,7 +1904,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
             det_report_unify_context(is_first, is_not_last, Context, UC,
                 DetInfo, LHS, RHS, UnifyPieces0),
             UnifyPieces = UnifyPieces0 ++ [suffix(":")],
-            UnifyMsg = simple_msg(Context, [always(UnifyPieces)]),
+            UnifyMsg = simplest_msg(Context, UnifyPieces),
             InitMsgs = [UnifyMsg]
         ;
             CallUnifyContext = no,
@@ -2033,7 +2033,7 @@ failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
         FailingGoal = negated_goal,
         Pieces = [words("Negated goal can fail.")]
     ),
-    Msg = simple_msg(Context, [always(Pieces ++ [nl])]).
+    Msg = simplest_msg(Context, Pieces ++ [nl]).
 
 %-----------------------------------------------------------------------------%
 

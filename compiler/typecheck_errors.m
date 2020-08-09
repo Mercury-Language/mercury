@@ -285,7 +285,7 @@ report_error_func_instead_of_pred(Context, PredOrFunc) = Msg :-
             prefix("*"), p_or_f(PredOrFunc), suffix("*"),
             words("with that name, however.)"), nl]
     ),
-    Msg = simple_msg(Context, [always(Pieces)]).
+    Msg = simplest_msg(Context, Pieces).
 
 :- func report_error_undef_pred(type_error_clause_context, prog_context,
     pf_sym_name_arity) = error_msg.
@@ -481,7 +481,7 @@ report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
     FrontPieces = [words("Warning: non-contiguous clauses for ") | PredPieces]
         ++ [suffix(".")],
     pred_info_get_context(PredInfo, Context),
-    FrontMsg = simple_msg(Context, [always(FrontPieces)]),
+    FrontMsg = simplest_msg(Context, FrontPieces),
     report_non_contiguous_clause_contexts(PredPieces, 1,
         FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
     Msgs = [FrontMsg | ContextMsgs],
@@ -518,8 +518,8 @@ report_non_contiguous_clause_contexts(PredPieces, GapNumber,
     SecondPieces = [words("Gap") | GapPieces] ++
         [words("in clauses of") | PredPieces] ++
         [words("ends with this clause."), nl],
-    FirstMsg = simple_msg(FirstUpperContext, [always(FirstPieces)]),
-    SecondMsg = simple_msg(SecondLowerContext, [always(SecondPieces)]),
+    FirstMsg = simplest_msg(FirstUpperContext, FirstPieces),
+    SecondMsg = simplest_msg(SecondLowerContext, SecondPieces),
     (
         LaterRegions = [],
         Msgs = [FirstMsg, SecondMsg]
@@ -603,7 +603,7 @@ too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
                 [words("The following symbols were overloaded"),
                 words("in the following contexts."), nl]
         ),
-        SecondMsg = simple_msg(Context, [always(SecondPieces)]),
+        SecondMsg = simplest_msg(Context, SecondPieces),
         ModuleInfo = ClauseContext ^ tecc_module_info,
         DetailMsgsList = list.map(describe_overloaded_symbol(ModuleInfo),
             OverloadedSymbolsSortedContexts),
@@ -655,14 +655,14 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                 qual_cons_id_and_maybe_arity(ConsId),
                 words("is also overloaded here.")]
         ),
-        FirstMsg = simple_msg(FirstContext, [always(FirstPieces)]),
+        FirstMsg = simplest_msg(FirstContext, FirstPieces),
         LaterMsgs = list.map(context_to_error_msg(LaterPieces), LaterContexts),
         Msgs = [FirstMsg | LaterMsgs]
     ).
 
 :- func context_to_error_msg(list(format_component), prog_context) = error_msg.
 
-context_to_error_msg(Pieces, Context) = simple_msg(Context, [always(Pieces)]).
+context_to_error_msg(Pieces, Context) = simplest_msg(Context, Pieces).
 
 :- func describe_cons_type_info_source(module_info, cons_type_info_source)
     = list(format_component).
@@ -1648,7 +1648,7 @@ report_cons_error(Context, ConsError) = Msgs :-
             words("in all predicates and functions"),
             words("which are not implemented"),
             words("for those foreign types."), nl],
-        Msgs = [simple_msg(Context, [always(Pieces)])]
+        Msgs = [simplest_msg(Context, Pieces)]
     ;
         ConsError = abstract_imported_type,
         % For `abstract_imported_type' errors, the "undefined symbol"
@@ -1678,7 +1678,7 @@ report_cons_error(Context, ConsError) = Msgs :-
             words("in definition of constructor"),
             qual_cons_id_and_maybe_arity(ConsId), suffix("."), nl],
         Pieces = Pieces1 ++ Pieces2 ++ Pieces3,
-        Msgs = [simple_msg(DefnContext, [always(Pieces)])]
+        Msgs = [simplest_msg(DefnContext, Pieces)]
     ;
         ConsError = new_on_non_existential_type(TypeCtor),
         TypeCtor = type_ctor(TypeName, TypeArity),
@@ -1686,7 +1686,7 @@ report_cons_error(Context, ConsError) = Msgs :-
             words("on a constructor of type"),
             qual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
             words("which is not existentially typed."), nl],
-        Msgs = [simple_msg(Context, [always(Pieces)])]
+        Msgs = [simplest_msg(Context, Pieces)]
     ).
 
 %-----------------------------------------------------------------------------%

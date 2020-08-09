@@ -2113,7 +2113,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
         p_or_f(PredOrFunc), words("method"),
         unqual_sym_name_arity(sym_name_arity(MethodName, Arity)),
         suffix("."), nl],
-    HeadingMsg = simple_msg(InstanceContext, [always(HeaderPieces)]),
+    HeadingMsg = simplest_msg(InstanceContext, HeaderPieces),
     (
         MatchingInstanceMethods = [FirstInstance | LaterInstances]
     ;
@@ -2122,13 +2122,13 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
     ),
     FirstInstanceContext = FirstInstance ^ instance_method_decl_context,
     FirstPieces = [words("First definition appears here."), nl],
-    FirstMsg = simple_msg(FirstInstanceContext, [always(FirstPieces)]),
+    FirstMsg = simplest_msg(FirstInstanceContext, FirstPieces),
     DefnToMsg =
         ( pred(Definition::in, Msg::out) is det :-
             TheContext = Definition ^ instance_method_decl_context,
             SubsequentPieces =
                 [words("Subsequent definition appears here."), nl],
-            Msg = simple_msg(TheContext, [always(SubsequentPieces)])
+            Msg = simplest_msg(TheContext, SubsequentPieces)
         ),
     list.map(DefnToMsg, LaterInstances, LaterMsgs),
 

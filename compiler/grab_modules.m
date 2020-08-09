@@ -1704,7 +1704,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
         [words("for its"), words(ChildOrDescendant), words(ModuleS)] ++
         component_list_to_pieces("and", DescendantPieces) ++
         [suffix("."), nl],
-    MainMsg = simple_msg(LeastContext, [always(MainPieces)]),
+    MainMsg = simplest_msg(LeastContext, MainPieces),
     ( if
         MissingWhere = missing_in_src_int(SrcImpImportUseMap),
         map.search(SrcImpImportUseMap, MissingModuleName, IoUCs)
@@ -1718,7 +1718,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
         ImpPieces = [words("Adding such a declaration would obsolete"),
             words("this"), decl(ImportOrUseDecl), words("declaration"),
             words("in the implementation section."), nl],
-        ImpMsg = simple_msg(ImpContext, [always(ImpPieces)]),
+        ImpMsg = simplest_msg(ImpContext, ImpPieces),
         Msgs = [MainMsg, ImpMsg]
     else
         Msgs = [MainMsg]

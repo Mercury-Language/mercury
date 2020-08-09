@@ -375,7 +375,7 @@ warn_unused_interface_import(ParentModuleName,
         words("warning: module"), qual_sym_name(ImportedModuleName),
         words("is imported in the interface,"),
         words("but it is not used in the interface."), nl],
-    HeadMsg = simple_msg(HeadContext, [always(HeadPieces)]),
+    HeadMsg = simplest_msg(HeadContext, HeadPieces),
     % TailContexts is almost always [], we add TailMsgs just in case it isn't.
     list.map(warn_redundant_import_context(ImportedModuleName),
         TailContexts, TailMsgs),
@@ -393,7 +393,7 @@ warn_unused_interface_import(ParentModuleName,
 warn_redundant_import_context(ImportedModuleName, Context, Msg) :-
     Pieces = [words("Module"), qual_sym_name(ImportedModuleName),
         words("is also redundantly imported here."), nl],
-    Msg = simple_msg(Context, [always(Pieces)]).
+    Msg = simplest_msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
