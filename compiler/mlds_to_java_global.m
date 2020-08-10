@@ -99,16 +99,16 @@ output_global_var_defn_for_java(Info, Indent, OutputAux, GlobalVarDefn, !IO) :-
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_global_var_decl_flags_for_java(Flags, !IO),
-    % XXX MLDS_DEFN
     output_global_var_decl_for_java(Info, GlobalVarName, Type, !IO),
-    output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
-    io.write_string(";\n", !IO).
+    output_initializer_for_java(Info, OutputAux, Indent + 1,
+        Type, Initializer, ";", !IO).
 
 %---------------------------------------------------------------------------%
 
 output_global_var_assignments_for_java(Info, Indent, GlobalVarDefns, !IO) :-
-    % Divide into small methods to avoid running into the maximum method size
-    % limit.
+    % Putting all assignments to global variables into a single method
+    % may run into maximum method size limits. To avoid this, we split up
+    % the assignments into a bunch of methods, each of a limited size.
     list.chunk(GlobalVarDefns, 1000, DefnChunks),
     list.foldl2(output_init_global_var_method_for_java(Info, Indent),
         DefnChunks, 0, NumChunks, !IO),
@@ -142,8 +142,8 @@ output_init_global_var_statements_for_java(Info, Indent,
         Type, Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
     output_global_var_name_for_java(GlobalVarName, !IO),
-    output_initializer_for_java(Info, oa_none, Type, Initializer, !IO),
-    io.write_string(";\n", !IO),
+    output_initializer_for_java(Info, oa_none, Indent + 1,
+        Type, Initializer, ";", !IO),
     output_init_global_var_statements_for_java(Info, Indent,
         GlobalVarDefns, !IO).
 
@@ -205,8 +205,7 @@ output_scalar_defns_for_java(Info, Indent, TypeNum, CellGroup,
     output_type_for_java(Info, Type, !IO),
     io.format("[] MR_scalar_common_%d = ", [i(TypeRawNum)], !IO),
     output_initializer_alloc_only_for_java(Info, init_array(RowInits),
-        yes(ArrayType), !IO),
-    io.write_string(";\n", !IO),
+        yes(ArrayType), ";", !IO),
 
     MLDS_ModuleName = Info ^ joi_module_name,
     list.foldl3(add_scalar_inits(MLDS_ModuleName, Type, TypeNum),
@@ -235,11 +234,11 @@ output_scalar_init_for_java(Info, Indent, Map, Scalar, !IO) :-
     Scalar = ml_scalar_common(_, Type, TypeNum, RowNum),
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     output_n_indents(Indent, !IO),
-    io.format("MR_scalar_common_%d[%d] = ", [i(TypeRawNum), i(RowNum)], !IO),
-    output_initializer_body_for_java(Info, Initializer, yes(Type), !IO),
-    io.write_string(";\n", !IO).
+    io.format("MR_scalar_common_%d[%d] =\n", [i(TypeRawNum), i(RowNum)], !IO),
+    output_initializer_body_for_java(Info, at_start_of_line, Indent + 1,
+        Initializer, yes(Type), ";", !IO).
 
-:- pred output_call_scalar_init_method_for_java(int::in, int::in,
+:- pred output_call_scalar_init_method_for_java(indent::in, int::in,
     io::di, io::uo) is det.
 
 output_call_scalar_init_method_for_java(Indent, ChunkNum, !IO) :-
@@ -265,11 +264,12 @@ output_vector_cell_group_for_java(Info, Indent, TypeNum, CellGroup, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string("private static final ", !IO),
     output_type_for_java(Info, Type, !IO),
-    io.format(" MR_vector_common_%d[] = {\n", [i(TypeRawNum)], !IO),
+    io.format(" MR_vector_common_%d[] =\n", [i(TypeRawNum)], !IO),
     output_n_indents(Indent + 1, !IO),
-    output_initializer_body_list_for_java(Info, cord.list(RowInits), !IO),
-    io.nl(!IO),
-    output_n_indents(Indent, !IO),
+    io.write_string("{\n", !IO),
+    output_nonempty_initializer_body_list_for_java(Info, Indent + 2,
+        cord.list(RowInits), "", !IO),
+    output_n_indents(Indent + 1, !IO),
     io.write_string("};\n", !IO).
 
 %---------------------------------------------------------------------------%
@@ -320,8 +320,10 @@ output_rtti_defn_assignments_for_java(Info, Indent, GlobalVarDefn, !IO) :-
             IsArray = not_array,
             output_n_indents(Indent, !IO),
             output_global_var_name_for_java(GlobalVarName, !IO),
-            io.write_string(".init(", !IO),
-            output_initializer_body_list_for_java(Info, FieldInits, !IO),
+            io.write_string(".init(\n", !IO),
+            output_nonempty_initializer_body_list_for_java(Info, Indent + 1,
+                FieldInits, "", !IO),
+            output_n_indents(Indent, !IO),
             io.write_string(");\n", !IO)
         ;
             IsArray = is_array,
@@ -346,9 +348,9 @@ output_rtti_array_assignments_for_java(Info, Indent, GlobalVarName,
     output_global_var_name_for_java(GlobalVarName, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
-    io.write_string("] = ", !IO),
-    output_initializer_body_for_java(Info, ElementInit, no, !IO),
-    io.write_string(";\n", !IO).
+    io.write_string("] =\n", !IO),
+    output_initializer_body_for_java(Info, at_start_of_line, Indent + 1,
+        ElementInit, no, ";", !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -367,9 +369,7 @@ output_global_var_decl_flags_for_java(Flags, !IO) :-
         Access = gvar_acc_module_only,
         io.write_string("private ", !IO)
     ),
-    % PerInstance = one_copy,
     io.write_string("static ", !IO),
-    % Overridability = overridable,
     (
         Constness = const,
         io.write_string("final ", !IO)

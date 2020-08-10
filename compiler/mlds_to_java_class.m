@@ -114,7 +114,7 @@ output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
         ( Kind = mlds_class
         ; Kind = mlds_interface
         ),
-        list.foldl(output_field_var_defn_for_java(!.Info, Indent + 1, oa_none),
+        list.foldl(output_field_var_defn_for_java(!.Info, Indent + 1),
             MemberFields, !IO),
         list.foldl(output_class_defn_for_java(!.Info, Indent + 1),
             MemberClasses, !IO),
@@ -296,17 +296,17 @@ output_field_var_decl_for_java(Info, FieldVarName, Type, !IO) :-
     output_field_var_name_for_java(FieldVarName, !IO).
 
 :- pred output_field_var_defn_for_java(java_out_info::in, indent::in,
-    output_aux::in, mlds_field_var_defn::in, io::di, io::uo) is det.
+    mlds_field_var_defn::in, io::di, io::uo) is det.
 
-output_field_var_defn_for_java(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
+output_field_var_defn_for_java(Info, Indent, FieldVarDefn, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags, Type,
         Initializer, _),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_field_var_decl_flags_for_java(Flags, !IO),
     output_field_var_decl_for_java(Info, FieldVarName, Type, !IO),
-    output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
-    io.write_string(";\n", !IO).
+    output_initializer_for_java(Info, oa_none, Indent + 1,
+        Type, Initializer, ";", !IO).
 
 %---------------------------------------------------------------------------%
 %

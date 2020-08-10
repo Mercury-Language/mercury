@@ -46,9 +46,9 @@
             % Nothing special.
 
     ;       oa_cname(mlds_class_name, arity)
-            % Pass down the class name if a definition is a constructor; this
-            % is needed since the class name is not available for a constructor
-            % in the MLDS.
+            % Pass down the class name if a definition is a constructor;
+            % this is needed because the class name is not available
+            % for a constructor in the MLDS.
 
     ;       oa_alloc_only
             % When writing out RTTI structure definitions, initialise members
@@ -58,6 +58,15 @@
     ;       oa_force_init.
             % Used to force local variables to be initialised even if an
             % initialiser is not provided.
+
+%---------------------------------------------------------------------------%
+
+    % Have we printed anything on the current line before we start printing
+    % an initializer?
+    %
+:- type initializer_starts
+    --->    not_at_start_of_line    % Yes.
+    ;       at_start_of_line.       % No.
 
 %---------------------------------------------------------------------------%
 
@@ -150,6 +159,16 @@
 :- pred output_array_dimensions(list(int)::in, io::di, io::uo) is det.
 
 :- pred array_dimension_to_string(int::in, string::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % init_arg_wrappers_cs_java(IsArray, StartWrapper, EndWrapper):
+    %
+    % Return the kinds of parentheses you need to wrap around an initializer
+    % (for something that either is or is not an array) in C# and Java.
+    %
+:- pred init_arg_wrappers_cs_java(is_array::in, string::out, string::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -327,6 +346,21 @@ array_dimension_to_string(N, String) :-
         String = "[]"
     else
         String = string.format("[%d]", [i(N)])
+    ).
+
+%---------------------------------------------------------------------------%
+
+init_arg_wrappers_cs_java(IsArray, StartWrapper, EndWrapper) :-
+    (
+        IsArray = is_array,
+        % The new object will be an array, so we need to initialise it
+        % using array literals syntax.
+        StartWrapper = " {",
+        EndWrapper = "}"
+    ;
+        IsArray = not_array,
+        StartWrapper = "(",
+        EndWrapper = ")"
     ).
 
 %---------------------------------------------------------------------------%

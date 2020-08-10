@@ -98,7 +98,7 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
         ; Kind = mlds_struct
         ),
         list.foldl(
-            output_field_var_defn_for_csharp(!.Info, Indent + 1, oa_none),
+            output_field_var_defn_for_csharp(!.Info, Indent + 1),
             MemberFields, !IO),
         list.foldl(
             output_class_defn_for_csharp(!.Info, Indent + 1),
@@ -199,16 +199,16 @@ interface_is_special_for_csharp("MercuryType").
 %---------------------------------------------------------------------------%
 
 :- pred output_field_var_defn_for_csharp(csharp_out_info::in, indent::in,
-    output_aux::in, mlds_field_var_defn::in, io::di, io::uo) is det.
+    mlds_field_var_defn::in, io::di, io::uo) is det.
 
-output_field_var_defn_for_csharp(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
+output_field_var_defn_for_csharp(Info, Indent, FieldVarDefn, !IO) :-
     output_n_indents(Indent, !IO),
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, Flags,
         Type, Initializer, _),
     output_field_var_decl_flags_for_csharp(Flags, !IO),
     output_field_var_decl_for_csharp(Info, FieldVarName, Type, !IO),
-    output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
-    io.write_string(";\n", !IO).
+    output_initializer_for_csharp(Info, oa_none, Indent + 1,
+        Type, Initializer, ";", !IO).
 
 :- pred output_field_var_decl_for_csharp(csharp_out_info::in,
     mlds_field_var_name::in, mlds_type::in, io::di, io::uo) is det.

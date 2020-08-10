@@ -113,8 +113,8 @@ output_init_global_var_statements_for_csharp(Info, Indent,
         Type, Initializer, _GCStmt),
     output_n_indents(Indent, !IO),
     output_global_var_name_for_csharp(GlobalVarName, !IO),
-    output_initializer_for_csharp(Info, oa_none, Type, Initializer, !IO),
-    io.write_string(";\n", !IO),
+    output_initializer_for_csharp(Info, oa_none, Indent + 1,
+        Type, Initializer, ";", !IO),
     output_init_global_var_statements_for_csharp(Info, Indent,
         GlobalVarDefns, !IO).
 
@@ -127,8 +127,8 @@ output_global_var_defn_for_csharp(Info, Indent, OutputAux, GlobalVarDefn,
         Type, Initializer, _),
     output_global_var_decl_flags_for_csharp(Flags, !IO),
     output_global_var_decl_for_csharp(Info, GlobalVarName, Type, !IO),
-    output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO),
-    io.write_string(";\n", !IO).
+    output_initializer_for_csharp(Info, OutputAux, Indent + 1,
+        Type, Initializer, ";", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -172,8 +172,7 @@ output_scalar_defns_for_csharp(Info, Indent, TypeNum, CellGroup,
     output_type_for_csharp(Info, Type, !IO),
     io.format("[] MR_scalar_common_%d = ", [i(TypeRawNum)], !IO),
     output_initializer_alloc_only_for_csharp(Info, init_array(RowInits),
-        yes(ArrayType), !IO),
-    io.write_string(";\n", !IO),
+        yes(ArrayType), ";", !IO),
 
     MLDS_ModuleName = Info ^ csoi_module_name,
     list.foldl3(add_scalar_inits(MLDS_ModuleName, Type, TypeNum),
@@ -188,9 +187,9 @@ output_scalar_init_for_csharp(Info, Indent, Map, Scalar, !IO) :-
     Scalar = ml_scalar_common(_, Type, TypeNum, RowNum),
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     output_n_indents(Indent, !IO),
-    io.format("MR_scalar_common_%d[%d] = ", [i(TypeRawNum), i(RowNum)], !IO),
-    output_initializer_body_for_csharp(Info, Initializer, yes(Type), !IO),
-    io.write_string(";\n", !IO).
+    io.format("MR_scalar_common_%d[%d] =\n", [i(TypeRawNum), i(RowNum)], !IO),
+    output_initializer_body_for_csharp(Info, at_start_of_line, Indent + 1,
+        Initializer, yes(Type), ";", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -228,15 +227,15 @@ output_vector_cell_init_for_csharp(Info, Indent, TypeNum, CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, _ClassDefn, _FieldIds, _NextRow,
         RowInits),
-
     output_n_indents(Indent, !IO),
     io.format("MR_vector_common_%d = new ", [i(TypeRawNum)], !IO),
     output_type_for_csharp(Info, Type, !IO),
-    io.write_string("[] {\n", !IO),
+    io.write_string("[]\n", !IO),
     output_n_indents(Indent + 1, !IO),
-    output_initializer_body_list_for_csharp(Info, cord.list(RowInits), !IO),
-    io.nl(!IO),
-    output_n_indents(Indent, !IO),
+    io.write_string("{\n", !IO),
+    output_nonempty_initializer_body_list_for_csharp(Info, Indent + 2,
+        cord.list(RowInits), "", !IO),
+    output_n_indents(Indent + 1, !IO),
     io.write_string("};\n", !IO).
 
 %---------------------------------------------------------------------------%
@@ -279,8 +278,10 @@ output_rtti_defn_assignments_for_csharp(Info, Indent, GlobalVarDefn, !IO) :-
             IsArray = not_array,
             output_n_indents(Indent, !IO),
             output_global_var_name_for_csharp(GlobalVarName, !IO),
-            io.write_string(".init(", !IO),
-            output_initializer_body_list_for_csharp(Info, FieldInits, !IO),
+            io.write_string(".init(\n", !IO),
+            output_nonempty_initializer_body_list_for_csharp(Info, Indent + 1,
+                FieldInits, "", !IO),
+            output_n_indents(Indent, !IO),
             io.write_string(");\n", !IO)
         ;
             IsArray = is_array,
@@ -305,9 +306,9 @@ output_rtti_array_assignments_for_csharp(Info, Indent, GlobalVarName,
     output_global_var_name_for_csharp(GlobalVarName, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
-    io.write_string("] = ", !IO),
-    output_initializer_body_for_csharp(Info, ElementInit, no, !IO),
-    io.write_string(";\n", !IO).
+    io.write_string("] =\n", !IO),
+    output_initializer_body_for_csharp(Info, at_start_of_line, Indent + 1,
+        ElementInit, no, ";", !IO).
 
 %---------------------------------------------------------------------------%
 %

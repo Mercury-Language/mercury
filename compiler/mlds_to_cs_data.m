@@ -41,17 +41,49 @@
 
 %---------------------------------------------------------------------------%
 
+    % Output " = " followed by the given initializer, if any, followed
+    % by the given suffix string and a newline.
+    %
+    % The initializer is printed using output_initializer_body_for_java with
+    % not_at_start_of_line (see below).
+    %
 :- pred output_initializer_for_csharp(csharp_out_info::in, output_aux::in,
-    mlds_type::in, mlds_initializer::in, io::di, io::uo) is det.
+    indent::in, mlds_type::in, mlds_initializer::in, string::in,
+    io::di, io::uo) is det.
 
+    % Output the allocation part of the given initializer on the rest
+    % of the current line.
+    %
 :- pred output_initializer_alloc_only_for_csharp(csharp_out_info::in,
-    mlds_initializer::in, maybe(mlds_type)::in, io::di, io::uo) is det.
+    mlds_initializer::in, maybe(mlds_type)::in, string::in,
+    io::di, io::uo) is det.
 
+    % Output the given initializer. The formatting depends on whether
+    % the caller tells us that it has printed something on the current line
+    % already (not_at_start_of_line) or not (at_start_of_line).
+    %
+    % If the initializer is for a struct or an array, we put the initializer
+    % on separate lines, each indented by the given indent level, regardless
+    % of where we start.
+    %
+    % If the initializer is for a single object, then we put its initializer
+    % immediately after the previous of the current line if there is one
+    % (not_at_start_of_line); otherwise (at_start_of_line), we indent it by
+    % the specified level.
+    %
+    % In either case, we end the initializer with the given suffix
+    % (which will usually be a semicolon or a comma) and a newline.
+    %
 :- pred output_initializer_body_for_csharp(csharp_out_info::in,
-    mlds_initializer::in, maybe(mlds_type)::in, io::di, io::uo) is det.
+    initializer_starts::in, indent::in, mlds_initializer::in,
+    maybe(mlds_type)::in, string::in, io::di, io::uo) is det.
 
-:- pred output_initializer_body_list_for_csharp(csharp_out_info::in,
-    list(mlds_initializer)::in, io::di, io::uo) is det.
+    % Output the given list of initializers with commas between them,
+    % putting each initializer on its own line with the given indent.
+    % Put the given suffix after the last initializer.
+    %
+:- pred output_nonempty_initializer_body_list_for_csharp(csharp_out_info::in,
+    indent::in, list(mlds_initializer)::in, string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -366,16 +398,16 @@ output_unop_for_csharp(Info, UnaryOp, Expr, !IO) :-
     ;
         (
             UnaryOp = bitwise_complement(int_type_int8),
-            CastStr = "(sbyte)"
+            CastStr = "(sbyte) "
         ;
             UnaryOp = bitwise_complement(int_type_uint8),
-            CastStr = "(byte)"
+            CastStr = "(byte) "
         ;
             UnaryOp = bitwise_complement(int_type_int16),
-            CastStr = "(short)"
+            CastStr = "(short) "
         ;
             UnaryOp = bitwise_complement(int_type_uint16),
-            CastStr = "(ushort)"
+            CastStr = "(ushort) "
         ),
         UnaryOpStr = "~",
         io.write_string(CastStr, !IO),
@@ -560,7 +592,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
             ShiftType = shift_by_int
         ;
             ShiftType = shift_by_uint,
-            io.write_string("(int)", !IO)
+            io.write_string("(int) ", !IO)
         ),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
@@ -573,7 +605,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_and(int_type_int8)
         ; Op = bitwise_xor(int_type_int8)
         ),
-        io.write_string("(sbyte)(", !IO),
+        io.write_string("(sbyte) (", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
@@ -584,7 +616,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ( Op = unchecked_left_shift(int_type_int8, ShiftType)
         ; Op = unchecked_right_shift(int_type_int8, ShiftType)
         ),
-        io.write_string("(sbyte)(", !IO),
+        io.write_string("(sbyte) (", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
@@ -593,7 +625,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
             ShiftType = shift_by_int
         ;
             ShiftType = shift_by_uint,
-            io.write_string("(int)", !IO)
+            io.write_string("(int) ", !IO)
         ),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
@@ -601,11 +633,11 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         % The special treatment of bitwise-or here is necessary to avoid
         % warning CS0675 from the C# compiler.
         Op = bitwise_or(int_type_int8),
-        io.write_string("(sbyte)((byte)", !IO),
+        io.write_string("(sbyte) ((byte) ", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
-        io.write_string(" (byte)", !IO),
+        io.write_string(" (byte) ", !IO),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
     ;
@@ -618,7 +650,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_or(int_type_uint8)
         ; Op = bitwise_xor(int_type_uint8)
         ),
-        io.write_string("(byte)(", !IO),
+        io.write_string("(byte) (", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
@@ -629,7 +661,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ( Op = unchecked_left_shift(int_type_uint8, ShiftType)
         ; Op = unchecked_right_shift(int_type_uint8, ShiftType)
         ),
-        io.write_string("(byte)(", !IO),
+        io.write_string("(byte) (", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
@@ -638,7 +670,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
             ShiftType = shift_by_int
         ;
             ShiftType = shift_by_uint,
-            io.write_string("(int)", !IO)
+            io.write_string("(int) ", !IO)
         ),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
@@ -652,7 +684,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_or(int_type_int16)
         ; Op = bitwise_xor(int_type_int16)
         ),
-        io.write_string("(short)(", !IO),
+        io.write_string("(short) (", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
@@ -663,7 +695,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ( Op = unchecked_left_shift(int_type_int16, ShiftType)
         ; Op = unchecked_right_shift(int_type_int16, ShiftType)
         ),
-        io.write_string("(short)(", !IO),
+        io.write_string("(short) (", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
@@ -672,7 +704,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
             ShiftType = shift_by_int
         ;
             ShiftType = shift_by_uint,
-            io.write_string("(int)", !IO)
+            io.write_string("(int) ", !IO)
         ),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
@@ -686,7 +718,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_or(int_type_uint16)
         ; Op = bitwise_xor(int_type_uint16)
         ),
-        io.write_string("(ushort)(", !IO),
+        io.write_string("(ushort) (", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
@@ -697,7 +729,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ( Op = unchecked_left_shift(int_type_uint16, ShiftType)
         ; Op = unchecked_right_shift(int_type_uint16, ShiftType)
         ),
-        io.write_string("(ushort)(", !IO),
+        io.write_string("(ushort) (", !IO),
         output_rval_for_csharp(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
@@ -706,7 +738,7 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
             ShiftType = shift_by_int
         ;
             ShiftType = shift_by_uint,
-            io.write_string("(int)", !IO)
+            io.write_string("(int) ", !IO)
         ),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
@@ -912,25 +944,25 @@ output_uint_const_for_csharp(U, !IO) :-
 :- pred output_int8_const_for_csharp(int8::in, io::di, io::uo) is det.
 
 output_int8_const_for_csharp(I8, !IO) :-
-    io.write_string("(sbyte)", !IO),
+    io.write_string("(sbyte) ", !IO),
     io.write_int8(I8, !IO).
 
 :- pred output_uint8_const_for_csharp(uint8::in, io::di, io::uo) is det.
 
 output_uint8_const_for_csharp(U8, !IO) :-
-    io.write_string("(byte)", !IO),
+    io.write_string("(byte) ", !IO),
     io.write_uint8(U8, !IO).
 
 :- pred output_int16_const_for_csharp(int16::in, io::di, io::uo) is det.
 
 output_int16_const_for_csharp(I16, !IO) :-
-    io.write_string("(short)", !IO),
+    io.write_string("(short) ", !IO),
     io.write_int16(I16, !IO).
 
 :- pred output_uint16_const_for_csharp(uint16::in, io::di, io::uo) is det.
 
 output_uint16_const_for_csharp(U16, !IO) :-
-    io.write_string("(ushort)", !IO),
+    io.write_string("(ushort) ", !IO),
     io.write_uint16(U16, !IO).
 
 :- pred output_int32_const_for_csharp(int32::in, io::di, io::uo) is det.
@@ -978,7 +1010,8 @@ mlds_output_code_addr_for_csharp(Info, CodeAddr, IsCall, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO) :-
+output_initializer_for_csharp(Info, OutputAux, Indent, Type, Initializer,
+        Suffix, !IO) :-
     (
         ( Initializer = init_obj(_)
         ; Initializer = init_struct(_, _)
@@ -994,12 +1027,12 @@ output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO) :-
             ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_force_init
             ),
-            output_initializer_body_for_csharp(Info, Initializer,
-                yes(Type), !IO)
+            output_initializer_body_for_csharp(Info, not_at_start_of_line,
+                Indent + 1, Initializer, yes(Type), Suffix, !IO)
         ;
             OutputAux = oa_alloc_only,
             output_initializer_alloc_only_for_csharp(Info, Initializer,
-                yes(Type), !IO)
+                yes(Type), Suffix, !IO)
         )
     ;
         Initializer = no_initializer,
@@ -1014,10 +1047,14 @@ output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO) :-
             ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_alloc_only
             )
-        )
+        ),
+        io.format("%s\n", [s(Suffix)], !IO)
     ).
 
-output_initializer_alloc_only_for_csharp(Info, Initializer, MaybeType, !IO) :-
+%---------------------%
+
+output_initializer_alloc_only_for_csharp(Info, Initializer, MaybeType,
+        Suffix, !IO) :-
     (
         Initializer = no_initializer,
         unexpected($pred, "no_initializer")
@@ -1032,10 +1069,10 @@ output_initializer_alloc_only_for_csharp(Info, Initializer, MaybeType, !IO) :-
             type_category_is_array(CtorCat) = is_array
         then
             Size = list.length(FieldInits),
-            io.format("object[%d]", [i(Size)], !IO)
+            io.format("object[%d]%s\n", [i(Size), s(Suffix)], !IO)
         else
             output_type_for_csharp(Info, StructType, !IO),
-            io.write_string("()", !IO)
+            io.format("()%s\n", [s(Suffix)], !IO)
         )
     ;
         Initializer = init_array(ElementInits),
@@ -1047,53 +1084,116 @@ output_initializer_alloc_only_for_csharp(Info, Initializer, MaybeType, !IO) :-
             io.write_string(String, !IO),
             % Replace the innermost array dimension by the known size.
             ( if list.split_last(ArrayDims, Heads, 0) then
-                output_array_dimensions(Heads ++ [Size], !IO)
+                output_array_dimensions(Heads ++ [Size], !IO),
+                io.format("%s\n", [s(Suffix)], !IO)
             else
                 unexpected($pred, "missing array dimension")
             )
         ;
             MaybeType = no,
             % XXX we need to know the type here
-            io.format("/* XXX init_array */ object[%d]", [i(Size)], !IO)
+            io.format("/* XXX init_array */ object[%d]%s\n",
+                [i(Size), s(Suffix)], !IO)
         )
     ).
 
-output_initializer_body_for_csharp(Info, Initializer, MaybeType, !IO) :-
+%---------------------%
+
+output_initializer_body_for_csharp(Info, InitStart, Indent, Initializer,
+        MaybeType, Suffix, !IO) :-
     (
         Initializer = no_initializer,
         unexpected($pred, "no_initializer")
     ;
         Initializer = init_obj(Rval),
-        output_rval_for_csharp(Info, Rval, !IO)
+        (
+            InitStart = not_at_start_of_line
+        ;
+            InitStart = at_start_of_line,
+            output_n_indents(Indent, !IO)
+        ),
+        output_rval_for_csharp(Info, Rval, !IO),
+        io.format("%s\n", [s(Suffix)], !IO)
     ;
         Initializer = init_struct(StructType, FieldInits),
+        (
+            InitStart = not_at_start_of_line,
+            io.nl(!IO)
+        ;
+            InitStart = at_start_of_line
+        ),
+        output_n_indents(Indent, !IO),
         io.write_string("new ", !IO),
         output_type_for_csharp(Info, StructType, !IO),
         IsArray = type_is_array_for_csharp(StructType),
-        io.write_string(if IsArray = is_array then " {" else "(", !IO),
-        output_initializer_body_list_for_csharp(Info, FieldInits, !IO),
-        io.write_char(if IsArray = is_array then '}' else ')', !IO)
+        init_arg_wrappers_cs_java(IsArray, Start, End),
+        (
+            FieldInits = [],
+            io.format("%s%s%s", [s(Start), s(End), s(Suffix)], !IO)
+        ;
+            FieldInits = [HeadFieldInit | TailFieldInits],
+            io.format("%s\n", [s(Start)], !IO),
+            output_initializer_body_list_for_csharp(Info, Indent + 1,
+                HeadFieldInit, TailFieldInits, "", !IO),
+            output_n_indents(Indent, !IO),
+            io.format("%s%s\n", [s(End), s(Suffix)], !IO)
+        )
     ;
         Initializer = init_array(ElementInits),
+        (
+            InitStart = not_at_start_of_line,
+            io.nl(!IO)
+        ;
+            InitStart = at_start_of_line
+        ),
+        output_n_indents(Indent, !IO),
         io.write_string("new ", !IO),
         (
             MaybeType = yes(Type),
             output_type_for_csharp(Info, Type, !IO)
         ;
             MaybeType = no,
-            % XXX we need to know the type here
+            % XXX We need to know the type here.
             io.write_string("/* XXX init_array */ object[]", !IO)
         ),
-        io.write_string(" {\n\t\t", !IO),
-        output_initializer_body_list_for_csharp(Info, ElementInits, !IO),
-        io.write_string("}", !IO)
+        (
+            ElementInits = [],
+            io.format(" {}%s\n", [s(Suffix)], !IO)
+        ;
+            ElementInits = [HeadElementInit | TailElementInits],
+            io.write_string(" {\n", !IO),
+            output_initializer_body_list_for_csharp(Info, Indent + 1,
+                HeadElementInit, TailElementInits, "", !IO),
+            output_n_indents(Indent, !IO),
+            io.format("}%s\n", [s(Suffix)], !IO)
+        )
     ).
 
-output_initializer_body_list_for_csharp(Info, Inits, !IO) :-
-    io.write_list(Inits, ",\n\t\t",
-        ( pred(Init::in, !.IO::di, !:IO::uo) is det :-
-            output_initializer_body_for_csharp(Info, Init, no, !IO)
-        ), !IO).
+%---------------------%
+
+output_nonempty_initializer_body_list_for_csharp(Info, Indent, Inits,
+        Suffix, !IO) :-
+    list.det_head_tail(Inits, HeadInit, TailInits),
+    output_initializer_body_list_for_csharp(Info, Indent,
+        HeadInit, TailInits, Suffix, !IO).
+
+:- pred output_initializer_body_list_for_csharp(csharp_out_info::in,
+    indent::in, mlds_initializer::in, list(mlds_initializer)::in,
+    string::in, io::di, io::uo) is det.
+
+output_initializer_body_list_for_csharp(Info, Indent,
+        HeadInit, TailInits, Suffix, !IO) :-
+    (
+        TailInits = [],
+        output_initializer_body_for_csharp(Info, at_start_of_line, Indent,
+            HeadInit, no, Suffix, !IO)
+    ;
+        TailInits = [HeadTailInit | TailTailInits],
+        output_initializer_body_for_csharp(Info, at_start_of_line, Indent,
+            HeadInit, no, ",", !IO),
+        output_initializer_body_list_for_csharp(Info, Indent,
+            HeadTailInit, TailTailInits, Suffix, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

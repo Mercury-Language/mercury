@@ -188,7 +188,7 @@ output_stmt_block_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     (
         LocalVarDefns = [_ | _],
         list.foldl(
-            output_local_var_defn_for_java(Info, BlockIndent, oa_force_init),
+            output_local_var_defn_for_java(Info, BlockIndent),
             LocalVarDefns, !IO),
         io.write_string("\n", !IO)
     ;
@@ -210,16 +210,16 @@ output_stmt_block_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_local_var_defn_for_java(java_out_info::in, indent::in,
-    output_aux::in, mlds_local_var_defn::in, io::di, io::uo) is det.
+    mlds_local_var_defn::in, io::di, io::uo) is det.
 
-output_local_var_defn_for_java(Info, Indent, OutputAux, LocalVarDefn, !IO) :-
+output_local_var_defn_for_java(Info, Indent, LocalVarDefn, !IO) :-
     LocalVarDefn = mlds_local_var_defn(LocalVarName, Context, Type,
         Initializer, _),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_local_var_decl_for_java(Info, LocalVarName, Type, !IO),
-    output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO),
-    io.write_string(";\n", !IO).
+    output_initializer_for_java(Info, oa_force_init, Indent + 1,
+        Type, Initializer, ";", !IO).
 
 :- pred output_local_var_decl_for_java(java_out_info::in,
     mlds_local_var_name::in, mlds_type::in, io::di, io::uo) is det.
@@ -825,19 +825,18 @@ output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
             output_type_for_java(Info, Type, !IO)
         ),
         IsArray = type_is_array_for_java(Type),
+        init_arg_wrappers_cs_java(IsArray, Start, End),
+        % Generate constructor arguments.
         (
-            IsArray = is_array,
-            % The new object will be an array, so we need to initialise it
-            % using array literals syntax.
-            io.write_string(" {", !IO),
-            output_init_args_for_java(Info, ArgRvalsTypes, !IO),
-            io.write_string("};\n", !IO)
+            ArgRvalsTypes = [],
+            io.format("%s%s;\n", [s(Start), s(End)], !IO)
         ;
-            IsArray = not_array,
-            % Generate constructor arguments.
-            io.write_string("(", !IO),
-            output_init_args_for_java(Info, ArgRvalsTypes, !IO),
-            io.write_string(");\n", !IO)
+            ArgRvalsTypes = [HeadArgRvalType | TailArgRvalsTypes],
+            io.format("%s\n", [s(Start)], !IO),
+            output_init_args_for_java(Info, Indent + 1,
+                HeadArgRvalType, TailArgRvalsTypes, !IO),
+            output_n_indents(Indent + 1, !IO),
+            io.format("%s;\n", [s(End)], !IO)
         ),
         output_n_indents(Indent, !IO),
         io.write_string("}\n", !IO)
@@ -871,7 +870,28 @@ output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
         unexpected($pred, "foreign language interfacing not implemented")
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
+
+    % Output initial values of an object's fields as arguments for the
+    % object's class constructor.
+    %
+:- pred output_init_args_for_java(java_out_info::in, int::in,
+    mlds_typed_rval::in, list(mlds_typed_rval)::in, io::di, io::uo) is det.
+
+output_init_args_for_java(Info, Indent, HeadArg, TailArgs, !IO) :-
+    HeadArg = ml_typed_rval(HeadArgRval, _HeadArgType),
+    output_n_indents(Indent, !IO),
+    output_rval_for_java(Info, HeadArgRval, !IO),
+    (
+        TailArgs = [],
+        io.write_string("\n", !IO)
+    ;
+        TailArgs = [HeadTailArg | TailTailArgs],
+        io.write_string(",\n", !IO),
+        output_init_args_for_java(Info, Indent, HeadTailArg, TailTailArgs, !IO)
+    ).
+
+%---------------------%
 
 :- pred output_target_code_component_for_java(java_out_info::in,
     target_code_component::in, io::di, io::uo) is det.
@@ -907,26 +927,6 @@ output_target_code_component_for_java(Info, TargetCode, !IO) :-
         TargetCode = target_code_alloc_id(_),
         unexpected($pred, "target_code_alloc_id not implemented")
     ).
-
-%---------------------------------------------------------------------------%
-
-    % Output initial values of an object's fields as arguments for the
-    % object's class constructor.
-    %
-:- pred output_init_args_for_java(java_out_info::in,
-    list(mlds_typed_rval)::in, io::di, io::uo) is det.
-
-output_init_args_for_java(_, [], !IO).
-output_init_args_for_java(Info, [ArgRvalType | ArgRvalsTypes], !IO) :-
-    ArgRvalType = ml_typed_rval(ArgRval, _ArgType),
-    output_rval_for_java(Info, ArgRval, !IO),
-    (
-        ArgRvalsTypes = []
-    ;
-        ArgRvalsTypes = [_ | _],
-        io.write_string(", ", !IO)
-    ),
-    output_init_args_for_java(Info, ArgRvalsTypes, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_java_stmt.

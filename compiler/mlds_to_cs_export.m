@@ -189,8 +189,8 @@ output_exported_enum_constant_for_csharp(Info, Indent, MLDS_Type,
     io.write_string(" ", !IO),
     io.write_string(Name, !IO),
     io.write_string(" = ", !IO),
-    output_initializer_body_for_csharp(Info, Initializer, no, !IO),
-    io.write_string(";\n", !IO).
+    output_initializer_body_for_csharp(Info, not_at_start_of_line,
+        Indent + 1, Initializer, no, ";", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_export.

@@ -57,17 +57,49 @@
 
 %---------------------------------------------------------------------------%
 
+    % Output " = " followed by the given initializer, if any, followed
+    % by the given suffix string and a newline.
+    %
+    % The initializer is printed using output_initializer_body_for_java with
+    % not_at_start_of_line (see below).
+    %
 :- pred output_initializer_for_java(java_out_info::in, output_aux::in,
-    mlds_type::in, mlds_initializer::in, io::di, io::uo) is det.
+    indent::in, mlds_type::in, mlds_initializer::in, string::in,
+    io::di, io::uo) is det.
 
+    % Output the allocation part of the given initializer on the rest
+    % of the current line.
+    %
 :- pred output_initializer_alloc_only_for_java(java_out_info::in,
-    mlds_initializer::in, maybe(mlds_type)::in, io::di, io::uo) is det.
+    mlds_initializer::in, maybe(mlds_type)::in, string::in,
+    io::di, io::uo) is det.
 
+    % Output the given initializer. The formatting depends on whether
+    % the caller tells us that it has printed something on the current line
+    % already (not_at_start_of_line) or not (at_start_of_line).
+    %
+    % If the initializer is for a struct or an array, we put the initializer
+    % on separate lines, each indented by the given indent level, regardless
+    % of where we start.
+    %
+    % If the initializer is for a single object, then we put its initializer
+    % immediately after the previous of the current line if there is one
+    % (not_at_start_of_line); otherwise (at_start_of_line), we indent it by
+    % the specified level.
+    %
+    % In either case, we end the initializer with the given suffix
+    % (which will usually be a semicolon or a comma) and a newline.
+    %
 :- pred output_initializer_body_for_java(java_out_info::in,
-    mlds_initializer::in, maybe(mlds_type)::in, io::di, io::uo) is det.
+    initializer_starts::in, indent::in, mlds_initializer::in,
+    maybe(mlds_type)::in, string::in, io::di, io::uo) is det.
 
-:- pred output_initializer_body_list_for_java(java_out_info::in,
-    list(mlds_initializer)::in, io::di, io::uo) is det.
+    % Output the given list of initializers with commas between them,
+    % putting each initializer on its own line with the given indent.
+    % Put the given suffix after the last initializer.
+    %
+:- pred output_nonempty_initializer_body_list_for_java(java_out_info::in,
+    indent::in, list(mlds_initializer)::in, string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -389,7 +421,7 @@ output_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         ( UnaryOp = bitwise_complement(int_type_int8), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_uint8), UnaryOpStr = "~"
         ),
-        io.write_string("(byte)(", !IO),
+        io.write_string("(byte) (", !IO),
         io.write_string(UnaryOpStr, !IO),
         io.write_string("(", !IO),
         output_rval_for_java(Info, Expr, !IO),
@@ -398,7 +430,7 @@ output_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         ( UnaryOp = bitwise_complement(int_type_int16), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_uint16), UnaryOpStr = "~"
         ),
-        io.write_string("(short)(", !IO),
+        io.write_string("(short) (", !IO),
         io.write_string(UnaryOpStr, !IO),
         io.write_string("(", !IO),
         output_rval_for_java(Info, Expr, !IO),
@@ -638,7 +670,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = int_div(int_type_uint32)
         ; Op = int_mod(int_type_uint32)
         ),
-        io.write_string("((int)(((", !IO),
+        io.write_string("((int) (((", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(") & 0xffffffffL) ", !IO),
         output_binary_op_for_java(Op, !IO),
@@ -678,7 +710,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_xor(int_type_uint8)
         ; Op = unchecked_left_shift(int_type_uint8, _)
         ),
-        io.write_string("(byte)(", !IO),
+        io.write_string("(byte) (", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_java(Op, !IO),
@@ -687,7 +719,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         io.write_string(")", !IO)
     ;
         Op = unchecked_right_shift(int_type_uint8, _),
-        io.write_string("(byte)(((", !IO),
+        io.write_string("(byte) (((", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(") & 0xff) ", !IO),
         output_binary_op_for_java(Op, !IO),
@@ -711,7 +743,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ( Op = int_div(int_type_uint8)
         ; Op = int_mod(int_type_uint8)
         ),
-        io.write_string("((byte)(((", !IO),
+        io.write_string("((byte) (((", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(") & 0xff) ", !IO),
         output_binary_op_for_java(Op, !IO),
@@ -737,7 +769,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_xor(int_type_uint16)
         ; Op = unchecked_left_shift(int_type_uint16, _)
         ),
-        io.write_string("(short)(", !IO),
+        io.write_string("(short) (", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op_for_java(Op, !IO),
@@ -746,7 +778,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         io.write_string(")", !IO)
     ;
         Op = unchecked_right_shift(int_type_uint16, _),
-        io.write_string("(short)(((", !IO),
+        io.write_string("(short) (((", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(") & 0xffff) ", !IO),
         output_binary_op_for_java(Op, !IO),
@@ -770,7 +802,7 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ( Op = int_div(int_type_uint16)
         ; Op = int_mod(int_type_uint16)
         ),
-        io.write_string("((short)(((", !IO),
+        io.write_string("((short) (((", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(") & 0xffff) ", !IO),
         output_binary_op_for_java(Op, !IO),
@@ -890,19 +922,19 @@ output_rval_const_for_java(Info, Const, !IO) :-
         output_int_const_for_java(uint.cast_to_int(U), !IO)
     ;
         Const = mlconst_int8(I8),
-        io.write_string("(byte)", !IO),
+        io.write_string("(byte) ", !IO),
         io.write_int8(I8, !IO)
     ;
         Const = mlconst_uint8(U8),
-        io.write_string("(byte)", !IO),
+        io.write_string("(byte) ", !IO),
         io.write_int8(int8.cast_from_uint8(U8), !IO)
     ;
         Const = mlconst_int16(I16),
-        io.write_string("(short)", !IO),
+        io.write_string("(short) ", !IO),
         io.write_int16(I16, !IO)
     ;
         Const = mlconst_uint16(U16),
-        io.write_string("(short)", !IO),
+        io.write_string("(short) ", !IO),
         io.write_int16(int16.cast_from_uint16(U16), !IO)
     ;
         Const = mlconst_int32(I32),
@@ -1074,7 +1106,8 @@ type_is_enum(Type) :-
 
 %---------------------------------------------------------------------------%
 
-output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO) :-
+output_initializer_for_java(Info, OutputAux, Indent, Type, Initializer,
+        Suffix, !IO) :-
     (
         ( Initializer = init_obj(_)
         ; Initializer = init_struct(_, _)
@@ -1082,20 +1115,20 @@ output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO) :-
         ),
         io.write_string(" = ", !IO),
         % Due to cyclic references, we need to separate the allocation and
-        % initialisation steps of RTTI structures. If InitStyle is alloc_only
-        % then we output an initializer to allocate a structure without filling
-        % in the fields.
+        % initialisation steps of RTTI structures. If OutputAux is alloc_only,
+        % then we output an initializer to allocate a structure *without*
+        % filling in the fields.
         (
             ( OutputAux = oa_none
             ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_force_init
             ),
-            output_initializer_body_for_java(Info, Initializer,
-                yes(Type), !IO)
+            output_initializer_body_for_java(Info, not_at_start_of_line,
+                Indent + 1, Initializer, yes(Type), Suffix, !IO)
         ;
             OutputAux = oa_alloc_only,
             output_initializer_alloc_only_for_java(Info, Initializer,
-                yes(Type), !IO)
+                yes(Type), Suffix, !IO)
         )
     ;
         Initializer = no_initializer,
@@ -1109,10 +1142,14 @@ output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO) :-
             ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_alloc_only
             )
-        )
+        ),
+        io.format("%s\n", [s(Suffix)], !IO)
     ).
 
-output_initializer_alloc_only_for_java(Info, Initializer, MaybeType, !IO) :-
+%---------------------%
+
+output_initializer_alloc_only_for_java(Info, Initializer, MaybeType,
+        Suffix, !IO) :-
     (
         Initializer = no_initializer,
         unexpected($pred, "no_initializer")
@@ -1127,10 +1164,10 @@ output_initializer_alloc_only_for_java(Info, Initializer, MaybeType, !IO) :-
             type_category_is_array(CtorCat) = is_array
         then
             Size = list.length(FieldInits),
-            io.format("java.lang.Object[%d]", [i(Size)], !IO)
+            io.format("java.lang.Object[%d]%s\n", [i(Size), s(Suffix)], !IO)
         else
             output_type_for_java(Info, StructType, !IO),
-            io.write_string("()", !IO)
+            io.format("()%s\n", [s(Suffix)], !IO)
         )
     ;
         Initializer = init_array(ElementInits),
@@ -1142,53 +1179,116 @@ output_initializer_alloc_only_for_java(Info, Initializer, MaybeType, !IO) :-
             io.write_string(String, !IO),
             % Replace the innermost array dimension by the known size.
             ( if list.split_last(ArrayDims, Heads, 0) then
-                output_array_dimensions(Heads ++ [Size], !IO)
+                output_array_dimensions(Heads ++ [Size], !IO),
+                io.format("%s\n", [s(Suffix)], !IO)
             else
                 unexpected($pred, "missing array dimension")
             )
         ;
             MaybeType = no,
-            % XXX we need to know the type here
-            io.format("/* XXX init_array */ Object[%d]", [i(Size)], !IO)
+            % XXX We need to know the type here.
+            io.format("/* XXX init_array */ Object[%d]%s\n",
+                [i(Size), s(Suffix)], !IO)
         )
     ).
 
-output_initializer_body_for_java(Info, Initializer, MaybeType, !IO) :-
+%---------------------%
+
+output_initializer_body_for_java(Info, InitStart, Indent, Initializer,
+        MaybeType, Suffix, !IO) :-
     (
         Initializer = no_initializer,
         unexpected($pred, "no_initializer")
     ;
         Initializer = init_obj(Rval),
-        output_rval_for_java(Info, Rval, !IO)
+        (
+            InitStart = not_at_start_of_line
+        ;
+            InitStart = at_start_of_line,
+            output_n_indents(Indent, !IO)
+        ),
+        output_rval_for_java(Info, Rval, !IO),
+        io.format("%s\n", [s(Suffix)], !IO)
     ;
         Initializer = init_struct(StructType, FieldInits),
+        (
+            InitStart = not_at_start_of_line,
+            io.nl(!IO)
+        ;
+            InitStart = at_start_of_line
+        ),
+        output_n_indents(Indent, !IO),
         io.write_string("new ", !IO),
         output_type_for_java(Info, StructType, !IO),
         IsArray = type_is_array_for_java(StructType),
-        io.write_string(if IsArray = is_array then " {" else "(", !IO),
-        output_initializer_body_list_for_java(Info, FieldInits, !IO),
-        io.write_char(if IsArray = is_array then '}' else ')', !IO)
+        init_arg_wrappers_cs_java(IsArray, Start, End),
+        (
+            FieldInits = [],
+            io.format("%s%s%s\n", [s(Start), s(End), s(Suffix)], !IO)
+        ;
+            FieldInits = [HeadFieldInit | TailFieldInits],
+            io.format("%s\n", [s(Start)], !IO),
+            output_initializer_body_list_for_java(Info, Indent + 1,
+                HeadFieldInit, TailFieldInits, "", !IO),
+            output_n_indents(Indent, !IO),
+            io.format("%s%s\n", [s(End), s(Suffix)], !IO)
+        )
     ;
         Initializer = init_array(ElementInits),
+        (
+            InitStart = not_at_start_of_line,
+            io.nl(!IO)
+        ;
+            InitStart = at_start_of_line
+        ),
+        output_n_indents(Indent, !IO),
         io.write_string("new ", !IO),
         (
             MaybeType = yes(Type),
             output_type_for_java(Info, Type, !IO)
         ;
             MaybeType = no,
-            % XXX we need to know the type here
+            % XXX We need to know the type here.
             io.write_string("/* XXX init_array */ Object[]", !IO)
         ),
-        io.write_string(" {\n\t\t", !IO),
-        output_initializer_body_list_for_java(Info, ElementInits, !IO),
-        io.write_string("}", !IO)
+        (
+            ElementInits = [],
+            io.format(" {}%s\n", [s(Suffix)], !IO)
+        ;
+            ElementInits = [HeadElementInit | TailElementInits],
+            io.write_string(" {\n", !IO),
+            output_initializer_body_list_for_java(Info, Indent + 1,
+                HeadElementInit, TailElementInits, "", !IO),
+            output_n_indents(Indent, !IO),
+            io.format("}%s\n", [s(Suffix)], !IO)
+        )
     ).
 
-output_initializer_body_list_for_java(Info, Inits, !IO) :-
-    io.write_list(Inits, ",\n\t\t",
-        ( pred(Init::in, !.IO::di, !:IO::uo) is det :-
-            output_initializer_body_for_java(Info, Init, no, !IO)
-        ), !IO).
+%---------------------%
+
+output_nonempty_initializer_body_list_for_java(Info, Indent, Inits,
+        Suffix, !IO) :-
+    list.det_head_tail(Inits, HeadInit, TailInits),
+    output_initializer_body_list_for_java(Info, Indent,
+        HeadInit, TailInits, Suffix, !IO).
+
+:- pred output_initializer_body_list_for_java(java_out_info::in, indent::in,
+    mlds_initializer::in, list(mlds_initializer)::in, string::in,
+    io::di, io::uo) is det.
+
+output_initializer_body_list_for_java(Info, Indent,
+        HeadInit, TailInits, Suffix, !IO) :-
+    (
+        TailInits = [],
+        output_initializer_body_for_java(Info, at_start_of_line, Indent,
+            HeadInit, no, Suffix, !IO)
+    ;
+        TailInits = [HeadTailInit | TailTailInits],
+        output_initializer_body_for_java(Info, at_start_of_line, Indent,
+            HeadInit, no, ",", !IO),
+        output_initializer_body_list_for_java(Info, Indent,
+            HeadTailInit, TailTailInits, Suffix, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
