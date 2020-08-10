@@ -26,6 +26,10 @@ mcov
 *.prof
 SLICE_FLAGS
 Mercury
+tags
+.slice_tags
+.mdbcomp_modules
+Mercury.modules
 builtin_modules.m
 feedback.m
 feedback.automatic_parallelism.m
@@ -39,6 +43,3 @@ sym_name.m
 trace_counts.m
 shared_utilities.m
 config.log
-.slice_tags
-tags
-.mdbcomp_modules
