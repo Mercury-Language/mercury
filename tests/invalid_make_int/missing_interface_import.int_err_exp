@@ -1,5 +1,4 @@
-missing_interface_import.m:011: In definition of type
-missing_interface_import.m:011:   `missing_interface_import.bar'/0:
+missing_interface_import.m:011: In definition of type `bar'/0:
 missing_interface_import.m:011:   error: undefined type `map'/2.
 missing_interface_import.m:011:   (The module `map' has not been imported in
 missing_interface_import.m:011:   the interface.)

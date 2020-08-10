@@ -18,10 +18,10 @@ errors1.m:051:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
 errors1.m:051: Error: constructor `errors1.f/1' for type
 errors1.m:051:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
 errors1.m:053: In the first argument of function symbol `f' of the type
-errors1.m:053:   `errors1.du_type_which_references_undefined_type'/0:
+errors1.m:053:   `du_type_which_references_undefined_type'/0:
 errors1.m:053:   error: undefined type `undefined_type'/0.
 errors1.m:055: In definition of type
-errors1.m:055:   `errors1.eqv_type_which_references_undefined_type'/0:
+errors1.m:055:   `eqv_type_which_references_undefined_type'/0:
 errors1.m:055:   error: undefined type `undefined_type'/0.
 errors1.m:057: Error: circular equivalence type `errors1.circular_eqv_type'/0.
 errors1.m:059: Error: circular equivalence type

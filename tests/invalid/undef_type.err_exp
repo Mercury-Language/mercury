@@ -10,7 +10,7 @@ undef_type.m:007:   `:- interface' or an `:- implementation' declaration.
 undef_type.m:007:   The following assumes that the missing declaration is an
 undef_type.m:007:   `:- implementation' declaration.
 undef_type.m:011: In the first argument of function symbol `d' of the type
-undef_type.m:011:   `undef_type.t1'/0:
+undef_type.m:011:   `t1'/0:
 undef_type.m:011:   error: undefined type `undef1'/0.
 undef_type.m:018: In declaration of predicate `q'/1:
 undef_type.m:018:   error: undefined type `undef2'/0.

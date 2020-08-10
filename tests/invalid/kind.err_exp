@@ -2,7 +2,7 @@ kind.m:009: In type definition: error: ill-formed type `K1(int)'.
 kind.m:012: In `:- func' declaration:
 kind.m:012:   in the first argument:
 kind.m:012:   error: ill-formed type `K2(string)'.
-kind.m:016: In definition of inst `kind.i'/1:
+kind.m:016: In definition of inst `i'/1:
 kind.m:016:   error: variable used as inst constructor.
-kind.m:018: In definition of mode `kind.m'/1:
+kind.m:018: In definition of mode `m'/1:
 kind.m:018:   error: variable used as inst constructor.

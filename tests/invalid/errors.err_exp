@@ -19,10 +19,10 @@ errors.m:051:   `errors.type_with_multiply_defined_ctors/0' multiply defined.
 errors.m:051: Error: constructor `errors.f/1' for type
 errors.m:051:   `errors.type_with_multiply_defined_ctors/0' multiply defined.
 errors.m:053: In the first argument of function symbol `f' of the type
-errors.m:053:   `errors.du_type_which_references_undefined_type'/0:
+errors.m:053:   `du_type_which_references_undefined_type'/0:
 errors.m:053:   error: undefined type `undefined_type'/0.
 errors.m:055: In definition of type
-errors.m:055:   `errors.eqv_type_which_references_undefined_type'/0:
+errors.m:055:   `eqv_type_which_references_undefined_type'/0:
 errors.m:055:   error: undefined type `undefined_type'/0.
 errors.m:057: Error: circular equivalence type `errors.circular_eqv_type'/0.
 errors.m:059: Error: circular equivalence type
@@ -42,7 +42,7 @@ errors.m:097:   implementation section is redundant, given the
 errors.m:097:   `:- import_module' declaration for the same module in the same
 errors.m:097:   section.
 errors.m:096:   The previous declaration is here.
-errors.m:101: In definition of type `errors.needs_qualification'/0:
+errors.m:101: In definition of type `needs_qualification'/0:
 errors.m:101:   error: undefined type `state'/0.
 errors.m:101:   (Only fully module qualified names may refer to the entities
 errors.m:101:   defined in the module `io'.)

@@ -323,7 +323,7 @@ report_ambiguous_match(ErrorContext, Id, IdType,
     UsableModuleSymNames = list.map(wrap_module_name, UsableModuleNames),
     MainPieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
         words("ambiguity error: multiple possible matches for"),
-        fixed(IdTypeStr), wrap_id(Id), suffix("."), nl,
+        fixed(IdTypeStr), wrap_qual_id(Id), suffix("."), nl,
         words("The possible matches are in modules")] ++
         component_list_to_pieces("and", UsableModuleSymNames) ++
         [suffix("."), nl],
@@ -447,7 +447,7 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
     (
         ErrorContext = mqec_type_defn(Context, TypeCtor),
         ShouldUnqualId = no,
-        Pieces = [words("definition of type"), wrap_type_ctor(TypeCtor)]
+        Pieces = [words("definition of type"), wrap_unqual_type_ctor(TypeCtor)]
     ;
         ErrorContext = mqec_constructor_arg(Context, ContainingTypeCtor,
             FunctionSymbol, ArgNum, MaybeCtorFieldName),
@@ -464,7 +464,7 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         Pieces = [words("the"), nth_fixed(ArgNum), words("argument of"),
             words("function symbol"), quote(FunctionSymbol)] ++
             FieldNamePieces ++
-            [words("of the type"), wrap_type_ctor(ContainingTypeCtor)]
+            [words("of the type"), wrap_unqual_type_ctor(ContainingTypeCtor)]
     ;
         ErrorContext = mqec_typeclass_constraint_name(ConstraintErrorContext),
         ShouldUnqualId = no,
@@ -480,13 +480,13 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
             unqual_sym_name_arity(sym_name_arity(ClassName, Arity)),
             words(Start) | ConstraintErrorContextPieces]
     ;
-        ErrorContext = mqec_mode(Context, Id),
-        ShouldUnqualId = no,
-        Pieces = [words("definition of mode"), wrap_id(Id)]
-    ;
         ErrorContext = mqec_inst(Context, Id),
         ShouldUnqualId = no,
-        Pieces = [words("definition of inst"), wrap_id(Id)]
+        Pieces = [words("definition of inst"), wrap_unqual_id(Id)]
+    ;
+        ErrorContext = mqec_mode(Context, Id),
+        ShouldUnqualId = no,
+        Pieces = [words("definition of mode"), wrap_unqual_id(Id)]
     ;
         ErrorContext = mqec_pred_or_func(Context, PredOrFunc, Id),
         ShouldUnqualId = no,
@@ -541,11 +541,12 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
     ;
         ErrorContext = mqec_class(Context, Id),
         ShouldUnqualId = no,
-        Pieces = [words("declaration of typeclass"), wrap_id(Id)]
+        Pieces = [words("declaration of typeclass"), wrap_unqual_id(Id)]
     ;
         ErrorContext = mqec_instance(Context, Id),
         ShouldUnqualId = no,
-        Pieces = [words("declaration of instance of typeclass"), wrap_id(Id)]
+        Pieces = [words("declaration of instance of typeclass"),
+            wrap_qual_id(Id)]
     ;
         ErrorContext = mqec_mutable(Context, Name),
         ShouldUnqualId = no,
@@ -554,7 +555,7 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         ErrorContext = mqec_type_repn(Context, TypeCtor),
         ShouldUnqualId = no,
         Pieces = [words("representation information for type"),
-            wrap_type_ctor(TypeCtor)]
+            wrap_unqual_type_ctor(TypeCtor)]
     ;
         ErrorContext = mqec_event_spec_attr(Context, EventName, AttrName),
         ShouldUnqualId = no,
@@ -582,14 +583,19 @@ id_types_to_string(class_id, "typeclasses").
 
 wrap_module_name(SymName) = qual_sym_name(SymName).
 
-:- func wrap_type_ctor(type_ctor) = format_component.
+:- func wrap_unqual_type_ctor(type_ctor) = format_component.
 
-wrap_type_ctor(type_ctor(SymName, Arity)) =
-    qual_sym_name_arity(sym_name_arity(SymName, Arity)).
+wrap_unqual_type_ctor(type_ctor(SymName, Arity)) =
+    unqual_sym_name_arity(sym_name_arity(SymName, Arity)).
 
-:- func wrap_id(mq_id) = format_component.
+:- func wrap_unqual_id(mq_id) = format_component.
 
-wrap_id(mq_id(SymName, Arity)) =
+wrap_unqual_id(mq_id(SymName, Arity)) =
+    unqual_sym_name_arity(sym_name_arity(SymName, Arity)).
+
+:- func wrap_qual_id(mq_id) = format_component.
+
+wrap_qual_id(mq_id(SymName, Arity)) =
     qual_sym_name_arity(sym_name_arity(SymName, Arity)).
 
 %---------------------------------------------------------------------------%

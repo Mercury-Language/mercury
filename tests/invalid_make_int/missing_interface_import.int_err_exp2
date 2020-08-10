@@ -1,17 +1,14 @@
-missing_interface_import.m:007: In definition of type
-missing_interface_import.m:007:   `missing_interface_import.bar'/0:
-missing_interface_import.m:007:   error: undefined type `map'/2.
-missing_interface_import.m:007:   (The module `map' has not been imported in
-missing_interface_import.m:007:   the interface.)
-missing_interface_import.m:009: In definition of predicate
-missing_interface_import.m:009:   `missing_interface_import.p'/1:
-missing_interface_import.m:009:   error: undefined type `univ.univ'/0.
-missing_interface_import.m:009:   (The module `univ' has not been imported
-missing_interface_import.m:009:   in the interface.)
-missing_interface_import.m:010: In definition of predicate
-missing_interface_import.m:010:   `missing_interface_import.q'/1:
-missing_interface_import.m:010:   error: undefined type `list'/1.
-missing_interface_import.m:010:   (The module `list' has not been imported in
-missing_interface_import.m:010:   the interface.)
+missing_interface_import.m:011: In definition of type `bar'/0:
+missing_interface_import.m:011:   error: undefined type `map'/2.
+missing_interface_import.m:011:   (The module `map' has not been imported in
+missing_interface_import.m:011:   the interface.)
+missing_interface_import.m:013: In declaration of predicate `p'/1:
+missing_interface_import.m:013:   error: undefined type `univ.univ'/0.
+missing_interface_import.m:013:   (The module `univ' has not been imported in
+missing_interface_import.m:013:   the interface.)
+missing_interface_import.m:014: In declaration of predicate `q'/1:
+missing_interface_import.m:014:   error: undefined type `list'/1.
+missing_interface_import.m:014:   (The module `list' has not been imported in
+missing_interface_import.m:014:   the interface.)
 `Mercury/ints/missing_interface_import.int' and
   `Mercury/int2s/missing_interface_import.int2' not written.

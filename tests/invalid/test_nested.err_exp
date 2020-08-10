@@ -9,7 +9,7 @@ test_nested.m:017:   declaration for `parent2' prevents access to the
 test_nested.m:017:   `:- use_module' declaration for its child module
 test_nested.m:017:   `parent2.child'.
 test_nested.m:024: In the fourth argument of function symbol `foo' of the type
-test_nested.m:024:   `test_nested.foo'/0:
+test_nested.m:024:   `foo'/0:
 test_nested.m:024:   error: undefined type `parent.nonexistent_child.foo'/0.
 test_nested.m:024:   (No module named `parent.nonexistent_child' has been
 test_nested.m:024:   imported.)
