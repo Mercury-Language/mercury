@@ -1333,18 +1333,18 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             module_and_imports_get_children(ModuleAndImports, Children),
             (
                 Children = [],
-                Exts0 = [{ext("opt"), "opts"}]
+                Exts0 = [{ext(".opt"), "opts"}]
             ;
                 Children = [_ | _],
-                Exts0 = [{ext("int0"), "int0s"}, {ext("opt"), "opts"}]
+                Exts0 = [{ext(".int0"), "int0s"}, {ext(".opt"), "opts"}]
             )
         ;
             AnyIntermod = no,
             Exts0 = []
         ),
 
-        Exts = [{ext("int"), "ints"}, {ext("int2"), "int2s"},
-            {ext("int3"), "int3s"}, {ext("module_dep"), "module_deps"}
+        Exts = [{ext(".int"), "ints"}, {ext(".int2"), "int2s"},
+            {ext(".int3"), "int3s"}, {ext(".module_dep"), "module_deps"}
             | Exts0],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix/"lib"/"mercury",
@@ -1372,7 +1372,7 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
 
             % This is needed so that the file will be found in Mmake's VPATH.
             install_subdir_file(Globals, SubdirLinkSucceeded, LibDir/"ints",
-                ModuleName, {ext("mh"), "mhs"}, HeaderSucceeded2, !IO),
+                ModuleName, {ext(".mh"), "mhs"}, HeaderSucceeded2, !IO),
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         ;
@@ -1627,12 +1627,12 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         then
             GradeIncDir = LibDir/"lib"/GradeDir/"inc",
             install_subdir_file(Globals, LinkSucceeded, GradeIncDir,
-                ModuleName, {ext("mih"), "mihs"}, HeaderSucceeded1, !IO),
+                ModuleName, {ext(".mih"), "mihs"}, HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             IntDir = LibDir/"ints",
             install_subdir_file(Globals, LinkSucceeded, IntDir,
-                ModuleName, {ext("mih"), "mihs"}, HeaderSucceeded2, !IO),
+                ModuleName, {ext(".mih"), "mihs"}, HeaderSucceeded2, !IO),
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         else
@@ -1644,7 +1644,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         (
             AnyIntermod = yes,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
-                ModuleName, {ext("opt"), "opts"}, OptSucceeded, !IO)
+                ModuleName, {ext(".opt"), "opts"}, OptSucceeded, !IO)
         ;
             AnyIntermod = no,
             OptSucceeded = yes
@@ -1654,7 +1654,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         (
             IntermodAnalysis = yes,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
-                ModuleName, {ext("analysis"), "analysiss"},
+                ModuleName, {ext(".analysis"), "analysiss"},
                 IntermodAnalysisSucceeded, !IO)
         ;
             IntermodAnalysis = no,
