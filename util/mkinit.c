@@ -1,42 +1,38 @@
-/*
-** vim:sw=4 ts=4 expandtab
-*/
-/*
-** Copyright (C) 1995-2008, 2010-2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU General
-** Public License - see the file COPYING in the Mercury distribution.
-*/
+/////////////////////////////////////////////////////////////////////////////
+// vim:sw=4 ts=4 expandtab
+//
+// Copyright (C) 1995-2008, 2010-2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU General
+// Public License - see the file COPYING in the Mercury distribution.
 
-/*
-** File: mkinit.c
-** Main authors: zs, fjh
-**
-** Given a list of .c or .init files on the command line, this program
-** produces the initialization file (usually called *_init.c) on stdout.
-** The initialization file is a small C program that calls the initialization
-** functions for all the modules in a Mercury program.
-**
-** Alternatively, if invoked with the -k option, this program produces a
-** list of initialization directives on stdout.  This mode of operation is
-** is used when building .init files for libraries.
-**
-** If invoked with the -s option, this program produces a standalone
-** runtime interface on stdout.  This mode of operation is used when
-** using Mercury libraries from applications written in foreign languages.
-**
-** NOTE: any changes to this program may need to be reflected in the
-** following places:
-**
-**      - scripts/c2init.in
-**      - compiler/compile_target_code.m
-**          in particular the predicates make_init_obj/7 and
-**          make_standalone_interface/3.
-**      - util/mkinit_erl.c
-*/
+// File: mkinit.c
+// Main authors: zs, fjh
+//
+// Given a list of .c or .init files on the command line, this program
+// produces the initialization file (usually called *_init.c) on stdout.
+// The initialization file is a small C program that calls the initialization
+// functions for all the modules in a Mercury program.
+//
+// Alternatively, if invoked with the -k option, this program produces a list
+// of initialization directives on stdout. This mode of operation is used
+// when building .init files for libraries.
+//
+// If invoked with the -s option, this program produces a standalone runtime
+// interface on stdout. This mode of operation is used when using Mercury
+// libraries from applications written in foreign languages.
+//
+// NOTE: any changes to this program may need to be reflected in the
+// following places:
+//
+//      - scripts/c2init.in
+//      - compiler/compile_target_code.m
+//          in particular the predicates make_init_obj/7 and
+//          make_standalone_interface/3.
+//      - util/mkinit_erl.c
 
-/*---------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////
 
-/* mercury_std.h includes mercury_regs.h, and must precede system headers */
+// mercury_std.h includes mercury_regs.h, and must precede system headers.
 #include    "mercury_conf.h"
 #include    "mercury_std.h"
 #include    "mercury_array_macros.h"
@@ -58,10 +54,10 @@
   #include  "getopt.h"
 #endif
 
-/* --- adjustable limits --- */
-#define MAXCALLS    40      /* maximum number of calls per function */
+// Adjustable limits.
+#define MAXCALLS    40      // maximum number of calls per function
 
-/* --- used to collect a list of strings --- */
+// These are used to collect lists of strings.
 
 static const char if_need_to_init[] =
     "#if defined(MR_MAY_NEED_INITIALIZATION)\n";
@@ -202,7 +198,7 @@ const char  *main_func_arg[] =
     ""
 };
 
-/* --- macros--- */
+// Macros.
 
 #define SYS_PREFIX_1    "sys_init"
 #define SYS_PREFIX_2    "mercury_sys_init"
@@ -214,76 +210,62 @@ const char  *main_func_arg[] =
             ( matches_prefix(s, SYS_PREFIX_1) ||        \
               matches_prefix(s, SYS_PREFIX_2) )
 
-/* --- global variables --- */
+// Global variables.
 
-/*
-** List of names of the modules to call all the usual initialization
-** functions for: "init", "init_type_tables", "init_debugger" and (with
-** the right #defines) "init_complexity_procs" and "write_out_proc_statics".
-*/
+// List of names of the modules to call all the usual initialization
+// functions for: "init", "init_type_tables", "init_debugger" and (with
+// the right #defines) "init_complexity_procs" and "write_out_proc_statics".
 
 static const char   **std_modules = NULL;
 static int          std_module_max = 0;
 static int          std_module_next = 0;
 #define MR_INIT_STD_MODULE_SIZE     100
 
-/*
-** List of names of handwritten modules, for which we call a limited set
-** of initialization functions: "init", "init_type_tables" and (with
-** the right #defines) "write_out_proc_statics". We don't call
-** "init_debugger" functions since handwritten modules don't have module
-** layouts, and we don't generate "init_complexity_procs" since they have
-** no Mercury code to measure the complexity of.
-*/
+// List of names of handwritten modules, for which we call a limited set
+// of initialization functions: "init", "init_type_tables" and (with
+// the right #defines) "write_out_proc_statics". We don't call
+// "init_debugger" functions since handwritten modules don't have module
+// layouts, and we don't generate "init_complexity_procs" since they have
+// no Mercury code to measure the complexity of.
 
 static const char   **special_modules = NULL;
 static int          special_module_max = 0;
 static int          special_module_next = 0;
 #define MR_INIT_SPECIAL_MODULE_SIZE     10
 
-/*
-** The concatenation of std_modules and special_modules; created with the
-** right size (std_module_next + special_module_next).
-*/
+// The concatenation of std_modules and special_modules; created with the
+// right size (std_module_next + special_module_next).
 static const char   **std_and_special_modules = NULL;
 
-/*
-** List of names of modules that have initialization functions that should
-** always be run. This is currently used to initialize the states of constraint
-** solvers. We call an "init_required" function for each such module.
-*/
+// List of names of modules that have initialization functions that should
+// always be run. This is currently used to initialize the states of constraint
+// solvers. We call an "init_required" function for each such module.
 static const char   **req_init_modules = NULL;
 static int          req_init_module_max = 0;
 static int          req_init_module_next = 0;
 #define MR_INIT_REQ_MODULE_SIZE     10
 
-/*
-** List of names of modules that have finalisation functions that should
-** always be run.  We call a "final_required" function for each such module.
-*/
+// List of names of modules that have finalisation functions that should
+// always be run. We call a "final_required" function for each such module.
 static const char   **req_final_modules = NULL;
 static int          req_final_module_max = 0;
 static int          req_final_module_next = 0;
 #define MR_FINAL_REQ_MODULE_SIZE    10
 
-/*
-** List of names of environment variables whose values should be sampled
-** at initialization. The list is not ordered, but must not contain duplicates,
-** since that would lead to duplicate definitions of C global variables and
-** hence errors from the C compiler.
-*/
+// List of names of environment variables whose values should be sampled
+// at initialization. The list is not ordered, but must not contain duplicates,
+// since that would lead to duplicate definitions of C global variables and
+// hence errors from the C compiler.
 static const char   **mercury_env_vars = NULL;
 static int          mercury_env_var_max = 0;
 static int          mercury_env_var_next = 0;
 #define MR_ENV_VAR_LIST_SIZE    10
 
-/*
-** This should be kept in sync with the code of c_global_var_name
-** in llds_out.m and global_var_name in mlds_to_c.m.
-*/
+// This should be kept in sync with the code of c_global_var_name
+// in llds_out.m and global_var_name in mlds_to_c.m.
 const char  *envvar_prefix = "mercury_envvar_";
 
-/* options and arguments, set by parse_options() */
+// Options and arguments, set by parse_options().
 static const char   *output_file_name = NULL;
 static const char   *entry_point = "mercury__main_2_0";
 static const char   *hl_entry_point = "main_2_p_0";
@@ -297,19 +279,19 @@ static const char   *experimental_complexity = NULL;
 
 static int          num_experimental_complexity_procs = 0;
 
-/* List of options to pass to the runtime */
+// List of options to pass to the runtime.
 static String_List  *runtime_flags = NULL;
 
-/* Pointer to tail of the runtime_flags list */
+// Pointer to tail of the runtime_flags list.
 static String_List  **runtime_flags_tail = &runtime_flags;
 
-/* List of functions to always execute at initialization */
+// List of functions to always execute at initialization.
 static String_List  *always_exec_funcs = NULL;
 
-/* Pointer to tail of the always_exec_funcs list */
+// Pointer to tail of the always_exec_funcs list.
 static String_List  **always_exec_funcs_tail = &always_exec_funcs;
 
-/* --- code fragments to put in the output file --- */
+// Code fragments to put in the output file.
 static const char header1[] =
     "/*\n"
     "** This code was automatically generated by mkinit - do not edit.\n"
@@ -319,12 +301,9 @@ static const char header1[] =
     "**\n"
     ;
 
-/*
-** NOTE: _DEFAULT_SOURCE is defined in order to suppress a warning
-** about _BSD_SOURCE being deprecated in glibc 2.20.  We keep the
-** definition of the deprecated macro about for compatibility with
-** older versions of glibc.
-*/
+// NOTE: _DEFAULT_SOURCE is defined in order to suppress a warning about
+// _BSD_SOURCE being deprecated in glibc 2.20. We keep the definition of
+// the deprecated macro about for compatibility with older versions of glibc.
 static const char header2[] =
     "*/\n"
     "#define _DEFAULT_SOURCE\n"
@@ -344,15 +323,13 @@ static const char header2[] =
     "  #define MR_MAY_NEED_INITIALIZATION\n"
     "#endif\n"
     "\n"
-    "/*\n"
-    "** Work around a bug in the Solaris 2.X (X<=4) linker;\n"
-    "** on these machines, init_gc must be statically linked.\n"
-    "*/\n"
+    "// Work around a bug in the Solaris 2.X (X<=4) linker;\n"
+    "// on these machines, init_gc must be statically linked.\n"
     "\n"
     "#ifdef MR_CONSERVATIVE_GC\n"
     "static void init_gc(void)\n"
     "{\n"
-    "   GC_INIT();\n"
+    "    GC_INIT();\n"
     "}\n"
     "#endif\n"
     ;
@@ -367,14 +344,14 @@ static const char mercury_funcs1[] =
     "\n"
     "#if defined(MR_USE_DLLS)\n"
     "  #if !defined(libmer_DEFINE_DLL)\n"
-    "       #define libmer_impure_ptr \\\n"
-    "       (*__imp_libmer_impure_ptr)\n"
-    "   extern void *libmer_impure_ptr;\n"
+    "        #define libmer_impure_ptr \\\n"
+    "        (*__imp_libmer_impure_ptr)\n"
+    "    extern void *libmer_impure_ptr;\n"
     "  #endif\n"
     "  #if !defined(libmercury_DEFINE_DLL)\n"
-    "       #define libmercury_impure_ptr \\\n"
-    "       (*__imp_libmercury_impure_ptr)\n"
-    "   extern void *libmercury_impure_ptr;\n"
+    "        #define libmercury_impure_ptr \\\n"
+    "        (*__imp_libmercury_impure_ptr)\n"
+    "    extern void *libmercury_impure_ptr;\n"
     "  #endif\n"
     "#endif\n"
     "\n"
@@ -383,128 +360,123 @@ static const char mercury_funcs1[] =
     "{\n"
     "\n"
     "#if defined(MR_CONSERVATIVE_GC)\n"
-    "   /*\n"
-    "   ** Explicitly register the bottom of the stack, so that the\n"
-    "   ** GC knows where it starts.\n"
-    "   **\n"
-    "   ** Boehm GC 7.4.2 deprecates the use of GC_stackbottom and\n"
-    "   ** prohibits the use of the alternative GC_register_my_thread()\n"
-    "   ** for the primordial thread. Therefore we do not attempt to\n"
-    "   ** register the bottom of the C stack but let the collector\n"
-    "   ** determine an appropriate value itself.\n"
-    "   */\n"
-    "   #if defined(MR_HGC)\n"
-    "    MR_hgc_set_stack_bot(stackbottom);\n"
-    "   #endif\n"
+    "    // Explicitly register the bottom of the stack, so that the\n"
+    "    // GC knows where it starts.\n"
+    "    //\n"
+    "    // Boehm GC 7.4.2 deprecates the use of GC_stackbottom and\n"
+    "    // prohibits the use of the alternative GC_register_my_thread()\n"
+    "    // for the primordial thread. Therefore we do not attempt to\n"
+    "    // register the bottom of the C stack but let the collector\n"
+    "    // determine an appropriate value itself.\n"
+    "    #if defined(MR_HGC)\n"
+    "      MR_hgc_set_stack_bot(stackbottom);\n"
+    "    #endif\n"
     "#endif\n"
     "\n"
-    "/*\n"
-    "** If we're using DLLs on gnu-win32, then we need\n"
-    "** to take special steps to initialize _impure_ptr\n"
-    "** for the DLLs.\n"
-    "*/\n"
+    "// If we are using DLLs on gnu-win32, then we need to take\n"
+    "// special steps to initialize _impure_ptr for the DLLs.\n"
     "#if defined(MR_USE_DLLS)\n"
     "  #if !defined(libmer_DEFINE_DLL)\n"
-    "   libmer_impure_ptr = _impure_ptr;\n"
+    "    libmer_impure_ptr = _impure_ptr;\n"
     "  #endif\n"
     "  #if !defined(libmercury_DEFINE_DLL)\n"
-    "   libmercury_impure_ptr = _impure_ptr;\n"
+    "    libmercury_impure_ptr = _impure_ptr;\n"
     "  #endif\n"
     "#endif\n"
     "\n";
 
 static const char mercury_funcs2[] =
-    "   MR_address_of_mercury_init_io = mercury_init_io;\n"
-    "   MR_address_of_init_modules = init_modules;\n"
-    "   MR_address_of_init_modules_type_tables = init_modules_type_tables;\n"
-    "   MR_address_of_init_modules_debugger = init_modules_debugger;\n"
+    "    MR_address_of_mercury_init_io = mercury_init_io;\n"
+    "    MR_address_of_init_modules = init_modules;\n"
+    "    MR_address_of_init_modules_type_tables = init_modules_type_tables;\n"
+    "    MR_address_of_init_modules_debugger = init_modules_debugger;\n"
     "#ifdef MR_RECORD_TERM_SIZES\n"
-    "   MR_address_of_init_modules_complexity =\n"
-    "       init_modules_complexity_procs;\n"
+    "    MR_address_of_init_modules_complexity =\n"
+    "        init_modules_complexity_procs;\n"
     "#endif\n"
     "#ifdef MR_DEEP_PROFILING\n"
-    "   MR_address_of_write_out_proc_statics =\n"
-    "       write_out_proc_statics;\n"
+    "    MR_address_of_write_out_proc_statics =\n"
+    "        write_out_proc_statics;\n"
     "#endif\n"
     "#ifdef MR_THREADSCOPE\n"
-    "   MR_address_of_init_modules_threadscope_string_table =\n"
-    "       init_modules_threadscope_string_table;\n"
+    "    MR_address_of_init_modules_threadscope_string_table =\n"
+    "        init_modules_threadscope_string_table;\n"
     "#endif\n"
-    "   MR_address_of_init_modules_required = init_modules_required;\n"
-    "   MR_address_of_final_modules_required = final_modules_required;\n"
+    "    MR_address_of_init_modules_required = init_modules_required;\n"
+    "    MR_address_of_final_modules_required = final_modules_required;\n"
     "#ifdef MR_RECORD_TERM_SIZES\n"
-    "   MR_complexity_procs = MR_complexity_proc_table;\n"
-    "   MR_num_complexity_procs = %d;\n"
+    "    MR_complexity_procs = MR_complexity_proc_table;\n"
+    "    MR_num_complexity_procs = %d;\n"
     "#endif\n"
-    "   MR_type_ctor_info_for_univ = ML_type_ctor_info_for_univ;\n"
-    "   MR_type_info_for_type_info = (MR_TypeCtorInfo)\n"
-    "       &ML_type_info_for_type_info;\n"
-    "   MR_type_info_for_pseudo_type_info = (MR_TypeCtorInfo)\n"
-    "       &ML_type_info_for_pseudo_type_info;\n"
-    "   MR_type_info_for_list_of_univ = (MR_TypeInfo)\n"
-    "       &ML_type_info_for_list_of_univ;\n"
-    "   MR_type_info_for_list_of_int = (MR_TypeInfo)\n"
-    "       &ML_type_info_for_list_of_int;\n"
-    "   MR_type_info_for_list_of_char = (MR_TypeInfo)\n"
-    "       &ML_type_info_for_list_of_char;\n"
-    "   MR_type_info_for_list_of_string = (MR_TypeInfo)\n"
-    "       &ML_type_info_for_list_of_string;\n"
-    "   MR_type_info_for_list_of_type_info = (MR_TypeInfo)\n"
-    "       &ML_type_info_for_list_of_type_info;\n"
-    "   MR_type_info_for_list_of_pseudo_type_info = (MR_TypeInfo)\n"
-    "       &ML_type_info_for_list_of_pseudo_type_info;\n"
+    "    MR_type_ctor_info_for_univ = ML_type_ctor_info_for_univ;\n"
+    "    MR_type_info_for_type_info = (MR_TypeCtorInfo)\n"
+    "        &ML_type_info_for_type_info;\n"
+    "    MR_type_info_for_pseudo_type_info = (MR_TypeCtorInfo)\n"
+    "        &ML_type_info_for_pseudo_type_info;\n"
+    "    MR_type_info_for_list_of_univ = (MR_TypeInfo)\n"
+    "        &ML_type_info_for_list_of_univ;\n"
+    "    MR_type_info_for_list_of_int = (MR_TypeInfo)\n"
+    "        &ML_type_info_for_list_of_int;\n"
+    "    MR_type_info_for_list_of_char = (MR_TypeInfo)\n"
+    "        &ML_type_info_for_list_of_char;\n"
+    "    MR_type_info_for_list_of_string = (MR_TypeInfo)\n"
+    "        &ML_type_info_for_list_of_string;\n"
+    "    MR_type_info_for_list_of_type_info = (MR_TypeInfo)\n"
+    "        &ML_type_info_for_list_of_type_info;\n"
+    "    MR_type_info_for_list_of_pseudo_type_info = (MR_TypeInfo)\n"
+    "        &ML_type_info_for_list_of_pseudo_type_info;\n"
     "#ifdef MR_CONSERVATIVE_GC\n"
-    "   MR_address_of_init_gc = init_gc;\n"
+    "    MR_address_of_init_gc = init_gc;\n"
     "#endif\n"
-    "   MR_library_initializer = ML_std_library_init;\n"
-    "   MR_library_finalizer = ML_std_library_finalize;\n"
-    "   MR_io_stdin_stream = ML_io_stdin_stream;\n"
-    "   MR_io_stdout_stream = ML_io_stdout_stream;\n"
-    "   MR_io_stderr_stream = ML_io_stderr_stream;\n"
-    "   MR_io_print_to_stream = ML_io_print_to_stream;\n"
+    "    MR_library_initializer = ML_std_library_init;\n"
+    "    MR_library_finalizer = ML_std_library_finalize;\n"
+    "    MR_io_stdin_stream = ML_io_stdin_stream;\n"
+    "    MR_io_stdout_stream = ML_io_stdout_stream;\n"
+    "    MR_io_stderr_stream = ML_io_stderr_stream;\n"
+    "    MR_io_print_to_stream = ML_io_print_to_stream;\n"
     "#if MR_TRACE_ENABLED\n"
-    "   MR_exec_trace_func_ptr = MR_trace_real;\n"
-    "   MR_register_module_layout = MR_register_module_layout_real;\n"
-    "   MR_address_of_trace_getline = MR_trace_getline;\n"
-    "   MR_address_of_trace_get_command = MR_trace_get_command;\n"
-    "   MR_address_of_trace_browse_all_on_level =\n"
-    "       MR_trace_browse_all_on_level;\n"
-    "   MR_address_of_trace_interrupt_handler =\n"
-    "       MR_trace_interrupt_handler;\n"
+    "    MR_exec_trace_func_ptr = MR_trace_real;\n"
+    "    MR_register_module_layout = MR_register_module_layout_real;\n"
+    "    MR_address_of_trace_getline = MR_trace_getline;\n"
+    "    MR_address_of_trace_get_command = MR_trace_get_command;\n"
+    "    MR_address_of_trace_browse_all_on_level =\n"
+    "        MR_trace_browse_all_on_level;\n"
+    "    MR_address_of_trace_interrupt_handler =\n"
+    "        MR_trace_interrupt_handler;\n"
     "  #ifdef MR_USE_EXTERNAL_DEBUGGER\n"
-    "   MR_address_of_trace_init_external = MR_trace_init_external;\n"
-    "   MR_address_of_trace_final_external = MR_trace_final_external;\n"
+    "    MR_address_of_trace_init_external = MR_trace_init_external;\n"
+    "    MR_address_of_trace_final_external = MR_trace_final_external;\n"
     "  #endif\n"
     "#else\n"
-    "   MR_exec_trace_func_ptr = MR_trace_fake;\n"
-    "   MR_register_module_layout = NULL;\n"
-    "   MR_address_of_trace_getline = NULL;\n"
-    "   MR_address_of_trace_get_command = NULL;\n"
-    "   MR_address_of_trace_browse_all_on_level = NULL;\n"
-    "   MR_address_of_trace_interrupt_handler = NULL;\n"
+    "    MR_exec_trace_func_ptr = MR_trace_fake;\n"
+    "    MR_register_module_layout = NULL;\n"
+    "    MR_address_of_trace_getline = NULL;\n"
+    "    MR_address_of_trace_get_command = NULL;\n"
+    "    MR_address_of_trace_browse_all_on_level = NULL;\n"
+    "    MR_address_of_trace_interrupt_handler = NULL;\n"
     "  #ifdef MR_USE_EXTERNAL_DEBUGGER\n"
-    "   MR_address_of_trace_init_external = NULL;\n"
-    "   MR_address_of_trace_final_external = NULL;\n"
+    "    MR_address_of_trace_init_external = NULL;\n"
+    "    MR_address_of_trace_final_external = NULL;\n"
     "  #endif\n"
     "#endif\n"
     "#if defined(MR_USE_GCC_NONLOCAL_GOTOS) && !defined(MR_USE_ASM_LABELS)\n"
-    "   MR_do_init_modules();\n"
+    "    MR_do_init_modules();\n"
     "#endif\n"
     "#ifdef MR_HIGHLEVEL_CODE\n"
-    "   MR_program_entry_point = %s;\n"
+    "    MR_program_entry_point = %s;\n"
     "#else\n"
-    "   MR_program_entry_point = MR_ENTRY(%s);\n"
+    "    MR_program_entry_point = MR_ENTRY(%s);\n"
     "#endif\n"
     ;
 
 static const char mercury_funcs3[] =
     "\n"
-    "   mercury_runtime_init(argc, argv);\n"
+    "    mercury_runtime_init(argc, argv);\n"
     "\n"
     ;
 
 static const char mercury_funcs4[] =
-    "   return;\n"
+    "    return;\n"
     "}\n"
     "\n"
     ;
@@ -513,7 +485,7 @@ static const char mercury_call_main_func[] =
     "void\n"
     "mercury_call_main(void)\n"
     "{\n"
-    "   mercury_runtime_main();\n"
+    "    mercury_runtime_main();\n"
     "}\n"
     "\n"
     ;
@@ -522,7 +494,7 @@ static const char mercury_terminate_func[] =
     "int\n"
     "mercury_terminate(void)\n"
     "{\n"
-    "   return mercury_runtime_terminate();\n"
+    "    return mercury_runtime_terminate();\n"
     "}\n"
     "\n"
     ;
@@ -532,52 +504,47 @@ static const char mercury_main_func[] =
     "mercury_main(int argc, char **argv)\n"
     "{\n"
     "#ifdef MR_PROFILE_SBRK\n"
-    "   void* old_break;\n"
-    "   void* new_break;\n"
+    "    void* old_break;\n"
+    "    void* new_break;\n"
     "#endif\n"
-    "   int result;\n"
+    "    int result;\n"
     "#ifdef MR_PROFILE_SBRK\n"
-    "   old_break = sbrk(0);\n"
+    "    old_break = sbrk(0);\n"
     "#endif\n"
-        /*
-        ** Note that the address we use for the stack base
-        ** needs to be word-aligned.
-        ** That's why we give dummy the type `void *' rather than
-        ** e.g. `char'.
-        */
-    "   void *dummy;\n"
-    "   mercury_init(argc, argv, &dummy);\n"
-    "   mercury_call_main();\n"
-    "   result = mercury_terminate();\n"
+        // Note that the address we use for the stack base needs to be
+        // word-aligned. That is why we give dummy the type `void *'
+        // rather than e.g. `char'.
+    "    void *dummy;\n"
+    "    mercury_init(argc, argv, &dummy);\n"
+    "    mercury_call_main();\n"
+    "    result = mercury_terminate();\n"
     "#ifdef MR_PROFILE_SBRK\n"
-    "   new_break = sbrk(0);\n"
-    "   printf(\"sbrk delta: %d\\n\",\n"
-    "       (MR_Integer)new_break - (MR_Integer)old_break);\n"
+    "    new_break = sbrk(0);\n"
+    "    printf(\"sbrk delta: %d\\n\",\n"
+    "        (MR_Integer) new_break - (MR_Integer) old_break);\n"
     "#endif\n"
-    "   return result;\n"
+    "    return result;\n"
     "}\n"
     "\n"
-    /*
-    ** Convert wide-character representation of the command line
-    ** arguments to UTF-8.
-    */
+    // Convert wide-character representation of the command line
+    // arguments to UTF-8.
     "#if defined(MR_MSVC)\n"
     "static char **\n"
     "mercury_msvc_args(int argc, wchar_t **wargv)\n"
     "{\n"
-    "   char    **argv;\n"
-    "   int     i;\n"
+    "    char    **argv;\n"
+    "    int     i;\n"
     "\n"
-    "   argv = MR_NEW_ARRAY(char *, argc + 1);\n"
-    "   for (i = 0; i < argc; i++) {\n"
-    "       int bytes = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,\n"
-    "           NULL, 0, NULL, NULL);\n"
-    "       argv[i] = MR_malloc(bytes);\n"
-    "       WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,\n"
-    "           argv[i], bytes, NULL, NULL);\n"
-    "   }\n"
-    "   argv[i] = NULL;\n"
-    "   return argv;\n"
+    "    argv = MR_NEW_ARRAY(char *, argc + 1);\n"
+    "    for (i = 0; i < argc; i++) {\n"
+    "        int bytes = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,\n"
+    "            NULL, 0, NULL, NULL);\n"
+    "        argv[i] = MR_malloc(bytes);\n"
+    "        WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,\n"
+    "            argv[i], bytes, NULL, NULL);\n"
+    "    }\n"
+    "    argv[i] = NULL;\n"
+    "    return argv;\n"
     "}\n"
     "#elif defined(MR_MINGW)\n"
     "extern int __wgetmainargs(int *, wchar_t ***, wchar_t ***, int, int *);\n"
@@ -585,27 +552,27 @@ static const char mercury_main_func[] =
     "static void\n"
     "mercury_win32_args(int *argc_ret, char ***argv_ret)\n"
     "{\n"
-    "   int     argc;\n"
-    "   char    **argv;\n"
-    "   wchar_t **wargv;\n"
-    "   wchar_t **wenv;\n"
-    "   int     start_info = 0;\n"
-    "   int     i;\n"
+    "    int     argc;\n"
+    "    char    **argv;\n"
+    "    wchar_t **wargv;\n"
+    "    wchar_t **wenv;\n"
+    "    int     start_info = 0;\n"
+    "    int     i;\n"
     "\n"
-    "   if (__wgetmainargs(&argc, &wargv, &wenv, 0, &start_info) != 0) {\n"
-    "       return;\n"
-    "   }\n"
-    "   argv = MR_NEW_ARRAY(char *, argc + 1);\n"
-    "   for (i = 0; i < argc; i++) {\n"
-    "       int bytes = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,\n"
-    "           NULL, 0, NULL, NULL);\n"
-    "       argv[i] = MR_malloc(bytes);\n"
-    "       WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,\n"
-    "           argv[i], bytes, NULL, NULL);\n"
-    "   }\n"
-    "   argv[i] = NULL;\n"
-    "   *argc_ret = argc;\n"
-    "   *argv_ret = argv;\n"
+    "    if (__wgetmainargs(&argc, &wargv, &wenv, 0, &start_info) != 0) {\n"
+    "        return;\n"
+    "    }\n"
+    "    argv = MR_NEW_ARRAY(char *, argc + 1);\n"
+    "    for (i = 0; i < argc; i++) {\n"
+    "        int bytes = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,\n"
+    "            NULL, 0, NULL, NULL);\n"
+    "        argv[i] = MR_malloc(bytes);\n"
+    "        WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,\n"
+    "            argv[i], bytes, NULL, NULL);\n"
+    "    }\n"
+    "    argv[i] = NULL;\n"
+    "    *argc_ret = argc;\n"
+    "    *argv_ret = argv;\n"
     "}\n"
     "#endif\n"
     "\n"
@@ -639,14 +606,14 @@ static const char main_func[] =
     "main(int argc, char **argv)\n"
     "{\n"
     "#ifdef MR_MINGW\n"
-    "   mercury_win32_args(&argc, &argv);\n"
+    "    mercury_win32_args(&argc, &argv);\n"
     "#endif\n"
-    "   return mercury_main(argc, argv);\n"
+    "    return mercury_main(argc, argv);\n"
     "}\n"
     "#endif\n"
     ;
 
-/* --- function prototypes --- */
+// Function prototypes.
 static  void    parse_options(int argc, char *argv[]);
 static  void    usage(void);
 static  void    output_complexity_proc(const char *procname);
@@ -664,7 +631,7 @@ static  void    output_init_function(const char *func_name,
                     int *num_bunches_ptr, int *num_calls_in_cur_bunch_ptr,
                     Purpose purpose);
 
-/*---------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////
 
 #ifdef  CHECK_GET_LINE
 FILE    *check_fp;
@@ -681,23 +648,20 @@ main(int argc, char **argv)
 
 #ifdef  CHECK_GET_LINE
     check_fp = fopen(".check_get_line", "w");
-    /* If the open fails, we won't write to the file */
+    // If the open fails, we won't write to the file.
 #endif
 
     set_output_file(output_file_name);
 
     switch (output_task) {
         case TASK_OUTPUT_LIB_INIT:
-            /* Output a .init file */
+            // Output a .init file.
             exit_status = output_lib_init_file();
             break;
 
         case TASK_OUTPUT_STANDALONE_INIT:
         case TASK_OUTPUT_INIT_PROG:
-            /*
-            ** Output a _init.c file or a standalone initialisation
-            ** interface.
-            */
+            // Output a _init.c file or a standalone initialisation interface.
             exit_status = output_init_program();
             break;
 
@@ -709,11 +673,10 @@ main(int argc, char **argv)
     return exit_status;
 }
 
-/*---------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////
 
-/*
-** Output the initialisation file for a Mercury library, the .init file.
-*/
+// Output the initialisation file for a Mercury library, the .init file.
+
 static int
 output_lib_init_file(void)
 {
@@ -749,12 +712,11 @@ output_lib_init_file(void)
 
 }
 
-/*---------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////
 
-/*
-** Output the initialisation program for a Mercury executable, the *_init.c
-** file.
-*/
+// Output the initialisation program for a Mercury executable, the *_init.c
+// file.
+
 static int
 output_init_program(void)
 {
@@ -824,8 +786,8 @@ output_init_program(void)
     output_main();
 
     if (num_errors > 0) {
-        fputs("/* Force syntax error, since there were */\n", stdout);
-        fputs("/* errors in the generation of this file */\n", stdout);
+        fputs("// Force syntax error, since there were errors\n", stdout);
+        fputs("// in the generation of this file.", stdout);
         fputs("#error \"You need to remake this file\"\n", stdout);
         if (output_file_name != NULL) {
             (void) fclose(stdout);
@@ -837,7 +799,7 @@ output_init_program(void)
     return EXIT_SUCCESS;
 }
 
-/*---------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////
 
 static void
 parse_options(int argc, char *argv[])
@@ -846,17 +808,14 @@ parse_options(int argc, char *argv[])
     String_List *tmp_slist;
     int         seen_f_option = 0;
 
-    /*
-    ** The set of options for mkinit and mkinit_erl should be
-    ** kept in sync, even if they may not necessarily make sense.
-    */
+    // The set of options for mkinit and mkinit_erl should be kept in sync,
+    // even if they may not necessarily make sense.
+
     while ((c = getopt(argc, argv, "A:c:f:g:iI:lm:o:r:tw:xX:ks")) != EOF) {
         switch (c) {
         case 'A':
-            /*
-            ** Add the argument to the end of the list of always executed
-            ** initialization functions.
-            */
+            // Add the argument to the end of the list of always executed
+            // initialization functions.
             if (optarg[0] != '\0') {
                 tmp_slist = (String_List *)
                     checked_malloc(sizeof(String_List));
@@ -898,16 +857,14 @@ parse_options(int argc, char *argv[])
 
         case 'o':
             if (strcmp(optarg, "-") == 0) {
-                output_file_name = NULL; /* output to stdout */
+                output_file_name = NULL; // output to stdout
             } else {
                 output_file_name = optarg;
             }
             break;
 
         case 'r':
-            /*
-            ** Add the argument to the end of the list of runtime flags.
-            */
+            // Add the argument to the end of the list of runtime flags.
             if (optarg[0] != '\0') {
                 tmp_slist = (String_List *)
                     checked_malloc(sizeof(String_List));
@@ -929,7 +886,7 @@ parse_options(int argc, char *argv[])
             break;
 
         case 'x':
-            /* We always assume this option. */
+            // We always assume this option.
             break;
 
         case 'X':
@@ -942,11 +899,11 @@ parse_options(int argc, char *argv[])
 
         case 's':
             output_task = TASK_OUTPUT_STANDALONE_INIT;
-            output_main_func = MR_FALSE; /* -s implies -l */
+            output_main_func = MR_FALSE; // -s implies -l
             break;
 
         case 'm':
-            /* Used by mkinit_erl. */
+            // Used by mkinit_erl.
             usage();
             break;
 
@@ -956,11 +913,8 @@ parse_options(int argc, char *argv[])
     }
 
     if (seen_f_option) {
-        /*
-        ** -f could be made compatible if we copied the filenames
-        ** from argv into files.
-        **
-        */
+        // -f could be made compatible if we copied the filenames
+        // from argv into files.
         if ((argc - optind) > 0) {
             fprintf(stderr,
                 "%s: -f incompatible with filenames on the command line\n",
@@ -998,7 +952,7 @@ usage(void)
     exit(EXIT_FAILURE);
 }
 
-/*---------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////
 
 #define MAX_PROCNAME_LEN    1024
 
@@ -1134,13 +1088,10 @@ output_main(void)
         printf("};\n");
     }
 
-    /*
-    ** If we are building a standalone interface then we set the entry
-    ** point as MR_dummy_main.  This is defined in the
-    ** runtime/mercury_wrapper.c and aborts execution if called.  In
-    ** standalone mode we are not expecting Mercury to be called through the
-    ** standard entry point.
-    */
+    // If we are building a standalone interface then we set the entry
+    // point as MR_dummy_main. This is defined in runtime/mercury_wrapper.c
+    // and aborts execution if called. In standalone mode, we are not
+    // expecting Mercury to be called through the standard entry point.
     if (output_task == TASK_OUTPUT_STANDALONE_INIT) {
         hl_entry_point = entry_point = "MR_dummy_main";
     }
@@ -1149,7 +1100,7 @@ output_main(void)
     printf(mercury_funcs2, num_experimental_complexity_procs,
         hl_entry_point, entry_point);
 
-    printf("   MR_runtime_flags = \"");
+    printf("    MR_runtime_flags = \"");
     for (list = runtime_flags; list != NULL; list = list->next) {
         for (options_str = list->data; *options_str != '\0'; options_str++) {
             if (*options_str == '\n') {
@@ -1182,7 +1133,7 @@ output_main(void)
     fputs(mercury_funcs3, stdout);
 
     for (list = always_exec_funcs; list != NULL; list = list->next) {
-        printf("   %s();\n", list->data);
+        printf("    %s();\n", list->data);
     }
 
     fputs(mercury_funcs4, stdout);
@@ -1204,7 +1155,7 @@ output_main(void)
     }
 }
 
-/*---------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////
 
 static void
 process_file(const char *filename)
@@ -1227,14 +1178,12 @@ process_file(const char *filename)
 static void
 process_init_file(const char *filename)
 {
-    /*
-    ** The strings that are supposed to be followed by other information
-    ** (INIT, REQUIRED_INIT, and REQUIRED_FINAL) should end with
-    ** the space that separates the keyword from the following data.
-    ** The string that is not supposed to be following by other information
-    ** (ENDINIT) should not have a following space, since llds_out.m and
-    ** mlds_to_c.m do not add that space.
-    */
+    // The strings that are supposed to be followed by other information
+    // (INIT, REQUIRED_INIT, and REQUIRED_FINAL) should end with
+    // the space that separates the keyword from the following data.
+    // The string that is not supposed to be following by other information
+    // (ENDINIT) should not have a following space, since llds_out.m and
+    // mlds_to_c.m do not add that space.
 
     const char * const  init_str = "INIT ";
     const char * const  reqinit_str = "REQUIRED_INIT ";
@@ -1264,7 +1213,7 @@ process_init_file(const char *filename)
             int     j;
 
             for (j = init_strlen; MR_isalnumunder(line[j]); j++) {
-                /* VOID */
+                // VOID
             }
             line[j] = '\0';
 
@@ -1288,7 +1237,7 @@ process_init_file(const char *filename)
             int     j;
 
             for (j = reqinit_strlen; MR_isalnumunder(line[j]); j++) {
-                /* VOID */
+                // VOID
             }
             line[j] = '\0';
 
@@ -1302,7 +1251,7 @@ process_init_file(const char *filename)
             int     j;
 
             for (j = reqfinal_strlen; MR_isalnumunder(line[j]); j++) {
-                /* VOID */
+                // VOID
             }
             line[j] = '\0';
 
@@ -1318,14 +1267,12 @@ process_init_file(const char *filename)
             int     j;
             MR_bool found;
 
-            /*
-            ** Check that all characters in the name of the environment
-            ** variable are acceptable as components of a C variable name.
-            ** Note that the variable name doesn't have to start with a letter
-            ** because the variable name has a prefix.
-            */
+            // Check that all characters in the name of the environment
+            // variable are acceptable as components of a C variable name.
+            // Note that the variable name doesn't have to start with a letter
+            // because the variable name has a prefix.
             for (j = envvar_strlen; MR_isalnumunder(line[j]); j++) {
-                /* VOID */
+                // VOID
             }
 
             if (line[j] != '\n') {
@@ -1333,15 +1280,13 @@ process_init_file(const char *filename)
                     line);
             }
 
-            line[j] = '\0';     /* overwrite the newline */
+            line[j] = '\0';     // Overwrite the newline.
 
             envvar_name = line + envvar_strlen;
 
-            /*
-            ** Since the number of distinct environment variables used by
-            ** a program is likely to be in the single digits, linear search
-            ** should be efficient enough.
-            */
+            // Since the number of distinct environment variables used by
+            // a program is likely to be in the single digits, linear search
+            // should be efficient enough.
             found = MR_FALSE;
             for (i = 0; i < mercury_env_var_next; i++) {
                 if (strcmp(envvar_name, mercury_env_vars[i]) == 0) {
@@ -1365,16 +1310,14 @@ process_init_file(const char *filename)
     fclose(cfile);
 }
 
-/*
-** We could in theory put all calls to e.g. <module>_init_type_tables()
-** functions in a single C function in the <mainmodule>_init.c file we
-** generate. However, doing so turns out to be a bad idea: it leads to large
-** compilation times for the <mainmodule>_init.c files. Instead, we divide
-** the calls into bunches containing at most max_calls calls, with each bunch
-** contained in its own function. *num_calls_in_cur_bunch_ptr says how many
-** calls the current bunch already has; *num_bunches_ptr gives the number
-** of the current bunch.
-*/
+// We could in theory put all calls to e.g. <module>_init_type_tables()
+// functions in a single C function in the <mainmodule>_init.c file we
+// generate. However, doing so turns out to be a bad idea: it leads to large
+// compilation times for the <mainmodule>_init.c files. Instead, we divide
+// the calls into bunches containing at most max_calls calls, with each bunch
+// contained in its own function. *num_calls_in_cur_bunch_ptr says how many
+// calls the current bunch already has; *num_bunches_ptr gives the number
+// of the current bunch.
 
 static void
 output_init_function(const char *func_name, int *num_bunches_ptr,
@@ -1399,4 +1342,4 @@ output_init_function(const char *func_name, int *num_bunches_ptr,
         func_name, module_suffix[purpose], main_func_arg[purpose]);
 }
 
-/*---------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////
