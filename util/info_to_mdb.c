@@ -1,21 +1,16 @@
-/*
-** vim: ts=4 sw=4 expandtab
-*/
-/*
-** Copyright (C) 1998-1999 The University of Melbourne.
-** This file may only be copied under the terms of the GNU General
-** Public License - see the file COPYING in the Mercury distribution.
-*/
+// vim: ts=4 sw=4 expandtab
 
-/*
-** File: info_to_mdb.c
-** Author: zs
-**
-** This tool takes as its input a dump (via the `info' program) of the
-** nodes in the Mercury user's guide that describe debugging commands,
-** and generates from them the mdb commands that register with mdb
-** the online documentation of those commands.
-*/
+// Copyright (C) 1998-1999 The University of Melbourne.
+// This file may only be copied under the terms of the GNU General
+// Public License - see the file COPYING in the Mercury distribution.
+
+// File: info_to_mdb.c
+// Author: zs
+//
+// This tool takes as its input a dump (via the `info' program) of the
+// nodes in the Mercury user's guide that describe debugging commands,
+// and generates from them the mdb commands that register with mdb
+// the online documentation of those commands.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,19 +29,19 @@ static  void    print_command_line(const char *line, MR_bool is_concept);
 static  char    *get_next_line(FILE *infp);
 static  void    put_line_back(char *line);
 
-#define concept_char(c)     (MR_isspace(c) ? '_' : (c))
+#define space_to_underscore(c)  (MR_isspace(c) ? '_' : (c))
 
 int
 main(int argc, char **argv)
 {
     char    *filename;
-    char    *category;  /* mdb help category */
+    char    *category;  // mdb help category
     FILE    *infp;
     char    *line;
-    int num_lines;
+    int     num_lines;
     char    command[MAXLINELEN];
     char    next_command[MAXLINELEN];
-    int slot = 0;
+    int     slot;
     MR_bool is_concept;
     MR_bool next_concept;
 
@@ -63,8 +58,8 @@ main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    /* skip the top part of the node, up to and including */
-    /* the underlined heading */
+    // Skip the top part of the node, up to and including
+    // the underlined heading.
 
     while ((line = get_next_line(infp)) != NULL) {
         if (is_all_same_char(line, '-') || is_all_same_char(line, '=')) {
@@ -72,6 +67,7 @@ main(int argc, char **argv)
         }
     }
 
+    slot = 0;
     while (MR_TRUE) {
         line = get_next_line(infp);
         while (line != NULL && is_empty(line)) {
@@ -91,7 +87,7 @@ main(int argc, char **argv)
         if (is_concept) {
             int i;
             for (i = 0; line[i + 2] != '\n'; i++) {
-                command[i] = concept_char(line[i + 1]);
+                command[i] = space_to_underscore(line[i + 1]);
             }
             command[i] = '\0';
         } else {
@@ -106,18 +102,17 @@ main(int argc, char **argv)
             if (is_command(line, &next_concept)) {
                 get_command(line, next_command);
                 if (strcmp(command, next_command) != 0) {
-                    /*
-                    ** Sometimes several commands are documented together, e.g.
-                    **
-                    ** cmd1 args...
-                    ** cmd2 args...
-                    ** cmd3 args...
-                    **  description...
-                    **
-                    ** It is difficult for us to handle that case properly
-		    ** here, so we just insert cross references
-                    ** ("cmd1: see cmd2", "cmd2: see cmd3", etc.)
-                    */
+                    // Sometimes several commands are documented together, e.g.
+                    //
+                    // cmd1 args...
+                    // cmd2 args...
+                    // cmd3 args...
+                    //  description...
+                    //
+                    // It is difficult for us to handle that case properly
+                    // here, so we just insert cross references
+                    // ("cmd1: see cmd2", "cmd2: see cmd3", etc.)
+
                     if (num_lines == 0) {
                         printf("    See help for `%s'.\n", next_command);
                     }
@@ -204,7 +199,7 @@ print_command_line(const char *line, MR_bool is_concept)
 
     len = strlen(line);
     for (i = 1; i < len - 2; i++) {
-        putchar(is_concept ? concept_char(line[i]) : line[i]);
+        putchar(is_concept ? space_to_underscore(line[i]) : line[i]);
     }
     putchar('\n');
 }
@@ -225,7 +220,7 @@ get_next_line(FILE *infp)
         if (fgets(line_buf, MAXLINELEN, infp) == NULL) {
             return NULL;
         } else {
-            /* printf("read %s", line_buf); */
+            // printf("read %s", line_buf);
             return line_buf;
         }
     }

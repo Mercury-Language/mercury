@@ -98,8 +98,8 @@ MR_trace_help_add_node(MR_Word path, const char *name, int slot,
     );
 
     MR_TRACE_CALL_MERCURY(
-        ML_HELP_add_help_node(MR_trace_help_system, path, slot, name_on_heap,
-            text_on_heap, &result, &MR_trace_help_system);
+        ML_HELP_add_help_node(path, slot, name_on_heap, text_on_heap,
+            &result, MR_trace_help_system, &MR_trace_help_system);
         error = ML_HELP_result_is_error(result, &msg);
     );
 
@@ -119,7 +119,7 @@ MR_trace_help(void)
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
     MR_TRACE_CALL_MERCURY(
-        ML_HELP_help(MR_trace_help_system,
+        ML_HELP_print_top_level_help_nodes(MR_trace_help_system,
             MR_wrap_output_stream(&mdb_out));
     );
 }
@@ -138,8 +138,8 @@ MR_trace_help_word(const char *word)
 
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_TRACE_CALL_MERCURY(
-        ML_HELP_name(MR_trace_help_system, word_on_heap,
-            MR_wrap_output_stream(&mdb_out));
+        ML_HELP_print_help_for_name(MR_wrap_output_stream(&mdb_out),
+            MR_trace_help_system, word_on_heap);
     );
 }
 
@@ -166,8 +166,8 @@ MR_trace_help_cat_item(const char *category, const char *item)
 
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_TRACE_CALL_MERCURY(
-        ML_HELP_path(MR_trace_help_system, path,
-            MR_wrap_output_stream(&mdb_out), &result);
+        ML_HELP_print_help_node_at_path(MR_wrap_output_stream(&mdb_out),
+            MR_trace_help_system, path, &result);
         error = ML_HELP_result_is_error(result, &msg);
     );
 

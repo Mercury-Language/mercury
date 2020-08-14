@@ -298,7 +298,7 @@
     %
 :- pred diagnoser_state_init(io.input_stream::in, io.output_stream::in,
     browser_info.browser_persistent_state::in,
-    help.system::in, diagnoser_state(R)::out) is det.
+    help_system::in, diagnoser_state(R)::out) is det.
 
 :- pred diagnosis(S::in, analysis_type(edt_node(R))::in,
     diagnoser_response(R)::out,
@@ -331,6 +331,7 @@
 
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_oracle.
+:- import_module mdb.declarative_user.
 :- import_module mdb.util.
 :- import_module mdbcomp.rtti_access.
 :- import_module mdbcomp.sym_name.
@@ -660,7 +661,7 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
     % make it easier to call from C code.
     %
 :- pred diagnoser_state_init_store(io.input_stream::in, io.output_stream::in,
-    browser_info.browser_persistent_state::in, help.system::in,
+    browser_info.browser_persistent_state::in, help_system::in,
     diagnoser_state(trace_node_id)::out) is det.
 
 :- pragma foreign_export("C", diagnoser_state_init_store(in, in, in, in, out),
@@ -684,16 +685,30 @@ diagnoser_session_init(!Diagnoser) :-
 
     % Set the testing flag of the user_state in the given diagnoser.
     %
-:- pred set_diagnoser_testing_flag(bool::in,
+:- pred set_diagnoser_to_testing(
     diagnoser_state(trace_node_id)::in,
     diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma foreign_export("C", set_diagnoser_testing_flag(in, in, out),
-    "MR_DD_decl_set_diagnoser_testing_flag").
+:- pragma foreign_export("C", set_diagnoser_to_testing(in, out),
+    "MR_DD_decl_set_diagnoser_to_testing").
 
-set_diagnoser_testing_flag(Testing, !Diagnoser) :-
+set_diagnoser_to_testing(!Diagnoser) :-
     Oracle0 = !.Diagnoser ^ oracle_state,
-    set_oracle_testing_flag(Testing, Oracle0, Oracle),
+    set_oracle_testing_flag(we_are_testing, Oracle0, Oracle),
+    !Diagnoser ^ oracle_state := Oracle.
+
+    % Set the testing flag of the user_state in the given diagnoser.
+    %
+:- pred set_diagnoser_to_not_testing(
+    diagnoser_state(trace_node_id)::in,
+    diagnoser_state(trace_node_id)::out) is det.
+
+:- pragma foreign_export("C", set_diagnoser_to_not_testing(in, out),
+    "MR_DD_decl_set_diagnoser_to_not_testing").
+
+set_diagnoser_to_not_testing(!Diagnoser) :-
+    Oracle0 = !.Diagnoser ^ oracle_state,
+    set_oracle_testing_flag(we_are_not_testing, Oracle0, Oracle),
     !Diagnoser ^ oracle_state := Oracle.
 
 :- pred set_fallback_search_mode(trace_node_store::in,

@@ -67,7 +67,7 @@
     % Produce a new oracle state.
     %
 :- pred oracle_state_init(io.input_stream::in, io.output_stream::in,
-    browser_info.browser_persistent_state::in, help.system::in,
+    browser_info.browser_persistent_state::in, help_system::in,
     oracle_state::out) is det.
 
     % Add a module to the set of modules trusted by the oracle
@@ -161,8 +161,8 @@
 
     % Set the testing flag of the user_state in the given oracle.
     %
-:- pred set_oracle_testing_flag(bool::in, oracle_state::in, oracle_state::out)
-    is det.
+:- pred set_oracle_testing_flag(are_we_testing::in,
+    oracle_state::in, oracle_state::out) is det.
 
     % Reset the oracle's knowledge base.
     %

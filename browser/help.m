@@ -30,9 +30,9 @@
 :- import_module list.
 :- import_module type_desc.
 
-:- type system.
+:- type help_system.
 
-:- type path  ==  list(string).
+:- type path == list(string).
 
 :- type help_res
     --->    help_ok
@@ -42,31 +42,32 @@
 
     % Initialize an empty help system.
     %
-:- pred init(system::out) is det.
+:- pred init(help_system::out) is det.
 
     % Add a node to the given help system, at the given path, and with
     % the given name and index. If successful, return help_ok and the
     % updated help system; if not, return an error message and the
     % original help system.
     %
-:- pred add_help_node(system::in, path::in, int::in,
-    string::in, string::in, help_res::out, system::out) is det.
+:- pred add_help_node(path::in, int::in, string::in, string::in,
+    help_res::out, help_system::in, help_system::out) is det.
 
     % Print the top-level help nodes. This should give an overview
     % of the main topics for which help is available.
     %
-:- pred help(system::in, io.output_stream::in, io::di, io::uo) is det.
+:- pred print_top_level_help_nodes(io.output_stream::in, help_system::in,
+    io::di, io::uo) is det.
 
     % Print the help node at the given path. If there is none,
     % print the top-level nodes.
     %
-:- pred path(system::in, path::in, io.output_stream::in,
-    help_res::out, io::di, io::uo) is det.
+:- pred print_help_node_at_path(io.output_stream::in, help_system::in,
+    path::in, help_res::out, io::di, io::uo) is det.
 
     % Print all help nodes with the given name. If there are none,
     % print the top-level nodes.
     %
-:- pred name(system::in, string::in, io.output_stream::in,
+:- pred print_help_for_name(io.output_stream::in, help_system::in, string::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -88,38 +89,39 @@
 :- import_module require.
 :- import_module string.
 
-:- type system    ==  list(entry).
+:- type help_system == list(help_node).
 
-:- type node
-    --->    node(
-                text,
-                list(entry)
-            ).
+:- type help_node
+    --->    help_node(
+                % The index of the node, which determines the position
+                % of the node in the node list of its parent (if any) or
+                % or in the system node list (if it has no parent).
+                % Every node list is always sorted on this field.
+                helpnode_index      :: int,
 
-:- type text  ==  string. % Should be one or more complete lines.
+                % The name of the node, which should be one word or phrase.
+                % It must be unique within the list of nodes containing it,
+                % but need not be unique globally.
+                helpnode_name       :: string,
 
-:- type entry
-    --->    entry(
-                int,        % This integer determines the position
-                            % of the node in the node list. A node
-                            % list is always sorted on this field.
+                % The actual help text in the node. Should be one or more
+                % complete lines.
+                helpnode_text       :: string,
 
-                string,     % The name of the node, which should
-                            % be one word or phrase. It must be
-                            % unique within the node list, but
-                            % need not be unique globally.
-
-                node
+                helpnode_children   :: list(help_node)
             ).
 
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_export("C", init(out), "ML_HELP_init").
-:- pragma foreign_export("C", add_help_node(in, in, in, in, in, out, out),
+:- pragma foreign_export("C", add_help_node(in, in, in, in, out, in, out),
     "ML_HELP_add_help_node").
-:- pragma foreign_export("C", help(in, in, di, uo), "ML_HELP_help").
-:- pragma foreign_export("C", path(in, in, in, out, di, uo), "ML_HELP_path").
-:- pragma foreign_export("C", name(in, in, in, di, uo), "ML_HELP_name").
+:- pragma foreign_export("C", print_top_level_help_nodes(in, in, di, uo),
+    "ML_HELP_print_top_level_help_nodes").
+:- pragma foreign_export("C", print_help_node_at_path(in, in, in, out, di, uo),
+    "ML_HELP_print_help_node_at_path").
+:- pragma foreign_export("C", print_help_for_name(in, in, in, di, uo),
+    "ML_HELP_print_help_for_name").
 :- pragma foreign_export("C", help_system_type(out),
     "ML_HELP_help_system_type").
 :- pragma foreign_export("C", result_is_error(in, out),
@@ -129,78 +131,88 @@
 
 init([]).
 
-add_help_node(Sys0, Path, Index, Name, Text, Res, Sys) :-
-    Node = node(Text, []),
-    add_node(Sys0, Path, Index, Name, Node, Res, Sys).
+add_help_node(Path, Index, Name, Text, Res, !Sys) :-
+    Node = help_node(Index, Name, Text, []),
+    add_node(Path, Node, Res, !Sys).
 
-:- pred add_node(system::in, path::in, int::in,
-    string::in, node::in, help_res::out, system::out) is det.
+:- pred add_node(path::in, help_node::in, help_res::out,
+    list(help_node)::in, list(help_node)::out) is det.
 
-add_node(Nodes0, [Step | Steps], Index, Name, NewNode, Res, Nodes) :-
-    ( if one_path_step(Nodes0, Step, Entry0) then
-        Entry0 = entry(EntryIndex, EntryName, EntryNode0),
-        EntryNode0 = node(Text, SubNodes0),
-        add_node(SubNodes0, Steps, Index, Name, NewNode, Res, SubNodes),
-        EntryNode = node(Text, SubNodes),
-        Entry = entry(EntryIndex, EntryName, EntryNode),
-        replace_entry(Nodes0, Entry, Nodes)
+add_node([Step | Steps], NewNode, Res, Nodes0, Nodes) :-
+    ( if one_path_step(Nodes0, Step, Node0) then
+        Node0 = help_node(NodeIndex, NodeName, Text, SubNodes0),
+        add_node(Steps, NewNode, Res, SubNodes0, SubNodes),
+        Node = help_node(NodeIndex, NodeName, Text, SubNodes),
+        replace_node_at_index(Node, Nodes0, Nodes)
     else
-        string.append("invalid path component ", Step, Msg),
+        Msg = "invalid path component " ++ Step,
         Res = help_error(Msg),
         Nodes = Nodes0
     ).
-add_node(Nodes0, [], Index, Name, Node, Res, Nodes) :-
+add_node([], NewNode, Res, Nodes0, Nodes) :-
     ( if
-        list.member(Entry1, Nodes0),
-        Entry1 = entry(Index, _, _)
+        some [MemberNode] (
+            list.member(MemberNode, Nodes0),
+            MemberNode ^ helpnode_index = NewNode ^ helpnode_index
+        )
     then
         Res = help_error("entry with given index already exists"),
         Nodes = Nodes0
     else if
-        list.member(Entry1, Nodes0),
-        Entry1 = entry(_, Name, _)
+        some [MemberNode] (
+            list.member(MemberNode, Nodes0),
+            MemberNode ^ helpnode_name = NewNode ^ helpnode_name
+        )
     then
         Res = help_error("entry with given name already exists"),
         Nodes = Nodes0
     else
         Res = help_ok,
-        insert_into_entry_list(Nodes0, Index, Name, Node, Nodes)
+        insert_into_node_list(NewNode, Nodes0, Nodes)
     ).
 
-:- pred insert_into_entry_list(list(entry)::in, int::in, string::in, node::in,
-    list(entry)::out) is det.
+:- pred replace_node_at_index(help_node::in,
+    list(help_node)::in, list(help_node)::out) is det.
 
-insert_into_entry_list([], Index, Name, Node, [Entry]) :-
-    Entry = entry(Index, Name, Node).
-insert_into_entry_list([Head | Tail], Index, Name, Node, List) :-
-    Head = entry(HeadIndex, _, _),
-    ( if HeadIndex < Index then
-        insert_into_entry_list(Tail, Index, Name, Node, NewTail),
+replace_node_at_index(_, [], _) :-
+    unexpected($pred, "node to be replaced not found").
+replace_node_at_index(Node, [Head | Tail], List) :-
+    ( if Head ^ helpnode_index = Node ^ helpnode_index then
+        List = [Node | Tail]
+    else
+        replace_node_at_index(Node, Tail, NewTail),
+        List = [Head | NewTail]
+    ).
+
+:- pred insert_into_node_list(help_node::in,
+    list(help_node)::in, list(help_node)::out) is det.
+
+insert_into_node_list(Node, [], [Node]).
+insert_into_node_list(Node, [Head | Tail], List) :-
+    ( if Head ^ helpnode_index < Node ^ helpnode_index then
+        insert_into_node_list(Node, Tail, NewTail),
         List = [Head | NewTail]
     else
-        Entry = entry(Index, Name, Node),
-        List = [Entry, Head | Tail]
+        List = [Node, Head | Tail]
     ).
 
 %---------------------------------------------------------------------------%
 
-help(Sys, Stream, !IO) :-
-    print_entry_list(Sys, Stream, !IO).
+print_top_level_help_nodes(Stream, Sys, !IO) :-
+    print_node_list(Stream, Sys, !IO).
 
-path(Entries, Path, Stream, Result, !IO) :-
+print_help_node_at_path(Stream, Nodes, Path, Result, !IO) :-
     (
         Path = [Step | Tail],
-        ( if one_path_step(Entries, Step, Entry) then
-            Entry = entry(_, _, EntryNode),
+        ( if one_path_step(Nodes, Step, Node) then
             (
                 Tail = [],
-                EntryNode = node(Text, _),
-                io.write_string(Stream, Text, !IO),
+                print_node(Stream, Node, !IO),
                 Result = help_ok
             ;
                 Tail = [_ | _],
-                EntryNode = node(_, SubEntries),
-                path(SubEntries, Tail, Stream, Result, !IO)
+                SubNodes = Node ^ helpnode_children,
+                print_help_node_at_path(Stream, SubNodes, Tail, Result, !IO)
             )
         else
             Msg = "error at path component """ ++ Step ++ """",
@@ -211,76 +223,56 @@ path(Entries, Path, Stream, Result, !IO) :-
         Result = help_error("the path does not go that deep")
     ).
 
-name(Sys, Name, Stream, !IO) :-
-    search_entry_list(Sys, Name, 0, Count, Stream, !IO),
-    ( if Count = 0 then
+print_help_for_name(Stream, Sys, Name, !IO) :-
+    search_node_list(Sys, Name, [], RevMatchedNodes),
+    (
+        RevMatchedNodes = [],
         io.write_string("There is no such help topic.\n", !IO),
-        help(Sys, Stream, !IO)
-    else
-        true
+        print_top_level_help_nodes(Stream, Sys, !IO)
+    ;
+        RevMatchedNodes = [_ | _],
+        list.reverse(RevMatchedNodes, MatchedNodes),
+        print_node_list(Stream, MatchedNodes, !IO)
     ).
 
-:- pred search_entry_list(list(entry)::in, string::in, int::in, int::out,
-    io.output_stream::in, io::di, io::uo) is det.
+:- pred search_node_list(list(help_node)::in, string::in,
+    list(help_node)::in, list(help_node)::out) is det.
 
-search_entry_list([], _, !C, _, !IO).
-search_entry_list([Entry | Tail], Name, !C, Stream, !IO) :-
-    Entry = entry(_, EntryName, Node),
-    ( if Name = EntryName then
-        % We print this node, but don't search its children.
-        print_node(Node, Stream, !IO),
-        !:C = !.C + 1
+search_node_list([], _, !RevMatchedNodes).
+search_node_list([Node | Nodes], Name, !RevMatchedNodes) :-
+    ( if Name = Node ^ helpnode_name then
+        !:RevMatchedNodes = [Node | !.RevMatchedNodes]
     else
-        search_node(Node, Name, !C, Stream, !IO),
-        search_entry_list(Tail, Name, !C, Stream, !IO)
+        search_node_list(Node ^ helpnode_children, Name, !RevMatchedNodes),
+        search_node_list(Nodes, Name, !RevMatchedNodes)
     ).
-
-:- pred search_node(node::in, string::in, int::in, int::out,
-    io.output_stream::in, io::di, io::uo) is det.
-
-search_node(node(_, SubNodes), Name, !C, Stream, !IO) :-
-    search_entry_list(SubNodes, Name, !C, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred print_entry_list(list(entry)::in, io.output_stream::in,
+:- pred print_node_list(io.output_stream::in, list(help_node)::in,
     io::di, io::uo) is det.
 
-print_entry_list([], _, !IO).
-print_entry_list([entry(_, _, Node) | Nodes], Stream, !IO) :-
-    print_node(Node, Stream, !IO),
-    print_entry_list(Nodes, Stream, !IO).
+print_node_list(_, [], !IO).
+print_node_list(Stream, [Node | Nodes], !IO) :-
+    print_node(Stream, Node, !IO),
+    print_node_list(Stream, Nodes, !IO).
 
-:- pred print_node(node::in, io.output_stream::in, io::di, io::uo) is det.
+:- pred print_node(io.output_stream::in, help_node::in, io::di, io::uo) is det.
 
-print_node(node(Text, _Nodes), Stream, !IO) :-
+print_node(Stream, Node, !IO) :-
+    Node = help_node(_, _, Text, _),
     io.write_string(Stream, Text, !IO).
-    % XXX print_entry_list(Nodes, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred one_path_step(list(entry)::in, string::in, entry::out) is semidet.
+:- pred one_path_step(list(help_node)::in, string::in, help_node::out)
+    is semidet.
 
-one_path_step([Head | Tail], Name, Entry) :-
-    Head = entry(_, HeadName, _),
-    ( if HeadName = Name then
-        Entry = Head
+one_path_step([Head | Tail], Name, Node) :-
+    ( if Head ^ helpnode_name = Name then
+        Node = Head
     else
-        one_path_step(Tail, Name, Entry)
-    ).
-
-:- pred replace_entry(list(entry)::in, entry::in, list(entry)::out) is det.
-
-replace_entry([], _, _) :-
-    error("replace_entry: entry to be replaced not found").
-replace_entry([Head | Tail], Entry, List) :-
-    Head = entry(HeadIndex, _, _),
-    Entry = entry(EntryIndex, _, _),
-    ( if HeadIndex = EntryIndex then
-        List = [Entry | Tail]
-    else
-        replace_entry(Tail, Entry, NewTail),
-        List = [Head | NewTail]
+        one_path_step(Tail, Name, Node)
     ).
 
 %---------------------------------------------------------------------------%

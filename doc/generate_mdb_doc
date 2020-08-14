@@ -1,12 +1,12 @@
 #!/bin/sh
-# vim: sw=4 ts=8 et
+# vim: sw=4 ts=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 1998-1999,2002, 2004-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 
-# the info menu items that get us to the chapter on debugger commands
+# The info menu items that get us to the chapter on debugger commands.
 cat mdb_categories > mdb_doc
 
 tmp="mdb_doc_tmp.$$"

@@ -24,7 +24,6 @@
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.help.
 
-:- import_module bool.
 :- import_module io.
 
 %---------------------------------------------------------------------------%
@@ -61,7 +60,7 @@
 :- type user_state.
 
 :- pred user_state_init(io.input_stream::in, io.output_stream::in,
-    browser_info.browser_persistent_state::in, help.system::in,
+    browser_info.browser_persistent_state::in, help_system::in,
     user_state::out) is det.
 
     % This predicate handles the interactive part of the declarative
@@ -94,10 +93,14 @@
     %
 :- func get_user_input_stream(user_state) = io.input_stream.
 
+:- type are_we_testing
+    --->    we_are_not_testing
+    ;       we_are_testing.
+
     % Set the testing flag of the user_state.
     %
-:- pred set_user_testing_flag(bool::in, user_state::in, user_state::out)
-    is det.
+:- pred set_user_testing_flag(are_we_testing::in,
+    user_state::in, user_state::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -118,6 +121,7 @@
 :- import_module mdbcomp.rtti_access.
 :- import_module mdbcomp.sym_name.
 
+:- import_module bool.
 :- import_module char.
 :- import_module deconstruct.
 :- import_module exception.
@@ -197,53 +201,59 @@
     ;       user_cmd_illegal.
             % None of the above.
 
+:- type maybe_display_question
+    --->    do_not_display_question
+    ;       display_question.
+
 :- type user_state
     --->    user_state(
                 instr               :: io.input_stream,
                 outstr              :: io.output_stream,
                 browser             :: browser_persistent_state,
 
-                % Yes if the question should be displayed when querying
-                % the user. This is used to suppress the displaying of the
-                % question after the user issues a command which does not
-                % answer the question (such as an `info' command).
-                display_question    :: bool,
+                % Control whether the question should be displayed
+                % when querying the user. This is used to suppress
+                % the displaying of the question after the user issues
+                % a command which does not answer the question (such as
+                % an `info' command).
+                display_question    :: maybe_display_question,
 
-                % If this following flag is set to, yes then user responses
+                % If this is set we_are_testing, then user responses
                 % will be simulated and will always be `no', except when
-                % confirming a bug in which case the response will be `yes'.
-                testing             :: bool,
+                % confirming a bug in which case, the response will be `yes'.
+                testing             :: are_we_testing,
 
-                help_system         :: help.system
+                help_system         :: help_system
             ).
 
 user_state_init(InStr, OutStr, Browser, HelpSystem, State) :-
-    State = user_state(InStr, OutStr, Browser, yes, no, HelpSystem).
+    State = user_state(InStr, OutStr, Browser, display_question,
+        we_are_not_testing, HelpSystem).
 
 %---------------------------------------------------------------------------%
 
 query_user(UserQuestion, Response, !User, !IO) :-
     Question = get_decl_question(UserQuestion),
     (
-        !.User ^ testing = yes,
+        !.User ^ testing = we_are_testing,
         Node = get_decl_question_node(Question),
         Response = user_response_answer(Question,
             truth_value(Node, truth_erroneous))
     ;
-        !.User ^ testing = no,
+        !.User ^ testing = we_are_not_testing,
         (
-            !.User ^ display_question = yes,
+            !.User ^ display_question = display_question,
             write_decl_question(Question, !.User, !IO),
             user_question_prompt(UserQuestion, Prompt),
-            !User ^ display_question := no
+            !User ^ display_question := do_not_display_question
         ;
-            !.User ^ display_question = no,
+            !.User ^ display_question = do_not_display_question,
             Prompt = "dd> "
         ),
         get_command(Prompt, Command, !User, !IO),
         handle_command(Command, UserQuestion, Response, !User, !IO),
         ( if Response \= user_response_show_info(_) then
-            !User ^ display_question := yes
+            !User ^ display_question := display_question
         else
             true
         )
@@ -380,7 +390,7 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
         Response = user_response_change_search(Mode)
     ;
         Cmd = user_cmd_ask,
-        !User ^ display_question := yes,
+        !User ^ display_question := display_question,
         query_user(UserQuestion, Response, !User, !IO)
     ;
         Cmd = user_cmd_pd,
@@ -399,7 +409,8 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
             MaybeCmd = no,
             Path = ["concepts", "decl_debug"]
         ),
-        help.path(!.User ^ help_system, Path, !.User ^ outstr, Res, !IO),
+        help.print_help_node_at_path(!.User ^ outstr, !.User ^ help_system,
+            Path, Res, !IO),
         (
             Res = help_ok
         ;
@@ -1064,10 +1075,10 @@ is_dash('-').
 
 user_confirm_bug(Bug, Response, !User, !IO) :-
     (
-        !.User ^ testing = yes,
+        !.User ^ testing = we_are_testing,
         Response = confirm_bug
     ;
-        !.User ^ testing = no,
+        !.User ^ testing = we_are_not_testing,
         write_decl_bug(Bug, !.User, !IO),
         get_command("Is this a bug? ", Command, !User, !IO),
         (

@@ -1426,10 +1426,17 @@ void
 MR_trace_decl_set_testing_flag(MR_bool testing)
 {
     MR_trace_decl_ensure_init();
-    MR_TRACE_CALL_MERCURY(
-        MR_DD_decl_set_diagnoser_testing_flag(testing,
-            MR_trace_front_end_state, &MR_trace_front_end_state);
-    );
+    if (testing) {
+        MR_TRACE_CALL_MERCURY(
+            MR_DD_decl_set_diagnoser_to_testing(
+                MR_trace_front_end_state, &MR_trace_front_end_state);
+        );
+    } else {
+        MR_TRACE_CALL_MERCURY(
+            MR_DD_decl_set_diagnoser_to_not_testing(
+                MR_trace_front_end_state, &MR_trace_front_end_state);
+        );
+    }
 }
 
 MR_bool
