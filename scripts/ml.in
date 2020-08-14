@@ -1,5 +1,7 @@
 #! /bin/sh
+#---------------------------------------------------------------------------#
 # vim: ts=4 sw=4 et
+#---------------------------------------------------------------------------#
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2008, 2010-2011 The University of Melbourne.
@@ -176,7 +178,7 @@ esac
 case "$C_COMPILER_TYPE" in
     msvc*)
         all_libs=static
-    ;;
+        ;;
 esac
 
 # Defaults have been set, now set options.

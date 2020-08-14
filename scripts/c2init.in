@@ -1,4 +1,7 @@
 #! /bin/sh
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 et ft=sh
+#---------------------------------------------------------------------------#
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2008 The University of Melbourne.
@@ -17,8 +20,8 @@
 # *************************************************************************
 
 Usage="\
-Name:	c2init - Create Mercury initialization file.
-Usage:	c2init [options] *.c *.init ..."
+Name:   c2init - Create Mercury initialization file.
+Usage:  c2init [options] *.c *.init ..."
 
 FULLARCH=@FULLARCH@
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
@@ -34,19 +37,19 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 # to check the following files to see if corresponding changes are needed
 # there as well:
 #
-#	Mmake.workspace
-#	Mmakefile
-#	compiler/compile_target_code.m
-#	scripts/c2init.in
-#	scripts/ml.in
-#	scripts/Mercury.config.in
-#	scripts/Mercury.config.bootstrap.in
-#	tools/bootcheck,
-#	tools/binary
-#	tools/binary_step
-#	tools/linear
-#	tools/lmc.in
-#	tools/lml
+#   Mmake.workspace
+#   Mmakefile
+#   compiler/compile_target_code.m
+#   scripts/c2init.in
+#   scripts/ml.in
+#   scripts/Mercury.config.in
+#   scripts/Mercury.config.bootstrap.in
+#   tools/bootcheck,
+#   tools/binary
+#   tools/binary_step
+#   tools/linear
+#   tools/lmc.in
+#   tools/lml
 
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
@@ -58,35 +61,41 @@ SSDB_LIB_NAME=mer_ssdb
 
 MKINIT=${MERCURY_MKINIT=mkinit}
 
-case $debug in true)
-	trace_opt="-t" ;;
+case $debug in
+    true)
+        trace_opt="-t"
+        ;;
 esac
 
-case $debug in true)
-	init_opt="-i" ;;
+case $debug in
+    true)
+        init_opt="-i"
+        ;;
 esac
 
-case $profile_deep in true)
-	init_opt="-i" ;;
+case $profile_deep in
+    true)
+        init_opt="-i"
+        ;;
 esac
 
 if test "$experimental_complexity" != ""
 then
-	experimental_complexity_opt="-X $experimental_complexity"
+    experimental_complexity_opt="-X $experimental_complexity"
 else
-	experimental_complexity_opt=""
+    experimental_complexity_opt=""
 fi
 
 if test "$mercury_stdlib_dir" != ""
 then
-	MERCURY_MOD_LIB_MODS="\
-		$mercury_stdlib_dir/modules/$GRADE/$RT_LIB_NAME.init \
-		$mercury_stdlib_dir/modules/$GRADE/$STD_LIB_NAME.init"
-	MERCURY_TRACE_LIB_MODS="\
-		$mercury_stdlib_dir/modules/$GRADE/$BROWSER_LIB_NAME.init \
-		$mercury_stdlib_dir/modules/$GRADE/$MDBCOMP_LIB_NAME.init"
-	MERCURY_SSDB_LIB_MODS="\
-		$mercury_stdlib_dir/modules/$GRADE/$SSDB_LIB_NAME.init"
+    MERCURY_MOD_LIB_MODS="\
+        $mercury_stdlib_dir/modules/$GRADE/$RT_LIB_NAME.init \
+        $mercury_stdlib_dir/modules/$GRADE/$STD_LIB_NAME.init"
+    MERCURY_TRACE_LIB_MODS="\
+        $mercury_stdlib_dir/modules/$GRADE/$BROWSER_LIB_NAME.init \
+        $mercury_stdlib_dir/modules/$GRADE/$MDBCOMP_LIB_NAME.init"
+    MERCURY_SSDB_LIB_MODS="\
+        $mercury_stdlib_dir/modules/$GRADE/$SSDB_LIB_NAME.init"
 fi
 MERCURY_TRACE_LIB_MODS="$MERCURY_TRACE_LIB_MODS $trace_init_files"
 MERCURY_SSDB_LIB_MODS="$MERCURY_SSDB_LIB_MODS $ssdb_init_files"
@@ -95,24 +104,24 @@ MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS"
 
 # XXX why does this test $trace_opt instead of $trace?
 case "$trace_opt" in
-	-t)
-		init_opt="-i"
-		MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS\
-			$MERCURY_TRACE_LIB_MODS"
-		;;
+    -t)
+        init_opt="-i"
+        MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS\
+            $MERCURY_TRACE_LIB_MODS"
+        ;;
 esac
 
 case $ss_debug in
-	true)
-		ssdb=true
-		;;
+    true)
+        ssdb=true
+        ;;
 esac
 
 case $ssdb in
-	true)
-		MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS\
-			$MERCURY_SSDB_LIB_MODS"
-		;;
+    true)
+        MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS\
+            $MERCURY_SSDB_LIB_MODS"
+        ;;
 esac
 
 # XXX: $EXTRA_INIT_FILES is not set or used anywhere by our code, and users
@@ -120,18 +129,18 @@ esac
 # always be the empty string.
 
 case $# in
-	0) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt \
-		$library_opt $defentry_opt $extra_inits_opt \
-		-g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
-		$extra_init_dirs $always_exec_init_opts \
-		$EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
-	   ;;
-	*) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt \
-		$library_opt $defentry_opt $extra_inits_opt \
-		-g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
-		-r "$runtime_flags" \
-		$extra_init_dirs $always_exec_init_opts \
-		"$@" \
-		$EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
-	   ;;
+    0) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt \
+        $library_opt $defentry_opt $extra_inits_opt \
+        -g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
+        $extra_init_dirs $always_exec_init_opts \
+        $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
+       ;;
+    *) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt \
+        $library_opt $defentry_opt $extra_inits_opt \
+        -g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
+        -r "$runtime_flags" \
+        $extra_init_dirs $always_exec_init_opts \
+        "$@" \
+        $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
+       ;;
 esac

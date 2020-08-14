@@ -1,4 +1,7 @@
 #! /bin/sh
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 et ft=sh
+#---------------------------------------------------------------------------#
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-1997 The University of Melbourne.
@@ -9,44 +12,45 @@
 # MERCURY_UPDATE_INTERFACE
 #
 # usage:
-#	mercury_update_interface [-v] filename
+#   mercury_update_interface [-v] filename
 #
-# Moves `filename.tmp' to `filename', but only if necessary:
-# if they are identical, then `filename.tmp' is simply removed,
-# and the time-stamp is left unaltered.
+# Move `filename.tmp' to `filename', but only if necessary.
+# If they are identical, then we simply remove `filename.tmp',
+# and leave `filename's time-stamp unaltered.
 #
-# If the `-v' (verbose) option is specified, then appropriate progress messages
-# will be printed.
+# If the `-v' (verbose) option is specified, then we print progress messages.
 #
 # Enviroment variables: none.
 
 verbose=false
 
-if [ $# -ge 1 ] && [ "$1" = "-v" ]; then
-	verbose=true
-	shift
+if test $# -ge 1 -a "$1" = "-v"
+then
+    verbose=true
+    shift
 fi
 
-if [ $# -ne 1 ]; then
-	echo "Usage: `basename $0` filename" 1>&2
-	exit 1
+if test $# -ne 1
+then
+    echo "Usage: `basename $0` filename" 1>&2
+    exit 1
 fi
 
 filename="$1"
-	
-if	[ ! -f "$filename" ]
+    
+if test ! -f "$filename"
 then
-	$verbose && echo "creating \`$filename'." 1>&2
-	mv -f "$filename.tmp" "$filename"
-	# Work-around for a parallel gmake problem
-	exit 0
-elif 	cmp -s "$filename.tmp" "$filename"
+    $verbose && echo "creating \`${filename}'." 1>&2
+    mv -f "${filename}.tmp" "${filename}"
+    # Work-around for a parallel gmake problem
+    exit 0
+elif cmp -s "${filename}.tmp" "${filename}"
 then
-	$verbose && echo "\`$filename' has not changed." 1>&2
-	rm -f "$filename.tmp"
+    $verbose && echo "\`${filename}' has not changed." 1>&2
+    rm -f "${filename}.tmp"
 else
-	echo "\`$filename' has CHANGED." 1>&2
-	mv -f "$filename.tmp" "$filename"
-	# Work-around for a parallel gmake problem
-	exit 0
+    echo "\`${filename}' has CHANGED." 1>&2
+    mv -f "${filename}.tmp" "${filename}"
+    # Work-around for a parallel gmake problem
+    exit 0
 fi

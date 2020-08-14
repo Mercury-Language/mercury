@@ -1,5 +1,7 @@
 #! /bin/sh
 #---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 et ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -19,24 +21,27 @@
 
 usage="Usage: canonical_grade --grade <actual>"
 
-while : ; do
+while :
+do
     case "$1" in
-	# include the file `parse_grade_options.sh-subr'
-	@PARSE_GRADE_OPTIONS@
+    # include the file `parse_grade_options.sh-subr'
+    @PARSE_GRADE_OPTIONS@
 
-	--)
-		shift
-		break ;;
-	*)
-		break ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
     esac
     shift
 done
 
 if test $# -ne 0
 then
-	echo "$usage"
-	exit 1
+    echo "$usage"
+    exit 1
 fi
 
 # include the file `final_grade_options.sh-subr'
