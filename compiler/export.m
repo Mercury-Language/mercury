@@ -645,14 +645,14 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     % enabled, the .o file depends on all the .mh files of the imported
     % modules. so we need to produce a .mh file even if it contains nothing.
     module_info_get_globals(ModuleInfo, Globals),
-    HeaderExt = ".mh",
+    HeaderExt = ext(".mh"),
     module_name_to_file_name(Globals, do_create_dirs, HeaderExt,
         ModuleName, FileName, !IO),
     MaybeThisFileName = yes(FileName),
     io.open_output(FileName ++ ".tmp", Result, !IO),
     (
         Result = ok(FileStream),
-        module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+        module_name_to_file_name(Globals, do_not_create_dirs, ext(".m"),
             ModuleName, SourceFileName, !IO),
         library.version(Version, Fullarch),
         io.write_strings(FileStream, [

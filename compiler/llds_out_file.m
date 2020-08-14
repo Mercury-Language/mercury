@@ -116,7 +116,7 @@
 
 output_llds(Globals, CFile, Succeeded, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
-    module_name_to_file_name(Globals, do_create_dirs, ".c",
+    module_name_to_file_name(Globals, do_create_dirs, ext(".c"),
         ModuleName, FileName, !IO),
     output_to_file(Globals, FileName, output_llds_2(Globals, CFile),
         Succeeded, !IO).

@@ -502,7 +502,8 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
         then
             % The `.err_date' file is needed because the `.err' file is touched
             % by all phases of compilation, including writing interfaces.
-            touch_interface_datestamp(Globals, ModuleName, ".err_date", !IO)
+            touch_interface_datestamp(Globals, ModuleName,
+                ext(".err_date"), !IO)
         else
             true
         )
@@ -528,9 +529,10 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
                 ForeignCodeFile),
             Succeeded, !IO)
     ;
-        Task = fact_table_code_to_object_code(PIC, FactTableFile),
-        fact_table_foreign_code_file(Globals, ModuleName, PIC, FactTableFile,
-            FactTableForeignCode, !IO),
+        Task = fact_table_code_to_object_code(PIC, FactTableFileName),
+        ObjExt = get_object_extension(Globals, PIC),
+        get_fact_table_foreign_code_file(Globals, do_create_dirs, ObjExt,
+            FactTableFileName, FactTableForeignCode, !IO),
 
         % Run the compilation in a child process so it can be killed
         % if an interrupt arrives.
@@ -551,18 +553,18 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, _Imports,
         compile_c_file(Globals, ErrorStream, PIC, ModuleName, Succeeded, !IO)
     ;
         Target = target_java,
-        module_name_to_file_name(Globals, do_create_dirs, ".java",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".java"),
             ModuleName, JavaFile, !IO),
         compile_java_files(Globals, ErrorStream, [JavaFile], Succeeded, !IO)
     ;
         Target = target_csharp,
-        module_name_to_file_name(Globals, do_create_dirs, ".cs",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".cs"),
             ModuleName, CsharpFile, !IO),
         compile_target_code.link(Globals, ErrorStream, csharp_library,
             ModuleName, [CsharpFile], Succeeded, !IO)
     ;
         Target = target_erlang,
-        module_name_to_file_name(Globals, do_create_dirs, ".erl",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".erl"),
             ModuleName, ErlangFile, !IO),
         compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO)
     ).
@@ -623,19 +625,7 @@ get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
         ForeignModName, ObjFileName, !IO),
     ForeignCodeFile = foreign_code_file(Lang, SrcFileName, ObjFileName).
 
-:- pred fact_table_foreign_code_file(globals::in, module_name::in, pic::in,
-    string::in, foreign_code_file::out, io::di, io::uo) is det.
-
-fact_table_foreign_code_file(Globals, ModuleName, PIC, FactTableName,
-        ForeignCodeFile, !IO) :-
-    ObjExt = get_object_extension(Globals, PIC),
-    fact_table_file_name(Globals, ModuleName, FactTableName, ".c",
-        do_create_dirs, CFile, !IO),
-    fact_table_file_name(Globals, ModuleName, FactTableName, ObjExt,
-        do_create_dirs, ObjFile, !IO),
-    ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile).
-
-:- func get_object_extension(globals, pic) = string.
+:- func get_object_extension(globals, pic) = ext.
 
 get_object_extension(Globals, PIC) = Ext :-
     globals.get_target(Globals, CompilationTarget),
@@ -942,10 +932,9 @@ touched_files(Globals, TargetFile, Task, TouchedTargetFiles, TouchedFileNames,
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableName),
         TouchedTargetFiles = [TargetFile],
-        TargetFile = target_file(ModuleName, _),
         ObjExt = get_object_extension(Globals, PIC),
-        fact_table_file_name(Globals, ModuleName, FactTableName, ObjExt,
-            do_create_dirs, FactTableObjectFile, !IO),
+        fact_table_file_name(Globals, do_create_dirs, ObjExt,
+            FactTableName, FactTableObjectFile, !IO),
         TouchedFileNames = [FactTableObjectFile]
     ).
 
@@ -1094,7 +1083,6 @@ external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles,
 
     maybe_pic_object_file_extension(Globals, PIC, ObjExt),
     globals.get_target(Globals, CompilationTarget),
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
 
     % None of the current backends require externally compiled foreign code,
     % except the C backend for fact tables.
@@ -1102,7 +1090,8 @@ external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles,
         CompilationTarget = target_c,
         module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
         list.map_foldl(
-            get_fact_table_foreign_code_file(Globals, ObjExt, ModuleName),
+            get_fact_table_foreign_code_file(Globals, do_not_create_dirs,
+                ObjExt),
             FactDeps, FactTableForeignFiles, !IO),
         ForeignFiles = FactTableForeignFiles
     ;
@@ -1113,18 +1102,18 @@ external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles,
         ForeignFiles = []
     ).
 
-:- pred get_fact_table_foreign_code_file(globals::in, string::in,
-    module_name::in, file_name::in, foreign_code_file::out,
-    io::di, io::uo) is det.
+:- pred get_fact_table_foreign_code_file(globals::in, maybe_create_dirs::in,
+    ext::in, file_name::in, foreign_code_file::out, io::di, io::uo) is det.
 
-get_fact_table_foreign_code_file(Globals, ObjExt, ModuleName, FactTableFile,
-        FactTableForeignFile, !IO) :-
-    fact_table_file_name(Globals, ModuleName, FactTableFile,
-        ".c", do_not_create_dirs, FactTableCFile, !IO),
-    fact_table_file_name(Globals, ModuleName, FactTableFile,
-        ObjExt, do_not_create_dirs, FactTableObjFile, !IO),
-    FactTableForeignFile =
-        foreign_code_file(lang_c, FactTableCFile, FactTableObjFile).
+get_fact_table_foreign_code_file(Globals, Mkdir, ObjExt, FactTableFileName,
+        ForeignCodeFile, !IO) :-
+    % XXX EXT Neither of these calls should be needed.
+    fact_table_file_name(Globals, Mkdir, ext(".c"),
+        FactTableFileName, FactTableCFileName, !IO),
+    fact_table_file_name(Globals, Mkdir, ObjExt,
+        FactTableFileName, FactTableObjFileName, !IO),
+    ForeignCodeFile =
+        foreign_code_file(lang_c, FactTableCFileName, FactTableObjFileName).
 
 :- func target_type_to_pic(module_target_type) = pic.
 

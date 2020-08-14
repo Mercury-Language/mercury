@@ -128,7 +128,7 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         ModuleName, !Info, !IO) :-
     !Info ^ rci_module_name := ModuleName,
     !Info ^ rci_sub_modules := [],
-    module_name_to_file_name(Globals, do_not_create_dirs, ".used",
+    module_name_to_file_name(Globals, do_not_create_dirs, ext(".used"),
         ModuleName, UsageFileName, !IO),
     io.open_input(UsageFileName, MaybeVersionStream, !IO),
     (

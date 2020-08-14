@@ -118,7 +118,7 @@
 ].
 
 :- pred mmc_module_name_to_read_file_name(globals::in, module_name::in,
-    string::in, maybe_error(string)::out, io::di, io::uo) is det.
+    ext::in, maybe_error(string)::out, io::di, io::uo) is det.
 
 mmc_module_name_to_read_file_name(Globals, ModuleName, Ext, MaybeFileName,
         !IO) :-
@@ -127,7 +127,7 @@ mmc_module_name_to_read_file_name(Globals, ModuleName, Ext, MaybeFileName,
     search_for_file(Dirs, FileName0, MaybeFileName, !IO).
 
 :- pred mmc_module_name_to_write_file_name(globals::in, module_name::in,
-    string::in, string::out, io::di, io::uo) is det.
+    ext::in, string::out, io::di, io::uo) is det.
 
 mmc_module_name_to_write_file_name(Globals, ModuleName, Ext, FileName, !IO) :-
     module_name_to_file_name(Globals, do_create_dirs, Ext,

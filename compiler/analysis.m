@@ -30,6 +30,8 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.file_names.
 
 :- import_module bool.
 :- import_module io.
@@ -56,14 +58,14 @@
     %   MaybeFileName)
     %
     pred module_name_to_read_file_name(Compiler::in, globals::in,
-        module_name::in, string::in, maybe_error(string)::out,
+        module_name::in, ext::in, maybe_error(string)::out,
         io::di, io::uo) is det,
 
     % module_name_to_write_file_name(Compiler, Globals, ModuleName, Ext,
     %   FileName)
     %
     pred module_name_to_write_file_name(Compiler::in, globals::in,
-        module_name::in, string::in, string::out, io::di, io::uo) is det
+        module_name::in, ext::in, string::out, io::di, io::uo) is det
 ].
 
 :- type analysis_name == string.
@@ -319,7 +321,6 @@
 :- include_module analysis.file.
 
 :- import_module analysis.file.
-:- import_module parse_tree.                % XXX unwanted dependency
 :- import_module parse_tree.module_cmds.    % XXX unwanted dependency
 
 :- import_module map.
@@ -1290,7 +1291,7 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
     % Touch a timestamp file to indicate the last time that this module was
     % analysed.
     module_name_to_write_file_name(Compiler, Globals, ThisModule,
-        ".analysis_date", TimestampFileName, !IO),
+        ext(".analysis_date"), TimestampFileName, !IO),
     touch_datestamp(Globals, TimestampFileName, !IO).
 
 :- pred load_module_imdg(globals::in, module_name::in,

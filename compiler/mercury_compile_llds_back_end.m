@@ -835,7 +835,7 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     (
         Lang = lang_c,
-        module_name_to_search_file_name(Globals, ".mh",
+        module_name_to_search_file_name(Globals, ext(".mh"),
             ModuleName, HeaderFileName, !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
@@ -885,7 +885,7 @@ llds_c_to_obj(Globals, ErrorStream, ModuleName, Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(Globals, PIC, Obj),
-    module_name_to_file_name(Globals, do_not_create_dirs, ".c",
+    module_name_to_file_name(Globals, do_not_create_dirs, ext(".c"),
         ModuleName, C_File, !IO),
     module_name_to_file_name(Globals, do_create_dirs, Obj,
         ModuleName, O_File, !IO),
@@ -901,7 +901,7 @@ compile_fact_table_file(Globals, ErrorStream, BaseName, O_File, Succeeded,
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(Globals, PIC, Obj),
     C_File = BaseName ++ ".c",
-    O_File = BaseName ++ Obj,
+    O_File = BaseName ++ extension_to_string(Obj),
     compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
         C_File, O_File, Succeeded, !IO).
 

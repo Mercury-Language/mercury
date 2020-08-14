@@ -166,7 +166,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
     % leading to an infinite loop. Just using module_name_to_file_name
     % will fail if the module name doesn't match the file name, but
     % that case is handled below.
-    module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+    module_name_to_file_name(Globals, do_not_create_dirs, ext(".m"),
         ModuleName, SourceFileName, !IO),
     get_file_timestamp([dir.this_directory], SourceFileName,
         MaybeSourceFileTimestamp, !Info, !IO),
@@ -832,7 +832,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 Globals, UnredirectGlobals),
             unredirect_output(UnredirectGlobals, ModuleName, ErrorStream,
                 !Info, !IO),
-            module_name_to_file_name(Globals, do_not_create_dirs, ".err",
+            module_name_to_file_name(Globals, do_not_create_dirs, ext(".err"),
                 ModuleName, ErrFileName, !IO),
             io.remove_file(ErrFileName, _, !IO),
 

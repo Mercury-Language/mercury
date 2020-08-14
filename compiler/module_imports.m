@@ -513,6 +513,9 @@
                 mai_indirect_deps       :: set(module_name),
 
                 % The list of filenames for fact tables in this module.
+                % Each is the name of the file containing the source of
+                % the fact table. The compiler will add the .c and .o,
+                % .pic_o etc suffixes as needed.
                 mai_fact_table_deps     :: list(string),
 
                 % The information from `:- pragma foreign_import_module'

@@ -21,6 +21,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module parse_tree.file_names.
 
 :- import_module bool.
 :- import_module list.
@@ -83,7 +84,7 @@
     % Touch the datestamp file `ModuleName.Ext'. Datestamp files are used
     % to record when each of the interface files was last updated.
     %
-:- pred touch_interface_datestamp(globals::in, module_name::in, string::in,
+:- pred touch_interface_datestamp(globals::in, module_name::in, ext::in,
     io::di, io::uo) is det.
 
     % touch_datestamp(Globals, FileName, !IO):
@@ -208,7 +209,6 @@
 :- import_module libs.compute_grade.    % for grade_directory_component
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.java_names.
 
 :- import_module dir.
@@ -784,7 +784,7 @@ use_win32 :-
 %
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
-    Ext = ".jar",
+    Ext = ext(".jar"),
     module_name_to_file_name(Globals, do_not_create_dirs, Ext,
         MainModuleName, JarFileName, !IO),
     get_target_env_type(Globals, TargetEnvType),
@@ -1075,8 +1075,8 @@ create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
 
 write_erlang_shell_script(Globals, MainModuleName, Stream, !IO) :-
     globals.lookup_string_option(Globals, erlang_object_file_extension,
-        BeamExt),
-    module_name_to_file_name(Globals, do_not_create_dirs, BeamExt,
+        BeamExtStr),
+    module_name_to_file_name(Globals, do_not_create_dirs, ext(BeamExtStr),
         MainModuleName, BeamFileName, !IO),
     BeamDirName = dir.dirname(BeamFileName),
     module_name_to_file_name_stem(MainModuleName, BeamBaseNameNoExt),
@@ -1138,8 +1138,8 @@ write_erlang_batch_file(Globals, MainModuleName, Stream, !IO) :-
     % XXX It should be possible to avoid some of the code duplication with
     % the Unix version above.
     globals.lookup_string_option(Globals, erlang_object_file_extension,
-        BeamExt),
-    module_name_to_file_name(Globals, do_not_create_dirs, BeamExt,
+        BeamExtStr),
+    module_name_to_file_name(Globals, do_not_create_dirs, ext(BeamExtStr),
         MainModuleName, BeamFileName, !IO),
     BeamDirName = dir.dirname(BeamFileName),
     module_name_to_file_name_stem(MainModuleName, BeamBaseNameNoExt),
@@ -1197,8 +1197,8 @@ write_erlang_batch_file(Globals, MainModuleName, Stream, !IO) :-
 find_erlang_library_path(Globals, MercuryLibDirs, LibName, LibPath, !IO) :-
     file_name_to_module_name(LibName, LibModuleName),
     globals.set_option(use_grade_subdirs, bool(no), Globals, NoSubdirsGlobals),
-    module_name_to_lib_file_name(NoSubdirsGlobals, "lib", LibModuleName,
-        ".beams", do_not_create_dirs, LibFileName, !IO),
+    module_name_to_lib_file_name(NoSubdirsGlobals, do_not_create_dirs,
+        "lib", ext(".beams"), LibModuleName, LibFileName, !IO),
 
     search_for_file_returning_dir(MercuryLibDirs, LibFileName, MaybeDirName,
         !IO),
@@ -1236,8 +1236,7 @@ pa_option(BreakLines, Quote, Dir0) = Option :-
 %-----------------------------------------------------------------------------%
 
 create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
-    Extension = "",
-    module_name_to_file_name(Globals, do_create_dirs, Extension,
+    module_name_to_file_name(Globals, do_create_dirs, ext(""),
         MainModuleName, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -1275,8 +1274,7 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
 %-----------------------------------------------------------------------------%
 
 create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
-    Extension = ".bat",
-    module_name_to_file_name(Globals, do_create_dirs, Extension,
+    module_name_to_file_name(Globals, do_create_dirs, ext(".bat"),
         MainModuleName, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),

@@ -228,9 +228,8 @@ fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
     io.see(FileName, SeeResult, !IO),
     (
         SeeResult = ok,
-        module_info_get_name(ModuleInfo, ModuleName),
-        fact_table_file_name(Globals, ModuleName, FileName, ".c",
-            do_create_dirs, OutputFileName, !IO),
+        fact_table_file_name(Globals, do_create_dirs, ext(".c"),
+            FileName, OutputFileName, !IO),
         io.open_output(OutputFileName, OpenResult, !IO),
         (
             OpenResult = ok(OutputStream),

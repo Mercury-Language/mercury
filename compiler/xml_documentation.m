@@ -90,7 +90,7 @@
 xml_documentation(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, do_create_dirs, ".xml",
+    module_name_to_file_name(Globals, do_create_dirs, ext(".xml"),
         ModuleName, FileName, !IO),
 
     lookup_module_source_file(ModuleName, MaybeSrcFileName, !IO),

@@ -80,7 +80,7 @@ search_for_module_source(Globals, Dirs, ModuleName, MaybeFileName, !IO) :-
 
 search_for_module_source_and_stream(Globals, Dirs, ModuleName,
         MaybeFileNameAndStream, !IO) :-
-    module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+    module_name_to_file_name(Globals, do_not_create_dirs, ext(".m"),
         ModuleName, FileName0, !IO),
     search_for_file_and_stream(Dirs, FileName0, MaybeFileNameAndStream0, !IO),
     (

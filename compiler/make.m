@@ -27,6 +27,7 @@
 :- import_module libs.globals.
 :- import_module make.options_file.
 :- import_module parse_tree.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.
 
 :- import_module io.
@@ -45,7 +46,7 @@
 :- pred make_write_module_dep_file(globals::in, module_and_imports::in,
     io::di, io::uo) is det.
 
-:- func make_module_dep_file_extension = string.
+:- func make_module_dep_file_extension = ext.
 
 %-----------------------------------------------------------------------------%
 
@@ -81,7 +82,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.read_modules.
 
 :- import_module bool.
@@ -112,7 +112,7 @@
                 file_timestamps         :: file_timestamps,
 
                 % Cache chosen file names for a module name and extension.
-                search_file_name_cache  :: map(pair(module_name, string),
+                search_file_name_cache  :: map(pair(module_name, ext),
                                             file_name),
 
                 % Any flags required to set detected library grades.
@@ -286,7 +286,7 @@
 make_write_module_dep_file(Globals, Imports, !IO) :-
     make.module_dep_file.write_module_dep_file(Globals, Imports, !IO).
 
-make_module_dep_file_extension = ".module_dep".
+make_module_dep_file_extension = ext(".module_dep").
 
 %-----------------------------------------------------------------------------%
 
@@ -483,62 +483,62 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 :- pred classify_target_2(globals::in, string::in, string::in,
     pair(module_name, target_type)::out) is nondet.
 
-classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
+classify_target_2(Globals, ModuleNameStr0, ExtStr, ModuleName - TargetType) :-
     ( if
-        yes(Suffix) = target_extension(Globals, ModuleTargetType),
+        target_extension(Globals, ModuleTargetType, yes(ext(ExtStr))),
         % The .cs extension was used to build all C target files, but .cs is
         % also the file name extension for a C# file. The former use is being
         % migrated over to the .all_cs target but we still accept it for now.
         % NOTE This workaround is still in use as of 2020 may 23, even though
         % it was added in 2010,
-        Suffix \= ".cs"
+        ExtStr \= ".cs"
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
     else if
-        target_extension_synonym(Suffix, ModuleTargetType)
+        target_extension_synonym(ExtStr, ModuleTargetType)
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
     else if
-        globals.lookup_string_option(Globals, library_extension, Suffix),
+        globals.lookup_string_option(Globals, library_extension, ExtStr),
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
     then
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(static_library)
     else if
         globals.lookup_string_option(Globals, shared_library_extension,
-            Suffix),
+            ExtStr),
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
     then
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(shared_library)
     else if
         globals.lookup_string_option(Globals, executable_file_extension,
-            Suffix)
+            ExtStr)
     then
         ModuleNameStr = ModuleNameStr0,
         ExecutableType = get_executable_type(Globals),
         TargetType = linked_target(ExecutableType)
     else if
-        Suffix = ".beams",
+        ExtStr = ".beams",
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
     then
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(erlang_archive)
     else if
         (
-            string.append(".all_", Rest, Suffix),
-            string.append(DotlessSuffix1, "s", Rest),
-            Suffix1 = "." ++ DotlessSuffix1
+            string.append(".all_", Rest, ExtStr),
+            string.append(DotlessExtStr1, "s", Rest),
+            ExtStr1 = "." ++ DotlessExtStr1
         ;
             % Deprecated.
-            string.append(Suffix1, "s", Suffix)
+            string.append(ExtStr1, "s", ExtStr)
         ),
         (
-            yes(Suffix1) = target_extension(Globals, ModuleTargetType)
+            target_extension(Globals, ModuleTargetType, yes(ext(ExtStr1)))
         ;
-            target_extension_synonym(Suffix1, ModuleTargetType)
+            target_extension_synonym(ExtStr1, ModuleTargetType)
         ),
         % Not yet implemented. `build_all' targets are only used by
         % tools/bootcheck, so it doesn't really matter.
@@ -547,33 +547,33 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_all(ModuleTargetType))
     else if
-        Suffix = ".check"
+        ExtStr = ".check"
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_all(module_target_errors))
     else if
-        Suffix = ".analyse"
+        ExtStr = ".analyse"
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_analyses)
     else if
-        Suffix = ".clean"
+        ExtStr = ".clean"
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_clean)
     else if
-        Suffix = ".realclean"
+        ExtStr = ".realclean"
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_realclean)
     else if
-        Suffix = ".install",
+        ExtStr = ".install",
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
     then
         ModuleNameStr = ModuleNameStr1,
         TargetType = misc_target(misc_target_install_library)
     else if
-        Suffix = ".doc"
+        ExtStr = ".doc"
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_xml_docs)
@@ -669,7 +669,7 @@ make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
-        module_name_to_file_name(Globals, do_create_dirs, ".track_flags",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".track_flags"),
             ModuleName, HashFileName, !IO),
         compare_hash_file(Globals, HashFileName, Hash, Same, !IO),
         (

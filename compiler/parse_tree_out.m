@@ -968,6 +968,7 @@ mercury_output_int_section_marker(IntSection, !IO) :-
     (
         IntSection = ims_imported_or_used(ModuleName, IntFileKind,
             ImportLocn, ImportedOrUsed),
+        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
         (
             ImportedOrUsed = iou_imported,
             io.write_string(":- ims_imported", !IO)
@@ -980,15 +981,16 @@ mercury_output_int_section_marker(IntSection, !IO) :-
         ),
         io.write_string("(", !IO),
         io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
+        io.write_string(ExtStr, !IO),
         io.write_string(", ", !IO),
         io.write(ImportLocn, !IO),
         io.write_string(").\n", !IO)
     ;
         IntSection = ims_abstract_imported(ModuleName, IntFileKind),
+        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
         io.write_string(":- ims_abstract_imported(", !IO),
         io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
+        io.write_string(ExtStr, !IO),
         io.write_string(").\n", !IO)
     ).
 
@@ -998,9 +1000,10 @@ mercury_output_int_section_marker(IntSection, !IO) :-
 mercury_output_opt_section_marker(OptSection, !IO) :-
     (
         OptSection = oms_opt_imported(ModuleName, OptFileKind),
+        opt_file_kind_to_extension(OptFileKind, ExtStr, _Ext),
         io.write_string(":- oms_opt_imported(", !IO),
         io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(opt_file_kind_to_extension(OptFileKind), !IO),
+        io.write_string(ExtStr, !IO),
         io.write_string(").\n", !IO)
     ).
 
@@ -1010,9 +1013,10 @@ mercury_output_opt_section_marker(OptSection, !IO) :-
 mercury_output_int_for_opt_section_marker(IntForOptSection, !IO) :-
     (
         IntForOptSection = ioms_opt_imported(ModuleName, IntFileKind),
+        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
         io.write_string(":- ioms_opt_imported(", !IO),
         io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
+        io.write_string(ExtStr, !IO),
         io.write_string(").\n", !IO)
     ).
 

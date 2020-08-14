@@ -390,7 +390,7 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
 
     module_info_get_name(!.HLDS, ModuleName),
-    module_name_to_file_name(Globals, do_create_dirs, ".trans_opt.tmp",
+    module_name_to_file_name(Globals, do_create_dirs, ext(".trans_opt.tmp"),
         ModuleName, TmpOptName, !IO),
     io.open_output(TmpOptName, TmpOptResult, !IO),
     (
@@ -405,10 +405,11 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
         write_trans_opt_file(TmpOptStream, !.HLDS, ParseTreeTransOpt, !IO),
         io.close_output(TmpOptStream, !IO),
 
-        module_name_to_file_name(Globals, do_not_create_dirs, ".trans_opt",
-            ModuleName, OptName, !IO),
+        module_name_to_file_name(Globals, do_not_create_dirs,
+            ext(".trans_opt"), ModuleName, OptName, !IO),
         update_interface(Globals, OptName, !IO),
-        touch_interface_datestamp(Globals, ModuleName, ".trans_opt_date", !IO),
+        touch_interface_datestamp(Globals, ModuleName,
+            ext(".trans_opt_date"), !IO),
 
         globals.lookup_bool_option(Globals, experiment5, Experiment5),
         (
@@ -744,7 +745,7 @@ maybe_bytecodes(HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         module_info_get_name(HLDS1, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ".bytedebug",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".bytedebug"),
             ModuleName, BytedebugFile, !IO),
         maybe_write_string(Verbose, "% Writing bytecodes to `", !IO),
         maybe_write_string(Verbose, BytedebugFile, !IO),
@@ -752,7 +753,7 @@ maybe_bytecodes(HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
         maybe_flush_output(Verbose, !IO),
         debug_bytecode_file(BytedebugFile, Bytecode, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
-        module_name_to_file_name(Globals, do_create_dirs, ".mbc",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".mbc"),
             ModuleName, BytecodeFile, !IO),
         maybe_write_string(Verbose, "% Writing bytecodes to `", !IO),
         maybe_write_string(Verbose, BytecodeFile, !IO),

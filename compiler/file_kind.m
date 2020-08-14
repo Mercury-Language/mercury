@@ -14,6 +14,8 @@
 :- module parse_tree.file_kind.
 :- interface.
 
+:- import_module parse_tree.file_names.
+
 %-----------------------------------------------------------------------------%
 %
 % The different kinds of files that the frontend of the Mercury compiler
@@ -46,9 +48,11 @@
     --->    ofk_opt
     ;       ofk_trans_opt.
 
-:- func file_kind_to_extension(file_kind) = string.
-:- func int_file_kind_to_extension(int_file_kind) = string.
-:- func opt_file_kind_to_extension(opt_file_kind) = string.
+:- pred file_kind_to_extension(file_kind::in, string::out, ext::out) is det.
+:- pred int_file_kind_to_extension(int_file_kind::in,
+    string::out, ext::out) is det.
+:- pred opt_file_kind_to_extension(opt_file_kind::in,
+    string::out, ext::out) is det.
 
 :- pred extension_to_file_kind(string::in, file_kind::out) is semidet.
 
@@ -56,41 +60,41 @@
 
 :- implementation.
 
-file_kind_to_extension(fk_src) = ".m".
-file_kind_to_extension(fk_int(IntFileKind)) =
-    int_file_kind_to_extension(IntFileKind).
-file_kind_to_extension(fk_opt(OptFileKind)) =
-    opt_file_kind_to_extension(OptFileKind).
+file_kind_to_extension(fk_src, ".m", ext(".m")).
+file_kind_to_extension(fk_int(IntFileKind), ExtStr, Ext) :-
+    int_file_kind_to_extension(IntFileKind, ExtStr, Ext).
+file_kind_to_extension(fk_opt(OptFileKind), ExtStr, Ext) :-
+    opt_file_kind_to_extension(OptFileKind, ExtStr, Ext).
 
-int_file_kind_to_extension(ifk_int0) = ".int0".
-int_file_kind_to_extension(ifk_int2) = ".int2".
-int_file_kind_to_extension(ifk_int3) = ".int3".
-int_file_kind_to_extension(ifk_int1) = ".int".
+int_file_kind_to_extension(ifk_int0, ".int0", ext(".int0")).
+int_file_kind_to_extension(ifk_int2, ".int2", ext(".int2")).
+int_file_kind_to_extension(ifk_int3, ".int3", ext(".int3")).
+int_file_kind_to_extension(ifk_int1, ".int", ext(".int")).
 
-opt_file_kind_to_extension(ofk_opt) = ".opt".
-opt_file_kind_to_extension(ofk_trans_opt) = ".trans_opt".
+opt_file_kind_to_extension(ofk_opt, ".opt", ext(".opt")).
+opt_file_kind_to_extension(ofk_trans_opt, ".trans_opt", ext(".trans_opt")).
 
-extension_to_file_kind(Extension, FileKind) :-
+extension_to_file_kind(ExtStr, FileKind) :-
     (
-        Extension = ".m",
+        ExtStr = ".m",
         FileKind = fk_src
     ;
-        Extension = ".int0",
+        ExtStr = ".int0",
         FileKind = fk_int(ifk_int0)
     ;
-        Extension = ".int3",
+        ExtStr = ".int3",
         FileKind = fk_int(ifk_int3)
     ;
-        Extension = ".int2",
+        ExtStr = ".int2",
         FileKind = fk_int(ifk_int2)
     ;
-        Extension = ".int",
+        ExtStr = ".int",
         FileKind = fk_int(ifk_int1)
     ;
-        Extension = ".opt",
+        ExtStr = ".opt",
         FileKind = fk_opt(ofk_opt)
     ;
-        Extension = ".trans_opt",
+        ExtStr = ".trans_opt",
         FileKind = fk_opt(ofk_trans_opt)
     ).
 

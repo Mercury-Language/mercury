@@ -19,6 +19,9 @@
 :- import_module libs.
 :- import_module libs.globals.
 
+:- import_module parse_tree.
+:- import_module parse_tree.file_names.
+
 %-----------------------------------------------------------------------------%
 %
 % Timestamp handling.
@@ -92,7 +95,7 @@
     %   !Info, !IO).
     %
 :- pred make_remove_module_file(globals::in, option::in, module_name::in,
-    string::in, make_info::in, make_info::out, io::di, io::uo) is det.
+    ext::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- pred make_remove_file(globals::in, option::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -105,9 +108,11 @@
 :- func make_dependency_list(list(module_name), module_target_type)
     = list(dependency_file).
 
-:- func target_extension(globals, module_target_type) = maybe(string).
-:- mode target_extension(in, in) = out is det.
-:- mode target_extension(in, out) = in(bound(yes(ground))) is nondet.
+    % XXX The second mode is needed only by code in classify_target_2,
+    % code that should be replaced.
+:- pred target_extension(globals, module_target_type, maybe(ext)).
+:- mode target_extension(in, in, out) is det.
+:- mode target_extension(in, out, in(bound(yes(ground)))) is nondet.
 
 :- pred target_extension_synonym(string::in, module_target_type::out)
     is semidet.
@@ -118,7 +123,7 @@
     % Find the extension for the timestamp file for the given target type,
     % if one exists.
     %
-:- pred timestamp_extension(module_target_type::in, string::out) is semidet.
+:- pred timestamp_extension(module_target_type::in, ext::out) is semidet.
 
 :- pred target_is_grade_or_arch_dependent(module_target_type::in) is semidet.
 
@@ -226,8 +231,6 @@
 :- import_module analysis.
 :- import_module libs.handle_options.
 :- import_module make.build.
-:- import_module parse_tree.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -313,7 +316,8 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
 get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
         MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(ModuleName, _TargetType),
-    ( if MaybeTimestamp0 = !.Info ^ file_timestamps ^ elem(FileName) then
+    FileTimestamps0 = !.Info ^ file_timestamps,
+    ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
         MaybeTimestamp = MaybeTimestamp0
     else
         do_read_module_overall_status(mmc, Globals, ModuleName, Status, !IO),
@@ -326,7 +330,9 @@ get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
         ;
             Status = invalid,
             MaybeTimestamp = error("invalid module"),
-            !Info ^ file_timestamps ^ elem(FileName) := MaybeTimestamp
+            map.det_insert(FileName, MaybeTimestamp,
+                FileTimestamps0, FileTimestamps),
+            !Info ^ file_timestamps := FileTimestamps
         )
     ).
 
@@ -365,8 +371,9 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
             ModuleDir \= dir.this_directory
         then
             MaybeTimestamp = ok(oldest_timestamp),
-            !:Info = !.Info ^ file_timestamps ^ elem(FileName)
-                := MaybeTimestamp
+            FileTimestamps0 = !.Info ^ file_timestamps,
+            map.set(FileName, MaybeTimestamp, FileTimestamps0, FileTimestamps),
+            !Info ^ file_timestamps := FileTimestamps
         else
             MaybeTimestamp = MaybeTimestamp0
         )
@@ -392,11 +399,11 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
 
             % Something has gone wrong generating the dependencies,
             % so just take a punt (which probably won't work).
-            module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+            module_name_to_file_name(Globals, do_not_create_dirs, ext(".m"),
                 ModuleName, FileName, !IO)
         )
     else
-        MaybeExt = target_extension(Globals, TargetType),
+        target_extension(Globals, TargetType, MaybeExt),
         (
             MaybeExt = yes(Ext),
             (
@@ -416,23 +423,26 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
         )
     ).
 
-:- pred module_name_to_search_file_name_cache(globals::in, string::in,
+:- pred module_name_to_search_file_name_cache(globals::in, ext::in,
     module_name::in, string::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 module_name_to_search_file_name_cache(Globals, Ext, ModuleName, FileName,
         !Info, !IO) :-
     Key = ModuleName - Ext,
-    ( if map.search(!.Info ^ search_file_name_cache, Key, FileName0) then
+    Cache0 = !.Info ^ search_file_name_cache,
+    ( if map.search(Cache0, Key, FileName0) then
         FileName = FileName0
     else
         module_name_to_search_file_name(Globals, Ext, ModuleName, FileName,
             !IO),
-        !Info ^ search_file_name_cache ^ elem(Key) := FileName
+        map.det_insert(Key, FileName, Cache0, Cache),
+        !Info ^ search_file_name_cache := Cache
     ).
 
 get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
-    ( if MaybeTimestamp0 = !.Info ^ file_timestamps ^ elem(FileName) then
+    FileTimestamps0 = !.Info ^ file_timestamps,
+    ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
         MaybeTimestamp = MaybeTimestamp0
     else
         search_for_file_mod_time(SearchDirs, FileName, SearchResult, !IO),
@@ -440,7 +450,9 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
             SearchResult = ok(TimeT),
             Timestamp = time_t_to_timestamp(TimeT),
             MaybeTimestamp = ok(Timestamp),
-            !Info ^ file_timestamps ^ elem(FileName) := MaybeTimestamp
+            map.det_insert(FileName, MaybeTimestamp,
+                FileTimestamps0, FileTimestamps),
+            !Info ^ file_timestamps := FileTimestamps
         ;
             SearchResult = error(_),
             MaybeTimestamp = error("file `" ++ FileName ++ "' not found")
@@ -525,70 +537,70 @@ make_dependency_list(ModuleNames, TargetType) =
     list.map((func(Module) = dep_target(target_file(Module, TargetType))),
         ModuleNames).
 
-target_extension(Globals, Target) = MaybeExt :-
+target_extension(Globals, Target, MaybeExt) :-
     disable_warning [no_solution_disjunct]
     (
         Target = module_target_source,
-        MaybeExt = yes(".m")
+        MaybeExt = yes(ext(".m"))
     ;
         Target = module_target_errors,
-        MaybeExt = yes(".err")
+        MaybeExt = yes(ext(".err"))
     ;
         Target = module_target_int0,
-        MaybeExt = yes(".int0")
+        MaybeExt = yes(ext(".int0"))
     ;
         Target = module_target_int1,
-        MaybeExt = yes(".int")
+        MaybeExt = yes(ext(".int"))
     ;
         Target = module_target_int2,
-        MaybeExt = yes(".int2")
+        MaybeExt = yes(ext(".int2"))
     ;
         Target = module_target_int3,
-        MaybeExt = yes(".int3")
+        MaybeExt = yes(ext(".int3"))
     ;
         Target = module_target_opt,
-        MaybeExt = yes(".opt")
+        MaybeExt = yes(ext(".opt"))
     ;
         Target = module_target_analysis_registry,
-        MaybeExt = yes(".analysis")
+        MaybeExt = yes(ext(".analysis"))
     ;
         Target = module_target_track_flags,
-        MaybeExt = yes(".track_flags")
+        MaybeExt = yes(ext(".track_flags"))
     ;
         Target = module_target_c_header(header_mih),
-        MaybeExt = yes(".mih")
+        MaybeExt = yes(ext(".mih"))
     ;
         Target = module_target_c_header(header_mh),
-        MaybeExt = yes(".mh")
+        MaybeExt = yes(ext(".mh"))
     ;
         Target = module_target_c_code,
-        MaybeExt = yes(".c")
+        MaybeExt = yes(ext(".c"))
     ;
         Target = module_target_csharp_code,
         % XXX ".exe" if the module contains main.
-        MaybeExt = yes(".cs")
+        MaybeExt = yes(ext(".cs"))
     ;
         Target = module_target_java_code,
-        MaybeExt = yes(".java")
+        MaybeExt = yes(ext(".java"))
     ;
         Target = module_target_java_class_code,
-        MaybeExt = yes(".class")
+        MaybeExt = yes(ext(".class"))
     ;
         Target = module_target_erlang_header,
-        MaybeExt = yes(".hrl")
+        MaybeExt = yes(ext(".hrl"))
     ;
         Target = module_target_erlang_code,
-        MaybeExt = yes(".erl")
+        MaybeExt = yes(ext(".erl"))
     ;
         Target = module_target_erlang_beam_code,
-        MaybeExt = yes(".beam")
+        MaybeExt = yes(ext(".beam"))
     ;
         Target = module_target_object_code(PIC),
         maybe_pic_object_file_extension(Globals, PIC, Ext),
         MaybeExt = yes(Ext)
     ;
         Target = module_target_xml_doc,
-        MaybeExt = yes(".xml")
+        MaybeExt = yes(ext(".xml"))
     ;
         % These all need to be handled as special cases.
         ( Target = module_target_foreign_object(_, _)
@@ -605,43 +617,43 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (
         TargetType = executable,
         globals.lookup_string_option(Globals, executable_file_extension, Ext),
-        module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+        module_name_to_file_name(Globals, do_not_create_dirs, ext(Ext),
             ModuleName, FileName, !IO)
     ;
         TargetType = static_library,
         globals.lookup_string_option(Globals, library_extension, Ext),
-        module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_lib_file_name(Globals, do_not_create_dirs,
+            "lib", ext(Ext), ModuleName, FileName, !IO)
     ;
         TargetType = shared_library,
         globals.lookup_string_option(Globals, shared_library_extension, Ext),
-        module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_lib_file_name(Globals, do_not_create_dirs,
+            "lib", ext(Ext), ModuleName, FileName, !IO)
     ;
         TargetType = csharp_executable,
-        module_name_to_file_name(Globals, do_not_create_dirs, ".exe",
+        module_name_to_file_name(Globals, do_not_create_dirs, ext(".exe"),
             ModuleName, FileName, !IO)
     ;
         TargetType = csharp_library,
-        module_name_to_file_name(Globals, do_not_create_dirs, ".dll",
+        module_name_to_file_name(Globals, do_not_create_dirs, ext(".dll"),
             ModuleName, FileName, !IO)
     ;
         TargetType = erlang_launcher,
         % These are shell scripts.
         % XXX Shouldn't the extension be ".bat" when --target-env-type
         % is windows?
-        module_name_to_file_name(Globals, do_not_create_dirs, "",
+        module_name_to_file_name(Globals, do_not_create_dirs, ext(""),
             ModuleName, FileName, !IO)
     ;
         ( TargetType = java_archive
         ; TargetType = java_executable
         ),
-        module_name_to_file_name(Globals, do_not_create_dirs, ".jar",
+        module_name_to_file_name(Globals, do_not_create_dirs, ext(".jar"),
             ModuleName, FileName, !IO)
     ;
         TargetType = erlang_archive,
-        module_name_to_lib_file_name(Globals, "lib", ModuleName, ".beams",
-            do_not_create_dirs, FileName, !IO)
+        module_name_to_lib_file_name(Globals, do_not_create_dirs,
+            "lib", ext(".beams"), ModuleName, FileName, !IO)
     ).
 
 :- pred module_target_to_file_name(globals::in, maybe_create_dirs::in,
@@ -659,7 +671,7 @@ module_target_to_file_name(Globals, MkDir, TargetType, ModuleName, FileName,
 
 module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
         ModuleName, FileName, !IO) :-
-    target_extension(Globals, TargetType) = MaybeExt,
+    target_extension(Globals, TargetType, MaybeExt),
     (
         MaybeExt = yes(Ext),
         (
@@ -688,8 +700,7 @@ module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
         ;
             TargetType = module_target_fact_table_object(PIC, FactFile),
             maybe_pic_object_file_extension(Globals, PIC, Ext),
-            fact_table_file_name(Globals, ModuleName, FactFile, Ext, MkDir,
-                FileName, !IO)
+            fact_table_file_name(Globals, MkDir, Ext, FactFile, FileName, !IO)
         ;
             ( TargetType = module_target_source
             ; TargetType = module_target_int0
@@ -715,55 +726,55 @@ module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
         )
     ).
 
-timestamp_extension(ModuleTargetType, Extension) :-
+timestamp_extension(ModuleTargetType, ext(ExtStr)) :-
     (
         ModuleTargetType = module_target_errors,
         % We need a timestamp file for `.err' files because errors are written
         % to the `.err' file even when writing interfaces. The timestamp
         % is only updated when compiling to target code.
-        Extension = ".err_date"
+        ExtStr = ".err_date"
     ;
         ModuleTargetType = module_target_int0,
-        Extension = ".date0"
+        ExtStr = ".date0"
     ;
         ModuleTargetType = module_target_int1,
-        Extension = ".date"
+        ExtStr = ".date"
     ;
         ModuleTargetType = module_target_int2,
-        Extension = ".date"
+        ExtStr = ".date"
     ;
         ModuleTargetType = module_target_int3,
-        Extension = ".date3"
+        ExtStr = ".date3"
     ;
         ModuleTargetType = module_target_opt,
-        Extension = ".optdate"
+        ExtStr = ".optdate"
     ;
         ModuleTargetType = module_target_analysis_registry,
         % We need a timestamp file for `.analysis' files because they
         % can be modified in the process of analysing _another_ module.
         % The timestamp is only updated after actually analysing the module
         % that the `.analysis' file corresponds to.
-        Extension = ".analysis_date"
+        ExtStr = ".analysis_date"
     ;
         % Header files share a timestamp file with their corresponding
         % target code files.
         ( ModuleTargetType = module_target_c_code
         ; ModuleTargetType = module_target_c_header(_)
         ),
-        Extension = ".c_date"
+        ExtStr = ".c_date"
     ;
         ModuleTargetType = module_target_csharp_code,
-        Extension = ".cs_date"
+        ExtStr = ".cs_date"
     ;
         ModuleTargetType = module_target_java_code,
-        Extension = ".java_date"
+        ExtStr = ".java_date"
     ;
         % Header files share a timestamp file with their corresponding
         % target code files.
         ( ModuleTargetType = module_target_erlang_code
         ; ModuleTargetType = module_target_erlang_header
         ),
-        Extension = ".erl_date"
+        ExtStr = ".erl_date"
     ).
 
 :- func search_for_file_type(module_target_type) = maybe(option).

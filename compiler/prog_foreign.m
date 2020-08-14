@@ -28,6 +28,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module mdbcomp.
@@ -121,14 +122,14 @@
     %
 :- func foreign_language_module_name(module_name, foreign_language) =
     module_name.
-:- mode foreign_language_module_name(in, in) = out is semidet.
 :- mode foreign_language_module_name(in, in(lang_gen_ext_file)) = out is det.
+:- mode foreign_language_module_name(in, in) = out is semidet.
 
     % The file extension used for this foreign language (including the dot).
     % Not all foreign languages generate external files,
     % so this function only succeeds for those that do.
     %
-:- func foreign_language_file_extension(foreign_language) = string.
+:- func foreign_language_file_extension(foreign_language) = ext.
 :- mode foreign_language_file_extension(in) = out is semidet.
 :- mode foreign_language_file_extension(in(lang_gen_ext_file)) = out is det.
 
@@ -182,8 +183,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module parse_tree.file_names.
 
 :- import_module char.
 :- import_module solutions.
@@ -268,9 +267,9 @@ foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-foreign_language_file_extension(lang_c) = ".c".
-foreign_language_file_extension(lang_csharp) = ".cs".
-foreign_language_file_extension(lang_java) = ".java".
+foreign_language_file_extension(lang_c) = ext(".c").
+foreign_language_file_extension(lang_csharp) = ext(".cs").
+foreign_language_file_extension(lang_java) = ext(".java").
 
 %-----------------------------------------------------------------------------%
 

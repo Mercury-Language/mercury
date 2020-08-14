@@ -908,7 +908,7 @@ maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
         runtime(env("LOG_AUGMENT_DECISION")), io(!TIO)]
     (
         ModuleNameStr = sym_name_to_string(ModuleName),
-        ExtensionStr = int_file_kind_to_extension(IntFileKind),
+        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
         WhyStr = string.string(ReadWhy),
         (
             Read = no,
@@ -918,8 +918,7 @@ maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
             ReadStr = "decided to read"
         ),
         io.format("AUGMENT_LOG %s, %s, %s, %s: %s\n",
-            [s(Why), s(ModuleNameStr), s(ExtensionStr), s(WhyStr), s(ReadStr)],
-            !TIO)
+            [s(Why), s(ModuleNameStr), s(ExtStr), s(WhyStr), s(ReadStr)], !TIO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2040,7 +2039,7 @@ read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
     maybe_write_string(VeryVerbose, "'...\n", !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    module_name_to_search_file_name(Globals, ".opt",
+    module_name_to_search_file_name(Globals, ext(".opt"),
         ModuleName, FileName, !IO),
     actually_read_module_plain_opt(Globals, FileName, ModuleName, [],
         ParseTreePlainOpt, OptSpecs, OptError, !IO),
@@ -2097,7 +2096,7 @@ read_trans_opt_file(Globals, VeryVerbose, ModuleName, FileName,
     maybe_write_string(VeryVerbose, Msg, !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    module_name_to_search_file_name(Globals, ".trans_opt",
+    module_name_to_search_file_name(Globals, ext(".trans_opt"),
         ModuleName, FileName, !IO),
     actually_read_module_trans_opt(Globals, FileName, ModuleName, [],
         ParseTreeTransOpt, TransOptSpecs, TransOptError, !IO),

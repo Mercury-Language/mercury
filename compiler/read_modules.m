@@ -500,14 +500,14 @@ read_module_int3(Globals, Descr, IgnoreErrors, Search, ModuleName,
 
 read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
         FileName0, VeryVerbose, SearchDirs, !IO) :-
-    Extension = file_kind_to_extension(FileKind),
+    file_kind_to_extension(FileKind, _ExtStr, Ext),
     (
         Search = do_search,
-        module_name_to_search_file_name(Globals, Extension,
+        module_name_to_search_file_name(Globals, Ext,
             ModuleName, FileName0, !IO)
     ;
         Search = do_not_search,
-        module_name_to_file_name(Globals, do_not_create_dirs, Extension,
+        module_name_to_file_name(Globals, do_not_create_dirs, Ext,
             ModuleName, FileName0, !IO)
     ),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),

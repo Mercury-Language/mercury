@@ -133,10 +133,11 @@ output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO) :-
 output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_file_name(Globals, do_create_dirs, ".c" ++ Suffix,
-        ModuleName, SourceFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ext(".c"),
+        ModuleName, SourceFileName0, !IO),
+    SourceFileName = SourceFileName0 ++ Suffix,
     Indent = 0,
-    output_to_file(Globals, SourceFile,
+    output_to_file(Globals, SourceFileName,
         mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_c_header_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
@@ -150,21 +151,21 @@ output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
 
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_file_name(Globals, do_create_dirs,
-        ".mih" ++ Suffix ++ ".tmp", ModuleName, TmpHeaderFile, !IO),
-    module_name_to_file_name(Globals, do_create_dirs,
-        ".mih" ++ Suffix, ModuleName, HeaderFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ext(".mih"),
+        ModuleName, MihFileName, !IO),
+    HeaderFileName = MihFileName ++ Suffix,
+    TmpHeaderFileName = HeaderFileName ++ ".tmp",
     globals.lookup_bool_option(Globals, line_numbers_for_c_headers,
         LineNumbersForCHdrs),
     HdrOpts = ((Opts
         ^ m2co_line_numbers := LineNumbersForCHdrs)
         ^ m2co_foreign_line_numbers := LineNumbersForCHdrs),
     Indent = 0,
-    output_to_file(Globals, TmpHeaderFile,
+    output_to_file(Globals, TmpHeaderFileName,
         mlds_output_hdr_file(HdrOpts, Indent, MLDS), Succeeded, !IO),
     (
         Succeeded = yes,
-        update_interface(Globals, HeaderFile, !IO)
+        update_interface(Globals, HeaderFileName, !IO)
     ;
         Succeeded = no
     ).
@@ -175,8 +176,9 @@ output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
-    module_name_to_file_name(Globals, do_create_dirs, ".mlds_dump" ++ Suffix,
-        ModuleName, DumpFileName, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ext(".mlds_dump"),
+        ModuleName, DumpBaseName, !IO),
+    DumpFileName = DumpBaseName ++ Suffix,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ProcDefns = MLDS ^ mlds_proc_defns,
     output_to_file(Globals, DumpFileName,
@@ -315,8 +317,8 @@ mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
 
 mlds_output_src_import(Opts, _Indent, Import, !IO) :-
     Import = mlds_import(ImportType, ModuleName0),
-    ( ImportType = user_visible_interface, HeaderExt = ".mh"
-    ; ImportType = compiler_visible_interface, HeaderExt = ".mih"
+    ( ImportType = user_visible_interface, HeaderExt = ext(".mh")
+    ; ImportType = compiler_visible_interface, HeaderExt = ext(".mih")
     ),
 
     % Strip off the "mercury" qualifier for standard library modules.
@@ -650,7 +652,7 @@ mlds_output_src_end(Indent, ModuleName, !IO) :-
 mlds_output_auto_gen_comment(Opts, ModuleName, !IO) :-
     library.version(Version, Fullarch),
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_file_name(Globals, do_not_create_dirs, ".m",
+    module_name_to_file_name(Globals, do_not_create_dirs, ext(".m"),
         ModuleName, SourceFileName, !IO),
     output_c_file_intro_and_grade(Globals, SourceFileName, Version,
         Fullarch, !IO),

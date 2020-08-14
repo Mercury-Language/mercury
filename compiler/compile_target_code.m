@@ -20,6 +20,7 @@
 :- import_module libs.globals.
 :- import_module libs.file_util.
 :- import_module parse_tree.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -180,7 +181,9 @@
     % should be used. The `(in, out, in)' mode guarantees that the returned
     % value of PIC meets this requirement.
     %
-:- pred maybe_pic_object_file_extension(globals, pic, string).
+    % XXX The second mode is needed only by target_extension, which itself
+    % is needed only by code that should be replaced.
+:- pred maybe_pic_object_file_extension(globals, pic, ext).
 :- mode maybe_pic_object_file_extension(in, in, out) is det.
 :- mode maybe_pic_object_file_extension(in, out, in) is semidet.
 
@@ -189,7 +192,7 @@
 % Stuff used for standalone interfaces.
 %
 
-    % make_standalone_interface(Globals, Basename, !IO):
+    % make_standalone_interface(Globals, BaseName, !IO):
     %
     % Create a standalone interface in the current directory.
     %
@@ -235,7 +238,6 @@
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
@@ -252,7 +254,7 @@
 % Any changes there may also require changes here, and vice versa.
 
 compile_c_file(Globals, ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, do_create_dirs, ".c",
+    module_name_to_file_name(Globals, do_create_dirs, ext(".c"),
         ModuleName, C_File, !IO),
     maybe_pic_object_file_extension(Globals, PIC, ObjExt),
     module_name_to_file_name(Globals, do_create_dirs, ObjExt,
@@ -1046,7 +1048,7 @@ compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
     ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
     list.map_foldl(
         ( pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Globals, do_not_create_dirs, ".dll",
+            module_name_to_file_name(Globals, do_not_create_dirs, ext(".dll"),
                 Mod, FileName, IO0, IO),
             Result = [Prefix, FileName, " "]
         ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList, !IO),
@@ -1159,21 +1161,21 @@ make_library_init_file(Globals, ErrorStream, MainModuleName, AllModules,
         Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
     make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
-        ".c", MkInit, Succeeded, !IO).
+        ext(".c"), MkInit, Succeeded, !IO).
 
 make_erlang_library_init_file(Globals, ErrorStream, MainModuleName, AllModules,
         Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_erl_command, MkInit),
     make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
-        ".erl", MkInit, Succeeded, !IO).
+        ext(".erl"), MkInit, Succeeded, !IO).
 
 :- pred make_library_init_file_2(globals::in, io.output_stream::in,
-    module_name::in, list(module_name)::in, string::in, string::in,
+    module_name::in, list(module_name)::in, ext::in, string::in,
     bool::out, io::di, io::uo) is det.
 
 make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
         TargetExt, MkInit, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, do_create_dirs, ".init.tmp",
+    module_name_to_file_name(Globals, do_create_dirs, ext(".init.tmp"),
         MainModuleName, TmpInitFileName, !IO),
     io.open_output(TmpInitFileName, InitFileRes, !IO),
     (
@@ -1205,7 +1207,7 @@ make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
         ),
 
         io.close_output(InitFileStream, !IO),
-        module_name_to_file_name(Globals, do_create_dirs, ".init",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".init"),
             MainModuleName, InitFileName, !IO),
         update_interface_return_succeeded(Globals, InitFileName, Succeeded1,
             !IO),
@@ -1224,7 +1226,7 @@ make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
                 globals.set_option(use_grade_subdirs, bool(no),
                     NoSubdirGlobals0, NoSubdirGlobals),
                 module_name_to_file_name(NoSubdirGlobals, do_not_create_dirs,
-                    ".init", MainModuleName, UserDirFileName, !IO),
+                    ext(".init"), MainModuleName, UserDirFileName, !IO),
                 % Remove the target of the symlink/copy in case it already
                 % exists.
                 io.remove_file(UserDirFileName, _, !IO),
@@ -1330,13 +1332,17 @@ do_make_init_obj_file(Globals, ErrorStream, MustCompile, ModuleName,
 
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
     make_init_target_file(Globals, ErrorStream, MkInit, ModuleName,
-        ModuleNames, ".c", StdInitFileNames, StdTraceInitFileNames,
-        SourceDebugInitFileNames, "", MaybeInitTargetFile, !IO),
+        ModuleNames, ext(".c"), ext("_init.c"),
+        StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
+        "", MaybeInitTargetFile, !IO),
 
     get_object_code_type(Globals, executable, PIC),
     maybe_pic_object_file_extension(Globals, PIC, ObjExt),
 
-    module_name_to_file_name(Globals, do_create_dirs, "_init" ++ ObjExt,
+    % XXX EXT
+    ObjExt = ext(ObjExtStr),
+    InitObjExt = ext("_init" ++ ObjExtStr),
+    module_name_to_file_name(Globals, do_create_dirs, InitObjExt,
         ModuleName, InitObjFileName, !IO),
     CompileCInitFile =
         ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
@@ -1375,10 +1381,11 @@ make_erlang_program_init_file(Globals, ErrorStream, ModuleName, ModuleNames,
 
     globals.lookup_string_option(Globals, mkinit_erl_command, MkInitErl),
     make_init_target_file(Globals, ErrorStream, MkInitErl, ModuleName,
-        ModuleNames, ".erl", StdInitFileNames, StdTraceInitFileNames,
-        SourceDebugInitFileNames, ModuleNameOption, MaybeInitTargetFile, !IO),
+        ModuleNames, ext(".erl"), ext("_init.erl"),
+        StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
+        ModuleNameOption, MaybeInitTargetFile, !IO),
 
-    module_name_to_file_name(Globals, do_create_dirs, "_init.beam",
+    module_name_to_file_name(Globals, do_create_dirs, ext("_init.beam"),
         ModuleName, InitObjFileName, !IO),
     CompileErlangInitFile =
         ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
@@ -1389,12 +1396,12 @@ make_erlang_program_init_file(Globals, ErrorStream, ModuleName, ModuleNames,
         CompileErlangInitFile, InitObjFileName, Result, !IO).
 
 :- pred make_init_target_file(globals::in, io.output_stream::in, string::in,
-    module_name::in, list(module_name)::in, string::in,
+    module_name::in, list(module_name)::in, ext::in, ext::in,
     list(file_name)::in, list(file_name)::in, list(file_name)::in,
     string::in, maybe(file_name)::out, io::di, io::uo) is det.
 
 make_init_target_file(Globals, ErrorStream, MkInit, ModuleName, ModuleNames,
-        TargetExt, StdInitFileNames, StdTraceInitFileNames,
+        TargetExt, InitTargetExt, StdInitFileNames, StdTraceInitFileNames,
         SourceDebugInitFileNames, ModuleNameOption, MaybeInitTargetFile,
         !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -1403,7 +1410,7 @@ make_init_target_file(Globals, ErrorStream, MkInit, ModuleName, ModuleNames,
 
     compute_grade(Globals, Grade),
 
-    module_name_to_file_name(Globals, do_create_dirs, "_init" ++ TargetExt,
+    module_name_to_file_name(Globals, do_create_dirs, InitTargetExt,
         ModuleName, InitTargetFileName, !IO),
 
     list.map_foldl(
@@ -1625,10 +1632,10 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
         TargetType = executable
     ),
     get_object_code_type(Globals, TargetType, PIC),
-    maybe_pic_object_file_extension(Globals, PIC, Obj),
+    maybe_pic_object_file_extension(Globals, PIC, ObjExt),
 
     io.output_stream(OutputStream, !IO),
-    join_module_list(Globals, Modules, Obj, ObjectsList, !IO),
+    join_module_list(Globals, ObjExt, Modules, ObjectsList, !IO),
     (
         TargetType = executable,
         list.map(
@@ -1717,33 +1724,38 @@ link(Globals, ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded,
     ).
 
 :- pred link_output_filename(globals::in, linked_target_type::in,
-    module_name::in, string::out, string::out, io::di, io::uo) is det.
+    module_name::in, ext::out, string::out, io::di, io::uo) is det.
 
 link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         !IO) :-
     (
         LinkTargetType = executable,
-        globals.lookup_string_option(Globals, executable_file_extension, Ext),
+        globals.lookup_string_option(Globals, executable_file_extension,
+            ExtStr),
+        Ext = ext(ExtStr),
         module_name_to_file_name(Globals, do_create_dirs, Ext,
             ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = static_library,
-        globals.lookup_string_option(Globals, library_extension, Ext),
-        module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
-            do_create_dirs, OutputFileName, !IO)
+        globals.lookup_string_option(Globals, library_extension, ExtStr),
+        Ext = ext(ExtStr),
+        module_name_to_lib_file_name(Globals, do_create_dirs, "lib", Ext,
+            ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = shared_library,
-        globals.lookup_string_option(Globals, shared_library_extension, Ext),
-        module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
-            do_create_dirs, OutputFileName, !IO)
+        globals.lookup_string_option(Globals, shared_library_extension,
+            ExtStr),
+        Ext = ext(ExtStr),
+        module_name_to_lib_file_name(Globals, do_create_dirs, "lib", Ext,
+            ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = csharp_executable,
-        Ext = ".exe",
+        Ext = ext(".exe"),
         module_name_to_file_name(Globals, do_create_dirs, Ext,
             ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = csharp_library,
-        Ext = ".dll",
+        Ext = ext(".dll"),
         module_name_to_file_name(Globals, do_create_dirs, Ext,
             ModuleName, OutputFileName, !IO)
     ;
@@ -1753,22 +1765,22 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
             ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = java_executable,
-        Ext = ".jar",
+        Ext = ext(".jar"),
         module_name_to_file_name(Globals, do_create_dirs, Ext,
             ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = java_archive,
-        Ext = ".jar",
+        Ext = ext(".jar"),
         module_name_to_file_name(Globals, do_create_dirs, Ext,
             ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = erlang_archive,
-        Ext = ".beams",
-        module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
-            do_create_dirs, OutputFileName, !IO)
+        Ext = ext(".beams"),
+        module_name_to_lib_file_name(Globals, do_create_dirs, "lib", Ext,
+            ModuleName, OutputFileName, !IO)
     ).
 
-:- func get_launcher_script_extension(globals) = string.
+:- func get_launcher_script_extension(globals) = ext.
 
 get_launcher_script_extension(Globals) = Ext :-
     globals.get_target_env_type(Globals, TargetEnvType),
@@ -1777,13 +1789,13 @@ get_launcher_script_extension(Globals) = Ext :-
         ( TargetEnvType = env_type_win_cmd
         ; TargetEnvType = env_type_powershell
         ),
-        Ext = ".bat"
+        Ext = ext(".bat")
     ;
         ( TargetEnvType = env_type_posix
         ; TargetEnvType = env_type_cygwin
         ; TargetEnvType = env_type_msys
         ),
-        Ext = ""
+        Ext = ext("")
     ).
 
 :- pred link_exe_or_shared_lib(globals::in, io.output_stream::in,
@@ -2542,8 +2554,8 @@ post_link_make_symlink_or_copy(Globals, ErrorStream, LinkTargetType,
             ; LinkTargetType = shared_library
             ; LinkTargetType = erlang_archive
             ),
-            module_name_to_lib_file_name(NoSubdirGlobals, "lib", ModuleName,
-                Ext, do_not_create_dirs, UserDirFileName, !IO)
+            module_name_to_lib_file_name(NoSubdirGlobals, do_not_create_dirs,
+                "lib", Ext, ModuleName, UserDirFileName, !IO)
         ),
 
         same_timestamp(OutputFileName, UserDirFileName, SameTimestamp, !IO),
@@ -2744,12 +2756,12 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         % If we are linking statically with Mercury libraries, pass the
         % absolute pathname of the `.a' file for the library.
         file_name_to_module_name(LibName, LibModuleName),
-        globals.lookup_string_option(Globals, library_extension, LibExt),
+        globals.lookup_string_option(Globals, library_extension, LibExtStr),
 
         globals.set_option(use_grade_subdirs, bool(no),
             Globals, NoSubDirGlobals),
-        module_name_to_lib_file_name(NoSubDirGlobals, "lib", LibModuleName,
-            LibExt, do_not_create_dirs, LibFileName, !IO),
+        module_name_to_lib_file_name(NoSubDirGlobals, do_not_create_dirs,
+            "lib", ext(LibExtStr), LibModuleName, LibFileName, !IO),
 
         search_for_file_returning_dir(MercuryLibDirs,
             LibFileName, MaybeDirName, !IO),
@@ -3217,16 +3229,16 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
     % (This conversion ensures that we follow the usual file naming
     % conventions.)
     %
-:- pred join_module_list(globals::in, list(string)::in, string::in,
+:- pred join_module_list(globals::in, ext::in, list(string)::in,
     list(string)::out, io::di, io::uo) is det.
 
-join_module_list(_Globals, [], _Extension, [], !IO).
-join_module_list(Globals, [Module | Modules], Extension,
-        [FileName | FileNames], !IO) :-
+join_module_list(_Globals, _Extension, [], [], !IO).
+join_module_list(Globals, Extension,
+        [Module | Modules], [FileName | FileNames], !IO) :-
     file_name_to_module_name(dir.det_basename(Module), ModuleName),
     module_name_to_file_name(Globals, do_not_create_dirs, Extension,
         ModuleName, FileName, !IO),
-    join_module_list(Globals, Modules, Extension, FileNames, !IO).
+    join_module_list(Globals, Extension, Modules, FileNames, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -3234,7 +3246,7 @@ make_all_module_command(Globals, Command0, MainModule, AllModules, Command,
         !IO) :-
     % Pass the main module first.
     list.map_foldl(
-        module_name_to_file_name(Globals, do_not_create_dirs, ".m"),
+        module_name_to_file_name(Globals, do_not_create_dirs, ext(".m")),
         [MainModule | list.delete_all(AllModules, MainModule)],
         ModuleNameStrings, !IO),
     Command = string.join_list(" ",
@@ -3247,21 +3259,25 @@ make_all_module_command(Globals, Command0, MainModule, AllModules, Command,
 maybe_pic_object_file_extension(Globals::in, PIC::in, Ext::out) :-
     (
         PIC = non_pic,
-        globals.lookup_string_option(Globals, object_file_extension, Ext)
+        globals.lookup_string_option(Globals, object_file_extension, ExtStr)
     ;
         PIC = pic,
-        globals.lookup_string_option(Globals, pic_object_file_extension, Ext)
-    ).
+        globals.lookup_string_option(Globals, pic_object_file_extension,
+            ExtStr)
+    ),
+    Ext = ext(ExtStr).
 maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
+    Ext = ext(ExtStr),
     ( if
         % This test must come first -- if the architecture doesn't need
         % special treatment for PIC, we should always return `non_pic'.
         % `mmc --make' depends on this.
-        globals.lookup_string_option(Globals, object_file_extension, Ext)
+        globals.lookup_string_option(Globals, object_file_extension, ExtStr)
     then
         PIC = non_pic
     else if
-        globals.lookup_string_option(Globals, pic_object_file_extension, Ext)
+        globals.lookup_string_option(Globals, pic_object_file_extension,
+            ExtStr)
     then
         PIC = pic
     else
@@ -3276,11 +3292,11 @@ maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
 % NOTE: the following code is similar to that of make_init_obj/7.
 % Any changes here may need to be reflected there.
 
-make_standalone_interface(Globals, Basename, !IO) :-
-    make_standalone_int_header(Basename, HdrSucceeded, !IO),
+make_standalone_interface(Globals, BaseName, !IO) :-
+    make_standalone_int_header(BaseName, HdrSucceeded, !IO),
     (
         HdrSucceeded = yes,
-        make_standalone_int_body(Globals, Basename, !IO)
+        make_standalone_int_body(Globals, BaseName, !IO)
     ;
         HdrSucceeded = no
     ).
@@ -3288,14 +3304,14 @@ make_standalone_interface(Globals, Basename, !IO) :-
 :- pred make_standalone_int_header(string::in, bool::out,
     io::di, io::uo) is det.
 
-make_standalone_int_header(Basename, Succeeded, !IO) :-
-    HdrFileName = Basename ++ ".h",
+make_standalone_int_header(BaseName, Succeeded, !IO) :-
+    HdrFileName = BaseName ++ ".h",
     io.open_output(HdrFileName, OpenResult, !IO),
     (
         OpenResult = ok(HdrFileStream),
         io.write_strings(HdrFileStream, [
-            "#ifndef ", to_upper(Basename), "_H\n",
-            "#define ", to_upper(Basename), "_H\n",
+            "#ifndef ", to_upper(BaseName), "_H\n",
+            "#define ", to_upper(BaseName), "_H\n",
             "\n",
             "#ifdef __cplusplus\n",
             "extern \"C\" {\n",
@@ -3311,7 +3327,7 @@ make_standalone_int_header(Basename, Succeeded, !IO) :-
             "}\n",
             "#endif\n",
             "\n",
-            "#endif /* ", to_upper(Basename), "_H */\n"],
+            "#endif /* ", to_upper(BaseName), "_H */\n"],
             !IO),
         io.close_output(HdrFileStream, !IO),
         Succeeded = yes
@@ -3324,7 +3340,7 @@ make_standalone_int_header(Basename, Succeeded, !IO) :-
 :- pred make_standalone_int_body(globals::in, string::in, io::di, io::uo)
     is det.
 
-make_standalone_int_body(Globals, Basename, !IO) :-
+make_standalone_int_body(Globals, BaseName, !IO) :-
     globals.lookup_accumulating_option(Globals, init_files, InitFiles0),
     % See the similar code in make_init_target_file for an explanation
     % of why we must remove duplicates from this list.
@@ -3392,7 +3408,7 @@ make_standalone_int_body(Globals, Basename, !IO) :-
     ),
     compute_grade(Globals, Grade),
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
-    CFileName = Basename ++ ".c",
+    CFileName = BaseName ++ ".c",
     io.output_stream(ErrorStream, !IO),
     MkInitArgs = string.append_list(
         [   " -g ", Grade,
@@ -3410,7 +3426,7 @@ make_standalone_int_body(Globals, Basename, !IO) :-
         MkInitCmdOk = yes,
         get_object_code_type(Globals, executable, PIC),
         maybe_pic_object_file_extension(Globals, PIC, ObjExt),
-        ObjFileName = Basename ++ ObjExt,
+        ObjFileName = BaseName ++ extension_to_string(ObjExt),
         do_compile_c_file(Globals, ErrorStream, PIC, CFileName, ObjFileName,
             CompileOk, !IO),
         (

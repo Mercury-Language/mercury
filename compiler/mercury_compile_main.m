@@ -138,7 +138,9 @@ real_main(!IO) :-
         io.write_string(io.error_message(E), !IO),
         io.nl(!IO)
     ),
-    write_translations_record_if_any(!IO),
+    trace [compile_time(flag("file_name_translations")), io(!TIO)] (
+        write_translations_record_if_any(!TIO)
+    ),
     trace [compile_time(flag("mai-stats")), io(!TIO)] (
         io.open_append("/tmp/MODULE_AND_IMPORTS", Result, !TIO),
         (
@@ -1172,7 +1174,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ( if halt_at_module_error(Globals, Errors) then
             true
         else
-            module_name_to_file_name(Globals, do_create_dirs, ".ugly",
+            module_name_to_file_name(Globals, do_create_dirs, ext(".ugly"),
                 ModuleName, OutputFileName, !IO),
             output_parse_tree_src(Globals, OutputFileName, ParseTreeSrc, !IO)
         ),
@@ -1314,20 +1316,19 @@ find_modules_to_recompile(Globals0, Globals, FileOrModule, ModulesToRecompile,
 
 find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     globals.get_target(Globals, CompilationTarget),
-    ( CompilationTarget = target_c, TargetSuffix = ".c"
-    ; CompilationTarget = target_csharp, TargetSuffix = ".cs"
-    ; CompilationTarget = target_java, TargetSuffix = ".java"
-    ; CompilationTarget = target_erlang, TargetSuffix = ".erl"
+    ( CompilationTarget = target_c, TargetExt = ext(".c")
+    ; CompilationTarget = target_csharp, TargetExt = ext(".cs")
+    ; CompilationTarget = target_java, TargetExt = ext(".java")
+    ; CompilationTarget = target_erlang, TargetExt = ext(".erl")
     ),
-    FindTargetFiles = usual_find_target_files(Globals, TargetSuffix).
+    FindTargetFiles = usual_find_target_files(Globals, TargetExt).
 
-:- pred usual_find_target_files(globals::in,
-    string::in, module_name::in, list(file_name)::out,
-    io::di, io::uo) is det.
+:- pred usual_find_target_files(globals::in, ext::in,
+    module_name::in, list(file_name)::out, io::di, io::uo) is det.
 
-usual_find_target_files(Globals, TargetSuffix, ModuleName, TargetFiles, !IO) :-
+usual_find_target_files(Globals, TargetExt, ModuleName, TargetFiles, !IO) :-
     % XXX Should we check the generated header files?
-    module_name_to_file_name(Globals, do_create_dirs, TargetSuffix,
+    module_name_to_file_name(Globals, do_create_dirs, TargetExt,
         ModuleName, FileName, !IO),
     TargetFiles = [FileName].
 
@@ -1338,25 +1339,25 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        TimestampSuffix = ".c_date"
+        TimestampExt = ext(".c_date")
     ;
         CompilationTarget = target_csharp,
-        TimestampSuffix = ".cs_date"
+        TimestampExt = ext(".cs_date")
     ;
         CompilationTarget = target_java,
-        TimestampSuffix = ".java_date"
+        TimestampExt = ext(".java_date")
     ;
         CompilationTarget = target_erlang,
-        TimestampSuffix = ".erl_date"
+        TimestampExt = ext(".erl_date")
     ),
-    FindTimestampFiles = find_timestamp_files_2(Globals, TimestampSuffix).
+    FindTimestampFiles = find_timestamp_files_2(Globals, TimestampExt).
 
-:- pred find_timestamp_files_2(globals::in, string::in, module_name::in,
+:- pred find_timestamp_files_2(globals::in, ext::in, module_name::in,
     list(file_name)::out, io::di, io::uo) is det.
 
-find_timestamp_files_2(Globals, TimestampSuffix, ModuleName, TimestampFiles,
+find_timestamp_files_2(Globals, TimestampExt, ModuleName, TimestampFiles,
         !IO) :-
-    module_name_to_file_name(Globals, do_create_dirs, TimestampSuffix,
+    module_name_to_file_name(Globals, do_create_dirs, TimestampExt,
         ModuleName, FileName, !IO),
     TimestampFiles = [FileName].
 
@@ -1994,7 +1995,7 @@ maybe_read_d_file_for_trans_opt_deps(Globals, ModuleName,
     (
         TransOpt = yes,
         globals.lookup_bool_option(Globals, verbose, Verbose),
-        module_name_to_file_name(Globals, do_not_create_dirs, ".d",
+        module_name_to_file_name(Globals, do_not_create_dirs, ext(".d"),
             ModuleName, DependencyFileName, !IO),
         maybe_write_string(Verbose, "% Reading auto-dependency file `", !IO),
         maybe_write_string(Verbose, DependencyFileName, !IO),
@@ -2005,7 +2006,7 @@ maybe_read_d_file_for_trans_opt_deps(Globals, ModuleName,
             OpenResult = ok(Stream),
             io.set_input_stream(Stream, OldStream, !IO),
             module_name_to_file_name(Globals, do_not_create_dirs,
-                ".trans_opt_date", ModuleName, TransOptDateFileName, !IO),
+                ext(".trans_opt_date"), ModuleName, TransOptDateFileName, !IO),
             SearchPattern = TransOptDateFileName ++ " :",
             read_dependency_file_find_start(SearchPattern, FindResult, !IO),
             (
@@ -2204,7 +2205,7 @@ make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
     pre_hlds_maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
     ModuleName = aug_compilation_unit_project_name(AugCompUnit),
-    module_name_to_file_name(Globals, do_create_dirs, ".hlds_dump",
+    module_name_to_file_name(Globals, do_create_dirs, ext(".hlds_dump"),
         ModuleName, DumpBaseFileName, !IO),
     parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
         TypeEqvMap, UsedModules, QualInfo,
@@ -2239,7 +2240,7 @@ maybe_write_definitions(Verbose, Stats, HLDS, !IO) :-
         ShowDefns = yes,
         maybe_write_string(Verbose, "% Writing definitions...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ".defns",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".defns"),
             ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
@@ -2270,8 +2271,8 @@ maybe_write_definition_line_counts(Verbose, Stats, HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Writing definition line counts...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ".defn_line_counts",
-            ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs,
+            ext(".defn_line_counts"), ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2300,7 +2301,7 @@ maybe_write_definition_extents(Verbose, Stats, HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Writing definition extents...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ".defn_extents",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".defn_extents"),
             ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
@@ -2331,8 +2332,8 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
         ShowDepGraph = yes,
         maybe_write_string(Verbose, "% Writing dependency graph...", !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ".dependency_graph",
-            ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, do_create_dirs,
+            ext(".dependency_graph"), ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2414,7 +2415,7 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
     % `.used' file is written.
 
     module_info_get_name(!.HLDS, ModuleName),
-    module_name_to_file_name(Globals, do_not_create_dirs, ".used",
+    module_name_to_file_name(Globals, do_not_create_dirs, ext(".used"),
         ModuleName, UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
 
@@ -2457,7 +2458,7 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                     TargetCodeSucceeded = yes,
                     io.output_stream(OutputStream, !IO),
                     module_name_to_file_name(Globals, do_not_create_dirs,
-                        ".java", ModuleName, JavaFile, !IO),
+                        ext(".java"), ModuleName, JavaFile, !IO),
                     compile_java_files(Globals, OutputStream, [JavaFile],
                         Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
@@ -2489,7 +2490,7 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                     ;
                         TargetCodeSucceeded = yes,
                         module_name_to_file_name(Globals, do_not_create_dirs,
-                            ".c", ModuleName, C_File, !IO),
+                            ext(".c"), ModuleName, C_File, !IO),
                         get_linked_target_type(Globals, TargetType),
                         get_object_code_type(Globals, TargetType, PIC),
                         maybe_pic_object_file_extension(Globals, PIC, Obj),
@@ -2562,7 +2563,7 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
             "% Outputting profiling call graph...", !IO),
         maybe_flush_output(Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ".prof",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".prof"),
             ModuleName, ProfFileName, !IO),
         io.open_output(ProfFileName, Res, !IO),
         (

@@ -131,7 +131,7 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
             !IO),
 
         module_info_get_name(ModuleInfo, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ".used",
+        module_name_to_file_name(Globals, do_create_dirs, ext(".used"),
             ModuleName, FileName, !IO),
         io.open_output(FileName, FileResult, !IO),
         (
@@ -251,7 +251,8 @@ write_module_name_and_used_items(RecompInfo, TimestampMap, ModuleInstances,
     io.write_string(", """, !IO),
     map.lookup(TimestampMap, ModuleName,
         module_timestamp(FileKind, ModuleTimestamp, RecompNeedQual)),
-    io.write_string(file_kind_to_extension(FileKind), !IO),
+    file_kind_to_extension(FileKind, ExtStr, _Ext),
+    io.write_string(ExtStr, !IO),
     io.write_string(""", ", !IO),
     write_version_number(ModuleTimestamp, !IO),
     % This must be kept in sync with parse_module_timestamp in

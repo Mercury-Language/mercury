@@ -75,10 +75,10 @@
 output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(Globals, do_create_dirs, ".cs",
-        ModuleName, SourceFile, !IO),
+    module_name_to_file_name(Globals, do_create_dirs, ext(".cs"),
+        ModuleName, SourceFileName, !IO),
     Indent = 0,
-    output_to_file(Globals, SourceFile,
+    output_to_file(Globals, SourceFileName,
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_csharp_src_file(module_info::in, indent::in, mlds::in,
