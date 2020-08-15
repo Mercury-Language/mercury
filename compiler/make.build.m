@@ -75,7 +75,8 @@
     % Produce an output stream which writes to the error file
     % for the given module.
     %
-:- pred redirect_output(module_name::in, maybe(io.output_stream)::out,
+:- pred prepare_to_redirect_output(module_name::in,
+    maybe(io.output_stream)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Close the module error output stream.
@@ -239,7 +240,7 @@ build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
 
 build_with_output_redirect(Globals, ModuleName, Build, Succeeded, !Info,
         !IO) :-
-    redirect_output(ModuleName, RedirectResult, !Info, !IO),
+    prepare_to_redirect_output(ModuleName, RedirectResult, !Info, !IO),
     (
         RedirectResult = no,
         Succeeded = no
@@ -277,7 +278,7 @@ build_with_module_options_and_output_redirect_3(AllOptions, Build, Globals,
 
 %---------------------------------------------------------------------------%
 
-redirect_output(_ModuleName, MaybeErrorStream, !Info, !IO) :-
+prepare_to_redirect_output(_ModuleName, MaybeErrorStream, !Info, !IO) :-
     % Write the output to a temporary file first, so it's easy to just print
     % the part of the error file that relates to the current command. It will
     % be appended to the error file later.
@@ -314,7 +315,7 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
             with_locked_stdout(!.Info,
                 make_write_error_streams(TmpErrorFileName, TmpErrorInputStream,
                     ErrorFileOutputStream, CurrentOutputStream, LinesToWrite),
-                    !IO),
+                !IO),
             io.close_output(ErrorFileOutputStream, !IO),
 
             !Info ^ error_file_modules :=
@@ -594,19 +595,17 @@ typedef struct MC_JobCtl MC_JobCtl;
 #ifdef MR_HAVE_SYS_MMAN_H
   #include <sys/mman.h>
 
-  /* Just in case. */
+  // Just in case.
   #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
     #define MAP_ANONYMOUS MAP_ANON
   #endif
 #endif
 
 #ifdef MAP_ANONYMOUS
-  /*
-  ** Darwin 5.x and FreeBSD do not implement process-shared POSIX mutexes.
-  ** Use System V semaphores instead. As System V semaphores seem to be more
-  ** widely supported we may consider using them exclusively or in preference
-  ** to POSIX mutexes in the future.
-  */
+  // Darwin 5.x and FreeBSD do not implement process-shared POSIX mutexes.
+  // Use System V semaphores instead. As System V semaphores seem to be more
+  // widely supported we may consider using them exclusively or in preference
+  // to POSIX mutexes in the future.
   #if !defined(__APPLE__) && !defined(__FreeBSD__) && \
         defined(MR_HAVE_PTHREAD_H) && \
         defined(MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED)
@@ -626,18 +625,18 @@ typedef struct MC_JobCtl MC_JobCtl;
 typedef enum MC_TaskStatus MC_TaskStatus;
 
 enum MC_TaskStatus {
-    TASK_NEW,       /* task not yet attempted */
-    TASK_ACCEPTED,  /* someone is working on this task */
-    TASK_DONE,      /* task successfully completed */
-    TASK_ERROR      /* error occurred when working on the task */
+    TASK_NEW,       // task not yet attempted
+    TASK_ACCEPTED,  // someone is working on this task
+    TASK_DONE,      // task successfully completed
+    TASK_ERROR      // error occurred when working on the task
 };
 
-/* This structure is placed in shared memory. */
+// This structure is placed in shared memory.
 struct MC_JobCtl {
-    /* Static data. */
+    // Static data.
     MR_Integer      jc_total_tasks;
 
-    /* Dynamic data.  The mutex protects the rest. */
+    // Dynamic data.  The mutex protects the rest.
   #ifdef MC_USE_SYSV_SEMAPHORE
     int             jc_semid;
   #else
@@ -653,7 +652,7 @@ static MC_JobCtl *  MC_create_job_ctl(MR_Integer total_tasks);
 static void         MC_lock_job_ctl(MC_JobCtl *job_ctl);
 static void         MC_unlock_job_ctl(MC_JobCtl *job_ctl);
 
-#endif /* MC_HAVE_JOBCTL_IPC */
+#endif // MC_HAVE_JOBCTL_IPC
 ").
 
 :- pragma foreign_code("C", "
@@ -669,7 +668,7 @@ MC_create_job_ctl(MR_Integer total_tasks)
 
     size = MC_JOB_CTL_SIZE(total_tasks);
 
-    /* Create the shared memory segment. */
+    // Create the shared memory segment.
     job_ctl = mmap(NULL, size, PROT_READ | PROT_WRITE,
         MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     if (job_ctl == (void *) -1) {
@@ -766,7 +765,7 @@ MC_unlock_job_ctl(MC_JobCtl *job_ctl)
 #endif
 }
 
-#endif /* MC_HAVE_JOBCTL_IPC */
+#endif // MC_HAVE_JOBCTL_IPC
 ").
 
 :- type job_ctl.

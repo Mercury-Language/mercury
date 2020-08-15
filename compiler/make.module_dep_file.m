@@ -784,7 +784,7 @@ read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile, Msg,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
-    redirect_output(ModuleName, MaybeErrorStream, !Info, !IO),
+    prepare_to_redirect_output(ModuleName, MaybeErrorStream, !Info, !IO),
     (
         MaybeErrorStream = yes(ErrorStream),
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
