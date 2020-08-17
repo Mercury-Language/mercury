@@ -649,7 +649,8 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         HeaderExt, ModuleName, FileName, !IO),
     MaybeThisFileName = yes(FileName),
-    io.open_output(FileName ++ ".tmp", Result, !IO),
+    TmpFileName = FileName ++ ".tmp",
+    io.open_output(TmpFileName, Result, !IO),
     (
         Result = ok(FileStream),
         module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
@@ -735,18 +736,15 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             update_interface(Globals, FileName, !IO)
         ;
             Errors = [_ | _],
-            io.remove_file(FileName ++ ".tmp", _, !IO),
+            io.remove_file(TmpFileName, _, !IO),
             % report_error sets the exit status.
-            foldl(report_error, Errors, !IO)
+            list.foldl(report_error, Errors, !IO)
         )
     ;
         Result = error(_),
         io.progname_base("export.m", ProgName, !IO),
-        io.write_string("\n", !IO),
-        io.write_string(ProgName, !IO),
-        io.write_string(": can't open `", !IO),
-        io.write_string(FileName ++ ".tmp", !IO),
-        io.write_string("' for output\n", !IO),
+        io.format("\n%s: can't open `%s' for output\n",
+            [s(ProgName), s(TmpFileName)], !IO),
         io.set_exit_status(1, !IO)
     ).
 

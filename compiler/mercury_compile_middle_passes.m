@@ -391,23 +391,22 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
 
     module_info_get_name(!.HLDS, ModuleName),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(other_ext(".trans_opt.tmp")), ModuleName, TmpOptName, !IO),
-    io.open_output(TmpOptName, TmpOptResult, !IO),
+        ext_other(other_ext(".trans_opt")), ModuleName, OptFileName, !IO),
+    TmpOptFileName = OptFileName ++ ".tmp",
+    io.open_output(TmpOptFileName, TmpOptResult, !IO),
     (
         TmpOptResult = error(Error),
         io.progname_base("mmc", ProgName, !IO),
         io.error_message(Error, ErrorMsg),
         io.format("%s: cannot open `%s' for output: %s\n",
-            [s(ProgName), s(TmpOptName), s(ErrorMsg)], !IO),
+            [s(ProgName), s(TmpOptFileName), s(ErrorMsg)], !IO),
         io.set_exit_status(1, !IO)
     ;
         TmpOptResult = ok(TmpOptStream),
         write_trans_opt_file(TmpOptStream, !.HLDS, ParseTreeTransOpt, !IO),
         io.close_output(TmpOptStream, !IO),
 
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(other_ext(".trans_opt")), ModuleName, OptName, !IO),
-        update_interface(Globals, OptName, !IO),
+        update_interface(Globals, OptFileName, !IO),
         touch_interface_datestamp(Globals, ModuleName,
             other_ext(".trans_opt_date"), !IO),
 
@@ -416,7 +415,7 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
             Experiment5 = no
         ;
             Experiment5 = yes,
-            io.open_output(OptName ++ "x", OptXResult, !IO),
+            io.open_output(OptFileName ++ "x", OptXResult, !IO),
             (
                 OptXResult = error(_)
             ;

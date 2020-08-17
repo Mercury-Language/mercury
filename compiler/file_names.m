@@ -399,14 +399,14 @@ module_name_to_search_file_name(Globals, From, Ext,
 % mmake targets, and because mmake targets (should) never need directories
 % created for them.
 %
-% The classification should not need to include .tmp suffixes on extensions,
+% The classification does not need to include .tmp suffixes on extensions,
 % since (due to the behavior of the mercury_update_interface script, which
 % the .tmp suffixes are for) the .tmp suffix *always* goes directly after
 % the end of the corresponding non-.tmp filename, and can never be e.g.
 % found in a different directory in a search. Calls to the exported predicates
 % of this module should never specify .tmp as part of the extension; instead,
 % they should add the .tmp suffix to the filename they get back from those
-% predicates instead. XXX We have not yet changed over to this system.
+% predicates instead.
 
 :- pred module_name_to_file_name_ext(globals::in, string::in,
     maybe_search::in, maybe_create_dirs::in, ext::in,
@@ -523,9 +523,7 @@ choose_file_name(Globals, _From, Search, OtherExt,
 
         Search = do_search,
         ( ExtStr = ".mih"
-        ; ExtStr = ".mih.tmp"
         ; ExtStr = ".hrl"
-        ; ExtStr = ".hrl.tmp"
         )
     then
         DirComponents = [],
@@ -571,18 +569,11 @@ choose_file_name(Globals, _From, Search, OtherExt,
             ; ExtStr = ".beams"
             ; ExtStr = ".init"
 
-            % mercury_update_interface requires the `.init.tmp' files to be
-            % in the same directory as the `.init' files.
-            ; ExtStr = ".init.tmp"
-
             % output files intended for use by the user (the .h_dump* and
             % .c_dump* MLDS dumps also fit into this category, but for
             % efficiency, to keep this as a switch, we deal with them below).
             ; ExtStr = ".mh"
 
-            % mercury_update_interface requires the `.mh.tmp' files to be
-            % in the same directory as the `.mh' files.
-            ; ExtStr = ".mh.tmp"
             ; ExtStr = ".err"
             ; ExtStr = ".ugly"
             ; ExtStr = ".hlds_dump"
@@ -651,13 +642,6 @@ choose_file_name(Globals, _From, Search, OtherExt,
             % _init.c, _init.s, _init.o etc. files go in the cs, ss, os etc
             % subdirectories.
             string.append("_init.", ExtName, ExtStr)
-        then
-            string.append(ExtName, "s", SubDirName)
-        else if
-            % .int.tmp, .opt.tmp, etc. files need to go in the ints, opts, etc
-            % subdirectories.
-            string.append(".", ExtName0, ExtStr),
-            string.remove_suffix(ExtName0, ".tmp", ExtName)
         then
             string.append(ExtName, "s", SubDirName)
         else if
@@ -753,14 +737,8 @@ make_file_name(Globals, SubDirNames, Search, BaseNameNoExt, OtherExt,
 
 :- pred file_is_arch_or_grade_dependent(globals::in, other_ext::in) is semidet.
 
-file_is_arch_or_grade_dependent(Globals, OtherExt0) :-
-    % The .tmp suffixes are needed for use by mercury_update_interface.
-    OtherExt0 = other_ext(ExtStr0),
-    ( if string.remove_suffix(ExtStr0, ".tmp", BaseExt) then
-        ExtStr = BaseExt
-    else
-        ExtStr = ExtStr0
-    ),
+file_is_arch_or_grade_dependent(Globals, OtherExt) :-
+    OtherExt = other_ext(ExtStr),
     (
         file_is_arch_or_grade_dependent_2(ExtStr)
     ;
