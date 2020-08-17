@@ -835,8 +835,8 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     (
         Lang = lang_c,
-        module_name_to_search_file_name(Globals, ext(".mh"),
-            ModuleName, HeaderFileName, !IO),
+        module_name_to_search_file_name(Globals, $pred,
+            ext_other(other_ext(".mh")), ModuleName, HeaderFileName, !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
             floi_literal(IncludeString), term.context_init)
@@ -884,26 +884,27 @@ output_llds_file(Globals, LLDS0, Succeeded, !IO) :-
 llds_c_to_obj(Globals, ErrorStream, ModuleName, Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
-    maybe_pic_object_file_extension(Globals, PIC, Obj),
-    module_name_to_file_name(Globals, do_not_create_dirs, ext(".c"),
-        ModuleName, C_File, !IO),
-    module_name_to_file_name(Globals, do_create_dirs, Obj,
-        ModuleName, O_File, !IO),
+    pic_object_file_extension(Globals, PIC, ObjOtherExt),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".c")), ModuleName, C_File, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(ObjOtherExt), ModuleName, O_File, !IO),
     compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
         C_File, O_File, Succeeded, !IO).
 
 :- pred compile_fact_table_file(globals::in, io.output_stream::in, string::in,
     string::out, bool::out, io::di, io::uo) is det.
 
-compile_fact_table_file(Globals, ErrorStream, BaseName, O_File, Succeeded,
-        !IO) :-
+compile_fact_table_file(Globals, ErrorStream, BaseName, O_FileName,
+        Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
-    maybe_pic_object_file_extension(Globals, PIC, Obj),
-    C_File = BaseName ++ ".c",
-    O_File = BaseName ++ extension_to_string(Obj),
+    pic_object_file_extension(Globals, PIC, ObjOtherExt),
+    % XXX EXT
+    C_FileName = BaseName ++ ".c",
+    O_FileName = BaseName ++ other_extension_to_string(ObjOtherExt),
     compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
-        C_File, O_File, Succeeded, !IO).
+        C_FileName, O_FileName, Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_llds_back_end.

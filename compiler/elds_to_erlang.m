@@ -85,11 +85,11 @@
 output_elds(ModuleInfo, ELDS, Succeeded, !IO) :-
     Name = ELDS ^ elds_name,
     module_info_get_globals(ModuleInfo, Globals),
-    module_source_filename(Globals, Name, SourceFileName, !IO),
-    module_name_to_file_name(Globals, do_create_dirs, ext(".erl"),
-        Name, TargetFileName, !IO),
-    module_name_to_file_name(Globals, do_create_dirs, ext(".hrl"),
-        Name, HeaderFileName, !IO),
+    module_name_to_source_file_name(Name, SourceFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".erl")), Name, TargetFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".hrl")), Name, HeaderFileName, !IO),
     output_to_file(Globals, TargetFileName,
         output_erl_file(ModuleInfo, ELDS, SourceFileName),
         TargetCodeSucceeded, !IO),
@@ -415,8 +415,8 @@ output_env_var_directive(EnvVarName, !IO) :-
     io::di, io::uo) is det.
 
 output_include_header_ann(Globals, ImportedModuleName, !IO) :-
-    module_name_to_search_file_name(Globals, ext(".hrl"),
-        ImportedModuleName, HeaderFileName, !IO),
+    module_name_to_search_file_name(Globals, $pred,
+        ext_other(other_ext(".hrl")), ImportedModuleName, HeaderFileName, !IO),
     io.write_string("-include(""", !IO),
     write_with_escaping(in_string, HeaderFileName, !IO),
     io.write_string(""").\n", !IO).

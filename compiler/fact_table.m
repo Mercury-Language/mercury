@@ -228,8 +228,8 @@ fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
     io.see(FileName, SeeResult, !IO),
     (
         SeeResult = ok,
-        fact_table_file_name(Globals, do_create_dirs, ext(".c"),
-            FileName, OutputFileName, !IO),
+        fact_table_file_name(Globals, $pred, do_create_dirs,
+            other_ext(".c"), FileName, OutputFileName, !IO),
         io.open_output(OutputFileName, OpenResult, !IO),
         (
             OpenResult = ok(OutputStream),

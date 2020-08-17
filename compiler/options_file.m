@@ -113,11 +113,10 @@
 
 %---------------------------------------------------------------------------%
 
-    % Write out the given database to the given stream. Intended only
+    % Write out the given database to a file named DUMP_OPTIONS_FILE,
     % for testing the functionality of code that builds such databases.
     %
-:- pred write_options_variables(io.text_output_stream::in,
-    options_variables::in, io::di, io::uo) is det.
+:- pred dump_options_file(options_variables::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -307,20 +306,26 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
             CheckResult = include_ok(InclStack0),
             % Read from standard input.
             trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                io.write_string("Reading options file from stdin...", !TIO)
+                io.write_string("Reading options file from stdin... ", !TIO)
             ),
             SearchInfo = search_info(_MaybeDirName, Search),
             SubSearchInfo = search_info(yes(dir.this_directory), Search),
             read_options_lines(SubSearchInfo, InclStack0,
                 io.stdin_stream, "stdin", 1, !Variables,
-                !IOSpecs, !ParseSpecs, !UndefSpecs, !IO)
+                !IOSpecs, !ParseSpecs, !UndefSpecs, !IO),
+            trace [compiletime(flag("options_file_debug")), io(!TIO)] (
+                io.format("done.\n", [], !TIO)
+            ),
+            trace [compiletime(flag("options_file_debug_stdin")), io(!TIO)] (
+                dump_options_file(!.Variables, !TIO)
+            )
         ;
             CheckResult = include_error(CheckSpec),
             !:ParseSpecs = [CheckSpec | !.ParseSpecs]
         )
     else
         trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-            io.format("Searching for options file %s",
+            io.format("Searching for options file %s... ",
                 [s(OptionsPathName)], !TIO)
         ),
         SearchInfo = search_info(MaybeDirName, Search),
@@ -367,12 +372,15 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         (
             MaybeDirAndStream =
                 ok(path_name_and_stream(FoundDir, FoundStream)),
+            trace [compiletime(flag("options_file_debug")), io(!TIO)] (
+                io.format("done.\n", [], !TIO)
+            ),
             check_include_for_infinite_recursion(PreStack0,
                 FoundDir / FileToFind, CheckResult),
             (
                 CheckResult = include_ok(InclStack0),
                 trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                    io.format("Reading options file %s",
+                    io.format("Reading options file %s... ",
                         [s(FoundDir/FileToFind)], !TIO)
                 ),
 
@@ -387,7 +395,10 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                 SubSearchInfo = search_info(yes(FoundDir), Search),
                 read_options_lines(SubSearchInfo, InclStack0,
                     FoundStream, FileToFind, 1, !Variables,
-                    !IOSpecs, !ParseSpecs, !UndefSpecs, !IO)
+                    !IOSpecs, !ParseSpecs, !UndefSpecs, !IO),
+                trace [compiletime(flag("options_file_debug")), io(!TIO)] (
+                    io.format("done.\n", [], !TIO)
+                )
             ;
                 CheckResult = include_error(CheckSpec),
                 !:ParseSpecs = [CheckSpec | !.ParseSpecs]
@@ -395,6 +406,9 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
             io.close_input(FoundStream, !IO)
         ;
             MaybeDirAndStream = error(Error),
+            trace [compiletime(flag("options_file_debug")), io(!TIO)] (
+                io.format("unsuccessful.\n", [], !TIO)
+            ),
             (
                 IsOptionsFileOptional = options_file_must_exist,
                 ( if Dirs = [SingleDir] then
@@ -423,9 +437,6 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                 IsOptionsFileOptional = options_file_need_not_exist
             )
         )
-    ),
-    trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-        io.write_string("done.\n", !TIO)
     ).
 
 %---------------------%
@@ -1602,6 +1613,25 @@ lookup_variable_value(Variables, VarName, Value, !UndefVarNames, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+dump_options_file(Variables, !IO) :-
+    io.open_output("DUMP_OPTIONS_FILE", OpenResult, !IO),
+    (
+        OpenResult = ok(DumpStream),
+        write_options_variables(DumpStream, Variables, !IO),
+        io.close_output(DumpStream, !IO)
+    ;
+        OpenResult = error(Error),
+        ErrorMsg = io.error_message(Error),
+        io.format("mercury_compile: %s\n", [s(ErrorMsg)], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+    % Write out the given database to the given stream. Intended only
+    % for testing the functionality of code that builds such databases.
+    %
+:- pred write_options_variables(io.text_output_stream::in,
+    options_variables::in, io::di, io::uo) is det.
 
 write_options_variables(DumpStream, Variables, !IO) :-
     map.foldl(write_options_variable_value(DumpStream), Variables, !IO).

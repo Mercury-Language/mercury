@@ -3187,7 +3187,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                 Result = ok(!.OptionTable)
             else
                 Result = error("argument of `--linkage' should be " ++
-                    "either ""shared"" or ""static"".")
+                    "either ""shared"" or ""static"", not """ ++ Flag ++ """.")
             )
         ;
             Option = mercury_linkage_special,
@@ -3197,7 +3197,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                 Result = ok(!.OptionTable)
             else
                 Result = error("argument of `--mercury-linkage' should be " ++
-                    "either ""shared"" or ""static"".")
+                    "either ""shared"" or ""static"", not """ ++ Flag ++ """.")
             )
         )
     ;

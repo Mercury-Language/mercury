@@ -106,32 +106,34 @@
                 unit1 : unit(structure_reuse_answer))
         ),
 
-    module_name_to_read_file_name(mmc, Globals, ModuleName, Ext,
-            MaybeFileName, !IO) :-
-        mmc_module_name_to_read_file_name(Globals, ModuleName, Ext,
-            MaybeFileName, !IO),
+    module_name_to_read_file_name(mmc, Globals, OtherExt,
+            ModuleName, MaybeFileName, !IO) :-
+        mmc_module_name_to_read_file_name(Globals, OtherExt,
+            ModuleName, MaybeFileName, !IO),
 
-    module_name_to_write_file_name(mmc, Globals, ModuleName, Ext,
-            FileName, !IO) :-
-        mmc_module_name_to_write_file_name(Globals, ModuleName, Ext,
-            FileName, !IO)
+    module_name_to_write_file_name(mmc, Globals, OtherExt,
+            ModuleName, FileName, !IO) :-
+        mmc_module_name_to_write_file_name(Globals, OtherExt,
+            ModuleName, FileName, !IO)
 ].
 
-:- pred mmc_module_name_to_read_file_name(globals::in, module_name::in,
-    ext::in, maybe_error(string)::out, io::di, io::uo) is det.
+:- pred mmc_module_name_to_read_file_name(globals::in, other_ext::in,
+    module_name::in, maybe_error(string)::out, io::di, io::uo) is det.
 
-mmc_module_name_to_read_file_name(Globals, ModuleName, Ext, MaybeFileName,
-        !IO) :-
-    module_name_to_search_file_name(Globals, Ext, ModuleName, FileName0, !IO),
+mmc_module_name_to_read_file_name(Globals, OtherExt,
+        ModuleName, MaybeFileName, !IO) :-
+    module_name_to_search_file_name(Globals, $pred,
+        ext_other(OtherExt), ModuleName, FileName0, !IO),
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
     search_for_file(Dirs, FileName0, MaybeFileName, !IO).
 
-:- pred mmc_module_name_to_write_file_name(globals::in, module_name::in,
-    ext::in, string::out, io::di, io::uo) is det.
+:- pred mmc_module_name_to_write_file_name(globals::in, other_ext::in,
+    module_name::in, string::out, io::di, io::uo) is det.
 
-mmc_module_name_to_write_file_name(Globals, ModuleName, Ext, FileName, !IO) :-
-    module_name_to_file_name(Globals, do_create_dirs, Ext,
-        ModuleName, FileName, !IO).
+mmc_module_name_to_write_file_name(Globals, OtherExt,
+        ModuleName, FileName, !IO) :-
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(OtherExt), ModuleName, FileName, !IO).
 
 module_name_func_id(ModuleInfo, proc(PredId, ProcId), PredModule, FuncId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

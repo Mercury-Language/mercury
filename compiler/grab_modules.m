@@ -2039,8 +2039,8 @@ read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
     maybe_write_string(VeryVerbose, "'...\n", !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    module_name_to_search_file_name(Globals, ext(".opt"),
-        ModuleName, FileName, !IO),
+    module_name_to_search_file_name(Globals, $pred,
+        ext_other(other_ext(".opt")), ModuleName, FileName, !IO),
     actually_read_module_plain_opt(Globals, FileName, ModuleName, [],
         ParseTreePlainOpt, OptSpecs, OptError, !IO),
     maybe_write_string(VeryVerbose, "% done.\n", !IO).
@@ -2096,8 +2096,8 @@ read_trans_opt_file(Globals, VeryVerbose, ModuleName, FileName,
     maybe_write_string(VeryVerbose, Msg, !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    module_name_to_search_file_name(Globals, ext(".trans_opt"),
-        ModuleName, FileName, !IO),
+    module_name_to_search_file_name(Globals, $pred,
+        ext_other(other_ext(".trans_opt")), ModuleName, FileName, !IO),
     actually_read_module_trans_opt(Globals, FileName, ModuleName, [],
         ParseTreeTransOpt, TransOptSpecs, TransOptError, !IO),
     maybe_write_string(VeryVerbose, " done.\n", !IO).

@@ -52,7 +52,7 @@
 
     % Return the default fully qualified source file name.
     %
-:- func default_source_file(module_name) = file_name.
+:- func default_source_file_name(module_name) = file_name.
 
     % Given a list of file names, produce the Mercury.modules file.
     %
@@ -80,7 +80,7 @@ lookup_module_source_file(ModuleName, MaybeFileName, !IO) :-
     ( if bimap.search(SourceFileMap, ModuleName, FileName) then
         MaybeFileName = yes(FileName)
     else
-        DefaultFileName = default_source_file(ModuleName),
+        DefaultFileName = default_source_file_name(ModuleName),
         ( if bimap.reverse_search(SourceFileMap, _, DefaultFileName) then
             MaybeFileName = no
         else
@@ -112,7 +112,7 @@ have_source_file_map(HaveMap, !IO) :-
         HaveMap = yes
     ).
 
-default_source_file(ModuleName) = sym_name_to_string(ModuleName) ++ ".m".
+default_source_file_name(ModuleName) = sym_name_to_string(ModuleName) ++ ".m".
 
     % If the file name ends in ".m", return the module name whose
     % default file name that would be.

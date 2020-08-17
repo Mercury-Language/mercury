@@ -54,18 +54,18 @@
     mode analyses(in, in, out) is semidet,
     mode analyses(in, out, out) is multi,
 
-    % module_name_to_read_file_name(Compiler, Globals, ModuleName, Ext,
-    %   MaybeFileName)
+    % module_name_to_read_file_name(Compiler, Globals, Ext,
+    %   ModuleName, MaybeFileName, !IO)
     %
     pred module_name_to_read_file_name(Compiler::in, globals::in,
-        module_name::in, ext::in, maybe_error(string)::out,
+        other_ext::in, module_name::in, maybe_error(string)::out,
         io::di, io::uo) is det,
 
-    % module_name_to_write_file_name(Compiler, Globals, ModuleName, Ext,
-    %   FileName)
+    % module_name_to_write_file_name(Compiler, Globals, Ext,
+    %   ModuleName, FileName, !IO)
     %
     pred module_name_to_write_file_name(Compiler::in, globals::in,
-        module_name::in, ext::in, string::out, io::di, io::uo) is det
+        other_ext::in, module_name::in, string::out, io::di, io::uo) is det
 ].
 
 :- type analysis_name == string.
@@ -1290,8 +1290,8 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
 
     % Touch a timestamp file to indicate the last time that this module was
     % analysed.
-    module_name_to_write_file_name(Compiler, Globals, ThisModule,
-        ext(".analysis_date"), TimestampFileName, !IO),
+    module_name_to_write_file_name(Compiler, Globals,
+        other_ext(".analysis_date"), ThisModule, TimestampFileName, !IO),
     touch_datestamp(Globals, TimestampFileName, !IO).
 
 :- pred load_module_imdg(globals::in, module_name::in,

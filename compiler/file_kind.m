@@ -50,9 +50,9 @@
 
 :- pred file_kind_to_extension(file_kind::in, string::out, ext::out) is det.
 :- pred int_file_kind_to_extension(int_file_kind::in,
-    string::out, ext::out) is det.
+    string::out, other_ext::out) is det.
 :- pred opt_file_kind_to_extension(opt_file_kind::in,
-    string::out, ext::out) is det.
+    string::out, other_ext::out) is det.
 
 :- pred extension_to_file_kind(string::in, file_kind::out) is semidet.
 
@@ -60,19 +60,20 @@
 
 :- implementation.
 
-file_kind_to_extension(fk_src, ".m", ext(".m")).
-file_kind_to_extension(fk_int(IntFileKind), ExtStr, Ext) :-
-    int_file_kind_to_extension(IntFileKind, ExtStr, Ext).
-file_kind_to_extension(fk_opt(OptFileKind), ExtStr, Ext) :-
-    opt_file_kind_to_extension(OptFileKind, ExtStr, Ext).
+file_kind_to_extension(fk_src, ".m", ext_src).
+file_kind_to_extension(fk_int(IntFileKind), ExtStr, ext_other(OtherExt)) :-
+    int_file_kind_to_extension(IntFileKind, ExtStr, OtherExt).
+file_kind_to_extension(fk_opt(OptFileKind), ExtStr, ext_other(OtherExt)) :-
+    opt_file_kind_to_extension(OptFileKind, ExtStr, OtherExt).
 
-int_file_kind_to_extension(ifk_int0, ".int0", ext(".int0")).
-int_file_kind_to_extension(ifk_int2, ".int2", ext(".int2")).
-int_file_kind_to_extension(ifk_int3, ".int3", ext(".int3")).
-int_file_kind_to_extension(ifk_int1, ".int", ext(".int")).
+int_file_kind_to_extension(ifk_int0, ".int0", other_ext(".int0")).
+int_file_kind_to_extension(ifk_int2, ".int2", other_ext(".int2")).
+int_file_kind_to_extension(ifk_int3, ".int3", other_ext(".int3")).
+int_file_kind_to_extension(ifk_int1, ".int", other_ext(".int")).
 
-opt_file_kind_to_extension(ofk_opt, ".opt", ext(".opt")).
-opt_file_kind_to_extension(ofk_trans_opt, ".trans_opt", ext(".trans_opt")).
+opt_file_kind_to_extension(ofk_opt, ".opt", other_ext(".opt")).
+opt_file_kind_to_extension(ofk_trans_opt, ".trans_opt",
+    other_ext(".trans_opt")).
 
 extension_to_file_kind(ExtStr, FileKind) :-
     (

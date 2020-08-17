@@ -127,8 +127,8 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     % that is why we don't call mercury_module_name_to_mlds here.
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(Globals, do_create_dirs, ext(".java"),
-        ModuleName, JavaSourceFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".java")), ModuleName, JavaSourceFileName, !IO),
     Indent = 0,
     output_to_file(Globals, JavaSourceFileName,
         output_java_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
@@ -222,8 +222,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
     % We start with the Java foreign code declarations, since for
     % library/private_builtin.m they contain static constants
     % that will get used in the RTTI definitions.
-    module_info_get_globals(ModuleInfo, Globals),
-    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Info = init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap),
     output_src_start_for_java(Info, Indent, ModuleName, Imports,
         ForeignDeclCodes, ProcDefns, ForeignDeclErrors, !IO),

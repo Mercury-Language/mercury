@@ -179,8 +179,8 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     ;
         MaybeShowTypeRepns = show_type_repns(ShowWhichTypes, ForDevelopers),
         module_info_get_name(!.ModuleInfo, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ext(".type_repns"),
-            ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".type_repns")), ModuleName, FileName, !IO),
         io.open_output(FileName, FileResult, !IO),
         (
             FileResult = ok(Stream),

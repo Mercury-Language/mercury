@@ -152,11 +152,12 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     (
         EffectivelyErrors = no,
         actually_write_interface_file3(Globals, ParseTreeInt3, "", no, !IO),
-        touch_interface_datestamp(Globals, ModuleName, ext(".date3"), !IO)
+        touch_interface_datestamp(Globals, ModuleName,
+            other_ext(".date3"), !IO)
     ;
         EffectivelyErrors = yes,
-        report_file_not_written(Globals, Specs, no, ModuleName, ext(".int3"),
-            no, !IO)
+        report_file_not_written(Globals, Specs, no, ModuleName,
+            other_ext(".int3"), no, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -202,16 +203,17 @@ write_private_interface_file_int0(Globals, SourceFileName,
             % Write out the `.int0' file.
             actually_write_interface_file0(Globals, ParseTreeInt0, "",
                 MaybeTimestamp, !IO),
-            touch_interface_datestamp(Globals, ModuleName, ext(".date0"), !IO)
+            touch_interface_datestamp(Globals, ModuleName,
+                other_ext(".date0"), !IO)
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(Globals, EffectiveGetQualSpecs, no,
-                ModuleName, ext(".int0"), no, !IO)
+                ModuleName, other_ext(".int0"), no, !IO)
         )
     else
         PrefixMsg = "Error reading interface files.\n",
         report_file_not_written(Globals, GetSpecs, yes(PrefixMsg),
-            ModuleName, ext(".int0"), no, !IO)
+            ModuleName, other_ext(".int0"), no, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -257,16 +259,17 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
                 MaybeTimestamp, !IO),
             actually_write_interface_file2(Globals, ParseTreeInt2, "",
                 MaybeTimestamp, !IO),
-            touch_interface_datestamp(Globals, ModuleName, ext(".date"), !IO)
+            touch_interface_datestamp(Globals, ModuleName,
+                other_ext(".date"), !IO)
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(Globals, EffectiveGetQualSpecs, no,
-                ModuleName, ext(".int"), yes(ext(".int2")), !IO)
+                ModuleName, other_ext(".int"), yes(other_ext(".int2")), !IO)
         )
     else
         PrefixMsg = "Error reading .int3 files.\n",
         report_file_not_written(Globals, GetSpecs, yes(PrefixMsg),
-            ModuleName, ext(".int"), yes(ext(".int2")), !IO)
+            ModuleName, other_ext(".int"), yes(other_ext(".int2")), !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -346,9 +349,9 @@ actually_write_interface_file3(Globals, ParseTreeInt3, ExtraSuffix,
 
 construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
         OutputFileName, TmpOutputFileName, !IO) :-
-    int_file_kind_to_extension(IntFileKind, _ExtStr, Ext),
-    module_name_to_file_name(Globals, do_create_dirs, Ext,
-        ModuleName, OutputFileName0, !IO),
+    int_file_kind_to_extension(IntFileKind, _ExtStr, OtherExt),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(OtherExt), ModuleName, OutputFileName0, !IO),
     OutputFileName = OutputFileName0 ++ ExtraSuffix,
     TmpOutputFileName = OutputFileName ++ ".tmp".
 
@@ -432,11 +435,11 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 %---------------------------------------------------------------------------%
 
 :- pred report_file_not_written(globals::in, list(error_spec)::in,
-    maybe(string)::in, module_name::in, ext::in, maybe(ext)::in,
+    maybe(string)::in, module_name::in, other_ext::in, maybe(other_ext)::in,
     io::di, io::uo) is det.
 
 report_file_not_written(Globals, Specs, MaybePrefixMsg,
-        ModuleName, ExtA, MaybeExtB, !IO) :-
+        ModuleName, OtherExtA, MaybeOtherExtB, !IO) :-
     write_error_specs_ignore(Globals, Specs, !IO),
     (
         MaybePrefixMsg = no
@@ -447,15 +450,15 @@ report_file_not_written(Globals, Specs, MaybePrefixMsg,
     % We use write_error_spec to print the message the interface file or
     % files not being written in order to wrap the message if it is
     % longer than the line length.
-    module_name_to_file_name(Globals, do_not_create_dirs, ExtA,
-        ModuleName, IntAFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(OtherExtA), ModuleName, IntAFileName, !IO),
     (
-        MaybeExtB = no,
+        MaybeOtherExtB = no,
         NotWrittenPieces = [quote(IntAFileName), words("not written."), nl]
     ;
-        MaybeExtB = yes(ExtB),
-        module_name_to_file_name(Globals, do_not_create_dirs, ExtB,
-            ModuleName, IntBFileName, !IO),
+        MaybeOtherExtB = yes(OtherExtB),
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(OtherExtB), ModuleName, IntBFileName, !IO),
         NotWrittenPieces = [quote(IntAFileName), words("and"),
             quote(IntBFileName), words("not written."), nl]
     ),

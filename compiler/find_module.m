@@ -25,26 +25,24 @@
 
 %---------------------------------------------------------------------------%
 
-    % search_for_module_source(Globals, Dirs, ModuleName, FoundSourceFile,
-    %   !IO):
+    % search_for_module_source(Dirs, ModuleName, FoundSourceFile, !IO):
     %
     % Look for the source for ModuleName in Dirs. If found, return the
     % (relative or absolute) path name of the source file that contains
     % the module.
     %
-:- pred search_for_module_source(globals::in, list(dir_name)::in,
-    module_name::in, maybe_error(file_name)::out, io::di, io::uo) is det.
+:- pred search_for_module_source(list(dir_name)::in, module_name::in,
+    maybe_error(file_name)::out, io::di, io::uo) is det.
 
-    % search_for_module_source_and_stream(Globals, Dirs, ModuleName,
+    % search_for_module_source_and_stream(Dirs, ModuleName,
     %   FoundSourceFileNameAndStream, !IO):
     %
     % As search_for_module_source, but if we find the file, then return
     % not just its path name, but also an open stream reading from it.
     % Closing that stream is the caller's responsibility.
     %
-:- pred search_for_module_source_and_stream(globals::in, list(dir_name)::in,
-    module_name::in, maybe_error(path_name_and_stream)::out, io::di, io::uo)
-    is det.
+:- pred search_for_module_source_and_stream(list(dir_name)::in, module_name::in,
+    maybe_error(path_name_and_stream)::out, io::di, io::uo) is det.
 
     % Read the first item from the given file to find the module name.
     %
@@ -65,8 +63,8 @@
 
 %---------------------------------------------------------------------------%
 
-search_for_module_source(Globals, Dirs, ModuleName, MaybeFileName, !IO) :-
-    search_for_module_source_and_stream(Globals, Dirs, ModuleName,
+search_for_module_source(Dirs, ModuleName, MaybeFileName, !IO) :-
+    search_for_module_source_and_stream(Dirs, ModuleName,
         MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream =
@@ -78,10 +76,9 @@ search_for_module_source(Globals, Dirs, ModuleName, MaybeFileName, !IO) :-
         MaybeFileName = error(Msg)
     ).
 
-search_for_module_source_and_stream(Globals, Dirs, ModuleName,
+search_for_module_source_and_stream(Dirs, ModuleName,
         MaybeFileNameAndStream, !IO) :-
-    module_name_to_file_name(Globals, do_not_create_dirs, ext(".m"),
-        ModuleName, FileName0, !IO),
+    module_name_to_source_file_name(ModuleName, FileName0, !IO),
     search_for_file_and_stream(Dirs, FileName0, MaybeFileNameAndStream0, !IO),
     (
         MaybeFileNameAndStream0 = ok(_),

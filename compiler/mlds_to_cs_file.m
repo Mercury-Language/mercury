@@ -75,8 +75,8 @@
 output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(Globals, do_create_dirs, ext(".cs"),
-        ModuleName, SourceFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".cs")), ModuleName, SourceFileName, !IO),
     Indent = 0,
     output_to_file(Globals, SourceFileName,
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
@@ -119,8 +119,7 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
         _Imports, ExportDefns),
 
     % Output transformed MLDS as C# source.
-    module_info_get_globals(ModuleInfo, Globals),
-    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Info = init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs),
     output_src_start_for_csharp(Info, Indent, ModuleName, Imports,
         ForeignDeclCodes, ProcDefns, ForeignDeclErrors, !IO),

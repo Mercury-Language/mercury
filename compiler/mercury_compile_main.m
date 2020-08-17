@@ -124,6 +124,10 @@ real_main(!IO) :-
     io.set_output_stream(StdErr, _, !IO),
     io.command_line_arguments(CmdLineArgs, !IO),
 
+    trace [compile_time(flag("cmd_line_args")), io(!TIO)] (
+        dump_args("REAL_MAIN", CmdLineArgs, !TIO)
+    ),
+
     unlimit_stack(!IO),
 
     % Replace all @file arguments with the contents of the file.
@@ -309,6 +313,12 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                 MCFlagsErrors0 = no,
                 % Process the options again to find out which configuration
                 % file to read.
+
+                trace [compile_time(flag("cmd_line_args")), io(!TIO)] (
+                    dump_args("MCFlags0", MCFlags0, !TIO),
+                    dump_args("CmdLineArgs", CmdLineArgs, !TIO)
+                ),
+
                 handle_given_options(MCFlags0 ++ CmdLineArgs, _, _,
                     FlagsSpecs, FlagsArgsGlobals, !IO),
                 (
@@ -414,6 +424,9 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         % currently not defined. It does not  matter at the moment, since
         % Mercury.config does not contain either of those two flags.
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
+        trace [compile_time(flag("cmd_line_args")), io(!TIO)] (
+            dump_args("AllFlags", AllFlags, !TIO)
+        ),
         handle_given_options(AllFlags, _, _, Specs, ActualGlobals, !IO),
 
         % Now that we have constructed a globals, print out any errors and/or
@@ -449,17 +462,7 @@ maybe_dump_options_file(ArgsGlobals, Variables, !IO) :-
         DumpOptionsFile = no
     ;
         DumpOptionsFile = yes,
-        io.open_output("DUMP_OPTIONS_FILE", OpenResult, !IO),
-        (
-            OpenResult = ok(DumpStream),
-            write_options_variables(DumpStream, Variables, !IO),
-            io.close_output(DumpStream, !IO)
-        ;
-            OpenResult = error(Error),
-            ErrorMsg = io.error_message(Error),
-            io.format("mercury_compile: %s\n", [s(ErrorMsg)], !IO),
-            io.set_exit_status(1, !IO)
-        )
+        dump_options_file(Variables, !IO)
     ).
 
 %---------------------%
@@ -1174,7 +1177,8 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ( if halt_at_module_error(Globals, Errors) then
             true
         else
-            module_name_to_file_name(Globals, do_create_dirs, ext(".ugly"),
+            module_name_to_file_name(Globals, $pred, do_create_dirs,
+                ext_other(other_ext(".ugly")),
                 ModuleName, OutputFileName, !IO),
             output_parse_tree_src(Globals, OutputFileName, ParseTreeSrc, !IO)
         ),
@@ -1316,20 +1320,21 @@ find_modules_to_recompile(Globals0, Globals, FileOrModule, ModulesToRecompile,
 
 find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     globals.get_target(Globals, CompilationTarget),
-    ( CompilationTarget = target_c, TargetExt = ext(".c")
-    ; CompilationTarget = target_csharp, TargetExt = ext(".cs")
-    ; CompilationTarget = target_java, TargetExt = ext(".java")
-    ; CompilationTarget = target_erlang, TargetExt = ext(".erl")
+    ( CompilationTarget = target_c, TargetOtherExt = other_ext(".c")
+    ; CompilationTarget = target_csharp, TargetOtherExt = other_ext(".cs")
+    ; CompilationTarget = target_java, TargetOtherExt = other_ext(".java")
+    ; CompilationTarget = target_erlang, TargetOtherExt = other_ext(".erl")
     ),
-    FindTargetFiles = usual_find_target_files(Globals, TargetExt).
+    FindTargetFiles = usual_find_target_files(Globals, TargetOtherExt).
 
-:- pred usual_find_target_files(globals::in, ext::in,
+:- pred usual_find_target_files(globals::in, other_ext::in,
     module_name::in, list(file_name)::out, io::di, io::uo) is det.
 
-usual_find_target_files(Globals, TargetExt, ModuleName, TargetFiles, !IO) :-
+usual_find_target_files(Globals, TargetOtherExt,
+        ModuleName, TargetFiles, !IO) :-
     % XXX Should we check the generated header files?
-    module_name_to_file_name(Globals, do_create_dirs, TargetExt,
-        ModuleName, FileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(TargetOtherExt), ModuleName, FileName, !IO),
     TargetFiles = [FileName].
 
 :- pred find_timestamp_files(globals::in,
@@ -1339,26 +1344,26 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        TimestampExt = ext(".c_date")
+        TimestampOtherExt = other_ext(".c_date")
     ;
         CompilationTarget = target_csharp,
-        TimestampExt = ext(".cs_date")
+        TimestampOtherExt = other_ext(".cs_date")
     ;
         CompilationTarget = target_java,
-        TimestampExt = ext(".java_date")
+        TimestampOtherExt = other_ext(".java_date")
     ;
         CompilationTarget = target_erlang,
-        TimestampExt = ext(".erl_date")
+        TimestampOtherExt = other_ext(".erl_date")
     ),
-    FindTimestampFiles = find_timestamp_files_2(Globals, TimestampExt).
+    FindTimestampFiles = find_timestamp_files_2(Globals, TimestampOtherExt).
 
-:- pred find_timestamp_files_2(globals::in, ext::in, module_name::in,
+:- pred find_timestamp_files_2(globals::in, other_ext::in, module_name::in,
     list(file_name)::out, io::di, io::uo) is det.
 
-find_timestamp_files_2(Globals, TimestampExt, ModuleName, TimestampFiles,
-        !IO) :-
-    module_name_to_file_name(Globals, do_create_dirs, TimestampExt,
-        ModuleName, FileName, !IO),
+find_timestamp_files_2(Globals, TimestampOtherExt,
+        ModuleName, TimestampFiles, !IO) :-
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(TimestampOtherExt), ModuleName, FileName, !IO),
     TimestampFiles = [FileName].
 
 %---------------------------------------------------------------------------%
@@ -1995,8 +2000,8 @@ maybe_read_d_file_for_trans_opt_deps(Globals, ModuleName,
     (
         TransOpt = yes,
         globals.lookup_bool_option(Globals, verbose, Verbose),
-        module_name_to_file_name(Globals, do_not_create_dirs, ext(".d"),
-            ModuleName, DependencyFileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(".d")), ModuleName, DependencyFileName, !IO),
         maybe_write_string(Verbose, "% Reading auto-dependency file `", !IO),
         maybe_write_string(Verbose, DependencyFileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -2005,8 +2010,9 @@ maybe_read_d_file_for_trans_opt_deps(Globals, ModuleName,
         (
             OpenResult = ok(Stream),
             io.set_input_stream(Stream, OldStream, !IO),
-            module_name_to_file_name(Globals, do_not_create_dirs,
-                ext(".trans_opt_date"), ModuleName, TransOptDateFileName, !IO),
+            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+                ext_other(other_ext(".trans_opt_date")),
+                ModuleName, TransOptDateFileName, !IO),
             SearchPattern = TransOptDateFileName ++ " :",
             read_dependency_file_find_start(SearchPattern, FindResult, !IO),
             (
@@ -2205,8 +2211,8 @@ make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
     pre_hlds_maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
     ModuleName = aug_compilation_unit_project_name(AugCompUnit),
-    module_name_to_file_name(Globals, do_create_dirs, ext(".hlds_dump"),
-        ModuleName, DumpBaseFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".hlds_dump")), ModuleName, DumpBaseFileName, !IO),
     parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
         TypeEqvMap, UsedModules, QualInfo,
         FoundInvalidType, FoundInvalidInstOrMode, !:HLDS, MakeSpecs),
@@ -2240,8 +2246,8 @@ maybe_write_definitions(Verbose, Stats, HLDS, !IO) :-
         ShowDefns = yes,
         maybe_write_string(Verbose, "% Writing definitions...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ext(".defns"),
-            ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".defns")), ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2271,8 +2277,9 @@ maybe_write_definition_line_counts(Verbose, Stats, HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Writing definition line counts...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs,
-            ext(".defn_line_counts"), ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".defn_line_counts")),
+            ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2301,8 +2308,8 @@ maybe_write_definition_extents(Verbose, Stats, HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Writing definition extents...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ext(".defn_extents"),
-            ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".defn_extents")), ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2332,8 +2339,9 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
         ShowDepGraph = yes,
         maybe_write_string(Verbose, "% Writing dependency graph...", !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs,
-            ext(".dependency_graph"), ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".dependency_graph")),
+            ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2415,8 +2423,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
     % `.used' file is written.
 
     module_info_get_name(!.HLDS, ModuleName),
-    module_name_to_file_name(Globals, do_not_create_dirs, ext(".used"),
-        ModuleName, UsageFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".used")), ModuleName, UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
 
     globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
@@ -2457,8 +2465,9 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                 ;
                     TargetCodeSucceeded = yes,
                     io.output_stream(OutputStream, !IO),
-                    module_name_to_file_name(Globals, do_not_create_dirs,
-                        ext(".java"), ModuleName, JavaFile, !IO),
+                    module_name_to_file_name(Globals, $pred,
+                        do_not_create_dirs, ext_other(other_ext(".java")),
+                        ModuleName, JavaFile, !IO),
                     compile_java_files(Globals, OutputStream, [JavaFile],
                         Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
@@ -2489,13 +2498,15 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                         Succeeded = no
                     ;
                         TargetCodeSucceeded = yes,
-                        module_name_to_file_name(Globals, do_not_create_dirs,
-                            ext(".c"), ModuleName, C_File, !IO),
+                        module_name_to_file_name(Globals, $pred,
+                            do_not_create_dirs, ext_other(other_ext(".c")),
+                            ModuleName, C_File, !IO),
                         get_linked_target_type(Globals, TargetType),
                         get_object_code_type(Globals, TargetType, PIC),
-                        maybe_pic_object_file_extension(Globals, PIC, Obj),
-                        module_name_to_file_name(Globals, do_create_dirs,
-                            Obj, ModuleName, O_File, !IO),
+                        pic_object_file_extension(Globals, PIC, ObjOtherExt),
+                        module_name_to_file_name(Globals, $pred,
+                            do_create_dirs, ext_other(ObjOtherExt),
+                            ModuleName, O_File, !IO),
                         io.output_stream(OutputStream, !IO),
                         do_compile_c_file(Globals, OutputStream, PIC,
                             C_File, O_File, Succeeded, !IO),
@@ -2563,8 +2574,8 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
             "% Outputting profiling call graph...", !IO),
         maybe_flush_output(Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, do_create_dirs, ext(".prof"),
-            ModuleName, ProfFileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".prof")), ModuleName, ProfFileName, !IO),
         io.open_output(ProfFileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -2583,6 +2594,20 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
     else
         true
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred dump_args(string::in, list(string)::in, io::di, io::uo) is det.
+
+dump_args(Marker, Args, !IO) :-
+    io.format("%s START\n", [s(Marker)], !IO),
+    io.write_list(Args, "", dump_arg, !IO),
+    io.format("%s END\n", [s(Marker)], !IO).
+
+:- pred dump_arg(string::in, io::di, io::uo) is det.
+
+dump_arg(Arg, !IO) :-
+    io.format("<%s>\n", [s(Arg)], !IO).
 
 %---------------------------------------------------------------------------%
 

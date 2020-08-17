@@ -84,7 +84,7 @@
     % Touch the datestamp file `ModuleName.Ext'. Datestamp files are used
     % to record when each of the interface files was last updated.
     %
-:- pred touch_interface_datestamp(globals::in, module_name::in, ext::in,
+:- pred touch_interface_datestamp(globals::in, module_name::in, other_ext::in,
     io::di, io::uo) is det.
 
     % touch_datestamp(Globals, FileName, !IO):
@@ -514,9 +514,9 @@ make_symlink_or_copy_dir(Globals, SourceDirName, DestinationDirName,
 
 %-----------------------------------------------------------------------------%
 
-touch_interface_datestamp(Globals, ModuleName, Ext, !IO) :-
-    module_name_to_file_name(Globals, do_create_dirs, Ext,
-        ModuleName, OutputFileName, !IO),
+touch_interface_datestamp(Globals, ModuleName, OtherExt, !IO) :-
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(OtherExt), ModuleName, OutputFileName, !IO),
     touch_datestamp(Globals, OutputFileName, !IO).
 
 touch_datestamp(Globals, OutputFileName, !IO) :-
@@ -784,8 +784,8 @@ use_win32 :-
 %
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
-    Ext = ext(".jar"),
-    module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+    Ext = ext_other(other_ext(".jar")),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
         MainModuleName, JarFileName, !IO),
     get_target_env_type(Globals, TargetEnvType),
     (
@@ -1076,8 +1076,8 @@ create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
 write_erlang_shell_script(Globals, MainModuleName, Stream, !IO) :-
     globals.lookup_string_option(Globals, erlang_object_file_extension,
         BeamExtStr),
-    module_name_to_file_name(Globals, do_not_create_dirs, ext(BeamExtStr),
-        MainModuleName, BeamFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(BeamExtStr)), MainModuleName, BeamFileName, !IO),
     BeamDirName = dir.dirname(BeamFileName),
     module_name_to_file_name_stem(MainModuleName, BeamBaseNameNoExt),
 
@@ -1139,8 +1139,8 @@ write_erlang_batch_file(Globals, MainModuleName, Stream, !IO) :-
     % the Unix version above.
     globals.lookup_string_option(Globals, erlang_object_file_extension,
         BeamExtStr),
-    module_name_to_file_name(Globals, do_not_create_dirs, ext(BeamExtStr),
-        MainModuleName, BeamFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(BeamExtStr)), MainModuleName, BeamFileName, !IO),
     BeamDirName = dir.dirname(BeamFileName),
     module_name_to_file_name_stem(MainModuleName, BeamBaseNameNoExt),
 
@@ -1197,8 +1197,8 @@ write_erlang_batch_file(Globals, MainModuleName, Stream, !IO) :-
 find_erlang_library_path(Globals, MercuryLibDirs, LibName, LibPath, !IO) :-
     file_name_to_module_name(LibName, LibModuleName),
     globals.set_option(use_grade_subdirs, bool(no), Globals, NoSubdirsGlobals),
-    module_name_to_lib_file_name(NoSubdirsGlobals, do_not_create_dirs,
-        "lib", ext(".beams"), LibModuleName, LibFileName, !IO),
+    module_name_to_lib_file_name(NoSubdirsGlobals, $pred, do_not_create_dirs,
+        "lib", other_ext(".beams"), LibModuleName, LibFileName, !IO),
 
     search_for_file_returning_dir(MercuryLibDirs, LibFileName, MaybeDirName,
         !IO),
@@ -1236,8 +1236,8 @@ pa_option(BreakLines, Quote, Dir0) = Option :-
 %-----------------------------------------------------------------------------%
 
 create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, do_create_dirs, ext(""),
-        MainModuleName, FileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext("")), MainModuleName, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating shell script `" ++
@@ -1274,8 +1274,8 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
 %-----------------------------------------------------------------------------%
 
 create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, do_create_dirs, ext(".bat"),
-        MainModuleName, FileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".bat")), MainModuleName, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating batch file `" ++

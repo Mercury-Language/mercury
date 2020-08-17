@@ -485,10 +485,9 @@ frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats, Globals,
 create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
         !Specs, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
-    module_name_to_file_name(Globals, do_create_dirs, ext(".opt.tmp"),
-        ModuleName, TmpOptName, !IO),
-    module_name_to_file_name(Globals, do_create_dirs, ext(".opt"),
-        ModuleName, OptName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".opt")), ModuleName, OptName, !IO),
+    TmpOptName = OptName ++ ".tmp",
 
     io.open_output(TmpOptName, OpenResult, !IO),
     (
@@ -536,7 +535,8 @@ create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
         io.close_output(TmpOptStream, !IO),
 
         update_interface(Globals, OptName, !IO),
-        touch_interface_datestamp(Globals, ModuleName, ext(".optdate"), !IO),
+        touch_interface_datestamp(Globals, ModuleName,
+            other_ext(".optdate"), !IO),
 
         globals.lookup_bool_option(Globals, experiment5, Experiment5),
         (
@@ -581,8 +581,8 @@ mark_entities_in_opt_file_as_opt_exported(IntermodAnalysis,
         (
             UseOptFiles = yes,
             module_info_get_name(!.HLDS, ModuleName),
-            module_name_to_search_file_name(Globals, ext(".opt"),
-                ModuleName, OptName, !IO),
+            module_name_to_search_file_name(Globals, $pred,
+                ext_other(other_ext(".opt")), ModuleName, OptName, !IO),
             globals.lookup_accumulating_option(Globals, intermod_directories,
                 IntermodDirs),
             search_for_file_returning_dir(IntermodDirs, OptName,

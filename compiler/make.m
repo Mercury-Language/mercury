@@ -46,7 +46,7 @@
 :- pred make_write_module_dep_file(globals::in, module_and_imports::in,
     io::di, io::uo) is det.
 
-:- func make_module_dep_file_extension = ext.
+:- func make_module_dep_file_extension = other_ext is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -286,7 +286,7 @@
 make_write_module_dep_file(Globals, Imports, !IO) :-
     make.module_dep_file.write_module_dep_file(Globals, Imports, !IO).
 
-make_module_dep_file_extension = ext(".module_dep").
+make_module_dep_file_extension = other_ext(".module_dep").
 
 %-----------------------------------------------------------------------------%
 
@@ -485,7 +485,7 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 
 classify_target_2(Globals, ModuleNameStr0, ExtStr, ModuleName - TargetType) :-
     ( if
-        target_extension(Globals, ModuleTargetType, yes(ext(ExtStr))),
+        extension_to_target_type(Globals, ExtStr, ModuleTargetType),
         % The .cs extension was used to build all C target files, but .cs is
         % also the file name extension for a C# file. The former use is being
         % migrated over to the .all_cs target but we still accept it for now.
@@ -536,7 +536,7 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, ModuleName - TargetType) :-
             string.append(ExtStr1, "s", ExtStr)
         ),
         (
-            target_extension(Globals, ModuleTargetType, yes(ext(ExtStr1)))
+            extension_to_target_type(Globals, ExtStr1, ModuleTargetType)
         ;
             target_extension_synonym(ExtStr1, ModuleTargetType)
         ),
@@ -669,7 +669,8 @@ make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
-        module_name_to_file_name(Globals, do_create_dirs, ext(".track_flags"),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".track_flags")),
             ModuleName, HashFileName, !IO),
         compare_hash_file(Globals, HashFileName, Hash, Same, !IO),
         (

@@ -116,8 +116,8 @@
 
 output_llds(Globals, CFile, Succeeded, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
-    module_name_to_file_name(Globals, do_create_dirs, ext(".c"),
-        ModuleName, FileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".c")), ModuleName, FileName, !IO),
     output_to_file(Globals, FileName, output_llds_2(Globals, CFile),
         Succeeded, !IO).
 
@@ -145,7 +145,7 @@ output_single_c_file(Globals, CFile, Errors, !DeclSet, !IO) :-
         AllocSites, AllocSiteMap,
         Modules, UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
     library.version(Version, Fullarch),
-    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     output_c_file_intro_and_grade(Globals, SourceFileName, Version, Fullarch,
         !IO),
 

@@ -149,8 +149,8 @@ increase_array_size(N) = (if N = 0 then 1 else N * 2).
 %---------------------%
 
 module_names_to_index_set(ModuleNames, IndexSet, !Info) :-
-    module_names_to_index_set_2(ModuleNames, sparse_bitset.init,
-        IndexSet, !Info).
+    module_names_to_index_set_2(ModuleNames,
+        sparse_bitset.init, IndexSet, !Info).
 
 :- pred module_names_to_index_set_2(list(module_name)::in,
     deps_set(module_index)::in, deps_set(module_index)::out,

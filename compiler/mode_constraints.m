@@ -196,8 +196,8 @@ dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
         !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, do_create_dirs, ext(".mode_constraints"),
-        ModuleName, FileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".mode_constraints")), ModuleName, FileName, !IO),
     OutputFile = FileName,
 
     io.open_output(OutputFile, IOResult, !IO),

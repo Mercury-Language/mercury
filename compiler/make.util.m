@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: make.util.m.
 % Authors: stayl, wangp.
 %
 % Assorted predicates used to implement `mmc --make'.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module make.util.
 :- interface.
@@ -22,7 +22,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Timestamp handling.
 %
@@ -71,7 +71,7 @@
 :- func find_oldest_timestamp(maybe_error(timestamp),
     maybe_error(timestamp)) = maybe_error(timestamp).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Remove file a file, deleting the cached timestamp.
 % The removal is reported to the user if the given boolean option is set.
@@ -100,7 +100,7 @@
 :- pred make_remove_file(globals::in, option::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func make_target_file_list(list(module_name), module_target_type) =
     list(target_file).
@@ -108,14 +108,18 @@
 :- func make_dependency_list(list(module_name), module_target_type)
     = list(dependency_file).
 
-    % XXX The second mode is needed only by code in classify_target_2,
-    % code that should be replaced.
-:- pred target_extension(globals, module_target_type, maybe(ext)).
-:- mode target_extension(in, in, out) is det.
-:- mode target_extension(in, out, in(bound(yes(ground)))) is nondet.
+%---------------------------------------------------------------------------%
+
+:- pred target_type_to_extension(globals::in, module_target_type::in,
+    ext::out) is semidet.
+
+:- pred extension_to_target_type(globals::in, string::in,
+    module_target_type::out) is semidet.
 
 :- pred target_extension_synonym(string::in, module_target_type::out)
     is semidet.
+
+%---------------------------------------------------------------------------%
 
 :- pred linked_target_file_name(globals::in, module_name::in,
     linked_target_type::in, file_name::out, io::di, io::uo) is det.
@@ -123,11 +127,11 @@
     % Find the extension for the timestamp file for the given target type,
     % if one exists.
     %
-:- pred timestamp_extension(module_target_type::in, ext::out) is semidet.
+:- pred timestamp_extension(module_target_type::in, other_ext::out) is semidet.
 
 :- pred target_is_grade_or_arch_dependent(module_target_type::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Debugging, verbose messages, and error messages.
 %
@@ -207,14 +211,14 @@
 :- pred maybe_symlink_or_copy_linked_target_message(globals::in,
     pair(module_name, target_type)::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Timing.
 %
 
 :- pred get_real_milliseconds(int::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Hash functions.
 %
@@ -223,8 +227,8 @@
 
 :- pred dependency_file_hash(dependency_file::in, int::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -243,14 +247,14 @@
 :- import_module require.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
         MaybeTimestamp, !Info, !IO) :-
-    ( if timestamp_extension(TargetType, TimestampExt) then
-        module_name_to_file_name(Globals, do_not_create_dirs, TimestampExt,
-            ModuleName, FileName, !IO)
+    ( if timestamp_extension(TargetType, TimestampOtherExt) then
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(TimestampOtherExt), ModuleName, FileName, !IO)
     else
         module_target_to_file_name(Globals, do_not_create_dirs, TargetType,
             ModuleName, FileName, !IO)
@@ -381,7 +385,7 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
         MaybeTimestamp = MaybeTimestamp0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
@@ -399,13 +403,10 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
 
             % Something has gone wrong generating the dependencies,
             % so just take a punt (which probably won't work).
-            module_name_to_file_name(Globals, do_not_create_dirs, ext(".m"),
-                ModuleName, FileName, !IO)
+            module_name_to_source_file_name(ModuleName, FileName, !IO)
         )
     else
-        target_extension(Globals, TargetType, MaybeExt),
-        (
-            MaybeExt = yes(Ext),
+        ( if target_type_to_extension(Globals, TargetType, Ext) then
             (
                 Search = do_search,
                 module_name_to_search_file_name_cache(Globals, Ext,
@@ -413,11 +414,10 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
             ;
                 Search = do_not_search,
                 % Not common enough to cache.
-                module_name_to_file_name(Globals, do_not_create_dirs, Ext,
-                    ModuleName, FileName, !IO)
+                module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+                    Ext, ModuleName, FileName, !IO)
             )
-        ;
-            MaybeExt = no,
+        else
             module_target_to_file_name_maybe_search(Globals, Search,
                 do_not_create_dirs, TargetType, ModuleName, FileName, !IO)
         )
@@ -434,8 +434,8 @@ module_name_to_search_file_name_cache(Globals, Ext, ModuleName, FileName,
     ( if map.search(Cache0, Key, FileName0) then
         FileName = FileName0
     else
-        module_name_to_search_file_name(Globals, Ext, ModuleName, FileName,
-            !IO),
+        module_name_to_search_file_name(Globals, $pred, Ext,
+            ModuleName, FileName, !IO),
         map.det_insert(Key, FileName, Cache0, Cache),
         !Info ^ search_file_name_cache := Cache
     ).
@@ -488,7 +488,7 @@ find_oldest_timestamp(ok(Timestamp1), ok(Timestamp2)) = ok(Timestamp) :-
         Timestamp = Timestamp2
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_remove_target_file(Globals, VerboseOption, Target, !Info, !IO) :-
     Target = target_file(ModuleName, TargetType),
@@ -500,15 +500,15 @@ make_remove_target_file_by_name(Globals, VerboseOption, ModuleName, TargetType,
     module_target_to_file_name(Globals, do_not_create_dirs, TargetType,
         ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
-    ( if timestamp_extension(TargetType, TimestampExt) then
+    ( if timestamp_extension(TargetType, TimestampOtherExt) then
         make_remove_module_file(Globals, VerboseOption, ModuleName,
-            TimestampExt, !Info, !IO)
+            ext_other(TimestampOtherExt), !Info, !IO)
     else
         true
     ).
 
 make_remove_module_file(Globals, VerboseOption, ModuleName, Ext, !Info, !IO) :-
-    module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
         ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
 
@@ -527,7 +527,7 @@ report_remove_file(FileName, !IO) :-
     io.write_string(FileName, !IO),
     io.nl(!IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_target_file_list(ModuleNames, TargetType) =
     list.map((func(ModuleName) = target_file(ModuleName, TargetType)),
@@ -537,123 +537,203 @@ make_dependency_list(ModuleNames, TargetType) =
     list.map((func(Module) = dep_target(target_file(Module, TargetType))),
         ModuleNames).
 
-target_extension(Globals, Target, MaybeExt) :-
-    disable_warning [no_solution_disjunct]
+%---------------------------------------------------------------------------%
+
+target_type_to_extension(Globals, Target, Ext) :-
+    % target_type_to_extension and extension_to_target_type represent
+    % the same relationship between targets and suffixes, but in different
+    % directions. Their codes should be kept in sync.
+    require_complete_switch [Target]
     (
         Target = module_target_source,
-        MaybeExt = yes(ext(".m"))
+        Ext = ext_src
     ;
         Target = module_target_errors,
-        MaybeExt = yes(ext(".err"))
+        Ext = ext_other(other_ext(".err"))
     ;
         Target = module_target_int0,
-        MaybeExt = yes(ext(".int0"))
+        Ext = ext_other(other_ext(".int0"))
     ;
         Target = module_target_int1,
-        MaybeExt = yes(ext(".int"))
+        Ext = ext_other(other_ext(".int"))
     ;
         Target = module_target_int2,
-        MaybeExt = yes(ext(".int2"))
+        Ext = ext_other(other_ext(".int2"))
     ;
         Target = module_target_int3,
-        MaybeExt = yes(ext(".int3"))
+        Ext = ext_other(other_ext(".int3"))
     ;
         Target = module_target_opt,
-        MaybeExt = yes(ext(".opt"))
+        Ext = ext_other(other_ext(".opt"))
     ;
         Target = module_target_analysis_registry,
-        MaybeExt = yes(ext(".analysis"))
+        Ext = ext_other(other_ext(".analysis"))
     ;
         Target = module_target_track_flags,
-        MaybeExt = yes(ext(".track_flags"))
+        Ext = ext_other(other_ext(".track_flags"))
     ;
         Target = module_target_c_header(header_mih),
-        MaybeExt = yes(ext(".mih"))
+        Ext = ext_other(other_ext(".mih"))
     ;
         Target = module_target_c_header(header_mh),
-        MaybeExt = yes(ext(".mh"))
+        Ext = ext_other(other_ext(".mh"))
     ;
         Target = module_target_c_code,
-        MaybeExt = yes(ext(".c"))
+        Ext = ext_other(other_ext(".c"))
     ;
         Target = module_target_csharp_code,
         % XXX ".exe" if the module contains main.
-        MaybeExt = yes(ext(".cs"))
+        Ext = ext_other(other_ext(".cs"))
     ;
         Target = module_target_java_code,
-        MaybeExt = yes(ext(".java"))
+        Ext = ext_other(other_ext(".java"))
     ;
         Target = module_target_java_class_code,
-        MaybeExt = yes(ext(".class"))
+        Ext = ext_other(other_ext(".class"))
     ;
         Target = module_target_erlang_header,
-        MaybeExt = yes(ext(".hrl"))
+        Ext = ext_other(other_ext(".hrl"))
     ;
         Target = module_target_erlang_code,
-        MaybeExt = yes(ext(".erl"))
+        Ext = ext_other(other_ext(".erl"))
     ;
         Target = module_target_erlang_beam_code,
-        MaybeExt = yes(ext(".beam"))
+        Ext = ext_other(other_ext(".beam"))
     ;
         Target = module_target_object_code(PIC),
-        maybe_pic_object_file_extension(Globals, PIC, Ext),
-        MaybeExt = yes(Ext)
+        pic_object_file_extension(Globals, PIC, OtherExt),
+        Ext = ext_other(OtherExt)
     ;
         Target = module_target_xml_doc,
-        MaybeExt = yes(ext(".xml"))
+        Ext = ext_other(other_ext(".xml"))
     ;
         % These all need to be handled as special cases.
         ( Target = module_target_foreign_object(_, _)
         ; Target = module_target_fact_table_object(_, _)
         ),
-        MaybeExt = no
+        fail
+    ).
+
+extension_to_target_type(Globals, ExtStr, Target) :-
+    % target_type_to_extension and extension_to_target_type represent
+    % the same relationship between targets and suffixes, but in different
+    % directions. Their codes should be kept in sync.
+    ( if
+        (
+            ExtStr = ".m",
+            TargetPrime = module_target_source
+        ;
+            ExtStr = ".err",
+            TargetPrime = module_target_errors
+        ;
+            ExtStr = ".int0",
+            TargetPrime = module_target_int0
+        ;
+            ExtStr = ".int",
+            TargetPrime = module_target_int1
+        ;
+            ExtStr = ".int2",
+            TargetPrime = module_target_int2
+        ;
+            ExtStr = ".int3",
+            TargetPrime = module_target_int3
+        ;
+            ExtStr = ".opt",
+            TargetPrime = module_target_opt
+        ;
+            ExtStr = ".analysis",
+            TargetPrime = module_target_analysis_registry
+        ;
+            ExtStr = ".track_flags",
+            TargetPrime = module_target_track_flags
+        ;
+            ExtStr = ".mih",
+            TargetPrime = module_target_c_header(header_mih)
+        ;
+            ExtStr = ".mh",
+            TargetPrime = module_target_c_header(header_mh)
+        ;
+            ExtStr = ".c",
+            TargetPrime = module_target_c_code
+        ;
+            ExtStr = ".cs",
+            TargetPrime = module_target_csharp_code
+        ;
+            ExtStr = ".java",
+            TargetPrime = module_target_java_code
+        ;
+            ExtStr = ".class",
+            TargetPrime = module_target_java_class_code
+        ;
+            ExtStr = ".hrl",
+            TargetPrime = module_target_erlang_header
+        ;
+            ExtStr = ".erl",
+            TargetPrime = module_target_erlang_code
+        ;
+            ExtStr = ".beam",
+            TargetPrime = module_target_erlang_beam_code
+        ;
+            ExtStr = ".xml",
+            TargetPrime = module_target_xml_doc
+        )
+    then
+        Target = TargetPrime
+    else if
+        is_pic_object_file_extension(Globals, ExtStr, PIC)
+    then
+        Target = module_target_object_code(PIC)
+    else
+        fail
     ).
 
 target_extension_synonym(".csharp", module_target_csharp_code).
     % Currently the ".cs" extension is still treated as the build-all target
     % for C files, so we accept ".csharp" for C# files.
 
+%---------------------------------------------------------------------------%
+
 linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (
         TargetType = executable,
         globals.lookup_string_option(Globals, executable_file_extension, Ext),
-        module_name_to_file_name(Globals, do_not_create_dirs, ext(Ext),
-            ModuleName, FileName, !IO)
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(Ext)), ModuleName, FileName, !IO)
     ;
         TargetType = static_library,
         globals.lookup_string_option(Globals, library_extension, Ext),
-        module_name_to_lib_file_name(Globals, do_not_create_dirs,
-            "lib", ext(Ext), ModuleName, FileName, !IO)
+        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
+            "lib", other_ext(Ext), ModuleName, FileName, !IO)
     ;
         TargetType = shared_library,
         globals.lookup_string_option(Globals, shared_library_extension, Ext),
-        module_name_to_lib_file_name(Globals, do_not_create_dirs,
-            "lib", ext(Ext), ModuleName, FileName, !IO)
+        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
+            "lib", other_ext(Ext), ModuleName, FileName, !IO)
     ;
         TargetType = csharp_executable,
-        module_name_to_file_name(Globals, do_not_create_dirs, ext(".exe"),
-            ModuleName, FileName, !IO)
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(".exe")), ModuleName, FileName, !IO)
     ;
         TargetType = csharp_library,
-        module_name_to_file_name(Globals, do_not_create_dirs, ext(".dll"),
-            ModuleName, FileName, !IO)
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(".dll")), ModuleName, FileName, !IO)
     ;
         TargetType = erlang_launcher,
         % These are shell scripts.
         % XXX Shouldn't the extension be ".bat" when --target-env-type
         % is windows?
-        module_name_to_file_name(Globals, do_not_create_dirs, ext(""),
-            ModuleName, FileName, !IO)
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext("")), ModuleName, FileName, !IO)
     ;
         ( TargetType = java_archive
         ; TargetType = java_executable
         ),
-        module_name_to_file_name(Globals, do_not_create_dirs, ext(".jar"),
-            ModuleName, FileName, !IO)
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(".jar")), ModuleName, FileName, !IO)
     ;
         TargetType = erlang_archive,
-        module_name_to_lib_file_name(Globals, do_not_create_dirs,
-            "lib", ext(".beams"), ModuleName, FileName, !IO)
+        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
+            "lib", other_ext(".beams"), ModuleName, FileName, !IO)
     ).
 
 :- pred module_target_to_file_name(globals::in, maybe_create_dirs::in,
@@ -671,20 +751,17 @@ module_target_to_file_name(Globals, MkDir, TargetType, ModuleName, FileName,
 
 module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
         ModuleName, FileName, !IO) :-
-    target_extension(Globals, TargetType, MaybeExt),
-    (
-        MaybeExt = yes(Ext),
+    ( if target_type_to_extension(Globals, TargetType, Ext) then
         (
             Search = do_search,
-            module_name_to_search_file_name(Globals, Ext,
+            module_name_to_search_file_name(Globals, $pred, Ext,
                 ModuleName, FileName, !IO)
         ;
             Search = do_not_search,
-            module_name_to_file_name(Globals, MkDir, Ext,
+            module_name_to_file_name(Globals, $pred, MkDir, Ext,
                 ModuleName, FileName, !IO)
         )
-    ;
-        MaybeExt = no,
+    else
         (
             TargetType = module_target_foreign_object(PIC, Lang),
             ( if
@@ -699,8 +776,9 @@ module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
             )
         ;
             TargetType = module_target_fact_table_object(PIC, FactFile),
-            maybe_pic_object_file_extension(Globals, PIC, Ext),
-            fact_table_file_name(Globals, MkDir, Ext, FactFile, FileName, !IO)
+            pic_object_file_extension(Globals, PIC, OtherExt),
+            fact_table_file_name(Globals, $pred, MkDir, OtherExt,
+                FactFile, FileName, !IO)
         ;
             ( TargetType = module_target_source
             ; TargetType = module_target_int0
@@ -726,7 +804,7 @@ module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
         )
     ).
 
-timestamp_extension(ModuleTargetType, ext(ExtStr)) :-
+timestamp_extension(ModuleTargetType, other_ext(ExtStr)) :-
     (
         ModuleTargetType = module_target_errors,
         % We need a timestamp file for `.err' files because errors are written
@@ -852,7 +930,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         IsDependent = yes
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 debug_make_msg(Globals, P, !IO) :-
     verbose_make_msg_option(Globals, debug_make, P, !IO).
@@ -992,7 +1070,7 @@ make_write_module_or_linked_target(Globals, ModuleName - TargetType, !IO) :-
         unexpected($pred, "misc_target")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Timing.
 %
@@ -1022,7 +1100,7 @@ make_write_module_or_linked_target(Globals, ModuleName - TargetType, !IO) :-
 get_real_milliseconds(_, _, _) :-
     sorry($file, $pred).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Hash functions.
 %
@@ -1137,6 +1215,6 @@ mix(H0, X) = H :-
     H1 = H0 `xor` (H0 `unchecked_left_shift` 5),
     H = H1 `xor` X.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module make.util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

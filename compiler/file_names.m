@@ -42,10 +42,10 @@
 % XXX This interface should be improved in two ways.
 %
 % - First, the implementation of this predicate effectively divides
-%   the set of possible values of Extension into classes of extensions,
+%   the set of possible values of Ext into classes of extensions,
 %   treating every extension in a given class the same way.
 %
-%   We should replace the simple string Extension argument with a more
+%   We should replace the simple string Ext argument with a more
 %   structured specification of the extension, one that puts a wrapper
 %   around the actual suffix indicating what class the extension falls in,
 %   as in e.g. ec_library(".dylib"). For some classes, maybe the majority,
@@ -58,6 +58,8 @@
 %   for these two kinds of classes into two separate types, we could
 %   have a version of this predicate for each type, one with and one
 %   without an I/O state pair.
+%
+%   Work along these lines has begun.
 %
 % - Second, calls which search for a source file for reading (that may not
 %   exist) should be separated from calls that construct a file name
@@ -104,17 +106,32 @@
     % described above, by adding more function symbols to this type,
     % and specifying what suffixes correspond to each function symbol.
 :- type ext
-    --->    ext(string).
+    --->    ext_src
+            % The extension string is ".m".
+    ;       ext_other(other_ext).
+            % The general case. The extension string must not be covered
+            % by any of the other cases above.
+
+:- type other_ext
+    --->    other_ext(string).
 
 :- func extension_to_string(ext) = string.
+:- func other_extension_to_string(other_ext) = string.
+
+%---------------------%
+
+% XXX Most of the predicates below take a "from" string argument,
+% for which the caller is expected pass $pred or some other identification
+% of the call site. This is a temporary measure, intended to help debug
+% any problems that may arise during the process of slicing the space
+% of extensions into smaller and smaller pieces.
 
     % Return the file name of the Mercury source for the given module.
     %
-:- pred module_source_filename(globals::in, module_name::in, file_name::out,
+:- pred module_name_to_source_file_name(module_name::in, file_name::out,
     io::di, io::uo) is det.
 
-    % module_name_to_file_name(Globals, Mkdir, Extension, Module, FileName,
-    %   !IO):
+    % module_name_to_file_name(Globals, Mkdir, Ext, Module, FileName, !IO):
     %
     % Convert a module name and file extension to the corresponding file name.
     % If `MkDir' is do_create_dirs, then create any directories needed.
@@ -126,11 +143,11 @@
     % Note that this predicate is also used to create some "phony" Makefile
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
-:- pred module_name_to_file_name(globals::in, maybe_create_dirs::in, ext::in,
+:- pred module_name_to_file_name(globals::in, string::in,
+    maybe_create_dirs::in, ext::in,
     module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_search_file_name(Globals, Extension, Module, FileName,
-    %   !IO):
+    % module_name_to_search_file_name(Globals, Ext, Module, FileName, !IO):
     %
     % As above, but for a file which might be in an installed library,
     % not the current directory.
@@ -147,27 +164,27 @@
     % `Mercury/<grade>/<arch>/Mercury/mihs/<module>.mihs',
     % which would be used when writing or removing the `.mih' file.
     %
-:- pred module_name_to_search_file_name(globals::in, ext::in,
+:- pred module_name_to_search_file_name(globals::in, string::in, ext::in,
     module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_lib_file_name(Globals, MkDir, Prefix, Extension, Module,
+    % module_name_to_lib_file_name(Globals, MkDir, Prefix, Ext, Module,
     %   FileName, !IO):
     %
     % Like module_name_to_file_name, but also allows a prefix.
     % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
     %
-:- pred module_name_to_lib_file_name(globals::in, maybe_create_dirs::in,
-    string::in, ext::in, module_name::in, file_name::out,
-    io::di, io::uo) is det.
+:- pred module_name_to_lib_file_name(globals::in, string::in,
+    maybe_create_dirs::in, string::in, other_ext::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % fact_table_file_name(Globals, MkDir, Ext, Module, FactTableFileName,
+    % fact_table_file_name(Globals, MkDir, Ext, FactTableFileName,
     %   FileName, !IO):
     %
     % Returns the filename to use when compiling fact table files.
     % If `MkDir' is do_create_dirs, then create any directories needed.
     %
-:- pred fact_table_file_name(globals::in, maybe_create_dirs::in, ext::in,
-    file_name::in, file_name::out, io::di, io::uo) is det.
+:- pred fact_table_file_name(globals::in, string::in, maybe_create_dirs::in,
+    other_ext::in, file_name::in, file_name::out, io::di, io::uo) is det.
 
     % extra_link_obj_file_name(Globals, MkDir, Ext, ExtraLinkObjName,
     %   FileName, !IO):
@@ -176,8 +193,9 @@
     % linked into the executable (currently used only for fact tables).
     % If `MkDir' is do_create_dirs, make any directories necessary.
     %
-:- pred extra_link_obj_file_name(globals::in, maybe_create_dirs::in, ext::in,
-    file_name::in, file_name::out, io::di, io::uo) is det.
+:- pred extra_link_obj_file_name(globals::in, string::in,
+    maybe_create_dirs::in, other_ext::in, file_name::in, file_name::out,
+    io::di, io::uo) is det.
 
     % Convert a file name (excluding the trailing `.m') to the corresponding
     % module name.
@@ -266,32 +284,79 @@ qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
 
 %---------------------------------------------------------------------------%
 
-extension_to_string(ext(ExtStr)) = ExtStr.
+extension_to_string(Ext) = ExtStr :-
+    (
+        Ext = ext_src,
+        ExtStr = ".m"
+    ;
+        Ext = ext_other(OtherExt),
+        ExtStr = other_extension_to_string(OtherExt)
+    ).
+
+other_extension_to_string(OtherExt) = ExtStr :-
+    OtherExt = other_ext(ExtStr).
 
 %---------------------------------------------------------------------------%
 
-module_source_filename(Globals, ModuleName, SourceFileName, !IO) :-
-    module_name_to_file_name(Globals, do_not_create_dirs,
-        ext(".m"), ModuleName, SourceFileName, !IO).
+module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
+    % Look up the module in the module->file mapping.
+    source_file_map.lookup_module_source_file(ModuleName, MaybeFileName, !IO),
+    (
+        MaybeFileName = yes(SourceFileName)
+    ;
+        MaybeFileName = no,
+        % We get here only if
+        %
+        % - the source file map says that the default source file name
+        %   for ModuleName is actually being used to store a module
+        %   *other than* ModuleName, *and*
+        % - the source file map itself does not know in which file ModuleName
+        %   is stored.
+        %
+        % This can happen only if either the source file map was built from
+        % an incomplete list of source files, or if that list became incomplete
+        % later, as new source files were added.
+        %
+        % XXX What we do here is *seriously* suboptimal. Any programmer
+        % who is clueless enough to screw up the naming of source files
+        % this badly will be even more confused by the mess resulting
+        % from the code below.
+        %
+        % The old XXX suggested that we should propagate the fact that
+        % no source file name is available for the given module back to
+        % our caller, but I think it would be simpler for the code here
+        % to print an error message
+        %
+        % - describing the problem, and
+        % - suggest ways to fix it (put modules into files with non-colliding
+        %   names, or running mmc -f *.m),
+        %
+        % and then exit with an error status, *without* returning to our
+        % caller.
+        SourceFileName =
+            "Mercury/.missing." ++ default_source_file_name(ModuleName)
+    ).
 
 %---------------------%
 
-module_name_to_file_name(Globals, MkDir, Ext, ModuleName, FileName, !IO) :-
-    module_name_to_file_name_general(Globals, do_not_search, MkDir,
+module_name_to_file_name(Globals, From, MkDir, Ext,
+        ModuleName, FileName, !IO) :-
+    module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
         Ext, ModuleName, FileName, !IO).
 
 %---------------------%
 
-module_name_to_search_file_name(Globals, Ext, ModuleName, FileName, !IO) :-
-    module_name_to_file_name_general(Globals, do_search, do_not_create_dirs,
+module_name_to_search_file_name(Globals, From, Ext,
+        ModuleName, FileName, !IO) :-
+    module_name_to_file_name_ext(Globals, From, do_search, do_not_create_dirs,
         Ext, ModuleName, FileName, !IO).
 
 %---------------------------------------------------------------------------%
 
 % XXX The implementations of the following predicates, namely
-% module_name_to_file_name_general and its subcontractors choose_file_name
+% module_name_to_file_name_ext and its subcontractors choose_file_name
 % and make_file_name, effectively divide the set of possible values
-% of Extension into classes of extensions, treating every extension
+% of Ext into classes of extensions, treating every extension
 % in a given class the same way.
 %
 % We should replace the simple Ext argument, which currently represents
@@ -343,30 +408,20 @@ module_name_to_search_file_name(Globals, Ext, ModuleName, FileName, !IO) :-
 % they should add the .tmp suffix to the filename they get back from those
 % predicates instead. XXX We have not yet changed over to this system.
 
-:- pred module_name_to_file_name_general(globals::in,
+:- pred module_name_to_file_name_ext(globals::in, string::in,
     maybe_search::in, maybe_create_dirs::in, ext::in,
     module_name::in, file_name::out, io::di, io::uo) is det.
 
-module_name_to_file_name_general(Globals, Search, MkDir, Ext,
+module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         ModuleName, FileName, !IO) :-
-    Ext = ext(ExtStr),
-    ( if
-        ExtStr = ".m"
-    then
-        % Look up the module in the module->file mapping.
-        source_file_map.lookup_module_source_file(ModuleName, MaybeFileName,
-            !IO),
-        (
-            MaybeFileName = yes(FileName)
-        ;
-            MaybeFileName = no,
-            % XXX We should propagate the fact that no source file is available
-            % for the given module back to the caller. That can be left for a
-            % more comprehensive improvement of the module_to_*file_name
-            % interface.
-            FileName = "Mercury/.missing." ++ default_source_file(ModuleName)
-        )
-    else
+    (
+        Ext = ext_src,
+        module_name_to_source_file_name(ModuleName, FileName, !IO)
+    ;
+        Ext = ext_other(OtherExt),
+        OtherExt = other_ext(ExtStr),
+        expect(valid_other_ext(OtherExt), $pred,
+            ExtStr ++ " is a not valid argument of ext/1"),
         ( if
             % Java files need to be placed into a package subdirectory
             % and may need mangling.
@@ -394,7 +449,7 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
             BaseParentDirs = [],
             BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
         ),
-        choose_file_name(Globals, Search, MkDir, Ext,
+        choose_file_name(Globals, From, Search, MkDir, OtherExt,
             BaseParentDirs, BaseNameNoExt, FileName, !IO)
     ),
     trace [compile_time(flag("file_name_translations")),
@@ -405,22 +460,23 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
 
 %---------------------%
 
-module_name_to_lib_file_name(Globals, MkDir, Prefix, Ext,
+module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext,
         ModuleName, FileName, !IO) :-
     BaseFileName = sym_name_to_string(ModuleName),
     BaseNameNoExt = Prefix ++ BaseFileName,
-    choose_file_name(Globals, do_not_search, MkDir, Ext,
+    choose_file_name(Globals, From, do_not_search, MkDir, Ext,
         [], BaseNameNoExt, FileName, !IO).
 
-fact_table_file_name(Globals, MkDir, Ext, FactTableFileName, FileName, !IO) :-
-    % XXX This is identical to extra_link_obj_file_name.
-    choose_file_name(Globals, do_not_search, MkDir, Ext,
+fact_table_file_name(Globals, From, MkDir, Ext,
+        FactTableFileName, FileName, !IO) :-
+    % XXX EXT This is identical to extra_link_obj_file_name.
+    choose_file_name(Globals, From, do_not_search, MkDir, Ext,
         [], FactTableFileName, FileName, !IO).
 
-extra_link_obj_file_name(Globals, MkDir, Ext, ExtraLinkObjName,
+extra_link_obj_file_name(Globals, From, MkDir, Ext, ExtraLinkObjName,
         FileName, !IO) :-
-    % XXX This is identical to fact_table_file_name.
-    choose_file_name(Globals, do_not_search, MkDir, Ext,
+    % XXX EXT This is identical to fact_table_file_name.
+    choose_file_name(Globals, From, do_not_search, MkDir, Ext,
         [], ExtraLinkObjName, FileName, !IO).
 
 %---------------------%
@@ -431,18 +487,19 @@ extra_link_obj_file_name(Globals, MkDir, Ext, ExtraLinkObjName,
     % BaseParentDirs is usually empty. For Java files, BaseParentDirs are the
     % package directories that the file needs to be placed in.
     %
-:- pred choose_file_name(globals::in, maybe_search::in, maybe_create_dirs::in,
-    ext::in, list(string)::in, string::in,
+:- pred choose_file_name(globals::in, string::in,
+    maybe_search::in, maybe_create_dirs::in,
+    other_ext::in, list(string)::in, string::in,
     file_name::out, io::di, io::uo) is det.
 
-choose_file_name(Globals, Search, MkDir, Ext,
+choose_file_name(Globals, _From, Search, MkDir, OtherExt,
         BaseParentDirs, BaseNameNoExt, FileName, !IO) :-
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_string_option(Globals, library_extension, LibExt),
     globals.lookup_string_option(Globals, shared_library_extension,
         SharedLibExt),
-    Ext = ext(ExtStr),
+    OtherExt = other_ext(ExtStr),
     ( if
         % If we are searching for (rather than writing) a `.mih' file,
         % use the plain file name. This is so that searches for files
@@ -467,7 +524,7 @@ choose_file_name(Globals, Search, MkDir, Ext,
         % created.
         % XXX Most of the code of make_file_name handles UseSubdirs = yes.
         make_file_name(Globals, BaseParentDirs, Search, MkDir,
-            BaseNameNoExt, Ext, FileName, !IO)
+            BaseNameNoExt, OtherExt, FileName, !IO)
     else if
         % The source files, the final executables, library files (including
         % .init files) output files intended for use by the user, and phony
@@ -475,7 +532,7 @@ choose_file_name(Globals, Search, MkDir, Ext,
 
         not (
             UseGradeSubdirs = yes,
-            file_is_arch_or_grade_dependent(Globals, Ext)
+            file_is_arch_or_grade_dependent(Globals, OtherExt)
         ),
         (
             % Executable files.
@@ -616,7 +673,7 @@ choose_file_name(Globals, Search, MkDir, Ext,
         ),
 
         make_file_name(Globals, [SubDirName | BaseParentDirs], Search, MkDir,
-            BaseNameNoExt, Ext, FileName, !IO)
+            BaseNameNoExt, OtherExt, FileName, !IO)
     ).
 
 file_name_to_module_name(FileName, ModuleName) :-
@@ -629,17 +686,17 @@ module_name_to_make_var_name(ModuleName, MakeVarName) :-
     MakeVarName = sym_name_to_string(ModuleName).
 
 :- pred make_file_name(globals::in, list(dir_name)::in, maybe_search::in,
-    maybe_create_dirs::in, file_name::in, ext::in, file_name::out,
+    maybe_create_dirs::in, file_name::in, other_ext::in, file_name::out,
     io::di, io::uo) is det.
 
-make_file_name(Globals, SubDirNames, Search, MkDir, BaseNameNoExt, Ext,
+make_file_name(Globals, SubDirNames, Search, MkDir, BaseNameNoExt, OtherExt,
         FileName, !IO) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    Ext = ext(ExtStr),
+    OtherExt = other_ext(ExtStr),
     ( if
         UseGradeSubdirs = yes,
-        file_is_arch_or_grade_dependent(Globals, Ext),
+        file_is_arch_or_grade_dependent(Globals, OtherExt),
 
         % If we are searching for (rather than writing) the file, just search
         % in Mercury/<ext>s. This is so that searches for files in installed
@@ -699,11 +756,11 @@ make_file_name(Globals, SubDirNames, Search, MkDir, BaseNameNoExt, Ext,
         FileName = dir.relative_path_name_from_components(Components)
     ).
 
-:- pred file_is_arch_or_grade_dependent(globals::in, ext::in) is semidet.
+:- pred file_is_arch_or_grade_dependent(globals::in, other_ext::in) is semidet.
 
-file_is_arch_or_grade_dependent(Globals, Ext0) :-
+file_is_arch_or_grade_dependent(Globals, OtherExt0) :-
     % The .tmp suffixes are needed for use by mercury_update_interface.
-    Ext0 = ext(ExtStr0),
+    OtherExt0 = other_ext(ExtStr0),
     ( if string.remove_suffix(ExtStr0, ".tmp", BaseExt) then
         ExtStr = BaseExt
     else
@@ -719,18 +776,18 @@ file_is_arch_or_grade_dependent(Globals, Ext0) :-
     ;
         globals.lookup_string_option(Globals, shared_library_extension, ExtStr)
     ;
-        some [ObjExt] (
+        some [ObjExtStr] (
             (
                 globals.lookup_string_option(Globals,
-                    object_file_extension, ObjExt)
+                    object_file_extension, ObjExtStr)
             ;
                 globals.lookup_string_option(Globals,
-                    pic_object_file_extension, ObjExt)
+                    pic_object_file_extension, ObjExtStr)
             ),
             (
-                ExtStr = ObjExt
+                ExtStr = ObjExtStr
             ;
-                ExtStr = "_init" ++ ObjExt
+                ExtStr = "_init" ++ ObjExtStr
             )
         )
     ).
@@ -814,6 +871,18 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
         % "X:foo", i.e. relative to the current directory on the X: drive.
         % That seems a silly thing to write in a source file.
         Path = dirname(ModuleSourceFileName) / OrigFileName
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred valid_other_ext(other_ext::in) is semidet.
+
+valid_other_ext(other_ext(ExtStr)) :-
+    % We define what string is valid as an argument of ext/1 negatively:
+    % any extension string is valid as an argument of ext/1 *unless*
+    % it has some other representation.
+    not (
+        ExtStr = ".m"       % ext_src
     ).
 
 %---------------------------------------------------------------------------%
@@ -919,11 +988,16 @@ gather_translation_stats(Key, Value, !NumKeys, !NumLookups,
     Value = record_value(_FileName, Count),
     !:NumLookups = !.NumLookups + Count,
     Key = record_key(_ModuleName, Ext0, Search, MkDir),
-    Ext0 = ext(ExtStr0),
-    ( if ExtStr0 = "" then
-        ExtStr = "no_suffix"
-    else
-        ExtStr = ExtStr0
+    (
+        Ext0 = ext_src,
+        ExtStr = ".m"
+    ;
+        Ext0 = ext_other(other_ext(ExtStr0)),
+        ( if ExtStr0 = "" then
+            ExtStr = "no_suffix"
+        else
+            ExtStr = ExtStr0
+        )
     ),
     (
         Search = do_search,

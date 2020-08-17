@@ -300,8 +300,8 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
     io.open_input(TmpErrorFileName, TmpErrorInputRes, !IO),
     (
         TmpErrorInputRes = ok(TmpErrorInputStream),
-        module_name_to_file_name(Globals, do_create_dirs, ext(".err"),
-            ModuleName, ErrorFileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".err")), ModuleName, ErrorFileName, !IO),
         ( if set.member(ModuleName, !.Info ^ error_file_modules) then
             io.open_append(ErrorFileName, ErrorFileRes, !IO)
         else

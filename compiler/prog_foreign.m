@@ -129,7 +129,7 @@
     % Not all foreign languages generate external files,
     % so this function only succeeds for those that do.
     %
-:- func foreign_language_file_extension(foreign_language) = ext.
+:- func foreign_language_file_extension(foreign_language) = other_ext.
 :- mode foreign_language_file_extension(in) = out is semidet.
 :- mode foreign_language_file_extension(in(lang_gen_ext_file)) = out is det.
 
@@ -267,9 +267,9 @@ foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-foreign_language_file_extension(lang_c) = ext(".c").
-foreign_language_file_extension(lang_csharp) = ext(".cs").
-foreign_language_file_extension(lang_java) = ext(".java").
+foreign_language_file_extension(lang_c) = other_ext(".c").
+foreign_language_file_extension(lang_csharp) = other_ext(".cs").
+foreign_language_file_extension(lang_java) = other_ext(".java").
 
 %-----------------------------------------------------------------------------%
 

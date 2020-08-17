@@ -356,10 +356,10 @@ read_module_src(Globals, Descr, IgnoreErrors, Search,
         ParseTreeSrc, Specs, Errors, !IO) :-
     read_module_begin(Globals, Descr, Search, ModuleName, fk_src,
         FileName0, VeryVerbose, SearchDirs, !IO),
-    % For `.m' files we need to deal with the case where the module name
+    % For `.m' files, we need to deal with the case where the module name
     % does not match the file name.
-    search_for_module_source_and_stream(Globals, SearchDirs,
-        ModuleName, MaybeFileNameAndStream, !IO),
+    search_for_module_source_and_stream(SearchDirs, ModuleName,
+        MaybeFileNameAndStream, !IO),
     actually_read_module_src(Globals, ModuleName, ExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
         ParseTreeSrc0, ModuleSpecs, Errors, !IO),
@@ -503,11 +503,11 @@ read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
     file_kind_to_extension(FileKind, _ExtStr, Ext),
     (
         Search = do_search,
-        module_name_to_search_file_name(Globals, Ext,
+        module_name_to_search_file_name(Globals, $pred, Ext,
             ModuleName, FileName0, !IO)
     ;
         Search = do_not_search,
-        module_name_to_file_name(Globals, do_not_create_dirs, Ext,
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
             ModuleName, FileName0, !IO)
     ),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),

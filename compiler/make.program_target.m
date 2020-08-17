@@ -404,7 +404,7 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         MaybePreLinkCommand),
     (
         MaybePreLinkCommand = yes(PreLinkCommand),
-        make_all_module_command(Globals, PreLinkCommand, MainModuleName,
+        make_all_module_command(PreLinkCommand, MainModuleName,
             to_sorted_list(AllModules), CommandString, !IO),
         invoke_system_command(Globals, ErrorStream, cmd_verbose,
             CommandString, PreLinkSucceeded, !IO)
@@ -571,26 +571,25 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
 
         (
             CompilationTarget = target_c,
-            maybe_pic_object_file_extension(NoLinkObjsGlobals, PIC,
-                ObjExtToUse)
+            pic_object_file_extension(NoLinkObjsGlobals, PIC, ObjOtherExtToUse)
         ;
             CompilationTarget = target_csharp,
             % There is no separate object code step.
-            ObjExtToUse = ext(".cs")
+            ObjOtherExtToUse = other_ext(".cs")
         ;
             CompilationTarget = target_java,
             globals.lookup_string_option(NoLinkObjsGlobals,
                 java_object_file_extension, ObjExtToUseStr),
-            ObjExtToUse = ext(ObjExtToUseStr)
+            ObjOtherExtToUse = other_ext(ObjExtToUseStr)
         ;
             CompilationTarget = target_erlang,
             globals.lookup_string_option(NoLinkObjsGlobals,
                 erlang_object_file_extension, ObjExtToUseStr),
-            ObjExtToUse = ext(ObjExtToUseStr)
+            ObjOtherExtToUse = other_ext(ObjExtToUseStr)
         ),
         list.map_foldl(
-            module_name_to_file_name(NoLinkObjsGlobals, do_not_create_dirs,
-                ObjExtToUse),
+            module_name_to_file_name(NoLinkObjsGlobals, $pred,
+                do_not_create_dirs, ext_other(ObjOtherExtToUse)),
             ObjModules, ObjList, !IO),
 
         % LinkObjects may contain `.a' files which must come
@@ -711,7 +710,8 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
     verbose_make_msg(Globals,
         io.write_string("Making Java class files\n"), !IO),
     list.map_foldl(
-        module_name_to_file_name(Globals, do_create_dirs, ext(".java")),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".java"))),
         ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
     build_with_output_redirect(Globals, MainModuleName,
@@ -1333,18 +1333,21 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             module_and_imports_get_children(ModuleAndImports, Children),
             (
                 Children = [],
-                Exts0 = [{ext(".opt"), "opts"}]
+                Exts0 = [{other_ext(".opt"), "opts"}]
             ;
                 Children = [_ | _],
-                Exts0 = [{ext(".int0"), "int0s"}, {ext(".opt"), "opts"}]
+                Exts0 = [{other_ext(".int0"), "int0s"},
+                    {other_ext(".opt"), "opts"}]
             )
         ;
             AnyIntermod = no,
             Exts0 = []
         ),
 
-        Exts = [{ext(".int"), "ints"}, {ext(".int2"), "int2s"},
-            {ext(".int3"), "int3s"}, {ext(".module_dep"), "module_deps"}
+        Exts = [{other_ext(".int"), "ints"},
+            {other_ext(".int2"), "int2s"},
+            {other_ext(".int3"), "int3s"},
+            {other_ext(".module_dep"), "module_deps"}
             | Exts0],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix/"lib"/"mercury",
@@ -1365,20 +1368,20 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             % XXX Should we test
             % ModuleAndImports ^ contains_foreign_export
             %   = contains_foreign_export?
-            module_name_to_file_name(Globals, do_not_create_dirs, ext(".mh"),
-                ModuleName, FileName, !IO),
+            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+                ext_other(other_ext(".mh")), ModuleName, FileName, !IO),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded1,
                 !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             install_subdir_file(Globals, SubdirLinkSucceeded, LibDir/"ints",
-                ModuleName, {ext(".mh"), "mhs"}, HeaderSucceeded2, !IO),
+                ModuleName, {other_ext(".mh"), "mhs"}, HeaderSucceeded2, !IO),
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         ;
             Target = target_erlang,
-            module_name_to_file_name(Globals, do_not_create_dirs, ext(".hrl"),
-                ModuleName, FileName, !IO),
+            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+                ext_other(other_ext(".hrl")), ModuleName, FileName, !IO),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded, !IO)
         ;
             ( Target = target_java
@@ -1600,8 +1603,8 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
 install_grade_init(Globals, GradeDir, ModuleName, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
-    module_name_to_file_name(Globals, do_not_create_dirs, ext(".init"),
-        ModuleName, InitFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".init")), ModuleName, InitFileName, !IO),
     install_file(Globals, InitFileName, GradeModulesDir, Succeeded, !IO).
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
@@ -1627,12 +1630,14 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         then
             GradeIncDir = LibDir/"lib"/GradeDir/"inc",
             install_subdir_file(Globals, LinkSucceeded, GradeIncDir,
-                ModuleName, {ext(".mih"), "mihs"}, HeaderSucceeded1, !IO),
+                ModuleName, {other_ext(".mih"), "mihs"},
+                HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             IntDir = LibDir/"ints",
             install_subdir_file(Globals, LinkSucceeded, IntDir,
-                ModuleName, {ext(".mih"), "mihs"}, HeaderSucceeded2, !IO),
+                ModuleName, {other_ext(".mih"), "mihs"},
+                HeaderSucceeded2, !IO),
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         else
@@ -1644,7 +1649,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         (
             AnyIntermod = yes,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
-                ModuleName, {ext(".opt"), "opts"}, OptSucceeded, !IO)
+                ModuleName, {other_ext(".opt"), "opts"}, OptSucceeded, !IO)
         ;
             AnyIntermod = no,
             OptSucceeded = yes
@@ -1654,7 +1659,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         (
             IntermodAnalysis = yes,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
-                ModuleName, {ext(".analysis"), "analysiss"},
+                ModuleName, {other_ext(".analysis"), "analysiss"},
                 IntermodAnalysisSucceeded, !IO)
         ;
             IntermodAnalysis = no,
@@ -1673,12 +1678,12 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
     % (e.g. on Windows).
     %
 :- pred install_subdir_file(globals::in, bool::in, dir_name::in,
-    module_name::in, {ext, string}::in, bool::out, io::di, io::uo) is det.
+    module_name::in, {other_ext, string}::in, bool::out, io::di, io::uo) is det.
 
 install_subdir_file(Globals, SubdirLinkSucceeded, InstallDir, ModuleName,
         {Ext, Exts}, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, do_not_create_dirs, Ext,
-        ModuleName, FileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(Ext), ModuleName, FileName, !IO),
     install_file(Globals, FileName, InstallDir, Succeeded1, !IO),
     (
         SubdirLinkSucceeded = no,
@@ -1928,14 +1933,14 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
     list.map_foldl(linked_target_file_name(NoSubdirGlobals, ModuleName),
         LinkedTargetTypes, ThisDirFileNames, !IO),
     % XXX This symlink should not be necessary anymore for `mmc --make'.
-    module_name_to_file_name(NoSubdirGlobals, do_not_create_dirs, ext(".init"),
-        ModuleName, ThisDirInitFileName, !IO),
+    module_name_to_file_name(NoSubdirGlobals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".init")), ModuleName, ThisDirInitFileName, !IO),
 
     list.foldl2(make_remove_file(Globals, very_verbose),
         FileNames ++ ThisDirFileNames ++ [ThisDirInitFileName],
         !Info, !IO),
-    make_remove_module_file(Globals, very_verbose, ModuleName, ext(".init"),
-        !Info, !IO),
+    make_remove_module_file(Globals, very_verbose, ModuleName,
+        ext_other(other_ext(".init")), !Info, !IO),
     remove_init_files(Globals, very_verbose, ModuleName, !Info, !IO).
 
 :- pred remove_init_files(globals::in, option::in, module_name::in,
@@ -1949,8 +1954,11 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
         BeamExt),
     % XXX EXT
     list.foldl2(make_remove_module_file(Globals, Verbose, ModuleName),
-        [ext("_init.c"), ext("_init" ++ ObjExt), ext("_init" ++ PicObjExt),
-            ext("_init.erl"), ext("_init" ++ BeamExt)],
+        [ext_other(other_ext("_init.c")),
+            ext_other(other_ext("_init" ++ ObjExt)),
+            ext_other(other_ext("_init" ++ PicObjExt)),
+            ext_other(other_ext("_init.erl")),
+            ext_other(other_ext("_init" ++ BeamExt))],
         !Info, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1978,10 +1986,10 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         module_target_erlang_header,
         module_target_erlang_beam_code], !Info, !IO),
 
-    make_remove_module_file(Globals, very_verbose, ModuleName, ext(".used"),
-        !Info, !IO),
-    make_remove_module_file(Globals, very_verbose, ModuleName, ext(".prof"),
-        !Info, !IO),
+    make_remove_module_file(Globals, very_verbose, ModuleName,
+        ext_other(other_ext(".used")), !Info, !IO),
+    make_remove_module_file(Globals, very_verbose, ModuleName,
+        ext_other(other_ext(".prof")), !Info, !IO),
 
     get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
         !Info, !IO),
@@ -2009,8 +2017,8 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 remove_fact_table_c_file(Globals, FactTableFile, !Info, !IO) :-
-    fact_table_file_name(Globals, do_not_create_dirs, ext(".c"),
-        FactTableFile, FactTableCFile, !IO),
+    fact_table_file_name(Globals, $pred, do_not_create_dirs,
+        other_ext(".c"), FactTableFile, FactTableCFile, !IO),
     make_remove_file(Globals, very_verbose, FactTableCFile, !Info, !IO).
 
 :- pred remove_object_and_assembler_files(globals::in, module_name::in,
@@ -2061,11 +2069,11 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
         make_remove_target_file_by_name(Globals, very_verbose, ModuleName),
         Targets, !Info, !IO),
     make_remove_module_file(Globals, very_verbose, ModuleName,
-        make_module_dep_file_extension, !Info, !IO),
+        ext_other(make_module_dep_file_extension), !Info, !IO),
     make_remove_module_file(Globals, very_verbose, ModuleName,
-        ext(".imdg"), !Info, !IO),
+        ext_other(other_ext(".imdg")), !Info, !IO),
     make_remove_module_file(Globals, very_verbose, ModuleName,
-        ext(".request"), !Info, !IO).
+        ext_other(other_ext(".request")), !Info, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module make.program_target.
