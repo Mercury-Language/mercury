@@ -8,7 +8,8 @@
 %
 % File: file_name.m.
 %
-% This module deals with the connections between module names and files.
+% This module deals with the connections between
+% module names and file names.
 %
 %---------------------------------------------------------------------------%
 
@@ -22,20 +23,6 @@
 :- import_module libs.globals.
 
 :- import_module io.
-
-%---------------------------------------------------------------------------%
-
-    % Succeeds iff the module referred to by the module name is one
-    % of the modules in the standard library.
-    %
-:- pred mercury_std_library_module_name(module_name::in) is semidet.
-
-    % qualify_mercury_std_library_module_name(ModuleName) = QualModuleName:
-    %
-    % If ModuleName is a standard library module then return the module with an
-    % extra `mercury' prefix. Otherwise, return the module name unchanged.
-    %
-:- func qualify_mercury_std_library_module_name(module_name) = module_name.
 
 %---------------------------------------------------------------------------%
 %
@@ -74,7 +61,7 @@
 % - Set up a test environment with distinctively named directories in
 %   all the relevant directory search options.
 %
-% - Invoke choose_file_name and module_name_to_file_name_general
+% - Invoke choose_file_name and module_name_to_file_name_ext
 %   with all possible combinations of 
 %
 %       --use-grade-subdirs, --use-subdirs or neither
@@ -167,8 +154,8 @@
 :- pred module_name_to_search_file_name(globals::in, string::in, ext::in,
     module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_lib_file_name(Globals, MkDir, Prefix, Ext, Module,
-    %   FileName, !IO):
+    % module_name_to_lib_file_name(Globals, MkDir, Prefix, Ext,
+    %   Module, FileName, !IO):
     %
     % Like module_name_to_file_name, but also allows a prefix.
     % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
@@ -185,6 +172,22 @@
     %
 :- pred fact_table_file_name(globals::in, string::in, maybe_create_dirs::in,
     other_ext::in, file_name::in, file_name::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+    % Succeeds iff the module referred to by the module name is one
+    % of the modules in the standard library.
+    %
+:- pred mercury_std_library_module_name(module_name::in) is semidet.
+
+    % qualify_mercury_std_library_module_name(ModuleName) = QualModuleName:
+    %
+    % If ModuleName is a standard library module then return the module with an
+    % extra `mercury' prefix. Otherwise, return the module name unchanged.
+    %
+:- func qualify_mercury_std_library_module_name(module_name) = module_name.
+
+%---------------------------------------------------------------------------%
 
     % Convert a file name (excluding the trailing `.m') to the corresponding
     % module name.
@@ -246,33 +249,6 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_std_library_module_name(ModuleName) :-
-    (
-        ModuleName = unqualified(Name),
-        mercury_std_library_module(Name)
-    ;
-        ModuleName = qualified(_ParentModule, _Name),
-        (
-            module_name_to_file_name_stem(ModuleName, ModuleNameStr),
-            mercury_std_library_module(ModuleNameStr)
-        ;
-            strip_outermost_qualifier(ModuleName, "mercury",
-                StrippedModuleName),
-            module_name_to_file_name_stem(StrippedModuleName,
-                StrippedModuleNameStr),
-            mercury_std_library_module(StrippedModuleNameStr)
-        )
-    ).
-
-qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
-    ( if mercury_std_library_module_name(ModuleName) then
-        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
-    else
-        QualModuleName = ModuleName
-    ).
-
-%---------------------------------------------------------------------------%
-
 extension_to_string(Ext) = ExtStr :-
     (
         Ext = ext_src,
@@ -284,6 +260,18 @@ extension_to_string(Ext) = ExtStr :-
 
 other_extension_to_string(OtherExt) = ExtStr :-
     OtherExt = other_ext(ExtStr).
+
+%---------------------------------------------------------------------------%
+
+:- pred valid_other_ext(other_ext::in) is semidet.
+
+valid_other_ext(other_ext(ExtStr)) :-
+    % We define what string is valid as an argument of ext/1 negatively:
+    % any extension string is valid as an argument of ext/1 *unless*
+    % it has some other representation.
+    not (
+        ExtStr = ".m"       % ext_src
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -326,19 +314,35 @@ module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
             "Mercury/.missing." ++ default_source_file_name(ModuleName)
     ).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
 module_name_to_file_name(Globals, From, MkDir, Ext,
         ModuleName, FileName, !IO) :-
     module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
         Ext, ModuleName, FileName, !IO).
 
-%---------------------%
-
 module_name_to_search_file_name(Globals, From, Ext,
         ModuleName, FileName, !IO) :-
     module_name_to_file_name_ext(Globals, From, do_search, do_not_create_dirs,
         Ext, ModuleName, FileName, !IO).
+
+module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext,
+        ModuleName, FileName, !IO) :-
+    BaseFileName = sym_name_to_string(ModuleName),
+    BaseNameNoExt = Prefix ++ BaseFileName,
+    % Library files do not need the preprocessing that
+    % module_name_to_file_name_ext does before calling choose_file_name.
+    choose_file_name(Globals, From, do_not_search, Ext,
+        [], BaseNameNoExt, DirComponents, FileName),
+    maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
+
+fact_table_file_name(Globals, From, MkDir, Ext,
+        FactTableFileName, FileName, !IO) :-
+    % Fact table files do not need the preprocessing that
+    % module_name_to_file_name_ext does before calling choose_file_name.
+    choose_file_name(Globals, From, do_not_search, Ext,
+        [], FactTableFileName, DirComponents, FileName),
+    maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -422,22 +426,6 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
 
 %---------------------%
 
-module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext,
-        ModuleName, FileName, !IO) :-
-    BaseFileName = sym_name_to_string(ModuleName),
-    BaseNameNoExt = Prefix ++ BaseFileName,
-    choose_file_name(Globals, From, do_not_search, Ext,
-        [], BaseNameNoExt, DirComponents, FileName),
-    maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
-
-fact_table_file_name(Globals, From, MkDir, Ext,
-        FactTableFileName, FileName, !IO) :-
-    choose_file_name(Globals, From, do_not_search, Ext,
-        [], FactTableFileName, DirComponents, FileName),
-    maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
-
-%---------------------%
-
 :- pred decide_base_name_parent_dirs_other(other_ext::in, module_name::in,
     list(string)::out, file_name::out) is det.
 
@@ -476,7 +464,7 @@ decide_base_name_parent_dirs_other(OtherExt, ModuleName,
 
 %---------------------%
 
-    % choose_file_name(Globals, Search, MkDir, Ext, BaseParentDirs, BaseName,
+    % choose_file_name(Globals, Search, OtherExt, BaseParentDirs, BaseName,
     %   FileName, !IO)
     %
     % BaseParentDirs is usually empty. For Java files, BaseParentDirs are the
@@ -622,9 +610,9 @@ choose_file_name(Globals, _From, Search, OtherExt,
         else if
             % _init.c, _init.s, _init.o etc. files go in the cs, ss, os etc
             % subdirectories.
-            string.append("_init.", ExtName, ExtStr)
+            string.remove_prefix("_init.", ExtStr, ExtName)
         then
-            string.append(ExtName, "s", SubDirName)
+            SubDirName = ExtName ++ "s"
         else if
             % `.dv' files go in the `deps' subdirectory,
             % along with the `.dep' files.
@@ -640,9 +628,9 @@ choose_file_name(Globals, _From, Search, OtherExt,
             SubDirName = "lib"
         else if
             % The usual case: `*.foo' files go in the `foos' subdirectory.
-            string.append(".", ExtName, ExtStr)
+            string.remove_prefix(".", ExtStr, ExtName)
         then
-            string.append(ExtName, "s", SubDirName)
+            SubDirName = ExtName ++ "s"
         else if
             % Launcher scripts go in the `bin' subdirectory.
             ExtStr = ""
@@ -655,15 +643,6 @@ choose_file_name(Globals, _From, Search, OtherExt,
         make_file_name(Globals, [SubDirName | BaseParentDirs], Search,
             BaseNameNoExt, OtherExt, DirComponents, FileName)
     ).
-
-file_name_to_module_name(FileName, ModuleName) :-
-    ModuleName = string_to_sym_name(FileName).
-
-module_name_to_file_name_stem(ModuleName, FileName) :-
-    FileName = sym_name_to_string(ModuleName).
-
-module_name_to_make_var_name(ModuleName, MakeVarName) :-
-    MakeVarName = sym_name_to_string(ModuleName).
 
 :- pred make_file_name(globals::in, list(dir_name)::in, maybe_search::in,
     file_name::in, other_ext::in, list(string)::out, file_name::out) is det.
@@ -796,6 +775,44 @@ file_is_arch_or_grade_dependent_2("_init.beam").
 
 %---------------------------------------------------------------------------%
 
+mercury_std_library_module_name(ModuleName) :-
+    (
+        ModuleName = unqualified(Name),
+        mercury_std_library_module(Name)
+    ;
+        ModuleName = qualified(_ParentModule, _Name),
+        (
+            module_name_to_file_name_stem(ModuleName, ModuleNameStr),
+            mercury_std_library_module(ModuleNameStr)
+        ;
+            strip_outermost_qualifier(ModuleName, "mercury",
+                StrippedModuleName),
+            module_name_to_file_name_stem(StrippedModuleName,
+                StrippedModuleNameStr),
+            mercury_std_library_module(StrippedModuleNameStr)
+        )
+    ).
+
+qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
+    ( if mercury_std_library_module_name(ModuleName) then
+        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
+    else
+        QualModuleName = ModuleName
+    ).
+
+%---------------------------------------------------------------------------%
+
+file_name_to_module_name(FileName, ModuleName) :-
+    ModuleName = string_to_sym_name(FileName).
+
+module_name_to_file_name_stem(ModuleName, FileName) :-
+    FileName = sym_name_to_string(ModuleName).
+
+module_name_to_make_var_name(ModuleName, MakeVarName) :-
+    MakeVarName = sym_name_to_string(ModuleName).
+
+%---------------------------------------------------------------------------%
+
 :- pred maybe_create_dirs_on_path(maybe_create_dirs::in, list(string)::in,
     io::di, io::uo) is det.
 
@@ -856,18 +873,6 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
         % "X:foo", i.e. relative to the current directory on the X: drive.
         % That seems a silly thing to write in a source file.
         Path = dirname(ModuleSourceFileName) / OrigFileName
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred valid_other_ext(other_ext::in) is semidet.
-
-valid_other_ext(other_ext(ExtStr)) :-
-    % We define what string is valid as an argument of ext/1 negatively:
-    % any extension string is valid as an argument of ext/1 *unless*
-    % it has some other representation.
-    not (
-        ExtStr = ".m"       % ext_src
     ).
 
 %---------------------------------------------------------------------------%
