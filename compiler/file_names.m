@@ -419,38 +419,11 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         module_name_to_source_file_name(ModuleName, FileName, !IO)
     ;
         Ext = ext_other(OtherExt),
-        OtherExt = other_ext(ExtStr),
-        expect(valid_other_ext(OtherExt), $pred,
-            ExtStr ++ " is a not valid argument of ext/1"),
-        ( if
-            % Java files need to be placed into a package subdirectory
-            % and may need mangling.
-            ( string.suffix(ExtStr, ".java")
-            ; string.suffix(ExtStr, ".class")
-            )
-        then
-            BaseParentDirs = ["jmercury"],
-            mangle_sym_name_for_java(ModuleName, module_qual, "__",
-                BaseNameNoExt)
-        else if
-            % Erlang uses `.' as a package separator and expects a module
-            % `a.b.c' to be in a file `a/b/c.erl'. Rather than that, we use
-            % a flat namespace with `__' as module separators.
-            ( string.suffix(ExtStr, ".erl")
-            ; string.suffix(ExtStr, ".hrl")
-            ; string.suffix(ExtStr, ".beam")
-            )
-        then
-            EffectiveModuleName =
-                qualify_mercury_std_library_module_name(ModuleName),
-            BaseParentDirs = [],
-            BaseNameNoExt = sym_name_to_string_sep(EffectiveModuleName, "__")
-        else
-            BaseParentDirs = [],
-            BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
-        ),
-        choose_file_name(Globals, From, Search, MkDir, OtherExt,
-            BaseParentDirs, BaseNameNoExt, FileName, !IO)
+        decide_base_name_parent_dirs_other(OtherExt, ModuleName,
+            BaseParentDirs, BaseNameNoExt),
+        choose_file_name(Globals, From, Search, OtherExt,
+            BaseParentDirs, BaseNameNoExt, DirComponents, FileName),
+        maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
     ),
     trace [compile_time(flag("file_name_translations")),
         runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
@@ -464,20 +437,61 @@ module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext,
         ModuleName, FileName, !IO) :-
     BaseFileName = sym_name_to_string(ModuleName),
     BaseNameNoExt = Prefix ++ BaseFileName,
-    choose_file_name(Globals, From, do_not_search, MkDir, Ext,
-        [], BaseNameNoExt, FileName, !IO).
+    choose_file_name(Globals, From, do_not_search, Ext,
+        [], BaseNameNoExt, DirComponents, FileName),
+    maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
 
 fact_table_file_name(Globals, From, MkDir, Ext,
         FactTableFileName, FileName, !IO) :-
     % XXX EXT This is identical to extra_link_obj_file_name.
-    choose_file_name(Globals, From, do_not_search, MkDir, Ext,
-        [], FactTableFileName, FileName, !IO).
+    choose_file_name(Globals, From, do_not_search, Ext,
+        [], FactTableFileName, DirComponents, FileName),
+    maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
 
 extra_link_obj_file_name(Globals, From, MkDir, Ext, ExtraLinkObjName,
         FileName, !IO) :-
     % XXX EXT This is identical to fact_table_file_name.
-    choose_file_name(Globals, From, do_not_search, MkDir, Ext,
-        [], ExtraLinkObjName, FileName, !IO).
+    choose_file_name(Globals, From, do_not_search, Ext,
+        [], ExtraLinkObjName, DirComponents, FileName),
+    maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
+
+%---------------------%
+
+:- pred decide_base_name_parent_dirs_other(other_ext::in, module_name::in,
+    list(string)::out, file_name::out) is det.
+
+decide_base_name_parent_dirs_other(OtherExt, ModuleName,
+        BaseParentDirs, BaseNameNoExt) :-
+    OtherExt = other_ext(ExtStr),
+    expect(valid_other_ext(OtherExt), $pred,
+        ExtStr ++ " is a not valid argument of ext/1"),
+    ( if
+        % Java files need to be placed into a package subdirectory
+        % and may need mangling.
+        ( string.suffix(ExtStr, ".java")
+        ; string.suffix(ExtStr, ".class")
+        )
+    then
+        BaseParentDirs = ["jmercury"],
+        mangle_sym_name_for_java(ModuleName, module_qual, "__",
+            BaseNameNoExt)
+    else if
+        % Erlang uses `.' as a package separator and expects a module
+        % `a.b.c' to be in a file `a/b/c.erl'. Rather than that, we use
+        % a flat namespace with `__' as module separators.
+        ( string.suffix(ExtStr, ".erl")
+        ; string.suffix(ExtStr, ".hrl")
+        ; string.suffix(ExtStr, ".beam")
+        )
+    then
+        EffectiveModuleName =
+            qualify_mercury_std_library_module_name(ModuleName),
+        BaseParentDirs = [],
+        BaseNameNoExt = sym_name_to_string_sep(EffectiveModuleName, "__")
+    else
+        BaseParentDirs = [],
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
+    ).
 
 %---------------------%
 
@@ -487,13 +501,12 @@ extra_link_obj_file_name(Globals, From, MkDir, Ext, ExtraLinkObjName,
     % BaseParentDirs is usually empty. For Java files, BaseParentDirs are the
     % package directories that the file needs to be placed in.
     %
-:- pred choose_file_name(globals::in, string::in,
-    maybe_search::in, maybe_create_dirs::in,
+:- pred choose_file_name(globals::in, string::in, maybe_search::in,
     other_ext::in, list(string)::in, string::in,
-    file_name::out, io::di, io::uo) is det.
+    list(string)::out, file_name::out) is det.
 
-choose_file_name(Globals, _From, Search, MkDir, OtherExt,
-        BaseParentDirs, BaseNameNoExt, FileName, !IO) :-
+choose_file_name(Globals, _From, Search, OtherExt,
+        BaseParentDirs, BaseNameNoExt, DirComponents, FileName) :-
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_string_option(Globals, library_extension, LibExt),
@@ -515,6 +528,7 @@ choose_file_name(Globals, _From, Search, MkDir, OtherExt,
         ; ExtStr = ".hrl.tmp"
         )
     then
+        DirComponents = [],
         FileName = BaseNameNoExt ++ ExtStr
     else if
         UseSubdirs = no
@@ -523,8 +537,8 @@ choose_file_name(Globals, _From, Search, MkDir, OtherExt,
         % have non-empty BaseParentDirs (the package) which may need to be
         % created.
         % XXX Most of the code of make_file_name handles UseSubdirs = yes.
-        make_file_name(Globals, BaseParentDirs, Search, MkDir,
-            BaseNameNoExt, OtherExt, FileName, !IO)
+        make_file_name(Globals, BaseParentDirs, Search,
+            BaseNameNoExt, OtherExt, DirComponents, FileName)
     else if
         % The source files, the final executables, library files (including
         % .init files) output files intended for use by the user, and phony
@@ -606,6 +620,7 @@ choose_file_name(Globals, _From, Search, MkDir, OtherExt,
             )
         )
     then
+        DirComponents = [],
         FileName = BaseNameNoExt ++ ExtStr
     else
         % We need to handle a few cases specially.
@@ -647,7 +662,7 @@ choose_file_name(Globals, _From, Search, MkDir, OtherExt,
             string.append(ExtName, "s", SubDirName)
         else if
             % `.dv' files go in the `deps' subdirectory,
-            % along with the `.dep' files
+            % along with the `.dep' files.
             ExtStr = ".dv"
         then
             SubDirName = "deps"
@@ -672,8 +687,8 @@ choose_file_name(Globals, _From, Search, MkDir, OtherExt,
             unexpected($pred, "unknown extension `" ++ ExtStr ++ "'")
         ),
 
-        make_file_name(Globals, [SubDirName | BaseParentDirs], Search, MkDir,
-            BaseNameNoExt, OtherExt, FileName, !IO)
+        make_file_name(Globals, [SubDirName | BaseParentDirs], Search,
+            BaseNameNoExt, OtherExt, DirComponents, FileName)
     ).
 
 file_name_to_module_name(FileName, ModuleName) :-
@@ -686,11 +701,10 @@ module_name_to_make_var_name(ModuleName, MakeVarName) :-
     MakeVarName = sym_name_to_string(ModuleName).
 
 :- pred make_file_name(globals::in, list(dir_name)::in, maybe_search::in,
-    maybe_create_dirs::in, file_name::in, other_ext::in, file_name::out,
-    io::di, io::uo) is det.
+    file_name::in, other_ext::in, list(string)::out, file_name::out) is det.
 
-make_file_name(Globals, SubDirNames, Search, MkDir, BaseNameNoExt, OtherExt,
-        FileName, !IO) :-
+make_file_name(Globals, SubDirNames, Search, BaseNameNoExt, OtherExt,
+        DirComponents, FileName) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     OtherExt = other_ext(ExtStr),
@@ -733,25 +747,6 @@ make_file_name(Globals, SubDirNames, Search, MkDir, BaseNameNoExt, OtherExt,
         FileName = BaseNameNoExt ++ ExtStr
     ;
         DirComponents = [_ | _],
-        (
-            MkDir = do_create_dirs,
-            DirName = dir.relative_path_name_from_components(DirComponents),
-            make_directory(DirName, _, !IO),
-            % XXX We should avoid trying to create a directory
-            % if we have created it before, since a map lookup here
-            % should be *much* cheaper than a system call.
-            %
-            % This goes not just for DirName, but for all the directories
-            % between it and the current directory (i.e. for any initial
-            % subsequence of DirComponents).
-            trace [compile_time(flag("file_name_translations")),
-                runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
-            (
-                record_mkdir(DirName, !TIO)
-            )
-        ;
-            MkDir = do_not_create_dirs
-        ),
         Components = DirComponents ++ [BaseNameNoExt ++ ExtStr],
         FileName = dir.relative_path_name_from_components(Components)
     ).
@@ -839,6 +834,37 @@ file_is_arch_or_grade_dependent_2("_init.c").
 file_is_arch_or_grade_dependent_2("_init.$O").
 file_is_arch_or_grade_dependent_2("_init.erl").
 file_is_arch_or_grade_dependent_2("_init.beam").
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_create_dirs_on_path(maybe_create_dirs::in, list(string)::in,
+    io::di, io::uo) is det.
+
+maybe_create_dirs_on_path(MkDir, DirComponents, !IO) :-
+    (
+        DirComponents = []
+    ;
+        DirComponents = [_ | _],
+        (
+            MkDir = do_create_dirs,
+            DirName = dir.relative_path_name_from_components(DirComponents),
+            make_directory(DirName, _, !IO),
+            % XXX We should avoid trying to create a directory
+            % if we have created it before, since a map lookup here
+            % should be *much* cheaper than a system call.
+            %
+            % This goes not just for DirName, but for all the directories
+            % between it and the current directory (i.e. for any initial
+            % subsequence of DirComponents).
+            trace [compile_time(flag("file_name_translations")),
+                runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
+            (
+                record_mkdir(DirName, !TIO)
+            )
+        ;
+            MkDir = do_not_create_dirs
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
