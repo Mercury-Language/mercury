@@ -1031,15 +1031,15 @@ foreign_include_file_path_name(SourceFileName, IncludeFile) = IncludePath :-
     IncludeFile = foreign_include_file_info(_Lang, IncludeFileName),
     make_include_file_path(SourceFileName, IncludeFileName, IncludePath).
 
-:- pred get_extra_link_dependencies(globals::in, other_ext::in,
+:- pred get_fact_table_dependencies(globals::in, other_ext::in,
     list(file_name)::in, list(string)::out, io::di, io::uo) is det.
 
-get_extra_link_dependencies(_, _, [], [], !IO).
-get_extra_link_dependencies(Globals, OtherExt,
+get_fact_table_dependencies(_, _, [], [], !IO).
+get_fact_table_dependencies(Globals, OtherExt,
         [ExtraLink | ExtraLinks], [FileName | FileNames], !IO) :-
-    extra_link_obj_file_name(Globals, $pred, do_not_create_dirs,
+    fact_table_file_name(Globals, $pred, do_not_create_dirs,
         OtherExt, ExtraLink, FileName, !IO),
-    get_extra_link_dependencies(Globals, OtherExt,
+    get_fact_table_dependencies(Globals, OtherExt,
         ExtraLinks, FileNames, !IO).
 
     % With `--use-subdirs', allow users to type `mmake module.c'
@@ -1317,11 +1317,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % XXX EXT
     % We should just be able to append ".c", ".$O" and the pic extension
     % to each string in FactTableFileNames.
-    get_extra_link_dependencies(Globals, other_ext(".c"),
+    get_fact_table_dependencies(Globals, other_ext(".c"),
         FactTableFileNames, FactTableFileNamesC, !IO),
-    get_extra_link_dependencies(Globals, other_ext(".$O"),
+    get_fact_table_dependencies(Globals, other_ext(".$O"),
         FactTableFileNames, FactTableFileNamesOs, !IO),
-    get_extra_link_dependencies(Globals, other_ext(".$(EXT_FOR_PIC_OBJECTS)"),
+    get_fact_table_dependencies(Globals, other_ext(".$(EXT_FOR_PIC_OBJECTS)"),
         FactTableFileNames, FactTableFileNamesPicOs, !IO),
 
     MmakeVarCs = mmake_var_defn_list(ModuleMakeVarName ++ ".cs",

@@ -186,17 +186,6 @@
 :- pred fact_table_file_name(globals::in, string::in, maybe_create_dirs::in,
     other_ext::in, file_name::in, file_name::out, io::di, io::uo) is det.
 
-    % extra_link_obj_file_name(Globals, MkDir, Ext, ExtraLinkObjName,
-    %   FileName, !IO):
-    %
-    % Returns the filename to use when compiling extra objects that must be
-    % linked into the executable (currently used only for fact tables).
-    % If `MkDir' is do_create_dirs, make any directories necessary.
-    %
-:- pred extra_link_obj_file_name(globals::in, string::in,
-    maybe_create_dirs::in, other_ext::in, file_name::in, file_name::out,
-    io::di, io::uo) is det.
-
     % Convert a file name (excluding the trailing `.m') to the corresponding
     % module name.
     %
@@ -443,16 +432,8 @@ module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext,
 
 fact_table_file_name(Globals, From, MkDir, Ext,
         FactTableFileName, FileName, !IO) :-
-    % XXX EXT This is identical to extra_link_obj_file_name.
     choose_file_name(Globals, From, do_not_search, Ext,
         [], FactTableFileName, DirComponents, FileName),
-    maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
-
-extra_link_obj_file_name(Globals, From, MkDir, Ext, ExtraLinkObjName,
-        FileName, !IO) :-
-    % XXX EXT This is identical to fact_table_file_name.
-    choose_file_name(Globals, From, do_not_search, Ext,
-        [], ExtraLinkObjName, DirComponents, FileName),
     maybe_create_dirs_on_path(MkDir, DirComponents, !IO).
 
 %---------------------%
