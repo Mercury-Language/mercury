@@ -515,69 +515,66 @@ choose_file_name(Globals, _From, Search, OtherExt,
             UseGradeSubdirs = yes,
             file_is_arch_or_grade_dependent(Globals, OtherExt)
         ),
-        (
-            % Executable files.
-            % XXX The Ext = "" here is wrong. While an empty extension
-            % *can* mean we are building the name of an executable,
-            % it can also mean we are building the name of a phony Mmakefile
-            % target for a library, such as libmer_std in the library
-            % directory.
-            ( ExtStr = ""
-            ; ExtStr = ".bat"
-            ; ExtStr = ".exe"
 
-            % Library files.
-            ; ExtStr = ".a"
-            ; ExtStr = ".$A"
-            ; ExtStr = ".lib"
-            ; ExtStr = ".so"
-            ; ExtStr = ".dll"
-            ; ExtStr = ".dylib"
-            ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
-            ; ExtStr = ".jar"
-            ; ExtStr = ".beams"
-            ; ExtStr = ".init"
+        % Executable files.
+        % XXX The Ext = "" here is wrong. While an empty extension
+        % *can* mean we are building the name of an executable,
+        % it can also mean we are building the name of a phony Mmakefile
+        % target for a library, such as libmer_std in the library
+        % directory.
+        ( ExtStr = ""
+        ; ExtStr = ".bat"
+        ; ExtStr = ".exe"
 
-            % output files intended for use by the user (the .h_dump* and
-            % .c_dump* MLDS dumps also fit into this category, but for
-            % efficiency, to keep this as a switch, we deal with them below).
-            ; ExtStr = ".mh"
+        % Library files.
+        ; ExtStr = ".a"
+        ; ExtStr = ".$A"
+        ; ExtStr = ".lib"
+        ; ExtStr = ".so"
+        ; ExtStr = ".dll"
+        ; ExtStr = ".dylib"
+        ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
+        ; ExtStr = ".jar"
+        ; ExtStr = ".beams"
+        ; ExtStr = ".init"
 
-            ; ExtStr = ".err"
-            ; ExtStr = ".ugly"
-            ; ExtStr = ".hlds_dump"
-            ; ExtStr = ".mlds_dump"
-            ; ExtStr = ".dependency_graph"
-            ; ExtStr = ".order"
-            % Mmake targets
-            ; ExtStr = ".clean"
-            ; ExtStr = ".realclean"
-            ; ExtStr = ".depend"
-            ; ExtStr = ".install_ints"
-            ; ExtStr = ".install_opts"
-            ; ExtStr = ".install_hdrs"
-            ; ExtStr = ".install_grade_hdrs"
-            ; ExtStr = ".check"
-            ; ExtStr = ".ints"
-            ; ExtStr = ".int3s"
-            ; ExtStr = ".ils"
-            ; ExtStr = ".javas"
-            ; ExtStr = ".classes"
-            ; ExtStr = ".erls"
-            ; ExtStr = ".beams"
-            ; ExtStr = ".opts"
-            ; ExtStr = ".trans_opts"
-            ; ExtStr = ".all_ints"
-            ; ExtStr = ".all_int3s"
-            ; ExtStr = ".all_opts"
-            ; ExtStr = ".all_trans_opts"
-            )
-        ;
-            % Output files intended for use by the user.
+        % XXX Describe me.
+        ; ExtStr = ".mh"
 
-            ( string.prefix(ExtStr, ".c_dump")
-            ; string.prefix(ExtStr, ".mih_dump")
-            )
+        % Output files intended for use by the user.
+        % The MLDS dump files with extensions .c_dump* and .mih_dump*
+        % also fit into this category, but their filenames are constructed
+        % by getting the filenames for the .c and .mih extensions
+        % and adding a suffix to that.
+        ; ExtStr = ".err"
+        ; ExtStr = ".ugly"
+        ; ExtStr = ".hlds_dump"
+        ; ExtStr = ".mlds_dump"
+        ; ExtStr = ".dependency_graph"
+        ; ExtStr = ".order"
+
+        % Mmake targets.
+        ; ExtStr = ".clean"
+        ; ExtStr = ".realclean"
+        ; ExtStr = ".depend"
+        ; ExtStr = ".install_ints"
+        ; ExtStr = ".install_opts"
+        ; ExtStr = ".install_hdrs"
+        ; ExtStr = ".install_grade_hdrs"
+        ; ExtStr = ".check"
+        ; ExtStr = ".ints"
+        ; ExtStr = ".int3s"
+        ; ExtStr = ".ils"
+        ; ExtStr = ".javas"
+        ; ExtStr = ".classes"
+        ; ExtStr = ".erls"
+        ; ExtStr = ".beams"
+        ; ExtStr = ".opts"
+        ; ExtStr = ".trans_opts"
+        ; ExtStr = ".all_ints"
+        ; ExtStr = ".all_int3s"
+        ; ExtStr = ".all_opts"
+        ; ExtStr = ".all_trans_opts"
         )
     then
         DirComponents = [],
