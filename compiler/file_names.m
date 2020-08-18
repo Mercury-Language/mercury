@@ -477,7 +477,6 @@ decide_base_name_parent_dirs_other(OtherExt, ModuleName,
 choose_file_name(Globals, _From, Search, OtherExt,
         BaseParentDirs, BaseNameNoExt, DirComponents, FileName) :-
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     OtherExt = other_ext(ExtStr),
     ( if
         % If we are searching for (rather than writing) a `.mih' file,
@@ -500,11 +499,14 @@ choose_file_name(Globals, _From, Search, OtherExt,
             % Even if not putting files in a `Mercury' directory,
             % Java files will have non-empty BaseParentDirs (the package)
             % which may need to be created.
-            % XXX Most of the code of make_file_name handles UseSubdirs = yes.
-            make_file_name(Globals, BaseParentDirs, Search,
-                BaseNameNoExt, OtherExt, DirComponents, FileName)
+            % XXX Can we ever target Java while UseSubdirs = no?
+            FileName = glue_dir_names_file_name(BaseParentDirs,
+                BaseNameNoExt, ExtStr),
+            DirComponents = BaseParentDirs
         ;
             UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
             ( if
                 % The source files, the final executables, library files
                 % (including .init files) output files intended for use
@@ -695,6 +697,11 @@ make_file_name(Globals, SubDirNames, Search, BaseNameNoExt, OtherExt,
     else
         DirComponents = SubDirNames
     ),
+    FileName = glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr).
+
+:- func glue_dir_names_file_name(list(string), string, string) = string.
+
+glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr) = FileName :-
     (
         DirComponents = [],
         FileName = BaseNameNoExt ++ ExtStr
