@@ -499,7 +499,16 @@ choose_file_name(Globals, _From, Search, OtherExt,
             % Even if not putting files in a `Mercury' directory,
             % Java files will have non-empty BaseParentDirs (the package)
             % which may need to be created.
-            % XXX Can we ever target Java while UseSubdirs = no?
+            % XXX We can never target Java while UseSubdirs = no. However,
+            % while making dependencies, generate_d_file in write_deps_file.m
+            % does call module_name_to_file_name with a .java suffix
+            % without --use-subdirs being enabled, so insisting on
+            % BaseParentDirs = [] here would cause an abort when making
+            % dependencies.
+            % XXX This indicates a deeper problem, which is that while
+            % different backends use different settings of --use-subdirs
+            % and --use-grade-subdirs, we are generating dependencies
+            % for *all* backends with the *same* settings of these options.
             FileName = glue_dir_names_file_name(BaseParentDirs,
                 BaseNameNoExt, ExtStr),
             DirComponents = BaseParentDirs
