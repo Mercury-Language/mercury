@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred tabled_read_decl_goto.main/2-0 (det) tabled_read_decl_goto.m:23
+      E1:     C1 CALL pred tabled_read_decl_goto.main/2-0 (det) tabled_read_decl_goto.m:22
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
