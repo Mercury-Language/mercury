@@ -61,8 +61,8 @@ test(Stream, SoFar, N, !IO) :-
     io_tab_goto.read_char_code(Stream, CharCode, !IO),
     ( if
         char.to_int(Char, CharCode),
-        char.is_digit(Char),
-        char.digit_to_int(Char, CharInt)
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
     then
         io_tab_goto.test(Stream, SoFar * 10 + CharInt, N, !IO)
     else
@@ -76,8 +76,8 @@ poly_test(Stream, Unused, SoFar, N, !IO) :-
     io_tab_goto.poly_read_char_code(Stream, Unused, CharCode, !IO),
     ( if
         char.to_int(Char, CharCode),
-        char.is_digit(Char),
-        char.digit_to_int(Char, CharInt)
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
     then
         io_tab_goto.poly_test(Stream, Unused, SoFar * 10 + CharInt, N, !IO)
     else

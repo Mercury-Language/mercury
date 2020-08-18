@@ -184,9 +184,6 @@
     %
 :- func det_to_int(integer) = int.
 
-:- func int(integer) = int.
-:- pragma obsolete(int/1).
-
 %---------------------%
 
     % Convert an integer to a uint.
@@ -338,8 +335,6 @@
     % [0-9], optionally preceded by a plus or minus sign. If the string does
     % not match this syntax, then the predicate fails.
     %
-:- func from_string(string::in) = (integer::out) is semidet.
-:- pragma obsolete(from_string/1).
 :- pred from_string(string::in, integer::out) is semidet.
 
     % As above, but throws an exception rather than failing.
@@ -352,8 +347,6 @@
     % 10 to 35 are represented by the letters A-Z or a-z. If the string
     % does not match this syntax, then the predicate fails.
     %
-:- func from_base_string(int, string) = integer is semidet.
-:- pragma obsolete(from_base_string/2).
 :- pred from_base_string(int::in, string::in, integer::out) is semidet.
 
     % As above, but throws an exception rather than failing.
@@ -1438,8 +1431,6 @@ det_to_int(Integer) = Int :-
             "integer.det_to_int: domain error (conversion would overflow)"))
     ).
 
-int(Integer) = integer.det_to_int(Integer).
-
 %---------------------------------------------------------------------------%
 
 to_uint(Integer, UInt) :-
@@ -2041,9 +2032,6 @@ uint64_to_digits_2(U, Tail) = Result :-
 % Converting strings to integers.
 %
 
-from_string(S) = Big :-
-    integer.from_string(S, Big).
-
 from_string(S, Big) :-
     string.to_char_list(S, Cs),
     string_to_integer(Cs, Big).
@@ -2093,9 +2081,6 @@ det_from_string(S) = I :-
 %
 % Converting base strings to integers.
 %
-
-from_base_string(Base, String) = Integer :-
-    integer.from_base_string(Base, String, Integer).
 
 from_base_string(Base, String, Integer) :-
     string.index(String, 0, Char),

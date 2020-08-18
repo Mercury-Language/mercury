@@ -15,14 +15,22 @@
 
 :- module remove_file.
 :- interface.
-:- use_module io.
+:- import_module io.
 
 :- pred main(io.state::di, io.state::uo) is det.
 
 :- implementation.
 
+:- import_module exception.
+
 main(!IO) :-
-    io.make_temp(Name, !IO),
+    io.make_temp_file(NameResult, !IO),
+    (
+        NameResult = ok(Name)
+    ;
+        NameResult = error(Error),
+        throw(Error)
+    ),
     %%%%%%% io.print("Temp file name = ", !IO), io.print_line(Name, !IO),
     io.tell(Name, TellResult, !IO),
     (

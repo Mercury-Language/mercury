@@ -1,3 +1,105 @@
+NEWS since Mercury 20.06
+========================
+
+Changes to the Mercury standard library
+---------------------------------------
+
+### Changes to the `array` module
+
+* The following obsolete predicates and functions have been removed:
+
+    - func `bsearch/3`              (replacement: binary_search)
+    - pred `bsearch/4`              (replacement: binary_search)
+    - pred `least_index/3`          (replacement: min)
+    - pred `greatest_index/3`       (replacement: max)
+
+### Changes to the `bag` module
+
+* The following obsolete predicates and functions have been removed:
+
+    - func `to_set_without_duplicates/1`    (bag.to_set)
+    - pred `to_set_without_duplicates/2`    (bag.to_set)
+
+### Changes to the `char` module
+
+* The following obsolete predicates and functions have been removed:
+
+    - func `det_int_to_digit/1`     (replacement: det_int_to_decimal_digit)
+    - pred `det_int_to_digit/2`     (replacement: det_int_to_decimal_digit)
+    - pred `digit_to_int/2`         (replacement: decimal_digit_to_int)
+    - pred `int_to_digit/2`         (replacement: int_to_decimal_digit)
+
+### Changes to the `int` module
+
+* The following obsolete predicates and functions have been removed:
+
+    - pred `is/2`                   (replacement: =, i.e. unification)
+    - func `legacy_left_shift/2`    (replacement: <<)
+    - func `legacy_right_shift/2`   (replacement: >>)
+
+### Changes to the `integer` module
+
+* The following obsolete functions have been removed:
+
+    - func `from_base_string/2`     (replacement: pred from_base_string)
+    - func `from_string/2`          (replacement: pred from_string)
+    - func `int/2`                  (replacement: to_int)
+
+### Changes to the `io` module
+
+* The following obsolete predicates have been removed:
+
+    - pred `make_temp/3`            (replacement: make_temp_file)
+    - pred `make_temp/5`            (replacement: make_temp_file)
+
+### Changes to the `list` module
+
+* The following obsolete predicate has been removed:
+
+    - pred `takewhile/3`            (replacement: take_while)
+
+### Changes to the `random` module
+
+* The following obsolete predicate has been removed:
+
+    - pred `test/4`                 (replacement: none)
+
+### Changes to the `std_util` module
+
+* The following obsolete predicates and functions have been removed:
+
+    - func `maybe_pred/2`           (replacement: maybe.func_to_maybe)
+    - pred `maybe_pred/3`           (replacement: maybe.pred_to_maybe)
+
+### Changes to the `thread.mvar` module
+
+* The following obsolete function has been removed:
+
+    - func `init/1`                 (replacement: impure_init)
+
+### Changes to the `thread.semaphore` module
+
+* The following obsolete function has been removed:
+
+    - func `init/1`                 (replacement: impure_init)
+
+### Changes to the `time` module
+
+* The following obsolete functions have been removed:
+
+    - func `ctime/1`                (replacement: localtime/4 and asctime)
+    - func `localtime/1`            (replacement: localtime/4)
+    - func `mktime/1`               (replacement: mktime/4)
+
+### Changes to the `varset` module
+
+* The following obsolete predicates have been removed:
+
+    - pred `merge_subst/4`          (replacement: merge_renaming)
+    - pred `merge_subst_without_names/1`
+                                    (replacement: merge_renaming_without_names)
+
+
 NEWS for Mercury 20.06.1
 ========================
 

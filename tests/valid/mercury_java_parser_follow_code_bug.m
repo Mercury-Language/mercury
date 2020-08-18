@@ -397,7 +397,8 @@ digits(Base) -->
 :- pred digit(int::in, ps::in, ps::out) is semidet.
 
 digit(Base) -->
-    char(C), { char.digit_to_int(C, D), D < Base }.
+    char(C),
+    { char.decimal_digit_to_int(C, D), D < Base }.
 
 %---------------------------------------------------------------------------%
 

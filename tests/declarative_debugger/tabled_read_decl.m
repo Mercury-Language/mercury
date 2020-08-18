@@ -21,11 +21,11 @@
 
 main(!IO) :-
     tabled_read_decl.open_input("tabled_read_decl.data", Res, Stream, !IO),
-    ( Res = 0 ->
+    ( if Res = 0 then
         tabled_read_decl.part_1(Stream, !IO),
         tabled_read_decl.part_2(Stream, !IO),
         tabled_read_decl.part_3(!IO)
-    ;
+    else
         io.write_string("could not open tabled_read.data\n", !IO)
     ).
 
@@ -60,13 +60,13 @@ tabled_read_decl.test(Stream, N, !IO) :-
 
 tabled_read_decl.test_2(Stream, SoFar, N, !IO) :-
     tabled_read_decl.read_char_code(Stream, CharCode, !IO),
-    (
+    ( if
         char.to_int(Char, CharCode),
-        char.is_digit(Char),
-        char.digit_to_int(Char, CharInt)
-    ->
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
+    then
         tabled_read_decl.test_2(Stream, SoFar * 10 + CharInt, N, !IO)
-    ;
+    else
         N = SoFar
     ).
 
@@ -82,14 +82,14 @@ tabled_read_decl.poly_test(Stream, Unused, N, !IO) :-
 
 tabled_read_decl.poly_test_2(Stream, Unused, SoFar, N, !IO) :-
     tabled_read_decl.poly_read_char_code(Stream, Unused, CharCode, !IO),
-    (
+    ( if
         char.to_int(Char, CharCode),
-        char.is_digit(Char),
-        char.digit_to_int(Char, CharInt)
-    ->
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
+    then
         tabled_read_decl.poly_test_2(Stream, Unused, SoFar * 10 + CharInt, N,
             !IO)
-    ;
+    else
         N = SoFar
     ).
 

@@ -11,8 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -20,94 +19,88 @@
 :- import_module int.
 :- import_module list.
 
-main -->
-    tabled_read_decl_goto__open_input("tabled_read_decl_goto.data", Res,
-        Stream),
-    ( { Res = 0 } ->
-        tabled_read_decl_goto__part_1(Stream),
-        tabled_read_decl_goto__part_2(Stream),
-        tabled_read_decl_goto__part_3
-    ;
-        io__write_string("could not open tabled_read.data\n")
+main(!IO) :-
+    tabled_read_decl_goto.open_input("tabled_read_decl_goto.data", Res,
+        Stream, !IO),
+    ( if Res = 0 then
+        tabled_read_decl_goto.part_1(Stream, !IO),
+        tabled_read_decl_goto.part_2(Stream, !IO),
+        tabled_read_decl_goto.part_3(!IO)
+    else
+        io.write_string("could not open tabled_read.data\n", !IO)
     ).
 
-:- pred tabled_read_decl_goto__part_1(c_pointer::in,
-    io__state::di, io__state::uo) is det.
+:- pred part_1(c_pointer::in, io::di, io::uo) is det.
 
-tabled_read_decl_goto__part_1(Stream) -->
-    tabled_read_decl_goto__test(Stream, A),
-    tabled_read_decl_goto__write_int(A),
-    tabled_read_decl_goto__poly_test(Stream, ['a', 'b', 'c'], B),
-    tabled_read_decl_goto__write_int(B).
+part_1(Stream, !IO) :-
+    tabled_read_decl_goto.test(Stream, A, !IO),
+    tabled_read_decl_goto.write_int(A, !IO),
+    tabled_read_decl_goto.poly_test(Stream, ['a', 'b', 'c'], B, !IO),
+    tabled_read_decl_goto.write_int(B, !IO).
 
-:- pred tabled_read_decl_goto__part_2(c_pointer::in,
-    io__state::di, io__state::uo) is det.
+:- pred part_2(c_pointer::in, io::di, io::uo) is det.
 
-tabled_read_decl_goto__part_2(Stream) -->
-    tabled_read_decl_goto__test(Stream, A),
-    tabled_read_decl_goto__write_int(A).
+part_2(Stream, !IO) :-
+    tabled_read_decl_goto.test(Stream, A, !IO),
+    tabled_read_decl_goto.write_int(A, !IO).
 
-:- pred tabled_read_decl_goto__part_3(io__state::di, io__state::uo) is det.
+:- pred part_3(io::di, io::uo) is det.
 
-tabled_read_decl_goto__part_3(!IO) :-
-    tabled_read_decl_goto__fake_io(X, !IO),
-    tabled_read_decl_goto__write_int(X, !IO).
+part_3(!IO) :-
+    tabled_read_decl_goto.fake_io(X, !IO),
+    tabled_read_decl_goto.write_int(X, !IO).
 
-:- pred tabled_read_decl_goto__test(c_pointer::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred test(c_pointer::in, int::out, io::di, io::uo) is det.
 
-tabled_read_decl_goto__test(Stream, N) -->
+test(Stream, N, !IO) :-
     % BUG: the 1 should be 0
-    tabled_read_decl_goto__test_2(Stream, 1, N).
+    tabled_read_decl_goto.test_2(Stream, 1, N, !IO).
 
-:- pred tabled_read_decl_goto__test_2(c_pointer::in, int::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred test_2(c_pointer::in, int::in, int::out, io::di, io::uo) is det.
 
-tabled_read_decl_goto__test_2(Stream, SoFar, N) -->
-    tabled_read_decl_goto__read_char_code(Stream, CharCode),
-    (
-        { char__to_int(Char, CharCode) },
-        { char__is_digit(Char) },
-        { char__digit_to_int(Char, CharInt) }
-    ->
-        tabled_read_decl_goto__test_2(Stream, SoFar * 10 + CharInt, N)
-    ;
-        { N = SoFar }
+test_2(Stream, SoFar, N, !IO) :-
+    tabled_read_decl_goto.read_char_code(Stream, CharCode, !IO),
+    ( if
+        char.to_int(Char, CharCode),
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
+    then
+        tabled_read_decl_goto.test_2(Stream, SoFar * 10 + CharInt, N, !IO)
+    else
+        N = SoFar
     ).
 
-:- pred tabled_read_decl_goto__poly_test(c_pointer::in, T::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred poly_test(c_pointer::in, T::in, int::out, io::di, io::uo) is det.
 
-tabled_read_decl_goto__poly_test(Stream, Unused, N) -->
+poly_test(Stream, Unused, N, !IO) :-
     % BUG: the 1 should be 0
-    tabled_read_decl_goto__poly_test_2(Stream, Unused, 1, N).
+    tabled_read_decl_goto.poly_test_2(Stream, Unused, 1, N, !IO).
 
-:- pred tabled_read_decl_goto__poly_test_2(c_pointer::in, T::in, int::in,
-    int::out, io__state::di, io__state::uo) is det.
+:- pred poly_test_2(c_pointer::in, T::in, int::in,
+    int::out, io::di, io::uo) is det.
 
-tabled_read_decl_goto__poly_test_2(Stream, Unused, SoFar, N) -->
-    tabled_read_decl_goto__poly_read_char_code(Stream, Unused, CharCode),
-    (
-        { char__to_int(Char, CharCode) },
-        { char__is_digit(Char) },
-        { char__digit_to_int(Char, CharInt) }
-    ->
-        tabled_read_decl_goto__poly_test_2(Stream, Unused,
-            SoFar * 10 + CharInt, N)
-    ;
-        { N = SoFar }
+poly_test_2(Stream, Unused, SoFar, N, !IO) :-
+    tabled_read_decl_goto.poly_read_char_code(Stream, Unused, CharCode, !IO),
+    ( if
+        char.to_int(Char, CharCode),
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
+    then
+        tabled_read_decl_goto.poly_test_2(Stream, Unused,
+            SoFar * 10 + CharInt, N, !IO)
+    else
+        N = SoFar
     ).
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
 
-:- pred tabled_read_decl_goto__open_input(string::in, int::out, c_pointer::out,
-    io__state::di, io__state::uo) is det.
+:- pred open_input(string::in, int::out, c_pointer::out,
+    io::di, io::uo) is det.
 
-:- pragma no_inline(tabled_read_decl_goto__open_input/5).
+:- pragma no_inline(tabled_read_decl_goto.open_input/5).
 
 :- pragma foreign_proc("C",
-    tabled_read_decl_goto__open_input(FileName::in, Res::out, Stream::out,
-        IO0::di, IO::uo),
+    open_input(FileName::in, Res::out, Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = (MR_Word) fopen((const char *) FileName, ""r"");
@@ -117,14 +110,12 @@ end1:
     IO = IO0;
 ").
 
-:- pred tabled_read_decl_goto__read_char_code(c_pointer::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred read_char_code(c_pointer::in, int::out, io::di, io::uo) is det.
 
-:- pragma no_inline(tabled_read_decl_goto__read_char_code/4).
+:- pragma no_inline(tabled_read_decl_goto.read_char_code/4).
 
 :- pragma foreign_proc("C",
-    tabled_read_decl_goto__read_char_code(Stream::in, CharCode::out,
-        IO0::di, IO::uo),
+    read_char_code(Stream::in, CharCode::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     CharCode = getc((FILE *) Stream);
@@ -133,14 +124,14 @@ end2:
     IO = IO0;
 ").
 
-:- pred tabled_read_decl_goto__poly_read_char_code(c_pointer::in, T::in,
-    int::out, io__state::di, io__state::uo) is det.
+:- pred poly_read_char_code(c_pointer::in, T::in,
+    int::out, io::di, io::uo) is det.
 
-:- pragma no_inline(tabled_read_decl_goto__poly_read_char_code/5).
+:- pragma no_inline(tabled_read_decl_goto.poly_read_char_code/5).
 
 :- pragma foreign_proc("C",
-    tabled_read_decl_goto__poly_read_char_code(Stream::in, Unused::in,
-        CharCode::out, IO0::di, IO::uo),
+    poly_read_char_code(Stream::in, Unused::in, CharCode::out,
+        IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     /* ignore Unused */
@@ -150,13 +141,12 @@ end3:
     IO = IO0;
 ").
 
-:- pred tabled_read_decl_goto__write_int(int::in, io__state::di, io__state::uo)
-    is det.
+:- pred write_int(int::in, io::di, io::uo) is det.
 
-:- pragma no_inline(tabled_read_decl_goto__write_int/3).
+:- pragma no_inline(tabled_read_decl_goto.write_int/3).
 
 :- pragma foreign_proc("C",
-    tabled_read_decl_goto__write_int(N::in, IO0::di, IO::uo),
+    write_int(N::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     printf(""%d\\n"", (int) N);
@@ -165,12 +155,12 @@ end4:
     IO = IO0;
 }").
 
-:- pred tabled_read_decl_goto__fake_io(int::out, io::di, io::uo) is det.
+:- pred fake_io(int::out, io::di, io::uo) is det.
 
-:- pragma no_inline(tabled_read_decl_goto__fake_io/3).
+:- pragma no_inline(tabled_read_decl_goto.fake_io/3).
 
 :- pragma foreign_proc("C",
-    tabled_read_decl_goto__fake_io(X::out, IO0::di, IO::uo),
+    fake_io(X::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     X = 1;

@@ -47,13 +47,6 @@
     %
 :- impure func impure_init(T) = mvar(T).
 
-    % Create an empty mvar.
-    %
-    % This has been renamed to impure_init.
-    %
-:- impure func init = (mvar(T)::uo) is det.
-:- pragma obsolete(init/0).
-
     % Take the contents of the mvar out, leaving the mvar empty.
     % If the mvar is empty, block until some thread fills the mvar.
     %
@@ -134,9 +127,6 @@ impure_init(Value) = mvar(Full, Empty, Ref) :-
     impure semaphore.impure_init(1, Full),      % initially full
     impure semaphore.impure_init(0, Empty),
     impure new_mutvar(Value, Ref).
-
-init = Mvar :-
-    impure Mvar = impure_init.
 
 %---------------------------------------------------------------------------%
 

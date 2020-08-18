@@ -434,7 +434,7 @@ digits(Base) -->
 
 digit(Base) -->
     char(C),
-    { char.digit_to_int(C, D), D < Base }.
+    { char.decimal_digit_to_int(C, D), D < Base }.
 
 %---------------------------------------------------------------------------%
 

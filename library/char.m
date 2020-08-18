@@ -360,42 +360,6 @@
 :- pred int_to_hex_char(int, char).
 :- mode int_to_hex_char(in, out) is semidet.
 
-    % True iff the characters is a decimal digit (0-9) or letter (a-z or A-Z).
-    % Returns the character's value as a digit (0-9 or 10-35).
-    %
-:- pragma obsolete(digit_to_int/2).
-:- pred digit_to_int(char::in, int::out) is semidet.
-
-    % int_to_digit(Int, Char):
-    %
-    % True iff Int is an integer in the range 0-35 and Char is a
-    % decimal digit or uppercase letter whose value as a digit is Int.
-    %
-    % Use whichever of int_to_binary_digit/2, int_to_octal_digit/2,
-    % int_to_decimal_digit/2, int_to_hex_digit/2 or base_int_to_digit/3 is
-    % appropriate instead of the (in, out) mode
-    %
-    % Use whichever of binary_digit_to_int/2, octal_digit_to_int/2,
-    % decimal_digit_to_int/2, hex_digit_to_int/2 or base_digit_to_int/3
-    % is appropriate instead of the (out, in) mode.
-    %
-:- pragma obsolete(int_to_digit/2).
-:- pred int_to_digit(int, char).
-:- mode int_to_digit(in, out) is semidet.
-:- mode int_to_digit(out, in) is semidet.
-
-    % Returns a decimal digit or uppercase letter corresponding to the value.
-    % Calls error/1 if the integer is not in the range 0-35.
-    %
-    % Use whichever of det_int_to_binary_digit/1, det_int_to_octal_digit/1
-    % det_int_to_decimal_digit/1, det_int_to_hex_digit/1 or
-    % det_base_int_to_digit/2 is appropriate instead.
-    %
-:- pragma obsolete(det_int_to_digit/1).
-:- func det_int_to_digit(int) = char.
-:- pragma obsolete(det_int_to_digit/2).
-:- pred det_int_to_digit(int::in, char::out) is det.
-
 %---------------------------------------------------------------------------%
 %
 % Computing hashes of chars.
@@ -1111,25 +1075,7 @@ is_hex_digit(Digit, Int) :-
 int_to_hex_char(Int, Char) :-
     int_to_hex_digit(Int, Char).
 
-digit_to_int(Digit, Int) :-
-    ( if lower_upper(Digit, Upper) then
-        int_to_extended_digit(Int, Upper)
-    else
-        int_to_extended_digit(Int, Digit)
-    ).
-
-int_to_digit(Int, Digit) :-
-    int_to_extended_digit(Int, Digit).
-
-det_int_to_digit(N) = C :-
-    det_int_to_digit(N, C).
-
-det_int_to_digit(Int, Digit) :-
-    ( if int_to_extended_digit(Int, DigitPrime) then
-        Digit = DigitPrime
-    else
-        error($pred, "char.int_to_digit failed")
-    ).
+%---------------------------------------------------------------------------%
 
 :- pred int_to_extended_digit(int, char).
 :- mode int_to_extended_digit(in, out) is semidet.

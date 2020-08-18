@@ -196,15 +196,6 @@
     %
 :- func (int::in) << (int::in) = (int::uo) is det.
 
-    % legacy_left_shift(X, Y) returns X "left shifted" by Y bits.
-    % To be precise, if Y is negative, the result is X div (2^(-Y)), otherwise
-    % the result is X * (2^Y).
-    %
-    % NOTE: this function is deprecated and may be removed in a future release.
-    %
-:- pragma obsolete(legacy_left_shift/2).
-:- func legacy_left_shift(int::in, int::in) = (int::uo) is det.
-
     % unchecked_left_shift(X, Y) is the same as X << Y
     % except that the behaviour is undefined if Y is negative,
     % or greater than or equal to the result of `bits_per_int/1'.
@@ -218,13 +209,6 @@
     % Throws an exception if Y is not in [0, bits_per_int).
     %
 :- func (int::in) >> (int::in) = (int::uo) is det.
-
-    % legacy_right_shift(X, Y) returns X "arithmetic right shifted" by Y bits.
-    % To be precise, if Y is negative, the result is X * (2^(-Y)), otherwise
-    % the result is X div (2^Y).
-    %
-:- pragma obsolete(legacy_right_shift/2).
-:- func legacy_right_shift(int::in, int::in) = (int::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y
     % except that the behaviour is undefined if Y is negative,
@@ -253,15 +237,6 @@
 :- mode xor(in, in) = uo is det.
 :- mode xor(in, uo) = in is det.
 :- mode xor(uo, in) = in is det.
-
-%---------------------------------------------------------------------------%
-
-    % is/2, for backwards compatibility with Prolog.
-    %
-:- pred is(T, T) is det.
-:- mode is(uo, di) is det.
-:- mode is(out, in) is det.
-:- pragma obsolete(is/2).
 
 %---------------------------------------------------------------------------%
 
@@ -765,22 +740,6 @@ X << Y = Z :-
         throw(domain_error(Msg))
     ).
 
-legacy_left_shift(X, Y) = Z :-
-    bits_per_int(IntBits),
-    ( if Y >= 0 then
-        ( if Y >= IntBits then
-            Z = 0
-        else
-            Z = unchecked_left_shift(X, Y)
-        )
-    else
-        ( if Y =< -IntBits then
-            Z = (if X >= 0 then 0 else -1)
-        else
-            Z = unchecked_right_shift(X, -Y)
-        )
-    ).
-
 X >> Y = Z :-
     ( if Y `private_builtin.unsigned_lt` bits_per_int then
         Z = unchecked_right_shift(X, Y)
@@ -788,31 +747,6 @@ X >> Y = Z :-
         Msg = "int.(>>): second operand is out of range",
         throw(domain_error(Msg))
     ).
-
-legacy_right_shift(X, Y) = Z :-
-    % Note: this assumes two's complement arithmetic.
-    % tests/hard_coded/shift_test.m will fail if this is not the case.
-    bits_per_int(IntBits),
-    ( if Y >= 0 then
-        ( if Y >= IntBits then
-            Z = (if X >= 0 then 0 else -1)
-        else
-            Z = unchecked_right_shift(X, Y)
-        )
-    else
-        ( if Y =< -IntBits then
-            Z = 0
-        else
-            Z = unchecked_left_shift(X, -Y)
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-% is/2 is replaced with `=' in the parser, but the following is useful
-% in case you should take the address of `is' or something weird like that.
-
-is(X, X).
 
 %---------------------------------------------------------------------------%
 

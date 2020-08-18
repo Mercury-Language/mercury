@@ -217,10 +217,6 @@
     % NOTE_TO_IMPLEMENTORS The _without_duplicates suffix is redundant.
     %
 :- func to_set(bag(T)) = set(T).
-:- func to_set_without_duplicates(bag(T)) = set(T).
-:- pred to_set_without_duplicates(bag(T)::in, set(T)::out) is det.
-:- pragma obsolete(to_set_without_duplicates/1).
-:- pragma obsolete(to_set_without_duplicates/2).
 
 %---------------------%
 
@@ -641,11 +637,6 @@ is_duplicated(X - XN, X) :-
 to_set(bag(Map)) = Set :-
     map.keys(Map, Xs),
     set.sorted_list_to_set(Xs, Set).
-
-to_set_without_duplicates(Bag) = bag.to_set(Bag).
-
-to_set_without_duplicates(Bag, Set) :-
-    Set = bag.to_set(Bag).
 
 %---------------------------------------------------------------------------%
 

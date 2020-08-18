@@ -43,14 +43,6 @@
     %
 :- impure func impure_init(int::in) = (semaphore::uo) is det.
 
-    % Sem = init(Count) returns a new semaphore `Sem' with its counter
-    % initialized to `Count'.
-    %
-    % This has been renamed to impure_init.
-    %
-:- impure func init(int::in) = (semaphore::uo) is det.
-:- pragma obsolete(init/1).
-
     % signal(Sem, !IO) increments the counter associated with `Sem'
     % and if the resulting counter has a value greater than 0, it wakes
     % one or more threads that are waiting on this semaphore (if
@@ -84,9 +76,6 @@ init(Semaphore, !IO) :-
     init(0, Semaphore, !IO).
 
 impure_init(Count) = Semaphore :-
-    impure impure_init(Count, Semaphore).
-
-init(Count) = Semaphore :-
     impure impure_init(Count, Semaphore).
 
 signal(Semaphore, !IO) :-

@@ -24,7 +24,7 @@
 :- impure func init_sem = semaphore.
 
 init_sem = Sem :-
-    impure Sem = semaphore.init(1).
+    impure Sem = semaphore.impure_init(1).
 
 :- mutable(foo, string, init_foo, ground, [untrailed, constant]).
 

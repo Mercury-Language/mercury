@@ -463,11 +463,6 @@
     % in the Mercury Library Reference Manual.
 :- interface.
 
-    % The following predicate was just for test purposes.
-    % It should not be used by user programs.
-:- pragma obsolete(test/4).
-:- pred test(int::in, int::in, list(int)::out, int::out) is det.
-
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -927,6 +922,13 @@ perform_sampling(I, !.Record, !Order, !RS) :-
 
 %---------------------------------------------------------------------------%
 
+    % The following predicate was just for test purposes.
+    % It should not be used by user programs.
+    %
+:- pred test(int::in, int::in, list(int)::out, int::out) is det.
+:- pragma consider_used(test/4).
+:- pragma obsolete(test/4).
+
 test(Seed, N, Nums, Max) :-
     init(Seed, RS),
     randmax(Max, RS, RS1),
@@ -934,9 +936,8 @@ test(Seed, N, Nums, Max) :-
 
 :- pred test_2(int, list(int), supply, supply).
 :- mode test_2(in, out, in, out) is det.
-:- mode test_2(in, out, mdi, muo) is det.
 
-random.test_2(N, Is, !RS) :-
+test_2(N, Is, !RS) :-
     ( if N > 0 then
         N1 = N - 1,
         random(I, !RS),

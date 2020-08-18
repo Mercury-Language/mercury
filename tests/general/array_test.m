@@ -25,9 +25,14 @@ main(!IO) :-
 :- pred test(list(int)::in, io::di, io::uo) is det.
 
 test(Xs, !IO) :-
-    Cmp = (pred(X :: in, Y :: in, Res :: out) is det :-
-        compare(Res, X, Y)
-    ),
+    CmpFunc =
+        ( func(X, Y) = Res :-
+            compare(Res, X, Y)
+        ),
+    CmpPred =
+        ( pred(X :: in, Y :: in, Res :: out) is det :-
+            compare(Res, X, Y)
+        ),
     array.from_list(Xs, A0),
     array.to_list(A0, As0),
     write_message_int_list("A0: ", As0, !IO),
@@ -40,8 +45,12 @@ test(Xs, !IO) :-
     array.bounds(A0, AMin1, AMax1),
     write_message_int("AMin1: ", AMin1, !IO),
     write_message_int("AMax1: ", AMax1, !IO),
-    array.bsearch(A0, 4, Cmp, ABsearch),
-    write_message_maybe_int("ABsearch: ", ABsearch, !IO),
+    ( if array.binary_search(CmpFunc, A0, 4, ABsearch) then
+        MaybeABsearch = yes(ABsearch)
+    else
+        MaybeABsearch = no
+    ),
+    write_message_maybe_int("ABsearch: ", MaybeABsearch, !IO),
     array.set(8, 100, A0, A1),
     array.to_list(A1, As1),
     write_message_int_list("A1: ", As1, !IO),
@@ -73,12 +82,12 @@ test(Xs, !IO) :-
     bt_array.bounds(B0, BMin1, BMax1),
     write_message_int("BMin1: ", BMin1, !IO),
     write_message_int("BMax1: ", BMax1, !IO),
-    ( bt_array.bsearch(B0, 4, Cmp, BBsearch0) ->
-        BBsearch = yes(BBsearch0)
+    ( bt_array.bsearch(B0, 4, CmpPred, BBsearch) ->
+        MaybeBBsearch = yes(BBsearch)
     ;
-        BBsearch = no
+        MaybeBBsearch = no
     ),
-    write_message_maybe_int("BBsearch: ", BBsearch, !IO),
+    write_message_maybe_int("BBsearch: ", MaybeBBsearch, !IO),
     bt_array.set(B0, 8, 100, B1),
     bt_array.to_list(B1, Bs1),
     write_message_int_list("B1: ", Bs1, !IO),
@@ -90,7 +99,7 @@ test(Xs, !IO) :-
     write_message_int_list("B3: ", Bs3, !IO),
 
     % Finally, just in case, compare the two implementations.
-    (
+    ( if
         As0 = Bs0,
         AMax0 = BMax1,
         AMin0 = BMin1,
@@ -101,15 +110,15 @@ test(Xs, !IO) :-
         AMin0 = AMin1,  % Sanity check
         BMax0 = BMax1,  % Sanity check
         BMin0 = BMin1,  % Sanity check
-        ABsearch = BBsearch,
+        MaybeABsearch = MaybeBBsearch,
         As1 = Bs1,
         As2 = Bs2,
         As3 = Bs3,
         As1 = As3,  % Sanity check
         Bs1 = Bs3   % Sanity check
-    ->
+    then
         io.write_string("Results all match\n", !IO)
-    ;
+    else
         io.write_string("Results don't match\n", !IO)
     ).
 

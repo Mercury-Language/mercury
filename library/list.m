@@ -579,12 +579,6 @@
 :- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out, list(T)::out) is det.
 
-    % takewhile/4 is the old name for take_while/4.
-    %
-:- pragma obsolete(takewhile/4).
-:- pred takewhile(pred(T)::in(pred(in) is semidet), list(T)::in,
-    list(T)::out, list(T)::out) is det.
-
     % take_while(Pred, List) = Start :-
     %     take_while(Pred, List, Start, _End)
     %
@@ -2717,9 +2711,6 @@ take_while(P, [X | Xs], Ins, Outs) :-
         Ins = [],
         Outs = [X | Xs]
     ).
-
-takewhile(P, Xs, Ins, Outs) :-
-    take_while(P, Xs, Ins, Outs).
 
 take_while(P, Xs) = Start :-
     take_while(P, Xs, Start).

@@ -47,8 +47,8 @@ tabled_read.test(Stream, SoFar, N, !IO) :-
     tabled_read.read_char_code(Stream, CharCode, !IO),
     ( if
         char.to_int(Char, CharCode),
-        char.is_digit(Char),
-        char.digit_to_int(Char, CharInt)
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
     then
         tabled_read.test(Stream, SoFar * 10 + CharInt, N, !IO)
     else
@@ -62,8 +62,8 @@ tabled_read.poly_test(Stream, Unused, SoFar, N, !IO) :-
     tabled_read.poly_read_char_code(Stream, Unused, CharCode, !IO),
     ( if
         char.to_int(Char, CharCode),
-        char.is_digit(Char),
-        char.digit_to_int(Char, CharInt)
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
     then
         tabled_read.poly_test(Stream, Unused, SoFar * 10 + CharInt, N, !IO)
     else

@@ -44,7 +44,6 @@
 :- interface.
 
 :- import_module list.
-:- import_module maybe.
 :- import_module pretty_printer.
 :- import_module random.
 
@@ -148,15 +147,6 @@
 %:- mode min(array_ui) = out is det.
 :- mode min(in) = out is det.
 
-    % least_index returns the lower bound of the array.
-    % In future, it will be changed to behave like semidet_least_index,
-    % failing on an empty array instead of returning an out-of-bounds index.
-    %
-:- pragma obsolete(least_index/1).
-:- func least_index(array(T)) = int.
-%:- mode least_index(array_ui) = out is det.
-:- mode least_index(in) = out is det.
-
     % det_least_index returns the lower bound of the array.
     % Throws an exception if the array is empty.
     %
@@ -182,15 +172,6 @@
 :- func max(array(_T)) = int.
 %:- mode max(array_ui) = out is det.
 :- mode max(in) = out is det.
-
-    % greatest_index returns the upper bound of the array.
-    % In future, it will be changed to behave like semidet_greatest_index,
-    % failing on an empty array instead of returning an out-of-bounds index.
-    %
-:- pragma obsolete(greatest_index/1).
-:- func greatest_index(array(T)) = int.
-%:- mode greatest_index(array_ui) = out is det.
-:- mode greatest_index(in) = out is det.
 
     % det_greatest_index returns the upper bound of the array.
     % Throws an exception if the array is empty.
@@ -449,24 +430,6 @@
 :- func fetch_items(array(T), int, int) = list(T).
 %:- mode fetch_items(array_ui, in, in) = out is det.
 :- mode fetch_items(in, in, in) = out is det.
-
-    % XXX We prefer users to call the new binary_search predicate
-    % instead of bsearch, which is why bsearch is marked as obsolete.
-    %
-    % bsearch takes an array, an element to be matched and a comparison
-    % predicate and returns the position of the first occurrence in the array
-    % of an element which is equivalent to the given one in the ordering
-    % provided. Assumes the array is sorted according to this ordering.
-    %
-:- pred bsearch(array(T), T, comparison_pred(T), maybe(int)).
-%:- mode bsearch(array_ui, in, in(comparison_pred), out) is det.
-:- mode bsearch(in, in, in(comparison_pred), out) is det.
-:- pragma obsolete(bsearch/4).
-
-:- func bsearch(array(T), T, comparison_func(T)) = maybe(int).
-%:- mode bsearch(array_ui, in, in(comparison_func)) = out is det.
-:- mode bsearch(in, in, in(comparison_func)) = out is det.
-:- pragma obsolete(bsearch/3).
 
     % binary_search(A, X, I) does a binary search for the element X
     % in the array A. If there is an element with that value in the array,
@@ -2453,58 +2416,6 @@ fetch_items(Array, Low, High, List) :-
 
 %---------------------------------------------------------------------------%
 
-bsearch(A, X, F) = MN :-
-    P = (pred(X1::in, X2::in, C::out) is det :- C = F(X1, X2)),
-    array.bsearch(A, X, P, MN).
-
-bsearch(A, SearchX, Compare, Result) :-
-    array.bounds(A, Lo, Hi),
-    array.bsearch_2(A, Lo, Hi, SearchX, Compare, Result).
-
-:- pred bsearch_2(array(T)::in, int::in, int::in, T::in,
-    pred(T, T, comparison_result)::in(pred(in, in, out) is det),
-    maybe(int)::out) is det.
-
-bsearch_2(Array, Lo, Hi, SearchX, Compare, Result) :-
-    Width = Hi - Lo,
-
-    % If Width < 0, there is no range left.
-    ( if Width < 0 then
-        Result = no
-    else
-        % If Width == 0, we may just have found our element.
-        % Do a Compare to check.
-        ( if Width = 0 then
-            array.lookup(Array, Lo, LoX),
-            ( if Compare(SearchX, LoX, (=)) then
-                Result = yes(Lo)
-            else
-                Result = no
-            )
-        else
-            % Otherwise find the middle element of the range
-            % and check against that.
-            % We calculate Mid this way to avoid overflow.
-            % The right shift by one bit is a fast implementation
-            % of division by 2.
-            Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
-            array.lookup(Array, Mid, MidX),
-            Compare(MidX, SearchX, Comp),
-            (
-                Comp = (<),
-                array.bsearch_2(Array, Mid + 1, Hi, SearchX, Compare, Result)
-            ;
-                Comp = (=),
-                array.bsearch_2(Array, Lo, Mid, SearchX, Compare, Result)
-            ;
-                Comp = (>),
-                array.bsearch_2(Array, Lo, Mid - 1, SearchX, Compare, Result)
-            )
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
 map(F, A1) = A2 :-
     P = (pred(X::in, Y::out) is det :- Y = F(X)),
     array.map(P, A1, A2).
@@ -3534,8 +3445,6 @@ arg_out_of_bounds_error(Array, ArgPosn, PredName, Index) :-
 
 %---------------------------------------------------------------------------%
 
-least_index(A) = array.min(A).
-
 det_least_index(A) = Index :-
     ( if array.is_empty(A) then
         unexpected($pred, "empty array")
@@ -3551,8 +3460,6 @@ semidet_least_index(A) = Index :-
     ).
 
 %---------------------------------------------------------------------------%
-
-greatest_index(A) = array.max(A).
 
 det_greatest_index(A) = Index :-
     ( if array.is_empty(A) then

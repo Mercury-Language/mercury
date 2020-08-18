@@ -157,12 +157,6 @@
     %
 :- pred localtime(time_t::in, tm::out, io::di, io::uo) is det.
 
-    % This function is deprecated because the current time zone is not
-    % reflected in its arguments.
-    %
-:- pragma obsolete(localtime/1).
-:- func localtime(time_t) = tm.
-
     % gmtime(Time) = TM:
     %
     % Converts the (simple) calendar time `Time' to a broken-down
@@ -178,12 +172,6 @@
     %
 :- pred mktime(tm::in, time_t::out, io::di, io::uo) is det.
 
-    % This function is deprecated because the current time zone is not
-    % reflected in its arguments.
-    %
-:- pragma obsolete(mktime/1).
-:- func mktime(tm) = time_t.
-
 %---------------------------------------------------------------------------%
 
     % asctime(TM) = String:
@@ -192,20 +180,6 @@
     % format.
     %
 :- func asctime(tm) = string.
-
-    % ctime(Time) = String:
-    %
-    % Converts the calendar time value `Time' to a string in a standard format
-    % (i.e. same as "asctime (localtime (<time>))").
-    %
-    % This function is deprecated because the current time zone is not
-    % reflected in its arguments. New code should write:
-    %
-    %   localtime(Time, TM, !IO),
-    %   String = asctime(TM)
-    %
-:- pragma obsolete(ctime/1).
-:- func ctime(time_t) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -598,13 +572,6 @@ localtime(time_t(Time), TM, !IO) :-
         TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N))
     ).
 
-localtime(time_t(Time)) = TM :-
-    % localtime/1 is not really pure, that's why it is deprecated.
-    promise_pure (
-        semipure c_localtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
-        TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N))
-    ).
-
 :- semipure pred c_localtime(time_t_rep::in, int::out, int::out, int::out,
     int::out, int::out, int::out, int::out, int::out, int::out) is det.
 
@@ -793,14 +760,6 @@ mktime(TM, time_t(Time), !IO) :-
             maybe_dst_to_int(DST), Time)
     ).
 
-mktime(TM) = time_t(Time) :-
-    % mktime/1 is not really pure, that's why it is deprecated.
-    promise_pure (
-        TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
-        semipure c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
-            maybe_dst_to_int(DST), Time)
-    ).
-
     % NOTE: mktime() modifies tzname so is strictly impure.
     % We do not expose tzname through a Mercury interface, though.
     %
@@ -946,10 +905,6 @@ mon_name(8, "Sep").
 mon_name(9, "Oct").
 mon_name(10, "Nov").
 mon_name(11, "Dec").
-
-%---------------------------------------------------------------------------%
-
-ctime(Time) = asctime(localtime(Time)).
 
 %---------------------------------------------------------------------------%
 

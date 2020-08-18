@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Test the declarative debugger's handling of I/O streams.
+%
 
 :- module io_stream_test.
 
@@ -10,8 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,49 +19,47 @@
 :- import_module int.
 :- import_module list.
 
-main -->
-    io__open_input("tabled_read_decl.data", Res),
-    ( { Res = ok(Stream) } ->
-        io_stream_test__part_1(Stream),
-        io_stream_test__part_2(Stream)
+main(!IO) :-
+    io.open_input("tabled_read_decl.data", Res, !IO),
+    (
+        Res = ok(Stream),
+        io_stream_test.part_1(Stream, !IO),
+        io_stream_test.part_2(Stream, !IO)
     ;
-        io__write_string("could not open tabled_read.data\n")
+        Res = error(_),
+        io.write_string("could not open tabled_read.data\n", !IO)
     ).
 
-:- pred io_stream_test__part_1(io__input_stream::in,
-    io__state::di, io__state::uo) is det.
+:- pred part_1(io.input_stream::in, io::di, io::uo) is det.
 
-io_stream_test__part_1(Stream) -->
-    io_stream_test__test(Stream, A),
-    io__write_int(A),
-    io__nl.
+part_1(Stream, !IO) :-
+    test(Stream, A, !IO),
+    io.write_int(A, !IO),
+    io.nl(!IO).
 
-:- pred io_stream_test__part_2(io__input_stream::in,
-    io__state::di, io__state::uo) is det.
+:- pred part_2(io.input_stream::in, io::di, io::uo) is det.
 
-io_stream_test__part_2(Stream) -->
-    io_stream_test__test(Stream, A),
-    io__write_int(A),
-    io__nl.
+part_2(Stream, !IO) :-
+    test(Stream, A, !IO),
+    io.write_int(A, !IO),
+    io.nl(!IO).
 
-:- pred io_stream_test__test(io__input_stream::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred test(io.input_stream::in, int::out, io::di, io::uo) is det.
 
-io_stream_test__test(Stream, N) -->
-        % BUG: the 1 should be 0
-    io_stream_test__test_2(Stream, 1, N).
+test(Stream, N, !IO) :-
+    % BUG: the 1 should be 0
+    test_2(Stream, 1, N, !IO).
 
-:- pred io_stream_test__test_2(io__input_stream::in, int::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred test_2(io.input_stream::in, int::in, int::out, io::di, io::uo) is det.
 
-io_stream_test__test_2(Stream, SoFar, N) -->
-    io__read_char(Stream, Res),
-    (
-        { Res = ok(Char) },
-        { char__is_digit(Char) },
-        { char__digit_to_int(Char, CharInt) }
-    ->
-        io_stream_test__test_2(Stream, SoFar * 10 + CharInt, N)
-    ;
-        { N = SoFar }
+test_2(Stream, SoFar, N, !IO) :-
+    io.read_char(Stream, Res, !IO),
+    ( if
+        Res = ok(Char),
+        char.is_decimal_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
+    then
+        test_2(Stream, SoFar * 10 + CharInt, N, !IO)
+    else
+        N = SoFar
     ).

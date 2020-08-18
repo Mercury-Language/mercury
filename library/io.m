@@ -1648,12 +1648,6 @@
     %
 :- pred make_temp_file(io.res(string)::out, io::di, io::uo) is det.
 
-    % Like make_temp_file/3 except it throws an io.error exception if the
-    % temporary file could not be created.
-    %
-:- pragma obsolete(make_temp/3).
-:- pred make_temp(string::out, io::di, io::uo) is det.
-
     % make_temp_file(Dir, Prefix, Suffix, Result, !IO) creates an empty file
     % whose name is different to the name of any existing file. The file will
     % reside in the directory specified by Dir and will have a prefix using up
@@ -1682,12 +1676,6 @@
     %
 :- pred make_temp_file(string::in, string::in, string::in, io.res(string)::out,
     io::di, io::uo) is det.
-
-    % Same as make_temp_file except it does not take a suffix argument and
-    % throws an io.error exception if the temporary file could not be created.
-    %
-:- pragma obsolete(make_temp/5).
-:- pred make_temp(string::in, string::in, string::out, io::di, io::uo) is det.
 
     % make_temp_directory(Result, !IO) creates an empty directory whose name
     % is different from the name of any existing directory.
@@ -12057,15 +12045,6 @@ make_temp_file(Result, !IO) :-
     get_temp_directory(Dir, !IO),
     make_temp_file(Dir, "mtmp", "", Result, !IO).
 
-make_temp(Name, !IO) :-
-    make_temp_file(Result, !IO),
-    (
-        Result = ok(Name)
-    ;
-        Result = error(Error),
-        throw(Error)
-    ).
-
 make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     do_make_temp(Dir, Prefix, Suffix, char_to_string(dir.directory_separator),
         Name, Error, !IO),
@@ -12076,15 +12055,6 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     ;
         MaybeIOError = no,
         Result = ok(Name)
-    ).
-
-make_temp(Dir, Prefix, Name, !IO) :-
-    make_temp_file(Dir, Prefix, "", Result, !IO),
-    (
-        Result = ok(Name)
-    ;
-        Result = error(Error),
-        throw(Error)
     ).
 
 %---------------------%
