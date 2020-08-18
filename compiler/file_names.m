@@ -478,9 +478,6 @@ choose_file_name(Globals, _From, Search, OtherExt,
         BaseParentDirs, BaseNameNoExt, DirComponents, FileName) :-
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, library_extension, LibExt),
-    globals.lookup_string_option(Globals, shared_library_extension,
-        SharedLibExt),
     OtherExt = other_ext(ExtStr),
     ( if
         % If we are searching for (rather than writing) a `.mih' file,
@@ -497,98 +494,114 @@ choose_file_name(Globals, _From, Search, OtherExt,
     then
         DirComponents = [],
         FileName = BaseNameNoExt ++ ExtStr
-    else if
-        UseSubdirs = no
-    then
-        % Even if not putting files in a `Mercury' directory, Java files will
-        % have non-empty BaseParentDirs (the package) which may need to be
-        % created.
-        % XXX Most of the code of make_file_name handles UseSubdirs = yes.
-        make_file_name(Globals, BaseParentDirs, Search,
-            BaseNameNoExt, OtherExt, DirComponents, FileName)
-    else if
-        % The source files, the final executables, library files (including
-        % .init files) output files intended for use by the user, and phony
-        % Mmake targets names go in the current directory.
-
-        not (
-            UseGradeSubdirs = yes,
-            file_is_arch_or_grade_dependent(Globals, OtherExt)
-        ),
-
-        % Executable files.
-        % XXX The Ext = "" here is wrong. While an empty extension
-        % *can* mean we are building the name of an executable,
-        % it can also mean we are building the name of a phony Mmakefile
-        % target for a library, such as libmer_std in the library
-        % directory.
-        ( ExtStr = ""
-        ; ExtStr = ".bat"
-        ; ExtStr = ".exe"
-
-        % Library files.
-        ; ExtStr = ".a"
-        ; ExtStr = ".$A"
-        ; ExtStr = ".lib"
-        ; ExtStr = ".so"
-        ; ExtStr = ".dll"
-        ; ExtStr = ".dylib"
-        ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
-        ; ExtStr = ".jar"
-        ; ExtStr = ".beams"
-        ; ExtStr = ".init"
-
-        % XXX Describe me.
-        ; ExtStr = ".mh"
-
-        % Output files intended for use by the user.
-        % The MLDS dump files with extensions .c_dump* and .mih_dump*
-        % also fit into this category, but their filenames are constructed
-        % by getting the filenames for the .c and .mih extensions
-        % and adding a suffix to that.
-        ; ExtStr = ".err"
-        ; ExtStr = ".ugly"
-        ; ExtStr = ".hlds_dump"
-        ; ExtStr = ".mlds_dump"
-        ; ExtStr = ".dependency_graph"
-        ; ExtStr = ".order"
-
-        % Mmake targets.
-        ; ExtStr = ".clean"
-        ; ExtStr = ".realclean"
-        ; ExtStr = ".depend"
-        ; ExtStr = ".install_ints"
-        ; ExtStr = ".install_opts"
-        ; ExtStr = ".install_hdrs"
-        ; ExtStr = ".install_grade_hdrs"
-        ; ExtStr = ".check"
-        ; ExtStr = ".ints"
-        ; ExtStr = ".int3s"
-        ; ExtStr = ".ils"
-        ; ExtStr = ".javas"
-        ; ExtStr = ".classes"
-        ; ExtStr = ".erls"
-        ; ExtStr = ".beams"
-        ; ExtStr = ".opts"
-        ; ExtStr = ".trans_opts"
-        ; ExtStr = ".all_ints"
-        ; ExtStr = ".all_int3s"
-        ; ExtStr = ".all_opts"
-        ; ExtStr = ".all_trans_opts"
-        )
-    then
-        DirComponents = [],
-        FileName = BaseNameNoExt ++ ExtStr
     else
-        % We need to handle a few cases specially.
+        (
+            UseSubdirs = no,
+            % Even if not putting files in a `Mercury' directory,
+            % Java files will have non-empty BaseParentDirs (the package)
+            % which may need to be created.
+            % XXX Most of the code of make_file_name handles UseSubdirs = yes.
+            make_file_name(Globals, BaseParentDirs, Search,
+                BaseNameNoExt, OtherExt, DirComponents, FileName)
+        ;
+            UseSubdirs = yes,
+            ( if
+                % The source files, the final executables, library files
+                % (including .init files) output files intended for use
+                % by the user, and phony Mmake targets names go in the
+                % current directory.
+                not (
+                    UseGradeSubdirs = yes,
+                    file_is_arch_or_grade_dependent(Globals, OtherExt)
+                ),
+                is_current_dir_extension(ExtStr)
+            then
+                DirComponents = [],
+                FileName = BaseNameNoExt ++ ExtStr
+            else
+                choose_subdir_name(Globals, ExtStr, SubDirName),
+                make_file_name(Globals, [SubDirName | BaseParentDirs], Search,
+                    BaseNameNoExt, OtherExt, DirComponents, FileName)
+            )
+        )
+    ).
 
-        ( if
+:- pred is_current_dir_extension(string::in) is semidet.
+
+is_current_dir_extension(ExtStr) :-
+    % Executable files.
+    % XXX The Ext = "" here is wrong. While an empty extension
+    % *can* mean we are building the name of an executable,
+    % it can also mean we are building the name of a phony Mmakefile
+    % target for a library, such as libmer_std in the library
+    % directory.
+    ( ExtStr = ""
+    ; ExtStr = ".bat"
+    ; ExtStr = ".exe"
+
+    % Library files.
+    ; ExtStr = ".a"
+    ; ExtStr = ".$A"
+    ; ExtStr = ".lib"
+    ; ExtStr = ".so"
+    ; ExtStr = ".dll"
+    ; ExtStr = ".dylib"
+    ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
+    ; ExtStr = ".jar"
+    ; ExtStr = ".beams"
+    ; ExtStr = ".init"
+
+    % XXX Describe me.
+    ; ExtStr = ".mh"
+
+    % Output files intended for use by the user.
+    % The MLDS dump files with extensions .c_dump* and .mih_dump*
+    % also fit into this category, but their filenames are constructed
+    % by getting the filenames for the .c and .mih extensions
+    % and adding a suffix to that.
+    ; ExtStr = ".err"
+    ; ExtStr = ".ugly"
+    ; ExtStr = ".hlds_dump"
+    ; ExtStr = ".mlds_dump"
+    ; ExtStr = ".dependency_graph"
+    ; ExtStr = ".order"
+
+    % Mmake targets.
+    ; ExtStr = ".clean"
+    ; ExtStr = ".realclean"
+    ; ExtStr = ".depend"
+    ; ExtStr = ".install_ints"
+    ; ExtStr = ".install_opts"
+    ; ExtStr = ".install_hdrs"
+    ; ExtStr = ".install_grade_hdrs"
+    ; ExtStr = ".check"
+    ; ExtStr = ".ints"
+    ; ExtStr = ".int3s"
+    ; ExtStr = ".ils"
+    ; ExtStr = ".javas"
+    ; ExtStr = ".classes"
+    ; ExtStr = ".erls"
+    ; ExtStr = ".beams"
+    ; ExtStr = ".opts"
+    ; ExtStr = ".trans_opts"
+    ; ExtStr = ".all_ints"
+    ; ExtStr = ".all_int3s"
+    ; ExtStr = ".all_opts"
+    ; ExtStr = ".all_trans_opts"
+    ).
+
+    % Decide which ext_other extensions go in which directories.
+    %
+:- pred choose_subdir_name(globals::in, string::in, string::out) is det.
+
+choose_subdir_name(Globals, ExtStr, SubDirName) :-
+    ( if
+        (
             ( ExtStr = ".dir/*.o"
             ; ExtStr = ".dir/*.$O"
-            )
-        then
-            SubDirName = "dirs"
-        else if
+            ),
+            SubDirNamePrime = "dirs"
+        ;
             % .$O, .pic_o and .lpic_o files need to go in the same directory,
             % so that using .$(EXT_FOR_PIC_OBJECTS) will work.
             ( ExtStr = ".o"
@@ -601,44 +614,43 @@ choose_file_name(Globals, _From, Search, OtherExt,
             ; ExtStr = "_init.lpic_o"
             ; ExtStr = "_init.pic_o"
             ; ExtStr = "_init.$(EXT_FOR_PIC_OBJECTS)"
-            )
-        then
-            SubDirName = "os"
-        else if
-            % _init.c, _init.s, _init.o etc. files go in the cs, ss, os etc
-            % subdirectories.
-            string.remove_prefix("_init.", ExtStr, ExtName)
-        then
-            SubDirName = ExtName ++ "s"
-        else if
+            ),
+            SubDirNamePrime = "os"
+        ;
             % `.dv' files go in the `deps' subdirectory,
             % along with the `.dep' files.
-            ExtStr = ".dv"
-        then
-            SubDirName = "deps"
-        else if
-            % Static and shared libraries go in the `lib' subdirectory.
-            ( ExtStr = LibExt
-            ; ExtStr = SharedLibExt
-            )
-        then
-            SubDirName = "lib"
-        else if
-            % The usual case: `*.foo' files go in the `foos' subdirectory.
-            string.remove_prefix(".", ExtStr, ExtName)
-        then
-            SubDirName = ExtName ++ "s"
-        else if
+            ExtStr = ".dv",
+            SubDirNamePrime = "deps"
+        ;
             % Launcher scripts go in the `bin' subdirectory.
-            ExtStr = ""
-        then
-            SubDirName = "bin"
-        else
-            unexpected($pred, "unknown extension `" ++ ExtStr ++ "'")
-        ),
-
-        make_file_name(Globals, [SubDirName | BaseParentDirs], Search,
-            BaseNameNoExt, OtherExt, DirComponents, FileName)
+            ExtStr = "",
+            SubDirNamePrime = "bin"
+        )
+    then
+        SubDirName = SubDirNamePrime
+    else if
+        % _init.c, _init.cs, _init.o etc. files go in the cs, css, os etc
+        % subdirectories.
+        string.remove_prefix("_init.", ExtStr, ExtName)
+    then
+        SubDirName = ExtName ++ "s"
+    else if
+        globals.lookup_string_option(Globals, library_extension, LibExt),
+        globals.lookup_string_option(Globals, shared_library_extension,
+            SharedLibExt),
+        % Static and shared libraries go in the `lib' subdirectory.
+        ( ExtStr = LibExt
+        ; ExtStr = SharedLibExt
+        )
+    then
+        SubDirName = "lib"
+    else if
+        % The usual case: `*.foo' files go in the `foos' subdirectory.
+        string.remove_prefix(".", ExtStr, ExtName)
+    then
+        SubDirName = ExtName ++ "s"
+    else
+        unexpected($pred, "unknown extension `" ++ ExtStr ++ "'")
     ).
 
 :- pred make_file_name(globals::in, list(dir_name)::in, maybe_search::in,
@@ -691,6 +703,8 @@ make_file_name(Globals, SubDirNames, Search, BaseNameNoExt, OtherExt,
         Components = DirComponents ++ [BaseNameNoExt ++ ExtStr],
         FileName = dir.relative_path_name_from_components(Components)
     ).
+
+%---------------------%
 
 :- pred file_is_arch_or_grade_dependent(globals::in, other_ext::in) is semidet.
 
