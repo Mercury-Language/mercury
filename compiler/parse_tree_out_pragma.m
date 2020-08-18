@@ -1181,7 +1181,7 @@ mercury_output_pragma_tabled(TabledInfo, !IO) :-
     (
         MaybeAttributes = yes(Attributes),
         Attributes = table_attributes(Strictness, MaybeSizeLimit, Stats,
-            AllowReset),
+            AllowReset, WarnForIgnore),
         some [!Strs] (
             !:Strs = [],
             (
@@ -1222,6 +1222,12 @@ mercury_output_pragma_tabled(TabledInfo, !IO) :-
                 !:Strs = ["allow_reset" | !.Strs]
             ;
                 AllowReset = table_dont_allow_reset
+            ),
+            (
+                WarnForIgnore = table_attr_ignore_with_warning
+            ;
+                WarnForIgnore = table_attr_ignore_without_warning,
+                !:Strs = ["disable_warning_if_ignored" | !.Strs]
             ),
             (
                 !.Strs = [],

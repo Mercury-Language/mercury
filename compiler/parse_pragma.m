@@ -76,6 +76,7 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module unit.
 
@@ -274,7 +275,10 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
     ;
         (
             PragmaName = "memo",
-            EvalMethod = eval_memo
+            % We don't know yet whether the pragma has a
+            % disable_warning_if_ignored attribute, but if it does,
+            % parse_tabling_pragma will override this placeholder argument.
+            EvalMethod = eval_memo(table_attr_ignore_with_warning)
         ;
             PragmaName = "loop_check",
             EvalMethod = eval_loop_check
@@ -3269,7 +3273,7 @@ parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Term,
     eval_method::in, maybe1(item_or_marker)::out) is det.
 
 parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
-        Context, SeqNum, EvalMethod, MaybeIOM) :-
+        Context, SeqNum, EvalMethod0, MaybeIOM) :-
     (
         (
             PragmaTerms = [PredAndModesTerm0],
@@ -3290,7 +3294,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                 MaybeAttrs = no,
                 PredNameArityMPF = pred_name_arity_mpf(PredName, Arity,
                     MaybePredOrFunc),
-                TabledInfo = pragma_info_tabled(EvalMethod, PredNameArityMPF,
+                TabledInfo = pragma_info_tabled(EvalMethod0, PredNameArityMPF,
                     MaybeModes, no),
                 Pragma = impl_pragma_tabled(TabledInfo),
                 ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
@@ -3301,7 +3305,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                 UnrecognizedPieces =
                     [words("Error: expected tabling attribute."), nl],
                 convert_maybe_list("tabling attributes", yes(VarSet),
-                    AttrsListTerm, parse_tabling_attribute(VarSet, EvalMethod),
+                    AttrsListTerm, parse_tabling_attribute(VarSet, EvalMethod0),
                     UnrecognizedPieces, MaybeAttributeList),
                 (
                     MaybeAttributeList = ok1(AttributeList),
@@ -3309,6 +3313,29 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                         default_memo_table_attributes, MaybeAttributes),
                     (
                         MaybeAttributes = ok1(Attributes),
+                        DisableWarning =
+                            Attributes ^ table_attr_backend_warning,
+                        (
+                            DisableWarning = table_attr_ignore_with_warning,
+                            EvalMethod = EvalMethod0
+                        ;
+                            DisableWarning = table_attr_ignore_without_warning,
+                            (
+                                EvalMethod0 = eval_memo(_),
+                                EvalMethod = eval_memo(
+                                    table_attr_ignore_without_warning)
+                            ;
+                                ( EvalMethod0 = eval_loop_check
+                                ; EvalMethod0 = eval_minimal(_)
+                                ),
+                                EvalMethod = EvalMethod0
+                            ;
+                                ( EvalMethod0 = eval_table_io(_, _)
+                                ; EvalMethod0 = eval_normal
+                                ),
+                                unexpected($pred, "non-pragma eval method")
+                            )
+                        ),
                         PredNameArityMPF = pred_name_arity_mpf(PredName,
                             Arity, MaybePredOrFunc),
                         TabledInfo = pragma_info_tabled(EvalMethod,
@@ -3345,7 +3372,8 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
     --->    attr_strictness(call_table_strictness)
     ;       attr_size_limit(int)
     ;       attr_statistics
-    ;       attr_allow_reset.
+    ;       attr_allow_reset
+    ;       attr_ignore_without_warning.
 
 :- pred update_tabling_attributes(
     assoc_list(term.context, single_tabling_attribute)::in,
@@ -3406,6 +3434,24 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
                 MaybeAttributes)
         else
             Pieces = [words("Error: duplicate allow_reset attribute in"),
+                pragma_decl("memo"), words("declaration."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            MaybeAttributes = error1([Spec])
+        )
+    ;
+        SingleAttr = attr_ignore_without_warning,
+        ( if
+            !.Attributes ^ table_attr_backend_warning =
+                table_attr_ignore_with_warning
+        then
+            !Attributes ^ table_attr_backend_warning :=
+                table_attr_ignore_without_warning,
+            update_tabling_attributes(TermSingleAttrs, !.Attributes,
+                MaybeAttributes)
+        else
+            Pieces = [words("Error: duplicate disable_warning_if_ignored"),
+                words("attribute in"),
                 pragma_decl("memo"), words("declaration."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, Context, Pieces),
@@ -3529,13 +3575,31 @@ parse_tabling_attribute(VarSet, EvalMethod, Term, MaybeContextAttribute) :-
         Args = [],
         Attribute = attr_allow_reset,
         MaybeContextAttribute = ok1(Context - Attribute)
+    ;
+        Functor = "disable_warning_if_ignored",
+        Args = [],
+        AllowsDisableWarning =
+            eval_method_allows_disable_warning_if_ignored(EvalMethod),
+        (
+            AllowsDisableWarning = yes,
+            Attribute = attr_ignore_without_warning,
+            MaybeContextAttribute = ok1(Context - Attribute)
+        ;
+            AllowsDisableWarning = no,
+            Pieces = [words("Error: evaluation method"),
+                fixed(eval_method_to_string(EvalMethod)),
+                words("does not allow disable_warning_if_ignored."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            MaybeContextAttribute = error1([Spec])
+        )
     ).
 
 :- func eval_method_allows_fast_loose(eval_method) = bool.
 
 eval_method_allows_fast_loose(eval_normal) = no.
 eval_method_allows_fast_loose(eval_loop_check) = yes.
-eval_method_allows_fast_loose(eval_memo) = yes.
+eval_method_allows_fast_loose(eval_memo(_)) = yes.
 eval_method_allows_fast_loose(eval_table_io(_, _)) = no.
 eval_method_allows_fast_loose(eval_minimal(_)) = no.
 
@@ -3543,9 +3607,17 @@ eval_method_allows_fast_loose(eval_minimal(_)) = no.
 
 eval_method_allows_size_limit(eval_normal) = no.
 eval_method_allows_size_limit(eval_loop_check) = yes.
-eval_method_allows_size_limit(eval_memo) = yes.
+eval_method_allows_size_limit(eval_memo(_)) = yes.
 eval_method_allows_size_limit(eval_table_io(_, _)) = no.
 eval_method_allows_size_limit(eval_minimal(_)) = no.
+
+:- func eval_method_allows_disable_warning_if_ignored(eval_method) = bool.
+
+eval_method_allows_disable_warning_if_ignored(eval_normal) = no.
+eval_method_allows_disable_warning_if_ignored(eval_loop_check) = no.
+eval_method_allows_disable_warning_if_ignored(eval_memo(_)) = yes.
+eval_method_allows_disable_warning_if_ignored(eval_table_io(_, _)) = no.
+eval_method_allows_disable_warning_if_ignored(eval_minimal(_)) = no.
 
 :- pred parse_arg_tabling_method(term::in, maybe(arg_tabling_method)::out)
     is semidet.

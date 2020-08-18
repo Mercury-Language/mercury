@@ -1602,7 +1602,7 @@ write_maybe_slot_num(no, !IO) :-
 
 eval_method_to_c_string(eval_normal) =     "MR_EVAL_METHOD_NORMAL".
 eval_method_to_c_string(eval_loop_check) = "MR_EVAL_METHOD_LOOP_CHECK".
-eval_method_to_c_string(eval_memo) =       "MR_EVAL_METHOD_MEMO".
+eval_method_to_c_string(eval_memo(_)) =       "MR_EVAL_METHOD_MEMO".
 eval_method_to_c_string(eval_minimal(MinimalMethod)) = Str :-
     (
         MinimalMethod = stack_copy,

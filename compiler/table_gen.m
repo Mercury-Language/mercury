@@ -384,18 +384,23 @@ table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
             !ProcInfo, !PredInfo, !ModuleInfo, !GenMap)
     ;
         IsTablingSupported = no,
-        pred_info_get_context(!.PredInfo, Context),
-        ProcPieces = describe_one_proc_name(!.ModuleInfo,
-            should_module_qualify, proc(PredId, ProcId)),
-        EvalMethodStr = eval_method_to_string(EvalMethod),
-        Pieces = [words("Ignoring the pragma"), fixed(EvalMethodStr),
-            words("for")] ++ ProcPieces ++
-            [words("due to lack of support on this back end."), nl],
-        % We don't want to increment the error count, since that would combine
-        % with --halt-at-warn to prevent the clean compilation of the library.
-        Spec = simplest_spec($pred, severity_informational, phase_code_gen,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs],
+        ( if EvalMethod = eval_memo(table_attr_ignore_without_warning) then
+            true
+        else
+            pred_info_get_context(!.PredInfo, Context),
+            ProcPieces = describe_one_proc_name(!.ModuleInfo,
+                should_module_qualify, proc(PredId, ProcId)),
+            EvalMethodStr = eval_method_to_string(EvalMethod),
+            Pieces = [words("Ignoring the pragma"), fixed(EvalMethodStr),
+                words("for")] ++ ProcPieces ++
+                [words("due to lack of support on this back end."), nl],
+            % We use severity_informational because severity_warning
+            % would combine with --halt-at-warn to prevent the clean
+            % compilation of the library and the compiler.
+            Spec = simplest_spec($pred, severity_informational, phase_code_gen,
+                Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        ),
 
         % XXX We set the evaluation method to eval_normal here to prevent
         % problems in the ml code generator if we are compiling in a grade
@@ -451,7 +456,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         MaybeSizeLimit = no
     ;
         ( EvalMethod = eval_loop_check
-        ; EvalMethod = eval_memo
+        ; EvalMethod = eval_memo(_)
         ; EvalMethod = eval_minimal(_)
         ),
         CallStrictness = Attributes ^ table_attr_strictness,
@@ -470,7 +475,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         (
             EvalMethod = eval_loop_check
         ;
-            EvalMethod = eval_memo
+            EvalMethod = eval_memo(_)
         ;
             EvalMethod = eval_minimal(_),
             expect(unify(MaybeSizeLimit, no), $pred,
@@ -510,7 +515,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         MaybeProcTableIOInfo = no,
         MaybeProcTableStructInfo = yes(ProcTableStructInfo)
     ;
-        EvalMethod = eval_memo,
+        EvalMethod = eval_memo(_),
         (
             CodeModel = model_non,
             create_new_memo_non_goal(Detism, OrigGoal, Statistics,

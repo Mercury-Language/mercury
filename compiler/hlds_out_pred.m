@@ -1019,7 +1019,7 @@ write_proc_tabling_info(VarSet, TVarSet, VarNamePrint,
         EvalMethod = eval_normal
     ;
         ( EvalMethod = eval_loop_check
-        ; EvalMethod = eval_memo
+        ; EvalMethod = eval_memo(_)
         ; EvalMethod = eval_minimal(_)
         ; EvalMethod = eval_table_io(_, _)
         ),

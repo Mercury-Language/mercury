@@ -11188,9 +11188,12 @@ by computing solutions using a ``minimal model'' semantics.
 (Specifically, the minimal model computed by our implementation
 is the perfect model.)
 
-The current Mercury implementation supports
+When targeting the generation of C code,
+the current Mercury implementation supports
 three different pragmas for tabling, to cover these three cases:
 @samp{loop_check}, @samp{memo}, and @samp{minimal_model}.
+(None of these are supported
+when targeting the generation of C#, Java, or Erlang code.)
 
 @itemize @bullet
 @item
@@ -11320,6 +11323,21 @@ The type of this argument is defined in the file table_builtin.m
 in the Mercury standard library.
 That module also contains a predicate for printing out this information
 in a programmer-friendly format.
+
+As mentioned above, the Mercury compiler implements tabling
+only when targeting the generation of C code.
+@c ... and when the gc method is not accurate,
+@c but since no-one actually uses accurate gc ...
+In other grades, the compiler normally generates a warning
+for each tabling pragma that it is forced to ignore.
+The @samp{disable_warning_if_ignored} attribute tells the compiler
+not to generate such a warning for the pragma it is attached to.
+Since the @samp{loopcheck} and @samp{minimal_model} pragmas
+affect the semantics of the program,
+and such changes should not be made silently,
+this attribute may not be specified for them.
+But this attribute may be specified for @samp{memo} pragmas,
+since these affect only the program's performance, not its semantics.
 
 The remaining two attributes, @samp{fast_loose} and @samp{specified},
 control how arguments are looked up in the memo table.

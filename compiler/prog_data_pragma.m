@@ -44,7 +44,11 @@
 :- type eval_method
     --->    eval_normal                 % normal mercury evaluation
     ;       eval_loop_check             % loop check only
-    ;       eval_memo                   % memoing + loop check
+    ;       eval_memo(                  % memoing + loop check
+                % Preserve the value of this attribure until the invocation
+                % of the relevant code in table_gen.m.
+                table_attr_backend_warning
+            )
     ;       eval_table_io(              % memoing I/O actions for debugging
                 table_io_entry_kind,
                 table_io_is_unitize
@@ -66,10 +70,11 @@
 
 :- type table_attributes
     --->    table_attributes(
-                table_attr_strictness   :: call_table_strictness,
-                table_attr_size_limit   :: maybe(int),
-                table_attr_statistics   :: table_attr_statistics,
-                table_attr_allow_reset  :: table_attr_allow_reset
+                table_attr_strictness       :: call_table_strictness,
+                table_attr_size_limit       :: maybe(int),
+                table_attr_statistics       :: table_attr_statistics,
+                table_attr_allow_reset      :: table_attr_allow_reset,
+                table_attr_backend_warning  :: table_attr_backend_warning
             ).
 
 :- func default_memo_table_attributes = table_attributes.
@@ -81,6 +86,13 @@
 :- type table_attr_allow_reset
     --->    table_allow_reset
     ;       table_dont_allow_reset.
+
+    % If the current backend cannot implement the requested form of tabling,
+    % and is therefore forced to ignore it, should the compiler generate
+    % a warning?
+:- type table_attr_backend_warning
+    --->    table_attr_ignore_with_warning      % Yes, generate a warning.
+    ;       table_attr_ignore_without_warning.  % Do not generate a warning.
 
 :- type call_table_strictness
     --->    cts_all_strict
@@ -151,7 +163,7 @@
 
 default_memo_table_attributes =
     table_attributes(cts_all_strict, no, table_dont_gather_statistics,
-        table_dont_allow_reset).
+        table_dont_allow_reset, table_attr_ignore_with_warning).
 
 eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     (
@@ -164,7 +176,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
         EvalMethod = eval_loop_check,
         TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
     ;
-        EvalMethod = eval_memo,
+        EvalMethod = eval_memo(_),
         TableTypeStr = "MR_TABLE_TYPE_MEMO"
     ;
         EvalMethod = eval_minimal(stack_copy),

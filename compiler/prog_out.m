@@ -494,7 +494,7 @@ write_purity_prefix(Purity, !IO) :-
 eval_method_to_pragma_name(eval_normal) = _ :-
     unexpected($pred, "normal").
 eval_method_to_pragma_name(eval_loop_check) = "loop_check".
-eval_method_to_pragma_name(eval_memo) =  "memo".
+eval_method_to_pragma_name(eval_memo(_)) =  "memo".
 eval_method_to_pragma_name(eval_minimal(MinimalMethod)) = Str :-
     (
         MinimalMethod = own_stacks_consumer,
@@ -510,12 +510,12 @@ eval_method_to_pragma_name(eval_minimal(MinimalMethod)) = Str :-
         MinimalMethod = stack_copy,
         Str = "minimal_model"
     ).
-eval_method_to_pragma_name(eval_table_io(_EntryKind, _IsUnitize)) = _ :-
+eval_method_to_pragma_name(eval_table_io(_, _)) = _ :-
     unexpected($pred, "io").
 
 eval_method_to_string(eval_normal) = "normal".
 eval_method_to_string(eval_loop_check) = "loop_check".
-eval_method_to_string(eval_memo) =  "memo".
+eval_method_to_string(eval_memo(_)) =  "memo".
 eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
     (
         MinimalMethod = own_stacks_consumer,

@@ -1647,7 +1647,7 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
         Pragma = impl_pragma_tabled(Tabled),
         Tabled = pragma_info_tabled(EvalMethod, _, _, _),
         (
-            EvalMethod = eval_memo,
+            EvalMethod = eval_memo(_),
             Pieces = [pragma_decl("memo"), words("declaration")]
         ;
             EvalMethod = eval_loop_check,

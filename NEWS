@@ -99,6 +99,18 @@ Changes to the Mercury standard library
     - pred `merge_subst_without_names/1`
                                     (replacement: merge_renaming_without_names)
 
+Changes to the Mercury language
+-------------------------------
+
+* The compiler can implement tabling only when generating C code.
+  When compiling a predicate that has a `pragma memo` specified for it
+  in a non-C grade, it necessarily ignores the pragma, but normally
+  it prints a warning about this fact. The compiler now supports
+  a new attribute, `disable_warning_if_ignored`, that suppresses
+  such warnings for a `pragma memo` if included in the pragma's
+  attribute list, like this:
+
+        :- pragma memo(predname/arity, [disable_warning_if_ignored])]).
 
 NEWS for Mercury 20.06.1
 ========================

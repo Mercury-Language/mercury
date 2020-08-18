@@ -287,7 +287,7 @@ check_proc_for_mm_tabling(SCC, PPId, !Results, !ModuleInfo) :-
     ;
         ( EvalMethod = eval_normal
         ; EvalMethod = eval_loop_check
-        ; EvalMethod = eval_memo
+        ; EvalMethod = eval_memo(_)
         ; EvalMethod = eval_table_io(_, _)
         ),
         proc_info_get_goal(ProcInfo, Body),

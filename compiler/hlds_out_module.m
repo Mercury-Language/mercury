@@ -1305,7 +1305,8 @@ write_table_struct_info(ModuleInfo, PredProcId - TableStructInfo, !IO) :-
     ),
     write_table_arg_infos(TVarSet, ArgInfos, !IO),
 
-    Attributes = table_attributes(Strictness, SizeLimit, Stats, AllowReset),
+    Attributes = table_attributes(Strictness, SizeLimit, Stats, AllowReset,
+        BackendWarning),
     (
         Strictness = cts_all_strict,
         io.write_string("% all strict\n", !IO)
@@ -1345,6 +1346,13 @@ write_table_struct_info(ModuleInfo, PredProcId - TableStructInfo, !IO) :-
     ;
         AllowReset = table_dont_allow_reset,
         io.write_string("% do not allow reset\n", !IO)
+    ),
+    (
+        BackendWarning = table_attr_ignore_with_warning,
+        io.write_string("% ignore only with warning\n", !IO)
+    ;
+        BackendWarning = table_attr_ignore_without_warning,
+        io.write_string("% may ignore without warning\n", !IO)
     ).
 
 :- pred write_arg_tabling_methods(string::in,
