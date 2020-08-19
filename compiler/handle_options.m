@@ -2421,7 +2421,7 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
     io::di, io::uo) is det.
 
 disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
-    io_set_disable_smart_recompilation(yes, !IO),
+    io_set_disable_smart_recompilation(disable_smart_recompilation, !IO),
     globals.set_option(smart_recompilation, bool(no), !Globals),
     globals.lookup_bool_option(!.Globals, warn_smart_recompilation, WarnSmart),
     (

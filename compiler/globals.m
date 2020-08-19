@@ -357,21 +357,41 @@
     %
 :- func get_maybe_from_ground_term_threshold = maybe(int).
 
-:- pred io_get_extra_error_info(bool::out, io::di, io::uo) is det.
-:- pred io_set_extra_error_info(bool::in, io::di, io::uo) is det.
+:- type maybe_extra_error_info
+    --->    no_extra_error_info
+    ;       some_extra_error_info.
 
-:- pred io_get_some_errors_were_context_limited(bool::out,
+:- pred io_get_extra_error_info(maybe_extra_error_info::out,
     io::di, io::uo) is det.
-:- pred io_set_some_errors_were_context_limited(bool::in,
+:- pred io_set_extra_error_info(maybe_extra_error_info::in,
     io::di, io::uo) is det.
 
-:- pred io_get_disable_smart_recompilation(bool::out, io::di, io::uo) is det.
-:- pred io_set_disable_smart_recompilation(bool::in, io::di, io::uo) is det.
+:- type context_limited_errors
+    --->    no_errors_were_context_limited
+    ;       some_errors_were_context_limited.
 
-:- pred io_get_disable_generate_item_version_numbers(bool::out,
+:- pred io_get_some_errors_were_context_limited(context_limited_errors::out,
     io::di, io::uo) is det.
-:- pred io_set_disable_generate_item_version_numbers(bool::in,
+:- pred io_set_some_errors_were_context_limited(context_limited_errors::in,
     io::di, io::uo) is det.
+
+:- type maybe_smart_recompilation
+    --->    do_not_disable_smart_recompilation
+    ;       disable_smart_recompilation.
+
+:- pred io_get_disable_smart_recompilation(maybe_smart_recompilation::out,
+    io::di, io::uo) is det.
+:- pred io_set_disable_smart_recompilation(maybe_smart_recompilation::in,
+    io::di, io::uo) is det.
+
+:- type maybe_item_version_numbers
+    --->    do_not_disable_item_version_numbers
+    ;       disable_item_version_numbers.
+
+:- pred io_get_disable_generate_item_version_numbers(
+    maybe_item_version_numbers::out, io::di, io::uo) is det.
+:- pred io_set_disable_generate_item_version_numbers(
+    maybe_item_version_numbers::in, io::di, io::uo) is det.
 
 :- pred io_get_maybe_source_file_map(maybe(source_file_map)::out,
     io::di, io::uo) is det.
@@ -945,19 +965,23 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
     % Is there extra information about errors available that could be printed
     % out if `-E' were enabled?
     %
-:- mutable(extra_error_info, bool, no, ground,
+:- mutable(extra_error_info,
+    maybe_extra_error_info, no_extra_error_info, ground,
     [untrailed, attach_to_io_state]).
 
     % Is there extra information about errors available that could be printed
     % if the values of --limit-error-contexts options allowed it?
     %
-:- mutable(some_errors_were_context_limited, bool, no, ground,
+:- mutable(some_errors_were_context_limited,
+    context_limited_errors, no_errors_were_context_limited, ground,
     [untrailed, attach_to_io_state]).
 
-:- mutable(disable_smart_recompilation, bool, no, ground,
+:- mutable(disable_smart_recompilation,
+    maybe_smart_recompilation, do_not_disable_smart_recompilation, ground,
     [untrailed, attach_to_io_state]).
 
-:- mutable(disable_generate_item_version_numbers, bool, no, ground,
+:- mutable(disable_generate_item_version_numbers,
+    maybe_item_version_numbers, do_not_disable_item_version_numbers, ground,
     [untrailed, attach_to_io_state]).
 
 :- mutable(maybe_source_file_map, maybe(source_file_map), no, ground,

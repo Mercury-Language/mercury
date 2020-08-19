@@ -375,7 +375,7 @@ maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
     should_generate_item_version_numbers(NoLineNumGlobals,
         WantVersionNumbers, !IO),
     (
-        WantVersionNumbers = yes,
+        WantVersionNumbers = generate_version_numbers,
         ParseTreeInt = ParseTreeConvert(ParseTreeIntN),
         ModuleName = ParseTreeInt ^ pti_module_name,
         IntFileKind = ParseTreeInt ^ pti_int_file_kind,
@@ -401,12 +401,16 @@ maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
             ParseTreeInt, MaybeOldParseTreeInt, VersionNumbers),
         MaybeVersionNumbers = version_numbers(VersionNumbers)
     ;
-        WantVersionNumbers = no,
+        WantVersionNumbers = do_not_generate_version_numbers,
         MaybeVersionNumbers = no_version_numbers
     ).
 
-:- pred should_generate_item_version_numbers(globals::in, bool::out,
-    io::di, io::uo) is det.
+:- type maybe_generate_version_numbers
+    --->    do_not_generate_version_numbers
+    ;       generate_version_numbers.
+
+:- pred should_generate_item_version_numbers(globals::in,
+    maybe_generate_version_numbers::out, io::di, io::uo) is det.
 
 should_generate_item_version_numbers(Globals, ShouldGenVersionNumbers, !IO) :-
     globals.lookup_bool_option(Globals, generate_item_version_numbers,
@@ -414,11 +418,11 @@ should_generate_item_version_numbers(Globals, ShouldGenVersionNumbers, !IO) :-
     io_get_disable_generate_item_version_numbers(DisableVersionNumbers, !IO),
     ( if
         GenerateVersionNumbers = yes,
-        DisableVersionNumbers = no
+        DisableVersionNumbers = do_not_disable_item_version_numbers
     then
-        ShouldGenVersionNumbers = yes
+        ShouldGenVersionNumbers = generate_version_numbers
     else
-        ShouldGenVersionNumbers = no
+        ShouldGenVersionNumbers = do_not_generate_version_numbers
     ).
 
 :- pred insist_on_timestamp(maybe(timestamp)::in, timestamp::out) is det.

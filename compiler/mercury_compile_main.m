@@ -906,17 +906,18 @@ maybe_print_delayed_error_messages(Globals, !IO) :-
     % Pick up the values of these flags, and then reset them
     % for the next module.
     globals.io_get_some_errors_were_context_limited(Limited, !IO),
-    globals.io_set_some_errors_were_context_limited(no, !IO),
+    globals.io_set_some_errors_were_context_limited(
+        no_errors_were_context_limited, !IO),
     globals.io_get_extra_error_info(ExtraErrorInfo, !IO),
-    globals.io_set_extra_error_info(no, !IO),
+    globals.io_set_extra_error_info(no_extra_error_info, !IO),
 
     % If we suppressed the printing of some errors, then tell the user
     % about this fact, because the absence of any errors being printed
     % during a failing compilation would otherwise be likely to be baffling.
     (
-        Limited = no
+        Limited = no_errors_were_context_limited
     ;
-        Limited = yes,
+        Limited = some_errors_were_context_limited,
         io.write_string("Some error messages were suppressed " ++
             "by `--limit-error-contexts' options.\n", !IO),
         io.write_string("You can see the suppressed messages " ++
@@ -926,9 +927,9 @@ maybe_print_delayed_error_messages(Globals, !IO) :-
     % If we found some errors, but the user didn't enable the `-E'
     % (`--verbose-errors') option, give them a hint about it.
     (
-        ExtraErrorInfo = no
+        ExtraErrorInfo = no_extra_error_info
     ;
-        ExtraErrorInfo = yes,
+        ExtraErrorInfo = some_extra_error_info,
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
         (
             VerboseErrors = no,
@@ -1146,6 +1147,17 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
     %
     % The best fix seems to be to use a single approach, and that
     % approach should be the one using make_module_and_imports.
+    
+    % XXX Another, different problem is that
+    %
+    % - some of the predicates called from here update the initial Globals0
+    %   to disable smart recompilation (when they find some situation that
+    %   smart recompilation is not able to handle), but then
+    %
+    % - these updated values of Globals get to the end of a scope, and
+    %   control returns to a caller that has access only to the original
+    %   Globals0, effectively undoing the disabling of smart recompilation,
+
     (
         OpModeArgs = opma_generate_dependencies,
         (
@@ -1271,12 +1283,12 @@ find_modules_to_recompile(Globals0, Globals, FileOrModule, ModulesToRecompile,
     globals.lookup_bool_option(Globals0, smart_recompilation, Smart0),
     io_get_disable_smart_recompilation(DisableSmart, !IO),
     (
-        DisableSmart = yes,
+        DisableSmart = disable_smart_recompilation,
         globals.set_option(smart_recompilation, bool(no),
             Globals0, Globals),
         Smart = no
     ;
-        DisableSmart = no,
+        DisableSmart = do_not_disable_smart_recompilation,
         Globals = Globals0,
         Smart = Smart0
     ),
@@ -1539,11 +1551,11 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
                 ParseTreeSrc, Specs, Errors, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
-                DisableSmart = yes,
+                DisableSmart = disable_smart_recompilation,
                 globals.set_option(smart_recompilation, bool(no),
                     Globals0, Globals)
             ;
-                DisableSmart = no,
+                DisableSmart = do_not_disable_smart_recompilation,
                 Globals = Globals0
             )
         ),
@@ -1588,11 +1600,11 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             ParseTreeSrc = parse_tree_src(ModuleName, _, _),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
-                DisableSmart = yes,
+                DisableSmart = disable_smart_recompilation,
                 globals.set_option(smart_recompilation, bool(no),
                     Globals0, Globals)
             ;
-                DisableSmart = no,
+                DisableSmart = do_not_disable_smart_recompilation,
                 Globals = Globals0
             )
         ),

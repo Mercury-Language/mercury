@@ -865,8 +865,9 @@ check_timestamp_report_if_needed_and_missing(Globals, FileName,
     io.error::in, io::di, io::uo) is det.
 
 record_and_report_missing_timestamp(Globals, FileName, Error, !IO) :-
-    io_set_disable_smart_recompilation(yes, !IO),
-    io_set_disable_generate_item_version_numbers(yes, !IO),
+    io_set_disable_smart_recompilation(disable_smart_recompilation, !IO),
+    io_set_disable_generate_item_version_numbers(disable_item_version_numbers,
+        !IO),
     globals.lookup_bool_option(Globals, warn_smart_recompilation, Warn),
     (
         Warn = yes,

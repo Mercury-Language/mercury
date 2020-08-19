@@ -1461,7 +1461,7 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
             )
         ;
             VerboseErrors = no,
-            globals.io_set_extra_error_info(yes, !IO)
+            globals.io_set_extra_error_info(some_extra_error_info, !IO)
         )
     ;
         Component = verbose_and_nonverbose(VerbosePieces, NonVerbosePieces),
@@ -1474,7 +1474,7 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
             VerboseErrors = no,
             do_write_error_pieces(Stream, !.First, MaybeContext,
                 Indent, Globals, NonVerbosePieces, !IO),
-            globals.io_set_extra_error_info(yes, !IO)
+            globals.io_set_extra_error_info(some_extra_error_info, !IO)
         ),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
@@ -1662,7 +1662,8 @@ do_write_error_pieces_params(Stream, TreatAsFirst, MaybeContext, FixedIndent,
                 line_number_is_in_a_range(LineNumberRanges, LineNumber) = no
             )
         then
-            io_set_some_errors_were_context_limited(yes, !IO),
+            io_set_some_errors_were_context_limited(
+                some_errors_were_context_limited, !IO),
             MaybeContextLength = no
         else
             string.count_codepoints(FileName, FileNameLength),
