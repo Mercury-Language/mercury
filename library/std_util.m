@@ -19,8 +19,6 @@
 :- module std_util.
 :- interface.
 
-:- import_module maybe.
-
 %---------------------------------------------------------------------------%
 %
 % General purpose higher-order programming constructs
