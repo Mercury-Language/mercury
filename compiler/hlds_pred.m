@@ -937,36 +937,38 @@ calls_are_fully_qualified(Markers) =
 
 % Access stats for the pred_info structure, derived on 2014 dec 13:
 %
-%  i      read      same      diff   same%
-%  1 124287827    348040  31892426   1.08%    procedures
-%  2  72037616     96336   1082541   8.17%    status
-%  3  43651895         0         0            module_name
-%  4  32003757         0       795   0.00%    name
-%  5  25261836         0         0            orig_arity
-%  6  24876447    905599   1098352  45.19%    markers
-%  7  22294552     19444  12496762   0.16%    clauses_info
-%  8  20415273         0         0            arg_types
-%  9  15356498       727        68  91.45%    is_pred_or_func
-% 10  12075408    382680     89618  81.03%    origin
-% 11  11783136   9736724    752983  92.82%    typevarset
-% 12  11128685   4600914   1642568  73.69%    three fields: decl_typevarset,
-%                                             exist_quant_vars and arg_types
-% 13   7871038         0   2700797   0.00%    class_context
-% 14   6629313    100630   1054197   8.71%    goal_type
-% 15   5892199      6544      6726  49.31%    var_name_remap
-% 16   3820195     85054         0 100.00%    tvar_kind_map
-% 17   2752537    404771     23921  94.42%    constraint_map
-% 18   2591016    425209      3483  99.19%    constraint_proof_map
-% 19   1667832         0         0            context
-% 20   1374911         0         0            exist_quant_vars
-% 21    476703    276426    152903  64.39%    external_type_params
-% 22    285538    428650         4 100.00%    unproven_body_constraints
-% 23     22563         0        80   0.00%    existq_tvar_binding
-% 24      3834         0      3797   0.00%    assertions
-% 25        10         0         0            attributes
-% 26         0         0     19439   0.00%    instance_method_arg_types
-% 27         0         0         0            arg_modes_maps
-% 28         0         0         0            inst_graph_info
+%  i        read        same        diff   same%
+%  1 124,287,827     348,040  31,892,426   1.08%    procedures
+%  2  72,037,616      96,336   1,082,541   8.17%    status
+%  3  43,651,895           0           0            module_name
+%  4  32,003,757           0         795   0.00%    name
+%  5  25,261,836           0           0            orig_arity
+%  6  24,876,447     905,599   1,098,352  45.19%    markers
+%  7  22,294,552      19,444  12,496,762   0.16%    clauses_info
+%  8  20,415,273           0           0            arg_types
+%  9  15,356,498         727          68  91.45%    is_pred_or_func
+% 10  12,075,408     382,680      89,618  81.03%    origin
+% 11  11,783,136   9,736,724     752,983  92.82%    typevarset
+% 12  11,128,685   4,600,914   1,642,568  73.69%    three fields:
+%                                                       decl_typevarset,
+%                                                       exist_quant_vars and
+%                                                       arg_types
+% 13   7,871,038           0   2,700,797   0.00%    class_context
+% 14   6,629,313     100,630   1,054,197   8.71%    goal_type
+% 15   5,892,199       6,544       6,726  49.31%    var_name_remap
+% 16   3,820,195      85,054           0 100.00%    tvar_kind_map
+% 17   2,752,537     404,771      23,921  94.42%    constraint_map
+% 18   2,591,016     425,209       3,483  99.19%    constraint_proof_map
+% 19   1,667,832           0           0            context
+% 20   1,374,911           0           0            exist_quant_vars
+% 21     476,703     276,426     152,903  64.39%    external_type_params
+% 22     285,538     428,650           4 100.00%    unproven_body_constraints
+% 23      22,563           0          80   0.00%    existq_tvar_binding
+% 24       3,834           0       3,797   0.00%    assertions
+% 25          10           0           0            attributes
+% 26           0           0      19,439   0.00%    instance_method_arg_types
+% 27           0           0           0            arg_modes_maps
+% 28           0           0           0            inst_graph_info
 
     % The information specific to a predicate, as opposed to a procedure.
     % (Functions count as predicates.)
