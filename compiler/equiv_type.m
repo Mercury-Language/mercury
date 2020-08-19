@@ -248,8 +248,8 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         PlainOpts, TransOpts, IntForOptSpecs),
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
-    replace_in_event_specs(EventSpecList0, EventSpecList,
-        TypeEqvMap, InstEqvMap, !RecompInfo, !UsedModules, !Specs),
+    replace_in_event_specs(TypeEqvMap, EventSpecList0, EventSpecList,
+        !RecompInfo, !UsedModules, !Specs),
     map.from_sorted_assoc_list(EventSpecList, EventSpecMap).
 
 %---------------------------------------------------------------------------%
@@ -330,8 +330,7 @@ build_eqv_maps_in_indirect_int_spec(IndirectIntSpec,
     type_eqv_map::in, type_eqv_map::out,
     inst_eqv_map::in, inst_eqv_map::out) is det.
 
-build_eqv_maps_in_int_for_opt_spec(IntForOptSpec,
-        !TypeEqvMap, !InstEqvMap) :-
+build_eqv_maps_in_int_for_opt_spec(IntForOptSpec, !TypeEqvMap, !InstEqvMap) :-
     (
         IntForOptSpec = for_opt_int0(ParseTreeInt0, ReadWhy0),
         build_eqv_maps_in_parse_tree_int0(ReadWhy0, ParseTreeInt0,
@@ -822,8 +821,7 @@ replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_decl_pragma_info, IntDeclPragmas0, IntDeclPragmas,
         !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
-        replace_in_type_repn_info(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap),
+        replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap),
         IntTypeRepnMap0, IntTypeRepnMap,
         !RecompInfo, !UsedModules, !Specs),
 
@@ -875,8 +873,7 @@ replace_in_parse_tree_int2(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_instance_info, IntInstances0, IntInstances,
         !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
-        replace_in_type_repn_info(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap),
+        replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap),
         IntTypeRepnMap0, IntTypeRepnMap,
         !RecompInfo, !UsedModules, !Specs),
 
@@ -922,8 +919,7 @@ replace_in_parse_tree_int3(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_instance_info, IntInstances0, IntInstances,
         !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
-        replace_in_type_repn_info(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap),
+        replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap),
         IntTypeRepnMap0, IntTypeRepnMap,
         !RecompInfo, !UsedModules, !Specs),
 
@@ -1101,13 +1097,13 @@ replace_in_type_defn_info_general(ReplaceInTypeDefn, ModuleName, MaybeRecord,
         Context, SeqNum).
 
 :- pred replace_in_type_repn_info(module_name::in,
-    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
+    maybe_record_sym_name_use::in, type_eqv_map::in,
     item_type_repn_info::in, item_type_repn_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
+replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap,
         Info0, Info, !RecompInfo, !UsedModules, !Specs) :-
     Info0 = item_type_repn_info(SymName, ArgTypeVars, TypeRepn0, TVarSet0,
         Context, SeqNum),
@@ -1482,60 +1478,58 @@ replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
     Info = item_mutable_info(MutName, OrigType, Type, OrigInst, Inst,
         InitValue, Attrs, Varset, Context, SeqNum).
 
-:- pred replace_in_event_specs(
+:- pred replace_in_event_specs(type_eqv_map::in,
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
-    type_eqv_map::in, inst_eqv_map::in,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_event_specs([], [], _, _, !RecompInfo, !UsedModules, !Specs).
-replace_in_event_specs(
+replace_in_event_specs(_, [], [], !RecompInfo, !UsedModules, !Specs).
+replace_in_event_specs(TypeEqvMap,
         [Name - EventSpec0 | NameSpecs0], [Name - EventSpec | NameSpecs],
-        TypeEqvMap, InstEqvMap, !RecompInfo, !UsedModules, !Specs) :-
-    replace_in_event_spec(EventSpec0, EventSpec,
-        TypeEqvMap, InstEqvMap, !RecompInfo, !UsedModules, !Specs),
-    replace_in_event_specs(NameSpecs0, NameSpecs,
-        TypeEqvMap, InstEqvMap, !RecompInfo, !UsedModules, !Specs).
+        !RecompInfo, !UsedModules, !Specs) :-
+    replace_in_event_spec(TypeEqvMap, EventSpec0, EventSpec,
+        !RecompInfo, !UsedModules, !Specs),
+    replace_in_event_specs(TypeEqvMap, NameSpecs0, NameSpecs,
+        !RecompInfo, !UsedModules, !Specs).
 
-:- pred replace_in_event_spec(event_spec::in, event_spec::out,
-    type_eqv_map::in, inst_eqv_map::in,
+:- pred replace_in_event_spec(type_eqv_map::in,
+    event_spec::in, event_spec::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_event_spec(EventSpec0, EventSpec, TypeEqvMap, InstEqvMap,
+replace_in_event_spec(TypeEqvMap, EventSpec0, EventSpec,
         !RecompInfo, !UsedModules, !Specs) :-
     EventSpec0 = event_spec(EventNumber, EventName, EventLineNumber,
         Attrs0, SyntAttrNumOrder),
-    replace_in_event_attrs(Attrs0, Attrs, TypeEqvMap, InstEqvMap,
+    replace_in_event_attrs(TypeEqvMap, Attrs0, Attrs,
         !RecompInfo, !UsedModules, !Specs),
     EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
         Attrs, SyntAttrNumOrder).
 
-:- pred replace_in_event_attrs(
+:- pred replace_in_event_attrs(type_eqv_map::in,
     list(event_attribute)::in, list(event_attribute)::out,
-    type_eqv_map::in, inst_eqv_map::in,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_event_attrs([], [], _TypeEqvMap, _InstEqvMap,
+replace_in_event_attrs(_TypeEqvMap, [], [],
         !RecompInfo, !UsedModules, !Specs).
-replace_in_event_attrs([Attr0 | Attrs0], [Attr | Attrs],
-        TypeEqvMap, InstEqvMap, !RecompInfo, !UsedModules, !Specs) :-
-    replace_in_event_attr(Attr0, Attr, TypeEqvMap, InstEqvMap,
+replace_in_event_attrs(TypeEqvMap, [Attr0 | Attrs0], [Attr | Attrs],
+        !RecompInfo, !UsedModules, !Specs) :-
+    replace_in_event_attr(TypeEqvMap, Attr0, Attr,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_event_attrs(Attrs0, Attrs, TypeEqvMap, InstEqvMap,
+    replace_in_event_attrs(TypeEqvMap, Attrs0, Attrs,
         !RecompInfo, !UsedModules, !Specs).
 
-:- pred replace_in_event_attr(event_attribute::in, event_attribute::out,
-    type_eqv_map::in, inst_eqv_map::in,
+:- pred replace_in_event_attr(type_eqv_map::in,
+    event_attribute::in, event_attribute::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_event_attr(Attr0, Attr, TypeEqvMap, _InstEqvMap,
+replace_in_event_attr(TypeEqvMap, Attr0, Attr,
         !RecompInfo, !UsedModules, !Specs) :-
     % We construct the attributes' modes ourselves in event_spec.m; they should
     % not contain type names.
