@@ -62,7 +62,7 @@
 
 %---------------------------------------------------------------------------%
 
-parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
+parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if ArgTerms = [TypeTerm, RepnTerm] then
         TypeContextPieces = cord.from_list([words("In the first argument of"),
@@ -135,10 +135,12 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             MaybeRepn = error1([RepnSpec])
         ),
         ( if
-            MaybeTypeSymNameAndArgs = ok2(TypeCtorSymName, TypeArgVars),
+            MaybeTypeSymNameAndArgs = ok2(TypeCtorSymName0, TypeArgVars),
             MaybeRepn = ok1(Repn)
         then
             varset.coerce(VarSet, TVarSet),
+            TypeCtorName = unqualify_name(TypeCtorSymName0),
+            TypeCtorSymName = qualified(ModuleName, TypeCtorName),
             ItemRepnInfo = item_type_repn_info(TypeCtorSymName, TypeArgVars,
                 Repn, TVarSet, Context, SeqNum),
             Item = item_type_repn(ItemRepnInfo),
