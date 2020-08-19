@@ -173,8 +173,9 @@ add_special_pred_decl_defns_for_type_eagerly(TVarSet, Type, TypeCtor, TypeBody,
             )
         )
     else
-        SpecialPredIds = [spec_pred_unify, spec_pred_compare],
-        add_special_pred_decls(SpecialPredIds, TVarSet, Type,
+        add_special_pred_decl(spec_pred_unify, TVarSet, Type,
+            TypeCtor, TypeStatus, Context, !ModuleInfo),
+        add_special_pred_decl(spec_pred_compare, TVarSet, Type,
             TypeCtor, TypeStatus, Context, !ModuleInfo)
     ).
 
@@ -269,18 +270,6 @@ adjust_types_with_special_preds_in_private_builtin(Type) = NormalizedType :-
 
 %---------------------------------------------------------------------------%
 
-:- pred add_special_pred_decls(list(special_pred_id)::in, tvarset::in,
-    mer_type::in, type_ctor::in, type_status::in, prog_context::in,
-    module_info::in, module_info::out) is det.
-
-add_special_pred_decls([], _, _, _, _, _, !ModuleInfo).
-add_special_pred_decls([SpecialPredId | SpecialPredIds], TVarSet, Type,
-        TypeCtor, TypeStatus, Context, !ModuleInfo) :-
-    add_special_pred_decl(SpecialPredId, TVarSet, Type,
-        TypeCtor, TypeStatus, Context, !ModuleInfo),
-    add_special_pred_decls(SpecialPredIds, TVarSet, Type,
-        TypeCtor, TypeStatus, Context, !ModuleInfo).
-
 add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
         Context, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
@@ -288,9 +277,7 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
     PredBaseName = special_pred_name(SpecialPredId, TypeCtor),
     PredName = unqualified(PredBaseName),
     PredArity = get_special_pred_id_arity(SpecialPredId),
-    % XXX we probably shouldn't hardcode this as predicate but since
-    % all current special_preds are predicates at the moment it doesn't
-    % matter.
+    % All current special_preds are predicates.
     clauses_info_init(pf_predicate, PredArity,
         init_clause_item_numbers_comp_gen, ClausesInfo0),
     Origin = origin_special_pred(SpecialPredId, TypeCtor),
