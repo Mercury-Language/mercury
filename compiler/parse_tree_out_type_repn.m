@@ -803,16 +803,15 @@ mercury_output_foreign_type_repn(TypeRepnFor, Indent, TypeRepn, !IO) :-
         io.write_string(" [", !IO),
         io.write_list(AssertionsList, ", ",
             mercury_output_foreign_type_assertion, !IO),
-        io.write_string("]", !IO)
+        io.write_string("])", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
         I1 = indent(Indent + 1),
         io.format("\n%s[", [s(I1)], !IO),
         io.write_list(AssertionsList, ", ",
             mercury_output_foreign_type_assertion, !IO),
-        io.write_string("]", !IO)
-    ),
-    io.format("\n%s)", [s(I)], !IO).
+        io.format("]\n%s)", [s(I)], !IO)
+    ).
 
 mercury_output_foreign_type_assertion(Assertion, !IO) :-
     (
