@@ -11,24 +11,22 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module int.
 
-main -->
-    io__write_string("foldr: "),
-    { foldr([1, 10, 100], 0, Ans) },
-    io__write(Ans),
-    io__nl.
+main(!IO) :-
+    io.write_string("foldr: ", !IO),
+    foldr([1, 10, 100], 0, Ans),
+    io.write_line(Ans, !IO).
 
-:- pred foldr(list(int), int, int).
-:- mode foldr(in, in, out) is det.
+:- pred foldr(list(int)::in, int::in, int::out) is det.
 
 foldr([], Acc, Acc).
 foldr(X, Acc0, Acc) :-
     X = [H | T],
     foldr(T, Acc0, Acc1),
-    Acc is H - Acc1.
+    Acc = H - Acc1.

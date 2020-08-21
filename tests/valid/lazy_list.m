@@ -551,7 +551,7 @@ lazy_list__split_list(N, List, Start, End) :-
         End = lazy_list
     ;
         N > 0,
-        N1 is N - 1,
+        N1 = N - 1,
         List = [Head | List1],
         Start = [Head | Start1],
         lazy_list__split_list(N1, List1, Start1, End)
@@ -561,7 +561,7 @@ lazy_list__take(N, As, Bs) :-
     (
         N > 0
     ->
-        N1 is N - 1,
+        N1 = N - 1,
         As = [A | As1],
         Bs = [A | Bs1],
         lazy_list__take(N1, As1, Bs1)
@@ -573,7 +573,7 @@ lazy_list__drop(N, As, Bs) :-
     (
         N > 0
     ->
-        N1 is N - 1,
+        N1 = N - 1,
         As = [_ | Cs],
         lazy_list__drop(N1, Cs, Bs)
     ;
@@ -584,7 +584,7 @@ lazy_list__drop(N, As, Bs) :-
 
 lazy_list__duplicate(N, X, L) :-
     ( N > 0 ->
-        N1 is N - 1,
+        N1 = N - 1,
         L = [X | L1],
         lazy_list__duplicate(N1, X, L1)
     ;
@@ -609,7 +609,7 @@ lazy_list__chunk_2([], _ChunkSize, List0, _N, Lists) :-
     ).
 lazy_list__chunk_2([X | Xs], ChunkSize, List0, N, Lists) :-
     ( N > 1 ->
-        N1 is N - 1,
+        N1 = N - 1,
         lazy_list__chunk_2(Xs, ChunkSize, [X | List0], N1, Lists)
     ;
         lazy_list__reverse([X | List0], List),

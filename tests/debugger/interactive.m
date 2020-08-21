@@ -52,8 +52,8 @@ qdelete(X, [A | Z], [A | R]) :-
 
 nodiag(_, _, []).
 nodiag(B, D, [N | L]) :-
-    NmB is N - B,
-    BmN is B - N,
+    NmB = N - B,
+    BmN = B - N,
     ( if D = NmB then
         fail
     else if D = BmN then
@@ -61,7 +61,7 @@ nodiag(B, D, [N | L]) :-
     else
         true
     ),
-    D1 is D + 1,
+    D1 = D + 1,
     nodiag(B, D1, L).
 
 :- pred safe(list(int)::in) is semidet.

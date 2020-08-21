@@ -2,9 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Tests that we can still introduce accumulators even though we
-% don't initialise the base case to be the identity element for
-% append.
+% Tests that we can still introduce accumulators, even though we
+% don't initialise the base case to be the identity element for append.
 %
 
 :- module identity.
@@ -13,21 +12,19 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module int.
 
-main -->
-    io__write_string("r: "),
-    { r([1, 10, 100], Reverse) },
-    io__write(Reverse),
-    io__nl.
+main(!IO) :-
+    io.write_string("r: ", !IO),
+    r([1, 10, 100], Reverse),
+    io.write_line(Reverse, !IO).
 
-:- pred r(list(int), list(int)).
-:- mode r(in, out) is det.
+:- pred r(list(int)::in, list(int)::out) is det.
 
 r(X, R) :-
     X = [],

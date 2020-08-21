@@ -12,7 +12,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -20,14 +20,13 @@
 :- import_module int.
 
 main(!IO) :-
-    io__write_string("l: ", !IO),
+    io.write_string("l: ", !IO),
     p([1, 10, 100], 5, Length),
-    io__write(Length, !IO),
-    io__nl(!IO).
+    io.write_line(Length, !IO).
 
 :- pred p(list(int)::in, int::in, int::out) is det.
 
 p([], L, L).
 p([H | T], _, L) :-
     p(T, H, L0),
-    L is L0 + 1.
+    L = L0 + 1.

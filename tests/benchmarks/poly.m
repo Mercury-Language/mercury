@@ -13,173 +13,70 @@
 
 :- interface.
 
-:- import_module int.
 :- import_module io.
-:- import_module list.
 
-:- type poly__var
+:- pred main(io::di, io::uo) is det.
+
+:- implementation.
+
+:- import_module int.
+:- import_module list.
+:- import_module prolog.
+
+main(!IO) :-
+    test_poly(P),
+    poly_exp(10, P, Out),
+    print_poly(Out, !IO),
+    io.nl(!IO).
+
+:- type var
     --->    x
     ;       y
     ;       z.
 
-:- type poly__term
+:- type term
     --->    term(int, poly).
+
 :- type poly
-    --->    poly(poly__var, list(poly__term))
+    --->    poly(var, list(term))
     ;       const(int).
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
-
-:- pred main3(poly, io__state, io__state).
-:- mode main3(out, di, uo) is det.
-
-:- pred main1(poly).
-:- mode main1(out) is det.
-
-:- implementation.
-
-:- import_module prolog.
-
-main -->
-    main3(_).
-
-main3(Out) -->
-    { main1(Out) },
-    print_poly(Out),
-    io__write_string("\n").
-
-main1(Out) :-
-    test_poly(P),
-    poly_exp(10, P, Out).
-
-:- pred test_poly1(poly).
-:- mode test_poly1(out) is det.
-
-:- pred test_poly2(poly).
-:- mode test_poly2(out) is det.
-
-:- pred test_poly3(poly).
-:- mode test_poly3(out) is det.
-
-:- pred test_poly(poly).
-:- mode test_poly(out) is det.
-
-:- pred poly_add(poly, poly, poly).
-:- mode poly_add(in, in, out) is det.
-
-:- pred term_add(list(poly__term), list(poly__term), list(poly__term)).
-:- mode term_add(in, in, out) is det.
-
-:- pred add_to_order_zero_term(list(poly__term), poly, list(poly__term)).
-:- mode add_to_order_zero_term(in, in, out) is det.
-
-:- pred poly_exp(int, poly, poly).
-:- mode poly_exp(in, in, out) is det.
-
-:- pred poly_mul(poly, poly, poly).
-:- mode poly_mul(in, in, out) is det.
-
-:- pred term_mul(list(poly__term), list(poly__term), list(poly__term)).
-:- mode term_mul(in, in, out) is det.
-
-:- pred single_term_mul(list(poly__term), poly__term, list(poly__term)).
-:- mode single_term_mul(in, in, out) is det.
-
-:- pred mul_through(list(poly__term), poly, list(poly__term)).
-:- mode mul_through(in, in, out) is det.
-
-:- pred lt(poly__var, poly__var).
-:- mode lt(in, in) is semidet.
-
-:- pred even(int).
-:- mode even(in) is semidet.
-
-:- pred print_poly(poly, io__state, io__state).
-:- mode print_poly(in, di, uo) is det.
-
-:- pred print_var(poly__var, io__state, io__state).
-:- mode print_var(in, di, uo) is det.
-
-:- pred print_terms(list(poly__term), io__state, io__state).
-:- mode print_terms(in, di, uo) is det.
-
-:- pred print_terms_2(list(poly__term), io__state, io__state).
-:- mode print_terms_2(in, di, uo) is det.
-
-:- pred print_term(poly__term, io__state, io__state).
-:- mode print_term(in, di, uo) is det.
-
-print_poly(const(N)) -->
-    io__write_string("const("),
-    io__write_int(N),
-    io__write_string(")").
-print_poly(poly(Var, Terms)) -->
-    io__write_string("poly("),
-    print_var(Var),
-    io__write_string(", "),
-    print_terms(Terms),
-    io__write_string(")").
-
-print_var(x) -->
-    io__write_string("x").
-print_var(y) -->
-    io__write_string("y").
-print_var(z) -->
-    io__write_string("z").
-
-print_terms(Terms) -->
-    ( { Terms = [] } ->
-        io__write_string("[]\n")
-    ;
-        io__write_string("["),
-        print_terms_2(Terms),
-        io__write_string("]")
-    ).
-
-print_terms_2([]) --> [].
-print_terms_2([Term | Terms]) -->
-    print_term(Term),
-    ( { Terms = [] } ->
-        []
-    ;
-        io__write_string(", "),
-        print_terms_2(Terms)
-    ).
-
-print_term(term(N, Poly)) -->
-    io__write_string("term("),
-    io__write_int(N),
-    io__write_string(", "),
-    print_poly(Poly),
-    io__write_string(")").
+:- pred test_poly1(poly::out) is det.
 
 test_poly1(P) :-
     P = poly(x, [term(0, const(1)), term(1, const(1))]).
 
+:- pred test_poly2(poly::out) is det.
+
 test_poly2(P) :-
     P = poly(y, [term(1, const(1))]).
 
+:- pred test_poly3(poly::out) is det.
+
 test_poly3(P) :-
     P = poly(z, [term(1, const(1))]).
+
+:- pred test_poly(poly::out) is det.
 
 test_poly(P) :-
     poly_add(poly(x, [term(0, const(1)),
         term(1, const(1))]), poly(y, [term(1, const(1))]), Q),
     poly_add(poly(z, [term(1, const(1))]), Q, P).
 
+:- pred poly_add(poly::in, poly::in, poly::out) is det.
+
 poly_add(Poly1, Poly2, Result) :-
     (
         Poly1 = poly(Var1, Terms1),
         (
             Poly2 = poly(Var2, Terms2),
-            ( Var1 = Var2 ->
+            ( if Var1 = Var2 then
                 term_add(Terms1, Terms2, Terms),
                 Result = poly(Var1, Terms)
-            ; lt(Var1, Var2) ->
+            else if lt(Var1, Var2) then
                 add_to_order_zero_term(Terms1, Poly2, Terms),
                 Result = poly(Var1, Terms)
-            ;
+            else
                 add_to_order_zero_term(Terms2, Poly1, Terms),
                 Result = poly(Var2, Terms)
             )
@@ -196,10 +93,12 @@ poly_add(Poly1, Poly2, Result) :-
             Result = poly(Var2, Terms)
         ;
             Poly2 = const(C2),
-            C is C1 + C2,
+            C = C1 + C2,
             Result = const(C)
         )
     ).
+
+:- pred term_add(list(term)::in, list(term)::in, list(term)::out) is det.
 
 term_add(List1, List2, Result) :-
     (
@@ -212,53 +111,60 @@ term_add(List1, List2, Result) :-
             Result = List1
         ;
             List2 = [term(E2, C2) | Terms2],
-            ( E1 = E2 ->
+            ( if E1 = E2 then
                 poly_add(C1, C2, C),
                 term_add(Terms1, Terms2, Terms),
                 Result = [term(E1, C) | Terms]
-            ; E1 < E2 ->
+            else if E1 < E2 then
                 term_add(Terms1, List2, Terms),
                 Result = [term(E1, C1) | Terms]
-            ;
+            else
                 term_add(List1, Terms2, Terms),
                 Result = [term(E2, C2) | Terms]
             )
         )
     ).
 
+:- pred add_to_order_zero_term(list(term)::in, poly::in, list(term)::out)
+    is det.
+
 add_to_order_zero_term(List, C2, Result) :-
-    ( List = [term(0, C1) | Terms] ->
+    ( if List = [term(0, C1) | Terms] then
         poly_add(C1, C2, C),
         Result = [term(0, C) | Terms]
-    ;
+    else
         Result = [term(0, C2) | List]
     ).
 
+:- pred poly_exp(int::in, poly::in, poly::out) is det.
+
 poly_exp(N, Poly, Result) :-
-    ( N = 0 ->
+    ( if N = 0 then
         Result = const(1)
-    ; poly__even(N) ->
-        M is N // 2,
+    else if poly_even(N) then
+        M = N // 2,
         poly_exp(M, Poly, Part),
         poly_mul(Part, Part, Result)
-    ;
-        M is N - 1,
+    else
+        M = N - 1,
         poly_exp(M, Poly, Part),
         poly_mul(Poly, Part, Result)
     ).
+
+:- pred poly_mul(poly::in, poly::in, poly::out) is det.
 
 poly_mul(Poly1, Poly2, Result) :-
     (
         Poly1 = poly(Var1, Terms1),
         (
             Poly2 = poly(Var2, Terms2),
-            ( Var1 = Var2 ->
+            ( if Var1 = Var2 then
                 term_mul(Terms1, Terms2, Terms),
                 Result = poly(Var1, Terms)
-            ; lt(Var1, Var2) ->
+            else if lt(Var1, Var2) then
                 mul_through(Terms1, Poly2, Terms),
                 Result = poly(Var1, Terms)
-            ;
+            else
                 mul_through(Terms2, Poly1, Terms),
                 Result = poly(Var2, Terms)
             )
@@ -275,10 +181,12 @@ poly_mul(Poly1, Poly2, Result) :-
             Result = poly(Var2, Terms)
         ;
             Poly2 = const(C2),
-            C is C1 * C2,
+            C = C1 * C2,
             Result = const(C)
         )
     ).
+
+:- pred term_mul(list(term)::in, list(term)::in, list(term)::out) is det.
 
 term_mul(List1, List2, Result) :-
     (
@@ -297,6 +205,8 @@ term_mul(List1, List2, Result) :-
         )
     ).
 
+:- pred single_term_mul(list(term)::in, term::in, list(term)::out) is det.
+
 single_term_mul(List, Term, Result) :-
     (
         List = [],
@@ -304,11 +214,13 @@ single_term_mul(List, Term, Result) :-
     ;
         List = [term(E1, C1) | Terms1],
         Term = term(E2, C2),
-        E is E1 + E2,
+        E = E1 + E2,
         poly_mul(C1, C2, C),
         single_term_mul(Terms1, Term, Terms),
         Result = [term(E, C) | Terms]
     ).
+
+:- pred mul_through(list(term)::in, poly::in, list(term)::out) is det.
 
 mul_through(List, Poly, Result) :-
     (
@@ -321,11 +233,72 @@ mul_through(List, Poly, Result) :-
         Result = [term(E, NewTerm) | NewTerms]
     ).
 
+:- pred lt(var::in, var::in) is semidet.
+
 lt(x, y).
 lt(y, z).
 lt(x, z).
 
-even(N) :-
-    M is N // 2,
-    N1 is M * 2,
+:- pred poly_even(int::in) is semidet.
+
+poly_even(N) :-
+    M = N // 2,
+    N1 = M * 2,
     N = N1.
+
+:- pred print_poly(poly::in, io::di, io::uo) is det.
+
+print_poly(const(N), !IO) :-
+    io.write_string("const(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(")", !IO).
+print_poly(poly(Var, Terms), !IO) :-
+    io.write_string("poly(", !IO),
+    print_var(Var, !IO),
+    io.write_string(", ", !IO),
+    print_terms(Terms, !IO),
+    io.write_string(")", !IO).
+
+:- pred print_var(var::in, io::di, io::uo) is det.
+
+print_var(x, !IO) :-
+    io.write_string("x", !IO).
+print_var(y, !IO) :-
+    io.write_string("y", !IO).
+print_var(z, !IO) :-
+    io.write_string("z", !IO).
+
+:- pred print_terms(list(term)::in, io::di, io::uo) is det.
+
+print_terms(Terms, !IO) :-
+    (
+        Terms = [],
+        io.write_string("[]\n", !IO)
+    ;
+        Terms = [_ | _],
+        io.write_string("[", !IO),
+        print_terms_2(Terms, !IO),
+        io.write_string("]", !IO)
+    ).
+
+:- pred print_terms_2(list(term)::in, io::di, io::uo) is det.
+
+print_terms_2([], !IO).
+print_terms_2([Term | Terms], !IO) :-
+    print_term(Term, !IO),
+    (
+        Terms = []
+    ;
+        Terms = [_ | _],
+        io.write_string(", ", !IO),
+        print_terms_2(Terms, !IO)
+    ).
+
+:- pred print_term(term::in, io::di, io::uo) is det.
+
+print_term(term(N, Poly), !IO) :-
+    io.write_string("term(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(", ", !IO),
+    print_poly(Poly, !IO),
+    io.write_string(")", !IO).

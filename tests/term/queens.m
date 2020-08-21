@@ -10,8 +10,7 @@
     --->    []
     ;       [T | list(T)].
 
-:- pred queens(list(int), list(int)).
-:- mode queens(in, out) is nondet.
+:- pred queens(list(int)::in, list(int)::out) is nondet.
 
 :- implementation.
 
@@ -53,5 +52,5 @@ noattack(X, [F | T], N) :-
     X \= F,
     X \= F + N,
     F \= X + N,
-    N1 is N + 1,
+    N1 = N + 1,
     noattack(X, T, N1).

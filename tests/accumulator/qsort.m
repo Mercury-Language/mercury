@@ -2,9 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Make sure that this doesn't get recognised as an
-% opportunity to introduce accumulator recursion,
-% because qsort is already tail recursive.
+% Make sure that this doesn't get recognised as an opportunity to introduce
+% accumulator recursion, because qsort is already tail recursive.
 %
 
 :- module qsort.
@@ -13,21 +12,19 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module int.
 
-main -->
-    { qsort([1, 6, 0, 8, 7, 4], [], S) },
-    io__write_string("qsort: "),
-    io__write(S),
-    io__nl.
+main(!IO) :-
+    qsort([1, 6, 0, 8, 7, 4], [], S),
+    io.write_string("qsort: ", !IO),
+    io.write_line(S, !IO).
 
-:- pred qsort(list(T), list(T), list(T)).
-:- mode qsort(in, in, out) is det.
+:- pred qsort(list(T)::in, list(T)::in, list(T)::out) is det.
 
 qsort([], R, R).
 qsort([X | L], R0, R) :-
@@ -35,15 +32,14 @@ qsort([X | L], R0, R) :-
     qsort(L2, R0, R1),
     qsort(L1, [X | R1], R).
 
-:- pred partition(list(T), T, list(T), list(T)).
-:- mode partition(in, in, out, out) is det.
+:- pred partition(list(T)::in, T::in, list(T)::out, list(T)::out) is det.
 
 partition([], _, [], []).
 partition([Head | Tail], Partition, Low, High) :-
-    ( compare(<, Head, Partition) ->
+    ( if compare(<, Head, Partition) then
         partition(Tail, Partition, Low1, High),
         Low = [Head | Low1]
-    ;
+    else
         partition(Tail, Partition, Low, High1),
         High = [Head | High1]
     ).

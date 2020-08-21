@@ -32,11 +32,11 @@ primes(Limit, Primes) :-
 :- pred integers(int::in, int::in, list(int)::out) is det.
 
 integers(Low, High, Result) :-
-    ( Low =< High ->
+    ( if Low =< High then
         NextLow = Low + 1,
         integers(NextLow, High, Rest),
         Result = [Low | Rest]
-    ;
+    else
         Result = []
     ).
 
@@ -51,10 +51,10 @@ sift([Integer | Integers], [Integer | Ps]) :-
 
 remove_multiples(_Prime, [], []).
 remove_multiples(Prime, [I | Is], Result) :-
-    ( I mod Prime = 0 ->
+    ( if I mod Prime = 0 then
         remove_multiples(Prime, Is, TailResult),
         Result = TailResult
-    ;
+    else
         remove_multiples(Prime, Is, TailResult),
         Result = [I | TailResult]
     ).

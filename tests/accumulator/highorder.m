@@ -12,32 +12,31 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 :- import_module list.
 
-main -->
-    io__write_string("foldr: "),
-    { highorder__foldr(minus, [1, 10, 100], 0, ListA) },
-    io__write(ListA),
-    io__nl.
+main(!IO) :-
+    io.write_string("foldr: ", !IO),
+    highorder.foldr(minus, [1, 10, 100], 0, ListA),
+    io.write_line(ListA, !IO).
 
 :- pred minus(int::in, int::in, int::out) is det.
 
 minus(A, B, C) :-
-    C is A - B.
+    C = A - B.
 
-    % highorder__foldr(Pred, List, Start, End) calls Pred with each element
+    % highorder.foldr(Pred, List, Start, End) calls Pred with each element
     % of List (working right-to-left) and an accumulator (with the initial
     % value of Start), and returns the final value in End.
     %
-:- pred highorder__foldr(pred(X, Y, Y), list(X), Y, Y).
-:- mode highorder__foldr(pred(in, in, out) is det, in, in, out) is det.
+:- pred foldr(pred(X, Y, Y)::in(pred(in, in, out) is det),
+    list(X)::in, Y::in, Y::out) is det.
 
-highorder__foldr(_, [], Acc, Acc).
-highorder__foldr(P, [H | T], Acc0, Acc) :-
-    highorder__foldr(P, T, Acc0, Acc1),
+foldr(_, [], Acc, Acc).
+foldr(P, [H | T], Acc0, Acc) :-
+    highorder.foldr(P, T, Acc0, Acc1),
     call(P, H, Acc1, Acc).

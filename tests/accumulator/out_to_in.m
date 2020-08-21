@@ -17,25 +17,22 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 :- import_module list.
 
-main -->
-    io__write_string("q: "),
-    (
-        { q([[4, 3, 2, 1], [3, 2, 1], [2, 1]], 2, List, Out) }
-    ->
-        io__write(List),
-        io__write_string(" "),
-        io__write(Out)
-    ;
-        io__write_string("failed")
-    ),
-    io__nl.
+main(!IO) :-
+    io.write_string("q: ", !IO),
+    ( if q([[4, 3, 2, 1], [3, 2, 1], [2, 1]], 2, List, Out) then
+        io.write(List, !IO),
+        io.write_string(" ", !IO),
+        io.write_line(Out, !IO)
+    else
+        io.write_string("failed\n", !IO)
+    ).
 
 :- pred q(list(list(T))::in, int::in, list(list(T))::out, int::out) is semidet.
 
@@ -43,6 +40,6 @@ q([], _, [], 10).
 q([H | T], Length, DroppedList, OutInt) :-
     Length0 = 1,
     q(T, Length0, DroppedList0, OutInt),
-    _X is OutInt + Length,
-    list__drop(Length, H, NewHead),
+    _X = OutInt + Length,
+    list.drop(Length, H, NewHead),
     append(DroppedList0, [NewHead], DroppedList).

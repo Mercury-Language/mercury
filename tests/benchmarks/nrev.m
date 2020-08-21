@@ -13,74 +13,57 @@
 :- interface.
 
 :- import_module io.
-:- import_module list.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
-
-:- pred main1(list(int)).
-:- mode main1(out) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main --> main3(_).
+:- import_module list.
 
-main1(Out) :-
+main(!IO) :-
     data(Data),
-    nreverse(Data, Out).
+    nreverse(Data, Out),
+    print_list(Out, !IO).
 
-:- pred main3(list(int), io__state, io__state).
-:- mode main3(out, di, uo) is det.
-
-main3(Out) -->
-    { main1(Out) },
-    print_list(Out).
-
-:- pred data(list(int)).
-:- mode data(out) is det.
+:- pred data(list(int)::out) is det.
 
 data([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
     16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]).
 
-:- pred nreverse(list(int), list(int)).
-:- mode nreverse(in, out) is det.
+:- pred nreverse(list(int)::in, list(int)::out) is det.
 
 nreverse([X | L0], L) :-
-    nreverse(L0, L1), concatenate(L1, [X], L).
+    nreverse(L0, L1),
+    concatenate(L1, [X], L).
 nreverse([], []).
 
-:- pred concatenate(list(int), list(int), list(int)).
-:- mode concatenate(in, in, out) is det.
+:- pred concatenate(list(int)::in, list(int)::in, list(int)::out) is det.
 
 concatenate([X | L1], L2, [X | L3]) :-
     concatenate(L1, L2, L3).
 concatenate([], L, L).
 
-:- pred print_list(list(int), io__state, io__state).
-:- mode print_list(in, di, uo) is det.
+:- pred print_list(list(int)::in, io::di, io::uo) is det.
 
-print_list(Xs) -->
+print_list(Xs, !IO) :-
     (
-        { Xs = [] }
-    ->
-        io__write_string("[]\n")
+        Xs = [],
+        io.write_string("[]\n", !IO)
     ;
-        io__write_string("["),
-        print_list_2(Xs),
-        io__write_string("]\n")
+        Xs = [H | T],
+        io.write_string("[", !IO),
+        print_list_elements(H, T, !IO),
+        io.write_string("]\n", !IO)
     ).
 
-:- pred print_list_2(list(int), io__state, io__state).
-:- mode print_list_2(in, di, uo) is det.
+:- pred print_list_elements(int::in, list(int)::in, io::di, io::uo) is det.
 
-print_list_2([]) --> [].
-print_list_2([X | Xs]) -->
-    io__write_int(X),
+print_list_elements(X, Xs, !IO) :-
+    io.write_int(X, !IO),
     (
-        { Xs = [] }
-    ->
-        []
+        Xs = []
     ;
-        io__write_string(", "),
-        print_list_2(Xs)
+        Xs = [H | T],
+        io.write_string(", ", !IO),
+        print_list_elements(H, T, !IO)
     ).

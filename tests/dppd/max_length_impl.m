@@ -23,7 +23,7 @@ max_length(Ls, M, Len) :-
 my_length([], 0).
 my_length([_ | T], L) :-
     my_length(T, LT),
-    L is LT + 1.
+    L = LT + 1.
 
 :- pred max(list(int)::in, int::out) is det.
 
@@ -34,9 +34,9 @@ max(X, M) :-
 
 max1([], M, M).
 max1([H | T], N, M) :-
-    ( H > N ->
+    ( if H > N then
         M1 = H
-    ;
+    else
         M1 = N
     ),
     max1(T, M1, M).

@@ -46,10 +46,10 @@ qsort([H | T], !SortedRest) :-
 
 partition([], _P, [], []).
 partition([H | T], Pivot, Lo, Hi) :-
-    ( H =< Pivot ->
+    ( if H =< Pivot then
         partition(T, Pivot, LoTail, Hi),
         Lo = [H | LoTail]
-    ;
+    else
         partition(T, Pivot, Lo, HiTail),
         Hi = [H | HiTail]
     ).

@@ -38,7 +38,7 @@ reduce_add(List, Res) :-
 :- pred add(int::in, int::in, int::out) is det.
 
 add(X, Y, Z) :-
-    Z is X + Y.
+    Z = X + Y.
 
 :- pred reduce(pred(U, T, T), T, list(U), T).
 :- mode reduce(pred(in, in, out) is det, in, in, out) is det.

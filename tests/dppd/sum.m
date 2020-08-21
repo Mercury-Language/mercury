@@ -17,7 +17,7 @@ sumsumsum(A, B) :-
     sum1(A, 0, C),
     sum2(A, 0, D),
     sum3(A, 0, E),
-    B is C + D + E.
+    B = C + D + E.
 
 :- pred sum1(list(int)::in, int::in, int::out) is det.
 
@@ -30,12 +30,12 @@ sum1([X | Xs], Sum0, Sum) :-
 
 sum2([], Sum, Sum).
 sum2([X | Xs], Sum0, Sum) :-
-    Sum1 is Sum0 + X,
+    Sum1 = Sum0 + X,
     sum2(Xs, Sum1, Sum).
 
 :- pred sum3(list(int)::in, int::in, int::out) is det.
 
 sum3([], Sum, Sum).
 sum3([X | Xs], Sum0, Sum) :-
-    Sum1 is Sum0 + X,
+    Sum1 = Sum0 + X,
     sum3(Xs, Sum1, Sum).

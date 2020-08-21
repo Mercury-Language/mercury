@@ -4,24 +4,24 @@
 %
 % Test that accumulators are introduced into functions.
 %
+
 :- module (func).
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module int.
 
-main -->
-    io__write_string("sumlist: "),
-    { Sum = sumlist([5, 6, 7]) },
-    io__write(Sum),
-    io__nl.
+main(!IO) :-
+    io.write_string("sumlist: ", !IO),
+    Sum = sumlist([5, 6, 7]),
+    io.write_line(Sum, !IO).
 
 :- func sumlist(list(int)) = int.
 

@@ -62,7 +62,7 @@ calc(C0, D, E, C1, Y) :-
 :- mode sum(in, in, out).
 
 sum(X, Y, Z) :-
-    Z is X+Y.
+    Z = X + Y.
 
 :- pred domain(list(T), list(T)).
 :- mode domain(out, in).

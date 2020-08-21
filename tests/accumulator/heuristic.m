@@ -2,9 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Tests that even though it is possible to introduce an
-% accumulator for p it would be counter productive because it
-% makes the algorithm O(N^2).
+% Tests that even though it is possible to introduce an accumulator for p,
+% it would be counter productive because it makes the algorithm O(N^2).
 %
 
 :- module heuristic.
@@ -13,18 +12,17 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module int.
 
-main -->
-    io__write_string("p: "),
-    { p([[1, 10, 100], [], [1, 2, 3], [6, 5, 4]], Length) },
-    io__write(Length),
-    io__nl.
+main(!IO) :-
+    io.write_string("p: ", !IO),
+    p([[1, 10, 100], [], [1, 2, 3], [6, 5, 4]], Length),
+    io.write_line(Length, !IO).
 
 :- pred p(list(list(T))::in, list(T)::out) is det.
 

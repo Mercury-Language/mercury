@@ -9,118 +9,98 @@
 
 :- interface.
 
-:- import_module int.
 :- import_module io.
-:- import_module list.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is cc_multi.
-
-:- pred main1(list(int)).
-:- mode main1(out) is nondet.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
+:- import_module int.
+:- import_module list.
 :- import_module prolog.
 
-main1(Out) :-
+main(!IO) :-
     data(Data),
-    queen(Data, Out).
-
-main -->
-    ( { data(Data), queen(Data, Out) } ->
-        print_list(Out)
-    ;
-        io__write_string("No solution\n")
+    ( if queen(Data, Out) then
+        print_list(Out, !IO)
+    else
+        io.write_string("No solution\n", !IO)
     ).
 
-:- pred data(list(int)).
-:- mode data(out) is det.
+:- pred data(list(int)::out) is det.
 
 data([1, 2, 3, 4, 5, 6, 7, 8, 9]).
 
-:- pred queen(list(int), list(int)).
-:- mode queen(in, out) is nondet.
+:- pred queen(list(int)::in, list(int)::out) is nondet.
 
 queen(Data, Out) :-
     queen_2(Data, [], Out).
 
-:- pred queen_2(list(int), list(int), list(int)).
-:- mode queen_2(in, in, out) is nondet.
+:- pred queen_2(list(int)::in, list(int)::in, list(int)::out) is nondet.
 
 queen_2([], _, []).
 queen_2(L, History, [Q | M]) :-
     L = [_ | _],
-    qdelete(Q, L, L1),
+    qdelete(L, Q, L1),
     nodiag(Q, 1, History),
     queen_2(L1, [Q | History], M).
 
-:- pred qperm(list(int), list(int)).
-:- mode qperm(in, out) is nondet.
+:- pred qperm(list(int)::in, list(int)::out) is nondet.
 
 qperm([], []).
-qperm([X | Y], K) :-
-    qdelete(U, [X | Y], Z),
-    K = [U | V],
-    qperm(Z, V).
+qperm([H | T], Perm) :-
+    qdelete([H | T], Element, Rest),
+    qperm(Rest, RestPerm),
+    Perm = [Element | RestPerm].
 
-:- pred qdelete(int, list(int), list(int)).
-:- mode qdelete(out, in, out) is nondet.
+:- pred qdelete(list(int)::in, int::out, list(int)::out) is nondet.
 
-qdelete(A, [A | L], L).
-qdelete(X, [A | Z], [A | R]) :-
-    qdelete(X, Z, R).
+qdelete([H | T], H, T).
+qdelete([H | T], E, [H | NT]) :-
+    qdelete(T, E, NT).
 
-:- pred safe(list(int)).
-:- mode safe(in) is semidet.
+:- pred safe(list(int)::in) is semidet.
 
 safe([]).
-safe([N | L]) :-
-    nodiag(N, 1, L),
-    safe(L).
+safe([H | T]) :-
+    nodiag(H, 1, T),
+    safe(T).
 
-:- pred nodiag(int, int, list(int)).
-:- mode nodiag(in, in, in) is semidet.
+:- pred nodiag(int::in, int::in, list(int)::in) is semidet.
 
 nodiag(_, _, []).
-nodiag(B, D, [N | L]) :-
-    NmB is N - B,
-    BmN is B - N,
-    ( D = NmB ->
+nodiag(TestRow, !.Diff, [Row | Rows]) :-
+    ( if !.Diff = Row - TestRow then
         fail
-    ; D = BmN ->
+    else if !.Diff = TestRow - Row then
         fail
-    ;
+    else
         true
     ),
-    D1 is D + 1,
-    nodiag(B, D1, L).
+    !:Diff = !.Diff + 1,
+    nodiag(TestRow, !.Diff, Rows).
 
-:- pred print_list(list(int), io__state, io__state).
-:- mode print_list(in, di, uo) is det.
+:- pred print_list(list(int)::in, io::di, io::uo) is det.
 
-print_list(Xs) -->
+print_list(Xs, !IO) :-
     (
-        { Xs = [] }
-    ->
-        io__write_string("[]\n")
+        Xs = [],
+        io.write_string("[]\n", !IO)
     ;
-        io__write_string("["),
-        print_list_2(Xs),
-        io__write_string("]\n")
+        Xs = [H | T],
+        io.write_string("[", !IO),
+        print_list_elements(H, T, !IO),
+        io.write_string("]\n", !IO)
     ).
 
-:- pred print_list_2(list(int), io__state, io__state).
-:- mode print_list_2(in, di, uo) is det.
+:- pred print_list_elements(int::in, list(int)::in, io::di, io::uo) is det.
 
-print_list_2([]) --> [].
-print_list_2([X | Xs]) -->
-    io__write_int(X),
+print_list_elements(X, Xs, !IO) :-
+    io.write_int(X, !IO),
     (
-        { Xs = [] }
-    ->
-        []
+        Xs = []
     ;
-        io__write_string(", "),
-        print_list_2(Xs)
+        Xs = [H | T],
+        io.write_string(", ", !IO),
+        print_list_elements(H, T, !IO)
     ).

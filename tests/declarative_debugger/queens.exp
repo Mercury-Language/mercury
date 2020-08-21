@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred queens.main/2-0 (cc_multi) queens.m:19
+       1:      1  1 CALL pred queens.main/2-0 (cc_multi) queens.m:18
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,9 +7,9 @@ mdb: declarative debugging is only available from EXIT, FAIL or EXCP events.
 mdb> break queen
  0: + stop  interface pred queens.queen/2-0 (nondet)
 mdb> continue
-       5:      3  2 CALL pred queens.queen/2-0 (nondet) queens.m:46 (queens.m:20)
+       5:      3  2 CALL pred queens.queen/2-0 (nondet) queens.m:32 (queens.m:20)
 mdb> finish
-     161:      3  2 FAIL pred queens.queen/2-0 (nondet) queens.m:46 (queens.m:20)
+     161:      3  2 FAIL pred queens.queen/2-0 (nondet) queens.m:32 (queens.m:20)
 mdb> dd -d 3 -n 7
 Call queen([1, 2, 3, 4, 5], _)
 Unsatisfiable? no
@@ -48,8 +48,8 @@ Complete? yes
 Found partially uncovered atom:
 qperm([1], _)
 Is this a bug? yes
-      60:     16  7 FAIL pred queens.qperm/2-0 (nondet) queens.m:50 (queens.m:54)
+      60:     16  7 FAIL pred queens.qperm/2-0 (nondet) queens.m:38 (queens.m:42)
 mdb> continue
-     161:      3  2 FAIL pred queens.queen/2-0 (nondet) queens.m:46 (queens.m:20)
+     161:      3  2 FAIL pred queens.queen/2-0 (nondet) queens.m:32 (queens.m:20)
 mdb> continue
 No solution

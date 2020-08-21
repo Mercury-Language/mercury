@@ -12,20 +12,18 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 
-main -->
-    io__write_string("rev: "),
-    { rev([5, 6, 7], ListA) },
-    io__write(ListA),
-    io__nl.
+main(!IO) :-
+    io.write_string("rev: ", !IO),
+    rev([5, 6, 7], ListA),
+    io.write_line(ListA, !IO).
 
-:- pred rev(list(T), list(T)).
-:- mode rev(in, out) is det.
+:- pred rev(list(T)::in, list(T)::out) is det.
 
 rev([], []).
 rev([H | T], R) :-

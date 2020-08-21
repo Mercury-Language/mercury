@@ -26,9 +26,9 @@ main(!IO) :-
         NRes = ok(N),
         iota(N, RevData),
         list.reverse(RevData, Data),
-        ( queen(Data, Out) ->
+        ( if queen(Data, Out) then
             print_list(Out, !IO)
-        ;
+        else
             io.write_string("No solution\n", !IO)
         )
     ;
@@ -42,9 +42,9 @@ main(!IO) :-
 :- pred iota(int::in, list(int)::out) is det.
 
 iota(N, List) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         List = []
-    ;
+    else
         iota(N - 1, Tail),
         List = [N | Tail]
     ).
@@ -80,16 +80,16 @@ safe([N | L]) :-
 
 nodiag(_, _, []).
 nodiag(B, D, [N | L]) :-
-    NmB is N - B,
-    BmN is B - N,
-    ( D = NmB ->
+    NmB = N - B,
+    BmN = B - N,
+    ( if D = NmB then
         fail
-    ; D = BmN ->
+    else if D = BmN then
         fail
-    ;
+    else
         true
     ),
-    D1 is D + 1,
+    D1 = D + 1,
     nodiag(B, D1, L).
 
 :- pred print_list(list(int)::in, io::di, io::uo) is det.

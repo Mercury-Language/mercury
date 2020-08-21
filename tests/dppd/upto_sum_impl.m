@@ -31,10 +31,10 @@ sumtrsquaretr(XT, S) :-
 :- pred upto(int::in, int::in, list(int)::out) is det.
 
 upto(M, N, Ms) :-
-    ( M>N ->
+    ( if M > N then
         Ms = []
-    ;
-        M1 is M + 1,
+    else
+        M1 = M + 1,
         upto(M1, N, Ms1),
         Ms = [M | Ms1]
     ).
@@ -48,12 +48,13 @@ sum(Ns, S) :-
 
 sum1([], S, S).
 sum1([N | Ns], A, S) :-
-    A1 is A + N,
+    A1 = A + N,
     sum1(Ns, A1, S).
 
 :- pred square(int::in, int::out) is det.
 
-square(N, SON) :- SON is N * N.
+square(N, SON) :-
+    SON = N * N.
 
 :- pred squares(list(int)::in, list(int)::out) is det.
 
@@ -68,7 +69,7 @@ sumtr(leaf(X), X).
 sumtr(branch(Xt, Yt), S) :-
     sumtr(Xt, SX),
     sumtr(Yt, SY),
-    S is SX + SY.
+    S = SX + SY.
 
 :- pred squaretr(tree(int)::in, tree(int)::out) is det.
 

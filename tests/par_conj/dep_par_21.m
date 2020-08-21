@@ -10,10 +10,13 @@
 
 :- module dep_par_21.
 :- interface.
+
 :- import_module io.
+
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
+
 :- import_module int.
 :- import_module list.
 
@@ -26,11 +29,11 @@ main(!IO) :-
 
 remove(_P, [], []).
 remove(P, [I | Is], Result) :-
-    M is I mod P &
-    ( M = 0 ->
+    M = I mod P &
+    ( if M = 0 then
         Result = Nis &
         remove(P, Is, Nis)
-    ;
+    else
         Result = [I | Nis] &
         remove(P, Is, Nis)
     ).

@@ -8,37 +8,29 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
-
-:- pred main1(int).
-:- mode main1(out) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 :- import_module prolog.
 
-main -->
-    { main1(Out) },
-    io__write_int(Out),
-    io__write_string("\n").
+main(!IO) :-
+    tak(18, 12, 6, Out),
+    io.write_int(Out, !IO),
+    io.write_string("\n", !IO).
 
-main1(Out) :-
-    tak(18, 12, 6, Out).
-
-:- pred tak(int, int, int, int).
-:- mode tak(in, in, in, out) is det.
+:- pred tak(int::in, int::in, int::in, int::out) is det.
 
 tak(X, Y, Z, A) :-
-    ( X =< Y ->
+    ( if X =< Y then
         Z = A
-    ;
-        X1 is X - 1,
+    else
+        X1 = X - 1,
         tak(X1, Y, Z, A1),
-        Y1 is Y - 1,
+        Y1 = Y - 1,
         tak(Y1, Z, X, A2),
-        Z1 is Z - 1,
+        Z1 = Z - 1,
         tak(Z1, X, Y, A3),
         tak(A1, A2, A3, A)
     ).

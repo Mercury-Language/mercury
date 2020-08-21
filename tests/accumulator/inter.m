@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % This is an interleaved version of reverse and length.
-% Tests if we can introduce more then one accumulator.
+% Tests if we can introduce more than one accumulator.
 %
 
 :- module inter.
@@ -12,23 +12,21 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module int.
 
-main -->
-    io__write_string("rl: "),
-    { rl([1, 10, 100], Length, Reverse) },
-    io__write(Length),
-    io__write_string(" "),
-    io__write(Reverse),
-    io__nl.
+main(!IO) :-
+    io.write_string("rl: ", !IO),
+    rl([1, 10, 100], Length, Reverse),
+    io.write(Length, !IO),
+    io.write_string(" ", !IO),
+    io.write_line(Reverse, !IO).
 
-:- pred rl(list(T), int, list(T)).
-:- mode rl(in, out, out) is det.
+:- pred rl(list(T)::in, int::out, list(T)::out) is det.
 
 rl(X, L, R) :-
     X = [],
@@ -37,6 +35,6 @@ rl(X, L, R) :-
 rl(X, L, R) :-
     X = [H | T],
     rl(T, L0, R0),
-    L is L0 + 1,
+    L = L0 + 1,
     Tmp = [H],
     append(R0, Tmp, R).

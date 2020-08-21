@@ -17,17 +17,17 @@
 :- import_module int.
 :- import_module prolog.
 
-s(A+(B+C), D) :-
-    s((A+B)+C, D).
-s(A+B, C) :-
-    s(B+A, C).
-s(X+num(0), X).
-s(X+Y, Z) :-
+s(A + (B + C), D) :-
+    s((A + B) + C, D).
+s(A + B, C) :-
+    s(B + A, C).
+s(X + num(0), X).
+s(X + Y, Z) :-
     s(X, A),
     s(Y, B),
-    s(A+B, Z).
-s(A+B, C) :-
+    s(A + B, Z).
+s(A + B, C) :-
     A = num(Anum),
     B = num(Bnum),
-    Cnum is Anum + Bnum,
+    Cnum = Anum + Bnum,
     C = num(Cnum).

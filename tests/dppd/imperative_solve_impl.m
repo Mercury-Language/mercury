@@ -20,17 +20,18 @@
 :- import_module list.
 :- import_module pair.
 
-power_2_5 --> power(2, 5).
+power_2_5(!Env) :-
+    power(2, 5, !Env).
 
 :- pred store(env::in, var::in, int::in, env::out) is det.
 
 store([], Key, Value, [Key - Value]).
 store([Key0 - Value0 | T0], Key1, Value1, [Key - Value | T]) :-
-    ( Key0 = Key1 ->
+    ( if Key0 = Key1 then
         Key = Key0,
         Value = Value1,
         T = T0
-    ;
+    else
         Key = Key0,
         Value = Value0,
         store(T0, Key1, Value1, T)
@@ -39,9 +40,9 @@ store([Key0 - Value0 | T0], Key1, Value1, [Key - Value | T]) :-
 :- pred lookup(var::in, env::in, int::out) is semidet.
 
 lookup(Key1, [Key2 - Value0 | T], Value) :-
-    ( Key1 = Key2 ->
+    ( if Key1 = Key2 then
         Value = Value0
-    ;
+    else
         lookup(Key1, T, Value)
     ).
 
@@ -122,9 +123,9 @@ eval_test('>='(X, Y), Env, Bool) :-
 :- pred get_bool((pred)::in((pred) is semidet), bool::out) is det.
 
 get_bool(Tst, Res) :-
-    ( call(Tst) ->
+    ( if call(Tst) then
         Res = yes
-    ;
+    else
         Res = no
     ).
 
@@ -144,16 +145,16 @@ eval_expression(var(V), Env, Val) :-
 eval_expression('+'(X, Y), Env, Val) :-
     eval_expression(X, Env, VX),
     eval_expression(Y, Env, VY),
-    Val is VX + VY.
+    Val = VX + VY.
 eval_expression('-'(X, Y), Env, Val) :-
     eval_expression(X, Env, VX),
     eval_expression(Y, Env, VY),
-    Val is VX - VY.
+    Val = VX - VY.
 eval_expression('*'(X, Y), Env, Val) :-
     eval_expression(X, Env, VX),
     eval_expression(Y, Env, VY),
-    Val is VX * VY.
+    Val = VX * VY.
 eval_expression('/'(X, Y), Env, Val) :-
     eval_expression(X, Env, VX),
     eval_expression(Y, Env, VY),
-    Val is VX // VY.
+    Val = VX // VY.

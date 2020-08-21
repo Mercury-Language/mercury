@@ -4,6 +4,7 @@
 %
 % Implementation of a commutative predicate which is not associative,
 % it should not have accumulators introduced.
+%
 
 :- module commutative.
 
@@ -11,19 +12,21 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 
-:- type t ---> a ; b ; c.
+:- type t
+    --->    a
+    ;       b
+    ;       c.
 
-main -->
-    io__write_string("p: "),
-    { p([a, b, c], R) },
-    io__write(R),
-    io__nl.
+main(!IO) :-
+    io.write_string("p: ", !IO),
+    p([a, b, c], R),
+    io.write_line(R, !IO).
 
 :- pred p(list(t)::in, t::out) is det.
 
@@ -32,10 +35,9 @@ p([H | T], R) :-
     p(T, R0),
     c(H, R0, R).
 
-    % We define the operator c which is commutative, but
-    % not associative.
+    % We declare c to be commutative, but not to be associative.
+    %
 :- pred c(t::in, t::in, t::out) is det.
-
 :- promise all [A, B, C] ( c(A, B, C) <=> c(B, A, C) ).
 
 c(a, a, a).

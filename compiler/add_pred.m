@@ -244,23 +244,36 @@ module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl, MaybePredProcId,
             % there are no arguments whose mode needs to be declared.
             PredOrFunc = pf_predicate,
             Types = [_ | _],
-            % The declaration of "is" looks like this:
-            %   :- pred is(T, T) is det.
-            % We can't just delete "is det" part, because if we do, the
-            % compiler will think that the predicate name "is" is introducing
-            % a determinism, which yields a syntax error.
-            PredSymName \= qualified(mercury_int_module, "is"),
+
             % Don't generate an error message unless the predicate is defined
             % in this module.
             pred_status_defined_in_this_module(PredStatus) = yes
         then
-            DetPieces = [words("Error: predicate"),
-                unqual_sym_name_arity(sym_name_arity(PredSymName, Arity)),
-                words("declares a determinism without declaring"),
-                words("the modes of its arguments."), nl],
-            DetSpec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, DetPieces),
-            !:Specs = [DetSpec | !.Specs]
+            % The declaration of "is" looks like this:
+            %   :- pred is(T, T) is det.
+            % We can't just delete "is det" part, because if we do, the
+            % compiler will think that the predicate name "is" is introducing
+            % a determinism, which yields a syntax error. We also cannot add
+            % the argument modes, since "is" has both unique and non-unique
+            % modes.
+            % "is" used to be defined in int.m, but is now defined in prolog.m.
+            ( if
+                PredSymName = qualified(PredModuleName, "is"),
+                ( PredModuleName = mercury_int_module
+                ; PredModuleName =
+                    mercury_std_lib_module_name(unqualified("prolog"))
+                )
+            then
+                true
+            else
+                DetPieces = [words("Error: predicate"),
+                    unqual_sym_name_arity(sym_name_arity(PredSymName, Arity)),
+                    words("declares a determinism without declaring"),
+                    words("the modes of its arguments."), nl],
+                DetSpec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context, DetPieces),
+                !:Specs = [DetSpec | !.Specs]
+            )
         else
             true
         )
