@@ -304,7 +304,8 @@ type_contains_subtype(ModuleInfo, FromType, ToType) :-
     % duration of the analysis.
     %
 :- pragma memo(type_contains_subtype_1/4,
-    [allow_reset, specified([promise_implied, value, value, output])]).
+    [allow_reset, disable_warning_if_ignored,
+    specified([promise_implied, value, value, output])]).
 
 type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains) :-
     queue.put(FromType, queue.init, Queue0),
@@ -347,7 +348,8 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
     is det.
 
 :- pragma memo(type_arg_types/3,
-    [allow_reset, specified([promise_implied, value, output])]).
+    [allow_reset, disable_warning_if_ignored,
+    specified([promise_implied, value, output])]).
 
 type_arg_types(ModuleInfo, Type, ArgTypes) :-
     solutions(
@@ -417,7 +419,8 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
     ).
 
 :- pragma memo(normalize_selector_with_type_information/4,
-    [allow_reset, specified([promise_implied, value, value, output])]).
+    [allow_reset, disable_warning_if_ignored,
+    specified([promise_implied, value, value, output])]).
 
 normalize_selector_with_type_information(ModuleInfo, Type, !Selector) :-
     ( if is_introduced_type_info_type(Type) then

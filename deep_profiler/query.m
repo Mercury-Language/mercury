@@ -1299,9 +1299,9 @@ exec(Cmd, Prefs, Deep, HTMLStr) :-
 
 slow_cmd(deep_cmd_recursion_types_frequency).
 
-:- pragma memo(create_and_memoize_report(in, in, out),
-    [specified([value, addr, output])]).
 :- pred create_and_memoize_report(cmd::in, deep::in, deep_report::out) is det.
+:- pragma memo(create_and_memoize_report(in, in, out),
+    [disable_warning_if_ignored, specified([value, addr, output])]).
 
 create_and_memoize_report(Cmd, Deep, Report) :-
     create_report(Cmd, Deep, Report).

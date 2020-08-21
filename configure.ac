@@ -604,7 +604,7 @@ EOF
             --grade none.gc \
             --warn-insts-without-matching-type \
             --warn-known-bad-format-calls \
-            --unsigned-lt-2020-05-25 \
+            --may-ignore-without-warning-2020-08-18 \
             --no-detect-libgrades \
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \
