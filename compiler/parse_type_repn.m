@@ -40,7 +40,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.parse_pragma.
+:- import_module parse_tree.parse_pragma_foreign.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_defn.

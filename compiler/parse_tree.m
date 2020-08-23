@@ -38,6 +38,9 @@
    :- include_module parse_item.
    :- include_module parse_mutable.
    :- include_module parse_pragma.
+   :- include_module parse_pragma_analysis.
+   :- include_module parse_pragma_foreign.
+   :- include_module parse_pragma_tabling.
    :- include_module parse_sym_name.
    :- include_module parse_type_defn.
    :- include_module parse_type_name.

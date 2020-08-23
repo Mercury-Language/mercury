@@ -473,12 +473,17 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
 
 parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
         SeqNum, QuantType, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
-    ( if ArgTerms = [VarsTerm, SubTerm] then
+    (
+        ArgTerms = [VarsTerm, SubTerm],
         QuantAttr = qca_quant_vars(QuantType, VarsTerm),
         !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, QuantAttr),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
             SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
-    else
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_]
+        ; ArgTerms = [_, _, _ | _]
+        ),
         Pieces = [words("Error: the keyword"), quote(Functor),
             words("may appear in declarations"),
             words("only to denote the quantification"),
@@ -496,12 +501,17 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
 parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
         Context, SeqNum, QuantType, !.PurityAttrs, !.QuantConstrAttrs,
         MaybeIOM) :-
-    ( if ArgTerms = [SubTerm, ConstraintsTerm] then
+    (
+        ArgTerms = [SubTerm, ConstraintsTerm],
         ConstrAttr = qca_constraint(QuantType, ConstraintsTerm),
         !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, ConstrAttr),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
             SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
-    else
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_]
+        ; ArgTerms = [_, _, _ | _]
+        ),
         Pieces = [words("Error: the symbol"), quote(Functor),
             words("may appear in declarations only to introduce"),
             words("a constraint or a conjunction of constraints."), nl],
@@ -518,12 +528,16 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
 parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
         Context, SeqNum, Purity, !.PurityAttrs, !.QuantConstrAttrs,
         MaybeIOM) :-
-    ( if ArgTerms = [SubTerm] then
+    (
+        ArgTerms = [SubTerm],
         PurityAttr = purity_attr(Purity),
         !:PurityAttrs = cord.snoc(!.PurityAttrs, PurityAttr),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
             SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
-    else
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_, _ | _]
+        ),
         Pieces = [words("Error: the symbol"), quote(Functor),
             words("may appear only as an annotation"),
             words("in front of a predicate or function declaration."), nl],
@@ -637,8 +651,10 @@ parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context,
         ),
         Parser = parse_module_name(VarSet)
     ),
-    ( if ArgTerms = [ModuleNamesTerm] then
-        parse_one_or_more(Parser, ModuleNamesTerm, MaybeModuleNames),
+    (
+        ArgTerms = [ModuleNamesTerm],
+        parse_comma_separated_one_or_more(Parser, ModuleNamesTerm,
+            MaybeModuleNames),
         (
             MaybeModuleNames = ok1(ModuleNames),
             ModuleNames = one_or_more(HeadModuleName, TailModuleNames),
@@ -669,7 +685,10 @@ parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context,
             MaybeModuleNames = error1(Specs),
             MaybeIOM = error1(Specs)
         )
-    else
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_, _ | _]
+        ),
         (
             ( IIU = iiu_include_module
             ; IIU = iiu_import_module
@@ -720,7 +739,8 @@ make_item_avail_use(Context, SeqNum, ModuleName, Avail) :-
 
 parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
         SeqNum, AllowModeDefn, QuantConstrAttrs, MaybeIOM) :-
-    ( if ArgTerms = [SubTerm] then
+    (
+        ArgTerms = [SubTerm],
         ( if
             SubTerm = term.functor(term.atom("=="), [HeadTerm, BodyTerm], _),
             % If AllowModeDefn = allow_mode_decl_only, then we expect SubTerm
@@ -736,7 +756,10 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
             parse_mode_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
                 SeqNum, QuantConstrAttrs, MaybeIOM)
         )
-    else
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_, _ | _]
+        ),
         Pieces = [words("Error: a"), decl("mode"), words("declaration"),
             words("should have just one argument,"),
             words("which should be either the definition of a mode,"),
@@ -755,9 +778,8 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
 
 parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
         Context, _SeqNum, MaybeIOM) :-
-    ( if
-        ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm]
-    then
+    (
+        ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
         ( if decimal_term_to_int(VersionNumberTerm, VersionNumber) then
             ( if VersionNumber = version_numbers_version_number then
                 ( if try_parse_symbol_name(ModuleNameTerm, ModuleName) then
@@ -796,7 +818,12 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                 phase_term_to_parse_tree, VersionNumberContext, Pieces),
             MaybeIOM = error1([Spec])
         )
-    else
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_]
+        ; ArgTerms = [_, _]
+        ; ArgTerms = [_, _, _, _ | _]
+        ),
         Pieces = [words("Error: a"), decl(Functor), words("declaration"),
             words("should have exactly three arguments,"),
             words("which should be a version number,"),
@@ -888,7 +915,8 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
 parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
         IsInClass, Context, SeqNum, PredOrFunc, PurityAttrs, QuantConstrAttrs,
         MaybeIOM) :-
-    ( if ArgTerms = [Term] then
+    (
+        ArgTerms = [Term],
         (
             IsInClass = decl_is_in_class,
             PredOrFuncDeclPieces = [words("type class"), p_or_f(PredOrFunc),
@@ -960,7 +988,10 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
                 ++ get_any_errors1(MaybeWithType),
             MaybeIOM = error1(Specs)
         )
-    else
+    ;
+        ( ArgTerms = []
+        ; ArgTerms = [_, _ | _]
+        ),
         % Should we mention the determinism? It is allowed only
         % in predicate declarations that specify the modes, so the
         % wording required would probably be more confusing than helpful.
@@ -1472,7 +1503,7 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
                 MaybePredOrFunc = yes(pf_predicate)
             ;
                 WithInst = yes(_),
-                % We don't know whether it's a predicate or a function
+                % We don't know whether it is a predicate or a function
                 % until we expand out the inst.
                 MaybePredOrFunc = no
             ),
@@ -1861,11 +1892,9 @@ parse_determinism_suffix(VarSet, ContextPieces, Term, BeforeDetismTerm,
             MaybeMaybeDetism = ok1(yes(Detism))
         else
             DetismTermStr = describe_error_term(VarSet, DetismTerm),
-            Pieces = cord.list(ContextPieces) ++ [
-                lower_case_next_if_not_first,
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: invalid determinism category"),
-                quote(DetismTermStr), suffix("."), nl
-            ],
+                quote(DetismTermStr), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree,
                 get_term_context(DetismTerm), Pieces),

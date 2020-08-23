@@ -318,6 +318,15 @@ as well as typeclass and inst constraints on other declaration
 (such as predicate declarations).
 <li>
 parse_pragma.m parses pragma declarations.
+It subcontracts some of its work to other modules:
+<ul>
+<li>
+parse_pragma_analysis.m parses pragmas that record analysis results;
+<li>
+parse_pragma_foreign.m parses pragmas that deal with foreign languages; and
+<li>
+parse_pragma_tabling.m parses tabling pragmas.
+</ul>
 <li>
 parse_mutable.m parses initialize, finalize and mutable declarations.
 <li>

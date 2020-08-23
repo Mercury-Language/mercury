@@ -34,6 +34,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module cord.
 :- import_module list.
@@ -65,6 +66,18 @@
 :- pred parse_pred_or_func_and_args_general(maybe(module_name)::in,
     term(T)::in, varset(T)::in, cord(format_component)::in,
     maybe_pred_or_func(term(T))::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred parse_arity_or_modes(module_name::in, term::in, term::in, varset::in,
+    cord(format_component)::in, maybe1(pred_name_arity_mpf_mmode)::out) is det.
+
+:- type maybe_pred_or_func_modes ==
+    maybe3(sym_name, pred_or_func, list(mer_mode)).
+
+:- pred parse_pred_or_func_and_arg_modes(maybe(module_name)::in,
+    varset::in, cord(format_component)::in, term::in,
+    maybe_pred_or_func_modes::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -107,13 +120,31 @@
     % Parse a comma-separated list (misleading described as a "conjunction")
     % of things.
     %
-:- pred parse_one_or_more(parser(T)::parser, term::in,
+:- pred parse_comma_separated_one_or_more(parser(T)::parser, term::in,
     maybe1(one_or_more(T))::out) is det.
-:- pred parse_list(parser(T)::parser, term::in,
+:- pred parse_comma_separated_list(parser(T)::parser, term::in,
     maybe1(list(T))::out) is det.
 
 :- pred map_parser(parser(T)::parser, list(term)::in, maybe1(list(T))::out)
     is det.
+
+%---------------------------------------------------------------------------%
+
+    % parse_list_elements(What, VarSet, Term, Pred, Result):
+    %
+    % Convert Term into a list of elements, where Pred converts each element
+    % of the list into the correct type. Result will hold the list if the
+    % conversion succeeded for each every of M, otherwise it will hold
+    % the errors resulting from the failed conversion attempts.
+    %
+    % This predicate generates error messages for malformed lists. To do that,
+    % it uses the What argument, which should have the form "a list of xyzs".
+    % The job of generating error messages for any malformed elements
+    % is up to Pred.
+    %
+:- pred parse_list_elements(string::in,
+    pred(varset, term, maybe1(T))::(pred(in, in, out) is det),
+    varset::in, term::in, maybe1(list(T))::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -140,11 +171,21 @@
     list(conflict(T))::in, list(T)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred parse_decimal_int(cord(format_component)::in, varset::in, term::in,
+    maybe1(int)::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_mode.
+
+:- import_module int.
 
 %---------------------------------------------------------------------------%
 
@@ -216,6 +257,96 @@ parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
     ).
 
 %---------------------------------------------------------------------------%
+
+parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
+        ContextPieces, MaybeArityOrModes) :-
+    ( if
+        % Is this a simple pred/arity pragma.
+        PredAndModesTerm0 = term.functor(term.atom("/"),
+            [PredNameTerm, ArityTerm], _)
+    then
+        ( if
+            try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
+                PredNameTerm, PredName),
+            decimal_term_to_int(ArityTerm, Arity)
+        then
+            MaybeArityOrModes = ok1(pred_name_arity_mpf_mmode(PredName,
+                Arity, no, no))
+        else
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: expected predname/arity."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(ErrorTerm), Pieces),
+            MaybeArityOrModes = error1([Spec])
+        )
+    else
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
+            ContextPieces, PredAndModesTerm0, MaybePredAndModes),
+        (
+            MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
+            list.length(Modes, Arity0),
+            (
+                PredOrFunc = pf_function,
+                Arity = Arity0 - 1
+            ;
+                PredOrFunc = pf_predicate,
+                Arity = Arity0
+            ),
+            ArityOrModes = pred_name_arity_mpf_mmode(PredName, Arity,
+                yes(PredOrFunc), yes(Modes)),
+            MaybeArityOrModes = ok1(ArityOrModes)
+        ;
+            MaybePredAndModes = error3(Specs),
+            MaybeArityOrModes = error1(Specs)
+        )
+    ).
+
+parse_pred_or_func_and_arg_modes(MaybeModuleName, VarSet, ContextPieces,
+        PredAndModesTerm, MaybeNameAndModes) :-
+    parse_pred_or_func_and_args_general(MaybeModuleName, PredAndModesTerm,
+        VarSet, ContextPieces, MaybePredAndArgs),
+    (
+        MaybePredAndArgs = ok2(PredName, ArgModeTerms - MaybeRetModeTerm),
+        (
+            MaybeRetModeTerm = no,
+            parse_modes(allow_constrained_inst_var, VarSet, ContextPieces,
+                ArgModeTerms, MaybeArgModes),
+            (
+                MaybeArgModes = ok1(ArgModes),
+                % For predicates, we don't call constrain_inst_vars_in_mode
+                % on ArgModes. XXX Why precisely?
+                MaybeNameAndModes = ok3(PredName, pf_predicate, ArgModes)
+            ;
+                MaybeArgModes = error1(Specs),
+                MaybeNameAndModes = error3(Specs)
+            )
+        ;
+            MaybeRetModeTerm = yes(RetModeTerm),
+            parse_modes(allow_constrained_inst_var, VarSet, ContextPieces,
+                ArgModeTerms, MaybeArgModes0),
+            RetContextPieces = ContextPieces ++
+                cord.singleton(words("in the return value:")),
+            parse_mode(allow_constrained_inst_var, VarSet, RetContextPieces,
+                RetModeTerm, MaybeRetMode),
+            ( if
+                MaybeArgModes0 = ok1(ArgModes0),
+                MaybeRetMode = ok1(RetMode)
+            then
+                ArgModes1 = ArgModes0 ++ [RetMode],
+                list.map(constrain_inst_vars_in_mode, ArgModes1, ArgModes),
+                MaybeNameAndModes = ok3(PredName, pf_function, ArgModes)
+            else
+                Specs = get_any_errors1(MaybeArgModes0)
+                    ++ get_any_errors1(MaybeRetMode),
+                MaybeNameAndModes = error3(Specs)
+            )
+        )
+    ;
+        MaybePredAndArgs = error2(Specs),
+        MaybeNameAndModes = error3(Specs)
+    ).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 list_term_to_term_list(Term, Terms) :-
@@ -280,11 +411,11 @@ binop_term_to_one_or_more_loop(Op, Term, List0, OneOrMore) :-
 
 %---------------------------------------------------------------------------%
 
-parse_one_or_more(Parser, Term, Result) :-
+parse_comma_separated_one_or_more(Parser, Term, Result) :-
     conjunction_to_one_or_more(Term, one_or_more(Head, Tail)),
     map_parser_one_or_more(Parser, Head, Tail, Result).
 
-parse_list(Parser, Term, Result) :-
+parse_comma_separated_list(Parser, Term, Result) :-
     conjunction_to_list(Term, List),
     map_parser(Parser, List, Result).
 
@@ -348,6 +479,52 @@ map_parser(Parser, [Head | Tail], Result) :-
 
 %---------------------------------------------------------------------------%
 
+parse_list_elements(What, Pred, VarSet, Term, Result) :-
+    (
+        Term = term.variable(_, _),
+        make_expected_got_spec(VarSet, What, Term, Spec),
+        Result = error1([Spec])
+    ;
+        Term = term.functor(Functor, Args, _Context),
+        ( if
+            Functor = term.atom("[|]"),
+            Args = [HeadTerm, TailTerm]
+        then
+            Pred(VarSet, HeadTerm, HeadResult),
+            parse_list_elements(What, Pred, VarSet, TailTerm, TailResult),
+            ( if
+                HeadResult = ok1(HeadElement),
+                TailResult = ok1(TailElements)
+            then
+                Result = ok1([HeadElement | TailElements])
+            else
+                Specs = get_any_errors1(HeadResult) ++
+                    get_any_errors1(TailResult),
+                Result = error1(Specs)
+            )
+        else if
+            Functor = term.atom("[]"),
+            Args = []
+        then
+            Result = ok1([])
+        else
+            make_expected_got_spec(VarSet, What, Term, Spec),
+            Result = error1([Spec])
+        )
+    ).
+
+:- pred make_expected_got_spec(varset::in, string::in, term::in,
+    error_spec::out) is det.
+
+make_expected_got_spec(VarSet, What, Term, Spec) :-
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = [words("Error: expected"), words(What), suffix(","),
+        words("got"), quote(TermStr), suffix("."), nl],
+    Spec = simplest_spec($pred, severity_error,
+        phase_term_to_parse_tree, get_term_context(Term), Pieces).
+
+%---------------------------------------------------------------------------%
+
 report_any_conflicts(Context, ConflictingWhatInWhat, Conflicts, Specified,
         Specs) :-
     list.foldl(
@@ -372,6 +549,21 @@ accumulate_conflict_specs(Context, ConflictingWhatInWhat, Specified,
         !:Specs = [Spec | !.Specs]
     else
         true
+    ).
+
+%---------------------------------------------------------------------------%
+
+parse_decimal_int(ContextPieces, VarSet, Term, MaybeInt) :-
+    ( if decimal_term_to_int(Term, Int) then
+        MaybeInt = ok1(Int)
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: expected a decimal integer,"),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        MaybeInt = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%
