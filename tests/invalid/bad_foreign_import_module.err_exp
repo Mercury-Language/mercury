@@ -1,13 +1,20 @@
 bad_foreign_import_module.m:018: Error: a `:- pragma foreign_import_module'
 bad_foreign_import_module.m:018:   declaration must have two arguments.
-bad_foreign_import_module.m:022: In first argument of
+bad_foreign_import_module.m:022: In the first argument of
 bad_foreign_import_module.m:022:   `:- pragma foreign_import_module'
-bad_foreign_import_module.m:022:   declaration: error: invalid foreign language
-bad_foreign_import_module.m:022:   `"InvalidForeignLang"'.
-bad_foreign_import_module.m:027: In first argument of
+bad_foreign_import_module.m:022:   declaration:
+bad_foreign_import_module.m:022:   error: expected the name of a foreign
+bad_foreign_import_module.m:022:   language, got `"InvalidForeignLang"'.
+bad_foreign_import_module.m:022:   The valid languages are c, C, csharp, C#,
+bad_foreign_import_module.m:022:   erlang, Erlang, java and Java.
+bad_foreign_import_module.m:027: In the first argument of
 bad_foreign_import_module.m:027:   `:- pragma foreign_import_module'
-bad_foreign_import_module.m:027:   declaration: error: invalid foreign language
-bad_foreign_import_module.m:027:   `"InvalidForeignLang"'.
-bad_foreign_import_module.m:028: Error: invalid module name `int(int)' in
+bad_foreign_import_module.m:027:   declaration:
+bad_foreign_import_module.m:027:   error: expected the name of a foreign
+bad_foreign_import_module.m:027:   language, got `"InvalidForeignLang"'.
+bad_foreign_import_module.m:027:   The valid languages are c, C, csharp, C#,
+bad_foreign_import_module.m:027:   erlang, Erlang, java and Java.
+bad_foreign_import_module.m:028: In the second argument of
 bad_foreign_import_module.m:028:   `:- pragma foreign_import_module'
-bad_foreign_import_module.m:028:   declaration.
+bad_foreign_import_module.m:028:   declaration:
+bad_foreign_import_module.m:028:   error: expected module name, got `int(int)'.

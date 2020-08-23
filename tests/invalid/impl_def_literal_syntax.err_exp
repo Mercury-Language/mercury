@@ -1,23 +1,26 @@
 impl_def_literal_syntax.m:011: Error: no clauses for predicate `g'/2.
 impl_def_literal_syntax.m:012: Error: no clauses for predicate `h'/2.
-impl_def_literal_syntax.m:014: In `:- pred' declaration: in the first argument:
+impl_def_literal_syntax.m:014: In `:- pred' declaration:
+impl_def_literal_syntax.m:014:   in the first argument:
 impl_def_literal_syntax.m:014:   error: `$file' is not a type.
-impl_def_literal_syntax.m:015: In `:- pred' declaration: error: atom expected
-impl_def_literal_syntax.m:015:   at $pred.
+impl_def_literal_syntax.m:015: In `:- pred' declaration:
+impl_def_literal_syntax.m:015:   error: expected a symbol name, got `$pred'.
 impl_def_literal_syntax.m:016: Syntax error at token 'u': operator or `.'
 impl_def_literal_syntax.m:016:   expected.
-impl_def_literal_syntax.m:017: In `:- pred' declaration: in the first argument:
+impl_def_literal_syntax.m:017: In `:- pred' declaration:
+impl_def_literal_syntax.m:017:   in the first argument:
 impl_def_literal_syntax.m:017:   error: `$file' is not a valid inst.
 impl_def_literal_syntax.m:022: Error: symbol name expected at $file.
-impl_def_literal_syntax.m:024: In clause head: error: atom expected at $line.
+impl_def_literal_syntax.m:024: In clause head:
+impl_def_literal_syntax.m:024:   error: expected a symbol name, got `$line'.
 impl_def_literal_syntax.m:027: In the definition of the inst `myinst': error:
 impl_def_literal_syntax.m:027:   an implementation defined literal such as
 impl_def_literal_syntax.m:027:   `$file' may not be a used as a bound inst.
 impl_def_literal_syntax.m:030: In the definition of the inst `myinst2': error:
 impl_def_literal_syntax.m:030:   `$file' is not a valid inst.
 impl_def_literal_syntax.m:032: Error: inst parameters must be variables.
-impl_def_literal_syntax.m:034: In inst definition: error: atom expected at
-impl_def_literal_syntax.m:034:   $file.
+impl_def_literal_syntax.m:034: In inst definition: error: expected a symbol
+impl_def_literal_syntax.m:034:   name, got `$file'.
 impl_def_literal_syntax.m:041: Syntax error at token 'file': expected `,', `)',
 impl_def_literal_syntax.m:041:   or operator.
 impl_def_literal_syntax.m:044: Syntax error at token 'file': expected `,', `)',

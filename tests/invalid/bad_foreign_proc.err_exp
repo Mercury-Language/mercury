@@ -2,28 +2,40 @@ bad_foreign_proc.m:017: Error: a `:- pragma foreign_proc' declaration must have
 bad_foreign_proc.m:017:   four arguments.
 bad_foreign_proc.m:021: Error: a `:- pragma foreign_proc' declaration must have
 bad_foreign_proc.m:021:   four arguments.
-bad_foreign_proc.m:030: In first argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:030:   declaration: error: invalid foreign language
+bad_foreign_proc.m:030: In the first argument of `:- pragma foreign_proc'
+bad_foreign_proc.m:030:   declaration:
+bad_foreign_proc.m:030:   error: expected the name of a foreign language, got
 bad_foreign_proc.m:030:   `"InvalidLanuage"'.
+bad_foreign_proc.m:030:   The valid languages are c, C, csharp, C#, erlang,
+bad_foreign_proc.m:030:   Erlang, java and Java.
 bad_foreign_proc.m:039: In the second argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:039:   declaration: error: atom expected at "foo".
+bad_foreign_proc.m:039:   declaration:
+bad_foreign_proc.m:039:   error: expected a symbol name, got `"foo"'.
 bad_foreign_proc.m:043: In the third argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:043:   declaration: error: expected an attribute list, found
-bad_foreign_proc.m:043:   "promise_pure".
+bad_foreign_proc.m:043:   declaration:
+bad_foreign_proc.m:043:   error: expected an attribute list, got
+bad_foreign_proc.m:043:   `"promise_pure"'.
 bad_foreign_proc.m:053: In the third argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:053:   declaration: error: conflicting attributes in
-bad_foreign_proc.m:053:   attribute list.
+bad_foreign_proc.m:053:   declaration:
+bad_foreign_proc.m:053:   error: conflicting attributes in attribute list.
 bad_foreign_proc.m:060: In the fourth argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:060:   declaration: error: expected a string containing
-bad_foreign_proc.m:060:   foreign code, got `5555'.
-bad_foreign_proc.m:065: In first argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:065:   declaration: error: invalid foreign language
+bad_foreign_proc.m:060:   declaration:
+bad_foreign_proc.m:060:   error: expected a string containing foreign code, got
+bad_foreign_proc.m:060:   `5555'.
+bad_foreign_proc.m:065: In the first argument of `:- pragma foreign_proc'
+bad_foreign_proc.m:065:   declaration:
+bad_foreign_proc.m:065:   error: expected the name of a foreign language, got
 bad_foreign_proc.m:065:   `"InvalidLanguage"'.
+bad_foreign_proc.m:065:   The valid languages are c, C, csharp, C#, erlang,
+bad_foreign_proc.m:065:   Erlang, java and Java.
 bad_foreign_proc.m:066: In the second argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:066:   declaration: error: atom expected at "foo".
+bad_foreign_proc.m:066:   declaration:
+bad_foreign_proc.m:066:   error: expected a symbol name, got `"foo"'.
 bad_foreign_proc.m:067: In the third argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:067:   declaration: error: expected an attribute list, found
-bad_foreign_proc.m:067:   "promise_pure".
+bad_foreign_proc.m:067:   declaration:
+bad_foreign_proc.m:067:   error: expected an attribute list, got
+bad_foreign_proc.m:067:   `"promise_pure"'.
 bad_foreign_proc.m:068: In the fourth argument of `:- pragma foreign_proc'
-bad_foreign_proc.m:068:   declaration: error: expected a string containing
-bad_foreign_proc.m:068:   foreign code, got `6666'.
+bad_foreign_proc.m:068:   declaration:
+bad_foreign_proc.m:068:   error: expected a string containing foreign code, got
+bad_foreign_proc.m:068:   `6666'.

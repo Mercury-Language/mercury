@@ -71,6 +71,7 @@ SINGLEMODULE= \
 	bad_item_in_interface \
 	bad_module_name \
 	bad_mutable \
+	bad_pragma \
 	bad_pred_arity \
 	bad_sv_unify_msg \
 	bad_with_inst \

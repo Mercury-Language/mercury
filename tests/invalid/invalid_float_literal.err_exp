@@ -18,16 +18,21 @@ invalid_float_literal.m:029: Syntax error at token `. ': unexpected token at
 invalid_float_literal.m:029:   start of (sub)term.
 invalid_float_literal.m:029: Syntax error: unterminated exponent in float
 invalid_float_literal.m:029:   literal.
-invalid_float_literal.m:031: In clause head: error: atom expected at 12.
+invalid_float_literal.m:031: In clause head:
+invalid_float_literal.m:031:   error: expected a symbol name, got `12'.
 invalid_float_literal.m:031: Syntax error: underscore before exponent.
-invalid_float_literal.m:033: In clause head: error: atom expected at _12.
+invalid_float_literal.m:033: In clause head:
+invalid_float_literal.m:033:   error: expected a symbol name, got `_12'.
 invalid_float_literal.m:033: Syntax error: unterminated exponent in float
 invalid_float_literal.m:033:   literal.
-invalid_float_literal.m:035: In clause head: error: atom expected at _123.
+invalid_float_literal.m:035: In clause head:
+invalid_float_literal.m:035:   error: expected a symbol name, got `_123'.
 invalid_float_literal.m:035: Syntax error: unterminated decimal literal.
-invalid_float_literal.m:037: In clause head: error: atom expected at 123.
+invalid_float_literal.m:037: In clause head:
+invalid_float_literal.m:037:   error: expected a symbol name, got `123'.
 invalid_float_literal.m:037: Syntax error: underscore following decimal point.
-invalid_float_literal.m:039: In clause head: error: atom expected at 123.
+invalid_float_literal.m:039: In clause head:
+invalid_float_literal.m:039:   error: expected a symbol name, got `123'.
 invalid_float_literal.m:039: Syntax error: unterminated decimal literal.
 invalid_float_literal.m:041: Error: clause for predicate `-'/2
 invalid_float_literal.m:041:   without corresponding `:- pred' declaration.
@@ -39,11 +44,14 @@ invalid_float_literal.m:043:   without corresponding `:- pred' declaration.
 invalid_float_literal.m:043: Inferred :- pred +(T1, int).
 invalid_float_literal.m:043: Syntax error: unterminated exponent in float
 invalid_float_literal.m:043:   literal.
-invalid_float_literal.m:045: In clause head: error: atom expected at 12.
+invalid_float_literal.m:045: In clause head:
+invalid_float_literal.m:045:   error: expected a symbol name, got `12'.
 invalid_float_literal.m:045: Syntax error: underscore before exponent.
-invalid_float_literal.m:047: In clause head: error: atom expected at _12.
+invalid_float_literal.m:047: In clause head:
+invalid_float_literal.m:047:   error: expected a symbol name, got `_12'.
 invalid_float_literal.m:047: Syntax error: unterminated exponent in float
 invalid_float_literal.m:047:   literal.
-invalid_float_literal.m:049: In clause head: error: atom expected at _12.
+invalid_float_literal.m:049: In clause head:
+invalid_float_literal.m:049:   error: expected a symbol name, got `_12'.
 invalid_float_literal.m:049: Syntax error: unterminated exponent in float
 invalid_float_literal.m:049:   literal.

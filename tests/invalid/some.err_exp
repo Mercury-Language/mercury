@@ -1,5 +1,6 @@
-some.m:010: In `:- pred' declaration: in first argument of `some': expected a
-some.m:010:   list of variables, got `junk'.
+some.m:010: In `:- pred' declaration:
+some.m:010:   in first argument of `some':
+some.m:010:   expected a list of variables, got `junk'.
 some.m:017: In first argument of `some': expected a list of variables and/or
 some.m:017:   state variables, got `junk'.
 some.m:019: In first argument of `some': expected a list of variables and/or

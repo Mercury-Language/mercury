@@ -1,23 +1,39 @@
 bad_foreign_enum.m:044: Error: a `:- pragma foreign_enum' declaration must have
 bad_foreign_enum.m:044:   exactly three arguments.
-bad_foreign_enum.m:048: Error: expected a non-empty list mapping constructors
-bad_foreign_enum.m:048:   to foreign values in `:- pragma foreign_enum'
-bad_foreign_enum.m:048:   declaration.
-bad_foreign_enum.m:048: In first argument of `:- pragma foreign_enum'
-bad_foreign_enum.m:048:   declaration: error: invalid foreign language
+bad_foreign_enum.m:048: In the first argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:048:   declaration:
+bad_foreign_enum.m:048:   error: expected the name of a foreign language, got
 bad_foreign_enum.m:048:   `"InvalidLanguage"'.
-bad_foreign_enum.m:052: In second argument of `:- pragma foreign_enum'
-bad_foreign_enum.m:052:   declaration: error: expected name/arity for type, got
+bad_foreign_enum.m:048:   The valid languages are c, C, csharp, C#, erlang,
+bad_foreign_enum.m:048:   Erlang, java and Java.
+bad_foreign_enum.m:048: In the third argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:048:   declaration:
+bad_foreign_enum.m:048:   error: the list mapping constructors to foreign
+bad_foreign_enum.m:048:   values must not be empty.
+bad_foreign_enum.m:052: In the second argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:052:   declaration:
+bad_foreign_enum.m:052:   error: expected `type_name/type_arity', got
 bad_foreign_enum.m:052:   `vegetable'.
-bad_foreign_enum.m:059: In first argument of `:- pragma foreign_enum'
-bad_foreign_enum.m:059:   declaration: error: invalid foreign language
+bad_foreign_enum.m:059: In the first argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:059:   declaration:
+bad_foreign_enum.m:059:   error: expected the name of a foreign language, got
 bad_foreign_enum.m:059:   `"InvalidLanguage"'.
-bad_foreign_enum.m:060: In second argument of `:- pragma foreign_enum'
-bad_foreign_enum.m:060:   declaration: error: expected name/arity for type, got
-bad_foreign_enum.m:060:   `meat'.
-bad_foreign_enum.m:061: Error: expected a non-empty list mapping constructors
-bad_foreign_enum.m:061:   to foreign values in `:- pragma foreign_enum'
-bad_foreign_enum.m:061:   declaration.
-bad_foreign_enum.m:067: Error: expected a valid mapping element, not `chicken'.
+bad_foreign_enum.m:059:   The valid languages are c, C, csharp, C#, erlang,
+bad_foreign_enum.m:059:   Erlang, java and Java.
+bad_foreign_enum.m:060: In the second argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:060:   declaration:
+bad_foreign_enum.m:060:   error: expected `type_name/type_arity', got `meat'.
+bad_foreign_enum.m:061: In the third argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:061:   declaration:
+bad_foreign_enum.m:061:   error: the list mapping constructors to foreign
+bad_foreign_enum.m:061:   values must not be empty.
+bad_foreign_enum.m:067: Error: expected a mapping element of the form
+bad_foreign_enum.m:067:   `possibly_qualified_name - string', got `chicken'.
 bad_foreign_enum.m:074: In `:- pragma foreign_enum' mapping constructor name:
 bad_foreign_enum.m:074:   error: atom expected at "goose".
+bad_foreign_enum.m:081: Error: expected a mapping element of the form
+bad_foreign_enum.m:081:   `possibly_qualified_name - string', got `"goose"'.
+bad_foreign_enum.m:082: Error: expected a mapping element of the form
+bad_foreign_enum.m:082:   `possibly_qualified_name - string', got `turkey'.
+bad_foreign_enum.m:083: Error: expected a mapping element of the form
+bad_foreign_enum.m:083:   `possibly_qualified_name - string', got `X'.

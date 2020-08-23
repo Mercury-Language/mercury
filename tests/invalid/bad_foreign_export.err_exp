@@ -1,24 +1,35 @@
 bad_foreign_export.m:020: Error: a `:- pragma foreign_export' declaration must
 bad_foreign_export.m:020:   have exactly three arguments.
-bad_foreign_export.m:024: In second argument of `:- pragma foreign_export'
-bad_foreign_export.m:024:   declaration: error: atom expected at 11111.
-bad_foreign_export.m:028: In third argument of `:- pragma foreign_export'
-bad_foreign_export.m:028:   declaration: error: expected a non-empty string for
-bad_foreign_export.m:028:   the foreign language name of the exported
-bad_foreign_export.m:028:   procedure, got `22222'.
-bad_foreign_export.m:032: In first argument of `:- pragma foreign_export'
-bad_foreign_export.m:032:   declaration: error: invalid foreign language
+bad_foreign_export.m:024: In the second argument of `:- pragma foreign_export'
+bad_foreign_export.m:024:   declaration:
+bad_foreign_export.m:024:   error: expected a symbol name, got `11111'.
+bad_foreign_export.m:028: In the third argument of `:- pragma foreign_export'
+bad_foreign_export.m:028:   declaration:
+bad_foreign_export.m:028:   error: expected a non-empty string for the foreign
+bad_foreign_export.m:028:   language name of the exported procedure, got
+bad_foreign_export.m:028:   `22222'.
+bad_foreign_export.m:032: In the first argument of `:- pragma foreign_export'
+bad_foreign_export.m:032:   declaration:
+bad_foreign_export.m:032:   error: expected the name of a foreign language, got
 bad_foreign_export.m:032:   `"InvalidLanguage"'.
-bad_foreign_export.m:037: In first argument of `:- pragma foreign_export'
-bad_foreign_export.m:037:   declaration: error: invalid foreign language
+bad_foreign_export.m:032:   The valid languages are c, C, csharp, C#, erlang,
+bad_foreign_export.m:032:   Erlang, java and Java.
+bad_foreign_export.m:037: In the first argument of `:- pragma foreign_export'
+bad_foreign_export.m:037:   declaration:
+bad_foreign_export.m:037:   error: expected the name of a foreign language, got
 bad_foreign_export.m:037:   `"InvalidLanguage"'.
-bad_foreign_export.m:038: In second argument of `:- pragma foreign_export'
-bad_foreign_export.m:038:   declaration: error: atom expected at 3333.
-bad_foreign_export.m:039: In third argument of `:- pragma foreign_export'
-bad_foreign_export.m:039:   declaration: error: expected a non-empty string for
-bad_foreign_export.m:039:   the foreign language name of the exported
-bad_foreign_export.m:039:   procedure, got `4444'.
-bad_foreign_export.m:044: In third argument of `:- pragma foreign_export'
-bad_foreign_export.m:044:   declaration: error: expected a non-empty string for
-bad_foreign_export.m:044:   the foreign language name of the exported
-bad_foreign_export.m:044:   procedure, got empty string.
+bad_foreign_export.m:037:   The valid languages are c, C, csharp, C#, erlang,
+bad_foreign_export.m:037:   Erlang, java and Java.
+bad_foreign_export.m:038: In the second argument of `:- pragma foreign_export'
+bad_foreign_export.m:038:   declaration:
+bad_foreign_export.m:038:   error: expected a symbol name, got `3333'.
+bad_foreign_export.m:039: In the third argument of `:- pragma foreign_export'
+bad_foreign_export.m:039:   declaration:
+bad_foreign_export.m:039:   error: expected a non-empty string for the foreign
+bad_foreign_export.m:039:   language name of the exported procedure, got
+bad_foreign_export.m:039:   `4444'.
+bad_foreign_export.m:044: In the third argument of `:- pragma foreign_export'
+bad_foreign_export.m:044:   declaration:
+bad_foreign_export.m:044:   error: expected a non-empty string for the foreign
+bad_foreign_export.m:044:   language name of the exported procedure, got an
+bad_foreign_export.m:044:   empty string.

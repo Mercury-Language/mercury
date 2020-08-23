@@ -75,9 +75,11 @@
 :- pred try_parse_sym_name_and_args_from_f_args(const::in, list(term(T))::in,
     sym_name::out, list(term(T))::out) is semidet.
 
-    % A version of try_parse_sym_name_and_args that succeeds
-    % if the given term has no argument terms.
+    % Versions of parse_sym_name_and_args and try_parse_sym_name_and_args
+    % that require the given term to have no arguments.
     %
+:- pred parse_sym_name_and_no_args(varset::in, cord(format_component)::in,
+    term(T)::in, maybe1(sym_name)::out) is det.
 :- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out) is semidet.
 
     % parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
@@ -176,7 +178,7 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
                 Pieces = cord.list(ContextPieces) ++
                     [lower_case_next_if_not_first,
                     words("Error: module name expected before '.'"),
-                    words("in qualified symbol name, not"),
+                    words("in qualified symbol name, got"),
                     words(ModuleTermStr), suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
@@ -187,7 +189,7 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
             TermStr = describe_error_term(GenericVarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: identifier expected after '.'"),
-                words("in qualified symbol name, not"),
+                words("in qualified symbol name, got"),
                 words(TermStr), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, TermContext, Pieces),
@@ -201,8 +203,8 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
         else
             TermStr = describe_error_term(GenericVarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: atom expected at"),
-                words(TermStr), suffix("."), nl],
+                words("Error: expected a symbol name, got"),
+                quote(TermStr), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, get_term_context(Term), Pieces),
             MaybeSymNameAndArgs = error2([Spec])
@@ -228,6 +230,78 @@ try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs, SymName, Args) :-
     else
         SymName = string_to_sym_name_sep(FunctorName, "__"),
         Args = FunctorArgs
+    ).
+
+parse_sym_name_and_no_args(VarSet, ContextPieces, Term, MaybeSymName) :-
+    ( if
+        Term = term.functor(Functor, FunctorArgs, TermContext),
+        Functor = term.atom("."),
+        FunctorArgs = [ModuleTerm, NameArgsTerm]
+    then
+        ( if NameArgsTerm = term.functor(term.atom(Name), Args, _) then
+            varset.coerce(VarSet, GenericVarSet),
+            parse_symbol_name(GenericVarSet, ModuleTerm, MaybeModule),
+            (
+                MaybeModule = ok1(Module),
+                SymName = qualified(Module, Name),
+                insist_on_no_args(ContextPieces, NameArgsTerm, SymName,
+                    Args, MaybeSymName)
+            ;
+                MaybeModule = error1(_),
+                ModuleTermStr = describe_error_term(GenericVarSet, ModuleTerm),
+                Pieces = cord.list(ContextPieces) ++
+                    [lower_case_next_if_not_first,
+                    words("Error: expected module name expected before '.'"),
+                    words("in qualified symbol name, got"),
+                    words(ModuleTermStr), suffix("."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeSymName = error1([Spec])
+            )
+        else
+            varset.coerce(VarSet, GenericVarSet),
+            TermStr = describe_error_term(GenericVarSet, Term),
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: expected identifier after '.'"),
+                words("in qualified symbol name, got"),
+                words(TermStr), suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, TermContext, Pieces),
+            MaybeSymName = error1([Spec])
+        )
+    else
+        varset.coerce(VarSet, GenericVarSet),
+        ( if Term = term.functor(term.atom(Name), Args, _) then
+            SymName = string_to_sym_name_sep(Name, "__"),
+            insist_on_no_args(ContextPieces, Term, SymName, Args, MaybeSymName)
+        else
+            TermStr = describe_error_term(GenericVarSet, Term),
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: atom expected at"),
+                words(TermStr), suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            MaybeSymName = error1([Spec])
+        )
+    ).
+
+:- pred insist_on_no_args(cord(format_component)::in, term(T)::in,
+    sym_name::in, list(term(T))::in, maybe1(sym_name)::out) is det.
+
+insist_on_no_args(ContextPieces, Term, SymName, Args, MaybeSymName) :-
+    (
+        Args = [],
+        MaybeSymName = ok1(SymName)
+    ;
+        Args = [_ | _],
+        Name = sym_name_to_string(SymName),
+        Pieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first,
+            words("Error:"), quote(Name), words("has arguments,"),
+            words("expected none."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        MaybeSymName = error1([Spec])
     ).
 
 try_parse_sym_name_and_no_args(Term, SymName) :-
@@ -272,7 +346,7 @@ parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, Term,
         ;
             Args0 = [_ | _],
             ArgPieces = [words("Error: did not expect"),
-                qual_sym_name(SymName0), words(" to have any arguments."), nl],
+                qual_sym_name(SymName0), words("to have any arguments."), nl],
             ArgSpec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, get_term_context(Term), ArgPieces),
             ArgSpecs = [ArgSpec]

@@ -1,25 +1,29 @@
 bad_foreign_export_enum.m:017: Error: a `:- pragma foreign_export_enum'
 bad_foreign_export_enum.m:017:   declaration must have two, three or four
 bad_foreign_export_enum.m:017:   arguments.
-bad_foreign_export_enum.m:021: In first argument of
+bad_foreign_export_enum.m:021: In the first argument of
 bad_foreign_export_enum.m:021:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:021:   error: invalid foreign language
-bad_foreign_export_enum.m:021:   `"InvalidLanguage"'.
-bad_foreign_export_enum.m:025: In second argument of
+bad_foreign_export_enum.m:021:   error: expected the name of a foreign
+bad_foreign_export_enum.m:021:   language, got `"InvalidLanguage"'.
+bad_foreign_export_enum.m:021:   The valid languages are c, C, csharp, C#,
+bad_foreign_export_enum.m:021:   erlang, Erlang, java and Java.
+bad_foreign_export_enum.m:025: In the second argument of
 bad_foreign_export_enum.m:025:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:025:   error: expected name/arity for type, got
+bad_foreign_export_enum.m:025:   error: expected `type_name/type_arity', got
 bad_foreign_export_enum.m:025:   `fruit'.
-bad_foreign_export_enum.m:028: In first argument of
+bad_foreign_export_enum.m:028: In the first argument of
 bad_foreign_export_enum.m:028:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:028:   error: invalid foreign language
-bad_foreign_export_enum.m:028:   `"InvalidLanguage"'.
-bad_foreign_export_enum.m:029: In second argument of
+bad_foreign_export_enum.m:028:   error: expected the name of a foreign
+bad_foreign_export_enum.m:028:   language, got `"InvalidLanguage"'.
+bad_foreign_export_enum.m:028:   The valid languages are c, C, csharp, C#,
+bad_foreign_export_enum.m:028:   erlang, Erlang, java and Java.
+bad_foreign_export_enum.m:029: In the second argument of
 bad_foreign_export_enum.m:029:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:029:   error: expected name/arity for type, got
+bad_foreign_export_enum.m:029:   error: expected `type_name/type_arity', got
 bad_foreign_export_enum.m:029:   `fruit'.
-bad_foreign_export_enum.m:030: Error: expected a list of attributes in the
-bad_foreign_export_enum.m:030:   third argument of a
-bad_foreign_export_enum.m:030:   `:- pragma foreign_export_enum' declaration,
-bad_foreign_export_enum.m:030:   got `1234'.
-bad_foreign_export_enum.m:031: Error: expected list of mapping elements, not
+bad_foreign_export_enum.m:030: In the third argument of
+bad_foreign_export_enum.m:030:   `:- pragma foreign_export_enum' declaration:
+bad_foreign_export_enum.m:030:   error: expected a list of attributes, got
+bad_foreign_export_enum.m:030:   `1234'.
+bad_foreign_export_enum.m:031: Error: expected a list of mapping elements, got
 bad_foreign_export_enum.m:031:   `5678'.

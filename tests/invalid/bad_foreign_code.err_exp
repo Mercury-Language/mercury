@@ -2,20 +2,27 @@ bad_foreign_code.m:017: Error: a `:- pragma foreign_code' declaration must have
 bad_foreign_code.m:017:   exactly two arguments.
 bad_foreign_code.m:021: Error: a `:- pragma foreign_code' declaration must have
 bad_foreign_code.m:021:   exactly two arguments.
-bad_foreign_code.m:025: Error: in the first argument of
-bad_foreign_code.m:025:   `:- pragma foreign_code' declaration: invalid
-bad_foreign_code.m:025:   language parameter. The valid language parameters are
-bad_foreign_code.m:025:   c, C, csharp, C#, erlang, Erlang, java and Java.
-bad_foreign_code.m:029: Error: in the second argument of
-bad_foreign_code.m:029:   `:- pragma foreign_code' declaration: expected string
-bad_foreign_code.m:029:   for foreign code.
-bad_foreign_code.m:033: Error: in the second argument of
-bad_foreign_code.m:033:   `:- pragma foreign_code' declaration: expected string
-bad_foreign_code.m:033:   for foreign code.
-bad_foreign_code.m:043: Error: in the first argument of
-bad_foreign_code.m:043:   `:- pragma foreign_code' declaration: invalid
-bad_foreign_code.m:043:   language parameter. The valid language parameters are
-bad_foreign_code.m:043:   c, C, csharp, C#, erlang, Erlang, java and Java.
-bad_foreign_code.m:044: Error: in the second argument of
-bad_foreign_code.m:044:   `:- pragma foreign_code' declaration: expected string
-bad_foreign_code.m:044:   for foreign code.
+bad_foreign_code.m:025: In the first argument of `:- pragma foreign_code'
+bad_foreign_code.m:025:   declaration:
+bad_foreign_code.m:025:   error: expected the name of a foreign language, got
+bad_foreign_code.m:025:   `"InvalidLanguage"'.
+bad_foreign_code.m:025:   The valid languages are c, C, csharp, C#, erlang,
+bad_foreign_code.m:025:   Erlang, java and Java.
+bad_foreign_code.m:029: In the second argument of `:- pragma foreign_code'
+bad_foreign_code.m:029:   declaration:
+bad_foreign_code.m:029:   error: expected a string containing foreign code, got
+bad_foreign_code.m:029:   `2222'.
+bad_foreign_code.m:033: In the second argument of `:- pragma foreign_code'
+bad_foreign_code.m:033:   declaration:
+bad_foreign_code.m:033:   error: expected a string containing foreign code, got
+bad_foreign_code.m:033:   `include_file(3333)'.
+bad_foreign_code.m:043: In the first argument of `:- pragma foreign_code'
+bad_foreign_code.m:043:   declaration:
+bad_foreign_code.m:043:   error: expected the name of a foreign language, got
+bad_foreign_code.m:043:   `"InvalidLanguage"'.
+bad_foreign_code.m:043:   The valid languages are c, C, csharp, C#, erlang,
+bad_foreign_code.m:043:   Erlang, java and Java.
+bad_foreign_code.m:044: In the second argument of `:- pragma foreign_code'
+bad_foreign_code.m:044:   declaration:
+bad_foreign_code.m:044:   error: expected a string containing foreign code, got
+bad_foreign_code.m:044:   `6666'.

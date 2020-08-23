@@ -1,0 +1,27 @@
+bad_pragma.m:016: In the second argument of `:- pragma memo' declaration:
+bad_pragma.m:016:   error: expected one of `fast_loose', `specified(...)',
+bad_pragma.m:016:   `size_limit(...)', `statistics', `allow_reset', and
+bad_pragma.m:016:   `disable_warning_if_ignored', got `abracadabra'.
+bad_pragma.m:016: In the second argument of `:- pragma memo' declaration:
+bad_pragma.m:016:   error: expected one of `fast_loose', `specified(...)',
+bad_pragma.m:016:   `size_limit(...)', `statistics', `allow_reset', and
+bad_pragma.m:016:   `disable_warning_if_ignored', got `xyzzy'.
+bad_pragma.m:021: In the second argument of `:- pragma minimal_model'
+bad_pragma.m:021:   declaration:
+bad_pragma.m:021:   error: evaluation method minimal_model_stack_copy does not
+bad_pragma.m:021:   allow fast_loose tabling.
+bad_pragma.m:022: In the second argument of `:- pragma minimal_model'
+bad_pragma.m:022:   declaration:
+bad_pragma.m:022:   error: evaluation method minimal_model_stack_copy does not
+bad_pragma.m:022:   allow size limits.
+bad_pragma.m:023: In the second argument of `:- pragma minimal_model'
+bad_pragma.m:023:   declaration:
+bad_pragma.m:023:   error: evaluation method minimal_model_stack_copy does not
+bad_pragma.m:023:   allow disable_warning_if_ignored.
+bad_pragma.m:030: Error: duplicate statistics attribute in `:- pragma memo'
+bad_pragma.m:030:   declaration.
+bad_pragma.m:031: Error: duplicate allow_reset attribute in `:- pragma memo'
+bad_pragma.m:031:   declaration.
+bad_pragma.m:036: In the second argument of `:- pragma memo' declaration:
+bad_pragma.m:036:   in the first argument of size_limit:
+bad_pragma.m:036:   error: expected a decimal integer, got `12.3'.

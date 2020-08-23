@@ -832,7 +832,8 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         then
             MaybeFunctor = error2([Spec])
         else
-            HeadContextPieces = cord.singleton(words("In equation head:")),
+            HeadContextPieces =
+                cord.from_list([words("In equation head:"), nl]),
             parse_implicitly_qualified_sym_name_and_args(ModuleName,
                 FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor)
         )
@@ -843,7 +844,8 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         then
             MaybeFunctor = error2([Spec])
         else
-            HeadContextPieces = cord.singleton(words("In clause head:")),
+            HeadContextPieces =
+                cord.from_list([words("In clause head:"), nl]),
             parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
                 VarSet, HeadContextPieces, MaybeFunctor)
         )
@@ -890,10 +892,11 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
         (
             IsInClass = decl_is_in_class,
             PredOrFuncDeclPieces = [words("type class"), p_or_f(PredOrFunc),
-                words("method declaration:")]
+                words("method declaration:"), nl]
         ;
             IsInClass = decl_is_not_in_class,
-            PredOrFuncDeclPieces = [p_or_f(PredOrFunc), words("declaration:")]
+            PredOrFuncDeclPieces =
+                [p_or_f(PredOrFunc), words("declaration:"), nl]
         ),
         DetismContextPieces =
             cord.from_list([words("In")] ++ PredOrFuncDeclPieces),
@@ -984,7 +987,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
         PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
     ContextPieces = cord.singleton(words("In")) ++
         cord.from_list(pred_or_func_decl_pieces(PredOrFunc)) ++
-        cord.singleton(suffix(":")),
+        cord.from_list([suffix(":"), nl]),
     get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
         QuantConstrAttrs, ContextPieces, MaybeExistClassInstContext),
     get_purity_from_attrs(Context, PurityAttrs, MaybePurity),
@@ -1116,16 +1119,18 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, IsInClass, Context,
                     MaybeIOM = error1(Specs)
                 ;
                     MaybeFuncNameAndArgs = ok2(FuncName, ArgTerms),
-                    ArgContextFunc = (func(ArgNum) = ContextPieces ++
+                    ArgContextFunc =
+                        ( func(ArgNum) = ContextPieces ++
                             cord.from_list([words("in the"), nth_fixed(ArgNum),
-                            words("argument:"), nl])),
+                            words("argument:"), nl])
+                        ),
                     parse_type_and_modes(
                         constrain_some_inst_vars(InstConstraints),
                         dont_require_tm_mode, wnhii_func_arg,
                         VarSet, ArgContextFunc, ArgTerms, 1,
                         ArgTypesAndModes, [], ArgTMSpecs),
                     RetContextPieces = ContextPieces ++
-                        cord.from_list([words("in the return value"), nl]),
+                        cord.from_list([words("in the return value:"), nl]),
                     parse_type_and_mode(
                         constrain_some_inst_vars(InstConstraints),
                         dont_require_tm_mode, wnhii_func_return_arg,
@@ -1346,8 +1351,7 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
         BeforeDetismTerm, MaybeMaybeDetism),
     WithInstContextPieces = cord.from_list([
         words("In the"), quote("with_inst"), words("annotation of a"),
-        DeclWords, words("declaration:")
-    ]),
+        DeclWords, words("declaration:")]),
     parse_with_inst_suffix(VarSet, WithInstContextPieces, BeforeDetismTerm,
         BeforeWithInstTerm, MaybeWithInst),
     BaseTerm = BeforeWithInstTerm,
@@ -1396,7 +1400,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
         else
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
             ContextPieces = cord.from_list([words("In function"), decl("mode"),
-                words("declaration")]),
+                words("declaration:"), nl]),
             parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
                 VarSet, ContextPieces, MaybeFunctorArgs),
             (
@@ -1418,7 +1422,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
             MaybeIOM = error1([Spec])
         else
             ContextPieces = cord.from_list([words("In"), decl("mode"),
-                words("declaration")]),
+                words("declaration:"), nl]),
             parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
                 VarSet, ContextPieces, MaybeFunctorArgs),
             (
@@ -1442,11 +1446,11 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
         WithInst, MaybeDet, Context, SeqNum, QuantConstrAttrs, MaybeIOM) :-
     ArgContextPieces = cord.from_list(
         [words("In the mode declaration of the predicate"),
-        unqual_sym_name(Functor), suffix(":")]),
+        unqual_sym_name(Functor), suffix(":"), nl]),
     parse_modes(allow_constrained_inst_var, VarSet, ArgContextPieces,
         ArgTerms, MaybeArgModes0),
     ContextPieces = cord.from_list([words("In predicate"), decl("mode"),
-        words("declaration")]),
+        words("declaration:"), nl]),
     get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
         QuantConstrAttrs, ContextPieces, MaybeConstraints),
     ( if
@@ -1496,16 +1500,16 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, RetModeTerm, FullTerm,
         VarSet, MaybeDetism, Context, SeqNum, QuantConstrAttrs, MaybeIOM) :-
     ArgContextPieces = cord.from_list(
         [words("In the mode declaration of the function"),
-        unqual_sym_name(Functor), suffix(":")]),
+        unqual_sym_name(Functor), suffix(":"), nl]),
     parse_modes(allow_constrained_inst_var, VarSet, ArgContextPieces,
         ArgTerms, MaybeArgModes0),
     RetContextPieces = cord.from_list([words("In the return value"),
         words("of the mode declaration of the function"),
-        unqual_sym_name(Functor), suffix(":")]),
+        unqual_sym_name(Functor), suffix(":"), nl]),
     parse_mode(allow_constrained_inst_var, VarSet, RetContextPieces,
         RetModeTerm, MaybeRetMode0),
     QuantContextPieces = cord.from_list([words("In function"), decl("mode"),
-        words("declaration")]),
+        words("declaration:"), nl]),
     get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
         QuantConstrAttrs, QuantContextPieces, MaybeConstraints),
     ( if
@@ -1666,11 +1670,11 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
         (
             QuantType = quant_type_exist,
             TailContextPieces = [words("in first argument of"),
-                quote("some"), suffix(":")]
+                quote("some"), suffix(":"), nl]
         ;
             QuantType = quant_type_univ,
             TailContextPieces = [words("in first argument of"),
-                quote("all"), suffix(":")]
+                quote("all"), suffix(":"), nl]
         ),
         VarsContextPieces = ContextPieces ++ cord.from_list(TailContextPieces),
         parse_possibly_repeated_vars(VarsTerm, VarSet, VarsContextPieces,
@@ -1887,7 +1891,7 @@ parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
     then
         BeforeWithTypeTerm = BeforeWithTypeTermPrime,
         ContextPieces = cord.from_list([words("In"), quote("with_type"),
-            words("annotation:")]),
+            words("annotation:"), nl]),
         parse_type(no_allow_ho_inst_info(wnhii_type_qual),
             VarSet, ContextPieces, TypeTerm, MaybeType),
         (

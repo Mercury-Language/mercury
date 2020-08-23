@@ -1,10 +1,14 @@
 predmode.m:009: Error: some but not all arguments have modes.
 predmode.m:009:   The argument without a mode is the second.
-predmode.m:017: In `:- pred' declaration: in the first argument:
+predmode.m:017: In `:- pred' declaration:
+predmode.m:017:   in the first argument:
 predmode.m:017:   error: `1' is not a type.
-predmode.m:017: In `:- pred' declaration: in the first argument:
+predmode.m:017: In `:- pred' declaration:
+predmode.m:017:   in the first argument:
 predmode.m:017:   error: an integer such as `2' cannot be a valid mode.
-predmode.m:017: In `:- pred' declaration: in the second argument:
+predmode.m:017: In `:- pred' declaration:
+predmode.m:017:   in the second argument:
 predmode.m:017:   error: `"bad"' is not a type.
-predmode.m:017: In `:- pred' declaration: in the second argument:
+predmode.m:017: In `:- pred' declaration:
+predmode.m:017:   in the second argument:
 predmode.m:017:   error: a string such as `"worse"' cannot be a valid mode.

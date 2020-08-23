@@ -1,24 +1,24 @@
-bad_detism_category.m:015: In predicate declaration: error: invalid determinism
-bad_detism_category.m:015:   category `et'.
-bad_detism_category.m:017: In function declaration: error: invalid determinism
-bad_detism_category.m:017:   category `et'.
+bad_detism_category.m:015: In predicate declaration:
+bad_detism_category.m:015:   error: invalid determinism category `et'.
+bad_detism_category.m:017: In function declaration:
+bad_detism_category.m:017:   error: invalid determinism category `et'.
 bad_detism_category.m:019: Error: no clauses for predicate
 bad_detism_category.m:019:   `report_usage_message2'/2.
 bad_detism_category.m:020: In mode declaration: error: invalid determinism
 bad_detism_category.m:020:   category `et'.
-bad_detism_category.m:022: In predicate declaration: error: invalid determinism
-bad_detism_category.m:022:   category `et'.
-bad_detism_category.m:024: In predicate declaration: error: invalid determinism
-bad_detism_category.m:024:   category `et'.
-bad_detism_category.m:025: In predicate declaration: error: invalid determinism
-bad_detism_category.m:025:   category `et'.
-bad_detism_category.m:027: In predicate declaration: error: invalid determinism
-bad_detism_category.m:027:   category `et'.
-bad_detism_category.m:030: In type class predicate method declaration: error:
-bad_detism_category.m:030:   invalid determinism category `et'.
+bad_detism_category.m:022: In predicate declaration:
+bad_detism_category.m:022:   error: invalid determinism category `et'.
+bad_detism_category.m:024: In predicate declaration:
+bad_detism_category.m:024:   error: invalid determinism category `et'.
+bad_detism_category.m:025: In predicate declaration:
+bad_detism_category.m:025:   error: invalid determinism category `et'.
+bad_detism_category.m:027: In predicate declaration:
+bad_detism_category.m:027:   error: invalid determinism category `et'.
+bad_detism_category.m:030: In type class predicate method declaration:
+bad_detism_category.m:030:   error: invalid determinism category `et'.
 bad_detism_category.m:033: In type class method mode declaration: error:
 bad_detism_category.m:033:   invalid determinism category `et'.
-bad_detism_category.m:035: In type class function method declaration: error:
-bad_detism_category.m:035:   invalid determinism category `et'.
-bad_detism_category.m:037: In type class predicate method declaration: error:
-bad_detism_category.m:037:   invalid determinism category `et'.
+bad_detism_category.m:035: In type class function method declaration:
+bad_detism_category.m:035:   error: invalid determinism category `et'.
+bad_detism_category.m:037: In type class predicate method declaration:
+bad_detism_category.m:037:   error: invalid determinism category `et'.

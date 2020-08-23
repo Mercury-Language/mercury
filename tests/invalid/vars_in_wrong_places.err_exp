@@ -12,14 +12,17 @@ vars_in_wrong_places.m:006:   `:- implementation' declaration.
 vars_in_wrong_places.m:006:   The following assumes that the missing
 vars_in_wrong_places.m:006:   declaration is an `:- implementation'
 vars_in_wrong_places.m:006:   declaration.
-vars_in_wrong_places.m:006: In clause head: error: atom expected at Oops1.
-vars_in_wrong_places.m:007: In equation head: error: atom expected at Oops2.
-vars_in_wrong_places.m:008: In equation head: error: atom expected at Oops3.
-vars_in_wrong_places.m:009: In `:- pred' declaration: error: atom expected at
-vars_in_wrong_places.m:009:   Oops4.
+vars_in_wrong_places.m:006: In clause head:
+vars_in_wrong_places.m:006:   error: expected a symbol name, got `Oops1'.
+vars_in_wrong_places.m:007: In equation head:
+vars_in_wrong_places.m:007:   error: expected a symbol name, got `Oops2'.
+vars_in_wrong_places.m:008: In equation head:
+vars_in_wrong_places.m:008:   error: expected a symbol name, got `Oops3'.
+vars_in_wrong_places.m:009: In `:- pred' declaration:
+vars_in_wrong_places.m:009:   error: expected a symbol name, got `Oops4'.
 vars_in_wrong_places.m:010: In `:- func' declaration:
-vars_in_wrong_places.m:010:   error: atom expected at Oops5.
-vars_in_wrong_places.m:011: In `:- mode' declaration error: atom expected at
-vars_in_wrong_places.m:011:   Oops6.
-vars_in_wrong_places.m:012: In function `:- mode' declaration error: atom
-vars_in_wrong_places.m:012:   expected at Oops7.
+vars_in_wrong_places.m:010:   error: expected a symbol name, got `Oops5'.
+vars_in_wrong_places.m:011: In `:- mode' declaration:
+vars_in_wrong_places.m:011:   error: expected a symbol name, got `Oops6'.
+vars_in_wrong_places.m:012: In function `:- mode' declaration:
+vars_in_wrong_places.m:012:   error: expected a symbol name, got `Oops7'.
