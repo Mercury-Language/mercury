@@ -332,7 +332,6 @@ ORDINARY_PROGS = \
 	semi_disj \
 	semi_tail_call_in_nonlast_disjunct \
 	setjmp_test \
-	shift_test \
 	simplify_multi_arm_switch \
 	singleton_dups \
 	solve_quadratic \
@@ -777,6 +776,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		map_merge_test \
 		mutable_excp \
 		null_char \
+		shift_test \
 		string_append_pieces \
 		string_first_char_ilseq \
 		take_split_upto \
