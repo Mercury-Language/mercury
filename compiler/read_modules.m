@@ -185,7 +185,7 @@
     % to read the module stored in a specified file (FileNameDotM),
     % discovering the name of the module stored there by reading the file,
     % as opposed to looking for the file containing a module with a specified
-    % name. It does not search for the right filename (that is SourceFileName),
+    % name. It does not search for the right filename (that is FileNameDotM),
     % but if Search is do_search, it does search for that filename in the
     % specified directories.
     %
@@ -380,40 +380,9 @@ read_module_src(Globals, Descr, IgnoreErrors, Search,
 read_module_src_from_file(Globals, FileName, FileNameDotM, Descr, Search,
         ReadModuleAndTimestamps, MaybeTimestamp,
         ParseTreeSrc, Specs, Errors, !IO) :-
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    maybe_write_string(VeryVerbose, "% ", !IO),
-    maybe_write_string(VeryVerbose, Descr, !IO),
-    maybe_write_string(VeryVerbose, " `", !IO),
-    maybe_write_string(VeryVerbose, FileNameDotM, !IO),
-    maybe_write_string(VeryVerbose, "'... ", !IO),
-    maybe_flush_output(VeryVerbose, !IO),
-    ( if dir.basename(FileName, BaseFileNamePrime) then
-        BaseFileName = BaseFileNamePrime
-    else
-        BaseFileName = ""
-    ),
-    have_source_file_map(HaveMap, !IO),
-    (
-        HaveMap = no,
-        file_name_to_module_name(BaseFileName, DefaultModuleName)
-    ;
-        HaveMap = yes,
-        lookup_source_file_module(FileNameDotM, MaybeModuleName, !IO),
-        (
-            MaybeModuleName = yes(DefaultModuleName)
-        ;
-            MaybeModuleName = no,
-            file_name_to_module_name(BaseFileName, DefaultModuleName)
-        )
-    ),
-    (
-        Search = do_search,
-        globals.lookup_accumulating_option(Globals, search_directories,
-            SearchDirs)
-    ;
-        Search = do_not_search,
-        SearchDirs = [dir.this_directory]
-    ),
+    read_module_begin_from_file(Globals, Descr, Search,
+        FileName, FileNameDotM, DefaultModuleName,
+        VeryVerbose, SearchDirs, !IO),
     search_for_file_and_stream(SearchDirs, FileNameDotM,
         MaybeFileNameAndStream, !IO),
     actually_read_module_src(Globals, DefaultModuleName, [],
@@ -494,6 +463,50 @@ read_module_int3(Globals, Descr, IgnoreErrors, Search, ModuleName,
 
 %-----------------------------------------------------------------------------%
 
+:- pred read_module_begin_from_file(globals::in, string::in,
+    maybe_search::in, file_name::in, file_name::in, module_name::out,
+    bool::out, list(string)::out, io::di, io::uo) is det.
+
+read_module_begin_from_file(Globals, Descr, Search, FileName, FileNameDotM,
+        DefaultModuleName, VeryVerbose, SearchDirs, !IO) :-
+    ( if dir.basename(FileName, BaseFileNamePrime) then
+        BaseFileName = BaseFileNamePrime
+    else
+        BaseFileName = ""
+    ),
+    have_source_file_map(HaveMap, !IO),
+    (
+        HaveMap = no,
+        file_name_to_module_name(BaseFileName, DefaultModuleName)
+    ;
+        HaveMap = yes,
+        lookup_source_file_module(FileNameDotM, MaybeModuleName, !IO),
+        (
+            MaybeModuleName = yes(DefaultModuleName)
+        ;
+            MaybeModuleName = no,
+            file_name_to_module_name(BaseFileName, DefaultModuleName)
+        )
+    ),
+    % The rest of this predicate should be kept in sync
+    % with read_module_begin.
+    (
+        Search = do_search,
+        globals.lookup_accumulating_option(Globals, search_directories,
+            SearchDirs)
+    ;
+        Search = do_not_search,
+        SearchDirs = [dir.this_directory]
+    ),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    (
+        VeryVerbose = no
+    ;
+        VeryVerbose = yes,
+        io.format("%% Reading %s `%s'... ", [s(Descr), s(FileNameDotM)], !IO),
+        io.flush_output(!IO)
+    ).
+
 :- pred read_module_begin(globals::in, string::in,
     maybe_search::in, module_name::in, file_kind::in, file_name::out,
     bool::out, list(string)::out, io::di, io::uo) is det.
@@ -510,11 +523,8 @@ read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
         module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
             ModuleName, FileName0, !IO)
     ),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    string.format("%% %s `%s'... ", [s(Descr), s(FileName0)], Msg),
-    maybe_write_string(VeryVerbose, Msg, !IO),
-    maybe_flush_output(VeryVerbose, !IO),
-
+    % The rest of this predicate should be kept in sync
+    % with read_module_begin_from_file.
     (
         Search = do_search,
         globals.lookup_accumulating_option(Globals, search_directories,
@@ -522,6 +532,14 @@ read_module_begin(Globals, Descr, Search, ModuleName, FileKind,
     ;
         Search = do_not_search,
         SearchDirs = [dir.this_directory]
+    ),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    (
+        VeryVerbose = no
+    ;
+        VeryVerbose = yes,
+        io.format("%% %s `%s'... ", [s(Descr), s(FileName0)], !IO),
+        io.flush_output(!IO)
     ).
 
 :- pred read_module_end_module(globals::in, maybe_ignore_errors::in, bool::in,
