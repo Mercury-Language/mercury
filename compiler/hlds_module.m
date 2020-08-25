@@ -217,8 +217,9 @@
     % implicitly imported modules such as `table_builtin', but its contents
     % are not inserted into the module_info.
     %
-:- pred module_info_init(aug_compilation_unit::in, string::in,
-    globals::in, partial_qualifier_info::in, maybe(recompilation_info)::in,
+:- pred module_info_init(globals::in, module_name::in, prog_context::in,
+    string::in, used_modules::in, set(module_name)::in,
+    partial_qualifier_info::in, maybe(recompilation_info)::in,
     module_info::out) is det.
 
     % Once the module_info has been built, we call module_info_optimize
@@ -669,7 +670,6 @@
 :- import_module libs.op_mode.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.get_dependencies.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
@@ -999,13 +999,9 @@
 
 %---------------------------------------------------------------------------%
 
-module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
-        MaybeRecompInfo, ModuleInfo) :-
-    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        _MaybeVersionNumbers, _ParseTreeModuleSrc,
-        _AncestorIntSpecs, _DirectIntSpecs, _IndirectIntSpecs,
-        _PlainOpts, _TransOpts, _IntForOptSpecs),
-
+module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
+        UsedModules, ImplicitlyUsedModules, QualifierInfo, MaybeRecompInfo,
+        ModuleInfo) :-
     SpecialPredMaps = special_pred_maps(map.init, map.init, map.init),
     map.init(ClassTable),
     map.init(InstanceTable),
@@ -1061,8 +1057,6 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     % it was explicit or implicit, and one (or more) context where either
     % the explicit imported was requested, or the implicit import was required.
 
-    get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
-        ImplicitlyUsedModules),
     map.init(AvailModuleMap0),
     add_implicit_avail_module(import_decl, mercury_public_builtin_module,
         AvailModuleMap0, AvailModuleMap1),
@@ -1070,7 +1064,6 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         AvailModuleMap1, AvailModuleMap),
 
     set.init(IndirectlyImportedModules),
-    UsedModules = used_modules_init,
 
     MaybeComplexityMap = no,
     ComplexityProcInfos = [],

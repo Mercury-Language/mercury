@@ -70,6 +70,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item_stats.
@@ -91,10 +92,13 @@
 do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         TypeEqvMapMap, UsedModules, !:QualInfo,
         !:FoundInvalidType, !:FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
+    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
+        ModuleVersionNumbers, _, _, _, _, _, _, _),
+    get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
+        ImplicitlyUsedModules),
     mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
-    module_info_init(AugCompUnit, DumpBaseFileName, Globals, PQInfo, no,
-        !:ModuleInfo),
-    module_info_set_used_modules(UsedModules, !ModuleInfo),
+    module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
+        UsedModules, ImplicitlyUsedModules, PQInfo, no, !:ModuleInfo),
 
     % Optionally gather statistics about the items in the compilation unit.
     trace [compile_time(flag("item_stats")), io(!IO)] (
@@ -121,9 +125,6 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
             io.close_output(Stream, !IO)
         )
     ),
-
-    AugCompUnit = aug_compilation_unit(ModuleName, _ModuleNameContext,
-        ModuleVersionNumbers, _, _, _, _, _, _, _),
 
     % We used to add items to the HLDS in three passes.
     % Roughly,
