@@ -212,10 +212,7 @@
 %
 
     % Create an empty module_info for the module named in the given
-    % compilation unit. We also pass the compilation unit to
-    % get_implicit_dependencies_* to figure out whether to import
-    % implicitly imported modules such as `table_builtin', but its contents
-    % are not inserted into the module_info.
+    % compilation unit.
     %
 :- pred module_info_init(globals::in, module_name::in, prog_context::in,
     string::in, used_modules::in, set(module_name)::in,
