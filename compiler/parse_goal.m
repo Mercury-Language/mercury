@@ -363,9 +363,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         parse_goal_true_fail(Functor, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        ( Functor = "="
-        ; Functor = "is"
-        ),
+        Functor = "=",
         parse_goal_equal(Functor, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ).

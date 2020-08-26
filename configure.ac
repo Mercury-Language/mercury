@@ -604,7 +604,7 @@ EOF
             --grade none.gc \
             --warn-insts-without-matching-type \
             --warn-known-bad-format-calls \
-            --may-ignore-without-warning-2020-08-18 \
+            --prolog-is-2020-08-21 \
             --no-detect-libgrades \
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \

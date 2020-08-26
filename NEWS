@@ -1,6 +1,11 @@
 NEWS since Mercury 20.06
 ========================
 
+Changes that may break compatibility
+------------------------------------
+
+* We have removed `is` as a synonym for unification.
+
 Changes to the Mercury standard library
 ---------------------------------------
 
@@ -57,6 +62,12 @@ Changes to the Mercury standard library
 * The following obsolete predicate has been removed:
 
     - pred `takewhile/4`            (replacement: `take_while/4`)
+
+### Changes to the `prolog` module
+
+* The following predicate has been added to this module:
+
+    - pred `is/2`                   (moved here from the `int` module)
 
 ### Changes to the `random` module
 

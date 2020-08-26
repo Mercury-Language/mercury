@@ -35,11 +35,9 @@
 :- pred T =\= T.            % In Mercury, just use \=
 :- mode in =\= in is semidet.
 
-% is/2 is currently defined in int.m, for historical reasons.
-%
-% :- pred is(T, T) is det.        % In Mercury, just use =
-% :- mode is(uo, di) is det.
-% :- mode is(out, in) is det.
+:- pred is(T, T) is det.    % In Mercury, just use =
+:- mode is(uo, di) is det.
+:- mode is(out, in) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -58,9 +56,9 @@
 
 :- pred T =.. univ_result.
 :- mode in =.. out is det.
-    %
-    % Note that the Mercury =.. is a bit different to the Prolog
-    % one.  We could make it slightly more similar by overloading '.'/2,
+
+    % Note that the Mercury =.. is a bit different to the Prolog one.
+    % We could make it slightly more similar by overloading '.'/2,
     % but that would cause ambiguities that might prevent type
     % inference in a lot of cases.
     %
@@ -95,6 +93,8 @@
 
 '=\\='(X, Y) :-
     X \= Y.
+
+is(X, X).
 
 '=='(X, X).
 '\\=='(X, Y) :-
