@@ -459,8 +459,8 @@
 
 :- implementation.
 
-    % This import is needed by the Mercury clauses for semidet_succeed/0
-    % and semidet_fail/0.
+    % This import is needed by the Mercury clause for semidet_fail/0,
+    % and for e.g. {unify,compare}_tuple_pos.
     %
 :- import_module int.
 
@@ -526,14 +526,17 @@ promise_only_solution_io(Pred, X, !IO) :-
 ordering(X, Y) = R :-
     compare(R, X, Y).
 
-    % simplify.simplify_goal_call.m automatically inlines these definitions.
-    %
-X  @< Y :-
+% simplify_goal_call.m automatically inlines these definitions.
+
+X @< Y :-
     compare((<), X, Y).
+
 X @=< Y :-
     not compare((>), X, Y).
+
 X @>  Y :-
     compare((>), X, Y).
+
 X @>= Y :-
     not compare((<), X, Y).
 
@@ -542,9 +545,9 @@ X @>= Y :-
 % Unify/compare of tuples.
 %
 
-% We implement these predicates in Mercury mainly to allow the compiler to
-% perform the deep profiling transformation on them. init_runtime_hooks sets
-% fields in `MR_special_pred_hooks' structure to point to the actual
+% We implement these predicates in Mercury mainly to allow the compiler
+% to perform the deep profiling transformation on them. init_runtime_hooks
+% sets fields in `MR_special_pred_hooks' structure to point to the actual
 % implementations, because we do not want the runtime to have unresolved
 % references into the library when it is built.
 
