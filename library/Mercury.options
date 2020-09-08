@@ -94,6 +94,5 @@ MCFLAGS-type_desc               += --no-warn-unused-imports
 # Keep all modules' contents in a consistent order, except these (for now).
 MCFLAGS-array                   += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-bt_array                += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-getopt                  += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-pprint                  += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-robdd                   += --no-warn-inconsistent-pred-order-clauses
