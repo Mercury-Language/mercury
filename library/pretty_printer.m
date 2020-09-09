@@ -696,7 +696,7 @@ output_indentation(Stream, indent_nonempty(IndentStack, Indent),
 
     % Expand a univ into docs using the first pretty-printer in the given list
     % that succeeds, otherwise use the generic pretty- printer. If the
-    % pretty-printer limit has been exhausted, then geenrate only "...".
+    % pretty-printer limit has been exhausted, then generate only "...".
     %
 :- pred expand_pp(noncanon_handling, formatter_map, univ, doc,
     func_symbol_limit, func_symbol_limit, ops.priority).
