@@ -1346,7 +1346,7 @@ odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
     [promise_pure, may_call_mercury],
 "
     Statement = Statement0;
-    MR_assert(stat != NULL);
+    MR_assert(Statement != NULL);
 
     if (Statement->num_rows == 0 ) {
         MR_DEBUG(printf(""Fetching rows...\\n""));
