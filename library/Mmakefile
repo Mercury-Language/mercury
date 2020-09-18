@@ -188,7 +188,8 @@ mercury: lib_std
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend:	LIB_FLAGS copy_java_runtime_files $(STD_LIB_NAME).depend
+depend:	LIB_FLAGS apply_getopt_template copy_java_runtime_files \
+		$(STD_LIB_NAME).depend
 
 .PHONY: check
 check:	$(STD_LIB_NAME).check
@@ -265,7 +266,7 @@ tags_file_exists:
 	@if test ! -f tags; \
 	then \
 		echo making tags; \
-		$(MTAGS) $($(STD_LIB_NAME).ms); \
+		$(MTAGS) getopt_template $($(STD_LIB_NAME).ms); \
 	fi
 
 $(STD_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk $($(STD_LIB_NAME).ms)
