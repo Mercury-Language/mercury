@@ -166,54 +166,54 @@
     %
 :- type option_ops(OptionType)
     --->    option_ops(
-                pred(char, OptionType),         % short_option
-                pred(string, OptionType),       % long_option
-                pred(OptionType, option_data)   % option_default
+                pred(char, OptionType),                     % short_option
+                pred(string, OptionType),                   % long_option
+                pred(OptionType, option_data)               % option_default
             )
     ;       option_ops(
-                pred(char, OptionType),         % short_option
-                pred(string, OptionType),       % long_option
-                pred(OptionType, option_data),  % option_default
-                pred(OptionType, special_data,  % special option handler
+                pred(char, OptionType),                     % short_option
+                pred(string, OptionType),                   % long_option
+                pred(OptionType, option_data),              % option_default
+                pred(OptionType, special_data,              % special handler
                     option_table(OptionType),
                     maybe_option_table(OptionType))
             )
     ;       option_ops_multi(
-                pred(char, OptionType),         % short_option
-                pred(string, OptionType),       % long_option
-                pred(OptionType, option_data)   % option_default
+                pred(char, OptionType),                     % short_option
+                pred(string, OptionType),                   % long_option
+                pred(OptionType, option_data)               % option_default
             )
     ;       option_ops_multi(
-                pred(char, OptionType),         % short_option
-                pred(string, OptionType),       % long_option
-                pred(OptionType, option_data),  % option_default
-                pred(OptionType, special_data,  % special option handler
+                pred(char, OptionType),                     % short_option
+                pred(string, OptionType),                   % long_option
+                pred(OptionType, option_data),              % option_default
+                pred(OptionType, special_data,              % special handler
                     option_table(OptionType),
                     maybe_option_table(OptionType))
             ).
 
 :- inst option_ops for option_ops/1
     --->    option_ops(
-                pred(in, out) is semidet,               % short_option
-                pred(in, out) is semidet,               % long_option
-                pred(out, out) is nondet                % option_default
+                pred(in, out) is semidet,                   % short_option
+                pred(in, out) is semidet,                   % long_option
+                pred(out, out) is nondet                    % option_default
             )
     ;       option_ops_multi(
-                pred(in, out) is semidet,               % short_option
-                pred(in, out) is semidet,               % long_option
-                pred(out, out) is multi                 % option_default
+                pred(in, out) is semidet,                   % short_option
+                pred(in, out) is semidet,                   % long_option
+                pred(out, out) is multi                     % option_default
             )
     ;       option_ops(
-                pred(in, out) is semidet,               % short_option
-                pred(in, out) is semidet,               % long_option
-                pred(out, out) is nondet,               % option_default
-                pred(in, in, in, out) is semidet        % special handler
+                pred(in, out) is semidet,                   % short_option
+                pred(in, out) is semidet,                   % long_option
+                pred(out, out) is nondet,                   % option_default
+                pred(in, in, in, out) is semidet            % special handler
             )
     ;       option_ops_multi(
-                pred(in, out) is semidet,               % short_option
-                pred(in, out) is semidet,               % long_option
-                pred(out, out) is multi,                % option_default
-                pred(in, in, in, out) is semidet        % special handler
+                pred(in, out) is semidet,                   % short_option
+                pred(in, out) is semidet,                   % long_option
+                pred(out, out) is multi,                    % option_default
+                pred(in, in, in, out) is semidet            % special handler
             ).
 
 %---------------------%
@@ -226,9 +226,9 @@
     %
 :- type option_ops_track(OptionType)
     --->    option_ops_track(
-                pred(char, OptionType),         % short_option
-                pred(string, OptionType),       % long_option
-                pred(OptionType, special_data,  % special option handler
+                pred(char, OptionType),                     % short_option
+                pred(string, OptionType),                   % long_option
+                pred(OptionType, special_data,              % special handler
                     option_table(OptionType),
                     maybe_option_table(OptionType),
                     set(OptionType))
@@ -236,9 +236,31 @@
 
 :- inst option_ops_track for option_ops_track/1
     --->    option_ops_track(
-                pred(in, out) is semidet,               % short_option
-                pred(in, out) is semidet,               % long_option
-                pred(in, in, in, out, out) is semidet   % special handler
+                pred(in, out) is semidet,                   % short_option
+                pred(in, out) is semidet,                   % long_option
+                pred(in, in, in, out, out) is semidet       % special handler
+            ).
+
+%---------------------%
+
+    % A version of the option_ops type for the process_options_userdata
+    % predicate and its process_options_userdata_se variant.
+    %
+:- type option_ops_userdata(OptionType, UserDataType)
+    --->    option_ops_userdata(
+                pred(char, OptionType),                     % short_option
+                pred(string, OptionType),                   % long_option
+                pred(OptionType, special_data,              % special handler
+                    option_table(OptionType),
+                    maybe_option_table(OptionType),
+                    UserDataType, UserDataType)
+            ).
+
+:- inst option_ops_userdata for option_ops_userdata/2
+    --->    option_ops_userdata(
+                pred(in, out) is semidet,                   % short_option
+                pred(in, out) is semidet,                   % long_option
+                pred(in, in, in, out, in, out) is semidet   % special handler
             ).
 
 %---------------------%
@@ -395,8 +417,25 @@
 :- pred process_options_track(
     option_ops_track(OptionType)::in(option_ops_track),
     list(string)::in, list(string)::out, list(string)::out,
-    option_table(OptionType)::in,
-    maybe_option_table(OptionType)::out, set(OptionType)::out,
+    option_table(OptionType)::in, maybe_option_table(OptionType)::out,
+    set(OptionType)::out, io::di, io::uo) is det.
+
+    % process_options_userdata(OptionOps, Args, OptionArgs, NonOptionArgs,
+    %   OptionTable0, Result, OptionsSet, !UserData, !IO):
+    %
+    % This predicate is similar to process_options_track, but it also
+    % threads a piece of state of a user-specified "userdata" type through
+    % all the handlers of special options, so that each special handler
+    % can read from and/or write to this state. Amongst other things,
+    % this can be used by the caller to recover the *sequence* in which
+    % special options are specified, information that is not present
+    % in the (orderless) set of specified options.
+    %
+:- pred process_options_userdata(
+    option_ops_userdata(OptionType, UserDataType)::in(option_ops_userdata),
+    list(string)::in, list(string)::out, list(string)::out,
+    option_table(OptionType)::in, maybe_option_table(OptionType)::out,
+    set(OptionType)::out, UserDataType::in, UserDataType::out,
     io::di, io::uo) is det.
 
     % Variants of the above that return structured errors. These behave
@@ -414,6 +453,12 @@
     list(string)::in, list(string)::out, list(string)::out,
     option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
     set(OptionType)::out, io::di, io::uo) is det.
+:- pred process_options_userdata_se(
+    option_ops_userdata(OptionType, UserDataType)::in(option_ops_userdata),
+    list(string)::in, list(string)::out, list(string)::out,
+    option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
+    set(OptionType)::out, UserDataType::in, UserDataType::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -475,13 +520,14 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
+:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
 % Please keep the differences between this module and getopt.m to the
 % minimum. Most changes should done in both modules.
 
-:- type option_ops_special(OptionType)
+:- type option_ops_special(OptionType, UserDataType)
     --->    none
     ;       notrack(
                 pred(OptionType, special_data,
@@ -493,21 +539,28 @@
                     option_table(OptionType),
                     maybe_option_table(OptionType),
                     set(OptionType))
+            )
+    ;       userdata(
+                pred(OptionType, special_data,
+                    option_table(OptionType),
+                    maybe_option_table(OptionType),
+                    UserDataType, UserDataType)
             ).
 
-:- inst option_ops_special for option_ops_special/1
+:- inst option_ops_special for option_ops_special/2
     --->    none
     ;       notrack(pred(in, in, in, out) is semidet)
-    ;       track(pred(in, in, in, out, out) is semidet).
+    ;       track(pred(in, in, in, out, out) is semidet)
+    ;       userdata(pred(in, in, in, out, in, out) is semidet).
 
-:- type option_ops_internal(OptionType)
+:- type option_ops_internal(OptionType, UserDataType)
     --->    option_ops_internal(
                 short_option    :: pred(char, OptionType),
                 long_option     :: pred(string, OptionType),
-                special_handler :: option_ops_special(OptionType)
+                special_handler :: option_ops_special(OptionType, UserDataType)
             ).
 
-:- inst option_ops_internal for option_ops_internal/1
+:- inst option_ops_internal for option_ops_internal/2
     --->    option_ops_internal(
                 pred(in, out) is semidet,           % short_option
                 pred(in, out) is semidet,           % long_option
@@ -552,6 +605,19 @@ process_options_track(OptionOps, Args0, OptionArgs, NonOptionArgs,
         Result = error(Msg)
     ).
 
+process_options_userdata(OptionOps, Args0, OptionArgs, NonOptionArgs,
+        OptionTable0, Result, OptionsSet, !UserData, !IO) :-
+    process_options_userdata_se(OptionOps, Args0, OptionArgs, NonOptionArgs,
+        OptionTable0, Result0, OptionsSet, !UserData, !IO),
+    (
+        Result0 = ok(OptionTable),
+        Result = ok(OptionTable)
+    ;
+        Result0 = error(Error),
+        Msg = option_error_to_string(Error),
+        Result = error(Msg)
+    ).
+
 %---------------------------------------------------------------------------%
 
 process_options_se(OptionOps, Args0, NonOptionArgs, Result, !IO) :-
@@ -578,16 +644,27 @@ process_options_se(OptionOps, Args0, OptionArgs, NonOptionArgs,
         init_option_table_multi(Defaults, OptionTable0)
     ),
     Internal = option_ops_internal(Short, Long, MaybeSpecial),
-    process_arguments(Args0, NonOptionArgs, Internal,
-        [], RevOptionArgs, OptionTable0, Result, set.init, _OptionsSet, !IO),
+    process_arguments(Internal, Args0, NonOptionArgs,
+        [], RevOptionArgs, OptionTable0, Result,
+        set.init, _OptionsSet, unit, _, !IO),
     OptionArgs = list.reverse(RevOptionArgs).
 
 process_options_track_se(OptionOps, Args0, OptionArgs, NonOptionArgs,
         OptionTable0, Result, OptionsSet, !IO) :-
     OptionOps = option_ops_track(Short, Long, Special),
     Internal = option_ops_internal(Short, Long, track(Special)),
-    process_arguments(Args0, NonOptionArgs, Internal,
-        [], RevOptionArgs, OptionTable0, Result, set.init, OptionsSet, !IO),
+    process_arguments(Internal, Args0, NonOptionArgs,
+        [], RevOptionArgs, OptionTable0, Result,
+        set.init, OptionsSet, unit, _, !IO),
+    OptionArgs = list.reverse(RevOptionArgs).
+
+process_options_userdata_se(OptionOps, Args0, OptionArgs, NonOptionArgs,
+        OptionTable0, Result, OptionsSet, !UserData, !IO) :-
+    OptionOps = option_ops_userdata(Short, Long, Special),
+    Internal = option_ops_internal(Short, Long, userdata(Special)),
+    process_arguments(Internal, Args0, NonOptionArgs,
+        [], RevOptionArgs, OptionTable0, Result,
+        set.init, OptionsSet, !UserData, !IO),
     OptionArgs = list.reverse(RevOptionArgs).
 
 %---------------------------------------------------------------------------%
@@ -610,55 +687,53 @@ init_option_table_multi(OptionDefaultsPred, OptionTable) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_arguments(list(string)::in, list(string)::out,
-    option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
-    list(string)::out, option_table(OptionType)::in,
-    maybe_option_table_se(OptionType)::out,
-    set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
+:- pred process_arguments(
+    option_ops_internal(OptionType, UserDataType)::in(option_ops_internal),
+    list(string)::in, list(string)::out,
+    list(string)::in, list(string)::out,
+    option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
+    set(OptionType)::in, set(OptionType)::out,
+    UserDataType::in, UserDataType::out, io::di, io::uo) is det.
 
-process_arguments([], [], _, OptionArgs, OptionArgs,
-        OptionTable0, ok(OptionTable0), !OptionsSet, !IO).
-process_arguments([Option | Args0], Args, OptionOps, OptionArgs0, OptionArgs,
-        OptionTable0, Result, !OptionsSet, !IO) :-
+process_arguments(_, [], [], !OptionArgs,
+        OptionTable0, ok(OptionTable0), !OptionsSet, !UserData, !IO).
+process_arguments(OptionOps, [Arg0 | Args0], NonOptionArgs, !OptionArgs,
+        OptionTable0, Result, !OptionsSet, !UserData, !IO) :-
     ( if
-        Option = "--"
+        Arg0 = "--"
     then
         % "--" terminates option processing
-        OptionArgs = OptionArgs0,
-        Args = Args0,
+        NonOptionArgs = Args0,
         Result = ok(OptionTable0)
     else if
-        string.append("--no-", LongOption, Option)
+        string.append("--no-", LongOption, Arg0)
     then
         LongOptionPred = OptionOps ^ long_option,
         ( if LongOptionPred(LongOption, Flag) then
             OptName = "--" ++ LongOption,
-            process_negated_option(OptName, Flag, OptionOps,
-                OptionTable0, Result1, !OptionsSet),
+            process_negated_option(OptionOps, OptName, Flag,
+                OptionTable0, Result1, !OptionsSet, !UserData),
             (
                 Result1 = ok(OptionTable1),
-                process_arguments(Args0, Args, OptionOps,
-                    [Option | OptionArgs0], OptionArgs, OptionTable1, Result,
-                    !OptionsSet, !IO)
+                !:OptionArgs = [Arg0 | !.OptionArgs],
+                process_arguments(OptionOps, Args0, NonOptionArgs, !OptionArgs,
+                    OptionTable1, Result, !OptionsSet, !UserData, !IO)
             ;
                 Result1 = error(_),
                 Result = Result1,
-                OptionArgs = OptionArgs0,
-                Args = Args0
+                NonOptionArgs = Args0
             )
         else
-            Error = unrecognized_option(Option),
+            Error = unrecognized_option(Arg0),
             Result = error(Error),
-            OptionArgs = OptionArgs0,
-            Args = Args0
+            NonOptionArgs = Args0
         )
     else if
-        string.append("--", LongOptionStr, Option)
+        string.append("--", LongOptionStr, Arg0)
     then
         LongOptionPred = OptionOps ^ long_option,
         ( if string.sub_string_search(LongOptionStr, "=", OptionLen) then
-            string.split(LongOptionStr, OptionLen, LongOption,
-                EqualOptionArg),
+            string.split(LongOptionStr, OptionLen, LongOption, EqualOptionArg),
             ( if string.first_char(EqualOptionArg, '=', OptionArg) then
                 MaybeArg = yes(OptionArg)
             else
@@ -671,24 +746,22 @@ process_arguments([Option | Args0], Args, OptionOps, OptionArgs0, OptionArgs,
         OptionName = "--" ++ LongOption,
         ( if LongOptionPred(LongOption, Flag) then
             ( if map.search(OptionTable0, Flag, OptionData) then
-                handle_long_option(OptionName, Flag, OptionData,
-                    MaybeArg, Args0, Args, OptionOps,
-                    [Option | OptionArgs0], OptionArgs,
-                    OptionTable0, Result, !OptionsSet, !IO)
+                !:OptionArgs = [Arg0 | !.OptionArgs],
+                handle_long_option(OptionOps, OptionName, Flag, OptionData,
+                    MaybeArg, Args0, NonOptionArgs, !OptionArgs,
+                    OptionTable0, Result, !OptionsSet, !UserData, !IO)
             else
-                Error = option_error(Flag, Option, unknown_type),
+                Error = option_error(Flag, Arg0, unknown_type),
                 Result = error(Error),
-                OptionArgs = OptionArgs0,
-                Args = Args0
+                NonOptionArgs = Args0
             )
         else
             Error = unrecognized_option(OptionName),
             Result = error(Error),
-            OptionArgs = OptionArgs0,
-            Args = Args0
+            NonOptionArgs = Args0
         )
     else if
-        string.first_char(Option, '-', ShortOptions),
+        string.first_char(Arg0, '-', ShortOptions),
         ShortOptions \= ""
     then
         string.to_char_list(ShortOptions, ShortOptionsList),
@@ -697,65 +770,65 @@ process_arguments([Option | Args0], Args, OptionOps, OptionArgs0, OptionArgs,
             ShortOptionPred = OptionOps ^ short_option,
             ( if ShortOptionPred(SingleShortOpt, Flag) then
                 string.from_char_list(['-', SingleShortOpt], OptName),
-                process_negated_option(OptName, Flag, OptionOps,
-                    OptionTable0, Result1, !OptionsSet),
+                process_negated_option(OptionOps, OptName, Flag,
+                    OptionTable0, Result1, !OptionsSet, !UserData),
                 (
                     Result1 = ok(OptionTable1),
-                    process_arguments(Args0, Args, OptionOps,
-                        [Option | OptionArgs0], OptionArgs,
-                        OptionTable1, Result, !OptionsSet, !IO)
+                    !:OptionArgs = [Arg0 | !.OptionArgs],
+                    process_arguments(OptionOps, Args0, NonOptionArgs,
+                        !OptionArgs, OptionTable1, Result,
+                        !OptionsSet, !UserData, !IO)
                 ;
                     Result1 = error(_),
                     Result = Result1,
-                    OptionArgs = OptionArgs0,
-                    Args = Args0
+                    NonOptionArgs = Args0
                 )
             else
                 Error = unrecognized_option("-" ++ ShortOptions),
                 Result = error(Error),
-                OptionArgs = OptionArgs0,
-                Args = Args0
+                NonOptionArgs = Args0
             )
         else
             % Process a list of options `-xyz'.
-            % -xyz may be several boolean options
+            % -xyz may be several boolean options,
             % or part of it may be the argument of an option.
-            % The first element of Args0 may also be an argument
-            % of an option.
-            handle_short_options(ShortOptionsList, OptionOps,
-                Args0, Args1, [Option | OptionArgs0], OptionArgs1,
-                OptionTable0, Result1, !OptionsSet, !IO),
+            % The first element of Args0 may also be an argument of an option.
+            !:OptionArgs = [Arg0 | !.OptionArgs],
+            handle_short_options(OptionOps, ShortOptionsList, Args0, Args1,
+                !OptionArgs, OptionTable0, Result1,
+                !OptionsSet, !UserData, !IO),
             (
                 Result1 = ok(OptionTable1),
-                process_arguments(Args1, Args, OptionOps,
-                    OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet,
-                    !IO)
+                process_arguments(OptionOps, Args1, NonOptionArgs,
+                    !OptionArgs, OptionTable1, Result,
+                    !OptionsSet, !UserData, !IO)
             ;
                 Result1 = error(_),
                 Result = Result1,
-                OptionArgs = OptionArgs1,
-                Args = Args0
+                NonOptionArgs = Args0
             )
         )
     else
         % It is a normal non-option argument.
         % As a GNU extension, keep searching for options
         % in the remaining arguments.
-        process_arguments(Args0, Args1, OptionOps,
-            OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet, !IO),
-        Args = [Option | Args1]
+        process_arguments(OptionOps, Args0, NonOptionArgsTail, !OptionArgs,
+            OptionTable0, Result, !OptionsSet, !UserData, !IO),
+        NonOptionArgs = [Arg0 | NonOptionArgsTail]
     ).
 
-:- pred handle_long_option(string::in, OptionType::in, option_data::in,
+:- pred handle_long_option(
+    option_ops_internal(OptionType, UserDataType)::in(option_ops_internal),
+    string::in, OptionType::in, option_data::in,
     maybe(string)::in, list(string)::in, list(string)::out,
-    option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
-    list(string)::out, option_table(OptionType)::in,
-    maybe_option_table_se(OptionType)::out,
-    set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
+    list(string)::in, list(string)::out,
+    option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
+    set(OptionType)::in, set(OptionType)::out,
+    UserDataType::in, UserDataType::out, io::di, io::uo) is det.
 
-handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
-        Args0, Args, OptionOps, OptionArgs0, OptionArgs, OptionTable0, Result,
-        !OptionsSet, !IO) :-
+handle_long_option(OptionOps, Option, Flag, OptionData, MaybeOptionArg0,
+        Args0, Args, !OptionArgs, OptionTable0, Result,
+        !OptionsSet, !UserData, !IO) :-
     ( if
         need_arg(OptionData, yes),
         MaybeOptionArg0 = no
@@ -765,24 +838,21 @@ handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
             MaybeOptionArg = yes(Arg),
             Args1 = ArgsTail,
             MissingArg = no,
-            OptionArgs1 = [Arg | OptionArgs0]
+            !:OptionArgs = [Arg | !.OptionArgs]
         ;
             Args0 = [],
             MaybeOptionArg = no,
             Args1 = Args0,
-            OptionArgs1 = OptionArgs0,
             MissingArg = yes
         )
     else
         MaybeOptionArg = MaybeOptionArg0,
         Args1 = Args0,
-        OptionArgs1 = OptionArgs0,
         MissingArg = no
     ),
     (
         MissingArg = yes,
         Args = Args0,
-        OptionArgs = OptionArgs1,
         Error = option_error(Flag, Option, requires_argument),
         Result = error(Error)
     ;
@@ -792,78 +862,71 @@ handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
             MaybeOptionArg = yes(ArgVal)
         then
             Args = Args0,
-            OptionArgs = OptionArgs1,
             Error = option_error(Flag, Option,
                 does_not_allow_argument(ArgVal)),
             Result = error(Error)
         else
-            process_option(OptionData, Option, Flag, MaybeOptionArg,
-                OptionOps, OptionTable0, Result1, !OptionsSet, !IO),
+            process_option(OptionOps, OptionData, Option, Flag, MaybeOptionArg,
+                OptionTable0, Result1, !OptionsSet, !UserData, !IO),
             (
                 Result1 = ok(OptionTable1),
-                process_arguments(Args1, Args, OptionOps,
-                    OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet,
-                    !IO)
+                process_arguments(OptionOps, Args1, Args, !OptionArgs,
+                    OptionTable1, Result, !OptionsSet, !UserData, !IO)
             ;
                 Result1 = error(_),
                 Result = Result1,
-                OptionArgs = OptionArgs1,
                 Args = Args1
             )
         )
     ).
 
-:- pred handle_short_options(list(char)::in,
-    option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
-    list(string)::out, list(string)::in, list(string)::out,
-    option_table(OptionType)::in,
-    maybe_option_table_se(OptionType)::out,
-    set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
+:- pred handle_short_options(
+    option_ops_internal(OptionType, UserDataType)::in(option_ops_internal),
+    list(char)::in, list(string)::in, list(string)::out,
+    list(string)::in, list(string)::out,
+    option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
+    set(OptionType)::in, set(OptionType)::out,
+    UserDataType::in, UserDataType::out, io::di, io::uo) is det.
 
-handle_short_options([], _, Args, Args, OptionArgs, OptionArgs,
-        OptionTable, ok(OptionTable), !OptionsSet, !IO).
-handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
-        OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet, !IO) :-
+handle_short_options(_, [], Args, Args, !OptionArgs,
+        OptionTable, ok(OptionTable), !OptionsSet, !UserData, !IO).
+handle_short_options(OptionOps, [Opt | Opts0], Args0, Args,
+        !OptionArgs, OptionTable0, Result, !OptionsSet, !UserData, !IO) :-
     ShortOptionPred = OptionOps ^ short_option,
     ( if ShortOptionPred(Opt, Flag) then
         ( if map.search(OptionTable0, Flag, OptionData) then
             ( if need_arg(OptionData, yes) then
-                get_short_option_arg(Opts0, Arg, Args0, Args1,
-                    OptionArgs0, OptionArgs1),
+                get_short_option_arg(Opts0, Arg, Args0, Args1, !OptionArgs),
                 MaybeOptionArg = yes(Arg),
                 Opts1 = []
             else
                 MaybeOptionArg = no,
                 Opts1 = Opts0,
-                OptionArgs1 = OptionArgs0,
                 Args1 = Args0
             ),
             string.from_char_list(['-', Opt], Option),
-            process_option(OptionData, Option, Flag, MaybeOptionArg,
-                OptionOps, OptionTable0, Result1, !OptionsSet, !IO),
+            process_option(OptionOps, OptionData, Option, Flag, MaybeOptionArg,
+                OptionTable0, Result1, !OptionsSet, !UserData, !IO),
             (
                 Result1 = ok(OptionTable1),
-                handle_short_options(Opts1, OptionOps, Args1, Args,
-                    OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet,
-                    !IO)
+                handle_short_options(OptionOps, Opts1, Args1, Args,
+                    !OptionArgs, OptionTable1, Result,
+                    !OptionsSet, !UserData, !IO)
             ;
                 Result1 = error(_),
                 Result = Result1,
-                OptionArgs = OptionArgs1,
                 Args = Args1
             )
         else
             string.char_to_string(Opt, OptString),
             Error = option_error(Flag, "-" ++ OptString, unknown_type),
             Result = error(Error),
-            OptionArgs = OptionArgs0,
             Args = Args0
         )
     else
         string.char_to_string(Opt, OptString),
         Error = unrecognized_option("-" ++ OptString),
         Result = error(Error),
-        OptionArgs = OptionArgs0,
         Args = Args0
     ).
 
@@ -871,210 +934,217 @@ handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
     list(string)::in, list(string)::out, list(string)::in, list(string)::out)
     is det.
 
-get_short_option_arg(Opts, Arg, Args0, Args,
-        OptionArgs0, OptionArgs) :-
+get_short_option_arg(Opts, Arg, Args0, Args, !OptionArgs) :-
     ( if
         Opts = [],
         Args0 = [ArgPrime | ArgsPrime]
     then
-        OptionArgs = [ArgPrime | OptionArgs0],
+        !:OptionArgs = [ArgPrime | !.OptionArgs],
         Arg = ArgPrime,
         Args = ArgsPrime
     else
         string.from_char_list(Opts, Arg),
-        OptionArgs = OptionArgs0,
         Args = Args0
     ).
 
-:- pred process_option(option_data::in, string::in, OptionType::in,
-    maybe(string)::in,
-    option_ops_internal(OptionType)::in(option_ops_internal),
+:- pred process_option(
+    option_ops_internal(OptionType, UserDataType)::in(option_ops_internal),
+    option_data::in, string::in, OptionType::in, maybe(string)::in,
     option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
-    set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
+    set(OptionType)::in, set(OptionType)::out,
+    UserDataType::in, UserDataType::out, io::di, io::uo) is det.
 
-process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
+process_option(OptionOps, OptionData, Option, Flag, MaybeArg,
+        !.OptionTable, Result, !OptionsSet, !UserData, !IO) :-
     (
-        MaybeArg = yes(_Arg),
-        map.set(Flag, bool(no), !OptionTable),
-        Result = ok(!.OptionTable)
-    ;
-        MaybeArg = no,
-        map.set(Flag, bool(yes), !OptionTable),
-        Result = ok(!.OptionTable)
-    ).
-process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(Arg),
-        ( if string.to_int(Arg, IntArg) then
-            map.set(Flag, int(IntArg), !OptionTable),
-            Result = ok(!.OptionTable)
-        else
-            numeric_argument(Flag, Option, Arg, Result)
-        )
-    ;
-        MaybeArg = no,
-        error("integer argument expected in getopt_io.process_option")
-    ).
-process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(Arg),
-        map.set(Flag, string(Arg), !OptionTable),
-        Result = ok(!.OptionTable)
-    ;
-        MaybeArg = no,
-        error("string argument expected in getopt_io.process_option")
-    ).
-process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(Arg),
-        ( if string.to_int(Arg, IntArg) then
-            map.set(Flag, maybe_int(yes(IntArg)), !OptionTable),
-            Result = ok(!.OptionTable)
-        else
-            numeric_argument(Flag, Option, Arg, Result)
-        )
-    ;
-        MaybeArg = no,
-        error("integer argument expected in getopt_io.process_option")
-    ).
-process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(Arg),
-        map.set(Flag, maybe_string(yes(Arg)), !OptionTable),
-        Result = ok(!.OptionTable)
-    ;
-        MaybeArg = no,
-        error("string argument expected in getopt_io.process_option")
-    ).
-process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(Arg),
-        List = List0 ++ [Arg],
-        map.set(Flag, accumulating(List), !OptionTable),
-        Result = ok(!.OptionTable)
-    ;
-        MaybeArg = no,
-        error("acumulating argument expected in getopt_io.process_option")
-    ).
-process_option(special, Option, Flag, MaybeArg, OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(_Arg),
-        error("no special argument expected in getopt_io.process_option")
-    ;
-        MaybeArg = no,
-        process_special_option(Option, Flag, none,
-            OptionOps, !.OptionTable, Result, !OptionsSet)
-    ).
-process_option(bool_special, Option, Flag, MaybeArg, OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(_Arg),
-        process_special_option(Option, Flag, bool(no),
-            OptionOps, !.OptionTable, Result, !OptionsSet)
-    ;
-        MaybeArg = no,
-        process_special_option(Option, Flag, bool(yes),
-            OptionOps, !.OptionTable, Result, !OptionsSet)
-    ).
-process_option(int_special, Option, Flag, MaybeArg, OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(Arg),
-        ( if string.to_int(Arg, IntArg) then
-            process_special_option(Option, Flag, int(IntArg),
-                OptionOps, !.OptionTable, Result, !OptionsSet)
-        else
-            numeric_argument(Flag, Option, Arg, Result)
-        )
-    ;
-        MaybeArg = no,
-        error("int_special argument expected in getopt_io.process_option")
-    ).
-process_option(string_special, Option, Flag, MaybeArg, OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    set.insert(Flag, !OptionsSet),
-    (
-        MaybeArg = yes(Arg),
-        process_special_option(Option, Flag, string(Arg),
-            OptionOps, !.OptionTable, Result, !OptionsSet)
-    ;
-        MaybeArg = no,
-        error("string_special argument expected in getopt_io.process_option")
-    ).
-process_option(maybe_string_special, Option, Flag, MaybeArg,
-        OptionOps, !.OptionTable, Result, !OptionsSet, !IO) :-
-    (
-        MaybeArg = yes(_Arg),
-        process_special_option(Option, Flag, maybe_string(MaybeArg),
-            OptionOps, !.OptionTable, Result, !OptionsSet)
-    ;
-        MaybeArg = no,
-        error("maybe_string_special argument expected " ++
-            "in getopt_io.process_option")
-    ).
-process_option(file_special, Option, Flag, MaybeArg, OptionOps,
-        !.OptionTable, Result, !OptionsSet, !IO) :-
-    (
-        MaybeArg = yes(FileName),
-        io.open_input(FileName, OpenRes, !IO),
+        OptionData = bool(_),
+        set.insert(Flag, !OptionsSet),
         (
-            OpenRes = ok(FileStream),
-            io.read_file_as_string(FileStream, ReadRes, !IO),
+            MaybeArg = yes(_Arg),
+            map.set(Flag, bool(no), !OptionTable),
+            Result = ok(!.OptionTable)
+        ;
+            MaybeArg = no,
+            map.set(Flag, bool(yes), !OptionTable),
+            Result = ok(!.OptionTable)
+        )
+    ;
+        OptionData = int(_),
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(Arg),
+            ( if string.to_int(Arg, IntArg) then
+                map.set(Flag, int(IntArg), !OptionTable),
+                Result = ok(!.OptionTable)
+            else
+                numeric_argument(Flag, Option, Arg, Result)
+            )
+        ;
+            MaybeArg = no,
+            error("integer argument expected in getopt_io.process_option")
+        )
+    ;
+        OptionData = string(_),
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(Arg),
+            map.set(Flag, string(Arg), !OptionTable),
+            Result = ok(!.OptionTable)
+        ;
+            MaybeArg = no,
+            error("string argument expected in getopt_io.process_option")
+        )
+    ;
+        OptionData = maybe_int(_),
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(Arg),
+            ( if string.to_int(Arg, IntArg) then
+                map.set(Flag, maybe_int(yes(IntArg)), !OptionTable),
+                Result = ok(!.OptionTable)
+            else
+                numeric_argument(Flag, Option, Arg, Result)
+            )
+        ;
+            MaybeArg = no,
+            error("integer argument expected in getopt_io.process_option")
+        )
+    ;
+        OptionData = maybe_string(_),
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(Arg),
+            map.set(Flag, maybe_string(yes(Arg)), !OptionTable),
+            Result = ok(!.OptionTable)
+        ;
+            MaybeArg = no,
+            error("string argument expected in getopt_io.process_option")
+        )
+    ;
+        OptionData = accumulating(List0),
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(Arg),
+            List = List0 ++ [Arg],
+            map.set(Flag, accumulating(List), !OptionTable),
+            Result = ok(!.OptionTable)
+        ;
+            MaybeArg = no,
+            error("acumulating argument expected in getopt_io.process_option")
+        )
+    ;
+        OptionData = special,
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(_Arg),
+            error("no special argument expected in getopt_io.process_option")
+        ;
+            MaybeArg = no,
+            process_special_option(OptionOps, Option, Flag, none,
+                !.OptionTable, Result, !OptionsSet, !UserData)
+        )
+    ;
+        OptionData = bool_special,
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(_Arg),
+            process_special_option(OptionOps, Option, Flag, bool(no),
+                !.OptionTable, Result, !OptionsSet, !UserData)
+        ;
+            MaybeArg = no,
+            process_special_option(OptionOps, Option, Flag, bool(yes),
+                !.OptionTable, Result, !OptionsSet, !UserData)
+        )
+    ;
+        OptionData = int_special,
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(Arg),
+            ( if string.to_int(Arg, IntArg) then
+                process_special_option(OptionOps, Option, Flag, int(IntArg),
+                    !.OptionTable, Result, !OptionsSet, !UserData)
+            else
+                numeric_argument(Flag, Option, Arg, Result)
+            )
+        ;
+            MaybeArg = no,
+            error("int_special argument expected in getopt_io.process_option")
+        )
+    ;
+        OptionData = string_special,
+        set.insert(Flag, !OptionsSet),
+        (
+            MaybeArg = yes(Arg),
+            process_special_option(OptionOps, Option, Flag, string(Arg),
+                !.OptionTable, Result, !OptionsSet, !UserData)
+        ;
+            MaybeArg = no,
+            error("string_special argument expected " ++
+                "in getopt_io.process_option")
+        )
+    ;
+        OptionData = maybe_string_special,
+        (
+            MaybeArg = yes(_Arg),
+            process_special_option(OptionOps, Option, Flag,
+                maybe_string(MaybeArg),
+                !.OptionTable, Result, !OptionsSet, !UserData)
+        ;
+            MaybeArg = no,
+            error("maybe_string_special argument expected " ++
+                "in getopt_io.process_option")
+        )
+    ;
+        OptionData = file_special,
+        (
+            MaybeArg = yes(FileName),
+            io.open_input(FileName, OpenRes, !IO),
             (
-                ReadRes = ok(Contents),
-                Words = string.words(Contents),
-                process_arguments(Words, Args, OptionOps,
-                    [], _OptionArgs, !.OptionTable, Result0, !OptionsSet, !IO),
+                OpenRes = ok(FileStream),
+                io.read_file_as_string(FileStream, ReadRes, !IO),
                 (
-                    Args = [],
-                    Result = Result0
+                    ReadRes = ok(Contents),
+                    Words = string.words(Contents),
+                    process_arguments(OptionOps, Words, Args, [], _OptionArgs,
+                        !.OptionTable, Result0, !OptionsSet, !UserData, !IO),
+                    (
+                        Args = [],
+                        Result = Result0
+                    ;
+                        Args = [_ | _],
+                        Reason =
+                            file_special_contains_non_option_args(FileName),
+                        Error = option_error(Flag, Option, Reason),
+                        Result = error(Error)
+                    )
                 ;
-                    Args = [_ | _],
-                    Reason = file_special_contains_non_option_args(FileName),
+                    ReadRes = error(_, IO_Error),
+                    Reason = file_special_cannot_read(FileName, IO_Error),
                     Error = option_error(Flag, Option, Reason),
                     Result = error(Error)
-                )
+                ),
+                io.close_input(FileStream, !IO)
             ;
-                ReadRes = error(_, IO_Error),
-                Reason = file_special_cannot_read(FileName, IO_Error),
+                OpenRes = error(IO_Error),
+                Reason = file_special_cannot_open(FileName, IO_Error),
                 Error = option_error(Flag, Option, Reason),
                 Result = error(Error)
-            ),
-            io.close_input(FileStream, !IO)
+            )
         ;
-            OpenRes = error(IO_Error),
-            Reason = file_special_cannot_open(FileName, IO_Error),
-            Error = option_error(Flag, Option, Reason),
-            Result = error(Error)
+            MaybeArg = no,
+            error("file_special argument expected in getopt_io.process_option")
         )
-    ;
-        MaybeArg = no,
-        error("file_special argument expected in getopt_io.process_option")
     ).
 
-:- pred process_negated_option(string::in, OptionType::in,
-    option_ops_internal(OptionType)::in(option_ops_internal),
+:- pred process_negated_option(
+    option_ops_internal(OptionType, UserDataType)::in(option_ops_internal),
+    string::in, OptionType::in,
     option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
-    set(OptionType)::in, set(OptionType)::out) is det.
+    set(OptionType)::in, set(OptionType)::out,
+    UserDataType::in, UserDataType::out) is det.
 
-process_negated_option(Option, Flag, OptionOps, !.OptionTable, Result,
-        !OptionsSet) :-
+process_negated_option(OptionOps, Option, Flag, !.OptionTable, Result,
+        !OptionsSet, !UserData) :-
     ( if map.search(!.OptionTable, Flag, OptionData) then
         (
             OptionData = bool(_),
@@ -1099,13 +1169,13 @@ process_negated_option(Option, Flag, OptionOps, !.OptionTable, Result,
         ;
             OptionData = bool_special,
             set.insert(Flag, !OptionsSet),
-            process_special_option(Option, Flag, bool(no),
-                OptionOps, !.OptionTable, Result, !OptionsSet)
+            process_special_option(OptionOps, Option, Flag, bool(no),
+                !.OptionTable, Result, !OptionsSet, !UserData)
         ;
             OptionData = maybe_string_special,
             set.insert(Flag, !OptionsSet),
-            process_special_option(Option, Flag, maybe_string(no),
-                OptionOps, !.OptionTable, Result, !OptionsSet)
+            process_special_option(OptionOps, Option, Flag, maybe_string(no),
+                !.OptionTable, Result, !OptionsSet, !UserData)
         ;
             ( OptionData = int_special
             ; OptionData = string_special
@@ -1122,15 +1192,21 @@ process_negated_option(Option, Flag, OptionOps, !.OptionTable, Result,
         Result = error(Error)
     ).
 
-:- pred process_special_option(string::in, OptionType::in, special_data::in,
-    option_ops_internal(OptionType)::in(option_ops_internal),
+:- pred process_special_option(
+    option_ops_internal(OptionType, UserDataType)::in(option_ops_internal),
+    string::in, OptionType::in, special_data::in,
     option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
-    set(OptionType)::in, set(OptionType)::out) is det.
+    set(OptionType)::in, set(OptionType)::out,
+    UserDataType::in, UserDataType::out) is det.
 
-process_special_option(Option, Flag, OptionData, OptionOps,
-        OptionTable0, Result, !OptionsSet) :-
+process_special_option(OptionOps, Option, Flag, OptionData,
+        OptionTable0, Result, !OptionsSet, !UserData) :-
     MaybeHandler = OptionOps ^ special_handler,
     (
+        MaybeHandler = none,
+        Error = option_error(Flag, Option, special_handler_missing),
+        Result = error(Error)
+    ;
         MaybeHandler = notrack(Handler),
         ( if
             Handler(Flag, OptionData, OptionTable0, Result0)
@@ -1169,9 +1245,26 @@ process_special_option(Option, Flag, OptionData, OptionOps,
             Result = error(Error)
         )
     ;
-        MaybeHandler = none,
-        Error = option_error(Flag, Option, special_handler_missing),
-        Result = error(Error)
+        MaybeHandler = userdata(UserDataHandler),
+        ( if
+            UserDataHandler(Flag, OptionData, OptionTable0, Result0,
+                !.UserData, NewUserData)
+        then
+            (
+                Result0 = ok(OptionTable),
+                Result = ok(OptionTable),
+                !:UserData = NewUserData
+            ;
+                Result0 = error(UserDataHandlerMsg),
+                Reason = special_handler_error(UserDataHandlerMsg),
+                Error = option_error(Flag, Option, Reason),
+                Result = error(Error)
+                % Leave !UserData as it was before the error.
+            )
+        else
+            Error = option_error(Flag, Option, special_handler_failed),
+            Result = error(Error)
+        )
     ).
 
 %---------------------------------------------------------------------------%
