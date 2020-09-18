@@ -100,7 +100,7 @@ handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
         io.write_string("original arguments\n", !TIO),
         dump_arguments(Args0, !TIO)
     ),
-    process_given_options(Args0, OptionArgs, Args, Result, !IO),
+    process_given_options(Args0, OptionArgs, Args, MaybeOptionTable, !IO),
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
         io.nl(!TIO),
         io.write_string("final option arguments\n", !TIO),
@@ -110,7 +110,8 @@ handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
         io.write_string("final non-option arguments\n", !TIO),
         dump_arguments(Args, !TIO)
     ),
-    convert_option_table_result_to_globals(Result, Specs, !:Globals, !IO),
+    convert_option_table_result_to_globals(MaybeOptionTable, Specs,
+        !:Globals, !IO),
     (
         Specs = [_ | _]
         % Do NOT set the exit status. This predicate may be called before all
@@ -134,8 +135,8 @@ handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
         )
     ).
 
-separate_option_args(Args0, OptionArgs, Args, !IO) :-
-    process_given_options(Args0, OptionArgs, Args, _, !IO).
+separate_option_args(RawArgs, OptionArgs, NonOptionArgs, !IO) :-
+    process_given_options(RawArgs, OptionArgs, NonOptionArgs, _, !IO).
 
     % process_given_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable,
     %   !IO):
@@ -145,21 +146,20 @@ separate_option_args(Args0, OptionArgs, Args, !IO) :-
     % arguments.
     %
 :- pred process_given_options(list(string)::in,
-    list(string)::out, list(string)::out, maybe_option_table(option)::out,
+    list(string)::out, list(string)::out, maybe_option_table_se(option)::out,
     io::di, io::uo) is det.
 
-process_given_options(Args0, OptionArgs, Args, Result, !IO) :-
+process_given_options(RawArgs, OptionArgs, NonOptionArgs, Result, !IO) :-
     OptionOps = option_ops(short_option, long_option,
         option_defaults, special_handler),
-    getopt_io.process_options(OptionOps, Args0, OptionArgs, Args, Result, !IO).
+    getopt_io.process_options_se(OptionOps, RawArgs,
+        OptionArgs, NonOptionArgs, Result, !IO).
 
 :- pred dump_arguments(list(string)::in, io::di, io::uo) is det.
 
 dump_arguments([], !IO).
 dump_arguments([Arg | Args], !IO) :-
-    io.write_string("    <", !IO),
-    io.write_string(Arg, !IO),
-    io.write_string(">\n", !IO),
+    io.format("    <%s>\n", [s(Arg)], !IO),
     dump_arguments(Args, !IO).
 
 %---------------------------------------------------------------------------%
@@ -168,13 +168,15 @@ dump_arguments([Arg | Args], !IO) :-
     % and process implications among the options (i.e. situations where setting
     % one option implies setting/unsetting another one).
     %
-:- pred convert_option_table_result_to_globals(maybe_option_table(option)::in,
+:- pred convert_option_table_result_to_globals(
+    maybe_option_table_se(option)::in,
     list(error_spec)::out, globals::out, io::di, io::uo) is det.
 
 convert_option_table_result_to_globals(MaybeOptionTable0, !:Specs, Globals,
         !IO) :-
     (
-        MaybeOptionTable0 = error(ErrorMessage),
+        MaybeOptionTable0 = error(Error),
+        ErrorMessage = option_error_to_string(Error),
         OptionTablePieces = [words(ErrorMessage)],
         OptionTableMsg = error_msg(no, do_not_treat_as_first, 0,
             [always(OptionTablePieces)]),
