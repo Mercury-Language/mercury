@@ -16,8 +16,8 @@ vim: ts=4 sw=4 expandtab ft=html
 <dt> assertion
 <dd>
 A particular form of promise which claims to the compiler 
-that the specified goal will always hold. If useful, the 
-compiler may use this information to perform optimisations.
+that the specified goal will always hold.
+If useful, the compiler may use this information to perform optimisations.
 
 <dt> class context 
 <dd>
@@ -32,6 +32,13 @@ of the state of the LLDS code generator.
 <dt> HLDS 
 <dd>
 The "High Level Data Structure".
+A compiler writer would call this an AST or abstract syntax tree,
+because it is an internal representation of the source code.
+It is "abstract" because it has been stripped of irrelevant detail
+such as comments and redundant parentheses.
+It is actually an <em>annotated</em> AST,
+because the compiler attaches quite a lot of information to its nodes,
+specifying information such as the determinism of each goal.
 
 <dt> inst
 <dd>
@@ -74,6 +81,20 @@ it could depend on the low-level representation details
 <dt> LLDS
 <dd>
 The "Low Level Data Structure".
+A compiler writer would call this an IR or intermediate representation.
+It is an internal representation of the assembly-code-like target C code
+that the LLDS backend generates.
+It stores data in registers and stack slots,
+and uses (conditional or unconditional) gotos for control transfer.
+
+<dt> MLDS
+<dd>
+The "Medium Level Data Structure".
+A compiler writer would call this an IR or intermediate representation.
+It is an internal representation of the high level language code
+that the MLDS backend generates, which we can output as C, Java or C# code.
+It stores data in variables,
+and uses if-then-elses, while loops and calls for control transfer.
 
 <dt> mode 
 <dd>

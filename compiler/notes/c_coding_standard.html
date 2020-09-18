@@ -12,15 +12,17 @@ vim: ts=4 sw=4 expandtab ft=html
 <h1>C Coding Standard for the Mercury Project</h1>
 
 These coding guidelines are presented in the briefest manner possible
-and therefore do not include rationales.  <p>
-
-Because the coding standard has been kept deliberately brief, there are
-some items missing that would be included in a more comprehensive
-standard. For more on commonsense C programming,
-consult the <a href="ftp://ftp.cs.toronto.edu/doc/programming/ihstyle.ps">
-Indian Hill C coding standard </a> or the
-<a href="http://www.eskimo.com/~scs/C-faq/top.html">
-comp.lang.c FAQ</a>. <p>
+and therefore do not include rationales.
+<p>
+Because the coding standard has been kept deliberately brief,
+there are some items missing
+that would be included in a more comprehensive standard.
+For more on commonsense C programming, consult
+the <a href="ftp://ftp.cs.toronto.edu/doc/programming/ihstyle.ps">
+Indian Hill C coding standard </a>
+or the <a href="http://www.eskimo.com/~scs/C-faq/top.html">
+comp.lang.c FAQ</a>.
+<p>
 
 <h2>1. File organization</h2>
 
@@ -41,18 +43,25 @@ We will just use the terms `source file' and `header'.
 All items exported from a source file must be declared in the header.
 These items include functions, variables, #defines, typedefs, enums, structs,
 and so on.
-In short, an item is anything that doesn't allocate storage.
-Qualify function prototypes with the `extern' keyword.
-Also, do qualify each variable declaration with the `extern' keyword,
-otherwise storage for the variable will be allocated in every source file
-that includes the header containing the variable definition.
+Such declarations must not allocate storage,
+so qualify each variable declaration with the `extern' keyword.
+(If a variable declaration in a header file lacks the `extern',
+the C compiler will consider the declaration to be a definition as well,
+and will therefore allocate storage for the variable
+in every source file that includes that header file.)
+Likewise, function prototypes in header files should have the `extern' keyword.
+In their case, this is not required
+to distinguish declaration from definition
+(the absence of the function body will do that);
+it is just for improving readability.
 <li>
 We import a module by including its header.
-Never give extern declarations for imported functions in source files.
-Always include the header of the module instead.
+Never give extern declarations for imported functions in source files;
+always include the header of the module instead.
 <li>
 Each header must #include any other headers on which it depends.
-Hence it is imperative every header be protected against multiple inclusion.
+Hence it is that imperative every header file
+be protected against multiple inclusion.
 Also, take care to avoid circular dependencies.
 <li>
 Always include system headers using the angle brackets syntax,
@@ -74,22 +83,50 @@ Do not put root-relative or `..'-relative directories in #includes.
 Items in source files should in general be in this order:
 <ul>
 <li>
-Prologue comment describing the module.
+A prologue comment containing the following.
+    <ul>
+    <li>
+    Vim tag line: "vim: ts=4 sw=4 expandtab ft=c"
+    <li>
+    Copyright notice.
+    <li>
+    Licence information (e.g. GPL or LGPL).
+    <li>
+    A short description of the purpose of the module.
+    </ul>
 <li>
-#includes of system headers (such as stdio.h and unistd.h)
+Comments about the module in general
+that would be helpful for readers and/or maintainers of the module,
+such as any design principles governing the module,
+its main data structures, and so on.
+This may possibly include
+    <ul>
+    <li>
+    design approaches that have been considered but rejected
+    (including <em>why</em> they were rejected),
+    <li>
+    any limitations and/or bugs that would be nice to fix
+    (and they haven't been fixed yet), and
+    <li>
+    possible future extensions.
+    </ul>
 <li>
-#includes of headers specific to this project.
+#includes of system header files (such as stdio.h and unistd.h)
+<li>
+#includes of header files specific to this project.
 But note that for technical reasons,
 <font color="#0000ff">mercury_imp.h</font>
 must be the first #include.
 <li>
 Any local #defines.
 <li>
-Definitions of any local (that is, file-static) global variables.
+Definitions of any global variables defined in the module,
+whether exported or not.
 <li>
-Prototypes for any local (that is, file-static) functions.
+Prototypes for any non-exported functions.
+(The prototypes for any exported functions should go in the header file.)
 <li>
-Definitions of functions.
+The definitions of all the functions.
 </ul>
 
 Within each section,
@@ -106,25 +143,31 @@ to perform the desired inlining.)
 Items in headers should in general be in this order:
 <ul>
 <li>
-typedefs, structs, unions, enums
+A prologue comment containing
+the same information as for source file files (see above).
 <li>
-extern variable declarations
+Any exported type definitions,
+whether typedefs, or the definitions of structs, unions, or enums.
 <li>
-function prototypes
+Extern declarations of any global variables exported by the module.
 <li>
-#defines
+Extern declarations specifying the prototypes
+of any functions exported by the module.
+<li>
+Any exported #define macros.
 </ul>
 
 However, it is probably more important
 to group items which are conceptually related
 than to strictly follow this order.
-Also note that #defines which define configuration macros
-used for conditional compilation
-or which define constants that are used for array sizes
+<p>
+Also note that #defines which
+either define configuration macros used for conditional compilation,
+or define constants that are used for array sizes,
 will need to come before the code that uses them.
-But in general configuration macros
-should be isolated in separate files
-(e.g. runtime/mercury_conf.h.in and runtime/mercury_conf_param.h)
+But in general,
+configuration macros should be isolated in separate files
+(e.g. runtime/mercury_conf.h.in and runtime/mercury_conf_param.h),
 and fixed-length limits should be avoided,
 so those cases should not arise often.
 <p>
@@ -134,7 +177,7 @@ using the following idiom:
 <font color="#0000ff">
 <pre>
 #ifndef MODULE_H
-#define	MODULE_H
+#define MODULE_H
 
 ... body of module.h ...
 
@@ -148,34 +191,32 @@ using the following idiom:
 
 <h4>2.1.1. Functions</h4>
 
-Each function should have a one-line description of what it does.
-Additionally, both the inputs and outputs (including pass-by-pointer)
-should be described.
-Any side-effects not passing through the explicit inputs and outputs
-should be described.
-If any memory is allocated, you should describe
-who is responsible for deallocation.
-If memory can change upon successive invocations
-(such as function-static data), mention it.
-If memory should not be deallocated by anyone
-(such as constant string literals), mention this.
+Each function should have a one-sentence description of what it does.
+<ul>
+<li>
+The comment should describe both the inputs and outputs,
+including outputs for which the caller passes a pointer.
+<li>
+The comment should describe
+any side-effects not passing through the explicit inputs and outputs.
+<li>
+If the function allocates any memory,
+the comment should specify
+whether that memory should ever be deallocated
+(some, e.g. interned constant string literals, should live forever),
+and if so, who is responsible for deallocation.
+<li>
+If the function updates memory that is not related to its argument list,
+by updating either global variables or function-static data, mention it.
+</ul>
 <p>
-Note: memory allocation for C code that must interface
-with Mercury code or the Mercury runtime should be done
-using the routines defined and documented in
+Note: memory allocation for C code
+that must interface with Mercury code or the Mercury runtime
+should be done using the routines defined and documented in
 mercury/runtime/mercury_memory.h and/or mercury/runtime/mercury_heap.h,
 according to the documentation in those files,
 in mercury/trace/README,
 and in the Mercury Language Reference Manual.
-
-<h4>2.1.2. Macros</h4>
-
-Each non-trivial macro should be documented just as for functions (see above).
-It is also a good idea to document
-the types of macro arguments and return values,
-e.g. by including a function declaration in a comment.
-
-<h4>2.1.3. Headers</h4>
 
 Such function comments should be present in header files
 for each function exported from a source file.
@@ -184,26 +225,17 @@ only the interface.
 In C terminology, the header should suffice
 for working out how an exported function works.
 
-<h4>2.1.4. Source files</h4>
+<h4>2.1.2. Macros</h4>
 
-Every source file should have a prologue comment which includes:
-<ul>
-<li>
-Vim tag line: "vim: ts=4 sw=4 expandtab ft=c"
-<li>
-Copyright notice.
-<li>
-Licence info (e.g. GPL or LGPL).
-<li>
-Short description of the purpose of the module.
-<li>
-Any design information or other details required
-to understand and maintain the module.
-</ul>
+Each non-trivial macro should be documented just as for functions (see above).
+It is also a good idea to document
+the types of macro arguments and return values,
+e.g. by including a function declaration in a comment.
 
-<h4>2.1.5. Global variables</h4>
+<h4>2.1.3. Global variables</h4>
 
-Any global variable should be excruciatingly documented.
+Any global variable should be excruciatingly documented;
+it should be crystal clear what every one of its possible values would mean.
 This is especially true when globals are exported from a module.
 In general, there are very few circumstances that justify use of a global.
 
@@ -212,29 +244,29 @@ In general, there are very few circumstances that justify use of a global.
 New comments should use this form:
 <font color="#0000ff">
 <pre>
-	// Here is a comment.
-	// And here is some more comment.
+    // Here is a comment.
+    // And here is some more comment.
 </pre>
 </font>
 Older comments had this form:
 <font color="#0000ff">
 <pre>
-	/*
-	** Here is a comment.
-	** And here's some more comment.
-	*/
+    /*
+    ** Here is a comment.
+    ** And here's some more comment.
+    */
 </pre>
 </font>
 New annotations to a single line of code should use this form:
 <font color="#0000ff">
 <pre>
-	i += 3; // Here is a comment about this line of code.
+    i += 3; // Here is a comment about this line of code.
 </pre>
 </font>
 Older annotations had this form:
 <font color="#0000ff">
 <pre>
-	i += 3; /* Here's a comment about this line of code. */
+    i += 3; /* Here's a comment about this line of code. */
 </pre>
 </font>
 
@@ -246,7 +278,7 @@ Any code that needs to be revisited because it is a temporary hack
 (or some other expediency) must have a comment of the form:
 <font color="#0000ff">
 <pre>
-	// XXX: &lt;reason for revisit&gt;
+    // XXX: &lt;reason for revisit&gt;
 </pre>
 </font>
 
@@ -261,10 +293,10 @@ if they extend for more than a few lines of code:
 <font color="#0000ff">
 <pre>
 #ifdef SOME_VAR
-	...
-#else	// not SOME_VAR
-	...
-#endif	// not SOME_VAR
+    ...
+#else   // not SOME_VAR
+    ...
+#endif  // not SOME_VAR
 </pre>
 </font>
 
@@ -280,16 +312,16 @@ For instance:
 #endif // SOME_VAR
 
 #ifdef SOME_VAR
-	...
-#else // not SOME_VAR
-	...
+    ...
+#else  // not SOME_VAR
+    ...
 #endif // not SOME_VAR
 
 #ifndef SOME_VAR
-	...
-#else	// SOME_VAR
-	...
-#endif	// SOME_VAR
+    ...
+#else  // SOME_VAR
+    ...
+#endif // SOME_VAR
 </pre>
 </font>
 
@@ -300,14 +332,14 @@ For instance:
 Attach the pointer qualifier to the variable name.
 <font color="#0000ff">
 <pre>
-	char	*str1, *str2;
+    char    *str1, *str2;
 </pre>
 </font>
 
 <h3>3.2. Static and extern declarations</h3>
 
 Limit module exports to the absolute essentials.
-Make as much static (that is, local) as possible
+Make as much static (that is, local) as possible,
 since this keeps interfaces to modules simpler.
 
 <h3>3.3. Typedefs</h3>
@@ -343,9 +375,9 @@ the name for the struct should be formed
 by appending `_Struct' to the typedef name:
 <font color="#0000ff">
 <pre>
-	typedef struct MR_DirectoryEntry_Struct {
-		...
-	} MR_DirectoryEntry;
+    typedef struct MR_DirectoryEntry_Struct {
+        ...
+    } MR_DirectoryEntry;
 </pre>
 </font>
 
@@ -364,9 +396,14 @@ For anything exported from mercury/library, prefix it with ML_.
 
 <h3>5.1. Minutiae</h3>
 
+<ul>
+<li>
 Never use any tabs.
+<li>
 Use four space indentation.
+<li>
 No line should be longer than 79 characters.
+<li>
 If a statement is too long,
 continue it on the next line <em>indented two levels deeper</em>.
 If the statement extends over more than two lines,
@@ -375,19 +412,19 @@ as the second line.
 For example:
 <font color="#0000ff">
 <pre>
-	here = is_a_really_long_statement_that_does_not_fit +
-			on_one_line + in_fact_it_doesnt_even_fit +
-			on_two_lines;
+    here = is_a_really_long_statement_that_does_not_fit +
+            on_one_line + in_fact_it_doesnt_even_fit +
+            on_two_lines;
 
-	if (this_is_a_somewhat_long_conditional_test(
-			in_the_condition_of_an +
-			if_then))
-	{
-		...
-	}
-
+    if (this_is_a_somewhat_long_conditional_test(
+            in_the_condition_of_an +
+            if_then))
+    {
+        ...
+    }
 </pre>
 </font>
+</ul>
 
 <h3>5.2. Statements</h3>
 
@@ -397,25 +434,33 @@ What follows are example layout styles for the various syntactic constructs.
 
 <h4>5.2.1. If statement</h4>
 
-Add an "// end if" comment if the if statement is larger than a page.
+Always put braces around the then-part,
+and the else-part if it exists,
+even if they contain only a single statement.
+
+If an if-then-else statement is longer than a page,
+consider whether it can be shortened
+by moving some of its code to named functions.
+If you decide against this,
+then add an "// end if" comment at the end.
 
 <font color="#0000ff">
 <pre>
 // Curlies are placed according to the K&amp;R one true brace style.
 // And comments look like this.
 if (blah) {
-	// Always use curlies, even when there is only one statement
+    // Always use curlies, even when there is only one statement
     // in the block.
 } else {
-	...
+    ...
 } // end if
 
 // If the condition is so long that the open curly doesn't fit
 // on the same line as the `if', put it on a line of its own.
 if (a_very_long_condition() &amp;&amp;
-	another_long_condition_that_forces_a_line_wrap())
+    another_long_condition_that_forces_a_line_wrap())
 {
-	...
+    ...
 }
 </pre>
 </font>
@@ -426,26 +471,29 @@ Function names are flush against the left margin.
 This makes it easier to grep for function definitions
 (as opposed to their invocations).
 In argument lists, put space after commas.
-And use the <tt>// func</tt> comment when the function is longer than a page.
+And if the function is longer than a page,
+add a <tt>// func</tt> comment after the curly that ends its definition.
 
 <font color="#0000ff">
 <pre>
 int
 rhododendron(int a, float b, double c) {
-	..
+    ...
 } // end rhododendron()
 </pre>
 </font>
 
 <h4>5.2.3. Variables</h4>
 
-Variable declarations shouldn't be flush left, however.
+Variable names in variable declarations and definitions
+shouldn't be flush left, however;
+they should be preceded by the type.
 <font color="#0000ff">
 <pre>
 int x = 0, y = 3, z;
 
 int a[] = {
-	1,2,3,4,5
+    1,2,3,4,5
 };
 </pre>
 </font>
@@ -455,18 +503,18 @@ int a[] = {
 <font color="#0000ff">
 <pre>
 switch (blah) {
-	case BLAH1:
-		...
-		break;
-	case BLAH2: {
-		int i;
+    case BLAH1:
+        ...
+        break;
+    case BLAH2: {
+        int i;
 
-		...
-		break;
-	}
-	default:
-		...
-		break;
+        ...
+        break;
+    }
+    default:
+        ...
+        break;
 } // switch
 </pre>
 </font>
@@ -476,14 +524,14 @@ switch (blah) {
 <font color="#0000ff">
 <pre>
 struct Point {
-	int	tag;
-	union 	cool {
-		int	ival;
-		double	dval;
-	} cool;
+    int     tag;
+    union   cool {
+        int     ival;
+        double  dval;
+    } cool;
 };
 enum Stuff {
-	STUFF_A, STUFF_B ...
+    STUFF_A, STUFF_B ...
 };
 </pre>
 </font>
@@ -493,15 +541,15 @@ enum Stuff {
 <font color="#0000ff">
 <pre>
 while (stuff) {
-	...
+    ...
 }
 
 do {
-	...
-} while (stuff)
+    ...
+} while (stuff);
 
 for (this; that; those) {
-	// Always use curlies, even if there is no body.
+    // Always use curlies, even if there is no body.
 }
 
 // If no body, do this...
@@ -511,7 +559,6 @@ while (stuff) {
 for (this; that; those) {
     // Do nothing.
 }
-
 </pre>
 </font>
 
@@ -525,14 +572,12 @@ For example:
 
 <font color="#0000ff">
 <pre>
-
 #ifdef GUAVA
   #ifndef PAPAYA
-  #else // PAPAYA
+  #else  // PAPAYA
   #endif // PAPAYA
-#else // not GUAVA
+#else  // not GUAVA
 #endif // not GUAVA
-
 </pre>
 </font>
 
@@ -590,7 +635,7 @@ via mutual exclusion.
 The biggest cause of non-reentrant (non-threadsafe) code
 is function-static data.
 Note that some C library functions may be non-reentrant.
-This may or may not be documented in the man pages.
+This may or may not be documented in their man pages.
 
 <h3>6.4. Environment specifics</h3>
 
@@ -644,7 +689,7 @@ you need the above and also:
 <li>
 Perl <font color="#ff0000">XXX: Which version?</font>
 <li>
-CVS
+git
 <li>
 autoconf
 <li>
@@ -701,7 +746,7 @@ then you must use lists of #defines.
 Parameters to macros should be in parentheses.
 <font color="#0000ff">
 <pre>
-	#define STREQ(s1,s2)	(strcmp((s1),(s2)) == 0)
+    #define STREQ(s1,s2)    (strcmp((s1),(s2)) == 0)
 </pre>
 </font>
 

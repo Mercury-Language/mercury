@@ -73,15 +73,15 @@ before the unreachable point will not be included.)
 The post-birth sets of all other goals will be empty.
 <p>
 This guarantees that the set of variables
-born in each branch of a branched control structure
-will be the same, modulo variables local to each branch.
+born in each branch of a branched control structure will be the same,
+modulo variables local to each branch.
 <p>
 We can optimize the treatment of variables
 that are live inside a branched control structure but not after,
 because it is possible for the variable to be used in one branch
 without also being used in some other branches.
-Each variable that is live before the branched structure
-but not after must die in the branched structure.
+Each variable that is live before the branched structure, but not after,
+must die in the branched structure.
 Branches in which the variable is used
 will include the variable in the post-death set of one of their subgoals.
 As far as branches in which the variable is not used are concerned,

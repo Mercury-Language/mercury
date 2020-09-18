@@ -132,6 +132,7 @@ endif
 MTAGS	= $(SCRIPTS_DIR)/mtags
 
 LN	= ln
+SED	= sed
 
 #-----------------------------------------------------------------------------#
 
@@ -216,6 +217,28 @@ opts:	$(STD_LIB_NAME).opts
 .PHONY: trans_opts
 trans_opts: $(STD_LIB_NAME).trans_opts
 $(STD_LIB_NAME).trans_opts: $($(STD_LIB_NAME).trans_opts)
+
+#-----------------------------------------------------------------------------#
+
+.PHONE: apply_getopt_template
+apply_getopt_template: getopt_template
+	-chmod u+w getopt.m getopt_io.m
+	$(SED) \
+		-e '/TEMPLATE_ONLY_START/,/TEMPLATE_ONLY_END/d' \
+		-e '/GETOPT_IO_ONLY_START/,/GETOPT_IO_ONLY_END/d' \
+		-e '/GETOPT_ONLY_START/d' \
+		-e '/GETOPT_ONLY_END/d' \
+		-e 's/getopt_io/getopt/' \
+		-e 's/, io::di, io::uo//' \
+		-e 's/, !IO//' \
+		< getopt_template > getopt.m
+	$(SED) \
+		-e '/TEMPLATE_ONLY_START/,/TEMPLATE_ONLY_END/d' \
+		-e '/GETOPT_ONLY_START/,/GETOPT_ONLY_END/d' \
+		-e '/GETOPT_IO_ONLY_START/d' \
+		-e '/GETOPT_IO_ONLY_END/d' \
+		< getopt_template > getopt_io.m
+	chmod a-w getopt.m getopt_io.m
 
 #-----------------------------------------------------------------------------#
 
