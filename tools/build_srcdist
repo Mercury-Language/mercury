@@ -7,8 +7,8 @@
 set -e
 
 DATE=`date '+%Y-%m-%d'`
-ROTD_VERSION=rotd-$DATE
-RELEASE_VERSION=$ROTD_VERSION
+ROTD_VERSION=rotd-${DATE}
+RELEASE_VERSION=${ROTD_VERSION}
 CC=gcc
 RUN=no
 PARALLEL=1
@@ -17,74 +17,79 @@ TAR=tar
 USAGE="\
 $0 [options]
 Options:
-    -h
-        Output this help message and exit.
-    -r
-        Use a ROTD style version number with today's date (default).
-    -v VER
-        Use VER as the version number.
-    -n
-        Do not update VERSION file.
-    -f
-        Without this option the build_srcdist script will not run, it will warn
-        the user that it is destructive and then exit.
-    -j N
-        Run N jobs in parallel.
     -c CC
         Use CC as the C compiler.
+    -f
+        Without this option the build_srcdist script will not run;
+        it will just warn the user that it is destructive, and then exit.
+    -h
+        Output this help message and exit.
+    -j N
+        Run N jobs in parallel.
+    -n
+        Do not update the VERSION file.
+    -r
+        Use a ROTD style version number with today's date
+        (this is the default).
     -t TAR
-        Use TAR as the archiving utility (default: tar)
+        Use TAR as the archiving utility (default: tar).
+    -v VER
+        Use VER as the version number.
 "
 
-while getopts "hrv:nc:fj:t:" OPT; do
-    case "$OPT" in
-        h)
-            echo "$USAGE"
-            exit 0
-            ;;
-        r)
-            RELEASE_VERSION=$ROTD_VERSION
-            ;;
-        v)
-            RELEASE_VERSION=$OPTARG
-            ;;
-        n)
-            RELEASE_VERSION=""
-            ;;
+while getopts "c:fhj:nrt:v:" OPT
+do
+    case "${OPT}" in
         c)
-            CC=$OPTARG
+            CC=${OPTARG}
             ;;
         f)
             RUN=yes
             ;;
+        h)
+            echo "${USAGE}"
+            exit 0
+            ;;
         j)
-            PARALLEL=$OPTARG
+            PARALLEL=${OPTARG}
+            ;;
+        n)
+            RELEASE_VERSION=""
+            ;;
+        r)
+            RELEASE_VERSION=${ROTD_VERSION}
             ;;
         t)
-            TAR=$OPTARG
+            TAR=${OPTARG}
+            ;;
+        v)
+            RELEASE_VERSION=${OPTARG}
             ;;
         ?)
-            echo "$USAGE"
+            echo "${USAGE}"
             exit 1
             ;;
         *)
-            echo "Getopt error \"$OPT\""
-            echo "$USAGE"
+            echo "Getopt error \"${OPT}\""
+            echo "${USAGE}"
             exit 1
             ;;
     esac
 done
 
-if [ "$RUN" = "no" ]; then
-    echo "Warning: This script is destructive, it will 'git clean' your"
-    echo "workspace.  If you're okay with this and want to proceed, then"
-    echo "add -f to the command line"
+if test ! -d .git
+then
+    echo "Error: $0 must be called from the root directory"
+    echo "of a Mercury git workspace."
     exit 2
 fi
 
-if [ ! -d .git ]; then
-    echo "Error: $0 must be called from the root directory of a Mercury"
-    echo "git workspace."
+if test "${RUN}" = "no"
+then
+    echo "Warning: this script is destructive."
+    echo "Specifically, it will 'git clean' your workspace."
+    echo "If you are okay with this and want to proceed, then"
+    echo "add -f to the command line."
     exit 2
 fi
 
@@ -95,8 +100,8 @@ BITS_PER_WORD=32
 BYTES_PER_WORD=4
 UNBOXED_FLOATS=no
 
-# Clean up any leftover stage[23] directories in the workspace and 'git clean'
-# doesn't completely remove them.
+# Clean up any leftover stage[23] directories in the workspace,
+# since 'git clean' doesn't completely remove them.
 #
 /bin/rm -rf stage2 stage3
 
@@ -104,15 +109,21 @@ UNBOXED_FLOATS=no
 git submodule deinit -f .
 git clean -d -f -x
 git rev-parse HEAD > COMMIT_ID
-if [ -n "$RELEASE_VERSION" ]; then
-    sed "s/VERSION=.*/VERSION=$RELEASE_VERSION/" VERSION > VERSION.new
+if test -n "${RELEASE_VERSION}"
+then
+    sed "s/VERSION=.*/VERSION=${RELEASE_VERSION}/" VERSION > VERSION.new
     mv VERSION.new VERSION
 fi
 /bin/rm -f Mmake.params Mmake.stage.params
 ./prepare.sh
-mercury_cv_low_tag_bits=$NUM_TAG_BITS \
-mercury_cv_bits_per_word=$BITS_PER_WORD \
-mercury_cv_bytes_per_word=$BYTES_PER_WORD \
-mercury_cv_unboxed_floats=$UNBOXED_FLOATS \
-sh configure --with-cc="$CC" &&
-mmake TAR="$TAR" GRADE=hlc.gc.pregen MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' -j$PARALLEL" tar
+mercury_cv_low_tag_bits=${NUM_TAG_BITS} \
+mercury_cv_bits_per_word=${BITS_PER_WORD} \
+mercury_cv_bytes_per_word=${BYTES_PER_WORD} \
+mercury_cv_unboxed_floats=${UNBOXED_FLOATS} \
+sh configure --with-cc="${CC}" &&
+mmake \
+    TAR="${TAR}" \
+    GRADE=hlc.gc.pregen \
+    MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' \
+    -j${PARALLEL}" \
+    tar
