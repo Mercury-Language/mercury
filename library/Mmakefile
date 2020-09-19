@@ -221,7 +221,7 @@ $(STD_LIB_NAME).trans_opts: $($(STD_LIB_NAME).trans_opts)
 
 #-----------------------------------------------------------------------------#
 
-.PHONE: apply_getopt_template
+.PHONY: apply_getopt_template
 apply_getopt_template: getopt_template
 	-chmod u+w getopt.m getopt_io.m
 	$(SED) \
