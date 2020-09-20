@@ -558,6 +558,73 @@ tar: 	$(GENERATED_DOCS)
 		rmdir stuff-to-exclude;					\
 	)
 
+.PHONY: tar2
+tar2: 	$(GENERATED_DOCS)
+	touch Mmake.params
+	cd util && mmake
+	+cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
+	+cd library && $(SUBDIR_MMAKE) apply_getopt_template
+	+cd library && $(SUBDIR_MMAKE) depend
+	+cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
+	+cd mdbcomp && $(SUBDIR_MMAKE) depend
+	+cd mdbcomp && $(SUBDIR_MMAKE) all-ints cs \
+		$(MDBCOMP_LIB_NAME).init tags
+	+cd browser && $(SUBDIR_MMAKE) depend
+	+cd browser && $(SUBDIR_MMAKE) all-ints cs \
+		$(BROWSER_LIB_NAME).init tags
+	+cd ssdb && $(SUBDIR_MMAKE) depend
+	+cd ssdb && $(SUBDIR_MMAKE) all-ints cs \
+		$(SSDB_LIB_NAME).init tags
+	+cd trace && $(SUBDIR_MMAKE) cs
+	+cd compiler && $(SUBDIR_MMAKE) depend
+	+cd compiler && $(SUBDIR_MMAKE) cs tags
+	+cd slice && $(SUBDIR_MMAKE) depend
+	+cd slice && $(SUBDIR_MMAKE) cs tags
+	+cd profiler && $(SUBDIR_MMAKE) depend
+	+cd profiler && $(SUBDIR_MMAKE) cs tags
+	+cd deep_profiler && $(SUBDIR_MMAKE) depend
+	+cd deep_profiler && $(SUBDIR_MMAKE) cs tags
+	+cd mfilterjavac && $(SUBDIR_MMAKE) depend
+	+cd mfilterjavac && $(SUBDIR_MMAKE) cs tags
+	+cd grade_lib && $(SUBDIR_MMAKE) depend
+	+cd grade_lib && $(SUBDIR_MMAKE) cs tags
+	+cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
+	# the following commands might fail on Windows?
+	-cd bindist && $(SUBDIR_MMAKE) bindist.Makefile
+	-cd bindist && $(SUBDIR_MMAKE) bindist.INSTALL
+	+cd extras/dynamic_linking && $(SUBSUBDIR_MMAKE) sources
+	# clean up
+	cd scripts && mmake realclean
+	cd scripts && mmake canonical_grade
+	cd util && mmake realclean
+	cd doc && mmake distclean
+	-rm -f errs errs2 update.log
+	-rm -f config.status config.cache config.log configure.log a.out
+	-rm -f scripts/config.log
+	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
+	-rm -f Mmake.common
+	-rm -f extras/Mmake.params
+	-rm -rf autom4te.cache
+	-rm -rf bytecode
+	-rm -rf extras/quickcheck
+	-rm -rf .git
+	-rm -rf .gitignore
+	chmod -R a+r *
+	# Our invoker should have passed to us in ${SRCDIST_NAME}
+	# the name of the current directory in its parent directory.
+	# This name should have the form mercury-srcdist-$VERSION,
+	# which matters, because it will also be the name of the directory
+	# that the tar file we are creating here will unpack into.
+	#
+	# Our invoker should also have put into ${TAR_FILE_NAME}
+	# the pathname of the .tar file we are creating.
+	# This should be an absolute pathname, and it must be
+	# outside the directory we are packing up.
+	cd .. && (							\
+		$(TAR) --dereference 					\
+			-cf ${TAR_FILE_NAME} ${SRCDIST_NAME} 		\
+	)
+
 .PHONY: version
 version:
 	@echo $(VERSION)
