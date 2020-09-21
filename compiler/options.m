@@ -657,7 +657,7 @@
 
     ;       size_region_ite_fixed
     ;       size_region_disj_fixed
-    ;       size_region_semi_disj_fixed
+%   ;       size_region_semi_disj_fixed     % XXX unused, which may be a bug
     ;       size_region_commit_fixed
 
     ;       size_region_ite_protect
@@ -1146,48 +1146,55 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module solutions.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
+
+:- pragma no_determinism_warning(option_defaults/2).
+% getopt_io and hence handle_options.m expect a nondet predicate,
+% so we declare option_defaults to be nondet, even though it is multi.
+
+option_defaults(Opt, Data) :-
+    optdef(_Category, Opt, Data).
+
 :- type option_category
-    --->    warning_option
-    ;       verbosity_option
-    ;       output_option
-    ;       aux_output_option
-    ;       language_semantics_option
-    ;       compilation_model_option
-    ;       internal_use_option
-    ;       code_gen_option
-    ;       special_optimization_option
-    ;       optimization_option
-    ;       target_code_compilation_option
-    ;       link_option
-    ;       build_system_option
-    ;       miscellaneous_option.
+    --->    oc_warn
+    ;       oc_verbosity
+    ;       oc_opmode
+    ;       oc_aux_output
+    ;       oc_semantics
+    ;       oc_grade
+    ;       oc_internal
+    ;       oc_codegen
+    ;       oc_spec_opt
+    ;       oc_opt
+    ;       oc_target_comp
+    ;       oc_link
+    ;       oc_buildsys
+    ;       oc_misc.
 
-option_defaults(Option, Default) :-
-    option_defaults_2(_Category, OptionsList),
-    list.member(Option - Default, OptionsList).
-
-:- pred option_defaults_2(option_category, list(pair(option, option_data))).
+:- pred option_defaults_2(option_category, assoc_list(option, option_data)).
 :- mode option_defaults_2(in, out) is det.
-:- mode option_defaults_2(out, out) is multi.
+% :- mode option_defaults_2(out, out) is multi.
 
-option_defaults_2(warning_option, [
-    % Warning Options
-    inhibit_warnings                    -   bool_special,
-    inhibit_style_warnings              -   bool_special,
-    warn_accumulator_swaps              -   bool(yes),
-    halt_at_warn                        -   bool(no),
-    halt_at_syntax_errors               -   bool(no),
-    halt_at_auto_parallel_failure       -   bool(no),
-    % XXX TYPE_REPN We should set this to "yes" once we require
-    % the installed compiler to ensure that what it puts into
-    % interface files won't generate any errors.
-    halt_at_invalid_interface           -   bool(yes),
-    print_errors_warnings_when_generating_interface -   bool(no),
+option_defaults_2(Category, OptsDatas) :-
+    Pred =
+        ( pred((Opt - Data)::out) is nondet :-
+            optdef(Cat, Opt, Data),
+            Cat = Category
+        ),
+    solutions(Pred, OptsDatas).
 
+%---------------------------------------------------------------------------%
+
+:- pred optdef(option_category, option, option_data).
+:- mode optdef(out, in, out) is det.
+:- mode optdef(out, out, out) is multi.
+
+    % Warning options.
+    %
     % IMPORTANT NOTE:
     % if you add any new warning options, or if you change the default
     % for an existing warning option to `yes', then you will need to modify
@@ -1195,877 +1202,861 @@ option_defaults_2(warning_option, [
     % affects a style warning, you will need to modify the handling of
     % inhibit_style_warnings as well.
 
-    warn_singleton_vars                 -   bool(yes),
-    warn_overlapping_scopes             -   bool(yes),
-    warn_det_decls_too_lax              -   bool(yes),
-    warn_inferred_erroneous             -   bool(yes),
-    warn_nothing_exported               -   bool(yes),
-    warn_unused_args                    -   bool(no),
-    warn_interface_imports              -   bool(yes),
-    warn_interface_imports_in_parents   -   bool(no),
-    warn_inconsistent_pred_order_clauses        -   bool(no),
-    warn_inconsistent_pred_order_foreign_procs  -   bool(no),
-    warn_non_contiguous_decls           -   bool(yes),
-    warn_non_contiguous_clauses         -   bool(no),   % XXX should be yes
-    warn_non_contiguous_foreign_procs   -   bool(no),
-    warn_non_stratification             -   bool(no),
-    warn_missing_opt_files              -   bool(yes),
-    warn_missing_trans_opt_files        -   bool(no),
-    warn_missing_trans_opt_deps         -   bool(yes),
-    warn_unification_cannot_succeed     -   bool(yes),
-    warn_simple_code                    -   bool(yes),
-    warn_duplicate_calls                -   bool(no),
-    warn_implicit_stream_calls          -   bool(no),
-    warn_missing_module_name            -   bool(yes),
-    warn_wrong_module_name              -   bool(yes),
-    warn_smart_recompilation            -   bool(yes),
-    warn_undefined_options_variables    -   bool(yes),
-    warn_suspicious_recursion           -   bool(no),
-    warn_non_tail_recursion_self        -   bool(no),
-    warn_non_tail_recursion_mutual      -   bool(no),
-    warn_non_tail_recursion             -   maybe_string_special,
-    warn_obvious_non_tail_recursion     -   bool(no),
-    warn_target_code                    -   bool(yes),
-    warn_up_to_date                     -   bool(yes),
-    warn_stubs                          -   bool(yes),
-    warn_dead_procs                     -   bool(no),
-    warn_dead_preds                     -   bool(no),
-    warn_table_with_inline              -   bool(yes),
-    warn_non_term_special_preds         -   bool(yes),
-    warn_known_bad_format_calls         -   bool(yes),
-    warn_only_one_format_string_error   -   bool(yes),
-    warn_unknown_format_calls           -   bool(no),
-    warn_obsolete                       -   bool(yes),
-    warn_insts_without_matching_type    -   bool(yes),
-    warn_insts_with_functors_without_type - bool(no),
-        % XXX disabled by default until someone
-        % removes all the unused imports from
-        % the compiler itself which is compiled
-        % with --halt-at-warn by default.
-    warn_unused_imports                 -   bool(no),
-    inform_ite_instead_of_switch        -   bool(no),
-    inform_incomplete_switch            -   bool(no),
-    inform_incomplete_switch_threshold  -   int(0),
-    warn_unresolved_polymorphism        -   bool(yes),
-    warn_suspicious_foreign_procs       -   bool(no),
-    warn_suspicious_foreign_code        -   bool(no),
-    warn_state_var_shadowing            -   bool(yes),
-    warn_suspected_occurs_check_failure -   bool(yes),
-    inform_inferred                     -   bool_special,
-    inform_inferred_types               -   bool(yes),
-    inform_inferred_modes               -   bool(yes),
-    inform_suboptimal_packing           -   bool(no),
-    print_error_spec_id                 -   bool(no)
-]).
-option_defaults_2(verbosity_option, [
-    % Verbosity Options
-    verbose                             -   bool(no),
-    very_verbose                        -   bool(no),
-    verbose_errors                      -   bool(no),
-    verbose_recompilation               -   bool(no),
-    find_all_recompilation_reasons      -   bool(no),
-    verbose_make                        -   bool(yes),
-    verbose_commands                    -   bool(no),
-    output_compile_error_lines          -   int(15),
-    report_cmd_line_args                -   bool(no),
-    report_cmd_line_args_in_doterr      -   bool(no),
-    statistics                          -   bool(no),
-    detailed_statistics                 -   bool(no),
-    proc_size_statistics                -   string(""),
-    limit_error_contexts                -   accumulating([]),
-    debug_types                         -   bool(no),
-    debug_modes                         -   bool(no),
-    debug_modes_statistics              -   bool(no),
-    debug_modes_minimal                 -   bool(no),
-    debug_modes_verbose                 -   bool(no),
-    debug_modes_pred_id                 -   int(-1),
-    debug_dep_par_conj                  -   accumulating([]),
-    debug_det                           -   bool(no),
-    debug_code_gen_pred_id              -   int(-1),
-    debug_term                          -   bool(no),
-    debug_opt                           -   bool(no),
-    debug_opt_pred_id                   -   accumulating([]),
-    debug_opt_pred_name                 -   accumulating([]),
-    debug_pd                            -   bool(no),
-    debug_liveness                      -   int(-1),
-    debug_stack_opt                     -   int(-1),
-    debug_make                          -   bool(no),
-    debug_closure                       -   bool(no),
-    debug_trail_usage                   -   bool(no),
-    debug_mode_constraints              -   bool(no),
-    debug_intermodule_analysis          -   bool(no),
-    debug_mm_tabling_analysis           -   bool(no),
-    debug_indirect_reuse                -   bool(no),
-    debug_type_rep                      -   bool(no)
-]).
-option_defaults_2(output_option, [
-    % Output Options (mutually exclusive)
-    only_opmode_generate_source_file_mapping -      bool(no),
-    only_opmode_generate_dependency_file -  bool(no),
-    only_opmode_generate_dependencies   -   bool(no),
-    generate_module_order               -   bool(no),
-    generate_standalone_interface       -   maybe_string(no),
-    only_opmode_make_short_interface    -   bool(no),
-    only_opmode_make_interface          -   bool(no),
-    only_opmode_make_private_interface  -   bool(no),
-    only_opmode_make_optimization_interface -       bool(no),
-    only_opmode_make_transitive_opt_interface -     bool(no),
-    only_opmode_make_analysis_registry  -   bool(no),
-    only_opmode_make_xml_documentation  -   bool(no),
-    only_opmode_convert_to_mercury      -   bool(no),
-    only_opmode_typecheck_only          -   bool(no),
-    only_opmode_errorcheck_only         -   bool(no),
-    only_opmode_target_code_only        -   bool(no),
-    only_opmode_compile_only            -   bool(no),
-    compile_to_shared_lib               -   bool(no),
-    only_opmode_output_grade_string     -   bool(no),
-    only_opmode_output_link_command     -   bool(no),
-    only_opmode_output_shared_lib_link_command -    bool(no),
-    only_opmode_output_libgrades        -   bool(no),
-    only_opmode_output_cc               -   bool(no),
-    only_opmode_output_c_compiler_type  -   bool(no),
-    only_opmode_output_csharp_compiler  -   bool(no),
-    only_opmode_output_csharp_compiler_type -       bool(no),
-    only_opmode_output_cflags           -   bool(no),
-    only_opmode_output_library_link_flags -   bool(no),
-    only_opmode_output_grade_defines    -   bool(no),
-    only_opmode_output_c_include_directory_flags -  bool(no),
-    only_opmode_output_target_arch      -   bool(no),
-    only_opmode_output_class_dir        -   bool(no)
-]).
-option_defaults_2(aux_output_option, [
-    % Auxiliary Output Options
-    smart_recompilation                 -   bool(no),
-    generate_item_version_numbers       -   bool(no),
-    generate_mmc_make_module_dependencies - bool(no),
-    trace_level                         -   string("default"),
-    trace_optimized                     -   bool(no),
-    trace_prof                          -   bool(no),
-    trace_table_io                      -   bool(no),
-    trace_table_io_only_retry           -   bool(no),
-    trace_table_io_states               -   bool(no),
-    trace_table_io_require              -   bool(no),
-    trace_table_io_all                  -   bool(no),
-    trace_goal_flags                    -   accumulating([]),
-    prof_optimized                      -   bool(no),
-    exec_trace_tail_rec                 -   bool(no),
-    suppress_trace                      -   string(""),
-    force_disable_tracing               -   bool(no),
-    delay_death                         -   bool(yes),
-    delay_death_max_vars                -   int(1000),
-    stack_trace_higher_order            -   bool(no),
-    force_disable_ssdebug               -   bool(no),
-    generate_bytecode                   -   bool(no),
-    line_numbers                        -   bool(no),
-    line_numbers_around_foreign_code    -   bool(yes),
-    line_numbers_for_c_headers          -   bool(no),
-    type_repns_for_humans               -   bool(no),
-    auto_comments                       -   bool(no),
-    frameopt_comments                   -   bool(no),
-    max_error_line_width                -   maybe_int(yes(79)),
-    show_definitions                    -   bool(no),
-    show_definition_line_counts         -   bool(no),
-    show_definition_extents             -   bool(no),
-    show_local_type_repns               -   bool(no),
-    show_all_type_repns                 -   bool(no),
-    show_developer_type_repns           -   bool(no),
-    show_dependency_graph               -   bool(no),
-    imports_graph                       -   bool(no),
-    dump_trace_counts                   -   accumulating([]),
-    dump_hlds                           -   accumulating([]),
-    dump_hlds_pred_id                   -   accumulating([]),
-    dump_hlds_pred_name                 -   accumulating([]),
-    dump_hlds_pred_name_order           -   bool(no),
-    dump_hlds_spec_preds                -   bool(no),
-    dump_hlds_spec_preds_for            -   accumulating([]),
-    dump_hlds_alias                     -   string(""),
-    dump_hlds_options                   -   string(""),
-    dump_hlds_inst_limit                -   int(100),
-    dump_hlds_file_suffix               -   string(""),
-    dump_same_hlds                      -   bool(no),
-    dump_mlds                           -   accumulating([]),
-    dump_mlds_pred_name                 -   accumulating([]),
-    verbose_dump_mlds                   -   accumulating([]),
-    dump_options_file                   -   bool(no),
-    mode_constraints                    -   bool(no),
-    simple_mode_constraints             -   bool(no),
-    prop_mode_constraints               -   bool(no),
-    compute_goal_modes                  -   bool(no),
-    benchmark_modes                     -   bool(no),
-    benchmark_modes_repeat              -   int(1)
-]).
-option_defaults_2(language_semantics_option, [
-    strict_sequential                   -   special,
-    reorder_conj                        -   bool(yes),
-    reorder_disj                        -   bool(yes),
-    fully_strict                        -   bool(yes),
-    allow_stubs                         -   bool(no),
-    infer_types                         -   bool(no),
-    infer_modes                         -   bool(no),
-    infer_det                           -   bool(yes),
-    infer_all                           -   bool_special,
-    type_inference_iteration_limit      -   int(60),
-    mode_inference_iteration_limit      -   int(30),
-    event_set_file_name                 -   string("")
-]).
-option_defaults_2(compilation_model_option, [
+optdef(oc_warn, inhibit_warnings,                       bool_special).
+optdef(oc_warn, inhibit_style_warnings,                 bool_special).
+optdef(oc_warn, warn_accumulator_swaps,                 bool(yes)).
+optdef(oc_warn, halt_at_warn,                           bool(no)).
+optdef(oc_warn, halt_at_syntax_errors,                  bool(no)).
+optdef(oc_warn, halt_at_auto_parallel_failure,          bool(no)).
+optdef(oc_warn, halt_at_invalid_interface,              bool(yes)).
+    % XXX TYPE_REPN We should set halt_at_invalid_interface to "yes"
+    % once we require the installed compiler to ensure that what it puts
+    % into interface files won't generate any errors.
+optdef(oc_warn, print_errors_warnings_when_generating_interface, bool(no)).
+optdef(oc_warn, warn_singleton_vars,                    bool(yes)).
+optdef(oc_warn, warn_overlapping_scopes,                bool(yes)).
+optdef(oc_warn, warn_det_decls_too_lax,                 bool(yes)).
+optdef(oc_warn, warn_inferred_erroneous,                bool(yes)).
+optdef(oc_warn, warn_nothing_exported,                  bool(yes)).
+optdef(oc_warn, warn_unused_args,                       bool(no)).
+optdef(oc_warn, warn_interface_imports,                 bool(yes)).
+optdef(oc_warn, warn_interface_imports_in_parents,      bool(no)).
+optdef(oc_warn, warn_inconsistent_pred_order_clauses,   bool(no)).
+optdef(oc_warn, warn_inconsistent_pred_order_foreign_procs, bool(no)).
+optdef(oc_warn, warn_non_contiguous_decls,              bool(yes)).
+optdef(oc_warn, warn_non_contiguous_clauses,            bool(no)).
+    % XXX warn_non_contiguous_clauses should default to yes.
+optdef(oc_warn, warn_non_contiguous_foreign_procs,      bool(no)).
+optdef(oc_warn, warn_non_stratification,                bool(no)).
+optdef(oc_warn, warn_missing_opt_files,                 bool(yes)).
+optdef(oc_warn, warn_missing_trans_opt_files,           bool(no)).
+optdef(oc_warn, warn_missing_trans_opt_deps,            bool(yes)).
+optdef(oc_warn, warn_unification_cannot_succeed,        bool(yes)).
+optdef(oc_warn, warn_simple_code,                       bool(yes)).
+optdef(oc_warn, warn_duplicate_calls,                   bool(no)).
+optdef(oc_warn, warn_implicit_stream_calls,             bool(no)).
+optdef(oc_warn, warn_missing_module_name,               bool(yes)).
+optdef(oc_warn, warn_wrong_module_name,                 bool(yes)).
+optdef(oc_warn, warn_smart_recompilation,               bool(yes)).
+optdef(oc_warn, warn_undefined_options_variables,       bool(yes)).
+optdef(oc_warn, warn_suspicious_recursion,              bool(no)).
+optdef(oc_warn, warn_non_tail_recursion_self,           bool(no)).
+optdef(oc_warn, warn_non_tail_recursion_mutual,         bool(no)).
+optdef(oc_warn, warn_non_tail_recursion,                maybe_string_special).
+optdef(oc_warn, warn_obvious_non_tail_recursion,        bool(no)).
+optdef(oc_warn, warn_target_code,                       bool(yes)).
+optdef(oc_warn, warn_up_to_date,                        bool(yes)).
+optdef(oc_warn, warn_stubs,                             bool(yes)).
+optdef(oc_warn, warn_dead_procs,                        bool(no)).
+optdef(oc_warn, warn_dead_preds,                        bool(no)).
+optdef(oc_warn, warn_table_with_inline,                 bool(yes)).
+optdef(oc_warn, warn_non_term_special_preds,            bool(yes)).
+optdef(oc_warn, warn_known_bad_format_calls,            bool(yes)).
+optdef(oc_warn, warn_only_one_format_string_error,      bool(yes)).
+optdef(oc_warn, warn_unknown_format_calls,              bool(no)).
+optdef(oc_warn, warn_obsolete,                          bool(yes)).
+optdef(oc_warn, warn_insts_without_matching_type,       bool(yes)).
+optdef(oc_warn, warn_insts_with_functors_without_type,  bool(no)).
+optdef(oc_warn, warn_unused_imports,                    bool(no)).
+    % XXX warn_unused_imports is disabled by default until someone
+    % removes all the unused imports from the compiler itself,
+    % which is compiled with --halt-at-warn by default.
+optdef(oc_warn, inform_ite_instead_of_switch,           bool(no)).
+optdef(oc_warn, inform_incomplete_switch,               bool(no)).
+optdef(oc_warn, inform_incomplete_switch_threshold,     int(0)).
+optdef(oc_warn, warn_unresolved_polymorphism,           bool(yes)).
+optdef(oc_warn, warn_suspicious_foreign_procs,          bool(no)).
+optdef(oc_warn, warn_suspicious_foreign_code,           bool(no)).
+optdef(oc_warn, warn_state_var_shadowing,               bool(yes)).
+optdef(oc_warn, warn_suspected_occurs_check_failure,    bool(yes)).
+optdef(oc_warn, inform_inferred,                        bool_special).
+optdef(oc_warn, inform_inferred_types,                  bool(yes)).
+optdef(oc_warn, inform_inferred_modes,                  bool(yes)).
+optdef(oc_warn, inform_suboptimal_packing,              bool(no)).
+optdef(oc_warn, print_error_spec_id,                    bool(no)).
+
+    % Verbosity options.
+
+optdef(oc_verbosity, verbose,                           bool(no)).
+optdef(oc_verbosity, very_verbose,                      bool(no)).
+optdef(oc_verbosity, verbose_errors,                    bool(no)).
+optdef(oc_verbosity, verbose_recompilation,             bool(no)).
+optdef(oc_verbosity, find_all_recompilation_reasons,    bool(no)).
+optdef(oc_verbosity, verbose_make,                      bool(yes)).
+optdef(oc_verbosity, verbose_commands,                  bool(no)).
+optdef(oc_verbosity, output_compile_error_lines,        int(15)).
+optdef(oc_verbosity, report_cmd_line_args,              bool(no)).
+optdef(oc_verbosity, report_cmd_line_args_in_doterr,    bool(no)).
+optdef(oc_verbosity, statistics,                        bool(no)).
+optdef(oc_verbosity, detailed_statistics,               bool(no)).
+optdef(oc_verbosity, proc_size_statistics,              string("")).
+optdef(oc_verbosity, limit_error_contexts,              accumulating([])).
+optdef(oc_verbosity, debug_types,                       bool(no)).
+optdef(oc_verbosity, debug_modes,                       bool(no)).
+optdef(oc_verbosity, debug_modes_statistics,            bool(no)).
+optdef(oc_verbosity, debug_modes_minimal,               bool(no)).
+optdef(oc_verbosity, debug_modes_verbose,               bool(no)).
+optdef(oc_verbosity, debug_modes_pred_id,               int(-1)).
+optdef(oc_verbosity, debug_dep_par_conj,                accumulating([])).
+optdef(oc_verbosity, debug_det,                         bool(no)).
+optdef(oc_verbosity, debug_code_gen_pred_id,            int(-1)).
+optdef(oc_verbosity, debug_term,                        bool(no)).
+optdef(oc_verbosity, debug_opt,                         bool(no)).
+optdef(oc_verbosity, debug_opt_pred_id,                 accumulating([])).
+optdef(oc_verbosity, debug_opt_pred_name,               accumulating([])).
+optdef(oc_verbosity, debug_pd,                          bool(no)).
+optdef(oc_verbosity, debug_liveness,                    int(-1)).
+optdef(oc_verbosity, debug_stack_opt,                   int(-1)).
+optdef(oc_verbosity, debug_make,                        bool(no)).
+optdef(oc_verbosity, debug_closure,                     bool(no)).
+optdef(oc_verbosity, debug_trail_usage,                 bool(no)).
+optdef(oc_verbosity, debug_mode_constraints,            bool(no)).
+optdef(oc_verbosity, debug_intermodule_analysis,        bool(no)).
+optdef(oc_verbosity, debug_mm_tabling_analysis,         bool(no)).
+optdef(oc_verbosity, debug_indirect_reuse,              bool(no)).
+optdef(oc_verbosity, debug_type_rep,                    bool(no)).
+
+    % Output options (mutually exclusive).
+
+optdef(oc_opmode, only_opmode_generate_source_file_mapping, bool(no)).
+optdef(oc_opmode, only_opmode_generate_dependency_file, bool(no)).
+optdef(oc_opmode, only_opmode_generate_dependencies,    bool(no)).
+optdef(oc_opmode, generate_module_order,                bool(no)).
+optdef(oc_opmode, generate_standalone_interface,        maybe_string(no)).
+optdef(oc_opmode, only_opmode_make_short_interface,     bool(no)).
+optdef(oc_opmode, only_opmode_make_interface,           bool(no)).
+optdef(oc_opmode, only_opmode_make_private_interface,   bool(no)).
+optdef(oc_opmode, only_opmode_make_optimization_interface, bool(no)).
+optdef(oc_opmode, only_opmode_make_transitive_opt_interface, bool(no)).
+optdef(oc_opmode, only_opmode_make_analysis_registry,   bool(no)).
+optdef(oc_opmode, only_opmode_make_xml_documentation,   bool(no)).
+optdef(oc_opmode, only_opmode_convert_to_mercury,       bool(no)).
+optdef(oc_opmode, only_opmode_typecheck_only,           bool(no)).
+optdef(oc_opmode, only_opmode_errorcheck_only,          bool(no)).
+optdef(oc_opmode, only_opmode_target_code_only,         bool(no)).
+optdef(oc_opmode, only_opmode_compile_only,             bool(no)).
+optdef(oc_opmode, compile_to_shared_lib,                bool(no)).
+optdef(oc_opmode, only_opmode_output_grade_string,      bool(no)).
+optdef(oc_opmode, only_opmode_output_link_command,      bool(no)).
+optdef(oc_opmode, only_opmode_output_shared_lib_link_command, bool(no)).
+optdef(oc_opmode, only_opmode_output_libgrades,         bool(no)).
+optdef(oc_opmode, only_opmode_output_cc,                bool(no)).
+optdef(oc_opmode, only_opmode_output_c_compiler_type,   bool(no)).
+optdef(oc_opmode, only_opmode_output_csharp_compiler,   bool(no)).
+optdef(oc_opmode, only_opmode_output_csharp_compiler_type, bool(no)).
+optdef(oc_opmode, only_opmode_output_cflags,            bool(no)).
+optdef(oc_opmode, only_opmode_output_library_link_flags, bool(no)).
+optdef(oc_opmode, only_opmode_output_grade_defines,     bool(no)).
+optdef(oc_opmode, only_opmode_output_c_include_directory_flags, bool(no)).
+optdef(oc_opmode, only_opmode_output_target_arch,       bool(no)).
+optdef(oc_opmode, only_opmode_output_class_dir,         bool(no)).
+
+    % Auxiliary output options.
+
+optdef(oc_aux_output, smart_recompilation,              bool(no)).
+optdef(oc_aux_output, generate_item_version_numbers,    bool(no)).
+optdef(oc_aux_output, generate_mmc_make_module_dependencies, bool(no)).
+optdef(oc_aux_output, trace_level,                      string("default")).
+optdef(oc_aux_output, trace_optimized,                  bool(no)).
+optdef(oc_aux_output, trace_prof,                       bool(no)).
+optdef(oc_aux_output, trace_table_io,                   bool(no)).
+optdef(oc_aux_output, trace_table_io_only_retry,        bool(no)).
+optdef(oc_aux_output, trace_table_io_states,            bool(no)).
+optdef(oc_aux_output, trace_table_io_require,           bool(no)).
+optdef(oc_aux_output, trace_table_io_all,               bool(no)).
+optdef(oc_aux_output, trace_goal_flags,                 accumulating([])).
+optdef(oc_aux_output, prof_optimized,                   bool(no)).
+optdef(oc_aux_output, exec_trace_tail_rec,              bool(no)).
+optdef(oc_aux_output, suppress_trace,                   string("")).
+optdef(oc_aux_output, force_disable_tracing,            bool(no)).
+optdef(oc_aux_output, delay_death,                      bool(yes)).
+optdef(oc_aux_output, delay_death_max_vars,             int(1000)).
+optdef(oc_aux_output, stack_trace_higher_order,         bool(no)).
+optdef(oc_aux_output, force_disable_ssdebug,            bool(no)).
+optdef(oc_aux_output, generate_bytecode,                bool(no)).
+optdef(oc_aux_output, line_numbers,                     bool(no)).
+optdef(oc_aux_output, line_numbers_around_foreign_code, bool(yes)).
+optdef(oc_aux_output, line_numbers_for_c_headers,       bool(no)).
+optdef(oc_aux_output, type_repns_for_humans,            bool(no)).
+optdef(oc_aux_output, auto_comments,                    bool(no)).
+optdef(oc_aux_output, frameopt_comments,                bool(no)).
+optdef(oc_aux_output, max_error_line_width,             maybe_int(yes(79))).
+optdef(oc_aux_output, show_definitions,                 bool(no)).
+optdef(oc_aux_output, show_definition_line_counts,      bool(no)).
+optdef(oc_aux_output, show_definition_extents,          bool(no)).
+optdef(oc_aux_output, show_local_type_repns,            bool(no)).
+optdef(oc_aux_output, show_all_type_repns,              bool(no)).
+optdef(oc_aux_output, show_developer_type_repns,        bool(no)).
+optdef(oc_aux_output, show_dependency_graph,            bool(no)).
+optdef(oc_aux_output, imports_graph,                    bool(no)).
+optdef(oc_aux_output, dump_trace_counts,                accumulating([])).
+optdef(oc_aux_output, dump_hlds,                        accumulating([])).
+optdef(oc_aux_output, dump_hlds_pred_id,                accumulating([])).
+optdef(oc_aux_output, dump_hlds_pred_name,              accumulating([])).
+optdef(oc_aux_output, dump_hlds_pred_name_order,        bool(no)).
+optdef(oc_aux_output, dump_hlds_spec_preds,             bool(no)).
+optdef(oc_aux_output, dump_hlds_spec_preds_for,         accumulating([])).
+optdef(oc_aux_output, dump_hlds_alias,                  string("")).
+optdef(oc_aux_output, dump_hlds_options,                string("")).
+optdef(oc_aux_output, dump_hlds_inst_limit,             int(100)).
+optdef(oc_aux_output, dump_hlds_file_suffix,            string("")).
+optdef(oc_aux_output, dump_same_hlds,                   bool(no)).
+optdef(oc_aux_output, dump_mlds,                        accumulating([])).
+optdef(oc_aux_output, dump_mlds_pred_name,              accumulating([])).
+optdef(oc_aux_output, verbose_dump_mlds,                accumulating([])).
+optdef(oc_aux_output, dump_options_file,                bool(no)).
+optdef(oc_aux_output, mode_constraints,                 bool(no)).
+optdef(oc_aux_output, simple_mode_constraints,          bool(no)).
+optdef(oc_aux_output, prop_mode_constraints,            bool(no)).
+optdef(oc_aux_output, compute_goal_modes,               bool(no)).
+optdef(oc_aux_output, benchmark_modes,                  bool(no)).
+optdef(oc_aux_output, benchmark_modes_repeat,           int(1)).
+
+    % Language semantics options.
+
+optdef(oc_semantics, strict_sequential,                 special).
+optdef(oc_semantics, reorder_conj,                      bool(yes)).
+optdef(oc_semantics, reorder_disj,                      bool(yes)).
+optdef(oc_semantics, fully_strict,                      bool(yes)).
+optdef(oc_semantics, allow_stubs,                       bool(no)).
+optdef(oc_semantics, infer_types,                       bool(no)).
+optdef(oc_semantics, infer_modes,                       bool(no)).
+optdef(oc_semantics, infer_det,                         bool(yes)).
+optdef(oc_semantics, infer_all,                         bool_special).
+optdef(oc_semantics, type_inference_iteration_limit,    int(60)).
+optdef(oc_semantics, mode_inference_iteration_limit,    int(30)).
+optdef(oc_semantics, event_set_file_name,               string("")).
+
     % Compilation model options (ones that affect binary compatibility).
-    grade                               -   string_special,
+
+optdef(oc_grade, grade,                                 string_special).
     % The `mmc' script will pass the default grade determined
     % at configuration time.
 
-    % Target selection compilation model options
-    target                              -   string("c"),
-    compile_to_c                        -   special,
-    csharp                              -   special,
-    csharp_only                         -   special,
-    java                                -   special,
-    java_only                           -   special,
-    erlang                              -   special,
-    erlang_only                         -   special,
+    % Target selection compilation model options.
+optdef(oc_grade, target,                                string("c")).
+optdef(oc_grade, compile_to_c,                          special).
+optdef(oc_grade, csharp,                                special).
+optdef(oc_grade, csharp_only,                           special).
+optdef(oc_grade, java,                                  special).
+optdef(oc_grade, java_only,                             special).
+optdef(oc_grade, erlang,                                special).
+optdef(oc_grade, erlang_only,                           special).
 
     % Optional feature compilation model options:
     % (a) Debuggging
-    exec_trace                          -   bool(no),
-    decl_debug                          -   bool(no),
+optdef(oc_grade, exec_trace,                            bool(no)).
+optdef(oc_grade, decl_debug,                            bool(no)).
     % (b) Profiling
-    profiling                           -   bool_special,
-    time_profiling                      -   special,
-    memory_profiling                    -   special,
-    deep_profiling                      -   special,
-    profile_calls                       -   bool(no),
-    profile_time                        -   bool(no),
-    profile_memory                      -   bool(no),
-    profile_deep                        -   bool(no),
-    use_activation_counts               -   bool(no),
-    pre_prof_transforms_simplify        -   bool(no),
-    pre_implicit_parallelism_simplify   -   bool(no),
-    coverage_profiling                  -   bool(yes),
-    coverage_profiling_via_calls        -   bool(no),
-    coverage_profiling_static           -   bool(no),
-    profile_deep_coverage_after_goal    -   bool(yes),
-    profile_deep_coverage_branch_ite    -   bool(yes),
-    profile_deep_coverage_branch_switch -   bool(yes),
-    profile_deep_coverage_branch_disj   -   bool(yes),
-    profile_deep_coverage_use_portcounts -  bool(no),
-    profile_deep_coverage_use_trivial   -   bool(no),
-    profile_for_feedback                -   bool(no),
-    use_zeroing_for_ho_cycles           -   bool(yes),
-    use_lots_of_ho_specialization       -   bool(no),
-    deep_profile_tail_recursion         -   bool(no),
-    record_term_sizes_as_words          -   bool(no),
-    record_term_sizes_as_cells          -   bool(no),
-    experimental_complexity             -   string(""),
+optdef(oc_grade, profiling,                             bool_special).
+optdef(oc_grade, time_profiling,                        special).
+optdef(oc_grade, memory_profiling,                      special).
+optdef(oc_grade, deep_profiling,                        special).
+optdef(oc_grade, profile_calls,                         bool(no)).
+optdef(oc_grade, profile_time,                          bool(no)).
+optdef(oc_grade, profile_memory,                        bool(no)).
+optdef(oc_grade, profile_deep,                          bool(no)).
+optdef(oc_grade, use_activation_counts,                 bool(no)).
+optdef(oc_grade, pre_prof_transforms_simplify,          bool(no)).
+optdef(oc_grade, pre_implicit_parallelism_simplify,     bool(no)).
+optdef(oc_grade, coverage_profiling,                    bool(yes)).
+optdef(oc_grade, coverage_profiling_via_calls,          bool(no)).
+optdef(oc_grade, coverage_profiling_static,             bool(no)).
+optdef(oc_grade, profile_deep_coverage_after_goal,      bool(yes)).
+optdef(oc_grade, profile_deep_coverage_branch_ite,      bool(yes)).
+optdef(oc_grade, profile_deep_coverage_branch_switch,   bool(yes)).
+optdef(oc_grade, profile_deep_coverage_branch_disj,     bool(yes)).
+optdef(oc_grade, profile_deep_coverage_use_portcounts,  bool(no)).
+optdef(oc_grade, profile_deep_coverage_use_trivial,     bool(no)).
+optdef(oc_grade, profile_for_feedback,                  bool(no)).
+optdef(oc_grade, use_zeroing_for_ho_cycles,             bool(yes)).
+optdef(oc_grade, use_lots_of_ho_specialization,         bool(no)).
+optdef(oc_grade, deep_profile_tail_recursion,           bool(no)).
+optdef(oc_grade, record_term_sizes_as_words,            bool(no)).
+optdef(oc_grade, record_term_sizes_as_cells,            bool(no)).
+optdef(oc_grade, experimental_complexity,               string("")).
     % (c) Miscellaneous optional features
-    gc                                  -   string("boehm"),
-    parallel                            -   bool(no),
-    threadscope                         -   bool(no),
-    use_trail                           -   bool(no),
-    trail_segments                      -   bool(no),
-    maybe_thread_safe_opt               -   string("no"),
-    extend_stacks_when_needed           -   bool(no),
-    stack_segments                      -   bool(no),
-    use_regions                         -   bool(no),
-    use_alloc_regions                   -   bool(yes),
-    use_regions_debug                   -   bool(no),
-    use_regions_profiling               -   bool(no),
-    use_minimal_model_stack_copy        -   bool(no),
-    use_minimal_model_own_stacks        -   bool(no),
-    minimal_model_debug                 -   bool(no),
-    pregenerated_dist                   -   bool(no),
-    single_prec_float                   -   bool(no),
-    type_layout                         -   bool(yes),
-    source_to_source_debug              -   bool(no),
-    ssdb_trace_level                    -   string("default"),
-    link_ssdb_libs                      -   bool(no),
+optdef(oc_grade, gc,                                    string("boehm")).
+optdef(oc_grade, parallel,                              bool(no)).
+optdef(oc_grade, threadscope,                           bool(no)).
+optdef(oc_grade, use_trail,                             bool(no)).
+optdef(oc_grade, trail_segments,                        bool(no)).
+optdef(oc_grade, maybe_thread_safe_opt,                 string("no")).
+optdef(oc_grade, extend_stacks_when_needed,             bool(no)).
+optdef(oc_grade, stack_segments,                        bool(no)).
+optdef(oc_grade, use_regions,                           bool(no)).
+optdef(oc_grade, use_alloc_regions,                     bool(yes)).
+optdef(oc_grade, use_regions_debug,                     bool(no)).
+optdef(oc_grade, use_regions_profiling,                 bool(no)).
+optdef(oc_grade, use_minimal_model_stack_copy,          bool(no)).
+optdef(oc_grade, use_minimal_model_own_stacks,          bool(no)).
+optdef(oc_grade, minimal_model_debug,                   bool(no)).
+optdef(oc_grade, pregenerated_dist,                     bool(no)).
+optdef(oc_grade, single_prec_float,                     bool(no)).
+optdef(oc_grade, type_layout,                           bool(yes)).
+optdef(oc_grade, source_to_source_debug,                bool(no)).
+optdef(oc_grade, ssdb_trace_level,                      string("default")).
+optdef(oc_grade, link_ssdb_libs,                        bool(no)).
 
-    % Data representation compilation model options
-    num_ptag_bits                        -   int(-1),
-                                        % -1 is a special value which means
-                                        % use the value of conf_low_ptag_bits
-                                        % instead
-    bits_per_word                       -   int(32),
-                                        % A good default for the current
-                                        % generation of architectures.
-    bytes_per_word                      -   int(4),
-                                        % A good default for the current
-                                        % generation of architectures.
-    conf_low_ptag_bits                  -   int(2),
-                                        % The `mmc' script will override the
-                                        % above default with a value determined
-                                        % at configuration time.
-    unboxed_float                       -   bool(no),
-    unboxed_int64s                      -   bool(no),
-    unboxed_no_tag_types                -   bool(yes),
-    arg_pack_bits                       -   int(-1),
-                                        % -1 is a special value which means use
-                                        % all word bits for argument packing.
-    pack_everything                     -   bool(no),
-    allow_direct_args                   -   bool(yes),
-    allow_double_word_fields            -   bool(yes),
-    allow_double_word_ints              -   bool(no),
-    allow_packing_dummies               -   bool(no),
-    allow_packing_ints                  -   bool(no),
-    allow_packing_chars                 -   bool(no),
-    allow_packing_local_sectags         -   bool(no),
-    allow_packing_remote_sectags        -   bool(no),
-    allow_packing_mini_types            -   bool(no),
-    allow_packed_unify_compare          -   bool(no),
-    sync_term_size                      -   int(8),
-                                        % 8 is the size on linux (at the time
-                                        % of writing) - will usually be
-                                        % overridden by a value from configure.
+    % D representation compilation model options
+optdef(oc_grade, num_ptag_bits,                         int(-1)).
+    % -1 is a special value which means use the value
+    % of conf_low_ptag_bits instead.
+optdef(oc_grade, bits_per_word,                         int(32)).
+    % A good default for the current generation of architectures.
+optdef(oc_grade, bytes_per_word,                        int(4)).
+    % A good default for the current generation of architectures.
+optdef(oc_grade, conf_low_ptag_bits,                    int(2)).
+    % The `mmc' script will override the above default with
+    % a value determined at configuration time.
+optdef(oc_grade, unboxed_float,                         bool(no)).
+optdef(oc_grade, unboxed_int64s,                        bool(no)).
+optdef(oc_grade, unboxed_no_tag_types,                  bool(yes)).
+optdef(oc_grade, arg_pack_bits,                         int(-1)).
+    % -1 is a special value which means use all word bits
+    % for argument packing.
+optdef(oc_grade, pack_everything,                       bool(no)).
+optdef(oc_grade, allow_direct_args,                     bool(yes)).
+optdef(oc_grade, allow_double_word_fields,              bool(yes)).
+optdef(oc_grade, allow_double_word_ints,                bool(no)).
+optdef(oc_grade, allow_packing_dummies,                 bool(no)).
+optdef(oc_grade, allow_packing_ints,                    bool(no)).
+optdef(oc_grade, allow_packing_chars,                   bool(no)).
+optdef(oc_grade, allow_packing_local_sectags,           bool(no)).
+optdef(oc_grade, allow_packing_remote_sectags,          bool(no)).
+optdef(oc_grade, allow_packing_mini_types,              bool(no)).
+optdef(oc_grade, allow_packed_unify_compare,            bool(no)).
+optdef(oc_grade, sync_term_size,                        int(8)).
+    % 8 is the size on linux (at the time of writing) - will usually be
+    % overridden by a value from configure.
 
     % LLDS back-end compilation model options
-    gcc_non_local_gotos                 -   bool(yes),
-    gcc_global_registers                -   bool(yes),
-    asm_labels                          -   bool(yes),
-    use_float_registers                 -   bool(yes),
-
+optdef(oc_grade, gcc_non_local_gotos,                   bool(yes)).
+optdef(oc_grade, gcc_global_registers,                  bool(yes)).
+optdef(oc_grade, asm_labels,                            bool(yes)).
+optdef(oc_grade, use_float_registers,                   bool(yes)).
+ 
     % MLDS back-end compilation model options
-    highlevel_code                      -   bool(no),
-    det_copy_out                        -   bool(no),
-    nondet_copy_out                     -   bool(no),
-    put_commit_in_own_func              -   bool(no),
-    put_nondet_env_on_heap              -   bool(no)
-]).
-option_defaults_2(internal_use_option, [
-    % Options for internal use only
-    backend_foreign_languages           -  accumulating([]),
-                                        % The backend_foreign_languages option
-                                        % depends on the target and is set in
-                                        % handle_options.
-    stack_trace                         -   bool(no),
-    basic_stack_layout                  -   bool(no),
-    agc_stack_layout                    -   bool(no),
-    procid_stack_layout                 -   bool(no),
-    trace_stack_layout                  -   bool(no),
-    body_typeinfo_liveness              -   bool(no),
-    can_compare_constants_as_ints       -   bool(no),
-    pretest_equality_cast_pointers      -   bool(no),
-    can_compare_compound_values         -   bool(no),
-    order_constructors_for_erlang       -   bool(no),
-    delay_partial_instantiations        -   bool(no),
-    allow_defn_of_builtins              -   bool(no),
-    type_ctor_info                      -   bool(yes),
-    type_ctor_layout                    -   bool(yes),
-    type_ctor_functors                  -   bool(yes),
-    rtti_line_numbers                   -   bool(yes),
-    new_type_class_rtti                 -   bool(no),
-    disable_minimal_model_stack_copy_pneg - bool(no),
-    disable_minimal_model_stack_copy_cut -  bool(no),
-    use_minimal_model_stack_copy_pneg   -   bool(no),
-    use_minimal_model_stack_copy_cut    -   bool(no),
-    disable_trail_ops                   -   bool(no),
+optdef(oc_grade, highlevel_code,                        bool(no)).
+optdef(oc_grade, det_copy_out,                          bool(no)).
+optdef(oc_grade, nondet_copy_out,                       bool(no)).
+optdef(oc_grade, put_commit_in_own_func,                bool(no)).
+optdef(oc_grade, put_nondet_env_on_heap,                bool(no)).
+
+    % Options for internal use only.
+
+optdef(oc_internal, backend_foreign_languages,          accumulating([])).
+    % The backend_foreign_languages option depends on the target,
+    % and is set in handle_options.
+optdef(oc_internal, stack_trace,                        bool(no)).
+optdef(oc_internal, basic_stack_layout,                 bool(no)).
+optdef(oc_internal, agc_stack_layout,                   bool(no)).
+optdef(oc_internal, procid_stack_layout,                bool(no)).
+optdef(oc_internal, trace_stack_layout,                 bool(no)).
+optdef(oc_internal, body_typeinfo_liveness,             bool(no)).
+optdef(oc_internal, can_compare_constants_as_ints,      bool(no)).
+optdef(oc_internal, pretest_equality_cast_pointers,     bool(no)).
+optdef(oc_internal, can_compare_compound_values,        bool(no)).
+optdef(oc_internal, order_constructors_for_erlang,      bool(no)).
+optdef(oc_internal, delay_partial_instantiations,       bool(no)).
+optdef(oc_internal, allow_defn_of_builtins,             bool(no)).
+optdef(oc_internal, type_ctor_info,                     bool(yes)).
+optdef(oc_internal, type_ctor_layout,                   bool(yes)).
+optdef(oc_internal, type_ctor_functors,                 bool(yes)).
+optdef(oc_internal, rtti_line_numbers,                  bool(yes)).
+optdef(oc_internal, new_type_class_rtti,                bool(no)).
+optdef(oc_internal, disable_minimal_model_stack_copy_pneg, bool(no)).
+optdef(oc_internal, disable_minimal_model_stack_copy_cut, bool(no)).
+optdef(oc_internal, use_minimal_model_stack_copy_pneg,  bool(no)).
+optdef(oc_internal, use_minimal_model_stack_copy_cut,   bool(no)).
+optdef(oc_internal, disable_trail_ops,                  bool(no)).
     % The size_* values below *must* be consistent with the corresponding
     % values or data structures in mercury_region.h.
-    size_region_ite_fixed               -   int(4),
-    size_region_disj_fixed              -   int(4),
-    size_region_commit_fixed            -   int(5),
-    size_region_ite_protect             -   int(1),
-    size_region_ite_snapshot            -   int(3),
-    size_region_semi_disj_protect       -   int(1),
-    size_region_disj_snapshot           -   int(3),
-    size_region_commit_entry            -   int(1),
-    allow_multi_arm_switches            -   bool(yes),
-    type_check_constraints              -   bool(no)
-]).
-option_defaults_2(code_gen_option, [
-    % Code Generation Options
-    low_level_debug                     -   bool(no),
-    table_debug                         -   bool(no),
-    trad_passes                         -   bool(yes),
-    parallel_liveness                   -   bool(no),
-    parallel_code_gen                   -   bool(no),
-    reclaim_heap_on_failure             -   bool_special,
-    reclaim_heap_on_semidet_failure     -   bool(yes),
-    reclaim_heap_on_nondet_failure      -   bool(yes),
-    have_delay_slot                     -   bool(no),
-                                        % The `mmc' script may override the
-                                        % above default if configure says
-                                        % the machine has branch delay slots.
-    num_real_r_regs                     -   int(5),
-    num_real_f_regs                     -   int(0),
-    num_real_r_temps                    -   int(5),
-    num_real_f_temps                    -   int(0),
-                                        % The `mmc' script will override the
-                                        % above defaults with values determined
-                                        % at configuration time.
-    max_jump_table_size                 -   int(0),
-                                        % 0 indicates any size.
-    max_specialized_do_call_closure     -   int(5),
-                                        % mercury.do_call_closure_N
-                                        % exists for N <= option_value;
-                                        % set to -1 to disable.
-                                        % Should be less than or equal to
-                                        % max_spec_explicit_arg
-                                        % in tools/make_spec_ho_call.
-    max_specialized_do_call_class_method -  int(6),
-                                        % mercury.do_call_class_method_N
-                                        % exists for N <= option_value;
-                                        % set to -1 to disable.
-                                        % Should be less than or equal to
-                                        % max_spec_explicit_arg
-                                        % in tools/make_spec_method_call.
-    compare_specialization              -   int(-1),
-                                        % -1 asks handle_options.m to give
-                                        % the value, which may be grade
-                                        % dependent.
-    should_pretest_equality             -   bool(yes),
-    fact_table_max_array_size           -   int(1024),
-    fact_table_hash_percent_full        -   int(90),
-    prefer_switch                       -   bool(yes),
-    prefer_while_loop_over_jump_self    -   bool(yes),
-    prefer_while_loop_over_jump_mutual  -   bool(no),
-    opt_no_return_calls                 -   bool(yes),
-    debug_class_init                    -   bool(no)
-]).
-option_defaults_2(special_optimization_option, [
+optdef(oc_internal, size_region_ite_fixed,              int(4)).
+optdef(oc_internal, size_region_disj_fixed,             int(4)).
+optdef(oc_internal, size_region_commit_fixed,           int(5)).
+optdef(oc_internal, size_region_ite_protect,            int(1)).
+optdef(oc_internal, size_region_ite_snapshot,           int(3)).
+optdef(oc_internal, size_region_semi_disj_protect,      int(1)).
+optdef(oc_internal, size_region_disj_snapshot,          int(3)).
+optdef(oc_internal, size_region_commit_entry,           int(1)).
+optdef(oc_internal, allow_multi_arm_switches,           bool(yes)).
+optdef(oc_internal, type_check_constraints,             bool(no)).
+
+    % Code generation options.
+
+optdef(oc_codegen, low_level_debug,                     bool(no)).
+optdef(oc_codegen, table_debug,                         bool(no)).
+optdef(oc_codegen, trad_passes,                         bool(yes)).
+optdef(oc_codegen, parallel_liveness,                   bool(no)).
+optdef(oc_codegen, parallel_code_gen,                   bool(no)).
+optdef(oc_codegen, reclaim_heap_on_failure,             bool_special).
+optdef(oc_codegen, reclaim_heap_on_semidet_failure,     bool(yes)).
+optdef(oc_codegen, reclaim_heap_on_nondet_failure,      bool(yes)).
+optdef(oc_codegen, have_delay_slot,                     bool(no)).
+    % The `mmc' script may override the above default if configure says
+    % the machine has branch delay slots.
+optdef(oc_codegen, num_real_r_regs,                     int(5)).
+optdef(oc_codegen, num_real_f_regs,                     int(0)).
+optdef(oc_codegen, num_real_r_temps,                    int(5)).
+optdef(oc_codegen, num_real_f_temps,                    int(0)).
+    % The `mmc' script will override the above defaults with
+    % values determined at configuration time.
+optdef(oc_codegen, max_jump_table_size,                 int(0)).
+    % 0 indicates any size.
+optdef(oc_codegen, max_specialized_do_call_closure,     int(5)).
+    % mercury.do_call_closure_N exists for N <= option_value;
+    % set to -1 to disable. Should be less than or equal to
+    % max_spec_explicit_arg in tools/make_spec_ho_call.
+optdef(oc_codegen, max_specialized_do_call_class_method, int(6)).
+    % mercury.do_call_class_method_N exists for N <= option_value;
+    % set to -1 to disable. Should be less than or equal to
+    % max_spec_explicit_arg in tools/make_spec_method_call.
+optdef(oc_codegen, compare_specialization,              int(-1)).
+    % -1 asks handle_options.m to give the value, which may be grade dependent.
+optdef(oc_codegen, should_pretest_equality,             bool(yes)).
+optdef(oc_codegen, fact_table_max_array_size,           int(1024)).
+optdef(oc_codegen, fact_table_hash_percent_full,        int(90)).
+optdef(oc_codegen, prefer_switch,                       bool(yes)).
+optdef(oc_codegen, prefer_while_loop_over_jump_self,    bool(yes)).
+optdef(oc_codegen, prefer_while_loop_over_jump_mutual,  bool(no)).
+optdef(oc_codegen, opt_no_return_calls,                 bool(yes)).
+optdef(oc_codegen, debug_class_init,                    bool(no)).
+
     % Special optimization options.
     % These ones are not affected by `-O<n>'.
-    opt_level                           -   int_special,
-    opt_level_number                    -   int(-2),
-    opt_space                           -   special,
-    intermodule_optimization            -   bool(no),
-    read_opt_files_transitively         -   bool(yes),
-    use_opt_files                       -   bool(no),
-    use_trans_opt_files                 -   bool(no),
-    transitive_optimization             -   bool(no),
-    intermodule_analysis                -   bool(no),
-    analysis_repeat                     -   int(0),
-    analysis_file_cache                 -   bool(no),
-    termination_check                   -   bool(no),
-    verbose_check_termination           -   bool(no),
-    structure_sharing_analysis          -   bool(no),
-    structure_sharing_widening          -   int(0),
-    structure_reuse_analysis            -   bool(no),
-    structure_reuse_constraint        -   string("within_n_cells_difference"),
-    structure_reuse_constraint_arg      -   int(0),
-    structure_reuse_max_conditions      -   int(10),
-    structure_reuse_repeat              -   int(0),
-    structure_reuse_free_cells          -   bool(no),
-    termination                         -   bool(no),
-    termination_single_args             -   int(0),
-    termination_norm                    -   string("total"),
-    termination_error_limit             -   int(3),
-    termination_path_limit              -   int(256),
-    termination2                        -   bool(no),
-    termination2_norm                   -   string("total"),
-    check_termination2                  -   bool(no),
-    verbose_check_termination2          -   bool(no),
-    widening_limit                      -   int(4),
-    arg_size_analysis_only              -   bool(no),
-    propagate_failure_constrs           -   bool(yes),
-    % XXX This is just a guess - I'm not sure what sensible
-    % value for this is.
-    term2_maximum_matrix_size           -   int(70),
-    analyse_exceptions                  -   bool(no),
-    analyse_closures                    -   bool(no),
-    analyse_trail_usage                 -   bool(no),
-    optimize_trail_usage                -   bool(no),
-    optimize_region_ops                 -   bool(no),
-    analyse_mm_tabling                  -   bool(no)
-]).
-option_defaults_2(optimization_option, [
+
+optdef(oc_spec_opt, opt_level,                          int_special).
+optdef(oc_spec_opt, opt_level_number,                   int(-2)).
+optdef(oc_spec_opt, opt_space,                          special).
+optdef(oc_spec_opt, intermodule_optimization,           bool(no)).
+optdef(oc_spec_opt, read_opt_files_transitively,        bool(yes)).
+optdef(oc_spec_opt, use_opt_files,                      bool(no)).
+optdef(oc_spec_opt, use_trans_opt_files,                bool(no)).
+optdef(oc_spec_opt, transitive_optimization,            bool(no)).
+optdef(oc_spec_opt, intermodule_analysis,               bool(no)).
+optdef(oc_spec_opt, analysis_repeat,                    int(0)).
+optdef(oc_spec_opt, analysis_file_cache,                bool(no)).
+optdef(oc_spec_opt, termination_check,                  bool(no)).
+optdef(oc_spec_opt, verbose_check_termination,          bool(no)).
+optdef(oc_spec_opt, structure_sharing_analysis,         bool(no)).
+optdef(oc_spec_opt, structure_sharing_widening,         int(0)).
+optdef(oc_spec_opt, structure_reuse_analysis,           bool(no)).
+optdef(oc_spec_opt, structure_reuse_constraint,
+                                        string("within_n_cells_difference")).
+optdef(oc_spec_opt, structure_reuse_constraint_arg,     int(0)).
+optdef(oc_spec_opt, structure_reuse_max_conditions,     int(10)).
+optdef(oc_spec_opt, structure_reuse_repeat,             int(0)).
+optdef(oc_spec_opt, structure_reuse_free_cells,         bool(no)).
+optdef(oc_spec_opt, termination,                        bool(no)).
+optdef(oc_spec_opt, termination_single_args,            int(0)).
+optdef(oc_spec_opt, termination_norm,                   string("total")).
+optdef(oc_spec_opt, termination_error_limit,            int(3)).
+optdef(oc_spec_opt, termination_path_limit,             int(256)).
+optdef(oc_spec_opt, termination2,                       bool(no)).
+optdef(oc_spec_opt, termination2_norm,                  string("total")).
+optdef(oc_spec_opt, check_termination2,                 bool(no)).
+optdef(oc_spec_opt, verbose_check_termination2,         bool(no)).
+optdef(oc_spec_opt, widening_limit,                     int(4)).
+optdef(oc_spec_opt, arg_size_analysis_only,             bool(no)).
+optdef(oc_spec_opt, propagate_failure_constrs,          bool(yes)).
+optdef(oc_spec_opt, term2_maximum_matrix_size,          int(70)).
+    % XXX This matrix size is just a guess.
+optdef(oc_spec_opt, analyse_exceptions,                 bool(no)).
+optdef(oc_spec_opt, analyse_closures,                   bool(no)).
+optdef(oc_spec_opt, analyse_trail_usage,                bool(no)).
+optdef(oc_spec_opt, optimize_trail_usage,               bool(no)).
+optdef(oc_spec_opt, optimize_region_ops,                bool(no)).
+optdef(oc_spec_opt, analyse_mm_tabling,                 bool(no)).
+
     % Optimization options
-    %
     % IMPORTANT: the default here should be all optimizations OFF.
-    % Optimizations should be enabled by the appropriate
-    % optimization level in the opt_level table.
+    % Optimizations should be enabled by the appropriate optimization level
+    % in the opt_level table.
 
     % HLDS
-    allow_inlining                      -   bool(yes),
-    inlining                            -   bool_special,
-    inline_simple                       -   bool(no),
-    inline_builtins                     -   bool(yes),
-    inline_single_use                   -   bool(no),
-    inline_call_cost                    -   int(0),
-    inline_compound_threshold           -   int(0),
-    inline_simple_threshold             -   int(5),
-                                        % Has no effect until
-                                        % --inline-simple is enabled.
-    inline_vars_threshold               -   int(100),
-    intermod_inline_simple_threshold    -   int(5),
-                                        % Has no effect until
-                                        % --intermodule-optimization.
-    inline_linear_tail_rec_sccs         -   bool(no),
-    inline_linear_tail_rec_sccs_max_extra -   int(0),
-    from_ground_term_threshold          -   int(5),
-    enable_const_struct                 -   bool(yes),
-    common_struct                       -   bool(no),
-    common_struct_preds                 -   string(""),
-    constraint_propagation              -   bool(no),
-    local_constraint_propagation        -   bool(no),
-    optimize_duplicate_calls            -   bool(no),
-    constant_propagation                -   bool(no),
-    excess_assign                       -   bool(no),
-    test_after_switch                   -   bool(no),
-    optimize_format_calls               -   bool(yes),
-    loop_invariants                     -   bool(no),
-    optimize_saved_vars_const           -   bool(no),
-    optimize_saved_vars_cell            -   bool(no),
-    optimize_saved_vars_cell_loop       -   bool(yes),
-    optimize_saved_vars_cell_full_path  -   bool(yes),
-    optimize_saved_vars_cell_on_stack   -   bool(yes),
-    optimize_saved_vars_cell_candidate_headvars -   bool(yes),
-    optimize_saved_vars_cell_cv_store_cost - int(3),
-    optimize_saved_vars_cell_cv_load_cost  - int(1),
-    optimize_saved_vars_cell_fv_store_cost - int(1),
-    optimize_saved_vars_cell_fv_load_cost  - int(1),
-    optimize_saved_vars_cell_op_ratio   -   int(100),
-    optimize_saved_vars_cell_node_ratio -   int(100),
-    optimize_saved_vars_cell_all_path_node_ratio    - int(100),
-    optimize_saved_vars_cell_include_all_candidates - bool(yes),
-    optimize_saved_vars                 -   bool_special,
-    delay_construct                     -   bool(no),
-    follow_code                         -   bool(no),
-    optimize_unused_args                -   bool(no),
-    intermod_unused_args                -   bool(no),
-    optimize_higher_order               -   bool(no),
-    higher_order_size_limit             -   int(20),
-    higher_order_arg_limit              -   int(10),
-    unneeded_code                       -   bool(no),
-    unneeded_code_copy_limit            -   int(10),
-    unneeded_code_debug                 -   bool(no),
-    unneeded_code_debug_pred_name       -   accumulating([]),
-    type_specialization                 -   bool(no),
-    user_guided_type_specialization     -   bool(no),
-    introduce_accumulators              -   bool(no),
-    optimize_constructor_last_call_accumulator -    bool(no),
-    optimize_constructor_last_call_null -   bool(no),
-    optimize_constructor_last_call      -   bool(no),
-    optimize_dead_procs                 -   bool(no),
-    deforestation                       -   bool(no),
-    deforestation_depth_limit           -   int(4),
-    deforestation_cost_factor           -   int(1000),
-    deforestation_vars_threshold        -   int(200),
-    deforestation_size_threshold        -   int(15),
-    untuple                             -   bool(no),
-    tuple                               -   bool(no),
-    tuple_trace_counts_file             -   string(""),
-    tuple_costs_ratio                   -   int(100),
-    tuple_min_args                      -   int(4),
-    inline_par_builtins                 -   bool(no),
-    always_specialize_in_dep_par_conjs  -   bool(no),
-    allow_some_paths_only_waits         -   bool(yes),
-    region_analysis                     -   bool(no),
+optdef(oc_opt, allow_inlining,                          bool(yes)).
+optdef(oc_opt, inlining,                                bool_special).
+optdef(oc_opt, inline_simple,                           bool(no)).
+optdef(oc_opt, inline_builtins,                         bool(yes)).
+optdef(oc_opt, inline_single_use,                       bool(no)).
+optdef(oc_opt, inline_call_cost,                        int(0)).
+optdef(oc_opt, inline_compound_threshold,               int(0)).
+optdef(oc_opt, inline_simple_threshold,                 int(5)).
+    % Has no effect until --inline-simple is enabled.
+optdef(oc_opt, inline_vars_threshold,                   int(100)).
+optdef(oc_opt, intermod_inline_simple_threshold,        int(5)).
+    % Has no effect until --intermodule-optimization.
+optdef(oc_opt, inline_linear_tail_rec_sccs,             bool(no)).
+optdef(oc_opt, inline_linear_tail_rec_sccs_max_extra,   int(0)).
+optdef(oc_opt, from_ground_term_threshold,              int(5)).
+optdef(oc_opt, enable_const_struct,                     bool(yes)).
+optdef(oc_opt, common_struct,                           bool(no)).
+optdef(oc_opt, common_struct_preds,                     string("")).
+optdef(oc_opt, constraint_propagation,                  bool(no)).
+optdef(oc_opt, local_constraint_propagation,            bool(no)).
+optdef(oc_opt, optimize_duplicate_calls,                bool(no)).
+optdef(oc_opt, constant_propagation,                    bool(no)).
+optdef(oc_opt, excess_assign,                           bool(no)).
+optdef(oc_opt, test_after_switch,                       bool(no)).
+optdef(oc_opt, optimize_format_calls,                   bool(yes)).
+optdef(oc_opt, loop_invariants,                         bool(no)).
+optdef(oc_opt, optimize_saved_vars_const,               bool(no)).
+optdef(oc_opt, optimize_saved_vars_cell,                bool(no)).
+optdef(oc_opt, optimize_saved_vars_cell_loop,           bool(yes)).
+optdef(oc_opt, optimize_saved_vars_cell_full_path,      bool(yes)).
+optdef(oc_opt, optimize_saved_vars_cell_on_stack,       bool(yes)).
+optdef(oc_opt, optimize_saved_vars_cell_candidate_headvars, bool(yes)).
+optdef(oc_opt, optimize_saved_vars_cell_cv_store_cost,  int(3)).
+optdef(oc_opt, optimize_saved_vars_cell_cv_load_cost,   int(1)).
+optdef(oc_opt, optimize_saved_vars_cell_fv_store_cost,  int(1)).
+optdef(oc_opt, optimize_saved_vars_cell_fv_load_cost,   int(1)).
+optdef(oc_opt, optimize_saved_vars_cell_op_ratio,       int(100)).
+optdef(oc_opt, optimize_saved_vars_cell_node_ratio,     int(100)).
+optdef(oc_opt, optimize_saved_vars_cell_all_path_node_ratio, int(100)).
+optdef(oc_opt, optimize_saved_vars_cell_include_all_candidates, bool(yes)).
+optdef(oc_opt, optimize_saved_vars,                     bool_special).
+optdef(oc_opt, delay_construct,                         bool(no)).
+optdef(oc_opt, follow_code,                             bool(no)).
+optdef(oc_opt, optimize_unused_args,                    bool(no)).
+optdef(oc_opt, intermod_unused_args,                    bool(no)).
+optdef(oc_opt, optimize_higher_order,                   bool(no)).
+optdef(oc_opt, higher_order_size_limit,                 int(20)).
+optdef(oc_opt, higher_order_arg_limit,                  int(10)).
+optdef(oc_opt, unneeded_code,                           bool(no)).
+optdef(oc_opt, unneeded_code_copy_limit,                int(10)).
+optdef(oc_opt, unneeded_code_debug,                     bool(no)).
+optdef(oc_opt, unneeded_code_debug_pred_name,           accumulating([])).
+optdef(oc_opt, type_specialization,                     bool(no)).
+optdef(oc_opt, user_guided_type_specialization,         bool(no)).
+optdef(oc_opt, introduce_accumulators,                  bool(no)).
+optdef(oc_opt, optimize_constructor_last_call_accumulator, bool(no)).
+optdef(oc_opt, optimize_constructor_last_call_null,     bool(no)).
+optdef(oc_opt, optimize_constructor_last_call,          bool(no)).
+optdef(oc_opt, optimize_dead_procs,                     bool(no)).
+optdef(oc_opt, deforestation,                           bool(no)).
+optdef(oc_opt, deforestation_depth_limit,               int(4)).
+optdef(oc_opt, deforestation_cost_factor,               int(1000)).
+optdef(oc_opt, deforestation_vars_threshold,            int(200)).
+optdef(oc_opt, deforestation_size_threshold,            int(15)).
+optdef(oc_opt, untuple,                                 bool(no)).
+optdef(oc_opt, tuple,                                   bool(no)).
+optdef(oc_opt, tuple_trace_counts_file,                 string("")).
+optdef(oc_opt, tuple_costs_ratio,                       int(100)).
+optdef(oc_opt, tuple_min_args,                          int(4)).
+optdef(oc_opt, inline_par_builtins,                     bool(no)).
+optdef(oc_opt, always_specialize_in_dep_par_conjs,      bool(no)).
+optdef(oc_opt, allow_some_paths_only_waits,             bool(yes)).
+optdef(oc_opt, region_analysis,                         bool(no)).
 
     % HLDS -> LLDS
-    smart_indexing                      -   bool(no),
-    smart_atomic_indexing               -   bool(yes),
-    smart_string_indexing               -   bool(yes),
-    smart_tag_indexing                  -   bool(yes),
-    smart_float_indexing                -   bool(yes),
-
-    dense_switch_req_density            -   int(25),
-                                        % Minimum density before using
-                                        % a dense switch.
-    lookup_switch_req_density           -   int(25),
-                                        % Minimum density before using
-                                        % a lookup switch.
-    dense_switch_size                   -   int(4),
-    lookup_switch_size                  -   int(4),
-    string_trie_switch_size             -   int(16),
-    string_hash_switch_size             -   int(8),
-    string_binary_switch_size           -   int(4),
-    tag_switch_size                     -   int(3),
-    try_switch_size                     -   int(3),
-    binary_switch_size                  -   int(4),
-    switch_single_rec_base_first        -   bool(no),
-    switch_multi_rec_base_first         -   bool(yes),
-    static_ground_cells                 -   bool(no),
-    static_ground_floats                -   bool(no),
-    static_ground_int64s                -   bool(no),
-    static_code_addresses               -   bool(no),
-    use_atomic_cells                    -   bool(no),
-    middle_rec                          -   bool(no),
-    simple_neg                          -   bool(no),
-    allow_hijacks                       -   bool(yes),
+optdef(oc_opt, smart_indexing,                          bool(no)).
+optdef(oc_opt, smart_atomic_indexing,                   bool(yes)).
+optdef(oc_opt, smart_string_indexing,                   bool(yes)).
+optdef(oc_opt, smart_tag_indexing,                      bool(yes)).
+optdef(oc_opt, smart_float_indexing,                    bool(yes)).
+optdef(oc_opt, dense_switch_req_density,                int(25)).
+    % Minimum density before using a dense switch.
+optdef(oc_opt, lookup_switch_req_density,               int(25)).
+    % Minimum density before using a lookup switch.
+optdef(oc_opt, dense_switch_size,                       int(4)).
+optdef(oc_opt, lookup_switch_size,                      int(4)).
+optdef(oc_opt, string_trie_switch_size,                 int(16)).
+optdef(oc_opt, string_hash_switch_size,                 int(8)).
+optdef(oc_opt, string_binary_switch_size,               int(4)).
+optdef(oc_opt, tag_switch_size,                         int(3)).
+optdef(oc_opt, try_switch_size,                         int(3)).
+optdef(oc_opt, binary_switch_size,                      int(4)).
+optdef(oc_opt, switch_single_rec_base_first,            bool(no)).
+optdef(oc_opt, switch_multi_rec_base_first,             bool(yes)).
+optdef(oc_opt, static_ground_cells,                     bool(no)).
+optdef(oc_opt, static_ground_floats,                    bool(no)).
+optdef(oc_opt, static_ground_int64s,                    bool(no)).
+optdef(oc_opt, static_code_addresses,                   bool(no)).
+optdef(oc_opt, use_atomic_cells,                        bool(no)).
+optdef(oc_opt, middle_rec,                              bool(no)).
+optdef(oc_opt, simple_neg,                              bool(no)).
+optdef(oc_opt, allow_hijacks,                           bool(yes)).
 
     % MLDS
-    optimize_tailcalls                  -   bool(no),
-    optimize_initializations            -   bool(no),
-    eliminate_unused_mlds_assigns       -   bool(yes),
-    eliminate_local_vars                -   bool(no),
-    generate_trail_ops_inline           -   bool(yes),
+optdef(oc_opt, optimize_tailcalls,                      bool(no)).
+optdef(oc_opt, optimize_initializations,                bool(no)).
+optdef(oc_opt, eliminate_unused_mlds_assigns,           bool(yes)).
+optdef(oc_opt, eliminate_local_vars,                    bool(no)).
+optdef(oc_opt, generate_trail_ops_inline,               bool(yes)).
 
     % LLDS
-    common_data                         -   bool(no),
-    common_layout_data                  -   bool(yes),
-    optimize                            -   bool(no),
-    optimize_peep                       -   bool(no),
-    optimize_peep_mkword                -   bool(no),
-    optimize_jumps                      -   bool(no),
-    optimize_fulljumps                  -   bool(no),
-    pessimize_tailcalls                 -   bool(no),
-    checked_nondet_tailcalls            -   bool(no),
-    use_local_vars                      -   bool(no),
-    local_var_access_threshold          -   int(2),
-    standardize_labels                  -   bool(no),
-    optimize_labels                     -   bool(no),
-    optimize_dups                       -   bool(no),
-    optimize_proc_dups                  -   bool(no),
-    optimize_frames                     -   bool(no),
-    optimize_delay_slot                 -   bool(no),
-    optimize_reassign                   -   bool(no),
-    optimize_repeat                     -   int(0),
-    layout_compression_limit            -   int(4000),
+optdef(oc_opt, common_data,                             bool(no)).
+optdef(oc_opt, common_layout_data,                      bool(yes)).
+optdef(oc_opt, optimize,                                bool(no)).
+optdef(oc_opt, optimize_peep,                           bool(no)).
+optdef(oc_opt, optimize_peep_mkword,                    bool(no)).
+optdef(oc_opt, optimize_jumps,                          bool(no)).
+optdef(oc_opt, optimize_fulljumps,                      bool(no)).
+optdef(oc_opt, pessimize_tailcalls,                     bool(no)).
+optdef(oc_opt, checked_nondet_tailcalls,                bool(no)).
+optdef(oc_opt, use_local_vars,                          bool(no)).
+optdef(oc_opt, local_var_access_threshold,              int(2)).
+optdef(oc_opt, standardize_labels,                      bool(no)).
+optdef(oc_opt, optimize_labels,                         bool(no)).
+optdef(oc_opt, optimize_dups,                           bool(no)).
+optdef(oc_opt, optimize_proc_dups,                      bool(no)).
+optdef(oc_opt, optimize_frames,                         bool(no)).
+optdef(oc_opt, optimize_delay_slot,                     bool(no)).
+optdef(oc_opt, optimize_reassign,                       bool(no)).
+optdef(oc_opt, optimize_repeat,                         int(0)).
+optdef(oc_opt, layout_compression_limit,                int(4000)).
 
     % LLDS -> C
-    use_macro_for_redo_fail             -   bool(no),
-    emit_c_loops                        -   bool(no),
-    procs_per_c_function                -   int(1),
-    everything_in_one_c_function        -   special,
-    local_thread_engine_base            -   bool(yes),
+optdef(oc_opt, use_macro_for_redo_fail,                 bool(no)).
+optdef(oc_opt, emit_c_loops,                            bool(no)).
+optdef(oc_opt, procs_per_c_function,                    int(1)).
+optdef(oc_opt, everything_in_one_c_function,            special).
+optdef(oc_opt, local_thread_engine_base,                bool(yes)).
 
     % Erlang
-    erlang_switch_on_strings_as_atoms   -   bool(no)
-]).
-option_defaults_2(target_code_compilation_option, [
-    % Target code compilation options
-    target_debug                        -   bool(no),
+optdef(oc_opt, erlang_switch_on_strings_as_atoms,       bool(no)).
+
+    % Target code compilation options.
+
+optdef(oc_target_comp, target_debug,                    bool(no)).
 
     % C
-    cc                                  -   string("gcc"),
-                                        % The `mmc' script will override the
-                                        % default with a value determined at
-                                        % configuration time.
-    c_include_directory                 -   accumulating([]),
-                                        % The `mmc' script will override the
-                                        % default with a value determined at
-                                        % configuration time.
-    c_optimize                          -   bool(no),
-    ansi_c                              -   bool(yes),
-    inline_alloc                        -   bool(no),
-    cflags                              -   accumulating([]),
-    quoted_cflag                        -   string_special,
+optdef(oc_target_comp, cc,                              string("gcc")).
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+optdef(oc_target_comp, c_include_directory,             accumulating([])).
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+optdef(oc_target_comp, c_optimize,                      bool(no)).
+optdef(oc_target_comp, ansi_c,                          bool(yes)).
+optdef(oc_target_comp, inline_alloc,                    bool(no)).
+optdef(oc_target_comp, cflags,                          accumulating([])).
+optdef(oc_target_comp, quoted_cflag,                    string_special).
+optdef(oc_target_comp, gcc_flags,                       accumulating([])).
+optdef(oc_target_comp, quoted_gcc_flag,                 string_special).
+optdef(oc_target_comp, clang_flags,                     accumulating([])).
+optdef(oc_target_comp, quoted_clang_flag,               string_special).
+optdef(oc_target_comp, msvc_flags,                      accumulating([])).
+optdef(oc_target_comp, quoted_msvc_flag,                string_special).
 
-    gcc_flags                           -   accumulating([]),
-    quoted_gcc_flag                     -   string_special,
-    clang_flags                         -   accumulating([]),
-    quoted_clang_flag                   -   string_special,
-    msvc_flags                          -   accumulating([]),
-    quoted_msvc_flag                    -   string_special,
+optdef(oc_target_comp, cflags_for_warnings,             string("")).
+    % The `mmc' script will override the default with values
+    % determined at configuration time.
+optdef(oc_target_comp, cflags_for_sanitizers,           string("")).
+optdef(oc_target_comp, cflags_for_optimization,         string("-O")).
+optdef(oc_target_comp, cflags_for_ansi,                 string("")).
+optdef(oc_target_comp, cflags_for_regs,                 string("")).
+optdef(oc_target_comp, cflags_for_gotos,                string("")).
+optdef(oc_target_comp, cflags_for_threads,              string("")).
+optdef(oc_target_comp, cflags_for_debug,                string("-g")).
+optdef(oc_target_comp, cflags_for_pic,                  string("")).
+optdef(oc_target_comp, cflags_for_lto,                  string("")).
+optdef(oc_target_comp, c_flag_to_name_object_file,      string("-o ")).
+optdef(oc_target_comp, object_file_extension,           string(".o")).
+optdef(oc_target_comp, pic_object_file_extension,       string(".o")).
+optdef(oc_target_comp, c_compiler_type,                 string("gcc")).
+optdef(oc_target_comp, csharp_compiler_type,            string("mono")).
+    % The `mmc' script will override the default with a value
+    % determined at configuration time for the above two options.
 
-    cflags_for_warnings                 -   string(""),
-                                        % The `mmc' script will override the
-                                        % default with values determined at
-                                        % configuration time.
-    cflags_for_sanitizers               -   string(""),
-    cflags_for_optimization             -   string("-O"),
-    cflags_for_ansi                     -   string(""),
-    cflags_for_regs                     -   string(""),
-    cflags_for_gotos                    -   string(""),
-    cflags_for_threads                  -   string(""),
-    cflags_for_debug                    -   string("-g"),
-    cflags_for_pic                      -   string(""),
-    cflags_for_lto                      -   string(""),
-    c_flag_to_name_object_file          -   string("-o "),
-    object_file_extension               -   string(".o"),
-    pic_object_file_extension           -   string(".o"),
-    c_compiler_type                     -   string("gcc"),
-    csharp_compiler_type                -   string("mono"),
-                                        % The `mmc' script will override the
-                                        % default with a value determined at
-                                        % configuration time for the above
-                                        % two options
     % Java
-    java_compiler                       -   string("javac"),
-    java_interpreter                    -   string("java"),
-    java_flags                          -   accumulating([]),
-    quoted_java_flag                    -   string_special,
-    java_classpath                      -   accumulating([]),
-    java_object_file_extension          -   string(".class"),
+optdef(oc_target_comp, java_compiler,                   string("javac")).
+optdef(oc_target_comp, java_interpreter,                string("java")).
+optdef(oc_target_comp, java_flags,                      accumulating([])).
+optdef(oc_target_comp, quoted_java_flag,                string_special).
+optdef(oc_target_comp, java_classpath,                  accumulating([])).
+optdef(oc_target_comp, java_object_file_extension,      string(".class")).
 
     % C#
-    csharp_compiler                     -   string("csc"),
-    csharp_flags                        -   accumulating([]),
-    quoted_csharp_flag                  -   string_special,
-    cli_interpreter                     -   string(""),
+optdef(oc_target_comp, csharp_compiler,                 string("csc")).
+optdef(oc_target_comp, csharp_flags,                    accumulating([])).
+optdef(oc_target_comp, quoted_csharp_flag,              string_special).
+optdef(oc_target_comp, cli_interpreter,                 string("")).
 
     % Erlang
-    erlang_compiler                     -   string("erlc"),
-    erlang_interpreter                  -   string("erl"),
-    erlang_flags                        -   accumulating([]),
-    quoted_erlang_flag                  -   string_special,
-    erlang_include_directory            -   accumulating([]),
-    erlang_object_file_extension        -   string(".beam"),
-    erlang_native_code                  -   bool(no),
-    erlang_inhibit_trivial_warnings     -   bool(yes)
-]).
-option_defaults_2(link_option, [
-    % Link Options
-    output_file_name                    -   string(""),
-                                        % If the output_file_name is an empty
-                                        % string, we use the name of the first
-                                        % module on the command line.
-    ld_flags                            -   accumulating([]),
-    quoted_ld_flag                      -   string_special,
-    ld_libflags                         -   accumulating([]),
-    quoted_ld_libflag                   -   string_special,
-    link_library_directories            -   accumulating([]),
-    runtime_link_library_directories    -   accumulating([]),
-    default_runtime_library_directory   -   bool(yes),
-    link_libraries                      -   accumulating([]),
-    link_objects                        -   accumulating([]),
-    mercury_library_directory_special   -   string_special,
-    mercury_library_directories         -   accumulating([]),
-    search_library_files_directory_special - string_special,
-    search_library_files_directories    -   accumulating([]),
-    mercury_library_special             -   string_special,
-    mercury_libraries                   -   accumulating([]),
-    mercury_standard_library_directory  -   maybe_string(no),
-                                        % The Mercury.config file will set the
-                                        % default standard library directory.
-    mercury_standard_library_directory_special - maybe_string_special,
-    init_file_directories               -   accumulating([]),
-    init_files                          -   accumulating([]),
-    trace_init_files                    -   accumulating([]),
-    linkage                             -   string("shared"),
-    linkage_special                     -   string_special,
-    mercury_linkage                     -   string("shared"),
-    mercury_linkage_special             -   string_special,
-    demangle                            -   bool(yes),
-    strip                               -   bool(yes),
-    main                                -   bool(yes),
-    allow_undefined                     -   bool(yes),
-    use_readline                        -   bool(yes),
-    runtime_flags                       -   accumulating([]),
-    extra_initialization_functions      -   bool(no),
-    frameworks                          -   accumulating([]),
-    framework_directories               -   accumulating([]),
-    sign_assembly                       -   string(""),
-    cstack_reserve_size                 -   int(-1),
+optdef(oc_target_comp, erlang_compiler,                 string("erlc")).
+optdef(oc_target_comp, erlang_interpreter,              string("erl")).
+optdef(oc_target_comp, erlang_flags,                    accumulating([])).
+optdef(oc_target_comp, quoted_erlang_flag,              string_special).
+optdef(oc_target_comp, erlang_include_directory,        accumulating([])).
+optdef(oc_target_comp, erlang_object_file_extension,    string(".beam")).
+optdef(oc_target_comp, erlang_native_code,              bool(no)).
+optdef(oc_target_comp, erlang_inhibit_trivial_warnings, bool(yes)).
 
-    shared_library_extension            -   string(".so"),
-                                        % The `mmc' script will override the
-                                        % default with a value determined at
-                                        % configuration time.
-    library_extension                   -   string(".a"),
-    executable_file_extension           -   string(""),
-    link_executable_command             -   string("gcc"),
-    link_shared_lib_command             -   string("gcc -shared"),
-    create_archive_command              -   string("ar"),
-    create_archive_command_output_flag  -   string(""),
-    create_archive_command_flags        -   accumulating([]), % "cr"
-    ranlib_command                      -   string(""),
-    ranlib_flags                        -   string(""),
-    mkinit_command                      -   string("mkinit"),
-    mkinit_erl_command                  -   string("mkinit_erl"),
-    demangle_command                    -   string("mdemangle"),
-    filtercc_command                    -   string("mfiltercc"),
-    filterjavac_command                 -   string("mfilterjavac"),
-    trace_libs                          -   string(""),
-    thread_libs                         -   string(""),
-    hwloc_libs                          -   string(""),
-    hwloc_static_libs                   -   string(""),
-    shared_libs                         -   string(""),
-    math_lib                            -   string(""),
-    readline_libs                       -   string(""),
-    linker_opt_separator                -   string(""),
-    linker_debug_flags                  -   string("-g"),
-    shlib_linker_debug_flags            -   string("-g"),
-    linker_sanitizer_flags              -   string(""),
-    linker_trace_flags                  -   string(""),
-    shlib_linker_trace_flags            -   string(""),
-    linker_thread_flags                 -   string(""),
-    shlib_linker_thread_flags           -   string(""),
-    linker_lto_flags                    -   string(""),
-    linker_static_flags                 -   string("-static"),
-    linker_strip_flag                   -   string("-s"),
-    linker_link_lib_flag                -   string("-l"),
-    linker_link_lib_suffix              -   string(""),
-    shlib_linker_link_lib_flag          -   string("-l"),
-    shlib_linker_link_lib_suffix        -   string(""),
-    linker_path_flag                    -   string("-L"),
-    linker_rpath_flag                   -   string("-Wl,-rpath"),
-    linker_rpath_separator              -   string(" -Wl,-rpath"),
-    shlib_linker_rpath_flag             -   string("-Wl,-rpath"),
-    shlib_linker_rpath_separator        -   string(" -Wl,-rpath"),
-    linker_allow_undefined_flag         -   string(""),
-    linker_error_undefined_flag         -   string("-Wl,-no-undefined"),
-    shlib_linker_use_install_name       -   bool(no),
-    shlib_linker_install_name_flag      -   string("-install_name "),
-    shlib_linker_install_name_path      -   string(""),
-    strip_executable_command            -   string(""),
-    strip_executable_shared_flags       -   string(""),
-    strip_executable_static_flags       -   string(""),
-    java_archive_command                -   string("jar")
-]).
-option_defaults_2(build_system_option, [
-    % Build System Options
-    only_opmode_make                    -   bool(no),
-    rebuild                             -   bool(no),
-    keep_going                          -   bool(no),
-    jobs                                -   int(1),
-    track_flags                         -   bool(no),
-    invoked_by_mmc_make                 -   bool(no),
-    pre_link_command                    -   maybe_string(no),
-    extra_init_command                  -   maybe_string(no),
-    install_prefix                      -   string("/usr/local/"),
-    use_symlinks                        -   bool(yes),
+    % Link Options.
+
+optdef(oc_link, output_file_name,                       string("")).
+    % If the output_file_name is an empty string, we use the name
+    % of the first module on the command line.
+optdef(oc_link, ld_flags,                               accumulating([])).
+optdef(oc_link, quoted_ld_flag,                         string_special).
+optdef(oc_link, ld_libflags,                            accumulating([])).
+optdef(oc_link, quoted_ld_libflag,                      string_special).
+optdef(oc_link, link_library_directories,               accumulating([])).
+optdef(oc_link, runtime_link_library_directories,       accumulating([])).
+optdef(oc_link, default_runtime_library_directory,      bool(yes)).
+optdef(oc_link, link_libraries,                         accumulating([])).
+optdef(oc_link, link_objects,                           accumulating([])).
+optdef(oc_link, mercury_library_directory_special,      string_special).
+optdef(oc_link, mercury_library_directories,            accumulating([])).
+optdef(oc_link, search_library_files_directory_special, string_special).
+optdef(oc_link, search_library_files_directories,       accumulating([])).
+optdef(oc_link, mercury_library_special,                string_special).
+optdef(oc_link, mercury_libraries,                      accumulating([])).
+optdef(oc_link, mercury_standard_library_directory,     maybe_string(no)).
+    % The Mercury.config file will set the default
+    % standard library directory.
+optdef(oc_link, mercury_standard_library_directory_special, maybe_string_special).
+optdef(oc_link, init_file_directories,                  accumulating([])).
+optdef(oc_link, init_files,                             accumulating([])).
+optdef(oc_link, trace_init_files,                       accumulating([])).
+optdef(oc_link, linkage,                                string("shared")).
+optdef(oc_link, linkage_special,                        string_special).
+optdef(oc_link, mercury_linkage,                        string("shared")).
+optdef(oc_link, mercury_linkage_special,                string_special).
+optdef(oc_link, demangle,                               bool(yes)).
+optdef(oc_link, strip,                                  bool(yes)).
+optdef(oc_link, main,                                   bool(yes)).
+optdef(oc_link, allow_undefined,                        bool(yes)).
+optdef(oc_link, use_readline,                           bool(yes)).
+optdef(oc_link, runtime_flags,                          accumulating([])).
+optdef(oc_link, extra_initialization_functions,         bool(no)).
+optdef(oc_link, frameworks,                             accumulating([])).
+optdef(oc_link, framework_directories,                  accumulating([])).
+optdef(oc_link, sign_assembly,                          string("")).
+optdef(oc_link, cstack_reserve_size,                    int(-1)).
+
+optdef(oc_link, shared_library_extension,               string(".so")).
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+optdef(oc_link, library_extension,                      string(".a")).
+optdef(oc_link, executable_file_extension,              string("")).
+optdef(oc_link, link_executable_command,                string("gcc")).
+optdef(oc_link, link_shared_lib_command,                string("gcc -shared")).
+optdef(oc_link, create_archive_command,                 string("ar")).
+optdef(oc_link, create_archive_command_output_flag,     string("")).
+optdef(oc_link, create_archive_command_flags,           accumulating([])).
+    % "cr"
+optdef(oc_link, ranlib_command,                         string("")).
+optdef(oc_link, ranlib_flags,                           string("")).
+optdef(oc_link, mkinit_command,                         string("mkinit")).
+optdef(oc_link, mkinit_erl_command,                     string("mkinit_erl")).
+optdef(oc_link, demangle_command,                       string("mdemangle")).
+optdef(oc_link, filtercc_command,                       string("mfiltercc")).
+optdef(oc_link, filterjavac_command,                    string("mfilterjavac")).
+optdef(oc_link, trace_libs,                             string("")).
+optdef(oc_link, thread_libs,                            string("")).
+optdef(oc_link, hwloc_libs,                             string("")).
+optdef(oc_link, hwloc_static_libs,                      string("")).
+optdef(oc_link, shared_libs,                            string("")).
+optdef(oc_link, math_lib,                               string("")).
+optdef(oc_link, readline_libs,                          string("")).
+optdef(oc_link, linker_opt_separator,                   string("")).
+optdef(oc_link, linker_debug_flags,                     string("-g")).
+optdef(oc_link, shlib_linker_debug_flags,               string("-g")).
+optdef(oc_link, linker_sanitizer_flags,                 string("")).
+optdef(oc_link, linker_trace_flags,                     string("")).
+optdef(oc_link, shlib_linker_trace_flags,               string("")).
+optdef(oc_link, linker_thread_flags,                    string("")).
+optdef(oc_link, shlib_linker_thread_flags,              string("")).
+optdef(oc_link, linker_lto_flags,                       string("")).
+optdef(oc_link, linker_static_flags,                    string("-static")).
+optdef(oc_link, linker_strip_flag,                      string("-s")).
+optdef(oc_link, linker_link_lib_flag,                   string("-l")).
+optdef(oc_link, linker_link_lib_suffix,                 string("")).
+optdef(oc_link, shlib_linker_link_lib_flag,             string("-l")).
+optdef(oc_link, shlib_linker_link_lib_suffix,           string("")).
+optdef(oc_link, linker_path_flag,                       string("-L")).
+optdef(oc_link, linker_rpath_flag,                      string("-Wl,-rpath")).
+optdef(oc_link, linker_rpath_separator,                 string(" -Wl,-rpath")).
+optdef(oc_link, shlib_linker_rpath_flag,                string("-Wl,-rpath")).
+optdef(oc_link, shlib_linker_rpath_separator,           string(" -Wl,-rpath")).
+optdef(oc_link, linker_allow_undefined_flag,            string("")).
+optdef(oc_link, linker_error_undefined_flag,      string("-Wl,-no-undefined")).
+optdef(oc_link, shlib_linker_use_install_name,          bool(no)).
+optdef(oc_link, shlib_linker_install_name_flag,   string("-install_name ")).
+optdef(oc_link, shlib_linker_install_name_path,         string("")).
+optdef(oc_link, strip_executable_command,               string("")).
+optdef(oc_link, strip_executable_shared_flags,          string("")).
+optdef(oc_link, strip_executable_static_flags,          string("")).
+optdef(oc_link, java_archive_command,                   string("jar")).
+
+    % Build system options
+
+optdef(oc_buildsys, only_opmode_make,                   bool(no)).
+optdef(oc_buildsys, rebuild,                            bool(no)).
+optdef(oc_buildsys, keep_going,                         bool(no)).
+optdef(oc_buildsys, jobs,                               int(1)).
+optdef(oc_buildsys, track_flags,                        bool(no)).
+optdef(oc_buildsys, invoked_by_mmc_make,                bool(no)).
+optdef(oc_buildsys, pre_link_command,                   maybe_string(no)).
+optdef(oc_buildsys, extra_init_command,                 maybe_string(no)).
+optdef(oc_buildsys, install_prefix,                     string("/usr/local/")).
+optdef(oc_buildsys, use_symlinks,                       bool(yes)).
 
     % If `--mercury-stdlib-dir' is set, `--mercury-config-dir'
     % must also be set. This invariant is maintained by the `special' variants
     % of the options.
-    mercury_configuration_directory_special - string_special,
-    mercury_configuration_directory     -   maybe_string(no),
-    install_command                     -   string("cp"),
-    install_command_dir_option          -   string("-R"),
-    detect_libgrades                    -   bool(yes),
-    libgrades                           -   accumulating([]),
-    libgrades_include_components        -   accumulating([]),
-    libgrades_exclude_components        -   accumulating([]),
-    lib_linkages                        -   accumulating([]),
-    flags_file                          -   file_special,
-    options_files                       -   accumulating(["Mercury.options"]),
+optdef(oc_buildsys, mercury_configuration_directory_special, string_special).
+optdef(oc_buildsys, mercury_configuration_directory,    maybe_string(no)).
+optdef(oc_buildsys, install_command,                    string("cp")).
+optdef(oc_buildsys, install_command_dir_option,         string("-R")).
+optdef(oc_buildsys, detect_libgrades,                   bool(yes)).
+optdef(oc_buildsys, libgrades,                          accumulating([])).
+optdef(oc_buildsys, libgrades_include_components,       accumulating([])).
+optdef(oc_buildsys, libgrades_exclude_components,       accumulating([])).
+optdef(oc_buildsys, lib_linkages,                       accumulating([])).
+optdef(oc_buildsys, flags_file,                         file_special).
+optdef(oc_buildsys, options_files,          accumulating(["Mercury.options"])).
 
-    config_file                         -   maybe_string(yes("")),
-                                        % yes("") means unset.
-    options_search_directories          -   accumulating(["."]),
-    use_subdirs                         -   bool(no),
-    use_grade_subdirs                   -   bool(no),
-    search_directories                  -   accumulating(["."]),
-    intermod_directories                -   accumulating([]),
-    use_search_directories_for_intermod -   bool(yes),
-    libgrade_install_check              -   bool(yes),
-    order_make_by_timestamp             -   bool(no),
-    show_make_times                     -   bool(no),
-    extra_library_header                -   accumulating([]),
-    restricted_command_line             -   bool(no),
-    env_type                            -   string_special,
-    host_env_type                       -   string("posix"),
-    system_env_type                     -   string(""),
-    target_env_type                     -   string("posix")
-]).
-option_defaults_2(miscellaneous_option, [
-    % Miscellaneous Options
-    filenames_from_stdin                -   bool(no),
-    typecheck_ambiguity_warn_limit      -   int(50),
-    typecheck_ambiguity_error_limit     -   int(3000),
-    help                                -   bool(no),
-    version                             -   bool(no),
-    target_arch                         -   string(""),
-    cross_compiling                     -   bool(no),
-    local_module_id                     -   accumulating([]),
-    analysis_file_cache_dir             -   string(""),
-    compiler_sufficiently_recent        -   bool(no),
-    experiment                          -   string(""),
-    experiment1                         -   bool(no),
-    experiment2                         -   bool(no),
-    experiment3                         -   bool(yes),
-    experiment4                         -   bool(yes),
-    experiment5                         -   bool(no),
-    ignore_par_conjunctions             -   bool(no),
-    control_granularity                 -   bool(no),
-    distance_granularity                -   int(0),
-    implicit_parallelism                -   bool(no),
-    feedback_file                       -   string(""),
-    par_loop_control                    -   bool(no),
-    par_loop_control_preserve_tail_recursion - bool(no)
-]).
+optdef(oc_buildsys, config_file,                        maybe_string(yes(""))).
+    % yes("") means unset.
+optdef(oc_buildsys, options_search_directories,         accumulating(["."])).
+optdef(oc_buildsys, use_subdirs,                        bool(no)).
+optdef(oc_buildsys, use_grade_subdirs,                  bool(no)).
+optdef(oc_buildsys, search_directories,                 accumulating(["."])).
+optdef(oc_buildsys, intermod_directories,               accumulating([])).
+optdef(oc_buildsys, use_search_directories_for_intermod, bool(yes)).
+optdef(oc_buildsys, libgrade_install_check,             bool(yes)).
+optdef(oc_buildsys, order_make_by_timestamp,            bool(no)).
+optdef(oc_buildsys, show_make_times,                    bool(no)).
+optdef(oc_buildsys, extra_library_header,               accumulating([])).
+optdef(oc_buildsys, restricted_command_line,            bool(no)).
+optdef(oc_buildsys, env_type,                           string_special).
+optdef(oc_buildsys, host_env_type,                      string("posix")).
+optdef(oc_buildsys, system_env_type,                    string("")).
+optdef(oc_buildsys, target_env_type,                    string("posix")).
 
-    % please keep this in alphabetic order
+    % Miscellaneous options
+
+optdef(oc_misc, filenames_from_stdin,                   bool(no)).
+optdef(oc_misc, typecheck_ambiguity_warn_limit,         int(50)).
+optdef(oc_misc, typecheck_ambiguity_error_limit,        int(3000)).
+optdef(oc_misc, help,                                   bool(no)).
+optdef(oc_misc, version,                                bool(no)).
+optdef(oc_misc, target_arch,                            string("")).
+optdef(oc_misc, cross_compiling,                        bool(no)).
+optdef(oc_misc, local_module_id,                        accumulating([])).
+optdef(oc_misc, analysis_file_cache_dir,                string("")).
+optdef(oc_misc, compiler_sufficiently_recent,           bool(no)).
+optdef(oc_misc, experiment,                             string("")).
+optdef(oc_misc, experiment1,                            bool(no)).
+optdef(oc_misc, experiment2,                            bool(no)).
+optdef(oc_misc, experiment3,                            bool(yes)).
+optdef(oc_misc, experiment4,                            bool(yes)).
+optdef(oc_misc, experiment5,                            bool(no)).
+optdef(oc_misc, ignore_par_conjunctions,                bool(no)).
+optdef(oc_misc, control_granularity,                    bool(no)).
+optdef(oc_misc, distance_granularity,                   int(0)).
+optdef(oc_misc, implicit_parallelism,                   bool(no)).
+optdef(oc_misc, feedback_file,                          string("")).
+optdef(oc_misc, par_loop_control,                       bool(no)).
+optdef(oc_misc, par_loop_control_preserve_tail_recursion, bool(no)).
+
+%---------------------------------------------------------------------------%
+
+    % Please keep this in alphabetic order.
 short_option('c', only_opmode_compile_only).
 short_option('C', only_opmode_target_code_only).
 short_option('d', dump_hlds).
@@ -3545,7 +3536,7 @@ append_to_accumulating_option(Option - Value, !OptionTable) :-
 set_opt_level(N, !OptionTable) :-
     % First reset all optimizations to their default
     % (the default should be all optimizations off).
-    option_defaults_2(optimization_option, OptimizationDefaults),
+    option_defaults_2(oc_opt, OptimizationDefaults),
     override_options(OptimizationDefaults, !OptionTable),
 
     % Next enable the optimization levels from 0 up to N.
@@ -3825,10 +3816,10 @@ quote_char_unix('$').
 %---------------------------------------------------------------------------%
 
 inconsequential_options(InconsequentialOptions) :-
-    option_defaults_2(warning_option, WarningOptions),
-    option_defaults_2(verbosity_option, VerbosityOptions),
-    option_defaults_2(internal_use_option, InternalUseOptions),
-    option_defaults_2(build_system_option, BuildSystemOptions),
+    option_defaults_2(oc_warn, WarningOptions),
+    option_defaults_2(oc_verbosity, VerbosityOptions),
+    option_defaults_2(oc_internal, InternalUseOptions),
+    option_defaults_2(oc_buildsys, BuildSystemOptions),
     assoc_list.keys(WarningOptions, WarningKeys),
     assoc_list.keys(VerbosityOptions, VerbosityKeys),
     assoc_list.keys(InternalUseOptions, InternalUseKeys),
